@@ -1,6 +1,7 @@
 use super::prepared_wald::{calculate_wald, WaldCalculation};
 
 use crate::error::{allocation, invalid_argument, invalid_data, Result};
+use crate::linalg::jacobi;
 use crate::memory::push_reserved;
 use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::PreparedOlsFitView;
@@ -1176,7 +1177,11 @@ fn symmetric_eigensystem<R: PreparedInferenceReservation>(
                 converged = true;
                 break;
             }
-            jacobi_rotate(&mut work, &mut vectors, dimension, pivot_row, pivot_column)?;
+            if !jacobi::rotate(&mut work, &mut vectors, dimension, pivot_row, pivot_column) {
+                return Err(invalid_data(
+                    "prepared clustered Jacobi rotation is not finite",
+                ));
+            }
         }
         if !converged {
             return Err(invalid_data(
@@ -1197,110 +1202,13 @@ fn symmetric_eigensystem<R: PreparedInferenceReservation>(
         }
     }
     let (reconstruction_error, orthogonality_error) =
-        certify_eigensystem(matrix, &values, &vectors, dimension)?;
+        jacobi::eigensystem_errors(matrix, &values, &vectors, dimension, 1.0, compensated_add)?;
     Ok(SymmetricEigensystem {
         values,
         vectors,
         reconstruction_error,
         orthogonality_error,
     })
-}
-
-fn jacobi_rotate(
-    matrix: &mut [f64],
-    vectors: &mut [f64],
-    dimension: usize,
-    p: usize,
-    q: usize,
-) -> Result<()> {
-    let app = matrix[p * dimension + p];
-    let aqq = matrix[q * dimension + q];
-    let apq = matrix[p * dimension + q];
-    if apq == 0.0 {
-        return Ok(());
-    }
-    let tau = (aqq - app) / (2.0 * apq);
-    let t = if tau >= 0.0 {
-        1.0 / (tau + (1.0 + tau * tau).sqrt())
-    } else {
-        -1.0 / (-tau + (1.0 + tau * tau).sqrt())
-    };
-    let cosine = 1.0 / (1.0 + t * t).sqrt();
-    let sine = t * cosine;
-    if !cosine.is_finite() || !sine.is_finite() {
-        return Err(invalid_data(
-            "prepared clustered Jacobi rotation is not finite",
-        ));
-    }
-    for index in 0..dimension {
-        if index == p || index == q {
-            continue;
-        }
-        let aip = matrix[index * dimension + p];
-        let aiq = matrix[index * dimension + q];
-        let new_p = cosine * aip - sine * aiq;
-        let new_q = sine * aip + cosine * aiq;
-        matrix[index * dimension + p] = new_p;
-        matrix[p * dimension + index] = new_p;
-        matrix[index * dimension + q] = new_q;
-        matrix[q * dimension + index] = new_q;
-    }
-    matrix[p * dimension + p] = app - t * apq;
-    matrix[q * dimension + q] = aqq + t * apq;
-    matrix[p * dimension + q] = 0.0;
-    matrix[q * dimension + p] = 0.0;
-    for row in 0..dimension {
-        let vip = vectors[row * dimension + p];
-        let viq = vectors[row * dimension + q];
-        vectors[row * dimension + p] = cosine * vip - sine * viq;
-        vectors[row * dimension + q] = sine * vip + cosine * viq;
-    }
-    Ok(())
-}
-
-fn certify_eigensystem(
-    matrix: &[f64],
-    values: &[f64],
-    vectors: &[f64],
-    dimension: usize,
-) -> Result<(f64, f64)> {
-    let mut reconstruction_error = 0.0_f64;
-    let mut orthogonality_error = 0.0_f64;
-    for row in 0..dimension {
-        let mut row_error = 0.0_f64;
-        let mut row_scale = 1.0_f64;
-        let mut orthogonal_row_error = 0.0_f64;
-        for column in 0..dimension {
-            let mut reconstructed = 0.0_f64;
-            let mut reconstructed_correction = 0.0_f64;
-            let mut inner_product = 0.0_f64;
-            let mut inner_correction = 0.0_f64;
-            for eigen in 0..dimension {
-                compensated_add(
-                    vectors[row * dimension + eigen]
-                        * values[eigen]
-                        * vectors[column * dimension + eigen],
-                    &mut reconstructed,
-                    &mut reconstructed_correction,
-                )?;
-                compensated_add(
-                    vectors[row * dimension + eigen] * vectors[column * dimension + eigen],
-                    &mut inner_product,
-                    &mut inner_correction,
-                )?;
-            }
-            reconstructed += reconstructed_correction;
-            inner_product += inner_correction;
-            row_error += (matrix[row * dimension + column] - reconstructed).abs();
-            row_scale += matrix[row * dimension + column]
-                .abs()
-                .max(reconstructed.abs());
-            orthogonal_row_error += (inner_product - f64::from(u8::from(row == column))).abs();
-        }
-        reconstruction_error = reconstruction_error.max(row_error / row_scale);
-        orthogonality_error = orthogonality_error.max(orthogonal_row_error);
-    }
-    Ok((reconstruction_error, orthogonality_error))
 }
 
 fn reconstruct_clipped<R: PreparedInferenceReservation>(
@@ -1321,19 +1229,16 @@ fn reconstruct_clipped<R: PreparedInferenceReservation>(
     let clipped = eigen.values.iter().filter(|value| **value < 0.0).count();
     for row in 0..dimension {
         for column in row..dimension {
-            let mut value = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for index in 0..dimension {
-                compensated_add(
-                    eigen.vectors[row * dimension + index]
-                        * eigen.values[index].max(0.0)
-                        * eigen.vectors[column * dimension + index],
-                    &mut value,
-                    &mut correction,
-                )?;
-            }
-            output[row * dimension + column] = value + correction;
-            output[column * dimension + row] = value + correction;
+            let value = jacobi::clipped_entry(
+                &eigen.vectors,
+                &eigen.values,
+                dimension,
+                row,
+                column,
+                compensated_add,
+            )?;
+            output[row * dimension + column] = value;
+            output[column * dimension + row] = value;
         }
     }
     Ok((output, clipped))
@@ -1358,18 +1263,14 @@ fn certify_clipped_reconstruction(
         let mut row_error = 0.0_f64;
         let mut row_scale = 1.0_f64;
         for column in 0..dimension {
-            let mut expected = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for index in 0..dimension {
-                compensated_add(
-                    eigen.vectors[row * dimension + index]
-                        * eigen.values[index].max(0.0)
-                        * eigen.vectors[column * dimension + index],
-                    &mut expected,
-                    &mut correction,
-                )?;
-            }
-            expected += correction;
+            let expected = jacobi::clipped_entry(
+                &eigen.vectors,
+                &eigen.values,
+                dimension,
+                row,
+                column,
+                compensated_add,
+            )?;
             let observed = actual[row * dimension + column];
             if !observed.is_finite() || !expected.is_finite() {
                 return Err(invalid_data(

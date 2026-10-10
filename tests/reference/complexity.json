@@ -5272,16 +5272,40 @@
         "functions": {},
         "production_lines": 95
       },
+      "crates/fereg-core/src/linalg/jacobi.rs": {
+        "chunk_candidates": [],
+        "dispatch_candidates": [
+          {
+            "condition": "index == p || index == q",
+            "line": 35
+          }
+        ],
+        "functions": {
+          "clipped_entry#1": {
+            "line": 112,
+            "lines": 21
+          },
+          "eigensystem_errors#1": {
+            "line": 63,
+            "lines": 46
+          },
+          "rotate#1": {
+            "line": 10,
+            "lines": 49
+          }
+        },
+        "production_lines": 117
+      },
       "crates/fereg-core/src/linalg/mod.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {
           "neumaier_add#1": {
-            "line": 11,
+            "line": 12,
             "lines": 10
           }
         },
-        "production_lines": 13
+        "production_lines": 14
       },
       "crates/fereg-core/src/linalg/solve.rs": {
         "chunk_candidates": [],
@@ -8589,268 +8613,256 @@
         "dispatch_candidates": [
           {
             "condition": "! ( 1.. = 10 ) . contains ( & prepared . clustered_design ( ) . len ( ) )",
-            "line": 680
+            "line": 681
           },
           {
             "condition": "bread . len ( ) != square || meat . len ( ) != square",
-            "line": 884
+            "line": 885
           },
           {
             "condition": "raw . uncorrected . len ( ) != square || raw . independent_uncorrected . len ( ) != square || raw . subsets . len ( ) != raw . independent_subsets . len ( )",
-            "line": 905
+            "line": 906
           },
           {
             "condition": "raw . uncorrected . len ( ) != raw . corrected . len ( ) || ! raw . correction . is_finite ( ) || raw . correction <= 0.0",
-            "line": 939
+            "line": 940
           },
           {
             "condition": "raw . len ( ) != square",
-            "line": 971
+            "line": 972
           },
           {
             "condition": "p == 0",
-            "line": 976
-          },
-          {
-            "condition": "prepared . clustered_design ( ) . len ( ) == 1",
             "line": 977
           },
           {
+            "condition": "prepared . clustered_design ( ) . len ( ) == 1",
+            "line": 978
+          },
+          {
             "condition": "prepared . clustered_design ( ) . len ( ) == 1 && minimum_raw < - tolerance * scale",
-            "line": 1020
+            "line": 1021
           },
           {
             "condition": "matrix . len ( ) != square",
-            "line": 1131
-          },
-          {
-            "condition": "index == p || index == q",
-            "line": 1236
+            "line": 1132
           },
           {
             "condition": "actual . len ( ) != square || eigen . values . len ( ) != dimension || eigen . vectors . len ( ) != square",
-            "line": 1351
+            "line": 1256
           },
           {
             "condition": "covariance . raw_values . len ( ) != square || covariance . values . len ( ) != square",
-            "line": 1398
+            "line": 1299
           },
           {
             "condition": "p == 0",
-            "line": 1404
+            "line": 1305
           },
           {
             "condition": "left . len ( ) != square || right . len ( ) != square",
-            "line": 1531
+            "line": 1432
           },
           {
             "condition": "covariance . len ( ) != square",
-            "line": 1565
+            "line": 1466
           },
           {
             "condition": "positions . len ( ) != slope_dimension",
-            "line": 1628
+            "line": 1529
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 1704
+            "line": 1605
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 1725
+            "line": 1626
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 1763
+            "line": 1664
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 1790
+            "line": 1691
           }
         ],
         "functions": {
           "apply_psd_policy#1": {
-            "line": 962,
+            "line": 963,
             "lines": 159
           },
           "borrow_cluster_dimensions#1": {
-            "line": 696,
+            "line": 697,
             "lines": 22
           },
           "build_clustered_dof#1": {
-            "line": 719,
+            "line": 720,
             "lines": 61
           },
           "build_raw_covariance#1": {
-            "line": 798,
+            "line": 799,
             "lines": 78
           },
           "build_standard_errors#1": {
-            "line": 1556,
+            "line": 1457,
             "lines": 31
           },
           "build_wald#1": {
-            "line": 1588,
+            "line": 1489,
             "lines": 54
           },
           "certify_clipped_reconstruction#1": {
-            "line": 1342,
-            "lines": 44
+            "line": 1247,
+            "lines": 40
           },
           "certify_corrected_covariance#1": {
-            "line": 938,
+            "line": 939,
             "lines": 23
           },
-          "certify_eigensystem#1": {
-            "line": 1261,
-            "lines": 44
-          },
           "certify_psd_state#1": {
-            "line": 1387,
+            "line": 1288,
             "lines": 138
           },
           "certify_statistics#1": {
-            "line": 1643,
+            "line": 1544,
             "lines": 49
           },
           "certify_with_group_influences#1": {
-            "line": 899,
+            "line": 900,
             "lines": 38
           },
           "cluster_correction#1": {
-            "line": 781,
+            "line": 782,
             "lines": 16
           },
           "cluster_counts#1": {
-            "line": 220,
+            "line": 221,
             "lines": 3
           },
           "cluster_dimensions#1": {
-            "line": 284,
+            "line": 285,
             "lines": 3
           },
           "compose_clustered_view#1": {
-            "line": 431,
+            "line": 432,
             "lines": 244
           },
           "correction#1": {
-            "line": 136,
+            "line": 137,
             "lines": 3
           },
           "covariance_scale#1": {
-            "line": 1762,
+            "line": 1663,
             "lines": 20
           },
           "default#1": {
-            "line": 51,
+            "line": 52,
             "lines": 8
           },
           "dimension#1": {
-            "line": 157,
+            "line": 158,
             "lines": 3
           },
           "dimension#2": {
-            "line": 280,
+            "line": 281,
             "lines": 3
           },
           "fit_clustered_view_with_reservation#1": {
-            "line": 395,
+            "line": 396,
             "lines": 21
           },
           "fit_prepared_model_clustered_with_loaded_moments#1": {
-            "line": 375,
+            "line": 376,
             "lines": 10
           },
           "inference_owned_bytes#1": {
-            "line": 198,
+            "line": 199,
             "lines": 4
           },
           "inference_owned_bytes#2": {
-            "line": 212,
+            "line": 213,
             "lines": 4
           },
-          "jacobi_rotate#1": {
-            "line": 1209,
-            "lines": 51
-          },
           "matrix_relative_infinity_norm#1": {
-            "line": 1526,
+            "line": 1427,
             "lines": 29
           },
           "nrows#1": {
-            "line": 255,
+            "line": 256,
             "lines": 3
           },
           "optional_error#1": {
-            "line": 1693,
+            "line": 1594,
             "lines": 9
           },
           "psd#1": {
-            "line": 162,
+            "line": 163,
             "lines": 3
           },
           "raw_values#1": {
-            "line": 142,
+            "line": 143,
             "lines": 3
           },
           "reconstruct_clipped#1": {
-            "line": 1306,
-            "lines": 35
+            "line": 1214,
+            "lines": 32
           },
           "reduce_subset#1": {
-            "line": 288,
+            "line": 289,
             "lines": 41
           },
           "report#1": {
-            "line": 330,
+            "line": 331,
             "lines": 15
           },
           "reserved_empty#1": {
-            "line": 1783,
+            "line": 1684,
             "lines": 14
           },
           "sandwich#1": {
-            "line": 877,
+            "line": 878,
             "lines": 21
           },
           "score_pair#1": {
-            "line": 258,
+            "line": 259,
             "lines": 15
           },
           "standard_error_error#1": {
-            "line": 1745,
+            "line": 1646,
             "lines": 16
           },
           "standard_errors#1": {
-            "line": 152,
+            "line": 153,
             "lines": 3
           },
           "subsets#1": {
-            "line": 224,
+            "line": 225,
             "lines": 3
           },
           "symmetric_eigensystem#1": {
-            "line": 1122,
-            "lines": 86
+            "line": 1123,
+            "lines": 90
           },
           "symmetrize#1": {
-            "line": 1703,
+            "line": 1604,
             "lines": 20
           },
           "symmetry_error#1": {
-            "line": 1724,
+            "line": 1625,
             "lines": 20
           },
           "validate_config#1": {
-            "line": 676,
+            "line": 677,
             "lines": 19
           },
           "values#1": {
-            "line": 147,
+            "line": 148,
             "lines": 3
           }
         },
-        "production_lines": 1669
+        "production_lines": 1572
       },
       "crates/fereg-core/src/ols/prepared_clustered_view.rs": {
         "chunk_candidates": [],
@@ -15452,20 +15464,20 @@
             "line": 250
           },
           {
-            "condition": "row == p || row == q || ( row < p && matrix [ row * dimension + p ] . abs ( ) == * maximum ) || ( row < q && matrix [ row * dimension + q ] . abs ( ) == * maximum )",
-            "line": 404
+            "condition": "! jacobi :: rotate ( work , vectors , dimension , p , q )",
+            "line": 341
           },
           {
-            "condition": "index == p || index == q",
-            "line": 468
+            "condition": "row == p || row == q || ( row < p && matrix [ row * dimension + p ] . abs ( ) == * maximum ) || ( row < q && matrix [ row * dimension + q ] . abs ( ) == * maximum )",
+            "line": 408
           },
           {
             "condition": "actual . len ( ) != square || eigen . values . len ( ) != dimension || eigen . vectors . len ( ) != square",
-            "line": 589
+            "line": 509
           },
           {
             "condition": "matrix . len ( ) != dimension . saturating_mul ( dimension )",
-            "line": 645
+            "line": 561
           }
         ],
         "functions": {
@@ -15474,31 +15486,31 @@
             "lines": 125
           },
           "cached_jacobi_pivot#1": {
-            "line": 378,
+            "line": 382,
             "lines": 17
           },
           "certify_clipped_reconstruction#1": {
-            "line": 580,
-            "lines": 45
+            "line": 500,
+            "lines": 41
           },
           "certify_eigensystem#1": {
-            "line": 493,
-            "lines": 50
+            "line": 445,
+            "lines": 22
           },
           "checked_square#1": {
-            "line": 685,
+            "line": 601,
             "lines": 5
           },
           "compensated_add#1": {
-            "line": 665,
+            "line": 581,
             "lines": 10
           },
           "diagonalize_jacobi#1": {
             "line": 327,
-            "lines": 21
+            "lines": 25
           },
           "filled#1": {
-            "line": 676,
+            "line": 592,
             "lines": 8
           },
           "inspect_published_ppml_covariance#1": {
@@ -15506,27 +15518,23 @@
             "lines": 68
           },
           "invalidate_rotated_maxima#1": {
-            "line": 396,
+            "line": 400,
             "lines": 19
           },
-          "jacobi_rotate#1": {
-            "line": 441,
-            "lines": 51
-          },
           "matrix_scale#1": {
-            "line": 626,
+            "line": 542,
             "lines": 17
           },
           "numerical_nonconvergence#1": {
-            "line": 691,
+            "line": 607,
             "lines": 3
           },
           "reconstruct_clipped#1": {
-            "line": 544,
-            "lines": 35
+            "line": 468,
+            "lines": 31
           },
           "refresh_rotated_maxima#1": {
-            "line": 416,
+            "line": 420,
             "lines": 24
           },
           "symmetric_eigensystem#1": {
@@ -15534,15 +15542,15 @@
             "lines": 82
           },
           "symmetrize#1": {
-            "line": 644,
+            "line": 560,
             "lines": 20
           },
           "upper_row_maximum#1": {
-            "line": 365,
+            "line": 369,
             "lines": 12
           }
         },
-        "production_lines": 631
+        "production_lines": 548
       },
       "crates/fereg-core/src/ppml/residuals.rs": {
         "chunk_candidates": [],
@@ -19817,7 +19825,7 @@
         "dispatch_candidates": 1225,
         "files_over_1500": 16,
         "functions_over_150": 65,
-        "production_lines": 92929
+        "production_lines": 92867
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

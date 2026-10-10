@@ -1,5 +1,6 @@
 //! Small dependency-free dense linear-algebra kernels.
 
+pub(crate) mod jacobi;
 mod solve;
 
 pub use solve::{dot, solve_linear_system};

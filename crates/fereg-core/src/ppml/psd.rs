@@ -1,5 +1,5 @@
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
-use crate::linalg::neumaier_add;
+use crate::linalg::{jacobi, neumaier_add};
 use crate::memory::fallible_copy;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -338,7 +338,11 @@ fn diagonalize_jacobi(
             return Ok(iteration);
         }
         invalidate_rotated_maxima(work, dimension, maxima, p, q);
-        jacobi_rotate(work, vectors, dimension, p, q)?;
+        if !jacobi::rotate(work, vectors, dimension, p, q) {
+            return Err(numerical_nonconvergence(
+                "PPML Jacobi rotation is not finite",
+            ));
+        }
         refresh_rotated_maxima(work, dimension, maxima, p, q);
     }
     Err(numerical_nonconvergence(
@@ -438,100 +442,20 @@ fn refresh_rotated_maxima(
     }
 }
 
-fn jacobi_rotate(
-    matrix: &mut [f64],
-    vectors: &mut [f64],
-    dimension: usize,
-    p: usize,
-    q: usize,
-) -> Result<()> {
-    let app = matrix[p * dimension + p];
-    let aqq = matrix[q * dimension + q];
-    let apq = matrix[p * dimension + q];
-    if apq == 0.0 {
-        return Ok(());
-    }
-    let tau = (aqq - app) / (2.0 * apq);
-    let t = if tau >= 0.0 {
-        1.0 / (tau + (1.0 + tau * tau).sqrt())
-    } else {
-        -1.0 / (-tau + (1.0 + tau * tau).sqrt())
-    };
-    let cosine = 1.0 / (1.0 + t * t).sqrt();
-    let sine = t * cosine;
-    if !cosine.is_finite() || !sine.is_finite() {
-        return Err(numerical_nonconvergence(
-            "PPML Jacobi rotation is not finite",
-        ));
-    }
-    for index in 0..dimension {
-        if index == p || index == q {
-            continue;
-        }
-        let aip = matrix[index * dimension + p];
-        let aiq = matrix[index * dimension + q];
-        let new_p = cosine * aip - sine * aiq;
-        let new_q = sine * aip + cosine * aiq;
-        matrix[index * dimension + p] = new_p;
-        matrix[p * dimension + index] = new_p;
-        matrix[index * dimension + q] = new_q;
-        matrix[q * dimension + index] = new_q;
-    }
-    matrix[p * dimension + p] = app - t * apq;
-    matrix[q * dimension + q] = aqq + t * apq;
-    matrix[p * dimension + q] = 0.0;
-    matrix[q * dimension + p] = 0.0;
-    for row in 0..dimension {
-        let vip = vectors[row * dimension + p];
-        let viq = vectors[row * dimension + q];
-        vectors[row * dimension + p] = cosine * vip - sine * viq;
-        vectors[row * dimension + q] = sine * vip + cosine * viq;
-    }
-    Ok(())
-}
-
 fn certify_eigensystem(
     matrix: &[f64],
     values: &[f64],
     vectors: &[f64],
     dimension: usize,
 ) -> Result<(f64, f64)> {
-    let mut reconstruction_error = 0.0_f64;
-    let mut orthogonality_error = 0.0_f64;
-    for row in 0..dimension {
-        let mut row_error = 0.0_f64;
-        let mut row_scale = f64::MIN_POSITIVE;
-        let mut orthogonal_row_error = 0.0_f64;
-        for column in 0..dimension {
-            let mut reconstructed = 0.0_f64;
-            let mut reconstructed_correction = 0.0_f64;
-            let mut inner_product = 0.0_f64;
-            let mut inner_correction = 0.0_f64;
-            for eigen in 0..dimension {
-                compensated_add(
-                    vectors[row * dimension + eigen]
-                        * values[eigen]
-                        * vectors[column * dimension + eigen],
-                    &mut reconstructed,
-                    &mut reconstructed_correction,
-                )?;
-                compensated_add(
-                    vectors[row * dimension + eigen] * vectors[column * dimension + eigen],
-                    &mut inner_product,
-                    &mut inner_correction,
-                )?;
-            }
-            reconstructed += reconstructed_correction;
-            inner_product += inner_correction;
-            row_error += (matrix[row * dimension + column] - reconstructed).abs();
-            row_scale += matrix[row * dimension + column]
-                .abs()
-                .max(reconstructed.abs());
-            orthogonal_row_error += (inner_product - f64::from(u8::from(row == column))).abs();
-        }
-        reconstruction_error = reconstruction_error.max(row_error / row_scale);
-        orthogonality_error = orthogonality_error.max(orthogonal_row_error);
-    }
+    let (reconstruction_error, orthogonality_error) = jacobi::eigensystem_errors(
+        matrix,
+        values,
+        vectors,
+        dimension,
+        f64::MIN_POSITIVE,
+        compensated_add,
+    )?;
     if reconstruction_error.is_finite() && orthogonality_error.is_finite() {
         Ok((reconstruction_error, orthogonality_error))
     } else {
@@ -553,18 +477,14 @@ fn reconstruct_clipped(
     let clipped = eigen.values.iter().filter(|value| **value < 0.0).count();
     for row in 0..dimension {
         for column in row..dimension {
-            let mut value = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for index in 0..dimension {
-                compensated_add(
-                    eigen.vectors[row * dimension + index]
-                        * eigen.values[index].max(0.0)
-                        * eigen.vectors[column * dimension + index],
-                    &mut value,
-                    &mut correction,
-                )?;
-            }
-            let reconstructed = value + correction;
+            let reconstructed = jacobi::clipped_entry(
+                &eigen.vectors,
+                &eigen.values,
+                dimension,
+                row,
+                column,
+                compensated_add,
+            )?;
             if !reconstructed.is_finite() {
                 return Err(numerical_nonconvergence(
                     "PPML clipped covariance is not finite",
@@ -596,18 +516,14 @@ fn certify_clipped_reconstruction(
         let mut row_error = 0.0_f64;
         let mut row_scale = f64::MIN_POSITIVE;
         for column in 0..dimension {
-            let mut expected = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for index in 0..dimension {
-                compensated_add(
-                    eigen.vectors[row * dimension + index]
-                        * eigen.values[index].max(0.0)
-                        * eigen.vectors[column * dimension + index],
-                    &mut expected,
-                    &mut correction,
-                )?;
-            }
-            expected += correction;
+            let expected = jacobi::clipped_entry(
+                &eigen.vectors,
+                &eigen.values,
+                dimension,
+                row,
+                column,
+                compensated_add,
+            )?;
             let observed = actual[row * dimension + column];
             row_error += (observed - expected).abs();
             row_scale += observed.abs().max(expected.abs());
@@ -853,8 +769,13 @@ mod tests {
                             .iter()
                             .any(|value| *value == 0.0 && value.is_sign_negative()));
                     }
-                    jacobi_rotate(&mut matrix, &mut vectors, dimension, expected.0, expected.1)
-                        .unwrap();
+                    assert!(jacobi::rotate(
+                        &mut matrix,
+                        &mut vectors,
+                        dimension,
+                        expected.0,
+                        expected.1
+                    ));
                     refresh_rotated_maxima(&matrix, dimension, &mut maxima, expected.0, expected.1);
                     for (row, &maximum) in maxima.iter().enumerate() {
                         assert_eq!(maximum, upper_row_maximum(&matrix, dimension, row).1);
