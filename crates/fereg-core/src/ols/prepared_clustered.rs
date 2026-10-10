@@ -1201,8 +1201,14 @@ fn symmetric_eigensystem<R: PreparedInferenceReservation>(
             return Err(invalid_data("prepared clustered eigenvalue is not finite"));
         }
     }
-    let (reconstruction_error, orthogonality_error) =
-        jacobi::eigensystem_errors(matrix, &values, &vectors, dimension, 1.0, compensated_add)?;
+    let (reconstruction_error, orthogonality_error) = jacobi::eigensystem_errors(
+        matrix,
+        &values,
+        &vectors,
+        dimension,
+        f64::MIN_POSITIVE,
+        compensated_add,
+    )?;
     Ok(SymmetricEigensystem {
         values,
         vectors,
@@ -1261,7 +1267,7 @@ fn certify_clipped_reconstruction(
     let mut error = 0.0_f64;
     for row in 0..dimension {
         let mut row_error = 0.0_f64;
-        let mut row_scale = 1.0_f64;
+        let mut row_scale = f64::MIN_POSITIVE;
         for column in 0..dimension {
             let expected = jacobi::clipped_entry(
                 &eigen.vectors,

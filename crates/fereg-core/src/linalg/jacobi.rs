@@ -130,3 +130,59 @@ pub(crate) fn clipped_entry(
     }
     Ok(value + correction)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::linalg::neumaier_add;
+
+    fn add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
+        neumaier_add(value, sum, correction);
+        Ok(())
+    }
+
+    fn identity(dimension: usize) -> Vec<f64> {
+        (0..dimension * dimension)
+            .map(|index| f64::from(u8::from(index % (dimension + 1) == 0)))
+            .collect()
+    }
+
+    #[test]
+    fn omitted_zero_rows_certify_exactly_under_the_relative_floor() {
+        // An omitted slot leaves an all-zero covariance row and column.
+        let matrix = [2.0, 0.5, 0.0, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0];
+        let mut work = matrix;
+        let mut vectors = identity(3);
+        assert!(rotate(&mut work, &mut vectors, 3, 0, 1));
+        let values = [work[0], work[4], work[8]];
+        let (reconstruction, orthogonality) =
+            eigensystem_errors(&matrix, &values, &vectors, 3, f64::MIN_POSITIVE, add)
+                .expect("errors");
+        assert!(reconstruction <= 4.0 * f64::EPSILON, "{reconstruction}");
+        assert!(orthogonality <= 4.0 * f64::EPSILON, "{orthogonality}");
+        for column in 0..3 {
+            let entry = clipped_entry(&vectors, &values, 3, 2, column, add).expect("entry");
+            assert_eq!(entry, 0.0);
+        }
+    }
+
+    #[test]
+    fn tiny_scale_eigen_errors_are_relative_only_under_the_relative_floor() {
+        let matrix = [1e-300, 0.0, 0.0, 2e-300];
+        let vectors = identity(2);
+        let exact = [1e-300, 2e-300];
+        let wrong = [1.1e-300, 2e-300];
+        let (accurate, _) =
+            eigensystem_errors(&matrix, &exact, &vectors, 2, f64::MIN_POSITIVE, add)
+                .expect("accurate");
+        assert_eq!(accurate, 0.0);
+        let (relative, _) =
+            eigensystem_errors(&matrix, &wrong, &vectors, 2, f64::MIN_POSITIVE, add)
+                .expect("relative");
+        assert!(relative > 0.09 && relative < 0.091, "{relative}");
+        // The former unit floor hides a ten-percent eigenvalue error here.
+        let (absolute, _) =
+            eigensystem_errors(&matrix, &wrong, &vectors, 2, 1.0, add).expect("absolute");
+        assert!(absolute < 1e-300, "{absolute}");
+    }
+}

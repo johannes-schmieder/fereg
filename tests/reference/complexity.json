@@ -2,10 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 92923,
-      "before": 92899,
+      "after": 92929,
+      "before": 92923,
       "metric": "fereg-core/production_lines",
-      "reason": "Plan decision D4: the fault module (fault_plan! macro and its inert shipped stand-in) gates thread-local test fault plans out of non-test builds."
+      "reason": "Plan decision D1: the OLS PSD eigen-certificate floor becomes f64::MIN_POSITIVE; rustfmt wraps the longer argument."
+    },
+    {
+      "after": 1578,
+      "before": 1572,
+      "metric": "file/crates/fereg-core/src/ols/prepared_clustered.rs",
+      "reason": "Plan decision D1: the OLS PSD eigen-certificate floor becomes f64::MIN_POSITIVE; rustfmt wraps the longer argument."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -8687,43 +8693,43 @@
           },
           {
             "condition": "actual . len ( ) != square || eigen . values . len ( ) != dimension || eigen . vectors . len ( ) != square",
-            "line": 1256
+            "line": 1262
           },
           {
             "condition": "covariance . raw_values . len ( ) != square || covariance . values . len ( ) != square",
-            "line": 1299
-          },
-          {
-            "condition": "p == 0",
             "line": 1305
           },
           {
+            "condition": "p == 0",
+            "line": 1311
+          },
+          {
             "condition": "left . len ( ) != square || right . len ( ) != square",
-            "line": 1432
+            "line": 1438
           },
           {
             "condition": "covariance . len ( ) != square",
-            "line": 1466
+            "line": 1472
           },
           {
             "condition": "positions . len ( ) != slope_dimension",
-            "line": 1529
+            "line": 1535
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 1605
+            "line": 1611
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 1626
+            "line": 1632
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 1664
+            "line": 1670
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 1691
+            "line": 1697
           }
         ],
         "functions": {
@@ -8744,15 +8750,15 @@
             "lines": 78
           },
           "build_standard_errors#1": {
-            "line": 1457,
+            "line": 1463,
             "lines": 31
           },
           "build_wald#1": {
-            "line": 1489,
+            "line": 1495,
             "lines": 54
           },
           "certify_clipped_reconstruction#1": {
-            "line": 1247,
+            "line": 1253,
             "lines": 40
           },
           "certify_corrected_covariance#1": {
@@ -8760,11 +8766,11 @@
             "lines": 23
           },
           "certify_psd_state#1": {
-            "line": 1288,
+            "line": 1294,
             "lines": 138
           },
           "certify_statistics#1": {
-            "line": 1544,
+            "line": 1550,
             "lines": 49
           },
           "certify_with_group_influences#1": {
@@ -8792,7 +8798,7 @@
             "lines": 3
           },
           "covariance_scale#1": {
-            "line": 1663,
+            "line": 1669,
             "lines": 20
           },
           "default#1": {
@@ -8824,7 +8830,7 @@
             "lines": 4
           },
           "matrix_relative_infinity_norm#1": {
-            "line": 1427,
+            "line": 1433,
             "lines": 29
           },
           "nrows#1": {
@@ -8832,7 +8838,7 @@
             "lines": 3
           },
           "optional_error#1": {
-            "line": 1594,
+            "line": 1600,
             "lines": 9
           },
           "psd#1": {
@@ -8844,7 +8850,7 @@
             "lines": 3
           },
           "reconstruct_clipped#1": {
-            "line": 1214,
+            "line": 1220,
             "lines": 32
           },
           "reduce_subset#1": {
@@ -8856,7 +8862,7 @@
             "lines": 15
           },
           "reserved_empty#1": {
-            "line": 1684,
+            "line": 1690,
             "lines": 14
           },
           "sandwich#1": {
@@ -8868,7 +8874,7 @@
             "lines": 15
           },
           "standard_error_error#1": {
-            "line": 1646,
+            "line": 1652,
             "lines": 16
           },
           "standard_errors#1": {
@@ -8881,14 +8887,14 @@
           },
           "symmetric_eigensystem#1": {
             "line": 1123,
-            "lines": 90
+            "lines": 96
           },
           "symmetrize#1": {
-            "line": 1604,
+            "line": 1610,
             "lines": 20
           },
           "symmetry_error#1": {
-            "line": 1625,
+            "line": 1631,
             "lines": 20
           },
           "validate_config#1": {
@@ -8900,7 +8906,7 @@
             "lines": 3
           }
         },
-        "production_lines": 1572
+        "production_lines": 1578
       },
       "crates/fereg-core/src/ols/prepared_clustered_view.rs": {
         "chunk_candidates": [],
@@ -19863,7 +19869,7 @@
         "dispatch_candidates": 1225,
         "files_over_1500": 16,
         "functions_over_150": 65,
-        "production_lines": 92923
+        "production_lines": 92929
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
