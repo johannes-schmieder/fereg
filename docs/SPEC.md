@@ -349,7 +349,12 @@ uses within TSS and baseline DoF `fit_df+K_f`. RMSE is `sqrt(RSS/fit_df)`.
 Preserve the corresponding Gaussian ll/ll_0, model F/Wald, MSS and undefined
 statistic behavior; zero denominators yield documented missing/absent fields,
 never invented zeros or infinities. The cluster fit DoF is distinct from the
-reported test DoF (§9).
+reported test DoF (§9). The OLS model F keeps two Cholesky pivot policies on
+purpose. IID covariance is `s²B` on rank-certified coordinates, so a
+nonpositive slope pivot contradicts the rank certificate and is an error.
+Robust and clustered covariance may be legitimately singular (for example
+G < K); a pivot within the certificate tolerance of the largest slope variance
+leaves F missing, and a clearly negative pivot is an error.
 
 PPML deviance is `2 sum q_i[mu_i−y_i+y_i log(y_i/mu_i)]`, with zero-outcome
 contribution `2q_i mu_i`. Log likelihood is

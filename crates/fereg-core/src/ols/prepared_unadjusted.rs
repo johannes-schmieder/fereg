@@ -1,10 +1,14 @@
-use super::prepared_wald::fitted_coordinate_value;
+use super::prepared_wald::{calculate_wald, WaldCalculation, WaldPolicy};
 use crate::data::{PreparedWeights, WeightKind};
 use crate::error::{
     allocation, invalid_argument, invalid_data, unsupported, ErrorCode, FeregError, Result,
 };
 use crate::linalg::neumaier_add;
 pub(super) use crate::sandwich::compensated_add_scaled_row;
+use crate::sandwich::{
+    SandwichReservation as InferenceReservation,
+    SystemSandwichReservation as SystemInferenceReservation,
+};
 use crate::topology_dof::CategoricalTopologyDofReport;
 use std::time::Instant;
 
@@ -144,30 +148,6 @@ impl super::prepared_products::PreparedOlsInferenceBuffers for PreparedOlsUnadju
 
 type PreparedOlsUnadjustedComponents = CertifiedPreparedOlsUnadjusted<()>;
 
-trait InferenceReservation {
-    fn reserve<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        elements: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemInferenceReservation;
-
-impl InferenceReservation for SystemInferenceReservation {
-    fn reserve<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        elements: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(elements)
-            .map_err(|_| allocation(label))
-    }
-}
-
 #[derive(Debug, Clone, Copy, Default)]
 struct InferencePerturbations {
     rss: bool,
@@ -212,12 +192,6 @@ struct InferenceCertificateInputs {
     wald_solve_relative_infinity_norm: f64,
     reference_weight_sum_relative_error: f64,
     tolerance: f64,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct WaldFCalculation {
-    statistic: Option<f64>,
-    solve_relative_infinity_norm: f64,
 }
 
 #[cfg(test)]
@@ -1024,7 +998,7 @@ fn build_wald_f<P: PreparedOlsInferenceView + ?Sized, R: InferenceReservation>(
     covariance: &PreparedOlsUnadjustedCovariance,
     dof: PreparedOlsResidualDofReport,
     reservation: &mut R,
-) -> Result<WaldFCalculation> {
+) -> Result<WaldCalculation> {
     let dimension = covariance.dimension();
     if dimension != fit.bread().coordinates().len() {
         return Err(invalid_argument(
@@ -1032,7 +1006,7 @@ fn build_wald_f<P: PreparedOlsInferenceView + ?Sized, R: InferenceReservation>(
         ));
     }
     if dof.finite_model_dof == 0 || covariance.variance_scale == 0.0 {
-        return Ok(WaldFCalculation {
+        return Ok(WaldCalculation {
             statistic: None,
             solve_relative_infinity_norm: 0.0,
         });
@@ -1069,120 +1043,14 @@ fn build_wald_f<P: PreparedOlsInferenceView + ?Sized, R: InferenceReservation>(
         ));
     }
 
-    let square = checked_square(
-        slope_dimension,
-        "prepared iid Wald dimensions overflow usize",
-    )?;
-    let mut factor = reserved_filled(
+    calculate_wald(
+        fit,
+        &covariance.values,
+        dimension,
+        &slope_positions,
+        WaldPolicy::IidRequiresPositive,
         reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared iid Wald factor",
-    )?;
-    for row in 0..slope_dimension {
-        for column in 0..=row {
-            let covariance_row = slope_positions[row];
-            let covariance_column = slope_positions[column];
-            let mut value = covariance.values[covariance_row * dimension + covariance_column];
-            for inner in 0..column {
-                value -= factor[row * slope_dimension + inner]
-                    * factor[column * slope_dimension + inner];
-            }
-            if row == column {
-                if !value.is_finite() || value <= 0.0 {
-                    return Err(invalid_data(
-                        "prepared iid Wald covariance is not positive definite",
-                    ));
-                }
-                factor[row * slope_dimension + column] = value.sqrt();
-            } else {
-                let diagonal = factor[column * slope_dimension + column];
-                let entry = value / diagonal;
-                if !entry.is_finite() {
-                    return Err(invalid_data(
-                        "prepared iid Wald Cholesky factor is not finite",
-                    ));
-                }
-                factor[row * slope_dimension + column] = entry;
-            }
-        }
-    }
-
-    let mut solution = reserved_filled(
-        reservation,
-        slope_dimension,
-        0.0_f64,
-        "unable to reserve prepared iid Wald solution",
-    )?;
-    for (slope, position) in slope_positions.iter().copied().enumerate() {
-        solution[slope] = fitted_coordinate_value(fit, position)?;
-    }
-    for row in 0..slope_dimension {
-        let mut value = solution[row];
-        for column in 0..row {
-            value -= factor[row * slope_dimension + column] * solution[column];
-        }
-        solution[row] = value / factor[row * slope_dimension + row];
-        if !solution[row].is_finite() {
-            return Err(invalid_data(
-                "prepared iid Wald forward solve is not finite",
-            ));
-        }
-    }
-    for row in (0..slope_dimension).rev() {
-        let mut value = solution[row];
-        for column in (row + 1)..slope_dimension {
-            value -= factor[column * slope_dimension + row] * solution[column];
-        }
-        solution[row] = value / factor[row * slope_dimension + row];
-        if !solution[row].is_finite() {
-            return Err(invalid_data(
-                "prepared iid Wald backward solve is not finite",
-            ));
-        }
-    }
-
-    let mut quadratic = 0.0_f64;
-    let mut quadratic_correction = 0.0_f64;
-    let mut solve_relative_infinity_norm = 0.0_f64;
-    for row in 0..slope_dimension {
-        let coefficient = fitted_coordinate_value(fit, slope_positions[row])?;
-        compensated_add(
-            coefficient * solution[row],
-            &mut quadratic,
-            &mut quadratic_correction,
-        )?;
-        let mut fitted = 0.0_f64;
-        let mut fitted_correction = 0.0_f64;
-        let mut row_scale = coefficient.abs();
-        for column in 0..slope_dimension {
-            let value = covariance.values
-                [slope_positions[row] * dimension + slope_positions[column]]
-                * solution[column];
-            compensated_add(value, &mut fitted, &mut fitted_correction)?;
-            row_scale += value.abs();
-            if !row_scale.is_finite() {
-                return Err(invalid_data("prepared iid Wald solve scale is not finite"));
-            }
-        }
-        let residual = (fitted + fitted_correction - coefficient).abs();
-        solve_relative_infinity_norm =
-            solve_relative_infinity_norm.max(residual / row_scale.max(f64::MIN_POSITIVE));
-    }
-    quadratic += quadratic_correction;
-    if !quadratic.is_finite() || quadratic < 0.0 || !solve_relative_infinity_norm.is_finite() {
-        return Err(invalid_data(
-            "prepared iid Wald quadratic or solve certificate is invalid",
-        ));
-    }
-    let statistic = quadratic / exact_integer_as_f64(slope_dimension as u128)?;
-    if !statistic.is_finite() {
-        return Err(invalid_data("prepared iid Wald F statistic is not finite"));
-    }
-    Ok(WaldFCalculation {
-        statistic: Some(statistic),
-        solve_relative_infinity_norm,
-    })
+    )
 }
 
 fn certify_inference<P: PreparedOlsInferenceView + ?Sized>(

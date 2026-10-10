@@ -1,19 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "after": 92929,
-      "before": 92923,
-      "metric": "fereg-core/production_lines",
-      "reason": "Plan decision D1: the OLS PSD eigen-certificate floor becomes f64::MIN_POSITIVE; rustfmt wraps the longer argument."
-    },
-    {
-      "after": 1578,
-      "before": 1572,
-      "metric": "file/crates/fereg-core/src/ols/prepared_clustered.rs",
-      "reason": "Plan decision D1: the OLS PSD eigen-certificate floor becomes f64::MIN_POSITIVE; rustfmt wraps the longer argument."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -11250,259 +11237,255 @@
         "dispatch_candidates": [
           {
             "condition": "rows",
-            "line": 294
+            "line": 268
           },
           {
             "condition": "matches ! ( & prepared . fit_sample ( ) . weights , PreparedWeights :: Provided",
-            "line": 335
+            "line": 309
           },
           {
             "condition": "nobs == 0 || reported_intercepts != usize :: from ( prepared . fit_report_intercept ( ) ) || prepared . fit_report_intercept ( ) && ! prepared . fit_structural_intercept ( ) || fit . residuals ( ) . len ( ) != nobs || fit . coefficients ( ) . len ( ) != prepared . fit_model ( ) . coefficients . len ( ) || ! fit . rank_certificate ( ) . passed || ! fit . score_certificate ( ) . passed || ! fit . bread ( ) . certificate ( ) . passed || ! fit . absorption_report ( ) . certified ( ) || ! fit . residual_absorption_report ( ) . certified ( ) || absorbed . nested_categories != 0 || absorbed . redundant_categories > absorbed . initial_categories || absorbed . absorbed_rank != absorbed . initial_categories - absorbed . redundant_categories",
-            "line": 532
+            "line": 506
           },
           {
             "condition": "fit . bread ( ) . values ( ) . len ( ) != bread_square || fit . bread ( ) . coordinates ( ) . len ( ) != bread_dimension",
-            "line": 555
+            "line": 529
           },
           {
             "condition": "& prepared . fit_sample ( ) . weights",
-            "line": 656
+            "line": 630
           },
           {
             "condition": "values . len ( ) != nobs || values . iter ( ) . any ( | weight | ! weight . is_finite ( ) || * weight <= 0.0 )",
-            "line": 659
+            "line": 633
           },
           {
             "condition": "! divisor . is_finite ( ) || divisor <= 0.0 || values . iter ( ) . any ( | weight | * weight / divisor == 0.0 )",
-            "line": 669
+            "line": 643
           },
           {
             "condition": "& prepared . fit_sample ( ) . weights",
-            "line": 753
+            "line": 727
           },
           {
             "condition": "bread_scale . weight_kind != kind || divisor_error > tolerance || multiplier_error > tolerance || reference_sum_error > tolerance",
-            "line": 773
+            "line": 747
           },
           {
             "condition": "matches ! ( prepared . fit_model ( ) . columns . get ( coordinate . generated_column_index ) . map ( | column | & column . kind ) , Some ( PreparedOlsColumnKind :: Intercept ) )",
-            "line": 834
+            "line": 808
           },
           {
             "condition": "fit . bread ( ) . values ( ) . len ( ) != square || residual_dof == 0",
-            "line": 976
+            "line": 950
           },
           {
             "condition": "dimension != fit . bread ( ) . coordinates ( ) . len ( )",
-            "line": 1029
+            "line": 1003
           },
           {
             "condition": "dimension != fit . bread ( ) . dimension ( ) || covariance . values . len ( ) != square || fit . bread ( ) . values ( ) . len ( ) != square",
-            "line": 1244
+            "line": 1112
           },
           {
             "condition": "crate :: parallel :: StagePlan :: current ( outcome . len ( ) as u128 * 2 , 2 ) . lanes > 1 && rayon :: current_thread_index ( ) . is_some ( )",
-            "line": 1481
+            "line": 1349
           },
           {
             "condition": "weights . kind . is_none ( ) && weights . values . is_none ( ) && ( values . len ( ) as u128 ) <= ( 1_u128 < < 53 )",
-            "line": 1522
+            "line": 1390
           },
           {
             "condition": "weights . kind . is_none ( ) && weights . values . is_none ( )",
-            "line": 1568
+            "line": 1436
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 1726
+            "line": 1594
           }
         ],
         "functions": {
           "build_covariance#1": {
-            "line": 965,
+            "line": 939,
             "lines": 55
           },
           "build_reference_weight_report_view#1": {
-            "line": 732,
+            "line": 706,
             "lines": 76
           },
           "build_residual_dof_view#1": {
-            "line": 823,
+            "line": 797,
             "lines": 74
           },
           "build_statistics#1": {
-            "line": 898,
+            "line": 872,
             "lines": 66
           },
           "build_wald_f#1": {
-            "line": 1021,
-            "lines": 166
+            "line": 995,
+            "lines": 60
           },
           "certify_inference#1": {
-            "line": 1188,
+            "line": 1056,
             "lines": 135
           },
           "certify_statistic_identities#1": {
-            "line": 1324,
+            "line": 1192,
             "lines": 111
           },
           "checked_square#1": {
-            "line": 1714,
+            "line": 1582,
             "lines": 3
           },
           "compensated_add#1": {
-            "line": 1690,
+            "line": 1558,
             "lines": 13
           },
           "compose_view_internal#1": {
-            "line": 370,
+            "line": 344,
             "lines": 129
           },
           "default#1": {
-            "line": 32,
+            "line": 36,
             "lines": 7
           },
           "dimension#1": {
-            "line": 124,
+            "line": 128,
             "lines": 3
           },
           "exact_integer_as_f64#1": {
-            "line": 1704,
+            "line": 1572,
             "lines": 9
           },
           "fit_inference_view#1": {
-            "line": 286,
+            "line": 260,
             "lines": 40
           },
           "fit_prepared_model_unadjusted_with_loaded_moments#1": {
-            "line": 273,
+            "line": 247,
             "lines": 12
           },
           "gaussian_log_likelihood_from_ss#1": {
-            "line": 1658,
+            "line": 1526,
             "lines": 15
           },
           "gaussian_log_likelihood_identity_error#1": {
-            "line": 1447,
+            "line": 1315,
             "lines": 10
           },
           "independent_fit_sums#1": {
-            "line": 1470,
+            "line": 1338,
             "lines": 20
           },
           "independent_outcome_sum#1": {
-            "line": 1491,
+            "line": 1359,
             "lines": 8
           },
           "independent_residual_sum#1": {
-            "line": 327,
+            "line": 301,
             "lines": 6
           },
           "inference_owned_bytes#1": {
-            "line": 139,
+            "line": 143,
             "lines": 4
           },
           "insufficient_observations#1": {
-            "line": 1735,
+            "line": 1603,
             "lines": 3
           },
           "one_minus_ratio#1": {
-            "line": 1646,
+            "line": 1514,
             "lines": 11
           },
           "optional_identity_error#1": {
-            "line": 1436,
+            "line": 1304,
             "lines": 10
           },
           "perturb_optional_statistic#1": {
-            "line": 512,
+            "line": 486,
             "lines": 7
           },
           "positive_weight_sums#1": {
-            "line": 1630,
+            "line": 1498,
             "lines": 15
           },
           "reference_weight_sum#1": {
-            "line": 809,
+            "line": 783,
             "lines": 13
           },
           "reject_probability_iid#1": {
-            "line": 334,
+            "line": 308,
             "lines": 14
           },
           "relative_difference#1": {
-            "line": 1674,
+            "line": 1542,
             "lines": 15
           },
-          "reserve#1": {
-            "line": 159,
-            "lines": 10
-          },
           "reserved_filled#1": {
-            "line": 1718,
+            "line": 1586,
             "lines": 16
           },
           "scan_reference_weight_facts#1": {
-            "line": 649,
+            "line": 623,
             "lines": 82
           },
           "standard_errors#1": {
-            "line": 119,
+            "line": 123,
             "lines": 3
           },
           "update_scaled_sum_of_squares#1": {
-            "line": 1603,
+            "line": 1471,
             "lines": 26
           },
           "validate_config#1": {
-            "line": 500,
+            "line": 474,
             "lines": 11
           },
           "validate_fit_and_absorbed_dof_view#1": {
-            "line": 520,
+            "line": 494,
             "lines": 128
           },
           "validate_sum_of_squares#1": {
-            "line": 1458,
+            "line": 1326,
             "lines": 11
           },
           "value#1": {
-            "line": 241,
+            "line": 215,
             "lines": 26
           },
           "values#1": {
-            "line": 114,
+            "line": 118,
             "lines": 3
           },
           "variance_scale#1": {
-            "line": 109,
+            "line": 113,
             "lines": 3
           },
           "weighted_mean#1": {
-            "line": 1500,
+            "line": 1368,
             "lines": 55
           },
           "weighted_sum_of_squares#1": {
-            "line": 1556,
+            "line": 1424,
             "lines": 46
           }
         },
-        "production_lines": 1587
+        "production_lines": 1461
       },
       "crates/fereg-core/src/ols/prepared_wald.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {
           "calculate_wald#1": {
-            "line": 17,
-            "lines": 104
+            "line": 29,
+            "lines": 139
           },
           "fitted_coordinate_value#1": {
-            "line": 122,
+            "line": 169,
             "lines": 26
           }
         },
-        "production_lines": 139
+        "production_lines": 178
       },
       "crates/fereg-core/src/ols/retained_refinement.rs": {
         "chunk_candidates": [],
@@ -19867,9 +19850,9 @@
       "fereg-core": {
         "chunk_candidates": 12,
         "dispatch_candidates": 1225,
-        "files_over_1500": 16,
-        "functions_over_150": 65,
-        "production_lines": 92929
+        "files_over_1500": 15,
+        "functions_over_150": 64,
+        "production_lines": 92842
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

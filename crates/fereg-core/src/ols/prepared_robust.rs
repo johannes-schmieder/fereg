@@ -1,6 +1,6 @@
 #[cfg(test)]
 use super::prepared_inference_view::compute_canonical_prepared_ols_absorbed_dof;
-use super::prepared_wald::{calculate_wald, WaldCalculation};
+use super::prepared_wald::{calculate_wald, WaldCalculation, WaldPolicy};
 use crate::data::WeightKind;
 use crate::error::{allocation, invalid_argument, invalid_data, unsupported, Result};
 use crate::parallel::ThreadTeam;
@@ -1157,7 +1157,7 @@ fn build_robust_wald<P: PreparedOlsInferenceView + ?Sized, R: PreparedInferenceR
         &covariance.values,
         dimension,
         &positions,
-        tolerance,
+        WaldPolicy::ScaledSingularTolerance(tolerance),
         reservation,
     )
 }
@@ -1980,6 +1980,18 @@ mod tests {
         .expect("singular PSD Wald decision");
         assert!(wald.statistic.is_none());
         assert_eq!(wald.solve_relative_infinity_norm, 0.0);
+
+        // The iid rule treats the same singular pivot as a rank contradiction.
+        let error = calculate_wald(
+            result.fit(),
+            &result.covariance.values,
+            dimension,
+            &[0, 1],
+            WaldPolicy::IidRequiresPositive,
+            &mut CountingReservation::default(),
+        )
+        .expect_err("iid Wald policy rejects a singular slope covariance");
+        assert_eq!(error.code, ErrorCode::InvalidData);
     }
 
     #[test]

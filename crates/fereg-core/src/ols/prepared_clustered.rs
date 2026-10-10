@@ -1,4 +1,4 @@
-use super::prepared_wald::{calculate_wald, WaldCalculation};
+use super::prepared_wald::{calculate_wald, WaldCalculation, WaldPolicy};
 
 use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::linalg::jacobi;
@@ -1542,7 +1542,7 @@ fn build_wald<P: PreparedOlsFitView + ?Sized, R: PreparedInferenceReservation>(
         &covariance.values,
         dimension,
         &positions,
-        tolerance,
+        WaldPolicy::ScaledSingularTolerance(tolerance),
         reservation,
     )
 }
