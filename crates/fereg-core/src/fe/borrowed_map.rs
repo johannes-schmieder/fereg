@@ -4330,7 +4330,7 @@ fn run_borrowed_lsmr(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
     values: &DenseMatrix,
-    tolerance: f64,
+    certificate_tolerance: f64,
     max_iterations: usize,
     lsmr_config: LsmrConfig,
     certificate_reference_norms: Option<&[f64]>,
@@ -4361,7 +4361,7 @@ fn run_borrowed_lsmr(
         design,
         weights,
         values,
-        tolerance,
+        certificate_tolerance,
         max_iterations,
         lsmr_config,
         certificate_reference_norms,
@@ -4371,12 +4371,14 @@ fn run_borrowed_lsmr(
     )
 }
 
+// The recurrence stops at `lsmr_config.tolerance`; the independent FE
+// certificate passes at `certificate_tolerance`.
 #[allow(clippy::too_many_arguments)]
 fn run_borrowed_lsmr_with_prepared<'a>(
     design: &BorrowedInterceptFeDesign<'a>,
     weights: ValidatedWeights<'_>,
     values: &DenseMatrix,
-    tolerance: f64,
+    certificate_tolerance: f64,
     max_iterations: usize,
     lsmr_config: LsmrConfig,
     certificate_reference_norms: Option<&[f64]>,
@@ -4387,10 +4389,12 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     crate::interrupt::checkpoint()?;
     let total_started = Instant::now();
     let effective_max_iterations = lsmr_config.max_iterations.min(max_iterations);
-    if !tolerance.is_finite() || tolerance <= 0.0 {
-        return Err(invalid_argument(
-            "borrowed LSMR tolerance must be finite and positive",
-        ));
+    for tolerance in [certificate_tolerance, lsmr_config.tolerance] {
+        if !tolerance.is_finite() || tolerance <= 0.0 {
+            return Err(invalid_argument(
+                "borrowed LSMR tolerance must be finite and positive",
+            ));
+        }
     }
     if effective_max_iterations == 0 {
         return Err(invalid_argument(
@@ -4406,7 +4410,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     let rhs = super::lsmr_batch::rhs_columns(values)?;
     let rhs_views = rhs.iter().map(Vec::as_slice).collect::<Vec<_>>();
     let options = LsmrOptions {
-        tol: tolerance,
+        tol: lsmr_config.tolerance,
         maxiter: effective_max_iterations,
         local_size: lsmr_config.local_size,
     };
@@ -4537,7 +4541,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         design,
         weights,
         &lsmr_values,
-        tolerance,
+        certificate_tolerance,
         &mut certificate_workspace,
     )?;
     let certification_seconds = certification_started.elapsed().as_secs_f64();

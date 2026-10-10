@@ -73,8 +73,27 @@ pub fn absorb_lsmr(
     values: &mut DenseMatrix,
     config: LsmrConfig,
 ) -> Result<SolveReport> {
+    absorb_lsmr_certified_at(design, weights, values, config, config.tolerance)
+}
+
+/// [`absorb_lsmr`] with the recurrence stopping at `config.tolerance` and the
+/// independent FE certificate (and the stop reason it decides) at
+/// `certificate_tolerance`.
+pub(crate) fn absorb_lsmr_certified_at(
+    design: &FeDesign,
+    weights: &[f64],
+    values: &mut DenseMatrix,
+    config: LsmrConfig,
+    certificate_tolerance: f64,
+) -> Result<SolveReport> {
     crate::interrupt::checkpoint()?;
     validate_config(config)?;
+    if !certificate_tolerance.is_finite() || certificate_tolerance <= 0.0 {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "LSMR tolerance must be finite and positive",
+        ));
+    }
     if design.nobs() != values.nrows() || weights.len() != values.nrows() {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
@@ -97,7 +116,7 @@ pub fn absorb_lsmr(
             weights,
             values,
             &reference_norms,
-            config.tolerance,
+            certificate_tolerance,
         )?;
         return Ok(SolveReport {
             requested_preconditioner: Some(config.preconditioner),
@@ -164,26 +183,17 @@ pub fn absorb_lsmr(
         weights,
         values,
         &reference_norms,
-        config.tolerance,
+        certificate_tolerance,
     )?;
     if crate::diagnostics::solver_trace_enabled() {
-        for column in 0..values.ncols() {
-            let one_column = DenseMatrix::from_columns(&[values.column(column)?])?;
-            let column_certificate = certify_residuals_with_reference_norms(
-                design,
-                weights,
-                &one_column,
-                &reference_norms[column..=column],
-                config.tolerance,
-            )?;
-            crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=lsmr_rhs|rhs={column}|converged={}|iterations={}|within_normal={:.17e}|fereg_relinf={:.17e}",
-                solved.converged[column],
-                solved.iterations[column],
-                solved.residual[column],
-                column_certificate.relative_infinity_norm,
-            ));
-        }
+        trace_lsmr_columns(
+            design,
+            weights,
+            values,
+            &reference_norms,
+            certificate_tolerance,
+            &solved,
+        )?;
     }
     let recurrence_converged = solved.converged.iter().copied().all(|value| value);
     let stop_reason = if certificate.passed {
@@ -193,32 +203,11 @@ pub fn absorb_lsmr(
     } else {
         SolveStopReason::MaximumIterations
     };
-    let warning_capacity = solved
-        .warnings
-        .len()
-        .checked_add(usize::from(preconditioner_fallback))
-        .and_then(|count| {
-            count.checked_add(usize::from(recurrence_converged && !certificate.passed))
-        })
-        .ok_or_else(|| {
-            FeregError::new(ErrorCode::Allocation, "LSMR warning count overflows usize")
-        })?;
-    let mut warnings = reserved_empty(warning_capacity, "unable to reserve LSMR warnings")?;
-    for warning in &solved.warnings {
-        warnings.push(format!("within preconditioner: {warning:?}"));
-    }
-    if preconditioner_fallback {
-        warnings.insert(
-            0,
-            "automatic LSMR preconditioner failed its positive-definiteness guard; retried unpreconditioned and certified the returned residuals".to_owned(),
-        );
-    }
-    if recurrence_converged && !certificate.passed {
-        warnings.push(
-            "LSMR recurrence claimed convergence but the recomputed FE certificate failed"
-                .to_string(),
-        );
-    }
+    let warnings = lsmr_warnings(
+        &solved,
+        preconditioner_fallback,
+        recurrence_converged && !certificate.passed,
+    )?;
 
     Ok(SolveReport {
         iterations: solved.iterations.iter().copied().max().unwrap_or(0),
@@ -235,6 +224,66 @@ pub fn absorb_lsmr(
         warnings,
         ..SolveReport::single_route(FeSolverKind::Lsmr, stop_reason, certificate)
     })
+}
+
+fn trace_lsmr_columns(
+    design: &FeDesign,
+    weights: &[f64],
+    values: &DenseMatrix,
+    reference_norms: &[f64],
+    certificate_tolerance: f64,
+    solved: &within::BatchSolveResult,
+) -> Result<()> {
+    for column in 0..values.ncols() {
+        let one_column = DenseMatrix::from_columns(&[values.column(column)?])?;
+        let column_certificate = certify_residuals_with_reference_norms(
+            design,
+            weights,
+            &one_column,
+            &reference_norms[column..=column],
+            certificate_tolerance,
+        )?;
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=lsmr_rhs|rhs={column}|converged={}|iterations={}|within_normal={:.17e}|fereg_relinf={:.17e}",
+            solved.converged[column],
+            solved.iterations[column],
+            solved.residual[column],
+            column_certificate.relative_infinity_norm,
+        ));
+    }
+    Ok(())
+}
+
+fn lsmr_warnings(
+    solved: &within::BatchSolveResult,
+    preconditioner_fallback: bool,
+    converged_but_uncertified: bool,
+) -> Result<Vec<String>> {
+    let warning_capacity = solved
+        .warnings
+        .len()
+        .checked_add(usize::from(preconditioner_fallback))
+        .and_then(|count| count.checked_add(usize::from(converged_but_uncertified)))
+        .ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "LSMR warning count overflows usize")
+        })?;
+    let mut warnings = reserved_empty(warning_capacity, "unable to reserve LSMR warnings")?;
+    for warning in &solved.warnings {
+        warnings.push(format!("within preconditioner: {warning:?}"));
+    }
+    if preconditioner_fallback {
+        warnings.insert(
+            0,
+            "automatic LSMR preconditioner failed its positive-definiteness guard; retried unpreconditioned and certified the returned residuals".to_owned(),
+        );
+    }
+    if converged_but_uncertified {
+        warnings.push(
+            "LSMR recurrence claimed convergence but the recomputed FE certificate failed"
+                .to_string(),
+        );
+    }
+    Ok(warnings)
 }
 
 pub(crate) fn resolve_preconditioner_kind(
