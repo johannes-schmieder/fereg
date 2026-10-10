@@ -3278,6 +3278,46 @@ pub(crate) fn absorb_borrowed_intercept_irons_tuck_certified(
     let mut coefficients = retain_coefficients
         .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
         .transpose()?;
+    // A passing certificate earns one confirming sweep when the budget
+    // allows; the solve finishes only if the confirmed certificate passes.
+    let confirm = |values: &mut DenseMatrix,
+                   workspace: &mut BorrowedMapWorkspace,
+                   coefficients: Option<&mut FeCoefficientBatch>,
+                   iterations: &mut usize,
+                   certificate: FeCertificate|
+     -> Result<FeCertificate> {
+        if *iterations >= config.max_iterations {
+            return Ok(certificate);
+        }
+        borrowed_residual_sweep_recording(
+            design,
+            weights,
+            values,
+            workspace,
+            coefficients,
+            config.symmetric,
+        )?;
+        *iterations += 1;
+        certify(design, weights, values, config.tolerance, workspace)
+    };
+    let finish = |values: DenseMatrix,
+                  coefficients: Option<FeCoefficientBatch>,
+                  iterations: usize,
+                  certificate: FeCertificate|
+     -> Result<CertifiedBorrowedMap> {
+        let normal_equation_residual = certificate.relative_two_norm;
+        let result = certified_solver_result(
+            values,
+            FeSolverKind::IronsTuck,
+            SolveStopReason::Certified,
+            iterations,
+            certificate,
+            normal_equation_residual,
+            setup_seconds,
+            solve_started.elapsed().as_secs_f64(),
+        )?;
+        attach_optional_coefficients(result, coefficients)
+    };
     if initial_certificate.passed {
         let result = certified_solver_result(
             values,
@@ -3311,33 +3351,17 @@ pub(crate) fn absorb_borrowed_intercept_irons_tuck_certified(
         iterations += 1;
         let mut certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
         if certificate.passed {
-            if iterations < config.max_iterations {
-                borrowed_residual_sweep_recording(
-                    design,
-                    weights,
-                    &mut values,
-                    &mut workspace,
-                    coefficients.as_mut(),
-                    config.symmetric,
-                )?;
-                iterations += 1;
-                certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
-            }
+            certificate = confirm(
+                &mut values,
+                &mut workspace,
+                coefficients.as_mut(),
+                &mut iterations,
+                certificate,
+            )?;
             if !certificate.passed {
                 continue;
             }
-            let normal_equation_residual = certificate.relative_two_norm;
-            let result = certified_solver_result(
-                values,
-                FeSolverKind::IronsTuck,
-                SolveStopReason::Certified,
-                iterations,
-                certificate,
-                normal_equation_residual,
-                setup_seconds,
-                solve_started.elapsed().as_secs_f64(),
-            )?;
-            return attach_optional_coefficients(result, coefficients);
+            return finish(values, coefficients, iterations, certificate);
         }
         if iterations == config.max_iterations {
             break;
@@ -3359,33 +3383,17 @@ pub(crate) fn absorb_borrowed_intercept_irons_tuck_certified(
         iterations += 1;
         let mut baseline = certify(design, weights, &values, config.tolerance, &mut workspace)?;
         if baseline.passed {
-            if iterations < config.max_iterations {
-                borrowed_residual_sweep_recording(
-                    design,
-                    weights,
-                    &mut values,
-                    &mut workspace,
-                    coefficients.as_mut(),
-                    config.symmetric,
-                )?;
-                iterations += 1;
-                baseline = certify(design, weights, &values, config.tolerance, &mut workspace)?;
-            }
+            baseline = confirm(
+                &mut values,
+                &mut workspace,
+                coefficients.as_mut(),
+                &mut iterations,
+                baseline,
+            )?;
             if !baseline.passed {
                 continue;
             }
-            let normal_equation_residual = baseline.relative_two_norm;
-            let result = certified_solver_result(
-                values,
-                FeSolverKind::IronsTuck,
-                SolveStopReason::Certified,
-                iterations,
-                baseline,
-                normal_equation_residual,
-                setup_seconds,
-                solve_started.elapsed().as_secs_f64(),
-            )?;
-            return attach_optional_coefficients(result, coefficients);
+            return finish(values, coefficients, iterations, baseline);
         }
 
         if let Some((candidate, alpha)) = borrowed_irons_tuck_candidate(&x0, &x1, &values)? {
@@ -3407,34 +3415,17 @@ pub(crate) fn absorb_borrowed_intercept_irons_tuck_certified(
                 values = candidate;
                 coefficients = candidate_coefficients;
                 if candidate_certificate.passed {
-                    if iterations < config.max_iterations {
-                        borrowed_residual_sweep_recording(
-                            design,
-                            weights,
-                            &mut values,
-                            &mut workspace,
-                            coefficients.as_mut(),
-                            config.symmetric,
-                        )?;
-                        iterations += 1;
-                        candidate_certificate =
-                            certify(design, weights, &values, config.tolerance, &mut workspace)?;
-                    }
+                    candidate_certificate = confirm(
+                        &mut values,
+                        &mut workspace,
+                        coefficients.as_mut(),
+                        &mut iterations,
+                        candidate_certificate,
+                    )?;
                     if !candidate_certificate.passed {
                         continue;
                     }
-                    let normal_equation_residual = candidate_certificate.relative_two_norm;
-                    let result = certified_solver_result(
-                        values,
-                        FeSolverKind::IronsTuck,
-                        SolveStopReason::Certified,
-                        iterations,
-                        candidate_certificate,
-                        normal_equation_residual,
-                        setup_seconds,
-                        solve_started.elapsed().as_secs_f64(),
-                    )?;
-                    return attach_optional_coefficients(result, coefficients);
+                    return finish(values, coefficients, iterations, candidate_certificate);
                 }
             }
         }
