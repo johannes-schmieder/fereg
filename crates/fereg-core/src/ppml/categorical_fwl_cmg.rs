@@ -9,6 +9,7 @@
 use crate::linalg::neumaier_add;
 use std::time::Instant;
 
+#[cfg(test)]
 use std::cell::Cell;
 
 use rayon::prelude::*;
@@ -85,13 +86,12 @@ fn projection_design(
     BorrowedInterceptFeDesign::new(design.nobs(), effects)
 }
 
-// Developer fault plan for the current thread. Shipped code runs the same
-// checks with every entry unset; only the test setters write them.
-thread_local! {
-    static FORCE_NUMERICAL_FAILURE_ONCE: Cell<bool> = const { Cell::new(false) };
-    static FORCE_FATAL_FAILURE_ONCE: Cell<Option<ErrorCode>> = const { Cell::new(None) };
-    static FORCE_POST_PROJECTION_NUMERICAL_FAILURE_ONCE: Cell<bool> = const { Cell::new(false) };
-    static FORCE_PROJECTION_CERTIFICATE_FAILURE_ONCE: Cell<Option<usize>> = const { Cell::new(None) };
+// Test fault plans; shipped builds compile these branches out.
+crate::fault::fault_plan! {
+    static FORCE_NUMERICAL_FAILURE_ONCE: bool = false;
+    static FORCE_FATAL_FAILURE_ONCE: Option<ErrorCode> = None;
+    static FORCE_POST_PROJECTION_NUMERICAL_FAILURE_ONCE: bool = false;
+    static FORCE_PROJECTION_CERTIFICATE_FAILURE_ONCE: Option<usize> = None;
 }
 
 // Test-only observation counters; they never change control flow.

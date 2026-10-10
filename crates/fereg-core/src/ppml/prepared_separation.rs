@@ -12,8 +12,6 @@ use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use std::cell::Cell;
-
 use crate::data::{DenseMatrix, DropReason, WeightKind};
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::{BorrowedMapWeights, FeSolverKind, LevelIndex};
@@ -48,11 +46,10 @@ const SEPARATION_PHASES: [PpmlPhase; 4] = [
     PpmlPhase::SeparationMu,
 ];
 
-// Developer fault plan for the current thread. Shipped code runs the same
-// checks with no plan; only the test setters write it.
-thread_local! {
-    static FAIL_EXACT_FE_LEVEL_COMPACTION: Cell<bool> = const { Cell::new(false) };
-    static FAIL_REPORT_BANK_RESERVATION: Cell<bool> = const { Cell::new(false) };
+// Test fault plans; shipped builds compile these branches out.
+crate::fault::fault_plan! {
+    static FAIL_EXACT_FE_LEVEL_COMPACTION: bool = false;
+    static FAIL_REPORT_BANK_RESERVATION: bool = false;
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

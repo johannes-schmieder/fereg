@@ -22,7 +22,6 @@ use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
 use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
-use std::cell::Cell;
 #[cfg(test)]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
@@ -1573,10 +1572,9 @@ pub(crate) enum FrozenLinearFailureInjection {
     Interrupted,
 }
 
-// Developer frozen-solve fault plan for the current thread. Shipped code
-// runs the same checks with no plan; only the test setter writes it.
-thread_local! {
-    static FROZEN_FAILURE_INJECTION: Cell<u8> = const { Cell::new(0) };
+// Test frozen-solve fault plan; shipped builds compile its branches out.
+crate::fault::fault_plan! {
+    static FROZEN_FAILURE_INJECTION: u8 = 0;
 }
 
 #[cfg(test)]

@@ -107,6 +107,9 @@ Retain the runtime complexity ratchet at `tests/reference/complexity.json`;
 explain scoped increases and lower it for reductions. Do not minify or move code
 into exclusions. Code reachable only from its own tests is deleted, not gated;
 independent reference implementations belong in fereg-oracle or fereg-testkit.
+Developer injections (`inject=`, `break_marker_token=`, `developer_injection.rs`)
+are the one sanctioned test surface in shipped builds; other fault plans use
+`fault_plan!` so non-test builds compile them out.
 No arbitrary coverage percentage is a gate.
 Do not introduce planning/status ledgers or receipt-folder proliferation.
 Never commit credentials, licenses, personal paths, raw logs, datasets or new

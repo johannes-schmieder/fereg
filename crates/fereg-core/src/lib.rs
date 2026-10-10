@@ -5,6 +5,7 @@ pub mod data;
 pub mod diagnostics;
 pub mod error;
 pub mod factorize;
+mod fault;
 pub mod fe;
 pub mod interrupt;
 pub mod kernels;

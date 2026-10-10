@@ -6,6 +6,7 @@
 
 #[cfg(test)]
 use crate::fe::PARALLEL_PROJECTION_MIN_ROWS;
+#[cfg(test)]
 use std::cell::Cell;
 use std::time::{Duration, Instant};
 
@@ -147,17 +148,16 @@ fn use_initial_checkpoint_lsmr_accelerator(
         && use_checkpoint_lsmr_accelerator(observations, effects)
 }
 
-// Developer fault plan for the current thread. Shipped code runs the same
-// checks with every entry unset; only the test setters below write them.
-thread_local! {
-    static FORCE_GENERIC_OUTER_SCORE: Cell<bool> = const { Cell::new(false) };
-    static CANONICAL_FINAL_TEST_DISABLED: Cell<bool> = const { Cell::new(false) };
-    static PROFILE_CURVE_TEST_DISABLED: Cell<bool> = const { Cell::new(false) };
-    static PROFILE_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
-    static JOINT_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
-    static STRICT_RESUME_INJECTION: Cell<u8> = const { Cell::new(0) };
-    static REPEATED_STRICT_RESUME_INJECTION: Cell<usize> = const { Cell::new(0) };
-    static STRICT_BASIS_CHANGE_INJECTION: Cell<u8> = const { Cell::new(0) };
+// Test fault plans; shipped builds compile these branches out.
+crate::fault::fault_plan! {
+    static FORCE_GENERIC_OUTER_SCORE: bool = false;
+    static CANONICAL_FINAL_TEST_DISABLED: bool = false;
+    static PROFILE_CURVE_TEST_DISABLED: bool = false;
+    static PROFILE_FINAL_TEST_MODE: u8 = 0;
+    static JOINT_FINAL_TEST_MODE: u8 = 0;
+    static STRICT_RESUME_INJECTION: u8 = 0;
+    static REPEATED_STRICT_RESUME_INJECTION: usize = 0;
+    static STRICT_BASIS_CHANGE_INJECTION: u8 = 0;
 }
 
 // Test-only observation counters; they never change control flow.
