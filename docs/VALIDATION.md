@@ -79,6 +79,10 @@ only loosens), Break reaching saved-FE recovery and long serial row passes, the
 PPML validator keeping `r(1)`, PPML rejecting string numeric inputs at layout,
 test fault plans compiled out of shipped builds (plan D4, reversing phase 4's
 choice), and the OLS multiway PSD certificate floor becoming `f64::MIN_POSITIVE`
-(plan D1; it can only reject, and every replay case was unchanged). Mac boundary
-timing, the licensed Stata full profile and the PTY Break fixtures are
-Johannes's to run.
+(plan D1; it can only reject, and every replay case was unchanged). At
+`2c34533`, Linux Cachegrind on two 100,000-row single-worker cases (OLS two-FE
+robust; PPML two-FE clustered) compared the base plugin `e237c217` with
+`3a4fdc32`: exact outputs, total instructions −0.0027% (OLS) and −0.015% (PPML),
+against repeat spreads of at most 5,415 instructions. This is an instruction-count
+observation, not timing. Mac boundary timing, the licensed Stata full profile and
+the PTY Break fixtures are Johannes's to run.
