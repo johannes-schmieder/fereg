@@ -325,7 +325,7 @@ struct EstimatePpmlSpec {
     break_marker_token: String,
 }
 
-pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     #[cfg(test)]
     let _action_observation_guard = crate::instrumentation::lock_action_observation();
     let started = Instant::now();
@@ -366,37 +366,7 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let bias_units = load_optional_numeric(action.bias_unit, &loaded.candidate, spi)?;
     spi.check_interrupted()?;
     let phase_probe = ppml_phase_allocator_probe(action.allocation_audit);
-    let mut prepared_request = PreparedPpmlRequestV1 {
-        bias: action.bias,
-        ols: fallible_clone_ols_request(&action.request)?,
-        clusters: fallible_clone_clusters(&action.clusters)?,
-        vce: action.vce,
-        ppml: action.config,
-        linear: action.linear,
-        memory: action.memory,
-        memory_preflight_probe: ppml_memory_preflight_probe()?,
-        allocation_snapshot_probe: ppml_allocator_snapshot_probe(action.allocation_audit),
-        phase_allocation_probe: phase_probe,
-        linear_phase_allocation_probe: ppml_linear_phase_allocator_probe(action.allocation_audit),
-        // Action lifetime includes the embedding shadow and staged SPI
-        // stores, so the plugin owns this later observation boundary.
-        action_allocation_snapshot_probe: None,
-        action_allocation_start: None,
-        action_allocation_previous_baseline_bytes: None,
-        separation: action.separation,
-        output: PreparedPpmlOutputRequest {
-            residual: action.residual,
-            xb: action.outputs.xb.is_some(),
-            absorbed: action.outputs.absorbed.is_some(),
-            eta: action.outputs.eta.is_some(),
-            mean: action.outputs.mean.is_some(),
-            requested_observation_columns: action.requested_observation_columns,
-            publication_matrix_cells: action.publication_matrix_cells,
-        },
-        solver: action.solver,
-        inject_fe_recovery_allocation_failure: action.injection
-            == PpmlDeveloperInjection::Allocation,
-    };
+    let mut prepared_request = prepared_ppml_request(&action, phase_probe)?;
     let prepared_input = LoadedPpmlInput {
         bias_units,
         ols: loaded,
@@ -413,34 +383,6 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     fereg_core::ThreadTeam::new(action.linear.execution.threads).install(|| {
         drop(rayon::broadcast(|_| ()));
     })?;
-    let mut native_break_armed = false;
-    let mut interrupt = |point: PpmlInterruptPoint| {
-        // The scoped executor relays safe-point requests here. This closure
-        // keeps the non-Send/non-Sync SPI session on Stata's calling thread.
-        spi.check_interrupted()?;
-        if action.injection == PpmlDeveloperInjection::BreakNative
-            && !native_break_armed
-            && point == PpmlInterruptPoint::IrlsIteration
-        {
-            native_break_armed = true;
-            spi.display(crate::developer_injection::PPML_NATIVE_BREAK_MARKER)?;
-            // Arm the PTY controller only after display returns: Linux Stata
-            // can classify a Ctrl-C inside SF_display as an SPI display error.
-            crate::developer_injection::create_native_break_marker(
-                "feppml",
-                crate::developer_injection::PPML_NATIVE_BREAK_MARKER,
-                &action.break_marker_token,
-            )?;
-            // Synchronize the interactive fixture after actual core entry.
-            // The controller sends Ctrl-C only after observing the marker;
-            // remain on Stata's caller thread until its poll reports Break.
-            loop {
-                spi.check_interrupted()?;
-                std::thread::yield_now();
-            }
-        }
-        Ok(())
-    };
     let transport_parent_bytes = action.transport_parent_bytes;
     let result = crate::ppml_execution::run(
         fereg_core::ThreadTeam::new(action.linear.execution.threads),
@@ -474,7 +416,7 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             }
             fit_prepared_ppml_interruptible(prepared_request, prepared_input, poll)
         },
-        &mut interrupt,
+        &mut relay_ppml_interrupts(spi, action.injection, &action.break_marker_token),
     )?;
     let publication_extension_started = Instant::now();
     let mut publication_phase = PublicationPhaseScope::begin(phase_probe);
@@ -491,6 +433,116 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         },
     )?;
     publication_memory.validate_capacity(&shadow)?;
+    let memory_report = ppml_memory_report(
+        &action,
+        &result,
+        &shadow,
+        input_memory.peak(),
+        &publication_memory,
+        resources_start,
+    )?;
+    precommit(&action, &shadow, spi)?;
+    store_shadow_prefix(&action, &shadow, spi)?;
+    let action_end = action_probe.map(|probe| probe());
+    let publication_peak_bytes = publication_phase.finish();
+    finalize_ppml_runtime_shadow(
+        &mut shadow.runtime,
+        PpmlRuntimeFinalObservation {
+            total_seconds: started.elapsed().as_secs_f64(),
+            publication_extension_seconds: publication_extension_started.elapsed().as_secs_f64(),
+            publication_peak_bytes,
+            action_start,
+            action_end,
+            previous_baseline_bytes: action_previous_baseline,
+            modeled_selected_bytes: result.memory().plan.selected_bytes(),
+        },
+    )?;
+    store_runtime_and_complete(&action, &shadow, &memory_report, spi)
+}
+
+// Relay core safe points to Stata's calling thread; the developer native-Break
+// injection arms its PTY marker at the first IRLS iteration.
+fn relay_ppml_interrupts<'a>(
+    spi: &'a mut dyn SpiApi,
+    injection: PpmlDeveloperInjection,
+    break_marker_token: &'a str,
+) -> impl FnMut(PpmlInterruptPoint) -> Result<()> + 'a {
+    let mut native_break_armed = false;
+    move |point: PpmlInterruptPoint| {
+        // The scoped executor relays safe-point requests here. This closure
+        // keeps the non-Send/non-Sync SPI session on Stata's calling thread.
+        spi.check_interrupted()?;
+        if injection == PpmlDeveloperInjection::BreakNative
+            && !native_break_armed
+            && point == PpmlInterruptPoint::IrlsIteration
+        {
+            native_break_armed = true;
+            spi.display(crate::developer_injection::PPML_NATIVE_BREAK_MARKER)?;
+            // Arm the PTY controller only after display returns: Linux Stata
+            // can classify a Ctrl-C inside SF_display as an SPI display error.
+            crate::developer_injection::create_native_break_marker(
+                "feppml",
+                crate::developer_injection::PPML_NATIVE_BREAK_MARKER,
+                break_marker_token,
+            )?;
+            // Synchronize the interactive fixture after actual core entry.
+            // The controller sends Ctrl-C only after observing the marker;
+            // remain on Stata's caller thread until its poll reports Break.
+            loop {
+                spi.check_interrupted()?;
+                std::thread::yield_now();
+            }
+        }
+        Ok(())
+    }
+}
+
+fn prepared_ppml_request(
+    action: &EstimatePpmlAction,
+    phase_probe: Option<PpmlPhaseAllocatorProbe>,
+) -> Result<PreparedPpmlRequestV1> {
+    Ok(PreparedPpmlRequestV1 {
+        bias: action.bias,
+        ols: fallible_clone_ols_request(&action.request)?,
+        clusters: fallible_clone_clusters(&action.clusters)?,
+        vce: action.vce,
+        ppml: action.config,
+        linear: action.linear,
+        memory: action.memory,
+        memory_preflight_probe: ppml_memory_preflight_probe()?,
+        allocation_snapshot_probe: ppml_allocator_snapshot_probe(action.allocation_audit),
+        phase_allocation_probe: phase_probe,
+        linear_phase_allocation_probe: ppml_linear_phase_allocator_probe(action.allocation_audit),
+        // Action lifetime includes the embedding shadow and staged SPI
+        // stores, so the plugin owns this later observation boundary.
+        action_allocation_snapshot_probe: None,
+        action_allocation_start: None,
+        action_allocation_previous_baseline_bytes: None,
+        separation: action.separation,
+        output: PreparedPpmlOutputRequest {
+            residual: action.residual,
+            xb: action.outputs.xb.is_some(),
+            absorbed: action.outputs.absorbed.is_some(),
+            eta: action.outputs.eta.is_some(),
+            mean: action.outputs.mean.is_some(),
+            requested_observation_columns: action.requested_observation_columns,
+            publication_matrix_cells: action.publication_matrix_cells,
+        },
+        solver: action.solver,
+        inject_fe_recovery_allocation_failure: action.injection
+            == PpmlDeveloperInjection::Allocation,
+    })
+}
+
+// Compose the action ledger through publication and the Stata-side forecast.
+fn ppml_memory_report(
+    action: &EstimatePpmlAction,
+    result: &fereg_core::ppml::CertifiedPpmlResult,
+    shadow: &PpmlShadowResult<'_>,
+    input_peak: u128,
+    publication_memory: &crate::ppml_result::PpmlPublicationMemory,
+    resources_start: crate::instrumentation::ResourceSnapshot,
+) -> Result<MemoryReport> {
     let expected_solver = match result.memory().expected_solver_workspace_peak {
         Some(peak) => peak.expected_heap_bytes().map(u128::from),
         None => Some(result.memory().plan.solver_workspace_bytes),
@@ -504,7 +556,7 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let mut memory = ppml_action_memory_composition(
         result.memory().plan,
         expected_plan,
-        Some(input_memory.peak()),
+        Some(input_peak),
         Some(action.metadata_peak_bytes),
     )?;
     let publication = crate::action_memory::Frame {
@@ -546,30 +598,13 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             crate::instrumentation::native_live_before(),
         )?;
     }
-    let memory_report = MemoryReport::estimated(
+    MemoryReport::estimated(
         action.memory_baseline,
         crate::instrumentation::native_live_before(),
         memory.ledger.summary(),
         result.memory().plan.safety_headroom_bytes,
         forecast,
-    )?;
-    precommit(&action, &shadow, spi)?;
-    store_shadow_prefix(&action, &shadow, spi)?;
-    let action_end = action_probe.map(|probe| probe());
-    let publication_peak_bytes = publication_phase.finish();
-    finalize_ppml_runtime_shadow(
-        &mut shadow.runtime,
-        PpmlRuntimeFinalObservation {
-            total_seconds: started.elapsed().as_secs_f64(),
-            publication_extension_seconds: publication_extension_started.elapsed().as_secs_f64(),
-            publication_peak_bytes,
-            action_start,
-            action_end,
-            previous_baseline_bytes: action_previous_baseline,
-            modeled_selected_bytes: result.memory().plan.selected_bytes(),
-        },
-    )?;
-    store_runtime_and_complete(&action, &shadow, &memory_report, spi)
+    )
 }
 
 impl EstimatePpmlAction {

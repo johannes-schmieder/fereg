@@ -1,8 +1,8 @@
 use crate::dispatch::dispatch_args;
-use crate::estimate::{estimate_ols_test, ACTION_ESTIMATE_OLS};
+use crate::estimate::{estimate_ols, ACTION_ESTIMATE_OLS};
 use crate::input::{prepare_ols_test, PreparedMatrixStoreName, SpiApi, ACTION_PREPARE_OLS_TEST};
 use crate::output::OutputSink;
-use crate::ppml_estimate::{estimate_ppml_test, ACTION_ESTIMATE_PPML};
+use crate::ppml_estimate::{estimate_ppml, ACTION_ESTIMATE_PPML};
 use fereg_core::error::{ErrorCode, FeregError};
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::any::Any;
@@ -1401,13 +1401,13 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
             .is_some_and(|action| action.eq_ignore_ascii_case(ACTION_ESTIMATE_OLS))
         {
             let mut session = SpiSession::new()?;
-            estimate_ols_test(&args[1..], &mut session)
+            estimate_ols(&args[1..], &mut session)
         } else if args
             .first()
             .is_some_and(|action| action.eq_ignore_ascii_case(ACTION_ESTIMATE_PPML))
         {
             let mut session = SpiSession::new()?;
-            estimate_ppml_test(&args[1..], &mut session)
+            estimate_ppml(&args[1..], &mut session)
         } else {
             dispatch_args(&args, &sink)
         }

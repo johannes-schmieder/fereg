@@ -220,7 +220,7 @@ const INPUT_BULK_READ_CHUNK_ROWS: usize = 65_536;
 const INPUT_CANDIDATE_BATCH_MIN_ROWS: usize = 16_384;
 const INPUT_BULK_MIN_RUN_ROWS: usize = 64;
 
-pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     #[cfg(test)]
     let _action_observation_guard = instrumentation::lock_action_observation();
     let started = Instant::now();

@@ -301,10 +301,7 @@ fn memory_baseline_and_matrix_are_validated_before_any_store() {
             .iter_mut()
             .find(|arg| arg.starts_with(&format!("{key}=")))
             .unwrap() = replacement.to_owned();
-        assert!(
-            estimate_ppml_test(&args, &mut spi).is_err(),
-            "{replacement}"
-        );
+        assert!(estimate_ppml(&args, &mut spi).is_err(), "{replacement}");
         assert_eq!(spi.store_calls, 0);
         assert_eq!(spi.receipt_complete(), 0.0);
     }
@@ -313,7 +310,7 @@ fn memory_baseline_and_matrix_are_validated_before_any_store() {
 #[test]
 fn partial_memory_report_is_published_without_claiming_combined_coverage() {
     let (args, mut spi) = fixture();
-    estimate_ppml_test(&args, &mut spi).unwrap();
+    estimate_ppml(&args, &mut spi).unwrap();
     let report = &spi.matrices["RMEMORY"];
     assert_eq!(report[0], vec![1.0, 2.0]);
     assert_eq!(report[1], vec![1.0, 1.0]);
@@ -546,7 +543,7 @@ fn string_numeric_inputs_fail_before_any_read_or_store() {
     for position in [1, 2, 3] {
         let (args, mut spi) = fixture();
         spi.string_variables.insert(position);
-        let error = estimate_ppml_test(&args, &mut spi).expect_err("string numeric input");
+        let error = estimate_ppml(&args, &mut spi).expect_err("string numeric input");
         assert_eq!(error.code, ErrorCode::Unsupported, "position {position}");
         assert_eq!(spi.reads, 0);
         assert_eq!(spi.store_calls, 0);
@@ -866,7 +863,7 @@ fn bias_fixture(saved: bool) -> (Vec<String>, FakeSpi) {
 #[test]
 fn bias_publication_and_every_store_failure_are_atomic() {
     let (args, mut spi) = bias_fixture(true);
-    estimate_ppml_test(&args, &mut spi).unwrap();
+    estimate_ppml(&args, &mut spi).unwrap();
     assert_eq!(spi.matrices["RBDIAG"][0][0], 1.);
     assert_eq!(spi.matrices["RBDIAG"][1][0], 16.);
     assert_eq!(spi.matrices["RBSUPPORT"][0][1], 2.);
@@ -877,14 +874,14 @@ fn bias_publication_and_every_store_failure_are_atomic() {
     assert!(spi.matrices["RBIAS"][1][0].abs() > 1e-7);
     let (args, mut missing) = bias_fixture(true);
     missing.numeric.insert((16, 2), (0., true));
-    let error = estimate_ppml_test(&args, &mut missing).unwrap_err();
+    let error = estimate_ppml(&args, &mut missing).unwrap_err();
     assert!(error.message.contains("missing on a retained"));
     assert_eq!(missing.store_calls, 0);
     for ordinal in 1..=spi.store_calls {
         let (args, mut failed) = bias_fixture(true);
         failed.fail_store_at = Some(ordinal);
         assert!(
-            estimate_ppml_test(&args, &mut failed).is_err(),
+            estimate_ppml(&args, &mut failed).is_err(),
             "store {ordinal}"
         );
         assert_eq!(failed.receipt_complete(), 0., "store {ordinal}");
@@ -899,13 +896,13 @@ fn bias_support_failure_is_before_any_publication_and_destinations_are_guarded()
             spi.numeric
                 .insert((16, row), (((row - 1) / 4 + 71) as f64, false));
         }
-        let error = estimate_ppml_test(&args, &mut spi).unwrap_err();
+        let error = estimate_ppml(&args, &mut spi).unwrap_err();
         assert!(error.message.contains("FE1: 8/8"), "{error}");
         assert_eq!(spi.store_calls, 0);
     }
     let (mut args, mut spi) = bias_fixture(false);
     args.retain(|s| !s.starts_with("output_bias_support="));
-    assert!(estimate_ppml_test(&args, &mut spi).is_err());
+    assert!(estimate_ppml(&args, &mut spi).is_err());
     assert_eq!(spi.reads, 0);
     let (mut args, mut spi) = bias_fixture(false);
     replace_argument(
@@ -913,7 +910,7 @@ fn bias_support_failure_is_before_any_publication_and_destinations_are_guarded()
         "output_bias_support",
         "output_bias_support=RBDIAG".to_owned(),
     );
-    assert!(estimate_ppml_test(&args, &mut spi).is_err());
+    assert!(estimate_ppml(&args, &mut spi).is_err());
     assert_eq!(spi.reads, 0);
 }
 
@@ -1134,7 +1131,7 @@ fn categorical_test_term(id: u32, source: SourceId, level: f64, base: bool) -> E
 #[test]
 fn ppml_local_bundle_preserves_science_and_rejects_incomplete_input_before_reads() {
     let (args, mut ordinary) = fixture();
-    estimate_ppml_test(&args, &mut ordinary).unwrap();
+    estimate_ppml(&args, &mut ordinary).unwrap();
     let (args, mut local) = fixture();
     let mut payload = format!("{}:", args.len());
     for value in &args {
@@ -1142,7 +1139,7 @@ fn ppml_local_bundle_preserves_science_and_rejects_incomplete_input_before_reads
     }
     let descriptor = [format!("bundle_local={}", payload.len())];
     local.local_bundle = Some(payload.as_bytes().to_vec());
-    estimate_ppml_test(&descriptor, &mut local).unwrap();
+    estimate_ppml(&descriptor, &mut local).unwrap();
     assert_eq!((ordinary.macro_reads, local.macro_reads), (0, 1));
     for name in [
         "RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER", "RSUBSET", "RSEP", "RINF",
@@ -1155,7 +1152,7 @@ fn ppml_local_bundle_preserves_science_and_rejects_incomplete_input_before_reads
     assert_eq!(ordinary.store_calls, local.store_calls);
     let (_, mut truncated) = fixture();
     truncated.local_bundle = Some(payload.as_bytes()[..payload.len() - 1].to_vec());
-    assert!(estimate_ppml_test(&descriptor, &mut truncated).is_err());
+    assert!(estimate_ppml(&descriptor, &mut truncated).is_err());
     assert_eq!(
         (
             truncated.macro_reads,
@@ -1170,7 +1167,7 @@ fn ppml_local_bundle_preserves_science_and_rejects_incomplete_input_before_reads
 #[test]
 fn hidden_ppml_action_commits_a_distinct_receipt_last() {
     let (args, mut spi) = fixture();
-    estimate_ppml_test(&args, &mut spi).expect("hidden PPML estimate");
+    estimate_ppml(&args, &mut spi).expect("hidden PPML estimate");
     assert_eq!(spi.receipt_complete(), 1.0);
     assert_eq!(spi.matrices["RREC"][0][0], fereg_core::PPML_RESULT_MAGIC);
     assert_eq!(spi.matrices["RREC"][0][1], 1.0);
@@ -1801,7 +1798,7 @@ fn no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing() {
     // this second arm proves that the ordinary error path cannot publish
     // a prefix or completion receipt.
     let (args, mut spi) = allocation_audit_n100k_no_fe_k0_fixture();
-    let error = estimate_ppml_test(&args, &mut spi)
+    let error = estimate_ppml(&args, &mut spi)
         .expect_err("the plugin transaction must propagate no-route rejection");
     assert_eq!(error.code, ErrorCode::Allocation);
     assert_eq!(error.return_code(), 909);
@@ -1833,13 +1830,13 @@ fn allocation_audit_is_opt_in_and_publishes_real_phase_evidence() {
         return;
     }
     let (args, mut normal) = fixture();
-    estimate_ppml_test(&args, &mut normal).expect("normal PPML estimate");
+    estimate_ppml(&args, &mut normal).expect("normal PPML estimate");
     let normal_outer = normal.matrices["RRUNTIME"][1][0];
     assert_eq!(normal.matrices["RRUNTIME"][40][0], 0.0);
 
     let (mut audited_args, mut audited) = fixture();
     audited_args.push("allocation_audit=1".to_owned());
-    estimate_ppml_test(&audited_args, &mut audited).expect("audited PPML estimate");
+    estimate_ppml(&audited_args, &mut audited).expect("audited PPML estimate");
     let runtime = &audited.matrices["RRUNTIME"];
     assert_eq!(runtime[9][0], 0.0, "automatic thread request stays public");
     assert_eq!(runtime[10][0], ThreadConfig::available() as f64);
@@ -1891,7 +1888,7 @@ fn allocation_failure_is_atomic_in_every_fit_lifetime_phase() {
     for phase in fereg_core::ppml::PPML_PHASES {
         let (args, mut spi) = allocation_failure_phase_fixture(phase);
         crate::ffi::inject_ppml_allocation_failure(phase);
-        let result = estimate_ppml_test(&args, &mut spi);
+        let result = estimate_ppml(&args, &mut spi);
         let fired = crate::ffi::ppml_allocation_failure_fired();
         let successful_events = crate::ffi::test_ppml_phase_allocation_events(phase);
         eprintln!(
@@ -1942,7 +1939,7 @@ fn allocation_audit_n100k_no_fe_k0_accounts_embedding_preparation() {
     }
 
     let (args, mut spi) = allocation_audit_n100k_no_fe_k0_fixture();
-    let estimation = estimate_ppml_test(&args, &mut spi);
+    let estimation = estimate_ppml(&args, &mut spi);
     let embedding = TEST_LAST_EMBEDDING_RESIDENT_BYTES.load(std::sync::atomic::Ordering::Relaxed);
     if let Err(error) = &estimation {
         eprintln!("n100k_no_fe_k0 embedding={embedding} error={error}");
@@ -1995,7 +1992,7 @@ fn allocation_audit_preflights_worker_team_switches_one_four_one() {
     for (action_index, requested_threads) in [1_usize, 4, 1].into_iter().enumerate() {
         let (mut args, mut spi) = allocation_audit_n100k_no_fe_k0_fixture();
         replace_argument(&mut args, "threads", format!("threads={requested_threads}"));
-        estimate_ppml_test(&args, &mut spi).unwrap_or_else(|error| {
+        estimate_ppml(&args, &mut spi).unwrap_or_else(|error| {
             panic!(
                 "worker-team switch action {action_index} ({requested_threads} threads) failed: {error}",
             )
@@ -2042,7 +2039,7 @@ fn allocation_audit_preflights_worker_team_switches_one_four_one() {
 #[test]
 fn hidden_ppml_action_carries_factor_absorb_cluster_weight_and_saved_fe() {
     let (args, mut spi) = categorical_absorb_cluster_weight_fixture();
-    estimate_ppml_test(&args, &mut spi).expect("categorical hidden PPML estimate");
+    estimate_ppml(&args, &mut spi).expect("categorical hidden PPML estimate");
     assert_eq!(spi.receipt_complete(), 1.0);
     assert_eq!(spi.matrices["RREC"][0][3], 3.0);
     assert_eq!(spi.matrices["RREC"][0][4], 4.0);
@@ -2115,7 +2112,7 @@ fn saved_fe_memory_covers_measured_final_phases_across_repeated_calls() {
         replace_argument(&mut args, "memory", format!("memory={mode}"));
         replace_argument(&mut args, "threads", format!("threads={threads}"));
         args.push("allocation_audit=1".to_owned());
-        estimate_ppml_test(&args, &mut spi).expect("saved-FE phase memory fit");
+        estimate_ppml(&args, &mut spi).expect("saved-FE phase memory fit");
         let runtime = &spi.matrices["RRUNTIME"];
         for phase in [
             PpmlPhase::Inference,
@@ -2155,7 +2152,7 @@ fn active_factor_level_that_vanishes_retains_a_zero_numerical_recipe() {
     spi.numeric.insert((2, 1), (0.0, true));
     replace_argument(&mut args, "input_complete", "input_complete=0".to_owned());
 
-    estimate_ppml_test(&args, &mut spi).expect("rebased categorical hidden PPML estimate");
+    estimate_ppml(&args, &mut spi).expect("rebased categorical hidden PPML estimate");
     assert_eq!(spi.receipt_complete(), 1.0);
     assert_eq!(spi.matrices["RSTATUS"][1][1], 2.0);
     assert_eq!(spi.matrices["RSTATUS"][2], [3.0, 6.0, 0.0, 1.0]);
@@ -2175,7 +2172,7 @@ fn saved_fe_recovery_uses_the_accepted_hessian_for_nonexact_counts() {
         spi.numeric.insert((2, observation), (count, false));
     }
 
-    estimate_ppml_test(&args, &mut spi).expect("nonexact-count saved-FE estimate");
+    estimate_ppml(&args, &mut spi).expect("nonexact-count saved-FE estimate");
     assert_eq!(spi.receipt_complete(), 1.0);
     assert_eq!(spi.matrices["RREC"][0][17], 1.0);
     for observation in 1..=spi.nobs {
@@ -2197,7 +2194,7 @@ fn malformed_wire_and_output_conflicts_fail_before_observation_reads() {
     ] {
         let (mut args, mut spi) = fixture();
         replace_argument(&mut args, key, format!("{key}={value}"));
-        let error = estimate_ppml_test(&args, &mut spi).expect_err("must reject");
+        let error = estimate_ppml(&args, &mut spi).expect_err("must reject");
         assert_eq!(error.code, expected, "{key}");
         assert_eq!(spi.reads, 0, "{key}");
         assert_eq!(spi.store_calls, 0, "{key}");
@@ -2215,8 +2212,8 @@ fn finite_valid_unrepresentable_result_fails_r430_atomically() {
     for observation in 1..=spi.nobs {
         spi.numeric.insert((2, observation), (5.5e307, false));
     }
-    let error = estimate_ppml_test(&args, &mut spi)
-        .expect_err("unrepresentable finite PPML result must fail");
+    let error =
+        estimate_ppml(&args, &mut spi).expect_err("unrepresentable finite PPML result must fail");
     assert_eq!(error.code, ErrorCode::NonConvergence);
     assert_eq!(spi.store_calls, 0);
     assert_eq!(spi.receipt_complete(), 0.0);
@@ -2226,14 +2223,14 @@ fn finite_valid_unrepresentable_result_fails_r430_atomically() {
 fn stale_receipt_interrupt_and_panic_leave_complete_zero() {
     let (args, mut stale) = fixture();
     stale.matrices.get_mut("RREC").expect("receipt")[0][0] = 1.0;
-    assert!(estimate_ppml_test(&args, &mut stale).is_err());
+    assert!(estimate_ppml(&args, &mut stale).is_err());
     assert_eq!(stale.reads, 0);
     assert_eq!(stale.store_calls, 0);
     assert_eq!(stale.receipt_complete(), 0.0);
 
     let (args, mut interrupted) = fixture();
     interrupted.interrupt_at = Some(1);
-    let error = estimate_ppml_test(&args, &mut interrupted).expect_err("interrupted");
+    let error = estimate_ppml(&args, &mut interrupted).expect_err("interrupted");
     assert_eq!(error.code, ErrorCode::Interrupted);
     assert_eq!(interrupted.store_calls, 0);
     assert_eq!(interrupted.receipt_complete(), 0.0);
@@ -2241,7 +2238,7 @@ fn stale_receipt_interrupt_and_panic_leave_complete_zero() {
     let (mut args, mut panicked) = fixture();
     args.push("inject=panic".to_owned());
     let outcome = catch_unwind(AssertUnwindSafe(|| {
-        let _ = estimate_ppml_test(&args, &mut panicked);
+        let _ = estimate_ppml(&args, &mut panicked);
     }));
     assert!(outcome.is_err());
     assert_eq!(panicked.reads, 0);
@@ -2264,7 +2261,7 @@ fn native_break_marker_is_emitted_after_core_entry_and_interrupts_before_stores(
     args.push(format!("break_marker_token={marker_token}"));
     spi.interrupt_when_marker_exists = Some(marker_path.clone());
 
-    let error = estimate_ppml_test(&args, &mut spi)
+    let error = estimate_ppml(&args, &mut spi)
         .expect_err("native Break injection must stop inside the core");
     assert_eq!(error.code, ErrorCode::Interrupted);
     assert_eq!(
@@ -2289,7 +2286,7 @@ fn native_break_marker_is_emitted_after_core_entry_and_interrupts_before_stores(
 fn native_break_rejects_missing_or_path_like_marker_tokens_before_reads() {
     let (mut missing_args, mut missing_spi) = fixture();
     missing_args.push("inject=breaknative".to_owned());
-    let missing = estimate_ppml_test(&missing_args, &mut missing_spi)
+    let missing = estimate_ppml(&missing_args, &mut missing_spi)
         .expect_err("breaknative without a token must fail closed");
     assert_eq!(missing.code, ErrorCode::Syntax);
     assert_eq!(missing_spi.reads, 0);
@@ -2297,7 +2294,7 @@ fn native_break_rejects_missing_or_path_like_marker_tokens_before_reads() {
     let (mut path_args, mut path_spi) = fixture();
     path_args.push("inject=breaknative".to_owned());
     path_args.push("break_marker_token=/tmp/arbitrary.marker".to_owned());
-    let path = estimate_ppml_test(&path_args, &mut path_spi)
+    let path = estimate_ppml(&path_args, &mut path_spi)
         .expect_err("a path must never cross the hidden token wire");
     assert_eq!(path.code, ErrorCode::Syntax);
     assert_eq!(path_spi.reads, 0);
@@ -2307,7 +2304,7 @@ fn native_break_rejects_missing_or_path_like_marker_tokens_before_reads() {
 fn licensed_allocation_hook_reaches_fallible_fe_recovery_and_is_action_local() {
     let (mut args, mut injected) = categorical_absorb_cluster_weight_fixture();
     args.push("inject=allocation".to_owned());
-    let error = estimate_ppml_test(&args, &mut injected)
+    let error = estimate_ppml(&args, &mut injected)
         .expect_err("FE-recovery reservation injection must fail");
     assert_eq!(error.code, ErrorCode::Allocation);
     assert_eq!(error.return_code(), 909);
@@ -2317,7 +2314,7 @@ fn licensed_allocation_hook_reaches_fallible_fe_recovery_and_is_action_local() {
     assert_eq!(injected.receipt_complete(), 0.0);
 
     let (args, mut following) = categorical_absorb_cluster_weight_fixture();
-    estimate_ppml_test(&args, &mut following)
+    estimate_ppml(&args, &mut following)
         .expect("allocation injection must not leak into the next action");
     assert_eq!(following.receipt_complete(), 1.0);
 }
@@ -2362,32 +2359,32 @@ fn publication_through_complete_has_no_native_allocation() {
 #[test]
 fn publication_interruptions_at_output_runtime_and_complete_never_commit() {
     let (args, mut success) = fixture();
-    estimate_ppml_test(&args, &mut success).unwrap();
+    estimate_ppml(&args, &mut success).unwrap();
     for ordinal in [1, success.store_calls - RUNTIME_ROWS, success.store_calls] {
         let (args, mut spi) = fixture();
         spi.interrupt_store_at = Some(ordinal);
         assert_eq!(
-            estimate_ppml_test(&args, &mut spi).unwrap_err().code,
+            estimate_ppml(&args, &mut spi).unwrap_err().code,
             ErrorCode::Interrupted
         );
         assert_eq!(spi.receipt_complete(), 0.0);
         assert_eq!(spi.store_calls, ordinal);
     }
     let (args, mut following) = fixture();
-    estimate_ppml_test(&args, &mut following).unwrap();
+    estimate_ppml(&args, &mut following).unwrap();
     assert_eq!(following.receipt_complete(), 1.0);
 }
 
 #[test]
 fn every_ppml_store_failure_leaves_receipt_incomplete() {
     let (args, mut successful) = fixture();
-    estimate_ppml_test(&args, &mut successful).expect("reference stores");
+    estimate_ppml(&args, &mut successful).expect("reference stores");
     let store_count = successful.store_calls;
     assert!(store_count > PPML_RESULT_RECEIPT_COLUMNS);
     for failing_ordinal in 1..=store_count {
         let (args, mut spi) = fixture();
         spi.fail_store_at = Some(failing_ordinal);
-        assert!(estimate_ppml_test(&args, &mut spi).is_err());
+        assert!(estimate_ppml(&args, &mut spi).is_err());
         assert_eq!(spi.receipt_complete(), 0.0, "failure {failing_ordinal}");
     }
 }

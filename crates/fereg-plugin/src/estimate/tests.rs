@@ -391,7 +391,7 @@ fn memory_baseline_and_matrix_are_validated_before_any_store() {
             .iter_mut()
             .find(|arg| arg.starts_with(&format!("{key}=")))
             .unwrap() = replacement.to_owned();
-        assert!(estimate_ols_test(&args, &mut spi).is_err(), "{replacement}");
+        assert!(estimate_ols(&args, &mut spi).is_err(), "{replacement}");
         assert_eq!(spi.store_calls, 0);
         assert_eq!(spi.receipt_complete(), 0.0);
     }
@@ -400,7 +400,7 @@ fn memory_baseline_and_matrix_are_validated_before_any_store() {
 #[test]
 fn partial_memory_report_is_published_without_claiming_combined_coverage() {
     let (args, mut spi) = fixture(OlsVceKind::Iid);
-    estimate_ols_test(&args, &mut spi).unwrap();
+    estimate_ols(&args, &mut spi).unwrap();
     let report = &spi.matrices["RMEMORY"];
     assert_eq!(report[0], vec![1.0, 2.0]);
     assert_eq!(report[1], vec![1.0, 1.0]);
@@ -1942,7 +1942,7 @@ fn saved_publication_checks_observed_capacities_before_any_store() {
 fn guarded_iid_robust_and_clustered_actions_commit_complete_last() {
     for kind in [OlsVceKind::Iid, OlsVceKind::Robust, OlsVceKind::Clustered] {
         let (args, mut spi) = fixture(kind);
-        estimate_ols_test(&args, &mut spi).expect("guarded estimate succeeds");
+        estimate_ols(&args, &mut spi).expect("guarded estimate succeeds");
         assert_eq!(spi.receipt_complete(), 1.0);
         assert_eq!(spi.matrices["RREC"][0][0], RESULT_MAGIC);
         assert_eq!(spi.matrices["RREC"][0][3], kind.code());
@@ -2150,7 +2150,7 @@ fn complete_candidate_universe_skips_candidate_spi_reads() {
     replace_argument(&mut args, "candidate_all", "candidate_all=1".to_owned());
     replace_argument(&mut args, "input_complete", "input_complete=1".to_owned());
 
-    estimate_ols_test(&args, &mut spi).expect("complete-candidate estimate succeeds");
+    estimate_ols(&args, &mut spi).expect("complete-candidate estimate succeeds");
 
     // Six observations times outcome plus one source. The candidate
     // coordinate remains present on the wire but is never read.
@@ -2218,7 +2218,7 @@ fn omitted_observation_outputs_preserve_science_sample_drops_and_receipt() {
             reference.data.insert((2, 3), (0.0, true));
         }
         let mut no_outputs = reference.clone();
-        estimate_ols_test(&args, &mut reference).unwrap();
+        estimate_ols(&args, &mut reference).unwrap();
         replace_argument(&mut args, "output_residual", "output_residual=0".to_owned());
         replace_argument(
             &mut args,
@@ -2226,7 +2226,7 @@ fn omitted_observation_outputs_preserve_science_sample_drops_and_receipt() {
             "output_drop_reason=0".to_owned(),
         );
         no_outputs.nvars -= 2;
-        estimate_ols_test(&args, &mut no_outputs).unwrap();
+        estimate_ols(&args, &mut no_outputs).unwrap();
         for name in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCERT"] {
             assert_eq!(
                 reference.matrices[name], no_outputs.matrices[name],
@@ -2264,7 +2264,7 @@ fn complete_input_certificate_disagreement_fails_before_output() {
     spi.data.insert((2, 3), (0.0, true));
 
     let error =
-        estimate_ols_test(&args, &mut spi).expect_err("false complete-input certificate rejected");
+        estimate_ols(&args, &mut spi).expect_err("false complete-input certificate rejected");
 
     assert_eq!(error.code, ErrorCode::InvalidData);
     assert_eq!(spi.store_calls, 0);
@@ -2274,12 +2274,12 @@ fn complete_input_certificate_disagreement_fails_before_output() {
 fn low_memory_execution_matches_fast_across_inference_modes() {
     for kind in [OlsVceKind::Iid, OlsVceKind::Robust, OlsVceKind::Clustered] {
         let (fast_args, mut fast_spi) = fixture(kind);
-        estimate_ols_test(&fast_args, &mut fast_spi).expect("fast estimate succeeds");
+        estimate_ols(&fast_args, &mut fast_spi).expect("fast estimate succeeds");
 
         let (mut low_args, mut low_spi) = fixture(kind);
         replace_argument(&mut low_args, "memory", "memory=low".to_owned());
         replace_argument(&mut low_args, "poolsize", "poolsize=1".to_owned());
-        estimate_ols_test(&low_args, &mut low_spi).expect("low estimate succeeds");
+        estimate_ols(&low_args, &mut low_spi).expect("low estimate succeeds");
 
         for matrix in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER"] {
             let fast = &fast_spi.matrices[matrix];
@@ -2329,12 +2329,12 @@ fn low_memory_execution_matches_fast_across_inference_modes() {
 fn deterministic_thread_counts_preserve_scientific_results_and_are_reported() {
     for kind in [OlsVceKind::Iid, OlsVceKind::Robust, OlsVceKind::Clustered] {
         let (single_args, mut single_spi) = fixture(kind);
-        estimate_ols_test(&single_args, &mut single_spi).expect("single-thread estimate");
+        estimate_ols(&single_args, &mut single_spi).expect("single-thread estimate");
 
         for threads in [2, 4, 8, 16] {
             let (mut parallel_args, mut parallel_spi) = fixture(kind);
             replace_argument(&mut parallel_args, "threads", format!("threads={threads}"));
-            estimate_ols_test(&parallel_args, &mut parallel_spi).expect("parallel estimate");
+            estimate_ols(&parallel_args, &mut parallel_spi).expect("parallel estimate");
 
             for matrix in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER"] {
                 assert_eq!(
@@ -2365,7 +2365,7 @@ fn saved_outputs_allow_a_generated_column_omitted_by_absorption() {
             let group = spi.data[&(4, observation)].0;
             spi.data.insert((3, observation), (group, false));
         }
-        estimate_ols_test(&args, &mut spi).expect("omitted generated column has no xb term");
+        estimate_ols(&args, &mut spi).expect("omitted generated column has no xb term");
         assert_eq!(spi.matrices["RSTATUS"][0][1], 3.0);
         assert_eq!(spi.matrices["RB"][0][0], 0.0);
         let overall =
@@ -3028,10 +3028,10 @@ fn full_sample_output_batch_preserves_store_order_and_failure_atomicity() {
             }
             base.stores.reserve(5 * n + 512);
             let mut scalar = base.clone();
-            estimate_ols_test(&args, &mut scalar).unwrap();
+            estimate_ols(&args, &mut scalar).unwrap();
             let mut batched = base.clone();
             batched.numeric_column_stores_enabled = true;
-            estimate_ols_test(&args, &mut batched).unwrap();
+            estimate_ols(&args, &mut batched).unwrap();
             assert_eq!(
                 batched.numeric_column_batches,
                 usize::from(n >= 4096 && !missing)
@@ -3054,7 +3054,7 @@ fn full_sample_output_batch_preserves_store_order_and_failure_atomicity() {
                     let mut spi = base.clone();
                     spi.numeric_column_stores_enabled = true;
                     spi.fail_store_at = Some(failure);
-                    assert!(estimate_ols_test(&args, &mut spi).is_err());
+                    assert!(estimate_ols(&args, &mut spi).is_err());
                     assert_eq!(spi.store_calls, failure);
                     assert_eq!(spi.receipt_complete(), 0.0);
                     assert_eq!(spi.numeric_column_batches, 1);
@@ -3067,7 +3067,7 @@ fn full_sample_output_batch_preserves_store_order_and_failure_atomicity() {
 #[test]
 fn saved_fe_and_prediction_outputs_are_native_identity_consistent() {
     let (args, mut spi) = saved_output_fixture();
-    estimate_ols_test(&args, &mut spi).expect("saved-output estimate succeeds");
+    estimate_ols(&args, &mut spi).expect("saved-output estimate succeeds");
 
     let mut saved_sum = 0.0;
     for observation in 1..=spi.nobs {
@@ -3100,7 +3100,7 @@ fn saved_fe_and_prediction_outputs_are_native_identity_consistent() {
 #[test]
 fn saved_only_fast_path_matches_fully_materialized_outputs() {
     let (full_args, mut full_spi) = saved_output_fixture();
-    estimate_ols_test(&full_args, &mut full_spi).expect("full saved-output estimate succeeds");
+    estimate_ols(&full_args, &mut full_spi).expect("full saved-output estimate succeeds");
 
     let (mut lean_args, mut lean_spi) = saved_output_fixture();
     replace_argument(&mut lean_args, "output_xb", "output_xb=0".to_owned());
@@ -3116,7 +3116,7 @@ fn saved_only_fast_path_matches_fully_materialized_outputs() {
         "output_saved_channels=1:8".to_owned(),
     );
     lean_spi.nvars = 8;
-    estimate_ols_test(&lean_args, &mut lean_spi).expect("saved-only estimate succeeds");
+    estimate_ols(&lean_args, &mut lean_spi).expect("saved-only estimate succeeds");
 
     for observation in 1..=full_spi.nobs {
         assert_eq!(
@@ -3130,7 +3130,7 @@ fn saved_only_fast_path_matches_fully_materialized_outputs() {
 #[test]
 fn saved_output_store_failures_leave_receipt_incomplete() {
     let (args, mut successful) = saved_output_fixture();
-    estimate_ols_test(&args, &mut successful).expect("saved-output baseline succeeds");
+    estimate_ols(&args, &mut successful).expect("saved-output baseline succeeds");
     let observation_stores = successful
         .stores
         .iter()
@@ -3140,7 +3140,7 @@ fn saved_output_store_failures_leave_receipt_incomplete() {
     for failing_ordinal in 1..=observation_stores {
         let (args, mut spi) = saved_output_fixture();
         spi.fail_store_at = Some(failing_ordinal);
-        let error = estimate_ols_test(&args, &mut spi).expect_err("store failure propagates");
+        let error = estimate_ols(&args, &mut spi).expect_err("store failure propagates");
         assert_eq!(error.code, ErrorCode::Internal, "failure {failing_ordinal}");
         assert_eq!(spi.receipt_complete(), 0.0, "failure {failing_ordinal}");
         assert_eq!(spi.store_calls, failing_ordinal);
@@ -3156,7 +3156,7 @@ fn fixed_width_string_cluster_is_encoded_natively_and_strl_fails_pre_read() {
         spi.string_data
             .insert((4, observation + 1), value.as_bytes().to_vec());
     }
-    estimate_ols_test(&args, &mut spi).expect("fixed-width string cluster succeeds");
+    estimate_ols(&args, &mut spi).expect("fixed-width string cluster succeeds");
     assert_eq!(spi.numeric_reads, 18);
     assert_eq!(spi.matrices["RREC"][0][6], 6.0);
     assert_eq!(spi.matrices["RCLUSTER"][0][2], 3.0);
@@ -3165,7 +3165,7 @@ fn fixed_width_string_cluster_is_encoded_natively_and_strl_fails_pre_read() {
     let (args, mut strl) = fixture(OlsVceKind::Clustered);
     strl.string_variables.insert(4);
     strl.strl_variables.insert(4);
-    let error = estimate_ols_test(&args, &mut strl).expect_err("strL must fail closed");
+    let error = estimate_ols(&args, &mut strl).expect_err("strL must fail closed");
     assert_eq!(error.code, ErrorCode::Unsupported);
     assert_eq!(strl.numeric_reads, 0);
     assert_eq!(strl.store_calls, 0);
@@ -3349,10 +3349,10 @@ fn native_defined_value_table_certification_rejects_malformed_rows() {
 #[test]
 fn licensed_stata_bundle_matches_ordinary_argv_and_rejects_malformed_pre_read() {
     let (args, mut ordinary) = fixture(OlsVceKind::Iid);
-    estimate_ols_test(&args, &mut ordinary).expect("ordinary argv succeeds");
+    estimate_ols(&args, &mut ordinary).expect("ordinary argv succeeds");
 
     let (args, mut packed) = fixture(OlsVceKind::Iid);
-    estimate_ols_test(&bundled(&args), &mut packed).expect("bundle succeeds");
+    estimate_ols(&bundled(&args), &mut packed).expect("bundle succeeds");
     let (args, mut local) = fixture(OlsVceKind::Iid);
     let bundle = bundled(&args)
         .pop()
@@ -3363,7 +3363,7 @@ fn licensed_stata_bundle_matches_ordinary_argv_and_rejects_malformed_pre_read() 
         .to_vec();
     let local_args = [format!("bundle_local={}", bundle.len())];
     local.local_bundle = Some(bundle);
-    estimate_ols_test(&local_args, &mut local).expect("local bundle succeeds");
+    estimate_ols(&local_args, &mut local).expect("local bundle succeeds");
     assert_eq!(local.macro_reads, 1);
     assert_eq!(ordinary.macro_reads, 0);
     assert_eq!(packed.macro_reads, 0);
@@ -3423,7 +3423,7 @@ fn licensed_stata_bundle_matches_ordinary_argv_and_rejects_malformed_pre_read() 
     ];
     for argument in malformed {
         let (_, mut spi) = fixture(OlsVceKind::Iid);
-        let error = estimate_ols_test(&[argument.to_owned()], &mut spi)
+        let error = estimate_ols(&[argument.to_owned()], &mut spi)
             .expect_err("malformed or incomplete bundle is rejected");
         assert!(matches!(
             error.code,
@@ -3437,7 +3437,7 @@ fn licensed_stata_bundle_matches_ordinary_argv_and_rejects_malformed_pre_read() 
     let (args, mut unknown_spi) = fixture(OlsVceKind::Iid);
     let mut unknown = args;
     unknown.push("surprise=1".to_owned());
-    let error = estimate_ols_test(&bundled(&unknown), &mut unknown_spi)
+    let error = estimate_ols(&bundled(&unknown), &mut unknown_spi)
         .expect_err("unknown bundled field is rejected");
     assert_eq!(error.code, ErrorCode::Syntax);
     assert_eq!(unknown_spi.numeric_reads, 0);
@@ -3447,7 +3447,7 @@ fn licensed_stata_bundle_matches_ordinary_argv_and_rejects_malformed_pre_read() 
     let mut mixed = bundled(&args);
     mixed.push("ado=0.5.0".to_owned());
     let error =
-        estimate_ols_test(&mixed, &mut mixed_spi).expect_err("mixed bundle and argv are rejected");
+        estimate_ols(&mixed, &mut mixed_spi).expect_err("mixed bundle and argv are rejected");
     assert_eq!(error.code, ErrorCode::Syntax);
     assert_eq!(mixed_spi.numeric_reads, 0);
     assert_eq!(mixed_spi.store_calls, 0);
@@ -3467,14 +3467,14 @@ fn local_estimation_bundle_validates_capacity_bytes_and_framing_before_reads() {
         "999999999999999999999999",
     ] {
         let (_, mut spi) = fixture(OlsVceKind::Iid);
-        assert!(estimate_ols_test(&[format!("bundle_local={descriptor}")], &mut spi).is_err());
+        assert!(estimate_ols(&[format!("bundle_local={descriptor}")], &mut spi).is_err());
         assert_eq!(
             (spi.macro_reads, spi.numeric_reads, spi.store_calls),
             (0, 0, 0)
         );
     }
     let (_, mut spi) = fixture(OlsVceKind::Iid);
-    assert!(estimate_ols_test(
+    assert!(estimate_ols(
         &["bundle_local=6".to_owned(), "ado=0.5.0".to_owned()],
         &mut spi
     )
@@ -3491,7 +3491,7 @@ fn local_estimation_bundle_validates_capacity_bytes_and_framing_before_reads() {
     ] {
         let (_, mut spi) = fixture(OlsVceKind::Iid);
         spi.local_bundle = payload;
-        assert!(estimate_ols_test(&[format!("bundle_local={declared}")], &mut spi).is_err());
+        assert!(estimate_ols(&[format!("bundle_local={declared}")], &mut spi).is_err());
         assert_eq!(spi.macro_reads, 1);
         assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
         assert_eq!(spi.receipt_complete(), 0.0);
@@ -3504,7 +3504,7 @@ fn local_estimation_bundle_validates_capacity_bytes_and_framing_before_reads() {
     let declared = payload.len();
     payload.push_str("trailing-data");
     overlong.local_bundle = Some(payload.into_bytes());
-    assert!(estimate_ols_test(&[format!("bundle_local={declared}")], &mut overlong).is_err());
+    assert!(estimate_ols(&[format!("bundle_local={declared}")], &mut overlong).is_err());
     assert_eq!(
         (
             overlong.macro_reads,
@@ -3526,7 +3526,7 @@ fn local_estimation_bundle_validates_capacity_bytes_and_framing_before_reads() {
 #[test]
 fn every_output_store_failure_leaves_receipt_incomplete() {
     let (args, mut successful) = fixture(OlsVceKind::Iid);
-    estimate_ols_test(&args, &mut successful).expect("baseline estimate succeeds");
+    estimate_ols(&args, &mut successful).expect("baseline estimate succeeds");
     let total_stores = successful.store_calls;
     assert_eq!(total_stores, 284 + crate::memory_report::CELLS);
     assert_eq!(successful.stores.capacity(), 512);
@@ -3535,7 +3535,7 @@ fn every_output_store_failure_leaves_receipt_incomplete() {
         let (args, mut spi) = fixture(OlsVceKind::Iid);
         let prepared_capacity = spi.stores.capacity();
         spi.fail_store_at = Some(failing_ordinal);
-        let error = estimate_ols_test(&args, &mut spi).expect_err("store failure propagates");
+        let error = estimate_ols(&args, &mut spi).expect_err("store failure propagates");
         assert_eq!(error.code, ErrorCode::Internal, "failure {failing_ordinal}");
         assert_eq!(spi.receipt_complete(), 0.0, "failure {failing_ordinal}");
         assert_eq!(spi.store_calls, failing_ordinal);
@@ -3547,7 +3547,7 @@ fn every_output_store_failure_leaves_receipt_incomplete() {
 fn nonpositive_residual_dof_stores_nothing_and_leaves_receipt_incomplete() {
     let (args, mut spi) = fixture(OlsVceKind::Iid);
     spi.nobs = 2;
-    let error = estimate_ols_test(&args, &mut spi)
+    let error = estimate_ols(&args, &mut spi)
         .expect_err("a saturated model must fail before result storage");
     assert_eq!(error.code, ErrorCode::InsufficientObservations);
     assert_eq!(spi.store_calls, 0);
@@ -3558,7 +3558,7 @@ fn nonpositive_residual_dof_stores_nothing_and_leaves_receipt_incomplete() {
 #[test]
 fn omitted_factor_slot_is_zero_scattered_and_noconstant_layout_is_exact() {
     let (factor_args, mut factor_spi) = factor_scatter_fixture();
-    estimate_ols_test(&factor_args, &mut factor_spi).expect("factor estimate succeeds");
+    estimate_ols(&factor_args, &mut factor_spi).expect("factor estimate succeeds");
     assert_eq!(factor_spi.matrices["RREC"][0][4], 3.0);
     assert_eq!(factor_spi.matrices["RB"][0][0], 0.0);
     assert_eq!(factor_spi.matrices["RSTATUS"][0][0], 1.0);
@@ -3599,7 +3599,7 @@ fn omitted_factor_slot_is_zero_scattered_and_noconstant_layout_is_exact() {
     noconstant_spi
         .matrices
         .insert("RMARKV".to_owned(), zero_matrix(1, 1));
-    estimate_ols_test(&noconstant_args, &mut noconstant_spi).expect("noconstant estimate succeeds");
+    estimate_ols(&noconstant_args, &mut noconstant_spi).expect("noconstant estimate succeeds");
     assert_eq!(noconstant_spi.matrices["RREC"][0][4], 1.0);
     assert_eq!(noconstant_spi.matrices["RREC"][0][5], 1.0);
     assert_eq!(noconstant_spi.matrices["RSTATUS"][0][1], 1.0);
@@ -3614,8 +3614,8 @@ fn handshake_layout_and_interrupt_fail_before_any_output_write() {
         .find(|argument| argument.starts_with("plugin="))
         .expect("plugin argument")
         .clone_from(&"plugin=wrong".to_owned());
-    let error = estimate_ols_test(&handshake_args, &mut handshake_spi)
-        .expect_err("plugin mismatch rejected");
+    let error =
+        estimate_ols(&handshake_args, &mut handshake_spi).expect_err("plugin mismatch rejected");
     assert_eq!(error.code, ErrorCode::ProtocolMismatch);
     assert_eq!(handshake_spi.numeric_reads, 0);
     assert_eq!(handshake_spi.store_calls, 0);
@@ -3626,7 +3626,7 @@ fn handshake_layout_and_interrupt_fail_before_any_output_write() {
         "protocol_minor",
         "protocol_minor=0".to_owned(),
     );
-    let error = estimate_ols_test(&old_action_args, &mut old_action_spi)
+    let error = estimate_ols(&old_action_args, &mut old_action_spi)
         .expect_err("pre-estimation action protocol rejected");
     assert_eq!(error.code, ErrorCode::ProtocolMismatch);
     assert_eq!(old_action_spi.numeric_reads, 0);
@@ -3638,7 +3638,7 @@ fn handshake_layout_and_interrupt_fail_before_any_output_write() {
         "result_minor",
         "result_minor=0".to_owned(),
     );
-    let error = estimate_ols_test(&old_result_args, &mut old_result_spi)
+    let error = estimate_ols(&old_result_args, &mut old_result_spi)
         .expect_err("pre-rebase result wire rejected");
     assert_eq!(error.code, ErrorCode::ProtocolMismatch);
     assert_eq!(old_result_spi.numeric_reads, 0);
@@ -3649,22 +3649,22 @@ fn handshake_layout_and_interrupt_fail_before_any_output_write() {
         .matrices
         .insert("RV".to_owned(), zero_matrix(1, 2));
     let error =
-        estimate_ols_test(&layout_args, &mut layout_spi).expect_err("bad result layout rejected");
+        estimate_ols(&layout_args, &mut layout_spi).expect_err("bad result layout rejected");
     assert_eq!(error.code, ErrorCode::InvalidArgument);
     assert_eq!(layout_spi.numeric_reads, 0);
     assert_eq!(layout_spi.store_calls, 0);
 
     let (stale_args, mut stale_spi) = fixture(OlsVceKind::Iid);
     stale_spi.matrices.get_mut("RREC").expect("receipt")[0][RECEIPT_COMPLETE_COLUMN - 1] = 1.0;
-    let error = estimate_ols_test(&stale_args, &mut stale_spi)
-        .expect_err("stale completed receipt rejected");
+    let error =
+        estimate_ols(&stale_args, &mut stale_spi).expect_err("stale completed receipt rejected");
     assert_eq!(error.code, ErrorCode::InvalidArgument);
     assert_eq!(stale_spi.numeric_reads, 0);
     assert_eq!(stale_spi.store_calls, 0);
 
     let (sentinel_args, mut sentinel_spi) = fixture(OlsVceKind::Iid);
     sentinel_spi.matrices.get_mut("CT").expect("cluster terms")[0][0] = 1.0;
-    let error = estimate_ols_test(&sentinel_args, &mut sentinel_spi)
+    let error = estimate_ols(&sentinel_args, &mut sentinel_spi)
         .expect_err("nonzero empty-cluster sentinel rejected");
     assert_eq!(error.code, ErrorCode::InvalidArgument);
     assert_eq!(sentinel_spi.numeric_reads, 0);
@@ -3672,9 +3672,9 @@ fn handshake_layout_and_interrupt_fail_before_any_output_write() {
 
     let (interrupt_args, mut interrupt_spi) = fixture(OlsVceKind::Iid);
     let (baseline_args, mut baseline_spi) = fixture(OlsVceKind::Iid);
-    estimate_ols_test(&baseline_args, &mut baseline_spi).expect("baseline estimate succeeds");
+    estimate_ols(&baseline_args, &mut baseline_spi).expect("baseline estimate succeeds");
     interrupt_spi.interrupt_at = Some(baseline_spi.interrupt_checks);
-    let error = estimate_ols_test(&interrupt_args, &mut interrupt_spi)
+    let error = estimate_ols(&interrupt_args, &mut interrupt_spi)
         .expect_err("last precommit interrupt propagates");
     assert_eq!(error.code, ErrorCode::Interrupted);
     assert_eq!(interrupt_spi.store_calls, 0);
