@@ -778,11 +778,20 @@ fn cluster_dimension_bounds_and_single_group_dimensions_fail_closed() {
         false,
         CaseWeights::Unit,
     );
-    let error = prepare_model(
+    // Zero cluster terms prepare an unclustered owner; clustered inference
+    // on it fails closed.
+    let unclustered = prepare_model(
         &empty_request.ols,
         &empty_request.clusters,
         &empty_loaded,
         false,
+    )
+    .expect("zero cluster terms prepare an unclustered owner");
+    assert_eq!(unclustered.clusters().len(), 0);
+    let error = fit_prepared_model_clustered_with_loaded_moments(
+        &unclustered,
+        PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect_err("zero cluster dimensions must fail");
     assert_eq!(error.code, fereg_core::ErrorCode::InvalidArgument);
