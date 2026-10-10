@@ -995,6 +995,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
 }
 
 // Resident buffers and scratch-file capacity have distinct owners.
+#[derive(Clone, Copy)]
 struct PpmlStorageContribution {
     resident_bytes: u128,
     io_buffer_bytes: u128,
@@ -1042,30 +1043,187 @@ fn estimate_route(
     config: PpmlMemoryConfig,
     route: PpmlMemoryRoute,
 ) -> Result<PpmlMemoryInventory> {
-    let n = dimensions.observations as u128;
-    let original_n = dimensions.original_observations as u128;
-    let candidate_n = dimensions.candidate_observations as u128;
-    let loaded = dimensions.loaded_numeric_columns as u128;
-    let k = dimensions.finite_columns as u128;
-    let coefficient_slots = dimensions.coefficient_slots as u128;
-    let reported_coefficient_slots = dimensions.reported_coefficient_slots as u128;
-    let fe = dimensions.fe_dimensions as u128;
-    let levels = dimensions.fe_total_levels as u128;
-    let total_fe_channels = dimensions.fe_total_channels as u128;
-    let maximum_fe_channels = dimensions.fe_max_channels as u128;
-    let maximum_level_members = dimensions.fe_max_level_members as u128;
-    let fe_directions = dimensions.fe_coefficient_directions as u128;
-    let clusters = dimensions.cluster_dimensions as u128;
-    let subset_groups = dimensions.cluster_subset_groups as u128;
-    let threads = dimensions.threads as u128;
-    let pool = config.poolsize.min(dimensions.finite_columns) as u128;
-    let word = size_of::<usize>() as u128;
+    let axes = RouteAxes::new(dimensions, config);
+    let topology = route_topology(dimensions, axes)?;
+    let ledgers = route_ledgers(dimensions, axes)?;
+    let separation_workspaces = route_separation_workspaces(dimensions, axes, ledgers)?;
+    let generation = route_generation(dimensions, axes, topology)?;
+    let rebase = route_rebase(dimensions, axes, ledgers, generation)?;
+    let linear = route_linear(dimensions, route, axes)?;
+    let detection = route_detection(dimensions, axes, topology, ledgers, linear)?;
+    let results = route_results(dimensions, axes, linear)?;
+    let publication = route_publication(dimensions, config, axes, ledgers, linear)?;
+    let iteration_peaks = route_iteration_peaks(
+        dimensions,
+        axes,
+        topology,
+        ledgers,
+        generation,
+        linear,
+        publication,
+    )?;
+    let separation_peaks = route_separation_peaks(
+        dimensions,
+        separation_workspaces,
+        rebase,
+        detection,
+        iteration_peaks,
+    )?;
+    let final_peaks = route_final_peaks(
+        axes,
+        ledgers,
+        results,
+        publication,
+        iteration_peaks,
+        separation_peaks,
+    )?;
 
+    Ok(PpmlMemoryInventory {
+        preparation_metadata_transient_bytes: dimensions.metadata.preparation_transient_bytes,
+        result_metadata_bytes: iteration_peaks.result_metadata_bytes,
+        embedding_resident_bytes: config.embedding_resident_bytes,
+        input_owner_supplement_bytes: iteration_peaks.input_owner_supplement_bytes,
+        canonical_numeric_bytes: topology.canonical_numeric_bytes,
+        retained_base_adjustment_bytes: topology.retained_base_adjustment_bytes,
+        retained_raw_preseparation_probability_weight_bytes: topology
+            .retained_raw_preseparation_probability_weight_bytes,
+        topology_bytes: topology.topology_bytes,
+        fe_solver_topology_bytes: topology.fe_solver_topology_bytes,
+        cluster_topology_bytes: topology.cluster_topology_bytes,
+        steady_row_map_bytes: ledgers.steady_row_map_bytes,
+        prepared_drop_reason_bytes: ledgers.prepared_drop_reason_bytes,
+        separation_activity_bytes: ledgers.separation_activity_bytes,
+        separation_reason_bytes: ledgers.separation_reason_bytes,
+        row_ledger_bytes: ledgers.row_ledger_bytes,
+        row_axis_arc_header_bytes: ledgers.row_axis_arc_header_bytes,
+        prepared_model_metadata_bytes: generation.prepared_model_metadata_bytes,
+        prepared_generation_bytes: generation.prepared_generation_bytes,
+        prepared_generation_supplement_bytes: generation.prepared_generation_supplement_bytes,
+        separation_replacement_generation_bytes: rebase.separation_replacement_generation_bytes,
+        separation_rebase_proposal_bytes: rebase.separation_rebase_proposal_bytes,
+        separation_rebase_direction_bytes: rebase.separation_rebase_direction_bytes,
+        separation_rebase_staging_bytes: rebase.separation_rebase_staging_bytes,
+        separation_rebase_bytes: rebase.separation_rebase_bytes,
+        separation_rebase_arc_header_bytes: rebase.separation_rebase_arc_header_bytes,
+        final_drop_reason_bytes: ledgers.final_drop_reason_bytes,
+        separation_report_row_bytes: ledgers.separation_report_row_bytes,
+        separation_report_reason_bytes: ledgers.separation_report_reason_bytes,
+        separation_method_report_row_bytes: ledgers.separation_method_report_row_bytes,
+        separation_method_report_level_bytes: ledgers.separation_method_report_level_bytes,
+        separation_method_report_record_bytes: ledgers.separation_method_report_record_bytes,
+        separation_generation_hash_bytes: ledgers.separation_generation_hash_bytes,
+        separation_exact_level_transient_bytes: ledgers.separation_exact_level_transient_bytes,
+        separation_singleton_workspace_bytes: separation_workspaces
+            .separation_singleton_workspace_bytes,
+        separation_cascade_workspace_bytes: separation_workspaces
+            .separation_cascade_workspace_bytes,
+        iteration_buffer_bytes: linear.iteration_buffer_bytes,
+        coefficient_buffer_bytes: linear.coefficient_buffer_bytes,
+        retained_within_resident_bytes: linear.storage.resident_bytes,
+        retained_within_io_buffer_bytes: linear.storage.io_buffer_bytes,
+        retained_within_scratch_bytes: linear.storage.scratch_file_bytes,
+        linear_vector_bytes: linear.linear_vector_bytes,
+        fe_workspace_bytes: linear.fe_workspace_bytes,
+        linear_workspace_bytes: linear.linear_workspace_bytes,
+        linear_result_metadata_bytes: linear.linear_result_metadata_bytes,
+        separation_workspace_bytes: detection.separation_workspace_bytes,
+        simplex_combined_bytes: detection.simplex_combined_bytes,
+        mu_exploration_retained_bytes: detection.mu_exploration_retained_bytes,
+        inference_workspace_bytes: results.inference_workspace_bytes,
+        inference_result_bytes: results.inference_result_bytes,
+        fe_recovery_workspace_bytes: publication.fe_recovery_workspace_bytes,
+        saved_output_bytes: publication.saved_output_bytes,
+        publication_bytes: publication.publication_bytes,
+        publication_result_bytes: publication.publication_result_bytes,
+        publication_validator_workspace_bytes: publication.publication_validator_workspace_bytes,
+        diagnostic_bytes: publication.diagnostic_bytes,
+        preparation_peak_bytes: iteration_peaks.preparation_peak_bytes,
+        separation_peak_bytes: separation_peaks.separation_peak_bytes,
+        separation_mu_peak_bytes: separation_peaks.separation_mu_peak_bytes,
+        iteration_peak_bytes: iteration_peaks.iteration_peak_bytes,
+        audit_equivalence_refresh_transient_bytes: iteration_peaks
+            .audit_equivalence_refresh_transient_bytes,
+        weight_response_refresh_peak_bytes: iteration_peaks.weight_response_refresh_peak_bytes,
+        post_solve_transient_bytes: iteration_peaks.post_solve_transient_bytes,
+        post_solve_peak_bytes: iteration_peaks.post_solve_peak_bytes,
+        objective_line_search_peak_bytes: iteration_peaks.objective_line_search_peak_bytes,
+        strict_final_transient_bytes: final_peaks.strict_final_transient_bytes,
+        strict_final_metadata_transient_bytes: final_peaks.strict_final_metadata_transient_bytes,
+        strict_final_peak_bytes: final_peaks.strict_final_peak_bytes,
+        inference_peak_bytes: final_peaks.inference_peak_bytes,
+        fe_recovery_peak_bytes: final_peaks.fe_recovery_peak_bytes,
+        publication_peak_bytes: final_peaks.publication_peak_bytes,
+        peak_bytes: final_peaks.peak_bytes,
+    })
+}
+
+/// Dimensions widened once for the checked u128 route model.
+#[derive(Clone, Copy)]
+struct RouteAxes {
+    n: u128,
+    original_n: u128,
+    candidate_n: u128,
+    loaded: u128,
+    k: u128,
+    coefficient_slots: u128,
+    reported_coefficient_slots: u128,
+    fe: u128,
+    levels: u128,
+    total_fe_channels: u128,
+    maximum_fe_channels: u128,
+    maximum_level_members: u128,
+    fe_directions: u128,
+    clusters: u128,
+    subset_groups: u128,
+    threads: u128,
+    pool: u128,
+    word: u128,
+    embedding_resident_bytes: u128,
+}
+
+impl RouteAxes {
+    fn new(dimensions: PpmlMemoryDimensions, config: PpmlMemoryConfig) -> Self {
+        Self {
+            n: dimensions.observations as u128,
+            original_n: dimensions.original_observations as u128,
+            candidate_n: dimensions.candidate_observations as u128,
+            loaded: dimensions.loaded_numeric_columns as u128,
+            k: dimensions.finite_columns as u128,
+            coefficient_slots: dimensions.coefficient_slots as u128,
+            reported_coefficient_slots: dimensions.reported_coefficient_slots as u128,
+            fe: dimensions.fe_dimensions as u128,
+            levels: dimensions.fe_total_levels as u128,
+            total_fe_channels: dimensions.fe_total_channels as u128,
+            maximum_fe_channels: dimensions.fe_max_channels as u128,
+            maximum_level_members: dimensions.fe_max_level_members as u128,
+            fe_directions: dimensions.fe_coefficient_directions as u128,
+            clusters: dimensions.cluster_dimensions as u128,
+            subset_groups: dimensions.cluster_subset_groups as u128,
+            threads: dimensions.threads as u128,
+            pool: config.poolsize.min(dimensions.finite_columns) as u128,
+            word: size_of::<usize>() as u128,
+            embedding_resident_bytes: config.embedding_resident_bytes,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct RouteTopology {
+    canonical_numeric_bytes: u128,
+    retained_base_adjustment_bytes: u128,
+    retained_raw_preseparation_probability_weight_bytes: u128,
+    topology_bytes: u128,
+    fe_solver_topology_bytes: u128,
+    cluster_topology_bytes: u128,
+}
+
+/// Canonical numerics, adjustment/weight owners and FE/cluster topology.
+fn route_topology(dimensions: PpmlMemoryDimensions, axes: RouteAxes) -> Result<RouteTopology> {
     let canonical_numeric_bytes = checked_sum(&[
-        matrix_bytes::<f64>(n, loaded, "canonical numeric source cells")?,
+        matrix_bytes::<f64>(axes.n, axes.loaded, "canonical numeric source cells")?,
         // Outcome, prior weight, and canonical offset.
-        matrix_bytes::<f64>(n, 3, "canonical PPML scalar columns")?,
-        bytes_f64(k)?,
+        matrix_bytes::<f64>(axes.n, 3, "canonical PPML scalar columns")?,
+        bytes_f64(axes.k)?,
     ])?;
     let retained_base_adjustment_bytes =
         bytes_f64(dimensions.retained_base_adjustment_capacity_elements as u128)?;
@@ -1073,41 +1231,46 @@ fn estimate_route(
         bytes_f64(dimensions.retained_raw_preseparation_probability_weight_elements as u128)?;
     let topology_bytes = checked_sum(&[
         checked_mul(
-            checked_mul(n, fe, "PPML observation-FE codes")?,
+            checked_mul(axes.n, axes.fe, "PPML observation-FE codes")?,
             4,
             "PPML FE code bytes",
         )?,
         checked_mul(
-            checked_mul(n, fe, "PPML observation-FE memberships")?,
-            word,
+            checked_mul(axes.n, axes.fe, "PPML observation-FE memberships")?,
+            axes.word,
             "PPML FE membership bytes",
         )?,
-        checked_mul(levels, 3 * word, "PPML FE level offsets and permutations")?,
-        matrix_bytes::<f64>(fe_directions, 2, "PPML FE coefficient work")?,
+        checked_mul(
+            axes.levels,
+            3 * axes.word,
+            "PPML FE level offsets and permutations",
+        )?,
+        matrix_bytes::<f64>(axes.fe_directions, 2, "PPML FE coefficient work")?,
     ])?;
-    let fe_solver_topology_bytes = if fe == 0 {
+    let fe_solver_topology_bytes = if axes.fe == 0 {
         0
     } else {
-        let slope_channels = total_fe_channels
-            .checked_sub(fe)
+        let slope_channels = axes
+            .total_fe_channels
+            .checked_sub(axes.fe)
             .ok_or_else(|| allocation("PPML FE channel count is smaller than its effect count"))?;
         let legacy_envelope = checked_sum(&[
             checked_mul(
-                checked_mul(n, fe, "PPML reusable FE codes")?,
-                word,
+                checked_mul(axes.n, axes.fe, "PPML reusable FE codes")?,
+                axes.word,
                 "PPML reusable FE code bytes",
             )?,
             checked_mul(
-                checked_mul(n, fe, "PPML reusable FE memberships")?,
-                word,
+                checked_mul(axes.n, axes.fe, "PPML reusable FE memberships")?,
+                axes.word,
                 "PPML reusable FE membership bytes",
             )?,
             checked_mul(
-                levels,
-                checked_mul(2, word, "PPML reusable FE level metadata")?,
+                axes.levels,
+                checked_mul(2, axes.word, "PPML reusable FE level metadata")?,
                 "PPML reusable FE level metadata bytes",
             )?,
-            matrix_bytes::<f64>(n, slope_channels, "PPML reusable FE slope values")?,
+            matrix_bytes::<f64>(axes.n, slope_channels, "PPML reusable FE slope values")?,
         ])?;
         let construction = crate::memory::OwnedFeDesignMemoryEstimate::from_summary(
             dimensions.observations,
@@ -1124,27 +1287,62 @@ fn estimate_route(
     };
     let cluster_topology_bytes = checked_sum(&[
         checked_mul(
-            checked_mul(n, clusters, "PPML observation-cluster codes")?,
+            checked_mul(axes.n, axes.clusters, "PPML observation-cluster codes")?,
             4,
             "PPML cluster code bytes",
         )?,
-        checked_mul(subset_groups, 2 * word, "PPML cluster group topology")?,
+        checked_mul(
+            axes.subset_groups,
+            2 * axes.word,
+            "PPML cluster group topology",
+        )?,
     ])?;
+    Ok(RouteTopology {
+        canonical_numeric_bytes,
+        retained_base_adjustment_bytes,
+        retained_raw_preseparation_probability_weight_bytes,
+        topology_bytes,
+        fe_solver_topology_bytes,
+        cluster_topology_bytes,
+    })
+}
+
+#[derive(Clone, Copy)]
+struct RouteLedgers {
+    steady_row_map_bytes: u128,
+    prepared_drop_reason_bytes: u128,
+    separation_activity_bytes: u128,
+    separation_reason_bytes: u128,
+    row_ledger_bytes: u128,
+    arc_vec_control_block_bytes: u128,
+    row_axis_arc_header_bytes: u128,
+    final_drop_reason_bytes: u128,
+    separation_report_row_bytes: u128,
+    separation_report_reason_bytes: u128,
+    separation_method_report_row_bytes: u128,
+    separation_method_report_level_bytes: u128,
+    separation_method_report_record_bytes: u128,
+    separation_generation_hash_bytes: u128,
+    separation_exact_level_transient_bytes: u128,
+}
+
+/// Original-axis row ledgers, final drop reasons and retained separation records.
+fn route_ledgers(dimensions: PpmlMemoryDimensions, axes: RouteAxes) -> Result<RouteLedgers> {
     // The immutable candidate axis keeps the capacity reserved during
     // numeric compaction, while the current prepared-generation map keeps
     // only active rows. Original-axis ledgers use their concrete enum widths,
     // including the byte-wide Vec<bool> activity mask.
     let steady_row_map_bytes = checked_mul(
         checked_sum(&[
-            candidate_n,
-            checked_mul(n, 2, "PPML retained and prepared generation row maps")?,
+            axes.candidate_n,
+            checked_mul(axes.n, 2, "PPML retained and prepared generation row maps")?,
         ])?,
-        word,
+        axes.word,
         "PPML candidate, retained, and prepared row-map capacity bytes",
     )?;
     let prepared_drop_reason_bytes = checked_mul(
         checked_mul(
-            original_n,
+            axes.original_n,
             PREPARED_DROP_REASON_COPY_COUNT,
             "PPML prepared drop-reason elements",
         )?,
@@ -1152,12 +1350,12 @@ fn estimate_route(
         "PPML prepared drop-reason bytes",
     )?;
     let separation_activity_bytes = checked_mul(
-        original_n,
+        axes.original_n,
         size_of::<bool>() as u128,
         "PPML separation activity",
     )?;
     let separation_reason_bytes = checked_mul(
-        original_n,
+        axes.original_n,
         size_of::<Option<SeparationDropReason>>() as u128,
         "PPML original-axis separation reasons",
     )?;
@@ -1168,7 +1366,7 @@ fn estimate_route(
         separation_reason_bytes,
     ])?;
     let arc_vec_control_block_bytes = checked_sum(&[
-        checked_mul(2, word, "PPML Arc strong/weak counters")?,
+        checked_mul(2, axes.word, "PPML Arc strong/weak counters")?,
         size_of::<Vec<usize>>() as u128,
     ])?;
     // Immutable candidate rows and initial numeric drop reasons each own one
@@ -1182,25 +1380,28 @@ fn estimate_route(
         "PPML steady Arc<Vec> row-axis control blocks",
     )?;
     let final_drop_reason_bytes = checked_mul(
-        original_n,
+        axes.original_n,
         size_of::<DropReason>() as u128,
         "PPML final merged drop reasons",
     )?;
     let separation_report_row_bytes = checked_mul(
-        checked_mul(n, 2, "PPML separation report row vectors")?,
-        word,
+        checked_mul(axes.n, 2, "PPML separation report row vectors")?,
+        axes.word,
         "PPML separation report row bytes",
     )?;
     let separation_report_reason_bytes = checked_mul(
-        n,
+        axes.n,
         size_of::<Option<SeparationDropReason>>() as u128,
         "PPML separation report reasons",
     )?;
-    let separation_method_report_row_bytes =
-        checked_mul(n, word, "PPML accepted separation method row identities")?;
+    let separation_method_report_row_bytes = checked_mul(
+        axes.n,
+        axes.word,
+        "PPML accepted separation method row identities",
+    )?;
     let separation_method_report_level_bytes = if dimensions.separation_exact_fe_enabled {
         checked_mul(
-            levels,
+            axes.levels,
             size_of::<ExactFeLevelIdentity>() as u128,
             "PPML accepted exact-FE level identities",
         )?
@@ -1228,31 +1429,66 @@ fn estimate_route(
         2,
         "PPML exact-FE cascade level workspaces",
     )?;
+    Ok(RouteLedgers {
+        steady_row_map_bytes,
+        prepared_drop_reason_bytes,
+        separation_activity_bytes,
+        separation_reason_bytes,
+        row_ledger_bytes,
+        arc_vec_control_block_bytes,
+        row_axis_arc_header_bytes,
+        final_drop_reason_bytes,
+        separation_report_row_bytes,
+        separation_report_reason_bytes,
+        separation_method_report_row_bytes,
+        separation_method_report_level_bytes,
+        separation_method_report_record_bytes,
+        separation_generation_hash_bytes,
+        separation_exact_level_transient_bytes,
+    })
+}
+
+#[derive(Clone, Copy)]
+struct RouteSeparationWorkspaces {
+    separation_singleton_workspace_bytes: u128,
+    separation_cascade_workspace_bytes: u128,
+}
+
+/// Singleton and cascade separation workspaces.
+fn route_separation_workspaces(
+    dimensions: PpmlMemoryDimensions,
+    axes: RouteAxes,
+    ledgers: RouteLedgers,
+) -> Result<RouteSeparationWorkspaces> {
     let separation_singleton_workspace_bytes = if dimensions.separation_singleton_enabled {
         checked_sum(&[
             checked_mul(
-                levels,
+                axes.levels,
                 size_of::<u128>() as u128,
                 "PPML singleton exact multiplicity bytes",
             )?,
             checked_mul(
-                checked_sum(&[fe, 1])?,
-                word,
+                checked_sum(&[axes.fe, 1])?,
+                axes.word,
                 "PPML singleton source offset bytes",
             )?,
             checked_mul(
-                fe,
+                axes.fe,
                 size_of::<(&[u32], &LevelIndex)>() as u128,
                 "PPML singleton borrowed source views",
             )?,
             checked_mul(
-                loaded,
+                axes.loaded,
                 size_of::<CategoricalCodeView<'_>>() as u128,
                 "PPML singleton compact categorical views",
             )?,
-            checked_mul(n, word, "PPML singleton queue and sorted output bytes")?,
             checked_mul(
-                n,
+                axes.n,
+                axes.word,
+                "PPML singleton queue and sorted output bytes",
+            )?,
+            checked_mul(
+                axes.n,
                 checked_mul(
                     2,
                     size_of::<bool>() as u128,
@@ -1268,7 +1504,7 @@ fn estimate_route(
         && (dimensions.separation_singleton_enabled || dimensions.separation_exact_fe_enabled)
     {
         let outer_active_and_reason = checked_mul(
-            n,
+            axes.n,
             checked_mul(
                 2,
                 size_of::<bool>() as u128,
@@ -1283,13 +1519,13 @@ fn estimate_route(
         };
         let exact_inner = if dimensions.separation_exact_fe_enabled {
             checked_sum(&[
-                checked_mul(n, word, "PPML cascade exact-FE row workspace")?,
+                checked_mul(axes.n, axes.word, "PPML cascade exact-FE row workspace")?,
                 checked_mul(
-                    n,
+                    axes.n,
                     size_of::<bool>() as u128,
                     "PPML cascade exact-FE selection mask",
                 )?,
-                separation_exact_level_transient_bytes,
+                ledgers.separation_exact_level_transient_bytes,
             ])?
         } else {
             0
@@ -1298,15 +1534,35 @@ fn estimate_route(
     } else {
         0
     };
+    Ok(RouteSeparationWorkspaces {
+        separation_singleton_workspace_bytes,
+        separation_cascade_workspace_bytes,
+    })
+}
+
+#[derive(Clone, Copy)]
+struct RouteGeneration {
+    prepared_model_metadata_bytes: u128,
+    prepared_generation_bytes: u128,
+    prepared_model_payload: u128,
+    prepared_generation_supplement_bytes: u128,
+}
+
+/// Prepared model metadata and the per-generation payload.
+fn route_generation(
+    dimensions: PpmlMemoryDimensions,
+    axes: RouteAxes,
+    topology: RouteTopology,
+) -> Result<RouteGeneration> {
     let prepared_model_metadata_bytes = checked_sum(&[
         dimensions.metadata.prepared_nested_bytes,
         checked_mul(
-            reported_coefficient_slots,
+            axes.reported_coefficient_slots,
             size_of::<PpmlCoefficientStatus>() as u128,
             "PPML original omission statuses",
         )?,
         checked_mul(
-            coefficient_slots,
+            axes.coefficient_slots,
             checked_sum(&[
                 size_of::<PreparedOlsCoefficient>() as u128,
                 size_of::<CoefficientSlot>() as u128,
@@ -1314,7 +1570,7 @@ fn estimate_route(
             "PPML prepared coefficient and report slots",
         )?,
         checked_mul(
-            k,
+            axes.k,
             size_of::<PreparedOlsColumn>() as u128,
             "PPML prepared finite-column metadata",
         )?,
@@ -1324,57 +1580,90 @@ fn estimate_route(
     // The row-scaled metadata includes categorical sources that are absent
     // from the absorbed-effect count (finite factors and cluster-only sources).
     let prepared_generation_bytes = checked_sum(&[
-        matrix_bytes::<f64>(n, checked_sum(&[loaded, 3])?, "PPML generation numerics")?,
+        matrix_bytes::<f64>(
+            axes.n,
+            checked_sum(&[axes.loaded, 3])?,
+            "PPML generation numerics",
+        )?,
         checked_mul(
-            loaded,
+            axes.loaded,
             size_of::<Vec<f64>>() as u128,
             "PPML numeric descriptors",
         )?,
-        checked_mul(n, word, "PPML generation sample row map")?,
-        original_n,
+        checked_mul(axes.n, axes.word, "PPML generation sample row map")?,
+        axes.original_n,
         dimensions.metadata.prepared_nested_bytes,
         dimensions.metadata.generation_fixed_bytes,
         checked_mul(
-            n,
+            axes.n,
             dimensions.metadata.generation_bytes_per_row,
             "PPML generation topology rows",
         )?,
-        checked_mul(levels, word, "PPML generation membership offsets")?,
+        checked_mul(axes.levels, axes.word, "PPML generation membership offsets")?,
         checked_mul(
-            reported_coefficient_slots,
+            axes.reported_coefficient_slots,
             (size_of::<PreparedOlsCoefficient>()
                 + size_of::<PreparedOlsColumn>()
                 + size_of::<CoefficientSlot>()) as u128,
             "PPML generation reserved coefficient axis",
         )?,
     ])?;
-    let generation_row_allowance = checked_mul(n, word, "PPML generation row allowance")?;
+    let generation_row_allowance = checked_mul(axes.n, axes.word, "PPML generation row allowance")?;
     // Both current and replacement generations own this payload; row ledgers
     // and staging remain separate charges at their actual overlap boundaries.
     let prepared_model_payload = checked_sum(&[
-        canonical_numeric_bytes,
-        topology_bytes,
-        cluster_topology_bytes,
+        topology.canonical_numeric_bytes,
+        topology.topology_bytes,
+        topology.cluster_topology_bytes,
         prepared_model_metadata_bytes,
     ])?;
-    let legacy_generation_bytes =
-        checked_sum(&[prepared_model_payload, generation_row_allowance, original_n])?;
+    let legacy_generation_bytes = checked_sum(&[
+        prepared_model_payload,
+        generation_row_allowance,
+        axes.original_n,
+    ])?;
     let prepared_generation_supplement_bytes =
         prepared_generation_bytes.saturating_sub(legacy_generation_bytes);
+    Ok(RouteGeneration {
+        prepared_model_metadata_bytes,
+        prepared_generation_bytes,
+        prepared_model_payload,
+        prepared_generation_supplement_bytes,
+    })
+}
+
+#[derive(Clone, Copy)]
+struct RouteRebase {
+    separation_replacement_generation_bytes: u128,
+    separation_rebase_proposal_bytes: u128,
+    separation_rebase_direction_bytes: u128,
+    separation_rebase_bytes: u128,
+    separation_rebase_staging_bytes: u128,
+    separation_rebase_arc_header_bytes: u128,
+}
+
+/// Atomic old-plus-new separation rebase staging.
+fn route_rebase(
+    dimensions: PpmlMemoryDimensions,
+    axes: RouteAxes,
+    ledgers: RouteLedgers,
+    generation: RouteGeneration,
+) -> Result<RouteRebase> {
     // Atomic rebase is a true old-plus-new transaction.  The ordinary
     // `common` payload below already owns the raw owner, current generation,
     // and steady ledgers.  A replacement generation is built in full before
     // any of those old owners can be released.
     let replacement_drop_reason_bytes = checked_mul(
-        original_n,
+        axes.original_n,
         size_of::<DropReason>() as u128,
         "PPML replacement generation drop reasons",
     )?;
-    let replacement_row_map_bytes = checked_mul(n, word, "PPML replacement generation row map")?;
+    let replacement_row_map_bytes =
+        checked_mul(axes.n, axes.word, "PPML replacement generation row map")?;
     let separation_replacement_generation_bytes = if dimensions.separation_rebase_enabled {
         checked_sum(&[
-            prepared_model_payload,
-            prepared_generation_supplement_bytes,
+            generation.prepared_model_payload,
+            generation.prepared_generation_supplement_bytes,
             dimensions.metadata.preparation_transient_bytes,
             replacement_drop_reason_bytes,
             replacement_row_map_bytes,
@@ -1392,16 +1681,16 @@ fn estimate_route(
     let staged_ledger_bytes = if dimensions.separation_rebase_enabled {
         checked_sum(&[
             checked_mul(
-                original_n,
+                axes.original_n,
                 size_of::<bool>() as u128,
                 "PPML staged separation activity",
             )?,
             checked_mul(
-                original_n,
+                axes.original_n,
                 size_of::<Option<SeparationDropReason>>() as u128,
                 "PPML staged separation reasons",
             )?,
-            checked_mul(n, word, "PPML staged retained row map")?,
+            checked_mul(axes.n, axes.word, "PPML staged retained row map")?,
             separation_rebase_proposal_bytes,
         ])?
     } else {
@@ -1409,7 +1698,7 @@ fn estimate_route(
     };
     let staged_candidate_mask_bytes = if dimensions.separation_rebase_enabled {
         checked_mul(
-            original_n,
+            axes.original_n,
             size_of::<bool>() as u128,
             "PPML staged loaded candidate mask",
         )?
@@ -1421,14 +1710,14 @@ fn estimate_route(
     {
         0
     } else {
-        checked_mul(n, word, "PPML staged raw pweight positions")?
+        checked_mul(axes.n, axes.word, "PPML staged raw pweight positions")?
     };
     let staged_probability_value_bytes = if !dimensions.separation_rebase_enabled
         || dimensions.retained_raw_preseparation_probability_weight_elements == 0
     {
         0
     } else {
-        bytes_f64(n)?
+        bytes_f64(axes.n)?
     };
     // Probability staging first owns positions+values without a replacement.
     // During the new model build the values have moved into the loaded column,
@@ -1437,7 +1726,7 @@ fn estimate_route(
     // Every generation allocates its compact offset after that restoration, so
     // the build-phase generation is bounded by the completed payload minus one
     // guaranteed N-vector.
-    let generation_offset_bytes = bytes_f64(n)?;
+    let generation_offset_bytes = bytes_f64(axes.n)?;
     let replacement_during_build_bytes = if dimensions.separation_rebase_enabled {
         separation_replacement_generation_bytes
             .checked_sub(generation_offset_bytes)
@@ -1467,26 +1756,54 @@ fn estimate_route(
         .checked_sub(separation_replacement_generation_bytes)
         .ok_or_else(|| allocation("PPML rebase staging bound underflows"))?;
     let separation_rebase_arc_header_bytes = if dimensions.separation_rebase_enabled {
-        arc_vec_control_block_bytes
+        ledgers.arc_vec_control_block_bytes
     } else {
         0
     };
+    Ok(RouteRebase {
+        separation_replacement_generation_bytes,
+        separation_rebase_proposal_bytes,
+        separation_rebase_direction_bytes,
+        separation_rebase_bytes,
+        separation_rebase_staging_bytes,
+        separation_rebase_arc_header_bytes,
+    })
+}
+
+#[derive(Clone, Copy)]
+struct RouteLinear {
+    iteration_buffer_bytes: u128,
+    coefficient_buffer_bytes: u128,
+    storage: PpmlStorageContribution,
+    square: u128,
+    fe_workspace_bytes: u128,
+    linear_vector_bytes: u128,
+    linear_workspace_bytes: u128,
+    linear_result_metadata_bytes: u128,
+}
+
+/// IRLS buffers, retained within storage and shared-linear workspaces.
+fn route_linear(
+    dimensions: PpmlMemoryDimensions,
+    route: PpmlMemoryRoute,
+    axes: RouteAxes,
+) -> Result<RouteLinear> {
     let (iteration_cells, coefficient_cells) =
         PpmlIterationLayout::new(dimensions).capacity_counts()?;
     let iteration_buffer_bytes = bytes_f64(checked_sum(&[
         iteration_cells,
-        checked_mul(n, 2, "PPML immutable outcome terms")?,
+        checked_mul(axes.n, 2, "PPML immutable outcome terms")?,
     ])?)?;
     let coefficient_buffer_bytes = bytes_f64(coefficient_cells)?;
-    let storage = storage_contribution(n, k, pool, route)?;
+    let storage = storage_contribution(axes.n, axes.k, axes.pool, route)?;
 
-    let square = checked_mul(k, k, "PPML finite square workspace")?;
+    let square = checked_mul(axes.k, axes.k, "PPML finite square workspace")?;
     let projection_rhs = storage.projection_rhs;
-    let effective_maximum_channels = maximum_fe_channels.max(1);
-    let effective_maximum_level_members = maximum_level_members.max(1);
+    let effective_maximum_channels = axes.maximum_fe_channels.max(1);
+    let effective_maximum_level_members = axes.maximum_level_members.max(1);
     let low_projection_block_cells = match route {
         PpmlMemoryRoute::Fast => 0,
-        PpmlMemoryRoute::Low => checked_mul(n, projection_rhs, "PPML low projection block")?,
+        PpmlMemoryRoute::Low => checked_mul(axes.n, projection_rhs, "PPML low projection block")?,
     };
     // Categorical MAP retains group reductions and certified acceleration in
     // both modes. Low memory sizes every bank by the admitted projection pool;
@@ -1497,9 +1814,9 @@ fn estimate_route(
         // Fast's historical reserve also covers noncategorical designs.
         checked_sum(&crate::fe::categorical_parallel_counts(
             dimensions.fe_max_levels as u128,
-            n,
+            axes.n,
             projection_rhs,
-            threads,
+            axes.threads,
         )?)?
     } else {
         0
@@ -1507,9 +1824,9 @@ fn estimate_route(
     let categorical_accelerator_cells = crate::fe::CategoricalAcceleratorCapacity::new(
         dimensions.fe_dimensions,
         dimensions.fe_total_channels == dimensions.fe_dimensions,
-        n,
+        axes.n,
         projection_rhs,
-        levels,
+        axes.levels,
         dimensions.fe_max_levels as u128,
     )?
     .cells(projection_rhs)?;
@@ -1540,17 +1857,19 @@ fn estimate_route(
     // accepted frozen-step coefficients consume six; the session row consumes
     // one. Strict's second coefficient bank is charged in its transient below.
     let linear_vector_bytes = checked_sum(&[
-        matrix_bytes::<f64>(n, 7, "PPML linear observation vectors")?,
-        matrix_bytes::<f64>(k, 11, "PPML linear rank vectors")?,
+        matrix_bytes::<f64>(axes.n, 7, "PPML linear observation vectors")?,
+        matrix_bytes::<f64>(axes.k, 11, "PPML linear rank vectors")?,
         checked_mul(
-            coefficient_slots,
-            checked_mul(4, word, "PPML linear slot bookkeeping width")?,
+            axes.coefficient_slots,
+            checked_mul(4, axes.word, "PPML linear slot bookkeeping width")?,
             "PPML linear slot bookkeeping",
         )?,
     ])?;
     let retained_moment_partial_cells = match route {
         PpmlMemoryRoute::Fast => 0,
-        PpmlMemoryRoute::Low => crate::ols::retained_scratch_moment_envelope(n, k, threads)?,
+        PpmlMemoryRoute::Low => {
+            crate::ols::retained_scratch_moment_envelope(axes.n, axes.k, axes.threads)?
+        }
     };
     let linear_workspace_bytes = checked_sum(&[
         matrix_bytes::<f64>(
@@ -1560,30 +1879,30 @@ fn estimate_route(
         )?,
         bytes_f64(retained_moment_partial_cells)?,
     ])?;
-    let reported_coefficient_workspace_slots = if coefficient_slots == 0 {
+    let reported_coefficient_workspace_slots = if axes.coefficient_slots == 0 {
         0
     } else {
-        coefficient_slots.max(4)
+        axes.coefficient_slots.max(4)
     };
     let linear_result_metadata_bytes = checked_sum(&[
         checked_mul(
-            checked_mul(k, 4, "PPML retained linear rank indices")?,
-            word,
+            checked_mul(axes.k, 4, "PPML retained linear rank indices")?,
+            axes.word,
             "PPML retained linear rank-index bytes",
         )?,
         bytes_f64(square)?,
         checked_mul(
-            coefficient_slots,
+            axes.coefficient_slots,
             size_of::<PreparedOlsFittedCoefficient>() as u128,
             "PPML accepted fitted coefficient records",
         )?,
         checked_mul(
-            coefficient_slots,
+            axes.coefficient_slots,
             size_of::<PreparedOlsBreadCoordinate>() as u128,
             "PPML reported bread coordinates",
         )?,
         checked_mul(
-            coefficient_slots,
+            axes.coefficient_slots,
             size_of::<FrozenLinearBasisSlot>() as u128,
             "PPML frozen linear basis slots",
         )?,
@@ -1593,9 +1912,37 @@ fn estimate_route(
             "PPML frozen reported-coefficient workspace",
         )?,
     ])?;
+    Ok(RouteLinear {
+        iteration_buffer_bytes,
+        coefficient_buffer_bytes,
+        storage,
+        square,
+        fe_workspace_bytes,
+        linear_vector_bytes,
+        linear_workspace_bytes,
+        linear_result_metadata_bytes,
+    })
+}
 
+#[derive(Clone, Copy)]
+struct RouteDetection {
+    simplex_combined_bytes: u128,
+    detector_proposal_bytes: u128,
+    numerical_detector_workspace: u128,
+    separation_workspace_bytes: u128,
+    mu_exploration_retained_bytes: u128,
+}
+
+/// Sequential separation detector workspaces.
+fn route_detection(
+    dimensions: PpmlMemoryDimensions,
+    axes: RouteAxes,
+    topology: RouteTopology,
+    ledgers: RouteLedgers,
+    linear: RouteLinear,
+) -> Result<RouteDetection> {
     let detector_vector_cells = checked_mul(
-        n,
+        axes.n,
         dimensions.separation_workspace_vectors as u128,
         "PPML separation detector vectors",
     )?;
@@ -1607,28 +1954,28 @@ fn estimate_route(
         dimensions.separation_workspace_vectors >= 8 || dimensions.simplex_tableau_cells > 0;
     let detector_proposal_bytes = if has_detector {
         checked_mul(
-            n,
-            checked_sum(&[word, 1])?,
+            axes.n,
+            checked_sum(&[axes.word, 1])?,
             "PPML separation detector proposal",
         )?
     } else {
         0
     };
     let detector_certificate_bytes = if has_numerical_detector {
-        matrix_bytes::<f64>(square, 2, "PPML separation certificates")?
+        matrix_bytes::<f64>(linear.square, 2, "PPML separation certificates")?
     } else {
         0
     };
     let separation_linear_projection_bytes = if has_numerical_detector {
         checked_sum(&[
-            coefficient_buffer_bytes,
-            storage.resident_bytes,
-            storage.io_buffer_bytes,
-            fe_solver_topology_bytes,
-            linear_vector_bytes,
-            fe_workspace_bytes,
-            linear_workspace_bytes,
-            linear_result_metadata_bytes,
+            linear.coefficient_buffer_bytes,
+            linear.storage.resident_bytes,
+            linear.storage.io_buffer_bytes,
+            topology.fe_solver_topology_bytes,
+            linear.linear_vector_bytes,
+            linear.fe_workspace_bytes,
+            linear.linear_workspace_bytes,
+            linear.linear_result_metadata_bytes,
         ])?
     } else {
         0
@@ -1650,43 +1997,64 @@ fn estimate_route(
     let separation_workspace_bytes = checked_sum(&[
         simplex_combined_bytes
             .max(numerical_detector_workspace)
-            .max(separation_exact_level_transient_bytes),
+            .max(ledgers.separation_exact_level_transient_bytes),
         detector_proposal_bytes,
     ])?;
     let mu_exploration_retained_bytes = if dimensions.separation_mu_enabled {
-        checked_sum(&[bytes_f64(n)?, MU_EXPLORATION_RECORD_BYTES])?
+        checked_sum(&[bytes_f64(axes.n)?, MU_EXPLORATION_RECORD_BYTES])?
     } else {
         0
     };
-    let cluster_subsets = if clusters == 0 {
+    Ok(RouteDetection {
+        simplex_combined_bytes,
+        detector_proposal_bytes,
+        numerical_detector_workspace,
+        separation_workspace_bytes,
+        mu_exploration_retained_bytes,
+    })
+}
+
+#[derive(Clone, Copy)]
+struct RouteResults {
+    inference_workspace_bytes: u128,
+    inference_result_bytes: u128,
+}
+
+/// Sandwich inference workspaces and retained inference results.
+fn route_results(
+    dimensions: PpmlMemoryDimensions,
+    axes: RouteAxes,
+    linear: RouteLinear,
+) -> Result<RouteResults> {
+    let cluster_subsets = if axes.clusters == 0 {
         0
     } else {
         (1_u128 << dimensions.cluster_dimensions) - 1
     };
     let sandwich_inference_workspace_bytes = checked_sum(&[
-        if clusters == 0 {
-            matrix_bytes::<f64>(square, 6, "PPML sandwich square workspaces")?
+        if axes.clusters == 0 {
+            matrix_bytes::<f64>(linear.square, 6, "PPML sandwich square workspaces")?
         } else {
             super::vce::clustered_score_workspace_bound(
                 dimensions.observations,
                 dimensions.finite_columns,
             )?
             .max(matrix_bytes::<f64>(
-                square,
+                linear.square,
                 6,
                 "PPML sandwich square workspaces",
             )?)
         },
-        matrix_bytes::<f64>(subset_groups, k, "PPML cluster subset scores")?,
+        matrix_bytes::<f64>(axes.subset_groups, axes.k, "PPML cluster subset scores")?,
         checked_mul(
             cluster_subsets,
             size_of::<crate::sandwich::ClusterSubsetReduction>() as u128,
             "PPML reducer subset reports",
         )?,
-        matrix_bytes::<f64>(k, threads.max(1), "PPML sandwich reductions")?,
+        matrix_bytes::<f64>(axes.k, axes.threads.max(1), "PPML sandwich reductions")?,
         // Retain the prior square envelope and conservatively add the complete
         // robust partial bank, including any smaller final numerical rank.
-        if clusters == 0 {
+        if axes.clusters == 0 {
             super::vce::dense_score_partials_bound(
                 dimensions.observations,
                 dimensions.finite_columns,
@@ -1700,14 +2068,14 @@ fn estimate_route(
     // row ordering, with every subset processed sequentially. Numerical rank
     // is known only after preflight, so the inference ceiling must dominate
     // either mutually exclusive branch rather than summing both.
-    let rank_zero_cluster_inventory_bytes = if clusters == 0 {
+    let rank_zero_cluster_inventory_bytes = if axes.clusters == 0 {
         0
     } else {
-        checked_mul(n, word, "PPML rank-zero cluster subset ordering")?
+        checked_mul(axes.n, axes.word, "PPML rank-zero cluster subset ordering")?
     };
     let inference_workspace_bytes =
         sandwich_inference_workspace_bytes.max(rank_zero_cluster_inventory_bytes);
-    let inference_slots = coefficient_slots.max(reported_coefficient_slots);
+    let inference_slots = axes.coefficient_slots.max(axes.reported_coefficient_slots);
     // During factor verification this full-axis covariance allowance instead
     // holds the old compact covariance; expansion follows that decision.
     // The full-axis VCE survives the compact sandwich workspaces, then
@@ -1724,23 +2092,55 @@ fn estimate_route(
             2,
             "PPML retained standard errors and z statistics",
         )?,
-        checked_mul(k, word, "PPML retained Wald slot identities")?,
-        checked_mul(clusters, word, "PPML retained declared cluster groups")?,
+        checked_mul(axes.k, axes.word, "PPML retained Wald slot identities")?,
+        checked_mul(
+            axes.clusters,
+            axes.word,
+            "PPML retained declared cluster groups",
+        )?,
         checked_mul(
             cluster_subsets,
             checked_sum(&[
                 size_of::<super::PpmlClusterSubsetReport>() as u128,
-                checked_mul(clusters, word, "PPML cluster subset dimension capacity")?,
+                checked_mul(
+                    axes.clusters,
+                    axes.word,
+                    "PPML cluster subset dimension capacity",
+                )?,
             ])?,
             "PPML retained cluster subset reports",
         )?,
     ])?;
+    Ok(RouteResults {
+        inference_workspace_bytes,
+        inference_result_bytes,
+    })
+}
+
+#[derive(Clone, Copy)]
+struct RoutePublication {
+    saved_output_bytes: u128,
+    fe_recovery_workspace_bytes: u128,
+    publication_bytes: u128,
+    publication_result_bytes: u128,
+    publication_validator_workspace_bytes: u128,
+    diagnostic_bytes: u128,
+}
+
+/// Saved outputs, FE recovery, publication products, validators and diagnostics.
+fn route_publication(
+    dimensions: PpmlMemoryDimensions,
+    config: PpmlMemoryConfig,
+    axes: RouteAxes,
+    ledgers: RouteLedgers,
+    linear: RouteLinear,
+) -> Result<RoutePublication> {
     let separately_allocated_output_columns = dimensions
         .requested_output_columns
         .checked_sub(usize::from(dimensions.requested_mean_output))
         .ok_or_else(|| allocation("PPML requested mean exceeds observation-output count"))?;
     let saved_output_bytes = matrix_bytes::<f64>(
-        n,
+        axes.n,
         separately_allocated_output_columns as u128,
         "PPML separately allocated requested observation outputs",
     )?;
@@ -1754,19 +2154,19 @@ fn estimate_route(
         )?,
     ])?;
     let publication_result_bytes = checked_sum(&[
-        arc_vec_control_block_bytes,
+        ledgers.arc_vec_control_block_bytes,
         matrix_bytes::<f64>(
-            n,
+            axes.n,
             PUBLICATION_RESULT_NUMERIC_VECTOR_COUNT,
             "PPML publication result numeric vectors",
         )?,
         checked_mul(
             checked_mul(
-                n,
+                axes.n,
                 PUBLICATION_RESULT_ROW_MAP_COUNT,
                 "PPML publication row maps",
             )?,
-            word,
+            axes.word,
             "PPML publication row-map bytes",
         )?,
     ])?;
@@ -1783,19 +2183,19 @@ fn estimate_route(
     // sequential, so it does not add to either peak.
     let publication_psd_validator_bytes = bytes_f64(checked_sum(&[
         checked_mul(
-            square,
+            linear.square,
             PUBLICATION_PSD_SQUARE_WORKSPACE_COUNT,
             "PPML publication PSD square workspaces",
         )?,
-        k,
+        axes.k,
     ])?)?;
     let publication_wald_validator_bytes = checked_sum(&[
         bytes_f64(checked_sum(&[
-            checked_mul(square, 2, "PPML publication Wald square workspaces")?,
-            checked_mul(k, 2, "PPML publication Wald vectors")?,
+            checked_mul(linear.square, 2, "PPML publication Wald square workspaces")?,
+            checked_mul(axes.k, 2, "PPML publication Wald vectors")?,
         ])?)?,
-        checked_mul(k, word, "PPML publication Wald tested slots")?,
-        reported_coefficient_slots,
+        checked_mul(axes.k, axes.word, "PPML publication Wald tested slots")?,
+        axes.reported_coefficient_slots,
     ])?;
     // The original-axis generation mask, candidate-axis separation replay
     // and inference-slot/saved-channel masks belong to sequential validators.
@@ -1807,7 +2207,7 @@ fn estimate_route(
         "PPML publication separation replay masks",
     )?;
     let publication_metadata_mask_bytes = checked_sum(&[
-        reported_coefficient_slots,
+        axes.reported_coefficient_slots,
         dimensions.requested_saved_fe_channels as u128,
     ])?;
     let publication_validator_workspace_bytes = publication_psd_validator_bytes
@@ -1815,39 +2215,73 @@ fn estimate_route(
         .max(dimensions.original_observations as u128)
         .max(publication_separation_replay_bytes)
         .max(publication_metadata_mask_bytes)
-        .max(k);
+        .max(axes.k);
     let diagnostic_bytes = checked_mul(
         config.diagnostic_capacity as u128,
         DIAGNOSTIC_RECORD_BYTES,
         "PPML bounded diagnostic record",
     )?;
+    Ok(RoutePublication {
+        saved_output_bytes,
+        fe_recovery_workspace_bytes,
+        publication_bytes,
+        publication_result_bytes,
+        publication_validator_workspace_bytes,
+        diagnostic_bytes,
+    })
+}
 
+#[derive(Clone, Copy)]
+struct RouteIterationPeaks {
+    input_owner_supplement_bytes: u128,
+    common: u128,
+    result_metadata_bytes: u128,
+    fitted_common: u128,
+    iteration_peak_bytes: u128,
+    audit_equivalence_refresh_transient_bytes: u128,
+    weight_response_refresh_peak_bytes: u128,
+    post_solve_transient_bytes: u128,
+    post_solve_peak_bytes: u128,
+    objective_line_search_peak_bytes: u128,
+    preparation_peak_bytes: u128,
+}
+
+/// Steady payload and the preparation and IRLS iteration peaks.
+fn route_iteration_peaks(
+    dimensions: PpmlMemoryDimensions,
+    axes: RouteAxes,
+    topology: RouteTopology,
+    ledgers: RouteLedgers,
+    generation: RouteGeneration,
+    linear: RouteLinear,
+    publication: RoutePublication,
+) -> Result<RouteIterationPeaks> {
     let input_owner_supplement_bytes = dimensions
         .metadata
         .input_owner_bytes
-        .saturating_sub(config.embedding_resident_bytes);
+        .saturating_sub(axes.embedding_resident_bytes);
     let common = checked_sum(&[
         dimensions.metadata.bias_workspace_bytes,
-        config.embedding_resident_bytes,
+        axes.embedding_resident_bytes,
         input_owner_supplement_bytes,
-        prepared_model_payload,
-        retained_base_adjustment_bytes,
-        retained_raw_preseparation_probability_weight_bytes,
-        row_ledger_bytes,
-        row_axis_arc_header_bytes,
-        prepared_generation_supplement_bytes,
-        separation_method_report_row_bytes,
-        separation_method_report_level_bytes,
-        separation_method_report_record_bytes,
-        separation_generation_hash_bytes,
-        diagnostic_bytes,
+        generation.prepared_model_payload,
+        topology.retained_base_adjustment_bytes,
+        topology.retained_raw_preseparation_probability_weight_bytes,
+        ledgers.row_ledger_bytes,
+        ledgers.row_axis_arc_header_bytes,
+        generation.prepared_generation_supplement_bytes,
+        ledgers.separation_method_report_row_bytes,
+        ledgers.separation_method_report_level_bytes,
+        ledgers.separation_method_report_record_bytes,
+        ledgers.separation_generation_hash_bytes,
+        publication.diagnostic_bytes,
     ])?;
     let input_preparation_peak_bytes = checked_sum(&[
         common,
         dimensions.metadata.preparation_transient_bytes,
         matrix_bytes::<f64>(
-            candidate_n,
-            checked_sum(&[loaded, 3])?,
+            axes.candidate_n,
+            checked_sum(&[axes.loaded, 3])?,
             "PPML candidate-capacity preparation staging",
         )?,
     ])?;
@@ -1858,21 +2292,21 @@ fn estimate_route(
     let fitted_common = checked_sum(&[
         common,
         result_metadata_bytes,
-        iteration_buffer_bytes,
-        coefficient_buffer_bytes,
-        storage.resident_bytes,
-        storage.io_buffer_bytes,
-        linear_result_metadata_bytes,
+        linear.iteration_buffer_bytes,
+        linear.coefficient_buffer_bytes,
+        linear.storage.resident_bytes,
+        linear.storage.io_buffer_bytes,
+        linear.linear_result_metadata_bytes,
     ])?;
     let iteration_peak_bytes = checked_sum(&[
         fitted_common,
-        fe_solver_topology_bytes,
-        linear_vector_bytes,
-        fe_workspace_bytes,
-        linear_workspace_bytes,
+        topology.fe_solver_topology_bytes,
+        linear.linear_vector_bytes,
+        linear.fe_workspace_bytes,
+        linear.linear_workspace_bytes,
     ])?;
     let audit_equivalence_refresh_transient_bytes = if dimensions.allocation_audit_enabled {
-        bytes_f64(n)?
+        bytes_f64(axes.n)?
     } else {
         0
     };
@@ -1881,7 +2315,7 @@ fn estimate_route(
         audit_equivalence_refresh_transient_bytes,
     ])?;
     let post_solve_transient_bytes = checked_sum(&[
-        bytes_f64(n)?,
+        bytes_f64(axes.n)?,
         checked_mul(
             FINITE_SOLVE_FIXED_RECORD_COUNT,
             FINITE_SOLVE_FIXED_RECORD_BYTES,
@@ -1900,6 +2334,35 @@ fn estimate_route(
     // peak must remain attributed to the same phase rather than appearing as
     // unexplained preparation growth.
     let preparation_peak_bytes = input_preparation_peak_bytes.max(iteration_peak_bytes);
+    Ok(RouteIterationPeaks {
+        input_owner_supplement_bytes,
+        common,
+        result_metadata_bytes,
+        fitted_common,
+        iteration_peak_bytes,
+        audit_equivalence_refresh_transient_bytes,
+        weight_response_refresh_peak_bytes,
+        post_solve_transient_bytes,
+        post_solve_peak_bytes,
+        objective_line_search_peak_bytes,
+        preparation_peak_bytes,
+    })
+}
+
+#[derive(Clone, Copy)]
+struct RouteSeparationPeaks {
+    separation_peak_bytes: u128,
+    separation_mu_peak_bytes: u128,
+}
+
+/// Separation detection, cascade, transaction and Mu peaks.
+fn route_separation_peaks(
+    dimensions: PpmlMemoryDimensions,
+    separation_workspaces: RouteSeparationWorkspaces,
+    rebase: RouteRebase,
+    detection: RouteDetection,
+    iteration_peaks: RouteIterationPeaks,
+) -> Result<RouteSeparationPeaks> {
     // A detector completes before its accepted atomic transaction begins.
     // Historical report rows D and current primary/cascade rows M are
     // disjoint (D+M<=N) and share `separation_method_report_row_bytes` in
@@ -1909,14 +2372,19 @@ fn estimate_route(
     // detector's N-sized proposal and shared-linear validation workspaces from
     // being charged again during the old-plus-new generation transaction.
     let separation_detection_peak_bytes = checked_sum(&[
-        common,
-        separation_workspace_bytes.max(separation_singleton_workspace_bytes),
+        iteration_peaks.common,
+        detection
+            .separation_workspace_bytes
+            .max(separation_workspaces.separation_singleton_workspace_bytes),
     ])?;
-    let separation_cascade_peak_bytes = checked_sum(&[common, separation_cascade_workspace_bytes])?;
+    let separation_cascade_peak_bytes = checked_sum(&[
+        iteration_peaks.common,
+        separation_workspaces.separation_cascade_workspace_bytes,
+    ])?;
     let separation_transaction_peak_bytes = checked_sum(&[
-        common,
-        separation_rebase_bytes,
-        separation_rebase_arc_header_bytes,
+        iteration_peaks.common,
+        rebase.separation_rebase_bytes,
+        rebase.separation_rebase_arc_header_bytes,
     ])?;
     let separation_peak_bytes = separation_detection_peak_bytes
         .max(separation_cascade_peak_bytes)
@@ -1928,18 +2396,21 @@ fn estimate_route(
     // non-Mu detector maximum.
     let separation_mu_peak_bytes = if dimensions.separation_mu_enabled {
         let mu_detection_peak = checked_sum(&[
-            common,
-            numerical_detector_workspace,
-            detector_proposal_bytes,
-            mu_exploration_retained_bytes,
+            iteration_peaks.common,
+            detection.numerical_detector_workspace,
+            detection.detector_proposal_bytes,
+            detection.mu_exploration_retained_bytes,
         ])?;
         let mu_transaction_peak = checked_sum(&[
             separation_transaction_peak_bytes,
-            mu_exploration_retained_bytes,
+            detection.mu_exploration_retained_bytes,
         ])?;
-        let mu_cascade_peak =
-            checked_sum(&[separation_cascade_peak_bytes, mu_exploration_retained_bytes])?;
-        iteration_peak_bytes
+        let mu_cascade_peak = checked_sum(&[
+            separation_cascade_peak_bytes,
+            detection.mu_exploration_retained_bytes,
+        ])?;
+        iteration_peaks
+            .iteration_peak_bytes
             .max(separation_peak_bytes)
             .max(mu_detection_peak)
             .max(mu_cascade_peak)
@@ -1947,6 +2418,32 @@ fn estimate_route(
     } else {
         separation_peak_bytes
     };
+    Ok(RouteSeparationPeaks {
+        separation_peak_bytes,
+        separation_mu_peak_bytes,
+    })
+}
+
+#[derive(Clone, Copy)]
+struct RouteFinalPeaks {
+    strict_final_metadata_transient_bytes: u128,
+    strict_final_transient_bytes: u128,
+    strict_final_peak_bytes: u128,
+    inference_peak_bytes: u128,
+    fe_recovery_peak_bytes: u128,
+    publication_peak_bytes: u128,
+    peak_bytes: u128,
+}
+
+/// Strict-final, inference, FE recovery and publication peaks and the route maximum.
+fn route_final_peaks(
+    axes: RouteAxes,
+    ledgers: RouteLedgers,
+    results: RouteResults,
+    publication: RoutePublication,
+    iteration_peaks: RouteIterationPeaks,
+    separation_peaks: RouteSeparationPeaks,
+) -> Result<RouteFinalPeaks> {
     // The strict solve does not rebuild an N-by-K design. During candidate
     // assembly the six working/result squares plus accepted fit and frozen
     // step breads total eight K-by-K banks, already covered by the seven
@@ -1969,18 +2466,18 @@ fn estimate_route(
     // kept+dropped, and canonical candidate identities. Take their maximum;
     // neither boundary may borrow storage from the accepted baseline.
     let strict_final_vector_transient_bytes = matrix_bytes::<f64>(
-        n,
+        axes.n,
         STRICT_FINAL_OVERLAP_VECTOR_COUNT,
         "PPML strict-final canonical vector overlap",
     )?;
     let strict_installed_metadata_bytes = checked_sum(&[
         checked_mul(
-            checked_mul(k, 5, "PPML strict installed rank-index banks")?,
-            word,
+            checked_mul(axes.k, 5, "PPML strict installed rank-index banks")?,
+            axes.word,
             "PPML strict installed rank-index bytes",
         )?,
         checked_mul(
-            coefficient_slots,
+            axes.coefficient_slots,
             checked_sum(&[
                 size_of::<PreparedOlsFittedCoefficient>() as u128,
                 size_of::<PreparedOlsBreadCoordinate>() as u128,
@@ -1997,11 +2494,11 @@ fn estimate_route(
             size_of::<f64>() as u128,
             "PPML strict assembly norm widths",
         )?,
-        checked_mul(5, word, "PPML strict assembly index widths")?,
+        checked_mul(5, axes.word, "PPML strict assembly index widths")?,
     ])?;
     let strict_assembly_metadata_bytes = checked_sum(&[
         checked_mul(
-            coefficient_slots,
+            axes.coefficient_slots,
             checked_sum(&[
                 size_of::<PreparedOlsFittedCoefficient>() as u128,
                 size_of::<PreparedOlsBreadCoordinate>() as u128,
@@ -2009,13 +2506,13 @@ fn estimate_route(
             "PPML strict assembly fitted coefficient/bread records",
         )?,
         checked_mul(
-            k,
+            axes.k,
             strict_assembly_per_generated_bytes,
             "PPML strict assembly generated-column records",
         )?,
     ])?;
     let strict_final_metadata_transient_bytes = checked_sum(&[
-        bytes_f64(k)?,
+        bytes_f64(axes.k)?,
         strict_installed_metadata_bytes.max(strict_assembly_metadata_bytes),
     ])?;
     let strict_final_transient_bytes = checked_sum(&[
@@ -2023,107 +2520,45 @@ fn estimate_route(
         strict_final_metadata_transient_bytes,
     ])?;
     let strict_final_peak_bytes = checked_sum(&[
-        iteration_peak_bytes,
+        iteration_peaks.iteration_peak_bytes,
         strict_final_transient_bytes,
-        audit_equivalence_refresh_transient_bytes,
+        iteration_peaks.audit_equivalence_refresh_transient_bytes,
     ])?;
     // Inference results survive recovery and publication; each phase adds
     // only its own transient work or requested publication products.
     let final_result_owners = checked_sum(&[
-        fitted_common,
-        final_drop_reason_bytes,
-        separation_report_row_bytes,
-        separation_report_reason_bytes,
-        inference_result_bytes,
+        iteration_peaks.fitted_common,
+        ledgers.final_drop_reason_bytes,
+        ledgers.separation_report_row_bytes,
+        ledgers.separation_report_reason_bytes,
+        results.inference_result_bytes,
     ])?;
-    let inference_peak_bytes = checked_sum(&[final_result_owners, inference_workspace_bytes])?;
-    let fe_recovery_peak_bytes = checked_sum(&[final_result_owners, fe_recovery_workspace_bytes])?;
+    let inference_peak_bytes =
+        checked_sum(&[final_result_owners, results.inference_workspace_bytes])?;
+    let fe_recovery_peak_bytes =
+        checked_sum(&[final_result_owners, publication.fe_recovery_workspace_bytes])?;
     let publication_peak_bytes = checked_sum(&[
         final_result_owners,
-        saved_output_bytes,
-        publication_bytes,
-        publication_result_bytes,
-        publication_validator_workspace_bytes,
+        publication.saved_output_bytes,
+        publication.publication_bytes,
+        publication.publication_result_bytes,
+        publication.publication_validator_workspace_bytes,
     ])?;
-    let peak_bytes = preparation_peak_bytes
-        .max(separation_peak_bytes)
-        .max(separation_mu_peak_bytes)
-        .max(iteration_peak_bytes)
-        .max(weight_response_refresh_peak_bytes)
-        .max(post_solve_peak_bytes)
-        .max(objective_line_search_peak_bytes)
+    let peak_bytes = iteration_peaks
+        .preparation_peak_bytes
+        .max(separation_peaks.separation_peak_bytes)
+        .max(separation_peaks.separation_mu_peak_bytes)
+        .max(iteration_peaks.iteration_peak_bytes)
+        .max(iteration_peaks.weight_response_refresh_peak_bytes)
+        .max(iteration_peaks.post_solve_peak_bytes)
+        .max(iteration_peaks.objective_line_search_peak_bytes)
         .max(strict_final_peak_bytes)
         .max(inference_peak_bytes)
         .max(fe_recovery_peak_bytes)
         .max(publication_peak_bytes);
-
-    Ok(PpmlMemoryInventory {
-        preparation_metadata_transient_bytes: dimensions.metadata.preparation_transient_bytes,
-        result_metadata_bytes,
-        embedding_resident_bytes: config.embedding_resident_bytes,
-        input_owner_supplement_bytes,
-        canonical_numeric_bytes,
-        retained_base_adjustment_bytes,
-        retained_raw_preseparation_probability_weight_bytes,
-        topology_bytes,
-        fe_solver_topology_bytes,
-        cluster_topology_bytes,
-        steady_row_map_bytes,
-        prepared_drop_reason_bytes,
-        separation_activity_bytes,
-        separation_reason_bytes,
-        row_ledger_bytes,
-        row_axis_arc_header_bytes,
-        prepared_model_metadata_bytes,
-        prepared_generation_bytes,
-        prepared_generation_supplement_bytes,
-        separation_replacement_generation_bytes,
-        separation_rebase_proposal_bytes,
-        separation_rebase_direction_bytes,
-        separation_rebase_staging_bytes,
-        separation_rebase_bytes,
-        separation_rebase_arc_header_bytes,
-        final_drop_reason_bytes,
-        separation_report_row_bytes,
-        separation_report_reason_bytes,
-        separation_method_report_row_bytes,
-        separation_method_report_level_bytes,
-        separation_method_report_record_bytes,
-        separation_generation_hash_bytes,
-        separation_exact_level_transient_bytes,
-        separation_singleton_workspace_bytes,
-        separation_cascade_workspace_bytes,
-        iteration_buffer_bytes,
-        coefficient_buffer_bytes,
-        retained_within_resident_bytes: storage.resident_bytes,
-        retained_within_io_buffer_bytes: storage.io_buffer_bytes,
-        retained_within_scratch_bytes: storage.scratch_file_bytes,
-        linear_vector_bytes,
-        fe_workspace_bytes,
-        linear_workspace_bytes,
-        linear_result_metadata_bytes,
-        separation_workspace_bytes,
-        simplex_combined_bytes,
-        mu_exploration_retained_bytes,
-        inference_workspace_bytes,
-        inference_result_bytes,
-        fe_recovery_workspace_bytes,
-        saved_output_bytes,
-        publication_bytes,
-        publication_result_bytes,
-        publication_validator_workspace_bytes,
-        diagnostic_bytes,
-        preparation_peak_bytes,
-        separation_peak_bytes,
-        separation_mu_peak_bytes,
-        iteration_peak_bytes,
-        audit_equivalence_refresh_transient_bytes,
-        weight_response_refresh_peak_bytes,
-        post_solve_transient_bytes,
-        post_solve_peak_bytes,
-        objective_line_search_peak_bytes,
-        strict_final_transient_bytes,
+    Ok(RouteFinalPeaks {
         strict_final_metadata_transient_bytes,
+        strict_final_transient_bytes,
         strict_final_peak_bytes,
         inference_peak_bytes,
         fe_recovery_peak_bytes,
