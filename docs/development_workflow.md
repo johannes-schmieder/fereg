@@ -18,7 +18,10 @@ NumPy, pandas and SciPy. Rust uses the pinned toolchain and Cargo.lock.
 The full entrypoint covers Rust, Clippy, allocation/FFI audits, runtime complexity,
 the mock SPI bridge, portable shell/Python/strict-C checks and the exact-rational
 FE boundary-response and cancellation witnesses. Licensed Stata profiles also include `smoke`,
-`differential`, `fereg-regression`, `ppml-scientific` and `ppml-hidden`.
+`differential`, `fereg-regression`, `ppml-scientific` and `ppml-hidden`. The
+`development` profile runs every `tests/stata/development` fixture, and `triage`
+lists the remaining fixtures no other profile or script runs, for Johannes to map
+into a verdict profile or retire.
 See [the Stata runner](../STATA_CI_RUNNER.md). Target mapped tests during development;
 run the applicable integration checks before committing runtime changes.
 GitHub testing is paused. Mac remains the default qualification host; Johannes
