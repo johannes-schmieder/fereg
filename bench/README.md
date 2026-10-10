@@ -35,9 +35,10 @@ same node as their baseline. Stata comparators are included only at 1/4 workers.
 The broader one-/two-/three-FE dense/sparse panel uses 100,000/1,000,000/4,000,000
 rows. Clustering is by worker. No proprietary dataset is required.
 
-`scc/setup.sh` builds one exact committed source, verifies the reused pinned
-Stata closure, freezes executable/frontend/comparator/harness bytes and tests
-the tooling. `scc/job.sh` is the compute entrypoint: 28 reserved physical cores
+`scc/setup.sh` builds one exact committed source with GCC 12.2 selected explicitly
+for the C bridge and sanitizer checks, verifies the reused pinned Stata closure,
+freezes executable/frontend/comparator/harness bytes and tests the tooling.
+`scc/job.sh` is the compute entrypoint: 28 reserved physical cores
 on exactly 28-core nodes, sequential fits, explicit affinity, three GB/core and
 four-hour tasks. Run an independent small explicit-design smoke before the four
 production bundles. Setup, smoke and production accounting, licensed sentinels,

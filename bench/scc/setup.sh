@@ -18,7 +18,8 @@ cp -a "$REFERENCE_ROOT/environment/references" environment/
 cp -a "$REFERENCE_ROOT/environment/r-library" environment/
 cp "$REFERENCE_ROOT/environment/environment.json" environment/reference-origin.json
 module purge
-module load python3/3.12.4 stata-mp/19 R/4.5.2
+module load gcc/12.2.0 python3/3.12.4 stata-mp/19 R/4.5.2
+export CC=gcc
 python3 - "$RUN_ROOT" "$REFERENCE_ROOT" <<'PY'
 import hashlib,pathlib,shutil,sys,tomllib
 r,origin=map(pathlib.Path,sys.argv[1:]);refs=r/'environment/references'
