@@ -55,17 +55,13 @@ pub use prepared_estimator::{
 };
 pub use psd::{PpmlPsdReport, PpmlPsdState};
 pub use residuals::{fill_ppml_residuals, ppml_residuals, PpmlResidualKind};
+pub(crate) use result::CertifiedPpmlResultInput;
 pub use result::{
     certify_ppml_reconstruction, CertifiedPpmlResult, PpmlClusterDimensionResult,
     PpmlCoefficientOutput, PpmlCoefficientStatus, PpmlConvergenceReport, PpmlFinalSample,
     PpmlFixedEffectChannelKind, PpmlFixedEffectResult, PpmlLikelihoodStatistics, PpmlOutputState,
     PpmlPredictionKind, PpmlReconstructionCertificate, PpmlResultCertificate,
     PpmlSavedEffectOutput,
-};
-#[allow(unused_imports)]
-pub(crate) use result::{
-    prepare_ppml_fixed_effect_report, recover_ppml_fixed_effects, CertifiedPpmlResultInput,
-    PreparedPpmlFixedEffectReport, PreparedPpmlRecoveredFixedEffects,
 };
 pub use solver::{
     PpmlSolverEngine, PpmlSolverEngineReport, PpmlSolverFallbackReason, PpmlSolverFamily,

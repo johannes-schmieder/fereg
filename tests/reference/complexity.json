@@ -5310,7 +5310,7 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {},
-        "production_lines": 123
+        "production_lines": 101
       },
       "crates/fereg-core/src/linalg/mod.rs": {
         "chunk_candidates": [],
@@ -7843,7 +7843,7 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {},
-        "production_lines": 118
+        "production_lines": 111
       },
       "crates/fereg-core/src/ols/prepared.rs": {
         "chunk_candidates": [],
@@ -13423,35 +13423,35 @@
         "dispatch_candidates": [],
         "functions": {
           "default#1": {
-            "line": 137,
+            "line": 133,
             "lines": 15
           },
           "new#1": {
-            "line": 164,
+            "line": 160,
             "lines": 6
           },
           "scale#1": {
-            "line": 171,
+            "line": 167,
             "lines": 10
           },
           "scheduled_inner_tolerance#1": {
-            "line": 199,
+            "line": 195,
             "lines": 44
           },
           "shared_linear_policy#1": {
-            "line": 131,
+            "line": 127,
             "lines": 3
           },
           "strict_inner_tolerance#1": {
-            "line": 184,
+            "line": 180,
             "lines": 3
           },
           "with_outer_controls#1": {
-            "line": 102,
+            "line": 98,
             "lines": 26
           }
         },
-        "production_lines": 205
+        "production_lines": 201
       },
       "crates/fereg-core/src/ppml/one_fe_profile.rs": {
         "chunk_candidates": [],
@@ -16679,55 +16679,55 @@
         "dispatch_candidates": [],
         "functions": {
           "default#1": {
-            "line": 37,
+            "line": 35,
             "lines": 8
           },
           "default#2": {
-            "line": 62,
+            "line": 60,
             "lines": 14
           },
           "empty#1": {
-            "line": 338,
+            "line": 336,
             "lines": 16
           },
           "fmt#1": {
-            "line": 125,
+            "line": 123,
             "lines": 7
           },
           "from#1": {
-            "line": 119,
+            "line": 117,
             "lines": 3
           },
           "is_empty#1": {
-            "line": 113,
+            "line": 111,
             "lines": 3
           },
           "new#1": {
-            "line": 103,
+            "line": 101,
             "lines": 3
           },
           "prepared_simplex_request_registers_its_bounded_tableau#1": {
-            "line": 368,
+            "line": 366,
             "lines": 37
           },
           "separation_generation_capacity#1": {
-            "line": 275,
+            "line": 273,
             "lines": 16
           },
           "separation_method_count#1": {
-            "line": 297,
+            "line": 295,
             "lines": 7
           },
           "separation_workspace_requirements#1": {
-            "line": 245,
+            "line": 243,
             "lines": 25
           },
           "with_detail#1": {
-            "line": 108,
+            "line": 106,
             "lines": 3
           }
         },
-        "production_lines": 293
+        "production_lines": 291
       },
       "crates/fereg-core/src/ppml_separation/prepared_coordinator.rs": {
         "chunk_candidates": [],
@@ -20073,7 +20073,7 @@
         "dispatch_candidates": 1230,
         "files_over_1500": 16,
         "functions_over_150": 65,
-        "production_lines": 93721
+        "production_lines": 93686
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

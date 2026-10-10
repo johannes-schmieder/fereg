@@ -10,10 +10,8 @@ mod prepared_coordinator;
 mod simplex;
 pub(crate) use simplex::{model_simplex_interruptible, simplex_workspace_peak_cells};
 
-#[allow(unused_imports)]
 pub(crate) use prepared_coordinator::{
-    PreparedGenerationCommit, PreparedSeparationCascade, PreparedSeparationCoordinator,
-    PreparedSeparationGeneration, PreparedSeparationOutcome, PreparedSeparationRebuilder,
+    PreparedSeparationCascade, PreparedSeparationCoordinator, PreparedSeparationRebuilder,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

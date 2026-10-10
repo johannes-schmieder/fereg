@@ -32,7 +32,7 @@ use crate::ols::{
     prepare_categorical_numeric_sample_owned, prepare_ols_numeric_sample,
 };
 
-use super::{
+use crate::ols::{
     LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource, PreparedOlsColumnKind,
     PreparedOlsModel, PreparedOlsSingletons,
 };
@@ -89,8 +89,8 @@ pub struct PreparedModel {
     pub(crate) singletons: PreparedOlsSingletons,
     pub(crate) report_plan: PreparedCategoricalOlsReportPlan,
     pub(crate) grammar: PreparationGrammar,
-    pub(crate) singleton_policy: super::PreparedOlsFeSingletonPolicy,
-    pub(crate) clusters: Option<super::PreparedOlsClusterDesign>,
+    pub(crate) singleton_policy: crate::ols::PreparedOlsFeSingletonPolicy,
+    pub(crate) clusters: Option<crate::ols::PreparedOlsClusterDesign>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,9 +128,9 @@ impl PreparedModel {
             report_plan,
             grammar,
             singleton_policy: if singletons.kept_by_request {
-                super::PreparedOlsFeSingletonPolicy::KeptByRequest
+                crate::ols::PreparedOlsFeSingletonPolicy::KeptByRequest
             } else {
-                super::PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
+                crate::ols::PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
             },
             clusters: None,
         };
@@ -166,7 +166,7 @@ impl PreparedModel {
             + self
                 .clusters
                 .as_ref()
-                .map_or(0, super::PreparedOlsClusterDesign::owned_buffer_bytes)
+                .map_or(0, crate::ols::PreparedOlsClusterDesign::owned_buffer_bytes)
     }
 
     /// Executable recipe payloads and FE metadata; excludes numeric topology

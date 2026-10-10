@@ -34,15 +34,12 @@ pub(crate) use linear_session::{
     begin_frozen_qr_fallback_observation, finish_frozen_qr_fallback_observation,
     inject_frozen_linear_failure, CertifiedFrozenLinearOutput, FrozenLinearFailureInjection,
 };
-#[allow(unused_imports)]
 pub(crate) use linear_session::{
     classify_frozen_linear_fallback, CertifiedLinearSession, CertifiedLinearSessionOutput,
-    CertifiedLinearSessionProducts, CertifiedLinearWithinDesign, FrozenLinearBasis,
-    FrozenLinearBasisSlot, FrozenLinearFallbackKind, FrozenLinearSolveCertificate,
-    LinearConstantRepresentation, LinearReconstructionCertificate, LinearSessionGenerations,
-    LinearSessionPhaseAllocationObservation, LinearSessionReuseReport, LinearSessionSolveKind,
-    LinearSessionWorkspaceCapacities, LinearWithinDesignCertificate, LinearWithinMemoryReport,
-    PpmlOrdinaryLinearOutput, StrictLinearCandidateTransaction,
+    CertifiedLinearSessionProducts, CertifiedLinearWithinDesign, FrozenLinearBasisSlot,
+    FrozenLinearFallbackKind, LinearConstantRepresentation, LinearSessionGenerations,
+    LinearSessionReuseReport, LinearSessionWorkspaceCapacities, PpmlOrdinaryLinearOutput,
+    StrictLinearCandidateTransaction,
 };
 #[doc(hidden)]
 pub use linear_session::{
@@ -92,11 +89,7 @@ pub use prepared_fit::{
     PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsFittedCoefficient,
     PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
 };
-#[allow(unused_imports)]
-pub(crate) use prepared_fit::{
-    fit_prepared_weighted_linear_projection_once, CertifiedPreparedLinearProjection,
-    LinearSolveFrame, PreparedLinearProjectionReconstructionCertificate,
-};
+pub(crate) use prepared_fit::{fit_prepared_weighted_linear_projection_once, LinearSolveFrame};
 pub use prepared_rhs::{
     absorb_prepared_ols_rhs_map, add_numeric_ols_predictor, build_prepared_ols_rhs, PreparedOlsRhs,
 };
