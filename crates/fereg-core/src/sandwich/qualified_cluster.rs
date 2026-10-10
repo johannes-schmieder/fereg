@@ -479,6 +479,7 @@ where
         "unable to reserve qualified clustered dense group presence",
     )?;
     for row in 0..nobs {
+        crate::interrupt::row_checkpoint(row)?;
         let group = dense_group(dimensions, mask, plan, row)?;
         seen[group] = 1;
         design.fill_row(row, row_values)?;
@@ -1076,7 +1077,8 @@ where
     )?;
     let mut groups = 0usize;
     let mut previous = None;
-    for row in order {
+    for (position, row) in order.into_iter().enumerate() {
+        crate::interrupt::row_checkpoint(position)?;
         if previous
             .is_some_and(|prior| compare_rows(dimensions, mask, prior, row) != Ordering::Equal)
         {

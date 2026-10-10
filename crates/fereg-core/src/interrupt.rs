@@ -47,6 +47,21 @@ pub fn checkpoint() -> Result<()> {
     }
 }
 
+/// Rows between checkpoints in long serial row passes. A power of two keeps
+/// the stride test to one mask.
+pub(crate) const CHECKPOINT_ROW_STRIDE: usize = 1024;
+
+/// Checkpoint at the first row of every [`CHECKPOINT_ROW_STRIDE`] rows of a
+/// serial pass whose rows each cost O(K) or more.
+#[inline]
+pub(crate) fn row_checkpoint(row: usize) -> Result<()> {
+    if row % CHECKPOINT_ROW_STRIDE == 0 {
+        checkpoint()
+    } else {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -103,6 +118,10 @@ mod tests {
 
         request_cancellation();
         assert!(checkpoint().is_err());
+        assert!(row_checkpoint(0).is_err());
+        assert!(row_checkpoint(1).is_ok());
+        assert!(row_checkpoint(CHECKPOINT_ROW_STRIDE - 1).is_ok());
+        assert!(row_checkpoint(CHECKPOINT_ROW_STRIDE).is_err());
         let mut map_values = values.clone();
         let error = absorb_map(&design, &weights, &mut map_values, MapConfig::default())
             .expect_err("MAP stops at its first sweep");

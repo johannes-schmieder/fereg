@@ -975,6 +975,7 @@ fn build_scratch_certificate_meat<R: PreparedInferenceReservation>(
         "unable to reserve prepared robust certificate score row",
     )?;
     for row in 0..scores.nrows() {
+        crate::interrupt::row_checkpoint(row)?;
         let scale =
             meat_root_multiplier(weight_kind, weight_view.value(row)?)? * fit.residuals()[row];
         scores.fill_reported_row(row, &mut score)?;

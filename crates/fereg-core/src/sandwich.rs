@@ -876,6 +876,7 @@ where
     )?;
 
     for row in 0..nrows {
+        crate::interrupt::row_checkpoint(row)?;
         design.fill_row(row, &mut score)?;
         let scale = multipliers.score_pair(row)?.production;
         for (left, influence_value) in influence.iter_mut().enumerate() {
@@ -2115,6 +2116,47 @@ mod tests {
         finalize_symmetric_triangle(&mut covariance, corrections, dimension)
             .expect("legacy serial covariance finalization");
         covariance
+    }
+
+    /// The cancellation flag is process-wide, so this runs in a child process.
+    #[test]
+    fn serial_influence_covariance_stops_at_a_row_checkpoint() {
+        const CHILD_ENV: &str = "FEREG_SERIAL_SANDWICH_CANCELLATION_CHILD";
+        if std::env::var_os(CHILD_ENV).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().expect("test binary"))
+                .env(CHILD_ENV, "1")
+                .args([
+                    "sandwich::tests::serial_influence_covariance_stops_at_a_row_checkpoint",
+                    "--exact",
+                    "--test-threads=1",
+                ])
+                .status()
+                .expect("launch isolated cancellation test");
+            assert!(status.success(), "isolated cancellation test failed");
+            return;
+        }
+        let values = [1.0, 0.5, 1.0, -0.25, 1.0, 2.0];
+        let multipliers = [0.3, -1.1, 0.7];
+        let bread = [0.6, -0.1, -0.1, 0.4];
+        let design = RowMajorSandwichDesign::new(&values, 3, 2).expect("serial design");
+        let scores = SliceSandwichScoreMultiplier::same(&multipliers).expect("multipliers");
+        crate::interrupt::request_cancellation();
+        let error = reduce_serial_influence_covariance(
+            &design,
+            scores,
+            &bread,
+            &mut CountingReservation::default(),
+        )
+        .expect_err("cancellation stops the serial row pass");
+        crate::interrupt::reset_cancellation();
+        assert_eq!(error.code, crate::error::ErrorCode::Interrupted);
+        reduce_serial_influence_covariance(
+            &design,
+            scores,
+            &bread,
+            &mut CountingReservation::default(),
+        )
+        .expect("a reset flag lets the pass run");
     }
 
     #[test]

@@ -6111,6 +6111,7 @@ fn stream_frozen_solve(
     let mut weighted_residual_square = 0.0_f64;
     let mut retained_reader = storage.reader();
     for row in 0..rows {
+        crate::interrupt::row_checkpoint(row)?;
         retained_reader.fill_row(row, &mut workspace.row)?;
         let mut fitted = 0.0_f64;
         for (column, &active_position) in active_positions.iter().enumerate().take(rank) {

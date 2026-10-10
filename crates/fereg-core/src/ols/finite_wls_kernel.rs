@@ -376,6 +376,7 @@ pub(super) fn factor_rank_revealing_retained_qr(
         _ => None,
     };
     for observation in 0..source.rows() {
+        crate::interrupt::row_checkpoint(observation)?;
         let mut outcome = fill_retained_qr_row(
             source,
             observation,
@@ -637,6 +638,7 @@ pub(super) fn certify_retained_qr_dropped_span(
         _ => None,
     };
     for observation in 0..source.rows() {
+        crate::interrupt::row_checkpoint(observation)?;
         let _ = fill_retained_qr_row(
             source,
             observation,
