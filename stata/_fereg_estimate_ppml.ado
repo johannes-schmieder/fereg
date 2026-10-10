@@ -825,7 +825,8 @@ program define _fereg_estimate_ppml, eclass
         requestedsolvercode(`requested_solver_code')
     local validation_rc = _rc
     if `validation_rc' {
-        if `validation_rc' == 499 exit 499
+        // Break (r(1)) and the layout code 499 keep their identity.
+        if inlist(`validation_rc', 1, 499) exit `validation_rc'
         exit 3499
     }
     local coefficient_count = r(coefficients)
@@ -1407,13 +1408,14 @@ program define _fereg_estimate_ppml, eclass
             }
         }
         _estimates unhold `held_estimates', not
-        if `"`publictimeit'"' != "" {
-            di as txt "feppml native total-to-commit (seconds): " ///
-                as result %9.4f `runtime_shadow'[1,1]
-            di as txt "feppml action memory: partial estimate; combined peak unavailable"
-        }
-        if `"`publicdisplay'"' != "" ereturn display
     }
+    // Reporting follows the committed transaction and stays interruptible.
+    if `"`publictimeit'"' != "" {
+        di as txt "feppml native total-to-commit (seconds): " ///
+            as result %9.4f `runtime_shadow'[1,1]
+        di as txt "feppml action memory: partial estimate; combined peak unavailable"
+    }
+    if `"`publicdisplay'"' != "" ereturn display
 end
 
 program define _fereg_eppml_validate, rclass
