@@ -90,6 +90,13 @@ Generated inputs, row captures and logs remain in the remote run; collect compac
 JSON/CSV summaries and the final PDF. This descriptive campaign establishes no
 universal speed claim or platform qualification.
 
+For comparisons between campaigns, verify the recorded numeric column hashes
+before claiming exact input or result identity. A fixed seed does not guarantee
+identical floating-point inputs across processor features: generation includes
+NumPy transcendental functions. Keep differing inputs visible alongside host,
+timing and scientific comparisons. An exact before/after binary comparison must
+reuse the same generated inputs rather than regenerate them on another host.
+
 `campaign_collect.py <context.json> --output <new-directory>` collects the
 terminal scheduler records, application sentinels, frozen inventory and compact
 task results. It leaves the datasets and row exports on SCC. With Matplotlib and

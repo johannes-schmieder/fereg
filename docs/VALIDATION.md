@@ -191,3 +191,26 @@ private-block patch; its production tokens equal the integrated repair. Full
 artifact, source-patch and result hashes are in the repair commit. The old 18
 frozen workload hashes are unchanged. These are bounded workload observations,
 not a universal speed or platform claim.
+
+### Packed SCC campaign after the OLS repair
+
+Run `20261010T192805Z-ols-repair-e29164e6` compares source `e29164e6`
+(archive SHA-256 `3129d28a`, Linux plugin `57cc9789`) with the actual preceding
+PR31 campaign `20261010T155133Z-pr31-5e2951a4`. Compact results, all 164
+per-configuration arm comparisons and the 19-page visually inspected PDF are
+retained under the new run in `/projectnb/welfgr/fereg/runs/`, in `collected/`,
+`comparison/` and `report/`. Full hashes are in this documentation commit.
+
+| Evidence | Result |
+| --- | --- |
+| Setup `8018263`, smoke `8018275`, production `8018282.1–4` | All six scheduler records have failed=0/exit=0; sentinels, frozen identities and 492 fit positions verified. glibc 2.28 audit, ABI/load, both UBSan variants, 41 harness tests and 11 native smoke oracles pass. Production used 28 slots on 28-core nodes without exclusive. |
+| Scientific and failure outcomes | Native repeatability and cross-worker checks pass for 55/56 configurations; the same four-million-row three-sparse PPML case times out. All 164 arm cells retain eligibility and failure reasons: 131 eligible, 25 asterisked, 8 NR. The 15 reference smoke capture failures and 18 oracle failures are unchanged. |
+| OLS scaling on identical inputs and `scc-zj4` | AKM one-million-row times at 1/4/8/16 workers are 2.2325/1.2916/1.0426/0.9551 s; current/previous ratios 1.0342/0.7961/0.7134/0.7486. This confirms the controlled repair at 8/16 workers while retaining the 3.4% single-worker cost; fixest controls remain within 1%. Sixteen-worker speedup improves from 1.692× to 2.337×, but 8→16 still saves only 8.4%. |
+| Breadth, PPML and memory | Four-worker median ratios are 0.8857 OLS / 1.0124 PPML. Native ratios across 55 eligible cells range 0.7134–1.0870; increases remain visible. PPML AKM robust 1/4/8/16 times are 12.8068/6.4174/5.3236/4.9661 s on a different node, with only 6.7% improvement from 8→16. Peak sampled native RSS is 5.03249 GiB versus 5.03227; common 51-cell median RSS ratio 0.99999. Unresolved memory remains NR. |
+| Cross-campaign input audit `8018721` | All 150 successful records in 50 configurations with identical numeric inputs have exact captured estimator science, including all OLS configurations. Five PPML inputs generated on different nodes differ only in response values by at most two ulps (verified hashes; failed=0/exit=0). Their 15 fits differ only in coefficient/covariance rounding, within unchanged SPEC tolerances; discrete metadata and reported objectives remain exact across all 165 successful fits. The three existing unavailable records remain unavailable. |
+
+SHA-256 prefixes: PDF `5dc95256`, configuration summary `4a3440b3`, full
+comparison `c4c91585`, retained-file manifest `5603b923`. The complete comparison
+flags input and host changes.
+Separate campaigns are descriptive: they neither replace Mac qualification nor
+establish universal speed or platform claims. No explicit-LSMR arms were run.
