@@ -442,6 +442,109 @@ fn absorbed_dof_policy_changes_only_the_hc1_scalar() {
     }
 }
 
+// Native counterpart of tests/stata/development/ols_three_fe_batch_oracle.do:
+// three deterministic FEs (32/19/13 levels, 64 slots so Auto LSMR uses the
+// diagonal preconditioner), 17 regressors plus y and the constant (19 RHS),
+// explicit LSMR at the ado defaults, robust VCE, unit and analytic weights.
+// Known open failure: with analytic weights every column meets the LSMR stop
+// at 1e-8, but one column's FE certificate is 1.0167e-8, so explicit LSMR
+// returns an uncertified result at every thread count (see docs/VALIDATION.md).
+#[test]
+#[ignore = "known open failure: explicit LSMR certifies at its own stop tolerance"]
+fn explicit_lsmr_three_fe_batch_matches_explicit_dummy_oracle() {
+    let rows = 16_416_usize;
+    let g1 = (0..rows).map(|row| (row % 32) as u32).collect::<Vec<_>>();
+    let g2 = (0..rows)
+        .map(|row| ((17 * row + row / 32) % 19) as u32)
+        .collect::<Vec<_>>();
+    let g3 = (0..rows)
+        .map(|row| ((11 * row + row / 47) % 13) as u32)
+        .collect::<Vec<_>>();
+    let mut state = 0x2026_0922_9000_0001_u64;
+    let mut normal = move || {
+        let mut uniform = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            ((state >> 11) as f64 + 0.5) / (1_u64 << 53) as f64
+        };
+        let radius = (-2.0 * uniform().ln()).sqrt();
+        radius * (std::f64::consts::TAU * uniform()).cos()
+    };
+    let regressors = (0..17)
+        .map(|_| (0..rows).map(|_| normal()).collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    let outcome = (0..rows)
+        .map(|row| {
+            0.7 * regressors[0][row] - 0.3 * regressors[1][row]
+                + f64::from(g1[row]) / 30.0
+                + f64::from(g2[row]) / 40.0
+                + f64::from(g3[row]) / 50.0
+                + normal()
+        })
+        .collect::<Vec<_>>();
+    let weights = (0..rows)
+        .map(|row| 0.1 * (1.0 + ((row + 1) % 17) as f64))
+        .collect::<Vec<_>>();
+    let effects = [g1, g2, g3];
+    for case_weights in [CaseWeights::Unit, CaseWeights::Analytic(&weights)] {
+        let prepared = prepare_continuous_case(&outcome, &regressors, &effects, true, case_weights);
+        for threads in [1, 4, 16] {
+            let thread_config =
+                fereg_core::ThreadConfig::from_requested(threads, false).expect("threads");
+            let mut config = PreparedOlsRobustConfig::default();
+            config.fit.absorb.solver = fereg_core::FeSolverKind::Lsmr;
+            config.fit.absorb.map.tolerance = 1e-8;
+            config.fit.absorb.map.max_iterations = 16_000;
+            config.fit.absorb.lsmr.tolerance = 1e-8;
+            config.fit.absorb.lsmr.max_iterations = 16_000;
+            config.fit.absorb.lsmr.preconditioner = fereg_core::LsmrPreconditioner::Auto;
+            config.fit.absorb.lsmr.threads = thread_config;
+            config.fit.allow_final_fe_recovery = true;
+            config.fit.execution.threads = thread_config;
+            let fitted = fereg_core::ThreadTeam::new(thread_config)
+                .install(|| fit_prepared_model_robust_with_loaded_moments(&prepared, config, None))
+                .expect("thread team");
+            let fitted = fitted.unwrap_or_else(|error| {
+                panic!("explicit LSMR at {threads} threads failed: {error:?}")
+            });
+            assert!(fitted.certificate().passed);
+            assert_slice_close(
+                fitted.covariance().values(),
+                oracle_covariance(&outcome, &regressors, &effects, case_weights).as_slice(),
+                COVARIANCE_TOLERANCE,
+            );
+        }
+    }
+}
+
+fn oracle_covariance(
+    outcome: &[f64],
+    regressors: &[Vec<f64>],
+    effects: &[Vec<u32>],
+    weights: CaseWeights<'_>,
+) -> Vec<f64> {
+    let oracle = fit_explicit_ols(&ExplicitOlsProblem {
+        outcome: outcome.to_vec(),
+        regressors: regressors.to_vec(),
+        effects: effects
+            .iter()
+            .map(|codes| {
+                DummyEffect::new(codes.clone(), level_count(codes), true, vec![])
+                    .expect("oracle dummy")
+            })
+            .collect(),
+        weights: oracle_weights(weights),
+        clusters: vec![],
+    })
+    .expect("independent explicit-dummy robust fit");
+    oracle
+        .normalized_reported_intercept_hc1_vce
+        .expect("normalized reported intercept oracle")
+        .as_slice()
+        .to_vec()
+}
+
 fn assert_oracle_case(
     outcome: &[f64],
     regressors: &[Vec<f64>],

@@ -43,9 +43,15 @@ not release or end-to-end Stata claims.
 
 ## Open failures and gaps
 
-- `ols_three_fe_batch_oracle.do` fails with `r(459)` (uncertified default
-  diagonal-LSMR route) on production and candidate binaries alike; preserved,
-  not repaired.
+- `ols_three_fe_batch_oracle.do` fails with `r(459)` on every binary. Root
+  cause (2026-10-10): explicit LSMR stops on `within`'s normal-equation
+  criterion at the requested tolerance, and fereg then certifies per-level
+  weighted FE moments at that same tolerance. On the weighted design every
+  column meets the stop, but one certificate is 1.0167e-8 against 1e-8, at
+  every worker count and also at `tolerance(1e-10)`. `solver(auto)` avoids this
+  by solving at a hundredth of the tolerance. Reproducer: the ignored test
+  `explicit_lsmr_three_fe_batch_matches_explicit_dummy_oracle`. The remedy is
+  Johannes's decision; nothing is changed yet.
 - Full release staging failed at `8fb67bb5` because its input held only the
   Mac plugin; only the Mac review archive passed.
 - One passing Windows run after the module pin bounds, but cannot exclude, a
