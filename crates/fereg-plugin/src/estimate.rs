@@ -1,10 +1,11 @@
 use crate::input_memory::{InputMemory, StringDictionary};
 use crate::memory_report::{Baseline, Report as MemoryReport, ROWS as MEMORY_ROWS};
 pub(crate) use crate::model_metadata::{
-    exact_positive_u32, exact_usize, parse_bool, parse_nonnegative_u32, parse_positive_f64,
-    parse_positive_u32, parse_positive_usize, parse_u16, parse_usize, push_reserved, read_bindings,
-    read_table, required, reserved_empty, reserved_filled, syntax,
+    exact_usize, parse_bool, parse_nonnegative_u32, parse_positive_f64, parse_positive_u32,
+    parse_positive_usize, parse_u16, parse_usize, push_reserved, read_bindings, required,
+    reserved_empty, reserved_filled, syntax,
 };
+use crate::model_metadata::{read_cluster_terms, ClusterTables};
 use crate::publication::store_matrix;
 use crate::transport::{
     admit_estimate_transport, decode_output_position_registry, read_local_estimate_bundle,
@@ -51,7 +52,6 @@ use rayon::prelude::*;
 
 pub const ACTION_ESTIMATE_OLS: &str = "estimate-ols";
 const CONFIRMATION: &str = "fereg-estimation";
-const CLUSTER_TERM_ROW_WIDTH: usize = 2;
 /// Fields only the OLS estimation protocol accepts.
 const OLS_FIELDS: &[&str] = &[
     "dof",
@@ -61,7 +61,6 @@ const OLS_FIELDS: &[&str] = &[
     "output_marker_b_matrix",
     "output_marker_v_matrix",
 ];
-const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
 
 #[derive(Debug, Clone)]
 struct ResultMatrices<T = String> {
@@ -938,7 +937,18 @@ impl EstimateActionSpec {
             include_intercept: self.include_intercept,
             keep_singletons: self.keep_singletons,
         };
-        let clusters = read_clusters(self, spi)?;
+        let clusters = read_cluster_terms(
+            spi,
+            ClusterTables {
+                term_matrix: &self.cluster_term_matrix,
+                term_count: self.cluster_term_count,
+                component_matrix: &self.cluster_component_matrix,
+                component_count: self.cluster_component_count,
+                labels: &self.cluster_labels,
+            },
+            &request,
+            None,
+        )?;
         validate_vce(self.vce, &clusters, self.account_cluster_nesting)?;
         let categorical = request.absorbed_terms.iter().any(|term| {
             term.categorical_sources.len() > 1
@@ -1164,85 +1174,6 @@ fn validate_vce(
         )),
         _ => Ok(()),
     }
-}
-
-fn read_clusters(spec: &EstimateActionSpec, spi: &mut dyn SpiApi) -> Result<Vec<OlsClusterTermV1>> {
-    let terms = read_table(
-        spi,
-        &spec.cluster_term_matrix,
-        spec.cluster_term_count,
-        CLUSTER_TERM_ROW_WIDTH,
-        "cluster term",
-    )?;
-    let components = read_table(
-        spi,
-        &spec.cluster_component_matrix,
-        spec.cluster_component_count,
-        CLUSTER_COMPONENT_ROW_WIDTH,
-        "cluster component",
-    )?;
-    if spec.cluster_term_count == 0 {
-        if spec.cluster_component_count != 0 {
-            return Err(invalid("empty cluster terms have nonempty components"));
-        }
-        if terms.rows[0].iter().any(|value| *value != 0.0)
-            || components.rows[0].iter().any(|value| *value != 0.0)
-        {
-            return Err(invalid(
-                "empty cluster metadata requires exact zero sentinel rows",
-            ));
-        }
-        return Ok(Vec::new());
-    }
-    let mut output = reserved_empty(spec.cluster_term_count, "cluster term table")?;
-    let mut component_cursor = 0_usize;
-    for term_index in 0..spec.cluster_term_count {
-        let row = &terms.rows[term_index];
-        let term = exact_usize(row[0], "cluster term id")?;
-        let count = exact_usize(row[1], "cluster source count")?;
-        if term != term_index + 1 || count == 0 {
-            return Err(invalid("cluster term order or source count is invalid"));
-        }
-        if count
-            > spec
-                .cluster_component_count
-                .saturating_sub(component_cursor)
-        {
-            return Err(invalid(
-                "cluster component table ended before declared source counts",
-            ));
-        }
-        let mut sources = reserved_empty(count, "cluster source recipe")?;
-        for order in 1..=count {
-            let component = components.rows.get(component_cursor).ok_or_else(|| {
-                invalid("cluster component table ended before declared source counts")
-            })?;
-            if exact_usize(component[0], "cluster component term")? != term
-                || exact_usize(component[1], "cluster component order")? != order
-            {
-                return Err(invalid("cluster component ordering is invalid"));
-            }
-            let source = exact_positive_u32(component[2], "cluster source id")?;
-            push_reserved(
-                &mut sources,
-                SourceId::new(source)?,
-                "cluster source recipe capacity exhausted",
-            )?;
-            component_cursor += 1;
-        }
-        push_reserved(
-            &mut output,
-            OlsClusterTermV1 {
-                label: spec.cluster_labels[term_index].clone(),
-                sources,
-            },
-            "cluster term table capacity exhausted",
-        )?;
-    }
-    if component_cursor != spec.cluster_component_count {
-        return Err(invalid("cluster component table has trailing rows"));
-    }
-    Ok(output)
 }
 
 #[cfg(test)]

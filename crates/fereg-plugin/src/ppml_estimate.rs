@@ -1,4 +1,5 @@
-use crate::model_metadata::{exact_usize, reserved_filled, syntax};
+use crate::model_metadata::{read_cluster_terms, ClusterTables};
+use crate::model_metadata::{reserved_filled, syntax};
 use crate::publication::store_matrix;
 use crate::transport::{
     admit_estimate_transport, decode_output_position_registry, fallible_string,
@@ -17,7 +18,7 @@ use crate::estimate::load_ols_input;
 use crate::estimate::{
     imposed_memory_limit_bytes, loading_memory, parse_bool, parse_nonnegative_u32,
     parse_positive_f64, parse_positive_u32, parse_positive_usize, parse_u16, parse_usize,
-    read_bindings, read_numeric_columns_in_chunks, read_table, required,
+    read_bindings, read_numeric_columns_in_chunks, required,
 };
 use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::instrumentation::{
@@ -60,7 +61,6 @@ use fereg_core::{MemoryMode, ThreadConfig};
 
 pub const ACTION_ESTIMATE_PPML: &str = "estimate-ppml";
 const CONFIRMATION: &str = "feppml-estimation";
-const CLUSTER_TERM_ROW_WIDTH: usize = 2;
 /// Fields only the PPML estimation protocol accepts.
 const PPML_FIELDS: &[&str] = &[
     "request_major",
@@ -91,7 +91,6 @@ const PPML_FIELDS: &[&str] = &[
     "output_drop_counts_matrix",
     "output_separation_sequence_matrix",
 ];
-const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum PpmlDeveloperInjection {
@@ -875,7 +874,18 @@ impl EstimatePpmlSpec {
             include_intercept: self.include_intercept,
             keep_singletons: self.keep_singletons,
         };
-        let clusters = read_ppml_clusters(&self, spi, &request)?;
+        let clusters = read_cluster_terms(
+            spi,
+            ClusterTables {
+                term_matrix: &self.cluster_term_matrix,
+                term_count: self.cluster_term_count,
+                component_matrix: &self.cluster_component_matrix,
+                component_count: self.cluster_component_count,
+                labels: &self.cluster_labels,
+            },
+            &request,
+            Some(5),
+        )?;
         let vce = parse_ppml_vce(&self.vce, &clusters)?;
         validate_ppml_weights(&request)?;
 
@@ -2258,98 +2268,6 @@ fn publication_matrix_cells(matrices: &PreparedResultMatrices) -> Result<usize> 
             .checked_add(cells)
             .ok_or_else(|| allocation("PPML publication matrix cell count overflows"))
     })
-}
-
-fn read_ppml_clusters(
-    spec: &EstimatePpmlSpec,
-    spi: &mut dyn SpiApi,
-    request: &OlsRequestV1,
-) -> Result<Vec<OlsClusterTermV1>> {
-    let terms = read_table(
-        spi,
-        &spec.cluster_term_matrix,
-        spec.cluster_term_count,
-        CLUSTER_TERM_ROW_WIDTH,
-        "PPML cluster term",
-    )?;
-    let components = read_table(
-        spi,
-        &spec.cluster_component_matrix,
-        spec.cluster_component_count,
-        CLUSTER_COMPONENT_ROW_WIDTH,
-        "PPML cluster component",
-    )?;
-    if spec.cluster_term_count == 0 {
-        if spec.cluster_component_count != 0
-            || terms.rows[0].iter().any(|value| *value != 0.0)
-            || components.rows[0].iter().any(|value| *value != 0.0)
-        {
-            return Err(invalid(
-                "empty PPML cluster metadata requires exact zero sentinels",
-            ));
-        }
-        return Ok(Vec::new());
-    }
-    if !(1..=5).contains(&spec.cluster_term_count) {
-        return Err(unsupported(
-            "PPML cluster metadata supports between one and five dimensions",
-        ));
-    }
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(spec.cluster_term_count)
-        .map_err(|_| allocation("unable to reserve PPML cluster terms"))?;
-    let mut cursor = 0_usize;
-    for term_index in 0..spec.cluster_term_count {
-        let row = &terms.rows[term_index];
-        let identity = exact_usize(row[0], "PPML cluster term identity")?;
-        let count = exact_usize(row[1], "PPML cluster source count")?;
-        if identity != term_index + 1 || count == 0 {
-            return Err(invalid("PPML cluster term order or arity is invalid"));
-        }
-        if count > spec.cluster_component_count.saturating_sub(cursor) {
-            return Err(invalid(
-                "PPML cluster component table ended before its declared arity",
-            ));
-        }
-        let mut sources = Vec::new();
-        sources
-            .try_reserve_exact(count)
-            .map_err(|_| allocation("unable to reserve PPML cluster source recipe"))?;
-        for order in 1..=count {
-            let component = components.rows.get(cursor).ok_or_else(|| {
-                invalid("PPML cluster component table ended before its declared arity")
-            })?;
-            if exact_usize(component[0], "PPML cluster component term")? != identity
-                || exact_usize(component[1], "PPML cluster component order")? != order
-            {
-                return Err(invalid("PPML cluster component ordering is invalid"));
-            }
-            let source_value = exact_usize(component[2], "PPML cluster source identity")?;
-            let source = SourceId::new(
-                u32::try_from(source_value)
-                    .map_err(|_| invalid("PPML cluster source exceeds u32"))?,
-            )?;
-            if sources.contains(&source)
-                || !request.model.sources.iter().any(|entry| entry.id == source)
-            {
-                return Err(invalid("PPML cluster source recipe is invalid"));
-            }
-            sources.push(source);
-            cursor += 1;
-        }
-        output.push(OlsClusterTermV1 {
-            label: fallible_string(
-                &spec.cluster_labels[term_index],
-                "unable to reserve PPML cluster label",
-            )?,
-            sources,
-        });
-    }
-    if cursor != spec.cluster_component_count {
-        return Err(invalid("PPML cluster component table has trailing rows"));
-    }
-    Ok(output)
 }
 
 fn cluster_subset_rows(dimensions: usize) -> Result<usize> {

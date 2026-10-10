@@ -1,12 +1,14 @@
 //! One host model descriptor; transport framing and registry transfer are explicit.
 use crate::input::SpiApi;
 const BINDING_ROW_WIDTH: usize = 3;
-use fereg_core::error::{allocation, invalid_argument as invalid, ErrorCode, FeregError, Result};
+use fereg_core::error::{
+    allocation, invalid_argument as invalid, unsupported, ErrorCode, FeregError, Result,
+};
 use fereg_core::metadata::{
     ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
     COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
-use fereg_core::ols::{OlsInputBinding, OlsInputRole};
+use fereg_core::ols::{OlsClusterTermV1, OlsInputBinding, OlsInputRole, OlsRequestV1};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Default)]
@@ -274,6 +276,113 @@ pub(crate) fn read_table(
         declared_count: declared_count as f64,
         rows: values,
     })
+}
+
+pub(crate) const CLUSTER_TERM_ROW_WIDTH: usize = 2;
+pub(crate) const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
+
+/// Declared cluster terms as the guarded protocol frames them: one
+/// `(term, source count)` row per term and one `(term, order, source)` row
+/// per source. An empty declaration is one all-zero sentinel row in each.
+pub(crate) struct ClusterTables<'a> {
+    pub(crate) term_matrix: &'a str,
+    pub(crate) term_count: usize,
+    pub(crate) component_matrix: &'a str,
+    pub(crate) component_count: usize,
+    pub(crate) labels: &'a [String],
+}
+
+/// Read the declared cluster terms. Every source must be a distinct declared
+/// model source; `max_dimensions` bounds the terms an estimator supports.
+pub(crate) fn read_cluster_terms(
+    spi: &mut dyn SpiApi,
+    tables: ClusterTables<'_>,
+    request: &OlsRequestV1,
+    max_dimensions: Option<usize>,
+) -> Result<Vec<OlsClusterTermV1>> {
+    let terms = read_table(
+        spi,
+        tables.term_matrix,
+        tables.term_count,
+        CLUSTER_TERM_ROW_WIDTH,
+        "cluster term",
+    )?;
+    let components = read_table(
+        spi,
+        tables.component_matrix,
+        tables.component_count,
+        CLUSTER_COMPONENT_ROW_WIDTH,
+        "cluster component",
+    )?;
+    if tables.term_count == 0 {
+        if tables.component_count != 0
+            || terms.rows[0].iter().any(|value| *value != 0.0)
+            || components.rows[0].iter().any(|value| *value != 0.0)
+        {
+            return Err(invalid(
+                "empty cluster metadata requires exact zero sentinel rows",
+            ));
+        }
+        return Ok(Vec::new());
+    }
+    if let Some(max) = max_dimensions.filter(|max| tables.term_count > *max) {
+        return Err(unsupported(format!(
+            "cluster metadata supports between one and {max} dimensions"
+        )));
+    }
+    let mut output = reserved_empty(tables.term_count, "cluster term table")?;
+    let mut cursor = 0_usize;
+    for term_index in 0..tables.term_count {
+        let row = &terms.rows[term_index];
+        let term = exact_usize(row[0], "cluster term id")?;
+        let count = exact_usize(row[1], "cluster source count")?;
+        if term != term_index + 1 || count == 0 {
+            return Err(invalid("cluster term order or source count is invalid"));
+        }
+        if count > tables.component_count.saturating_sub(cursor) {
+            return Err(invalid(
+                "cluster component table ended before declared source counts",
+            ));
+        }
+        let mut sources = reserved_empty(count, "cluster source recipe")?;
+        for order in 1..=count {
+            let component = components.rows.get(cursor).ok_or_else(|| {
+                invalid("cluster component table ended before declared source counts")
+            })?;
+            if exact_usize(component[0], "cluster component term")? != term
+                || exact_usize(component[1], "cluster component order")? != order
+            {
+                return Err(invalid("cluster component ordering is invalid"));
+            }
+            let source = SourceId::new(exact_positive_u32(component[2], "cluster source id")?)?;
+            if sources.contains(&source)
+                || !request.model.sources.iter().any(|entry| entry.id == source)
+            {
+                return Err(invalid("cluster source recipe is invalid"));
+            }
+            push_reserved(
+                &mut sources,
+                source,
+                "cluster source recipe capacity exhausted",
+            )?;
+            cursor += 1;
+        }
+        push_reserved(
+            &mut output,
+            OlsClusterTermV1 {
+                label: crate::transport::fallible_string(
+                    &tables.labels[term_index],
+                    "cluster label",
+                )?,
+                sources,
+            },
+            "cluster term table capacity exhausted",
+        )?;
+    }
+    if cursor != tables.component_count {
+        return Err(invalid("cluster component table has trailing rows"));
+    }
+    Ok(output)
 }
 
 pub(crate) fn read_bindings(

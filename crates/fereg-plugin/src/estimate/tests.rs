@@ -1,4 +1,5 @@
 use super::*;
+use crate::model_metadata::{CLUSTER_COMPONENT_ROW_WIDTH, CLUSTER_TERM_ROW_WIDTH};
 use fereg_core::metadata::{
     AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledModelSpecification, CompiledTermGraph,
     ComponentKind, ComponentOrder, ExpandedTerm, LevelState, MetadataFlag, ModelWireV2,
