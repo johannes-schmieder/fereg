@@ -1,5 +1,5 @@
 //! Dense damped-Newton Poisson oracle, ported from
-//! tests/oracles/ppml_explicit_dummy_oracle.py at legacy-v0.5.0-beta.
+//! tests/python/ppml_explicit_dummy_oracle.py at legacy-v0.5.0-beta.
 //! This materializes the full design and never calls production IRLS or WLS.
 mod algebra;
 mod inference;

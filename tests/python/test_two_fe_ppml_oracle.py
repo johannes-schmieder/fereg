@@ -5,6 +5,7 @@ import sys
 import unittest
 try:
     import numpy as np
+    import scipy  # noqa: F401  # two_fe_ppml_oracle imports SciPy at module level
 except ImportError as error:  # scientific Python is optional for the gate
     raise unittest.SkipTest(f"requires NumPy/SciPy/pandas: {error}") from error
 

@@ -336,7 +336,7 @@ use identified contrasts when a nuisance constant spans several kept columns.
 
 Tests: `tests/prepared_{robust,clustered}_oracle.rs`,
 `tests/categorical_{iid,robust,clustered}_oracle.rs`, `src/ppml/psd.rs`,
-`tests/oracles/ppml_multiway_cluster_oracle.py`, Stata weight/VCE fixtures.
+`tests/python/ppml_multiway_cluster_oracle.py`, Stata weight/VCE fixtures.
 
 ## 11. Fit statistics and posted results
 
@@ -471,7 +471,7 @@ use this same accepted state. Output tolerance (§5) does not remove the
 strict PPML/final-Hessian requirements.
 
 Tests: `src/ppml/family.rs`, `fereg-oracle/tests/seeded_dense_ppml_differential.rs`,
-`tests/oracles/ppml_explicit_dummy_oracle.py`,
+`tests/python/ppml_explicit_dummy_oracle.py`,
 `parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do`,
 `feppml_multipartition_slope_oracle.do`, final-Hessian/line-search fixtures.
 
@@ -535,7 +535,7 @@ decision, not estimator convergence.
 
 Tests: `src/ppml/prepared_separation.rs`, `fereg-oracle/tests/ppml_separation_primers.rs`,
 `tests/python/test_ppml_recession_cone_primers.py`,
-`tests/oracles/ppml_recession_cone_oracle.py`,
+`tests/python/ppml_recession_cone_oracle.py`,
 `parity_ppmlhdfe/feppml_separation_methods.do`,
 `feppml_separation_outputs.do`, full-model simplex capacity/oracle fixtures.
 

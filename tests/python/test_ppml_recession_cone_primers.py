@@ -2,7 +2,7 @@
 
 The same primers drive the public native fit in
 crates/fereg-oracle/tests/ppml_separation_primers.rs. Here the dependency-free
-oracle in tests/oracles certifies each primer's first-round separated rows over
+oracle in tests/python certifies each primer's first-round separated rows over
 the homogeneous span of the intercept, regressors and every FE level dummy.
 """
 from __future__ import annotations
