@@ -549,7 +549,6 @@ fn retained_qr_report(
     Ok((report, permutation))
 }
 
-#[allow(clippy::too_many_arguments)]
 fn retained_qr_solution(
     values: &[f64],
     response: &[f64],

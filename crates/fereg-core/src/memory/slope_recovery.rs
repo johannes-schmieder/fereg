@@ -8,7 +8,6 @@ use crate::error::{ErrorCode, FeregError, Result};
 /// Each shape is (levels, intercept present, slope channels). The caller owns
 /// the prepared topology, input target and retained fit throughout recovery.
 /// Only small effect/channel descriptors are allocated by this planner.
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn estimate_slope_recovery_memory(
     observations: usize,
     shapes: &[(usize, bool, usize)],

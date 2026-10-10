@@ -360,7 +360,6 @@ struct CallerPcgBuffers {
 }
 
 impl CallerPcgBuffers {
-    #[allow(clippy::too_many_arguments)]
     fn new(
         solver: &ParallelPcgSolver,
         batch_size: usize,
@@ -1838,7 +1837,6 @@ impl CmgSolveMetrics {
 }
 
 // Keep the legacy workspace and ownership boundaries explicit during migration.
-#[allow(clippy::too_many_arguments)]
 fn build_graph_route(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,

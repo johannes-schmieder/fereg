@@ -171,7 +171,6 @@ impl OrdinaryDirection {
         Ok(curve)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn specialized<P: PreparedOlsFitView + Sync + ?Sized>(
         engine: PpmlSolverEngine,
         prepared: &P,

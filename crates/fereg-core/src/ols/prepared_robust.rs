@@ -305,7 +305,6 @@ fn fit_inference_view<P: PreparedOlsInferenceView + Sync + ?Sized>(
 }
 
 // Keep the legacy workspace and ownership boundaries explicit during migration.
-#[allow(clippy::too_many_arguments)]
 #[cfg(test)]
 fn compose_internal<R: PreparedInferenceReservation>(
     prepared: &PreparedOlsData,
@@ -331,7 +330,6 @@ fn compose_internal<R: PreparedInferenceReservation>(
 }
 
 // Keep the legacy workspace and ownership boundaries explicit during migration.
-#[allow(clippy::too_many_arguments)]
 fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInferenceReservation>(
     prepared: &P,
     mut fit: CertifiedPreparedOlsFit,

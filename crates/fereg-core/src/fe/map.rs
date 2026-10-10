@@ -511,7 +511,6 @@ impl ReusableMapAbsorber {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn solve_joint_slopes(
         &mut self,
         weights: &[f64],
@@ -535,7 +534,6 @@ impl ReusableMapAbsorber {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn solve_joint_slopes_streamed<
         C: super::slope_coefficients::joint::JointFiniteDesign,
     >(

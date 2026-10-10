@@ -5210,7 +5210,6 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     )))
 }
 
-#[allow(clippy::too_many_arguments)]
 fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
@@ -6644,7 +6643,6 @@ fn certify_effects_parallel(
 /// Reuses admitted mean buffers; optional products record the same action.
 /// PPML and CMG polishing share this construction without subtracting two
 /// observation-scale matrices. Ordinary OLS absorption retains its arithmetic.
-#[allow(clippy::too_many_arguments)]
 fn borrowed_symmetric_projection_from_group_means_recording(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
@@ -6745,7 +6743,6 @@ fn borrowed_symmetric_projection_from_group_means_recording(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn projection_group_means(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     level: usize,
@@ -6764,7 +6761,6 @@ fn projection_group_means(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn cg_projection_action(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
@@ -7135,7 +7131,6 @@ fn cg_hestenes_error_and_update(
     Ok(largest_error)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn cg_audit_remaining_energy(
     values: &DenseMatrix,
     direction: &DenseMatrix,

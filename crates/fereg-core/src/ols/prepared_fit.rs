@@ -1702,7 +1702,6 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
 }
 
 // The immutable FE binding spans initial blocks and the terminal residual.
-#[allow(clippy::too_many_arguments)]
 fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     config: PreparedOlsFitConfig,
@@ -3670,7 +3669,6 @@ fn build_raw_moment_cache<R: FitReservation>(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 fn fill_raw_moment_cache_fused<R: FitReservation>(
     raw: &DenseMatrix,
     weights: NormalizedWeights<'_>,

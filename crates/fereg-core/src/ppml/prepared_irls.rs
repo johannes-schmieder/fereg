@@ -891,7 +891,6 @@ fn median_nanoseconds(mut values: [u128; PPML_STEADY_STATE_AUDIT_ITERATIONS]) ->
 
 /// Fit PPML after separation and topology rebasing are complete.
 #[cfg(test)]
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn fit_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     prepared: &P,
     outcome: &[f64],
@@ -960,7 +959,6 @@ struct PreparedPpmlFitFrame<'a, P: ?Sized> {
     binding: Option<PpmlGenerationBinding>,
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn fit_generation_ppml_irls_interruptible(
     generation: &super::prepared_model::PreparedPpmlModelGeneration,
     config: PreparedPpmlIrlsConfig,
@@ -984,7 +982,6 @@ pub(super) fn fit_generation_ppml_irls_interruptible(
     run_prepared_ppml_irls(frame, config, memory_plan, start, purpose, bias, interrupt)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     frame: PreparedPpmlFitFrame<'_, P>,
     mut config: PreparedPpmlIrlsConfig,
@@ -3166,7 +3163,6 @@ fn seed_multi_effect_predictor(
 // Profile the group intercept exactly for each proposed slope step. Other
 // coefficients remain fixed; only a nondecreasing finite group Poisson
 // objective permits a provisional update, including the intercept correction.
-#[allow(clippy::too_many_arguments)]
 fn seed_profiled_slope(
     members: &[usize],
     slope: &[f64],
@@ -3750,7 +3746,6 @@ fn strict_profile_consistent(
     ) <= tolerance
 }
 
-#[allow(clippy::too_many_arguments)]
 fn strict_profile_difference(
     eta: &[f64],
     coefficients: &[f64],
@@ -3937,7 +3932,6 @@ fn final_coefficients(
     Ok(result)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     fe_design: &FeDesign,

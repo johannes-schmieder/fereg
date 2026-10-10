@@ -729,7 +729,6 @@ pub(super) fn solve_rank_revealing_qr_leading(
 /// Form `(R'R)^-1` from the accepted leading triangular CPQR factor and
 /// publish it in ascending generated-column identity.  This avoids the
 /// condition-number squaring of refactoring a normal-equation Gram.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn invert_rank_revealing_qr_leading(
     qr: &[f64],
     permutation: &[usize],

@@ -315,7 +315,6 @@ pub struct PpmlFinalSample {
 }
 
 impl PpmlFinalSample {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         original_observations: usize,
         candidate_observations: usize,

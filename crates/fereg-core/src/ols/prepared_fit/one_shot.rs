@@ -43,7 +43,6 @@ impl OneShotInputs {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     frame: LinearSolveFrame<'_>,
@@ -232,7 +231,6 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 fn dense_finite_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     inputs: &mut OneShotInputs,
@@ -302,7 +300,6 @@ fn dense_finite_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn project_scratch<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &'a P,
     frame: LinearSolveFrame<'a>,
@@ -461,7 +458,6 @@ fn project_scratch_columns<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation
     Ok(intercept_cross)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     inputs: &mut OneShotInputs,
@@ -807,7 +803,6 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     Ok(fit)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn project_residual(
     cmg: &mut crate::fe::FeSession<'_>,
     rows: usize,

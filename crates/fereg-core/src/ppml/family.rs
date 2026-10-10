@@ -825,7 +825,6 @@ fn finish_objective(
 /// weights reproduce literal row replication and probability weights enter the
 /// estimating equations multiplicatively; neither changes the working response.
 #[cfg(test)]
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn fill_poisson_working_state(
     outcome: &[f64],
     mean: &[f64],

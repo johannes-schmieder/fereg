@@ -311,7 +311,6 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn trace_assessment(
         &self,
         transaction: &StrictLinearCandidateTransaction<'_, '_, P>,

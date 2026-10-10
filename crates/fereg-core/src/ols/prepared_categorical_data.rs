@@ -888,7 +888,6 @@ fn prepare_categorical_ols_data_with_cluster_sources_policy(
     )
 }
 
-#[allow(clippy::too_many_arguments)] // The one shared preparation boundary carries cold grammar policies.
 pub(crate) fn finish_prepared_model(
     request: &OlsRequestV1,
     cluster_sources: &[SourceId],

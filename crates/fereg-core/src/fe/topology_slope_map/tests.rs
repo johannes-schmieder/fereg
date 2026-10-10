@@ -23,7 +23,6 @@ fn shared_recovery_with_map_controls(
 }
 
 use crate::fe::LsmrConfig;
-#[allow(clippy::too_many_arguments)]
 fn shared_recovery_with_solve_controls(
     topology: &FinalizedCategoricalTopology,
     effects: &[CategoricalAbsorbedEffectView<'_>],
