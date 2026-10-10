@@ -568,7 +568,9 @@ fn null_likelihood_is_constant_only_and_pseudo_r_squared_uses_it() {
     let fitted_mean = [2.0_f64, 2.0, 4.0, 4.0];
     let objective = super::super::poisson_objective(&outcome, &fitted_mean, &weights)
         .expect("fitted objective");
-    let statistics = PpmlLikelihoodStatistics::from_final_state(objective, &outcome, &weights)
+    let null_objective =
+        crate::ppml::poisson_null_objective(&outcome, &weights).expect("null objective");
+    let statistics = PpmlLikelihoodStatistics::from_replayed_null(objective, null_objective)
         .expect("statistics");
     assert!((statistics.null_mean - 3.0).abs() <= 8.0 * f64::EPSILON);
     let null = super::super::poisson_objective(&outcome, &[3.0; 4], &weights)

@@ -2331,8 +2331,8 @@ fn line_search_reuses_buffers_and_rejects_overflow() {
         .set_candidate_eta(&[1_000.0, -1_000.0])
         .expect("candidate eta");
     workspace
-        .set_candidate_coefficients(&[1.0])
-        .expect("candidate coefficients");
+        .candidate_coefficients_mut()
+        .copy_from_slice(&[1.0]);
     let objective =
         poisson_objective_from_eta(&[1.0, 1.0], workspace.eta(), workspace.mean(), &[1.0, 1.0])
             .expect("objective");
@@ -4170,8 +4170,8 @@ fn intercept_initialization_and_backtracking_move_beta_and_eta_together() {
     let mut candidate = workspace.coefficients().to_vec();
     candidate[0] = 20.0;
     workspace
-        .set_candidate_coefficients(&candidate)
-        .expect("candidate coefficients");
+        .candidate_coefficients_mut()
+        .copy_from_slice(&candidate);
     let candidate_eta = x
         .iter()
         .map(|value| initial_intercept + 20.0 * value)

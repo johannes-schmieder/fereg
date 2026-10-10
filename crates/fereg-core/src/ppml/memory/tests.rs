@@ -2,7 +2,6 @@ use super::*;
 // Independent witnesses for the retained compatibility envelopes.
 const LOW_SCRATCH_IO_BUFFER_CEILING_BYTES: u128 = 1 << 20;
 const RETAINED_MOMENT_TILE_ELEMENTS: usize = 1024;
-use crate::ppml::PpmlCertificate;
 
 static PREFLIGHT_EVENTS: std::sync::Mutex<Vec<PpmlMemoryPreflightEvent>> =
     std::sync::Mutex::new(Vec::new());
@@ -54,6 +53,16 @@ fn dimensions() -> PpmlMemoryDimensions {
     }
 }
 
+/// Zero-coefficient workspace, as the prepared initializer hands over its
+/// owned predictor and coefficient vectors.
+fn zero_start_workspace(plan: PpmlMemoryPlan, eta: &[f64]) -> Result<PpmlIterationWorkspace> {
+    PpmlIterationWorkspace::from_initial_state(
+        plan,
+        eta.to_vec(),
+        vec![0.0; plan.dimensions.coefficient_slots],
+    )
+}
+
 fn plan_with_diagnostic_capacity(capacity: usize) -> PpmlMemoryPlan {
     plan_ppml_memory(
         dimensions(),
@@ -82,7 +91,7 @@ fn objective_partial_bank_is_charged_beside_all_iteration_vectors() {
         assert_eq!(estimate.fast.iteration_buffer_bytes, expected);
         assert_eq!(estimate.low.iteration_buffer_bytes, expected);
         let plan = plan_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
-        let workspace = PpmlIterationWorkspace::new(plan, &vec![0.; shape.observations]).unwrap();
+        let workspace = zero_start_workspace(plan, &vec![0.; shape.observations]).unwrap();
         assert_eq!(workspace.objective_partials.len(), cells);
         assert_eq!(workspace.objective_partials.capacity(), cells);
         assert_eq!(
@@ -90,27 +99,6 @@ fn objective_partial_bank_is_charged_beside_all_iteration_vectors() {
             8 * shape.observations + cells
         );
         workspace.certify_steady_state_capacity().unwrap();
-    }
-}
-
-fn report(iteration: usize) -> PpmlIterationReport {
-    PpmlIterationReport {
-        iteration,
-        deviance: iteration as f64,
-        log_likelihood: -(iteration as f64),
-        relative_deviance_change: 0.0,
-        step: 1.0,
-        step_halvings: 0,
-        inner_tolerance: 1e-10,
-        finite_rank: 1,
-        absorb_report: None,
-        certificate: PpmlCertificate {
-            finite_absolute_infinity_norm: 0.0,
-            fixed_effect_absolute_infinity_norm: 0.0,
-            relative_infinity_norm: 0.0,
-            relative_two_norm: 0.0,
-            passed: true,
-        },
     }
 }
 
@@ -2183,12 +2171,15 @@ fn reusable_workspace_has_stable_data_sized_capacities() {
         },
     )
     .expect("plan");
-    let mut workspace = PpmlIterationWorkspace::new(plan, &[0.0; 4]).expect("workspace");
-    workspace
-        .set_coefficients(&[0.0, 0.0])
-        .expect("coefficients");
+    let mut workspace = zero_start_workspace(plan, &[0.0; 4]).expect("workspace");
+    copy_equal_len(
+        &mut workspace.coefficients,
+        &[0.0, 0.0],
+        "PPML coefficients",
+    )
+    .expect("coefficients");
     let initial = workspace.capacity_report();
-    for iteration in 1..=50 {
+    for _ in 1..=50 {
         workspace
             .refresh_working_state(
                 &[0.0, 1.0, 2.0, 3.0],
@@ -2200,21 +2191,18 @@ fn reusable_workspace_has_stable_data_sized_capacities() {
         workspace
             .set_candidate_eta(&[0.1, 0.2, 0.3, 0.4])
             .expect("candidate eta");
-        workspace
-            .set_candidate_coefficients(&[0.5, -0.25])
-            .expect("candidate coefficients");
+        copy_equal_len(
+            &mut workspace.candidate_coefficients,
+            &[0.5, -0.25],
+            "PPML candidate coefficients",
+        )
+        .expect("candidate coefficients");
         workspace
             .fill_line_search_trial(0.5, PoissonBounds::default())
             .expect("trial");
         workspace.accept_trial().expect("accept");
-        workspace
-            .push_diagnostic(report(iteration))
-            .expect("diagnostic");
         assert_eq!(workspace.capacity_report(), initial);
     }
-    assert_eq!(workspace.diagnostics().capacity(), 3);
-    assert_eq!(workspace.diagnostics().len(), 3);
-    assert_eq!(workspace.diagnostics().total_seen(), 50);
     workspace
         .prepare_final_hessian_response(&[0.0; 4])
         .expect("final-Hessian response reuses the working-response buffer");
@@ -2225,11 +2213,6 @@ fn reusable_workspace_has_stable_data_sized_capacities() {
             + plan.selected_inventory().strict_final_transient_bytes,
         "final-Hessian workspace remains reusable while canonical recertification overlaps four row vectors",
     );
-    let mut retained = Vec::new();
-    workspace
-        .diagnostics()
-        .for_each_chronological(|item| retained.push(item.iteration));
-    assert_eq!(retained, vec![48, 49, 50]);
 }
 
 #[test]
@@ -2255,7 +2238,7 @@ fn stable_line_search_accepts_in_place_without_capacity_growth() {
     .expect("plan");
     let outcome = [0.0, 1.0, 2.0, 3.0];
     let weights = [1.0; 4];
-    let mut workspace = PpmlIterationWorkspace::new(plan, &[0.0; 4]).expect("workspace");
+    let mut workspace = zero_start_workspace(plan, &[0.0; 4]).expect("workspace");
     workspace
         .refresh_working_state(&outcome, &weights, &[0.0; 4], PoissonBounds::default())
         .expect("working state");
@@ -2265,9 +2248,12 @@ fn stable_line_search_accepts_in_place_without_capacity_growth() {
     workspace
         .set_candidate_eta(&[-0.5, 0.0, 2.0_f64.ln(), 3.0_f64.ln()])
         .expect("candidate eta");
-    workspace
-        .set_candidate_coefficients(&[0.25, -0.5, 1.0])
-        .expect("candidate coefficients");
+    copy_equal_len(
+        &mut workspace.candidate_coefficients,
+        &[0.25, -0.5, 1.0],
+        "PPML candidate coefficients",
+    )
+    .expect("candidate coefficients");
     let capacities = workspace.capacity_report();
     let accepted = workspace
         .accept_candidate(&outcome, &weights, objective, PpmlConfig::default())
@@ -2288,13 +2274,18 @@ fn transformed_line_search_failure_preserves_accepted_state() {
     shape.coefficient_slots = 1;
     shape.reported_coefficient_slots = 1;
     let plan = plan_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
-    let mut workspace = PpmlIterationWorkspace::new(plan, &[0.; 2]).unwrap();
+    let mut workspace = zero_start_workspace(plan, &[0.; 2]).unwrap();
     let bounds = PoissonBounds::default();
     workspace
         .refresh_working_state(&[1., 2.], &[1.; 2], &[0.; 2], bounds)
         .unwrap();
     workspace.set_candidate_eta(&[0.25, -0.5]).unwrap();
-    workspace.set_candidate_coefficients(&[0.75]).unwrap();
+    copy_equal_len(
+        &mut workspace.candidate_coefficients,
+        &[0.75],
+        "PPML candidate coefficients",
+    )
+    .unwrap();
     let before = (
         workspace.eta().to_vec(),
         workspace.mean().to_vec(),
@@ -2345,7 +2336,7 @@ fn line_search_backtracks_a_finite_candidate_whose_mean_overflows() {
     let target = 10.0_f64.exp();
     let outcome = [target, target];
     let weights = [1.0; 2];
-    let mut workspace = PpmlIterationWorkspace::new(plan, &[0.0; 2]).expect("workspace");
+    let mut workspace = zero_start_workspace(plan, &[0.0; 2]).expect("workspace");
     workspace
         .refresh_working_state(&outcome, &weights, &[0.0; 2], PoissonBounds::default())
         .expect("initial working state");
@@ -2355,9 +2346,12 @@ fn line_search_backtracks_a_finite_candidate_whose_mean_overflows() {
     workspace
         .set_candidate_eta(&[1_000.0; 2])
         .expect("finite extreme candidate");
-    workspace
-        .set_candidate_coefficients(&[1_000.0])
-        .expect("finite extreme coefficient");
+    copy_equal_len(
+        &mut workspace.candidate_coefficients,
+        &[1_000.0],
+        "PPML candidate coefficients",
+    )
+    .expect("finite extreme coefficient");
 
     let accepted = workspace
         .accept_candidate(&outcome, &weights, objective, PpmlConfig::default())
@@ -2381,7 +2375,7 @@ fn line_search_propagates_raw_domain_errors_instead_of_halving_them() {
     small_dimensions.coefficient_slots = 1;
     small_dimensions.reported_coefficient_slots = 1;
     let plan = plan_ppml_memory(small_dimensions, PpmlMemoryConfig::default()).expect("plan");
-    let mut workspace = PpmlIterationWorkspace::new(plan, &[0.0; 2]).expect("workspace");
+    let mut workspace = zero_start_workspace(plan, &[0.0; 2]).expect("workspace");
     let valid_outcome = [1.0; 2];
     let weights = [1.0; 2];
     workspace
@@ -2398,9 +2392,12 @@ fn line_search_propagates_raw_domain_errors_instead_of_halving_them() {
     workspace
         .set_candidate_eta(&[0.0; 2])
         .expect("candidate eta");
-    workspace
-        .set_candidate_coefficients(&[0.0])
-        .expect("candidate coefficient");
+    copy_equal_len(
+        &mut workspace.candidate_coefficients,
+        &[0.0],
+        "PPML candidate coefficients",
+    )
+    .expect("candidate coefficient");
 
     let error = workspace
         .accept_candidate(&[-1.0, 1.0], &weights, objective, PpmlConfig::default())
@@ -2412,8 +2409,8 @@ fn line_search_propagates_raw_domain_errors_instead_of_halving_them() {
 #[test]
 fn telemetry_never_infers_unobserved_allocator_or_timer_values() {
     let plan = plan_with_diagnostic_capacity(2);
-    let workspace = PpmlIterationWorkspace::new(plan, &vec![0.0; plan.dimensions.observations])
-        .expect("workspace");
+    let workspace =
+        zero_start_workspace(plan, &vec![0.0; plan.dimensions.observations]).expect("workspace");
     let mut telemetry = PpmlMemoryTelemetry::new(plan, 4, 4).expect("telemetry");
     assert_eq!(telemetry.timings.get(PpmlPhase::Preparation), None);
     assert_eq!(telemetry.allocations.peak_delta_bytes(), None);
@@ -2666,11 +2663,6 @@ fn rank_zero_candidate_keeps_the_possible_positive_rank_workspace_ceiling() {
     assert!(expected > rank_zero_ordering);
     assert_eq!(estimate.fast.inference_workspace_bytes, expected);
     assert_eq!(estimate.low.inference_workspace_bytes, expected);
-}
-
-#[test]
-fn registered_diagnostic_record_fits_the_bounded_slot() {
-    assert!(size_of::<PpmlIterationReport>() as u128 <= DIAGNOSTIC_RECORD_BYTES);
 }
 
 #[test]

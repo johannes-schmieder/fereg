@@ -13,9 +13,7 @@ use std::time::{Duration, Instant};
 #[cfg(test)]
 use super::family::{fill_poisson_working_state, poisson_objective_from_eta};
 use super::family::{means_from_eta, objective_partial_cells, PreparedPoissonInputs};
-use super::{
-    PoissonBounds, PoissonObjective, PpmlCoefficientStatus, PpmlConfig, PpmlIterationReport,
-};
+use super::{PoissonBounds, PoissonObjective, PpmlCoefficientStatus, PpmlConfig};
 use crate::data::DropReason;
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::{CategoricalCodeView, FeSolverKind, LevelIndex};
@@ -444,16 +442,6 @@ pub enum PpmlMemoryPreflightEvent {
 }
 
 pub type PpmlMemoryPreflightProbe = fn(PpmlMemoryPreflightEvent) -> Result<()>;
-
-impl PpmlMemoryRoute {
-    #[must_use]
-    pub const fn as_memory_mode(self) -> MemoryMode {
-        match self {
-            Self::Fast => MemoryMode::Fast,
-            Self::Low => MemoryMode::Low,
-        }
-    }
-}
 
 /// Itemized peak model for one concrete PPML route.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2293,6 +2281,8 @@ fn owned_fe_recovery_workspace_bytes(shape: PpmlMemoryDimensions) -> Result<u128
 pub struct PpmlWorkspaceCapacityReport {
     pub observation_capacity_sum: usize,
     pub coefficient_capacity_sum: usize,
+    /// The workspace owns no diagnostic records; this stays zero, as the
+    /// runtime result wire and the telemetry validator require.
     pub diagnostic_capacity: usize,
 }
 
@@ -2517,7 +2507,6 @@ pub struct PpmlIterationWorkspace {
     coefficients: Vec<f64>,
     candidate_coefficients: Vec<f64>,
     trial_coefficients: Vec<f64>,
-    diagnostics: BoundedPpmlDiagnostics,
     steady_state_capacity: PpmlWorkspaceCapacityReport,
 }
 
@@ -2529,36 +2518,14 @@ pub struct PpmlLineSearchAcceptance {
 }
 
 impl PpmlIterationWorkspace {
-    /// Allocate all PPML-owned data-sized iteration buffers once, after a
-    /// successful preflight.
-    pub fn new(plan: PpmlMemoryPlan, initial_eta: &[f64]) -> Result<Self> {
-        let eta = fallible_copy(initial_eta, "PPML eta buffer")?;
-        let coefficients = fallible_filled(
-            plan.dimensions.coefficient_slots,
-            0.0,
-            "PPML coefficient buffer",
-        )?;
-        let diagnostic_capacity = plan.estimate_diagnostic_capacity();
-        Self::from_initial_state_with_diagnostics(plan, eta, coefficients, diagnostic_capacity)
-    }
-
     /// Adopt initializer-owned eta and coefficient vectors, avoiding a second
     /// observation-sized allocation and copy at the fit boundary.
+    /// The prepared driver retains its own bounded iteration reports, so the
+    /// numerical workspace holds no diagnostic records.
     pub(crate) fn from_initial_state(
         plan: PpmlMemoryPlan,
         eta: Vec<f64>,
         coefficients: Vec<f64>,
-    ) -> Result<Self> {
-        // The prepared driver owns its richer bounded diagnostic ring.  Do
-        // not allocate a second record inside the numerical workspace.
-        Self::from_initial_state_with_diagnostics(plan, eta, coefficients, 0)
-    }
-
-    fn from_initial_state_with_diagnostics(
-        plan: PpmlMemoryPlan,
-        eta: Vec<f64>,
-        coefficients: Vec<f64>,
-        diagnostic_capacity: usize,
     ) -> Result<Self> {
         if eta.len() != plan.dimensions.observations {
             return Err(invalid_argument(
@@ -2601,7 +2568,6 @@ impl PpmlIterationWorkspace {
             coefficients,
             candidate_coefficients: fallible_filled(k, 0.0, "PPML candidate-coefficient buffer")?,
             trial_coefficients: fallible_filled(k, 0.0, "PPML trial-coefficient buffer")?,
-            diagnostics: BoundedPpmlDiagnostics::new(diagnostic_capacity)?,
             steady_state_capacity: PpmlWorkspaceCapacityReport {
                 observation_capacity_sum: 0,
                 coefficient_capacity_sum: 0,
@@ -2768,20 +2734,8 @@ impl PpmlIterationWorkspace {
         &self.trial_coefficients
     }
 
-    pub fn set_coefficients(&mut self, values: &[f64]) -> Result<()> {
-        copy_equal_len(&mut self.coefficients, values, "PPML coefficients")
-    }
-
     pub fn set_candidate_eta(&mut self, values: &[f64]) -> Result<()> {
         copy_equal_len(&mut self.candidate_eta, values, "PPML candidate eta")
-    }
-
-    pub fn set_candidate_coefficients(&mut self, values: &[f64]) -> Result<()> {
-        copy_equal_len(
-            &mut self.candidate_coefficients,
-            values,
-            "PPML candidate coefficients",
-        )
     }
 
     pub(crate) fn refresh_score_residuals(&mut self, outcome: &[f64]) -> Result<()> {
@@ -3096,16 +3050,6 @@ impl PpmlIterationWorkspace {
         (self.coefficients, self.eta, self.mean, self.score_residuals)
     }
 
-    pub fn push_diagnostic(&mut self, report: PpmlIterationReport) -> Result<()> {
-        self.diagnostics.push(report);
-        self.certify_steady_state_capacity()
-    }
-
-    #[must_use]
-    pub const fn diagnostics(&self) -> &BoundedPpmlDiagnostics {
-        &self.diagnostics
-    }
-
     #[must_use]
     pub fn capacity_report(&self) -> PpmlWorkspaceCapacityReport {
         PpmlWorkspaceCapacityReport {
@@ -3121,7 +3065,7 @@ impl PpmlIterationWorkspace {
             coefficient_capacity_sum: self.coefficients.capacity()
                 + self.candidate_coefficients.capacity()
                 + self.trial_coefficients.capacity(),
-            diagnostic_capacity: self.diagnostics.capacity(),
+            diagnostic_capacity: 0,
         }
     }
 
@@ -3145,81 +3089,6 @@ impl PpmlMemoryPlan {
     fn estimate_diagnostic_capacity(self) -> usize {
         (self.estimate.fast.diagnostic_bytes / DIAGNOSTIC_RECORD_BYTES).min(usize::MAX as u128)
             as usize
-    }
-}
-
-/// Fixed-capacity ring preserving the most recent iteration diagnostics.
-#[derive(Debug)]
-pub struct BoundedPpmlDiagnostics<T = PpmlIterationReport> {
-    reports: Vec<T>,
-    next: usize,
-    total_seen: usize,
-    capacity: usize,
-}
-
-impl<T> BoundedPpmlDiagnostics<T> {
-    pub(crate) fn new(capacity: usize) -> Result<Self> {
-        let mut reports = Vec::new();
-        reports
-            .try_reserve_exact(capacity)
-            .map_err(|_| allocation("unable to reserve bounded PPML diagnostics"))?;
-        Ok(Self {
-            reports,
-            next: 0,
-            total_seen: 0,
-            capacity,
-        })
-    }
-
-    pub(crate) fn push(&mut self, report: T) {
-        self.total_seen = self.total_seen.saturating_add(1);
-        if self.capacity == 0 {
-            return;
-        }
-        if self.reports.len() < self.capacity {
-            self.reports.push(report);
-            self.next = self.reports.len() % self.capacity;
-        } else {
-            self.reports[self.next] = report;
-            self.next = (self.next + 1) % self.capacity;
-        }
-    }
-
-    #[must_use]
-    pub fn capacity(&self) -> usize {
-        self.capacity
-    }
-
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.reports.len()
-    }
-
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.reports.is_empty()
-    }
-
-    #[must_use]
-    pub fn total_seen(&self) -> usize {
-        self.total_seen
-    }
-
-    /// Visit retained reports in chronological order without constructing a
-    /// reordered copy.
-    pub fn for_each_chronological(&self, mut visit: impl FnMut(&T)) {
-        if self.reports.len() < self.capacity || self.capacity == 0 {
-            for report in &self.reports {
-                visit(report);
-            }
-            return;
-        }
-        for report in self.reports[self.next..]
-            .iter()
-            .chain(&self.reports[..self.next])
-        {
-            visit(report);
-        }
     }
 }
 
@@ -3306,14 +3175,6 @@ impl PpmlPhaseTimings {
         let slot = &mut self.phases[phase as usize];
         slot.elapsed = slot.elapsed.saturating_add(elapsed);
         slot.observed = true;
-    }
-
-    pub fn merge(&mut self, other: &Self) {
-        for phase in PPML_PHASES {
-            if let Some(elapsed) = other.get(phase) {
-                self.add(phase, elapsed);
-            }
-        }
     }
 
     #[must_use]
@@ -3440,10 +3301,6 @@ impl PpmlMemoryTelemetry {
 
     pub fn record_phase(&mut self, phase: PpmlPhase, elapsed: Duration) {
         self.timings.add(phase, elapsed);
-    }
-
-    pub fn merge_phase_timings(&mut self, timings: &PpmlPhaseTimings) {
-        self.timings.merge(timings);
     }
 
     pub fn observe_phase_peak(&mut self, phase: PpmlPhase, bytes: u64) {
@@ -3765,15 +3622,6 @@ fn copy_equal_len(target: &mut [f64], source: &[f64], label: &str) -> Result<()>
 fn fallible_filled(length: usize, value: f64, label: &str) -> Result<Vec<f64>> {
     crate::memory::Capacity::new(length as u128)
         .filled_with(value, || allocation(format!("unable to reserve {label}")))
-}
-
-fn fallible_copy(values: &[f64], label: &str) -> Result<Vec<f64>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(values.len())
-        .map_err(|_| allocation(format!("unable to reserve {label}")))?;
-    output.extend_from_slice(values);
-    Ok(output)
 }
 
 fn bytes_f64(cells: u128) -> Result<u128> {

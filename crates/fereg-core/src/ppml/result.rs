@@ -8,15 +8,15 @@ use super::psd::inspect_published_ppml_covariance;
 use super::residuals::{ppml_residuals, PpmlResidualKind};
 use super::vce::validate_weight_report;
 use super::wald::{compute_ppml_wald, validate_reference};
-use super::{
-    poisson_null_objective, PoissonNullObjective, PoissonObjective, PpmlAllocationTelemetry,
-    PpmlAllocatorSnapshot, PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlInferenceResult,
-    PpmlMemoryTelemetry, PpmlPhase, PpmlPhaseClock, PpmlPsdState, PpmlSolverReport,
-    PpmlTestDistribution, PpmlVceKind, PpmlVceRequest, PreparedPpmlAdjustmentKind,
-    PreparedPpmlAdjustmentReport, PreparedPpmlWeightReport,
-};
 #[cfg(test)]
 use super::{poisson_objective, PpmlIterationWorkspace};
+use super::{
+    PoissonNullObjective, PoissonObjective, PpmlAllocationTelemetry, PpmlAllocatorSnapshot,
+    PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlInferenceResult, PpmlMemoryTelemetry,
+    PpmlPhase, PpmlPhaseClock, PpmlPsdState, PpmlSolverReport, PpmlTestDistribution, PpmlVceKind,
+    PpmlVceRequest, PreparedPpmlAdjustmentKind, PreparedPpmlAdjustmentReport,
+    PreparedPpmlWeightReport,
+};
 use crate::data::{DropReason, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 #[cfg(test)]
@@ -53,23 +53,6 @@ pub struct PpmlLikelihoodStatistics {
 }
 
 impl PpmlLikelihoodStatistics {
-    pub fn from_final_state(
-        objective: PoissonObjective,
-        outcome: &[f64],
-        prior_weights: &[f64],
-    ) -> Result<Self> {
-        if !objective.deviance.is_finite()
-            || objective.deviance < 0.0
-            || !objective.log_likelihood.is_finite()
-        {
-            return Err(FeregError::new(
-                ErrorCode::NonConvergence,
-                "PPML final objective is not publishable",
-            ));
-        }
-        Self::from_replayed_null(objective, poisson_null_objective(outcome, prior_weights)?)
-    }
-
     fn from_replayed_null(objective: PoissonObjective, null: PoissonNullObjective) -> Result<Self> {
         if !objective.deviance.is_finite()
             || objective.deviance < 0.0
@@ -1687,15 +1670,6 @@ impl CertifiedPpmlResult {
     /// generation; the publication layer never needs to rejoin row products.
     pub fn prediction(&self, kind: PpmlPredictionKind) -> Result<Vec<f64>> {
         self.output.prediction(kind, Some(self.sample.outcome()))
-    }
-
-    pub fn scatter_prediction(
-        &self,
-        kind: PpmlPredictionKind,
-        missing_value: f64,
-    ) -> Result<Vec<f64>> {
-        let compact = self.prediction(kind)?;
-        self.output.scatter_to_original(&compact, missing_value)
     }
 }
 

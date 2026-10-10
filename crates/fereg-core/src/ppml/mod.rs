@@ -35,10 +35,10 @@ pub use family::{
 };
 pub use memory::{
     certify_ppml_steady_state_allocation, estimate_ppml_memory, plan_ppml_memory,
-    BoundedPpmlDiagnostics, PpmlAllocationTelemetry, PpmlAllocatorSnapshot,
-    PpmlAllocatorSnapshotProbe, PpmlFallbackKind, PpmlIterationWorkspace, PpmlLineSearchAcceptance,
-    PpmlLinearWorkspaceCapacityReport, PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryEstimate,
-    PpmlMemoryInventory, PpmlMemoryPlan, PpmlMemoryPreflightEvent, PpmlMemoryPreflightObservation,
+    PpmlAllocationTelemetry, PpmlAllocatorSnapshot, PpmlAllocatorSnapshotProbe, PpmlFallbackKind,
+    PpmlIterationWorkspace, PpmlLineSearchAcceptance, PpmlLinearWorkspaceCapacityReport,
+    PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryEstimate, PpmlMemoryInventory,
+    PpmlMemoryPlan, PpmlMemoryPreflightEvent, PpmlMemoryPreflightObservation,
     PpmlMemoryPreflightProbe, PpmlMemoryRoute, PpmlMemoryTelemetry, PpmlPhase,
     PpmlPhaseAllocatorEvent, PpmlPhaseAllocatorProbe, PpmlPhaseClock, PpmlPhaseTimings,
     PpmlSteadyStateAllocationCertificate, PpmlSteadyStateAllocationObservation,
@@ -78,7 +78,7 @@ pub use vce::{
     PpmlTestDistribution, PpmlVceKind, PpmlVceRequest, PpmlVceResult, PpmlWaldReport,
 };
 
-use crate::fe::{AbsorbConfig, SolveReport};
+use crate::fe::AbsorbConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PpmlConfig {
@@ -239,20 +239,6 @@ pub(crate) fn scheduled_inner_tolerance(
         .min(progress_target)
         .max(floor)
         .min(previous_target)
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct PpmlIterationReport {
-    pub iteration: usize,
-    pub deviance: f64,
-    pub log_likelihood: f64,
-    pub relative_deviance_change: f64,
-    pub step: f64,
-    pub step_halvings: usize,
-    pub inner_tolerance: f64,
-    pub finite_rank: usize,
-    pub absorb_report: Option<SolveReport>,
-    pub certificate: PpmlCertificate,
 }
 
 #[cfg(test)]
