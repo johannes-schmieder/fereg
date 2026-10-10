@@ -1,7 +1,7 @@
 use fereg_core::ppml::{
     estimate_ppml_memory, plan_ppml_memory, PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryRoute,
 };
-use fereg_core::{ErrorCode, MemoryMode};
+use fereg_core::{ErrorCode, MemoryMode, SeparationMethodReport};
 
 const OBSERVATIONS: usize = 10_000_000;
 const DEFAULT_POOLSIZE: usize = 10;
@@ -17,6 +17,13 @@ const NO_ROUTE_LIMIT_BYTES: u128 = 1_500_000_000;
 // and a bit-packed missingness vector, together with the candidate bit vector.
 // For the frozen k50/two-FE recipe that is 53 numeric and 54 bit vectors.
 const K50_EMBEDDING_RESIDENT_FLOOR_BYTES: u128 = 4_307_500_000;
+
+/// Plan decision D9 charges separation method-report records for at most 256
+/// preflighted generations instead of one generation per observation; four
+/// methods are enabled in both fixtures.
+fn report_bank_decrement() -> u128 {
+    (OBSERVATIONS as u128 - 256) * 4 * std::mem::size_of::<SeparationMethodReport>() as u128
+}
 
 fn governing_k50_dimensions() -> PpmlMemoryDimensions {
     PpmlMemoryDimensions {
@@ -91,6 +98,7 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     let low_scalar_increment = 7 * DEFAULT_POOLSIZE as u128 * 8;
     let parent_increment = 51 * 8;
     let result_increment = base.fast.result_metadata_bytes;
+    let bank = report_bank_decrement();
     assert_eq!(
         base.fast.peak_bytes,
         47_400_233_650
@@ -98,10 +106,11 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
             + parent_increment
             + result_increment
             + fast_scalar_increment
+            - bank
     );
     assert_eq!(
         base.fast.separation_peak_bytes,
-        47_170_268_279 + workspace_increment / 2 + parent_increment + fast_scalar_increment
+        47_170_268_279 + workspace_increment / 2 + parent_increment + fast_scalar_increment - bank
     );
     // Low admits an 8-KiB complete-row tile instead of one 51-double row.
     assert_eq!(
@@ -111,10 +120,11 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
             + parent_increment
             + result_increment
             + low_scalar_increment
+            - bank
     );
     assert_eq!(
         base.low.separation_peak_bytes,
-        24_451_320_679 + workspace_increment / 2 + parent_increment + low_scalar_increment
+        24_451_320_679 + workspace_increment / 2 + parent_increment + low_scalar_increment - bank
     );
     assert_eq!(
         base.fast.peak_bytes - base.low.peak_bytes,
@@ -144,6 +154,7 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
             + parent_increment
             + result_increment
             + fast_scalar_increment
+            - bank
     );
     assert_eq!(
         embedded.low.peak_bytes,
@@ -152,6 +163,7 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
             + parent_increment
             + result_increment
             + low_scalar_increment
+            - bank
     );
 
     let auto = plan_ppml_memory(
@@ -194,11 +206,11 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     assert_eq!(auto.usable_bytes, Some(29_360_000_000));
     assert_eq!(
         auto.usable_bytes.expect("imposed usable memory") - embedded.low.peak_bytes,
-        51_213_950 - parent_increment - result_increment - low_scalar_increment
+        51_213_950 + bank - parent_increment - result_increment - low_scalar_increment
     );
     assert_eq!(
         embedded.fast.peak_bytes - auto.usable_bytes.expect("imposed usable memory"),
-        22_667_733_650 + parent_increment + result_increment + fast_scalar_increment
+        22_667_733_650 + parent_increment + result_increment + fast_scalar_increment - bank
     );
 
     let low = plan_ppml_memory(
@@ -249,11 +261,15 @@ fn previous_k10_four_gigabyte_shape_still_rejects_every_route() {
     let base = estimate_ppml_memory(dimensions, PpmlMemoryConfig::default())
         .expect("previous constrained estimate");
     let increment = 4 * OBSERVATIONS as u128 * 8 + 11 * 8 + base.fast.result_metadata_bytes;
+    let bank = report_bank_decrement();
     assert_eq!(
         base.fast.peak_bytes,
-        21_800_051_330 + increment + 7 * 12 * 8
+        21_800_051_330 + increment + 7 * 12 * 8 - bank
     );
-    assert_eq!(base.low.peak_bytes, 21_481_107_890 + increment + 7 * 10 * 8);
+    assert_eq!(
+        base.low.peak_bytes,
+        21_481_107_890 + increment + 7 * 10 * 8 - bank
+    );
     assert_eq!(
         base.fast.peak_bytes - base.low.peak_bytes,
         318_943_440 + 7 * (12 - 10) * 8
