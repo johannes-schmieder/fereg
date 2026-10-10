@@ -3503,23 +3503,12 @@ fn finish(
     CertifiedBorrowedMap::from_certified_parts(
         values,
         SolveReport {
-            checkpoint_retries: 0,
             solver_workspace_peak: workspace_peak,
-            requested_solver: FeSolverKind::Map,
-            used_solver: FeSolverKind::Map,
             iterations,
-            stop_reason: SolveStopReason::Certified,
             normal_equation_residual: certificate.relative_two_norm,
-            certificate,
             setup_seconds,
             solve_seconds,
-            certification_seconds: 0.0,
-            fallback_used: false,
-            requested_preconditioner: None,
-            used_preconditioner: None,
-            pilot_iterations: 0,
-            pilot_contraction: 0.0,
-            warnings: Vec::new(),
+            ..SolveReport::single_route(FeSolverKind::Map, SolveStopReason::Certified, certificate)
         },
     )
 }

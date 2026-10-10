@@ -492,23 +492,10 @@ fn cg_report(
     solve_seconds: f64,
 ) -> SolveReport {
     SolveReport {
-        checkpoint_retries: 0,
-        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
-        requested_solver: FeSolverKind::Cg,
-        used_solver: FeSolverKind::Cg,
         iterations,
-        stop_reason,
-        certificate,
         normal_equation_residual: recurrence_residual,
-        setup_seconds: 0.0,
         solve_seconds,
-        certification_seconds: 0.0,
-        fallback_used: false,
-        requested_preconditioner: None,
-        used_preconditioner: None,
-        pilot_iterations: 0,
-        pilot_contraction: 0.0,
-        warnings: Vec::new(),
+        ..SolveReport::single_route(FeSolverKind::Cg, stop_reason, certificate)
     }
 }
 
@@ -614,27 +601,15 @@ fn report(
     accepted: usize,
 ) -> SolveReport {
     SolveReport {
-        checkpoint_retries: 0,
-        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
-        requested_solver: solver,
-        used_solver: solver,
         iterations,
-        stop_reason,
         normal_equation_residual: certificate.relative_two_norm,
-        certificate,
-        setup_seconds: 0.0,
         solve_seconds,
-        certification_seconds: 0.0,
-        fallback_used: false,
-        requested_preconditioner: None,
-        used_preconditioner: None,
-        pilot_iterations: 0,
-        pilot_contraction: 0.0,
         warnings: if accepted == 0 {
             vec!["accelerator safeguards retained ordinary MAP sweeps".to_owned()]
         } else {
             vec![format!("accepted {accepted} certified extrapolation steps")]
         },
+        ..SolveReport::single_route(solver, stop_reason, certificate)
     }
 }
 

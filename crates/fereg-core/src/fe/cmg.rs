@@ -1467,23 +1467,14 @@ impl<'a> CmgAbsorber<'a> {
         CertifiedBorrowedMap::from_certified_parts(
             values,
             SolveReport {
-                checkpoint_retries: 0,
-                solver_workspace_peak: self.memory.construction.max(certificate_peak),
                 requested_solver: self.config.requested_solver,
-                used_solver: FeSolverKind::Cmg,
-                iterations: 0,
-                stop_reason: SolveStopReason::Certified,
-                certificate,
+                solver_workspace_peak: self.memory.construction.max(certificate_peak),
                 normal_equation_residual,
-                setup_seconds: 0.0,
-                solve_seconds: 0.0,
-                certification_seconds: 0.0,
-                fallback_used: false,
-                requested_preconditioner: None,
-                used_preconditioner: None,
-                pilot_iterations: 0,
-                pilot_contraction: 0.0,
-                warnings: Vec::new(),
+                ..SolveReport::single_route(
+                    FeSolverKind::Cmg,
+                    SolveStopReason::Certified,
+                    certificate,
+                )
             },
         )
     }

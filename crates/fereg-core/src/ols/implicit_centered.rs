@@ -474,23 +474,18 @@ impl ImplicitCenteredDesign {
         Ok((
             projected,
             SolveReport {
-                requested_solver: FeSolverKind::Map,
-                used_solver: FeSolverKind::Map,
                 iterations: 1,
-                checkpoint_retries: 0,
                 solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
-                stop_reason: SolveStopReason::Certified,
-                certificate,
                 normal_equation_residual: 0.,
                 setup_seconds,
                 solve_seconds,
                 certification_seconds: start.elapsed().as_secs_f64(),
-                fallback_used: false,
-                requested_preconditioner: None,
-                used_preconditioner: None,
-                pilot_iterations: 0,
                 pilot_contraction: 0.,
-                warnings: Vec::new(),
+                ..SolveReport::single_route(
+                    FeSolverKind::Map,
+                    SolveStopReason::Certified,
+                    certificate,
+                )
             },
         ))
     }

@@ -4679,13 +4679,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     let accounted_seconds = owned_setup_seconds + solved.time_total + certification_seconds;
     let postprocess_seconds = (total_started.elapsed().as_secs_f64() - accounted_seconds).max(0.0);
     let mut report = SolveReport {
-        checkpoint_retries: 0,
-        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
-        requested_solver: FeSolverKind::Lsmr,
-        used_solver: FeSolverKind::Lsmr,
         iterations: solved.iterations.iter().copied().max().unwrap_or(0),
-        stop_reason,
-        certificate,
         normal_equation_residual: solved.residual.iter().copied().fold(0.0_f64, f64::max),
         setup_seconds: solved.time_setup + postprocess_seconds,
         solve_seconds: (solved.time_total - solved.time_setup).max(0.0),
@@ -4697,9 +4691,8 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         } else {
             resolved_preconditioner
         }),
-        pilot_iterations: 0,
-        pilot_contraction: 0.0,
         warnings,
+        ..SolveReport::single_route(FeSolverKind::Lsmr, stop_reason, certificate)
     };
     let layout_bytes =
         (design.effects().len() as u128 * 3 + 1) * std::mem::size_of::<usize>() as u128;
@@ -7546,23 +7539,11 @@ fn certified_solver_result(
     solve_seconds: f64,
 ) -> Result<CertifiedBorrowedMap> {
     let report = SolveReport {
-        checkpoint_retries: 0,
-        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
-        requested_solver: solver,
-        used_solver: solver,
         iterations,
-        stop_reason,
         normal_equation_residual,
-        certificate,
         setup_seconds,
         solve_seconds,
-        certification_seconds: 0.0,
-        fallback_used: false,
-        requested_preconditioner: None,
-        used_preconditioner: None,
-        pilot_iterations: 0,
-        pilot_contraction: 0.0,
-        warnings: Vec::new(),
+        ..SolveReport::single_route(solver, stop_reason, certificate)
     };
     if !report.certified() {
         return Err(invalid_data(

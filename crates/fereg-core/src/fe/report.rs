@@ -85,6 +85,36 @@ pub struct SolveReport {
 }
 
 impl SolveReport {
+    /// Report for one solver route with no preconditioner, pilot, fallback,
+    /// checkpoint retry or modeled workspace, zero iterations and zero timing.
+    /// Routes override the fields they record with struct-update syntax.
+    #[must_use]
+    pub(crate) fn single_route(
+        solver: FeSolverKind,
+        stop_reason: SolveStopReason,
+        certificate: FeCertificate,
+    ) -> Self {
+        Self {
+            requested_solver: solver,
+            used_solver: solver,
+            iterations: 0,
+            checkpoint_retries: 0,
+            solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
+            stop_reason,
+            certificate,
+            normal_equation_residual: 0.0,
+            setup_seconds: 0.0,
+            solve_seconds: 0.0,
+            certification_seconds: 0.0,
+            fallback_used: false,
+            requested_preconditioner: None,
+            used_preconditioner: None,
+            pilot_iterations: 0,
+            pilot_contraction: 0.0,
+            warnings: Vec::new(),
+        }
+    }
+
     /// Whether the returned values satisfy the final scientific certificate.
     #[must_use]
     pub fn certified(&self) -> bool {

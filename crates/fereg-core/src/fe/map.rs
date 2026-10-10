@@ -67,23 +67,12 @@ pub(super) fn absorb_map_with_context(
     if design.effects().is_empty() {
         let certificate = context.certify(values, &reference_norms, config.tolerance)?;
         return Ok(SolveReport {
-            checkpoint_retries: 0,
-            solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
-            requested_solver: FeSolverKind::Map,
-            used_solver: FeSolverKind::Map,
-            iterations: 0,
-            stop_reason: SolveStopReason::NoFixedEffects,
-            certificate,
-            normal_equation_residual: 0.0,
-            setup_seconds: 0.0,
             solve_seconds: started.elapsed().as_secs_f64(),
-            certification_seconds: 0.0,
-            fallback_used: false,
-            requested_preconditioner: None,
-            used_preconditioner: None,
-            pilot_iterations: 0,
-            pilot_contraction: 0.0,
-            warnings: Vec::new(),
+            ..SolveReport::single_route(
+                FeSolverKind::Map,
+                SolveStopReason::NoFixedEffects,
+                certificate,
+            )
         });
     }
     let mut workspace = AutoProjectionWorkspace::new(design, values.ncols(), projection_plan)?;
@@ -124,23 +113,14 @@ pub(super) fn absorb_map_with_context(
             let certificate = context.certify(values, &reference_norms, config.tolerance)?;
             if certificate.passed {
                 return Ok(SolveReport {
-                    checkpoint_retries: 0,
-                    solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
-                    requested_solver: FeSolverKind::Map,
-                    used_solver: FeSolverKind::Map,
                     iterations: iteration,
-                    stop_reason: SolveStopReason::Certified,
                     normal_equation_residual: certificate.relative_two_norm,
-                    certificate,
-                    setup_seconds: 0.0,
                     solve_seconds: started.elapsed().as_secs_f64(),
-                    certification_seconds: 0.0,
-                    fallback_used: false,
-                    requested_preconditioner: None,
-                    used_preconditioner: None,
-                    pilot_iterations: 0,
-                    pilot_contraction: 0.0,
-                    warnings: Vec::new(),
+                    ..SolveReport::single_route(
+                        FeSolverKind::Map,
+                        SolveStopReason::Certified,
+                        certificate,
+                    )
                 });
             }
             final_certificate = Some(certificate);
@@ -150,23 +130,14 @@ pub(super) fn absorb_map_with_context(
         final_certificate.expect("positive MAP budget always checks the final allowed iteration");
 
     Ok(SolveReport {
-        checkpoint_retries: 0,
-        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
-        requested_solver: FeSolverKind::Map,
-        used_solver: FeSolverKind::Map,
         iterations: config.max_iterations,
-        stop_reason: SolveStopReason::MaximumIterations,
         normal_equation_residual: final_certificate.relative_two_norm,
-        certificate: final_certificate,
-        setup_seconds: 0.0,
         solve_seconds: started.elapsed().as_secs_f64(),
-        certification_seconds: 0.0,
-        fallback_used: false,
-        requested_preconditioner: None,
-        used_preconditioner: None,
-        pilot_iterations: 0,
-        pilot_contraction: 0.0,
-        warnings: Vec::new(),
+        ..SolveReport::single_route(
+            FeSolverKind::Map,
+            SolveStopReason::MaximumIterations,
+            final_certificate,
+        )
     })
 }
 
@@ -1733,23 +1704,11 @@ fn reusable_map_report(
     solve_seconds: f64,
 ) -> SolveReport {
     SolveReport {
-        checkpoint_retries: 0,
-        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
-        requested_solver: FeSolverKind::Map,
-        used_solver: FeSolverKind::Map,
         iterations,
-        stop_reason,
         normal_equation_residual: certificate.relative_two_norm,
-        certificate,
         setup_seconds,
         solve_seconds,
-        certification_seconds: 0.0,
-        fallback_used: false,
-        requested_preconditioner: None,
-        used_preconditioner: None,
-        pilot_iterations: 0,
-        pilot_contraction: 0.0,
-        warnings: Vec::new(),
+        ..SolveReport::single_route(FeSolverKind::Map, stop_reason, certificate)
     }
 }
 

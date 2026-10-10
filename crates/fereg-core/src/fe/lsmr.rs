@@ -100,23 +100,13 @@ pub fn absorb_lsmr(
             config.tolerance,
         )?;
         return Ok(SolveReport {
-            checkpoint_retries: 0,
-            solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
-            requested_solver: FeSolverKind::Lsmr,
-            used_solver: FeSolverKind::Lsmr,
-            iterations: 0,
-            stop_reason: SolveStopReason::NoFixedEffects,
-            certificate,
-            normal_equation_residual: 0.0,
-            setup_seconds: 0.0,
-            solve_seconds: 0.0,
-            certification_seconds: 0.0,
-            fallback_used: false,
             requested_preconditioner: Some(config.preconditioner),
             used_preconditioner: Some(resolve_preconditioner_kind(design, config.preconditioner)),
-            pilot_iterations: 0,
-            pilot_contraction: 0.0,
-            warnings: Vec::new(),
+            ..SolveReport::single_route(
+                FeSolverKind::Lsmr,
+                SolveStopReason::NoFixedEffects,
+                certificate,
+            )
         });
     }
 
@@ -231,17 +221,10 @@ pub fn absorb_lsmr(
     }
 
     Ok(SolveReport {
-        checkpoint_retries: 0,
-        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
-        requested_solver: FeSolverKind::Lsmr,
-        used_solver: FeSolverKind::Lsmr,
         iterations: solved.iterations.iter().copied().max().unwrap_or(0),
-        stop_reason,
-        certificate,
         normal_equation_residual: solved.residual.iter().copied().fold(0.0_f64, f64::max),
         setup_seconds: solved.time_setup,
         solve_seconds: solved.time_solve.iter().copied().sum(),
-        certification_seconds: 0.0,
         fallback_used: preconditioner_fallback,
         requested_preconditioner: Some(config.preconditioner),
         used_preconditioner: Some(if preconditioner_fallback {
@@ -249,9 +232,8 @@ pub fn absorb_lsmr(
         } else {
             resolved_preconditioner
         }),
-        pilot_iterations: 0,
-        pilot_contraction: 0.0,
         warnings,
+        ..SolveReport::single_route(FeSolverKind::Lsmr, stop_reason, certificate)
     })
 }
 
