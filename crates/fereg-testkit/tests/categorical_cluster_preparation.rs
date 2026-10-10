@@ -1,11 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fereg_core::{
-    prepare_model, AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind,
-    ComponentOrder, DropReason, ErrorCode, ExpandedTerm, LevelState, LoadedNumericColumn,
-    LoadedOlsInput, MetadataFlag, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding,
-    OlsInputRole, OlsRequestV1, PreparedOlsData, RawTermKind, SourceEntry, SourceId, TermComponent,
-    TermId, TermOrder, TimeSeriesState,
+    fit_prepared_model_clustered_with_loaded_moments, prepare_model, AbsorbTermId, AbsorbedTerm,
+    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, DropReason, ErrorCode,
+    ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1,
+    OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsClusteredConfig,
+    PreparedOlsData, RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder,
+    TimeSeriesState,
 };
 
 const X_SOURCE: usize = 0;
@@ -207,7 +208,16 @@ fn ten_cluster_dimensions_are_accepted_and_share_simple_source_codes() {
 #[test]
 fn invalid_cluster_shapes_fail_closed() {
     let case = balanced_case(3);
-    let no_clusters = prepare_case(&case, &[], &[]).expect_err("zero cluster dimensions");
+    // Zero cluster terms prepare an unclustered owner; clustered inference
+    // on it fails closed.
+    let unclustered = prepare_case(&case, &[], &[]).expect("zero cluster terms");
+    assert_eq!(unclustered.clusters().len(), 0);
+    let no_clusters = fit_prepared_model_clustered_with_loaded_moments(
+        &unclustered,
+        PreparedOlsClusteredConfig::default(),
+        None,
+    )
+    .expect_err("zero cluster dimensions");
     assert_eq!(no_clusters.code, ErrorCode::InvalidArgument);
 
     let eleven = (0..11)
