@@ -18619,32 +18619,40 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {
+          "abi_memory_baseline#1": {
+            "line": 59,
+            "lines": 3
+          },
+          "allocation_usage#1": {
+            "line": 39,
+            "lines": 3
+          },
+          "begin_allocation_observation#1": {
+            "line": 47,
+            "lines": 3
+          },
           "begin_observation#1": {
-            "line": 57,
+            "line": 109,
             "lines": 4
           },
-          "begin_observation#2": {
-            "line": 90,
+          "begin_ols_allocation_observation#1": {
+            "line": 43,
             "lines": 3
           },
           "begin_ppml_observation#1": {
-            "line": 63,
+            "line": 114,
             "lines": 4
           },
-          "begin_ppml_observation#2": {
-            "line": 95,
-            "lines": 3
-          },
           "begin_snapshot#1": {
-            "line": 69,
+            "line": 119,
             "lines": 19
           },
           "capture_ppml_memory_preflight#1": {
-            "line": 357,
-            "lines": 44
+            "line": 356,
+            "lines": 39
           },
           "memory_mode_name#1": {
-            "line": 231,
+            "line": 232,
             "lines": 7
           },
           "memory_route_name#1": {
@@ -18652,83 +18660,71 @@
             "lines": 7
           },
           "native_live_before#1": {
-            "line": 472,
-            "lines": 10
+            "line": 449,
+            "lines": 3
           },
           "optional_bytes#1": {
-            "line": 249,
+            "line": 248,
             "lines": 3
           },
           "ppml_action_allocation_observation#1": {
             "line": 203,
-            "lines": 21
-          },
-          "ppml_action_allocation_observation#2": {
-            "line": 409,
-            "lines": 9
+            "lines": 24
           },
           "ppml_allocator_snapshot#1": {
-            "line": 133,
+            "line": 160,
             "lines": 8
           },
           "ppml_allocator_snapshot_probe#1": {
-            "line": 143,
+            "line": 169,
             "lines": 9
           },
-          "ppml_allocator_snapshot_probe#2": {
-            "line": 196,
-            "lines": 5
+          "ppml_linear_phase_allocation_probe#1": {
+            "line": 70,
+            "lines": 6
           },
           "ppml_linear_phase_allocator_probe#1": {
-            "line": 168,
+            "line": 190,
             "lines": 12
-          },
-          "ppml_linear_phase_allocator_probe#2": {
-            "line": 182,
-            "lines": 5
           },
           "ppml_memory_preflight_probe#1": {
-            "line": 339,
-            "lines": 16
+            "line": 336,
+            "lines": 19
           },
-          "ppml_memory_preflight_probe#2": {
-            "line": 403,
-            "lines": 4
+          "ppml_phase_allocation_probe#1": {
+            "line": 63,
+            "lines": 6
           },
           "ppml_phase_allocator_probe#1": {
-            "line": 154,
-            "lines": 12
-          },
-          "ppml_phase_allocator_probe#2": {
-            "line": 189,
-            "lines": 5
+            "line": 179,
+            "lines": 10
           },
           "preflight_internal#1": {
-            "line": 226,
+            "line": 228,
+            "lines": 3
+          },
+          "process_rss_bytes#1": {
+            "line": 51,
             "lines": 3
           },
           "snapshot#1": {
-            "line": 100,
+            "line": 139,
             "lines": 13
           },
-          "snapshot#2": {
-            "line": 115,
-            "lines": 3
-          },
           "system_available_memory_bytes#1": {
-            "line": 120,
+            "line": 55,
             "lines": 3
           },
           "system_available_memory_bytes#2": {
-            "line": 125,
+            "line": 153,
             "lines": 3
           },
           "write_ppml_preflight_receipt#1": {
-            "line": 254,
+            "line": 252,
             "lines": 79
           }
         },
-        "production_lines": 369
+        "production_lines": 328
       },
       "crates/fereg-plugin/src/lib.rs": {
         "chunk_candidates": [],
@@ -20080,7 +20076,7 @@
         "dispatch_candidates": 134,
         "files_over_1500": 3,
         "functions_over_150": 14,
-        "production_lines": 14295
+        "production_lines": 14254
       }
     },
     "schema": 1

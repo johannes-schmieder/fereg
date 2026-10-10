@@ -1,32 +1,85 @@
 //! Safe resource-observation boundary used by the estimation action.
+//!
+//! The tracking allocator and the process probes live in the FFI layer.
+//! Builds without the `ffi` feature (the Stata-free harness) observe nothing:
+//! snapshots stay empty and no probe or planner receipt is installed.
 
-#[cfg(feature = "ffi")]
 use std::io::Write;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-#[cfg(feature = "ffi")]
 use fereg_core::error::{ErrorCode, FeregError, Result};
-#[cfg(feature = "ffi")]
 use fereg_core::ppml::{
-    PpmlMemoryPreflightEvent, PpmlMemoryPreflightObservation, PpmlMemoryPreflightProbe,
-    PpmlMemoryRoute,
+    PpmlAllocatorSnapshot, PpmlAllocatorSnapshotProbe, PpmlMemoryPreflightEvent,
+    PpmlMemoryPreflightObservation, PpmlMemoryPreflightProbe, PpmlMemoryRoute,
+    PpmlPhaseAllocatorProbe,
 };
-#[cfg(feature = "ffi")]
-use fereg_core::MemoryMode;
+use fereg_core::{LinearSessionPhaseAllocatorProbe, MemoryMode};
 
 #[cfg(feature = "ffi")]
+use crate::ffi as host;
+
+/// Whether this build carries the tracking allocator and process probes.
+const OBSERVED: bool = cfg!(feature = "ffi");
+
+/// Stand-ins for the FFI-layer probes in Stata-free builds. Every snapshot
+/// they produce equals the empty `ResourceSnapshot`, and the probe
+/// constructors below return `None` before reaching them.
+#[cfg(not(feature = "ffi"))]
+mod host {
+    use fereg_core::ppml::{PpmlPhase, PpmlPhaseAllocatorEvent};
+    use fereg_core::{LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent};
+
+    #[derive(Clone, Copy, Default)]
+    pub(crate) struct AllocationUsage {
+        pub(crate) current_bytes: u64,
+        pub(crate) peak_bytes: u64,
+        pub(crate) events: u64,
+    }
+
+    pub(crate) fn allocation_usage() -> AllocationUsage {
+        AllocationUsage::default()
+    }
+
+    pub(crate) fn begin_ols_allocation_observation() -> (AllocationUsage, Option<u64>) {
+        (AllocationUsage::default(), None)
+    }
+
+    pub(crate) fn begin_allocation_observation() -> (AllocationUsage, Option<u64>) {
+        (AllocationUsage::default(), None)
+    }
+
+    pub(crate) const fn process_rss_bytes() -> (Option<u64>, Option<u64>) {
+        (None, None)
+    }
+
+    pub(crate) const fn system_available_memory_bytes() -> Option<u64> {
+        None
+    }
+
+    pub(crate) const fn abi_memory_baseline() -> Option<u64> {
+        None
+    }
+
+    pub(crate) fn ppml_phase_allocation_probe(
+        _phase: PpmlPhase,
+        _event: PpmlPhaseAllocatorEvent,
+    ) -> u64 {
+        0
+    }
+
+    pub(crate) fn ppml_linear_phase_allocation_probe(
+        _phase: LinearSessionAllocationPhase,
+        _event: LinearSessionPhaseAllocationEvent,
+    ) -> u64 {
+        0
+    }
+}
+
 const PPML_PREFLIGHT_RECEIPT_ENV: &str = "FEREG_PPML_PREFLIGHT_RECEIPT";
-#[cfg(feature = "ffi")]
-static PPML_PREFLIGHT_START_CURRENT: std::sync::atomic::AtomicU64 =
-    std::sync::atomic::AtomicU64::new(0);
-#[cfg(feature = "ffi")]
-static PPML_PREFLIGHT_START_PEAK: std::sync::atomic::AtomicU64 =
-    std::sync::atomic::AtomicU64::new(0);
-#[cfg(feature = "ffi")]
-static PPML_PREFLIGHT_START_EVENTS: std::sync::atomic::AtomicU64 =
-    std::sync::atomic::AtomicU64::new(0);
-#[cfg(feature = "ffi")]
-static PPML_PREFLIGHT_WINDOW_OPEN: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
+static PPML_PREFLIGHT_START_CURRENT: AtomicU64 = AtomicU64::new(0);
+static PPML_PREFLIGHT_START_PEAK: AtomicU64 = AtomicU64::new(0);
+static PPML_PREFLIGHT_START_EVENTS: AtomicU64 = AtomicU64::new(0);
+static PPML_PREFLIGHT_WINDOW_OPEN: AtomicBool = AtomicBool::new(false);
 
 #[cfg(test)]
 static ACTION_OBSERVATION_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -53,24 +106,21 @@ pub(crate) struct ResourceSnapshot {
     pub(crate) rss_peak_bytes: Option<u64>,
 }
 
-#[cfg(feature = "ffi")]
 pub(crate) fn begin_observation() -> ResourceSnapshot {
-    let (allocation, allocation_previous_baseline) = crate::ffi::begin_ols_allocation_observation();
+    let (allocation, allocation_previous_baseline) = host::begin_ols_allocation_observation();
     begin_snapshot(allocation, allocation_previous_baseline)
 }
 
-#[cfg(feature = "ffi")]
 pub(crate) fn begin_ppml_observation() -> ResourceSnapshot {
-    let (allocation, allocation_previous_baseline) = crate::ffi::begin_allocation_observation();
+    let (allocation, allocation_previous_baseline) = host::begin_allocation_observation();
     begin_snapshot(allocation, allocation_previous_baseline)
 }
 
-#[cfg(feature = "ffi")]
 fn begin_snapshot(
-    allocation: crate::ffi::AllocationUsage,
+    allocation: host::AllocationUsage,
     allocation_previous_baseline: Option<u64>,
 ) -> ResourceSnapshot {
-    let (rss_current_bytes, rss_peak_bytes) = crate::ffi::process_rss_bytes();
+    let (rss_current_bytes, rss_peak_bytes) = host::process_rss_bytes();
     ResourceSnapshot {
         allocation_current_bytes: allocation.current_bytes,
         allocation_peak_bytes: allocation.peak_bytes,
@@ -86,20 +136,9 @@ fn begin_snapshot(
     }
 }
 
-#[cfg(not(feature = "ffi"))]
-pub(crate) fn begin_observation() -> ResourceSnapshot {
-    ResourceSnapshot::default()
-}
-
-#[cfg(not(feature = "ffi"))]
-pub(crate) fn begin_ppml_observation() -> ResourceSnapshot {
-    ResourceSnapshot::default()
-}
-
-#[cfg(feature = "ffi")]
 pub(crate) fn snapshot() -> ResourceSnapshot {
-    let allocation = crate::ffi::allocation_usage();
-    let (rss_current_bytes, rss_peak_bytes) = crate::ffi::process_rss_bytes();
+    let allocation = host::allocation_usage();
+    let (rss_current_bytes, rss_peak_bytes) = host::process_rss_bytes();
     ResourceSnapshot {
         allocation_current_bytes: allocation.current_bytes,
         allocation_peak_bytes: allocation.peak_bytes,
@@ -111,105 +150,69 @@ pub(crate) fn snapshot() -> ResourceSnapshot {
     }
 }
 
-#[cfg(not(feature = "ffi"))]
-pub(crate) fn snapshot() -> ResourceSnapshot {
-    ResourceSnapshot::default()
-}
-
-#[cfg(feature = "ffi")]
 pub(crate) fn system_available_memory_bytes() -> Option<u128> {
-    crate::ffi::system_available_memory_bytes().map(u128::from)
-}
-
-#[cfg(not(feature = "ffi"))]
-pub(crate) const fn system_available_memory_bytes() -> Option<u128> {
-    None
+    host::system_available_memory_bytes().map(u128::from)
 }
 
 /// Allocation-free probe called by the prepared PPML driver only at complete
 /// warmed-iteration boundaries. It intentionally excludes RSS collection,
 /// syscalls, and action-lifetime baseline mutation.
-#[cfg(feature = "ffi")]
-pub(crate) fn ppml_allocator_snapshot() -> fereg_core::ppml::PpmlAllocatorSnapshot {
-    let usage = crate::ffi::allocation_usage();
-    fereg_core::ppml::PpmlAllocatorSnapshot {
+fn ppml_allocator_snapshot() -> PpmlAllocatorSnapshot {
+    let usage = host::allocation_usage();
+    PpmlAllocatorSnapshot {
         current_bytes: usage.current_bytes,
         peak_bytes: usage.peak_bytes,
         allocation_events: usage.events,
     }
 }
 
-#[cfg(feature = "ffi")]
 pub(crate) const fn ppml_allocator_snapshot_probe(
     enabled: bool,
-) -> Option<fereg_core::ppml::PpmlAllocatorSnapshotProbe> {
-    if enabled {
+) -> Option<PpmlAllocatorSnapshotProbe> {
+    if OBSERVED && enabled {
         Some(ppml_allocator_snapshot)
     } else {
         None
     }
 }
 
-#[cfg(feature = "ffi")]
-pub(crate) fn ppml_phase_allocator_probe(
-    enabled: bool,
-) -> Option<fereg_core::ppml::PpmlPhaseAllocatorProbe> {
-    if enabled {
-        return Some(crate::ffi::ppml_phase_allocation_probe);
+pub(crate) fn ppml_phase_allocator_probe(enabled: bool) -> Option<PpmlPhaseAllocatorProbe> {
+    if OBSERVED && enabled {
+        return Some(host::ppml_phase_allocation_probe);
     }
-    #[cfg(test)]
+    #[cfg(all(test, feature = "ffi"))]
     if crate::ffi::ppml_allocation_failure_armed() {
         return Some(crate::ffi::ppml_failure_injection_phase_probe);
     }
     None
 }
 
-#[cfg(feature = "ffi")]
 pub(crate) fn ppml_linear_phase_allocator_probe(
     enabled: bool,
-) -> Option<fereg_core::LinearSessionPhaseAllocatorProbe> {
-    if enabled {
-        return Some(crate::ffi::ppml_linear_phase_allocation_probe);
+) -> Option<LinearSessionPhaseAllocatorProbe> {
+    if OBSERVED && enabled {
+        return Some(host::ppml_linear_phase_allocation_probe);
     }
-    #[cfg(test)]
+    #[cfg(all(test, feature = "ffi"))]
     if crate::ffi::ppml_allocation_failure_armed() {
         return Some(crate::ffi::ppml_failure_injection_linear_phase_probe);
     }
     None
 }
 
-#[cfg(not(feature = "ffi"))]
-pub(crate) const fn ppml_linear_phase_allocator_probe(
-    _enabled: bool,
-) -> Option<fereg_core::LinearSessionPhaseAllocatorProbe> {
-    None
-}
-
-#[cfg(not(feature = "ffi"))]
-pub(crate) const fn ppml_phase_allocator_probe(
-    _enabled: bool,
-) -> Option<fereg_core::ppml::PpmlPhaseAllocatorProbe> {
-    None
-}
-
-#[cfg(not(feature = "ffi"))]
-pub(crate) const fn ppml_allocator_snapshot_probe(
-    _enabled: bool,
-) -> Option<fereg_core::ppml::PpmlAllocatorSnapshotProbe> {
-    None
-}
-
-#[cfg(feature = "ffi")]
 pub(crate) fn ppml_action_allocation_observation(
     start: ResourceSnapshot,
 ) -> (
-    Option<fereg_core::ppml::PpmlAllocatorSnapshotProbe>,
-    Option<fereg_core::ppml::PpmlAllocatorSnapshot>,
+    Option<PpmlAllocatorSnapshotProbe>,
+    Option<PpmlAllocatorSnapshot>,
     Option<u64>,
 ) {
+    if !OBSERVED {
+        return (None, None, None);
+    }
     (
         Some(ppml_allocator_snapshot),
-        Some(fereg_core::ppml::PpmlAllocatorSnapshot {
+        Some(PpmlAllocatorSnapshot {
             current_bytes: start.allocation_current_bytes,
             peak_bytes: start.allocation_peak_bytes,
             allocation_events: start.allocation_events,
@@ -222,12 +225,10 @@ pub(crate) fn ppml_action_allocation_observation(
     )
 }
 
-#[cfg(feature = "ffi")]
 fn preflight_internal(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Internal, message)
 }
 
-#[cfg(feature = "ffi")]
 const fn memory_mode_name(mode: MemoryMode) -> &'static str {
     match mode {
         MemoryMode::Auto => "auto",
@@ -236,7 +237,6 @@ const fn memory_mode_name(mode: MemoryMode) -> &'static str {
     }
 }
 
-#[cfg(feature = "ffi")]
 const fn memory_route_name(route: Option<PpmlMemoryRoute>) -> &'static str {
     match route {
         Some(PpmlMemoryRoute::Fast) => "\"fast\"",
@@ -245,12 +245,10 @@ const fn memory_route_name(route: Option<PpmlMemoryRoute>) -> &'static str {
     }
 }
 
-#[cfg(feature = "ffi")]
 fn optional_bytes(value: Option<u128>) -> String {
     value.map_or_else(|| "null".to_owned(), |bytes| bytes.to_string())
 }
 
-#[cfg(feature = "ffi")]
 fn write_ppml_preflight_receipt(
     observation: PpmlMemoryPreflightObservation,
     current_growth: i128,
@@ -335,8 +333,10 @@ fn write_ppml_preflight_receipt(
 ///
 /// The file seam is accepted only together with the existing artificial
 /// memory-limit seam, so normal public fits never write a planner receipt.
-#[cfg(feature = "ffi")]
 pub(crate) fn ppml_memory_preflight_probe() -> Result<Option<PpmlMemoryPreflightProbe>> {
+    if !OBSERVED {
+        return Ok(None);
+    }
     let Some(path) = std::env::var_os(PPML_PREFLIGHT_RECEIPT_ENV) else {
         return Ok(None);
     };
@@ -353,18 +353,14 @@ pub(crate) fn ppml_memory_preflight_probe() -> Result<Option<PpmlMemoryPreflight
     Ok(Some(capture_ppml_memory_preflight))
 }
 
-#[cfg(feature = "ffi")]
 fn capture_ppml_memory_preflight(event: PpmlMemoryPreflightEvent) -> Result<()> {
     match event {
         PpmlMemoryPreflightEvent::Begin => {
-            let snapshot = crate::ffi::allocation_usage();
-            PPML_PREFLIGHT_START_CURRENT
-                .store(snapshot.current_bytes, std::sync::atomic::Ordering::Relaxed);
-            PPML_PREFLIGHT_START_PEAK
-                .store(snapshot.peak_bytes, std::sync::atomic::Ordering::Relaxed);
-            PPML_PREFLIGHT_START_EVENTS
-                .store(snapshot.events, std::sync::atomic::Ordering::Relaxed);
-            if PPML_PREFLIGHT_WINDOW_OPEN.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            let snapshot = host::allocation_usage();
+            PPML_PREFLIGHT_START_CURRENT.store(snapshot.current_bytes, Ordering::Relaxed);
+            PPML_PREFLIGHT_START_PEAK.store(snapshot.peak_bytes, Ordering::Relaxed);
+            PPML_PREFLIGHT_START_EVENTS.store(snapshot.events, Ordering::Relaxed);
+            if PPML_PREFLIGHT_WINDOW_OPEN.swap(true, Ordering::Relaxed) {
                 return Err(preflight_internal(
                     "PPML memory preflight observer window was already open",
                 ));
@@ -372,17 +368,15 @@ fn capture_ppml_memory_preflight(event: PpmlMemoryPreflightEvent) -> Result<()> 
             Ok(())
         }
         PpmlMemoryPreflightEvent::Decision(observation) => {
-            let end = crate::ffi::allocation_usage();
-            if !PPML_PREFLIGHT_WINDOW_OPEN.swap(false, std::sync::atomic::Ordering::Relaxed) {
+            let end = host::allocation_usage();
+            if !PPML_PREFLIGHT_WINDOW_OPEN.swap(false, Ordering::Relaxed) {
                 return Err(preflight_internal(
                     "PPML memory preflight decision omitted its begin event",
                 ));
             }
-            let start_current =
-                PPML_PREFLIGHT_START_CURRENT.load(std::sync::atomic::Ordering::Relaxed);
-            let start_peak = PPML_PREFLIGHT_START_PEAK.load(std::sync::atomic::Ordering::Relaxed);
-            let start_events =
-                PPML_PREFLIGHT_START_EVENTS.load(std::sync::atomic::Ordering::Relaxed);
+            let start_current = PPML_PREFLIGHT_START_CURRENT.load(Ordering::Relaxed);
+            let start_peak = PPML_PREFLIGHT_START_PEAK.load(Ordering::Relaxed);
+            let start_events = PPML_PREFLIGHT_START_EVENTS.load(Ordering::Relaxed);
             if end.events < start_events {
                 return Err(preflight_internal(
                     "PPML memory preflight allocator event counter moved backwards",
@@ -397,23 +391,6 @@ fn capture_ppml_memory_preflight(event: PpmlMemoryPreflightEvent) -> Result<()> 
             )
         }
     }
-}
-
-#[cfg(not(feature = "ffi"))]
-pub(crate) fn ppml_memory_preflight_probe(
-) -> fereg_core::Result<Option<fereg_core::ppml::PpmlMemoryPreflightProbe>> {
-    Ok(None)
-}
-
-#[cfg(not(feature = "ffi"))]
-pub(crate) const fn ppml_action_allocation_observation(
-    _start: ResourceSnapshot,
-) -> (
-    Option<fereg_core::ppml::PpmlAllocatorSnapshotProbe>,
-    Option<fereg_core::ppml::PpmlAllocatorSnapshot>,
-    Option<u64>,
-) {
-    (None, None, None)
 }
 
 #[cfg(all(test, feature = "ffi"))]
@@ -470,12 +447,5 @@ mod tests {
 
 /// None in mock actions that do not cross the actual ABI boundary.
 pub(crate) fn native_live_before() -> Option<u64> {
-    #[cfg(feature = "ffi")]
-    {
-        crate::ffi::abi_memory_baseline()
-    }
-    #[cfg(not(feature = "ffi"))]
-    {
-        None
-    }
+    host::abi_memory_baseline()
 }
