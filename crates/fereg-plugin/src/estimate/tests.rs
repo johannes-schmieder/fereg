@@ -1891,13 +1891,10 @@ fn saved_publication_checks_observed_capacities_before_any_store() {
         )
         .unwrap();
         let result_data = &prepared;
-        let derived = build_derived_observation_outputs(
+        let derived = derive_observation_outputs(
             result_data,
-            Some(&prepared),
-            inference.fit(),
-            &action.outputs,
-            normalization_known_connected(inference.absorbed_dof()),
-            action.fit,
+            CertifiedOlsInference::Iid(&inference),
+            &action,
         )
         .unwrap();
         let mut shadow = build_shadow_result(

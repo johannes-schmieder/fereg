@@ -64,8 +64,9 @@ fixtures.
 
 ## Break and cancellation
 
-SPI polling stays on Stata's thread. OLS preparation and inference run on the
-action team while Stata's thread polls Break every 20 ms; PPML polls at its
+SPI polling stays on Stata's thread. OLS preparation, inference and derived
+observation outputs, including saved fixed-effect recovery, run on the action
+team while Stata's thread polls Break every 20 ms; PPML polls at its
 IRLS, separation, inference and publication safe points. On Break the plugin
 requests cooperative cancellation and long native loops stop at their next
 checkpoint (FE sweeps and iterations, LSMR/CMG entry, one-shot fit phases,

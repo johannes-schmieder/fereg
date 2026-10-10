@@ -300,13 +300,14 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         && action.vce != OlsVceKind::Clustered
         && fereg_core::diagnostics::phase_timing_enabled();
     let trace_started = Instant::now();
-    // Preparation and inference run on the action team while Stata's thread
-    // polls Break; an interruption stops core loops at their next checkpoint.
+    // Preparation, inference and derived observation outputs (including
+    // saved-FE recovery) run on the action team while Stata's thread polls
+    // Break; an interruption stops core loops at their next checkpoint.
     let team = ThreadTeam::new(action.fit.execution.threads);
     let mut native_break_token = action.native_break_token.take();
     let hold_for_break = native_break_token.is_some();
     let numerical_action = &mut action;
-    let (prepared, inference, prepare_seconds, inference_seconds) = crate::cancellable::run(
+    let (prepared, inference, derived, phase_seconds) = crate::cancellable::run(
         team,
         move || {
             if hold_for_break {
@@ -324,7 +325,16 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let inference = infer_ols(&prepared, numerical_action, loaded_rows)?;
             numerical_action.admit_output_parent(inference.view().owned_buffer_bytes())?;
             let inference_seconds = inference_started.elapsed().as_secs_f64();
-            Ok((prepared, inference, prepare_seconds, inference_seconds))
+            let outputs_started = Instant::now();
+            let derived =
+                derive_observation_outputs(&prepared, inference.view(), numerical_action)?;
+            let outputs_seconds = outputs_started.elapsed().as_secs_f64();
+            Ok((
+                prepared,
+                inference,
+                derived,
+                [prepare_seconds, inference_seconds, outputs_seconds],
+            ))
         },
         &mut || {
             if let Some(token) = native_break_token.take() {
@@ -345,6 +355,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &prepared,
         prepared.cluster_design().map(|_| &prepared),
         view,
+        &derived,
         &observation,
         spi,
         trace_enabled.then_some(OlsPhaseTrace {
@@ -354,8 +365,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 "robust_plugin"
             },
             started: trace_started,
-            prepare_seconds,
-            inference_seconds,
+            phase_seconds,
         }),
     )
 }
@@ -366,47 +376,35 @@ use ols_pipeline::{infer_ols, prepare_ols_pipeline};
 struct OlsPhaseTrace {
     label: &'static str,
     started: Instant,
-    prepare_seconds: f64,
-    inference_seconds: f64,
+    /// Preparation, inference and derived-output seconds.
+    phase_seconds: [f64; 3],
 }
 
 // One canonical prepared owner feeds the three mathematical covariance variants.
 // Borrowed views preserve prepared owners until the validated result is stored.
+#[allow(clippy::too_many_arguments)]
 fn complete_ols(
     action: &EstimateAction,
     data: &'_ PreparedOlsData,
     clusters: Option<&'_ PreparedOlsData>,
     inference: CertifiedOlsInference<'_>,
+    derived: &DerivedObservationOutputs,
     observation: &ActionObservation,
     spi: &mut dyn SpiApi,
     trace: Option<OlsPhaseTrace>,
 ) -> Result<()> {
-    let outputs_started = Instant::now();
-    let categorical = data.uses_categorical_preparation().then_some(data);
-    let known_connected =
-        categorical.is_some() && normalization_known_connected(inference.absorbed_dof());
-    let derived = build_derived_observation_outputs(
-        data,
-        categorical,
-        inference.fit(),
-        &action.outputs,
-        known_connected,
-        action.fit,
-    )?;
-    let outputs_seconds = outputs_started.elapsed().as_secs_f64();
     let shadow_started = Instant::now();
     let shadow = build_shadow_result(data, clusters, inference, action.outputs.residual.is_some())?;
     let shadow_seconds = shadow_started.elapsed().as_secs_f64();
     if let Some(trace) = trace {
+        let [prepare, inference, outputs] = trace.phase_seconds;
         eprintln!(
-            "FEREG_PHASE|{}|prepare={:.9}|inference={:.9}|outputs={outputs_seconds:.9}|shadow={shadow_seconds:.9}|prestore_total={:.9}",
+            "FEREG_PHASE|{}|prepare={prepare:.9}|inference={inference:.9}|outputs={outputs:.9}|shadow={shadow_seconds:.9}|prestore_total={:.9}",
             trace.label,
-            trace.prepare_seconds,
-            trace.inference_seconds,
             trace.started.elapsed().as_secs_f64()
         );
     }
-    precommit_and_store(action, &shadow, &derived, observation, spi)
+    precommit_and_store(action, &shadow, derived, observation, spi)
 }
 
 // Preparation and raw moments borrow disjoint Rust-owned inputs. The optional
@@ -1887,24 +1885,24 @@ fn certify_recovered_model_outputs(
     Ok(())
 }
 
-fn build_derived_observation_outputs(
-    prepared: &'_ PreparedOlsData,
-    categorical: Option<&PreparedOlsData>,
-    fit: &CertifiedPreparedOlsFit,
-    requested: &ObservationOutputs,
-    known_connected: bool,
-    fit_config: PreparedOlsFitConfig,
+/// Derived observation outputs, on the action team inside the polled native
+/// run so Break also reaches saved-FE recovery.
+fn derive_observation_outputs(
+    prepared: &PreparedOlsData,
+    inference: CertifiedOlsInference<'_>,
+    action: &EstimateAction,
 ) -> Result<DerivedObservationOutputs> {
-    ThreadTeam::new(fit_config.execution.threads).install(|| {
-        build_derived_observation_outputs_in_team(
-            prepared,
-            categorical,
-            fit,
-            requested,
-            known_connected,
-            fit_config,
-        )
-    })?
+    let categorical = prepared.uses_categorical_preparation().then_some(prepared);
+    let known_connected =
+        categorical.is_some() && normalization_known_connected(inference.absorbed_dof());
+    build_derived_observation_outputs_in_team(
+        prepared,
+        categorical,
+        inference.fit(),
+        &action.outputs,
+        known_connected,
+        action.fit,
+    )
 }
 
 fn build_derived_observation_outputs_in_team(
