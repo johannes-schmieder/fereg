@@ -1149,14 +1149,7 @@ pub fn fit_prepared_model_coefficients(
     prepared: &PreparedOlsData,
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedOlsFit> {
-    if prepared.uses_categorical_preparation() {
-        fit_prepared_ols_coefficients_view_map(prepared, config)
-    } else {
-        fit_prepared_ols_coefficients_view_map(
-            &crate::prepared_fit_view::OrdinaryPrepared(prepared),
-            config,
-        )
-    }
+    fit_prepared_ols_coefficients_view_map(prepared, config)
 }
 
 pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows<

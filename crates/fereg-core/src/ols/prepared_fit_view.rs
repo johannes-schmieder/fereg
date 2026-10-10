@@ -19,18 +19,6 @@ use rayon::prelude::*;
 use super::{PreparedOlsData, PreparedOlsModel};
 use crate::ols::build_prepared_ols_rhs_with_response;
 
-/// One-shot ordinary arithmetic borrows the canonical owner. This view has
-/// no storage and preserves the mathematically distinct DoF/report family.
-pub(crate) struct OrdinaryPrepared<'a>(pub(crate) &'a PreparedOlsData);
-
-impl std::ops::Deref for OrdinaryPrepared<'_> {
-    type Target = PreparedOlsData;
-
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
-}
-
 /// PPML generations retain precisely one canonical prepared owner.
 pub(crate) type SharedPreparedOlsData = std::sync::Arc<PreparedOlsData>;
 
@@ -426,40 +414,10 @@ pub(crate) fn admit_prepared_intercept_cg(
     SolverWorkspacePeak::from_bytes(required)
 }
 
-impl PreparedOlsFitView for OrdinaryPrepared<'_> {
-    fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
-        self.fe_effects().len() == 1
-    }
-
-    fn fit_categorical_codes(&self, source: usize) -> Result<&[u32]> {
-        self.categorical_codes(source)
-    }
-
-    fn fit_model(&self) -> &PreparedOlsModel {
-        &self.model
-    }
-
-    fn fit_sample(&self) -> &PreparedNumericSample {
-        &self.sample
-    }
-
-    fn fit_structural_intercept(&self) -> bool {
-        self.structural_intercept
-    }
-
-    fn fit_has_absorbed_intercept(&self) -> bool {
-        self.structural_intercept
-    }
-
-    fn fit_report_intercept(&self) -> bool {
-        self.report_intercept
-    }
-
-    fn fit_column_value(&self, column: usize, row: usize) -> Result<f64> {
-        self.column_value(column, row)
-    }
-
-    fn fit_subtract_raw_column(
+/// Ordinary-grammar layouts read the owner's ordinary columns and FE codes
+/// directly and keep the mathematically distinct DoF/report family.
+impl PreparedOlsData {
+    fn ordinary_subtract_raw_column(
         &self,
         column: usize,
         coefficient: f64,
@@ -533,25 +491,7 @@ impl PreparedOlsFitView for OrdinaryPrepared<'_> {
         Ok(())
     }
 
-    fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix> {
-        Ok(build_prepared_ols_rhs_with_response(self, response)?.into_values())
-    }
-
-    fn fit_build_rhs_with_loaded_rows(
-        &self,
-        response: &[f64],
-        rows: Option<Vec<f64>>,
-    ) -> Result<(DenseMatrix, bool)> {
-        let (rhs, reused) =
-            crate::ols::build_prepared_ols_rhs_with_loaded_rows_and_reuse(self, response, rows)?;
-        Ok((rhs.into_values(), reused))
-    }
-
-    fn fit_retained_fe_parent_bytes(&self) -> Result<u128> {
-        self.0.fit_retained_fe_parent_bytes()
-    }
-
-    fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate> {
+    fn ordinary_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate> {
         let borrowed = self.borrowed_intercept_fe_design()?;
         let mut memory = OwnedFeDesignMemoryEstimate::default();
         for effect in borrowed.effects() {
@@ -570,7 +510,7 @@ impl PreparedOlsFitView for OrdinaryPrepared<'_> {
         Ok(memory)
     }
 
-    fn fit_owned_fe_design(&self) -> Result<FeDesign> {
+    fn ordinary_owned_fe_design(&self) -> Result<FeDesign> {
         let borrowed = self.borrowed_intercept_fe_design()?;
         let mut effects = Vec::new();
         effects
@@ -598,14 +538,6 @@ impl PreparedOlsFitView for OrdinaryPrepared<'_> {
         }
         FeDesign::new(self.fit_sample().n_active(), effects)
     }
-
-    fn fit_borrowed_intercept_map_design(&self) -> Result<Option<BorrowedInterceptFeDesign<'_>>> {
-        Ok(Some(self.borrowed_intercept_fe_design()?))
-    }
-
-    fn fit_borrowed_cmg_design(&self) -> Result<BorrowedInterceptFeDesign<'_>> {
-        self.borrowed_intercept_fe_design()
-    }
 }
 
 impl PreparedOlsFitView for PreparedOlsData {
@@ -615,7 +547,10 @@ impl PreparedOlsFitView for PreparedOlsData {
         rows: Option<Vec<f64>>,
     ) -> Result<(DenseMatrix, bool)> {
         if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_build_rhs_with_loaded_rows(response, rows);
+            let (rhs, reused) = crate::ols::build_prepared_ols_rhs_with_loaded_rows_and_reuse(
+                self, response, rows,
+            )?;
+            return Ok((rhs.into_values(), reused));
         }
         fit_build_rhs_with_loaded_rows_generic(self, response, rows)
     }
@@ -627,21 +562,29 @@ impl PreparedOlsFitView for PreparedOlsData {
         residuals: &mut [f64],
     ) -> Result<()> {
         if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_subtract_raw_column(column, coefficient, residuals);
+            return self.ordinary_subtract_raw_column(column, coefficient, residuals);
         }
         fit_subtract_raw_column_generic(self, column, coefficient, residuals)
     }
 
     fn fit_has_one_slope_effect(&self) -> bool {
-        self.effect_specs().len() == 1 && !self.effect_specs()[0].slopes.is_empty()
+        self.uses_categorical_preparation()
+            && self.effect_specs().len() == 1
+            && !self.effect_specs()[0].slopes.is_empty()
     }
 
     fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
+        if !self.uses_categorical_preparation() {
+            return self.fe_effects().len() == 1;
+        }
         let effects = self.effect_specs();
         effects.len() == 1 && effects[0].intercept && effects[0].slopes.is_empty()
     }
 
     fn fit_categorical_codes(&self, source: usize) -> Result<&[u32]> {
+        if !self.uses_categorical_preparation() {
+            return self.categorical_codes(source);
+        }
         self.categorical_sources()
             .get(source)
             .ok_or_else(|| {
@@ -683,7 +626,7 @@ impl PreparedOlsFitView for PreparedOlsData {
 
     fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix> {
         if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_build_rhs_with_response(response);
+            return Ok(build_prepared_ols_rhs_with_response(self, response)?.into_values());
         }
         Ok(self.build_rhs_with_response(response)?.into_values())
     }
@@ -718,7 +661,7 @@ impl PreparedOlsFitView for PreparedOlsData {
 
     fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate> {
         if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_owned_fe_design_memory();
+            return self.ordinary_owned_fe_design_memory();
         }
         let topology = self.fe_topology();
         if topology.effect_to_topology().len() != self.effect_specs().len() {
@@ -754,7 +697,7 @@ impl PreparedOlsFitView for PreparedOlsData {
 
     fn fit_owned_fe_design(&self) -> Result<FeDesign> {
         if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_owned_fe_design();
+            return self.ordinary_owned_fe_design();
         }
         let topology = self.fe_topology();
         let mut source_table = Vec::new();

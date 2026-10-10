@@ -275,16 +275,12 @@ pub fn fit_prepared_model_unadjusted_with_loaded_moments(
     config: PreparedOlsUnadjustedConfig,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
-    if prepared.uses_categorical_preparation() {
-        fit_inference_view(prepared, config, rows, true)
-    } else {
-        fit_inference_view(
-            &crate::prepared_fit_view::OrdinaryPrepared(prepared),
-            config,
-            rows,
-            false,
-        )
-    }
+    fit_inference_view(
+        prepared,
+        config,
+        rows,
+        prepared.uses_categorical_preparation(),
+    )
 }
 
 fn fit_inference_view<P: PreparedOlsInferenceView + Sync + ?Sized>(
@@ -359,8 +355,6 @@ fn compose_internal<R: InferenceReservation>(
     reservation: &mut R,
     perturbations: InferencePerturbations,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
-    let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
-    let prepared = &ordinary;
     let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, absorbed_dof.policy)?;
     let components = compose_view_internal(
         prepared,

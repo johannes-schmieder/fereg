@@ -261,16 +261,12 @@ pub fn fit_prepared_model_robust_with_loaded_moments(
     config: PreparedOlsRobustConfig,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsRobust> {
-    if prepared.uses_categorical_preparation() {
-        fit_inference_view(prepared, config, rows, true)
-    } else {
-        fit_inference_view(
-            &crate::prepared_fit_view::OrdinaryPrepared(prepared),
-            config,
-            rows,
-            false,
-        )
-    }
+    fit_inference_view(
+        prepared,
+        config,
+        rows,
+        prepared.uses_categorical_preparation(),
+    )
 }
 
 fn fit_inference_view<P: PreparedOlsInferenceView + Sync + ?Sized>(
@@ -320,8 +316,6 @@ fn compose_internal<R: PreparedInferenceReservation>(
     perturbations: RobustPerturbations,
     score_scratch: PreparedOlsScoreProduct,
 ) -> Result<CertifiedPreparedOlsRobust> {
-    let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
-    let prepared = &ordinary;
     let absorbed_summary =
         prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
     let components = compose_view_internal(
@@ -1772,7 +1766,7 @@ mod tests {
         );
         let absorbed = compute_canonical_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
             .expect("low-memory absorbed DoF");
-        let absorbed_summary = crate::prepared_fit_view::OrdinaryPrepared(&prepared)
+        let absorbed_summary = prepared
             .inference_absorbed_dof_summary(&absorbed, config.absorbed_dof)
             .expect("low-memory absorbed DoF summary");
         let (weights, weight_view, _) =

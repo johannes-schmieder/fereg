@@ -7,7 +7,7 @@
 
 use crate::error::{allocation, invalid_argument as invalid, ErrorCode, FeregError, Result};
 use crate::prepared_categorical_data::PreparedOlsData;
-use crate::prepared_fit_view::{OrdinaryPrepared, PreparedOlsFitView};
+use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::topology_dof::{
     CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy,
     CategoricalTopologyDofReport,
@@ -58,58 +58,12 @@ pub(crate) trait PreparedOlsInferenceView: PreparedOlsFitView {
     fn inference_has_explicit_absorbed_effects(&self) -> bool;
 }
 
-impl PreparedOlsInferenceView for OrdinaryPrepared<'_> {
-    fn inference_compute_absorbed_dof(
-        &self,
-        policy: PreparedOlsAbsorbedDofPolicy,
-    ) -> Result<CategoricalTopologyDofReport> {
-        if !self.structural_intercept() {
-            return Err(FeregError::new(ErrorCode::InvalidArgument,
-                "prepared absorbed-DoF intercept metadata is inconsistent with the supported surface"));
-        }
-        self.validate_fe_bindings()?;
-        self.absorbed_dof(categorical_policy(policy), &[])
-    }
-
-    fn inference_absorbed_dof_summary(
-        &self,
-        report: &CategoricalTopologyDofReport,
-        expected_policy: PreparedOlsAbsorbedDofPolicy,
-    ) -> Result<PreparedOlsAbsorbedDofSummary> {
-        validate_categorical_report(self, report, expected_policy, NestingState::Iid)
-    }
-
-    fn inference_compute_clustered_absorbed_dof(
-        &self,
-        policy: PreparedOlsAbsorbedDofPolicy,
-        cluster_dimensions: &[&[u32]],
-    ) -> Result<CategoricalTopologyDofReport> {
-        if !self.structural_intercept() {
-            return Err(FeregError::new(ErrorCode::InvalidArgument,
-                "prepared absorbed-DoF intercept metadata is inconsistent with the supported surface"));
-        }
-        self.validate_fe_bindings()?;
-        self.absorbed_dof(categorical_policy(policy), cluster_dimensions)
-    }
-
-    fn inference_clustered_absorbed_dof_summary(
-        &self,
-        report: &CategoricalTopologyDofReport,
-        expected_policy: PreparedOlsAbsorbedDofPolicy,
-    ) -> Result<PreparedOlsAbsorbedDofSummary> {
-        validate_categorical_report(self, report, expected_policy, NestingState::ClusterAware)
-    }
-
-    fn inference_has_explicit_absorbed_effects(&self) -> bool {
-        !self.fe_effects().is_empty()
-    }
-}
-
 impl PreparedOlsInferenceView for PreparedOlsData {
     fn inference_compute_absorbed_dof(
         &self,
         policy: PreparedOlsAbsorbedDofPolicy,
     ) -> Result<CategoricalTopologyDofReport> {
+        validate_ordinary_dof_surface(self)?;
         self.absorbed_dof(categorical_policy(policy), &[])
     }
 
@@ -126,6 +80,7 @@ impl PreparedOlsInferenceView for PreparedOlsData {
         policy: PreparedOlsAbsorbedDofPolicy,
         cluster_dimensions: &[&[u32]],
     ) -> Result<CategoricalTopologyDofReport> {
+        validate_ordinary_dof_surface(self)?;
         self.absorbed_dof(categorical_policy(policy), cluster_dimensions)
     }
 
@@ -138,8 +93,27 @@ impl PreparedOlsInferenceView for PreparedOlsData {
     }
 
     fn inference_has_explicit_absorbed_effects(&self) -> bool {
-        !self.effect_specs().is_empty()
+        if self.uses_categorical_preparation() {
+            !self.effect_specs().is_empty()
+        } else {
+            !self.fe_effects().is_empty()
+        }
     }
+}
+
+/// Ordinary-grammar absorbed DoF requires the structural intercept and
+/// validated FE bindings; categorical topology carries its own checks.
+fn validate_ordinary_dof_surface(prepared: &PreparedOlsData) -> Result<()> {
+    if prepared.uses_categorical_preparation() {
+        return Ok(());
+    }
+    if !prepared.structural_intercept() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "prepared absorbed-DoF intercept metadata is inconsistent with the supported surface",
+        ));
+    }
+    prepared.validate_fe_bindings()
 }
 
 impl PreparedOlsAbsorbedDofSummary {
@@ -181,7 +155,7 @@ pub(super) fn compute_canonical_prepared_ols_absorbed_dof(
     prepared: &PreparedOlsData,
     policy: PreparedOlsAbsorbedDofPolicy,
 ) -> Result<CategoricalTopologyDofReport> {
-    OrdinaryPrepared(prepared).inference_compute_absorbed_dof(policy)
+    prepared.inference_compute_absorbed_dof(policy)
 }
 
 fn validate_categorical_report(

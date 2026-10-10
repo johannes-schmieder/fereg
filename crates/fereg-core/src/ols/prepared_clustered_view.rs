@@ -21,19 +21,6 @@ pub(crate) trait PreparedOlsClusteredView {
     fn clustered_codes(&self, dimension: usize) -> Result<&[u32]>;
 }
 
-impl PreparedOlsClusteredView for crate::prepared_fit_view::OrdinaryPrepared<'_> {
-    type Ols = Self;
-    fn clustered_ols(&self) -> &Self {
-        self
-    }
-    fn clustered_design(&self) -> &PreparedOlsClusterDesign {
-        self.clusters()
-    }
-    fn clustered_codes(&self, dimension: usize) -> Result<&[u32]> {
-        self.cluster_codes(dimension)
-    }
-}
-
 impl PreparedOlsClusteredView for PreparedOlsData {
     type Ols = Self;
     fn clustered_ols(&self) -> &Self {

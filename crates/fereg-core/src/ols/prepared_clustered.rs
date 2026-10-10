@@ -377,18 +377,10 @@ pub fn fit_prepared_model_clustered_with_loaded_moments(
     config: PreparedOlsClusteredConfig,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsClustered> {
-    if prepared.uses_categorical_preparation() {
-        let components = ThreadTeam::new(config.fit.execution.threads).install(|| {
-            let mut reservation = SystemPreparedInferenceReservation;
-            fit_clustered_view_with_reservation(prepared, config, &mut reservation, rows)
-        })??;
-        Ok(components)
-    } else {
-        ThreadTeam::new(config.fit.execution.threads).install(|| {
-            let mut reservation = SystemPreparedInferenceReservation;
-            fit_with_loaded_reservation(prepared, config, &mut reservation, rows)
-        })?
-    }
+    ThreadTeam::new(config.fit.execution.threads).install(|| {
+        let mut reservation = SystemPreparedInferenceReservation;
+        fit_clustered_view_with_reservation(prepared, config, &mut reservation, rows)
+    })?
 }
 
 #[cfg(test)]
@@ -397,22 +389,7 @@ fn fit_with_reservation<R: PreparedInferenceReservation>(
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
 ) -> Result<CertifiedPreparedOlsClustered> {
-    fit_with_loaded_reservation(prepared, config, reservation, None)
-}
-
-fn fit_with_loaded_reservation<R: PreparedInferenceReservation>(
-    prepared: &PreparedOlsData,
-    config: PreparedOlsClusteredConfig,
-    reservation: &mut R,
-    rows: Option<super::LoadedOlsRows>,
-) -> Result<CertifiedPreparedOlsClustered> {
-    let components = fit_clustered_view_with_reservation(
-        &crate::prepared_fit_view::OrdinaryPrepared(prepared),
-        config,
-        reservation,
-        rows,
-    )?;
-    Ok(components)
+    fit_clustered_view_with_reservation(prepared, config, reservation, None)
 }
 
 fn fit_clustered_view_with_reservation<
@@ -446,14 +423,8 @@ fn compose<R: PreparedInferenceReservation>(
     perturbations: ClusteredPerturbations,
 ) -> Result<CertifiedPreparedOlsClustered> {
     let scores = take_prepared_ols_score_product(&mut fit, None)?;
-    let components = compose_clustered_view(
-        &crate::prepared_fit_view::OrdinaryPrepared(prepared),
-        fit,
-        config,
-        reservation,
-        perturbations,
-        scores,
-    )?;
+    let components =
+        compose_clustered_view(prepared, fit, config, reservation, perturbations, scores)?;
     Ok(components)
 }
 
