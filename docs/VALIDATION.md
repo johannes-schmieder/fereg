@@ -139,3 +139,20 @@ use candidate plugin `2d2dd904`; final integration results follow.
 Full hashes are in the documentation commit. Evidence built at `ac7a7a9` and
 `4f6d0427` is reused through `06ed5f94`: all 168 production modules and 58
 artifact inputs are identical; `run_tests.sh` passes at the final source.
+
+### Packed SCC campaign after PR #31
+
+Run `20261010T155133Z-pr31-5e2951a4` uses merged source `5e2951a4`
+(archive SHA-256 `7b168204`) and Linux plugin `a259496b`. Its report and
+complete per-configuration comparison are retained under that run in
+`/projectnb/welfgr/fereg/runs/`, in `report/` and `comparison/`; compact
+accounting is in `collected/`. This is a descriptive comparison with the
+reconstructed summaries of `20261007T171717Z-akm-current` (production
+`7942263`), not a universal speed or platform claim.
+
+| Evidence | Result |
+| --- | --- |
+| Setup `8016862`, smoke `8016895`, production `8016905.1–4` | All six accounting records have failed=0/exit=0; sentinels, frozen identities and all 492 planned fit positions verified. glibc 2.28 audit, ABI/load, UBSan guards, 40 harness tests and 11 native smoke oracles pass. Production used 28 slots on 28-core nodes, without the exclusive consumable. |
+| Scientific outcomes and unavailable cells | Native repeatability and cross-worker checks pass for 55/56 configurations; four-million-row three-sparse PPML times out as before. Across 164 arm cells: 131 eligible, 25 asterisked, 8 without timing, versus 129/18/17 previously. The capture repair exposes seven remaining reference discrepancies and makes two strict-fixest cells eligible; no formerly eligible cell becomes ineligible. All failed fits and reference smoke failures remain reported. |
+| Timing and scaling | Native current/previous median ratio 0.9521 across 55 configurations; four-worker medians 0.9390 OLS / 0.9582 PPML. OLS AKM at 8/16 workers is 20.2%/20.4% slower on the same node; cause unresolved, despite nearly unchanged fixest controls. Its 16-worker speedup falls from 2.573× to 1.692×. PPML AKM gains only 2.6% in elapsed time from 8 to 16 workers. No explicit-LSMR arms were scheduled. These separate campaigns do not replace the Mac qualification timing. |
+| Memory and report | Native peak sampled RSS 5.032 GiB, essentially unchanged; median 1.120 versus 1.174 GiB across 51 resolved cells. Unresolved memory stays NR. All 19 PDF pages rendered and visually inspected. PDF SHA-256 `ba133153`, configuration summary `f0ab36f9`, full comparison CSV `6c8b9cc9`, retained-file manifest `a4bb00bc`; full hashes are in the documentation commit. |
