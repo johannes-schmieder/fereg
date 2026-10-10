@@ -1,5 +1,5 @@
 use super::*;
-use crate::fe::absorb_borrowed_intercept_stable_cg_retaining_certified;
+use crate::fe::{absorb_borrowed_intercept_cg, BorrowedCgOptions};
 
 /// A fitted-model target may contain subtraction roundoff outside the FE span.
 /// Project one fresh RHS, keep its complete coefficient product, and certify
@@ -48,11 +48,16 @@ pub(crate) fn recover_finalized_model_effects_certified(
     for value in &mut raw {
         *value /= rhs_scale;
     }
-    let projection = absorb_borrowed_intercept_stable_cg_retaining_certified(
+    let projection = absorb_borrowed_intercept_cg(
         &design,
         weights,
         DenseMatrix::from_row_major(target.len(), 1, raw)?,
         map,
+        BorrowedCgOptions {
+            retain_coefficients: true,
+            stable_projection: true,
+            ..BorrowedCgOptions::default()
+        },
     )?;
     let (mut reconstructed, report, coefficients) = projection.into_full_parts();
     let coefficients = coefficients.ok_or_else(|| {

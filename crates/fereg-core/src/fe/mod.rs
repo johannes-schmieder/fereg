@@ -40,18 +40,15 @@ mod topology_source;
 
 pub use accelerated_map::absorb_accelerated_map;
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
-pub use borrowed_map::{
-    absorb_borrowed_intercept_cg_certified, absorb_borrowed_intercept_map_certified,
-    BorrowedMapWeights, CertifiedBorrowedMap, FeCoefficientBatch,
-};
 pub(crate) use borrowed_map::{
-    absorb_borrowed_intercept_cg_retaining_certified,
-    absorb_borrowed_intercept_cg_with_structural_constant_certified,
-    absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
-    absorb_borrowed_intercept_map_retaining_certified,
-    absorb_borrowed_intercept_map_with_structural_constant_certified,
-    absorb_borrowed_intercept_stable_cg_retaining_certified, borrowed_cg_recovery_workspace_bytes,
-    project_borrowed_intercept_structural, BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber,
+    absorb_borrowed_intercept_cg, absorb_borrowed_intercept_irons_tuck_certified,
+    absorb_borrowed_intercept_lsmr, absorb_borrowed_intercept_map,
+    borrowed_cg_recovery_workspace_bytes, project_borrowed_intercept_structural, BorrowedCgOptions,
+    BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber,
+};
+pub use borrowed_map::{
+    absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
+    FeCoefficientBatch,
 };
 #[cfg(test)]
 pub(crate) use borrowed_map::{

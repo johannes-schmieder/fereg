@@ -691,7 +691,7 @@ pub(crate) fn project_intercepts(
             structural_constant,
             config.retain_coefficients,
         ),
-        S::Lsmr if !design.effects().is_empty() => super::absorb_borrowed_intercept_lsmr_certified(
+        S::Lsmr if !design.effects().is_empty() => super::absorb_borrowed_intercept_lsmr(
             design,
             weights,
             values,
@@ -705,15 +705,15 @@ pub(crate) fn project_intercepts(
                 config.solver_memory_budget,
                 config.retain_coefficients,
             )?;
-            let mut r = if !design.effects().is_empty() && config.retain_coefficients {
-                super::absorb_borrowed_intercept_cg_retaining_certified(
-                    design, weights, values, config.map,
-                )?
-            } else {
-                super::absorb_borrowed_intercept_cg_with_structural_constant_certified(
-                    design, weights, values, config.map,
-                )?
+            // CG treats an empty explicit design as the structural constant,
+            // which has no coefficients to retain.
+            let options = super::BorrowedCgOptions {
+                structural_constant: true,
+                retain_coefficients: config.retain_coefficients && !design.effects().is_empty(),
+                ..super::BorrowedCgOptions::default()
             };
+            let mut r =
+                super::absorb_borrowed_intercept_cg(design, weights, values, config.map, options)?;
             r.set_solver_workspace_peak(peak);
             Ok(r)
         }
@@ -731,22 +731,17 @@ pub(crate) fn project_intercepts(
             "explicit FE backend requires its prepared adapter",
         )),
         S::Lsmr | S::IronsTuck | S::Map => {
-            if !design.effects().is_empty() && config.retain_coefficients {
-                return super::absorb_borrowed_intercept_map_retaining_certified(
-                    design, weights, values, config.map,
-                );
-            }
-            if structural_constant {
-                super::absorb_borrowed_intercept_map_with_structural_constant_certified(
-                    design, weights, values, config.map,
-                )
-            } else if config.retain_coefficients {
-                super::absorb_borrowed_intercept_map_retaining_certified(
-                    design, weights, values, config.map,
-                )
-            } else {
-                super::absorb_borrowed_intercept_map_certified(design, weights, values, config.map)
-            }
+            // A structural constant on an empty design has no coefficients to retain.
+            let retain =
+                config.retain_coefficients && !(structural_constant && design.effects().is_empty());
+            super::absorb_borrowed_intercept_map(
+                design,
+                weights,
+                values,
+                config.map,
+                structural_constant,
+                retain,
+            )
         }
     }
 }

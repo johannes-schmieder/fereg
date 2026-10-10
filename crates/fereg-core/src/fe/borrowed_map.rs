@@ -3073,15 +3073,21 @@ pub fn absorb_borrowed_intercept_map_certified(
     values: DenseMatrix,
     config: MapConfig,
 ) -> Result<CertifiedBorrowedMap> {
-    let mut reservation = SystemWorkspaceReservation;
-    absorb_with_reservation(design, weights, values, config, false, &mut reservation)
+    absorb_borrowed_intercept_map(design, weights, values, config, false, false)
 }
 
-pub(crate) fn absorb_borrowed_intercept_map_retaining_certified(
+/// Symmetric MAP over a borrowed design. With `structural_constant`, an empty
+/// explicit design still owns a one-level constant whose global projection
+/// uses only the existing dense RHS plus O(K) workspace; it never materializes
+/// N constant codes. `retain_coefficients` also returns the coefficient
+/// solutions that produced the certified residuals.
+pub(crate) fn absorb_borrowed_intercept_map(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
     values: DenseMatrix,
     config: MapConfig,
+    structural_constant: bool,
+    retain_coefficients: bool,
 ) -> Result<CertifiedBorrowedMap> {
     let mut reservation = SystemWorkspaceReservation;
     absorb_with_reservation_mode(
@@ -3089,20 +3095,51 @@ pub(crate) fn absorb_borrowed_intercept_map_retaining_certified(
         weights,
         values,
         config,
-        false,
-        true,
+        structural_constant,
+        retain_coefficients,
         &mut reservation,
     )
+}
+
+/// Options for one borrowed CG solve; the default is an ordinary solve.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct BorrowedCgOptions<'a> {
+    /// An empty explicit design owns a structural one-level constant.
+    pub(crate) structural_constant: bool,
+    /// Also return the coefficient solutions behind the certified residuals.
+    pub(crate) retain_coefficients: bool,
+    /// Stable group actions avoid subtracting nearly identical
+    /// observation-space projections during the recurrence; saved-model
+    /// recovery needs them for the complete product of a fresh raw RHS.
+    pub(crate) stable_projection: bool,
+    /// Certify against these original right-hand-side norms instead of the
+    /// input's own.
+    pub(crate) reference_norms: Option<&'a [f64]>,
+}
+
+impl<'a> BorrowedCgOptions<'a> {
+    /// Certify a candidate residual against the original right-hand-side norms
+    /// and use CG only for any remaining FE component. This is the polishing
+    /// boundary of coefficient-space solvers such as CMG, whose bulk solve
+    /// happens outside the observation-space CG recurrence.
+    pub(crate) fn polish(reference_norms: &'a [f64]) -> Self {
+        Self {
+            stable_projection: true,
+            reference_norms: Some(reference_norms),
+            ..Self::default()
+        }
+    }
 }
 
 /// Residualize with batched weighted conjugate gradients over the borrowed
 /// symmetric-Kaczmarz projection operator. No observation-scale categorical
 /// codes or unit-weight vector are copied.
-pub fn absorb_borrowed_intercept_cg_certified(
+pub(crate) fn absorb_borrowed_intercept_cg(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
     values: DenseMatrix,
     config: MapConfig,
+    options: BorrowedCgOptions<'_>,
 ) -> Result<CertifiedBorrowedMap> {
     let mut reservation = SystemWorkspaceReservation;
     absorb_cg_with_reservation(
@@ -3110,52 +3147,11 @@ pub fn absorb_borrowed_intercept_cg_certified(
         weights,
         values,
         config,
-        false,
-        CgContinuation::ORDINARY,
-        &mut reservation,
-    )
-}
-
-pub(crate) fn absorb_borrowed_intercept_cg_retaining_certified(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-) -> Result<CertifiedBorrowedMap> {
-    let mut reservation = SystemWorkspaceReservation;
-    absorb_cg_with_reservation(
-        design,
-        weights,
-        values,
-        config,
-        false,
+        options.structural_constant,
         CgContinuation {
-            retain_coefficients: true,
-            ..CgContinuation::ORDINARY
-        },
-        &mut reservation,
-    )
-}
-
-/// Saved model recovery needs the complete product of a fresh raw RHS, while
-/// allowing its nonzero within residual. Stable group actions avoid subtracting
-/// nearly identical observation-space projections during the CG recurrence.
-pub(crate) fn absorb_borrowed_intercept_stable_cg_retaining_certified(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-) -> Result<CertifiedBorrowedMap> {
-    let mut reservation = SystemWorkspaceReservation;
-    absorb_cg_with_reservation(
-        design,
-        weights,
-        values,
-        config,
-        false,
-        CgContinuation {
-            retain_coefficients: true,
-            stable_projection: true,
+            reference_norms: options.reference_norms,
+            retain_coefficients: options.retain_coefficients,
+            stable_projection: options.stable_projection,
             ..CgContinuation::ORDINARY
         },
         &mut reservation,
@@ -3164,7 +3160,7 @@ pub(crate) fn absorb_borrowed_intercept_stable_cg_retaining_certified(
 
 /// Residualize through modified LSMR and optionally retain the coefficient
 /// solutions that produced the certified observation-space residuals.
-pub(crate) fn absorb_borrowed_intercept_lsmr_certified(
+pub(crate) fn absorb_borrowed_intercept_lsmr(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
     values: DenseMatrix,
@@ -3449,86 +3445,6 @@ pub(crate) fn absorb_borrowed_intercept_irons_tuck_certified(
     ))
 }
 
-/// Prepared OLS compatibility path: an empty explicit FE design still owns a
-/// structural one-level constant. The global projection uses only the existing
-/// dense RHS plus O(K) workspace; it never materializes N constant codes.
-pub(crate) fn absorb_borrowed_intercept_map_with_structural_constant_certified(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-) -> Result<CertifiedBorrowedMap> {
-    let mut reservation = SystemWorkspaceReservation;
-    absorb_with_reservation(design, weights, values, config, true, &mut reservation)
-}
-
-/// Prepared OLS compatibility path for CG when the empty explicit design owns
-/// a structural one-level constant.
-pub(crate) fn absorb_borrowed_intercept_cg_with_structural_constant_certified(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-) -> Result<CertifiedBorrowedMap> {
-    let mut reservation = SystemWorkspaceReservation;
-    absorb_cg_with_reservation(
-        design,
-        weights,
-        values,
-        config,
-        true,
-        CgContinuation::ORDINARY,
-        &mut reservation,
-    )
-}
-
-/// Certify a candidate residual against the original right-hand-side norms and
-/// use the existing CG implementation only for any remaining FE component.
-/// This is the polishing boundary used by coefficient-space solvers such as
-/// CMG, whose bulk solve happens outside the observation-space CG recurrence.
-pub(crate) fn polish_borrowed_intercept_cg_with_reference_norms_certified(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-    reference_norms: &[f64],
-) -> Result<CertifiedBorrowedMap> {
-    polish_borrowed_intercept_cg_with_products_certified(
-        design,
-        weights,
-        values,
-        config,
-        reference_norms,
-        false,
-    )
-}
-
-pub(crate) fn polish_borrowed_intercept_cg_with_products_certified(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-    reference_norms: &[f64],
-    retain_coefficients: bool,
-) -> Result<CertifiedBorrowedMap> {
-    let mut reservation = SystemWorkspaceReservation;
-    absorb_cg_with_reservation(
-        design,
-        weights,
-        values,
-        config,
-        false,
-        CgContinuation {
-            reference_norms: Some(reference_norms),
-            refinement: CgRefinementPolicy::ORDINARY,
-            retain_coefficients,
-            stable_projection: true,
-            reconstruction_tolerance: None,
-        },
-        &mut reservation,
-    )
-}
-
 /// Check an unchanged candidate against the same independent borrowed FE
 /// certificate used at solver entry. This performs no projection or solver
 /// iteration and is used when a caller expects a residual to already lie in
@@ -3614,15 +3530,14 @@ pub(crate) fn project_borrowed_intercept_structural(
                 "direct FE projection exceeds admitted workspace",
             ));
         }
-        let mut reservation = SystemWorkspaceReservation;
         return mark_auto(
-            absorb_with_reservation(
+            absorb_borrowed_intercept_map(
                 design,
                 weights,
                 values,
                 map,
                 structural_constant,
-                &mut reservation,
+                false,
             )?,
             0,
             0.,
@@ -3699,13 +3614,12 @@ pub(crate) fn project_borrowed_intercept_structural(
             estimate.cg_bytes
         };
         if budget.is_none_or(|b| b.fits(compact)) {
-            let mut result = if retain {
-                absorb_borrowed_intercept_stable_cg_retaining_certified(
-                    design, weights, values, map,
-                )?
-            } else {
-                absorb_borrowed_intercept_cg_certified(design, weights, values, map)?
+            let options = BorrowedCgOptions {
+                retain_coefficients: retain,
+                stable_projection: retain,
+                ..BorrowedCgOptions::default()
             };
+            let mut result = absorb_borrowed_intercept_cg(design, weights, values, map, options)?;
             result.report.requested_solver = FeSolverKind::Auto;
             result.report.solver_workspace_peak = result
                 .report
@@ -3793,11 +3707,7 @@ fn project_general_categorical(
         max_iterations: remaining,
         ..map
     };
-    let mut result = if retain {
-        absorb_borrowed_intercept_map_retaining_certified(design, weights, values, config)?
-    } else {
-        absorb_borrowed_intercept_map_certified(design, weights, values, config)?
-    };
+    let mut result = absorb_borrowed_intercept_map(design, weights, values, config, false, retain)?;
     result.report.requested_solver = FeSolverKind::Auto;
     result.report.solver_workspace_peak = result
         .report
@@ -5298,25 +5208,6 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         "borrowed CG exhausted {} iterations without comparator-equivalent recurrence convergence and a passing final certificate (Hestenes error {hestenes_error:e}, recurrence residual {recurrence_residual:e})",
         config.max_iterations,
     )))
-}
-
-fn absorb_with_reservation<R: WorkspaceReservation>(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-    empty_design_is_structural_constant: bool,
-    reservation: &mut R,
-) -> Result<CertifiedBorrowedMap> {
-    absorb_with_reservation_mode(
-        design,
-        weights,
-        values,
-        config,
-        empty_design_is_structural_constant,
-        false,
-        reservation,
-    )
 }
 
 #[allow(clippy::too_many_arguments)]

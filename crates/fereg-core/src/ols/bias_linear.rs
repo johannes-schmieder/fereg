@@ -564,7 +564,7 @@ mod tests {
             1e-9,
             &mut 0.,
             |remainder| {
-                crate::fe::absorb_borrowed_intercept_lsmr_certified(
+                crate::fe::absorb_borrowed_intercept_lsmr(
                     &borrowed,
                     weights,
                     remainder,
@@ -719,7 +719,7 @@ mod tests {
             1e-9,
             &mut 0.,
             |remainder| {
-                crate::fe::absorb_borrowed_intercept_map_retaining_certified(
+                crate::fe::absorb_borrowed_intercept_map(
                     &borrowed,
                     BorrowedMapWeights::Unit,
                     remainder,
@@ -727,6 +727,8 @@ mod tests {
                         tolerance: 1e-12,
                         ..crate::fe::MapConfig::default()
                     },
+                    false,
+                    true,
                 )
             },
         )

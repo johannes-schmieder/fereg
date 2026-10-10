@@ -627,7 +627,7 @@ fn retained_lsmr_weight_generation_revokes_failed_and_changed_frames() {
     for (row, w) in raw.iter_mut().enumerate() {
         *w = 0.5 + (row * 17 % 11) as f64;
     }
-    let expected = absorb_borrowed_intercept_lsmr_certified(
+    let expected = absorb_borrowed_intercept_lsmr(
         &design(),
         BorrowedMapWeights::Provided(&raw),
         input.clone(),
@@ -980,7 +980,7 @@ fn retained_lsmr_reuses_preparation_and_preserves_each_batch() {
                                 true,
                             )
                         } else {
-                            absorb_borrowed_intercept_lsmr_certified(
+                            absorb_borrowed_intercept_lsmr(
                                 &make_design(),
                                 weights,
                                 rhs.clone(),
@@ -2698,11 +2698,12 @@ fn map_workspace_report_counts_reserved_capacity_before_norm_handoff() {
                             })
                             .collect::<Vec<_>>();
                         let mut reservation = RecordingReservation { bytes: 0 };
-                        let result = absorb_with_reservation(
+                        let result = absorb_with_reservation_mode(
                             &design,
                             BorrowedMapWeights::Unit,
                             DenseMatrix::from_columns(&[input]).unwrap(),
                             config(),
+                            false,
                             false,
                             &mut reservation,
                         )
@@ -2832,11 +2833,12 @@ fn every_workspace_reservation_and_capacity_guard_fails_closed() {
     let columns = [vec![1.0, 2.0, 4.0, 8.0], vec![2.0, 3.0, 1.0, -1.0]];
 
     let mut successful = InjectedReservation::default();
-    absorb_with_reservation(
+    absorb_with_reservation_mode(
         &design,
         BorrowedMapWeights::Unit,
         DenseMatrix::from_columns(&columns).expect("matrix"),
         config(),
+        false,
         false,
         &mut successful,
     )
@@ -2848,11 +2850,12 @@ fn every_workspace_reservation_and_capacity_guard_fails_closed() {
             fail_at: Some(fail_at),
             ..InjectedReservation::default()
         };
-        let error = absorb_with_reservation(
+        let error = absorb_with_reservation_mode(
             &design,
             BorrowedMapWeights::Unit,
             DenseMatrix::from_columns(&columns).expect("matrix"),
             config(),
+            false,
             false,
             &mut injected,
         )
@@ -2865,11 +2868,12 @@ fn every_workspace_reservation_and_capacity_guard_fails_closed() {
             skip_at: Some(skip_at),
             ..InjectedReservation::default()
         };
-        let error = absorb_with_reservation(
+        let error = absorb_with_reservation_mode(
             &design,
             BorrowedMapWeights::Unit,
             DenseMatrix::from_columns(&columns).expect("matrix"),
             config(),
+            false,
             false,
             &mut injected,
         )
@@ -2901,12 +2905,13 @@ fn structural_constant_empty_design_allocations_are_fallible_and_only_rhs_scale(
     ];
 
     let mut successful = InjectedReservation::default();
-    let result = absorb_with_reservation(
+    let result = absorb_with_reservation_mode(
         &design,
         BorrowedMapWeights::Unit,
         DenseMatrix::from_columns(&columns).expect("structural RHS"),
         config(),
         true,
+        false,
         &mut successful,
     )
     .expect("structural constant projection");
@@ -2930,12 +2935,13 @@ fn structural_constant_empty_design_allocations_are_fallible_and_only_rhs_scale(
             fail_at: Some(fail_at),
             ..InjectedReservation::default()
         };
-        let error = absorb_with_reservation(
+        let error = absorb_with_reservation_mode(
             &design,
             BorrowedMapWeights::Unit,
             DenseMatrix::from_columns(&columns).expect("structural RHS"),
             config(),
             true,
+            false,
             &mut injected,
         )
         .expect_err("structural constant allocation must fail closed");
@@ -2946,12 +2952,13 @@ fn structural_constant_empty_design_allocations_are_fallible_and_only_rhs_scale(
             skip_at: Some(skip_at),
             ..InjectedReservation::default()
         };
-        let error = absorb_with_reservation(
+        let error = absorb_with_reservation_mode(
             &design,
             BorrowedMapWeights::Unit,
             DenseMatrix::from_columns(&columns).expect("structural RHS"),
             config(),
             true,
+            false,
             &mut injected,
         )
         .expect_err("undersized structural workspace must fail closed");
@@ -3012,11 +3019,12 @@ fn large_parallel_projection_is_bit_stable_and_its_workspace_fails_closed() {
         .expect("pool");
     let mut successful = InjectedReservation::default();
     pool.install(|| {
-        absorb_with_reservation(
+        absorb_with_reservation_mode(
             &design,
             BorrowedMapWeights::Provided(&weights),
             DenseMatrix::from_columns(&columns).expect("matrix"),
             config(),
+            false,
             false,
             &mut successful,
         )
@@ -3040,11 +3048,12 @@ fn large_parallel_projection_is_bit_stable_and_its_workspace_fails_closed() {
             };
             let error = pool
                 .install(|| {
-                    absorb_with_reservation(
+                    absorb_with_reservation_mode(
                         &design,
                         BorrowedMapWeights::Provided(&weights),
                         DenseMatrix::from_columns(&columns).expect("matrix"),
                         config(),
+                        false,
                         false,
                         &mut injected,
                     )
@@ -3484,11 +3493,12 @@ fn success_is_always_certified_and_nonconvergence_is_fatal() {
 fn empty_nonfinite_and_invalid_weight_inputs_fail_before_workspace_allocation() {
     let design = BorrowedInterceptFeDesign::new(0, Vec::new()).expect("empty design");
     let mut reservation = InjectedReservation::default();
-    let error = absorb_with_reservation(
+    let error = absorb_with_reservation_mode(
         &design,
         BorrowedMapWeights::Unit,
         DenseMatrix::zeros(0, 1).expect("matrix"),
         config(),
+        false,
         false,
         &mut reservation,
     )
@@ -3594,12 +3604,13 @@ fn fresh_one_effect_nonfinite_validation_precedes_weights_and_allocation() {
                             };
                             // Both a bad weight shape and an allocation failure
                             // would mask this diagnostic if validation moved later.
-                            let error = absorb_with_reservation(
+                            let error = absorb_with_reservation_mode(
                                 &design,
                                 BorrowedMapWeights::Provided(&[]),
                                 values,
                                 config(),
                                 true,
+                                false,
                                 &mut reservation,
                             )
                             .unwrap_err();
@@ -3797,7 +3808,7 @@ fn stable_cg_polish_preserves_near_within_hadamard_products_at_every_width() {
                     let mut scales = vec![0.0;width];
                     let mut sums = vec![0.0;width];
                     weighted_column_norms(&input,validate_weights(weights,rows).unwrap(),&mut norms,&mut scales,&mut sums).unwrap();
-                    let result = polish_borrowed_intercept_cg_with_products_certified(&design,weights,input.clone(),MapConfig {tolerance:1e-12,..config()},&norms,true).unwrap();
+                    let result = absorb_borrowed_intercept_cg(&design, weights, input.clone(), MapConfig {tolerance:1e-12,..config()}, BorrowedCgOptions { retain_coefficients: true, ..BorrowedCgOptions::polish(&norms) }).unwrap();
                     let (within, report, coefficients) = result.into_full_parts();
                     assert!(report.certified());
                     let coefficients = coefficients.unwrap();
@@ -3827,11 +3838,15 @@ fn borrowed_cg_constant_energy_roundoff_preserves_weighted_projection() {
     let mean =
         x.iter().zip(&weights).map(|(x, w)| x * w).sum::<f64>() / weights.iter().sum::<f64>();
     let input = DenseMatrix::from_columns(&[vec![1.0; n], x.clone()]).unwrap();
-    let ordinary = absorb_borrowed_intercept_cg_retaining_certified(
+    let ordinary = absorb_borrowed_intercept_cg(
         &design,
         BorrowedMapWeights::Provided(&weights),
         DenseMatrix::from_columns(&[x.clone()]).unwrap(),
         config(),
+        BorrowedCgOptions {
+            retain_coefficients: true,
+            ..BorrowedCgOptions::default()
+        },
     )
     .unwrap();
     let ordinary_error = (0..n)
@@ -3844,11 +3859,15 @@ fn borrowed_cg_constant_energy_roundoff_preserves_weighted_projection() {
         ordinary.report().iterations
     );
     assert!(ordinary_error <= 2e-10);
-    let recovered = absorb_borrowed_intercept_cg_retaining_certified(
+    let recovered = absorb_borrowed_intercept_cg(
         &design,
         BorrowedMapWeights::Provided(&weights),
         input,
         config(),
+        BorrowedCgOptions {
+            retain_coefficients: true,
+            ..BorrowedCgOptions::default()
+        },
     )
     .expect("constant RHS energy must not fail from a two-ulp subtraction overshoot");
     let (residual, report, coefficients) = recovered.into_full_parts();
@@ -3950,11 +3969,12 @@ fn borrowed_cg_is_weighted_batched_certified_and_deterministic() {
         vec![2.0, -1.0, 4.0, 5.0, 0.0, 6.0, 3.0, 10.0],
     ];
     let run = || {
-        absorb_borrowed_intercept_cg_certified(
+        absorb_borrowed_intercept_cg(
             &design,
             BorrowedMapWeights::Provided(&weights),
             DenseMatrix::from_columns(&columns).expect("matrix"),
             config(),
+            BorrowedCgOptions::default(),
         )
         .expect("CG")
     };
@@ -3979,11 +3999,15 @@ fn borrowed_cg_is_weighted_batched_certified_and_deterministic() {
     );
 
     let input = DenseMatrix::from_columns(&columns).expect("matrix");
-    let retained = absorb_borrowed_intercept_cg_retaining_certified(
+    let retained = absorb_borrowed_intercept_cg(
         &design,
         BorrowedMapWeights::Provided(&weights),
         input.clone(),
         config(),
+        BorrowedCgOptions {
+            retain_coefficients: true,
+            ..BorrowedCgOptions::default()
+        },
     )
     .expect("retaining CG");
     let (residualized, report, coefficients) = retained.into_full_parts();
@@ -4046,11 +4070,13 @@ fn retained_map_level_major_accumulator_reconstructs_every_rhs() {
         vec![-3.0, 0.5, 1.0, 2.5, 7.0, -4.0, 6.0, 8.0],
     ];
     let input = DenseMatrix::from_columns(&columns).expect("matrix");
-    let retained = absorb_borrowed_intercept_map_retaining_certified(
+    let retained = absorb_borrowed_intercept_map(
         &design,
         BorrowedMapWeights::Provided(&weights),
         input.clone(),
         config(),
+        false,
+        true,
     )
     .expect("retaining MAP");
     let (residualized, report, coefficients) = retained.into_full_parts();
@@ -4129,7 +4155,7 @@ fn borrowed_cg_breakdown_and_exhaustion_fail_closed() {
     let design =
         BorrowedInterceptFeDesign::new(first_codes.len(), vec![first.effect(), second.effect()])
             .expect("design");
-    let error = absorb_borrowed_intercept_cg_certified(
+    let error = absorb_borrowed_intercept_cg(
         &design,
         BorrowedMapWeights::Unit,
         DenseMatrix::from_columns(&[vec![1.0, 7.0, 2.0, 9.0, 4.0, 3.0]]).expect("matrix"),
@@ -4139,6 +4165,7 @@ fn borrowed_cg_breakdown_and_exhaustion_fail_closed() {
             check_every: 1,
             symmetric: true,
         },
+        BorrowedCgOptions::default(),
     )
     .expect_err("iteration exhaustion");
     assert_eq!(error.code, ErrorCode::InvalidData);
@@ -4577,7 +4604,7 @@ fn qualification_matrix_exercises_direct_tolerances_preconditioners_and_forced_c
     assert_eq!(direct_lsmr_tolerance(requested_tolerance), 1e-10);
     assert_eq!(direct_lsmr_tolerance(1e-15), 1e-15);
 
-    let reference = absorb_borrowed_intercept_cg_certified(
+    let reference = absorb_borrowed_intercept_cg(
         &design,
         BorrowedMapWeights::Provided(&raw_weights),
         raw.clone(),
@@ -4585,6 +4612,7 @@ fn qualification_matrix_exercises_direct_tolerances_preconditioners_and_forced_c
             tolerance: requested_tolerance,
             ..config()
         },
+        BorrowedCgOptions::default(),
     )
     .expect("CG reference");
 

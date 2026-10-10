@@ -3,8 +3,7 @@ use crate::data::WeightKind;
 use crate::data::{DenseMatrix, PreparedWeights};
 use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::fe::{
-    absorb_borrowed_intercept_map_with_structural_constant_certified, BorrowedMapWeights,
-    CertifiedBorrowedMap, MapConfig,
+    absorb_borrowed_intercept_map, BorrowedMapWeights, CertifiedBorrowedMap, MapConfig,
 };
 use crate::metadata::SourceId;
 use rayon::prelude::*;
@@ -85,7 +84,7 @@ pub fn absorb_prepared_ols_rhs_map(
         PreparedWeights::None => BorrowedMapWeights::Unit,
         PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
     };
-    absorb_borrowed_intercept_map_with_structural_constant_certified(&design, weights, rhs, config)
+    absorb_borrowed_intercept_map(&design, weights, rhs, config, true, false)
 }
 
 /// Reuse a speculative input matrix only after the authoritative sample and

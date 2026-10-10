@@ -1,6 +1,8 @@
 use super::super::certify_borrowed_intercept_candidate;
 use super::*;
-use crate::fe::{absorb_borrowed_intercept_cg_certified, BorrowedInterceptEffect, LevelIndex};
+use crate::fe::{
+    absorb_borrowed_intercept_cg, BorrowedCgOptions, BorrowedInterceptEffect, LevelIndex,
+};
 
 #[test]
 fn hierarchy_work_counts_recursive_level_visits() {
@@ -228,11 +230,12 @@ fn prepared_coarsening_certifies_large_permuted_weighted_three_fe_graphs() {
                 report.nuisance_setup.warm_right_hand_sides,
                 if frame == 1 { 4 } else { 0 }
             );
-            let oracle = absorb_borrowed_intercept_cg_certified(
+            let oracle = absorb_borrowed_intercept_cg(
                 &design(),
                 BorrowedMapWeights::Provided(&weights),
                 input.clone(),
                 options.map,
+                BorrowedCgOptions::default(),
             )
             .unwrap();
             assert_matrix_close(&candidate, oracle.residualized(), 1e-8);
@@ -636,11 +639,12 @@ fn prepared_cmg_warm_seed_is_consumed_recertified_and_invalidated() {
                 "same-operator guess must freshly certify"
             );
         }
-        let oracle = absorb_borrowed_intercept_cg_certified(
+        let oracle = absorb_borrowed_intercept_cg(
             &design(),
             BorrowedMapWeights::Provided(&weights),
             input.clone(),
             options.map,
+            BorrowedCgOptions::default(),
         )
         .unwrap();
         assert_matrix_close(&candidate, oracle.residualized(), 1e-8);
@@ -851,11 +855,12 @@ fn prepared_batches_align_with_the_admitted_pool_without_changing_solutions() {
             .collect::<Vec<_>>(),
     )
     .expect("input");
-    let reference = absorb_borrowed_intercept_cg_certified(
+    let reference = absorb_borrowed_intercept_cg(
         &design(),
         BorrowedMapWeights::Provided(&weights),
         input.clone(),
         config(10).map,
+        BorrowedCgOptions::default(),
     )
     .expect("independent CG oracle");
     let mut previous = None;
@@ -1647,12 +1652,12 @@ fn cmg_workspace_retained_polish_and_released_final_correction_have_different_pe
     let coefficients = coefficients.expect("exact crossed projection retains coefficients");
     assert_eq!(coefficients.rhs_count(), 5); // Wider than the admitted CMG batch.
     let (norms, _) = weighted_column_norms(&within, BorrowedMapWeights::Unit, 1.0).unwrap();
-    let polish = polish_borrowed_intercept_cg_with_reference_norms_certified(
+    let polish = absorb_borrowed_intercept_cg(
         &design(),
         BorrowedMapWeights::Unit,
         within.clone(),
         options.map,
-        &norms,
+        BorrowedCgOptions::polish(&norms),
     )
     .unwrap();
     assert_eq!(polish.report().iterations, 0);
@@ -1724,12 +1729,12 @@ fn cmg_workspace_retained_polish_and_released_final_correction_have_different_pe
         .unwrap();
     assert!(!cert.passed);
     let (norms, norm_work) = weighted_column_norms(&input, BorrowedMapWeights::Unit, 1.0).unwrap();
-    let reference = polish_borrowed_intercept_cg_with_reference_norms_certified(
+    let reference = absorb_borrowed_intercept_cg(
         &design(),
         BorrowedMapWeights::Unit,
         input.clone(),
         strict,
-        &norms,
+        BorrowedCgOptions::polish(&norms),
     )
     .unwrap();
     assert!(reference.report().iterations > 0);
@@ -1890,11 +1895,12 @@ fn admitted_components_and_ordinary_projection_share_the_independent_oracle() {
             (0..left.len()).map(|r| (r as f64 * 0.2).cos()).collect(),
         ])
         .unwrap();
-        let reference = absorb_borrowed_intercept_cg_certified(
+        let reference = absorb_borrowed_intercept_cg(
             &design(),
             BorrowedMapWeights::Provided(&weights),
             values.clone(),
             config(2).map,
+            BorrowedCgOptions::default(),
         )
         .unwrap();
         for components in [false, true] {
@@ -1956,11 +1962,12 @@ fn weighted_two_way_projection_agrees_with_certified_cg() {
             .collect(),
     ])
     .expect("values");
-    let reference = absorb_borrowed_intercept_cg_certified(
+    let reference = absorb_borrowed_intercept_cg(
         &reference_design,
         BorrowedMapWeights::Provided(&weights),
         values.clone(),
         config(2).map,
+        BorrowedCgOptions::default(),
     )
     .expect("CG reference");
     let mut session = CmgAbsorber::build(
@@ -2082,11 +2089,12 @@ fn absorbed_nuisance_effect_agrees_with_full_multi_effect_cg() {
             .collect(),
     ])
     .expect("values");
-    let reference = absorb_borrowed_intercept_cg_certified(
+    let reference = absorb_borrowed_intercept_cg(
         &make_design(),
         BorrowedMapWeights::Unit,
         values.clone(),
         config(2).map,
+        BorrowedCgOptions::default(),
     )
     .expect("CG reference");
     let mut retaining_config = config(2);
@@ -2147,11 +2155,12 @@ fn multiple_nuisance_effects_agree_with_full_multi_effect_cg() {
             .collect(),
     ])
     .expect("values");
-    let reference = absorb_borrowed_intercept_cg_certified(
+    let reference = absorb_borrowed_intercept_cg(
         &make_design(),
         BorrowedMapWeights::Provided(&weights),
         values.clone(),
         config(2).map,
+        BorrowedCgOptions::default(),
     )
     .expect("CG reference");
     let mut session = CmgAbsorber::build(

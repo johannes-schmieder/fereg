@@ -24,13 +24,9 @@ use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget, SolverWorks
 use crate::options::ThreadConfig;
 
 use super::{
-    absorb_borrowed_intercept_map_certified,
-    absorb_borrowed_intercept_map_with_structural_constant_certified,
-    borrowed_map::polish_borrowed_intercept_cg_with_products_certified,
-    borrowed_map::polish_borrowed_intercept_cg_with_reference_norms_certified,
-    retained_effect_order_by_levels, BorrowedInterceptFeDesign, BorrowedMapWeights,
-    CertifiedBorrowedMap, FeCoefficientBatch, FeSolverKind, MapConfig, SolveReport,
-    SolveStopReason,
+    absorb_borrowed_intercept_cg, absorb_borrowed_intercept_map, retained_effect_order_by_levels,
+    BorrowedCgOptions, BorrowedInterceptFeDesign, BorrowedMapWeights, CertifiedBorrowedMap,
+    FeCoefficientBatch, FeSolverKind, MapConfig, SolveReport, SolveStopReason,
 };
 
 #[path = "cmg_admission.rs"]
@@ -1173,21 +1169,14 @@ impl<'a> CmgAbsorber<'a> {
         let setup_metrics = std::mem::take(&mut self.pending_setup_metrics);
 
         if matches!(&self.route, CmgRoute::Direct) {
-            let direct = if self.structural_constant_if_empty {
-                absorb_borrowed_intercept_map_with_structural_constant_certified(
-                    &self.design,
-                    self.weights,
-                    values,
-                    self.config.map,
-                )?
-            } else {
-                absorb_borrowed_intercept_map_certified(
-                    &self.design,
-                    self.weights,
-                    values,
-                    self.config.map,
-                )?
-            };
+            let direct = absorb_borrowed_intercept_map(
+                &self.design,
+                self.weights,
+                values,
+                self.config.map,
+                self.structural_constant_if_empty,
+                false,
+            )?;
             let (residualized, mut report, coefficients) = direct.into_full_parts();
             report.solver_workspace_peak = self
                 .memory
@@ -1209,12 +1198,12 @@ impl<'a> CmgAbsorber<'a> {
 
         if let CmgRoute::Failed(message) = &self.route {
             ensure_cg_fallback_fits(&self.design, values.ncols(), self.config)?;
-            let fallback = polish_borrowed_intercept_cg_with_reference_norms_certified(
+            let fallback = absorb_borrowed_intercept_cg(
                 &self.design,
                 self.weights,
                 values,
                 self.config.map,
-                &reference_norms,
+                BorrowedCgOptions::polish(&reference_norms),
             )?;
             let (residualized, mut report) = fallback.into_parts();
             report.solver_workspace_peak = self
@@ -1290,13 +1279,12 @@ impl<'a> CmgAbsorber<'a> {
                 let graph_retained = self.retained_workspace_peak()?;
                 let bulk_peak = self.memory.projection.with_retained(coefficient_bytes)?;
                 metrics.include_from(setup_metrics);
-                let polished = polish_borrowed_intercept_cg_with_products_certified(
+                let polished = absorb_borrowed_intercept_cg(
                     &self.design,
                     self.weights,
                     candidate,
                     self.config.map,
-                    &reference_norms,
-                    false,
+                    BorrowedCgOptions::polish(&reference_norms),
                 )?;
                 let (residualized, mut report, correction) = polished.into_full_parts();
                 if trace {
@@ -1352,12 +1340,12 @@ impl<'a> CmgAbsorber<'a> {
                 };
                 let failure = error.to_string();
                 self.route = CmgRoute::Failed(failure.clone());
-                let fallback = polish_borrowed_intercept_cg_with_reference_norms_certified(
+                let fallback = absorb_borrowed_intercept_cg(
                     &self.design,
                     self.weights,
                     candidate,
                     self.config.map,
-                    &reference_norms,
+                    BorrowedCgOptions::polish(&reference_norms),
                 )?;
                 let (residualized, mut report) = fallback.into_parts();
                 report.solver_workspace_peak = self
@@ -1425,13 +1413,12 @@ impl<'a> CmgAbsorber<'a> {
             ensure_cg_fallback_fits(&self.design, values.ncols(), config)?;
             let (reference_norms, norm_peak) =
                 weighted_column_norms(&values, self.weights, self.weight_scale)?;
-            let corrected = polish_borrowed_intercept_cg_with_products_certified(
+            let corrected = absorb_borrowed_intercept_cg(
                 &self.design,
                 self.weights,
                 values,
                 config.map,
-                &reference_norms,
-                false,
+                BorrowedCgOptions::polish(&reference_norms),
             )?;
             let (residualized, mut report, mut coefficients) = corrected.into_full_parts();
             if !config.retain_coefficients {
