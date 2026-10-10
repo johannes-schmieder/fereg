@@ -77,6 +77,8 @@ messages record each result. Behaviour changes are confined to admission and
 failure paths: the separation report bank's memory charge (plan D9; admission
 only loosens), Break reaching saved-FE recovery and long serial row passes, the
 PPML validator keeping `r(1)`, PPML rejecting string numeric inputs at layout,
-and test fault plans compiled out of shipped builds (plan D4, reversing phase
-4's choice). Mac boundary timing, the licensed Stata full profile and the PTY
-Break fixtures are Johannes's to run.
+test fault plans compiled out of shipped builds (plan D4, reversing phase 4's
+choice), and the OLS multiway PSD certificate floor becoming `f64::MIN_POSITIVE`
+(plan D1; it can only reject, and every replay case was unchanged). Mac boundary
+timing, the licensed Stata full profile and the PTY Break fixtures are
+Johannes's to run.

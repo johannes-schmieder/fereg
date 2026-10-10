@@ -14,7 +14,10 @@
   generations rather than one per observation (about 9.6 GB less at ten
   million rows). `solver()` and `preconditioner()` names are case-insensitive
   in `fereg`. The internal `_fereg_ols.ado` developer adapter is no longer
-  installed.
+  installed. The multiway-cluster PSD repair certificate in `fereg` is now
+  purely relative, as in `feppml`: an eigensystem whose error was hidden by
+  the former unit floor on a tiny-scale covariance is rejected instead of
+  published. No replay case or fixture changed.
 - Fix (Windows): the plugin now pins its own DLL on first use. Its cached
   worker threads outlive each command, so unloading the DLL (as the Windows
   loader test does right after the doctor check) could crash the process
