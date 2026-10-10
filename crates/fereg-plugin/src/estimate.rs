@@ -25,7 +25,6 @@ use fereg_core::error::{
 };
 use fereg_core::fe::{AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner};
 use fereg_core::metadata::{ComponentKind, SourceId};
-use fereg_core::ols::PreparedOlsData;
 #[cfg(test)]
 use fereg_core::ols::{
     fit_prepared_model_unadjusted_with_loaded_moments, prepare_model_owned, OlsClusteredRequestV1,
@@ -42,7 +41,7 @@ use fereg_core::protocol::{
 };
 use fereg_core::{
     estimate_phase2_memory, CategoricalTopologyDofReport, FeSolverMemoryBudget, MapConfig,
-    MemoryMode, MemoryPlan, PreparedCategoricalOlsData, ThreadConfig, ThreadTeam,
+    MemoryMode, MemoryPlan, PreparedOlsData, ThreadConfig, ThreadTeam,
 };
 use rayon::prelude::*;
 
@@ -2207,7 +2206,7 @@ fn certify_recovered_model_outputs(
 
 fn build_derived_observation_outputs(
     prepared: &'_ PreparedOlsData,
-    categorical: Option<&PreparedCategoricalOlsData>,
+    categorical: Option<&PreparedOlsData>,
     fit: &CertifiedPreparedOlsFit,
     requested: &ObservationOutputs,
     known_connected: bool,
@@ -2227,7 +2226,7 @@ fn build_derived_observation_outputs(
 
 fn build_derived_observation_outputs_in_team(
     prepared: &'_ PreparedOlsData,
-    categorical: Option<&PreparedCategoricalOlsData>,
+    categorical: Option<&PreparedOlsData>,
     fit: &CertifiedPreparedOlsFit,
     requested: &ObservationOutputs,
     known_connected: bool,

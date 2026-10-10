@@ -5290,7 +5290,7 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {},
-        "production_lines": 97
+        "production_lines": 95
       },
       "crates/fereg-core/src/linalg/mod.rs": {
         "chunk_candidates": [],
@@ -7823,167 +7823,167 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {},
-        "production_lines": 97
+        "production_lines": 93
       },
       "crates/fereg-core/src/ols/prepared.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
             "condition": "components . len ( ) >= 2 && components . iter ( ) . all ( | component |",
-            "line": 416
+            "line": 415
           },
           {
             "condition": "( & loaded . analytic_weight , & loaded . frequency_weight , & loaded . probability_weight , )",
-            "line": 550
+            "line": 549
           },
           {
             "condition": "rayon :: current_thread_index ( ) . is_some ( ) && crate :: parallel :: StagePlan :: current ( loaded . candidate . len ( ) as u128 * loaded . numeric_sources . len ( ) as u128 * 2 , loaded . numeric_sources . len ( ) , ) . lanes > 1",
-            "line": 711
+            "line": 710
           },
           {
             "condition": "column . values . capacity ( ) <= n_candidate",
-            "line": 822
+            "line": 821
           },
           {
             "condition": "original_row_by_active . len ( ) != n_original",
-            "line": 823
+            "line": 822
           },
           {
             "condition": "rayon :: current_thread_index ( ) . is_some ( ) && crate :: parallel :: StagePlan :: current ( n_original as u128 * loaded . numeric_sources . len ( ) as u128 , loaded . numeric_sources . len ( ) , ) . lanes > 1",
-            "line": 839
+            "line": 838
           },
           {
             "condition": "( loaded . analytic_weight . take ( ) , loaded . frequency_weight . take ( ) , loaded . probability_weight . take ( ) , )",
-            "line": 858
+            "line": 857
           },
           {
             "condition": "let Some ( ( _ , column ) ) = & mut weight",
-            "line": 873
+            "line": 872
           },
           {
             "condition": "term . categorical_sources . len ( ) != 1 || ! term . intercept || ! term . slope_sources . is_empty ( )",
-            "line": 1029
+            "line": 1028
           },
           {
             "condition": "analytic_weight_count + frequency_weight_count + probability_weight_count > 1",
-            "line": 1112
+            "line": 1111
           },
           {
             "condition": "sources . len ( ) != request . model . sources . len ( ) || request . model . sources . iter ( ) . any ( | source | ! sources . contains_key ( & source . id ) )",
-            "line": 1115
+            "line": 1114
           },
           {
             "condition": "loaded . numeric_sources . len ( ) != request . model . sources . len ( )",
-            "line": 1133
+            "line": 1132
           },
           {
             "condition": "request_has_analytic_weight != loaded . analytic_weight . is_some ( )",
-            "line": 1150
+            "line": 1149
           },
           {
             "condition": "let Some ( column ) = & loaded . analytic_weight",
-            "line": 1155
+            "line": 1154
           },
           {
             "condition": "request_has_frequency_weight != loaded . frequency_weight . is_some ( )",
-            "line": 1162
+            "line": 1161
           },
           {
             "condition": "let Some ( column ) = & loaded . frequency_weight",
-            "line": 1167
+            "line": 1166
           },
           {
             "condition": "request_has_probability_weight != loaded . probability_weight . is_some ( )",
-            "line": 1174
+            "line": 1173
           },
           {
             "condition": "let Some ( column ) = & loaded . probability_weight",
-            "line": 1179
+            "line": 1178
           },
           {
             "condition": "usize :: from ( loaded . analytic_weight . is_some ( ) ) + usize :: from ( loaded . frequency_weight . is_some ( ) ) + usize :: from ( loaded . probability_weight . is_some ( ) ) > 1",
-            "line": 1182
+            "line": 1181
           },
           {
             "condition": "! candidate || weight . missing [ row ]",
-            "line": 1199
+            "line": 1198
           },
           {
             "condition": "( & loaded . analytic_weight , & loaded . frequency_weight , & loaded . probability_weight , )",
-            "line": 1239
+            "line": 1238
           },
           {
             "condition": "column . values . len ( ) != n || column . missing . len ( ) != n",
-            "line": 1252
+            "line": 1251
           }
         ],
         "functions": {
           "borrowed_intercept_fe_design#1": {
-            "line": 203,
+            "line": 202,
             "lines": 4
           },
           "canonical_factor_value#1": {
-            "line": 973,
+            "line": 972,
             "lines": 7
           },
           "categorical_codes#1": {
-            "line": 196,
+            "line": 195,
             "lines": 6
           },
           "categorical_source_index#1": {
-            "line": 930,
+            "line": 929,
             "lines": 9
           },
           "categorical_source_indices#1": {
-            "line": 913,
+            "line": 912,
             "lines": 16
           },
           "compile_column_kind#1": {
-            "line": 375,
+            "line": 374,
             "lines": 78
           },
           "compile_model#1": {
-            "line": 288,
+            "line": 287,
             "lines": 85
           },
           "exposure#1": {
-            "line": 1296,
+            "line": 1295,
             "lines": 3
           },
           "factorize_categorical_sources_reusing#1": {
-            "line": 981,
+            "line": 980,
             "lines": 41
           },
           "factorize_preparation_sources#1": {
-            "line": 628,
+            "line": 627,
             "lines": 6
           },
           "fe_effects#1": {
-            "line": 187,
+            "line": 186,
             "lines": 3
           },
           "fe_singleton_policy#1": {
-            "line": 192,
+            "line": 191,
             "lines": 3
           },
           "finish_prepare_ols_data#1": {
-            "line": 592,
+            "line": 591,
             "lines": 16
           },
           "invalid_frequency_weight#1": {
-            "line": 1305,
+            "line": 1304,
             "lines": 3
           },
           "is_full_retained_unweighted_sample#1": {
-            "line": 696,
+            "line": 695,
             "lines": 29
           },
           "loaded_weight#1": {
-            "line": 1238,
+            "line": 1237,
             "lines": 12
           },
           "negative_weight#1": {
-            "line": 1301,
+            "line": 1300,
             "lines": 3
           },
           "nested_recipe_capacity_bytes#1": {
@@ -7991,15 +7991,15 @@
             "lines": 12
           },
           "offset#1": {
-            "line": 1292,
+            "line": 1291,
             "lines": 3
           },
           "ordinary_categorical_sources#1": {
-            "line": 903,
+            "line": 902,
             "lines": 9
           },
           "outcome#1": {
-            "line": 1263,
+            "line": 1262,
             "lines": 3
           },
           "owned_buffer_bytes#1": {
@@ -8007,107 +8007,107 @@
             "lines": 5
           },
           "owned_buffer_bytes#2": {
-            "line": 212,
+            "line": 211,
             "lines": 40
           },
           "prepare_categorical_numeric_sample#1": {
-            "line": 527,
+            "line": 526,
             "lines": 7
           },
           "prepare_categorical_numeric_sample_owned#1": {
-            "line": 482,
+            "line": 481,
             "lines": 7
           },
           "prepare_full_retained_unweighted_sample#1": {
-            "line": 645,
+            "line": 644,
             "lines": 50
           },
           "prepare_numeric_sample#1": {
-            "line": 535,
+            "line": 534,
             "lines": 56
           },
           "prepare_numeric_sample_owned#1": {
-            "line": 490,
+            "line": 489,
             "lines": 17
           },
           "prepare_ols_data_owned_with_cluster_sources#1": {
-            "line": 454,
+            "line": 453,
             "lines": 16
           },
           "prepare_ols_data_with_cluster_sources#1": {
-            "line": 508,
+            "line": 507,
             "lines": 8
           },
           "prepare_ols_numeric_sample#1": {
-            "line": 519,
+            "line": 518,
             "lines": 7
           },
           "prepare_ols_numeric_sample_owned#1": {
-            "line": 474,
+            "line": 473,
             "lines": 7
           },
           "source_index#1": {
-            "line": 1023,
+            "line": 1022,
             "lines": 3
           },
           "source_uses#1": {
-            "line": 1039,
+            "line": 1038,
             "lines": 40
           },
           "take_classified_sample#1": {
-            "line": 763,
+            "line": 762,
             "lines": 139
           },
           "take_full_retained_unweighted_sample#1": {
-            "line": 726,
+            "line": 725,
             "lines": 36
           },
           "validate_absorbed_preparation#1": {
-            "line": 1027,
+            "line": 1026,
             "lines": 11
           },
           "validate_and_compile#1": {
-            "line": 257,
+            "line": 256,
             "lines": 3
           },
           "validate_and_compile_with_cluster_sources#1": {
-            "line": 281,
+            "line": 280,
             "lines": 6
           },
           "validate_available_categorical_domain#1": {
-            "line": 940,
+            "line": 939,
             "lines": 23
           },
           "validate_bindings#1": {
-            "line": 1080,
+            "line": 1079,
             "lines": 49
           },
           "validate_candidate_weight_domain#1": {
-            "line": 1194,
+            "line": 1193,
             "lines": 43
           },
           "validate_categorical_value#1": {
-            "line": 964,
+            "line": 963,
             "lines": 8
           },
           "validate_loaded#1": {
-            "line": 1130,
+            "line": 1129,
             "lines": 63
           },
           "validate_loaded_column#1": {
-            "line": 1251,
+            "line": 1250,
             "lines": 8
           },
           "validate_ppml_and_compile#1": {
-            "line": 266,
+            "line": 265,
             "lines": 3
           },
           "validate_ppml_and_compile_with_cluster_sources#1": {
-            "line": 270,
+            "line": 269,
             "lines": 10
           },
           "weight#1": {
-            "line": 1267,
+            "line": 1266,
             "lines": 24
           }
         },
@@ -8118,155 +8118,155 @@
         "dispatch_candidates": [],
         "functions": {
           "prepare_ppml_categorical_ols_clustered_data#1": {
-            "line": 9,
+            "line": 7,
             "lines": 8
           }
         },
-        "production_lines": 13
+        "production_lines": 12
       },
       "crates/fereg-core/src/ols/prepared_categorical_data.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
             "condition": "active_row >= self . sample . n_active ( )",
-            "line": 271
+            "line": 268
           },
           {
             "condition": "response . len ( ) != nrows",
-            "line": 327
+            "line": 324
           },
           {
             "condition": "values . capacity ( ) < elements",
-            "line": 345
+            "line": 342
           },
           {
             "condition": "let Some ( columns ) = crate :: ols :: NumericOlsColumns :: bind ( & self . model , & self . sample ) ?",
-            "line": 350
+            "line": 347
           },
           {
             "condition": "& self . sample . weights",
-            "line": 390
+            "line": 387
           },
           {
             "condition": "memory_budget . is_some_and ( | budget | ! budget . fits ( validation_bytes ) )",
-            "line": 426
+            "line": 423
           },
           {
             "condition": "memory_budget . is_some_and ( | budget | ! budget . fits ( memory . cg_peak_bytes ) )",
-            "line": 447
+            "line": 444
           },
           {
             "condition": "& self . sample . weights",
-            "line": 452
+            "line": 449
           },
           {
             "condition": "self . fe_topology . nobs ( ) != self . sample . n_active ( )",
-            "line": 606
+            "line": 603
           },
           {
             "condition": "self . effect_specs . len ( ) != self . fe_topology . effect_to_topology ( ) . len ( )",
-            "line": 611
+            "line": 608
           },
           {
             "condition": "slopes . len ( ) == slopes . capacity ( )",
-            "line": 639
+            "line": 636
           },
           {
             "condition": "output . len ( ) == output . capacity ( )",
-            "line": 646
+            "line": 643
           },
           {
             "condition": "& sample . weights",
-            "line": 928
+            "line": 925
           },
           {
             "condition": "! reuse || sample . n_active ( ) < 16_384 || ! matches ! ( sample . weights , PreparedWeights :: None ) || ! recipes . iter ( ) . all ( | recipe | recipe . len ( ) == 1 )",
-            "line": 1022
+            "line": 1019
           },
           {
             "condition": "crate :: fe :: LevelIndex :: try_from_ordered_codes ( & source . encoded . codes , source . encoded . n_levels ( ) , ) ?",
-            "line": 1038
+            "line": 1035
           },
           {
             "condition": "topology . candidate_to_compacted_source ( ) . len ( ) != candidate_sources . len ( )",
-            "line": 1144
+            "line": 1141
           },
           {
             "condition": "output . len ( ) != required . len ( ) || required . iter ( ) . any ( | source | ! output . iter ( ) . any ( | entry | entry . source == * source ) )",
-            "line": 1201
+            "line": 1198
           },
           {
             "condition": "sources . len ( ) == sources . capacity ( )",
-            "line": 1264
+            "line": 1261
           },
           {
             "condition": "report_plan . public_coefficient_count ( ) != model . coefficients . len ( ) || report_plan . public_coefficient_count ( ) != report_plan . original_coefficient_count ( )",
-            "line": 1429
+            "line": 1426
           },
           {
             "condition": "sample . n_candidate > sample . n_original || sample . drop_reasons . len ( ) != sample . n_original || sample . outcome . len ( ) != nrows || sample . regressors . iter ( ) . any ( | source | source . len ( ) != nrows ) || ! matches ! ( sample . adjustment , crate :: data :: PreparedAdjustment :: None )",
-            "line": 1448
+            "line": 1445
           },
           {
             "condition": "values . len ( ) != nrows || * kind == WeightKind :: Importance",
-            "line": 1466
+            "line": 1463
           },
           {
             "condition": "retained != nrows || sample . original_row_by_active . windows ( 2 ) . any ( | rows | rows [ 0 ] >= rows [ 1 ] ) || sample . original_row_by_active . iter ( ) . any ( | row |",
-            "line": 1491
+            "line": 1488
           },
           {
             "condition": "output . capacity ( ) < len",
-            "line": 1512
+            "line": 1509
           }
         ],
         "functions": {
           "absorbed_categorical_label#1": {
-            "line": 1354,
+            "line": 1351,
             "lines": 37
           },
           "absorbed_dof#1": {
-            "line": 567,
+            "line": 564,
             "lines": 16
           },
           "absorbed_slope_label#1": {
-            "line": 1392,
+            "line": 1389,
             "lines": 15
           },
           "append_cluster_sources#1": {
-            "line": 1085,
+            "line": 1082,
             "lines": 33
           },
           "build_rhs#1": {
-            "line": 314,
+            "line": 311,
             "lines": 3
           },
           "build_rhs_with_response#1": {
-            "line": 321,
+            "line": 318,
             "lines": 49
           },
           "canonical_factor_value#1": {
-            "line": 1530,
+            "line": 1527,
             "lines": 7
           },
           "categorical_indicator#1": {
-            "line": 673,
+            "line": 670,
             "lines": 20
           },
           "categorical_sources#1": {
-            "line": 209,
+            "line": 206,
             "lines": 3
           },
           "categorical_views#1": {
-            "line": 1408,
+            "line": 1405,
             "lines": 16
           },
           "codes#1": {
-            "line": 745,
+            "line": 742,
             "lines": 11
           },
           "column_value#1": {
-            "line": 270,
+            "line": 267,
             "lines": 41
           },
           "deref#1": {
@@ -8274,47 +8274,47 @@
             "lines": 3
           },
           "effect_metadata_capacity_bytes#1": {
-            "line": 178,
+            "line": 175,
             "lines": 19
           },
           "effect_specs#1": {
-            "line": 232,
+            "line": 229,
             "lines": 3
           },
           "effect_specs#2": {
-            "line": 1273,
+            "line": 1270,
             "lines": 12
           },
           "effect_specs_with_reservation#1": {
-            "line": 1286,
+            "line": 1283,
             "lines": 67
           },
           "effect_views#1": {
-            "line": 627,
+            "line": 624,
             "lines": 31
           },
           "fallible_filled_bool#1": {
-            "line": 1507,
+            "line": 1504,
             "lines": 13
           },
           "fallible_string_copy#1": {
-            "line": 1521,
+            "line": 1518,
             "lines": 8
           },
           "fe_topology#1": {
-            "line": 214,
+            "line": 211,
             "lines": 3
           },
           "finalize_preparation_sources#1": {
-            "line": 1052,
+            "line": 1049,
             "lines": 32
           },
           "finish#1": {
-            "line": 107,
+            "line": 104,
             "lines": 38
           },
           "finish_prepared_model#1": {
-            "line": 895,
+            "line": 892,
             "lines": 119
           },
           "get#1": {
@@ -8322,39 +8322,39 @@
             "lines": 3
           },
           "has_absorbed_intercept#1": {
-            "line": 244,
+            "line": 241,
             "lines": 3
           },
           "has_absorbed_slope#1": {
-            "line": 237,
+            "line": 234,
             "lines": 5
           },
           "into_values#1": {
-            "line": 821,
+            "line": 818,
             "lines": 3
           },
           "is_topology_backed#1": {
-            "line": 738,
+            "line": 735,
             "lines": 6
           },
           "level_value#1": {
-            "line": 784,
+            "line": 781,
             "lines": 10
           },
           "level_values#1": {
-            "line": 720,
+            "line": 717,
             "lines": 6
           },
           "model#1": {
-            "line": 199,
+            "line": 196,
             "lines": 3
           },
           "n_levels#1": {
-            "line": 757,
+            "line": 754,
             "lines": 11
           },
           "nested_metadata_capacity_bytes#1": {
-            "line": 174,
+            "line": 171,
             "lines": 3
           },
           "new#1": {
@@ -8362,151 +8362,151 @@
             "lines": 4
           },
           "numeric_source_values#1": {
-            "line": 659,
+            "line": 656,
             "lines": 13
           },
           "ordinary_categorical_sources#1": {
-            "line": 1229,
+            "line": 1226,
             "lines": 30
           },
           "owned_buffer_bytes#1": {
-            "line": 154,
+            "line": 151,
             "lines": 17
           },
           "owned_buffer_bytes#2": {
-            "line": 708,
+            "line": 705,
             "lines": 9
           },
           "preparation_memberships#1": {
-            "line": 1015,
+            "line": 1012,
             "lines": 36
           },
           "prepare_categorical_ols_data_owned_with_cluster_sources#1": {
-            "line": 826,
+            "line": 823,
             "lines": 10
           },
           "prepare_categorical_ols_data_with_cluster_sources#1": {
-            "line": 862,
+            "line": 859,
             "lines": 12
           },
           "prepare_categorical_ols_data_with_cluster_sources_policy#1": {
-            "line": 875,
+            "line": 872,
             "lines": 18
           },
           "prepare_ppml_categorical_ols_data#1": {
-            "line": 844,
+            "line": 841,
             "lines": 17
           },
           "prepared_source_index#1": {
-            "line": 733,
+            "line": 730,
             "lines": 3
           },
           "push_unique_source#1": {
-            "line": 1260,
+            "line": 1257,
             "lines": 12
           },
           "recover_absorbed_effects_fast#1": {
-            "line": 379,
+            "line": 376,
             "lines": 27
           },
           "recover_absorbed_effects_fast_with_weights#1": {
-            "line": 478,
+            "line": 475,
             "lines": 25
           },
           "recover_absorbed_effects_fast_with_weights_inner#1": {
-            "line": 533,
+            "line": 530,
             "lines": 30
           },
           "recover_model_effects#1": {
-            "line": 411,
+            "line": 408,
             "lines": 63
           },
           "recover_ppml_absorbed_effects_fast_with_weights#1": {
-            "line": 507,
+            "line": 504,
             "lines": 24
           },
           "reencode_model_sources#1": {
-            "line": 1213,
+            "line": 1210,
             "lines": 15
           },
           "references_topology_candidate#1": {
-            "line": 704,
+            "line": 701,
             "lines": 3
           },
           "report_intercept#1": {
-            "line": 254,
+            "line": 251,
             "lines": 3
           },
           "report_plan#1": {
-            "line": 264,
+            "line": 261,
             "lines": 3
           },
           "resolve_level#1": {
-            "line": 769,
+            "line": 766,
             "lines": 14
           },
           "retain_model_sources#1": {
-            "line": 1122,
+            "line": 1119,
             "lines": 14
           },
           "retain_model_sources_with_reservation#1": {
-            "line": 1137,
+            "line": 1134,
             "lines": 75
           },
           "sample#1": {
-            "line": 204,
+            "line": 201,
             "lines": 3
           },
           "singletons#1": {
-            "line": 259,
+            "line": 256,
             "lines": 3
           },
           "source#1": {
-            "line": 728,
+            "line": 725,
             "lines": 3
           },
           "structural_intercept#1": {
-            "line": 249,
+            "line": 246,
             "lines": 3
           },
           "uses_categorical_preparation#1": {
-            "line": 147,
+            "line": 144,
             "lines": 3
           },
           "validate#1": {
-            "line": 586,
+            "line": 583,
             "lines": 5
           },
           "validate_after_topology#1": {
-            "line": 605,
+            "line": 602,
             "lines": 21
           },
           "validate_numeric_sample#1": {
-            "line": 1446,
+            "line": 1443,
             "lines": 60
           },
           "validate_report_plan#1": {
-            "line": 1425,
+            "line": 1422,
             "lines": 20
           },
           "validate_with_reusable_topology#1": {
-            "line": 592,
+            "line": 589,
             "lines": 12
           },
           "validated_single_effect#1": {
-            "line": 220,
+            "line": 217,
             "lines": 4
           },
           "validated_single_topology#1": {
-            "line": 225,
+            "line": 222,
             "lines": 5
           },
           "values#1": {
-            "line": 816,
+            "line": 813,
             "lines": 3
           }
         },
-        "production_lines": 1376
+        "production_lines": 1375
       },
       "crates/fereg-core/src/ols/prepared_categorical_rebase.rs": {
         "chunk_candidates": [],
@@ -8609,148 +8609,148 @@
         "dispatch_candidates": [
           {
             "condition": "! ( 1.. = 10 ) . contains ( & prepared . clustered_design ( ) . len ( ) )",
-            "line": 712
+            "line": 709
           },
           {
             "condition": "bread . len ( ) != square || meat . len ( ) != square",
-            "line": 916
+            "line": 913
           },
           {
             "condition": "raw . uncorrected . len ( ) != square || raw . independent_uncorrected . len ( ) != square || raw . subsets . len ( ) != raw . independent_subsets . len ( )",
-            "line": 937
+            "line": 934
           },
           {
             "condition": "raw . uncorrected . len ( ) != raw . corrected . len ( ) || ! raw . correction . is_finite ( ) || raw . correction <= 0.0",
-            "line": 971
+            "line": 968
           },
           {
             "condition": "raw . len ( ) != square",
-            "line": 1003
+            "line": 1000
           },
           {
             "condition": "p == 0",
-            "line": 1008
+            "line": 1005
           },
           {
             "condition": "prepared . clustered_design ( ) . len ( ) == 1",
-            "line": 1009
+            "line": 1006
           },
           {
             "condition": "prepared . clustered_design ( ) . len ( ) == 1 && minimum_raw < - tolerance * scale",
-            "line": 1052
+            "line": 1049
           },
           {
             "condition": "matrix . len ( ) != square",
-            "line": 1163
+            "line": 1160
           },
           {
             "condition": "index == p || index == q",
-            "line": 1268
+            "line": 1265
           },
           {
             "condition": "actual . len ( ) != square || eigen . values . len ( ) != dimension || eigen . vectors . len ( ) != square",
-            "line": 1383
+            "line": 1380
           },
           {
             "condition": "covariance . raw_values . len ( ) != square || covariance . values . len ( ) != square",
-            "line": 1430
+            "line": 1427
           },
           {
             "condition": "p == 0",
-            "line": 1436
+            "line": 1433
           },
           {
             "condition": "left . len ( ) != square || right . len ( ) != square",
-            "line": 1563
+            "line": 1560
           },
           {
             "condition": "covariance . len ( ) != square",
-            "line": 1597
+            "line": 1594
           },
           {
             "condition": "positions . len ( ) != slope_dimension",
-            "line": 1660
+            "line": 1657
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 1736
+            "line": 1733
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 1757
+            "line": 1754
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 1795
+            "line": 1792
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 1822
+            "line": 1819
           }
         ],
         "functions": {
           "apply_psd_policy#1": {
-            "line": 994,
+            "line": 991,
             "lines": 159
           },
           "borrow_cluster_dimensions#1": {
-            "line": 728,
+            "line": 725,
             "lines": 22
           },
           "build_clustered_dof#1": {
-            "line": 751,
+            "line": 748,
             "lines": 61
           },
           "build_raw_covariance#1": {
-            "line": 830,
+            "line": 827,
             "lines": 78
           },
           "build_standard_errors#1": {
-            "line": 1588,
+            "line": 1585,
             "lines": 31
           },
           "build_wald#1": {
-            "line": 1620,
+            "line": 1617,
             "lines": 54
           },
           "certify_clipped_reconstruction#1": {
-            "line": 1374,
+            "line": 1371,
             "lines": 44
           },
           "certify_corrected_covariance#1": {
-            "line": 970,
+            "line": 967,
             "lines": 23
           },
           "certify_eigensystem#1": {
-            "line": 1293,
+            "line": 1290,
             "lines": 44
           },
           "certify_psd_state#1": {
-            "line": 1419,
+            "line": 1416,
             "lines": 138
           },
           "certify_statistics#1": {
-            "line": 1675,
+            "line": 1672,
             "lines": 49
           },
           "certify_with_group_influences#1": {
-            "line": 931,
+            "line": 928,
             "lines": 38
           },
           "cluster_correction#1": {
-            "line": 813,
+            "line": 810,
             "lines": 16
           },
           "cluster_counts#1": {
-            "line": 223,
+            "line": 220,
             "lines": 3
           },
           "cluster_dimensions#1": {
-            "line": 287,
+            "line": 284,
             "lines": 3
           },
           "compose_clustered_view#1": {
-            "line": 463,
+            "line": 460,
             "lines": 244
           },
           "correction#1": {
@@ -8758,7 +8758,7 @@
             "lines": 3
           },
           "covariance_scale#1": {
-            "line": 1794,
+            "line": 1791,
             "lines": 20
           },
           "default#1": {
@@ -8770,43 +8770,43 @@
             "lines": 3
           },
           "dimension#2": {
-            "line": 283,
+            "line": 280,
             "lines": 3
           },
           "fit_clustered_view_with_reservation#1": {
-            "line": 421,
+            "line": 418,
             "lines": 21
           },
           "fit_prepared_model_clustered_with_loaded_moments#1": {
-            "line": 378,
+            "line": 375,
             "lines": 18
           },
           "fit_with_loaded_reservation#1": {
-            "line": 406,
+            "line": 403,
             "lines": 14
           },
           "inference_owned_bytes#1": {
-            "line": 201,
+            "line": 198,
             "lines": 4
           },
           "inference_owned_bytes#2": {
-            "line": 215,
+            "line": 212,
             "lines": 4
           },
           "jacobi_rotate#1": {
-            "line": 1241,
+            "line": 1238,
             "lines": 51
           },
           "matrix_relative_infinity_norm#1": {
-            "line": 1558,
+            "line": 1555,
             "lines": 29
           },
           "nrows#1": {
-            "line": 258,
+            "line": 255,
             "lines": 3
           },
           "optional_error#1": {
-            "line": 1725,
+            "line": 1722,
             "lines": 9
           },
           "psd#1": {
@@ -8818,31 +8818,31 @@
             "lines": 3
           },
           "reconstruct_clipped#1": {
-            "line": 1338,
+            "line": 1335,
             "lines": 35
           },
           "reduce_subset#1": {
-            "line": 291,
+            "line": 288,
             "lines": 41
           },
           "report#1": {
-            "line": 333,
+            "line": 330,
             "lines": 15
           },
           "reserved_empty#1": {
-            "line": 1815,
+            "line": 1812,
             "lines": 14
           },
           "sandwich#1": {
-            "line": 909,
+            "line": 906,
             "lines": 21
           },
           "score_pair#1": {
-            "line": 261,
+            "line": 258,
             "lines": 15
           },
           "standard_error_error#1": {
-            "line": 1777,
+            "line": 1774,
             "lines": 16
           },
           "standard_errors#1": {
@@ -8850,23 +8850,23 @@
             "lines": 3
           },
           "subsets#1": {
-            "line": 227,
+            "line": 224,
             "lines": 3
           },
           "symmetric_eigensystem#1": {
-            "line": 1154,
+            "line": 1151,
             "lines": 86
           },
           "symmetrize#1": {
-            "line": 1735,
+            "line": 1732,
             "lines": 20
           },
           "symmetry_error#1": {
-            "line": 1756,
+            "line": 1753,
             "lines": 20
           },
           "validate_config#1": {
-            "line": 708,
+            "line": 705,
             "lines": 19
           },
           "values#1": {
@@ -8874,7 +8874,7 @@
             "lines": 3
           }
         },
-        "production_lines": 1692
+        "production_lines": 1691
       },
       "crates/fereg-core/src/ols/prepared_clustered_view.rs": {
         "chunk_candidates": [],
@@ -8912,59 +8912,59 @@
         "dispatch_candidates": [
           {
             "condition": "codes . len ( ) != self . sample ( ) . n_active ( )",
-            "line": 189
+            "line": 186
           },
           {
             "condition": "! ( 1.. = 10 ) . contains ( & request . clusters . len ( ) )",
-            "line": 256
+            "line": 253
           },
           {
             "condition": "all_sources . len ( ) == all_sources . capacity ( )",
-            "line": 292
+            "line": 289
           },
           {
             "condition": "categorical_indices . len ( ) < 2",
-            "line": 393
+            "line": 390
           },
           {
             "condition": "let Some ( encoded ) = crate :: fe :: try_factorize_dense_code_interaction ( nobs , components . iter ( ) . copied ( ) , & mut ClusterInteractionReservation ( reservation ) , ) ?",
-            "line": 417
+            "line": 414
           },
           {
             "condition": "previous . is_none_or ( | prior | compare_rows ( & components , prior , row ) != Ordering :: Equal )",
-            "line": 449
+            "line": 446
           },
           {
             "condition": "! ( 1.. = 10 ) . contains ( & prepared . clusters ( ) . len ( ) )",
-            "line": 501
+            "line": 498
           },
           {
             "condition": "metadata . groups < 2 || codes . len ( ) != nobs || codes . iter ( ) . any ( | code | * code as usize >= metadata . groups )",
-            "line": 509
+            "line": 506
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 540
+            "line": 537
           },
           {
             "condition": "output . capacity ( ) < value . len ( )",
-            "line": 566
+            "line": 563
           },
           {
             "condition": "! ( 1.. = 10 ) . contains ( & prepared . clusters ( ) . len ( ) )",
-            "line": 663
+            "line": 660
           },
           {
             "condition": "codes . len ( ) != nobs || codes . iter ( ) . any ( | code | * code as usize >= dimension . groups )",
-            "line": 678
+            "line": 675
           },
           {
             "condition": "source . n_levels ( prepared . fe_topology ( ) ) ? != dimension . groups || ! std :: ptr :: eq ( codes . as_ptr ( ) , source . codes ( prepared . fe_topology ( ) ) ? . as_ptr ( ) , )",
-            "line": 697
+            "line": 694
           },
           {
             "condition": "indices . len ( ) >= 2 =>",
-            "line": 708
+            "line": 705
           }
         ],
         "functions": {
@@ -8973,35 +8973,35 @@
             "lines": 6
           },
           "build_cluster_design#1": {
-            "line": 302,
+            "line": 299,
             "lines": 81
           },
           "certify_categorical_clusters#1": {
-            "line": 660,
+            "line": 657,
             "lines": 80
           },
           "certify_prepared_clusters#1": {
-            "line": 496,
+            "line": 493,
             "lines": 36
           },
           "cluster_codes#1": {
-            "line": 177,
+            "line": 174,
             "lines": 19
           },
           "cluster_design#1": {
-            "line": 163,
+            "line": 160,
             "lines": 3
           },
           "clusters#1": {
-            "line": 170,
+            "line": 167,
             "lines": 6
           },
           "compare_rows#1": {
-            "line": 481,
+            "line": 478,
             "lines": 14
           },
           "compile_prepared_model#1": {
-            "line": 641,
+            "line": 638,
             "lines": 18
           },
           "dimensions#1": {
@@ -9009,15 +9009,15 @@
             "lines": 3
           },
           "factorize_interaction#1": {
-            "line": 387,
+            "line": 384,
             "lines": 78
           },
           "fallible_string_copy#1": {
-            "line": 559,
+            "line": 556,
             "lines": 15
           },
           "finish_prepare_ols_clusters#1": {
-            "line": 240,
+            "line": 237,
             "lines": 10
           },
           "groups#1": {
@@ -9045,7 +9045,7 @@
             "lines": 13
           },
           "ols#1": {
-            "line": 158,
+            "line": 155,
             "lines": 3
           },
           "owned_buffer_bytes#1": {
@@ -9053,39 +9053,39 @@
             "lines": 13
           },
           "prepare_model#1": {
-            "line": 597,
+            "line": 594,
             "lines": 16
           },
           "prepare_model_owned#1": {
-            "line": 577,
+            "line": 574,
             "lines": 16
           },
           "prepare_model_with#1": {
-            "line": 614,
+            "line": 611,
             "lines": 25
           },
           "reserve_string#1": {
-            "line": 228,
+            "line": 225,
             "lines": 10
           },
           "reserve_vec#1": {
-            "line": 217,
+            "line": 214,
             "lines": 10
           },
           "reserve_vec#2": {
-            "line": 471,
+            "line": 468,
             "lines": 8
           },
           "reserved_empty#1": {
-            "line": 533,
+            "line": 530,
             "lines": 14
           },
           "reserved_filled#1": {
-            "line": 548,
+            "line": 545,
             "lines": 10
           },
           "resolve_source_indices#1": {
-            "line": 741,
+            "line": 738,
             "lines": 24
           },
           "sources#1": {
@@ -9097,7 +9097,7 @@
             "lines": 5
           },
           "validate_cluster_request#1": {
-            "line": 255,
+            "line": 252,
             "lines": 46
           },
           "validate_ppml_and_compile#1": {
@@ -9105,11 +9105,11 @@
             "lines": 5
           },
           "validate_request#1": {
-            "line": 251,
+            "line": 248,
             "lines": 3
           }
         },
-        "production_lines": 690
+        "production_lines": 689
       },
       "crates/fereg-core/src/ols/prepared_dof.rs": {
         "chunk_candidates": [],
@@ -10068,344 +10068,344 @@
         "dispatch_candidates": [
           {
             "condition": "range . start > range . end || range . end > prepared . fit_sample ( ) . n_active ( )",
-            "line": 54
+            "line": 53
           },
           {
             "condition": "rows < 4096 || model . columns . len ( ) < 8 || ! model . columns . iter ( ) . any ( | c |",
-            "line": 140
+            "line": 139
           },
           {
             "condition": "output . len ( ) != rows",
-            "line": 158
+            "line": 157
           },
           {
             "condition": "c . generated_column_index . is_none_or ( | i | i >= model . columns . len ( ) ) || c . value . is_none_or ( | v | ! v . is_finite ( ) )",
-            "line": 165
+            "line": 164
           },
           {
             "condition": "rayon :: current_thread_index ( ) . is_some ( ) && rayon :: current_num_threads ( ) > 1",
-            "line": 195
+            "line": 194
           },
           {
             "condition": "include_response && response . len ( ) != rows",
-            "line": 287
+            "line": 286
           },
           {
             "condition": "values . capacity ( ) < elements",
-            "line": 306
+            "line": 305
           },
           {
             "condition": "! budget . fits ( required )",
-            "line": 421
+            "line": 420
           },
           {
             "condition": "residuals . len ( ) != self . sample . n_active ( ) || ! coefficient . is_finite ( )",
-            "line": 469
+            "line": 468
           },
           {
             "condition": "topology . effect_to_topology ( ) . len ( ) != self . effect_specs ( ) . len ( )",
-            "line": 694
+            "line": 693
           },
           {
             "condition": "topology . effect_to_topology ( ) . len ( ) != self . effect_specs ( ) . len ( )",
-            "line": 725
+            "line": 724
           },
           {
             "condition": "borrowed . effects ( ) . len ( ) != views . len ( )",
-            "line": 775
+            "line": 774
           },
           {
             "condition": "residuals . len ( ) != prepared . fit_sample ( ) . n_active ( ) || ! coefficient . is_finite ( )",
-            "line": 879
+            "line": 878
           },
           {
             "condition": "let Some ( rows ) = rows",
-            "line": 906
+            "line": 905
           },
           {
             "condition": "let Some ( columns ) = crate :: ols :: NumericOlsColumns :: bind_loaded_rhs ( prepared . fit_model ( ) , prepared . fit_sample ( ) , ) ?",
-            "line": 907
+            "line": 906
           },
           {
             "condition": "columns . matches_rhs ( response , & rows )",
-            "line": 911
+            "line": 910
           }
         ],
         "functions": {
           "add_generated_predictor#1": {
-            "line": 132,
+            "line": 131,
             "lines": 76
           },
           "admit_prepared_intercept_cg#1": {
-            "line": 379,
+            "line": 378,
             "lines": 50
           },
           "deref#1": {
-            "line": 30,
+            "line": 29,
             "lines": 3
           },
           "fit_absorb_matrix#1": {
-            "line": 352,
+            "line": 351,
             "lines": 22
           },
           "fit_borrowed_cmg_design#1": {
-            "line": 607,
+            "line": 606,
             "lines": 3
           },
           "fit_borrowed_cmg_design#2": {
-            "line": 820,
+            "line": 819,
             "lines": 32
           },
           "fit_borrowed_intercept_map_design#1": {
-            "line": 346,
+            "line": 345,
             "lines": 3
           },
           "fit_borrowed_intercept_map_design#2": {
-            "line": 603,
+            "line": 602,
             "lines": 3
           },
           "fit_borrowed_intercept_map_design#3": {
-            "line": 809,
+            "line": 808,
             "lines": 10
           },
           "fit_build_rhs_block_with_response#1": {
-            "line": 263,
+            "line": 262,
             "lines": 71
           },
           "fit_build_rhs_with_loaded_rows#1": {
-            "line": 253,
+            "line": 252,
             "lines": 7
           },
           "fit_build_rhs_with_loaded_rows#2": {
-            "line": 541,
+            "line": 540,
             "lines": 9
           },
           "fit_build_rhs_with_loaded_rows#3": {
-            "line": 613,
+            "line": 612,
             "lines": 10
           },
           "fit_build_rhs_with_loaded_rows_generic#1": {
-            "line": 901,
+            "line": 900,
             "lines": 26
           },
           "fit_build_rhs_with_response#1": {
-            "line": 537,
+            "line": 536,
             "lines": 3
           },
           "fit_build_rhs_with_response#2": {
-            "line": 685,
+            "line": 684,
             "lines": 6
           },
           "fit_categorical_codes#1": {
-            "line": 435,
+            "line": 434,
             "lines": 3
           },
           "fit_categorical_codes#2": {
-            "line": 645,
+            "line": 644,
             "lines": 11
           },
           "fit_column_value#1": {
-            "line": 459,
+            "line": 458,
             "lines": 3
           },
           "fit_column_value#2": {
-            "line": 681,
+            "line": 680,
             "lines": 3
           },
           "fit_has_absorbed_intercept#1": {
-            "line": 451,
+            "line": 450,
             "lines": 3
           },
           "fit_has_absorbed_intercept#2": {
-            "line": 669,
+            "line": 668,
             "lines": 7
           },
           "fit_has_one_ordinary_intercept_effect#1": {
-            "line": 226,
+            "line": 225,
             "lines": 3
           },
           "fit_has_one_ordinary_intercept_effect#2": {
-            "line": 431,
+            "line": 430,
             "lines": 3
           },
           "fit_has_one_ordinary_intercept_effect#3": {
-            "line": 640,
+            "line": 639,
             "lines": 4
           },
           "fit_has_one_slope_effect#1": {
-            "line": 222,
+            "line": 221,
             "lines": 3
           },
           "fit_has_one_slope_effect#2": {
-            "line": 636,
+            "line": 635,
             "lines": 3
           },
           "fit_model#1": {
-            "line": 439,
+            "line": 438,
             "lines": 3
           },
           "fit_model#2": {
-            "line": 657,
+            "line": 656,
             "lines": 3
           },
           "fit_owned_fe_design#1": {
-            "line": 574,
+            "line": 573,
             "lines": 28
           },
           "fit_owned_fe_design#2": {
-            "line": 756,
+            "line": 755,
             "lines": 52
           },
           "fit_owned_fe_design_memory#1": {
-            "line": 555,
+            "line": 554,
             "lines": 18
           },
           "fit_owned_fe_design_memory#2": {
-            "line": 720,
+            "line": 719,
             "lines": 35
           },
           "fit_report_intercept#1": {
-            "line": 455,
+            "line": 454,
             "lines": 3
           },
           "fit_report_intercept#2": {
-            "line": 677,
+            "line": 676,
             "lines": 3
           },
           "fit_retained_fe_parent_bytes#1": {
-            "line": 551,
+            "line": 550,
             "lines": 3
           },
           "fit_retained_fe_parent_bytes#2": {
-            "line": 692,
+            "line": 691,
             "lines": 27
           },
           "fit_sample#1": {
-            "line": 443,
+            "line": 442,
             "lines": 3
           },
           "fit_sample#2": {
-            "line": 661,
+            "line": 660,
             "lines": 3
           },
           "fit_structural_intercept#1": {
-            "line": 447,
+            "line": 446,
             "lines": 3
           },
           "fit_structural_intercept#2": {
-            "line": 665,
+            "line": 664,
             "lines": 3
           },
           "fit_subtract_raw_column#1": {
-            "line": 240,
+            "line": 239,
             "lines": 8
           },
           "fit_subtract_raw_column#2": {
-            "line": 463,
+            "line": 462,
             "lines": 73
           },
           "fit_subtract_raw_column#3": {
-            "line": 624,
+            "line": 623,
             "lines": 11
           },
           "fit_subtract_raw_column_generic#1": {
-            "line": 873,
+            "line": 872,
             "lines": 27
           },
           "retained_fe_parent_bytes#1": {
-            "line": 857,
+            "line": 856,
             "lines": 15
           },
           "visit_prepared_column_range#1": {
-            "line": 41,
+            "line": 40,
             "lines": 86
           }
         },
-        "production_lines": 821
+        "production_lines": 820
       },
       "crates/fereg-core/src/ols/prepared_inference_view.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
             "condition": "report . effects . len ( ) != expected_rows || topology . effect_to_topology ( ) . len ( ) != specs . len ( ) || ( nesting_state == NestingState :: Iid && report . nested_categories != 0 )",
-            "line": 213
+            "line": 211
           },
           {
             "condition": "! identity_matches || row . label != spec . label || row . categories != source . n_levels ( ) || row . redundant > row . categories || row . coefficients != row . categories - row . redundant || row . slope_source . is_some ( ) || ! categorical_nesting_row_is_valid ( nesting_state , row )",
-            "line": 265
+            "line": 263
           },
           {
             "condition": "! slope_identity_matches || slope_row . label != slope . label || slope_row . categories != source . n_levels ( ) || slope_row . redundant > slope_row . categories || ( expected_policy != PreparedOlsAbsorbedDofPolicy :: Continuous && slope_row . redundant != 0 ) || slope_row . coefficients != slope_row . categories - slope_row . redundant || slope_row . redundancy_exact || slope_row . nested || slope_row . slope_source != Some ( slope . source )",
-            "line": 298
+            "line": 296
           },
           {
             "condition": "row_index != rows . len ( )",
-            "line": 322
+            "line": 320
           }
         ],
         "functions": {
           "categorical_nesting_row_is_valid#1": {
-            "line": 343,
+            "line": 341,
             "lines": 12
           },
           "categorical_policy#1": {
-            "line": 388,
+            "line": 386,
             "lines": 5
           },
           "include#1": {
-            "line": 150,
+            "line": 148,
             "lines": 29
           },
           "inference_absorbed_dof_summary#1": {
-            "line": 76,
+            "line": 74,
             "lines": 7
           },
           "inference_absorbed_dof_summary#2": {
-            "line": 118,
+            "line": 116,
             "lines": 7
           },
           "inference_clustered_absorbed_dof_summary#1": {
-            "line": 97,
+            "line": 95,
             "lines": 7
           },
           "inference_clustered_absorbed_dof_summary#2": {
-            "line": 134,
+            "line": 132,
             "lines": 7
           },
           "inference_compute_absorbed_dof#1": {
-            "line": 64,
+            "line": 62,
             "lines": 11
           },
           "inference_compute_absorbed_dof#2": {
-            "line": 111,
+            "line": 109,
             "lines": 6
           },
           "inference_compute_clustered_absorbed_dof#1": {
-            "line": 84,
+            "line": 82,
             "lines": 12
           },
           "inference_compute_clustered_absorbed_dof#2": {
-            "line": 126,
+            "line": 124,
             "lines": 7
           },
           "inference_has_explicit_absorbed_effects#1": {
-            "line": 105,
+            "line": 103,
             "lines": 3
           },
           "inference_has_explicit_absorbed_effects#2": {
-            "line": 142,
+            "line": 140,
             "lines": 3
           },
           "summary#1": {
-            "line": 372,
+            "line": 370,
             "lines": 15
           },
           "validate_categorical_report#1": {
-            "line": 189,
+            "line": 187,
             "lines": 153
           },
           "validate_totals#1": {
-            "line": 356,
+            "line": 354,
             "lines": 15
           }
         },
@@ -10708,80 +10708,80 @@
         "dispatch_candidates": [
           {
             "condition": "self . weight_kind",
-            "line": 157
+            "line": 154
           },
           {
             "condition": "self . weight_kind",
-            "line": 202
+            "line": 199
           },
           {
             "condition": "fit . residuals ( ) . len ( ) != scores . nrows ( ) || fit . bread ( ) . values ( ) . len ( ) != square",
-            "line": 607
+            "line": 604
           },
           {
             "condition": "scores . reported_dimension ( ) != dimension || fit . residuals ( ) . len ( ) != scores . nrows ( )",
-            "line": 667
+            "line": 664
           },
           {
             "condition": "covariance . values . len ( ) != square || fit . bread ( ) . values ( ) . len ( ) != square",
-            "line": 738
+            "line": 735
           },
           {
             "condition": "meat . len ( ) != square",
-            "line": 752
+            "line": 749
           },
           {
             "condition": "fit . residuals ( ) . len ( ) != scores . nrows ( ) || fit . bread ( ) . dimension ( ) != dimension",
-            "line": 861
+            "line": 858
           },
           {
             "condition": "covariance . len ( ) != square",
-            "line": 1023
+            "line": 1020
           },
           {
             "condition": "nrows == 0 || partial_stride == 0",
-            "line": 1305
+            "line": 1302
           }
         ],
         "functions": {
           "build_covariance#1": {
-            "line": 593,
+            "line": 590,
             "lines": 59
           },
           "build_dense_certificate_meat#1": {
-            "line": 849,
+            "line": 846,
             "lines": 108
           },
           "build_dense_covariance#1": {
-            "line": 653,
+            "line": 650,
             "lines": 63
           },
           "build_robust_wald#1": {
-            "line": 1120,
+            "line": 1117,
             "lines": 54
           },
           "build_scratch_certificate_meat#1": {
-            "line": 958,
+            "line": 955,
             "lines": 57
           },
           "certify_covariance_formula#1": {
-            "line": 723,
+            "line": 720,
             "lines": 125
           },
           "certify_dof_identity#1": {
-            "line": 559,
+            "line": 556,
             "lines": 33
           },
           "certify_psd#1": {
-            "line": 1016,
+            "line": 1013,
             "lines": 103
           },
           "certify_statistic_identities#1": {
-            "line": 1175,
+            "line": 1172,
             "lines": 80
           },
           "compose_view_internal#1": {
-            "line": 344,
+            "line": 341,
             "lines": 202
           },
           "default#1": {
@@ -10793,15 +10793,15 @@
             "lines": 3
           },
           "fit_inference_view#1": {
-            "line": 279,
+            "line": 276,
             "lines": 34
           },
           "fit_prepared_model_robust_with_loaded_moments#1": {
-            "line": 262,
+            "line": 259,
             "lines": 16
           },
           "gaussian_identity_error#1": {
-            "line": 1277,
+            "line": 1274,
             "lines": 6
           },
           "hc1_correction#1": {
@@ -10809,43 +10809,43 @@
             "lines": 3
           },
           "inference_owned_bytes#1": {
-            "line": 124,
+            "line": 121,
             "lines": 4
           },
           "meat_root_multiplier#1": {
-            "line": 1284,
+            "line": 1281,
             "lines": 19
           },
           "nrows#1": {
-            "line": 149,
+            "line": 146,
             "lines": 3
           },
           "nrows#2": {
-            "line": 194,
+            "line": 191,
             "lines": 3
           },
           "optional_identity_error#1": {
-            "line": 1256,
+            "line": 1253,
             "lines": 10
           },
           "optional_pair_error#1": {
-            "line": 1267,
+            "line": 1264,
             "lines": 9
           },
           "perturb_optional#1": {
-            "line": 1319,
+            "line": 1316,
             "lines": 7
           },
           "robust_reduction_chunks#1": {
-            "line": 1304,
+            "line": 1301,
             "lines": 14
           },
           "score_pair#1": {
-            "line": 153,
+            "line": 150,
             "lines": 29
           },
           "score_pair#2": {
-            "line": 198,
+            "line": 195,
             "lines": 30
           },
           "standard_errors#1": {
@@ -10853,7 +10853,7 @@
             "lines": 3
           },
           "validate_config#1": {
-            "line": 547,
+            "line": 544,
             "lines": 11
           },
           "values#1": {
@@ -10861,7 +10861,7 @@
             "lines": 3
           }
         },
-        "production_lines": 1220
+        "production_lines": 1219
       },
       "crates/fereg-core/src/ols/prepared_scores.rs": {
         "chunk_candidates": [],
@@ -11310,112 +11310,112 @@
         "dispatch_candidates": [
           {
             "condition": "rows",
-            "line": 301
+            "line": 298
           },
           {
             "condition": "matches ! ( & prepared . fit_sample ( ) . weights , PreparedWeights :: Provided",
-            "line": 342
+            "line": 339
           },
           {
             "condition": "nobs == 0 || reported_intercepts != usize :: from ( prepared . fit_report_intercept ( ) ) || prepared . fit_report_intercept ( ) && ! prepared . fit_structural_intercept ( ) || fit . residuals ( ) . len ( ) != nobs || fit . coefficients ( ) . len ( ) != prepared . fit_model ( ) . coefficients . len ( ) || ! fit . rank_certificate ( ) . passed || ! fit . score_certificate ( ) . passed || ! fit . bread ( ) . certificate ( ) . passed || ! fit . absorption_report ( ) . certified ( ) || ! fit . residual_absorption_report ( ) . certified ( ) || absorbed . nested_categories != 0 || absorbed . redundant_categories > absorbed . initial_categories || absorbed . absorbed_rank != absorbed . initial_categories - absorbed . redundant_categories",
-            "line": 541
+            "line": 538
           },
           {
             "condition": "fit . bread ( ) . values ( ) . len ( ) != bread_square || fit . bread ( ) . coordinates ( ) . len ( ) != bread_dimension",
-            "line": 564
+            "line": 561
           },
           {
             "condition": "& prepared . fit_sample ( ) . weights",
-            "line": 665
+            "line": 662
           },
           {
             "condition": "values . len ( ) != nobs || values . iter ( ) . any ( | weight | ! weight . is_finite ( ) || * weight <= 0.0 )",
-            "line": 668
+            "line": 665
           },
           {
             "condition": "! divisor . is_finite ( ) || divisor <= 0.0 || values . iter ( ) . any ( | weight | * weight / divisor == 0.0 )",
-            "line": 678
+            "line": 675
           },
           {
             "condition": "& prepared . fit_sample ( ) . weights",
-            "line": 762
+            "line": 759
           },
           {
             "condition": "bread_scale . weight_kind != kind || divisor_error > tolerance || multiplier_error > tolerance || reference_sum_error > tolerance",
-            "line": 782
+            "line": 779
           },
           {
             "condition": "matches ! ( prepared . fit_model ( ) . columns . get ( coordinate . generated_column_index ) . map ( | column | & column . kind ) , Some ( PreparedOlsColumnKind :: Intercept ) )",
-            "line": 843
+            "line": 840
           },
           {
             "condition": "fit . bread ( ) . values ( ) . len ( ) != square || residual_dof == 0",
-            "line": 985
+            "line": 982
           },
           {
             "condition": "dimension != fit . bread ( ) . coordinates ( ) . len ( )",
-            "line": 1038
+            "line": 1035
           },
           {
             "condition": "dimension != fit . bread ( ) . dimension ( ) || covariance . values . len ( ) != square || fit . bread ( ) . values ( ) . len ( ) != square",
-            "line": 1253
+            "line": 1250
           },
           {
             "condition": "crate :: parallel :: StagePlan :: current ( outcome . len ( ) as u128 * 2 , 2 ) . lanes > 1 && rayon :: current_thread_index ( ) . is_some ( )",
-            "line": 1490
+            "line": 1487
           },
           {
             "condition": "weights . kind . is_none ( ) && weights . values . is_none ( ) && ( values . len ( ) as u128 ) <= ( 1_u128 < < 53 )",
-            "line": 1531
+            "line": 1528
           },
           {
             "condition": "weights . kind . is_none ( ) && weights . values . is_none ( )",
-            "line": 1577
+            "line": 1574
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 1735
+            "line": 1732
           }
         ],
         "functions": {
           "build_covariance#1": {
-            "line": 974,
+            "line": 971,
             "lines": 55
           },
           "build_reference_weight_report_view#1": {
-            "line": 741,
+            "line": 738,
             "lines": 76
           },
           "build_residual_dof_view#1": {
-            "line": 832,
+            "line": 829,
             "lines": 74
           },
           "build_statistics#1": {
-            "line": 907,
+            "line": 904,
             "lines": 66
           },
           "build_wald_f#1": {
-            "line": 1030,
+            "line": 1027,
             "lines": 166
           },
           "certify_inference#1": {
-            "line": 1197,
+            "line": 1194,
             "lines": 135
           },
           "certify_statistic_identities#1": {
-            "line": 1333,
+            "line": 1330,
             "lines": 111
           },
           "checked_square#1": {
-            "line": 1723,
+            "line": 1720,
             "lines": 3
           },
           "compensated_add#1": {
-            "line": 1699,
+            "line": 1696,
             "lines": 13
           },
           "compose_view_internal#1": {
-            "line": 379,
+            "line": 376,
             "lines": 129
           },
           "default#1": {
@@ -11427,83 +11427,83 @@
             "lines": 3
           },
           "exact_integer_as_f64#1": {
-            "line": 1713,
+            "line": 1710,
             "lines": 9
           },
           "fit_inference_view#1": {
-            "line": 293,
+            "line": 290,
             "lines": 40
           },
           "fit_prepared_model_unadjusted_with_loaded_moments#1": {
-            "line": 276,
+            "line": 273,
             "lines": 16
           },
           "gaussian_log_likelihood_from_ss#1": {
-            "line": 1667,
+            "line": 1664,
             "lines": 15
           },
           "gaussian_log_likelihood_identity_error#1": {
-            "line": 1456,
+            "line": 1453,
             "lines": 10
           },
           "independent_fit_sums#1": {
-            "line": 1479,
+            "line": 1476,
             "lines": 20
           },
           "independent_outcome_sum#1": {
-            "line": 1500,
+            "line": 1497,
             "lines": 8
           },
           "independent_residual_sum#1": {
-            "line": 334,
+            "line": 331,
             "lines": 6
           },
           "inference_owned_bytes#1": {
-            "line": 142,
+            "line": 139,
             "lines": 4
           },
           "insufficient_observations#1": {
-            "line": 1744,
+            "line": 1741,
             "lines": 3
           },
           "one_minus_ratio#1": {
-            "line": 1655,
+            "line": 1652,
             "lines": 11
           },
           "optional_identity_error#1": {
-            "line": 1445,
+            "line": 1442,
             "lines": 10
           },
           "perturb_optional_statistic#1": {
-            "line": 521,
+            "line": 518,
             "lines": 7
           },
           "positive_weight_sums#1": {
-            "line": 1639,
+            "line": 1636,
             "lines": 15
           },
           "reference_weight_sum#1": {
-            "line": 818,
+            "line": 815,
             "lines": 13
           },
           "reject_probability_iid#1": {
-            "line": 341,
+            "line": 338,
             "lines": 14
           },
           "relative_difference#1": {
-            "line": 1683,
+            "line": 1680,
             "lines": 15
           },
           "reserve#1": {
-            "line": 162,
+            "line": 159,
             "lines": 10
           },
           "reserved_filled#1": {
-            "line": 1727,
+            "line": 1724,
             "lines": 16
           },
           "scan_reference_weight_facts#1": {
-            "line": 658,
+            "line": 655,
             "lines": 82
           },
           "standard_errors#1": {
@@ -11511,23 +11511,23 @@
             "lines": 3
           },
           "update_scaled_sum_of_squares#1": {
-            "line": 1612,
+            "line": 1609,
             "lines": 26
           },
           "validate_config#1": {
-            "line": 509,
+            "line": 506,
             "lines": 11
           },
           "validate_fit_and_absorbed_dof_view#1": {
-            "line": 529,
+            "line": 526,
             "lines": 128
           },
           "validate_sum_of_squares#1": {
-            "line": 1467,
+            "line": 1464,
             "lines": 11
           },
           "value#1": {
-            "line": 244,
+            "line": 241,
             "lines": 26
           },
           "values#1": {
@@ -11539,15 +11539,15 @@
             "lines": 3
           },
           "weighted_mean#1": {
-            "line": 1509,
+            "line": 1506,
             "lines": 55
           },
           "weighted_sum_of_squares#1": {
-            "line": 1565,
+            "line": 1562,
             "lines": 46
           }
         },
-        "production_lines": 1592
+        "production_lines": 1591
       },
       "crates/fereg-core/src/ols/prepared_wald.rs": {
         "chunk_candidates": [],
@@ -14689,224 +14689,224 @@
         "dispatch_candidates": [
           {
             "condition": "self . generation != u64 :: try_from ( generation . generation ( ) ) . map_err ( | _ | invalid_argument ( <string> ) ) ? || ! Arc :: ptr_eq ( & self . prepared , generation . prepared ( ) ) || rows != generation . original_rows ( ) . len ( )",
-            "line": 88
+            "line": 86
           },
           {
             "condition": "& self . prepared . sample ( ) . weights",
-            "line": 150
+            "line": 148
           },
           {
             "condition": "separation_reasons . len ( ) != self . original_observations",
-            "line": 201
+            "line": 199
           },
           {
             "condition": "final_position != self . original_rows ( ) . len ( )",
-            "line": 236
+            "line": 234
           },
           {
             "condition": "clusters . len ( ) > MAX_PPML_CLUSTER_DIMENSIONS",
-            "line": 347
+            "line": 345
           },
           {
             "condition": "self . candidate_original_rows . get ( base_position ) != Some ( & original_row )",
-            "line": 426
+            "line": 424
           },
           {
             "condition": "base_weights . len ( ) != self . candidate_original_rows . len ( ) || target . values . len ( ) != self . original_observations || target . missing . len ( ) != self . original_observations",
-            "line": 446
+            "line": 444
           },
           {
             "condition": "self . candidate_original_rows . get ( base_position ) != Some ( & original_row )",
-            "line": 469
+            "line": 467
           },
           {
             "condition": "loaded . frequency_weight . is_none ( )",
-            "line": 752
+            "line": 750
           },
           {
             "condition": "retained . windows ( 2 ) . any ( | rows | rows [ 0 ] >= rows [ 1 ] ) || retained . iter ( ) . any ( | row | * row >= original_observations )",
-            "line": 805
+            "line": 803
           },
           {
             "condition": "numeric_rows . get ( numeric_position ) != Some ( & row )",
-            "line": 820
+            "line": 818
           },
           {
             "condition": "sample . retained_rows ( ) != retained_original_rows || sample . n_active ( ) != retained_original_rows . len ( ) || prepared . singletons ( ) != ( PreparedOlsSingletons",
-            "line": 834
+            "line": 832
           },
           {
             "condition": "prepared . cluster_codes ( dimension ) ? . len ( ) != sample . n_active ( )",
-            "line": 849
+            "line": 847
           },
           {
             "condition": "& sample . weights",
-            "line": 865
+            "line": 863
           },
           {
             "condition": "output . capacity ( ) < rows",
-            "line": 956
+            "line": 954
           }
         ],
         "functions": {
           "adjustment_report#1": {
-            "line": 183,
+            "line": 181,
             "lines": 3
           },
           "build_prepared_model#1": {
-            "line": 386,
+            "line": 384,
             "lines": 21
           },
           "candidate_original_rows#1": {
-            "line": 584,
+            "line": 582,
             "lines": 3
           },
           "capture#1": {
-            "line": 73,
+            "line": 71,
             "lines": 7
           },
           "capture_raw_probability_weights#1": {
-            "line": 744,
+            "line": 742,
             "lines": 49
           },
           "cluster_codes#1": {
-            "line": 191,
+            "line": 189,
             "lines": 3
           },
           "cluster_design#1": {
-            "line": 187,
+            "line": 185,
             "lines": 3
           },
           "compact_offset#1": {
-            "line": 408,
+            "line": 406,
             "lines": 27
           },
           "compensated_sum#1": {
-            "line": 966,
+            "line": 964,
             "lines": 21
           },
           "final_drop_reasons#1": {
-            "line": 197,
+            "line": 195,
             "lines": 46
           },
           "fit_view#1": {
-            "line": 133,
+            "line": 131,
             "lines": 3
           },
           "from_parts#1": {
-            "line": 335,
+            "line": 333,
             "lines": 50
           },
           "from_selection#1": {
-            "line": 274,
+            "line": 272,
             "lines": 29
           },
           "generation#1": {
-            "line": 80,
+            "line": 78,
             "lines": 3
           },
           "generation#2": {
-            "line": 125,
+            "line": 123,
             "lines": 3
           },
           "generation_weight_report#1": {
-            "line": 859,
+            "line": 857,
             "lines": 71
           },
           "model#1": {
-            "line": 137,
+            "line": 135,
             "lines": 3
           },
           "offset#1": {
-            "line": 159,
+            "line": 157,
             "lines": 3
           },
           "original_axis_mask#1": {
-            "line": 951,
+            "line": 949,
             "lines": 14
           },
           "original_observations#1": {
-            "line": 163,
+            "line": 161,
             "lines": 3
           },
           "original_observations#2": {
-            "line": 580,
+            "line": 578,
             "lines": 3
           },
           "original_rows#1": {
-            "line": 141,
+            "line": 139,
             "lines": 3
           },
           "outcome#1": {
-            "line": 145,
+            "line": 143,
             "lines": 3
           },
           "owned_buffer_bytes#1": {
-            "line": 105,
+            "line": 103,
             "lines": 10
           },
           "prepared#1": {
-            "line": 129,
+            "line": 127,
             "lines": 3
           },
           "prior_weights#1": {
-            "line": 149,
+            "line": 147,
             "lines": 9
           },
           "rebuild_generation#1": {
-            "line": 588,
+            "line": 586,
             "lines": 70
           },
           "requested_candidate_observations#1": {
-            "line": 167,
+            "line": 165,
             "lines": 3
           },
           "restore_generation_probability_weights#1": {
-            "line": 520,
+            "line": 518,
             "lines": 39
           },
           "retained_base_adjustment_capacity_elements#1": {
-            "line": 171,
+            "line": 169,
             "lines": 3
           },
           "retained_raw_preseparation_probability_weight_elements#1": {
-            "line": 175,
+            "line": 173,
             "lines": 3
           },
           "separation_drop_reason#1": {
-            "line": 939,
+            "line": 937,
             "lines": 11
           },
           "stage_generation_probability_weights#1": {
-            "line": 436,
+            "line": 434,
             "lines": 83
           },
           "validate#1": {
-            "line": 83,
+            "line": 81,
             "lines": 17
           },
           "validate_memory_bound#1": {
-            "line": 116,
+            "line": 114,
             "lines": 8
           },
           "validate_prepared_generation#1": {
-            "line": 829,
+            "line": 827,
             "lines": 29
           },
           "validate_retained_subset#1": {
-            "line": 794,
+            "line": 792,
             "lines": 34
           },
           "weight_report#1": {
-            "line": 179,
+            "line": 177,
             "lines": 3
           },
           "with_generation_memory_bound#1": {
-            "line": 269,
+            "line": 267,
             "lines": 4
           }
         },
-        "production_lines": 754
+        "production_lines": 752
       },
       "crates/fereg-core/src/ppml/prepared_separation.rs": {
         "chunk_candidates": [],
@@ -17474,452 +17474,452 @@
         "dispatch_candidates": [
           {
             "condition": "fereg_core :: parallel :: StagePlan :: new ( loaded . candidate . len ( ) as u128 * loaded . numeric_sources . len ( ) as u128 * 2 , loaded . numeric_sources . len ( ) , threads . resolved ( ) , ) . lanes > 1",
-            "line": 473
+            "line": 472
           },
           {
             "condition": "let Some ( budget ) = self . fit . absorb . solver_memory_budget . as_mut ( )",
-            "line": 711
+            "line": 710
           },
           {
             "condition": "parent . checked_add ( self . publication_memory . peak_bytes ( ) ) . is_none_or ( | peak | peak > budget . usable_bytes )",
-            "line": 713
+            "line": 712
           },
           {
             "condition": "memory_plan . selected",
-            "line": 1129
+            "line": 1128
           },
           {
             "condition": "self . outputs . saved_channels . len ( ) != extended_fe_rows",
-            "line": 1143
+            "line": 1142
           },
           {
             "condition": "args . len ( ) != 1",
-            "line": 1246
+            "line": 1245
           },
           {
             "condition": "bytes . capacity ( ) < required",
-            "line": 1284
+            "line": 1283
           },
           {
             "condition": "bytes [ PREFIX . len ( ) .. ] . iter ( ) . position ( | & byte | byte == 0 ) != Some ( length )",
-            "line": 1292
+            "line": 1291
           },
           {
             "condition": "args . len ( ) > 85",
-            "line": 1310
+            "line": 1309
           },
           {
             "condition": "field . capacity ( ) < payload . len ( )",
-            "line": 1354
+            "line": 1353
           },
           {
             "condition": "cursor != bytes . len ( )",
-            "line": 1367
+            "line": 1366
           },
           {
             "condition": "cursor == start || cursor >= bytes . len ( ) || bytes [ cursor ] != b <char>",
-            "line": 1378
+            "line": 1377
           },
           {
             "condition": "! ( 1.. = 10 ) . contains ( & clusters . len ( ) ) => Err ( invalid ( <string> , ) ) , OlsVceKind :: Clustered if ! account_cluster_nesting => Err ( unsupported ( <string> , ) ) , OlsVceKind :: Iid | OlsVceKind :: Robust if ! clusters . is_empty ( ) =>",
-            "line": 1401
+            "line": 1400
           },
           {
             "condition": "terms . rows [ 0 ] . iter ( ) . any ( | value | * value != 0.0 ) || components . rows [ 0 ] . iter ( ) . any ( | value | * value != 0.0 )",
-            "line": 1436
+            "line": 1435
           },
           {
             "condition": "spi . supports_numeric_rows ( ) && fereg_core :: parallel :: StagePlan :: new ( n as u128 * width as u128 , 2 , team . threads ( ) , ) . lanes > 1 && ( 1.. = 64 ) . contains ( & width ) && numeric_pipeline_effects_supported ( request )",
-            "line": 1757
+            "line": 1756
           },
           {
             "condition": "let Some ( elements ) = n . checked_mul ( layout . width )",
-            "line": 1775
+            "line": 1774
           },
           {
             "condition": "rows . capacity ( ) == elements",
-            "line": 1787
+            "line": 1786
           },
           {
             "condition": "defer_columns && all_sources_numeric",
-            "line": 1798
+            "line": 1797
           },
           {
             "condition": "defer_columns && ! reserved_read",
-            "line": 1837
+            "line": 1836
           },
           {
             "condition": "candidate_all && all_sources_numeric || n >= INPUT_CANDIDATE_BATCH_MIN_ROWS",
-            "line": 1860
+            "line": 1859
           },
           {
             "condition": "let ( Some ( position ) , Some ( destination ) ) = ( analytic_position , analytic_weight . as_mut ( ) )",
-            "line": 1962
+            "line": 1961
           },
           {
             "condition": "let ( Some ( position ) , Some ( destination ) ) = ( frequency_position , frequency_weight . as_mut ( ) )",
-            "line": 1967
+            "line": 1966
           },
           {
             "condition": "let ( Some ( position ) , Some ( destination ) ) = ( probability_position , probability_weight . as_mut ( ) )",
-            "line": 1972
+            "line": 1971
           },
           {
             "condition": "positions . len ( ) != columns . len ( ) || missing . len ( ) != columns . len ( ) || columns . is_empty ( ) || columns . iter ( ) . zip ( missing . iter ( ) ) . any ( | ( column , flags ) | column . len ( ) != columns [ 0 ] . len ( ) || flags . len ( ) != column . len ( ) ) || candidate . is_some_and ( | rows | rows . len ( ) != columns [ 0 ] . len ( ) )",
-            "line": 2015
+            "line": 2014
           },
           {
             "condition": "absorbed . len ( ) != workspace . len ( ) || workspace . len ( ) != fit . residuals ( ) . len ( )",
-            "line": 2176
+            "line": 2175
           },
           {
             "condition": "fit . residuals ( ) . len ( ) != n || fit . coefficients ( ) . len ( ) != prepared . model ( ) . coefficients . len ( )",
-            "line": 2254
+            "line": 2253
           },
           {
             "condition": "action . memory_plan . selected",
-            "line": 2522
+            "line": 2521
           },
           {
             "condition": "shadow . execution . mode != expected_mode || shadow . execution . poolsize != action . fit . execution . poolsize || shadow . execution . requested_threads != action . fit . execution . threads . requested . map_or ( 0 , | value | value . get ( ) ) || shadow . execution . effective_threads != action . expected_effective_threads || shadow . execution . deterministic != action . fit . execution . threads . deterministic || ( shadow . execution . scratch_bytes > 0 ) != ( expected_mode == PreparedOlsExecutionMode :: Low && action . memory_plan . estimate . recommended_poolsize > 0 )",
-            "line": 2531
+            "line": 2530
           },
           {
             "condition": "shadow . capacity_bytes ( ) > action . publication_memory . shadow_bytes || publication_bytes > action . publication_memory . publication_bytes",
-            "line": 2554
+            "line": 2553
           },
           {
             "condition": "derived . saved_channels . len ( ) != action . outputs . saved_channels . len ( )",
-            "line": 2702
+            "line": 2701
           },
           {
             "condition": "shadow . b . len ( ) != matrix_dimension || shadow . covariance . len ( ) != matrix_dimension * matrix_dimension || shadow . coefficient_status . len ( ) != matrix_dimension * COEFFICIENT_STATUS_COLUMNS || shadow . omission_b_marker . len ( ) != matrix_dimension || shadow . omission_v_marker . len ( ) != matrix_dimension * matrix_dimension || shadow . fit . len ( ) != FIT_ROWS * 2 || shadow . dof . len ( ) != DOF_ROWS * 2 || shadow . solver . len ( ) != SOLVER_ROWS * SOLVER_COLUMNS || shadow . fixed_effects . len ( ) != shadow . fixed_effect_rows * FE_COLUMNS || shadow . clusters . len ( ) != shadow . cluster_rows * CLUSTER_COLUMNS || shadow . subsets . len ( ) != shadow . subset_rows * SUBSET_COLUMNS || shadow . certificates . len ( ) != CERTIFICATE_ROWS * 2 || shadow . receipt . len ( ) != RECEIPT_COLUMNS || shadow . drop_reasons . len ( ) != shadow . receipt [ 6 ] as usize || shadow . retained_rows . len ( ) != shadow . residuals . len ( ) || shadow . covariance_dimension > shadow . coefficient_count || shadow . coefficient_count > shadow . coefficient_capacity || action . matrices . b . rows ( ) != 1 || action . matrices . b . columns ( ) != matrix_capacity || action . matrices . covariance . rows ( ) != matrix_capacity || action . matrices . covariance . columns ( ) != matrix_capacity || action . matrices . coefficient_status . rows ( ) != matrix_capacity || action . matrices . coefficient_status . columns ( ) != COEFFICIENT_STATUS_COLUMNS || action . matrices . omission_b_marker . rows ( ) != 1 || action . matrices . omission_b_marker . columns ( ) != matrix_capacity || action . matrices . omission_v_marker . rows ( ) != matrix_capacity || action . matrices . omission_v_marker . columns ( ) != matrix_capacity",
-            "line": 2746
+            "line": 2745
           },
           {
             "condition": "invalid_shadow_observations ( shadow . residuals , shadow . retained_rows , shadow . drop_reasons , action . fit . execution . threads , ) ?",
-            "line": 2778
+            "line": 2777
           },
           {
             "condition": "retained_rows . len ( ) == drop_reasons . len ( ) && residuals . len ( ) == retained_rows . len ( ) && fereg_core :: parallel :: StagePlan :: new ( retained_rows . len ( ) as u128 * 3 , retained_rows . len ( ) , threads . resolved ( ) , ) . lanes > 1",
-            "line": 2809
+            "line": 2808
           },
           {
             "condition": "candidate > shadow . drop_reasons . len ( ) || shadow . retained_rows . len ( ) > candidate",
-            "line": 2888
+            "line": 2887
           },
           {
             "condition": "values . len ( ) % 2 != 0",
-            "line": 2986
+            "line": 2985
           },
           {
             "condition": "mask == 0 || mask > maximum_mask || dimensions == 0 || dimensions > action . clusters . len ( ) || ! matches ! ( row [ 2 ] , - 1.0 | 1.0 ) || exact_usize ( row [ 3 ] , <string> ) . is_err ( ) || row [ 3 ] < 1.0",
-            "line": 3065
+            "line": 3064
           },
           {
             "condition": "row . len ( ) != FE_COLUMNS",
-            "line": 3081
+            "line": 3080
           },
           {
             "condition": "batched || ( shadow . retained_rows . len ( ) == shadow . drop_reasons . len ( ) && action . outputs . residual . is_none ( ) && action . outputs . drop_reason . is_none ( ) && action . outputs . xb . is_none ( ) && action . outputs . xbd . is_none ( ) && action . outputs . absorbed . is_none ( ) && action . outputs . saved_channels . iter ( ) . all ( Option :: is_none ) )",
-            "line": 3140
+            "line": 3139
           },
           {
             "condition": "shadow . retained_rows . len ( ) != shadow . drop_reasons . len ( ) || shadow . retained_rows . len ( ) < 4096 || action . outputs . drop_reason . is_some ( )",
-            "line": 3292
+            "line": 3291
           },
           {
             "condition": "count == columns . len ( )",
-            "line": 3321
+            "line": 3320
           },
           {
             "condition": "positions . len ( ) != nvars || positions . iter ( ) . copied ( ) . ne ( 1.. = nvars_u32 )",
-            "line": 3398
+            "line": 3397
           },
           {
             "condition": "spi . matrix_dimensions ( name ) ? != ( rows , columns )",
-            "line": 3476
+            "line": 3475
           }
         ],
         "functions": {
           "add_fitted_terms#1": {
-            "line": 2144,
+            "line": 2143,
             "lines": 23
           },
           "admit_estimate_transport#1": {
-            "line": 1227,
+            "line": 1226,
             "lines": 8
           },
           "admit_output_parent#1": {
-            "line": 704,
+            "line": 703,
             "lines": 21
           },
           "admit_prepared_parent#1": {
-            "line": 661,
+            "line": 660,
             "lines": 42
           },
           "build_derived_observation_outputs#1": {
-            "line": 2208,
+            "line": 2207,
             "lines": 19
           },
           "build_derived_observation_outputs_in_team#1": {
-            "line": 2228,
+            "line": 2227,
             "lines": 268
           },
           "build_runtime_shadow#1": {
-            "line": 2591,
+            "line": 2590,
             "lines": 81
           },
           "capacity_bytes#1": {
-            "line": 117,
+            "line": 116,
             "lines": 10
           },
           "certify_recovered_model_outputs#1": {
-            "line": 2168,
+            "line": 2167,
             "lines": 39
           },
           "complete_ols#1": {
-            "line": 364,
+            "line": 363,
             "lines": 36
           },
           "decode_and_validate#1": {
-            "line": 975,
+            "line": 974,
             "lines": 3
           },
           "decode_estimate_bundle#1": {
-            "line": 1328,
+            "line": 1327,
             "lines": 44
           },
           "decode_output_position_registry#1": {
-            "line": 3604,
+            "line": 3603,
             "lines": 19
           },
           "decode_with_memory_limit#1": {
-            "line": 979,
+            "line": 978,
             "lines": 242
           },
           "empty_loaded_column#1": {
-            "line": 3597,
+            "line": 3596,
             "lines": 6
           },
           "estimate_ols_test#1": {
-            "line": 212,
+            "line": 211,
             "lines": 139
           },
           "finalize#1": {
-            "line": 2117,
+            "line": 2116,
             "lines": 12
           },
           "imposed_memory_limit_bytes#1": {
-            "line": 3674,
+            "line": 3673,
             "lines": 16
           },
           "invalid_shadow_observations#1": {
-            "line": 2803,
+            "line": 2802,
             "lines": 54
           },
           "load_ols_input_with_action_team#1": {
-            "line": 1596,
+            "line": 1595,
             "lines": 23
           },
           "load_ols_input_with_team#1": {
-            "line": 1649,
+            "line": 1648,
             "lines": 348
           },
           "load_preparation_input#1": {
-            "line": 1518,
+            "line": 1517,
             "lines": 18
           },
           "loaded_column_reservation#1": {
-            "line": 3582,
+            "line": 3581,
             "lines": 14
           },
           "loading_memory#1": {
-            "line": 1537,
+            "line": 1536,
             "lines": 55
           },
           "memory_composition#1": {
-            "line": 498,
+            "line": 497,
             "lines": 85
           },
           "memory_evidence#1": {
-            "line": 589,
+            "line": 588,
             "lines": 55
           },
           "memory_mode_code#1": {
-            "line": 2673,
+            "line": 2672,
             "lines": 7
           },
           "metadata_capacity_bytes#1": {
-            "line": 645,
+            "line": 644,
             "lines": 13
           },
           "metadata_shape#1": {
-            "line": 728,
+            "line": 727,
             "lines": 45
           },
           "names#1": {
-            "line": 74,
+            "line": 73,
             "lines": 20
           },
           "normalization_known_connected#1": {
-            "line": 2497,
+            "line": 2496,
             "lines": 17
           },
           "numeric_loaded_rhs_layout#1": {
-            "line": 1631,
+            "line": 1630,
             "lines": 15
           },
           "numeric_pipeline_effects_supported#1": {
-            "line": 1620,
+            "line": 1619,
             "lines": 8
           },
           "parse#1": {
-            "line": 774,
+            "line": 773,
             "lines": 110
           },
           "parse_bundle_decimal#1": {
-            "line": 1373,
+            "line": 1372,
             "lines": 21
           },
           "parse_dof#1": {
-            "line": 3635,
+            "line": 3634,
             "lines": 11
           },
           "parse_estimate_key_values#1": {
-            "line": 1309,
+            "line": 1308,
             "lines": 18
           },
           "parse_native_break#1": {
-            "line": 3693,
+            "line": 3692,
             "lines": 14
           },
           "parse_preconditioner#1": {
-            "line": 3662,
+            "line": 3661,
             "lines": 11
           },
           "parse_solver#1": {
-            "line": 3647,
+            "line": 3646,
             "lines": 14
           },
           "parse_vce#1": {
-            "line": 3624,
+            "line": 3623,
             "lines": 10
           },
           "precommit_and_store#1": {
-            "line": 2515,
+            "line": 2514,
             "lines": 75
           },
           "prepare_loaded_ols#1": {
-            "line": 467,
+            "line": 466,
             "lines": 26
           },
           "prepare_loaded_ols_with_moments#1": {
-            "line": 403,
+            "line": 402,
             "lines": 61
           },
           "protocol#1": {
-            "line": 3708,
+            "line": 3707,
             "lines": 3
           },
           "read_candidate_marker#1": {
-            "line": 1998,
+            "line": 1997,
             "lines": 9
           },
           "read_clusters#1": {
-            "line": 1417,
+            "line": 1416,
             "lines": 78
           },
           "read_into#1": {
-            "line": 2089,
+            "line": 2088,
             "lines": 27
           },
           "read_into#2": {
-            "line": 2131,
+            "line": 2130,
             "lines": 12
           },
           "read_local_estimate_bundle#1": {
-            "line": 1236,
+            "line": 1235,
             "lines": 66
           },
           "read_numeric_columns_in_chunks#1": {
-            "line": 2008,
+            "line": 2007,
             "lines": 71
           },
           "reject_unknown_fields#1": {
-            "line": 885,
+            "line": 884,
             "lines": 89
           },
           "role_position#1": {
-            "line": 3552,
+            "line": 3551,
             "lines": 11
           },
           "source_position#1": {
-            "line": 3564,
+            "line": 3563,
             "lines": 10
           },
           "source_requires_numeric#1": {
-            "line": 3535,
+            "line": 3534,
             "lines": 10
           },
           "store_shadow#1": {
-            "line": 3128,
+            "line": 3127,
             "lines": 155
           },
           "try_store_full_observation_outputs#1": {
-            "line": 3284,
+            "line": 3283,
             "lines": 49
           },
           "validate_categorical_position#1": {
-            "line": 3515,
+            "line": 3514,
             "lines": 19
           },
           "validate_defined_value_table#1": {
-            "line": 2985,
+            "line": 2984,
             "lines": 11
           },
           "validate_derived_against_outputs#1": {
-            "line": 2681,
+            "line": 2680,
             "lines": 58
           },
           "validate_layout#1": {
-            "line": 3335,
+            "line": 3334,
             "lines": 159
           },
           "validate_numeric_position#1": {
-            "line": 3495,
+            "line": 3494,
             "lines": 19
           },
           "validate_shadow_against_outputs#1": {
-            "line": 2740,
+            "line": 2739,
             "lines": 62
           },
           "validate_shadow_coefficients#1": {
-            "line": 2894,
+            "line": 2893,
             "lines": 90
           },
           "validate_shadow_diagnostics#1": {
-            "line": 2997,
+            "line": 2996,
             "lines": 82
           },
           "validate_shadow_fixed_effect_row#1": {
-            "line": 3080,
+            "line": 3079,
             "lines": 47
           },
           "validate_shadow_receipt#1": {
-            "line": 2858,
+            "line": 2857,
             "lines": 35
           },
           "validate_vce#1": {
-            "line": 1395,
+            "line": 1394,
             "lines": 21
           },
           "weight_position#1": {
-            "line": 3575,
+            "line": 3574,
             "lines": 6
           }
         },
-        "production_lines": 3504
+        "production_lines": 3503
       },
       "crates/fereg-plugin/src/estimate/ols_pipeline.rs": {
         "chunk_candidates": [],
@@ -19961,14 +19961,14 @@
         "dispatch_candidates": 1230,
         "files_over_1500": 16,
         "functions_over_150": 65,
-        "production_lines": 93296
+        "production_lines": 93281
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
         "dispatch_candidates": 134,
         "files_over_1500": 3,
         "functions_over_150": 14,
-        "production_lines": 14252
+        "production_lines": 14251
       }
     },
     "schema": 1

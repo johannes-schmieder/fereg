@@ -6,7 +6,7 @@
 //! source-bound absorbed-DoF report.
 
 use crate::error::{allocation, invalid_argument as invalid, ErrorCode, FeregError, Result};
-use crate::prepared_categorical_data::PreparedCategoricalOlsData;
+use crate::prepared_categorical_data::PreparedOlsData;
 use crate::prepared_fit_view::{OrdinaryPrepared, PreparedOlsFitView};
 use crate::topology_dof::{
     CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy,
@@ -14,8 +14,6 @@ use crate::topology_dof::{
 };
 
 use super::PreparedOlsAbsorbedDofPolicy;
-#[cfg(test)]
-use super::PreparedOlsData;
 
 /// Topology-validated summary consumed by common inference calculations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -107,7 +105,7 @@ impl PreparedOlsInferenceView for OrdinaryPrepared<'_> {
     }
 }
 
-impl PreparedOlsInferenceView for PreparedCategoricalOlsData {
+impl PreparedOlsInferenceView for PreparedOlsData {
     fn inference_compute_absorbed_dof(
         &self,
         policy: PreparedOlsAbsorbedDofPolicy,
@@ -187,7 +185,7 @@ pub(super) fn compute_canonical_prepared_ols_absorbed_dof(
 }
 
 fn validate_categorical_report(
-    prepared: &PreparedCategoricalOlsData,
+    prepared: &PreparedOlsData,
     report: &CategoricalTopologyDofReport,
     expected_policy: PreparedOlsAbsorbedDofPolicy,
     nesting_state: NestingState,

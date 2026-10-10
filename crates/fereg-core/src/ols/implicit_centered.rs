@@ -11,16 +11,16 @@ use crate::fe::{
     BorrowedInterceptEffect, BorrowedMapWeights, FeCertificate, FeSolverKind, SolveReport,
     SolveStopReason,
 };
-use crate::prepared_categorical_data::PreparedCategoricalOlsData;
+use crate::prepared_categorical_data::PreparedOlsData;
 use crate::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum BoundColumn<'a> {
     Numeric(&'a [f64]),
-    Generated(&'a PreparedCategoricalOlsData, usize),
+    Generated(&'a PreparedOlsData, usize),
 }
 impl<'a> BoundColumn<'a> {
-    fn new(prepared: &'a PreparedCategoricalOlsData, column: usize) -> Result<Self> {
+    fn new(prepared: &'a PreparedOlsData, column: usize) -> Result<Self> {
         let recipe = prepared.model().columns.get(column).ok_or_else(invalid)?;
         match recipe.kind {
             PreparedOlsColumnKind::Continuous {
@@ -72,7 +72,7 @@ pub(crate) struct ImplicitCenteredDesign {
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct ImplicitCenteredView<'a> {
-    prepared: &'a PreparedCategoricalOlsData,
+    prepared: &'a PreparedOlsData,
     generated: &'a [usize],
     centers: &'a [f64],
     effect: BorrowedInterceptEffect<'a>,

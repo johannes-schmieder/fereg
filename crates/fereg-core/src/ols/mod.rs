@@ -58,17 +58,15 @@ pub use prepared::{
     PreparedOlsFeSingletonPolicy, PreparedOlsModel, PreparedOlsSingletons,
 };
 pub(crate) use prepared_categorical_clusters::prepare_ppml_categorical_ols_clustered_data;
-pub use prepared_categorical_clusters::PreparedCategoricalOlsClusteredData;
 pub use prepared_clustered::{
-    fit_prepared_model_clustered_with_loaded_moments, CertifiedPreparedCategoricalOlsClustered,
-    CertifiedPreparedOlsClustered, PreparedOlsClusterSubsetCertificate,
-    PreparedOlsClusteredCertificate, PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance,
-    PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
+    fit_prepared_model_clustered_with_loaded_moments, CertifiedPreparedOlsClustered,
+    PreparedOlsClusterSubsetCertificate, PreparedOlsClusteredCertificate,
+    PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance, PreparedOlsClusteredDofReport,
+    PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
 };
 pub use prepared_clusters::{
     compile_prepared_model, prepare_model, prepare_model_owned, OlsClusterTermV1,
     OlsClusteredRequestV1, PreparedOlsClusterDesign, PreparedOlsClusterDimension,
-    PreparedOlsClusteredData,
 };
 pub use prepared_dof::{
     compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect,
@@ -92,14 +90,12 @@ pub(crate) use prepared_rhs::{
     MAX_BOUND_NUMERIC_COLUMNS,
 };
 pub use prepared_robust::{
-    fit_prepared_model_robust_with_loaded_moments, CertifiedPreparedCategoricalOlsRobust,
-    CertifiedPreparedOlsRobust, PreparedOlsRobustCertificate, PreparedOlsRobustConfig,
-    PreparedOlsRobustCovariance,
+    fit_prepared_model_robust_with_loaded_moments, CertifiedPreparedOlsRobust,
+    PreparedOlsRobustCertificate, PreparedOlsRobustConfig, PreparedOlsRobustCovariance,
 };
 pub(crate) use prepared_scratch::{conservative_scratch_io_bytes, ols_scratch_transpose_reserve};
 pub use prepared_unadjusted::{
-    fit_prepared_model_unadjusted_with_loaded_moments, CertifiedPreparedCategoricalOlsUnadjusted,
-    CertifiedPreparedOlsUnadjusted, PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport,
-    PreparedOlsResidualDofReport, PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig,
-    PreparedOlsUnadjustedCovariance,
+    fit_prepared_model_unadjusted_with_loaded_moments, CertifiedPreparedOlsUnadjusted,
+    PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
+    PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig, PreparedOlsUnadjustedCovariance,
 };

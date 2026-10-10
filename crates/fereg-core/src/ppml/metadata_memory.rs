@@ -208,7 +208,7 @@ fn generation_storage(
         effects.checked_mul(2).ok_or_else(overflow)?.max(4)
     };
     let mut fixed = sum(&[
-        std::mem::size_of::<(usize, usize, crate::PreparedCategoricalOlsData)>() as u128,
+        std::mem::size_of::<(usize, usize, crate::PreparedOlsData)>() as u128,
         bytes::<CompactedCategoricalSource>(compacted)?,
         bytes::<PreparedCategoricalModelSource>(ordinary)?,
         bytes::<Option<usize>>(categories)?,

@@ -135,9 +135,6 @@ pub type CertifiedPreparedOlsUnadjusted<A = CategoricalTopologyDofReport> =
         PreparedOlsUnadjustedCertificate,
     >;
 
-/// Canonical topology identities for categorical and ordinary consumers.
-pub type CertifiedPreparedCategoricalOlsUnadjusted = CertifiedPreparedOlsUnadjusted;
-
 impl super::prepared_products::PreparedOlsInferenceBuffers for PreparedOlsUnadjustedCovariance {
     fn inference_owned_bytes(&self) -> u128 {
         use crate::memory::vec_capacity_bytes as bytes;

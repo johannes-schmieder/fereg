@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use fereg_core::{
     fit_prepared_model_clustered_with_loaded_moments, prepare_model, AbsorbTermId, AbsorbedTerm,
-    CertifiedPreparedCategoricalOlsClustered, CoefficientSlot, CompiledTermGraph, ComponentKind,
+    CertifiedPreparedOlsClustered, CoefficientSlot, CompiledTermGraph, ComponentKind,
     ComponentOrder, ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag,
     OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
     PreparedOlsClusteredConfig, PreparedOlsFitStatus, RawTermKind, SourceEntry, SourceId,
@@ -150,7 +150,7 @@ fn assert_case_matches_oracle(
     include_intercept: bool,
     weights: CaseWeights<'_>,
     cluster_specs: &[Vec<usize>],
-) -> CertifiedPreparedCategoricalOlsClustered {
+) -> CertifiedPreparedOlsClustered {
     let production = fit_case(case, include_intercept, weights, cluster_specs);
     let (effect_codes, effect_levels) = independent_interaction_codes(&case.firm, &case.year);
     let oracle_clusters = cluster_specs
@@ -233,7 +233,7 @@ fn fit_case(
     include_intercept: bool,
     weights: CaseWeights<'_>,
     cluster_specs: &[Vec<usize>],
-) -> CertifiedPreparedCategoricalOlsClustered {
+) -> CertifiedPreparedOlsClustered {
     let prepared = prepare_case(case, include_intercept, weights, cluster_specs);
     fit_prepared_model_clustered_with_loaded_moments(
         &prepared,
@@ -248,7 +248,7 @@ fn prepare_case(
     include_intercept: bool,
     weights: CaseWeights<'_>,
     cluster_specs: &[Vec<usize>],
-) -> fereg_core::PreparedCategoricalOlsClusteredData {
+) -> fereg_core::PreparedOlsData {
     let nobs = case.outcome.len();
     assert_eq!(case.x1.len(), nobs);
     assert_eq!(case.x2.len(), nobs);

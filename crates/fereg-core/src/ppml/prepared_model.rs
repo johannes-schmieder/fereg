@@ -27,9 +27,7 @@ use crate::ols::{
     PreparedOlsModel, PreparedOlsSingletons,
 };
 use crate::ppml_separation::{PreparedSeparationRebuilder, SeparationDropReason};
-use crate::prepared_categorical_data::{
-    prepare_ppml_categorical_ols_data, PreparedCategoricalOlsData,
-};
+use crate::prepared_categorical_data::{prepare_ppml_categorical_ols_data, PreparedOlsData};
 
 const MAX_PPML_CLUSTER_DIMENSIONS: usize = 5;
 
@@ -103,7 +101,7 @@ impl PreparedPpmlModelGeneration {
     /// All generation-owned heap capacities. The shared initial-drop-reason
     /// Arc belongs to the immutable raw owner and is counted there exactly once.
     pub(super) fn owned_buffer_bytes(&self) -> u128 {
-        let prepared = std::mem::size_of::<(usize, usize, PreparedCategoricalOlsData)>() as u128
+        let prepared = std::mem::size_of::<(usize, usize, PreparedOlsData)>() as u128
             + self.fit_view().owned_buffer_bytes();
         prepared
             + crate::memory::vec_capacity_bytes(&self.offset)
@@ -130,7 +128,7 @@ impl PreparedPpmlModelGeneration {
         &self.prepared
     }
 
-    pub(crate) fn fit_view(&self) -> &PreparedCategoricalOlsData {
+    pub(crate) fn fit_view(&self) -> &PreparedOlsData {
         &self.prepared
     }
 
@@ -1410,7 +1408,7 @@ mod tests {
         assert!(generation.prepared().cluster_design().is_none());
         let categorical = generation.prepared().as_ref();
         assert!(categorical.effect_specs().is_empty());
-        let concrete_fit: &PreparedCategoricalOlsData = generation.fit_view();
+        let concrete_fit: &PreparedOlsData = generation.fit_view();
         assert!(!concrete_fit.has_absorbed_intercept());
         assert!(concrete_fit.report_intercept());
         let fit = fit_prepared_model_coefficients(categorical, PreparedOlsFitConfig::default())

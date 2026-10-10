@@ -179,8 +179,7 @@ pub struct PreparedOlsSingletons {
     pub cascade_events: usize,
 }
 
-/// Compatibility name for the single finalized preparation owner.
-pub type PreparedOlsData = crate::prepared_categorical_data::PreparedModel;
+pub use crate::prepared_categorical_data::PreparedOlsData;
 
 impl PreparedOlsData {
     #[must_use]

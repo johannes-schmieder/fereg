@@ -2047,7 +2047,7 @@ fn prepared_multiway_categorical(
     outcome: &[f64],
     regressors: &[Vec<f64>],
     effects: &[Vec<f64>],
-) -> crate::PreparedCategoricalOlsData {
+) -> crate::PreparedOlsData {
     prepared_multiway_categorical_weights(outcome, regressors, effects, TestWeights::Unit)
 }
 
@@ -2056,7 +2056,7 @@ fn prepared_multiway_categorical_weights(
     regressors: &[Vec<f64>],
     effects: &[Vec<f64>],
     weights: TestWeights<'_>,
-) -> crate::PreparedCategoricalOlsData {
+) -> crate::PreparedOlsData {
     assert!((1..=3).contains(&effects.len()));
     assert!(regressors
         .iter()
@@ -2158,7 +2158,7 @@ fn prepared_multiway_categorical_weights(
 }
 
 fn assert_initial_checkpoint_lsmr_matches_map(
-    prepared: &crate::PreparedCategoricalOlsData,
+    prepared: &crate::PreparedOlsData,
     threads: usize,
 ) -> FeSolverKind {
     let mut config = PreparedOlsFitConfig {

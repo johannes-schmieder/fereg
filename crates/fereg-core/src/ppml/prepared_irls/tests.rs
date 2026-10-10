@@ -123,10 +123,7 @@ fn prepared_with_factor_sources(
     prepared
 }
 
-fn prepared_no_fe_categorical(
-    outcome: &[f64],
-    regressors: &[Vec<f64>],
-) -> crate::PreparedCategoricalOlsData {
+fn prepared_no_fe_categorical(outcome: &[f64], regressors: &[Vec<f64>]) -> crate::PreparedOlsData {
     let mut sources = Vec::new();
     let mut terms = Vec::new();
     let mut numeric_sources = Vec::new();
@@ -627,7 +624,7 @@ fn prepared_joint_slopes(
     regressor: &[f64],
     first: &[f64],
     second: &[f64],
-) -> crate::PreparedCategoricalOlsData {
+) -> crate::PreparedOlsData {
     assert_eq!(regressor.len(), outcome.len());
     let z = source(4, "z");
     let w = source(5, "w");

@@ -361,7 +361,7 @@ fn every_clustered_scientific_mutation_fails_closed() {
 }
 
 fn compose_for_test<R: PreparedInferenceReservation>(
-    prepared: &PreparedOlsClusteredData,
+    prepared: &PreparedOlsData,
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
 ) -> Result<CertifiedPreparedOlsClustered> {

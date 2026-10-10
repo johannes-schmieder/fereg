@@ -917,7 +917,7 @@ fn complete_saved_decomposition_error(total: &[f64], channels: &[Option<Vec<f64>
 }
 
 fn categorical_connected_components(
-    prepared: &crate::prepared_categorical_data::PreparedCategoricalOlsData,
+    prepared: &crate::prepared_categorical_data::PreparedOlsData,
 ) -> Result<usize> {
     let topology = prepared.fe_topology();
     if topology.effect_to_topology().is_empty() {

@@ -14,7 +14,6 @@ use crate::fe::{
 };
 use crate::memory::SolverWorkspacePeak;
 use crate::memory::{fallible_copy, fallible_filled, OwnedFeDesignMemoryEstimate};
-use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use rayon::prelude::*;
 
 use super::{PreparedOlsData, PreparedOlsModel};
@@ -609,7 +608,7 @@ impl PreparedOlsFitView for OrdinaryPrepared<'_> {
     }
 }
 
-impl PreparedOlsFitView for PreparedCategoricalOlsData {
+impl PreparedOlsFitView for PreparedOlsData {
     fn fit_build_rhs_with_loaded_rows(
         &self,
         response: &[f64],

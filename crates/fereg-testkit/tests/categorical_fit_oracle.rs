@@ -4,9 +4,8 @@ use fereg_core::{
     fit_prepared_model_coefficients, prepare_model, AbsorbTermId, AbsorbedTerm, CoefficientSlot,
     CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
     LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedCategoricalOlsData, PreparedOlsBreadCoordinateKind, PreparedOlsFitConfig,
-    PreparedOlsFitStatus, RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder,
-    TimeSeriesState,
+    PreparedOlsBreadCoordinateKind, PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -321,7 +320,7 @@ fn prepare_case(
     include_intercept: bool,
     weights: CaseWeights<'_>,
     reverse_absorb_sources: bool,
-) -> PreparedCategoricalOlsData {
+) -> PreparedOlsData {
     let nobs = case.outcome.len();
     assert!(case.regressors.iter().all(|values| values.len() == nobs));
     assert_eq!(case.firm.len(), nobs);

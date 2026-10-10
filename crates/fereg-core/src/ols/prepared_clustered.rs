@@ -29,8 +29,8 @@ use super::prepared_unadjusted::{
 };
 use super::{
     CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy, PreparedOlsBreadCoordinateKind,
-    PreparedOlsClusteredData, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsFitConfig,
-    PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
+    PreparedOlsColumnKind, PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatistics,
+    PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
 };
 
 const CLUSTER_REDUCTION_MAX_BLOCKS: usize = 64;
@@ -193,9 +193,6 @@ pub type CertifiedPreparedOlsClustered<A = CategoricalTopologyDofReport> =
         PreparedOlsClusteredCertificate,
         PreparedOlsClusteredMetadata,
     >;
-
-/// Canonical topology identities for categorical and ordinary consumers.
-pub type CertifiedPreparedCategoricalOlsClustered = CertifiedPreparedOlsClustered;
 
 impl super::prepared_products::PreparedOlsInferenceBuffers for PreparedOlsClusteredCovariance {
     fn inference_owned_bytes(&self) -> u128 {
@@ -396,7 +393,7 @@ pub fn fit_prepared_model_clustered_with_loaded_moments(
 
 #[cfg(test)]
 fn fit_with_reservation<R: PreparedInferenceReservation>(
-    prepared: &PreparedOlsClusteredData,
+    prepared: &PreparedOlsData,
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
 ) -> Result<CertifiedPreparedOlsClustered> {
@@ -404,7 +401,7 @@ fn fit_with_reservation<R: PreparedInferenceReservation>(
 }
 
 fn fit_with_loaded_reservation<R: PreparedInferenceReservation>(
-    prepared: &PreparedOlsClusteredData,
+    prepared: &PreparedOlsData,
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
     rows: Option<super::LoadedOlsRows>,
@@ -442,7 +439,7 @@ fn fit_clustered_view_with_reservation<
 
 #[cfg(test)]
 fn compose<R: PreparedInferenceReservation>(
-    prepared: &PreparedOlsClusteredData,
+    prepared: &PreparedOlsData,
     mut fit: CertifiedPreparedOlsFit,
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,

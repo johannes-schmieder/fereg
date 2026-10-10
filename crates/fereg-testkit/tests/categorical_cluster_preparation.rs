@@ -4,8 +4,8 @@ use fereg_core::{
     prepare_model, AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind,
     ComponentOrder, DropReason, ErrorCode, ExpandedTerm, LevelState, LoadedNumericColumn,
     LoadedOlsInput, MetadataFlag, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding,
-    OlsInputRole, OlsRequestV1, PreparedCategoricalOlsClusteredData, RawTermKind, SourceEntry,
-    SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    OlsInputRole, OlsRequestV1, PreparedOlsData, RawTermKind, SourceEntry, SourceId, TermComponent,
+    TermId, TermOrder, TimeSeriesState,
 };
 
 const X_SOURCE: usize = 0;
@@ -249,7 +249,7 @@ fn prepare_case(
     case: &ClusterCase,
     clusters: &[OlsClusterTermV1],
     missing: &[(usize, usize)],
-) -> fereg_core::Result<PreparedCategoricalOlsClusteredData> {
+) -> fereg_core::Result<PreparedOlsData> {
     let nobs = case.outcome.len();
     assert_eq!(case.x.len(), nobs);
     assert_eq!(case.firm.len(), nobs);

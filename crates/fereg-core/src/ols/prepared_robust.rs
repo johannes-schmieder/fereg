@@ -117,9 +117,6 @@ pub type CertifiedPreparedOlsRobust<A = CategoricalTopologyDofReport> =
         PreparedOlsRobustCertificate,
     >;
 
-/// Canonical topology identities for categorical and ordinary consumers.
-pub type CertifiedPreparedCategoricalOlsRobust = CertifiedPreparedOlsRobust;
-
 impl super::prepared_products::PreparedOlsInferenceBuffers for PreparedOlsRobustCovariance {
     fn inference_owned_bytes(&self) -> u128 {
         use crate::memory::vec_capacity_bytes as bytes;

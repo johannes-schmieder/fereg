@@ -78,7 +78,7 @@ pub(crate) mod validated_sample {
 /// One finalized model/sample/source owner. Grammar controls mathematical
 /// operations at cold boundaries; it never owns a parallel preparation bank.
 #[derive(Debug, PartialEq)]
-pub struct PreparedModel {
+pub struct PreparedOlsData {
     pub(crate) model: PreparedOlsModel,
     pub(crate) sample: validated_sample::ValidatedSample,
     pub(crate) categorical_sources: Vec<PreparedCategoricalModelSource>,
@@ -99,10 +99,7 @@ pub(crate) enum PreparationGrammar {
     Categorical,
 }
 
-/// Compatibility name; all finalized preparations have the same owner.
-pub type PreparedCategoricalOlsData = PreparedModel;
-
-impl PreparedModel {
+impl PreparedOlsData {
     #[allow(clippy::too_many_arguments)] // One owner publication boundary; all fields are required.
     pub(crate) fn finish(
         model: PreparedOlsModel,
@@ -827,7 +824,7 @@ pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
     request: &OlsRequestV1,
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
-) -> Result<PreparedCategoricalOlsData> {
+) -> Result<PreparedOlsData> {
     let _plan = plan_categorical_absorbed_request(request)?;
     let (model, sample) =
         prepare_categorical_numeric_sample_owned(request, loaded, cluster_sources)?;
@@ -845,7 +842,7 @@ pub(crate) fn prepare_ppml_categorical_ols_data(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
     cluster_sources: &[SourceId],
-) -> Result<PreparedCategoricalOlsData> {
+) -> Result<PreparedOlsData> {
     if !request.absorbed_terms.is_empty() {
         return prepare_categorical_ols_data_with_cluster_sources_policy(
             request,
@@ -863,7 +860,7 @@ pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
     cluster_sources: &[SourceId],
-) -> Result<PreparedCategoricalOlsData> {
+) -> Result<PreparedOlsData> {
     prepare_categorical_ols_data_with_cluster_sources_policy(
         request,
         loaded,
@@ -877,7 +874,7 @@ fn prepare_categorical_ols_data_with_cluster_sources_policy(
     loaded: &LoadedOlsInput,
     cluster_sources: &[SourceId],
     ppml_structural_constant: bool,
-) -> Result<PreparedCategoricalOlsData> {
+) -> Result<PreparedOlsData> {
     let _plan = plan_categorical_absorbed_request(request)?;
     let (model, sample) = prepare_categorical_numeric_sample(request, loaded, cluster_sources)?;
     finish_prepared_model(
@@ -900,7 +897,7 @@ pub(crate) fn finish_prepared_model(
     categorical: bool,
     ppml_constant: bool,
     reuse_membership: bool,
-) -> Result<PreparedModel> {
+) -> Result<PreparedOlsData> {
     let candidate_sources = factorize_preparation_sources(request, &sample)?;
     let recipes = crate::fe::bind_categorical_effect_recipes(request, &candidate_sources)?;
     let recipe_views: Vec<_> = recipes.iter().map(Vec::as_slice).collect();
@@ -991,7 +988,7 @@ pub(crate) fn finish_prepared_model(
         report_intercept,
         categorical,
     )?;
-    PreparedModel::finish(
+    PreparedOlsData::finish(
         rebased,
         sample,
         categorical_sources,

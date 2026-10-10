@@ -3,8 +3,8 @@ use fereg_core::{
     CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
     LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1, OlsClusteredRequestV1,
     OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsBreadCoordinateKind,
-    PreparedOlsClusteredConfig, PreparedOlsClusteredData, PreparedOlsClusteredPsdState,
-    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    PreparedOlsClusteredConfig, PreparedOlsClusteredPsdState, PreparedOlsData, RawTermKind,
+    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -1065,7 +1065,7 @@ fn prepare_case(
     clusters: &[Vec<Vec<u32>>],
     include_intercept: bool,
     weights: CaseWeights<'_>,
-) -> PreparedOlsClusteredData {
+) -> PreparedOlsData {
     let (request, loaded) = case_inputs(
         outcome,
         regressors,

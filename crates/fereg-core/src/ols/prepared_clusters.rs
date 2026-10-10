@@ -150,9 +150,6 @@ impl PreparedOlsClusterDesign {
     }
 }
 
-/// Compatibility alias: clustering adds metadata to the canonical owner.
-pub type PreparedOlsClusteredData = PreparedOlsData;
-
 impl PreparedOlsData {
     #[must_use]
     pub const fn ols(&self) -> &Self {
@@ -240,7 +237,7 @@ impl ClusterReservation for SystemClusterReservation {
 pub(super) fn finish_prepare_ols_clusters(
     request: &OlsClusteredRequestV1,
     mut ols: PreparedOlsData,
-) -> Result<PreparedOlsClusteredData> {
+) -> Result<PreparedOlsData> {
     let mut reservation = SystemClusterReservation;
     let clusters = build_cluster_design(&request.borrowed(), &ols, &mut reservation)?;
     ols.clusters = Some(clusters);
@@ -493,7 +490,7 @@ fn compare_rows(
     Ordering::Equal
 }
 
-fn certify_prepared_clusters(prepared: &PreparedOlsClusteredData) -> Result<()> {
+fn certify_prepared_clusters(prepared: &PreparedOlsData) -> Result<()> {
     if prepared.uses_categorical_preparation() {
         return certify_categorical_clusters(prepared);
     }

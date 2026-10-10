@@ -449,7 +449,7 @@ fn prepare_case(
     time: &[f64],
     worker: &[u32],
     firm_intercept: bool,
-) -> fereg_core::PreparedCategoricalOlsData {
+) -> fereg_core::PreparedOlsData {
     let sources = ["x1", "firm", "time", "worker"]
         .into_iter()
         .enumerate()
@@ -558,7 +558,7 @@ fn prepare_multiple_slope_only_case(
     time: &[f64],
     worker: &[u32],
     x2: &[f64],
-) -> fereg_core::PreparedCategoricalOlsData {
+) -> fereg_core::PreparedOlsData {
     let sources = ["x1", "firm", "time", "worker", "x2"]
         .into_iter()
         .enumerate()
