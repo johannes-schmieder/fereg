@@ -7,11 +7,11 @@ use super::{PpmlClusterDimensionResult, PpmlCoefficientStatus, PpmlFixedEffectRe
 use crate::error::{ErrorCode, FeregError, Result};
 
 use crate::metadata::{RawTermKind, SourceId};
+use crate::ols::topology_dof::{CategoricalTopologyDofEffectSpec, CategoricalTopologyDofSlopeSpec};
 use crate::ols::{
     OlsClusterTermV1, OlsRequestV1, PreparedOlsCategoricalComponent, PreparedOlsClusterDimension,
     PreparedOlsFittedCoefficient,
 };
-use crate::topology_dof::{CategoricalTopologyDofEffectSpec, CategoricalTopologyDofSlopeSpec};
 
 /// Frozen generation-zero metadata capacities, independent of observation N.
 /// Rebased generations retain the original reporting-axis reservations.
@@ -159,7 +159,7 @@ fn generation_storage(
 ) -> Result<(u128, u128)> {
     use crate::fe::{CategoricalTopologySource, CompactedCategoricalSource};
     use crate::metadata::ComponentKind;
-    use crate::prepared_categorical_data::PreparedCategoricalModelSource;
+    use crate::ols::prepared_categorical_data::PreparedCategoricalModelSource;
     let mut categories = 0;
     let mut compacted = 0;
     let mut ordinary = 0;

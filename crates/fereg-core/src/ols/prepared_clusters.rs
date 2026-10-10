@@ -579,7 +579,7 @@ pub fn prepare_model_owned(
 ) -> Result<PreparedOlsData> {
     prepare_model_with(request, clusters, |sources| {
         if categorical {
-            crate::prepared_categorical_data::prepare_categorical_ols_data_owned_with_cluster_sources(
+            crate::ols::prepared_categorical_data::prepare_categorical_ols_data_owned_with_cluster_sources(
                 request, loaded, sources,
             )
         } else {
@@ -599,7 +599,7 @@ pub fn prepare_model(
 ) -> Result<PreparedOlsData> {
     prepare_model_with(request, clusters, |sources| {
         if categorical {
-            crate::prepared_categorical_data::prepare_categorical_ols_data_with_cluster_sources(
+            crate::ols::prepared_categorical_data::prepare_categorical_ols_data_with_cluster_sources(
                 request, loaded, sources,
             )
         } else {

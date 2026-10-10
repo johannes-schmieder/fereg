@@ -263,7 +263,7 @@ decisions. Revalidate that basis against the accepted final Hessian; a final
 rank loss or inconsistent rank decision is fatal. Starts, warm states and
 ordinary iteration-specific factorizations have no canonical-rank authority.
 
-Tests: `src/ols/rank.rs`, `src/ols/finite_wls_kernel.rs`,
+Tests: `src/ols/finite_wls_kernel.rs`,
 `tests/intercept_slope_oracle.rs`, `tests/prepared_fit_oracle.rs`,
 `parity_ppmlhdfe/feppml_scientific_contract.do`.
 
@@ -294,7 +294,7 @@ minus absorbed rank; clustered reported DoF additionally caps at G_min−1.
 Positive reported DoF and at least two groups per declared cluster dimension
 are required. PPML does not borrow OLS finite-sample corrections or t/F laws.
 
-Tests: `src/ols/{dof,topology_dof,prepared_dof}.rs`,
+Tests: `src/ols/{topology_dof,prepared_dof}.rs`,
 `tests/categorical_clustered_oracle.rs`, positive-DoF slope Stata fixtures,
 `parity_ppmlhdfe/feppml_weights_inference.do`.
 

@@ -21,17 +21,17 @@ use crate::data::{
     DropReason, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightKind,
 };
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
+use crate::ols::prepared_categorical_data::{prepare_ppml_categorical_ols_data, PreparedOlsData};
 use crate::ols::{
     prepare_ppml_categorical_ols_clustered_data, LoadedNumericColumn, LoadedOlsInput,
     OlsClusterTermV1, OlsClusteredRequestV1, OlsRequestV1, PreparedOlsClusterDesign,
     PreparedOlsModel, PreparedOlsSingletons,
 };
 use crate::ppml_separation::{PreparedSeparationRebuilder, SeparationDropReason};
-use crate::prepared_categorical_data::{prepare_ppml_categorical_ols_data, PreparedOlsData};
 
 const MAX_PPML_CLUSTER_DIMENSIONS: usize = 5;
 
-pub(crate) use crate::prepared_fit_view::SharedPreparedOlsData as PreparedPpmlModel;
+pub(crate) use crate::ols::prepared_fit_view::SharedPreparedOlsData as PreparedPpmlModel;
 
 /// Final compact generation consumed by separation detectors, IRLS, and
 /// inference.  Every observation-scale vector is aligned to

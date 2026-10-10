@@ -15,6 +15,7 @@ use std::time::{Duration, Instant};
 use crate::data::{DenseMatrix, DropReason, WeightKind};
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::{BorrowedMapWeights, FeSolverKind, LevelIndex};
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::ols::{
     fit_prepared_weighted_linear_projection_once, LinearSolveFrame, PreparedOlsBreadWeightScale,
     PreparedOlsFitConfig,
@@ -29,7 +30,6 @@ use crate::ppml_separation::{
     SeparationConfig, SeparationDropReason, SeparationMethod, SeparationMethodReport,
     SeparationNote, SeparationReport,
 };
-use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::memory::{begin_phase_allocation, end_phase_allocation};
 use super::prepared_estimator::PpmlInterruptPoint;
@@ -1305,7 +1305,7 @@ fn numerical_drop_reason(method: SeparationMethod) -> Result<SeparationDropReaso
 struct DetectorTopology<'a> {
     sources: Vec<&'a LevelIndex>,
     effect_to_source: &'a [usize],
-    effect_specs: &'a [crate::topology_dof::CategoricalTopologyDofEffectSpec],
+    effect_specs: &'a [crate::ols::topology_dof::CategoricalTopologyDofEffectSpec],
 }
 
 impl<'a> DetectorTopology<'a> {
@@ -2580,7 +2580,7 @@ fn ir_regressor_moment_ratio(
     for &column in kept_columns {
         let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
         let (mut scale, mut squares) = (0.0_f64, 1.0_f64);
-        crate::prepared_fit_view::visit_prepared_column_range(
+        crate::ols::prepared_fit_view::visit_prepared_column_range(
             fit_view,
             column,
             0..residual.len(),

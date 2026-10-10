@@ -821,7 +821,7 @@ fn direct_prepared_cg_checks_joint_budget_with_retained_coefficients() {
 
 #[test]
 fn ppml_slope_availability_preserves_classification_and_final_design() {
-    use crate::prepared_categorical_data::{
+    use crate::ols::prepared_categorical_data::{
         prepare_categorical_ols_data_with_cluster_sources, prepare_ppml_categorical_ols_data,
     };
     for swapped in [false, true] {
@@ -1016,7 +1016,7 @@ fn ppml_slope_availability_preserves_classification_and_final_design() {
 
 #[test]
 fn compact_slope_availability_preserves_legacy_samples_models_and_topology() {
-    use crate::prepared_categorical_data::{
+    use crate::ols::prepared_categorical_data::{
         prepare_categorical_ols_data_owned_with_cluster_sources,
         prepare_categorical_ols_data_with_cluster_sources,
     };
@@ -6164,18 +6164,19 @@ fn empty_categorical_topology_preserves_finite_intercept_across_session_routes()
         frequency_weight: None,
         probability_weight: None,
     };
-    let prepared = crate::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+    let prepared = crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data(
         &request,
         &loaded_with(&y, &weights),
         &[],
     )
     .expect("empty categorical topology");
-    let refreshed_prepared = crate::prepared_categorical_data::prepare_ppml_categorical_ols_data(
-        &request,
-        &loaded_with(&refreshed_y, &refreshed_weights),
-        &[],
-    )
-    .expect("refreshed empty categorical topology");
+    let refreshed_prepared =
+        crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+            &request,
+            &loaded_with(&refreshed_y, &refreshed_weights),
+            &[],
+        )
+        .expect("refreshed empty categorical topology");
     assert!(!prepared.has_absorbed_intercept());
     assert!(prepared.effect_specs().is_empty());
 
@@ -6345,7 +6346,7 @@ fn ppml_slope_only_topology_preserves_structural_constant() {
         probability_weight: None,
     };
 
-    let prepared = crate::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+    let prepared = crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data(
         &request,
         &loaded_input,
         &[],

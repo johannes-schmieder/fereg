@@ -11,8 +11,8 @@ use crate::fe::{
     BorrowedInterceptEffect, BorrowedMapWeights, FeCertificate, FeSolverKind, SolveReport,
     SolveStopReason,
 };
-use crate::prepared_categorical_data::PreparedOlsData;
-use crate::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
+use crate::ols::prepared_categorical_data::PreparedOlsData;
+use crate::ols::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum BoundColumn<'a> {

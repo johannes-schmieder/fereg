@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, invalid_data, Result};
-use crate::prepared_fit_view::PreparedOlsFitView;
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
 use std::time::Instant;
@@ -635,7 +635,7 @@ fn fill_raw_score_block<P: PreparedOlsFitView + ?Sized>(
     for start in (0..nrows).step_by(TILE_ROWS) {
         let end = (start + TILE_ROWS).min(nrows);
         for (column, generated) in generated_columns.iter().copied().enumerate() {
-            crate::prepared_fit_view::visit_prepared_column_range(
+            crate::ols::prepared_fit_view::visit_prepared_column_range(
                 prepared,
                 generated,
                 start..end,

@@ -1,8 +1,8 @@
 //! Fixed-fit empirical coefficient mean correction. No PPML refits or VCE use.
 use super::PpmlInterruptPoint;
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::ols::CertifiedLinearSession;
-use crate::prepared_fit_view::PreparedOlsFitView;
 #[path = "bias_support.rs"]
 mod support;
 pub use support::PpmlBiasSupport;

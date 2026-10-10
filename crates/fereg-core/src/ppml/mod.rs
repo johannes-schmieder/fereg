@@ -237,6 +237,11 @@ pub(crate) fn scheduled_inner_tolerance(
         .min(previous_target)
 }
 
+mod wald;
+pub use wald::PpmlWaldReference;
+
+mod constant_wald;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -403,8 +408,3 @@ mod tests {
         assert_eq!(tolerance, strict_inner_tolerance(config));
     }
 }
-
-mod wald;
-pub use wald::PpmlWaldReference;
-
-mod constant_wald;

@@ -220,7 +220,7 @@ fn fill_rhs_single_thread(
                 }
             }
             PreparedOlsColumnKind::CategoricalInteraction { .. } => {
-                crate::prepared_fit_view::visit_prepared_column_range(
+                crate::ols::prepared_fit_view::visit_prepared_column_range(
                     prepared,
                     generated,
                     0..prepared.sample.n_active(),
@@ -1360,9 +1360,9 @@ mod tests {
 
     #[test]
     fn generated_predictor_tiles_preserve_raw_level_oracle_and_fma_order() {
+        use crate::ols::prepared_fit_view::PreparedOlsFitView;
         use crate::options::ThreadConfig;
         use crate::parallel::ThreadTeam;
-        use crate::prepared_fit_view::PreparedOlsFitView;
         for n in [4095, 4096, 4099] {
             let x = source(1, "x");
             let g = source(2, "g");
@@ -1464,7 +1464,7 @@ mod tests {
                 for column in 0..width {
                     for range in [0..n, 127..260, n - 1..n, n..n] {
                         let mut actual = Vec::new();
-                        crate::prepared_fit_view::visit_prepared_column_range(
+                        crate::ols::prepared_fit_view::visit_prepared_column_range(
                             prepared,
                             column,
                             range.clone(),
@@ -1480,14 +1480,14 @@ mod tests {
                         assert_eq!(actual, wanted);
                     }
                 }
-                assert!(crate::prepared_fit_view::visit_prepared_column_range(
+                assert!(crate::ols::prepared_fit_view::visit_prepared_column_range(
                     prepared,
                     width,
                     0..1,
                     |_, _| Ok(())
                 )
                 .is_err());
-                assert!(crate::prepared_fit_view::visit_prepared_column_range(
+                assert!(crate::ols::prepared_fit_view::visit_prepared_column_range(
                     prepared,
                     0,
                     0..n + 1,
@@ -1495,7 +1495,7 @@ mod tests {
                 )
                 .is_err());
                 let mut visits = 0;
-                let error = crate::prepared_fit_view::visit_prepared_column_range(
+                let error = crate::ols::prepared_fit_view::visit_prepared_column_range(
                     prepared,
                     0,
                     0..n,
@@ -1543,7 +1543,7 @@ mod tests {
                     let mut actual = vec![-0.0_f64; n];
                     let used = team
                         .install(|| {
-                            crate::prepared_fit_view::add_generated_predictor(
+                            crate::ols::prepared_fit_view::add_generated_predictor(
                                 prepared,
                                 &coefficients,
                                 &mut actual,
@@ -1573,7 +1573,7 @@ mod tests {
                         invalid[0].generated_column_index = column;
                         invalid[0].value = value;
                         let mut untouched = vec![7.0; n];
-                        assert!(crate::prepared_fit_view::add_generated_predictor(
+                        assert!(crate::ols::prepared_fit_view::add_generated_predictor(
                             prepared,
                             &invalid,
                             &mut untouched
@@ -1582,7 +1582,7 @@ mod tests {
                         assert_eq!(untouched, vec![7.0; n]);
                     }
                     let mut short = vec![7.0; n - 1];
-                    assert!(crate::prepared_fit_view::add_generated_predictor(
+                    assert!(crate::ols::prepared_fit_view::add_generated_predictor(
                         prepared,
                         &coefficients,
                         &mut short
@@ -1596,7 +1596,7 @@ mod tests {
                         value: Some(f64::MAX),
                     }];
                     assert_eq!(
-                        crate::prepared_fit_view::add_generated_predictor(
+                        crate::ols::prepared_fit_view::add_generated_predictor(
                             prepared,
                             &overflow,
                             &mut nonfinite
@@ -1612,7 +1612,7 @@ mod tests {
                         value: None,
                     }];
                     let mut unchanged = vec![-0.0_f64; n];
-                    assert!(crate::prepared_fit_view::add_generated_predictor(
+                    assert!(crate::ols::prepared_fit_view::add_generated_predictor(
                         prepared,
                         &omitted,
                         &mut unchanged

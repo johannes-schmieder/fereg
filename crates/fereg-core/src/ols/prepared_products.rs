@@ -17,7 +17,7 @@ impl PreparedOlsInferenceBuffers for () {
     }
 }
 
-impl PreparedOlsInferenceBuffers for crate::topology_dof::CategoricalTopologyDofReport {
+impl PreparedOlsInferenceBuffers for crate::ols::topology_dof::CategoricalTopologyDofReport {
     fn inference_owned_bytes(&self) -> u128 {
         self.owned_buffer_bytes()
     }

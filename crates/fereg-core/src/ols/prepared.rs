@@ -179,11 +179,11 @@ pub struct PreparedOlsSingletons {
     pub cascade_events: usize,
 }
 
-pub use crate::prepared_categorical_data::PreparedOlsData;
+pub use crate::ols::prepared_categorical_data::PreparedOlsData;
 
 impl PreparedOlsData {
     #[must_use]
-    pub fn fe_effects(&self) -> &[crate::topology_dof::CategoricalTopologyDofEffectSpec] {
+    pub fn fe_effects(&self) -> &[crate::ols::topology_dof::CategoricalTopologyDofEffectSpec] {
         &self.effect_specs
     }
 
@@ -456,7 +456,7 @@ pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
     cluster_sources: &[SourceId],
 ) -> Result<PreparedOlsData> {
     let (model, sample) = prepare_ols_numeric_sample_owned(request, loaded, cluster_sources)?;
-    crate::prepared_categorical_data::finish_prepared_model(
+    crate::ols::prepared_categorical_data::finish_prepared_model(
         request,
         cluster_sources,
         model,
@@ -594,7 +594,7 @@ fn finish_prepare_ols_data(
     model: PreparedOlsModel,
     sample: PreparedNumericSample,
 ) -> Result<PreparedOlsData> {
-    crate::prepared_categorical_data::finish_prepared_model(
+    crate::ols::prepared_categorical_data::finish_prepared_model(
         request,
         cluster_sources,
         model,
@@ -613,7 +613,7 @@ fn finish_prepare_ols_data_with_membership(
     sample: PreparedNumericSample,
     reuse_membership: bool,
 ) -> Result<PreparedOlsData> {
-    crate::prepared_categorical_data::finish_prepared_model(
+    crate::ols::prepared_categorical_data::finish_prepared_model(
         request,
         cluster_sources,
         model,
@@ -3221,7 +3221,7 @@ mod tests {
             );
             let available_sample = sample;
             assert!(!model.columns.is_empty());
-            let prepared = crate::prepared_categorical_data::prepare_categorical_ols_data_with_cluster_sources(
+            let prepared = crate::ols::prepared_categorical_data::prepare_categorical_ols_data_with_cluster_sources(
                 &request, &input, &clusters).unwrap();
             assert_eq!(prepared.sample(), &available_sample);
             let interaction = prepared
@@ -3279,7 +3279,7 @@ mod tests {
             let expected = prepare_model(&request, &[], &loaded, false).unwrap();
             for reusable in [false, true] {
                 let (model, sample) = prepare_ols_numeric_sample(&request, &loaded, &[]).unwrap();
-                let available = crate::prepared_categorical_data::finish_prepared_model(
+                let available = crate::ols::prepared_categorical_data::finish_prepared_model(
                     &request,
                     &[],
                     model,
@@ -3899,14 +3899,14 @@ mod tests {
             let prepared = prepare_model(&request, &[], &two_way_singleton_input(), false).unwrap();
             let sources = factorize_preparation_sources(&request, prepared.sample()).unwrap();
             let required: Vec<_> = sources.iter().map(|source| source.source).collect();
-            crate::prepared_categorical_data::retain_model_sources_with_reservation(
+            crate::ols::prepared_categorical_data::retain_model_sources_with_reservation(
                 sources,
                 &required,
                 prepared.fe_topology(),
                 true,
                 reservation,
             )?;
-            crate::prepared_categorical_data::effect_specs_with_reservation(
+            crate::ols::prepared_categorical_data::effect_specs_with_reservation(
                 &request.absorbed_terms,
                 &request.model,
                 false,

@@ -4,12 +4,12 @@ use crate::error::{
     allocation, invalid_argument, invalid_data, unsupported, ErrorCode, FeregError, Result,
 };
 use crate::linalg::neumaier_add;
+use crate::ols::topology_dof::CategoricalTopologyDofReport;
 pub(super) use crate::sandwich::compensated_add_scaled_row;
 use crate::sandwich::{
     SandwichReservation as InferenceReservation,
     SystemSandwichReservation as SystemInferenceReservation,
 };
-use crate::topology_dof::CategoricalTopologyDofReport;
 use std::time::Instant;
 
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};

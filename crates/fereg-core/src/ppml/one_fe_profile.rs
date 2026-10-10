@@ -7,10 +7,10 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
 use crate::linalg::solve_linear_system;
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::ols::NumericOlsColumns;
 use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
-use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 
 const GROUPS_PER_BLOCK: usize = 64;

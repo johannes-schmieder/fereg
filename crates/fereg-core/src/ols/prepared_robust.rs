@@ -3,13 +3,13 @@ use super::prepared_inference_view::compute_canonical_prepared_ols_absorbed_dof;
 use super::prepared_wald::{calculate_wald, WaldCalculation, WaldPolicy};
 use crate::data::WeightKind;
 use crate::error::{allocation, invalid_argument, invalid_data, unsupported, Result};
+use crate::ols::topology_dof::CategoricalTopologyDofReport;
 use crate::parallel::ThreadTeam;
 use crate::sandwich::{
     bread_meat_bread, reduce_dense_score_meats, reduce_serial_influence_covariance,
     standard_errors, FixedBlockReductionPolicy, SandwichCorrectionPolicy, SandwichProductMode,
     SandwichScoreMultiplier, SandwichScorePair,
 };
-use crate::topology_dof::CategoricalTopologyDofReport;
 use rayon::prelude::*;
 use std::time::Instant;
 

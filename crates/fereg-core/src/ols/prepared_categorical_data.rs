@@ -20,8 +20,10 @@ use crate::fe::{
 use crate::memory::push_reserved;
 use crate::memory::{estimate_intercept_recovery_memory, FeSolverMemoryBudget};
 use crate::metadata::SourceId;
-use crate::prepared_categorical_rebase::{rebase_prepared_model, PreparedCategoricalOlsReportPlan};
-use crate::topology_dof::{
+use crate::ols::prepared_categorical_rebase::{
+    rebase_prepared_model, PreparedCategoricalOlsReportPlan,
+};
+use crate::ols::topology_dof::{
     compute_categorical_topology_absorbed_dof_with_slopes, CategoricalTopologyDofEffectSpec,
     CategoricalTopologyDofPolicy, CategoricalTopologyDofReport, CategoricalTopologyDofSlopeSpec,
 };

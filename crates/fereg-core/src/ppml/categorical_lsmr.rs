@@ -19,9 +19,9 @@ use crate::memory::{
     categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
     CategoricalSchwarzMemoryEstimate,
 };
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
-use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::PpmlIterationWorkspace;
 

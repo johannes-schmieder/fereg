@@ -12,7 +12,7 @@ use crate::fe::{
     SolveReport, SolveStopReason,
 };
 use crate::memory::SolverWorkspacePeak;
-use crate::prepared_fit_view::PreparedOlsFitView;
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 use std::mem::size_of;
 use std::sync::atomic::{AtomicUsize, Ordering};

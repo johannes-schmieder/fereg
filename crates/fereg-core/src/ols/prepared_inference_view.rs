@@ -6,9 +6,9 @@
 //! source-bound absorbed-DoF report.
 
 use crate::error::{allocation, invalid_argument as invalid, ErrorCode, FeregError, Result};
-use crate::prepared_categorical_data::PreparedOlsData;
-use crate::prepared_fit_view::PreparedOlsFitView;
-use crate::topology_dof::{
+use crate::ols::prepared_categorical_data::PreparedOlsData;
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
+use crate::ols::topology_dof::{
     CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy,
     CategoricalTopologyDofReport,
 };
@@ -314,7 +314,7 @@ fn validate_categorical_report(
 
 fn categorical_nesting_row_is_valid(
     nesting_state: NestingState,
-    row: &crate::topology_dof::CategoricalTopologyDofEffect,
+    row: &crate::ols::topology_dof::CategoricalTopologyDofEffect,
 ) -> bool {
     match (nesting_state, row.nested) {
         (NestingState::Iid, false) | (NestingState::ClusterAware, false) => true,

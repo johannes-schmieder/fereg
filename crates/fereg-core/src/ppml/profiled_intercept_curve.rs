@@ -4,9 +4,9 @@ use super::family::{CompensatedSum, PreparedPoissonInputs};
 use super::{PoissonObjective, PpmlConfig, PpmlIterationWorkspace, PpmlLineSearchAcceptance};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
-use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 
 #[derive(Clone, Copy)]

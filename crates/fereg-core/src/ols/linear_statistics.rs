@@ -171,7 +171,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'_, P> {
                     &mut retained.reference_norms,
                     &mut retained.reference_means,
                     |column, state| {
-                        crate::prepared_fit_view::visit_prepared_column_range(
+                        crate::ols::prepared_fit_view::visit_prepared_column_range(
                             self.prepared,
                             columns[column],
                             0..rows,

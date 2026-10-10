@@ -503,7 +503,7 @@ impl LinearInstallation {
         initial_config: PreparedOlsFitConfig,
         generations: LinearSessionGenerations,
         fe_design: FeDesign,
-        shared_prepared: &mut Option<crate::prepared_fit_view::SharedPreparedOlsData>,
+        shared_prepared: &mut Option<crate::ols::prepared_fit_view::SharedPreparedOlsData>,
         config: &PreparedPpmlIrlsConfig,
         purpose: PreparedPpmlIrlsPurpose,
         effective_threads: usize,

@@ -10,9 +10,9 @@ use crate::fe::{
 use crate::linalg::neumaier_add;
 use crate::memory::push_reserved;
 use crate::metadata::CoefficientSlot;
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::options::ThreadConfig;
 use crate::parallel::ThreadTeam;
-use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 use std::time::Instant;
 
@@ -1408,7 +1408,7 @@ fn retained_finite_predictor<P: PreparedOlsFitView + Sync + ?Sized>(
             }
         }
         numeric.add_selected_columns(&selected[..count], &mut finite_predictor)?;
-    } else if !crate::prepared_fit_view::add_generated_predictor(
+    } else if !crate::ols::prepared_fit_view::add_generated_predictor(
         prepared,
         coefficients,
         &mut finite_predictor,

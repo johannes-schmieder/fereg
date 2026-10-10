@@ -13,7 +13,7 @@ use crate::metadata::{
     CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState, MetadataFlag, RawTermKind,
     SourceId, TimeSeriesState,
 };
-use crate::prepared_categorical_data::PreparedCategoricalModelSource;
+use crate::ols::prepared_categorical_data::PreparedCategoricalModelSource;
 
 use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsModel};
 
@@ -662,7 +662,7 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = crate::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+        let prepared = crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data(
             &request,
             &loaded,
             &[],

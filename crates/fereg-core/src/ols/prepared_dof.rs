@@ -5,13 +5,13 @@ use crate::metadata::AbsorbTermId;
 use super::PreparedOlsData;
 
 /// Ordinary and categorical consumers retain the same canonical report.
-pub type PreparedOlsAbsorbedDofPolicy = crate::topology_dof::CategoricalTopologyDofPolicy;
+pub type PreparedOlsAbsorbedDofPolicy = crate::ols::topology_dof::CategoricalTopologyDofPolicy;
 pub type PreparedOlsAbsorbedDofEffectIdentity =
-    crate::topology_dof::CategoricalTopologyDofEffectIdentity;
-pub type PreparedOlsAbsorbedDofEffect = crate::topology_dof::CategoricalTopologyDofEffect;
-pub type PreparedOlsAbsorbedDofReport = crate::topology_dof::CategoricalTopologyDofReport;
+    crate::ols::topology_dof::CategoricalTopologyDofEffectIdentity;
+pub type PreparedOlsAbsorbedDofEffect = crate::ols::topology_dof::CategoricalTopologyDofEffect;
+pub type PreparedOlsAbsorbedDofReport = crate::ols::topology_dof::CategoricalTopologyDofReport;
 
-use crate::topology_dof::{
+use crate::ols::topology_dof::{
     SystemTopologyDofReservation as SystemPreparedDofReservation,
     TopologyDofReservation as PreparedDofReservation,
 };
@@ -66,7 +66,7 @@ fn compute_with_nesting_reservation_validated<R: PreparedDofReservation>(
             "prepared absorbed-DoF cluster nesting view is not sample-aligned",
         ));
     }
-    crate::topology_dof::compute_with_reservation(
+    crate::ols::topology_dof::compute_with_reservation(
         prepared.fe_topology(),
         prepared.effect_specs(),
         prepared.structural_intercept,

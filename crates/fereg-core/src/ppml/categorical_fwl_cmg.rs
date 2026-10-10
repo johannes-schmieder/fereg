@@ -25,9 +25,9 @@ use crate::fe::{
     CMG_MAX_NUISANCE_COLUMNS,
 };
 use crate::memory::{fallible_empty, fallible_filled, FeSolverMemoryBudget, SolverWorkspacePeak};
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
-use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::categorical_lsmr::JointLsmrCertificate;
 use super::PpmlIterationWorkspace;

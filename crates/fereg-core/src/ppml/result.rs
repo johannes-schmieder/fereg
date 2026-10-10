@@ -25,12 +25,14 @@ use crate::fe::{
     connected_components_all, BorrowedMapWeights, FeCoefficientBatch, LsmrConfig, MapConfig,
 };
 use crate::memory::{fallible_copy, fallible_filled};
+use crate::ols::topology_dof::{
+    CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy,
+};
 use crate::ppml_separation::{
     separation_method_count, separation_workspace_requirements, MethodStatus,
     SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,
     SeparationMethodReport, SeparationMethods, SeparationNote, SeparationReport,
 };
-use crate::topology_dof::{CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy};
 use std::sync::Arc;
 
 fn ppml_fe_recovery_mask_length(length: usize, inject_allocation_failure: bool) -> usize {
@@ -915,7 +917,7 @@ fn complete_saved_decomposition_error(total: &[f64], channels: &[Option<Vec<f64>
 }
 
 fn categorical_connected_components(
-    prepared: &crate::prepared_categorical_data::PreparedOlsData,
+    prepared: &crate::ols::prepared_categorical_data::PreparedOlsData,
 ) -> Result<usize> {
     let topology = prepared.fe_topology();
     if topology.effect_to_topology().is_empty() {

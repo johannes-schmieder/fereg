@@ -18,8 +18,8 @@ use crate::fe::{
 use crate::linalg::neumaier_add;
 use crate::memory::{fallible_copy, fallible_empty, fallible_filled};
 use crate::metadata::CoefficientSlot;
+use crate::ols::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
 use crate::parallel::ThreadTeam;
-use crate::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
 use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
 #[cfg(test)]
@@ -703,7 +703,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> crate::fe::slope_coefficients::joint
             .generated
             .get(column)
             .ok_or_else(|| invalid_argument("joint original column is out of range"))?;
-        crate::prepared_fit_view::visit_prepared_column_range(
+        crate::ols::prepared_fit_view::visit_prepared_column_range(
             self.prepared,
             generated,
             range,
@@ -5304,7 +5304,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                                 let start_row = tile * 128;
                                 let end_row = start_row + values.len() / block;
                                 for local in 0..block {
-                                    crate::prepared_fit_view::visit_prepared_column_range(
+                                    crate::ols::prepared_fit_view::visit_prepared_column_range(
                                         self.prepared,
                                         stored_generated_columns[start + local],
                                         start_row..end_row,

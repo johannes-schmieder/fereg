@@ -148,7 +148,7 @@ fn prepared_no_fe_categorical(outcome: &[f64], regressors: &[Vec<f64>]) -> crate
         numeric_sources.push((entry.id, loaded(values)));
         sources.push(entry);
     }
-    crate::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+    crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data(
         &OlsRequestV1 {
             model: CompiledTermGraph { sources, terms },
             absorbed_terms: Vec::new(),

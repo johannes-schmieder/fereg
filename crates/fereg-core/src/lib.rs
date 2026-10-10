@@ -17,17 +17,9 @@ pub mod options;
 pub mod parallel;
 pub mod ppml;
 pub mod ppml_separation;
-#[path = "ols/prepared_categorical_data.rs"]
-mod prepared_categorical_data;
-#[path = "ols/prepared_categorical_rebase.rs"]
-mod prepared_categorical_rebase;
-#[path = "ols/prepared_fit_view.rs"]
-pub(crate) mod prepared_fit_view;
 pub mod protocol;
 mod sandwich;
 pub mod selftest;
-#[path = "ols/topology_dof.rs"]
-pub mod topology_dof;
 
 pub use data::{
     prepare_numeric_sample, prepare_numeric_sample_with_source_uses, AdjustmentInput, DenseMatrix,
@@ -52,6 +44,11 @@ pub use metadata::{
     ModelWireV2, NumericWireTable, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
     TermOrder, TimeSeriesState, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
     COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
+};
+pub use ols::prepared_categorical_rebase::PreparedCategoricalOlsReportPlan;
+pub use ols::topology_dof::{
+    CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy,
+    CategoricalTopologyDofReport,
 };
 pub use ols::{
     absorb_prepared_ols_rhs_map, build_prepared_ols_rhs,
@@ -83,7 +80,6 @@ pub use ppml_separation::{
     MethodStatus, SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,
     SeparationMethodReport, SeparationMethods, SeparationReport,
 };
-pub use prepared_categorical_rebase::PreparedCategoricalOlsReportPlan;
 pub use protocol::{
     Handshake, PpmlAdjustmentV1, PpmlResultReceiptV1, PpmlResultVceV1, ACTION_PROTOCOL_VERSION,
     ADO_VERSION, MODEL_WIRE_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
@@ -92,7 +88,3 @@ pub use protocol::{
     PPML_RESULT_WIRE_VERSION,
 };
 pub use selftest::run_native_selftest;
-pub use topology_dof::{
-    CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy,
-    CategoricalTopologyDofReport,
-};

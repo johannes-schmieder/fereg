@@ -3,8 +3,9 @@ use super::prepared_wald::{calculate_wald, WaldCalculation, WaldPolicy};
 use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::linalg::jacobi;
 use crate::memory::push_reserved;
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
+use crate::ols::topology_dof::CategoricalTopologyDofReport;
 use crate::parallel::ThreadTeam;
-use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::sandwich::{
     bread_meat_bread, prepare_cluster_score_batch, reduce_qualified_cluster_subset,
     reduce_qualified_clustered_score_meats, QualifiedClusterCertificateRoute,
@@ -12,7 +13,6 @@ use crate::sandwich::{
     QualifiedClusterSubsetMeats, SandwichCorrectionPolicy, SandwichProductMode,
     SandwichScoreMultiplier, SandwichScorePair,
 };
-use crate::topology_dof::CategoricalTopologyDofReport;
 
 use super::prepared_clustered_view::PreparedOlsClusteredView;
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};

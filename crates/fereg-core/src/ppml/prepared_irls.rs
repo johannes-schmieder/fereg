@@ -17,6 +17,7 @@ use crate::fe::{
     FeSolverKind, PreparedCmgTopology, SolveReport, CMG_MAX_NUISANCE_COLUMNS,
 };
 use crate::memory::{fallible_copy, fallible_filled, FeSolverMemoryBudget};
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::ols::{
     classify_frozen_linear_fallback, CertifiedLinearSession, CertifiedLinearSessionOutput,
     CertifiedLinearSessionProducts, FrozenLinearFallbackKind, LinearSessionGenerations,
@@ -25,7 +26,6 @@ use crate::ols::{
     PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus,
     PreparedOlsFittedCoefficient,
 };
-use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::categorical_fwl_cmg::{
     estimate_fused_cmg_workspace_bytes, fused_cmg_batch_size, FusedFwlCmgConfig,
@@ -617,7 +617,7 @@ pub(crate) fn fit_prepared_ppml_irls_interruptible<P: PreparedOlsFitView + Sync 
 /// The model epoch is independent of changing response/weight/basis stamps.
 struct PreparedPpmlFitFrame<'a, P: ?Sized> {
     prepared: &'a P,
-    shared_prepared: Option<crate::prepared_fit_view::SharedPreparedOlsData>,
+    shared_prepared: Option<crate::ols::prepared_fit_view::SharedPreparedOlsData>,
     outcome: &'a [f64],
     prior_weights: &'a [f64],
     offset: &'a [f64],
@@ -3698,7 +3698,7 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
                     .try_for_each(|(local, target)| -> Result<()> {
                         let mut moment = CompensatedSum::default();
                         let mut square = CompensatedSum::default();
-                        crate::prepared_fit_view::visit_prepared_column_range(
+                        crate::ols::prepared_fit_view::visit_prepared_column_range(
                             prepared,
                             column + local,
                             0..rows,

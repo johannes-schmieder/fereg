@@ -179,7 +179,7 @@ impl Default for FeSession<'_> {
 }
 
 impl<'a> FeSession<'a> {
-    pub(crate) fn for_ols<P: crate::prepared_fit_view::PreparedOlsFitView + ?Sized>(
+    pub(crate) fn for_ols<P: crate::ols::prepared_fit_view::PreparedOlsFitView + ?Sized>(
         prepared: &'a P,
         weights: BorrowedMapWeights<'a>,
         config: crate::ols::PreparedOlsFitConfig,
@@ -200,7 +200,7 @@ impl<'a> FeSession<'a> {
         Self::for_ols_rhs(prepared, weights, config, rhs)
     }
 
-    pub(crate) fn for_ols_rhs<P: crate::prepared_fit_view::PreparedOlsFitView + ?Sized>(
+    pub(crate) fn for_ols_rhs<P: crate::ols::prepared_fit_view::PreparedOlsFitView + ?Sized>(
         prepared: &'a P,
         weights: BorrowedMapWeights<'a>,
         config: crate::ols::PreparedOlsFitConfig,
@@ -309,7 +309,7 @@ impl<'a> FeSession<'a> {
         Ok(())
     }
 
-    fn prepare_owned<P: crate::prepared_fit_view::PreparedOlsFitView + ?Sized>(
+    fn prepare_owned<P: crate::ols::prepared_fit_view::PreparedOlsFitView + ?Sized>(
         &mut self,
         prepared: &P,
         weights: BorrowedMapWeights<'_>,
@@ -699,7 +699,7 @@ pub(crate) fn project_intercepts(
             config.retain_coefficients,
         ),
         S::Cg => {
-            let peak = crate::prepared_fit_view::admit_prepared_intercept_cg(
+            let peak = crate::ols::prepared_fit_view::admit_prepared_intercept_cg(
                 design,
                 values.ncols(),
                 config.solver_memory_budget,
