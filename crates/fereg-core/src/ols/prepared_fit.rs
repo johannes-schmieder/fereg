@@ -3652,7 +3652,8 @@ fn build_raw_moment_cache<R: FitReservation>(
             &mut norms,
         )?;
     } else {
-        fill_raw_moment_cache_columnwise(
+        // One column per task when eight-column blocks would idle threads.
+        fill_raw_moment_cache_blocked::<1>(
             raw,
             weights,
             weight_sum,
@@ -3880,71 +3881,6 @@ fn fill_raw_moment_cache_blocked<const BLOCK: usize>(
                 }
                 norms[column] = checked_norm(norm_scales[column], norm_sums[column])?;
             }
-            Ok(())
-        },
-    )
-}
-
-fn fill_raw_moment_cache_columnwise(
-    raw: &DenseMatrix,
-    weights: NormalizedWeights<'_>,
-    weight_sum: f64,
-    scales: &mut [f64],
-    means: &mut [f64],
-    norms: &mut [f64],
-) -> Result<()> {
-    if scales.len() != raw.ncols()
-        || means.len() != raw.ncols()
-        || norms.len() != raw.ncols()
-        || !weight_sum.is_finite()
-        || weight_sum <= 0.0
-    {
-        return Err(invalid_argument(
-            "prepared OLS columnwise raw-moment dimensions are inconsistent",
-        ));
-    }
-    crate::parallel::stage_try_for_each(
-        scales
-            .par_iter_mut()
-            .zip(means.par_iter_mut())
-            .zip(norms.par_iter_mut())
-            .enumerate(),
-        raw.nrows() as u128 * raw.ncols() as u128,
-        |(column, ((scale, mean), norm))| -> Result<()> {
-            let mut norm_scale = 0.0_f64;
-            let mut norm_sum = 1.0_f64;
-            for row in 0..raw.nrows() {
-                let value = raw[(row, column)];
-                if !value.is_finite() {
-                    return Err(invalid_data("prepared OLS raw-moment value is not finite"));
-                }
-                *scale = scale.max(value.abs());
-                update_scaled_sum_of_squares(
-                    weights.root(row)? * value,
-                    &mut norm_scale,
-                    &mut norm_sum,
-                )?;
-            }
-            let mut sum = 0.0_f64;
-            let mut correction = 0.0_f64;
-            if *scale != 0.0 {
-                for row in 0..raw.nrows() {
-                    compensated_add(
-                        weights.value(row)? * (raw[(row, column)] / *scale),
-                        &mut sum,
-                        &mut correction,
-                    )?;
-                }
-            }
-            *mean = if *scale == 0.0 {
-                0.0
-            } else {
-                *scale * ((sum + correction) / weight_sum)
-            };
-            if !mean.is_finite() {
-                return Err(invalid_data("prepared OLS raw-moment mean is not finite"));
-            }
-            *norm = checked_norm(norm_scale, norm_sum)?;
             Ok(())
         },
     )

@@ -4268,27 +4268,32 @@ fn blocked_raw_moments_preserve_columnwise_bits_and_dispatch() {
                         &mut expected_norms,
                     )
                     .unwrap();
-                    let mut scales = vec![0.0; columns];
-                    let mut means = vec![0.0; columns];
-                    let mut norms = vec![0.0; columns];
-                    fill_raw_moment_cache_blocked::<8>(
-                        &matrix,
-                        normalized,
-                        cache.weight_sum,
-                        &mut scales,
-                        &mut means,
-                        &mut norms,
-                    )
-                    .unwrap();
-                    for (actual, expected) in [
-                        (&scales, &expected_scales),
-                        (&means, &expected_means),
-                        (&norms, &expected_norms),
+                    for fill in [
+                        fill_raw_moment_cache_blocked::<8>,
+                        fill_raw_moment_cache_blocked::<1>,
                     ] {
-                        assert_eq!(
-                            actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
-                            expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
-                        );
+                        let mut scales = vec![0.0; columns];
+                        let mut means = vec![0.0; columns];
+                        let mut norms = vec![0.0; columns];
+                        fill(
+                            &matrix,
+                            normalized,
+                            cache.weight_sum,
+                            &mut scales,
+                            &mut means,
+                            &mut norms,
+                        )
+                        .unwrap();
+                        for (actual, expected) in [
+                            (&scales, &expected_scales),
+                            (&means, &expected_means),
+                            (&norms, &expected_norms),
+                        ] {
+                            assert_eq!(
+                                actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                                expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+                            );
+                        }
                     }
                     if columns > FUSED_MOMENT_MAX_COLUMNS {
                         for (actual, expected) in [
@@ -9213,4 +9218,70 @@ fn corrupted_structural_intercept_metadata_fails_before_map_and_dof() {
         .code,
         ErrorCode::InvalidArgument
     );
+}
+
+/// Independent per-column reference for the blocked raw-moment kernel.
+fn fill_raw_moment_cache_columnwise(
+    raw: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    weight_sum: f64,
+    scales: &mut [f64],
+    means: &mut [f64],
+    norms: &mut [f64],
+) -> Result<()> {
+    if scales.len() != raw.ncols()
+        || means.len() != raw.ncols()
+        || norms.len() != raw.ncols()
+        || !weight_sum.is_finite()
+        || weight_sum <= 0.0
+    {
+        return Err(invalid_argument(
+            "prepared OLS columnwise raw-moment dimensions are inconsistent",
+        ));
+    }
+    crate::parallel::stage_try_for_each(
+        scales
+            .par_iter_mut()
+            .zip(means.par_iter_mut())
+            .zip(norms.par_iter_mut())
+            .enumerate(),
+        raw.nrows() as u128 * raw.ncols() as u128,
+        |(column, ((scale, mean), norm))| -> Result<()> {
+            let mut norm_scale = 0.0_f64;
+            let mut norm_sum = 1.0_f64;
+            for row in 0..raw.nrows() {
+                let value = raw[(row, column)];
+                if !value.is_finite() {
+                    return Err(invalid_data("prepared OLS raw-moment value is not finite"));
+                }
+                *scale = scale.max(value.abs());
+                update_scaled_sum_of_squares(
+                    weights.root(row)? * value,
+                    &mut norm_scale,
+                    &mut norm_sum,
+                )?;
+            }
+            let mut sum = 0.0_f64;
+            let mut correction = 0.0_f64;
+            if *scale != 0.0 {
+                for row in 0..raw.nrows() {
+                    compensated_add(
+                        weights.value(row)? * (raw[(row, column)] / *scale),
+                        &mut sum,
+                        &mut correction,
+                    )?;
+                }
+            }
+            *mean = if *scale == 0.0 {
+                0.0
+            } else {
+                *scale * ((sum + correction) / weight_sum)
+            };
+            if !mean.is_finite() {
+                return Err(invalid_data("prepared OLS raw-moment mean is not finite"));
+            }
+            *norm = checked_norm(norm_scale, norm_sum)?;
+            Ok(())
+        },
+    )
 }
