@@ -2,7 +2,7 @@ use crate::error::{ErrorCode, FeregError, Result};
 
 use super::family::poisson_deviance_contribution;
 
-/// Public PPML residual definitions fixed by ADR 0016.
+/// Public PPML residual definitions fixed by SPEC §12.
 ///
 /// These are deliberately independent of the prior-weight experiment.  Prior
 /// weights enter the estimator and its sandwich scores, but the values exposed

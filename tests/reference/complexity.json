@@ -1,13 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "after": 14295,
-      "before": 14289,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "protocol mismatch restart hint"
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -5699,7 +5692,7 @@
         "dispatch_candidates": [],
         "functions": {
           "bytes_for_memory#1": {
-            "line": 236,
+            "line": 237,
             "lines": 3
           },
           "categorical_dense_cross_tab_bytes#1": {
@@ -5707,7 +5700,7 @@
             "lines": 26
           },
           "checked_add_memory#1": {
-            "line": 231,
+            "line": 232,
             "lines": 4
           },
           "estimate_categorical_schwarz_memory#1": {
@@ -5716,10 +5709,10 @@
           },
           "estimate_schwarz_memory#1": {
             "line": 63,
-            "lines": 147
+            "lines": 148
           },
           "stable_adjoint_index_bytes#1": {
-            "line": 212,
+            "line": 213,
             "lines": 18
           }
         },

@@ -48,7 +48,7 @@ drop codes, stored results, failure atomicity, and runnable examples.
 effects when fast-memory execution and the complete specialized workspace fit
 the native memory plan. Otherwise it selects MAP, including low-memory and
 absorbed-slope designs. It does not select CMG. This is the development-admitted
-policy in ADR 0029, not a formal qualification claim.
+policy, not a formal qualification claim.
 Explicit `solver(lsmr)` selects one native fused or joint LSMR implementation
 for the fit, and `solver(cmg)` means the prepared fused-FWL CMG implementation.
 Concrete LSMR preconditioner and reuse choices remain internal and are not

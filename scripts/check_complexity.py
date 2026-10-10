@@ -144,12 +144,7 @@ def growth_errors(old, new, exceptions):
 
 def read_baseline(revision):
     result = subprocess.run(['git','show',f'{revision}:{BASELINE}'],cwd=ROOT,text=True,capture_output=True)
-    if result.returncode == 0:
-        return json.loads(result.stdout)
-    # One audited relocation of the same inventory; fail closed for every other absence.
-    previous_path = 'docs/cleanup/complexity.json'
-    old = subprocess.run(['git','show',f'{revision}:{previous_path}'],cwd=ROOT,text=True,capture_output=True)
-    return json.loads(old.stdout) if old.returncode == 0 else None
+    return json.loads(result.stdout) if result.returncode == 0 else None
 
 
 # Inputs whose bytes define the native artifact apart from the Rust runtime

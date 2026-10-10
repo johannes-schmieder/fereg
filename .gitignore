@@ -12,18 +12,11 @@
 /dist/*.obj
 /dist/*.pdb
 /dist/*.dSYM/
-/dist/l/
 /tests/mock_spi/build/
 /benchmarks/
-/Veneto_Benchmark/
 /build_evidence/
 /output/
 /.ci/
-/tests/manual/*_runs.csv
-/tests/manual/*_runs.dta
-/tests/manual/*_summary.csv
-/tests/manual/*_summary.dta
-/tests/manual/*_time_by_*.png
 *.log
 *.stswp
 .DS_Store
@@ -34,9 +27,6 @@ release-artifacts/
 /windows-ci.status
 /windows-ci-diagnostics.json
 /windows-ci-*.tmp
-/feppml-platform-load-capture.json
-/feppml-windows-platform-source-manifest.json
-/feppml-windows-results.zip
 
 # Qualified package identity used alongside locally built native binaries.
 /dist/RELEASE_MANIFEST.json

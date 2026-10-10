@@ -171,7 +171,7 @@ def two_fe_coefficient_accuracy(y, x, beta, public_mu, groups, *, memory_bytes=1
 
 
 def two_fe_nonnegative_sample_accuracy(y, x, beta, public_mu, groups, *, memory_bytes=1024**3):
-    """Certify a supplied retained sample, including zero outcomes (ADR 0237).
+    """Certify a supplied retained sample, including zero outcomes.
 
     The exponential Hessian and Newton-ball bound do not require y > 0. Sample
     selection must be established separately; this entry never drops rows or

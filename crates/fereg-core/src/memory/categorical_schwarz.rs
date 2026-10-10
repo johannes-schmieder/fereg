@@ -121,7 +121,8 @@ pub(super) fn estimate_schwarz_memory(
     // of each apply all stacks return to one shared pool; prior idle buffers are
     // consumed before allocating, so repeated applies cannot grow this bound.
     // Each concurrent outer RHS owns a separate apply and is charged by its
-    // caller. See ADR 0228 for the lifetime argument and pinned source paths.
+    // caller. The lifetime argument and pinned source paths are recorded in
+    // the decision record kept in Git history (ADR 0228).
     let reentrant_components = pair_level_incidence / 10_002;
     let worker_buffers = checked_sum(&[threads, reentrant_components])?;
     let apply_peak_bytes = checked_sum(&[

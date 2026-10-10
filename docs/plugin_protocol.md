@@ -178,8 +178,10 @@ outside this protected transaction.
 | Syntax | 198 |
 | Unsupported/invalid option | 498 |
 | Protocol mismatch | 499 |
+| Unsupported weight kind | 101 |
 | Negative analytic weight | 402 |
 | Invalid frequency-weight domain | 401 |
+| Invalid ordinary factor on the available sample | 452 |
 | Insufficient observations or residual DoF | 2001 |
 | Invalid data | 459 |
 | Numerical nonconvergence | 430 |

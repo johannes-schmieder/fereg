@@ -473,7 +473,7 @@ where
 
 /// Dense observation-level score-meat reduction with separate contiguous
 /// production and certificate triangles.  Production blocks merge forward;
-/// certificate blocks merge backward, matching ADR 0014.
+/// certificate blocks merge backward, so the two reductions are independent.
 pub(crate) fn reduce_dense_score_meats<D, M, R>(
     design: D,
     multipliers: M,

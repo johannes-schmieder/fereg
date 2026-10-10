@@ -98,8 +98,9 @@
 - Standardized the installed help with the shared author header and contact
   footer, source acknowledgements, and one-click execution for all twelve
   documented examples.
-- Activated public `fereg` OLS/WLS with action protocol 1.4, OLS result wire
-  1.4, and model wire 2.1 while retaining receipt-last atomic publication and
+- Activated public `fereg` OLS/WLS with action protocol 1.4 and OLS result wire
+  1.4 (since raised to 1.6 and 1.5; `docs/plugin_protocol.md` has the current
+  identities) and model wire 2.1 while retaining receipt-last atomic publication and
   rollback on error, panic, store failure, or Break.
 - Completed the frozen OLS 1.0 surface: ordinary factors/interactions,
   numeric/string/interacted fixed effects, absorbed slopes, singleton and DoF
@@ -193,15 +194,16 @@
   sandwich kernels, PPML-specific inference/result validation, fit-lifetime
   memory planning, and receipt-last rollback-safe publication. Added separate
   public-stub, hidden-transaction, scientific, oracle, F0 non-regression, and
-  platform/performance qualification inputs. The installed public `feppml`
-  command remains an explicit fail-closed `r(498)` stub until every activation
-  gate passes on one exact source; no qualification result is claimed here.
+  platform/performance qualification inputs. At this checkpoint the installed
+  public `feppml` command was still an explicit fail-closed `r(498)` stub; the
+  activation entry above records when it became a one-call wrapper.
   The stale experimental Rust `fit_ppml*` entry points and legacy result
-  wrappers were removed in favor of the prepared internal path; ADR 0015 does
-  not make the common kernel a public Rust stability promise.
+  wrappers were removed in favor of the prepared internal path; the common
+  kernel is not a public Rust stability promise.
 
 No tag or GitHub release is created by this checkpoint. Qualification status
-and exact accepted receipts remain recorded in the historical `STATUS.md` in Git.
+and exact accepted receipts of that time remain in Git history; the current
+accepted evidence is in `docs/VALIDATION.md`.
 
 ## 0.1.0-phase01 — 2026-08-20
 

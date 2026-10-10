@@ -581,7 +581,7 @@ pub(crate) fn prepare_ppml_fixed_effect_report(
             cluster_dimensions.push(model.cluster_codes(dimension)?);
         }
     }
-    // ADR 0016 freezes PPML to the shared pairwise topology calculation. The
+    // PPML is frozen to the shared pairwise topology calculation (SPEC §9). The
     // OLS policy adapter is deliberately absent from this boundary: PPML owns
     // the subsequent structural-normalization and inference corrections.
     let mut report =

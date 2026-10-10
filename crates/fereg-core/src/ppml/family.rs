@@ -78,7 +78,7 @@ pub struct PoissonObjective {
 ///
 /// The null model intentionally ignores absorbed effects and the fitted
 /// model's offset. Its mean is the prior-weighted outcome mean on the final
-/// PPML sample, as fixed by ADR 0016.
+/// PPML sample, as fixed by SPEC §11.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PoissonNullObjective {
     pub mean: f64,

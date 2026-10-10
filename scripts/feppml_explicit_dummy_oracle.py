@@ -559,7 +559,7 @@ def evaluate(data_path: Path, model_path: Path) -> dict[str, Any]:
     null_fit = fit_explicit_ppml(
         [[1.0] for _ in rows],
         outcome,
-        # ADR 0016 freezes the null comparator as a constant-only likelihood.
+        # SPEC §11 fixes the null comparator as a constant-only likelihood.
         # The fitted model's offset/exposure is deliberately excluded.
         offset=None,
         exposure=None,

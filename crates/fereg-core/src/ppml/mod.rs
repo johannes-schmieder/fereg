@@ -180,7 +180,7 @@ impl PpmlInnerToleranceProgress {
     }
 }
 
-/// ADR 0016's strict weighted-linear publication tolerance.
+/// The strict weighted-linear publication tolerance (SPEC §13).
 pub(crate) fn strict_inner_tolerance(config: PpmlConfig) -> f64 {
     (0.1 * config.tolerance).min(1e-12)
 }

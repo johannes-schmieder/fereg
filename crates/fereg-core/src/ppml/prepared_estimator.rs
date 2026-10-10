@@ -237,7 +237,7 @@ pub fn fit_prepared_ppml_interruptible(
 
     // Build only borrowed column views and model-sized role metadata, then
     // classify the numeric sample without constructing any observation-sized
-    // compact column. ADR 0018 freezes route selection at this boundary.
+    // compact column. Route selection is frozen at this boundary (SPEC §1).
     let numeric_input = borrowed_numeric_input(&request, &loaded)?;
     let numeric_view = numeric_input.as_input();
     let classified = classify_ppml_numeric_data(&numeric_view)?;

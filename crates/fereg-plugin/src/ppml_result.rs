@@ -47,7 +47,7 @@ pub(crate) fn is_stata_publishable(value: f64) -> bool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StataCellClass {
     /// A finite-domain fitted value or scientific certificate which cannot be
-    /// represented on Stata's numeric result wire.  ADR 0016 classifies this
+    /// represented on Stata's numeric result wire.  SPEC §16 classifies this
     /// as numerical nonconvergence, not malformed user data.
     Scientific,
     /// Structural metadata or embedding telemetry.  Failure here is an
