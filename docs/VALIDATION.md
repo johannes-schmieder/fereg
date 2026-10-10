@@ -100,5 +100,9 @@ choice), and the OLS multiway PSD certificate floor becoming `f64::MIN_POSITIVE`
 robust; PPML two-FE clustered) compared the base plugin `e237c217` with
 `3a4fdc32`: exact outputs, total instructions −0.0027% (OLS) and −0.015% (PPML),
 against repeat spreads of at most 5,415 instructions. This is an instruction-count
-observation, not timing. Mac boundary timing, the licensed Stata full profile and
-the PTY Break fixtures are Johannes's to run.
+observation, not timing. The explicit-LSMR decisions (`5413cfe`, `a551feb`) are
+the programme's only deliberate result change. After them the Linux replay
+anchor moved from `e237c217` (`140dda27`) to `ba350134` (`71c289a`), which
+reproduces the declared scope against the old anchor and replays exactly
+against itself. Mac boundary timing, the Mac replay anchor, the licensed Stata
+full profile and the PTY Break fixtures are Johannes's to run.
