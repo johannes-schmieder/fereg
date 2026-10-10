@@ -4706,3 +4706,16 @@ fn assert_close(left: &[f64], right: &[f64], tolerance: f64) {
         assert!((left - right).abs() <= tolerance, "{left} != {right}");
     }
 }
+
+#[test]
+fn cg_relative_residual_rejects_residual_on_an_exactly_solved_column() {
+    assert_eq!(
+        cg_largest_relative_residual(&[0.25, 0.0], &[1.0, 0.0]).expect("solved column stays zero"),
+        0.5
+    );
+    let error = cg_largest_relative_residual(&[0.25, 1e-300], &[1.0, 0.0])
+        .expect_err("residual acquired from a zero initial norm");
+    assert_eq!(error.code, ErrorCode::InvalidData);
+    let error = cg_largest_relative_residual(&[0.25], &[1.0, 0.0]).expect_err("dimensions");
+    assert_eq!(error.code, ErrorCode::InvalidArgument);
+}

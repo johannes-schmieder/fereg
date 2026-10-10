@@ -213,8 +213,10 @@ fn absorb_conjugate_gradient(
         &residual_square,
         "unable to reserve CG initial residual norms",
     )?;
-    let mut recurrence_residual =
-        largest_relative_residual(&residual_square, &initial_residual_square)?;
+    let mut recurrence_residual = super::borrowed_map::cg_largest_relative_residual(
+        &residual_square,
+        &initial_residual_square,
+    )?;
 
     for iteration in 1..=config.max_iterations {
         crate::interrupt::checkpoint()?;
@@ -249,8 +251,10 @@ fn absorb_conjugate_gradient(
         update_solution_and_residual(values, &mut residual, &direction, &projection, &alpha)?;
         let next_residual_square =
             weighted_dot_columns(&residual, &residual, weights, weight_scale)?;
-        recurrence_residual =
-            largest_relative_residual(&next_residual_square, &initial_residual_square)?;
+        recurrence_residual = super::borrowed_map::cg_largest_relative_residual(
+            &next_residual_square,
+            &initial_residual_square,
+        )?;
 
         if iteration % config.check_every == 0
             || recurrence_residual <= config.tolerance.sqrt()
@@ -447,41 +451,6 @@ fn update_direction(
         }
     }
     Ok(())
-}
-
-fn largest_relative_residual(current: &[f64], initial: &[f64]) -> Result<f64> {
-    if current.len() != initial.len() {
-        return Err(FeregError::new(
-            ErrorCode::InvalidArgument,
-            "CG residual-norm dimensions differ",
-        ));
-    }
-    let mut largest = 0.0_f64;
-    for (current, initial) in current.iter().zip(initial) {
-        if !current.is_finite() || *current < 0.0 || !initial.is_finite() || *initial < 0.0 {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                "CG residual norm is invalid",
-            ));
-        }
-        let relative = if *initial == 0.0 {
-            if *current == 0.0 {
-                0.0
-            } else {
-                f64::INFINITY
-            }
-        } else {
-            (current / initial).sqrt()
-        };
-        if !relative.is_finite() {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                "CG relative residual is nonfinite",
-            ));
-        }
-        largest = largest.max(relative);
-    }
-    Ok(largest)
 }
 
 fn cg_report(

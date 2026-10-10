@@ -424,23 +424,19 @@
           },
           {
             "condition": "! weight_scale . is_finite ( ) || weight_scale <= 0.0 || weights . iter ( ) . any ( | weight | ! weight . is_finite ( ) || * weight <= 0.0 || * weight / weight_scale == 0.0 )",
-            "line": 312
+            "line": 316
           },
           {
             "condition": "left . nrows ( ) != right . nrows ( ) || left . ncols ( ) != right . ncols ( ) || weights . len ( ) != left . nrows ( )",
-            "line": 332
+            "line": 336
           },
           {
             "condition": "numerators . len ( ) != denominators . len ( )",
-            "line": 372
-          },
-          {
-            "condition": "current . len ( ) != initial . len ( )",
-            "line": 453
+            "line": 376
           },
           {
             "condition": "symmetric && design . effects ( ) . len ( ) > 1",
-            "line": 512
+            "line": 481
           }
         ],
         "functions": {
@@ -454,66 +450,62 @@
           },
           "absorb_conjugate_gradient#1": {
             "line": 181,
-            "lines": 107
+            "lines": 111
           },
           "apply_symmetric_projection#1": {
-            "line": 289,
+            "line": 293,
             "lines": 19
           },
           "cg_ratios#1": {
-            "line": 371,
+            "line": 375,
             "lines": 39
           },
           "cg_report#1": {
-            "line": 487,
+            "line": 456,
             "lines": 14
           },
           "cg_weight_scale#1": {
-            "line": 310,
+            "line": 314,
             "lines": 15
           },
           "extrapolate#1": {
-            "line": 520,
+            "line": 489,
             "lines": 51
           },
           "fallible_matrix_copy#1": {
-            "line": 572,
+            "line": 541,
             "lines": 4
           },
           "fallible_vector_copy#1": {
-            "line": 577,
+            "line": 546,
             "lines": 8
           },
           "fallible_zeros#1": {
-            "line": 586,
+            "line": 555,
             "lines": 8
           },
-          "largest_relative_residual#1": {
-            "line": 452,
-            "lines": 34
-          },
           "report#1": {
-            "line": 595,
+            "line": 564,
             "lines": 20
           },
           "sweep#1": {
-            "line": 502,
+            "line": 471,
             "lines": 17
           },
           "update_direction#1": {
-            "line": 433,
+            "line": 437,
             "lines": 18
           },
           "update_solution_and_residual#1": {
-            "line": 411,
+            "line": 415,
             "lines": 21
           },
           "weighted_dot_columns#1": {
-            "line": 326,
+            "line": 330,
             "lines": 44
           }
         },
-        "production_lines": 568
+        "production_lines": 538
       },
       "crates/fereg-core/src/fe/auto.rs": {
         "chunk_candidates": [],
@@ -984,7 +976,7 @@
           },
           {
             "condition": "current . len ( ) != initial . len ( )",
-            "line": 7259
+            "line": 7261
           },
           {
             "condition": "output . len ( ) != values . ncols ( ) || scales . len ( ) != values . ncols ( ) || scaled_square_sums . len ( ) != values . ncols ( )",
@@ -1201,8 +1193,8 @@
             "lines": 46
           },
           "cg_largest_relative_residual#1": {
-            "line": 7258,
-            "lines": 29
+            "line": 7260,
+            "lines": 27
           },
           "cg_projection_action#1": {
             "line": 6728,
@@ -1661,7 +1653,7 @@
             "lines": 43
           }
         },
-        "production_lines": 7008
+        "production_lines": 7006
       },
       "crates/fereg-core/src/fe/borrowed_map/three_fe_schur.rs": {
         "chunk_candidates": [],
@@ -19822,10 +19814,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 12,
-        "dispatch_candidates": 1226,
+        "dispatch_candidates": 1225,
         "files_over_1500": 16,
         "functions_over_150": 65,
-        "production_lines": 92961
+        "production_lines": 92929
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

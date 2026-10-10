@@ -7255,30 +7255,30 @@ fn cg_update_direction(
     Ok(())
 }
 
-fn cg_largest_relative_residual(current: &[f64], initial: &[f64]) -> Result<f64> {
+/// Largest relative CG residual over RHS columns, from squared norms. A
+/// column solved exactly at entry that later carries residual fails closed.
+pub(super) fn cg_largest_relative_residual(current: &[f64], initial: &[f64]) -> Result<f64> {
     if current.len() != initial.len() {
-        return Err(invalid_argument(
-            "borrowed CG residual-norm dimensions differ",
-        ));
+        return Err(invalid_argument("CG residual-norm dimensions differ"));
     }
     let mut largest = 0.0_f64;
     for (current, initial) in current.iter().zip(initial) {
         if !current.is_finite() || *current < 0.0 || !initial.is_finite() || *initial < 0.0 {
-            return Err(invalid_data("borrowed CG residual norm is invalid"));
+            return Err(invalid_data("CG residual norm is invalid"));
         }
         let relative = if *initial == 0.0 {
             if *current == 0.0 {
                 0.0
             } else {
                 return Err(invalid_data(
-                    "borrowed CG acquired residual from a zero initial norm",
+                    "CG acquired residual from a zero initial norm",
                 ));
             }
         } else {
             (current / initial).sqrt()
         };
         if !relative.is_finite() {
-            return Err(invalid_data("borrowed CG relative residual is nonfinite"));
+            return Err(invalid_data("CG relative residual is nonfinite"));
         }
         largest = largest.max(relative);
     }
