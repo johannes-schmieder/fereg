@@ -4,7 +4,6 @@ use crate::error::{
     allocation, invalid_argument, invalid_data, unsupported, ErrorCode, FeregError, Result,
 };
 use crate::linalg::neumaier_add;
-use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 pub(super) use crate::sandwich::compensated_add_scaled_row;
 use crate::topology_dof::CategoricalTopologyDofReport;
 use std::time::Instant;
@@ -12,7 +11,7 @@ use std::time::Instant;
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 
 #[cfg(test)]
-use super::fit_prepared_ols_coefficients_map;
+use super::fit_prepared_model_coefficients;
 #[cfg(test)]
 use super::prepared_inference_view::compute_canonical_prepared_ols_absorbed_dof;
 use super::{
@@ -270,67 +269,10 @@ impl ReferenceWeightView<'_> {
     }
 }
 
-/// Fit and certify the current prepared model with conventional homoskedastic
-/// covariance. Probability weights fail closed because the pinned reference
-/// changes them to robust inference instead of producing iid covariance.
-pub fn fit_prepared_ols_unadjusted_map(
-    prepared: &PreparedOlsData,
-    config: PreparedOlsUnadjustedConfig,
-) -> Result<CertifiedPreparedOlsUnadjusted> {
-    fit_prepared_ols_unadjusted_map_with_loaded_rows(prepared, config, None)
-}
-
-/// Optional action-owned numeric input matrix. Its shape and every value are
-/// checked against the authoritative prepared columns before reuse.
-pub fn fit_prepared_ols_unadjusted_map_with_loaded_rows(
-    prepared: &PreparedOlsData,
-    config: PreparedOlsUnadjustedConfig,
-    rows: Option<Vec<f64>>,
-) -> Result<CertifiedPreparedOlsUnadjusted> {
-    fit_with_outcome_stages(prepared, config, rows.map(super::LoadedOlsRows::from))
-}
-
-/// Consume same-call loaded rows and optional admitted raw moments.
-pub fn fit_prepared_ols_unadjusted_map_with_loaded_moments(
-    prepared: &PreparedOlsData,
-    config: PreparedOlsUnadjustedConfig,
-    rows: Option<super::LoadedOlsRows>,
-) -> Result<CertifiedPreparedOlsUnadjusted> {
-    fit_with_outcome_stages(prepared, config, rows)
-}
-
-fn fit_with_outcome_stages(
-    prepared: &PreparedOlsData,
-    config: PreparedOlsUnadjustedConfig,
-    rows: Option<super::LoadedOlsRows>,
-) -> Result<CertifiedPreparedOlsUnadjusted> {
-    fit_inference_view(
-        &crate::prepared_fit_view::OrdinaryPrepared(prepared),
-        config,
-        rows,
-        false,
-    )
-}
-
-/// Fit and certify categorical-interaction OLS/WLS with conventional
-/// homoskedastic covariance through the same common inference pipeline.
-pub fn fit_prepared_categorical_ols_unadjusted_map(
-    prepared: &PreparedCategoricalOlsData,
-    config: PreparedOlsUnadjustedConfig,
-) -> Result<CertifiedPreparedCategoricalOlsUnadjusted> {
-    fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(prepared, config, None)
-}
-
-/// Consume optional same-call numeric rows after authoritative sample validation.
-pub fn fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
-    prepared: &PreparedCategoricalOlsData,
-    config: PreparedOlsUnadjustedConfig,
-    rows: Option<super::LoadedOlsRows>,
-) -> Result<CertifiedPreparedCategoricalOlsUnadjusted> {
-    fit_categorical_with_outcome_stages(prepared, config, rows)
-}
-
-/// Fit the canonical owner using its declared ordinary or categorical projection semantics.
+/// Fit and certify conventional homoskedastic covariance through the owner's
+/// declared ordinary or categorical projection semantics. Probability weights
+/// fail closed because the pinned reference changes them to robust inference
+/// instead of producing iid covariance.
 pub fn fit_prepared_model_unadjusted_with_loaded_moments(
     prepared: &PreparedOlsData,
     config: PreparedOlsUnadjustedConfig,
@@ -339,16 +281,13 @@ pub fn fit_prepared_model_unadjusted_with_loaded_moments(
     if prepared.uses_categorical_preparation() {
         fit_inference_view(prepared, config, rows, true)
     } else {
-        fit_with_outcome_stages(prepared, config, rows)
+        fit_inference_view(
+            &crate::prepared_fit_view::OrdinaryPrepared(prepared),
+            config,
+            rows,
+            false,
+        )
     }
-}
-
-fn fit_categorical_with_outcome_stages(
-    prepared: &PreparedCategoricalOlsData,
-    config: PreparedOlsUnadjustedConfig,
-    rows: Option<super::LoadedOlsRows>,
-) -> Result<CertifiedPreparedCategoricalOlsUnadjusted> {
-    fit_inference_view(prepared, config, rows, true)
 }
 
 fn fit_inference_view<P: PreparedOlsInferenceView + Sync + ?Sized>(

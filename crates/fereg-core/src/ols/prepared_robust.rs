@@ -4,7 +4,6 @@ use super::prepared_wald::{calculate_wald, WaldCalculation};
 use crate::data::WeightKind;
 use crate::error::{allocation, invalid_argument, invalid_data, unsupported, Result};
 use crate::parallel::ThreadTeam;
-use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use crate::sandwich::{
     bread_meat_bread, reduce_dense_score_meats, reduce_serial_influence_covariance,
     standard_errors, FixedBlockReductionPolicy, SandwichCorrectionPolicy, SandwichProductMode,
@@ -257,49 +256,9 @@ struct PsdCertificate {
     rank: usize,
 }
 
-/// Fit and certify HC1 robust covariance through the prepared, strict-MAP path.
-/// Probability weights are accepted here; importance weights remain outside
-/// the pinned checkpoint.
-pub fn fit_prepared_ols_robust_map(
-    prepared: &PreparedOlsData,
-    config: PreparedOlsRobustConfig,
-) -> Result<CertifiedPreparedOlsRobust> {
-    fit_prepared_ols_robust_map_with_loaded_moments(prepared, config, None)
-}
-
-/// Consume optional same-call numeric rows after authoritative sample validation.
-pub fn fit_prepared_ols_robust_map_with_loaded_moments(
-    prepared: &PreparedOlsData,
-    config: PreparedOlsRobustConfig,
-    rows: Option<super::LoadedOlsRows>,
-) -> Result<CertifiedPreparedOlsRobust> {
-    fit_inference_view(
-        &crate::prepared_fit_view::OrdinaryPrepared(prepared),
-        config,
-        rows,
-        false,
-    )
-}
-
-/// Fit and certify categorical-interaction HC1 covariance through the same
-/// numerical composition used by the legacy prepared path.
-pub fn fit_prepared_categorical_ols_robust_map(
-    prepared: &PreparedCategoricalOlsData,
-    config: PreparedOlsRobustConfig,
-) -> Result<CertifiedPreparedCategoricalOlsRobust> {
-    fit_prepared_categorical_ols_robust_map_with_loaded_moments(prepared, config, None)
-}
-
-/// Consume optional same-call numeric rows after authoritative sample validation.
-pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
-    prepared: &PreparedCategoricalOlsData,
-    config: PreparedOlsRobustConfig,
-    rows: Option<super::LoadedOlsRows>,
-) -> Result<CertifiedPreparedCategoricalOlsRobust> {
-    fit_inference_view(prepared, config, rows, true)
-}
-
-/// Fit the canonical owner with its declared projection semantics.
+/// Fit and certify HC1 robust covariance through the owner's declared
+/// ordinary or categorical projection semantics. Probability weights are
+/// accepted here; importance weights remain outside the pinned checkpoint.
 pub fn fit_prepared_model_robust_with_loaded_moments(
     prepared: &PreparedOlsData,
     config: PreparedOlsRobustConfig,
@@ -308,7 +267,12 @@ pub fn fit_prepared_model_robust_with_loaded_moments(
     if prepared.uses_categorical_preparation() {
         fit_inference_view(prepared, config, rows, true)
     } else {
-        fit_prepared_ols_robust_map_with_loaded_moments(prepared, config, rows)
+        fit_inference_view(
+            &crate::prepared_fit_view::OrdinaryPrepared(prepared),
+            config,
+            rows,
+            false,
+        )
     }
 }
 
@@ -1405,7 +1369,8 @@ mod tests {
             let prepared = prepared(&y, &[x.clone()], Some(&group), true, kind);
             let mut config = PreparedOlsRobustConfig::default();
             config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
-            let actual = fit_prepared_ols_robust_map(&prepared, config).unwrap();
+            let actual =
+                fit_prepared_model_robust_with_loaded_moments(&prepared, config, None).unwrap();
             let (fit, scratch) =
                 fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit)
                     .unwrap();
@@ -1621,7 +1586,8 @@ mod tests {
                 config.fit.execution.poolsize = 1;
                 config.fit.absorb.retain_coefficients = true;
                 config.fit.absorb.solver = crate::fe::FeSolverKind::Map;
-                let expected = fit_prepared_ols_robust_map(&prepared, config).unwrap();
+                let expected =
+                    fit_prepared_model_robust_with_loaded_moments(&prepared, config, None).unwrap();
                 let (fit, scores) =
                     fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit)
                         .unwrap();
@@ -1684,7 +1650,8 @@ mod tests {
                 test_weights,
             );
             let config = PreparedOlsRobustConfig::default();
-            let packed = fit_prepared_ols_robust_map(&prepared, config).expect("packed robust fit");
+            let packed = fit_prepared_model_robust_with_loaded_moments(&prepared, config, None)
+                .expect("packed robust fit");
             let mut fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
                 &prepared, config.fit, 0,
             )
@@ -1855,20 +1822,23 @@ mod tests {
         let y = [1.2, 2.4, 2.8, 4.9, 5.1, 7.4, 7.8, 9.7];
         let x = vec![vec![-3.0, -1.5, -0.5, 0.5, 1.5, 2.5, 4.0, 6.0]];
         let weights = [0.25, 1.5, 0.75, 3.0, 2.0, 0.5, 4.0, 1.25];
-        let analytic = fit_prepared_ols_robust_map(
+        let analytic = fit_prepared_model_robust_with_loaded_moments(
             &prepared(&y, &x, None, true, TestWeights::Analytic(&weights)),
             PreparedOlsRobustConfig::default(),
+            None,
         )
         .expect("analytic robust inference");
-        let probability = fit_prepared_ols_robust_map(
+        let probability = fit_prepared_model_robust_with_loaded_moments(
             &prepared(&y, &x, None, true, TestWeights::Probability(&weights)),
             PreparedOlsRobustConfig::default(),
+            None,
         )
         .expect("probability robust inference");
         let scaled = weights.map(|weight| weight * 1e120);
-        let probability_scaled = fit_prepared_ols_robust_map(
+        let probability_scaled = fit_prepared_model_robust_with_loaded_moments(
             &prepared(&y, &x, None, true, TestWeights::Probability(&scaled)),
             PreparedOlsRobustConfig::default(),
+            None,
         )
         .expect("scaled probability robust inference");
         assert_slice_close(
@@ -1896,9 +1866,10 @@ mod tests {
         let y = [1.0, 2.2, 4.1, 5.3, 8.0];
         let x = vec![vec![-2.0, -0.5, 1.0, 2.5, 5.0]];
         let frequency = [1_u32, 3, 2, 4, 1];
-        let compact = fit_prepared_ols_robust_map(
+        let compact = fit_prepared_model_robust_with_loaded_moments(
             &prepared(&y, &x, None, true, TestWeights::Frequency(&frequency)),
             PreparedOlsRobustConfig::default(),
+            None,
         )
         .expect("compact frequency robust inference");
         let mut expanded_y = Vec::new();
@@ -1909,9 +1880,10 @@ mod tests {
                 expanded_x.push(x[0][row]);
             }
         }
-        let expanded = fit_prepared_ols_robust_map(
+        let expanded = fit_prepared_model_robust_with_loaded_moments(
             &prepared(&expanded_y, &[expanded_x], None, true, TestWeights::Unit),
             PreparedOlsRobustConfig::default(),
+            None,
         )
         .expect("expanded unit robust inference");
         assert_eq!(
@@ -1938,14 +1910,16 @@ mod tests {
         let y = (0..x[0].len())
             .map(|row| 2.5 * x[0][row] + 3.0 * groups[row])
             .collect::<Vec<_>>();
-        let reported = fit_prepared_ols_robust_map(
+        let reported = fit_prepared_model_robust_with_loaded_moments(
             &prepared(&y, &x, Some(&groups), true, TestWeights::Unit),
             PreparedOlsRobustConfig::default(),
+            None,
         )
         .expect("reported exact robust fit");
-        let hidden = fit_prepared_ols_robust_map(
+        let hidden = fit_prepared_model_robust_with_loaded_moments(
             &prepared(&y, &x, Some(&groups), false, TestWeights::Unit),
             PreparedOlsRobustConfig::default(),
+            None,
         )
         .expect("hidden exact robust fit");
         assert_eq!(reported.covariance().dimension(), 2);
@@ -1992,8 +1966,12 @@ mod tests {
             vec![2.0, -1.0, 1.5, 0.0, 3.0, -2.0, 2.5, 4.0],
         ];
         let prepared = prepared(&y, &regressors, None, true, TestWeights::Unit);
-        let mut result = fit_prepared_ols_robust_map(&prepared, PreparedOlsRobustConfig::default())
-            .expect("two-slope robust fit");
+        let mut result = fit_prepared_model_robust_with_loaded_moments(
+            &prepared,
+            PreparedOlsRobustConfig::default(),
+            None,
+        )
+        .expect("two-slope robust fit");
         assert_eq!(result.dof().finite_model_dof, 2);
         let dimension = result.covariance.dimension();
         result.covariance.values[0] = 1.0;
@@ -2017,9 +1995,10 @@ mod tests {
     #[test]
     fn rank_zero_no_x_path_has_no_score_matrix_and_certifies() {
         let y = [2.0, 3.5, 1.0, 4.0, 5.0, 2.5];
-        let hidden = fit_prepared_ols_robust_map(
+        let hidden = fit_prepared_model_robust_with_loaded_moments(
             &prepared(&y, &[], None, false, TestWeights::Unit),
             PreparedOlsRobustConfig::default(),
+            None,
         )
         .expect("hidden no-X robust inference");
         assert_eq!(hidden.fit().finite_rank(), 0);
@@ -2027,9 +2006,10 @@ mod tests {
         assert_eq!(hidden.certificate().psd_rank, 0);
         assert!(hidden.statistics().f_statistic.is_none());
 
-        let reported = fit_prepared_ols_robust_map(
+        let reported = fit_prepared_model_robust_with_loaded_moments(
             &prepared(&y, &[], None, true, TestWeights::Unit),
             PreparedOlsRobustConfig::default(),
+            None,
         )
         .expect("reported intercept-only robust inference");
         assert_eq!(reported.fit().finite_rank(), 0);
@@ -2038,9 +2018,10 @@ mod tests {
 
         let mut low_config = PreparedOlsRobustConfig::default();
         low_config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
-        let hidden_low = fit_prepared_ols_robust_map(
+        let hidden_low = fit_prepared_model_robust_with_loaded_moments(
             &prepared(&y, &[], None, false, TestWeights::Unit),
             low_config,
+            None,
         )
         .expect("low-memory hidden no-X robust inference");
         assert_eq!(

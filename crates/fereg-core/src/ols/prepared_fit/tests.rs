@@ -2583,7 +2583,7 @@ fn loaded_moments_preserve_fit_bits_fallback_and_admission() {
             let mut config = PreparedOlsFitConfig::default();
             config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
             let expected =
-                without_solve_timings(fit_prepared_ols_coefficients_map(&data, config).unwrap());
+                without_solve_timings(fit_prepared_model_coefficients(&data, config).unwrap());
             for short in [false, true] {
                 for stale in [false, true] {
                     let mut rows = raw.as_slice().to_vec();
@@ -2670,7 +2670,7 @@ fn loaded_moment_errors_remain_after_validation_and_stale_rows_are_discarded() {
             error
         );
         let expected =
-            without_solve_timings(fit_prepared_ols_coefficients_map(&data, config).unwrap());
+            without_solve_timings(fit_prepared_model_coefficients(&data, config).unwrap());
         let actual = without_solve_timings(
             fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(true)).unwrap(),
         );
@@ -2679,7 +2679,7 @@ fn loaded_moment_errors_remain_after_validation_and_stale_rows_are_discarded() {
         assert_eq!(
             fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(false))
                 .unwrap_err(),
-            fit_prepared_ols_coefficients_map(&data, config).unwrap_err()
+            fit_prepared_model_coefficients(&data, config).unwrap_err()
         );
     }
 }
@@ -4530,7 +4530,7 @@ fn shared_finite_accepts_known_wide_design() {
             PreparedOlsExecutionMode::Fast,
             PreparedOlsExecutionMode::Low,
         ] {
-            let fit = fit_prepared_ols_coefficients_map(
+            let fit = fit_prepared_model_coefficients(
                 &prepared,
                 PreparedOlsFitConfig {
                     execution: PreparedOlsExecutionConfig {
@@ -4570,7 +4570,7 @@ fn no_fe_intercept_and_syntax_omission_preserve_canonical_slots() {
         true,
         TestWeights::Unit,
     );
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("certified fit");
     assert_eq!(fit.finite_rank(), 1);
     assert_eq!(fit.coefficients().len(), 3);
@@ -4610,9 +4610,9 @@ fn prepared_lsmr_path_matches_certified_map_fit() {
         true,
         TestWeights::Unit,
     );
-    let map = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let map = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("certified MAP fit");
-    let lsmr = fit_prepared_ols_coefficients_map(
+    let lsmr = fit_prepared_model_coefficients(
         &prepared,
         PreparedOlsFitConfig {
             absorb: AbsorbConfig {
@@ -4670,7 +4670,7 @@ fn reconstructed_within_residual_is_reused_and_refined_only_when_needed() {
         TestWeights::Unit,
     );
 
-    let ordinary = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let ordinary = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("ordinary reconstructed-residual fit");
     assert!(ordinary.residual_absorption_report().certified());
     assert_eq!(ordinary.residual_absorption_report().iterations, 0);
@@ -4961,11 +4961,11 @@ fn low_lsmr_batches_match_fast_across_pool_sizes() {
     let prepared = prepared_multiway_categorical(&y, &x, &effects);
     let mut config = PreparedOlsFitConfig::default();
     config.execution.threads = ThreadConfig::from_requested(1, true).unwrap();
-    let fast = fit_prepared_categorical_ols_coefficients_map(&prepared, config).unwrap();
+    let fast = fit_prepared_model_coefficients(&prepared, config).unwrap();
     config.execution.mode = PreparedOlsExecutionMode::Low;
     for poolsize in [1, 2, 4, 5] {
         config.execution.poolsize = poolsize;
-        let low = fit_prepared_categorical_ols_coefficients_map(&prepared, config).unwrap();
+        let low = fit_prepared_model_coefficients(&prepared, config).unwrap();
         assert_eq!(low.finite_rank(), fast.finite_rank());
         assert_eq!(low.absorption_report().used_solver, FeSolverKind::Lsmr);
         for (a, b) in low.residuals().iter().zip(fast.residuals()) {
@@ -5005,8 +5005,7 @@ fn low_fresh_blocks_preserve_explicit_weight_divisors_and_rank() {
             kind,
         );
         let canonical = LinearSolveFrame::from_prepared_ols(&data).unwrap();
-        let fast =
-            fit_prepared_ols_coefficients_map(&data, PreparedOlsFitConfig::default()).unwrap();
+        let fast = fit_prepared_model_coefficients(&data, PreparedOlsFitConfig::default()).unwrap();
         assert_eq!(fast.finite_rank(), 2);
         for divisor_factor in [1.0, 8.0] {
             if canonical.weights().values.is_none() && divisor_factor != 1.0 {
@@ -5087,9 +5086,9 @@ fn low_memory_scratch_fit_matches_fast_fit_across_multiple_blocks() {
         true,
         TestWeights::Unit,
     );
-    let fast = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fast = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("fast fit");
-    let low = fit_prepared_ols_coefficients_map(
+    let low = fit_prepared_model_coefficients(
         &prepared,
         PreparedOlsFitConfig {
             execution: PreparedOlsExecutionConfig {
@@ -5143,7 +5142,7 @@ fn absorbed_intercept_is_normalized_and_fe_collinear_column_is_separate() {
         true,
         TestWeights::Unit,
     );
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("FE fit");
     assert_eq!(fit.finite_rank(), 1);
     assert_close(
@@ -5197,7 +5196,7 @@ fn exact_scaled_duplicate_keeps_earlier_generated_column() {
         false,
         TestWeights::Unit,
     );
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("rank-deficient fit");
     assert_eq!(fit.finite_rank(), 2);
     assert_eq!(fit.kept_generated_columns(), &[0, 2]);
@@ -5268,7 +5267,7 @@ fn pinned_full_ibn_span_keeps_cons_and_earlier_indicator() {
         },
     )
     .expect("full ibn preparation");
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("full ibn fit");
     assert_eq!(fit.finite_rank(), 1);
     assert_eq!(fit.kept_generated_columns(), &[0]);
@@ -5344,7 +5343,7 @@ fn factor_interaction_omission_and_vanished_level_keep_exact_slot_semantics() {
         },
     )
     .expect("factor preparation");
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("factor fit");
     assert_eq!(fit.coefficients().len(), 5);
     assert_eq!(
@@ -5388,7 +5387,7 @@ fn rank_threshold_separates_clear_near_collinearity_cases() {
         TestWeights::Unit,
     );
     let dropped =
-        fit_prepared_ols_coefficients_map(&dropped, config).expect("clearly below-threshold fit");
+        fit_prepared_model_coefficients(&dropped, config).expect("clearly below-threshold fit");
     assert_eq!(dropped.finite_rank(), 1);
 
     let kept_column = x
@@ -5404,8 +5403,7 @@ fn rank_threshold_separates_clear_near_collinearity_cases() {
         false,
         TestWeights::Unit,
     );
-    let kept =
-        fit_prepared_ols_coefficients_map(&kept, config).expect("clearly above-threshold fit");
+    let kept = fit_prepared_model_coefficients(&kept, config).expect("clearly above-threshold fit");
     assert_eq!(kept.finite_rank(), 2);
 }
 
@@ -5422,7 +5420,7 @@ fn all_weight_kinds_and_common_scaling_preserve_coefficients() {
         TestWeights::Frequency(&frequencies),
     ] {
         let prepared = prepared(&y, std::slice::from_ref(&x), &[false], None, true, case);
-        let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+        let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
             .expect("weighted fit");
         coefficients.push((
             fit.coefficients()[0].value.expect("slope"),
@@ -5445,7 +5443,7 @@ fn all_weight_kinds_and_common_scaling_preserve_coefficients() {
             true,
             TestWeights::Analytic(&scaled),
         );
-        let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+        let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
             .expect("scaled analytic fit");
         assert_close(
             fit.coefficients()[0].value.expect("scaled slope"),
@@ -5487,7 +5485,7 @@ fn ols_adapter_and_borrowed_frame_are_exact_for_all_weight_kinds_and_modes() {
                 ..PreparedOlsFitConfig::default()
             };
             let adapter =
-                fit_prepared_ols_coefficients_map(&prepared, config).expect("OLS adapter fit");
+                fit_prepared_model_coefficients(&prepared, config).expect("OLS adapter fit");
             let derived =
                 LinearSolveFrame::from_prepared_ols(&prepared).expect("derived OLS frame");
             let explicit = LinearSolveFrame::from_parts(
@@ -5720,8 +5718,8 @@ fn categorical_ols_adapter_and_borrowed_frame_are_exact() {
     )
     .expect("categorical prepared data");
     let config = PreparedOlsFitConfig::default();
-    let adapter = fit_prepared_categorical_ols_coefficients_map(&prepared, config)
-        .expect("categorical OLS adapter fit");
+    let adapter =
+        fit_prepared_model_coefficients(&prepared, config).expect("categorical OLS adapter fit");
     let derived = LinearSolveFrame::from_prepared_ols(&prepared).expect("categorical OLS frame");
     let explicit = LinearSolveFrame::from_parts(
         derived.response(),
@@ -6985,7 +6983,7 @@ fn wide_fast_and_low_agree_for_weighted_full_weak_and_deficient_designs() {
                 false,
                 TestWeights::Analytic(&weights),
             );
-            let fast = fit_prepared_ols_coefficients_map(&data, PreparedOlsFitConfig::default())
+            let fast = fit_prepared_model_coefficients(&data, PreparedOlsFitConfig::default())
                 .expect("certified wide fast fit");
             let low_config = PreparedOlsFitConfig {
                 execution: PreparedOlsExecutionConfig {
@@ -6995,8 +6993,8 @@ fn wide_fast_and_low_agree_for_weighted_full_weak_and_deficient_designs() {
                 },
                 ..PreparedOlsFitConfig::default()
             };
-            let low = fit_prepared_ols_coefficients_map(&data, low_config)
-                .expect("certified wide low fit");
+            let low =
+                fit_prepared_model_coefficients(&data, low_config).expect("certified wide low fit");
             assert_eq!(fast.finite_rank(), columns - usize::from(gap == 0.0));
             assert_eq!(fast.kept_generated_columns(), low.kept_generated_columns());
             assert_eq!(
@@ -7676,7 +7674,7 @@ fn certified_linear_session_fresh_frozen_and_strict_match_across_routes() {
                 let initial_frame =
                     LinearSolveFrame::from_prepared_ols(&prepared_data).expect("initial frame");
                 let initial_expected =
-                    fit_prepared_ols_coefficients_map(&prepared_data, config).expect("initial fit");
+                    fit_prepared_model_coefficients(&prepared_data, config).expect("initial fit");
                 if !has_fe {
                     assert!(prepared_data.fit_has_absorbed_intercept());
                     assert!(initial_expected.coefficients().iter().any(|coefficient| {
@@ -7926,7 +7924,7 @@ fn retained_low_residual_report_preserves_actual_work_without_changing_one_shot(
         ..PreparedOlsFitConfig::default()
     };
     let expected =
-        fit_prepared_ols_coefficients_map(&prepared_data, config).expect("one-shot Low reference");
+        fit_prepared_model_coefficients(&prepared_data, config).expect("one-shot Low reference");
     let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("session frame");
     let mut session = CertifiedLinearSession::new(
         &prepared_data,
@@ -8196,7 +8194,7 @@ fn no_fe_bread_is_the_exact_canonical_inverse_crossproduct() {
         true,
         TestWeights::Unit,
     );
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("exact no-FE bread");
     assert_eq!(fit.bread().dimension(), 2);
     assert_eq!(
@@ -8234,7 +8232,7 @@ fn absorbed_intercept_and_bread_follow_reference_weight_normalization() {
         true,
         TestWeights::Analytic(&raw_weights),
     );
-    let analytic = fit_prepared_ols_coefficients_map(&analytic, PreparedOlsFitConfig::default())
+    let analytic = fit_prepared_model_coefficients(&analytic, PreparedOlsFitConfig::default())
         .expect("analytic normalized intercept and bread");
     assert_eq!(analytic.finite_rank(), 1);
     assert_close(analytic.coefficients()[0].value.expect("slope"), 2.0, 1e-11);
@@ -8269,7 +8267,7 @@ fn absorbed_intercept_and_bread_follow_reference_weight_normalization() {
         true,
         TestWeights::Analytic(&scaled_weights),
     );
-    let scaled = fit_prepared_ols_coefficients_map(&scaled, PreparedOlsFitConfig::default())
+    let scaled = fit_prepared_model_coefficients(&scaled, PreparedOlsFitConfig::default())
         .expect("rescaled analytic normalized intercept and bread");
     for (left, right) in analytic
         .bread()
@@ -8289,7 +8287,7 @@ fn absorbed_intercept_and_bread_follow_reference_weight_normalization() {
         TestWeights::Probability(&raw_weights),
     );
     let probability =
-        fit_prepared_ols_coefficients_map(&probability, PreparedOlsFitConfig::default())
+        fit_prepared_model_coefficients(&probability, PreparedOlsFitConfig::default())
             .expect("probability normalized intercept and bread");
     assert_eq!(
         probability.bread().weight_scale().weight_kind,
@@ -8313,7 +8311,7 @@ fn absorbed_intercept_and_bread_follow_reference_weight_normalization() {
         true,
         TestWeights::Frequency(&frequencies),
     );
-    let frequency = fit_prepared_ols_coefficients_map(&frequency, PreparedOlsFitConfig::default())
+    let frequency = fit_prepared_model_coefficients(&frequency, PreparedOlsFitConfig::default())
         .expect("frequency normalized intercept and bread");
     assert_close(frequency.bread().values()[0], 3.0 / 73.0, 1e-11);
     assert_close(frequency.bread().values()[1], -9.0 / 365.0, 1e-11);
@@ -8335,7 +8333,7 @@ fn absorbed_intercept_and_bread_follow_reference_weight_normalization() {
         true,
         TestWeights::Frequency(&doubled),
     );
-    let doubled = fit_prepared_ols_coefficients_map(&doubled, PreparedOlsFitConfig::default())
+    let doubled = fit_prepared_model_coefficients(&doubled, PreparedOlsFitConfig::default())
         .expect("doubled frequency bread");
     for (baseline, doubled) in frequency
         .bread()
@@ -8357,7 +8355,7 @@ fn normalized_intercept_does_not_add_finite_or_absorbed_rank() {
         super::super::PreparedOlsAbsorbedDofPolicy::Pairwise,
     )
     .expect("absorbed rank");
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("FE-only fit");
     assert_eq!(fit.finite_rank(), 0);
     assert_eq!(absorbed.absorbed_rank, 3);
@@ -8386,7 +8384,7 @@ fn normalized_intercept_does_not_add_finite_or_absorbed_rank() {
 fn rank_zero_without_finite_columns_is_certified() {
     let y = vec![1.0, -2.0, 3.0, 0.5];
     let prepared = prepared(&y, &[], &[], None, false, TestWeights::Unit);
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("rank-zero fit");
     assert_eq!(fit.finite_rank(), 0);
     assert!(fit.coefficients().is_empty());
@@ -8413,9 +8411,9 @@ fn rank_zero_fast_path_matches_low_memory_weighted_fe_fit() {
         true,
         TestWeights::Analytic(&weights),
     );
-    let fast = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fast = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("fast weighted FE-only fit");
-    let low = fit_prepared_ols_coefficients_map(
+    let low = fit_prepared_model_coefficients(
         &prepared,
         PreparedOlsFitConfig {
             execution: PreparedOlsExecutionConfig {
@@ -9123,7 +9121,7 @@ fn zero_within_norm_column_still_checks_its_raw_score_moment() {
 fn empty_sample_and_invalid_policy_fail_closed() {
     let empty = prepared(&[], &[], &[], None, false, TestWeights::Unit);
     assert_eq!(
-        fit_prepared_ols_coefficients_map(&empty, PreparedOlsFitConfig::default())
+        fit_prepared_model_coefficients(&empty, PreparedOlsFitConfig::default())
             .expect_err("empty fit")
             .code,
         ErrorCode::InsufficientObservations
@@ -9144,7 +9142,7 @@ fn empty_sample_and_invalid_policy_fail_closed() {
         ..default
     };
     assert_eq!(
-        fit_prepared_ols_coefficients_map(&prepared, invalid)
+        fit_prepared_model_coefficients(&prepared, invalid)
             .expect_err("invalid policy")
             .code,
         ErrorCode::InvalidArgument

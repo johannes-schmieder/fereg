@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fereg_core::{
-    fit_prepared_categorical_ols_robust_map, prepare_categorical_ols_data, AbsorbTermId,
+    fit_prepared_model_robust_with_loaded_moments, prepare_categorical_ols_data, AbsorbTermId,
     AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
     LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
     OlsRequestV1, PreparedCategoricalOlsData, PreparedOlsRobustConfig, RawTermKind, SourceEntry,
@@ -95,9 +95,12 @@ fn assert_robust_case_matches_oracle(
     reverse_absorb_sources: bool,
 ) {
     let prepared = prepare_case(case, include_intercept, weights, reverse_absorb_sources);
-    let result =
-        fit_prepared_categorical_ols_robust_map(&prepared, PreparedOlsRobustConfig::default())
-            .expect("certified categorical HC1 inference");
+    let result = fit_prepared_model_robust_with_loaded_moments(
+        &prepared,
+        PreparedOlsRobustConfig::default(),
+        None,
+    )
+    .expect("certified categorical HC1 inference");
     assert!(result.fit().absorption_report().certified());
     assert!(result.fit().residual_absorption_report().certified());
     assert!(result.fit().rank_certificate().passed);

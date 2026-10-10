@@ -30,7 +30,7 @@ use fereg_core::ols::prepare_ols_data_owned;
 use fereg_core::ols::PreparedOlsData;
 #[cfg(test)]
 use fereg_core::ols::{
-    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_unadjusted_map,
+    fit_prepared_model_unadjusted_with_loaded_moments,
     prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
     OlsClusteredRequestV1,
 };

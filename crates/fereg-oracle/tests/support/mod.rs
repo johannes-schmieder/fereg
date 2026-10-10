@@ -12,11 +12,11 @@ pub fn native_fit(
     let (request, loaded) = inputs(design, keep_singletons);
     if design.effects.is_empty() {
         let prepared = prepare_ols_data(&request, &loaded)?;
-        let fit = fit_prepared_ols_coefficients_map(&prepared, config)?;
+        let fit = fit_prepared_model_coefficients(&prepared, config)?;
         Ok((fit, prepared.sample().original_row_by_active.clone()))
     } else {
         let prepared = prepare_categorical_ols_data(&request, &loaded)?;
-        let fit = fit_prepared_categorical_ols_coefficients_map(&prepared, config)?;
+        let fit = fit_prepared_model_coefficients(&prepared, config)?;
         Ok((fit, prepared.sample().original_row_by_active.clone()))
     }
 }

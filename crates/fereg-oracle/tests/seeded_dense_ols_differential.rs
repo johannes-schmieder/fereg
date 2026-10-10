@@ -162,8 +162,9 @@ fn cmg_rejects_unsupported_slopes_while_lsmr_remains_available() {
 #[test]
 fn inference_matches_independent_dense_outputs_on_exact_dof_designs() {
     use fereg_core::{
-        fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,
-        prepare_categorical_ols_data, PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
+        fit_prepared_model_robust_with_loaded_moments,
+        fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_data,
+        PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
     };
     for seed in 0..32 {
         let kind = [
@@ -187,9 +188,12 @@ fn inference_matches_independent_dense_outputs_on_exact_dof_designs() {
         let oracle = fit_explicit_ols(&problem).unwrap();
         let (request, loaded) = support::inputs(&design, false);
         let prepared = prepare_categorical_ols_data(&request, &loaded).unwrap();
-        let robust =
-            fit_prepared_categorical_ols_robust_map(&prepared, PreparedOlsRobustConfig::default())
-                .unwrap();
+        let robust = fit_prepared_model_robust_with_loaded_moments(
+            &prepared,
+            PreparedOlsRobustConfig::default(),
+            None,
+        )
+        .unwrap();
         assert_eq!(
             robust.dof().residual_dof,
             oracle.residual_degrees_of_freedom
@@ -209,9 +213,10 @@ fn inference_matches_independent_dense_outputs_on_exact_dof_designs() {
             .check_slice(robust.covariance().values(), target.as_slice())
             .unwrap();
         if kind != WeightKind::Probability {
-            let iid = fit_prepared_categorical_ols_unadjusted_map(
+            let iid = fit_prepared_model_unadjusted_with_loaded_moments(
                 &prepared,
                 PreparedOlsUnadjustedConfig::default(),
+                None,
             )
             .unwrap();
             assert_eq!(iid.dof().residual_dof, oracle.residual_degrees_of_freedom);

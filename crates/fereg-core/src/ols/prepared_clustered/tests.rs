@@ -124,7 +124,8 @@ fn outcome_overlap_preserves_clustered_statistics_and_covariance() {
         let prepared = prepare_ols_clustered_data(&request, &loaded).unwrap();
         let mut config = PreparedOlsClusteredConfig::default();
         config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
-        let actual = fit_prepared_ols_clustered_map(&prepared, config).unwrap();
+        let actual =
+            fit_prepared_model_clustered_with_loaded_moments(&prepared, config, None).unwrap();
         let (fit, scratch) =
             super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference(
                 prepared.ols(),
@@ -159,8 +160,8 @@ fn strided_score_storage_matches_packed_clustered_inference() {
     let prepared =
         prepare_ols_clustered_data(&request, &loaded).expect("prepared clustered fixture");
     let config = PreparedOlsClusteredConfig::default();
-    let packed =
-        fit_prepared_ols_clustered_map(&prepared, config).expect("packed clustered inference");
+    let packed = fit_prepared_model_clustered_with_loaded_moments(&prepared, config, None)
+        .expect("packed clustered inference");
     let fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
         prepared.ols(),
         config.fit,
@@ -208,7 +209,8 @@ fn low_memory_small_cluster_table_matches_legacy_group_influences() {
     let prepared = prepare_ols_clustered_data(&request, &loaded).expect("large clustered fixture");
     let mut config = PreparedOlsClusteredConfig::default();
     config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
-    let low = fit_prepared_ols_clustered_map(&prepared, config).expect("bounded score table");
+    let low = fit_prepared_model_clustered_with_loaded_moments(&prepared, config, None)
+        .expect("bounded score table");
     assert!(low.certificate().passed);
     // Every subset also runs the independent pre-extraction scratch reducer
     // inside the provider and requires bit-identical meats and group counts.
@@ -248,7 +250,8 @@ fn low_memory_batched_cluster_tables_match_legacy_and_fail_closed() {
     let prepared = prepare_ols_clustered_data(&request, &loaded).expect("large clustered fixture");
     let mut config = PreparedOlsClusteredConfig::default();
     config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
-    let low = fit_prepared_ols_clustered_map(&prepared, config).expect("bounded score table");
+    let low = fit_prepared_model_clustered_with_loaded_moments(&prepared, config, None)
+        .expect("bounded score table");
     assert!(low.certificate().passed);
     // Every subset also runs the independent pre-extraction scratch reducer
     // inside the provider and requires bit-identical meats and group counts.
@@ -374,8 +377,12 @@ fn singular_wald_slope_block_is_explicitly_undefined() {
     let (request, loaded) = super::super::prepared_clusters::tests::fixture();
     let prepared =
         prepare_ols_clustered_data(&request, &loaded).expect("prepared clustered fixture");
-    let result = fit_prepared_ols_clustered_map(&prepared, PreparedOlsClusteredConfig::default())
-        .expect("clustered fixture fit");
+    let result = fit_prepared_model_clustered_with_loaded_moments(
+        &prepared,
+        PreparedOlsClusteredConfig::default(),
+        None,
+    )
+    .expect("clustered fixture fit");
     let dimension = result.covariance.dimension();
     let zero = PreparedOlsClusteredCovariance {
         correction: result.covariance.correction,

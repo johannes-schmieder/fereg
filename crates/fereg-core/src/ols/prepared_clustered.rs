@@ -28,10 +28,9 @@ use super::prepared_unadjusted::{
     relative_difference, validate_sum_of_squares, ReferenceWeightView,
 };
 use super::{
-    CertifiedPreparedOlsFit, PreparedCategoricalOlsClusteredData, PreparedOlsAbsorbedDofPolicy,
-    PreparedOlsBreadCoordinateKind, PreparedOlsClusteredData, PreparedOlsColumnKind,
-    PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatistics,
-    PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
+    CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy, PreparedOlsBreadCoordinateKind,
+    PreparedOlsClusteredData, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsFitConfig,
+    PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
 };
 
 const CLUSTER_REDUCTION_MAX_BLOCKS: usize = 64;
@@ -373,59 +372,25 @@ struct ClusteredPerturbations {
     f_statistic: bool,
 }
 
-/// Fit and certify one-/multiway clustered covariance through the prepared
-/// strict-MAP path. This entry point owns the complete scientific composition.
-pub fn fit_prepared_ols_clustered_map(
-    prepared: &PreparedOlsClusteredData,
-    config: PreparedOlsClusteredConfig,
-) -> Result<CertifiedPreparedOlsClustered> {
-    fit_prepared_ols_clustered_map_with_loaded_moments(prepared, config, None)
-}
-
-/// Consume optional same-call numeric rows after authoritative sample validation.
-pub fn fit_prepared_ols_clustered_map_with_loaded_moments(
-    prepared: &PreparedOlsClusteredData,
-    config: PreparedOlsClusteredConfig,
-    rows: Option<super::LoadedOlsRows>,
-) -> Result<CertifiedPreparedOlsClustered> {
-    ThreadTeam::new(config.fit.execution.threads).install(|| {
-        let mut reservation = SystemPreparedInferenceReservation;
-        fit_with_loaded_reservation(prepared, config, &mut reservation, rows)
-    })?
-}
-
-/// Fit and certify categorical-interaction OLS/WLS with one-/multiway
-/// clustered covariance through the same numerical pipeline.
-pub fn fit_prepared_categorical_ols_clustered_map(
-    prepared: &PreparedCategoricalOlsClusteredData,
-    config: PreparedOlsClusteredConfig,
-) -> Result<CertifiedPreparedCategoricalOlsClustered> {
-    fit_prepared_categorical_ols_clustered_map_with_loaded_moments(prepared, config, None)
-}
-
-/// Consume optional same-call numeric rows after authoritative sample validation.
-pub fn fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
-    prepared: &PreparedCategoricalOlsClusteredData,
-    config: PreparedOlsClusteredConfig,
-    rows: Option<super::LoadedOlsRows>,
-) -> Result<CertifiedPreparedCategoricalOlsClustered> {
-    let components = ThreadTeam::new(config.fit.execution.threads).install(|| {
-        let mut reservation = SystemPreparedInferenceReservation;
-        fit_clustered_view_with_reservation(prepared, config, &mut reservation, rows)
-    })??;
-    Ok(components)
-}
-
-/// Fit the canonical owner without duplicating the host's VCE dispatch.
+/// Fit and certify one-/multiway clustered covariance through the owner's
+/// declared ordinary or categorical projection semantics. This entry point
+/// owns the complete scientific composition.
 pub fn fit_prepared_model_clustered_with_loaded_moments(
     prepared: &PreparedOlsData,
     config: PreparedOlsClusteredConfig,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsClustered> {
     if prepared.uses_categorical_preparation() {
-        fit_prepared_categorical_ols_clustered_map_with_loaded_moments(prepared, config, rows)
+        let components = ThreadTeam::new(config.fit.execution.threads).install(|| {
+            let mut reservation = SystemPreparedInferenceReservation;
+            fit_clustered_view_with_reservation(prepared, config, &mut reservation, rows)
+        })??;
+        Ok(components)
     } else {
-        fit_prepared_ols_clustered_map_with_loaded_moments(prepared, config, rows)
+        ThreadTeam::new(config.fit.execution.threads).install(|| {
+            let mut reservation = SystemPreparedInferenceReservation;
+            fit_with_loaded_reservation(prepared, config, &mut reservation, rows)
+        })?
     }
 }
 

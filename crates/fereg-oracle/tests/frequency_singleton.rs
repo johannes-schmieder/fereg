@@ -8,7 +8,7 @@ mod fixture;
 #[allow(dead_code)]
 mod support;
 use fereg_core::{
-    fit_prepared_categorical_ols_unadjusted_map, prepare_categorical_ols_data,
+    fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_data,
     PreparedOlsAbsorbedDofPolicy, PreparedOlsExecutionMode, PreparedOlsUnadjustedConfig,
 };
 use fereg_oracle::compare::PREDICTION;
@@ -30,7 +30,8 @@ fn frequency_retained_singleton_factor_is_absorbed_by_its_group_slope() {
         };
         config.fit.execution.mode = mode;
         config.fit.execution.poolsize = 1;
-        let result = fit_prepared_categorical_ols_unadjusted_map(&prepared, config).unwrap();
+        let result =
+            fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None).unwrap();
         assert_eq!(
             result.dof().residual_dof,
             oracle.result.residual_degrees_of_freedom

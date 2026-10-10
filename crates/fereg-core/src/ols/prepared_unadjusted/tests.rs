@@ -214,8 +214,12 @@ fn outcome_stages_repeat_complete_results_and_fit_errors() {
                 let mut config = PreparedOlsUnadjustedConfig::default();
                 config.fit.execution.threads =
                     crate::ThreadConfig::from_requested(threads, true).unwrap();
-                let expected = fit_with_outcome_stages(&prepared, config, None).unwrap();
-                let actual = fit_with_outcome_stages(&prepared, config, None).unwrap();
+                let expected =
+                    fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
+                        .unwrap();
+                let actual =
+                    fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
+                        .unwrap();
                 assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
                 assert_eq!(expected.weights, actual.weights);
                 assert_eq!(expected.dof, actual.dof);
@@ -254,8 +258,10 @@ fn outcome_stages_repeat_complete_results_and_fit_errors() {
             let mut config = PreparedOlsUnadjustedConfig::default();
             config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
             assert_eq!(
-                fit_with_outcome_stages(&prepared, config, None).unwrap_err(),
-                fit_with_outcome_stages(&prepared, config, None).unwrap_err()
+                fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
+                    .unwrap_err(),
+                fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
+                    .unwrap_err()
             );
         }
     }
@@ -319,8 +325,10 @@ fn multi_fe_outcome_stages_repeat_ordinary_and_categorical_inference() {
             let categorical = crate::prepare_categorical_ols_data(&request, &input).unwrap();
             let mut config = PreparedOlsUnadjustedConfig::default();
             config.fit.execution.threads = crate::ThreadConfig::from_requested(8, true).unwrap();
-            let expected = fit_with_outcome_stages(&ordinary, config, None).unwrap();
-            let actual = fit_with_outcome_stages(&ordinary, config, None).unwrap();
+            let expected =
+                fit_prepared_model_unadjusted_with_loaded_moments(&ordinary, config, None).unwrap();
+            let actual =
+                fit_prepared_model_unadjusted_with_loaded_moments(&ordinary, config, None).unwrap();
             assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
             assert_eq!(expected.dof, actual.dof);
             assert_eq!(expected.statistics, actual.statistics);
@@ -328,8 +336,12 @@ fn multi_fe_outcome_stages_repeat_ordinary_and_categorical_inference() {
             assert_eq!(expected.certificate, actual.certificate);
             assert_eq!(expected.fit.coefficients(), actual.fit.coefficients());
             assert_eq!(expected.fit.residuals(), actual.fit.residuals());
-            let expected = fit_categorical_with_outcome_stages(&categorical, config, None).unwrap();
-            let actual = fit_categorical_with_outcome_stages(&categorical, config, None).unwrap();
+            let expected =
+                fit_prepared_model_unadjusted_with_loaded_moments(&categorical, config, None)
+                    .unwrap();
+            let actual =
+                fit_prepared_model_unadjusted_with_loaded_moments(&categorical, config, None)
+                    .unwrap();
             assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
             assert_eq!(expected.dof, actual.dof);
             assert_eq!(expected.statistics, actual.statistics);
@@ -359,8 +371,8 @@ fn wide_outcome_stages_repeat_numeric_and_categorical_inference() {
     let mut config = PreparedOlsUnadjustedConfig::default();
     config.fit.execution.threads = crate::ThreadConfig::from_requested(8, true).unwrap();
     let data = prepared(&y, &columns, Some(&groups), true, TestWeights::Unit);
-    let expected = fit_with_outcome_stages(&data, config, None).unwrap();
-    let actual = fit_with_outcome_stages(&data, config, None).unwrap();
+    let expected = fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None).unwrap();
+    let actual = fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None).unwrap();
     assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
     assert_eq!(expected.weights, actual.weights);
     assert_eq!(expected.dof, actual.dof);
@@ -385,8 +397,8 @@ fn wide_outcome_stages_repeat_numeric_and_categorical_inference() {
     let data = crate::prepare_categorical_ols_data(&request, &input).unwrap();
     config.fit.allow_final_fe_recovery = true;
     config.fit.absorb.retain_coefficients = true;
-    let expected = fit_categorical_with_outcome_stages(&data, config, None).unwrap();
-    let actual = fit_categorical_with_outcome_stages(&data, config, None).unwrap();
+    let expected = fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None).unwrap();
+    let actual = fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None).unwrap();
     assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
     assert_eq!(expected.weights, actual.weights);
     assert_eq!(expected.dof, actual.dof);
@@ -428,8 +440,11 @@ fn categorical_outcome_stages_repeat_inference_and_fit_errors() {
                 config.fit.execution.threads =
                     crate::ThreadConfig::from_requested(threads, true).unwrap();
                 let expected =
-                    fit_categorical_with_outcome_stages(&prepared, config, None).unwrap();
-                let actual = fit_categorical_with_outcome_stages(&prepared, config, None).unwrap();
+                    fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
+                        .unwrap();
+                let actual =
+                    fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
+                        .unwrap();
                 assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
                 assert_eq!(expected.weights, actual.weights);
                 assert_eq!(expected.dof, actual.dof);
@@ -450,8 +465,10 @@ fn categorical_outcome_stages_repeat_inference_and_fit_errors() {
                     .all(|(a, b)| a.to_bits() == b.to_bits()));
                 config.fit.score_tolerance = f64::NAN;
                 assert_eq!(
-                    fit_categorical_with_outcome_stages(&prepared, config, None).unwrap_err(),
-                    fit_categorical_with_outcome_stages(&prepared, config, None).unwrap_err(),
+                    fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
+                        .unwrap_err(),
+                    fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
+                        .unwrap_err(),
                 );
             }
         }
@@ -699,9 +716,10 @@ fn every_inference_perturbation_is_rejected() {
 #[test]
 fn hidden_constant_reported_constant_and_fe_only_edges_are_explicit() {
     let y = [2.0, 3.5, 1.0, 4.0, 5.0, 2.5];
-    let no_intercept = fit_prepared_ols_unadjusted_map(
+    let no_intercept = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared(&y, &[], None, false, TestWeights::Unit),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("hidden structural-constant inference");
     assert_eq!(no_intercept.dof().absorbed_rank, 1);
@@ -722,9 +740,10 @@ fn hidden_constant_reported_constant_and_fe_only_edges_are_explicit() {
     assert!(no_intercept.statistics().f_statistic.is_none());
 
     let constant = [0.0; 6];
-    let intercept_only = fit_prepared_ols_unadjusted_map(
+    let intercept_only = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared(&constant, &[], None, true, TestWeights::Unit),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("intercept-only exact inference");
     assert_eq!(intercept_only.dof().finite_rank, 0);
@@ -744,9 +763,10 @@ fn hidden_constant_reported_constant_and_fe_only_edges_are_explicit() {
 
     let groups = [0.0, 0.0, 1.0, 1.0, 2.0, 2.0];
     let explained = [1.0, 1.0, 3.0, 3.0, -2.0, -2.0];
-    let fe_only = fit_prepared_ols_unadjusted_map(
+    let fe_only = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared(&explained, &[], Some(&groups), false, TestWeights::Unit),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("FE-only rank-zero exact inference");
     assert_eq!(fe_only.dof().finite_rank, 0);
@@ -765,9 +785,10 @@ fn pinned_constant_regressor_is_structurally_absorbed_and_cons_is_normalized() {
     // classified as collinear with the virtual one-level absorbed effect.
     let y = [2.0, 5.0, 4.0, 8.0, 7.0, 11.0];
     let one = vec![1.0; y.len()];
-    let result = fit_prepared_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared(&y, &[one], None, true, TestWeights::Unit),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("constant plus requested intercept inference");
     assert_eq!(
@@ -804,9 +825,10 @@ fn pinned_constant_regressor_is_structurally_absorbed_and_cons_is_normalized() {
         1e-12,
     );
 
-    let hidden = fit_prepared_ols_unadjusted_map(
+    let hidden = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared(&y, &[vec![1.0; y.len()]], None, false, TestWeights::Unit),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("hidden constant-regressor inference");
     assert_eq!(
@@ -841,7 +863,7 @@ fn paired_no_x_default_and_noconstant_share_weighted_structural_residuals() {
     let analytic = [0.5, 2.0, 1.5, 3.0, 0.75, 4.0];
     let groups = [0.0, 0.0, 1.0, 1.0, 2.0, 2.0];
     for fixed_effect in [None, Some(groups.as_slice())] {
-        let reported = fit_prepared_ols_unadjusted_map(
+        let reported = fit_prepared_model_unadjusted_with_loaded_moments(
             &prepared(
                 &y,
                 &[],
@@ -850,9 +872,10 @@ fn paired_no_x_default_and_noconstant_share_weighted_structural_residuals() {
                 TestWeights::Analytic(&analytic),
             ),
             PreparedOlsUnadjustedConfig::default(),
+            None,
         )
         .expect("reported no-X inference");
-        let hidden = fit_prepared_ols_unadjusted_map(
+        let hidden = fit_prepared_model_unadjusted_with_loaded_moments(
             &prepared(
                 &y,
                 &[],
@@ -861,6 +884,7 @@ fn paired_no_x_default_and_noconstant_share_weighted_structural_residuals() {
                 TestWeights::Analytic(&analytic),
             ),
             PreparedOlsUnadjustedConfig::default(),
+            None,
         )
         .expect("hidden no-X inference");
         let weighted_mean = y
@@ -982,8 +1006,12 @@ fn pinned_full_ibn_span_has_one_finite_contrast_and_report_only_cons() {
             },
         )
         .expect("full ibn preparation");
-        fit_prepared_ols_unadjusted_map(&prepared, PreparedOlsUnadjustedConfig::default())
-            .expect("full ibn inference")
+        fit_prepared_model_unadjusted_with_loaded_moments(
+            &prepared,
+            PreparedOlsUnadjustedConfig::default(),
+            None,
+        )
+        .expect("full ibn inference")
     };
     let reported = fit(true);
     let hidden = fit(false);
@@ -1024,14 +1052,16 @@ fn pinned_default_and_noconstant_pairs_share_the_structural_fit_for_unit_a_and_f
         TestWeights::Frequency(&frequency),
     ] {
         for fixed_effect in [None, Some(groups.as_slice())] {
-            let reported = fit_prepared_ols_unadjusted_map(
+            let reported = fit_prepared_model_unadjusted_with_loaded_moments(
                 &prepared(&y, std::slice::from_ref(&x), fixed_effect, true, weights),
                 PreparedOlsUnadjustedConfig::default(),
+                None,
             )
             .expect("reported structural-constant inference");
-            let hidden = fit_prepared_ols_unadjusted_map(
+            let hidden = fit_prepared_model_unadjusted_with_loaded_moments(
                 &prepared(&y, std::slice::from_ref(&x), fixed_effect, false, weights),
                 PreparedOlsUnadjustedConfig::default(),
+                None,
             )
             .expect("hidden structural-constant inference");
 
@@ -1122,9 +1152,10 @@ fn wald_f_survives_weak_signal_under_large_orthogonal_noise() {
         .zip(orthogonal_noise)
         .map(|(x, noise)| 1.0e12 * noise + 10.0 * x)
         .collect::<Vec<_>>();
-    let result = fit_prepared_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared(&y, &[x], None, true, TestWeights::Unit),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("weak-signal Wald inference");
     let f_statistic = result
@@ -1146,33 +1177,43 @@ fn invalid_configs_pweights_and_nonpositive_residual_dof_fail_closed() {
     let y = [1.0, 2.0, 3.0, 4.0];
     let x = vec![vec![0.0, 1.0, 2.0, 3.0]];
     for tolerance in [f64::NAN, 0.0, 1.0] {
-        let error = fit_prepared_ols_unadjusted_map(
+        let error = fit_prepared_model_unadjusted_with_loaded_moments(
             &prepared(&y, &x, None, true, TestWeights::Unit),
             PreparedOlsUnadjustedConfig {
                 certificate_tolerance: tolerance,
                 ..PreparedOlsUnadjustedConfig::default()
             },
+            None,
         )
         .expect_err("invalid inference tolerance must fail");
         assert_eq!(error.code, ErrorCode::InvalidArgument);
     }
 
     let pweights = [0.5, 1.5, 2.0, 3.0];
-    let error = fit_prepared_ols_unadjusted_map(
+    let error = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared(&y, &x, None, true, TestWeights::Probability(&pweights)),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect_err("iid pweight inference must fail");
     assert_eq!(error.code, ErrorCode::Unsupported);
 
     let saturated = prepared(&[2.0], &[], None, true, TestWeights::Unit);
-    let error = fit_prepared_ols_unadjusted_map(&saturated, PreparedOlsUnadjustedConfig::default())
-        .expect_err("zero residual DoF must fail");
+    let error = fit_prepared_model_unadjusted_with_loaded_moments(
+        &saturated,
+        PreparedOlsUnadjustedConfig::default(),
+        None,
+    )
+    .expect_err("zero residual DoF must fail");
     assert_eq!(error.code, ErrorCode::InsufficientObservations);
 
     let empty = prepared(&[], &[], None, false, TestWeights::Unit);
-    let error = fit_prepared_ols_unadjusted_map(&empty, PreparedOlsUnadjustedConfig::default())
-        .expect_err("empty inference sample must fail");
+    let error = fit_prepared_model_unadjusted_with_loaded_moments(
+        &empty,
+        PreparedOlsUnadjustedConfig::default(),
+        None,
+    )
+    .expect_err("empty inference sample must fail");
     assert_eq!(error.code, ErrorCode::InsufficientObservations);
 
     let mut misaligned = prepared(&y, &x, None, true, TestWeights::Analytic(&pweights));
@@ -1180,9 +1221,12 @@ fn invalid_configs_pweights_and_nonpositive_residual_dof_fail_closed() {
         panic!("analytic test weights must be present");
     };
     values.pop();
-    let error =
-        fit_prepared_ols_unadjusted_map(&misaligned, PreparedOlsUnadjustedConfig::default())
-            .expect_err("misaligned prepared weights must fail");
+    let error = fit_prepared_model_unadjusted_with_loaded_moments(
+        &misaligned,
+        PreparedOlsUnadjustedConfig::default(),
+        None,
+    )
+    .expect_err("misaligned prepared weights must fail");
     assert_eq!(error.code, ErrorCode::InvalidData);
 }
 
@@ -1196,7 +1240,7 @@ fn corrupted_absorbed_dof_artifact_cannot_be_composed() {
         true,
         TestWeights::Unit,
     );
-    let fit = fit_prepared_ols_coefficients_map(&with_fe, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&with_fe, PreparedOlsFitConfig::default())
         .expect("certified fit");
     let mut absorbed = compute_canonical_prepared_ols_absorbed_dof(
         &with_fe,
@@ -1226,7 +1270,7 @@ fn corrupted_absorbed_dof_artifact_cannot_be_composed() {
         true,
         TestWeights::Unit,
     );
-    let fit = fit_prepared_ols_coefficients_map(&no_absorb, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&no_absorb, PreparedOlsFitConfig::default())
         .expect("no-absorb fit");
     let mut absorbed = compute_canonical_prepared_ols_absorbed_dof(
         &no_absorb,
@@ -1256,9 +1300,10 @@ fn analytic_and_frequency_reference_scales_are_reported_exactly() {
     let y = [1.1, 2.3, 3.0, 4.4, 5.2, 6.1];
     let x = vec![vec![-2.0, -1.0, 0.0, 1.0, 2.0, 4.0]];
     let analytic = [0.25, 2.0, 1.5, 3.0, 0.75, 4.0];
-    let aresult = fit_prepared_ols_unadjusted_map(
+    let aresult = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared(&y, &x, None, true, TestWeights::Analytic(&analytic)),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("analytic iid inference");
     assert_eq!(aresult.weights().effective_observations, 6);
@@ -1269,9 +1314,10 @@ fn analytic_and_frequency_reference_scales_are_reported_exactly() {
     );
 
     let frequencies = [1_u32, 2, 3, 1, 4, 2];
-    let fresult = fit_prepared_ols_unadjusted_map(
+    let fresult = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared(&y, &x, None, true, TestWeights::Frequency(&frequencies)),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("frequency iid inference");
     assert_eq!(fresult.weights().physical_observations, 6);
@@ -1284,7 +1330,7 @@ fn compose_for_test<R: InferenceReservation>(
     reservation: &mut R,
     perturbations: InferencePerturbations,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
-    let fit = fit_prepared_ols_coefficients_map(prepared, PreparedOlsFitConfig::default())?;
+    let fit = fit_prepared_model_coefficients(prepared, PreparedOlsFitConfig::default())?;
     let absorbed = compute_canonical_prepared_ols_absorbed_dof(
         prepared,
         PreparedOlsAbsorbedDofPolicy::Pairwise,

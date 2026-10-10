@@ -12,7 +12,6 @@ use crate::memory::push_reserved;
 use crate::metadata::CoefficientSlot;
 use crate::options::ThreadConfig;
 use crate::parallel::ThreadTeam;
-use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 use std::time::Instant;
@@ -1143,16 +1142,21 @@ struct FitPerturbations {
     one_fe_final_recovery_disabled: bool,
 }
 
-/// Fit the currently supported prepared OLS/WLS finite coefficients through
+/// Fit the finite coefficients of a prepared model, without inference,
+/// through the owner's declared ordinary or categorical projection semantics:
 /// the strict borrowed-intercept MAP path and a certified scaled finite solve.
-pub fn fit_prepared_ols_coefficients_map(
+pub fn fit_prepared_model_coefficients(
     prepared: &PreparedOlsData,
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedOlsFit> {
-    fit_prepared_ols_coefficients_view_map(
-        &crate::prepared_fit_view::OrdinaryPrepared(prepared),
-        config,
-    )
+    if prepared.uses_categorical_preparation() {
+        fit_prepared_ols_coefficients_view_map(prepared, config)
+    } else {
+        fit_prepared_ols_coefficients_view_map(
+            &crate::prepared_fit_view::OrdinaryPrepared(prepared),
+            config,
+        )
+    }
 }
 
 pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows<
@@ -1182,16 +1186,6 @@ pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows<
             Some(rows),
         )
     })?
-}
-
-/// Fit the interaction-aware categorical prepared artifact through the exact
-/// same certified MAP, guarded Cholesky/QR, bread, residual, and score path used
-/// by the legacy prepared boundary.
-pub fn fit_prepared_categorical_ols_coefficients_map(
-    prepared: &PreparedCategoricalOlsData,
-    config: PreparedOlsFitConfig,
-) -> Result<CertifiedPreparedOlsFit> {
-    fit_prepared_ols_coefficients_view_map(prepared, config)
 }
 
 pub(crate) fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + Sync + ?Sized>(

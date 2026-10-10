@@ -1,6 +1,6 @@
 use fereg_core::CategoricalTopologyDofPolicy;
 use fereg_core::{
-    fit_prepared_categorical_ols_unadjusted_map, prepare_categorical_ols_data, AbsorbTermId,
+    fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_data, AbsorbTermId,
     AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ErrorCode,
     ExpandedTerm, FeSolverKind, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag,
     OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
@@ -29,7 +29,7 @@ fn cmg_rejects_absorbed_slopes_before_estimation() {
     let prepared = prepare_case(&y, &x1, &firm, &time, &worker, true);
     let mut config = PreparedOlsUnadjustedConfig::default();
     config.fit.absorb.solver = FeSolverKind::Cmg;
-    let error = fit_prepared_categorical_ols_unadjusted_map(&prepared, config)
+    let error = fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
         .expect_err("CMG slope eligibility");
     assert_eq!(error.code, ErrorCode::Unsupported);
     assert!(error.message.contains("absorbed slopes are unsupported"));
@@ -51,9 +51,10 @@ fn auto_never_routes_absorbed_slopes_to_cmg() {
         worker.extend_from_slice(&base_worker);
     }
     let prepared = prepare_case(&y, &x1, &firm, &time, &worker, true);
-    let result = fit_prepared_categorical_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("certified automatic slope fit");
     assert!(result.fit().absorption_report().certified());
@@ -82,9 +83,10 @@ fn slope_only_plus_intercept_case_matches_explicit_dummy_oracle() {
     worker.extend_from_slice(&base_worker);
 
     let prepared = prepare_case(&y, &x1, &firm, &time, &worker, false);
-    let result = fit_prepared_categorical_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("certified slope-only plus intercept fit");
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
@@ -135,9 +137,10 @@ fn multiple_slope_only_terms_match_explicit_dummy_oracle_with_positive_dof() {
         .collect::<Vec<_>>();
 
     let prepared = prepare_multiple_slope_only_case(&y, &x1, &firm, &time, &worker, &x2);
-    let result = fit_prepared_categorical_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("certified positive-DoF multiple slope-only fit");
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
@@ -211,9 +214,10 @@ fn positive_dof_intercept_slope_case_matches_explicit_dummy_oracle() {
     worker.extend_from_slice(&base_worker);
 
     let prepared = prepare_case(&y, &x1, &firm, &time, &worker, true);
-    let result = fit_prepared_categorical_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("certified positive-DoF intercept-slope fit");
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
@@ -362,12 +366,13 @@ fn positive_intercept_slope_case_has_positive_continuous_residual_dof() {
     time.extend_from_slice(&base_time);
     worker.extend_from_slice(&base_worker);
     let prepared = prepare_case(&y, &x1, &firm, &time, &worker, true);
-    let result = fit_prepared_categorical_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig {
             absorbed_dof: PreparedOlsAbsorbedDofPolicy::Continuous,
             ..PreparedOlsUnadjustedConfig::default()
         },
+        None,
     )
     .expect("continuous DoF fit remains positive");
     assert_eq!(result.absorbed_dof().absorbed_rank, 27);
@@ -383,9 +388,10 @@ fn positive_intercept_slope_case_has_positive_continuous_residual_dof() {
 fn old_overabsorbed_intercept_slope_case_fails_before_inference_publication() {
     let (y, x1, firm, time, worker) = overabsorbed_case();
     let prepared = prepare_case(&y, &x1, &firm, &time, &worker, true);
-    let error = fit_prepared_categorical_ols_unadjusted_map(
+    let error = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect_err("nonpositive conservative residual DoF must fail closed");
     assert_eq!(error.code, ErrorCode::InsufficientObservations);

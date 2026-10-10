@@ -1,11 +1,12 @@
 use fereg_core::{
-    fit_prepared_ols_coefficients_map, fit_prepared_ols_unadjusted_map, prepare_ols_data,
-    AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder,
-    ExpandedTerm, FeSolverKind, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag,
-    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
-    PreparedOlsBreadCoordinateKind, PreparedOlsData, PreparedOlsExecutionMode,
-    PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsUnadjustedConfig, RawTermKind,
-    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    fit_prepared_model_coefficients, fit_prepared_model_unadjusted_with_loaded_moments,
+    prepare_ols_data, AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph,
+    ComponentKind, ComponentOrder, ExpandedTerm, FeSolverKind, LevelState, LoadedNumericColumn,
+    LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    PreparedOlsAbsorbedDofPolicy, PreparedOlsBreadCoordinateKind, PreparedOlsData,
+    PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
+    TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -39,11 +40,11 @@ fn cmg_two_way_prepared_fit_matches_certified_cg() {
     );
     let mut cg_config = PreparedOlsFitConfig::default();
     cg_config.absorb.solver = FeSolverKind::Cg;
-    let cg = fit_prepared_ols_coefficients_map(&prepared, cg_config).expect("CG fit");
+    let cg = fit_prepared_model_coefficients(&prepared, cg_config).expect("CG fit");
     let mut cmg_config = PreparedOlsFitConfig::default();
     cmg_config.absorb.solver = FeSolverKind::Cmg;
     cmg_config.execution.poolsize = 1;
-    let cmg = fit_prepared_ols_coefficients_map(&prepared, cmg_config).expect("CMG fit");
+    let cmg = fit_prepared_model_coefficients(&prepared, cmg_config).expect("CMG fit");
     assert_eq!(cmg.absorption_report().requested_solver, FeSolverKind::Cmg);
     assert_eq!(cmg.absorption_report().used_solver, FeSolverKind::Cmg);
     assert_eq!(cmg.finite_rank(), cg.finite_rank());
@@ -110,7 +111,7 @@ fn structural_auto_graph_and_explicit_solvers_match_dummies_in_both_storage_mode
             config.execution.mode = mode;
             config.execution.poolsize = 1;
             config.absorb.solver = solver;
-            let fit = fit_prepared_ols_coefficients_map(&prepared, config)
+            let fit = fit_prepared_model_coefficients(&prepared, config)
                 .expect("supported solver oracle fit");
             let expected = if solver == FeSolverKind::Auto {
                 FeSolverKind::Map
@@ -291,7 +292,7 @@ fn observation_permutation_preserves_identified_fit() {
     }
     assert_slice_close(&baseline.1, &restored, RESIDUAL_TOLERANCE);
 
-    let baseline_inference = fit_prepared_ols_unadjusted_map(
+    let baseline_inference = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepare_case(
             &outcome,
             std::slice::from_ref(&x),
@@ -301,9 +302,10 @@ fn observation_permutation_preserves_identified_fit() {
             CaseWeights::Analytic(&weights),
         ),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("baseline permutation inference");
-    let permuted_inference = fit_prepared_ols_unadjusted_map(
+    let permuted_inference = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepare_case(
             &permuted_outcome,
             std::slice::from_ref(&permuted_x),
@@ -313,6 +315,7 @@ fn observation_permutation_preserves_identified_fit() {
             CaseWeights::Analytic(&permuted_weights),
         ),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("permuted inference");
     assert_eq!(baseline_inference.dof(), permuted_inference.dof());
@@ -349,7 +352,7 @@ fn analytic_inference_is_invariant_to_extreme_common_weight_scales() {
     let huge = base.map(|weight| weight * 1e150);
     let effects = vec![groups];
     let solve = |weights: &[f64]| {
-        fit_prepared_ols_unadjusted_map(
+        fit_prepared_model_unadjusted_with_loaded_moments(
             &prepare_case(
                 &y,
                 std::slice::from_ref(&x),
@@ -359,6 +362,7 @@ fn analytic_inference_is_invariant_to_extreme_common_weight_scales() {
                 CaseWeights::Analytic(weights),
             ),
             PreparedOlsUnadjustedConfig::default(),
+            None,
         )
         .expect("extreme-scale analytic inference")
     };
@@ -391,7 +395,7 @@ fn virtual_constant_is_invariant_to_extreme_aweight_scaling_and_row_permutation(
     let tiny = base.map(|weight| weight * 1e-150);
     let huge = base.map(|weight| weight * 1e150);
     let solve = |outcome: &[f64], regressor: &[f64], weights: &[f64]| {
-        fit_prepared_ols_unadjusted_map(
+        fit_prepared_model_unadjusted_with_loaded_moments(
             &prepare_case(
                 outcome,
                 &[regressor.to_vec()],
@@ -401,6 +405,7 @@ fn virtual_constant_is_invariant_to_extreme_aweight_scaling_and_row_permutation(
                 CaseWeights::Analytic(weights),
             ),
             PreparedOlsUnadjustedConfig::default(),
+            None,
         )
         .expect("virtual-constant analytic inference")
     };
@@ -450,7 +455,7 @@ fn frequency_inference_matches_literal_row_expansion() {
     let x = vec![-2.0, 0.5, -1.0, 2.0, 1.5, 4.0];
     let y = vec![0.4, 5.1, -2.2, 3.7, 4.0, 8.3];
     let frequencies = [1_u32, 3, 2, 4, 1, 2];
-    let weighted = fit_prepared_ols_unadjusted_map(
+    let weighted = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepare_case(
             &y,
             std::slice::from_ref(&x),
@@ -460,6 +465,7 @@ fn frequency_inference_matches_literal_row_expansion() {
             CaseWeights::Frequency(&frequencies),
         ),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("frequency inference");
     let mut expanded_y = Vec::new();
@@ -472,7 +478,7 @@ fn frequency_inference_matches_literal_row_expansion() {
             expanded_groups.push(groups[row]);
         }
     }
-    let expanded = fit_prepared_ols_unadjusted_map(
+    let expanded = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepare_case(
             &expanded_y,
             &[expanded_x],
@@ -482,6 +488,7 @@ fn frequency_inference_matches_literal_row_expansion() {
             CaseWeights::Unit,
         ),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("literal frequency expansion inference");
     assert_eq!(weighted.weights().effective_observations, expanded_y.len());
@@ -662,7 +669,7 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
     let firm = csv_u32_column(core, "firm");
     let year = csv_u32_column(core, "year");
 
-    let no_fe = fit_prepared_ols_unadjusted_map(
+    let no_fe = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepare_case(
             &outcome,
             &[x1.clone(), x2],
@@ -672,6 +679,7 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
             CaseWeights::Unit,
         ),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("sealed no-FE iid inference");
     assert_eq!(no_fe.weights().physical_observations, 24);
@@ -720,7 +728,7 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
         3e-6,
     );
 
-    let disconnected = fit_prepared_ols_unadjusted_map(
+    let disconnected = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepare_case(
             &outcome,
             &[],
@@ -730,6 +738,7 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
             CaseWeights::Unit,
         ),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("sealed disconnected FE-only iid inference");
     assert_eq!(disconnected.dof().finite_rank, 0);
@@ -750,9 +759,10 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
     );
     assert!(disconnected.statistics().f_statistic.is_none());
 
-    let one_fe_factor = fit_prepared_ols_unadjusted_map(
+    let one_fe_factor = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepare_one_fe_factor_case(core),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("sealed one-FE factor iid statistics");
     assert_eq!(one_fe_factor.dof().absorbed_rank, 8);
@@ -783,7 +793,7 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
         ("w_scaled", "+1.0200000000000X+008"),
     ] {
         let raw = csv_numeric_column(weights_fixture, column);
-        let inference = fit_prepared_ols_unadjusted_map(
+        let inference = fit_prepared_model_unadjusted_with_loaded_moments(
             &prepare_case(
                 &weighted_outcome,
                 &weighted_x,
@@ -793,6 +803,7 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
                 CaseWeights::Analytic(&raw),
             ),
             PreparedOlsUnadjustedConfig::default(),
+            None,
         )
         .expect("sealed analytic-weight iid inference");
         assert_eq!(inference.weights().effective_observations, 12);
@@ -807,7 +818,7 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
         );
     }
     let frequencies = csv_u32_column(weights_fixture, "fw_valid");
-    let frequency = fit_prepared_ols_unadjusted_map(
+    let frequency = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepare_case(
             &weighted_outcome,
             &weighted_x,
@@ -817,13 +828,14 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
             CaseWeights::Frequency(&frequencies),
         ),
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("sealed frequency-weight iid inference");
     assert_eq!(frequency.weights().effective_observations, 26);
     assert_eq!(frequency.dof().residual_dof, 19);
     assert_eq!(frequency.weights().raw_weight_sum, Some(26.0));
 
-    let none = fit_prepared_ols_unadjusted_map(
+    let none = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepare_case(
             &outcome,
             std::slice::from_ref(&x1),
@@ -836,6 +848,7 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
             absorbed_dof: PreparedOlsAbsorbedDofPolicy::None,
             ..PreparedOlsUnadjustedConfig::default()
         },
+        None,
     )
     .expect("sealed dof(none) iid inference");
     assert_eq!(none.dof().absorbed_rank, 19);
@@ -851,7 +864,7 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
         3e-6,
     );
 
-    let first_pair = fit_prepared_ols_unadjusted_map(
+    let first_pair = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepare_case(
             &outcome,
             &[],
@@ -864,6 +877,7 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
             absorbed_dof: PreparedOlsAbsorbedDofPolicy::FirstPair,
             ..PreparedOlsUnadjustedConfig::default()
         },
+        None,
     )
     .expect("sealed dof(firstpair) iid inference");
     assert_eq!(first_pair.dof().absorbed_rank, 21);
@@ -899,7 +913,7 @@ fn assert_sealed_reference_case(
         include_intercept,
         weights,
     );
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("sealed-reference prepared fit");
     assert_eq!(fit.coefficients().len(), expected.coefficients.len());
     for (actual, expected) in fit.coefficients().iter().zip(expected.coefficients) {
@@ -936,9 +950,12 @@ fn assert_sealed_reference_case(
             .collect::<Vec<_>>();
         assert_slice_close(fit.bread().values(), &expected, 3e-6);
 
-        let inference =
-            fit_prepared_ols_unadjusted_map(&prepared, PreparedOlsUnadjustedConfig::default())
-                .expect("sealed-reference prepared iid inference");
+        let inference = fit_prepared_model_unadjusted_with_loaded_moments(
+            &prepared,
+            PreparedOlsUnadjustedConfig::default(),
+            None,
+        )
+        .expect("sealed-reference prepared iid inference");
         assert_eq!(
             inference.dof().residual_dof,
             stata_hex(df_residual) as usize
@@ -951,9 +968,12 @@ fn assert_sealed_reference_case(
         assert_slice_close(inference.covariance().values(), &expected_covariance, 3e-6);
         assert!(inference.certificate().passed);
     } else {
-        let error =
-            fit_prepared_ols_unadjusted_map(&prepared, PreparedOlsUnadjustedConfig::default())
-                .expect_err("probability-weight iid inference must fail closed");
+        let error = fit_prepared_model_unadjusted_with_loaded_moments(
+            &prepared,
+            PreparedOlsUnadjustedConfig::default(),
+            None,
+        )
+        .expect_err("probability-weight iid inference must fail closed");
         assert_eq!(error.code, fereg_core::ErrorCode::Unsupported);
     }
 }
@@ -1031,7 +1051,7 @@ fn run_oracle_case(
         include_intercept,
         weights,
     );
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("certified prepared fit");
     assert!(fit.absorption_report().certified());
     assert!(fit.residual_absorption_report().certified());
@@ -1067,12 +1087,13 @@ fn run_oracle_case(
     .expect("explicit-dummy oracle");
 
     if !matches!(weights, CaseWeights::Probability(_)) {
-        let inference = fit_prepared_ols_unadjusted_map(
+        let inference = fit_prepared_model_unadjusted_with_loaded_moments(
             &prepared,
             PreparedOlsUnadjustedConfig {
                 absorbed_dof: PreparedOlsAbsorbedDofPolicy::Pairwise,
                 ..PreparedOlsUnadjustedConfig::default()
             },
+            None,
         )
         .expect("certified prepared iid inference");
         assert!(inference.certificate().passed);
@@ -1288,7 +1309,7 @@ fn solve_case(
         include_intercept,
         weights,
     );
-    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("certified prepared fit");
     (
         fit.coefficients()[0].value.expect("identified slope"),

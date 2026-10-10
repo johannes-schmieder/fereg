@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fereg_core::{
-    fit_prepared_categorical_ols_coefficients_map, prepare_categorical_ols_data, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
-    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
-    OlsRequestV1, PreparedCategoricalOlsData, PreparedOlsBreadCoordinateKind, PreparedOlsFitConfig,
+    fit_prepared_model_coefficients, prepare_categorical_ols_data, AbsorbTermId, AbsorbedTerm,
+    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
+    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    PreparedCategoricalOlsData, PreparedOlsBreadCoordinateKind, PreparedOlsFitConfig,
     PreparedOlsFitStatus, RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder,
     TimeSeriesState,
 };
@@ -87,9 +87,8 @@ fn cell_constant_regressor_is_rejected_as_absorbed_collinear() {
             .collect(),
     );
     let prepared = prepare_case(&case, false, CaseWeights::Unit, false);
-    let fit =
-        fit_prepared_categorical_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
-            .expect("categorical fit with an absorbed-collinear regressor");
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
+        .expect("categorical fit with an absorbed-collinear regressor");
     assert!(fit.absorption_report().certified());
     assert!(fit.residual_absorption_report().certified());
     assert!(fit.rank_certificate().passed);
@@ -126,9 +125,8 @@ fn assert_case_matches_oracle(
     reverse_absorb_sources: bool,
 ) {
     let prepared = prepare_case(case, include_intercept, weights, reverse_absorb_sources);
-    let fit =
-        fit_prepared_categorical_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
-            .expect("certified categorical fit");
+    let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
+        .expect("certified categorical fit");
     assert!(fit.absorption_report().certified());
     assert!(fit.residual_absorption_report().certified());
     assert!(fit.rank_certificate().passed);
@@ -271,7 +269,7 @@ fn fit_case(
     reverse_absorb_sources: bool,
 ) -> fereg_core::CertifiedPreparedOlsFit {
     let prepared = prepare_case(case, include_intercept, weights, reverse_absorb_sources);
-    fit_prepared_categorical_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+    fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
         .expect("categorical fit")
 }
 

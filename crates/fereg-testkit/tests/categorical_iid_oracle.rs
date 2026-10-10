@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::f64::consts::TAU;
 
 use fereg_core::{
-    fit_prepared_categorical_ols_unadjusted_map, prepare_categorical_ols_data, AbsorbTermId,
+    fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_data, AbsorbTermId,
     AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ErrorCode,
     ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding,
     OlsInputRole, OlsRequestV1, PreparedCategoricalOlsData, PreparedOlsUnadjustedConfig,
@@ -62,9 +62,10 @@ fn firm_year_probability_weight_iid_fails_closed() {
         .map(|(row, value)| 0.4 + value.abs() * 0.15 + (row % 4) as f64 * 0.27)
         .collect::<Vec<_>>();
     let prepared = prepare_case(&case, true, CaseWeights::Probability(&probability), false);
-    let error = fit_prepared_categorical_ols_unadjusted_map(
+    let error = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect_err("probability-weight iid covariance must fail closed");
     assert_eq!(error.code, ErrorCode::Unsupported);
@@ -78,9 +79,10 @@ fn assert_iid_case_matches_oracle(
     reverse_absorb_sources: bool,
 ) {
     let prepared = prepare_case(case, include_intercept, weights, reverse_absorb_sources);
-    let result = fit_prepared_categorical_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("certified categorical iid inference");
     assert!(result.fit().absorption_report().certified());

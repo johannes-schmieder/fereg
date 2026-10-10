@@ -54,10 +54,9 @@ pub use metadata::{
 };
 pub use ols::{
     absorb_prepared_ols_rhs_map, build_prepared_ols_rhs,
-    fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_coefficients_map,
-    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,
-    fit_prepared_ols_clustered_map, fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,
-    fit_prepared_ols_unadjusted_map, prepare_categorical_ols_clustered_data,
+    fit_prepared_model_clustered_with_loaded_moments, fit_prepared_model_coefficients,
+    fit_prepared_model_robust_with_loaded_moments,
+    fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_clustered_data,
     prepare_ols_clustered_data, prepare_ols_clustered_data_owned, prepare_ols_data,
     prepare_ols_data_owned, CertifiedPreparedCategoricalOlsClustered,
     CertifiedPreparedOlsClustered, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,

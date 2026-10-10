@@ -1,10 +1,11 @@
 use fereg_core::{
-    fit_prepared_ols_clustered_map, prepare_ols_clustered_data, AbsorbTermId, AbsorbedTerm,
-    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
-    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1, OlsClusteredRequestV1,
-    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsBreadCoordinateKind,
-    PreparedOlsClusteredConfig, PreparedOlsClusteredData, PreparedOlsClusteredPsdState,
-    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    fit_prepared_model_clustered_with_loaded_moments, prepare_ols_clustered_data, AbsorbTermId,
+    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
+    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1,
+    OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    PreparedOlsBreadCoordinateKind, PreparedOlsClusteredConfig, PreparedOlsClusteredData,
+    PreparedOlsClusteredPsdState, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
+    TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -37,7 +38,7 @@ fn one_way_noconstant_matches_independent_explicit_dummy_cr1() {
                 + 0.21 * (row as f64 * 1.3).cos()
         })
         .collect::<Vec<_>>();
-    let production = fit_prepared_ols_clustered_map(
+    let production = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             std::slice::from_ref(&x),
@@ -47,6 +48,7 @@ fn one_way_noconstant_matches_independent_explicit_dummy_cr1() {
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("one-way prepared clustered fit");
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
@@ -121,17 +123,14 @@ fn one_to_four_way_full_covariances_match_generic_explicit_oracle() {
         .expect("generic explicit clustered oracle");
         let intercept_cases: &[bool] = &[false, true];
         for &include_intercept in intercept_cases {
-            let production = fit_prepared_ols_clustered_map(
-                &prepare_case(
+            let production = fit_prepared_model_clustered_with_loaded_moments(&prepare_case(
                     &outcome,
                     &[x1.clone(), x2.clone()],
                     std::slice::from_ref(&effect),
                     &clusters,
                     include_intercept,
                     CaseWeights::Unit,
-                ),
-                PreparedOlsClusteredConfig::default(),
-            )
+                ), PreparedOlsClusteredConfig::default(), None)
             .unwrap_or_else(|error| {
                 panic!(
                     "generic prepared clustered fit failed for dimensions={dimensions}, include_intercept={include_intercept}: {error:?}"
@@ -178,7 +177,7 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
     let frequencies = (0..n)
         .map(|row| u32::try_from(row % 4 + 1).expect("frequency"))
         .collect::<Vec<_>>();
-    let analytic = fit_prepared_ols_clustered_map(
+    let analytic = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             std::slice::from_ref(&x),
@@ -188,9 +187,10 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
             CaseWeights::Analytic(&weights),
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("analytic clustered fit");
-    let probability = fit_prepared_ols_clustered_map(
+    let probability = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             std::slice::from_ref(&x),
@@ -200,9 +200,10 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
             CaseWeights::Probability(&weights),
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("probability clustered fit");
-    let probability_scaled = fit_prepared_ols_clustered_map(
+    let probability_scaled = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             std::slice::from_ref(&x),
@@ -212,6 +213,7 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
             CaseWeights::Probability(&scaled),
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("scaled probability clustered fit");
     assert_close_slice(
@@ -223,7 +225,7 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
         probability_scaled.covariance().values(),
     );
 
-    let compact = fit_prepared_ols_clustered_map(
+    let compact = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             std::slice::from_ref(&x),
@@ -233,13 +235,14 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
             CaseWeights::Frequency(&frequencies),
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("frequency clustered fit");
     let expanded_outcome = expand(&outcome, &frequencies);
     let expanded_x = expand(&x, &frequencies);
     let expanded_effect = expand(&effect, &frequencies);
     let expanded_cluster = expand(&cluster, &frequencies);
-    let expanded = fit_prepared_ols_clustered_map(
+    let expanded = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &expanded_outcome,
             &[expanded_x],
@@ -249,6 +252,7 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("expanded clustered fit");
     assert_close_slice(
@@ -283,8 +287,12 @@ fn cluster_nesting_precedes_mobility_and_keeps_all_three_dof_quantities_distinct
         false,
         CaseWeights::Unit,
     );
-    let nested = fit_prepared_ols_clustered_map(&prepared, PreparedOlsClusteredConfig::default())
-        .expect("nested clustered fit");
+    let nested = fit_prepared_model_clustered_with_loaded_moments(
+        &prepared,
+        PreparedOlsClusteredConfig::default(),
+        None,
+    )
+    .expect("nested clustered fit");
     assert_eq!(nested.absorbed_dof().absorbed_rank, 0);
     assert_eq!(nested.absorbed_dof().nested_categories, 6);
     assert!(nested.absorbed_dof().effects[0].nested);
@@ -293,12 +301,13 @@ fn cluster_nesting_precedes_mobility_and_keeps_all_three_dof_quantities_distinct
     assert_eq!(nested.dof().fit_residual_dof, 23);
     assert_eq!(nested.dof().correction_denominator_dof, 28);
 
-    let without_nesting = fit_prepared_ols_clustered_map(
+    let without_nesting = fit_prepared_model_clustered_with_loaded_moments(
         &prepared,
         PreparedOlsClusteredConfig {
             account_cluster_nesting: false,
             ..PreparedOlsClusteredConfig::default()
         },
+        None,
     )
     .expect("clustered fit without nesting adjustment");
     assert_eq!(without_nesting.absorbed_dof().absorbed_rank, 6);
@@ -329,7 +338,7 @@ fn declared_interaction_is_one_dimension_and_matches_precombined_cluster_codes()
         .enumerate()
         .map(|(row, value)| 1.7 * value + 0.13 * (row as f64).cos())
         .collect::<Vec<_>>();
-    let interaction = fit_prepared_ols_clustered_map(
+    let interaction = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             std::slice::from_ref(&x),
@@ -339,9 +348,10 @@ fn declared_interaction_is_one_dimension_and_matches_precombined_cluster_codes()
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("interaction-cluster fit");
-    let precombined = fit_prepared_ols_clustered_map(
+    let precombined = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             &[x],
@@ -351,6 +361,7 @@ fn declared_interaction_is_one_dimension_and_matches_precombined_cluster_codes()
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("precombined-cluster fit");
     assert_eq!(interaction.cluster_counts(), precombined.cluster_counts());
@@ -405,7 +416,7 @@ fn rank_zero_and_roundoff_exact_fit_are_defined_without_nan_sentinels() {
         .iter()
         .map(|code| [0.2, -0.3, 0.7, -0.8, 1.1, -0.5][*code as usize])
         .collect::<Vec<_>>();
-    let rank_zero = fit_prepared_ols_clustered_map(
+    let rank_zero = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             &[],
@@ -415,6 +426,7 @@ fn rank_zero_and_roundoff_exact_fit_are_defined_without_nan_sentinels() {
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("rank-zero clustered fit");
     assert_eq!(rank_zero.covariance().dimension(), 0);
@@ -429,7 +441,7 @@ fn rank_zero_and_roundoff_exact_fit_are_defined_without_nan_sentinels() {
     let exact_outcome = (0..n)
         .map(|row| 2.0 * x[row] + outcome[row])
         .collect::<Vec<_>>();
-    let singular = fit_prepared_ols_clustered_map(
+    let singular = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &exact_outcome,
             &[x],
@@ -439,6 +451,7 @@ fn rank_zero_and_roundoff_exact_fit_are_defined_without_nan_sentinels() {
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("zero-meat clustered fit");
     assert!(singular
@@ -553,7 +566,7 @@ fn sealed_cluster_receipt_agrees_except_approved_full_matrix_psd_fix() {
             })
             .expect("sealed explicit oracle")
         });
-        let result = fit_prepared_ols_clustered_map(
+        let result = fit_prepared_model_clustered_with_loaded_moments(
             &prepare_case(
                 &outcome,
                 std::slice::from_ref(&x),
@@ -563,6 +576,7 @@ fn sealed_cluster_receipt_agrees_except_approved_full_matrix_psd_fix() {
                 CaseWeights::Unit,
             ),
             PreparedOlsClusteredConfig::default(),
+            None,
         )
         .expect("sealed clustered fit");
         assert_eq!(result.cluster_counts(), counts);
@@ -818,7 +832,7 @@ fn disconnected_and_repeated_fe_spans_match_explicit_dummy_cluster_oracles() {
                 + 0.19 * (row as f64).sin()
         })
         .collect::<Vec<_>>();
-    let production = fit_prepared_ols_clustered_map(
+    let production = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             std::slice::from_ref(&x),
@@ -828,6 +842,7 @@ fn disconnected_and_repeated_fe_spans_match_explicit_dummy_cluster_oracles() {
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("disconnected clustered fit");
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
@@ -854,7 +869,7 @@ fn disconnected_and_repeated_fe_spans_match_explicit_dummy_cluster_oracles() {
             .as_slice(),
     );
 
-    let repeated = fit_prepared_ols_clustered_map(
+    let repeated = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             &[x],
@@ -866,6 +881,7 @@ fn disconnected_and_repeated_fe_spans_match_explicit_dummy_cluster_oracles() {
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("repeated-FE clustered fit");
     assert_eq!(repeated.absorbed_dof().effects.len(), 2);
@@ -895,7 +911,7 @@ fn virtual_constant_matches_one_level_dummy_for_cluster_default_and_noconstant()
     })
     .expect("virtual constant cluster oracle");
     for include_intercept in [false, true] {
-        let production = fit_prepared_ols_clustered_map(
+        let production = fit_prepared_model_clustered_with_loaded_moments(
             &prepare_case(
                 &outcome,
                 std::slice::from_ref(&x),
@@ -905,6 +921,7 @@ fn virtual_constant_matches_one_level_dummy_for_cluster_default_and_noconstant()
                 CaseWeights::Unit,
             ),
             PreparedOlsClusteredConfig::default(),
+            None,
         )
         .expect("virtual constant clustered fit");
         assert_eq!(production.absorbed_dof().absorbed_rank, 1);
@@ -934,7 +951,7 @@ fn paired_multiway_clusters_reduce_to_one_way_without_psd_adjustment() {
             1.7 * x[row] + [0.4, -0.5, 0.8, -0.2][effect[row] as usize] + 0.13 * (row as f64).cos()
         })
         .collect::<Vec<_>>();
-    let one_way = fit_prepared_ols_clustered_map(
+    let one_way = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             std::slice::from_ref(&x),
@@ -944,9 +961,10 @@ fn paired_multiway_clusters_reduce_to_one_way_without_psd_adjustment() {
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("one-way paired reference");
-    let paired = fit_prepared_ols_clustered_map(
+    let paired = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             &[x],
@@ -956,6 +974,7 @@ fn paired_multiway_clusters_reduce_to_one_way_without_psd_adjustment() {
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("paired multiway fit");
     assert_close_slice_with_tolerance(
@@ -983,7 +1002,7 @@ fn intercept_only_clustered_model_has_defined_scalar_covariance_and_no_wald() {
     let outcome = (0..cluster.len())
         .map(|row| 2.0 + 0.3 * (0.7 * row as f64).sin())
         .collect::<Vec<_>>();
-    let production = fit_prepared_ols_clustered_map(
+    let production = fit_prepared_model_clustered_with_loaded_moments(
         &prepare_case(
             &outcome,
             &[],
@@ -993,6 +1012,7 @@ fn intercept_only_clustered_model_has_defined_scalar_covariance_and_no_wald() {
             CaseWeights::Unit,
         ),
         PreparedOlsClusteredConfig::default(),
+        None,
     )
     .expect("intercept-only clustered fit");
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {

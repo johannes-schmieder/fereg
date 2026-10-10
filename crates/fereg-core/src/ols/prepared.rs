@@ -2937,9 +2937,10 @@ mod tests {
                 }
             }
             let prepared = prepare_ols_data(&request, &loaded).expect("singleton preparation");
-            let inference = super::super::fit_prepared_ols_unadjusted_map(
+            let inference = super::super::fit_prepared_model_unadjusted_with_loaded_moments(
                 &prepared,
                 super::super::PreparedOlsUnadjustedConfig::default(),
+                None,
             )
             .expect("rank-zero singleton inference");
             assert_eq!(inference.fit().finite_rank(), 0);

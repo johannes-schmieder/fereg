@@ -1,9 +1,9 @@
 use fereg_core::{
-    fit_prepared_ols_robust_map, prepare_ols_data_owned, AbsorbTermId, AbsorbedTerm,
-    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
-    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsData, PreparedOlsRobustConfig, RawTermKind,
-    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    fit_prepared_model_robust_with_loaded_moments, prepare_ols_data_owned, AbsorbTermId,
+    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
+    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
+    OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsData, PreparedOlsRobustConfig,
+    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -123,9 +123,10 @@ fn virtual_constant_matches_one_level_dummy_for_default_and_noconstant() {
     assert_eq!(oracle.model_rank, 2);
     assert_eq!(oracle.residual_degrees_of_freedom, outcome.len() - 2);
     for include_intercept in [true, false] {
-        let production = fit_prepared_ols_robust_map(
+        let production = fit_prepared_model_robust_with_loaded_moments(
             &prepare_continuous_case(&outcome, &x, &[], include_intercept, CaseWeights::Unit),
             PreparedOlsRobustConfig::default(),
+            None,
         )
         .expect("virtual-constant prepared robust fit");
         assert_eq!(production.dof().absorbed_rank, 1);
@@ -166,7 +167,7 @@ fn disconnected_two_way_fe_matches_explicit_dummy_rank_and_full_hc1() {
                 + 0.19 * (row as f64).sin()
         })
         .collect::<Vec<_>>();
-    let production = fit_prepared_ols_robust_map(
+    let production = fit_prepared_model_robust_with_loaded_moments(
         &prepare_continuous_case(
             &outcome,
             &x,
@@ -175,6 +176,7 @@ fn disconnected_two_way_fe_matches_explicit_dummy_rank_and_full_hc1() {
             CaseWeights::Unit,
         ),
         PreparedOlsRobustConfig::default(),
+        None,
     )
     .expect("disconnected prepared robust fit");
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
@@ -218,9 +220,10 @@ fn repeated_identical_fe_terms_match_one_span_oracle_and_ranks() {
             1.9 * x[row] + [0.4, -0.7, 1.3, -1.1][codes[row] as usize] + 0.13 * (row as f64).cos()
         })
         .collect::<Vec<_>>();
-    let production = fit_prepared_ols_robust_map(
+    let production = fit_prepared_model_robust_with_loaded_moments(
         &prepare_repeated_effect_case(&outcome, &x, &codes),
         PreparedOlsRobustConfig::default(),
+        None,
     )
     .expect("repeated-FE prepared robust fit");
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
@@ -259,9 +262,10 @@ fn sealed_stata18_one_fe_robust_and_pweight_covariances_match() {
     // payload sha256 6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002
     // reghdfe commit 29b2b203f534413369d675d0c0f674d61291f536.
     let core = include_str!("../../../tests/fixtures/ols/ols_core.csv");
-    let one_fe = fit_prepared_ols_robust_map(
+    let one_fe = fit_prepared_model_robust_with_loaded_moments(
         &prepare_one_fe_factor_case(core),
         PreparedOlsRobustConfig::default(),
+        None,
     )
     .expect("sealed one-FE robust inference");
     assert_eq!(one_fe.dof().absorbed_rank, 8);
@@ -325,7 +329,7 @@ fn sealed_stata18_one_fe_robust_and_pweight_covariances_match() {
     let x = csv_numeric_column(weighted, "x");
     let groups = zero_based(&csv_u32_column(weighted, "group"));
     let pweights = csv_numeric_column(weighted, "pw_valid");
-    let pweight = fit_prepared_ols_robust_map(
+    let pweight = fit_prepared_model_robust_with_loaded_moments(
         &prepare_continuous_case(
             &outcome,
             std::slice::from_ref(&x),
@@ -334,6 +338,7 @@ fn sealed_stata18_one_fe_robust_and_pweight_covariances_match() {
             CaseWeights::Probability(&pweights),
         ),
         PreparedOlsRobustConfig::default(),
+        None,
     )
     .expect("sealed pweight robust inference");
     assert_eq!(pweight.weights().physical_observations, 12);
@@ -405,12 +410,13 @@ fn absorbed_dof_policy_changes_only_the_hc1_scalar() {
         CaseWeights::Unit,
     );
     let fit = |policy| {
-        fit_prepared_ols_robust_map(
+        fit_prepared_model_robust_with_loaded_moments(
             &prepared,
             PreparedOlsRobustConfig {
                 absorbed_dof: policy,
                 ..PreparedOlsRobustConfig::default()
             },
+            None,
         )
         .expect("DoF-policy robust fit")
     };
@@ -443,9 +449,10 @@ fn assert_oracle_case(
     include_intercept: bool,
     weights: CaseWeights<'_>,
 ) {
-    let production = fit_prepared_ols_robust_map(
+    let production = fit_prepared_model_robust_with_loaded_moments(
         &prepare_continuous_case(outcome, regressors, effects, include_intercept, weights),
         PreparedOlsRobustConfig::default(),
+        None,
     )
     .expect("prepared robust oracle case");
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {

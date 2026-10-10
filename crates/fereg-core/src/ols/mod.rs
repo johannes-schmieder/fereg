@@ -63,10 +63,7 @@ pub use prepared_categorical_clusters::{
     PreparedCategoricalOlsClusteredData,
 };
 pub use prepared_clustered::{
-    fit_prepared_categorical_ols_clustered_map,
-    fit_prepared_categorical_ols_clustered_map_with_loaded_moments,
-    fit_prepared_model_clustered_with_loaded_moments, fit_prepared_ols_clustered_map,
-    fit_prepared_ols_clustered_map_with_loaded_moments, CertifiedPreparedCategoricalOlsClustered,
+    fit_prepared_model_clustered_with_loaded_moments, CertifiedPreparedCategoricalOlsClustered,
     CertifiedPreparedOlsClustered, PreparedOlsClusterSubsetCertificate,
     PreparedOlsClusteredCertificate, PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance,
     PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
@@ -82,12 +79,11 @@ pub use prepared_dof::{
     PreparedOlsAbsorbedDofReport,
 };
 pub use prepared_fit::{
-    fit_prepared_categorical_ols_coefficients_map, fit_prepared_ols_coefficients_map,
-    CertifiedPreparedOlsFit, LoadedOlsRows, PreparedOlsBread, PreparedOlsBreadCertificate,
-    PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind, PreparedOlsBreadWeightScale,
-    PreparedOlsExecutionConfig, PreparedOlsExecutionMode, PreparedOlsExecutionReport,
-    PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsFittedCoefficient,
-    PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
+    fit_prepared_model_coefficients, CertifiedPreparedOlsFit, LoadedOlsRows, PreparedOlsBread,
+    PreparedOlsBreadCertificate, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
+    PreparedOlsBreadWeightScale, PreparedOlsExecutionConfig, PreparedOlsExecutionMode,
+    PreparedOlsExecutionReport, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    PreparedOlsFittedCoefficient, PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
 };
 pub(crate) use prepared_fit::{fit_prepared_weighted_linear_projection_once, LinearSolveFrame};
 pub use prepared_rhs::{
@@ -99,20 +95,13 @@ pub(crate) use prepared_rhs::{
     MAX_BOUND_NUMERIC_COLUMNS,
 };
 pub use prepared_robust::{
-    fit_prepared_categorical_ols_robust_map,
-    fit_prepared_categorical_ols_robust_map_with_loaded_moments,
-    fit_prepared_model_robust_with_loaded_moments, fit_prepared_ols_robust_map,
-    fit_prepared_ols_robust_map_with_loaded_moments, CertifiedPreparedCategoricalOlsRobust,
+    fit_prepared_model_robust_with_loaded_moments, CertifiedPreparedCategoricalOlsRobust,
     CertifiedPreparedOlsRobust, PreparedOlsRobustCertificate, PreparedOlsRobustConfig,
     PreparedOlsRobustCovariance,
 };
 pub(crate) use prepared_scratch::{conservative_scratch_io_bytes, ols_scratch_transpose_reserve};
 pub use prepared_unadjusted::{
-    fit_prepared_categorical_ols_unadjusted_map,
-    fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments,
-    fit_prepared_model_unadjusted_with_loaded_moments, fit_prepared_ols_unadjusted_map,
-    fit_prepared_ols_unadjusted_map_with_loaded_moments,
-    fit_prepared_ols_unadjusted_map_with_loaded_rows, CertifiedPreparedCategoricalOlsUnadjusted,
+    fit_prepared_model_unadjusted_with_loaded_moments, CertifiedPreparedCategoricalOlsUnadjusted,
     CertifiedPreparedOlsUnadjusted, PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport,
     PreparedOlsResidualDofReport, PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig,
     PreparedOlsUnadjustedCovariance,

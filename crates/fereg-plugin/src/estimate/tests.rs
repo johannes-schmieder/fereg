@@ -7,8 +7,7 @@ use fereg_core::metadata::{
 use fereg_core::protocol::{ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION};
 #[cfg(feature = "ffi")]
 use fereg_core::{
-    fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
-    fit_prepared_ols_clustered_map, fit_prepared_ols_robust_map,
+    fit_prepared_model_clustered_with_loaded_moments, fit_prepared_model_robust_with_loaded_moments,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -995,25 +994,31 @@ fn inference_owner_accounting_matches_allocator_in_all_six_routes() {
             ..Default::default()
         };
         let prepared = prepare_ols_data_owned(&action.request, loaded.clone()).unwrap();
-        let inference = fit_prepared_ols_unadjusted_map(&prepared, iid).unwrap();
+        let inference =
+            fit_prepared_model_unadjusted_with_loaded_moments(&prepared, iid, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
         check(inference, bytes);
-        let inference = fit_prepared_ols_robust_map(&prepared, robust).unwrap();
+        let inference =
+            fit_prepared_model_robust_with_loaded_moments(&prepared, robust, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
         check(inference, bytes);
         let prepared = prepare_ols_clustered_data_owned(&clustered, loaded.clone()).unwrap();
-        let inference = fit_prepared_ols_clustered_map(&prepared, cluster).unwrap();
+        let inference =
+            fit_prepared_model_clustered_with_loaded_moments(&prepared, cluster, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
         check(inference, bytes);
         let prepared = prepare_categorical_ols_data_owned(&action.request, loaded.clone()).unwrap();
-        let inference = fit_prepared_categorical_ols_unadjusted_map(&prepared, iid).unwrap();
+        let inference =
+            fit_prepared_model_unadjusted_with_loaded_moments(&prepared, iid, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
         check(inference, bytes);
-        let inference = fit_prepared_categorical_ols_robust_map(&prepared, robust).unwrap();
+        let inference =
+            fit_prepared_model_robust_with_loaded_moments(&prepared, robust, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
         check(inference, bytes);
         let prepared = prepare_categorical_ols_clustered_data_owned(&clustered, loaded).unwrap();
-        let inference = fit_prepared_categorical_ols_clustered_map(&prepared, cluster).unwrap();
+        let inference =
+            fit_prepared_model_clustered_with_loaded_moments(&prepared, cluster, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
         check(inference, bytes);
     }
@@ -1028,12 +1033,13 @@ fn saved_fe_model_certificate_rejects_an_in_span_corrupted_product() {
         .unwrap();
     let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
     let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
-    let result = fit_prepared_categorical_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig {
             fit: action.fit,
             ..Default::default()
         },
+        None,
     )
     .unwrap();
     let fit = result.fit();
@@ -1352,12 +1358,13 @@ fn construction_and_transient_frame_peaks_bound_independent_allocations() {
                         let start = instrumentation::begin_observation();
                         let (solver_peak, owned) = match vce {
                             OlsVceKind::Iid => {
-                                let r = fit_prepared_categorical_ols_unadjusted_map(
+                                let r = fit_prepared_model_unadjusted_with_loaded_moments(
                                     prepared.ols(),
                                     PreparedOlsUnadjustedConfig {
                                         fit,
                                         ..Default::default()
                                     },
+                                    None,
                                 )
                                 .unwrap();
                                 (
@@ -1366,12 +1373,13 @@ fn construction_and_transient_frame_peaks_bound_independent_allocations() {
                                 )
                             }
                             OlsVceKind::Robust => {
-                                let r = fit_prepared_categorical_ols_robust_map(
+                                let r = fit_prepared_model_robust_with_loaded_moments(
                                     prepared.ols(),
                                     PreparedOlsRobustConfig {
                                         fit,
                                         ..Default::default()
                                     },
+                                    None,
                                 )
                                 .unwrap();
                                 (
@@ -1380,12 +1388,13 @@ fn construction_and_transient_frame_peaks_bound_independent_allocations() {
                                 )
                             }
                             OlsVceKind::Clustered => {
-                                let r = fit_prepared_categorical_ols_clustered_map(
+                                let r = fit_prepared_model_clustered_with_loaded_moments(
                                     &prepared,
                                     PreparedOlsClusteredConfig {
                                         fit,
                                         ..Default::default()
                                     },
+                                    None,
                                 )
                                 .unwrap();
                                 (
@@ -1533,23 +1542,25 @@ fn inference_residual_overlap_stays_within_existing_frame() {
                 .unwrap();
                 let start = instrumentation::begin_observation();
                 let solver_peak = if clustered {
-                    let result = fit_prepared_categorical_ols_clustered_map(
+                    let result = fit_prepared_model_clustered_with_loaded_moments(
                         &prepared,
                         PreparedOlsClusteredConfig {
                             fit,
                             ..Default::default()
                         },
+                        None,
                     )
                     .unwrap();
                     assert!(result.fit().score_certificate().passed);
                     result.fit().solver_workspace_peak().bytes().unwrap()
                 } else {
-                    let result = fit_prepared_categorical_ols_robust_map(
+                    let result = fit_prepared_model_robust_with_loaded_moments(
                         prepared.ols(),
                         PreparedOlsRobustConfig {
                             fit,
                             ..Default::default()
                         },
+                        None,
                     )
                     .unwrap();
                     assert!(result.fit().score_certificate().passed);
@@ -1636,12 +1647,13 @@ fn action_ledger_covers_every_ols_stage_without_reporting_allocations() {
     action
         .admit_prepared_parent(prepared.owned_buffer_bytes())
         .unwrap();
-    let inference = fit_prepared_categorical_ols_unadjusted_map(
+    let inference = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig {
             fit: action.fit,
             ..Default::default()
         },
+        None,
     )
     .unwrap();
     action
@@ -1862,13 +1874,14 @@ fn saved_publication_checks_observed_capacities_before_any_store() {
         )
         .unwrap();
         let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
-        let inference = fit_prepared_categorical_ols_unadjusted_map(
+        let inference = fit_prepared_model_unadjusted_with_loaded_moments(
             &prepared,
             PreparedOlsUnadjustedConfig {
                 fit: action.fit,
                 absorbed_dof: action.absorbed_dof,
                 ..PreparedOlsUnadjustedConfig::default()
             },
+            None,
         )
         .unwrap();
         let result_data = &prepared;
@@ -2537,61 +2550,66 @@ fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
             let prepared = prepared_clustered.ols();
             let mut config = PreparedOlsUnadjustedConfig::default();
             config.fit.execution.threads = ThreadConfig::from_requested(4, false).unwrap();
-            let reference = fit_prepared_ols_unadjusted_map(prepared, config).unwrap();
-            let actual = fereg_core::ols::fit_prepared_ols_unadjusted_map_with_loaded_rows(
-                prepared, config, rhs,
+            let reference =
+                fit_prepared_model_unadjusted_with_loaded_moments(prepared, config, None).unwrap();
+            let actual = fereg_core::ols::fit_prepared_model_unadjusted_with_loaded_moments(
+                prepared,
+                config,
+                rhs.map(LoadedOlsRows::from),
             )
             .unwrap();
             assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
             assert_eq!(reference.covariance(), actual.covariance());
             assert_eq!(reference.statistics(), actual.statistics());
             assert_eq!(reference.certificate(), actual.certificate());
-            let reference =
-                fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map(categorical, config)
-                    .unwrap();
-            let actual =
-                fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
-                    categorical,
-                    config,
-                    categorical_rows,
-                )
-                .unwrap();
+            let reference = fereg_core::ols::fit_prepared_model_unadjusted_with_loaded_moments(
+                categorical,
+                config,
+                None,
+            )
+            .unwrap();
+            let actual = fereg_core::ols::fit_prepared_model_unadjusted_with_loaded_moments(
+                categorical,
+                config,
+                categorical_rows,
+            )
+            .unwrap();
             assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
             assert_eq!(reference.covariance(), actual.covariance());
             let robust_config = PreparedOlsRobustConfig {
                 fit: config.fit,
                 ..PreparedOlsRobustConfig::default()
             };
-            let reference = fereg_core::ols::fit_prepared_categorical_ols_robust_map(
+            let reference = fereg_core::ols::fit_prepared_model_robust_with_loaded_moments(
                 categorical,
                 robust_config,
+                None,
             )
             .unwrap();
-            let actual =
-                fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
-                    categorical,
-                    robust_config,
-                    robust_rows.map(LoadedOlsRows::from),
-                )
-                .unwrap();
+            let actual = fereg_core::ols::fit_prepared_model_robust_with_loaded_moments(
+                categorical,
+                robust_config,
+                robust_rows.map(LoadedOlsRows::from),
+            )
+            .unwrap();
             assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
             assert_eq!(reference.covariance(), actual.covariance());
             let cluster_config = PreparedOlsClusteredConfig {
                 fit: config.fit,
                 ..PreparedOlsClusteredConfig::default()
             };
-            let reference = fereg_core::ols::fit_prepared_categorical_ols_clustered_map(
+            let reference = fereg_core::ols::fit_prepared_model_clustered_with_loaded_moments(
                 &categorical_clustered,
                 cluster_config,
+                None,
             )
             .unwrap();
-            let actual =
-                fereg_core::ols::fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
-                    &categorical_clustered,
-                    cluster_config,
-                    clustered_rows.map(LoadedOlsRows::from),
-                )
-                .unwrap();
+            let actual = fereg_core::ols::fit_prepared_model_clustered_with_loaded_moments(
+                &categorical_clustered,
+                cluster_config,
+                clustered_rows.map(LoadedOlsRows::from),
+            )
+            .unwrap();
             assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
             assert_eq!(reference.covariance(), actual.covariance());
         }
@@ -2741,14 +2759,14 @@ fn slope_loaded_rhs_preserves_classification_and_inference() {
             let prepared = prepare_categorical_ols_data_owned(&request, loaded).unwrap();
             let mut config = PreparedOlsRobustConfig::default();
             config.fit.execution.threads = ThreadConfig::from_requested(8, false).unwrap();
-            let expected =
-                fereg_core::ols::fit_prepared_categorical_ols_robust_map(&prepared, config);
-            let actual =
-                fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
-                    &prepared,
-                    config,
-                    rhs.map(LoadedOlsRows::from),
-                );
+            let expected = fereg_core::ols::fit_prepared_model_robust_with_loaded_moments(
+                &prepared, config, None,
+            );
+            let actual = fereg_core::ols::fit_prepared_model_robust_with_loaded_moments(
+                &prepared,
+                config,
+                rhs.map(LoadedOlsRows::from),
+            );
             if case == 10 {
                 // The existing fit rejects this exactly absorbed finite-score
                 // fixture; loading reuse must preserve that failure boundary.
@@ -2942,12 +2960,18 @@ fn weighted_loaded_rhs_preserves_sample_domains_and_inference() {
                         assert_eq!(expected.sample(), actual.sample());
                         let mut config = PreparedOlsRobustConfig::default();
                         config.fit.execution.threads = threads;
-                        let expected = fereg_core::ols::fit_prepared_categorical_ols_robust_map(
-                            &expected, config,
-                        )
-                        .unwrap();
-                        let actual = fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
-                        &actual, config, rhs.map(LoadedOlsRows::from)).unwrap();
+                        let expected =
+                            fereg_core::ols::fit_prepared_model_robust_with_loaded_moments(
+                                &expected, config, None,
+                            )
+                            .unwrap();
+                        let actual =
+                            fereg_core::ols::fit_prepared_model_robust_with_loaded_moments(
+                                &actual,
+                                config,
+                                rhs.map(LoadedOlsRows::from),
+                            )
+                            .unwrap();
                         assert_eq!(expected.fit().coefficients(), actual.fit().coefficients());
                         assert_eq!(expected.covariance(), actual.covariance());
                         assert_eq!(expected.statistics(), actual.statistics());

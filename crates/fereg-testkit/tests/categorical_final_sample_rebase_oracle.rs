@@ -1,10 +1,10 @@
 use fereg_core::{
-    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,
-    prepare_categorical_ols_data, AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph,
-    ComponentKind, ComponentOrder, ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput,
-    MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsFitStatus,
-    PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId,
-    TermComponent, TermId, TermOrder, TimeSeriesState,
+    fit_prepared_model_robust_with_loaded_moments,
+    fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_data, AbsorbTermId,
+    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
+    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
+    OlsRequestV1, PreparedOlsFitStatus, PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
+    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -51,9 +51,10 @@ fn single_level_and_omitted_only_recipes_preserve_science_and_original_slots() {
                 clusters: Vec::new(),
             })
             .expect("independent dummy model");
-            let fit = fit_prepared_categorical_ols_robust_map(
+            let fit = fit_prepared_model_robust_with_loaded_moments(
                 &prepared,
                 PreparedOlsRobustConfig::default(),
+                None,
             )
             .expect("certified original-axis robust fit");
             assert_eq!(fit.fit().finite_rank(), 1);
@@ -168,9 +169,10 @@ fn singleton_deleted_base_preserves_original_axis_and_identified_contrasts() {
     );
     assert_eq!(prepared.model().coefficients.len(), 5);
     assert_eq!(prepared.model().columns.len(), 4);
-    let result = fit_prepared_categorical_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("certified original-axis iid fit");
     assert!(result.fit().rank_certificate().passed);
@@ -237,9 +239,12 @@ fn singleton_deleted_base_preserves_original_axis_and_identified_contrasts() {
         oracle.iid_vce.as_slice(),
         &oracle.kept_regressors,
     );
-    let robust =
-        fit_prepared_categorical_ols_robust_map(&prepared, PreparedOlsRobustConfig::default())
-            .expect("certified original-axis robust fit");
+    let robust = fit_prepared_model_robust_with_loaded_moments(
+        &prepared,
+        PreparedOlsRobustConfig::default(),
+        None,
+    )
+    .expect("certified original-axis robust fit");
     assert_slice_close(robust.fit().residuals(), &oracle.residuals);
     check_contrast_covariance(
         robust.covariance().values(),
@@ -477,9 +482,12 @@ fn vanished_base_does_not_remove_a_slope_only_model_direction() {
     );
     let prepared =
         prepare_categorical_ols_data(&request, &loaded).expect("slope-only original graph");
-    let result =
-        fit_prepared_categorical_ols_robust_map(&prepared, PreparedOlsRobustConfig::default())
-            .expect("slope-only robust fit");
+    let result = fit_prepared_model_robust_with_loaded_moments(
+        &prepared,
+        PreparedOlsRobustConfig::default(),
+        None,
+    )
+    .expect("slope-only robust fit");
     assert_eq!(result.fit().finite_rank(), 2);
     assert_eq!(result.dof().absorbed_rank, 1);
     assert_eq!(result.dof().residual_dof, 5);
@@ -534,9 +542,10 @@ fn vanished_base_does_not_remove_nonhierarchical_cell_effects() {
     let (request, loaded) =
         small_fixture(terms, vec![f, z, vec![1.0; 10]], y, effect(3, None), true);
     let prepared = prepare_categorical_ols_data(&request, &loaded).expect("cell graph");
-    let result = fit_prepared_categorical_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("nonhierarchical cell fit");
     assert_eq!(result.fit().finite_rank(), 2);
@@ -574,9 +583,10 @@ fn whole_column_omission_is_authoritative_for_base_marked_components() {
         small_fixture(terms, vec![f, z, vec![1.0; 10]], y, effect(3, None), true);
     let prepared =
         prepare_categorical_ols_data(&request, &loaded).expect("active base-component cell");
-    let result = fit_prepared_categorical_ols_unadjusted_map(
+    let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
+        None,
     )
     .expect("whole-column active fit");
     assert_eq!(

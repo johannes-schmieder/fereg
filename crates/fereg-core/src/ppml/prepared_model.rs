@@ -995,8 +995,7 @@ mod tests {
         TermComponent, TermId, TermOrder, TimeSeriesState,
     };
     use crate::ols::{
-        fit_prepared_categorical_ols_coefficients_map, OlsInputBinding, OlsInputRole,
-        PreparedOlsFitConfig,
+        fit_prepared_model_coefficients, OlsInputBinding, OlsInputRole, PreparedOlsFitConfig,
     };
     use crate::ppml::prepared::{prepare_ppml_numeric_data, PpmlNumericPreparationInput};
     use crate::ppml_separation::{
@@ -1414,11 +1413,8 @@ mod tests {
         let concrete_fit: &PreparedCategoricalOlsData = generation.fit_view();
         assert!(!concrete_fit.has_absorbed_intercept());
         assert!(concrete_fit.report_intercept());
-        let fit = fit_prepared_categorical_ols_coefficients_map(
-            categorical,
-            PreparedOlsFitConfig::default(),
-        )
-        .expect("no-absorb categorical finite fit");
+        let fit = fit_prepared_model_coefficients(categorical, PreparedOlsFitConfig::default())
+            .expect("no-absorb categorical finite fit");
         let intercept = fit.coefficients().last().expect("finite intercept slot");
         assert_eq!(intercept.status, crate::ols::PreparedOlsFitStatus::Kept);
         assert!(intercept.value.is_some());
@@ -1428,7 +1424,7 @@ mod tests {
         }));
         assert!(generation.cluster_design().is_none());
         assert_eq!(generation.fit_view().sample().n_active(), 7);
-        let fit = fit_prepared_categorical_ols_coefficients_map(
+        let fit = fit_prepared_model_coefficients(
             generation.prepared().as_ref(),
             PreparedOlsFitConfig::default(),
         )

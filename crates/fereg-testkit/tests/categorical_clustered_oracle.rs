@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fereg_core::{
-    fit_prepared_categorical_ols_clustered_map, prepare_categorical_ols_clustered_data,
+    fit_prepared_model_clustered_with_loaded_moments, prepare_categorical_ols_clustered_data,
     AbsorbTermId, AbsorbedTerm, CertifiedPreparedCategoricalOlsClustered, CoefficientSlot,
     CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
     LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1, OlsClusteredRequestV1,
@@ -235,8 +235,12 @@ fn fit_case(
     cluster_specs: &[Vec<usize>],
 ) -> CertifiedPreparedCategoricalOlsClustered {
     let prepared = prepare_case(case, include_intercept, weights, cluster_specs);
-    fit_prepared_categorical_ols_clustered_map(&prepared, PreparedOlsClusteredConfig::default())
-        .expect("certified categorical clustered fit")
+    fit_prepared_model_clustered_with_loaded_moments(
+        &prepared,
+        PreparedOlsClusteredConfig::default(),
+        None,
+    )
+    .expect("certified categorical clustered fit")
 }
 
 fn prepare_case(
