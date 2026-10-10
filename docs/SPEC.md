@@ -697,6 +697,9 @@ prepares the sample, estimates, certifies and validates all N/K/K² products
 before the first SPI store. All source/output identities, dimensions and
 nonaliasing bindings are checked before observations. SPI calls and Break
 polling occur only on Stata's main thread; workers touch Rust-owned memory.
+Native work from preparation through derived outputs and saved-FE recovery
+runs under Break polling, and long serial row passes checkpoint at a fixed
+row stride.
 Catch Rust panics at FFI; no unwind crosses C. Safe crates forbid unsafe code.
 
 COMPLETE is the last native operation; no allocation, polling, display,

@@ -70,7 +70,7 @@ team while Stata's thread polls Break every 20 ms; PPML polls at its
 IRLS, separation, inference and publication safe points. On Break the plugin
 requests cooperative cancellation and long native loops stop at their next
 checkpoint (FE sweeps and iterations, LSMR/CMG entry, one-shot fit phases,
-clustered subsets). The transaction then fails with return code 1 before any
+clustered subsets, and every 1024 rows of long serial inference passes). The transaction then fails with return code 1 before any
 store and the ado restores prior results.
 
 ## Plugin lifetime
