@@ -1,7 +1,6 @@
 //! Certified Frisch-Waugh-Lovell OLS core.
 
 mod canonical_products;
-mod dof;
 mod finite_operations;
 mod finite_wls_kernel;
 pub(crate) use canonical_products::canonical_three_workspace_bytes;
@@ -26,10 +25,7 @@ mod prepared_scores;
 mod prepared_scratch;
 mod prepared_unadjusted;
 mod prepared_wald;
-mod rank;
-mod vce;
 
-pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};
 pub(crate) use finite_wls_kernel::retained_scratch_moment_envelope;
 pub(crate) use finite_wls_kernel::{solve_finite_direction, FiniteDirectionWorkspace};
 pub(crate) use implicit_centered::ImplicitCenteredDesign;
@@ -128,16 +124,3 @@ pub use prepared_unadjusted::{
     PreparedOlsResidualDofReport, PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig,
     PreparedOlsUnadjustedCovariance,
 };
-pub use rank::{solve_rank_revealing, FiniteSolver, RankSolve};
-pub use vce::{ClusterSubsetReport, VceKind, VceReport};
-
-/// Status of one canonical finite-dimensional model column.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RegressorStatus {
-    Kept,
-    BaseLevel,
-    SyntaxOmitted,
-    CollinearWithFixedEffects,
-    CollinearAfterResidualization,
-    NumericallyRankDeficient,
-}

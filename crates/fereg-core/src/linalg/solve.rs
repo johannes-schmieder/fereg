@@ -10,11 +10,6 @@ pub fn dot(left: &[f64], right: &[f64]) -> f64 {
         })
 }
 
-#[must_use]
-pub fn norm2(values: &[f64]) -> f64 {
-    dot(values, values).sqrt()
-}
-
 /// Solve `A X = B` in place using Gaussian elimination with partial pivoting.
 ///
 /// `matrix` is row-major `dimension × dimension`; `right_hand_sides` is

@@ -31,11 +31,6 @@ impl PreparedOlsRhs {
         self.values
     }
 
-    #[must_use]
-    pub const fn outcome_column() -> usize {
-        0
-    }
-
     pub fn model_column(generated_column_index: usize) -> Result<usize> {
         generated_column_index
             .checked_add(1)

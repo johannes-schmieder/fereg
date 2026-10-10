@@ -37,6 +37,7 @@ fn fit_prepared_weighted_linear_once<'a, P: PreparedOlsFitView + Sync + ?Sized>(
 }
 
 use super::*;
+use crate::fe::{recover_finalized_categorical_effects_map_certified, MapConfig};
 use crate::metadata::{
     AbsorbTermId, AbsorbedTerm, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
     LevelState, MetadataFlag, RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder,
@@ -54,6 +55,22 @@ use crate::ols::{
 };
 use crate::sandwich::SandwichDesign;
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// The deleted categorical recovery wrapper tightened the MAP tolerance to
+/// this ceiling before recovering slope channels; the recovery test keeps
+/// that exact configuration.
+const CATEGORICAL_SLOPE_MAP_TOLERANCE_CEILING: f64 = 1e-12;
+
+fn categorical_slope_map_config(mut config: MapConfig) -> MapConfig {
+    // Group-specific slopes can amplify the final raw finite-score moment even
+    // after every FE moment has reached the generic MAP tolerance. Keep the
+    // registered finite-score gate unchanged and require a tighter upstream
+    // projection certificate for this path.
+    config.tolerance = config
+        .tolerance
+        .min(CATEGORICAL_SLOPE_MAP_TOLERANCE_CEILING);
+    config
+}
 
 #[test]
 fn qr_classification_preserves_norm_errors_and_deferred_intercept_order() {
@@ -6043,27 +6060,30 @@ fn categorical_recovery_uses_explicit_final_hessian_weights_for_normalization() 
     .expect("categorical recovery preparation");
     let requested = [true, true];
     let map = PreparedOlsFitConfig::default().absorb.map;
-    let unit = prepared
-        .recover_absorbed_effects_map_with_weights(
-            BorrowedMapWeights::Unit,
-            &target,
-            &requested,
-            map,
-        )
-        .expect("unit-weight recovery");
+    let effects = prepared.effect_views().expect("effect views");
+    let unit = recover_finalized_categorical_effects_map_certified(
+        prepared.fe_topology(),
+        &effects,
+        BorrowedMapWeights::Unit,
+        &target,
+        &requested,
+        categorical_slope_map_config(map),
+    )
+    .expect("unit-weight recovery");
     // A nonconstant mean changes the final PPML Hessian from q to q*mu.
     // The saved FE decomposition must therefore be normalized on this
     // explicit final curvature measure, even though its absorbed sum is
     // unchanged.
     let final_hessian = [1.0, 3.0, 2.0, 9.0, 4.0, 27.0];
-    let hessian = prepared
-        .recover_absorbed_effects_map_with_weights(
-            BorrowedMapWeights::Provided(&final_hessian),
-            &target,
-            &requested,
-            map,
-        )
-        .expect("final-Hessian recovery");
+    let hessian = recover_finalized_categorical_effects_map_certified(
+        prepared.fe_topology(),
+        &effects,
+        BorrowedMapWeights::Provided(&final_hessian),
+        &target,
+        &requested,
+        categorical_slope_map_config(map),
+    )
+    .expect("final-Hessian recovery");
     for recovered in [&unit, &hessian] {
         for (actual, expected) in recovered.absorbed_sum().iter().zip(&target) {
             assert_close(*actual, *expected, 2e-10);

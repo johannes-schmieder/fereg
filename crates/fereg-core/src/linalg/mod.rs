@@ -2,7 +2,7 @@
 
 mod solve;
 
-pub use solve::{dot, norm2, solve_linear_system};
+pub use solve::{dot, solve_linear_system};
 
 /// One Neumaier compensated-sum update without a finiteness branch. A
 /// nonfinite sum or correction stays nonfinite under later updates, so one

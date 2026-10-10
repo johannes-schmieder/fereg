@@ -12,13 +12,10 @@ use crate::data::{DenseMatrix, DropReason, PreparedNumericSample, PreparedWeight
 use crate::error::{allocation, invalid_argument as invalid, invalid_data, Result};
 use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{
-    absorb_finalized_categorical_slope_map_certified,
-    absorb_finalized_categorical_topology_map_certified, finalize_categorical_topology,
-    plan_categorical_absorbed_request, prune_categorical_partition_singletons,
-    recover_finalized_categorical_effects_map_certified, BorrowedMapWeights,
-    CategoricalAbsorbedEffectView, CategoricalCodeView, CertifiedBorrowedMap, FeCoefficientBatch,
-    FinalizedCategoricalTopology, LsmrConfig, MapConfig, RecoveredCategoricalEffects,
-    SingletonMultiplicity, SingletonResult,
+    finalize_categorical_topology, plan_categorical_absorbed_request,
+    prune_categorical_partition_singletons, BorrowedMapWeights, CategoricalAbsorbedEffectView,
+    CategoricalCodeView, FeCoefficientBatch, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
+    RecoveredCategoricalEffects, SingletonMultiplicity, SingletonResult,
 };
 use crate::memory::push_reserved;
 use crate::memory::{estimate_intercept_recovery_memory, FeSolverMemoryBudget};
@@ -39,8 +36,6 @@ use super::{
     LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource, PreparedOlsColumnKind,
     PreparedOlsModel, PreparedOlsSingletons,
 };
-
-const CATEGORICAL_SLOPE_MAP_TOLERANCE_CEILING: f64 = 1e-12;
 
 // Keep the owned sample behind a module-private field: even the surrounding
 // preparation code cannot forge this proof or obtain mutable access. Source
@@ -373,71 +368,6 @@ impl PreparedModel {
         })
     }
 
-    /// Residualize the complete prepared batch through the strict borrowed MAP
-    /// solver. A failure returns no caller-visible partially transformed batch.
-    pub fn absorb_rhs_map(&self, config: MapConfig) -> Result<CertifiedBorrowedMap> {
-        self.validate_with_reusable_topology(false)?;
-        let rhs = self.build_rhs()?.into_values();
-        let weights = match &self.sample.weights {
-            PreparedWeights::None => BorrowedMapWeights::Unit,
-            PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
-        };
-        if self.has_absorbed_slope() {
-            let effects = self.effect_views()?;
-            absorb_finalized_categorical_slope_map_certified(
-                &self.fe_topology,
-                &effects,
-                weights,
-                rhs,
-                categorical_slope_map_config(config),
-            )
-        } else {
-            absorb_finalized_categorical_topology_map_certified(
-                &self.fe_topology,
-                weights,
-                rhs,
-                config,
-            )
-        }
-    }
-
-    /// Recover the absorbed sum and selected normalized FE channels from an
-    /// observation-aligned absorbed target.
-    pub fn recover_absorbed_effects_map(
-        &self,
-        target: &[f64],
-        requested_channels: &[bool],
-        config: MapConfig,
-    ) -> Result<RecoveredCategoricalEffects> {
-        let weights = match &self.sample.weights {
-            PreparedWeights::None => BorrowedMapWeights::Unit,
-            PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
-        };
-        self.recover_absorbed_effects_map_with_weights(weights, target, requested_channels, config)
-    }
-
-    /// Crate-private recovery boundary for estimators whose final curvature
-    /// weights differ from the preparation weights. Public OLS continues to
-    /// call the wrapper above with the prepared weights.
-    pub(crate) fn recover_absorbed_effects_map_with_weights(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        target: &[f64],
-        requested_channels: &[bool],
-        config: MapConfig,
-    ) -> Result<RecoveredCategoricalEffects> {
-        self.validate_with_reusable_topology(false)?;
-        let effects = self.effect_views()?;
-        recover_finalized_categorical_effects_map_certified(
-            &self.fe_topology,
-            &effects,
-            weights,
-            target,
-            requested_channels,
-            categorical_slope_map_config(config),
-        )
-    }
-
     /// Recover saved FE channels without repeating symmetric observation-space
     /// MAP. Retained fit coefficients are the zero-extra-solve path.
     /// Eligible unit-weight two-effect targets next try certified graph
@@ -760,17 +690,6 @@ impl PreparedModel {
             .ok_or_else(|| invalid("ordinary categorical source row is out of range"))?;
         Ok(f64::from(code == level_code))
     }
-}
-
-fn categorical_slope_map_config(mut config: MapConfig) -> MapConfig {
-    // Group-specific slopes can amplify the final raw finite-score moment even
-    // after every FE moment has reached the generic MAP tolerance. Keep the
-    // registered finite-score gate unchanged and require a tighter upstream
-    // projection certificate for this path.
-    config.tolerance = config
-        .tolerance
-        .min(CATEGORICAL_SLOPE_MAP_TOLERANCE_CEILING);
-    config
 }
 
 /// One ordinary categorical source on the final sample.
