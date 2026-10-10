@@ -6,6 +6,10 @@ pub(crate) use crate::model_metadata::{
     read_table, required, reserved_empty, reserved_filled, syntax,
 };
 use crate::publication::store_matrix;
+use crate::transport::{
+    admit_estimate_transport, decode_output_position_registry, read_local_estimate_bundle,
+    OLS_PROTOCOL,
+};
 #[cfg(test)]
 use fereg_core::ols::OlsInputBinding;
 use std::collections::{BTreeMap, BTreeSet};
@@ -37,7 +41,7 @@ use fereg_core::ols::{
     PreparedOlsUnadjustedConfig,
 };
 use fereg_core::protocol::{
-    parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
+    Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
 use fereg_core::{
     estimate_phase2_memory, CategoricalTopologyDofReport, FeSolverMemoryBudget, MapConfig,
@@ -772,7 +776,7 @@ impl EstimateActionSpec {
 
     fn parse(args: &[String]) -> Result<Self> {
         let transport_peak_bytes = admit_estimate_transport(args)?;
-        let values = parse_estimate_key_values(args)?;
+        let values = OLS_PROTOCOL.key_values(args)?;
         let handshake = Handshake::from_key_values(&values)?;
         handshake.validate()?;
         if handshake.protocol != ACTION_PROTOCOL_VERSION {
@@ -1221,176 +1225,6 @@ impl EstimateActionSpec {
 
 // This is a metadata transport capacity, independent of N and finite rank.
 // Refuse impossible descriptors before reserving or accessing the caller macro.
-const MAX_LOCAL_ESTIMATE_BUNDLE_BYTES: usize = 16 * 1024 * 1024;
-
-pub(crate) fn admit_estimate_transport(args: &[String]) -> Result<u128> {
-    let bytes = crate::metadata_memory::transport_peak_bytes(args)?;
-    crate::metadata_memory::admit(
-        bytes,
-        fereg_core::memory::usable_memory_bytes(imposed_memory_limit_bytes()?),
-    )?;
-    Ok(bytes)
-}
-
-pub(crate) fn read_local_estimate_bundle(
-    args: &[String],
-    spi: &mut dyn SpiApi,
-) -> Result<Option<String>> {
-    let Some(descriptor) = args
-        .iter()
-        .find_map(|argument| argument.strip_prefix("bundle_local="))
-    else {
-        return Ok(None);
-    };
-    if args.len() != 1 {
-        return Err(syntax(
-            "local estimation bundle must be the only action argument",
-        ));
-    }
-    if descriptor.is_empty()
-        || descriptor.starts_with('0')
-        || !descriptor.bytes().all(|byte| byte.is_ascii_digit())
-    {
-        return Err(syntax(
-            "local estimation bundle byte count is not canonical",
-        ));
-    }
-    let length = descriptor
-        .parse::<usize>()
-        .map_err(|_| allocation("local estimation bundle byte count overflows"))?;
-    if length > MAX_LOCAL_ESTIMATE_BUNDLE_BYTES {
-        return Err(allocation(
-            "local estimation bundle exceeds the 16 MiB metadata capacity",
-        ));
-    }
-    const PREFIX: &[u8] = b"bundle=";
-    // Read one byte beyond the declaration so SPI truncation cannot make an
-    // overlong macro look exact. The SPI limit excludes its NUL terminator.
-    let required = PREFIX.len() + length + 2;
-    crate::metadata_memory::admit(
-        required as u128
-            + args.len() as u128 * std::mem::size_of::<String>() as u128
-            + args
-                .iter()
-                .map(|value| value.capacity() as u128)
-                .sum::<u128>(),
-        fereg_core::memory::usable_memory_bytes(imposed_memory_limit_bytes()?),
-    )?;
-    let mut bytes = Vec::new();
-    bytes
-        .try_reserve_exact(required)
-        .map_err(|_| allocation("unable to reserve local estimation bundle metadata"))?;
-    if bytes.capacity() < required {
-        return Err(allocation(
-            "local estimation bundle reservation was undersized",
-        ));
-    }
-    bytes.resize(required, u8::MAX);
-    bytes[..PREFIX.len()].copy_from_slice(PREFIX);
-    spi.read_estimate_bundle(&mut bytes[PREFIX.len()..])?;
-    if bytes[PREFIX.len()..].iter().position(|&byte| byte == 0) != Some(length) {
-        return Err(syntax(
-            "local estimation bundle byte count or terminator is inconsistent",
-        ));
-    }
-    bytes.truncate(PREFIX.len() + length);
-    String::from_utf8(bytes)
-        .map(Some)
-        .map_err(|_| syntax("local estimation bundle is not valid UTF-8"))
-}
-
-/// Stata 18 rejects a plugin call with the complete guarded estimate protocol
-/// as "too many options" before native dispatch.  Keep the ordinary argv form
-/// for the C and Fake SPI boundaries, and additionally accept one explicitly
-/// tagged, byte-length-framed bundle for the hidden licensed-Stata caller.
-/// Decoding is complete and canonical before the handshake and before any SPI
-/// metadata or observation read.
-pub(crate) fn parse_estimate_key_values(args: &[String]) -> Result<BTreeMap<String, String>> {
-    if args.len() > 85 {
-        return Err(syntax("guarded OLS protocol has more than 85 fields"));
-    }
-    let Some(bundle) = (args.len() == 1)
-        .then(|| args[0].strip_prefix("bundle="))
-        .flatten()
-    else {
-        if args.iter().any(|argument| argument.starts_with("bundle=")) {
-            return Err(syntax(
-                "guarded OLS bundle must be the only action argument",
-            ));
-        }
-        return parse_key_values(args);
-    };
-    let fields = decode_estimate_bundle(bundle)?;
-    parse_key_values(&fields)
-}
-
-pub(crate) fn decode_estimate_bundle(bundle: &str) -> Result<Vec<String>> {
-    const MAX_FIELDS: usize = 85;
-    let bytes = bundle.as_bytes();
-    let (count, mut cursor) = parse_bundle_decimal(bytes, 0, "field count")?;
-    if count == 0 || count > MAX_FIELDS {
-        return Err(syntax(
-            "guarded OLS bundle field count must be between one and 85",
-        ));
-    }
-    let mut fields = reserved_empty(count, "guarded OLS bundle fields")?;
-    for _ in 0..count {
-        let (length, payload_start) = parse_bundle_decimal(bytes, cursor, "field length")?;
-        if length == 0 {
-            return Err(syntax("guarded OLS bundle field is empty"));
-        }
-        let payload_end = payload_start
-            .checked_add(length)
-            .filter(|end| *end <= bytes.len())
-            .ok_or_else(|| syntax("guarded OLS bundle field is truncated"))?;
-        let payload = bundle
-            .get(payload_start..payload_end)
-            .ok_or_else(|| syntax("guarded OLS bundle length splits UTF-8 data"))?;
-        let mut field = String::new();
-        field
-            .try_reserve_exact(payload.len())
-            .map_err(|_| allocation("unable to reserve guarded OLS bundle field"))?;
-        if field.capacity() < payload.len() {
-            return Err(allocation(
-                "guarded OLS bundle field reservation was undersized",
-            ));
-        }
-        field.push_str(payload);
-        push_reserved(
-            &mut fields,
-            field,
-            "guarded OLS bundle field capacity exhausted",
-        )?;
-        cursor = payload_end;
-    }
-    if cursor != bytes.len() {
-        return Err(syntax("guarded OLS bundle has trailing data"));
-    }
-    Ok(fields)
-}
-
-fn parse_bundle_decimal(bytes: &[u8], start: usize, label: &str) -> Result<(usize, usize)> {
-    let mut cursor = start;
-    while cursor < bytes.len() && bytes[cursor].is_ascii_digit() {
-        cursor += 1;
-    }
-    if cursor == start || cursor >= bytes.len() || bytes[cursor] != b':' {
-        return Err(syntax(format!(
-            "guarded OLS bundle {label} lacks a decimal length delimiter"
-        )));
-    }
-    if cursor - start > 1 && bytes[start] == b'0' {
-        return Err(syntax(format!(
-            "guarded OLS bundle {label} is not canonically encoded"
-        )));
-    }
-    let value = std::str::from_utf8(&bytes[start..cursor])
-        .ok()
-        .and_then(|value| value.parse::<usize>().ok())
-        .ok_or_else(|| syntax(format!("guarded OLS bundle {label} overflows")))?;
-    Ok((value, cursor + 1))
-}
-
 fn validate_vce(
     vce: OlsVceKind,
     clusters: &[OlsClusterTermV1],
@@ -3598,26 +3432,6 @@ fn empty_loaded_column(n: usize, label: &'static str) -> Result<LoadedNumericCol
         values: reserved_filled(n, 0.0, label)?,
         missing: reserved_filled(n, false, label)?,
     })
-}
-
-fn decode_output_position_registry(value: &str, expected: usize) -> Result<Vec<Option<u32>>> {
-    let values = crate::model_metadata::decode_registry(
-        value,
-        expected,
-        crate::model_metadata::RegistryFraming::Delimited,
-    )?;
-    let mut output = reserved_empty(expected, "saved-output position registry")?;
-    for value in values {
-        let position = value
-            .parse::<u32>()
-            .map_err(|_| syntax("saved-output position must be an unsigned integer"))?;
-        push_reserved(
-            &mut output,
-            (position != 0).then_some(position),
-            "saved-output position registry capacity exhausted",
-        )?;
-    }
-    Ok(output)
 }
 
 fn parse_vce(value: &str) -> Result<OlsVceKind> {

@@ -493,22 +493,34 @@ pub fn parse_key_values(args: &[String]) -> Result<BTreeMap<String, String>> {
                 format!("plugin argument {argument:?} must have key=value form"),
             )
         })?;
-        let key = key.trim().to_ascii_lowercase();
-        let value = value.trim().to_owned();
+        let (key, value) = (key.trim(), value.trim());
         if key.is_empty() || value.is_empty() {
             return Err(FeregError::new(
                 ErrorCode::Syntax,
                 format!("plugin argument {argument:?} has an empty key or value"),
             ));
         }
-        if values.insert(key.clone(), value).is_some() {
+        let mut key = fallible_string(key, "protocol field name")?;
+        key.make_ascii_lowercase();
+        if values.contains_key(&key) {
             return Err(FeregError::new(
                 ErrorCode::Syntax,
                 format!("duplicate plugin protocol field {key}"),
             ));
         }
+        values.insert(key, fallible_string(value, "protocol field value")?);
     }
     Ok(values)
+}
+
+/// Copy protocol text without an infallible allocation inside the host.
+fn fallible_string(value: &str, label: &'static str) -> Result<String> {
+    let mut output = String::new();
+    output.try_reserve_exact(value.len()).map_err(|_| {
+        FeregError::new(ErrorCode::Allocation, format!("unable to reserve {label}"))
+    })?;
+    output.push_str(value);
+    Ok(output)
 }
 
 fn required<'a>(values: &'a BTreeMap<String, String>, key: &str) -> Result<&'a str> {

@@ -1,5 +1,9 @@
 use crate::model_metadata::{exact_usize, reserved_filled, syntax};
 use crate::publication::store_matrix;
+use crate::transport::{
+    admit_estimate_transport, decode_output_position_registry, fallible_string,
+    read_local_estimate_bundle, PPML_PROTOCOL,
+};
 #[cfg(test)]
 use fereg_core::metadata::ModelWireV2;
 #[path = "ppml_bias.rs"]
@@ -13,8 +17,7 @@ use crate::estimate::load_ols_input;
 use crate::estimate::{
     imposed_memory_limit_bytes, loading_memory, parse_bool, parse_nonnegative_u32,
     parse_positive_f64, parse_positive_u32, parse_positive_usize, parse_u16, parse_usize,
-    read_bindings, read_local_estimate_bundle, read_numeric_columns_in_chunks, read_table,
-    required,
+    read_bindings, read_numeric_columns_in_chunks, read_table, required,
 };
 use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::instrumentation::{
@@ -59,7 +62,6 @@ pub const ACTION_ESTIMATE_PPML: &str = "estimate-ppml";
 const CONFIRMATION: &str = "feppml-estimation";
 const CLUSTER_TERM_ROW_WIDTH: usize = 2;
 const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
-const MAX_PPML_PROTOCOL_FIELDS: usize = 99;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum PpmlDeveloperInjection {
@@ -630,8 +632,8 @@ impl EstimatePpmlSpec {
     }
 
     fn parse(args: &[String]) -> Result<Self> {
-        let transport_peak_bytes = crate::estimate::admit_estimate_transport(args)?;
-        let values = parse_ppml_estimate_key_values(args)?;
+        let transport_peak_bytes = admit_estimate_transport(args)?;
+        let values = PPML_PROTOCOL.key_values(args)?;
         let handshake = Handshake::from_key_values(&values)?;
         handshake.validate()?;
         if handshake.protocol != ACTION_PROTOCOL_VERSION {
@@ -1128,110 +1130,6 @@ impl EstimatePpmlSpec {
 /// potentially coefficient-sized registry values. Protocol field count is
 /// fixed and bounded; each key and value payload is copied only after a
 /// fallible reservation.
-fn parse_ppml_estimate_key_values(args: &[String]) -> Result<BTreeMap<String, String>> {
-    if args.len() > MAX_PPML_PROTOCOL_FIELDS {
-        return Err(syntax("guarded PPML protocol has too many fields"));
-    }
-    let Some(bundle) = (args.len() == 1)
-        .then(|| args[0].strip_prefix("bundle="))
-        .flatten()
-    else {
-        if args.iter().any(|argument| argument.starts_with("bundle=")) {
-            return Err(syntax(
-                "guarded PPML bundle must be the only action argument",
-            ));
-        }
-        return parse_ppml_key_value_fields(args);
-    };
-    let fields = decode_ppml_estimate_bundle(bundle)?;
-    parse_ppml_key_value_fields(&fields)
-}
-
-fn decode_ppml_estimate_bundle(bundle: &str) -> Result<Vec<String>> {
-    let bytes = bundle.as_bytes();
-    let (count, mut cursor) = parse_ppml_bundle_decimal(bytes, 0, "field count")?;
-    if count == 0 || count > MAX_PPML_PROTOCOL_FIELDS {
-        return Err(syntax(format!(
-            "guarded PPML bundle field count must be between one and {MAX_PPML_PROTOCOL_FIELDS}",
-        )));
-    }
-    let mut fields = Vec::new();
-    fields
-        .try_reserve_exact(count)
-        .map_err(|_| allocation("unable to reserve guarded PPML bundle fields"))?;
-    for _ in 0..count {
-        let (length, payload_start) = parse_ppml_bundle_decimal(bytes, cursor, "field length")?;
-        if length == 0 {
-            return Err(syntax("guarded PPML bundle field is empty"));
-        }
-        let payload_end = payload_start
-            .checked_add(length)
-            .filter(|end| *end <= bytes.len())
-            .ok_or_else(|| syntax("guarded PPML bundle field is truncated"))?;
-        let payload = bundle
-            .get(payload_start..payload_end)
-            .ok_or_else(|| syntax("guarded PPML bundle length splits UTF-8 data"))?;
-        fields.push(fallible_string(payload, "guarded PPML bundle field")?);
-        cursor = payload_end;
-    }
-    if cursor != bytes.len() {
-        return Err(syntax("guarded PPML bundle has trailing data"));
-    }
-    Ok(fields)
-}
-
-fn parse_ppml_bundle_decimal(
-    bytes: &[u8],
-    start: usize,
-    label: &'static str,
-) -> Result<(usize, usize)> {
-    let mut cursor = start;
-    while cursor < bytes.len() && bytes[cursor].is_ascii_digit() {
-        cursor += 1;
-    }
-    if cursor == start || cursor >= bytes.len() || bytes[cursor] != b':' {
-        return Err(syntax(format!(
-            "guarded PPML bundle {label} lacks a decimal length delimiter"
-        )));
-    }
-    if cursor - start > 1 && bytes[start] == b'0' {
-        return Err(syntax(format!(
-            "guarded PPML bundle {label} is not canonically encoded"
-        )));
-    }
-    let value = std::str::from_utf8(&bytes[start..cursor])
-        .ok()
-        .and_then(|value| value.parse::<usize>().ok())
-        .ok_or_else(|| syntax(format!("guarded PPML bundle {label} overflows")))?;
-    Ok((value, cursor + 1))
-}
-
-fn parse_ppml_key_value_fields(fields: &[String]) -> Result<BTreeMap<String, String>> {
-    let mut values = BTreeMap::new();
-    for argument in fields {
-        let (key, value) = argument.split_once('=').ok_or_else(|| {
-            syntax(format!(
-                "plugin argument {argument:?} must have key=value form"
-            ))
-        })?;
-        let key = key.trim();
-        let value = value.trim();
-        if key.is_empty() || value.is_empty() {
-            return Err(syntax(format!(
-                "plugin argument {argument:?} has an empty key or value"
-            )));
-        }
-        let mut key = fallible_string(key, "PPML protocol field name")?;
-        key.make_ascii_lowercase();
-        if values.contains_key(&key) {
-            return Err(syntax(format!("duplicate plugin protocol field {key}")));
-        }
-        let value = fallible_string(value, "PPML protocol field value")?;
-        values.insert(key, value);
-    }
-    Ok(values)
-}
-
 fn load_adjustment(
     binding: AdjustmentBinding,
     candidate: &[bool],
@@ -2859,37 +2757,9 @@ fn validate_saved_output_layout(
     Ok(())
 }
 
-fn decode_output_position_registry(value: &str, expected: usize) -> Result<Vec<Option<u32>>> {
-    let values = crate::model_metadata::decode_registry(
-        value,
-        expected,
-        crate::model_metadata::RegistryFraming::Delimited,
-    )?;
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(expected)
-        .map_err(|_| allocation("unable to reserve PPML saved-output registry"))?;
-    for value in values {
-        let position = value
-            .parse::<u32>()
-            .map_err(|_| syntax("PPML saved-output position must be an unsigned integer"))?;
-        output.push((position != 0).then_some(position));
-    }
-    Ok(output)
-}
-
 fn optional_position(values: &BTreeMap<String, String>, key: &str) -> Result<Option<u32>> {
     let position = parse_nonnegative_u32(values, key)?;
     Ok((position != 0).then_some(position))
-}
-
-fn fallible_string(value: &str, label: &'static str) -> Result<String> {
-    let mut output = String::new();
-    output
-        .try_reserve_exact(value.len())
-        .map_err(|_| allocation(format!("unable to reserve {label}")))?;
-    output.push_str(value);
-    Ok(output)
 }
 
 fn fallible_copy_values<T: Copy>(values: &[T], label: &'static str) -> Result<Vec<T>> {

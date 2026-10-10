@@ -24,6 +24,7 @@ mod ppml_execution;
 mod ppml_result;
 mod publication;
 mod result;
+mod transport;
 
 #[cfg(feature = "ffi")]
 mod ffi;

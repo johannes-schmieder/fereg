@@ -1116,33 +1116,6 @@ fn categorical_test_term(id: u32, source: SourceId, level: f64, base: bool) -> E
 }
 
 #[test]
-fn ppml_bundle_decoder_accepts_the_closed_99_field_protocol_only() {
-    fn encode(fields: &[String]) -> String {
-        let mut bundle = format!("{}:", fields.len());
-        for field in fields {
-            bundle.push_str(&format!("{}:{field}", field.len()));
-        }
-        bundle
-    }
-
-    let fields = (0..MAX_PPML_PROTOCOL_FIELDS)
-        .map(|index| format!("field_{index}=value_{index}"))
-        .collect::<Vec<_>>();
-    assert_eq!(
-        decode_ppml_estimate_bundle(&encode(&fields)).expect("99-field PPML bundle"),
-        fields,
-    );
-
-    let oversized = (0..=MAX_PPML_PROTOCOL_FIELDS)
-        .map(|index| format!("field_{index}=value_{index}"))
-        .collect::<Vec<_>>();
-    let error = decode_ppml_estimate_bundle(&encode(&oversized))
-        .expect_err("100-field PPML bundle must fail closed");
-    assert_eq!(error.code, ErrorCode::Syntax);
-    assert!(error.message.contains("between one and 99"));
-}
-
-#[test]
 fn ppml_local_bundle_preserves_science_and_rejects_incomplete_input_before_reads() {
     let (args, mut ordinary) = fixture();
     estimate_ppml_test(&args, &mut ordinary).unwrap();
