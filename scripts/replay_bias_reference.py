@@ -26,7 +26,7 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def read_case(path: Path):
+def read_case(path: Path, expected_action: str = 'estimate-ppml'):
     """Read the bounded numeric replay format with strict length framing."""
     lines = iter(path.read_text().splitlines())
     if next(lines) != 'FEREG_REPLAY_V1':
@@ -43,8 +43,8 @@ def read_case(path: Path):
         return value
 
     arguments = [framed() for _ in range(argc)]
-    if arguments[0] != 'estimate-ppml':
-        raise ValueError('bias reference requires PPML')
+    if arguments[0] != expected_action:
+        raise ValueError(f'replay reference requires {expected_action}')
     pairs = [argument.split('=', 1) for argument in arguments[1:]]
     args = dict(pairs)
     if len(args) != len(pairs):

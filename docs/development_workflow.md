@@ -83,6 +83,13 @@ Use `scripts/run_plugin_replay.sh` for real-plugin independent dense science and
 fixed-thread repeat checks. A prior binary may additionally serve as an exact
 regression comparator. It is not a second installed runtime or scientific authority.
 Declare intentional numerical scope before changes; preserve unaffected results.
+The explicit-LSMR scope dated 2026-10-10 has separate Linux and `-macos` files:
+the generator's platform `sin`/`exp` calls do not promise identical input bytes.
+Each file binds exact frozen inputs; the Mac inputs match the earlier committed
+Mac corpus. The Mac scope additionally names adjusted R-squared and the finite
+rank condition proxy, independently checked by the 70-digit dense-dummy oracle
+in `crates/fereg-oracle/python/replay_ols_reference.py`. Rank, sample, omission,
+fixed-thread repeats and all fields outside the chosen scope remain exact.
 The replay harness bounds the corpus at one million rows and ten million cells;
 local large-case profiling may compile it with larger `REPLAY_MAX_ROWS` and
 `REPLAY_MAX_CELLS` (see `tests/mock_spi/replay_io.h`). Such timings are local

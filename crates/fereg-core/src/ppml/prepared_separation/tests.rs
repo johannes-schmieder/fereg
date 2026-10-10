@@ -955,6 +955,81 @@ fn singleton_pass_deduplicates_rows_across_absorbed_effects() {
 }
 
 #[test]
+fn simplex_report_bank_grows_past_the_preflighted_generations() {
+    let zeros = PREFLIGHT_REPORT_GENERATIONS + 1;
+    let rows = zeros + 8;
+    let (mut request, _, mut loaded, _) = fixture();
+    let template = request.model.terms[0].clone();
+    request.model.sources.clear();
+    request.model.terms.clear();
+    request.absorbed_terms.clear();
+    request.bindings.truncate(2);
+    request.keep_singletons = true;
+    loaded.candidate = vec![true; rows];
+    loaded.outcome = column(&(0..rows).map(|i| f64::from(i >= zeros)).collect::<Vec<_>>());
+    loaded.numeric_sources.clear();
+    for j in 0..zeros {
+        let id = u32::try_from(j + 1).unwrap();
+        let source_id = SourceId::new(id).unwrap();
+        let name = format!("x{id}");
+        request.model.sources.push(source(source_id, &name));
+        let mut term = template.clone();
+        term.id = TermId::new(id).unwrap();
+        term.order = TermOrder::new(id).unwrap();
+        term.coefficient_slot = CoefficientSlot::new(id).unwrap();
+        term.canonical_token = format!("c.{name}");
+        term.components[0].source = source_id;
+        request.model.terms.push(term);
+        request.bindings.push(OlsInputBinding {
+            stata_var_position: id + 2,
+            role: OlsInputRole::NumericSource(source_id),
+        });
+        loaded.numeric_sources.push((
+            source_id,
+            column(&(0..rows).map(|i| f64::from(i == j)).collect::<Vec<_>>()),
+        ));
+    }
+    let numeric = prepare_numeric(&loaded, &vec![NumericSourceUse::ordinary(); zeros]);
+    let owner = PreparedPpmlModelOwner::new(request, vec![], loaded, numeric).unwrap();
+    let config = SeparationConfig {
+        methods: SeparationMethods {
+            fixed_effects: false,
+            simplex: true,
+            iterated_rectifier: false,
+            mu: false,
+        },
+        drop_singletons: false,
+        ..SeparationConfig::default()
+    };
+    let result = detect_prepared_ppml_separation(owner, PpmlConfig::default(), config, None, None)
+        .expect("one signed indicator certificate per generation, then a terminal report");
+    assert_eq!(result.separation.generations, zeros);
+    assert_eq!(result.separation.methods.len(), zeros + 1);
+    assert_eq!(
+        result.prepared.original_rows(),
+        &(zeros..rows).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        result.separation.dropped_observations,
+        (0..zeros).collect::<Vec<_>>()
+    );
+    for report in &result.separation.methods[..zeros] {
+        assert_eq!(report.dropped_observations.len(), 1);
+        assert!(report.dropped_observations[0] < zeros);
+        assert_eq!(report.status, MethodStatus::Certified);
+    }
+    result
+        .certification_seal
+        .validate(
+            config,
+            &result.separation,
+            result.prepared.original_rows(),
+            result.prepared.outcome(),
+        )
+        .unwrap();
+}
+
+#[test]
 fn exact_then_comprehensive_ir_rebuilds_fe_and_cluster_topology_twice() {
     let (request, clusters, loaded, uses) = fixture();
     let numeric = prepare_numeric(&loaded, &uses);

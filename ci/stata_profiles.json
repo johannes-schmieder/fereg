@@ -411,6 +411,7 @@
         "tests/stata/development/feppml_joint_categorical_audit.do",
         "tests/stata/development/feppml_joint_column_products_oracle.do",
         "tests/stata/development/feppml_lazy_graph_oracle.do",
+        "tests/stata/development/feppml_long_separation_report_bank.do",
         "tests/stata/development/feppml_low_categorical.do",
         "tests/stata/development/feppml_narrow_checkpoint_schur.do",
         "tests/stata/development/feppml_one_fe_low_profile_audit.do",

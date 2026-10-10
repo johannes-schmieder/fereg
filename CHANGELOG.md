@@ -92,7 +92,9 @@ Qualification scope and open caveats are in
   before reading data.
 - `feppml` admits much less memory for large samples with zero outcomes:
   separation records are charged for at most 256 generations rather than one
-  per observation (about 9.6 GB less at ten million rows).
+  per observation (about 9.6 GB less at ten million rows). Longer cascades grow
+  the bank fallibly, including space for exact-FE follow-up reports, without
+  imposing a 256-generation limit on otherwise valid estimates.
 - The multiway-cluster PSD repair certificate in `fereg` is purely relative,
   as in `feppml`, so an eigensystem whose error the former unit floor hid on a
   tiny-scale covariance is rejected rather than published.

@@ -106,3 +106,23 @@ anchor moved from `e237c217` (`140dda27`) to `ba350134` (`71c289a`), which
 reproduces the declared scope against the old anchor and replays exactly
 against itself. Mac boundary timing, the Mac replay anchor, the licensed Stata
 full profile and the PTY Break fixtures are Johannes's to run.
+
+Mac follow-up found two qualification defects at `5d548274`. Its replay had
+71 exact cases and only `ols-10`/`ols-13` differences, but both input hashes
+differed from the Linux scope; they match the existing Mac corpus. Separate
+Mac scope `2026-10-10-explicit-lsmr-direct-tolerance-macos.json` preserves the
+Linux scope unchanged and covers two additional one-ulp fields: adjusted R²
+and the rank condition proxy. Input-derived 70-digit Decimal witnesses now
+check both fields at rtol 1e-12/atol 1e-14. Scoped replay passes all 73 cases
+with 2/4-worker checks against a fresh `140dda27` Mac plugin (`4842d6f3`).
+
+The bounded separation report bank also retained an unintended logical ceiling:
+600 rows, 257 zero outcomes with separate indicator regressors, then positive
+outcomes, with `separation(simplex) keepsingletons`, succeeded on the base but
+returned `r(3499)` at the PR tip. Separating initial reservation from the full
+logical ceiling and reserving exact-FE follow-up records fixes it. The native
+257-generation witness and public sample/intercept/robust-variance checks at
+1/4 workers pass; all 73 replay cases remain exact against the original PR
+plugin (`04157bcc`). Both that public fixture and
+`ols_three_fe_batch_oracle.do` pass on Mac Stata/MP 19. These focused results
+use candidate plugin `2d2dd904`; the remaining integration checks are still pending.

@@ -11,10 +11,13 @@ import os
 from pathlib import Path
 import struct
 import subprocess
+import sys
 from replay_psd import eigensystem
 from replay_bias_reference import enrich_expected
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'crates/fereg-oracle/python'))
+from replay_ols_reference import enrich_expected as enrich_ols_expected
 
 
 def number(bits: str) -> float:
@@ -91,6 +94,15 @@ def scientific_errors(result: dict, expected: dict) -> list[str]:
                 errors.append(f'{label}/{i}: {a:.12g} != {b:.12g}')
                 break
     beta = expected['beta']
+    if 'ols_reference' in expected:
+        for table, targets in expected['ols_reference']['targets'].items():
+            values = matrix(result, table)
+            for index, target in targets.items():
+                position = int(index)
+                if len(values) <= position or values[position - 1] != 1:
+                    errors.append(f'independent OLS {table}/{index}: missing value')
+                else:
+                    close([values[position]], [target], f'independent OLS {table}/{index}', 1e-12, 1e-14)
     beta_indices = expected.get('beta_indices', list(range(len(beta))))
     close([matrix(result, 'RB')[i] for i in beta_indices], beta, 'coefficients', 1e-7, 1e-10)
     width = result['matrices']['RV']['columns']
@@ -298,7 +310,7 @@ def main() -> int:
     identities = {str(p): digest(p) for p in artifacts}
     records = []
     for case in cases:
-        expected = enrich_expected(case, json.loads(case.with_suffix('.json').read_text()))
+        expected = enrich_ols_expected(case, enrich_expected(case, json.loads(case.with_suffix('.json').read_text())))
         scoped = affected_prefixes(scope, case, expected)
         candidate = run_case(args.harness, args.plugin.resolve(), case, args.output / (case.stem + '-plugin.json'))
         baseline = run_case(args.harness, args.baseline.resolve(), case, args.output / (case.stem + '-baseline.json')) if args.baseline else None

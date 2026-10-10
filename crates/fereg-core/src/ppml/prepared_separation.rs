@@ -544,7 +544,8 @@ where
         config.drop_singletons,
     );
     let method_count = separation_method_count(config);
-    let method_report_capacity = checked_method_report_capacity(
+    let method_report_capacity = checked_method_report_capacity(generation_capacity, method_count)?;
+    let initial_report_capacity = checked_method_report_capacity(
         generation_capacity.min(PREFLIGHT_REPORT_GENERATIONS),
         method_count,
     )?;
@@ -555,7 +556,7 @@ where
     }
     let mut reports = Vec::new();
     reports
-        .try_reserve_exact(method_report_capacity)
+        .try_reserve_exact(initial_report_capacity)
         .map_err(|_| allocation("unable to reserve prepared separation method reports"))?;
     let mut generation_hashes = Vec::new();
     generation_hashes
@@ -570,10 +571,13 @@ where
 
     let (final_fit, final_replay) = loop {
         interrupt(PpmlInterruptPoint::SeparationGeneration)?;
-        // A generation records at most one report per method. Beyond the
-        // preflighted generations the bank grows here, fallibly.
+        // A numerical deletion can also record an exact-FE follow-up after
+        // this generation's no-drop FE report. Its extra deleted row consumes
+        // a potential generation, preserving the full N * methods ceiling.
+        // Reserve outside measured phases, including that possible follow-up.
+        let reports_this_generation = method_count + usize::from(config.methods.fixed_effects);
         reports
-            .try_reserve(method_count)
+            .try_reserve(reports_this_generation.min(method_report_capacity - reports.len()))
             .map_err(|_| allocation("unable to grow prepared separation method reports"))?;
         require_positive_outcome(coordinator.view().prepared.outcome())?;
         // Reinitialized after every committed deletion.  Consequently only
@@ -3773,10 +3777,9 @@ fn fallible_push<T>(output: &mut Vec<T>, value: T, message: &'static str) -> Res
     Ok(())
 }
 
-/// Push into a vector whose complete publication capacity was admitted and
-/// reserved before detector execution. Crossing the logical ceiling is an
-/// execution-chain defect; silently using allocator spare capacity or growing
-/// here would invalidate the preflight receipt.
+/// Push into reserved storage under the complete logical publication ceiling.
+/// Report banks may reserve additional storage between generations; pushes
+/// never allocate inside detector phases or exceed the logical row envelope.
 fn bounded_push<T>(
     output: &mut Vec<T>,
     hard_limit: usize,

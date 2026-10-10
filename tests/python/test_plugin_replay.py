@@ -6,11 +6,13 @@ import struct
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 from replay_plugins import scientific_errors, affected_prefixes, digest, allowed_difference, differences, discrete_view, exact_view, expected_for_fixes
 from replay_psd import eigensystem
 from replay_bias_reference import enrich_expected, REFERENCE, NAMES
+from replay_ols_reference import dense_targets, derive_ols, enrich_expected as enrich_ols_expected
 
 
 class ReplayChecks(unittest.TestCase):
@@ -131,6 +133,75 @@ class AffectedScopeChecks(unittest.TestCase):
             bad = copy.deepcopy(changed)
             bad['matrices'][table]['bits'][index] = 'changed decision'
             self.assertNotEqual(discrete_view(result, expected), discrete_view(bad, expected))
+
+
+class IndependentOlsReferenceChecks(unittest.TestCase):
+    def analytic_targets(self, frequency=False):
+        # Orthogonal centered slopes and residual; nonzero raw slope means
+        # distinguish the required original norms from within-column norms.
+        first = [-1., 1.] * 4
+        second = [-1., -1., 1., 1.] * 2
+        residual = [-1.] * 4 + [1.] * 4
+        outcome = [2 + 3 * a + 4 * b + e for a, b, e in zip(first, second, residual)]
+        regressors = [[a + 1 for a in first], [b + 2 for b in second]]
+        return dense_targets(outcome, regressors, [[0.] * 8],
+                             [2. if frequency else 1.] * 8, frequency)
+
+    def test_dense_weighted_witness_has_analytic_targets(self):
+        for frequency, adjusted in [(False, 123 / 130), (True, 323 / 338)]:
+            targets = self.analytic_targets(frequency)
+            self.assertAlmostEqual(targets['RFIT']['11'], adjusted, places=14)
+            self.assertAlmostEqual(targets['RCERT']['11'], math.sqrt(2.5), places=14)
+
+    def test_enrichment_rejects_changed_model_and_skips_unrelated_cases(self):
+        expected = {'poisson': False}
+        self.assertIs(enrich_ols_expected(Path('ols-09.case'), expected), expected)
+        # The declared fixture has two finite columns. A third term must fail
+        # before any direct solve, even when the file keeps a scoped case name.
+        with patch('replay_ols_reference.read_case', return_value=(
+                {'term_count': '3'}, [[1.] * 150 for _ in range(13)], {})):
+            with self.assertRaisesRegex(ValueError, 'model differs'):
+                derive_ols(Path('ols-10.case'))
+
+    def result_fixture(self):
+        targets = self.analytic_targets()
+        expected = {'return_code': 0, 'poisson': False, 'beta': [0.], 'covariance': [[1.]],
+                    'outputs': {'sample': 0, 'residual': 1, 'xbd': 2},
+                    'sample': [1.], 'rows': [0], 'residual': [0.], 'fitted': [1.],
+                    'ols_reference': {'targets': targets}}
+        def table(values):
+            return {'columns': 1, 'bits': [struct.pack('>d', value).hex() for value in values]}
+        matrices = {'RREC': table([1.]), 'RB': table([0.]), 'RV': table([1.])}
+        for name, values in targets.items():
+            data = [1., 0.] * 12
+            data[-1] = 1.  # Complete certificate in the existing scientific check.
+            data[11] = values['11']
+            matrices[name] = table(data)
+        result = {'return_code': 0, 'matrices': matrices,
+                  'columns': [['3ff0000000000000'], ['0000000000000000'], ['3ff0000000000000']]}
+        self.assertEqual(scientific_errors(result, expected), [])
+        return expected, result
+
+    def check_mutated_target(self, name):
+        expected, result = self.result_fixture()
+        target = expected['ols_reference']['targets'][name]['11']
+        for value in [target + 1e-8, float('nan')]:
+            bad = copy.deepcopy(result)
+            bad['matrices'][name]['bits'][11] = struct.pack('>d', value).hex()
+            self.assertTrue(any(f'independent OLS {name}/11' in error
+                                for error in scientific_errors(bad, expected)))
+        bad = copy.deepcopy(result)
+        bad['matrices'][name]['bits'][10] = '0000000000000000'
+        self.assertIn(f'independent OLS {name}/11: missing value', scientific_errors(bad, expected))
+        rounded = copy.deepcopy(result)
+        rounded['matrices'][name]['bits'][11] = struct.pack('>d', math.nextafter(target, math.inf)).hex()
+        self.assertEqual(scientific_errors(rounded, expected), [])
+
+    def test_changed_adjusted_r_squared_is_rejected(self):
+        self.check_mutated_target('RFIT')
+
+    def test_changed_condition_proxy_is_rejected(self):
+        self.check_mutated_target('RCERT')
 
 
 class IndependentBiasReferenceChecks(unittest.TestCase):
