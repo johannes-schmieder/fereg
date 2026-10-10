@@ -112,15 +112,27 @@ foreach rankcase in full collinear {
         quietly regress y x1-x10 i.g `weight', vce(cluster cl)
         matrix oracle_b = e(b)
         matrix oracle_v = e(V)
+        matrix identified = I(10)
+        if "`rankcase'" == "collinear" {
+            // Only the sum is identified; regress and fereg may retain different duplicates.
+            matrix identified[1,2] = 1
+            matrix identified[2,2] = 0
+        }
+        matrix oracle_b = oracle_b[1,1..10]*identified'
+        matrix oracle_v = identified*oracle_v[1..10,1..10]*identified'
         generate byte expected = e(sample)
         foreach absorption in g ga#gb {
             quietly fereg y x1-x10 `weight', absorb(`absorption') vce(cluster ca_string#cb) threads(4)
             assert e(sample) == expected
             assert row == _n
+            matrix native_b = e(b)
+            matrix native_v = e(V)
+            matrix native_b = native_b[1,1..10]*identified'
+            matrix native_v = identified*native_v[1..10,1..10]*identified'
             forvalues j=1/10 {
-                assert abs(e(b)[1,`j']-oracle_b[1,`j']) < 1e-8
+                assert abs(native_b[1,`j']-oracle_b[1,`j']) < 1e-8
                 forvalues k=1/10 {
-                    assert abs(e(V)[`j',`k']-oracle_v[`j',`k']) < 1e-10
+                    assert abs(native_v[`j',`k']-oracle_v[`j',`k']) < 1e-10
                 }
             }
             if "`rankcase'" == "full" assert e(rank) == 10

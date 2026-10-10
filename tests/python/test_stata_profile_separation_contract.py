@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -41,6 +42,21 @@ def load_profiles() -> dict[str, dict[str, object]]:
 
 
 class StataProfileSeparationContractTests(unittest.TestCase):
+    def test_development_profile_uses_standalone_terminal_fixtures(self) -> None:
+        fixtures = load_profiles()["development"]["fixtures"]
+        self.assertEqual(len(fixtures), len(set(fixtures)))
+        self.assertIn("tests/stata/development/ols_three_fe_batch_oracle.do", fixtures)
+        self.assertIn("tests/stata/development/feppml_long_separation_report_bank.do", fixtures)
+        for relative in fixtures:
+            with self.subTest(fixture=relative):
+                path = ROOT / relative
+                source = path.read_text(encoding="utf-8")
+                self.assertIn(f"END_FIXTURE|{path.stem}|rc=0", source)
+                # This one optional argument only enables an additional pinned comparator.
+                # Bare capture helpers requiring inputs belong to their own driver.
+                if path.stem != "reference_factor_precedence":
+                    self.assertIsNone(re.search(r"^args\s", source, re.MULTILINE))
+
     def test_licensed_runner_is_manual_and_defaults_to_smoke(self) -> None:
         workflow = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("  workflow_dispatch:", workflow)

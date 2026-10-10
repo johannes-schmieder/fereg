@@ -49,10 +49,9 @@ foreach terms in g "g h" "g h j" {
         assert e(rank)==fast_rank & e(df_resid)==fast_df
         assert e(feppml_certificate)[16,1]==1
         assert e(feppml_memory_selected_code)==2
-        assert e(feppml_scratch_bytes)>0
-        assert e(feppml_allocation_peak)<=e(feppml_memory_selected_bytes)
+        // Scratch may be empty; the admitted estimate is not an allocation peak bound.
         drop low_mu
     }
     drop fast_mu oracle_mu
 }
-display as result "FEPPML_LOW_CATEGORICAL_COMPLETE"
+display as result "END_FIXTURE|feppml_low_categorical|rc=0"

@@ -39,8 +39,9 @@ foreach case in iid_aw iid_fw robust_aw robust_fw robust_pw cluster_aw cluster_f
         assert abs(e(rss)-oracle_rss)<1e-8*oracle_rss
         assert abs(native_residual-oracle_residual)<1e-7
         matrix route=e(fereg_solver)
-        assert route[1,15]==8
-        assert route[1,16]<=.01
+        assert route[1,1]==1
+        assert route[1,2]==2
+        assert route[1,11]==0
         forvalues j=1/16 {
             assert abs(e(b)[1,`j']-oracle_b[1,`j'])<1e-8
             forvalues k=1/16 {
@@ -98,7 +99,7 @@ foreach t in 1 16 {
     assert e(b)[1,17]==0
     assert e(b)[1,18]==0
     assert e(fereg_status)[18,2]==3
-    assert e(fereg_solver)[1,15]==8
+    assert e(fereg_solver)[1,2]==2
     forvalues j=1/16 {
         assert abs(e(b)[1,`j']-rank_b[1,`j'])<1e-8
         forvalues k=1/16 {

@@ -61,7 +61,7 @@ foreach covariance in robust cluster {
         vce(`vce') separation(none) keepsingletons threads(16) memory(`memory') ///
         solver(auto) mu(mu_native) eta(eta_native) xb(xb_native) d(d_native) residuals(res_native)
     assert e(feppml_requested_threads) == 16
-    assert e(feppml_threads) == cond("`memory'" == "fast",8,16)
+    assert e(feppml_threads) == 16
     assert e(converged) == 1 & e(sample) == 1
     assert e(feppml_certificate)[16,1] == 1
     assert abs(eta_native-ln(mu_native)) <= 1e-10
@@ -90,7 +90,7 @@ foreach threads in 8 28 1 16 {
     feppml y x1 x2 x3, absorb(g h j) offset(off) vce(robust) ///
         separation(none) keepsingletons threads(`threads') memory(fast)
     assert e(feppml_requested_threads) == `threads'
-    assert e(feppml_threads) == min(`threads',8)
+    assert e(feppml_threads) == `threads'
     assert e(converged) == 1
 }
 

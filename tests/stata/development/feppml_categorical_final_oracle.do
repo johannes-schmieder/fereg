@@ -80,8 +80,8 @@ foreach kind in unit fw pw {
         if "`covariance'" == "cluster" local vce "cluster cl"
         feppml y x1 x2 x3 x4 x5 x6 x7 x8 `weight', absorb(`effects') offset(off) ///
             vce(`vce') separation(none) keepsingletons threads(`threads') memory(fast) solver(`solver') mu(mu_native) eta(eta_native) xb(xb_native) d(d_native) residuals(res_native)
-        local selected "lsmr"
-        if "`solver'" == "map" local selected "map"
+        local selected "`solver'"
+        if "`solver'" == "auto" local selected "map"
         assert "`e(feppml_solver_selected)'" == "`selected'"
         assert abs(eta_native - ln(mu_native)) <= 1e-10
         assert abs(res_native - (y - mu_native)) <= 1e-10

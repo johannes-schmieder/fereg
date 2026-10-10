@@ -38,6 +38,12 @@ tree development fixtures, use ci/run_fixture_profile.py and its documented
 arguments. Local outputs stay in ignored .ci/stata/run/ or target/ directories.
 Preserve source/plugin identity when comparing runtime revisions.
 
+The development profile contains standalone fixtures with terminal sentinels;
+parameterized capture helpers must have a maintained driver supplying their
+inputs. Retired campaign helpers are not standalone regression tests. Run
+`FEREG_SOLVER_TRACE=1` only for targeted diagnosis: trace logging allocates and
+therefore invalidates the zero-allocation audit assertions in a full profile.
+
 Stata shell exit zero alone is insufficient. Inspect Stata return codes,
 per-fixture status and the terminal END_FIXTURE sentinel. The installed-package
 tests must load the extracted package with an isolated ado path. Interactive

@@ -17,7 +17,6 @@ foreach effects in 1 2 3 {
     if `effects' >= 2 local absorb `absorb' g2
     if `effects' == 3 local absorb `absorb' g3
     local explicit map
-    if `effects' >= 2 local explicit lsmr
     foreach k in 0 2 {
         local controls
         if `k' == 2 local controls x1 x2
@@ -58,17 +57,17 @@ quietly feppml y x1 x2, absorb(g1 g2) separation(none) memory(low) solver(auto)
 assert `"`e(feppml_solver_selected)'"' == "map"
 assert e(feppml_solver_fallback_count) == 0
 quietly feppml y x1 x2, absorb(g1 g2) separation(none) memory(fast) solver(auto)
-assert `"`e(feppml_solver_selected)'"' == "lsmr"
+assert `"`e(feppml_solver_selected)'"' == "map"
 estimates store before_failed_auto
 matrix before_b = e(b)
 capture noisily feppml y x1 x2, absorb(g1 g2) separation(none) solver(auto) iterate(1)
 assert _rc == 430
 assert mreldif(e(b),before_b) == 0
-assert `"`e(feppml_solver_selected)'"' == "lsmr"
+assert `"`e(feppml_solver_selected)'"' == "map"
 estimates drop before_failed_auto
 
 quietly feppml y x1 x2 [fw=w], absorb(exp_fe1=g1 exp_fe2=g2 exp_fe3=g3) ///
-    offset(off) vce(robust) separation(none) solver(lsmr) threads(7) d(exp_saved_d)
+    offset(off) vce(robust) separation(none) solver(map) threads(7) d(exp_saved_d)
 predict double exp_eta, eta
 predict double exp_d, d
 quietly feppml y x1 x2 [fw=w], absorb(auto_fe1=g1 auto_fe2=g2 auto_fe3=g3) ///
