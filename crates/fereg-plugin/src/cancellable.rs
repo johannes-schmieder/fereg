@@ -129,16 +129,25 @@ mod tests {
             // A non-Send poll proves the callback stays on the calling thread.
             let polls = Rc::new(Cell::new(0_usize));
             let observed = Rc::clone(&polls);
-            let mut poll = move || {
+            // The worker waits for the first poll instead of a fixed sleep, so
+            // a saturated host cannot finish the work before the caller polls.
+            let polled = std::sync::atomic::AtomicBool::new(false);
+            let mut poll = || {
                 assert_eq!(std::thread::current().id(), caller);
                 observed.set(observed.get() + 1);
+                polled.store(true, std::sync::atomic::Ordering::Release);
                 Ok(())
             };
             let output = run(
                 team(threads),
                 || {
                     assert_ne!(std::thread::current().id(), caller);
-                    std::thread::sleep(POLL_INTERVAL * 3);
+                    let started = std::time::Instant::now();
+                    while !polled.load(std::sync::atomic::Ordering::Acquire)
+                        && started.elapsed() < std::time::Duration::from_secs(30)
+                    {
+                        std::thread::sleep(POLL_INTERVAL);
+                    }
                     Ok(threads * 2)
                 },
                 &mut poll,
