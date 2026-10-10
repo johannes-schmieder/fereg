@@ -5,7 +5,7 @@ use crate::error::{ErrorCode, FeregError, Result};
 #[cfg(test)]
 use crate::fe::certify_residuals_with_reference_norms;
 #[cfg(test)]
-use crate::fe::{project_effect_in_place, ProjectionWorkspace};
+use crate::fe::ProjectionWorkspace;
 use crate::fe::{
     weighted_column_norms, CertifiedBorrowedMap, FeCertificate, FeDesign, FeSolverKind,
     SolveReport, SolveStopReason,

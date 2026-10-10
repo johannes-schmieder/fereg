@@ -370,9 +370,13 @@ fn intercept_plus_slope_and_second_intercept_effect_match_explicit_span() {
         (0..9).map(|row| slope[row] + second[row] as f64).collect(),
     ])
     .expect("values");
-    let result = absorb_finalized_categorical_intercept_slope_map_certified(
+    let effects = [
+        CategoricalAbsorbedEffectView::new(true, vec![&slope[..]]).expect("slope effect"),
+        CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("intercept effect"),
+    ];
+    let result = absorb_finalized_categorical_slope_map_certified(
         &topology,
-        &[Some(&slope), None],
+        &effects,
         BorrowedMapWeights::Unit,
         values,
         config(),

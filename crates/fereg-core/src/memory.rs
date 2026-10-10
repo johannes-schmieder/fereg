@@ -127,18 +127,6 @@ impl MemoryPlan {
     }
 }
 
-impl MemoryEstimate {
-    #[must_use]
-    pub fn fast_gib(self) -> f64 {
-        self.fast_bytes as f64 / 1_073_741_824.0
-    }
-
-    #[must_use]
-    pub fn low_gib(self) -> f64 {
-        self.low_bytes as f64 / 1_073_741_824.0
-    }
-}
-
 pub fn estimate_phase2_memory(
     observations: usize,
     loaded_numeric_columns: usize,

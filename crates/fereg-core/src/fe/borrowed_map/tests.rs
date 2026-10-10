@@ -4196,11 +4196,15 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
     let one_index = LevelIndex::from_codes(&one_codes, 2).expect("one index");
     let one = ValidatedBorrowedInterceptSource::new(&one_codes, 2, &one_index).expect("one");
     let one_design = BorrowedInterceptFeDesign::new(4, vec![one.effect()]).expect("one design");
-    let direct = absorb_borrowed_intercept_auto_certified(
+    let direct = project_borrowed_intercept_structural(
         &one_design,
         BorrowedMapWeights::Unit,
         DenseMatrix::from_columns(&[vec![1.0, 3.0, 4.0, 10.0]]).expect("one matrix"),
         config(),
+        LsmrConfig::default(),
+        None,
+        false,
+        false,
     )
     .expect("direct auto");
     assert_eq!(direct.report().requested_solver, FeSolverKind::Auto);
@@ -4216,11 +4220,15 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         ValidatedBorrowedInterceptSource::new(&column_codes, 2, &column_index).expect("column");
     let orthogonal = BorrowedInterceptFeDesign::new(4, vec![row.effect(), column.effect()])
         .expect("orthogonal design");
-    let early = absorb_borrowed_intercept_auto_certified(
+    let early = project_borrowed_intercept_structural(
         &orthogonal,
         BorrowedMapWeights::Unit,
         DenseMatrix::from_columns(&[vec![1.0, 2.0, 4.0, 8.0]]).expect("early matrix"),
         config(),
+        LsmrConfig::default(),
+        None,
+        false,
+        false,
     )
     .expect("early MAP");
     assert_eq!(early.report().used_solver, FeSolverKind::Map);
@@ -4236,7 +4244,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
     let hard =
         BorrowedInterceptFeDesign::new(worker_codes.len(), vec![worker.effect(), firm.effect()])
             .expect("hard design");
-    let cg = absorb_borrowed_intercept_auto_certified(
+    let cg = project_borrowed_intercept_structural(
         &hard,
         BorrowedMapWeights::Provided(&[1.0, 2.0, 1.5, 4.0, 0.5, 3.0, 2.5, 1.25]),
         DenseMatrix::from_columns(&[vec![1.0, 7.0, 2.0, 9.0, 4.0, 3.0, 8.0, -2.0]])
@@ -4245,6 +4253,10 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
             tolerance: 1e-14,
             ..config()
         },
+        LsmrConfig::default(),
+        None,
+        false,
+        false,
     )
     .expect("CG auto");
     assert_eq!(cg.report().requested_solver, FeSolverKind::Auto);

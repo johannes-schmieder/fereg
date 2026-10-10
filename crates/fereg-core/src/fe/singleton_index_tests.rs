@@ -182,7 +182,14 @@ fn singleton_index_preserves_long_cascade_order_and_inactive_rows() {
     for row in [9, 511, 900] {
         initial[row] = false;
     }
-    let result = prune_singletons(&effects, &levels, &initial, false).unwrap();
+    let result = prune_singletons_with_multiplicity(
+        &effects,
+        &levels,
+        &initial,
+        SingletonMultiplicity::Unit,
+        false,
+    )
+    .unwrap();
     assert_eq!(
         result,
         scanning_reference(&effects, &levels, &initial, SingletonMultiplicity::Unit)
@@ -199,8 +206,14 @@ fn singleton_index_scale_doubling_has_substantial_drops() {
         let (first, second, expected) = chain_and_core(n);
         let initial = vec![true; first.len()];
         let started = std::time::Instant::now();
-        let result =
-            prune_singletons(&[&first, &second], &[n / 2 + 3; 2], &initial, false).unwrap();
+        let result = prune_singletons_with_multiplicity(
+            &[&first, &second],
+            &[n / 2 + 3; 2],
+            &initial,
+            SingletonMultiplicity::Unit,
+            false,
+        )
+        .unwrap();
         let elapsed = started.elapsed();
         assert_eq!(result.active, expected);
         assert_eq!(result.dropped_observations.len(), n);
@@ -246,7 +259,14 @@ fn singleton_index_review_scale_has_half_initial_singletons_and_a_cascade() {
             );
         }
         let started = std::time::Instant::now();
-        let result = prune_singletons(&effects, &levels, &initial, false).unwrap();
+        let result = prune_singletons_with_multiplicity(
+            &effects,
+            &levels,
+            &initial,
+            SingletonMultiplicity::Unit,
+            false,
+        )
+        .unwrap();
         let elapsed = started.elapsed();
         assert_eq!(result.active, expected);
         assert_eq!(result.dropped_observations.len(), isolated + chain);

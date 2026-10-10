@@ -3449,26 +3449,6 @@ pub(crate) fn absorb_borrowed_intercept_irons_tuck_certified(
     ))
 }
 
-/// Structural automatic policy: direct groups, a two-effect graph, and the
-/// general coefficient-space solver with bounded original-input continuation.
-pub fn absorb_borrowed_intercept_auto_certified(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-) -> Result<CertifiedBorrowedMap> {
-    project_borrowed_intercept_structural(
-        design,
-        weights,
-        values,
-        config,
-        LsmrConfig::default(),
-        None,
-        false,
-        false,
-    )
-}
-
 /// Prepared OLS compatibility path: an empty explicit FE design still owns a
 /// structural one-level constant. The global projection uses only the existing
 /// dense RHS plus O(K) workspace; it never materializes N constant codes.

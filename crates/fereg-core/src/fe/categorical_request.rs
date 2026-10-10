@@ -5,7 +5,7 @@ use crate::error::{allocation, invalid_argument as invalid, unsupported, Result}
 use crate::memory::push_reserved;
 use crate::memory::SystemVecReservation as SystemRequestPlanReservation;
 use crate::memory::VecReservation as RequestPlanReservation;
-use crate::metadata::{AbsorbedTerm, SourceId};
+use crate::metadata::SourceId;
 use crate::ols::{OlsInputRole, OlsRequestV1, PreparedCategoricalSource};
 
 /// Metadata-only plan that separates source availability from true FE topology.
@@ -17,36 +17,8 @@ pub struct CategoricalAbsorbRequestPlan<'a> {
 
 impl CategoricalAbsorbRequestPlan<'_> {
     #[must_use]
-    pub fn requested_effects(&self) -> &[AbsorbedTerm] {
-        &self.request.absorbed_terms
-    }
-
-    #[must_use]
     pub fn required_sources(&self) -> &[SourceId] {
         &self.required_sources
-    }
-
-    #[must_use]
-    pub const fn requested_keep_singletons(&self) -> bool {
-        self.request.keep_singletons
-    }
-
-    /// Bind original requested source tuples to a prepared categorical-source
-    /// table after authoritative numeric sample preparation.
-    pub fn bind_effects(
-        &self,
-        prepared_sources: &[PreparedCategoricalSource],
-    ) -> Result<Vec<Vec<usize>>> {
-        let mut reservation = SystemRequestPlanReservation;
-        self.bind_effects_with_reservation(prepared_sources, &mut reservation)
-    }
-
-    fn bind_effects_with_reservation<R: RequestPlanReservation>(
-        &self,
-        prepared_sources: &[PreparedCategoricalSource],
-        reservation: &mut R,
-    ) -> Result<Vec<Vec<usize>>> {
-        bind_effect_recipes_with_reservation(self.request, prepared_sources, reservation)
     }
 }
 
@@ -315,6 +287,7 @@ mod tests {
     use super::*;
     use crate::error::ErrorCode;
     use crate::factorize::EncodedFactor;
+    use crate::metadata::AbsorbedTerm;
     use crate::metadata::{AbsorbTermId, CompiledTermGraph, SourceEntry, SourceId};
     use crate::ols::OlsInputBinding;
 
@@ -433,10 +406,10 @@ mod tests {
         let plan = plan_categorical_absorbed_request(&request).expect("plan");
         assert!(std::ptr::eq(plan.request, &request));
         assert_eq!(plan.required_sources(), &[source(1), source(2), source(3)]);
-        assert!(!plan.requested_keep_singletons());
-        assert_eq!(plan.requested_effects()[1].label, "firm#year");
+        assert!(!plan.request.keep_singletons);
+        assert_eq!(plan.request.absorbed_terms[1].label, "firm#year");
         assert_eq!(
-            plan.requested_effects()[1].categorical_sources,
+            plan.request.absorbed_terms[1].categorical_sources,
             vec![source(2), source(3)]
         );
     }
@@ -446,12 +419,14 @@ mod tests {
         let mut request = request();
         request.absorbed_terms[1].categorical_sources = vec![source(3), source(2)];
         let plan = plan_categorical_absorbed_request(&request).expect("plan");
-        let bound = plan
-            .bind_effects(&[prepared(3, 2), prepared(1, 0), prepared(2, 1)])
-            .expect("bound");
+        let bound = bind_categorical_effect_recipes(
+            plan.request,
+            &[prepared(3, 2), prepared(1, 0), prepared(2, 1)],
+        )
+        .expect("bound");
         assert_eq!(bound.len(), 2);
         assert_eq!(
-            plan.requested_effects()[1].categorical_sources,
+            plan.request.absorbed_terms[1].categorical_sources,
             vec![source(3), source(2)]
         );
         assert_eq!(bound[1], vec![0, 2]);
@@ -464,7 +439,7 @@ mod tests {
         let plan = plan_categorical_absorbed_request(&request).expect("plan");
         assert_eq!(plan.required_sources().len(), 3);
         assert_eq!(
-            plan.requested_effects()[1].categorical_sources,
+            plan.request.absorbed_terms[1].categorical_sources,
             vec![source(2), source(3), source(2)]
         );
     }
@@ -475,7 +450,7 @@ mod tests {
         slope.absorbed_terms[0].slope_sources.push(source(2));
         let slope_plan = plan_categorical_absorbed_request(&slope).expect("single guarded slope");
         assert_eq!(
-            slope_plan.requested_effects()[0].slope_sources,
+            slope_plan.request.absorbed_terms[0].slope_sources,
             vec![source(2)]
         );
         let mut multiple_slopes = slope.clone();
@@ -484,10 +459,10 @@ mod tests {
         let multiple_plan =
             plan_categorical_absorbed_request(&multiple_slopes).expect("multiple slope-only terms");
         assert_eq!(
-            multiple_plan.requested_effects()[1].slope_sources,
+            multiple_plan.request.absorbed_terms[1].slope_sources,
             vec![source(1), source(2)]
         );
-        assert!(!multiple_plan.requested_effects()[1].intercept);
+        assert!(!multiple_plan.request.absorbed_terms[1].intercept);
         let mut empty = request();
         empty.absorbed_terms[0].intercept = false;
         assert_eq!(
@@ -499,7 +474,7 @@ mod tests {
         let mut saved = request();
         saved.absorbed_terms[0].saved_name = "alpha".to_owned();
         let saved_plan = plan_categorical_absorbed_request(&saved).expect("saved metadata");
-        assert_eq!(saved_plan.requested_effects()[0].id.get(), 1);
+        assert_eq!(saved_plan.request.absorbed_terms[0].id.get(), 1);
         let mut empty_label = request();
         empty_label.absorbed_terms[0].label.clear();
         assert_eq!(
@@ -543,21 +518,27 @@ mod tests {
         let original = request();
         let plan = plan_categorical_absorbed_request(&original).expect("plan");
         assert_eq!(
-            plan.bind_effects(&[prepared(1, 0), prepared(2, 1)])
+            bind_categorical_effect_recipes(plan.request, &[prepared(1, 0), prepared(2, 1)])
                 .expect_err("missing year")
                 .code,
             ErrorCode::InvalidArgument
         );
         assert_eq!(
-            plan.bind_effects(&[prepared(1, 0), prepared(2, 1), prepared(2, 1)])
-                .expect_err("duplicate firm")
-                .code,
+            bind_categorical_effect_recipes(
+                plan.request,
+                &[prepared(1, 0), prepared(2, 1), prepared(2, 1)]
+            )
+            .expect_err("duplicate firm")
+            .code,
             ErrorCode::InvalidArgument
         );
         assert_eq!(
-            plan.bind_effects(&[prepared(1, 1), prepared(2, 1), prepared(3, 2)])
-                .expect_err("misaligned worker")
-                .code,
+            bind_categorical_effect_recipes(
+                plan.request,
+                &[prepared(1, 1), prepared(2, 1), prepared(3, 2)]
+            )
+            .expect_err("misaligned worker")
+            .code,
             ErrorCode::InvalidArgument
         );
     }
@@ -596,7 +577,7 @@ mod tests {
         let plan = plan_categorical_absorbed_request(&original).expect("plan");
         let prepared = [prepared(1, 0), prepared(2, 1), prepared(3, 2)];
         let mut successful = InjectedReservation::default();
-        plan.bind_effects_with_reservation(&prepared, &mut successful)
+        bind_effect_recipes_with_reservation(plan.request, &prepared, &mut successful)
             .expect("successful binding audit");
         assert!(successful.calls > 0);
         for call in 0..successful.calls {
@@ -604,9 +585,9 @@ mod tests {
                 fail_at: Some(call),
                 ..InjectedReservation::default()
             };
-            let error = plan
-                .bind_effects_with_reservation(&prepared, &mut injected)
-                .expect_err("injected binding allocation failure");
+            let error =
+                bind_effect_recipes_with_reservation(plan.request, &prepared, &mut injected)
+                    .expect_err("injected binding allocation failure");
             assert_eq!(error.code, ErrorCode::Allocation, "call {call}");
         }
         for call in 0..successful.calls {
@@ -614,9 +595,9 @@ mod tests {
                 skip_at: Some(call),
                 ..InjectedReservation::default()
             };
-            let error = plan
-                .bind_effects_with_reservation(&prepared, &mut undersized)
-                .expect_err("binding capacity guard");
+            let error =
+                bind_effect_recipes_with_reservation(plan.request, &prepared, &mut undersized)
+                    .expect_err("binding capacity guard");
             assert_eq!(error.code, ErrorCode::Allocation, "call {call}");
         }
     }

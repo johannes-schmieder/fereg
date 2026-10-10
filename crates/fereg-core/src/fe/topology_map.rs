@@ -8,9 +8,6 @@ use crate::error::{allocation, Result};
 use crate::memory::SystemVecReservation as SystemTopologyMapReservation;
 use crate::memory::VecReservation as TopologyMapReservation;
 
-fn bind(topology: &FinalizedCategoricalTopology) -> Result<super::BorrowedInterceptFeDesign<'_>> {
-    bind_with_reservation(topology, &mut SystemTopologyMapReservation)
-}
 fn bind_with_reservation<'a, R: TopologyMapReservation>(
     topology: &'a FinalizedCategoricalTopology,
     reservation: &mut R,
@@ -57,28 +54,6 @@ fn absorb_finalized_categorical_topology_map_with_reservation<R: TopologyMapRese
         false,
     )
 }
-fn project(
-    topology: &FinalizedCategoricalTopology,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    map: MapConfig,
-    solver: FeSolverKind,
-    retain: bool,
-) -> Result<CertifiedBorrowedMap> {
-    let design = bind(topology)?;
-    super::session::project_intercepts(
-        &design,
-        weights,
-        values,
-        AbsorbConfig {
-            solver,
-            map,
-            retain_coefficients: retain,
-            ..AbsorbConfig::default()
-        },
-        false,
-    )
-}
 pub fn absorb_finalized_categorical_topology_map_certified(
     topology: &FinalizedCategoricalTopology,
     weights: BorrowedMapWeights<'_>,
@@ -94,23 +69,6 @@ pub fn absorb_finalized_categorical_topology_map_certified(
         &mut SystemTopologyMapReservation,
     )
 }
-pub fn absorb_finalized_categorical_topology_cg_certified(
-    topology: &FinalizedCategoricalTopology,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-) -> Result<CertifiedBorrowedMap> {
-    project(topology, weights, values, config, FeSolverKind::Cg, false)
-}
-pub fn absorb_finalized_categorical_topology_auto_certified(
-    topology: &FinalizedCategoricalTopology,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-) -> Result<CertifiedBorrowedMap> {
-    project(topology, weights, values, config, FeSolverKind::Auto, false)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

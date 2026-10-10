@@ -22,21 +22,6 @@ pub struct SingletonResult {
     pub cascade_events: usize,
 }
 
-pub fn prune_singletons(
-    effect_codes: &[&[u32]],
-    effect_levels: &[usize],
-    initially_active: &[bool],
-    keep_singletons: bool,
-) -> Result<SingletonResult> {
-    prune_singletons_with_multiplicity(
-        effect_codes,
-        effect_levels,
-        initially_active,
-        SingletonMultiplicity::Unit,
-        keep_singletons,
-    )
-}
-
 pub fn prune_singletons_with_multiplicity(
     effect_codes: &[&[u32]],
     effect_levels: &[usize],
@@ -477,10 +462,11 @@ mod tests {
     fn drops_singletons_to_fixed_point() {
         let first = vec![0, 0, 1, 2];
         let second = vec![0, 1, 1, 2];
-        let result = prune_singletons(
+        let result = prune_singletons_with_multiplicity(
             &[&first, &second],
             &[3, 3],
             &[true, true, true, true],
+            SingletonMultiplicity::Unit,
             false,
         )
         .expect("singleton pruning");
@@ -492,7 +478,14 @@ mod tests {
     #[test]
     fn respects_keep_singletons() {
         let codes = vec![0, 1];
-        let result = prune_singletons(&[&codes], &[2], &[true, true], true).expect("kept");
+        let result = prune_singletons_with_multiplicity(
+            &[&codes],
+            &[2],
+            &[true, true],
+            SingletonMultiplicity::Unit,
+            true,
+        )
+        .expect("kept");
         assert_eq!(result.active, vec![true, true]);
         assert!(result.dropped_observations.is_empty());
     }
@@ -500,8 +493,14 @@ mod tests {
     #[test]
     fn rejects_invalid_codes() {
         let codes = vec![0, 2];
-        let error =
-            prune_singletons(&[&codes], &[2], &[true, true], false).expect_err("invalid code");
+        let error = prune_singletons_with_multiplicity(
+            &[&codes],
+            &[2],
+            &[true, true],
+            SingletonMultiplicity::Unit,
+            false,
+        )
+        .expect_err("invalid code");
         assert_eq!(error.code, ErrorCode::InvalidData);
     }
 

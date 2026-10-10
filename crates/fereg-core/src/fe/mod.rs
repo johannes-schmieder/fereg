@@ -33,7 +33,6 @@ mod topology_axis;
 mod topology_finalize;
 mod topology_map;
 mod topology_registry;
-mod topology_rhs;
 mod topology_slope_map;
 #[cfg(test)]
 pub(crate) use topology_slope_map::CategoricalRecoveryMethod;
@@ -42,9 +41,8 @@ mod topology_source;
 pub use accelerated_map::absorb_accelerated_map;
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
 pub use borrowed_map::{
-    absorb_borrowed_intercept_auto_certified, absorb_borrowed_intercept_cg_certified,
-    absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
-    FeCoefficientBatch,
+    absorb_borrowed_intercept_cg_certified, absorb_borrowed_intercept_map_certified,
+    BorrowedMapWeights, CertifiedBorrowedMap, FeCoefficientBatch,
 };
 pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_cg_retaining_certified,
@@ -87,27 +85,17 @@ pub use partition_singleton::{
 };
 pub use partition_validation::validate_categorical_partition;
 pub(crate) use projection::ParallelProjectionPlan;
-pub use projection::{project_effect_in_place, ProjectionWorkspace};
+pub use projection::ProjectionWorkspace;
 pub use report::{FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason};
-pub use singleton::{
-    prune_singletons, prune_singletons_with_multiplicity, SingletonMultiplicity, SingletonResult,
-};
+pub use singleton::{prune_singletons_with_multiplicity, SingletonMultiplicity, SingletonResult};
 pub use topology_adapter::borrow_categorical_topology_design;
 pub use topology_finalize::{
     finalize_categorical_topology, CompactedCategoricalSource, FinalizedCategoricalTopology,
 };
 pub(crate) use topology_finalize::{ValidatedFinalizedTopology, ValidatedSingleTopology};
-pub use topology_map::{
-    absorb_finalized_categorical_topology_auto_certified,
-    absorb_finalized_categorical_topology_cg_certified,
-    absorb_finalized_categorical_topology_map_certified,
-};
+pub use topology_map::absorb_finalized_categorical_topology_map_certified;
 pub use topology_registry::CategoricalTopologyRegistry;
-pub use topology_rhs::{
-    compact_categorical_rhs, CandidateCategoricalWeights, CompactedCategoricalRhs,
-};
 pub use topology_slope_map::{
-    absorb_finalized_categorical_intercept_slope_map_certified,
     absorb_finalized_categorical_slope_map_certified,
     recover_finalized_categorical_effects_map_certified, CategoricalAbsorbedEffectView,
     RecoveredCategoricalEffects,

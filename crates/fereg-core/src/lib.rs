@@ -41,7 +41,7 @@ pub use fe::{
     absorb_borrowed_intercept_map_certified, absorb_finalized_categorical_topology_map_certified,
     absorb_fixed_effects, absorb_lsmr, absorb_map, borrow_categorical_topology_design,
     certify_residuals, connected_components, factorize_code_interaction,
-    finalize_categorical_topology, prune_categorical_partition_singletons, prune_singletons,
+    finalize_categorical_topology, prune_categorical_partition_singletons,
     prune_singletons_with_multiplicity, validate_categorical_partition, AbsorbConfig,
     BorrowedInterceptEffect, BorrowedInterceptFeDesign, BorrowedMapWeights, CategoricalCodeView,
     CategoricalPartition, CategoricalPartitionRegistry, CategoricalPartitionSingletonResult,

@@ -1,6 +1,16 @@
 use super::*;
 use crate::fe::EffectTerm;
 
+/// Reference per-effect projection; inputs are validated by the tests themselves.
+fn project_effect_in_place(
+    effect: &EffectTerm,
+    weights: &[f64],
+    values: &mut DenseMatrix,
+    workspace: &mut ProjectionWorkspace,
+) -> Result<()> {
+    super::super::projection::project_validated(effect, weights, values, workspace)
+}
+
 #[test]
 fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frames() {
     let mut f = Vec::new();

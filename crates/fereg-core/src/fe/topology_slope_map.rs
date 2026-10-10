@@ -368,32 +368,6 @@ impl SlopeWorkspace {
     }
 }
 
-/// Compatibility wrapper for the previously qualified intercept-plus-one-slope
-/// surface. New code should use `absorb_finalized_categorical_slope_map_certified`.
-pub fn absorb_finalized_categorical_intercept_slope_map_certified(
-    topology: &FinalizedCategoricalTopology,
-    slopes: &[Option<&[f64]>],
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: MapConfig,
-) -> Result<CertifiedBorrowedMap> {
-    let mut effects = Vec::new();
-    effects
-        .try_reserve_exact(slopes.len())
-        .map_err(|_| allocation("unable to reserve compatibility absorbed effects"))?;
-    for slope in slopes {
-        let mut channels = Vec::new();
-        channels
-            .try_reserve_exact(usize::from(slope.is_some()))
-            .map_err(|_| allocation("unable to reserve compatibility slope channels"))?;
-        if let Some(values) = slope {
-            channels.push(*values);
-        }
-        effects.push(CategoricalAbsorbedEffectView::new(true, channels)?);
-    }
-    absorb_finalized_categorical_slope_map_certified(topology, &effects, weights, values, config)
-}
-
 /// Residualize arbitrary categorical intercept, slope-only, and
 /// intercept-plus-slope effects without copying observation-scale topology or
 /// continuous source columns.

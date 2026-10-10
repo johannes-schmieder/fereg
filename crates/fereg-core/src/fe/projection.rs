@@ -43,17 +43,6 @@ fn fallible_zeros(elements: usize) -> Result<Vec<f64>> {
         .filled(0.0, "unable to reserve generic FE projection workspace")
 }
 
-/// Subtract the weighted least-squares projection onto one effect term.
-pub fn project_effect_in_place(
-    effect: &EffectTerm,
-    weights: &[f64],
-    values: &mut DenseMatrix,
-    workspace: &mut ProjectionWorkspace,
-) -> Result<()> {
-    validate_projection(effect, weights, values, workspace)?;
-    project_validated(effect, weights, values, workspace)
-}
-
 /// Weights checked finite and positive once for a whole solve, so repeated
 /// projections inside its sweeps keep only their O(1) shape checks.
 #[derive(Debug, Clone, Copy)]
@@ -70,7 +59,7 @@ impl<'a> CheckedWeights<'a> {
     }
 }
 
-fn project_validated(
+pub(crate) fn project_validated(
     effect: &EffectTerm,
     weights: &[f64],
     values: &mut DenseMatrix,
@@ -170,17 +159,6 @@ fn subtract_row(
             *value -= fit;
         }
     }
-}
-
-fn validate_projection(
-    effect: &EffectTerm,
-    weights: &[f64],
-    values: &DenseMatrix,
-    workspace: &ProjectionWorkspace,
-) -> Result<()> {
-    validate_projection_axis(effect, weights, values)?;
-    validate_projection_weights(weights)?;
-    validate_projection_workspace(effect, values, workspace)
 }
 
 fn validate_projection_axis(
@@ -500,6 +478,27 @@ fn project_parallel(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn validate_projection(
+        effect: &EffectTerm,
+        weights: &[f64],
+        values: &DenseMatrix,
+        workspace: &ProjectionWorkspace,
+    ) -> Result<()> {
+        validate_projection_axis(effect, weights, values)?;
+        validate_projection_weights(weights)?;
+        validate_projection_workspace(effect, values, workspace)
+    }
+
+    fn project_effect_in_place(
+        effect: &EffectTerm,
+        weights: &[f64],
+        values: &mut DenseMatrix,
+        workspace: &mut ProjectionWorkspace,
+    ) -> Result<()> {
+        validate_projection(effect, weights, values, workspace)?;
+        project_validated(effect, weights, values, workspace)
+    }
 
     #[test]
     fn rhs_tiles_preserve_scalar_projection_bits() {
