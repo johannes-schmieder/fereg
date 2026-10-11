@@ -1,0 +1,606 @@
+--- a/crates/fereg-core/src/ols/canonical_products.rs
++++ b/crates/fereg-core/src/ols/canonical_products.rs
+@@ -19,6 +19,29 @@
+ use std::time::Instant;
+ 
+ mod three;
++
++// TASK-ONLY diagnostic copy. This compile-time override must not ship.
++fn study_route() -> &'static str {
++    match option_env!("FEREG_STUDY_CANONICAL_ROUTE") {
++        None | Some("auto") => "auto",
++        Some("explicit-direct") => "explicit-direct",
++        Some("explicit-iterative") => "explicit-iterative",
++        Some("implicit") => "implicit",
++        Some(_) => "invalid",
++    }
++}
++struct StudyWriteTimer(&'static str, Instant);
++impl Drop for StudyWriteTimer {
++    fn drop(&mut self) {
++        if crate::diagnostics::solver_trace_enabled() {
++            eprintln!(
++                "FEREG_SOLVER_TRACE|phase={}|seconds={:.9}",
++                self.0,
++                self.1.elapsed().as_secs_f64()
++            );
++        }
++    }
++}
+ pub(crate) fn canonical_three_workspace_bytes(
+     n: usize,
+     width: usize,
+@@ -44,7 +67,6 @@
+ struct Budget {
+     remaining: u128,
+     limit: u128,
+-    #[cfg(test)]
+     peak: u128,
+ }
+ impl Budget {
+@@ -52,7 +74,6 @@
+         Self {
+             remaining: limit,
+             limit,
+-            #[cfg(test)]
+             peak: 0,
+         }
+     }
+@@ -92,10 +113,7 @@
+             .remaining
+             .checked_sub(result.capacity() as u128 * size_of::<T>() as u128)
+             .ok_or_else(allocation)?;
+-        #[cfg(test)]
+-        {
+-            self.peak = self.peak.max(self.limit - self.remaining);
+-        }
++        self.peak = self.peak.max(self.limit - self.remaining);
+         result.resize(n, value);
+         Ok(result)
+     }
+@@ -155,7 +173,17 @@
+             .checked_mul(width as u128 + 1)?
+             / 2;
+         let work_allowance = gram_work.checked_add(prior_operator_work)?;
+-        if work > work_allowance {
++        let pair_rejected = work > work_allowance;
++        // Extra implicit setup <= N + 3*E + Q <= 4*N + Q:
++        // second aggregation, prefix/suffix/edge construction and diagonal.
++        // This conservative diagnostic admission is not a calibrated rule.
++        let incidence_bound = (n as u128).checked_mul(4)?.checked_add(q as u128)?;
++        let refused = study_route() == "invalid"
++            || (pair_rejected && (study_route() != "implicit" || incidence_bound > work_allowance));
++        if crate::diagnostics::solver_trace_enabled() {
++            eprintln!("FEREG_SOLVER_TRACE|phase=canonical_study_admission|route={}|rows={n}|pair_upper={work}|allowance={work_allowance}|pair_rejected={}|incidence_bound={incidence_bound}|refused={}", study_route(), u8::from(pair_rejected), u8::from(refused));
++        }
++        if refused {
+             return None;
+         }
+         let mut plan = Self {
+@@ -166,7 +194,7 @@
+             workers,
+             stride,
+             bytes: 0,
+-            factor_work_budget: work_allowance - work,
++            factor_work_budget: work_allowance.saturating_sub(work),
+         };
+         plan.bytes = plan.minimum_storage_bytes(0, 0)?;
+         Some(plan)
+@@ -444,6 +472,7 @@
+     }
+ 
+     pub fn write_controls(&mut self, storage: &mut PreparedOlsScratch) -> Result<()> {
++        let _study_timer = StudyWriteTimer("canonical_study_write_controls", Instant::now());
+         if storage.rows() != self.design.nobs() || storage.columns() + 1 != self.columns.len() {
+             return Err(FeregError::new(
+                 ErrorCode::InvalidArgument,
+@@ -485,6 +514,7 @@
+     }
+ 
+     pub fn write_dense(&mut self, storage: &mut DenseMatrix) -> Result<()> {
++        let _study_timer = StudyWriteTimer("canonical_study_write_dense", Instant::now());
+         let columns = self.columns.len() - 1;
+         if storage.nrows() != self.design.nobs() || storage.ncols() != columns {
+             return Err(FeregError::new(
+@@ -640,7 +670,12 @@
+         obsolete_projection,
+     ) {
+         Ok(result) => Ok(Some(result)),
+-        Err(error) if error.code == ErrorCode::NonConvergence => Ok(None),
++        Err(error) if error.code == ErrorCode::NonConvergence => {
++            if crate::diagnostics::solver_trace_enabled() {
++                eprintln!("FEREG_SOLVER_TRACE|phase=canonical_study_fallback|requested={}|reason=builder_declined", study_route());
++            }
++            Ok(None)
++        }
+         Err(error) => Err(error),
+     }
+ }
+@@ -774,7 +809,14 @@
+     // A reduced matrix can be inexpensive to apply even when its cubic
+     // factorization exceeds the current-call work allowance. The same fused
+     // original-input certificate decides acceptance of either proposal.
+-    let dense_iterative = factor_work > factor_work_budget;
++    let legacy_dense_iterative = factor_work > factor_work_budget;
++    if study_route() == "explicit-direct" && legacy_dense_iterative {
++        if crate::diagnostics::solver_trace_enabled() {
++            eprintln!("FEREG_SOLVER_TRACE|phase=canonical_study_declined|reason=direct_factor_work|factor_work={factor_work}|factor_budget={factor_work_budget}");
++        }
++        return Err(declined());
++    }
++    let dense_iterative = study_route() == "explicit-iterative" || legacy_dense_iterative;
+     let dense_krylov = if dense_iterative {
+         d.checked_mul(width)
+             .and_then(|x| x.checked_mul(3))
+@@ -789,9 +831,16 @@
+     // retains its arithmetic. Implicit geometry admits the full certified
+     // product pipeline where dense storage would otherwise force repeated
+     // observation-space construction, not merely a different dense matvec.
+-    let implicit = plan
++    let dense_memory_refused = plan
+         .minimum_storage_bytes(matrix_cells, dense_charge)
+         .is_none_or(|bytes| bytes > allowance);
++    if dense_memory_refused && matches!(study_route(), "explicit-direct" | "explicit-iterative") {
++        if crate::diagnostics::solver_trace_enabled() {
++            eprintln!("FEREG_SOLVER_TRACE|phase=canonical_study_declined|reason=explicit_memory|allowance={allowance}");
++        }
++        return Err(declined());
++    }
++    let implicit = study_route() == "implicit" || dense_memory_refused;
+     let iterative = implicit || dense_iterative;
+     let krylov_cells = if iterative {
+         d.checked_mul(width)
+@@ -824,6 +873,9 @@
+         .minimum_storage_bytes(matrix_cells, factor_charge)
+         .ok_or_else(declined)?;
+     if minimum_bytes > allowance {
++        if crate::diagnostics::solver_trace_enabled() {
++            eprintln!("FEREG_SOLVER_TRACE|phase=canonical_study_declined|reason=complete_memory|minimum_bytes={minimum_bytes}|allowance={allowance}");
++        }
+         return Err(declined());
+     }
+     // Retention avoids repeated original-column passes when the complete
+@@ -881,6 +933,8 @@
+     let mut matrix = budget.reserve(matrix_cells, 0.)?;
+     let mut totals = budget.reserve(q, 0.)?;
+     let mut touched = budget.reserve(q, 0_usize)?;
++    let mut study_pairs = 0_u128;
++    let mut study_edges = 0_usize;
+     // Keep the legacy matrix indices and numerical traversal order explicit.
+     #[allow(clippy::needless_range_loop)]
+     for g in 0..p {
+@@ -897,6 +951,8 @@
+         if count == 0 {
+             return Err(declined());
+         }
++        study_pairs += count as u128 * count.saturating_sub(1) as u128 / 2;
++        study_edges += count;
+         if implicit {
+             // Prefix/suffix sums form each Schur diagonal without subtracting
+             // nearly equal group masses. The diagonal is a preconditioner;
+@@ -940,6 +996,25 @@
+             anchors[r] = h;
+         }
+     }
++    // Hash only current component anchor IDs in canonical root order.
++    let study_anchor_hash =
++        anchors
++            .iter()
++            .filter(|&&id| id != usize::MAX)
++            .fold(0xcbf29ce484222325_u64, |hash, &id| {
++                (id as u64).to_le_bytes().iter().fold(hash, |h, &byte| {
++                    (h ^ byte as u64).wrapping_mul(0x100000001b3)
++                })
++            });
++    if crate::diagnostics::solver_trace_enabled() {
++        for (root, &anchor) in anchors
++            .iter()
++            .enumerate()
++            .filter(|(_, id)| **id != usize::MAX)
++        {
++            eprintln!("FEREG_SOLVER_TRACE|phase=canonical_study_anchor|root={root}|anchor={anchor}|left_effect={left_effect}");
++        }
++    }
+     let mut free = budget.reserve(q, usize::MAX)?;
+     let mut roots = budget.reserve(q, 0.)?;
+     // Assembly no longer needs its neighbour list. Reuse that allocation for
+@@ -962,6 +1037,21 @@
+             free[h] = block.start + local[h] - usize::from(local[h] > local[anchors[r]]);
+         }
+     }
++    // Each component has one anchor; each eliminated group can touch it once
++    // as a unique edge. This read-only diagnostic scan allocates nothing.
++    let study_anchor_edges = if crate::diagnostics::solver_trace_enabled() {
++        (0..p)
++            .filter(|&g| {
++                a.level_index()
++                    .members(g)
++                    .iter()
++                    .any(|&i| free[b.codes()[i] as usize] == usize::MAX)
++            })
++            .count()
++    } else {
++        0
++    };
++    let study_grounded_edges = study_edges - study_anchor_edges;
+     let mut factor = budget.reserve(factor_cells, 0.)?;
+     let mut incidence_ids = budget.reserve(if implicit { n } else { 0 }, 0_usize)?;
+     let mut incidence_rows =
+@@ -1032,6 +1122,7 @@
+     // Direct proposals retain the existing global pivot guard. Iterative
+     // proposals require positive curvature and the same fresh FE certificate;
+     // neither reduced solve establishes canonical finite-rank authority.
++    let study_factor_started = Instant::now();
+     let guard = 128. * f64::EPSILON * d.max(1) as f64;
+     for block in &components {
+         if iterative {
+@@ -1057,6 +1148,15 @@
+             }
+         }
+     }
++    let study_factor_seconds = study_factor_started.elapsed().as_secs_f64();
++    if crate::diagnostics::solver_trace_enabled() {
++        for block in &components {
++            eprintln!(
++                "FEREG_SOLVER_TRACE|phase=canonical_study_component|start={}|dimension={}",
++                block.start, block.len
++            );
++        }
++    }
+     budget.release(matrix)?;
+     budget.release(totals)?;
+     budget.release(parent)?;
+@@ -1170,6 +1270,8 @@
+             }
+             Ok(())
+         })?;
++    let study_rhs_seconds = started.elapsed().as_secs_f64();
++    let study_solve_started = Instant::now();
+     let mut solved = budget.reserve(d * width, 0.)?;
+     let mut krylov = budget.reserve(krylov_cells, 0.)?;
+     let iterations = AtomicUsize::new(1);
+@@ -1206,6 +1308,10 @@
+                         },
+                     )?;
+                     iterations.fetch_max(count, Ordering::Relaxed);
++                    if crate::diagnostics::solver_trace_enabled() {
++                        let edges: usize = rows.iter().map(|row| row.end - row.start).sum();
++                        eprintln!("FEREG_SOLVER_TRACE|phase=canonical_study_rhs|rhs={j}|start={}|dimension={size}|iterations={count}|operator_work={}", block.start, count as u128 * (2 * edges as u128 + size as u128));
++                    }
+                     continue;
+                 }
+                 let factor = &factor[block.offset..block.offset + size * size];
+@@ -1218,8 +1324,14 @@
+                         config.tolerance * 0.01,
+                     )?;
+                     iterations.fetch_max(count, Ordering::Relaxed);
++                    if crate::diagnostics::solver_trace_enabled() {
++                        eprintln!("FEREG_SOLVER_TRACE|phase=canonical_study_rhs|rhs={j}|start={}|dimension={size}|iterations={count}|operator_work={}", block.start, count as u128 * size as u128 * size as u128);
++                    }
+                     continue;
+                 }
++                if crate::diagnostics::solver_trace_enabled() {
++                    eprintln!("FEREG_SOLVER_TRACE|phase=canonical_study_rhs|rhs={j}|start={}|dimension={size}|iterations=0|operator_work={}", block.start, size as u128 * size as u128);
++                }
+                 for i in 0..size {
+                     for k in 0..i {
+                         values[i] -= factor[i * size + k] * values[k];
+@@ -1251,6 +1363,8 @@
+                 .try_for_each(|(j, values)| solve_column(j, values, &mut []))?;
+         }
+     }
++    let study_solve_seconds = study_solve_started.elapsed().as_secs_f64();
++    let study_coefficients_started = Instant::now();
+     budget.release(krylov)?;
+     budget.release(incidence_ids)?;
+     budget.release(incidence_rows)?;
+@@ -1291,6 +1405,7 @@
+         eprintln!("FEREG_SOLVER_TRACE|phase=canonical_reduced_solve|rows={n}|iterative={}|implicit={}|iterations={}",
+             u8::from(iterative), u8::from(implicit), iterations.load(Ordering::Relaxed));
+     }
++    let study_coefficients_seconds = study_coefficients_started.elapsed().as_secs_f64();
+     let solve_seconds = started.elapsed().as_secs_f64();
+     let started = Instant::now();
+     // RHS reductions are already released. Certificate reductions also need
+@@ -1404,6 +1519,8 @@
+         return Err(declined());
+     }
+     budget.release(partials)?;
++    let study_certificate_seconds = started.elapsed().as_secs_f64();
++    let study_reconstruction_started = Instant::now();
+     // Replay the certified pure coefficient calculation with unchanged inputs.
+     // Full reconstruction releases weights now; tiled reconstruction retains
+     // them through row writing. Neither layout carries authority across calls.
+@@ -1492,6 +1609,9 @@
+             })?;
+         (left, None, within_response)
+     };
++    if crate::diagnostics::solver_trace_enabled() {
++        eprintln!("FEREG_SOLVER_TRACE|phase=canonical_study_summary|requested={}|geometry={}|rows={n}|pairs={study_pairs}|edges={study_edges}|grounded_edges={study_grounded_edges}|dimension={d}|width={width}|workers={workers}|rhs_workers={}|left_effect={left_effect}|anchor_hash={study_anchor_hash:016x}|planned_bytes={bytes}|owned_bank_peak_bytes={}|retain_centers={}|tile_output={}|setup_seconds={setup_seconds:.9}|factor_seconds={study_factor_seconds:.9}|rhs_seconds={study_rhs_seconds:.9}|solve_seconds={study_solve_seconds:.9}|coefficient_seconds={study_coefficients_seconds:.9}|certificate_seconds={study_certificate_seconds:.9}|reconstruction_seconds={:.9}", study_route(), if implicit { "implicit" } else if iterative { "explicit-iterative" } else { "explicit-direct" }, rayon::current_num_threads().min(width), budget.peak, u8::from(retain_centers), u8::from(tile_output), study_reconstruction_started.elapsed().as_secs_f64());
++    }
+     let report = SolveReport {
+         requested_solver: FeSolverKind::Map,
+         used_solver: FeSolverKind::Map,
+--- a/crates/fereg-core/src/ols/linear_session.rs
++++ b/crates/fereg-core/src/ols/linear_session.rs
+@@ -3441,7 +3441,16 @@
+             .fe_projector
+             .as_ref()
+             .and_then(FeSession::ppml_operator_work);
++        if crate::diagnostics::solver_trace_enabled() {
++            eprintln!("FEREG_SOLVER_TRACE|phase=study_canonical_attempt|kind={kind:?}|sample={}|topology={}|weights={}|response={}|rows={}|allowance={}",
++                self.generations.sample, self.generations.topology, self.generations.weights,
++                self.generations.response, self.response.len(), self.fast_canonical_products_allowance);
++        }
+         let product_attempt = self.try_canonical_products()?;
++        if crate::diagnostics::solver_trace_enabled() {
++            eprintln!("FEREG_SOLVER_TRACE|phase=study_canonical_result|kind={kind:?}|accepted={}",
++                u8::from(product_attempt.is_some()));
++        }
+         let mut canonical_moments = None;
+         let (within_response, absorption_report) =
+             if let Some((response, projection, moments)) = product_attempt {
+--- a/crates/fereg-core/src/ols/prepared_scores.rs
++++ b/crates/fereg-core/src/ols/prepared_scores.rs
+@@ -516,6 +516,14 @@
+             "prepared robust score-design certificate did not pass",
+         ));
+     }
++    capture_f1_study_scores(
++        &storage,
++        &means,
++        &generated_columns,
++        &finite_positions,
++        normalized_intercept_position,
++        fit,
++    );
+     let certificate_seconds = phase_started.elapsed().as_secs_f64();
+     let phase_started = Instant::now();
+     let finite_row_buffer = reserved_filled(
+@@ -543,6 +551,118 @@
+         normalized_intercept_position,
+         certificate,
+     })
++}
++
++// Disposable study-copy instrumentation only. This function is not a proposed
++// runtime surface: both build-time and per-call opt-ins are mandatory, and the
++// caller supplies the sole file path. It observes the accepted Fast score bank
++// after its existing certificate and never changes numerical state or errors.
++fn capture_f1_study_scores(
++    storage: &PreparedOlsScoreStorage<'_>,
++    means: &[f64],
++    generated_columns: &[usize],
++    finite_positions: &[usize],
++    intercept_position: Option<usize>,
++    fit: &CertifiedPreparedOlsFit,
++) {
++    if option_env!("FEREG_F1_STUDY_BUILD") != Some("1")
++        || fit.execution().mode != PreparedOlsExecutionMode::Fast
++    {
++        return;
++    }
++    let Some(path) = std::env::var_os("FEREG_F1_STUDY_CAPTURE") else {
++        return;
++    };
++    let path = std::path::Path::new(&path);
++    if !path.is_absolute() {
++        eprintln!("FEREG_F1_STUDY_CAPTURE|status=nonabsolute_path");
++        return;
++    }
++    let saved = (|| -> std::io::Result<()> {
++        use std::io::Write;
++        let (rows, storage_kind) = match storage {
++            PreparedOlsScoreStorage::Dense(within) => (within.nrows(), 1_u64),
++            PreparedOlsScoreStorage::Selected(selected) => (selected.within.nrows(), 2_u64),
++            PreparedOlsScoreStorage::Scratch(_) => return Ok(()),
++        };
++        // create_new avoids replacement of a prior capture. The 8 KiB I/O
++        // buffer is bounded; no observation-sized bank is allocated or copied.
++        let file = std::fs::OpenOptions::new()
++            .write(true)
++            .create_new(true)
++            .open(path)?;
++        let mut output = std::io::BufWriter::with_capacity(8192, file);
++        output.write_all(b"FEREG_F1_SCORE_CAPTURE_V1\n")?;
++        let rank = generated_columns.len();
++        let dimension = fit.bread().dimension();
++        for value in [
++            rows as u64,
++            rank as u64,
++            dimension as u64,
++            intercept_position.map_or(u64::MAX, |value| value as u64),
++            storage_kind,
++        ] {
++            output.write_all(&value.to_le_bytes())?;
++        }
++        let scale = fit.bread().weight_scale();
++        for value in [
++            scale.solver_weight_divisor,
++            scale.reference_weight_multiplier,
++            scale.reference_weight_sum,
++        ] {
++            output.write_all(&value.to_bits().to_le_bytes())?;
++        }
++        // Generated indices and finite positions are zero-based. Coefficient
++        // slots retain their original one-based identity; kind 0=finite, 1=FE
++        // normalized constant. Arrays follow the dimensional header directly.
++        for values in [generated_columns, finite_positions] {
++            for &value in values {
++                output.write_all(&(value as u64).to_le_bytes())?;
++            }
++        }
++        for coordinate in fit.bread().coordinates() {
++            for value in [
++                u64::from(coordinate.coefficient_slot.get()),
++                coordinate.generated_column_index as u64,
++                u64::from(matches!(
++                    coordinate.kind,
++                    PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
++                )),
++            ] {
++                output.write_all(&value.to_le_bytes())?;
++            }
++        }
++        for values in [means, fit.bread().values()] {
++            for &value in values {
++                output.write_all(&value.to_bits().to_le_bytes())?;
++            }
++        }
++        // Emit exactly the finite rows read by score covariance, in row-major
++        // order. The values are the accepted within-X coordinates, with no
++        // additional normalization or recomputation during capture.
++        match storage {
++            PreparedOlsScoreStorage::Dense(within) => {
++                for &value in within.as_slice() {
++                    output.write_all(&value.to_bits().to_le_bytes())?;
++                }
++            }
++            PreparedOlsScoreStorage::Selected(selected) => {
++                for row in 0..rows {
++                    for &generated in generated_columns {
++                        let value = selected.within[(row, generated + 1)];
++                        output.write_all(&value.to_bits().to_le_bytes())?;
++                    }
++                }
++            }
++            PreparedOlsScoreStorage::Scratch(_) => unreachable!(),
++        }
++        output.write_all(b"FEREG_F1_SCORE_CAPTURE_COMPLETE\n")?;
++        output.flush()
++    })();
++    match saved {
++        Ok(()) => eprintln!("FEREG_F1_STUDY_CAPTURE|status=complete"),
++        Err(_) => eprintln!("FEREG_F1_STUDY_CAPTURE|status=io_error"),
++    }
+ }
+ 
+ fn build_scratch_score_storage<
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -5202,6 +5202,23 @@
+     retain_coefficients: bool,
+     reservation: &mut R,
+ ) -> Result<CertifiedBorrowedMap> {
++    // Task-only F2 diagnostics: observe existing checks without adding a check
++    // or turning exhaustion into a resumable numerical result.
++    let trace_enabled =
++        crate::diagnostics::phase_timing_enabled() && crate::diagnostics::solver_trace_enabled();
++    let trace_started = trace_enabled.then(Instant::now);
++    let trace_call = if trace_enabled {
++        static NEXT_CALL: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
++        NEXT_CALL
++            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
++            .wrapping_add(1)
++    } else {
++        0
++    };
++    let trace_rows = values.nrows();
++    let trace_rhs = values.ncols();
++    let mut trace_sweep_seconds = 0.0;
++    let mut trace_certificate_seconds = 0.0;
+     validate_config(config)?;
+     if design.nobs() != values.nrows() {
+         return Err(invalid_argument(
+@@ -5218,6 +5235,7 @@
+         return Err(invalid_data("borrowed MAP values must be finite"));
+     }
+     let weights = validate_weights(weights, values.nrows())?;
++    let trace_validation_seconds = trace_started.map_or(0.0, |start| start.elapsed().as_secs_f64());
+ 
+     let setup_started = Instant::now();
+     let mut workspace =
+@@ -5229,6 +5247,35 @@
+     let mut coefficients = retain_coefficients
+         .then(|| MapCoefficientAccumulator::zeros(design, values.ncols()))
+         .transpose()?;
++    let mut trace_output_seconds = 0.0;
++    let mut trace_checkpoint =
++        |iteration: usize,
++         certificate: &FeCertificate,
++         sweep_seconds: f64,
++         certificate_seconds: f64,
++         checkpoint_certificate_seconds: f64| {
++            if let Some(started) = trace_started {
++                let elapsed_seconds = started.elapsed().as_secs_f64();
++                let output_started = Instant::now();
++                let outcome = if certificate.passed {
++                    "certified"
++                } else if iteration == config.max_iterations {
++                    "exhausted"
++                } else {
++                    "continue"
++                };
++                crate::diagnostics::emit_solver_trace(&format!(
++                "FEREG_SOLVER_TRACE|phase=map_checkpoint|pid={}|map_call={trace_call}|rows={trace_rows}|rhs={trace_rhs}|effects={}|term_slots={}|workers={}|iteration={iteration}|max_iterations={}|check_every={}|symmetric={}|weighted={}|retained_coefficients={}|tolerance={:.17e}|passed={}|outcome={outcome}|relative_infinity={:.17e}|relative_two={:.17e}|elapsed_s={elapsed_seconds:.9}|validation_s={trace_validation_seconds:.9}|setup_s={setup_seconds:.9}|sweep_s={sweep_seconds:.9}|certificate_s={certificate_seconds:.9}|checkpoint_certificate_s={checkpoint_certificate_seconds:.9}|prior_trace_output_s={trace_output_seconds:.9}",
++                std::process::id(), design.effects().len(), design.total_term_slots(),
++                rayon::current_num_threads(), config.max_iterations, config.check_every,
++                usize::from(config.symmetric), usize::from(weights.values.is_some()),
++                usize::from(retain_coefficients), config.tolerance,
++                usize::from(certificate.passed), certificate.relative_infinity_norm,
++                certificate.relative_two_norm,
++            ));
++                trace_output_seconds += output_started.elapsed().as_secs_f64();
++            }
++        };
+ 
+     if design.effects().is_empty() && !empty_design_is_structural_constant {
+         let mut result = certified_result(
+@@ -5244,11 +5291,22 @@
+     }
+ 
+     {
++        let certificate_started = trace_enabled.then(Instant::now);
+         let initial_certificate = if design.effects().is_empty() {
+             certify_initial_structural_constant(weights, &values, config.tolerance, &mut workspace)?
+         } else {
+             certify_initial(design, weights, &values, config.tolerance, &mut workspace)?
+         };
++        let checkpoint_certificate_seconds =
++            certificate_started.map_or(0.0, |start| start.elapsed().as_secs_f64());
++        trace_certificate_seconds += checkpoint_certificate_seconds;
++        trace_checkpoint(
++            0,
++            &initial_certificate,
++            trace_sweep_seconds,
++            trace_certificate_seconds,
++            checkpoint_certificate_seconds,
++        );
+         if initial_certificate.passed {
+             let mut result = certified_result(
+                 values,
+@@ -5292,6 +5350,7 @@
+ 
+     for iteration in 1..=config.max_iterations {
+         crate::interrupt::checkpoint()?;
++        let sweep_started = trace_enabled.then(Instant::now);
+         borrowed_residual_sweep_recording(
+             design,
+             weights,
+@@ -5300,6 +5359,7 @@
+             coefficients.as_mut(),
+             config.symmetric,
+         )?;
++        trace_sweep_seconds += sweep_started.map_or(0.0, |start| start.elapsed().as_secs_f64());
+         // One intercept effect is removed exactly by its first projection, so
+         // certify immediately instead of waiting for the periodic multiway
+         // cadence. Multiway designs retain periodic plus final certification.
+@@ -5307,7 +5367,18 @@
+             || iteration % config.check_every == 0
+             || iteration == config.max_iterations
+         {
++            let certificate_started = trace_enabled.then(Instant::now);
+             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
++            let checkpoint_certificate_seconds =
++                certificate_started.map_or(0.0, |start| start.elapsed().as_secs_f64());
++            trace_certificate_seconds += checkpoint_certificate_seconds;
++            trace_checkpoint(
++                iteration,
++                &certificate,
++                trace_sweep_seconds,
++                trace_certificate_seconds,
++                checkpoint_certificate_seconds,
++            );
+             if certificate.passed {
+                 let mut result = certified_result(
+                     values,

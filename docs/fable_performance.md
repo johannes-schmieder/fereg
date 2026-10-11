@@ -549,6 +549,16 @@ alternating pairs plus one warmup per artifact/cell run (192 fits, two-hour cap)
 with setup, solving, certification, strict phase and total fit costs reported.
 Repository and independent scientific gates remain prerequisites.
 
+Before allocating a retained bank, an eligibility preflight records canonical
+producer/strict-consumer identity, selected geometry and weight-dependent
+component-anchor fingerprints on the four frozen PPML discovery inputs, one
+worker, one fit each. A trace-only task artifact changes no arithmetic or
+selection. Limit it to four fits, 120 seconds each and 600 seconds total,
+charged against the existing 48-fit/3,600-second discovery maximum. A subsequent
+full 24-fit discovery leaves at most twenty corrected calls, rather than an
+extra full panel. Initial bank compatibility is necessary, not acceptance;
+actual saved work, memory admission and lower total cost remain required.
+
 Expected affected scope includes projected response/controls and derived eta,
 coefficients and covariance. Derived means, Hessian weights, working responses,
 objectives and continuous score diagnostics must be named if replay changes
@@ -577,16 +587,53 @@ iterations; cold calls need a conservative structural estimate. No campaign
 names, tuned case exceptions or benchmark-specific thresholds are allowed.
 
 Proposed calibration: N in {2^14, 2^17}, eliminated-group degree in {4,16,64},
-RHS width in {2,17}, workers in {1,4,16}, three repetitions of each feasible
-route: at most 324 kernel measurements. Fit nonnegative coefficients once.
+RHS width in {2,17}, workers in {1,4,16}, two repetitions of each feasible
+route: at most 216 kernel measurements. Fit nonnegative coefficients once.
 Hold out four distinct graph shapes, including skewed degrees and weak bridges,
-at N=2^18, widths {8,65}, workers {1,4,16}, three repetitions per feasible route:
-at most 216 measurements. Cap the exercise at 45 minutes and one model revision;
+at N=2^18, widths {8,65}, workers {1,4,16}, two repetitions per feasible route:
+at most 144 measurements. Cap the exercise at 45 minutes and one model revision;
 held-out results judge the frozen model and do not tune exceptions. Unstable
 predictions or gains requiring exceptions stop the experiment. Research begins
 with retained observations. A supported rule may proceed to a bounded prototype
 and qualification under the authorization above, with its numerical scope,
 independent witnesses and added finite panel budget declared first.
+
+The diagnostic budget is allocated across at most 216 calibration route calls,
+144 frozen-holdout route calls and 48 million-row end-to-end calls, with a total
+2,700-second limit. Calibration may use two repetitions per feasible route on
+the declared N/degree/width/worker grid; component work and RHS scheduling waves
+replace a naive division of all costs by worker count. Implicit product work
+uses aggregated grounded incidences, while actual storage remains separately
+charged. Before fitting a rule, a task-only diagnostic artifact may force an
+existing explicit-direct, explicit-iterative or implicit-iterative geometry,
+but all current memory checks, stopping targets and independent certificates
+remain binding. Infeasible or failed calls are recorded, never relabelled.
+
+First spend at most 36 calibration calls (N=2^14, degree 4/16/64, width 17,
+workers 1/16, three feasible geometries, two repetitions) and eight whole-fit
+calls (frozen dense PPML 1M/4M, workers 1/16, current/implicit, one pair), with
+30/120-second per-call limits and 720 seconds combined. These are subsets of
+the maxima above, not additional budgets. Record complete setup, factorization,
+RHS, reconstruction, certification and total costs, per-RHS/component work,
+memory, failures and outer counts. Geometry changes may affect projected
+response/controls, moments, coefficients, eta/mu, objective, bread/covariance,
+derived continuous statistics and solve-work diagnostics. All model decisions,
+success/error behavior, requested tolerances, certificate gates and unaffected
+fields stay exact; no outer-iteration increase qualifies. Existing independent
+incidence/dense, unequal-weight/cancellation, disconnected, full-dummy PPML,
+strict-Hessian, memory/rollback and Break witnesses remain prerequisites.
+No production costing rule is inferred from a single diagnostic pair. Freeze
+the predictor and its uncertainty/abstention policy before held-out evaluation;
+actual held-out iterations may diagnose the model but may not retune it.
+
+The first kernel subset fixes 128 retained-side levels and
+`N/(2*degree)` eliminated-side levels. Each unique edge has two observations
+with equal dyadic weights and opposite dyadic residuals, giving an independent
+exact FE-orthogonality witness; weighted Gram products are checked separately.
+The three task-only route artifacts share these inputs. This narrow geometry
+is calibration, not an unseen holdout or a general iteration model. Trace
+overhead remains in the clocks; factorization is nested in setup, and the
+`4*N+q` admission proxy covers selected incidence work, not total setup.
 
 ### F1 authorized diagnosis: resolve the comparison before handoff
 
@@ -609,6 +656,27 @@ would be predeclared separately, at most 60 fits/1,800 seconds with 120 seconds
 per fit on the same inputs, retaining the failed original observations. Do not
 repeat the panel until a diagnosed request or numerical repair justifies it.
 Any runtime repair needs its own declared scope and independent witnesses.
+
+The first authorized diagnosis is eight Mac native captures on the regenerated,
+hash-matched frozen barbell and weak-mobility controls, one worker: Auto at
+1e-8, diagnostic Auto at 1e-10, LSMR at 1e-8, and valid CMG at 1e-8 with
+`preconditioner=off`. Use the qualified E1 plugin, tracing enabled, no warmup,
+120 seconds per fit and 600 seconds total, no retry. Preserve every full beta
+and covariance matrix, the original F1 statuses and the unchanged strong bound.
+Compare an 80-digit Wald calculation on each observed covariance with mixed
+beta/covariance calculations using independent full-dummy QR/HC1. The tighter
+Auto request tests sensitivity only; it changes no production tolerance or
+comparison allowance. A mismatch in either retained input hash stops the panel.
+No timing or Linux replication claim follows from these Mac diagnostic calls.
+
+If the eight captures isolate covariance influence rather than Wald rounding,
+allow one follow-up capture of the accepted within-control bank and bread for
+the weak control, Auto/LSMR, one worker: two calls, 60 seconds each and 120
+seconds total, no retry. Use a task-only instrumented copy; retain exact public
+science against each uninstrumented arm and compare projected controls,
+bread and resulting influence against independent QR. This is numerical
+diagnosis within the same one-day/two-repair limit, not a route prototype or
+an authorization to strengthen/relax a production stopping policy silently.
 
 An eventual Auto-only handoff should occur before reconstruction mutates the
 original RHS matrix. Return typed ownership of that unchanged input, preserve
@@ -646,6 +714,22 @@ any additional setup, progress observation and overlapping memory to the
 proposed rule. Sparse timeouts are censored failures, not fitting targets with
 invented completion times. If these observations cannot support a general
 cost model, stop and specify the missing diagnostic before running more fits.
+
+The first F2 diagnostic prices a possible bounded MAP attempt at its existing
+first four-sweep certificate checkpoint. It does not implement a default route.
+Use the three frozen dense 1M/4M and sparse 1M inputs, workers 1/16, one Auto
+capture and one explicit MAP request with an iteration limit of four per cell:
+twelve calls, 60 seconds each and 600 seconds total, no retry. Add trace-only
+checkpoint costs without extra numerical checks or modified stopping bounds.
+An exhausted MAP request remains a failure with no completed-fit ratio. Report
+primary and final-residual work separately; a primary failure observes no final
+residual cost. The four-sweep cadence is not a convergence-rate estimate.
+Compare incremental pilot/copy/certificate cost with the unchanged allowance;
+the source-qualified retained Auto observations are diagnostic references, not
+quiet-host confidence bounds. Any later pilot prototype needs typed untouched-
+input ownership, fully charged backup/overlap and a shared work budget: debit
+pilot work from the first-half LSMR allowance while preserving the existing
+MAP safety reserve. No routing code follows from these censored probes alone.
 
 Before any prototype, freeze its features, parameters, numerical scope,
 fallback/work-budget contract and finite validation budget. The current automatic

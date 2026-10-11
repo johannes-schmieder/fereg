@@ -16,6 +16,50 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Performance-plan qualification
 
+### F1 numerical diagnosis: accepted projected controls, 2026-10-11
+
+The [retained diagnosis](../bench/results/f1-20261011-diagnosis.json) isolates
+the material weak-control Auto robust-F discrepancy in its initial accepted
+within-X bank. Against independent FE QR, the largest within-X error is
+2.57e-6 for Auto and 3.27e-13 for LSMR. An independent inverse of the same
+accepted score design differs from Auto's bread by only 1.03e-18. The
+80-digit F decomposition attributes +1.4398833e-5 to the accepted score design,
++1.08e-11 to bread inversion and -1.95e-11 to remaining covariance arithmetic;
+final residual and Wald effects are also small. This diagnoses the error source
+on the captured weak control; it does not declare a production repair.
+
+Eight one-worker Mac captures used qualified E1 source `d3fed590`: Auto at
+1e-8, diagnostic Auto at 1e-10, LSMR and valid CMG on the hash-matched barbell
+and weak controls. All coefficient, covariance, fitted/residual and within-statistic
+witnesses passed. Four strong-F checks passed and four failed at the unchanged
+rtol=1e-12/atol=1e-14 bound. Tighter Auto still failed both controls, by factors
+2.8194 and 1.1763; scalar tightening is not an established repair. Valid CMG
+and LSMR passed these two independent F witnesses. The original sixty-fit
+panel's twenty invalid requests and eight comparison failures remain failed.
+
+Two follow-up Auto/LSMR captures used a
+[task-only diagnostic patch](../bench/results/fable-20261011-diagnostic.patch).
+Every public scientific bit, solver signature and external observation byte
+matched its uninstrumented arm. Both capture lengths and terminal markers were
+exact. The record binds qualified/probe/harness artifacts, all scientific
+matrix banks, projection/bread/scale mappings, and independent QR and 80-digit
+algebra. Full-data QR remains binary64; compensated Gram/meat product rounding
+and independent same-score QR cross-checks are recorded explicitly.
+
+The eight-call stage took 4.876 seconds within 120 seconds per call and 600
+seconds total; the two-capture stage, including decomposition, took 4.081
+seconds within 60 seconds per call and 120 seconds total. Neither stage retried.
+These are diagnostic task costs, not performance qualification: the probe's
+8 KiB capture writer runs inside existing native/certificate clocks. No
+production runtime, tolerance, model decision or default route changed, and
+no handoff threshold follows from these captures.
+
+The unchanged-artifact check against `57c5cd1e` matches all 170 runtime modules
+and 58 artifact inputs. `./scripts/run_tests.sh`, local documentation links and
+whitespace checks pass; the test transcript digest is
+`fa1fc1a468aa4f4c571225c908833e57569c9375cf268cac07e202315128a2f9`.
+The transcript is not retained, and these checks make no new timing claim.
+
 ### Performance-plan F: comparative failures and route decisions, 2026-10-11
 
 The automatic routes remain unchanged. The
