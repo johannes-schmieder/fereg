@@ -568,6 +568,39 @@ strict fixtures, explicit-dummy PPML, coefficient/covariance accuracy scripts,
 disconnected components, unequal weight scales and weak networks. Saved-FE
 outputs need a named witness/scope or must decline this optimization.
 
+The four-fit eligibility preflight supports a bounded iterative prototype,
+principally on AKM; it does not establish a speedup. Freeze its first design as
+follows before implementation. Admit optional guess storage last, after every
+existing installation choice, using the existing solver-increment admission.
+Charge two complete guess payloads plus a per-component/RHS iteration ledger
+(`2G+L`, actual capacities bounded); keep the canonical builder allowance and
+all existing memory routes unchanged. Move only successful canonical banks,
+stage their replacement transactionally, and clear guesses on errors, rollback,
+incompatible identities and inference handoff. Saved-FE requests decline A2.
+
+For each component/RHS, preserve the original cold normalization and target
+and let `M=min(max_iterations, component_dimension)`. A compatible warm attempt
+may use at most floor(M/2) iterations; any cold retry gets only M minus all
+iterations already attempted. Zero RHS keeps the existing zero solution. A
+late numerical certificate failure drops the failed banks before one fresh
+cold rebuild, carrying the same consumed-work ledger; fatal errors propagate.
+No iteration allowance resets. This policy cannot prove identical fallback
+decisions for every finite budget: a failed warm attempt can consume work the
+cold solve needed. Exact fallback, certificate and outer-decision checks must
+therefore reject any observed difference, including on the sparse control.
+Matching anchors cannot exclude that control, and no case-specific fence may
+repair a failure.
+
+Before the existing 24-fit discovery panel, allow at most thirty targeted
+test invocations and 900 seconds for admission boundaries, unchanged installation
+choices, ownership overlap, conversion and original-RHS stopping targets,
+shared-cap exhaustion, certificate retry, fatal errors, Break and rollback.
+There are still only two substantive repair iterations and one working day;
+this test budget adds no native campaign fits. Bind the existing named numerical
+replay leaves to each baseline before the corresponding candidate call, and
+retain exact protected decisions. Independent strict/dummy/covariance witnesses
+remain required before qualification.
+
 ### A3 authorized research: costing before route changes
 
 For component dimensions `d_c`, total reduced dimension `d`, RHS width `W`,

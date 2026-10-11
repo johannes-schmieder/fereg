@@ -16,6 +16,71 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Performance-plan qualification
 
+### A2/A3/F2 first diagnostic panels, 2026-10-11
+
+The [retained discovery record](../bench/results/fable-20261011-discovery.json)
+binds twenty-four traced SCC calls to the qualified E1 numerical program and
+the committed diagnostic patch. Production defaults remain unchanged. This
+record contains opportunity and rejection evidence, not performance qualification.
+It packs the complete scientific matrices without changing any bits and keeps
+the input identities, comparisons, phase costs and failed attempts.
+
+All four A2 preflight scientific fingerprints exactly match retained E1 Linux.
+Initial/strict anchor tuples match on every case. AKM has a compatible iterative
+strict consumer whose reduced solve costs 0.959 seconds; dense 4M has only
+0.056 seconds of such work, and dense 1M uses direct solving. Sparse has 445
+matching component anchors but both strict canonical attempts decline. These
+results support a bounded A2 prototype, chiefly for AKM, while requiring sparse
+fallback decisions to remain exact. No guess was retained or warm solve run.
+The four calls took 127.149 seconds including capture and validation.
+
+All eight A3 whole-fit calls completed, and all four scoped scientific
+comparisons passed with four outer iterations in every fit:
+
+| Frozen dense PPML | Workers | Current native s | Forced implicit native s |
+| --- | ---: | ---: | ---: |
+| 1M | 1 | 9.332 | 8.349 |
+| 1M | 16 | 3.806 | 2.721 |
+| 4M | 1 | 39.053 | 31.699 |
+| 4M | 16 | 18.427 | 10.896 |
+
+Implicit reduced solving costs more in every cell. Avoiding serial pair
+assembly saves about 1.08 seconds over two canonical calls at 1M and 7.9 seconds
+at 4M, explaining most of the total differences. Planned canonical storage
+increases from 12.05 to 24.46 MB and 48.51 to 96.92 MB respectively. No pair-work
+admission rejection was exercised, so these results do not support broadening
+that gate. This is one traced pair per cell on a shared host; neither a general
+iteration predictor nor a quiet-Mac performance claim follows. The stage used
+214.340 seconds of its shared 720-second first-subset budget.
+
+F2 completed all twelve checkpoint calls in 229.751 seconds: ten successful
+captures and two sparse MAP iteration-exhaustion failures. The four dense
+comparisons pass the unchanged coefficient, covariance and strong fit-statistic
+bounds. Sparse's four MAP sweeps plus checkpoint certificate cost 1.725 seconds
+at one worker, against a 0.614-second allowance from same-host Auto. Even granting
+free final-residual work leaves at least 11.30% modeled overhead before copying,
+setup and the initial certificate. This rejects the general four-sweep pilot.
+At sixteen workers, numerical work alone is 0.286 seconds against 0.138 seconds;
+the hypothetical free-residual bound is inconclusive. No failed fit receives a
+completed timing ratio, and no conditional geometry rule has been qualified.
+
+Bundle job 8028069 reports scheduler `failed=0`, `exit_status=1`, 600 seconds and
+6.253 GB maximum virtual memory; the nonzero exit preserves the two expected MAP
+failures. Frozen input reconstruction first failed its complete-file identity
+gate because new templates changed OLS VCE and PPML separation metadata. The
+original extractor was recovered, and all seven original complete-file hashes
+then matched: corrected job 8028057 reports `failed=0`, `exit_status=0`, 45 seconds
+and 2.401 GB. No fit used the failed extraction. A generic core calibration build
+was canceled before measurements because it did not install the plugin FMA table;
+its 283 seconds remain a cost, not calibration evidence. Corrected calibration
+and all prototype/holdout results are outside this record.
+
+Tier: decision and diagnostic tooling, unchanged production artifact. No
+tolerance, sample, rank, omission, separation, default route, independent
+certificate, fresh strict PPML requirement, memory control or SPI ownership
+changed. The recorded full repository checks for the identical E1 production
+inputs remain applicable; these observations add no platform qualification.
+
 ### F1 numerical diagnosis: accepted projected controls, 2026-10-11
 
 The [retained diagnosis](../bench/results/f1-20261011-diagnosis.json) isolates
