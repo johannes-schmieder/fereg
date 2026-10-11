@@ -91,8 +91,10 @@ The generated case does not match the campaign call: it requests six
 observation outputs, a restricted candidate marker and deterministic
 execution, and its topologies differ from the campaign's AKM. Workstream G
 adds generator flags for this; until then rewrite the case arguments
-(`candidate_all=1`, `deterministic=0`, all `output_*=0`, `residual=none` for
-PPML), drop the output placeholder columns so the varlist has 21 variables,
+(`candidate_all=1`, `deterministic=0`, optional observation `output_*=0`,
+`residual=none` for PPML). Keep the required sample output at position 21
+(`output_sample=21`); both wire parsers reject zero for this field. Drop the
+other output placeholder columns so the varlist has 21 variables,
 and replace the two FE columns with the campaign topology from
 `bench/campaign.py` (`make_dataset`, design `akm-baseline`). `RRUNTIME` rows
 18–21 hold preflight, input-load, native and total seconds for OLS; the PPML

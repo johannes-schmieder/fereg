@@ -2307,20 +2307,17 @@ fn absorb_two_fe_pcg_reusing(
                 }
             }
         }
-        for level in 0..right_levels {
-            let denominator = graph.right_weights[level]
-                / if scale_components {
-                    graph.component_scales[level]
-                } else {
-                    1.0
-                };
-            for (rhs, residual_sum) in residual_square.iter_mut().enumerate() {
-                let index = level * stride + rhs;
-                let residual = graph.residual[index];
-                graph.direction[index] = residual / denominator;
-                *residual_sum = residual.mul_add(graph.direction[index], *residual_sum);
-            }
-        }
+        crate::kernels::dispatch!(
+            crate::kernels::installed(),
+            pcg_initialize(
+                &graph.right_weights,
+                scale_components.then_some(graph.component_scales.as_slice()),
+                stride,
+                &graph.residual,
+                &mut graph.direction,
+                residual_square
+            )
+        );
     }
     if residual_square
         .iter()
@@ -2330,6 +2327,7 @@ fn absorb_two_fe_pcg_reusing(
             "two-FE categorical MAP PCG initial residual is invalid",
         ));
     }
+    let hardware = crate::kernels::installed();
     let mut progress_contraction = None;
     let remaining_iterations = config
         .max_iterations
@@ -2399,13 +2397,15 @@ fn absorb_two_fe_pcg_reusing(
         operator_seconds += op_start.elapsed().as_secs_f64();
         let rec_start = Instant::now();
         direction_projection.fill(0.0);
-        for level in 0..right_levels {
-            for (rhs, projection_sum) in direction_projection.iter_mut().enumerate() {
-                let index = level * stride + rhs;
-                *projection_sum =
-                    graph.direction[index].mul_add(graph.operator[index], *projection_sum);
-            }
-        }
+        crate::kernels::dispatch!(
+            hardware,
+            column_products(
+                &graph.direction[..right_levels * stride],
+                &graph.operator,
+                stride,
+                direction_projection
+            )
+        );
         for rhs in 0..rhs_count {
             if active_rhs_state[rhs] == 0.0 {
                 ratio[rhs] = 0.0;
@@ -2443,51 +2443,48 @@ fn absorb_two_fe_pcg_reusing(
                 .zip(graph.residual.par_chunks_mut(cell_chunk))
                 .enumerate()
                 .for_each(|(chunk, (solution, residual))| {
-                    for local_level in 0..solution.len() / stride {
-                        for (rhs, &step) in ratio.iter().enumerate() {
-                            let local = local_level * stride + rhs;
-                            let global = chunk * cell_chunk + local;
-                            solution[local] = step.mul_add(direction[global], solution[local]);
-                            residual[local] = (-step).mul_add(operator[global], residual[local]);
-                        }
-                    }
+                    let start = chunk * cell_chunk;
+                    let end = start + solution.len();
+                    crate::kernels::dispatch!(
+                        hardware,
+                        pcg_step(
+                            stride,
+                            ratio,
+                            &direction[start..end],
+                            &operator[start..end],
+                            solution,
+                            residual
+                        )
+                    );
                 });
             // The state update is level-disjoint. Keep this scalar reduction
             // serial in canonical level/RHS order so thread count cannot alter
             // the recurrence or its stopping decision.
-            for level in 0..right_levels {
-                let denominator = graph.right_weights[level]
-                    / if scale_components {
-                        graph.component_scales[level]
-                    } else {
-                        1.0
-                    };
-                for (rhs, residual_square) in next_residual_square.iter_mut().enumerate() {
-                    let index = level * stride + rhs;
-                    let preconditioned = graph.residual[index] / denominator;
-                    *residual_square =
-                        graph.residual[index].mul_add(preconditioned, *residual_square);
-                }
-            }
+            crate::kernels::dispatch!(
+                hardware,
+                pcg_energy(
+                    &graph.right_weights,
+                    scale_components.then_some(graph.component_scales.as_slice()),
+                    stride,
+                    &graph.residual,
+                    next_residual_square
+                )
+            );
         } else {
-            for level in 0..right_levels {
-                let denominator = graph.right_weights[level]
-                    / if scale_components {
-                        graph.component_scales[level]
-                    } else {
-                        1.0
-                    };
-                for (rhs, &step) in ratio.iter().enumerate() {
-                    let index = level * stride + rhs;
-                    graph.solution[index] =
-                        step.mul_add(graph.direction[index], graph.solution[index]);
-                    graph.residual[index] =
-                        (-step).mul_add(graph.operator[index], graph.residual[index]);
-                    let preconditioned = graph.residual[index] / denominator;
-                    next_residual_square[rhs] =
-                        graph.residual[index].mul_add(preconditioned, next_residual_square[rhs]);
-                }
-            }
+            crate::kernels::dispatch!(
+                hardware,
+                pcg_step_energy(
+                    &graph.right_weights,
+                    scale_components.then_some(graph.component_scales.as_slice()),
+                    stride,
+                    ratio,
+                    &graph.direction,
+                    &graph.operator,
+                    &mut graph.solution,
+                    &mut graph.residual,
+                    next_residual_square
+                )
+            );
         }
         iterations += 1;
         if next_residual_square
@@ -2556,44 +2553,35 @@ fn absorb_two_fe_pcg_reusing(
                 .enumerate()
                 .for_each(|(chunk, direction)| {
                     let first_level = chunk * level_chunk;
-                    for local_level in 0..direction.len() / stride {
-                        let level = first_level + local_level;
-                        let denominator = right_weights[level]
-                            / if scale_components {
-                                component_scales[level]
-                            } else {
-                                1.0
-                            };
-                        for rhs in 0..rhs_count {
-                            if active_rhs_state[rhs] == 0.0 {
-                                continue;
-                            }
-                            let local = local_level * stride + rhs;
-                            let global = chunk * cell_chunk + local;
-                            let preconditioned = residual[global] / denominator;
-                            direction[local] =
-                                preconditioned.mul_add(1.0, ratio[rhs] * direction[local]);
-                        }
-                    }
+                    let end_level = first_level + direction.len() / stride;
+                    let first = chunk * cell_chunk;
+                    let end = first + direction.len();
+                    crate::kernels::dispatch!(
+                        hardware,
+                        pcg_direction(
+                            &right_weights[first_level..end_level],
+                            scale_components.then(|| &component_scales[first_level..end_level]),
+                            stride,
+                            ratio,
+                            active_rhs_state,
+                            &residual[first..end],
+                            direction
+                        )
+                    );
                 });
         } else {
-            for level in 0..right_levels {
-                let denominator = graph.right_weights[level]
-                    / if scale_components {
-                        graph.component_scales[level]
-                    } else {
-                        1.0
-                    };
-                for rhs in 0..rhs_count {
-                    if active_rhs_state[rhs] == 0.0 {
-                        continue;
-                    }
-                    let index = level * stride + rhs;
-                    let preconditioned = graph.residual[index] / denominator;
-                    graph.direction[index] =
-                        preconditioned.mul_add(1.0, ratio[rhs] * graph.direction[index]);
-                }
-            }
+            crate::kernels::dispatch!(
+                hardware,
+                pcg_direction(
+                    &graph.right_weights,
+                    scale_components.then_some(graph.component_scales.as_slice()),
+                    stride,
+                    ratio,
+                    active_rhs_state,
+                    &graph.residual,
+                    &mut graph.direction
+                )
+            );
         }
         residual_square.copy_from_slice(next_residual_square);
         recurrence_seconds += rec_start.elapsed().as_secs_f64();

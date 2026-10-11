@@ -250,19 +250,18 @@ fn relative_projection(
     rhs: usize,
     denominator: f64,
 ) -> f64 {
-    let mut projected_square_norm = 0.0_f64;
-    if denominator > 0.0 {
-        for basis in orthonormal_basis {
-            let mut coefficient = 0.0_f64;
-            for (local_row, &observation) in observations.iter().enumerate() {
-                let scaled_residual =
-                    weights[observation].sqrt() * residuals[(observation, rhs)] / denominator;
-                coefficient = basis[local_row].mul_add(scaled_residual, coefficient);
-            }
-            projected_square_norm = coefficient.mul_add(coefficient, projected_square_norm);
-        }
-    }
-    projected_square_norm.sqrt()
+    crate::kernels::dispatch!(
+        crate::kernels::installed(),
+        basis_projection(
+            observations,
+            orthonormal_basis,
+            weights,
+            residuals.as_slice(),
+            residuals.ncols(),
+            rhs,
+            denominator
+        )
+    )
 }
 
 /// Independent groups write disjoint slots; the caller merges every RHS in
@@ -582,13 +581,10 @@ fn reorthogonalize(candidate: &mut [f64], basis: &[Vec<f64>]) {
 }
 
 fn subtract_projection(values: &mut [f64], direction: &[f64]) {
-    let coefficient = values
-        .iter()
-        .zip(direction)
-        .fold(0.0_f64, |sum, (&value, &basis)| value.mul_add(basis, sum));
-    for (value, &basis) in values.iter_mut().zip(direction) {
-        *value = (-coefficient).mul_add(basis, *value);
-    }
+    crate::kernels::dispatch!(
+        crate::kernels::installed(),
+        subtract_projection(values, direction)
+    );
 }
 
 pub(super) fn euclidean_norm(values: &[f64]) -> f64 {

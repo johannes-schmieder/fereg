@@ -8,6 +8,14 @@
 //! kernel uses only exactly rounded IEEE operations in a fixed per-element
 //! order, so results are unchanged wherever the platform `fma` is exactly
 //! rounded; without an installed table the portable bodies run inline.
+mod ordered;
+pub use ordered::{
+    affine_direction, basis_projection, column_products, joint_step, pcg_direction, pcg_energy,
+    pcg_initialize, pcg_step, pcg_step_energy, scaled_add, subtract_projection,
+    weighted_square_sum, weighted_upper_gram,
+};
+pub use ordered::{normalized_product, ordered_dot};
+
 use crate::linalg::neumaier_add;
 use std::sync::OnceLock;
 
@@ -46,11 +54,72 @@ pub type GroupSums = fn(
     &mut [f64],
 ) -> Option<(f64, f64)>;
 
+/// Runtime entry for [`ordered_dot`].
+pub type OrderedDot = fn(&[f64], &[f64]) -> f64;
+
+/// Runtime entry for [`normalized_product`].
+pub type NormalizedProduct = fn(&[f64], &[f64]) -> f64;
+
+/// Runtime entry for [`scaled_add`].
+pub type ScaledAdd = fn(&[f64], f64, &mut [f64]);
+
+/// Runtime entry for [`affine_direction`].
+pub type AffineDirection = fn(f64, &[f64], &mut [f64]);
+
+/// Runtime entry for [`joint_step`].
+pub type JointStep = fn(f64, &[f64], &[f64], &mut [f64], &mut [f64]);
+
+/// Runtime entry for [`subtract_projection`].
+pub type SubtractProjection = fn(&mut [f64], &[f64]);
+
+/// Runtime entry for [`weighted_square_sum`].
+pub type WeightedSquareSum = fn(&[f64], &[f64], f64) -> f64;
+
+/// Runtime entry for [`basis_projection`].
+pub type BasisProjection = fn(&[usize], &[Vec<f64>], &[f64], &[f64], usize, usize, f64) -> f64;
+
+/// Runtime entry for [`weighted_upper_gram`].
+pub type WeightedUpperGram = fn(f64, &[f64], &mut [f64]);
+
+/// Runtime entry for [`column_products`].
+pub type ColumnProducts = fn(&[f64], &[f64], usize, &mut [f64]);
+
+/// Runtime entry for [`pcg_initialize`].
+pub type PcgInitialize = fn(&[f64], Option<&[f64]>, usize, &[f64], &mut [f64], &mut [f64]);
+
+/// Runtime entry for [`pcg_step`].
+pub type PcgStep = fn(usize, &[f64], &[f64], &[f64], &mut [f64], &mut [f64]);
+
+/// Runtime entry for [`pcg_energy`].
+pub type PcgEnergy = fn(&[f64], Option<&[f64]>, usize, &[f64], &mut [f64]);
+
+/// Runtime entry for [`pcg_step_energy`].
+pub type PcgStepEnergy =
+    fn(&[f64], Option<&[f64]>, usize, &[f64], &[f64], &[f64], &mut [f64], &mut [f64], &mut [f64]);
+
+/// Runtime entry for [`pcg_direction`].
+pub type PcgDirection = fn(&[f64], Option<&[f64]>, usize, &[f64], &[f64], &[f64], &mut [f64]);
+
 /// Hardware-compiled instantiations of the kernels below.
 #[derive(Clone, Copy, Debug)]
 pub struct FusedKernels {
     /// Doctor label for the arithmetic path these entries compile to.
     pub name: &'static str,
+    pub ordered_dot: OrderedDot,
+    pub normalized_product: NormalizedProduct,
+    pub scaled_add: ScaledAdd,
+    pub affine_direction: AffineDirection,
+    pub joint_step: JointStep,
+    pub subtract_projection: SubtractProjection,
+    pub weighted_square_sum: WeightedSquareSum,
+    pub basis_projection: BasisProjection,
+    pub weighted_upper_gram: WeightedUpperGram,
+    pub column_products: ColumnProducts,
+    pub pcg_initialize: PcgInitialize,
+    pub pcg_step: PcgStep,
+    pub pcg_energy: PcgEnergy,
+    pub pcg_step_energy: PcgStepEnergy,
+    pub pcg_direction: PcgDirection,
     pub upper_rank_one: UpperRankOne,
     pub upper_tile: UpperTile,
     pub group_scales: GroupScales,
@@ -300,6 +369,17 @@ pub fn group_sums(
     }
     Some((weight_sum, weight_correction))
 }
+
+// Resolve the table outside a hot traversal; the portable body remains inline.
+macro_rules! dispatch {
+    ($hardware:expr, $kernel:ident($($argument:expr),* $(,)?)) => {
+        match $hardware {
+            Some(kernels) => (kernels.$kernel)($($argument),*),
+            None => crate::kernels::$kernel($($argument),*),
+        }
+    };
+}
+pub(crate) use dispatch;
 
 #[cfg(test)]
 mod tests {

@@ -14,6 +14,152 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Pending qualification
+
+### Performance-plan B: ordered FMA coverage, 2026-10-11
+
+This is an arithmetic-preserving candidate, **not an accepted B workstream**.
+It extends the existing detected FMA/AVX table from five to twenty entries.
+The six areas named in the plan now dispatch ordered dot/projection, joint
+iteration, two-FE PCG and canonical upper-Gram loops. Core bodies remain safe
+and shared with the portable path; the plugin owns target-feature wrappers.
+Per-element arithmetic, reduction order, padding and inactive-RHS behavior are
+preserved. The intentionally non-fused reduced-matrix product is unchanged.
+There are no tolerance, sample, rank, omission, separation, route, SPI ownership,
+certificate or strict-PPML-solve changes. Some fallback/reconstruction,
+reusable-certificate and smaller canonical-product loops remain scalar;
+profiling must determine whether more coverage is needed.
+
+An independent high-effort Astra review found no correctness issue. Its request
+for explicit padding/inactive sentinels and the active `-1.0` sentinel was
+implemented. The complexity ratchet records +231 core and +252 plugin production
+lines for the shared bodies and typed wrappers, with no new oversized function
+or file. The existing joint iteration gains eleven lines from explicit typed
+call arguments. Dispatch-call cost is included in the Mac measurements below.
+
+Mac checks pass: `scripts/run_tests.sh`, universal native build/audit/load,
+73/73 exact replay cases against the previous plugin (zero differences and
+unchanged solver signatures), all 67 licensed full-profile fixtures, and both
+OLS and public-scope PPML PTY Break checks. The replay's independent scientific
+witnesses pass in all 73 cases. These are working-tree artifact checks bound by
+the source-patch and plugin hashes below; the plugin's embedded source label
+predates the runtime patch.
+
+The x86 Mac slice compiles all twenty entries. Static disassembly of each of
+the fifteen added target-feature bodies contains no library-FMA call; fourteen
+contain hardware FMA instructions and PCG direction uses the equivalent
+multiply/add form for its unit multiplier. This is instruction-selection
+evidence, not an executed instruction count. Rosetta exposes neither FMA nor
+AVX here: all five hardware tests skip, despite their test-runner `ok` labels.
+No x86 execution or Linux qualification is claimed. SCC SSH authentication
+fails with `Permission denied (keyboard-interactive,hostbased)`, so frozen-input
+Linux A/B replay, hardware tests and cachegrind remain required. In particular,
+the requested disappearance of the `__fma_fma3` execution share is unverified.
+B stays unqualified and subsequent workstreams have not begun. A1 also awaits
+Johannes's section-4 decision; SPEC §13 is unchanged.
+
+The quiet Mac run used the twenty hash-verified frozen workloads, one warmup
+and seven alternating pairs per cell, a 90-second process limit and an 1800-second
+budget. It completed in 643.59 seconds, with all 320 fits exact and all twenty
+paired-median 95% bootstrap upper bounds within max(5%, 1 ms). No builds or
+agents ran during timing; ordinary desktop background processes were present.
+The largest upper bound is 1.035739. Paired medians range from 0.966264 to
+1.009575; costs as well as gains are retained below. These small observations
+do not establish a speedup or a release-performance claim. Times are seconds;
+ratios are medians of paired ratios, not ratios of the displayed medians.
+
+| Frozen workload | Baseline median | Candidate median | Paired ratio | 95% bootstrap interval |
+| --- | ---: | ---: | ---: | --- |
+| `ols-no-fe-k5-t1` | 0.005282 | 0.005280 | 0.999621 | [0.991737, 1.005359] |
+| `ols-no-fe-k5-t4` | 0.004686 | 0.004704 | 1.001930 | [0.999575, 1.007042] |
+| `ols-three-unit-k5-t1` | 0.585763 | 0.585808 | 1.000077 | [0.996792, 1.001798] |
+| `ols-three-unit-k5-t4` | 0.299557 | 0.299698 | 1.000087 | [0.997239, 1.001967] |
+| `ols-two-pw-k5-t1` | 0.653873 | 0.656214 | 1.000259 | [0.997755, 1.011564] |
+| `ols-two-pw-k5-t4` | 0.372277 | 0.372096 | 1.001750 | [0.989284, 1.005846] |
+| `ols-two-unit-k20-t1` | 1.203934 | 1.205990 | 1.005488 | [0.994109, 1.010733] |
+| `ols-two-unit-k20-t16` | 0.445681 | 0.442693 | 0.999367 | [0.987844, 1.008383] |
+| `ols-two-unit-k20-t4` | 0.574316 | 0.567609 | 0.990337 | [0.982508, 0.999854] |
+| `ols-two-unit-k20-t8` | 0.471380 | 0.474140 | 0.997908 | [0.978926, 1.034033] |
+| `ols-two-unit-k5-t1` | 0.478811 | 0.480858 | 1.001146 | [0.987009, 1.004367] |
+| `ols-two-unit-k5-t4` | 0.263885 | 0.263871 | 0.995747 | [0.994644, 1.005684] |
+| `ols-wide-k129-t1` | 0.763857 | 0.752693 | 0.974630 | [0.970251, 1.005925] |
+| `ols-wide-k129-t4` | 0.398176 | 0.401504 | 0.990082 | [0.965212, 1.035739] |
+| `ols-wide-k64-t1` | 0.295673 | 0.295657 | 0.993140 | [0.988308, 1.023617] |
+| `ols-wide-k64-t4` | 0.168455 | 0.163700 | 0.966264 | [0.959143, 1.002210] |
+| `ols-wide-k65-t1` | 0.312483 | 0.311014 | 0.996615 | [0.978531, 1.011322] |
+| `ols-wide-k65-t4` | 0.172959 | 0.176653 | 1.009575 | [0.957675, 1.029921] |
+| `ppml-two-unit-k5-t1` | 0.405354 | 0.404991 | 1.000059 | [0.993464, 1.004761] |
+| `ppml-two-unit-k5-t4` | 0.229143 | 0.228294 | 1.001377 | [0.991459, 1.003422] |
+
+A separate instrumented Mac diagnostic used locally generated campaign-shaped
+AKM inputs: one million rows, 16 controls, 200,000 worker and 10,000 firm
+levels, seed 739391, one worker, OLS IID and PPML robust inference, unrestricted
+candidate, nondeterministic worker policy, and only the required sample output.
+These inputs are not the frozen SCC campaign inputs and cannot substitute for
+them. Two alternating pairs per model, with a 90-second fit limit and 600-second
+budget, give eight successful fits with exact science and solver signatures.
+PPML has four outer iterations in every fit and keeps its fresh strict solve.
+The following means are descriptive; no timing acceptance is inferred from
+two pairs with tracing enabled. Unobserved phases stay missing.
+
+| Diagnostic runtime field | Baseline mean | Candidate mean |
+| --- | ---: | ---: |
+| OLS harness native call | 0.884388 | 0.885726 |
+| OLS preflight (row 18) | 0.000202 | 0.000200 |
+| OLS input (row 19) | 0.133730 | 0.134039 |
+| OLS native (row 20) | 0.748780 | 0.749800 |
+| OLS total (row 21) | 0.882712 | 0.884039 |
+| PPML harness native call | 4.773539 | 4.703071 |
+| PPML total (row 1) | 4.771736 | 4.701227 |
+| PPML preparation (row 28) | 0.289071 | 0.288944 |
+| PPML separation FE (row 29) | 0.004087 | 0.004130 |
+| PPML separation simplex (row 30) | missing | missing |
+| PPML separation IR (row 31) | missing | missing |
+| PPML separation mu (row 32) | missing | missing |
+| PPML weight/response refresh (row 33) | 0.060927 | 0.061665 |
+| PPML FE projection (row 34) | 1.963144 | 1.927000 |
+| PPML finite solve (row 35) | 0.560771 | 0.560114 |
+| PPML objective/line search (row 36) | 0.279796 | 0.280245 |
+| PPML strict final solve (row 37) | 1.165864 | 1.133371 |
+| PPML inference (row 38) | 0.085691 | 0.083245 |
+| PPML FE recovery (row 39) | 0.000001 | 0.000001 |
+| PPML publication (row 40) | 0.121995 | 0.122015 |
+
+Failed attempts: initial Clippy checks rejected complex function-pointer types
+and a macro placed after tests; named types and placement fixed both. The plan's
+literal `output_sample=0` recipe failed before estimation because both wire
+parsers require a positive sample output. The corrected case keeps sample
+column 21 and disables only optional outputs; the plan recipe is corrected.
+A generator retry refused to overwrite its existing template; reusing that
+unchanged template resolved setup. These failures do not count as successful
+scientific or timing observations. No estimator repair or tolerance change was
+made in response.
+
+SHA-256 records (raw task captures are disposable; these summaries and hashes
+are the retained record). The source patch is relative to `38fd8296` and includes
+the new ordered-kernel file and complexity inventory. Its production code is
+identical to the timed build; only the later sentinel test assertions differ.
+
+| Artifact / observation | SHA-256 |
+| --- | --- |
+| Previous universal plugin | `f59d2a2989dc672045fdda86dd88fa2a4191ab0e15a42d833f7bd0711c4d8ca4` |
+| Candidate universal plugin | `b04e08a2a085e249f8f72eb6df8c6979e431a7062d210864c48e5e79c205da75` |
+| Runtime source patch | `15f29992707e954323d93e8ea86b9e9c4f63357b4114dfb382fafa38470b41e2` |
+| Full gate | `439bafa7ff5bba99524e15021d19ed2bdcc7320f2e6dece573719f9c81a3dbf5` |
+| Exact replay summary | `519c063ef73872ae8b27d9a8a1d639e900ccf12aca0a42efa8e42c01797c1760` |
+| Licensed fixture summary | `9397e27d95a4515abac5be37f451eaeb22436fe690b213a016707403e1becbf3` |
+| OLS Break | `6e34ae90d9ae35896ca63ce58bd1dd3b893325aa47dcfbe3cf9dfe2f763e3238` |
+| PPML Break | `f5aada3ea8df93ebc394b615bb07031d17c06bbe03831bcbf2f1ade2b1a2f3fb` |
+| Mac timing summary | `43286b38795729eff6a9005a4d0e6c3c5a11e411a95eb5301928f0640e131bad` |
+| Local phase input manifest | `42e783208ab7e61d84bacf38afa0d3e3d0ad734b27be9dc41f80a51767497322` |
+| Rejected zero-sample-output probe | `bea85baec7aa5e5a97d1535d63173a4e745da91cd675af6399a47f39792c207c` |
+| Successful phase diagnostic | `c106aa856c2b2f3c6459ceed8ec6cacbb03339379292923940f996ed0d003fb9` |
+| Static x86 instruction summary | `19a6e94524b6afb5195ca9da9a482bed30ada4f2f80bbea9ee247baebdcad4d9` |
+| x86 tests (hardware skipped) | `a340e4da6363a29dddcbea72ebbb1decb133b3c7239c4e7238a5201ad7d93552` |
+| Candidate build/audit/load log | `b14b52bccc47b8986c2e2deeb05c48c34e3c653b758332b5e9c8779e199bc96e` |
+| Local OLS AKM case | `6503640e23c0955ba2b711b02f82917085503ccd16f2c58011bc64b74f04fd3e` |
+| Local PPML AKM case | `029fae2a6399992230044ff0847d11cdac4e05758704c3d6eef17538c8c1404e` |
+
 ## Accepted evidence
 
 ### Performance-plan tooling, 2026-10-11

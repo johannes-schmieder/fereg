@@ -1284,6 +1284,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     // a Gram and independent left-score diagnostics, only in this later phase.
     let mut partials = budget.reserve(workers * stride, 0.)?;
     let groups_per_worker = p.div_ceil(workers);
+    let hardware = crate::kernels::installed();
     partials.par_chunks_mut(stride).enumerate().try_for_each(
         |(worker, partial)| -> Result<()> {
             let (gram, rest) = partial.split_at_mut(width * width);
@@ -1322,12 +1323,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                         sums[j] += score;
                         scores[h * width + j] += score;
                     }
-                    for j in 0..width {
-                        let value = w[i] * row[j];
-                        for k in j..width {
-                            gram[j * width + k] = value.mul_add(row[k], gram[j * width + k]);
-                        }
-                    }
+                    crate::kernels::dispatch!(hardware, weighted_upper_gram(w[i], row, gram));
                 }
                 for j in 0..width {
                     let value = sums[j].abs() / mass_a[g].sqrt();

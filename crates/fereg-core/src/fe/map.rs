@@ -610,14 +610,11 @@ impl ReusableMapAbsorber {
                 0.
             } else {
                 reference
-                    * response
-                        .iter()
-                        .zip(weights)
-                        .fold(0., |s, (&y, &w)| {
-                            let v = y * w.sqrt() / reference;
-                            v.mul_add(v, s)
-                        })
-                        .sqrt()
+                    * crate::kernels::dispatch!(
+                        crate::kernels::installed(),
+                        weighted_square_sum(response, weights, reference)
+                    )
+                    .sqrt()
             };
             if !norm.is_finite() {
                 return Err(FeregError::new(
@@ -1792,14 +1789,14 @@ fn reusable_subtract_projection(
     direction: usize,
     length: usize,
 ) {
-    let mut coefficient = 0.0_f64;
-    for local in 0..length {
-        coefficient = values[target + local].mul_add(values[direction + local], coefficient);
-    }
-    for local in 0..length {
-        values[target + local] =
-            (-coefficient).mul_add(values[direction + local], values[target + local]);
-    }
+    let (prior, target_values) = values.split_at_mut(target);
+    crate::kernels::dispatch!(
+        crate::kernels::installed(),
+        subtract_projection(
+            &mut target_values[..length],
+            &prior[direction..direction + length]
+        )
+    );
 }
 
 fn reusable_subtract_cross_projection(
@@ -1809,14 +1806,13 @@ fn reusable_subtract_cross_projection(
     direction: usize,
     length: usize,
 ) {
-    let mut coefficient = 0.0_f64;
-    for local in 0..length {
-        coefficient = values[target + local].mul_add(directions[direction + local], coefficient);
-    }
-    for local in 0..length {
-        values[target + local] =
-            (-coefficient).mul_add(directions[direction + local], values[target + local]);
-    }
+    crate::kernels::dispatch!(
+        crate::kernels::installed(),
+        subtract_projection(
+            &mut values[target..target + length],
+            &directions[direction..direction + length]
+        )
+    );
 }
 
 fn reusable_scaled_moment(members: &[usize], value: impl Fn(usize) -> f64) -> f64 {

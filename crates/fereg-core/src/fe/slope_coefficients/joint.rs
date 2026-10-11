@@ -96,19 +96,7 @@ fn failed() -> FeregError {
 // Independent accumulation chains remove the dense Gram's serial dependency.
 // The reduction order is independent of worker scheduling.
 pub(crate) fn normalized_product(left: &[f64], right: &[f64]) -> f64 {
-    debug_assert_eq!(left.len(), right.len());
-    let mut sums = [0.0_f64; 8];
-    let blocks = left.len() / sums.len();
-    for block in 0..blocks {
-        let start = block * sums.len();
-        for lane in 0..sums.len() {
-            sums[lane] = left[start + lane].mul_add(right[start + lane], sums[lane]);
-        }
-    }
-    for row in blocks * sums.len()..left.len() {
-        sums[0] = left[row].mul_add(right[row], sums[0]);
-    }
-    sums.iter().sum()
+    crate::kernels::dispatch!(crate::kernels::installed(), normalized_product(left, right))
 }
 
 fn finite_product<C: JointFiniteDesign>(
@@ -528,6 +516,7 @@ impl JointFiniteWorkspace {
         helpers: &mut [Worker],
         config: MapConfig,
     ) -> Result<usize> {
+        let hardware = crate::kernels::installed();
         let n = original.len();
         let k = selected.len();
         let p = op.coefficients;
@@ -631,11 +620,10 @@ impl JointFiniteWorkspace {
                         &self.hessian[j * k..(j + 1) * k],
                         &self.direction[p..dimension],
                     );
-                // Keep the legacy matrix indices and numerical traversal order explicit.
-                #[allow(clippy::needless_range_loop)]
-                for i in 0..p {
-                    self.product[i] = cross[i].mul_add(self.direction[p + j], self.product[i]);
-                }
+                crate::kernels::dispatch!(
+                    hardware,
+                    scaled_add(cross, self.direction[p + j], &mut self.product[..p])
+                );
             }
             let mut curvature = dot(&self.direction[..dimension], &self.product[..dimension]);
             let magnitude = self.direction[..dimension]
@@ -684,19 +672,30 @@ impl JointFiniteWorkspace {
                 return Err(failed());
             }
             let step = square / curvature;
-            for i in 0..dimension {
-                self.coefficients[i] = step.mul_add(self.direction[i], self.coefficients[i]);
-                self.residual[i] = (-step).mul_add(self.product[i], self.residual[i]);
-            }
+            crate::kernels::dispatch!(
+                hardware,
+                joint_step(
+                    step,
+                    &self.direction[..dimension],
+                    &self.product[..dimension],
+                    &mut self.coefficients[..dimension],
+                    &mut self.residual[..dimension]
+                )
+            );
             self.precondition(p, k);
             let next = dot(
                 &self.residual[..dimension],
                 &self.preconditioned[..dimension],
             );
             let ratio = next / square;
-            for i in 0..dimension {
-                self.direction[i] = ratio.mul_add(self.direction[i], self.preconditioned[i]);
-            }
+            crate::kernels::dispatch!(
+                hardware,
+                affine_direction(
+                    ratio,
+                    &self.preconditioned[..dimension],
+                    &mut self.direction[..dimension]
+                )
+            );
             square = next;
         }
         Err(failed())

@@ -536,9 +536,7 @@ impl Operator<'_> {
     }
 }
 fn dot(left: &[f64], right: &[f64]) -> f64 {
-    left.iter()
-        .zip(right)
-        .fold(0., |sum, (&a, &b)| a.mul_add(b, sum))
+    crate::kernels::dispatch!(crate::kernels::installed(), ordered_dot(left, right))
 }
 #[cfg(test)]
 fn norm(values: &[f64]) -> f64 {
