@@ -51,11 +51,16 @@ superseded implementations together. Push completed authorized work after checks
 never force-push or rewrite history. Report failed or missing checks honestly.
 Use bounded Astra assistance for difficult problems and an independent high-effort
 review of architectural changes. The lead coordinates implementation and tests;
-no agents or competing builds run during clean timings.
+clean timings exclude competing builds, tests and agent tool workloads on the
+measured host. Independent analysis on separate infrastructure may continue
+without accessing or changing the measured artifacts or consuming host resources.
 
 Runtime changes require `./scripts/run_tests.sh` and mapped scientific/transaction
 checks. Build/package changes require focused tooling and native build/ABI checks.
-Documentation uses link checks. Reuse valid evidence for unchanged artifacts;
+Prose-only documentation/instruction changes use link/reference checks and
+`git diff --check`; when executable code and artifact inputs are unchanged,
+reuse valid runtime evidence without rerunning builds or the full test suite.
+Test/tooling changes still need their applicable checks. Reuse valid evidence;
 run broad suites at integration boundaries or when concrete risks require them.
 After ten substantive unsuccessful repairs or one working day on one blocker,
 record the reproducer and findings and ask Johannes for direction.
@@ -87,11 +92,24 @@ bounded stopping rules.
 Johannes's 2026-10-09 decision adds two tiers. A commit whose runtime production
 tokens and artifact inputs equal its parent's
 (`scripts/check_complexity.py --compare-production REV`) is an unchanged artifact
-and needs `./scripts/run_tests.sh` only. For arithmetic-preserving work, wall-time
-nonregression is measured once per workstream boundary rather than per commit. A
+and needs `./scripts/run_tests.sh` only, except for the prose-only case above.
+For arithmetic-preserving work, wall-time nonregression is measured once per
+workstream boundary rather than per commit. A
 declared ulp-scope change (affected fields named in the replay scope, all other
 fields and discrete decisions exact, independent witnesses on the affected
 fields, instruction counts within noise) reuses prior timing evidence.
+
+Johannes's 2026-10-11 clarification: finish production edits, focused checks and
+targeted profiling before starting the full timing panel on a stable candidate.
+For an unchanged artifact, a predeclared bounded continuation may target only
+inconclusive cells; retain and combine all applicable observations, preserve
+the timing allowance and confidence standard, and account for repeated looks.
+Do not sample repeatedly until a pass. A changed artifact requires reassessing
+which evidence remains valid. See `docs/development_workflow.md` for the protocol.
+Performance coverage targets material measured costs: negligible residual library
+FMA calls outside hot loops are not by themselves a failure. Quantify residual
+cost and preserve exactness/certification; this supersedes a literal zero-call
+reading of the performance plan, without rewriting prior measurement outcomes.
 
 The three-FE LSMR hot path lives in pinned `within`/`schwarz-precond` dependencies
 from `johannes-schmieder/within`. Apply these scientific and evidence rules there;

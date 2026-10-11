@@ -131,7 +131,7 @@ in `target/` except Cargo's cache and `target/replay-baseline/`, and `--apply`
 removes it. Keep large generated inputs and outputs out of Git.
 The compact benchmark entrypoint is documented in [bench](../bench/README.md).
 
-Use two evidence tiers, with identified artifacts, predeclared workloads,
+Use the following evidence tiers, with identified artifacts, predeclared workloads,
 measurement budgets and stopping rules:
 
 - Arithmetic-preserving changes require zero exact replay differences and
@@ -148,9 +148,17 @@ measurement budgets and stopping rules:
   tooling passes `python3 scripts/check_complexity.py --compare-production HEAD~1`
   (identical runtime token streams after removing comments, whitespace and
   test-only items; byte-identical C bridge, manifests, lockfile, toolchain and
-  vendored sources). It needs `./scripts/run_tests.sh` only.
+  vendored sources). It needs `./scripts/run_tests.sh` only, with the prose-only
+  exception below. Test/tooling edits still require their applicable checks.
+- Prose-only documentation/instruction changes: verify the commit changes no
+  executable code or artifact inputs, check local links/references and run
+  `git diff --check`. Reuse valid runtime evidence; no build or full-suite rerun
+  is required. A changed scientific rule authorizes no untested implementation.
 - Workstream boundaries: arithmetic-preserving commits within one workstream
   share one wall-time nonregression check at its end rather than one per commit.
+  Complete production edits, focused correctness checks and targeted profiling
+  before starting the full panel. C/D is one such combined workstream; its
+  subpoints do not each require a full timing campaign.
 - Declared ulp-scope changes: affected fields named in the replay
   `--affected-scope`, all other fields and discrete decisions exact, independent
   witnesses on the affected fields and instruction counts within noise. They
@@ -161,10 +169,38 @@ warm-up, paired-median bootstrap upper bound against max(5%, 1 ms)) over the
 frozen workloads regenerated and hash-verified by `bench/make_standard_cases.py`,
 using the clocked harness from `bench/build_timing_harness.sh`.
 
+For an unchanged candidate, baseline, harness and frozen inputs, an inconclusive
+cell may receive one bounded continuation without rerunning already-passing
+cells. Predeclare eligibility, additional paired repetitions, host conditions,
+total budget and the final analysis rule; preferably include them in the initial
+timing plan. Retain all valid original and additional pairs, their pairing and
+run identities, and analyze them together. Preserve the max(5%, 1 ms) allowance
+and the confidence standard, accounting for any outcome-dependent selection or
+repeated looks. A naive rerun until a bootstrap interval passes is not a valid
+continuation. The existing timing tool reports individual runs; a combined claim
+needs an explicit analysis implementing the declared rule, rather than replacing
+the original summary with the most favorable run. A predeclared fixed larger
+panel remains an alternative. If the artifact or measurement inputs change,
+reassess evidence validity and qualify the affected behavior on the new artifact.
+
+Johannes's 2026-10-11 clarification makes performance coverage proportional to
+measured cost. For FMA work, inspect complete executed library-call totals and
+their instruction contribution, but a handful of constant-per-fit calls outside
+hot loops need not trigger another implementation and full timing cycle. Record
+the remaining contribution and justify its negligible cost; do not infer absence
+from a top-functions listing. This supersedes a literal zero-library-call reading
+of [performance-plan B](fable_performance.md#b-compile-the-remaining-mul_add-loops-to-hardware-fma-preserving).
+The already qualified B artifact and all earlier observations remain unchanged.
+Exact replay, independent scientific certificates, supported portable execution
+and the standard wall-time allowance remain required.
+
 Release performance claims require quiet Mac timing. For clean wall timings,
-run no builds or agents and coordinate unrelated workloads without terminating
-them. Retain unsuccessful observations until the experiment is closed. Missing
-or inconclusive evidence never passes a claim it cannot support. Report costs
+run no competing builds, tests or agent tool workloads on the measured host.
+Independent analysis on separate infrastructure may continue only if it neither
+consumes measured-host resources nor reads or changes the running artifacts.
+Coordinate unrelated workloads without terminating them. Retain unsuccessful
+observations until the experiment is closed. Missing or inconclusive evidence
+never passes a claim it cannot support. Report costs
 as well as gains; the per-workload allowance remains max(5%, 1 ms).
 No ongoing obligation to rerun retired historical campaigns exists.
 
