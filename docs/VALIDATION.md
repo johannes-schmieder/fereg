@@ -16,6 +16,145 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Performance-plan qualification
 
+### Performance-plan A1: failed frame-adoption experiment, 2026-10-11
+
+A1 did not meet its conditional acceptance criteria and is not in the runtime.
+The experiment used source `68efe752` plus fresh canonical provenance, one-use
+strict adoption, exact response/weight/scale/generation and canonical-basis
+checks, and saved pre-acceptance movement. Both accepted convergence passes,
+independent certificates, exact accepted-Hessian validation, objective replay,
+eta reconstruction, rollback and all existing tolerances remained required.
+This was an unqualified declared-scope experiment, not an accepted ulp-scope
+change; SPEC was not amended and no affected-scope exception was installed.
+
+The conservative first variant excluded profiled curves and never attempted
+reuse on the target two-FE AKM case. Removing that exclusion while retaining
+exact candidate identity exposed two unchanged core failures: the small
+DynamicRange Low fixture had eta error `1.89640009941443824e-9` against its
+`1e-10` bound, and the disconnected-slope fixture observed one accepted canonical
+product where zero was required. Neither bound nor expectation was changed.
+The third variant restricted precomputation to the existing admitted fast
+categorical-product family; all 1,148 core tests passed (three ignored), including
+freshness, response/weight/scale/tolerance invalidation and same-rank basis
+rollback witnesses. This family restriction introduced no workload-size rule.
+
+The universal Mac build passed ABI, dependency and actual-plugin load checks.
+All 73 independent replay science checks and fixed-worker repeat checks passed,
+but exact comparison with B failed in seven PPML fixtures: `ppml-09`, both bias
+modes, and the FE/IR/Mu/simplex separation fixtures. The other 66 were exact;
+all 38 PPML outer counts and discrete views were exact. No scientific tolerance
+was loosened and these differences were not silently exempted. All 67 licensed
+fixtures and both OLS and public-scope PPML Break probes passed. The additional
+named coefficient/covariance/explicit-dummy qualification panels and quiet-Mac
+performance gate were not run after the savings hypothesis failed.
+
+An exploratory, traced Mac one-worker AKM-shaped one-million-row pair cost
+`5.400968 -> 5.782367` seconds. Outer iterations stayed five, canonical reduced
+calls rose from two to three, and no frame was adopted. The saved movement was
+`2.94154580693373191e-8`, above the unchanged `1e-8` bound; accepted eta also
+failed exact identity. This oracle-RNG input is distinct from the frozen campaign.
+
+The SCC diagnostic used the frozen campaign
+`20261010T192805Z-ols-repair-e29164e6`, four PPML cases, 1/4/16 workers, two
+alternating pairs, both phase and solver tracing, a 180-second fit limit and a
+3,000-second total budget. All 48 fits completed in 1,331.76 seconds on shared
+`scc-ei3` (Xeon Gold 6226R, 16 SGE slots; observed process affinity exposed 32
+logical CPUs). Build job 8026507 and panel job 8026509 both had `failed=0` and
+`exit_status=0`. These two-pair medians are descriptive Linux observations,
+with scheduler and sampling uncertainty; they are not quiet-Mac qualification.
+
+| Frozen PPML case | Workers | B total s | A1 total s | Total cost | B strict s | A1 strict s |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| AKM 1M | 1 | 10.35863 | 11.29985 | +9.09% | 2.33377 | 2.34964 |
+| AKM 1M | 4 | 4.61770 | 4.89156 | +5.93% | 0.89525 | 0.89400 |
+| AKM 1M | 16 | 3.97067 | 3.96606 | -0.12% | 0.57766 | 0.56633 |
+| Dense two-FE 1M | 1 | 10.00108 | 10.67410 | +6.73% | 2.34171 | 2.25299 |
+| Dense two-FE 1M | 4 | 5.14177 | 5.62802 | +9.46% | 1.30114 | 1.20351 |
+| Dense two-FE 1M | 16 | 4.16419 | 4.72266 | +13.41% | 1.05971 | 1.02974 |
+| Dense two-FE 4M | 1 | 52.87482 | 56.03334 | +5.97% | 14.09082 | 12.71264 |
+| Dense two-FE 4M | 4 | 28.74721 | 32.02216 | +11.39% | 8.94523 | 7.79166 |
+| Dense two-FE 4M | 16 | 22.96235 | 29.07915 | +26.64% | 7.04041 | 7.10605 |
+| Sparse two-FE 1M | 1 | 40.31158 | 43.49182 | +7.89% | 17.37118 | 8.92324 |
+| Sparse two-FE 1M | 4 | 15.46146 | 16.08025 | +4.00% | 6.38076 | 3.63414 |
+| Sparse two-FE 1M | 16 | 30.52704 | 25.02154 | -18.03% | 3.75873 | 2.62285 |
+
+Every candidate run had zero adoptions. AKM and both dense cases retained four
+outer iterations and 3 ordinary + 2 checkpoint frames; the sparse case retained
+nine and 8 + 3 frames. Canonical reduced calls rose 2 -> 3 on AKM/dense and
+stayed one on sparse. Actual solves were not saved. AKM strict time did not
+fall by a frame's cost. Sparse strict time fell while ordinary projection time
+rose; that phase movement alone does not pass A1. The apparent sparse 16-worker
+total gain is retained above, alongside all costs, without a qualification claim.
+All original-weight and reconstruction certificates passed, fixed-worker repeats
+were exact, and sample, rank/status and DoF outputs were exact across artifacts.
+Float/solver differences remain unqualified. The SCC record retains RRUNTIME
+rows 28-40, solver routes, actual frame counts, trace counts and exact-difference
+paths; the table reports the principal acceptance quantities.
+
+Exact eta identity failed in all tested attempted adoptions. Saved movement was
+about `2.022e-6` on frozen AKM, `1.070e-8` on dense 1M, `7.032e-10` on dense 4M,
+and `3.613e-4` on sparse; even the dense 4M case below the movement bound failed
+eta identity. No eligibility condition was relaxed to manufacture adoption.
+A separate review found that catching a failed fresh staging solve would need a
+cold, recertified recovery path: fallible in-place reprojection can invalidate its
+old frame. The experiment propagated that error atomically; such recovery was
+not implemented or claimed. A1 was removed before independent C/D work. A2
+remains the separate decision in the performance plan.
+
+Johannes requested a compact reproducer when deferring A1. The retained
+[unqualified patch](../bench/results/a1-20261011-reproducer.patch) is a 23 KB
+experiment fixture against `68efe752`, excluded from every production build.
+Its zero-context form reproduces all seven original changed source files exactly.
+Apply it only to a disposable source copy. From the repository root, the small
+AKM-shaped reproducer is:
+
+```sh
+task=target/tmp/a1-reproduction
+mkdir -p "$task/source"
+git archive 68efe752 | tar -x -C "$task/source"
+git apply --unidiff-zero --directory="$task/source" bench/results/a1-20261011-reproducer.patch
+(
+  cd "$task/source"
+  scripts/build_macos.sh
+  bench/build_timing_harness.sh ../timing-harness
+  cargo run --locked -p fereg-oracle --example replay_large --profile ci -- \
+    --output ../akm.case --rows 1000 --levels 200,10 --regressors 16 \
+    --weights unit --vce robust --graph akm-campaign --solver auto --seed 739391 \
+    --ppml --candidate-all --non-deterministic --no-observation-outputs
+  FEREG_PHASE_TIMING=1 FEREG_SOLVER_TRACE=1 ../timing-harness \
+    dist/fereg_macos.plugin --replay ../akm.case ../result.json
+)
+```
+
+The retained small input hash is
+`e5f58c14bb9bdc655d8868ba8d0773c404bbc7ac5938f99f8d494d02a2b87306`.
+Its fresh ordinary attempt fails exact eta identity and adopts no frame. The
+one-million-row form uses `--rows 1000000 --levels 200000,10000`; the frozen SCC
+panel still requires the retained campaign inputs, not regeneration. Use the
+usual task cleanup after inspecting the reproducer; it is not a shipping option.
+
+Artifact and witness SHA-256 identities:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| First conservative patch | `0a579e92e22ae412ed97aab1ba22565c3235c9198a6385916d8baecd9b2ec3c1` |
+| Failed unrestricted curve patch | `b1bd209358533d7452e1710ff9ef302938b7606403cb5ae0af201ed91083cca6` |
+| Failed curve core run | `51fc0bcdc9cac573a09546ffc7975532d3ac2179f0c32fb9e165dd45a07d4d9d` |
+| Third candidate patch | `551f3ccc06eaa7a50c7c9926d20fadf95fec6fedfa20d241bf1febeae65d2cd5` |
+| Retained zero-context reproducer | `38e61f5c7aa45c34c3620a4c464836324022af67d1226ab47d97bbcd4f8fb874` |
+| Third candidate source archive | `a6b17228d2ee9a8421de34ff9bd31b5835e0f0a6d4d2d21cefc515201fca84b8` |
+| Third candidate core run | `aebd16ebee27dfe8a1f2033887e5de8f8975d3d4d9d0af5685a77395216e9c69` |
+| Third candidate universal Mac plugin | `b75b5165c8a8feda53427783e6733984b690c8b5fa84c4ec1d0bac402200a148` |
+| Third candidate Linux plugin | `959b72336d219729e2b00d3a0dfa81b1b9ace92ff9dd39ae9855c7cc451d5601` |
+| Exact replay failure/science summary | `6bdc5f5468daa637f54659aedc5e9a560e9dcb818bb34642dae92c144f31f196` |
+| Discrete/outer replay check | `8b2f8c7ff84b5ea2b164da6547458c60884e76f48be5f884b34a684fd9d72550` |
+| Licensed 67-fixture summary | `9397e27d95a4515abac5be37f451eaeb22436fe690b213a016707403e1becbf3` |
+| OLS Break probe | `6e34ae90d9ae35896ca63ce58bd1dd3b893325aa47dcfbe3cf9dfe2f763e3238` |
+| PPML public Break probe | `f5aada3ea8df93ebc394b615bb07031d17c06bbe03831bcbf2f1ade2b1a2f3fb` |
+| Mac traced pair summary | `aff7895d5fbafeb3b9b5de2154830de7727f67a555d486f75fe94145b4de98ef` |
+| SCC 48-fit summary | `7dd95b5aa3d6422050c12733c4bfafcfe28657e7fbdb90b1146978309c843c0d` |
+
+
 ### Performance-plan B: ordered FMA coverage, 2026-10-11
 
 **B qualifies with cached-dispatch source patch `4aa37b80`, Mac plugin

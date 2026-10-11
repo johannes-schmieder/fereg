@@ -189,6 +189,15 @@ to tolerance, sample, rank, omission or separation semantics. It does not
 waive B qualification or other prerequisites. A2 stays deferred until A1 is
 measured; A3 requires a declared general costing rule before a route change.
 
+The bounded A1 panel is complete: no frame was adopted and no solve was saved.
+Johannes's follow-up on 2026-10-11 directs deferral of this unsuccessful variant,
+with its [failed-attempt evidence](VALIDATION.md#performance-plan-a1-failed-frame-adoption-experiment-2026-10-11)
+and compact reproducer retained, while C/D continues. Do not broaden A1's
+eligibility or weaken its checks. A2 remains unauthorized pending a concrete
+proposal covering response/control projection guesses, memory, unchanged
+residual targets, certificates, fallback and a bounded experiment. A3 likewise
+needs its general setup-plus-solve costing proposal before implementation.
+
 Evidence: declared scope naming the affected fields (final eta, coefficients,
 covariance at roundoff), exact replay for every PPML case outside the scope,
 independent oracles above, iteration-count and phase-time tables on the 1M
@@ -310,11 +319,92 @@ evidence reused per the ulp-scope tier.
 
 | Item | Question | Decision / recommendation |
 | --- | --- | --- |
-| A1 | May the final accepted iteration's fresh canonical solve serve as the strict candidate? | Conditionally approved 2026-10-11 under section 3A's eligibility, safeguards and measured-savings requirements; B qualification remains required |
-| A2 | May the strict canonical solve warm-start its PCG? | Deferred until A1 is measured |
+| A1 | May the final accepted iteration's fresh canonical solve serve as the strict candidate? | B qualified; the bounded A1 experiment saved no solve and is deferred by Johannes's follow-up on 2026-10-11. Preserve its evidence; do not broaden eligibility |
+| A2 | May the strict canonical solve warm-start its PCG? | Still deferred after A1 measurement; bring a concrete bounded proposal before implementation |
 | A3 | Declare the explicit/implicit geometry costing rule for dense PPML | Needed before any route change |
 | F | Route handoff and dense three-FE choice | Scoped decision after comparative evidence |
 | E | Accept one-time norm/certificate bit changes for thread-independent reductions | Yes, as one declared scope |
+
+### A2 proposal awaiting authorization: retain per-RHS projection guesses
+
+The ordinary joint-fit FE coefficient vector is not a projection of each
+original RHS. A compatible producer does exist: `canonical_products::Products`
+holds a `right` coefficient bank for the response and each generated control.
+`CertifiedLinearSession::try_canonical_products` currently consumes the projected
+controls and drops that bank. The proposed experiment would move it into an
+optional session-owned guess and use it only in the iterative two-FE reduced
+canonical solve. No persistent bank exists today, and no A2 code is authorized
+by this proposal.
+
+Bind a guess to the unchanged sample, topology, eliminated effect, connected
+components and anchors, and exact generated-column identities/order. Retain RHS
+scales and recompute all weight-dependent geometry. Convert the old projection
+coefficients to current RHS scales and reduced-coordinate roots; incompatible
+or nonfinite conversion declines to the existing cold path. Form the new
+residual explicitly as `b_new - A_new x_guess`, keeping the original RHS norm
+and unchanged strict tolerance as the stopping target. The smaller warm residual
+must never become a weaker reference. Fresh strict inputs, original-input
+certificates, cold fallback, movement and accepted-Hessian checks remain required.
+A guess carries no certificate and is cleared on failed staging or rollback.
+
+For width `W=K+1`, retained-side levels `q` and components `C`, a conservative
+payload estimate is `G=8*q*W + 8*W + 8*K + 8*C + 256` bytes, with actual owned
+capacities charged by implementation. For K=16, q=10,000 and one component this
+is 1,360,528 bytes; no N-row guess copy is needed. Keeping the old bank during
+construction adds G to that overlap because construction already includes the
+new bank. Move the new bank; cloning would add another G. Admit this optional
+storage without changing the already selected Fast/Low route; if the unchanged
+budget cannot cover it, use cold solving. The admission and rollback proof is
+part of the implementation gate.
+
+Bound the experiment to one design, two substantive repair iterations and one
+working day. Discovery uses the frozen 1M AKM, 1M/4M dense and 1M sparse PPML
+cases at 1/4/16 workers, one baseline/candidate fit each: 24 fits, 120 seconds
+per fit and 30 minutes for the panel. Allow at most one corrected panel, for
+48 fits and 60 minutes total. Stop if compatible guesses never reach the solve,
+certificates/discrete decisions change, outer iterations increase, or reduced
+iterations fail to save total work. Only after discovery passes would seven
+alternating pairs plus one warmup per artifact/cell run (192 fits, two-hour cap),
+with setup, solving, certification, strict phase and total fit costs reported.
+Repository and independent scientific gates remain prerequisites.
+
+Expected affected scope includes projected response/controls and derived eta,
+coefficients and covariance. Derived means, Hessian weights, working responses,
+objectives and continuous score diagnostics must be named if replay changes
+them; none may be silently exempted. Sample, rank, omission, separation, solver
+family, certificate decisions and outer counts stay exact. Witnesses are the
+strict fixtures, explicit-dummy PPML, coefficient/covariance accuracy scripts,
+disconnected components, unequal weight scales and weak networks. Saved-FE
+outputs need a named witness/scope or must decline this optimization.
+
+### A3 proposal awaiting authorization: costing research before route changes
+
+For component dimensions `d_c`, total reduced dimension `d`, RHS width `W`,
+neighbor-pair assembly count `P` and predicted RHS iteration counts `I_j`,
+compare these setup-plus-solve models:
+
+- Explicit direct: `a*P + b*sum(d_c^3) + c*W*sum(d_c^2) + common`.
+- Explicit iterative: `a*P + e*sum_j(I_j*sum(d_c^2)) + common`.
+- Implicit iterative: `f*N + g*sum_j(I_j*(N+d)) + common`.
+
+`common` includes RHS construction, reconstruction and independent certification;
+include differing storage/transfer costs explicitly. Constants depend on resolved
+workers. Hard memory admission remains separate. Both explicit and implicit
+alternatives must be priced before `canonical_products::Plan::new` rejects a
+route on neighbor-pair work. Compatible completed-call observations may inform
+iterations; cold calls need a conservative structural estimate. No campaign
+names, tuned case exceptions or benchmark-specific thresholds are allowed.
+
+Proposed calibration: N in {2^14, 2^17}, eliminated-group degree in {4,16,64},
+RHS width in {2,17}, workers in {1,4,16}, three repetitions of each feasible
+route: at most 324 kernel measurements. Fit nonnegative coefficients once.
+Hold out four distinct graph shapes, including skewed degrees and weak bridges,
+at N=2^18, widths {8,65}, workers {1,4,16}, three repetitions per feasible route:
+at most 216 measurements. Cap the exercise at 45 minutes and one model revision;
+held-out results judge the frozen model and do not tune exceptions. Unstable
+predictions or gains requiring exceptions stop the experiment. This proposal
+requests costing research only; a resulting route rule needs its own decision,
+declared numerical scope, independent witnesses and qualification.
 
 ## 5. Order of work and reporting
 
