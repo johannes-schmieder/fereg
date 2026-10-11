@@ -121,7 +121,7 @@ with the sparse two-FE PPML case retained as the difficult-solver control.
 
 ## 3. Workstreams
 
-### A. PPML strict checkpoint (first; needs Johannes's decision)
+### A. PPML strict checkpoint (A1 conditionally approved; B qualification required)
 
 Today: after two consecutive accepted passes, `StrictCheckpointControl`
 (`crates/fereg-core/src/ppml/prepared_irls/controller.rs`) runs
@@ -137,9 +137,11 @@ accepted-h=qmu Hessian/bread checks.
 Observation that motivates the change: `scheduled_inner_tolerance`
 (`crates/fereg-core/src/ppml/mod.rs`) already drives the ordinary inner
 tolerance to the strict floor once deviance change and score meet their
-bounds, so the last ordinary iteration and the strict candidate solve the
-same weighted problem at the same tolerance. The ordinary frame is a warm
-joint-direction solve; the strict one is fresh. Fresh is the certificate.
+bounds. This does not establish that the last ordinary iteration and the
+strict candidate solve the same weighted problem: accepting the IRLS step
+can change eta and therefore the Hessian weights and working response. The
+ordinary frame is a warm joint-direction solve; the strict one is fresh.
+Freshness, strict accuracy and independent certification must all be proved.
 
 Options, in order of preference:
 
@@ -148,14 +150,16 @@ Options, in order of preference:
   the schedule has reached the floor, run that iteration's linear solve as
   the canonical fresh solve (the same path `strict_candidate` uses) instead
   of the warm joint direction, and let the strict transaction adopt that
-  frame as its candidate when the response and weight generations match
-  (`current_hessian_products_match` already encodes the generation test).
-  The strict solve stays fresh and at 1e-12; one full solve disappears.
-  Expected saving: about one frame per fit (10–12% of the 1M PPML time here,
-  more on dense designs where the strict phase is 7.6 of 28.2 s). Tier:
-  declared ulp scope at most, because the accepted eta of the last iteration
-  now comes from a fresh rather than a warm solve; discrete decisions,
-  certificates and tolerances are unchanged. Witnesses: `prepared_irls`
+  frame only with explicit evidence of fresh canonical provenance and the
+  current strict tolerance, and matching accepted-state working response,
+  Hessian weights, retained sample and canonical basis.
+  `current_hessian_products_match` checks generation labels, exact weights
+  and scale, and certification; it does not itself prove fresh canonical
+  provenance or strict accuracy. Any unproved eligibility or mismatch uses
+  the existing strict path. A saved frame and a 10–12% saving on 1M PPML are
+  hypotheses, as are roundoff-only result differences. Tier: declared ulp
+  scope, contingent on the witnesses; discrete decisions and tolerances stay
+  unchanged, and independent certificates remain required. Witnesses: `prepared_irls`
   strict fixtures, the dense PPML explicit-dummy oracle
   (`scripts/feppml_explicit_dummy_oracle.py`), `ppml_coefficient_accuracy.py`
   and `ppml_covariance_accuracy.py`, and the weak-network PPML control.
@@ -172,12 +176,16 @@ Options, in order of preference:
   matrix-row ownership for assembly. This is the largest dense-PPML lever
   and is independent of A1/A2.
 
-Decision needed from Johannes before implementation: whether A1's merged
-fresh solve satisfies SPEC §13's "fresh strict WLS" (recommended: yes, with
-the SPEC sentence clarified to "a fresh canonical solve at the strict
-tolerance, which may be the final accepted iteration"), and whether A2's
-warm start is acceptable for the strict solve. A3 needs the general costing
-rule declared before any route change.
+Johannes approved A1 conditionally on 2026-10-11, with the eligibility proof
+above and all current safeguards retained: both accepted convergence passes,
+independent certificates, meaningful movement/publication-envelope checks,
+exact accepted-h=qmu Hessian/bread validation, basis/rank checks, objective
+replay, eta reconstruction and atomic rollback. An adopted frame must not
+make movement assessment vacuous by being compared only with itself. Clarify
+SPEC §13 narrowly with the implementation; the approval authorizes no change
+to tolerance, sample, rank, omission or separation semantics. It does not
+waive B qualification or other prerequisites. A2 stays deferred until A1 is
+measured; A3 requires a declared general costing rule before a route change.
 
 Evidence: declared scope naming the affected fields (final eta, coefficients,
 covariance at roundoff), exact replay for every PPML case outside the scope,
@@ -185,6 +193,10 @@ independent oracles above, iteration-count and phase-time tables on the 1M
 AKM, 1M and 4M dense two-FE, and 1M sparse two-FE cases at 1/4/16 workers.
 Acceptance: strict-phase time falls by at least the cost of one frame on
 the AKM case, no case loses a certificate, no outer iteration count rises.
+Measure actual solve counts and total fit time alongside phase times. Moving
+a solve into the ordinary iteration alone is not saved work; demonstrate
+fewer actual solves and lower total fit time. Declare affected fields and
+verify every unaffected field and discrete decision exactly.
 Stopping rule: ten substantive repairs or one working day on one blocker,
 then record the reproducer and ask Johannes.
 
@@ -292,12 +304,12 @@ evidence reused per the ulp-scope tier.
    topology (five consecutive periods per worker, persistence 0.8, random
    destination), so native A/B runs need no hand rewriting.
 
-## 4. Decisions Johannes must make
+## 4. Johannes's decisions and remaining gates
 
-| Item | Question | Recommended default |
+| Item | Question | Decision / recommendation |
 | --- | --- | --- |
-| A1 | May the final accepted iteration's fresh canonical solve serve as the strict candidate? | Yes, with the SPEC §13 wording clarified |
-| A2 | May the strict canonical solve warm-start its PCG? | Defer until A1 is measured |
+| A1 | May the final accepted iteration's fresh canonical solve serve as the strict candidate? | Conditionally approved 2026-10-11 under section 3A's eligibility, safeguards and measured-savings requirements; B qualification remains required |
+| A2 | May the strict canonical solve warm-start its PCG? | Deferred until A1 is measured |
 | A3 | Declare the explicit/implicit geometry costing rule for dense PPML | Needed before any route change |
 | F | Route handoff and dense three-FE choice | Scoped decision after comparative evidence |
 | E | Accept one-time norm/certificate bit changes for thread-independent reductions | Yes, as one declared scope |
@@ -308,7 +320,8 @@ evidence reused per the ulp-scope tier.
    claim measurable on SCC.
 2. B (FMA coverage) as a contained preserving change with its own exact
    replay and timing evidence.
-3. A1 once decided, measured on the four PPML panel cases at 1/4/16 workers.
+3. A1 after B qualification, under the conditional approval, measured on the
+   four PPML panel cases at 1/4/16 workers.
 4. C and D as one preserving workstream with a single wall-time
    nonregression at its end.
 5. E as one declared scope; F as separate route decisions.

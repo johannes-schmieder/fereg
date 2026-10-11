@@ -55,8 +55,10 @@ No x86 execution or Linux qualification is claimed. SCC SSH authentication
 fails with `Permission denied (keyboard-interactive,hostbased)`, so frozen-input
 Linux A/B replay, hardware tests and cachegrind remain required. In particular,
 the requested disappearance of the `__fma_fma3` execution share is unverified.
-B stays unqualified and subsequent workstreams have not begun. A1 also awaits
-Johannes's section-4 decision; SPEC §13 is unchanged.
+B stays unqualified and subsequent workstreams have not begun. Johannes
+conditionally approved A1 on 2026-10-11 under the [plan's eligibility and
+validation requirements](fable_performance.md#4-johanness-decisions-and-remaining-gates).
+That decision does not waive B qualification. SPEC §13 is unchanged.
 
 The quiet Mac run used the twenty hash-verified frozen workloads, one warmup
 and seven alternating pairs per cell, a 90-second process limit and an 1800-second
