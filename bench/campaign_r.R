@@ -12,12 +12,7 @@ terms <- paste0("x", seq_len(k))
 fml <- as.formula(paste("y ~",paste(terms,collapse=" + "),"|",paste(paste0("g",seq_len(q)),collapse=" + ")))
 options <- list(fml=fml,nthreads=threads,notes=FALSE)
 options$vcov <- switch(c$vce,iid="iid",robust="hetero",cluster=~cluster)
-# Explicit matching of the PPML finite-sample convention. Retain stock V too.
-if (c$model == "ppml") options$ssc <- ssc(K.adj=FALSE,G.adj=TRUE)
-if (c$arm == "fixest-strict") {
-    options$fixef.tol <- 1e-11
-    if(c$model == "ppml") options$glm.tol <- 1e-10
-}
+options <- c(options, campaign_fixest_options(c$model, c$arm))
 fit_model <- function(data, warm=FALSE) {
     o <- options; o$data <- data
     if (warm) o$fml <- as.formula(paste("y ~",paste(terms,collapse=" + "),"| g1"))
@@ -53,7 +48,9 @@ seconds <- proc.time()[["elapsed"]]-start
 writeLines("done",file.path(c$output,"DONE"))
 meta <- c(rc=if(is.null(fit)) 1 else 0,seconds=seconds,complete=1,
           fixest_version=as.character(packageVersion("fixest")),requested_threads=threads,
-          configured_threads=threads)
+          configured_threads=threads,reference_profile=c$arm,
+          fixef_tolerance=if(is.null(options$fixef.tol)) "default" else options$fixef.tol,
+          exact_fe_dof=as.integer(c$model=="ols" && c$arm=="fixest-strict"))
 if(!is.null(fit)) {
     b <- coef(fit)
     write.csv(data.frame(name=names(b),value=unname(b)),file.path(c$output,"coefficients.csv"),row.names=FALSE)
@@ -74,14 +71,15 @@ if(!is.null(fit)) {
     }
     write.csv(rows,file.path(c$output,"rows.csv"),row.names=FALSE,na=".")
     absorbed <- fit$nparams-length(b)
-    if(c$model=="ols" && c$vce=="cluster") {
+    if(c$model=="ols" && (c$vce=="cluster" || c$arm=="fixest-strict")) {
         stopifnot(is.finite(attr(Vstock,"df.K")))
-        absorbed <- attr(Vstock,"df.K")-length(b)-1
+        absorbed <- attr(Vstock,"df.K")-length(b)-as.integer(c$vce=="cluster")
     }
     meta <- c(meta,N=nobs(fit),df_a=absorbed,df_a_unadjusted=fit$nparams-length(b),df_m=length(b),
               converged=1,covariance_multiplier=multiplier,
               finite_slope_rank=length(b),slope_omissions=length(fit$collin.var),
-              covariance_policy=paste(c$model,c$vce,if(c$model=="ppml") "K.adj=FALSE" else "stock",sep="-"))
+              covariance_policy=paste(c$model,c$vce,if(c$model=="ppml") "K.adj=FALSE" else
+                  if(c$arm=="fixest-strict") "K.exact=TRUE" else "stock",sep="-"))
     if(c$model=="ols") meta <- c(meta,df_r=attr(Vstock,"df.t"),correction_df=nobs(fit)-attr(Vstock,"df.K"))
     if(c$vce=="cluster") meta <- c(meta,N_clust=length(unique(data$cluster[selected])))
     if(c$model=="ols") meta <- c(meta,rss=sum(resid(fit)^2))

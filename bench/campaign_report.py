@@ -41,6 +41,10 @@ TIMING_FOOTNOTE = ('* Descriptive timing outside the three-repetition scientific
 
 
 def planned_arms(cell):
+    # New manifests freeze profiles per cell. Keep the historical fallback so
+    # retained campaigns can still be reconstructed without adding observations.
+    if 'arms' in cell:
+        return list(cell['arms'])
     selected = ['fereg', 'fixest']
     if cell['threads'] <= 4:
         selected.append('reghdfe' if cell['model'] == 'ols' else 'ppmlhdfe')
@@ -636,9 +640,9 @@ def render(campaign, frame, output, saved_retests=None):
     if not strict.empty:
         pdf.text(f"The supplementary stricter fixest profile has {int(strict.eligible.sum())} eligible cells out of {len(strict)}. "
                  'Its timing is not substituted into the primary default-fixest panel.')
-        rows = [['PPML stricter profile', 'Seconds', 'strict / fereg', 'Result']]
+        rows = [['Stricter profile', 'Seconds', 'strict / fereg', 'Result']]
         for row in strict.itertuples():
-            rows.append([DESIGNS[row.design]+' / '+VCE_NAMES[row.vce]+(' / saved' if row.save_fe else ''),
+            rows.append([row.model.upper()+' / '+DESIGNS[row.design]+' / '+VCE_NAMES[row.vce]+(' / saved' if row.save_fe else ''),
                          timing_cell(row), number(row.speedup) if row.eligible else 'NR',
                          'eligible' if row.eligible else row.reasons or row.statuses])
         pdf.table(rows, [225, 75, 90, 150], padding=4)

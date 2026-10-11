@@ -16,6 +16,46 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Accepted evidence
 
+### Performance-plan tooling, 2026-10-11
+
+G1/G2 are arithmetic-preserving tooling changes with an unchanged production
+artifact relative to `cad23f41`: the production-identity check passes for all
+168 runtime modules and 58 artifact inputs. The campaign captures OLS runtime
+rows 18–21 and all 13 PPML phase rows, and new manifests explicitly retain
+separate default/strict OLS arms. Strict OLS uses `fixef.tol=1e-11` and
+`ssc(K.exact=TRUE)`, reporting covariance DoF separately from raw `nparams`.
+Historical campaign manifests and retained observations are unchanged.
+
+All 42 benchmark tests and `scripts/run_tests.sh` pass on Mac. The R witness
+uses fixest 0.14.2 and checks disconnected IID/robust OLS coefficients and
+covariance against explicit-dummy least squares and an independent sandwich.
+A licensed Stata 19 probe executes the campaign metadata block for both models,
+returns normally with `CAMPAIGN_METADATA_PASS`, and records four OLS fields
+and PPML total plus 13 phases, including an unobserved phase as missing.
+Local documentation links and the complexity ratchet pass. No new estimation,
+sample, rank, omission, separation, solver, tolerance or certificate behavior
+is introduced, and no performance gain is claimed.
+
+Failed setup attempts remain recorded here: the default shell selected Python
+3.9 without the scientific packages, and the first gate lacked Cargo on PATH.
+The successful checks used a disposable Python 3.13 environment and the installed
+pinned Rust toolchain. A disconnected clustered diagnostic with strict fixest
+reported `df.K=13`; its expected nesting-adjusted count was 7. That comparison
+is not a passing covariance witness. Strict clustered campaign cells retain
+their actual count and must pass the existing comparison gate; no native
+convention or comparison tolerance was changed to accommodate fixest.
+
+SHA-256 records: benchmark tests
+`35b70ecc6a18a22e7d21fba5d7662fa389f180dd8b34009b8cf4221f3a990d97`;
+full gate
+`e9e85645d44ffa168e8d039381dad1e7c0765137c8b5dc502958b4b7c9d211fb`;
+licensed metadata probe
+`c0e664c0b33221fa48372db5fece7f8fa9c4d4e91bd0b62f5e273d49cf92d903`;
+OLS metadata
+`63600d9f89e51edc7d60779df4a7cebc11ec904b62c0dae1b6e0a74b010429dc`;
+PPML metadata
+`afd7b1d23cae9af6a224b19c7c2fc0960f0b248e1a9fc333e1e0417bd11e6120`.
+
 Artifact digests are SHA-256 prefixes; the ledger gives full values.
 
 | Date | Scope | Host | Artifact | Result |

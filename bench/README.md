@@ -63,6 +63,16 @@ Data preparation/import, small initialization and disk export are excluded.
 The PPML fixest profile disables its K correction, applies the declared robust
 N/(N-1) correction inside timing, and preserves its original covariance alongside
 the aligned covariance. Default and stricter convergence profiles remain separate.
+Every new OLS cell also includes `fixest-strict`, using `fixef.tol=1e-11`
+and `ssc(K.exact=TRUE)`. Its covariance DoF come from `df.K`; the approximate
+`nparams` count is retained separately. This is an accuracy profile, not a
+guarantee of matching the native nesting convention: strict clustered cells
+still have to pass the independent comparison. Manifests freeze their arm lists,
+so adding this profile does not reinterpret the retained October campaign.
+Native campaign metadata also records OLS preflight/input/native/total seconds
+from runtime rows 18–21, or PPML total seconds and all 13 named phase rows
+28–40. Missing phase observations remain missing; nested phase clocks must not
+be summed as a disjoint elapsed-time decomposition.
 Stock Stata covariance differences remain explicit failed comparisons.
 PPML absorbed counts are normalized to the full categorical FE-span rank:
 fereg transfers one intercept direction to structural coordinates, clustered

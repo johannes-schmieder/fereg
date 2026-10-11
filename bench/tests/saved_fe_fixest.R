@@ -35,4 +35,32 @@ for (model in c("ols", "ppml")) {
 }
 stopifnot(inherits(try(campaign_fe_values(c("100000"=1, "1e+05"=2), 100000), silent=TRUE), "try-error"),
           inherits(try(campaign_fe_values(c("100000"=1), 200000), silent=TRUE), "try-error"))
+# Disconnected FE components require exact counting independently of tolerance.
+data <- expand.grid(g1=seq_len(4), g2=seq_len(3), period=seq_len(20), component=0:1)
+data$g1 <- data$g1 + 4*data$component
+data$g2 <- data$g2 + 3*data$component
+data$x1 <- rnorm(nrow(data)); data$x2 <- rnorm(nrow(data))
+data$y <- 0.3*data$x1-0.1*data$x2+data$g1-0.2*data$g2+rnorm(nrow(data))
+explicit <- lm(y ~ x1 + x2 + factor(g1) + factor(g2), data=data)
+X <- model.matrix(explicit)[,explicit$qr$pivot[seq_len(explicit$rank)]]
+bread <- solve(crossprod(X))
+score <- X*resid(explicit)
+strict <- campaign_fixest_options("ols", "fixest-strict")
+stopifnot(identical(strict$fixef.tol,1e-11), isTRUE(strict$ssc$K.exact),
+          length(campaign_fixest_options("ols","fixest"))==0,
+          !campaign_fixest_options("ppml","fixest-strict")$ssc$K.adj)
+for (vce in c("iid", "hetero")) {
+    fit <- do.call(feols, c(list(fml=y ~ x1 + x2 | g1 + g2, data=data,
+                                vcov=vce,
+                                nthreads=1, notes=FALSE), strict))
+    actual <- vcov(fit, attr=TRUE)
+    K <- explicit$rank
+    stopifnot(attr(actual,"df.K")==K)
+    n <- nrow(data)
+    expected <- if(vce=="iid") bread*sum(resid(explicit)^2)/(n-K) else {
+        bread %*% crossprod(score) %*% bread * n/(n-K)
+    }
+    stopifnot(max(abs(coef(fit)-coef(explicit)[c("x1","x2")])) < 1e-10,
+              max(abs(actual-expected[c("x1","x2"),c("x1","x2")])) < 1e-10)
+}
 cat("SAVED_FE_FIXEST_TEST_PASS\n")

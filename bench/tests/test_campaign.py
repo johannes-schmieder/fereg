@@ -32,6 +32,18 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual({c['threads'] for c in cells},{1,4,8,16})
         self.assertGreater(sum(c['threads']==4 for c in cells),sum(c['threads']!=4 for c in cells))
 
+    def test_strict_ols_profiles_are_frozen_separately(self):
+        from campaign_report import planned_arms
+        for cell in configurations()+configurations(True):
+            self.assertEqual(arms(cell),planned_arms(cell))
+            self.assertEqual(len(arms(cell)),len(set(arms(cell))))
+            if cell['model']=='ols':
+                self.assertIn('fixest',arms(cell))
+                self.assertIn('fixest-strict',arms(cell))
+        historical=dict(configurations()[0])
+        del historical['arms']
+        self.assertNotIn('fixest-strict',planned_arms(historical))
+
     def test_full_baseline_stays_in_one_bundle(self):
         import json
         with tempfile.TemporaryDirectory() as d:

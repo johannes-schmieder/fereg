@@ -65,6 +65,23 @@ file write `meta' "clock_resolution" _tab %24.17g (scalar(`resolution')) _n
 file write `meta' "processors" _tab "`processors'" _n
 file write `meta' "processors_licensed" _tab %24.17g (c(processors_lic)) _n
 if !`rc' {
+    if "`arm'" == "fereg" {
+        if "`model'" == "ols" {
+            local row = 18
+            foreach phase in preflight input native total {
+                file write `meta' "`phase'_seconds" _tab %24.17g (el(e(fereg_runtime),`row',2)) _n
+                local ++row
+            }
+        }
+        else {
+            file write `meta' "total_seconds" _tab %24.17g (el(e(feppml_runtime),1,1)) _n
+            local phases : rownames e(feppml_runtime)
+            forvalues row=28/40 {
+                local phase : word `row' of `phases'
+                file write `meta' "`phase'" _tab %24.17g (el(e(feppml_runtime),`row',1)) _n
+            }
+        }
+    }
     foreach scalar in N rank df_a df_m df_r df_resid N_clust num_singletons separated converged rss ll deviance fereg_threads feppml_threads {
         capture local value = e(`scalar')
         if !_rc file write `meta' "`scalar'" _tab %24.17g (`value') _n

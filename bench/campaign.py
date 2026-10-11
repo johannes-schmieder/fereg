@@ -46,6 +46,7 @@ def configurations(smoke=False):
                     save_fe=save_fe,section=section,regressors=16,weights='unit')
         cell['effects'] = 1 if design=='one-fe' else 3 if design.startswith('three-') else 2
         cell['id'] = f'{model}-{design}-n{rows}-t{threads}-{vce}-fe{int(save_fe)}'
+        cell['arms'] = arms(cell)
         if not any(c['id']==cell['id'] for c in result): result.append(cell)
     if smoke:
         for model in ['ols','ppml']:
@@ -67,11 +68,12 @@ def configurations(smoke=False):
 
 
 def arms(cell):
+    if 'arms' in cell: return list(cell['arms'])
     result = ['fereg','fixest']
     if cell['threads']<=4: result.append('reghdfe' if cell['model']=='ols' else 'ppmlhdfe')
     if cell['model']=='ppml' and cell['design'] in ['akm-baseline','two-sparse','three-sparse'] and cell['rows']==1000000 and cell['threads']==4:
         result.append('fixest-strict')
-    if cell['section']=='smoke' and cell['model']=='ppml': result.append('fixest-strict')
+    if cell['model']=='ols' or cell['section']=='smoke': result.append('fixest-strict')
     return result
 
 
