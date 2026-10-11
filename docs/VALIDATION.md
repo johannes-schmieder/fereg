@@ -84,10 +84,12 @@ native peaks were 1.125/0.554 GB (Auto/MAP) on dense 1M and 5.461/2.216 GB on
 dense 4M. These planner estimates are not observed RSS. Timeout fits have no
 completed solver/certificate/memory packet and receive no diagnostic ratio.
 
-The [F1 and F2 proposals](fable_performance.md#f1-proposal-awaiting-authorization-resolve-the-comparison-before-handoff)
+The [F1 and F2 follow-ups](fable_performance.md#f1-authorized-diagnosis-resolve-the-comparison-before-handoff)
 recommend retaining Auto. F1 needs bounded numerical/request/progress diagnosis;
 F2 needs a defensible geometry-and-total-cost model and a separately authorized
-holdout before any route prototype. A2/A3 remain separate decisions. No default
+holdout before any route prototype. Johannes subsequently authorized their
+bounded follow-up, including separate A2/A3 discovery and costing, as recorded
+in the plan; that authorization changes none of these failed outcomes. No default
 route, tolerance, model semantics, certificate, fresh strict PPML solve, memory
 policy or SPI ownership changed in this comparison work. Production identity
 against E1 remains exact across 170 runtime modules and 58 artifact inputs;

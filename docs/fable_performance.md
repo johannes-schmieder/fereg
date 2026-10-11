@@ -193,16 +193,15 @@ The bounded A1 panel is complete: no frame was adopted and no solve was saved.
 Johannes's follow-up on 2026-10-11 directs deferral of this unsuccessful variant,
 with its [failed-attempt evidence](VALIDATION.md#performance-plan-a1-failed-frame-adoption-experiment-2026-10-11)
 and compact reproducer retained, while C/D continues. Do not broaden A1's
-eligibility or weaken its checks. A2 remains unauthorized pending a concrete
-proposal covering response/control projection guesses, memory, unchanged
-residual targets, certificates, fallback and a bounded experiment. A3 likewise
-needs its general setup-plus-solve costing proposal before implementation.
+eligibility or weaken its checks. A2/A3 initially remained deferred pending the
+concrete proposals below. Johannes's later authorization in section 4 now
+permits their bounded discovery and research without reopening A1.
 
-Evidence: declared scope naming the affected fields (final eta, coefficients,
+Evidence for A1: declared scope naming the affected fields (final eta, coefficients,
 covariance at roundoff), exact replay for every PPML case outside the scope,
 independent oracles above, iteration-count and phase-time tables on the 1M
 AKM, 1M and 4M dense two-FE, and 1M sparse two-FE cases at 1/4/16 workers.
-Acceptance: strict-phase time falls by at least the cost of one frame on
+Acceptance for A1: strict-phase time falls by at least the cost of one frame on
 the AKM case, no case loses a certificate, no outer iteration count rises.
 Measure actual solve counts and total fit time alongside phase times. Moving
 a solve into the ordinary iteration alone is not saved work; demonstrate
@@ -472,16 +471,41 @@ stronger fit-statistic comparison failures remain failed, without retry.
 
 ## 4. Johannes's decisions and remaining gates
 
+Johannes's follow-up authorization on 2026-10-11 permits bounded F1 diagnosis,
+A2 discovery, and separate A3/F2 costing research. Prioritize demonstrated
+total-fit savings: A3/F2 receive the main design effort, while A2 gets a quick,
+decisive test of compatible guesses and net cost. Start costing from existing
+evidence before spending the calibration budget. A2/A3/F2 may proceed to a
+bounded prototype and qualification when their predeclared checks support it;
+no additional approval is needed merely to move between those stages. Write a
+finite budget for every added prototype/panel before execution and remain
+within the limits below. If they are insufficient, return for direction.
+
+Freeze each rule, affected numerical fields, independent witnesses, memory and
+fallback/work-budget contracts, and validation protocol before held-out
+evaluation. Include representative million-row cases and unseen geometry,
+sparse/weak/disconnected controls, workers and memory constraints. Account for
+iteration prediction, preconditioner changes and host-dependent costs;
+Mac/Linux evidence is not interchangeable. Do not retune after a holdout or
+add benchmark-specific fences. Keep current production defaults until a
+candidate qualifies. Preserve all tolerances, certificates, explicit solver
+contracts, memory controls, transactions and model semantics. Failed
+prerequisites block dependent work only. Stop for real scientific ambiguity,
+a needed semantic change or the agreed limits. Use separate numerical/costing
+agents, stabilize edits and targeted profiles before full timing, and keep
+competing work off the measured host. A1 and E2/E3 remain deferred; new evidence
+of opportunity alone does not authorize broadening their implementation scope.
+
 | Item | Question | Decision / recommendation |
 | --- | --- | --- |
 | A1 | May the final accepted iteration's fresh canonical solve serve as the strict candidate? | B qualified; the bounded A1 experiment saved no solve and is deferred by Johannes's follow-up on 2026-10-11. Preserve its evidence; do not broaden eligibility |
-| A2 | May the strict canonical solve warm-start its PCG? | Still deferred after A1 measurement; bring a concrete bounded proposal before implementation |
-| A3 | Declare the explicit/implicit geometry costing rule for dense PPML | Needed before any route change |
-| F1 | Progress-based two-FE handoff | Retain Auto; await authorization for bounded diagnosis of the failed comparison before any handoff prototype |
-| F2 | Dense three-FE choice | Retain Auto; sparse MAP timeouts block an unconditional switch. Geometry-cost research needs a separate decision |
+| A2 | May the strict canonical solve warm-start its PCG? | Bounded discovery authorized; continue through qualification only if compatible guesses reduce net total cost and preserve the declared safeguards |
+| A3 | Explicit/implicit geometry costing for dense PPML | Bounded research and supported prototype/qualification authorized after freezing the rule, scope and protocol |
+| F1 | Progress-based two-FE handoff | Bounded diagnosis authorized; failed comparisons alone authorize no handoff threshold or routing implementation |
+| F2 | Dense three-FE choice | Bounded conditional geometry research and supported prototype/qualification authorized; sparse timeouts prohibit an unconditional MAP switch |
 | E | Accept one-time norm/certificate bit changes for thread-independent reductions | Yes, as one declared scope |
 
-### A2 proposal awaiting authorization: retain per-RHS projection guesses
+### A2 authorized discovery: retain per-RHS projection guesses
 
 The ordinary joint-fit FE coefficient vector is not a projection of each
 original RHS. A compatible producer does exist: `canonical_products::Products`
@@ -489,8 +513,7 @@ holds a `right` coefficient bank for the response and each generated control.
 `CertifiedLinearSession::try_canonical_products` currently consumes the projected
 controls and drops that bank. The proposed experiment would move it into an
 optional session-owned guess and use it only in the iterative two-FE reduced
-canonical solve. No persistent bank exists today, and no A2 code is authorized
-by this proposal.
+canonical solve. No persistent bank exists at the qualified E1 baseline.
 
 Bind a guess to the unchanged sample, topology, eliminated effect, connected
 components and anchors, and exact generated-column identities/order. Retain RHS
@@ -519,7 +542,9 @@ cases at 1/4/16 workers, one baseline/candidate fit each: 24 fits, 120 seconds
 per fit and 30 minutes for the panel. Allow at most one corrected panel, for
 48 fits and 60 minutes total. Stop if compatible guesses never reach the solve,
 certificates/discrete decisions change, outer iterations increase, or reduced
-iterations fail to save total work. Only after discovery passes would seven
+iterations fail to save total work. Acceptance is lower total cost after guess
+conversion, residual construction, setup and certification; eliminating an
+entire solve was A1's objective and is not required for A2. Only after discovery passes would seven
 alternating pairs plus one warmup per artifact/cell run (192 fits, two-hour cap),
 with setup, solving, certification, strict phase and total fit costs reported.
 Repository and independent scientific gates remain prerequisites.
@@ -533,7 +558,7 @@ strict fixtures, explicit-dummy PPML, coefficient/covariance accuracy scripts,
 disconnected components, unequal weight scales and weak networks. Saved-FE
 outputs need a named witness/scope or must decline this optimization.
 
-### A3 proposal awaiting authorization: costing research before route changes
+### A3 authorized research: costing before route changes
 
 For component dimensions `d_c`, total reduced dimension `d`, RHS width `W`,
 neighbor-pair assembly count `P` and predicted RHS iteration counts `I_j`,
@@ -558,11 +583,12 @@ Hold out four distinct graph shapes, including skewed degrees and weak bridges,
 at N=2^18, widths {8,65}, workers {1,4,16}, three repetitions per feasible route:
 at most 216 measurements. Cap the exercise at 45 minutes and one model revision;
 held-out results judge the frozen model and do not tune exceptions. Unstable
-predictions or gains requiring exceptions stop the experiment. This proposal
-requests costing research only; a resulting route rule needs its own decision,
-declared numerical scope, independent witnesses and qualification.
+predictions or gains requiring exceptions stop the experiment. Research begins
+with retained observations. A supported rule may proceed to a bounded prototype
+and qualification under the authorization above, with its numerical scope,
+independent witnesses and added finite panel budget declared first.
 
-### F1 proposal awaiting authorization: resolve the comparison before handoff
+### F1 authorized diagnosis: resolve the comparison before handoff
 
 Retain the current automatic route. The bounded F1 panel did not establish a
 passing alternative across its declared comparisons. Twenty CMG requests were
@@ -575,7 +601,7 @@ independent QR covariance gives a robust F much closer to LSMR on the weak
 control. Investigate this discrepancy rather than relaxing the comparison bound
 or copying the baseline value. The original F1 attempt remains failed.
 
-The next proposed authorization is diagnostic only: trace the robust covariance
+The present authorization is diagnostic only: trace the robust covariance
 and Wald-statistic error to its source, prepare valid CMG requests, and measure
 actual ordinary-PCG progress before choosing a handoff threshold. Bound this
 work to one working day and two substantive repair attempts. A new native panel
@@ -597,7 +623,7 @@ Its chain reports 127 iterations, not the plan's historical 4,246; the latter
 reproducer was not available. No threshold or default-route change is proposed
 for approval from these observations alone.
 
-### F2 proposal awaiting authorization: geometry research with sparse protection
+### F2 authorized research: geometry with sparse protection
 
 Retain the current automatic route. MAP completed the frozen dense 1M/4M
 three-FE comparisons with lower observed native costs at 1/16 workers, but
@@ -608,7 +634,7 @@ fits have no accepted timing ratio, and the dense gains cannot justify an
 unconditional switch. Full outcomes and costs are in the
 [retained comparison record](../bench/results/f-20261011-comparisons.json).
 
-The proposed next authorization is costing research only, bounded to one
+The first stage is costing research, bounded to one
 working day and one model revision. First use the retained successful phase,
 iteration and memory observations to test whether already-available geometry
 can explain total setup-plus-solve cost. Candidate features are FE levels and
@@ -621,12 +647,13 @@ proposed rule. Sparse timeouts are censored failures, not fitting targets with
 invented completion times. If these observations cannot support a general
 cost model, stop and specify the missing diagnostic before running more fits.
 
-Before any prototype, freeze its features, parameters, numerical scope and
-fallback/work-budget contract for Johannes's decision. The current automatic
+Before any prototype, freeze its features, parameters, numerical scope,
+fallback/work-budget contract and finite validation budget. The current automatic
 LSMR attempt uses a tighter direct tolerance and at most half the shared
 iteration budget, with MAP fallback from untouched original inputs. Preserve
-these protections and explicit solver contracts. No threshold, new dispatch
-branch or extra pilot is authorized by this research proposal.
+these protections and explicit solver contracts. A supported bounded prototype
+and qualification are authorized under section 4; no unvalidated dispatch rule
+may replace the current production default.
 
 A proposed holdout must use distinct geometries on both sides of the existing
 preconditioner boundary, including sparse, weak/disconnected and memory-limited
@@ -634,7 +661,8 @@ cases. Declare its cases and bounds before execution; do not reuse the current
 tuning cases or revise the rule after seeing held-out results. Independent
 explicit-design witnesses, unchanged model decisions, fixed-worker repeats,
 public memory/refusal and Break checks precede quiet-Mac qualification. The
-current 24-fit panel includes no such holdout and authorizes no default change.
+completed 24-fit panel includes no such holdout and by itself supports no
+default change.
 
 ## 5. Order of work and reporting
 
