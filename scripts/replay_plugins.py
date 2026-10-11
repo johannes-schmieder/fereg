@@ -196,10 +196,46 @@ def run_case(harness: Path, binary: Path, case: Path, output: Path) -> dict:
 
 
 def discrete_view(result: dict, expected: dict) -> dict:
+    tables = result['matrices']
+    poisson = expected['poisson']
+    protected = {}
+    # Keep model/route decisions across workers, while numerical certificates
+    # and inner work counts may vary. Read original wire positions here, not
+    # the timing-stripped RSOLVER positions used by affected scopes.
+    for name in ('RFE', 'RCLUSTER', 'RSUBSET', 'RDROP', 'RSEQ', 'RREC'):
+        if name in tables:
+            protected[name] = tables[name]
+    fields = ({'RFIT': [0, 1, 2, 3, 4, 11, 13, 15, 16, 20, 21, 22, 23, 26],
+               'RCERT': [15], 'RINF': [0, 1, 2, 3, 4, 5, 6, 7, 10, 14, 15],
+               'RRUNTIME': [1, 3, 4, 5, 6, 7, 8, 76, 77]}
+              if poisson else
+              {'RFIT': list(range(0, 24, 2)),
+               'RCERT': list(range(0, 64, 2)) + [1, 3, 5, 7, 47, 49, 51, 53, 57, 59, 63],
+               'RRUNTIME': list(range(6)) + list(range(42, 48))})
+    for name, indices in fields.items():
+        if name in tables:
+            protected[name] = {i: tables[name]['bits'][i] for i in indices}
+    for name, columns in [('RSOLVER', set(range(12)) if poisson else {0, 1, 3, 10, 11, 12, 13}),
+                          ('RSEP', set(range(8)) | {12, 13})]:
+        if name in tables:
+            table = tables[name]
+            protected[name] = {i: value for i, value in enumerate(table['bits'])
+                               if i % table['columns'] in columns}
+    status = tables['RSTATUS']
+    if status.get('columns') == 4 and 'RB' in tables and 'RV' in tables:
+        identified = {1.0} if poisson else {1.0, 5.0}
+        omitted = {row for row in range(len(status['bits']) // 4)
+                   if number(status['bits'][4 * row + 1]) not in identified}
+        protected['omitted_coefficients'] = {i: tables['RB']['bits'][i] for i in omitted}
+        width = tables['RV']['columns']
+        protected['omitted_covariance'] = {i: value for i, value in enumerate(tables['RV']['bits'])
+                                           if i // width in omitted or i % width in omitted}
     dof = result['matrices']['RDOF']['bits']
     # PPML's DoF table consists entirely of counts/flags. OLS interleaves
     # presence flags and values; raw weight sums and correction factors float.
     rows = [i for i in range(20) if i not in {4, 11}]
+    if not poisson:
+        protected['dof_presence'] = dof[::2]
     dof = dof if expected['poisson'] else [dof[2*i+1] for i in rows]
     bias_decisions = {}
     if 'RBDIAG' in result['matrices']:
@@ -207,7 +243,17 @@ def discrete_view(result: dict, expected: dict) -> dict:
         bias_decisions['bias_controls'] = [diagnostic[i] for i in [0, 1, 2, 3, 4, 5, 6, 14, 15, 16, 17, 18]]
         support = result['matrices']['RBSUPPORT']
         bias_decisions['bias_support'] = [x for i, x in enumerate(support['bits']) if i % support['columns'] < 8]
-    return {**bias_decisions, 'status': result['matrices']['RSTATUS'], 'dof': dof,
+    # A whole output-column allowance never authorizes altered missingness or
+    # writes to excluded observations. Retained finite values remain numerical.
+    sample = result['columns'][expected['outputs']['sample']]
+    for column in ({value for key, value in expected['outputs'].items()
+                    if key not in {'sample', 'drop_reason'}} | set(expected.get('saved', []))):
+        protected[f'output_layout/{column}'] = [
+            value if number(sample[row]) != 1.0 or not math.isfinite(number(value))
+            or number(value) >= 8.98846567431158e307 else 'finite'
+            for row, value in enumerate(result['columns'][column])]
+    return {**bias_decisions, 'protected': protected,
+            'status': result['matrices']['RSTATUS'], 'dof': dof,
             **{key: result['columns'][expected['outputs'][key]]
                for key in ['sample', 'drop_reason']}}
 
@@ -236,6 +282,30 @@ def check_threads(args, case: Path, expected: dict, one_thread: dict) -> list[di
     return records
 
 
+def numerical_scope_indices(poisson: bool) -> dict[str, set[int]]:
+    """Numerical fixed-table leaves; RSOLVER indices are AFTER exact_view.
+
+    RB/RV coordinates and observation columns are dimension-dependent and are
+    validated separately. Tolerances, presence/acceptance flags and PSD states
+    are deliberately absent. This is a schema envelope, not a scope manifest.
+    """
+    if poisson:
+        return {'RFIT': {5, 6, 7, 8, 9, 10, 12, 17, 18, 19, 24, 25},
+                'RCERT': set(range(15)), 'RINF': {8, 9, 11, 12, 13},
+                'RSOLVER': {19 * row + col for row in range(4) for col in range(13, 19)}}
+    return {'RFIT': set(range(1, 24, 2)),
+            'RCERT': {2 * row + 1 for row in list(range(4, 23)) + [27, 30]},
+            'RSOLVER': {14 * row + col for row in range(2) for col in [4, 5, 6, 7, 13]}}
+
+
+def work_scope_indices(poisson: bool) -> dict[str, set[int]]:
+    """Only named inner-work counters; never routes, retries or outer steps."""
+    if poisson:
+        return {'RFIT': {14}, 'RSOLVER': {19 * row + 12 for row in range(4)},
+                'runtime_signature': {1}}  # RRUNTIME[2]: total inner iterations.
+    return {'RSOLVER': {2, 16}}
+
+
 def affected_prefixes(scope: dict, case: Path, expected: dict) -> list[str]:
     """Only a predeclared, input-bound case may relax numerical parent identity.
 
@@ -248,12 +318,16 @@ def affected_prefixes(scope: dict, case: Path, expected: dict) -> list[str]:
     if entry['input_sha256'] != digest(case) or not entry.get('reason'):
         raise RuntimeError('affected replay scope does not identify the frozen input')
     prefixes = entry['allowed_paths']
-    tables = {'RB', 'RV', 'RFIT', 'RSOLVER', 'RCERT', 'RINF'}
+    numerical = numerical_scope_indices(expected.get('poisson', False))
+    work = work_scope_indices(expected.get('poisson', False))
     valid_columns = {expected['outputs'][name] for name in expected['outputs']
                      if name not in {'sample', 'drop_reason'}} | set(expected.get('saved', []))
     for path in prefixes:
         parts = path.split('/')
-        table = len(parts) in {4, 5} and parts[1] == 'matrices' and parts[2] in tables and parts[3] == 'bits'
+        table = False
+        if len(parts) == 5 and parts[1] == 'matrices' and parts[3] == 'bits' and parts[4].isdigit():
+            name, index = parts[2], int(parts[4])
+            table = name in {'RB', 'RV'} or index in numerical.get(name, set()) | work.get(name, set())
         bias_leaf = len(parts) == 5 and parts[1] == 'matrices' and parts[3] == 'bits' and parts[4].isdigit()
         if bias_leaf:
             index = int(parts[4])
@@ -270,11 +344,26 @@ def affected_prefixes(scope: dict, case: Path, expected: dict) -> list[str]:
                 bias_leaf = False
             bias_leaf = bias_leaf and 'bias' in expected
         column = len(parts) == 3 and parts[1] == 'columns' and parts[2].isdigit() and int(parts[2]) in valid_columns
-        if not (table or column or bias_leaf or path == '/runtime_signature'):
+        runtime = (len(parts) == 3 and parts[1] == 'runtime_signature'
+                   and parts[2].isdigit() and int(parts[2]) in work.get('runtime_signature', set()))
+        if not (table or column or bias_leaf or runtime):
             raise RuntimeError('affected scope includes a nonnumerical transaction field')
-        if table and len(parts) == 5 and not parts[4].isdigit():
-            raise RuntimeError('affected scope requires an exact numerical field index')
     return prefixes
+
+
+def validate_scope_targets(prefixes: list[str], result: dict, poisson: bool) -> None:
+    """Fail closed on nonexistent leaves or missing scientific values."""
+    view = exact_view(result, poisson)
+    for path in prefixes:
+        value = view
+        try:
+            for part in path.split('/')[1:]:
+                value = value[int(part)] if isinstance(value, list) else value[part]
+        except (KeyError, IndexError, ValueError, TypeError) as error:
+            raise RuntimeError(f'affected scope target is absent: {path}') from error
+        if path.startswith('/matrices/') or path.startswith('/runtime_signature/'):
+            if not math.isfinite(number(value)) or number(value) >= 8.98846567431158e307:
+                raise RuntimeError(f'affected scope target is not a present numerical value: {path}')
 
 
 def main() -> int:
@@ -293,6 +382,8 @@ def main() -> int:
     if len(set(args.thread_counts)) != len(args.thread_counts) or any(t < 2 or t > 1024 for t in args.thread_counts):
         parser.error('thread counts must be unique integers from 2 through 1024')
     scope = json.loads(args.affected_scope.read_text()) if args.affected_scope else {}
+    if args.affected_scope and not args.baseline:
+        parser.error('affected-scope replay requires a baseline for exact unaffected-field checks')
     policy = json.loads(args.policy.read_text())
     candidate_fixes = set(policy['active'])
     baseline_fixes = candidate_fixes if args.baseline_fixes is None else set(filter(None, args.baseline_fixes.split(',')))
@@ -314,6 +405,9 @@ def main() -> int:
         scoped = affected_prefixes(scope, case, expected)
         candidate = run_case(args.harness, args.plugin.resolve(), case, args.output / (case.stem + '-plugin.json'))
         baseline = run_case(args.harness, args.baseline.resolve(), case, args.output / (case.stem + '-baseline.json')) if args.baseline else None
+        if scoped:
+            validate_scope_targets(scoped, baseline, expected['poisson'])
+            validate_scope_targets(scoped, candidate, expected['poisson'])
         repeated = run_case(args.harness, args.plugin.resolve(), case, args.output / (case.stem + '-repeat.json'))
         repeat_changes = differences(exact_view(candidate, expected['poisson']), exact_view(repeated, expected['poisson']))
         changed = differences(exact_view(candidate, expected['poisson']), exact_view(baseline, expected['poisson'])) if baseline is not None else []

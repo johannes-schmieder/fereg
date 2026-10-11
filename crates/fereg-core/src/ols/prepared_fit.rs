@@ -1485,8 +1485,8 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
             "prepared projection initial absorption did not certify",
         ));
     }
-    // The optional FE handoff certifies this exact returned matrix with the
-    // same ordered norm recurrence. Explicit divisor frames can use a
+    // The optional FE handoff certifies norms of this exact returned matrix
+    // under the same normalized weights. Explicit divisor frames can use a
     // different normalization and must retain the established recomputation.
     let cached_norms = if weights.matches_fe_norm_scale() {
         absorbed.take_residual_norms()

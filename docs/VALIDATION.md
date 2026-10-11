@@ -16,6 +16,77 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Performance-plan qualification
 
+### Performance-plan E1: qualified declared numerical scope, 2026-10-11
+
+E1 passes against qualified C/D (`aeb6ee64`). The
+[retained observations, scopes and artifact identities](../bench/results/e1-20261011-performance.json)
+include every Mac timing pair, Linux instruction counts, independent numerical
+witnesses and failed attempts. Fixed 512-row leaves and ordered merges make the
+norm and independent PPML finite-score reductions independent of worker count.
+They reuse idle, already-admitted scratch and preserve the single-leaf arithmetic.
+No tolerance, sample, rank, omission, separation, solver route, inner-work counter,
+certificate decision or outer iteration changed. Strict/canonical PPML solving
+and final-Hessian checks remain fresh. No worker touches SPI.
+
+Scaled norm summaries retain their largest rounded weighted element, preserving
+the D1 rejection proof. Score leaves retain both compensated components: the
+first attempted implementation rounded each leaf to a single total and lost a
+residual of one across `1e30`, `1`, and `-1e30`. Independent review rejected it
+before qualification. The repair has signed-cancellation and exact dyadic
+witnesses. Norm witnesses cover fixed leaves, dynamic scales, errors, scratch
+capacities and 1/4/16 workers; independent full-dummy weighted QR covers the three
+32,768-row chain/barbell/weak-mobility controls and their robust covariance.
+
+The first large comparison also failed its scope: OLS Gaussian null likelihood
+depends on the already-scoped within-TSS. The original manifest and failed
+comparison remain failed in the retained record. Before fresh candidate calls,
+the corrected manifest explicitly named that leaf and added independent FE-only
+weighted-QR witnesses at the existing rtol=1e-12/atol=1e-14 statistic bounds.
+No runtime, tolerance, decision or work-counter exception repaired this failure.
+Other recorded repairs concern external-column validation, constant visibility,
+Clippy style and a superseded scalar-order test assertion.
+
+The full repository gate passed: 1,176 core tests, 143 non-FFI plugin tests,
+173 FFI plugin tests, ten isolated allocator audits, portable checks, independent
+oracles, transaction mocks and complexity. All 73 small replay cases remain
+exact against C/D; additional 4/16-worker checks retain exact repeats and
+protected decisions. All 67 licensed fixtures and public OLS/PPML Break probes
+passed. These small cases do not certify the new multileaf arithmetic by
+themselves: the separate Mac 36-fit graph panel, SCC 84-fit campaign/graph panel
+and Mac 40-fit timing-input science preflight all passed their explicit scopes,
+protected decisions and numerical witnesses. The final source matches the frozen
+measured artifact inputs across 170 runtime modules and 58 other inputs.
+
+SCC job 8027197 completed 84 discovery fits at 1/4/16 workers in 1,278 scheduler
+seconds (6.543 GB maximum virtual memory), with successful accounting. Profiling
+job 8027203 completed eight native witnesses and sixteen instrumented fits in
+482 scheduler seconds. Native/instrumented science and repeats agree exactly.
+Two instruction-count repetitions show dense PPML +1.179%, sparse PPML +1.046%,
+AKM PPML +0.215%, and dense three-FE OLS -0.269%. Library-FMA instruction cost
+is zero in every profile. These are costs as well as gains; prior timing was
+not reused because the positive changes exceed the observed repeat ranges.
+
+Fresh Mac timing completed all 640 fits across twenty standard cells in
+1,269.685 seconds of the 1,800-second budget. Every adjusted upper bound passes
+max(5%, 1 ms), with no continuation. The exact two-look rule is declared in the
+[plan](fable_performance.md#e-declaration-before-implementation-2026-10-11).
+Observed K=20 median reductions are 2.53%, 2.16% and 4.39% at 4/8/16 workers; single-worker
+K=20 costs 0.27%. Weighted two-FE OLS at four workers is 1.48% lower, and unit-weight
+K=5 is 2.82% lower. Single-worker PPML costs 1.36%; four-worker PPML is near zero.
+No-FE four-worker OLS costs 5.47% (about 0.26 ms), within the unchanged 1 ms
+allowance. Other cells are mixed and mostly near zero. The largest upper bound
+among the 5%-allowance cells is 1.049008, so this is a nonregression qualification,
+not a claim of a general speedup. Per-cell intervals and all observations remain
+in the retained record. Background desktop applications stayed open; there were
+no competing builds/tests/agent workloads or recorded thermal warnings.
+
+E2 and E3 are deferred for lack of compatible work, as explained in the
+[coverage decision](fable_performance.md#e2e3-coverage-decision-2026-10-11).
+All observed ordinary PPML frames used the joint basis, bypassing E2's proposed
+direct projection. E3 cannot subtract an FE fit twice from an already-within
+residual, and the raw-residual paths lack the required retained bank. No new
+route or storage was introduced to manufacture eligibility.
+
 ### Performance-plan C/D: qualified combined workstream, 2026-10-11
 
 C/D passes arithmetic-preserving qualification. The

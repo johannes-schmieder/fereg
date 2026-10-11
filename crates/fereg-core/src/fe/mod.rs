@@ -44,16 +44,14 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_cg, absorb_borrowed_intercept_irons_tuck_certified,
     absorb_borrowed_intercept_lsmr, absorb_borrowed_intercept_map,
     borrowed_cg_recovery_workspace_bytes, project_borrowed_intercept_structural, BorrowedCgOptions,
-    BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber,
+    BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber, PARALLEL_DOT_CHUNK_ROWS,
 };
 pub use borrowed_map::{
     absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
     FeCoefficientBatch,
 };
 #[cfg(test)]
-pub(crate) use borrowed_map::{
-    FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS, PARALLEL_PROJECTION_MIN_ROWS,
-};
+pub(crate) use borrowed_map::{FUSED_PARALLEL_MAX_RHS, PARALLEL_PROJECTION_MIN_ROWS};
 pub(crate) use categorical_request::bind_categorical_effect_recipes;
 pub use categorical_request::{plan_categorical_absorbed_request, CategoricalAbsorbRequestPlan};
 pub use certificate::{certify_residuals, FeCertificate};

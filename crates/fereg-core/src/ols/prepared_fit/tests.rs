@@ -6384,29 +6384,32 @@ fn ppml_slope_only_topology_preserves_structural_constant() {
     }
 }
 
+#[path = "../../../../fereg-testkit/src/rounded_square_norm_reference.rs"]
+mod handoff_norm_reference;
+
 #[test]
-fn projection_norm_handoff_preserves_ordered_bits_and_explicit_divisor_fallback() {
-    let rows = 1031;
-    let x: Vec<_> = (0..rows).map(|r| (r as f64 / 19.).sin()).collect();
-    let y: Vec<_> = (0..rows)
-        .map(|r| 1. + 0.3 * x[r] + (r as f64 / 13.).cos())
-        .collect();
-    let groups: Vec<_> = (0..rows).map(|r| (r % 17) as f64).collect();
-    let firms: Vec<_> = (0..rows).map(|r| ((r / 17) % 13) as f64).collect();
-    let weights: Vec<_> = (0..rows).map(|r| [0.001, 0.5, 1., 1000.][r % 4]).collect();
-    let data = prepared_multiway_categorical_weights(
-        &y,
-        &[x],
-        &[groups, firms],
-        TestWeights::Analytic(&weights),
-    );
-    let canonical = LinearSolveFrame::from_prepared_ols(&data).unwrap();
-    for workers in [1, 4, 16] {
-        let mut config = PreparedOlsFitConfig::default();
-        config.absorb.solver = FeSolverKind::Map;
-        config.execution.threads =
-            crate::options::ThreadConfig::from_requested(workers, true).unwrap();
-        ThreadTeam::new(config.execution.threads)
+fn projection_norm_handoff_preserves_fixed_leaf_scope_and_explicit_divisor_fallback() {
+    for rows in [511, 1031] {
+        let x: Vec<_> = (0..rows).map(|r| (r as f64 / 19.).sin()).collect();
+        let y: Vec<_> = (0..rows)
+            .map(|r| 1. + 0.3 * x[r] + (r as f64 / 13.).cos())
+            .collect();
+        let groups: Vec<_> = (0..rows).map(|r| (r % 17) as f64).collect();
+        let firms: Vec<_> = (0..rows).map(|r| ((r / 17) % 13) as f64).collect();
+        let weights: Vec<_> = (0..rows).map(|r| [0.001, 0.5, 1., 1000.][r % 4]).collect();
+        let data = prepared_multiway_categorical_weights(
+            &y,
+            &[x],
+            &[groups, firms],
+            TestWeights::Analytic(&weights),
+        );
+        let canonical = LinearSolveFrame::from_prepared_ols(&data).unwrap();
+        for workers in [1, 4, 16] {
+            let mut config = PreparedOlsFitConfig::default();
+            config.absorb.solver = FeSolverKind::Map;
+            config.execution.threads =
+                crate::options::ThreadConfig::from_requested(workers, true).unwrap();
+            ThreadTeam::new(config.execution.threads)
             .install(|| {
                 for divisor_factor in [1., 8.] {
                     let mut scale = canonical.bread_weight_scale();
@@ -6426,19 +6429,40 @@ fn projection_norm_handoff_preserves_ordered_bits_and_explicit_divisor_fallback(
                         .unwrap();
                     let norms = projected.take_residual_norms();
                     assert_eq!(norms.len(), projected.residualized().ncols());
+                    let mut repeated_session =
+                        crate::fe::FeSession::for_ols(&data, frame.raw_weights(), config).unwrap();
+                    let mut repeated = repeated_session.project_ols(
+                        frame.raw_weights(), data.fit_build_rhs_with_response(&y).unwrap(),
+                        config.absorb, false, false,
+                    ).unwrap();
+                    let repeated_norms = repeated.take_residual_norms();
+                    assert_eq!(norms.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                        repeated_norms.iter().map(|v| v.to_bits()).collect::<Vec<_>>());
+                    assert_eq!(projected.residualized().as_slice().iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                        repeated.residualized().as_slice().iter().map(|v| v.to_bits()).collect::<Vec<_>>());
                     if divisor_factor == 1. {
                         for (column, norm) in norms.iter().enumerate() {
-                            let recomputed = weighted_matrix_column_norm(
-                                projected.residualized(),
-                                column,
-                                frame.weights(),
-                            )
-                            .unwrap();
-                            assert_eq!(
-                                norm.to_bits(),
-                                recomputed.to_bits(),
-                                "workers={workers}, column={column}"
-                            );
+                            if rows <= 512 {
+                                // A single E1 leaf retains the legacy recurrence exactly.
+                                let recomputed = weighted_matrix_column_norm(
+                                    projected.residualized(), column, frame.weights(),
+                                ).unwrap();
+                                assert_eq!(norm.to_bits(), recomputed.to_bits(),
+                                    "rows={rows}, workers={workers}, column={column}");
+                            }
+                            // Above one leaf, E's declared reassociation supersedes
+                            // legacy recurrence identity, not numerical accuracy.
+                            // The reference squares the rounded weighted elements
+                            // into twofold products without the production recurrence.
+                            let accurate = handoff_norm_reference::rounded_element_norm(
+                                (0..rows).map(|row| frame.weights().root(row).unwrap()
+                                    * projected.residualized()[(row, column)]));
+                            if accurate == 0.0 {
+                                assert_eq!(norm.to_bits(), 0.0_f64.to_bits());
+                            } else {
+                                assert!((norm / accurate - 1.0).abs() <= 64.0 * f64::EPSILON,
+                                    "rows={rows}, workers={workers}, column={column}: {norm} != {accurate}");
+                            }
                         }
                     } else {
                         assert!(norms.iter().enumerate().any(|(column, norm)| {
@@ -6465,6 +6489,7 @@ fn projection_norm_handoff_preserves_ordered_bits_and_explicit_divisor_fallback(
                 }
             })
             .unwrap();
+        }
     }
 }
 

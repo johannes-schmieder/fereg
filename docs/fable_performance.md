@@ -291,6 +291,129 @@ Evidence: `--affected-scope` replay with every other field exact, independent
 norm and certificate witnesses, instruction counts within noise, prior timing
 evidence reused per the ulp-scope tier.
 
+#### E declaration before implementation (2026-10-11)
+
+The comparator is qualified C/D, source `aeb6ee64`. Implement E1 before E2
+and E3, under this single numerical scope. Fixed row leaves and their merge
+order must be independent of the worker budget, including the serial path.
+Partials require checked admission and fallible reservation before iteration;
+the independent certificate passes remain independent. The scaled norm must
+remain at least the largest computed weighted element, so D1's finite-error
+proof continues to apply. Any replacement recurrence needs its own proof and
+independent accuracy witness before D1 can use it.
+
+Affected numerical outputs may be coefficients, covariance/inference, fitted
+values, eta, means, residuals, identified saved-FE combinations, continuous fit
+statistics and certificate magnitudes. Input-bound replay scope files must name
+the exact numerical leaves before candidate replay. Presence flags, certificate
+pass flags, status/omission slots, rank, sample/drop reasons, separation sequence
+and trace decisions, solver families/routes, outer iterations and halving counts
+remain exact. PPML RCERT indices 0–14 are numerical; index 15 remains exact.
+No whole-table or whole-runtime-signature exemption is allowed. Inner iteration
+or work counters may differ only at individually named schema locations for an
+implemented warm start, with original stopping targets and explicit trace
+evidence. Bias numerical leaves require the existing independent exact and
+randomized bias witnesses; their controls and support counts remain exact.
+Anything outside these enumerated numerical fields remains exact. This is an
+allowed envelope, not permission to accept an unexplained changed field.
+
+E2 is limited to ordinary-frame two-FE projection guesses with matching RHS,
+sample, topology and coordinates. Refresh the weight-dependent operator and
+form `b_new - A_new*x_guess`; retain the original RHS norm as the stopping
+reference. Clear incompatible or failed guesses. Strict candidates, final
+Hessian synchronization and canonical products remain fresh and cold: A2 is
+still deferred. E3 may use an existing compatible coefficient bank, but must
+not subtract FE fitted values twice from an already-within Fast residual.
+Additional storage cannot change an already selected memory route. Probe actual
+eligible call sites before building either optimization; absent eligible work
+is a reason to defer, not to expand routing.
+
+Independent witnesses cover weighted scaled norms and score moments, explicit
+dummy OLS/PPML coefficients and covariance, the sealed weak-graph reference,
+disconnected/chain/barbell/weak-mobility designs, dynamic weights, tiny RHSs,
+near-collinearity, both bias modes and saved-FE identified combinations. Exercise
+widths 1/17/65/129 and 1/4/16 workers, fixed-worker repeats, allocation failure,
+Break and rollback. The small replay corpus alone cannot certify changed
+large-row kernels; targeted large-row numerical witnesses are required.
+
+Discovery is bounded to one route-coverage probe and, for each addition, the
+four frozen PPML campaign cases plus three difficult OLS graph controls at
+1/4/16 workers, two alternating pairs, at most 84 fits and 45 minutes per
+panel (120 seconds per fit). At most two substantive repair panels per addition
+precede a findings/decision stop. The first certificate, unexplained discrete,
+memory-admission or out-of-scope difference blocks that variant. No weaker
+threshold or benchmark-specific eligibility fence may repair it. Record costs
+and unsuccessful attempts. Full repository and mapped scientific/transaction
+checks remain required at integration. Reuse C/D timing only if the declared
+ulp tier's instruction-count condition is established; otherwise qualify a
+stable candidate with fresh quiet-Mac timing before making a performance claim.
+
+The three discovery OLS controls are frozen generator inputs with 32,768 rows,
+two 128-level effects, sixteen controls, analytic weights, robust VCE and seed
+739391: chain, barbell and weak mobility. Their independent witness uses a full
+dummy weighted QR, one grounded second-effect coordinate, the finite-control
+rows of its pseudoinverse and HC1 with the full model rank. It checks the
+existing SPEC coefficient/covariance/fitted/residual bounds; exact replay checks
+sample and model decisions separately. The 73-case replay corpus has at most
+512 rows per input, so E1 must retain its exact legacy bits and cannot use that
+corpus alone as evidence for the new multileaf arithmetic.
+
+If fresh timing is needed, use the same twenty frozen Mac standard cells and
+two-look rule qualified for C/D: fifteen initial pairs (1,800 seconds), at most
+fifteen extra pairs for eligible inconclusive cells (900 seconds), 90 seconds
+per fit, and no continuation after an initial point-estimate failure. Retain
+all pairs and use the larger of the 98.75th-percentile paired-median bootstrap
+and the binomial order-statistic bound with per-look tail at most 0.0125.
+The allowance stays max(5%, 1 ms). Result-changing timing requires exact repeats
+within each artifact and unchanged fingerprints across blocks; cross-artifact
+science comes from the separately scoped comparisons. Tracing is disabled.
+Instruction diagnostics retain the four frozen 50k SCC shapes, one worker,
+two repetitions per artifact, 600 seconds per instrumented fit and 2,700 seconds
+total. No changed artifact inherits an earlier candidate's observations.
+
+The first E1 large-case comparison failed its narrower replay manifest:
+OLS Gaussian null log likelihood (`RFIT` zero-based value index 23) changed
+by 16 representable steps on the chain control. That attempt stays failed.
+The manifest had incorrectly classified this statistic as input-only;
+`build_statistics` derives it from within-TSS (already scoped at index 5),
+which uses the initial absorbed-response norm. Independent review confirmed
+this dependency fits the continuous-fit-statistics declaration above. Before
+the fresh bounded panel, name index 23 in each baseline-bound OLS scope and
+add FE-only weighted-QR witnesses for within-TSS and Gaussian null likelihood,
+using analytic-weight normalization and the existing replay statistic bounds
+of rtol=1e-12/atol=1e-14. Preserve the original manifest and failure hashes.
+OLS overall TSS and PPML null mean/null likelihood remain exact. This repairs
+the numerical manifest, with no new tolerance, counter, route or discrete
+exception and no change to the native candidate.
+
+Before timing, compare one baseline/candidate pair on each of the twenty
+hash-verified standard workloads (40 fits, 120 seconds per fit, 900 seconds
+total). Freeze each input-bound numerical scope from the baseline before its
+candidate call; enforce exact protected fields and numerical envelopes,
+including binary outputs, and record per-artifact scientific fingerprints.
+Bind those fingerprints to the subsequent timing repeats. This preflight is
+scientific coverage of the timing panel, not an extra timing look or a
+performance claim; the independent reduction and large-QR witnesses above
+remain required.
+
+#### E2/E3 coverage decision (2026-10-11)
+
+The completed 84-fit discovery panel preserves protected decisions and fixed-
+worker repeats at 1/4/16 workers. Every ordinary candidate PPML frame on the
+four frozen campaign inputs uses the admitted joint basis: three frames on
+each AKM/dense fit and eight on each sparse fit. These calls bypass the direct
+two-FE projection that E2 would warm-start. Defer E2 because this panel contains
+no eligible work; do not invent a route to create coverage. The optional Frozen
+fallback can reach direct projection, but its Fast RHS is an already-within
+correction stream, so a guess for an original response/control is not compatible.
+
+E3 is also deferred. The Fast final residual already subtracts the FE fit, so
+subtracting a retained response-minus-controls FE combination again is wrong.
+The raw-residual Low path and the public no-saved-FE Fast path have no compatible
+retained bank. Adding storage or changing the selected memory route exceeds
+this optimization's declaration. Neither deferral changes the fresh strict
+canonical solve; A2 still requires Johannes's decision.
+
 ### F. Route robustness (decisions; comparative evidence required)
 
 1. Progress-based handoff from the direct two-FE PCG to CMG or Schwarz LSMR
@@ -301,6 +424,28 @@ evidence reused per the ulp-scope tier.
 2. Dense three-FE OLS: a general choice based on geometry, observed
    contraction and total work (MAP took 22–24% less time than auto in the
    sampled panel). Sparse controls must not regress.
+
+The bounded comparison panel uses one qualified source/artifact and existing
+explicit requests; it changes no default route. F1 compares auto/LSMR/CMG on
+the three frozen E OLS graph controls plus frozen 1M AKM and dense two-FE OLS,
+at 1/16 workers with two reversed-order repetitions: 60 fits, 120 seconds per
+fit and 1,800 seconds total. F2 compares auto/MAP on frozen 1M/4M dense
+three-FE and 1M sparse three-FE OLS at the same workers and repetitions:
+24 fits, 120 seconds per fit and 1,200 seconds total. No budget extension or
+automatic retry is planned. Missing cells remain unattempted. The two missing
+transport inputs are extracted from their original frozen campaign DTAs into
+a separate F manifest; no E-bound input is changed or regenerated.
+
+Retain setup/solve/phase costs, actual preconditioners, iterations, modeled
+memory, certificates, failures and exact fixed-worker repeats. Model/sample/
+rank/omission/DoF decisions and output presence stay exact across requests;
+solver diagnostics and their established effective tolerances can differ
+because the explicit requests differ. Numerical comparisons keep the existing
+SPEC and stronger replay-statistic bounds, with the three independent OLS
+witnesses. Shared-host Linux observations with two repeats are diagnostic,
+not quiet-Mac route qualification. This panel has no new holdout and cannot
+observe the direct PCG's eighth-step contraction. It may support a bounded
+proposal, but does not authorize a progress threshold or default-route change.
 
 ### G. Tooling (no runtime change)
 

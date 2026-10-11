@@ -241,73 +241,357 @@ fn original_profile_columns_match_cold_design_across_bindings_and_weight_frames(
     }
 }
 
+#[path = "../../../../fereg-testkit/src/ppml_score_reference.rs"]
+mod score_reference;
+
 #[test]
-fn numeric_outer_scores_preserve_every_certificate_bit_across_teams_and_weights() {
-    let rows = 4096;
-    let y: Vec<_> = (0..rows).map(|r| (r % 13) as f64 / 3.0).collect();
-    let mu: Vec<_> = (0..rows)
-        .map(|r| (0.4 * (r as f64 / 91.0).sin()).exp())
-        .collect();
-    let outer = rayon::ThreadPoolBuilder::new()
-        .num_threads(2)
-        .build()
-        .unwrap();
-    for width in [1, 6, 63, 64, 65] {
-        let x: Vec<Vec<_>> = (0..width)
-            .map(|j| {
-                (0..rows)
-                    .map(|r| (r as f64 / (j + 3) as f64).sin() + 0.1 * (r % 17) as f64)
-                    .collect()
-            })
-            .collect();
-        let prepared = prepared(&y, &x);
-        let design = FeDesign::new(
-            rows,
-            vec![crate::fe::EffectTerm::new(
-                (0..rows).map(|r| (r % 17) as u32).collect(),
-                17,
-                true,
-                vec![x[0].clone()],
-            )
-            .unwrap()],
-        )
-        .unwrap();
-        for scale in [1e-30, 1.0, 1e30] {
-            let q: Vec<_> = (0..rows)
-                .map(|r| scale * (0.25 + (r % 11) as f64))
-                .collect();
-            let mut expected = PpmlScoreWorkspace::new(
-                &design,
-                crate::options::ThreadConfig::from_requested(1, true).unwrap(),
-            )
-            .unwrap();
-            FORCE_GENERIC_OUTER_SCORE.set(true);
-            let baseline =
-                prepared_score_certificate(&prepared, &design, &y, &mu, &q, 1e-8, &mut expected);
-            FORCE_GENERIC_OUTER_SCORE.set(false);
-            let baseline = baseline.unwrap();
-            for threads in [1, 4, 8] {
-                let mut workspace = PpmlScoreWorkspace::new(
-                    &design,
+fn score_fixed_leaves_are_exact_across_scratch_waves_and_workers() {
+    for rows in [0, 1, 511, 512, 513, 4097, 65_537] {
+        for width in [1, 17, 64] {
+            let leaf = |column: usize, range: std::ops::Range<usize>| {
+                let mut moment = CompensatedSum::default();
+                let mut square = CompensatedSum::default();
+                for row in range {
+                    let value = match (row + column) % 5 {
+                        0 => 1e30,
+                        1 => -1e30,
+                        2 => 1e-30,
+                        _ => ((row + 7 * column) % 17) as f64 / 3.,
+                    };
+                    moment.add(value);
+                    square.add(value * value);
+                }
+                Ok((moment, square))
+            };
+            let mut expected = None;
+            for threads in [1, 4, 16] {
+                let team = crate::parallel::ThreadTeam::new(
                     crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
                 )
+                .acquire()
                 .unwrap();
-                let actual = outer
-                    .install(|| {
-                        prepared_score_certificate(
-                            &prepared,
-                            &design,
-                            &y,
-                            &mu,
-                            &q,
-                            1e-8,
-                            &mut workspace,
+                for capacity in [0, 1, 2, 17, 64, 257, 8192] {
+                    let mut workspace = PpmlScoreWorkspace {
+                        team: team.clone(),
+                        fe_moments: vec![f64::NAN; capacity],
+                        fe_basis_squares: vec![f64::NAN; capacity],
+                    };
+                    let storage = (
+                        workspace.fe_moments.as_ptr(),
+                        workspace.fe_moments.capacity(),
+                        workspace.fe_basis_squares.as_ptr(),
+                        workspace.fe_basis_squares.capacity(),
+                    );
+                    let mut actual = vec![(0., 0.); width];
+                    workspace.reduce_columns(rows, &mut actual, leaf).unwrap();
+                    let bits: Vec<_> = actual
+                        .iter()
+                        .map(|(m, s)| (m.to_bits(), s.to_bits()))
+                        .collect();
+                    if let Some(expected) = &expected {
+                        assert_eq!(
+                            &bits, expected,
+                            "rows={rows}, width={width}, threads={threads}, capacity={capacity}"
+                        );
+                    } else {
+                        expected = Some(bits);
+                    }
+                    assert_eq!(
+                        storage,
+                        (
+                            workspace.fe_moments.as_ptr(),
+                            workspace.fe_moments.capacity(),
+                            workspace.fe_basis_squares.as_ptr(),
+                            workspace.fe_basis_squares.capacity(),
                         )
+                    );
+                    if rows <= 512 {
+                        for (column, actual) in actual.iter().enumerate() {
+                            let (moment, square) = leaf(column, 0..rows).unwrap();
+                            assert_eq!(*actual, (moment.total(), square.total()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn score_fixed_leaves_retain_small_components_across_large_cancellation() {
+    for rows in [1027, 65_537] {
+        for threads in [1, 4, 16] {
+            let team = crate::parallel::ThreadTeam::new(
+                crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
+            )
+            .acquire()
+            .unwrap();
+            for capacity in [0, 1, 2, 17, 64, 257, 8192] {
+                let mut workspace = PpmlScoreWorkspace {
+                    team: team.clone(),
+                    fe_moments: vec![f64::NAN; capacity],
+                    fe_basis_squares: vec![f64::NAN; capacity],
+                };
+                let mut result = [(0., 0.)];
+                workspace
+                    .reduce_columns(rows, &mut result, |_, range| {
+                        let mut moment = CompensatedSum::default();
+                        let mut square = CompensatedSum::default();
+                        for row in range {
+                            moment.add(match row {
+                                0 => 1e30,
+                                1 => 1.,
+                                512 => -1e30,
+                                _ => 0.,
+                            });
+                            square.add(match row {
+                                0 | 512 => 2_f64.powi(54),
+                                1 | 513 | 1024..=1026 => 1.,
+                                _ => 0.,
+                            });
+                        }
+                        Ok((moment, square))
                     })
                     .unwrap();
-                assert_eq!(actual, baseline);
-                assert_eq!(workspace.fe_moments, expected.fe_moments);
-                assert_eq!(workspace.fe_basis_squares, expected.fe_basis_squares);
+                // Independent exact sums: the equal large signed terms
+                // cancel. The positive sum is 2^55+5, rounding to 2^55+8.
+                assert_eq!(result[0].0.to_bits(), 1_f64.to_bits());
+                assert_eq!(result[0].1.to_bits(), (2_f64.powi(55) + 8.).to_bits());
+            }
+        }
+    }
+    let rows = 65_537;
+    let y = vec![2.; rows];
+    let mut x = vec![0.; rows];
+    x[0] = 1e30;
+    x[1] = 1.;
+    x[512] = -1e30;
+    let mut prepared = prepared(&y, &[x]);
+    // This score-only model has the single explicit signed basis above.
+    prepared
+        .model
+        .columns
+        .retain(|column| !matches!(column.kind, PreparedOlsColumnKind::Intercept));
+    let design = FeDesign::new(rows, vec![]).unwrap();
+    for threads in [1, 4, 16] {
+        let mut workspace = PpmlScoreWorkspace::new(
+            &design,
+            crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
+        )
+        .unwrap();
+        let certificate = prepared_score_certificate(
+            &prepared,
+            &design,
+            &y,
+            &vec![1.; rows],
+            &vec![1.; rows],
+            1e-40,
+            &mut workspace,
+        )
+        .unwrap();
+        assert_eq!(
+            certificate.finite_absolute_infinity_norm.to_bits(),
+            1_f64.to_bits()
+        );
+        assert!(
+            !certificate.passed,
+            "a canceled rounded leaf must not create a false zero score"
+        );
+    }
+}
+
+#[test]
+fn independent_finite_scores_match_integer_moments_and_scale_on_large_rows() {
+    let rows = 65_537;
+    let y: Vec<_> = (0..rows).map(|r| (r % 5) as i64).collect();
+    let q: Vec<_> = (0..rows).map(|r| (1 + r % 7) as i64).collect();
+    for width in [1, 17, 65, 129] {
+        let columns: Vec<Vec<_>> = (0..width)
+            .map(|j| (0..rows).map(|r| ((r + j * 3) % 11) as i64 - 5).collect())
+            .collect();
+        let x: Vec<Vec<_>> = columns
+            .iter()
+            .map(|column| column.iter().map(|&v| v as f64).collect())
+            .collect();
+        let outcome: Vec<_> = y.iter().map(|&v| v as f64).collect();
+        let prepared = prepared(&outcome, &x);
+        let design = FeDesign::new(rows, vec![]).unwrap();
+        for frame in [1, 2] {
+            let mu: Vec<_> = (0..rows).map(|r| (1 + (r * frame) % 2) as i64).collect();
+            let mean: Vec<_> = mu.iter().map(|&v| v as f64).collect();
+            for exponent in [-400, 0, 400] {
+                let scale = 2_f64.powi(exponent);
+                let weights: Vec<_> = q.iter().map(|&v| v as f64 * scale).collect();
+                let score_scale = score_reference::score_scale(&y, &mu, &q, scale);
+                let mut moments: Vec<_> = columns
+                    .iter()
+                    .map(|column| score_reference::moments(&y, &mu, &q, column, scale))
+                    .collect();
+                // prepared() adds the explicit intercept after its controls.
+                moments.push(score_reference::moments(&y, &mu, &q, &vec![1; rows], scale));
+                let absolute = moments.iter().map(|(m, _)| m.abs()).fold(0., f64::max);
+                let relative: Vec<_> = moments
+                    .iter()
+                    .map(|(m, s)| m.abs() / (s.sqrt() * score_scale))
+                    .collect();
+                let infinity = relative.iter().copied().fold(0., f64::max);
+                let two =
+                    (relative.iter().map(|v| v * v).sum::<f64>() / moments.len() as f64).sqrt();
+                for threads in [1, 4, 16] {
+                    let mut workspace = PpmlScoreWorkspace::new(
+                        &design,
+                        crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
+                    )
+                    .unwrap();
+                    let actual = prepared_score_certificate(
+                        &prepared,
+                        &design,
+                        &outcome,
+                        &mean,
+                        &weights,
+                        1e-8,
+                        &mut workspace,
+                    )
+                    .unwrap();
+                    assert_eq!(
+                        actual.finite_absolute_infinity_norm.to_bits(),
+                        absolute.to_bits()
+                    );
+                    assert_eq!(actual.fixed_effect_absolute_infinity_norm, 0.);
+                    assert!(
+                        (actual.relative_infinity_norm - infinity).abs()
+                            <= 8. * f64::EPSILON * infinity
+                    );
+                    assert!((actual.relative_two_norm - two).abs() <= 8. * f64::EPSILON * two);
+                    assert_eq!(actual.passed, infinity <= 1e-8 && two <= 1e-8);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn score_leaf_errors_preserve_scale_failure_before_column_validation() {
+    let rows = 4097;
+    let y = vec![1.; rows];
+    let mut prepared = prepared(&y, &[vec![2.; rows]]);
+    let crate::ols::PreparedOlsColumnKind::Continuous {
+        prepared_source_index,
+        ..
+    } = &mut prepared.model.columns[0].kind
+    else {
+        panic!("continuous fixture")
+    };
+    *prepared_source_index = usize::MAX;
+    let design = FeDesign::new(rows, vec![]).unwrap();
+    for threads in [1, 4, 16] {
+        let mut workspace = PpmlScoreWorkspace::new(
+            &design,
+            crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
+        )
+        .unwrap();
+        let error = prepared_score_certificate(
+            &prepared,
+            &design,
+            &y,
+            &vec![0.; rows],
+            &vec![1.; rows],
+            1e-8,
+            &mut workspace,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::NonConvergence);
+        assert_eq!(error.message, "prepared PPML score scale is not finite");
+        let error = prepared_score_certificate(
+            &prepared,
+            &design,
+            &y,
+            &vec![1.; rows],
+            &vec![1.; rows],
+            1e-8,
+            &mut workspace,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+        assert_eq!(error.message, "numeric OLS column is not aligned");
+    }
+}
+
+#[test]
+fn numeric_outer_scores_preserve_every_certificate_bit_across_teams_and_weights() {
+    for rows in [511, 512, 4096] {
+        let y: Vec<_> = (0..rows).map(|r| (r % 13) as f64 / 3.0).collect();
+        let mu: Vec<_> = (0..rows)
+            .map(|r| (0.4 * (r as f64 / 91.0).sin()).exp())
+            .collect();
+        let outer = rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .build()
+            .unwrap();
+        for width in [1, 17, 63, 64, 65, 129] {
+            let x: Vec<Vec<_>> = (0..width)
+                .map(|j| {
+                    (0..rows)
+                        .map(|r| (r as f64 / (j + 3) as f64).sin() + 0.1 * (r % 17) as f64)
+                        .collect()
+                })
+                .collect();
+            let prepared = prepared(&y, &x);
+            let design = FeDesign::new(
+                rows,
+                vec![crate::fe::EffectTerm::new(
+                    (0..rows).map(|r| (r % 17) as u32).collect(),
+                    17,
+                    true,
+                    vec![x[0].clone()],
+                )
+                .unwrap()],
+            )
+            .unwrap();
+            for scale in [1e-30, 1.0, 1e30] {
+                let q: Vec<_> = (0..rows)
+                    .map(|r| scale * (0.25 + (r % 11) as f64))
+                    .collect();
+                let mut expected = PpmlScoreWorkspace::new(
+                    &design,
+                    crate::options::ThreadConfig::from_requested(1, true).unwrap(),
+                )
+                .unwrap();
+                FORCE_GENERIC_OUTER_SCORE.set(true);
+                let baseline = prepared_score_certificate(
+                    &prepared,
+                    &design,
+                    &y,
+                    &mu,
+                    &q,
+                    1e-8,
+                    &mut expected,
+                );
+                FORCE_GENERIC_OUTER_SCORE.set(false);
+                let baseline = baseline.unwrap();
+                for threads in [1, 4, 16] {
+                    let mut workspace = PpmlScoreWorkspace::new(
+                        &design,
+                        crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
+                    )
+                    .unwrap();
+                    let actual = outer
+                        .install(|| {
+                            prepared_score_certificate(
+                                &prepared,
+                                &design,
+                                &y,
+                                &mu,
+                                &q,
+                                1e-8,
+                                &mut workspace,
+                            )
+                        })
+                        .unwrap();
+                    assert_eq!(actual, baseline);
+                    assert_eq!(workspace.fe_moments, expected.fe_moments);
+                    assert_eq!(workspace.fe_basis_squares, expected.fe_basis_squares);
+                }
             }
         }
     }
@@ -316,8 +600,8 @@ fn numeric_outer_scores_preserve_every_certificate_bit_across_teams_and_weights(
 #[test]
 fn generated_outer_scores_preserve_fresh_certificates_across_tiles_frames_and_teams() {
     use crate::ols::{PreparedOlsCategoricalComponent, PreparedOlsColumnKind};
-    for rows in [4095, 4097] {
-        for width in [8, 65, 71] {
+    for rows in [511, 512, 4095, 4097] {
+        for width in [8, 17, 65, 129] {
             let y: Vec<_> = (0..rows).map(|r| (r % 13) as f64 / 3.).collect();
             let x: Vec<Vec<_>> = (0..width)
                 .map(|j| {
@@ -393,7 +677,7 @@ fn generated_outer_scores_preserve_fresh_certificates_across_tiles_frames_and_te
                 );
                 FORCE_GENERIC_OUTER_SCORE.set(false);
                 let expected = expected.unwrap();
-                for threads in [1, 4, 8] {
+                for threads in [1, 4, 16] {
                     let mut workspace = PpmlScoreWorkspace::new(
                         &design,
                         crate::options::ThreadConfig::from_requested(threads, true).unwrap(),

@@ -2105,3 +2105,80 @@ fn absorbs_two_way_intercepts_and_certifies() {
     assert!(report.certificate.passed);
     assert!(values.as_slice().iter().all(|value| value.abs() < 1e-8));
 }
+
+#[test]
+fn fixed_leaf_norm_loan_preserves_cached_slope_geometry_and_storage() {
+    let rows = 4_099;
+    let design = FeDesign::new(
+        rows,
+        vec![EffectTerm::new(
+            (0..rows).map(|r| (r % 2) as u32).collect(),
+            2,
+            true,
+            vec![(0..rows)
+                .map(|r| ((r * 7 % 23) as f64 - 11.0) / 5.0)
+                .collect()],
+        )
+        .unwrap()],
+    )
+    .unwrap();
+    let team = rayon::ThreadPoolBuilder::new()
+        .num_threads(16)
+        .build()
+        .unwrap();
+    for width in [1, 17, 65, 129] {
+        let mut owner = ReusableMapAbsorber::new(design.clone(), width).unwrap();
+        owner.enable_certificate_geometry().unwrap();
+        let capacity = owner.capacities();
+        let pointer = owner.certificate_columns.as_ptr();
+        let values = DenseMatrix::from_row_major(
+            rows,
+            width,
+            (0..rows * width)
+                .map(|i| ((i * 13 % 71) as f64 - 35.0) / 19.0)
+                .collect(),
+        )
+        .unwrap();
+        for frame in 0..2 {
+            let weights: Vec<_> = (0..rows).map(|r| 0.25 + ((r + frame) % 9) as f64).collect();
+            reusable_weighted_norms(
+                &values,
+                &weights,
+                &mut owner.reference_norms,
+                &mut owner.norm_scales,
+                &mut owner.norm_sums,
+                &mut [],
+            )
+            .unwrap();
+            let expected_norms = owner.reference_norms.clone();
+            let mut valid = false;
+            let expected = owner
+                .certify(&values, &weights, width, 1e-11, &mut valid)
+                .unwrap();
+            assert!(valid);
+            let basis = owner.certificate_geometry.as_ref().unwrap().basis.clone();
+            let ranks = owner.certificate_geometry.as_ref().unwrap().ranks.clone();
+            owner.certificate_columns.fill(f64::NAN);
+            team.install(|| {
+                reusable_weighted_norms(
+                    &values,
+                    &weights,
+                    &mut owner.reference_norms,
+                    &mut owner.norm_scales,
+                    &mut owner.norm_sums,
+                    &mut owner.certificate_columns,
+                )
+            })
+            .unwrap();
+            assert_eq!(owner.reference_norms, expected_norms);
+            let actual = team
+                .install(|| owner.certify(&values, &weights, width, 1e-11, &mut valid))
+                .unwrap();
+            assert_eq!(actual, expected);
+            assert_eq!(owner.certificate_geometry.as_ref().unwrap().basis, basis);
+            assert_eq!(owner.certificate_geometry.as_ref().unwrap().ranks, ranks);
+            assert_eq!(owner.capacities(), capacity);
+            assert_eq!(owner.certificate_columns.as_ptr(), pointer);
+        }
+    }
+}

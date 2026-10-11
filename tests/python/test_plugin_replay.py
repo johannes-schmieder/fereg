@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
-from replay_plugins import scientific_errors, affected_prefixes, digest, allowed_difference, differences, discrete_view, exact_view, expected_for_fixes
+from replay_plugins import scientific_errors, affected_prefixes, digest, allowed_difference, differences, discrete_view, exact_view, expected_for_fixes, numerical_scope_indices, work_scope_indices, validate_scope_targets
 from replay_psd import eigensystem
 from replay_bias_reference import enrich_expected, REFERENCE, NAMES
 from replay_ols_reference import dense_targets, derive_ols, enrich_expected as enrich_ols_expected
@@ -81,26 +81,152 @@ class ReplayChecks(unittest.TestCase):
             for a,b in zip(row,expected): self.assertTrue(math.isclose(a,b,abs_tol=1e-14))
 
 
-if __name__ == '__main__': unittest.main()
-
 class AffectedScopeChecks(unittest.TestCase):
     def test_input_bound_numerical_scope_cannot_exclude_scientific_decisions(self):
         with tempfile.TemporaryDirectory() as root:
             case = Path(root) / 'example.case'
             case.write_text('frozen input')
-            expected = {'outputs': {'sample': 0, 'drop_reason': 1, 'residual': 2}, 'saved': [3]}
+            expected = {'poisson': True, 'outputs': {'sample': 0, 'drop_reason': 1, 'residual': 2}, 'saved': [3]}
             entry = {'input_sha256': digest(case), 'reason': 'declared algorithm change',
-                     'allowed_paths': ['/matrices/RB/bits', '/columns/2', '/columns/3', '/runtime_signature']}
+                     'allowed_paths': ['/matrices/RB/bits/0', '/columns/2', '/columns/3', '/runtime_signature/1']}
             scope = {'cases': {'example': entry}}
             self.assertEqual(affected_prefixes(scope, case, expected), entry['allowed_paths'])
             self.assertFalse(allowed_difference('fixed-thread-repeat/matrices/RB/bits/0', entry['allowed_paths']))
             for path in ['/columns/0', '/columns/1', '/matrices/RDOF/bits', '/matrices/RSTATUS/bits',
-                         '/matrices/RB', '/return_code', '/matrices/RREC/bits']:
+                         '/matrices/RB', '/return_code', '/matrices/RREC/bits',
+                         '/matrices/RB/bits', '/matrices/RCERT/bits', '/runtime_signature',
+                         '/runtime_signature/0', '/runtime_signature/2', '/runtime_signature/3',
+                         '/matrices/RCERT/bits/15', '/matrices/RINF/bits/5',
+                         '/matrices/RFIT/bits/13', '/matrices/RFIT/bits/15',
+                         '/matrices/RSOLVER/bits/7', '/matrices/RSOLVER/bits/9']:
                 entry['allowed_paths'] = [path]
                 with self.assertRaises(RuntimeError): affected_prefixes(scope, case, expected)
-            entry['allowed_paths'] = ['/matrices/RB/bits']
+            entry['allowed_paths'] = ['/matrices/RB/bits/0']
             case.write_text('changed input')
             with self.assertRaises(RuntimeError): affected_prefixes(scope, case, expected)
+
+    def test_schema_separates_numerical_leaves_from_inner_work_and_decisions(self):
+        for poisson in [False, True]:
+            numeric, work = numerical_scope_indices(poisson), work_scope_indices(poisson)
+            with tempfile.TemporaryDirectory() as root:
+                case = Path(root) / 'schema.case'
+                case.write_text('bound input')
+                entry = {'input_sha256': digest(case), 'reason': 'declared numerical or work leaf',
+                         'allowed_paths': []}
+                expected = {'poisson': poisson, 'outputs': {'sample': 0, 'drop_reason': 1}}
+                for schema in [numeric, work]:
+                    for table, indices in schema.items():
+                        for index in indices:
+                            path = (f'/runtime_signature/{index}' if table == 'runtime_signature'
+                                    else f'/matrices/{table}/bits/{index}')
+                            entry['allowed_paths'] = [path]
+                            self.assertEqual(affected_prefixes({'cases': {'schema': entry}}, case, expected), [path])
+                for table in numeric.keys() & work.keys():
+                    self.assertTrue(numeric[table].isdisjoint(work[table]))
+                for path in (['/matrices/RCERT/bits/7', '/matrices/RCERT/bits/47',
+                              '/matrices/RCERT/bits/49', '/matrices/RCERT/bits/51',
+                              '/matrices/RCERT/bits/53', '/matrices/RCERT/bits/57',
+                              '/matrices/RCERT/bits/59', '/matrices/RCERT/bits/63',
+                              '/matrices/RFIT/bits/0', '/matrices/RSOLVER/bits/8',
+                              '/matrices/RSOLVER/bits/12', '/runtime_signature/1']
+                             if not poisson else ['/matrices/RINF/bits/10', '/matrices/RINF/bits/14']):
+                    entry['allowed_paths'] = [path]
+                    with self.assertRaises(RuntimeError):
+                        affected_prefixes({'cases': {'schema': entry}}, case, expected)
+
+    def test_scope_targets_must_exist_and_be_present_numbers(self):
+        result = ReplayChecks().fixture()
+        validate_scope_targets(['/matrices/RB/bits/0', '/matrices/RSOLVER/bits/16'], result, False)
+        for path in ['/matrices/RB/bits/999', '/matrices/RINF/bits/8', '/columns/999']:
+            with self.assertRaises(RuntimeError): validate_scope_targets([path], result, False)
+        for value in [float('nan'), float('inf'), 8.98846567431158e307]:
+            result['matrices']['RB']['bits'][0] = struct.pack('>d', value).hex()
+            with self.assertRaises(RuntimeError):
+                validate_scope_targets(['/matrices/RB/bits/0'], result, False)
+
+    def test_protected_decisions_cover_routes_acceptance_and_separation_across_workers(self):
+        def table(length, columns=1):
+            return {'columns': columns, 'bits': ['0000000000000000'] * length}
+        for poisson in [False, True]:
+            result = {'return_code': 0, 'matrices': {
+                'RDOF': table(12 if poisson else 40), 'RSTATUS': table(4),
+                'RFIT': table(27 if poisson else 24), 'RCERT': table(16 if poisson else 64),
+                'RRUNTIME': table(108 if poisson else 60),
+                'RSOLVER': table(88 if poisson else 32, 22 if poisson else 16),
+                'RREC': table(16), 'RSEQ': table(13), 'RSEP': table(14, 14)},
+                'columns': [['3ff0000000000000'], ['0000000000000000']]}
+            if poisson:
+                result['matrices']['RINF'] = table(16)
+            expected = {'poisson': poisson, 'outputs': {'sample': 0, 'drop_reason': 1}}
+            decisions = ([('RFIT', 13), ('RFIT', 15), ('RFIT', 23), ('RCERT', 15),
+                          ('RINF', 5), ('RINF', 7), ('RINF', 10), ('RINF', 15),
+                          ('RRUNTIME', 76), ('RRUNTIME', 77), ('RSOLVER', 9)] if poisson else
+                         [('RFIT', 0), ('RCERT', 1), ('RCERT', 47), ('RCERT', 49),
+                          ('RCERT', 51), ('RCERT', 53), ('RCERT', 57), ('RCERT', 63)])
+            decisions += [('RREC', 0), ('RSEQ', 6), ('RSEP', 7), ('RSOLVER', 1)]
+            for name, index in decisions:
+                bad = copy.deepcopy(result)
+                bad['matrices'][name]['bits'][index] = '3ff0000000000000'
+                self.assertNotEqual(discrete_view(result, expected), discrete_view(bad, expected), (poisson, name, index))
+            # Work counters, numerical certificates, timing, and requested
+            # worker metadata are not cross-worker model decisions.
+            floating = ([('RFIT', 14), ('RCERT', 0), ('RINF', 8), ('RSOLVER', 12),
+                         ('RSOLVER', 16), ('RRUNTIME', 2), ('RRUNTIME', 9)] if poisson else
+                        [('RFIT', 1), ('RCERT', 11), ('RSOLVER', 2),
+                         ('RSOLVER', 4), ('RSOLVER', 14), ('RRUNTIME', 55)])
+            for name, index in floating:
+                changed = copy.deepcopy(result)
+                changed['matrices'][name]['bits'][index] = '3ff0000000000000'
+                self.assertEqual(discrete_view(result, expected), discrete_view(changed, expected), (poisson, name, index))
+
+    def test_ols_dof_presence_remains_exact_across_workers(self):
+        result = {'matrices': {'RDOF': {'bits': ['0000000000000000'] * 40},
+                               'RSTATUS': {'bits': ['0000000000000000'] * 4}},
+                  'columns': [['3ff0000000000000'], ['0000000000000000']]}
+        expected = {'poisson': False, 'outputs': {'sample': 0, 'drop_reason': 1}}
+        for index in range(0, 40, 2):
+            changed = copy.deepcopy(result)
+            changed['matrices']['RDOF']['bits'][index] = '3ff0000000000000'
+            self.assertNotEqual(discrete_view(result, expected), discrete_view(changed, expected), index)
+
+    def test_scoped_output_columns_keep_missingness_and_excluded_rows_exact(self):
+        result = {'matrices': {'RDOF': {'bits': ['0'] * 40}, 'RSTATUS': {'bits': ['0'] * 4}},
+                  'columns': [['3ff0000000000000', '0000000000000000'], ['0', '0'],
+                              ['3ff0000000000000', '4000000000000000']]}
+        expected = {'poisson': False, 'outputs': {'sample': 0, 'drop_reason': 1, 'residual': 2}}
+        changed = copy.deepcopy(result)
+        changed['columns'][2][0] = '3ff0000000000001'
+        self.assertEqual(discrete_view(result, expected), discrete_view(changed, expected))
+        for row, value in [(0, struct.pack('>d', 8.98846567431158e307).hex()),
+                           (1, '4000000000000001')]:
+            bad = copy.deepcopy(changed)
+            bad['columns'][2][row] = value
+            self.assertNotEqual(discrete_view(result, expected), discrete_view(bad, expected))
+
+    def test_omitted_coefficients_and_covariance_stay_exact(self):
+        def bits(values):
+            return [struct.pack('>d', x).hex() for x in values]
+        result = {'matrices': {'RDOF': {'bits': bits([0.] * 40)},
+                              'RSTATUS': {'columns': 4, 'bits': bits([1., 1., 1., 1., 2., 2., 0., 0.])},
+                              'RB': {'bits': bits([1., 0.])},
+                              'RV': {'columns': 2, 'bits': bits([1., 0., 0., 0.])}},
+                  'columns': [bits([1.]), bits([0.])]}
+        expected = {'poisson': False, 'outputs': {'sample': 0, 'drop_reason': 1}}
+        for name, index in [('RB', 1), ('RV', 1), ('RV', 2), ('RV', 3)]:
+            changed = copy.deepcopy(result)
+            changed['matrices'][name]['bits'][index] = bits([1e-20])[0]
+            self.assertNotEqual(discrete_view(result, expected), discrete_view(changed, expected))
+
+    def test_affected_scope_requires_baseline_before_running_native_code(self):
+        import replay_plugins
+        with tempfile.TemporaryDirectory() as root:
+            scope = Path(root) / 'scope.json'
+            scope.write_text('{"cases": {}}')
+            with patch.object(sys, 'argv', ['replay_plugins.py', '--plugin', 'unused',
+                                           '--affected-scope', str(scope)]), patch('sys.stderr'):
+                with self.assertRaises(SystemExit) as error:
+                    replay_plugins.main()
+                self.assertEqual(error.exception.code, 2)
 
     def test_bias_scope_keeps_controls_support_and_zero_coordinates_exact(self):
         with tempfile.TemporaryDirectory() as root:
@@ -273,3 +399,7 @@ class IndependentBiasReferenceChecks(unittest.TestCase):
         expected, result = self.bias_fixture('ppml-bias-exact')
         result['matrices']['RBIAS']['bits'][15] = struct.pack('>d', 1e-15).hex()
         self.assertIn('exact bias uncertainty is nonzero', scientific_errors(result, expected))
+
+
+if __name__ == '__main__':
+    unittest.main()

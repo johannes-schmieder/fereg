@@ -99,6 +99,32 @@ arithmetic leaves and ordered merges. One-FE, two-FE and general-FE algorithms
 remain distinct where mathematics warrants them; benchmark-specific route fences
 are prohibited. Explicit LSMR/CMG and both bias-correction modes remain supported.
 
+### Fixed-leaf norms and outer scores
+
+Reusable MAP norms use 512-row leaves and merge their scaled sum-of-squares
+summaries in ascending leaf order, including with one worker or no available
+scratch. RHS tiles are bounded at 64 and waves at 128 leaves; scratch capacity
+changes scheduling only. Categorical MAP lends its idle dot/group-statistic bank,
+and slope MAP lends its group-column bank, distinct from cached certificate
+geometry. Every later consumer rebuilds these banks before reading them. The
+fallback uses bounded stack storage; no additional capacity or memory route is
+required. A nonzero leaf keeps the maximum computed weighted element as its
+scale and a sum of at least one. Merging retains the larger scale and its
+nonnegative contribution, so the final norm still dominates every computed
+weighted element. The initial rejection screen's proof below remains applicable.
+
+The independent PPML outer score uses the same fixed row leaves for its scale
+and finite-column moments. Each leaf retains its compensated sum and correction;
+both components enter the ordered compensated merge. Rounding a leaf to a single
+total before merging is insufficient under cancellation. The two existing FE
+score banks hold partials before their unconditional clearing and unchanged
+FE-group accumulation. Their capacity controls tiles/waves, never the arithmetic
+tree; serial work avoids submitting to the team. Scores still read original
+outcome, mean, prior weights and original/generated controls. No projected design
+or cached Newton score substitutes for the independent certificate. Single-leaf
+inputs retain their former totals. Strict PPML solving and final-Hessian checks
+remain separate and fresh.
+
 ### Initial FE rejection screen
 
 The reusable categorical MAP owner may reject its zero-iteration shortcut from

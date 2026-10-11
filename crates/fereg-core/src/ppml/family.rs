@@ -971,6 +971,12 @@ impl CompensatedSum {
         neumaier_add(value, &mut self.sum, &mut self.correction);
     }
 
+    /// Keep both components until an ordered reduction has consumed them;
+    /// rounding a leaf to its total first can erase a later cancellation.
+    pub(crate) fn components(self) -> [f64; 2] {
+        [self.sum, self.correction]
+    }
+
     pub(crate) fn total(self) -> f64 {
         self.sum + self.correction
     }

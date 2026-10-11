@@ -2276,6 +2276,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     pub(crate) fn solve_ordinary_ppml(&mut self) -> Result<PpmlOrdinaryLinearOutput<'_>> {
         let eligible = self.supports_joint_ppml_direction();
+        if crate::diagnostics::solver_trace_enabled() {
+            eprintln!(
+                "FEREG_SOLVER_TRACE|phase=ordinary_linear_route|joint={}|basis_columns={}|response_generation={}|weight_generation={}|mode={:?}",
+                usize::from(eligible),
+                self.frozen_basis.as_ref().map_or(0, |basis| basis.kept_generated_columns().len()),
+                self.generations.response,
+                self.generations.weights,
+                self.config.execution.mode,
+            );
+        }
         if !eligible {
             return self
                 .solve_frozen_ppml()

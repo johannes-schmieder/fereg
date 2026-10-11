@@ -489,6 +489,7 @@ fn automatic_initial_norm_handoff_preserves_fresh_certificate_and_workspace() {
                                     &mut workspace.reference_norms,
                                     &mut workspace.value_scales,
                                     &mut workspace.group_sums,
+                                    &mut [],
                                 )
                                 .unwrap();
                             }
@@ -2535,6 +2536,7 @@ fn selective_checkpoint_retry_preserves_weighted_oracle_and_bounded_full_fallbac
                                 &mut workspace.reference_norms,
                                 &mut workspace.value_scales,
                                 &mut workspace.group_sums,
+                                &mut [],
                             )
                             .unwrap();
                             let mut batch = CheckpointLsmrBatch::new(
@@ -4353,7 +4355,7 @@ fn unit_single_column_norm_matches_generic_unit_weights_bitwise() {
                 let mut output = [0.0];
                 let mut scale = [0.0];
                 let mut sum = [0.0];
-                weighted_column_norms(&matrix, weights, &mut output, &mut scale, &mut sum)
+                weighted_column_norms(&matrix, weights, &mut output, &mut scale, &mut sum, &mut [])
                     .map(|()| (output[0].to_bits(), scale[0].to_bits(), sum[0].to_bits()))
             };
             assert_eq!(
@@ -4502,7 +4504,7 @@ fn stable_cg_polish_preserves_near_within_hadamard_products_at_every_width() {
                     let mut norms = vec![0.0;width];
                     let mut scales = vec![0.0;width];
                     let mut sums = vec![0.0;width];
-                    weighted_column_norms(&input,validate_weights(weights,rows).unwrap(),&mut norms,&mut scales,&mut sums).unwrap();
+                    weighted_column_norms(&input,validate_weights(weights,rows).unwrap(),&mut norms,&mut scales,&mut sums, &mut []).unwrap();
                     let result = absorb_borrowed_intercept_cg(&design, weights, input.clone(), MapConfig {tolerance:1e-12,..config()}, BorrowedCgOptions { retain_coefficients: true, ..BorrowedCgOptions::polish(&norms) }).unwrap();
                     let (within, report, coefficients) = result.into_full_parts();
                     assert!(report.certified());
@@ -5082,6 +5084,7 @@ fn lsmr_continuation_certificate_uses_the_supplied_original_rhs_scale() {
         &mut reference_norms,
         &mut scales,
         &mut square_sums,
+        &mut [],
     )
     .expect("reference norms");
     for norm in &mut reference_norms {
@@ -5413,4 +5416,82 @@ fn cg_relative_residual_rejects_residual_on_an_exactly_solved_column() {
     assert_eq!(error.code, ErrorCode::InvalidData);
     let error = cg_largest_relative_residual(&[0.25], &[1.0, 0.0]).expect_err("dimensions");
     assert_eq!(error.code, ErrorCode::InvalidArgument);
+}
+
+#[test]
+fn fixed_leaf_norm_loans_preserve_borrowed_certificate_storage() {
+    let rows = 16_385;
+    let codes: Vec<_> = (0..rows).map(|r| (r % 17) as u32).collect();
+    let index = LevelIndex::from_codes(&codes, 17).unwrap();
+    let source = ValidatedBorrowedInterceptSource::new(&codes, 17, &index).unwrap();
+    let design = BorrowedInterceptFeDesign::new(rows, vec![source.effect()]).unwrap();
+    for workers in [1, 4, 16] {
+        let team = rayon::ThreadPoolBuilder::new()
+            .num_threads(workers)
+            .build()
+            .unwrap();
+        team.install(|| {
+            for width in [1, 17, 65, 129] {
+                let values = DenseMatrix::from_row_major(
+                    rows,
+                    width,
+                    (0..rows * width)
+                        .map(|i| ((i * 7 % 67) as f64 - 33.0) / 17.0)
+                        .collect(),
+                )
+                .unwrap();
+                let mut loaned = BorrowedMapWorkspace::new_with_parallelism(
+                    &design,
+                    rows,
+                    width,
+                    workers,
+                    &mut SystemWorkspaceReservation,
+                )
+                .unwrap();
+                let mut baseline = BorrowedMapWorkspace::new_with_parallelism(
+                    &design,
+                    rows,
+                    width,
+                    workers,
+                    &mut SystemWorkspaceReservation,
+                )
+                .unwrap();
+                let peak = loaned.payload_peak().unwrap();
+                let pointers = (
+                    loaned.parallel_dot_sums.as_ptr(),
+                    loaned.parallel_group_means.as_ptr(),
+                );
+                for frame in 0..2 {
+                    let raw: Vec<_> = (0..rows).map(|r| 0.5 + ((r + frame) % 7) as f64).collect();
+                    let weights =
+                        validate_weights(BorrowedMapWeights::Provided(&raw), rows).unwrap();
+                    loaned.parallel_dot_sums.fill(f64::NAN);
+                    loaned.parallel_group_means.fill(f64::NAN);
+                    update_workspace_norms(&values, weights, &mut loaned, true).unwrap();
+                    weighted_column_norms(
+                        &values,
+                        weights,
+                        &mut baseline.reference_norms,
+                        &mut baseline.value_scales,
+                        &mut baseline.group_sums,
+                        &mut [],
+                    )
+                    .unwrap();
+                    assert_eq!(loaned.reference_norms, baseline.reference_norms);
+                    let actual = certify(&design, weights, &values, 1e-11, &mut loaned).unwrap();
+                    let expected =
+                        certify(&design, weights, &values, 1e-11, &mut baseline).unwrap();
+                    assert_eq!(actual, expected);
+                    assert_eq!(loaned.payload_peak().unwrap(), peak);
+                    assert_eq!(
+                        (
+                            loaned.parallel_dot_sums.as_ptr(),
+                            loaned.parallel_group_means.as_ptr()
+                        ),
+                        pointers
+                    );
+                }
+            }
+        });
+    }
 }

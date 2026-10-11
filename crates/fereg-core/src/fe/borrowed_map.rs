@@ -1696,13 +1696,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         self.workspace.set_rhs_count(rhs_count)?;
 
         let setup_started = Instant::now();
-        weighted_column_norms(
-            &values,
-            weights,
-            &mut self.workspace.reference_norms,
-            &mut self.workspace.value_scales,
-            &mut self.workspace.group_sums,
-        )?;
+        update_workspace_norms(&values, weights, &mut self.workspace, true)?;
         let setup_seconds = setup_started.elapsed().as_secs_f64();
         let solve_started = Instant::now();
         let initial_certification_started = Instant::now();
@@ -1729,13 +1723,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             if let Some(scaled) = balanced_weights.as_deref() {
                 let scaled =
                     validate_weights(BorrowedMapWeights::Provided(scaled), values.nrows())?;
-                weighted_column_norms(
-                    &values,
-                    scaled,
-                    &mut self.workspace.reference_norms,
-                    &mut self.workspace.value_scales,
-                    &mut self.workspace.group_sums,
-                )?;
+                update_workspace_norms(&values, scaled, &mut self.workspace, true)?;
                 let passed = self
                     .with_pilot_group_scratch(rhs_count, |design, workspace| {
                         certify_initial(design, scaled, &values, config.tolerance, workspace)
@@ -1743,13 +1731,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     .passed;
                 // Retained norm handoff and every later certificate consume
                 // the original frame, even if this early return is admitted.
-                weighted_column_norms(
-                    &values,
-                    weights,
-                    &mut self.workspace.reference_norms,
-                    &mut self.workspace.value_scales,
-                    &mut self.workspace.group_sums,
-                )?;
+                update_workspace_norms(&values, weights, &mut self.workspace, true)?;
                 self.workspace
                     .residual_norms
                     .copy_from_slice(&self.workspace.reference_norms);
@@ -3295,13 +3277,7 @@ pub(crate) fn absorb_borrowed_intercept_irons_tuck_certified(
     let mut reservation = SystemWorkspaceReservation;
     let mut workspace =
         BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), &mut reservation)?;
-    weighted_column_norms(
-        &values,
-        weights,
-        &mut workspace.reference_norms,
-        &mut workspace.value_scales,
-        &mut workspace.group_sums,
-    )?;
+    update_workspace_norms(&values, weights, &mut workspace, true)?;
     let setup_seconds = setup_started.elapsed().as_secs_f64();
     let solve_started = Instant::now();
     let initial_certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
@@ -3502,13 +3478,7 @@ pub(crate) fn certify_borrowed_intercept_candidate_with_workspace(
     let mut reservation = SystemWorkspaceReservation;
     let mut workspace =
         BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), &mut reservation)?;
-    weighted_column_norms(
-        values,
-        weights,
-        &mut workspace.reference_norms,
-        &mut workspace.value_scales,
-        &mut workspace.group_sums,
-    )?;
+    update_workspace_norms(values, weights, &mut workspace, true)?;
     let peak = workspace.payload_peak()?;
     let certificate = certify_initial(design, weights, values, config.tolerance, &mut workspace)?;
     Ok((certificate, peak))
@@ -4545,13 +4515,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
             + certificate_bytes,
     )?;
-    weighted_column_norms(
-        values,
-        weights,
-        &mut certificate_workspace.reference_norms,
-        &mut certificate_workspace.value_scales,
-        &mut certificate_workspace.group_sums,
-    )?;
+    update_workspace_norms(values, weights, &mut certificate_workspace, true)?;
     if let Some(reference_norms) = certificate_reference_norms {
         if reference_norms.len() != values.ncols()
             || reference_norms
@@ -4780,13 +4744,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     let setup_started = Instant::now();
     let mut workspace =
         BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), reservation)?;
-    weighted_column_norms(
-        &values,
-        weights,
-        &mut workspace.reference_norms,
-        &mut workspace.value_scales,
-        &mut workspace.group_sums,
-    )?;
+    update_workspace_norms(&values, weights, &mut workspace, true)?;
     let rhs_count = values.ncols();
     if reconstruction_tolerance.is_some() && rhs_count != 1 {
         return Err(invalid_argument(
@@ -5504,13 +5462,7 @@ fn certify_structural_constant(
     tolerance: f64,
     workspace: &mut BorrowedMapWorkspace,
 ) -> Result<FeCertificate> {
-    weighted_column_norms(
-        residuals,
-        weights,
-        &mut workspace.residual_norms,
-        &mut workspace.value_scales,
-        &mut workspace.group_sums,
-    )?;
+    update_workspace_norms(residuals, weights, workspace, false)?;
     certify_structural_constant_with_current_norms(weights, residuals, tolerance, workspace)
 }
 
@@ -7436,6 +7388,7 @@ fn weighted_column_norms(
     output: &mut [f64],
     scales: &mut [f64],
     scaled_square_sums: &mut [f64],
+    partials: &mut [f64],
 ) -> Result<()> {
     if output.len() != values.ncols()
         || scales.len() != values.ncols()
@@ -7460,6 +7413,7 @@ fn weighted_column_norms(
         output,
         scales,
         scaled_square_sums,
+        partials,
         "borrowed MAP weighted value is not finite",
         "borrowed MAP weighted column norm is not finite",
     )
@@ -7652,12 +7606,22 @@ fn update_workspace_norms(
     } else {
         &mut workspace.residual_norms
     };
+    // Dot products initialize their entire active bank. Group statistics are
+    // rebuilt for every effect before projection/certification reads them.
+    // Both banks are dead at every norm call, including pilot scratch loans;
+    // the PCG pilot restores ownership, not numerical contents.
+    let partials = if workspace.parallel_dot_sums.len() >= workspace.parallel_group_means.len() {
+        &mut workspace.parallel_dot_sums
+    } else {
+        &mut workspace.parallel_group_means
+    };
     weighted_column_norms(
         values,
         weights,
         output,
         &mut workspace.value_scales,
         &mut workspace.group_sums,
+        partials,
     )
 }
 

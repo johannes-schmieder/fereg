@@ -553,6 +553,101 @@ impl PpmlScoreWorkspace {
             )?,
         })
     }
+
+    /// FE banks are idle until the certificate's FE pass clears them. Reuse
+    /// their admitted storage without changing a capacity or memory route.
+    /// Waves only schedule fixed leaves: every column merges each leaf's sum
+    /// then correction in ascending row order, including the stack fallback.
+    fn reduce_columns(
+        &mut self,
+        rows: usize,
+        output: &mut [(f64, f64)],
+        leaf: impl Fn(usize, std::ops::Range<usize>) -> Result<(CompensatedSum, CompensatedSum)> + Sync,
+    ) -> Result<()> {
+        use rayon::prelude::*;
+        const WIDTH: usize = crate::ols::MAX_BOUND_NUMERIC_COLUMNS;
+        const LEAF_ROWS: usize = crate::fe::PARALLEL_DOT_CHUNK_ROWS;
+        const MAX_WAVE_LEAVES: usize = 128;
+        debug_assert!(output.len() <= WIDTH);
+        let leaves = rows.div_ceil(LEAF_ROWS);
+        if leaves <= 1 {
+            for (column, target) in output.iter_mut().enumerate() {
+                // Preserve the former scalar total for a single leaf.
+                let (moment, square) = leaf(column, 0..rows)?;
+                *target = (moment.total(), square.total());
+            }
+            return Ok(());
+        }
+        // Each bank stores two components per column/leaf. Halving usable
+        // capacity changes waves only; it never increases admitted storage.
+        let capacity = self.fe_moments.len().min(self.fe_basis_squares.len()) / 2;
+        let tile = output.len().min(capacity.max(1)).max(1);
+        for first in (0..output.len()).step_by(tile) {
+            let width = tile.min(output.len() - first);
+            let mut moments = [CompensatedSum::default(); WIDTH];
+            let mut squares = [CompensatedSum::default(); WIDTH];
+            let wave = (capacity / width).min(MAX_WAVE_LEAVES);
+            if wave == 0 {
+                for index in 0..leaves {
+                    let start = index * LEAF_ROWS;
+                    let (moment, square) = leaf(first, start..(start + LEAF_ROWS).min(rows))?;
+                    for component in moment.components() {
+                        moments[0].add(component);
+                    }
+                    for component in square.components() {
+                        squares[0].add(component);
+                    }
+                }
+            } else {
+                for start in (0..leaves).step_by(wave) {
+                    let count = wave.min(leaves - start);
+                    let cells = count * width;
+                    let first_bank = &mut self.fe_moments[..2 * cells];
+                    let second_bank = &mut self.fe_basis_squares[..2 * cells];
+                    let compute = |(index, (moment, square)): (usize, (&mut [f64], &mut [f64]))| {
+                        let row = (start + index / width) * LEAF_ROWS;
+                        let (first, second) =
+                            leaf(first + index % width, row..(row + LEAF_ROWS).min(rows))?;
+                        moment.copy_from_slice(&first.components());
+                        square.copy_from_slice(&second.components());
+                        Ok(())
+                    };
+                    let work = (count * LEAF_ROWS).min(rows - start * LEAF_ROWS) as u128
+                        * width as u128
+                        * 6;
+                    if crate::parallel::StagePlan::new(work, cells, self.team.threads()).lanes > 1 {
+                        self.team.install(|| {
+                            crate::parallel::stage_try_for_each(
+                                first_bank
+                                    .par_chunks_exact_mut(2)
+                                    .zip(second_bank.par_chunks_exact_mut(2))
+                                    .enumerate(),
+                                work,
+                                compute,
+                            )
+                        })?;
+                    } else {
+                        // A cold serial call must not allocate a Rayon queue.
+                        first_bank
+                            .chunks_exact_mut(2)
+                            .zip(second_bank.chunks_exact_mut(2))
+                            .enumerate()
+                            .try_for_each(compute)?;
+                    }
+                    for index in 0..cells {
+                        for component in 0..2 {
+                            moments[index % width].add(first_bank[2 * index + component]);
+                            squares[index % width].add(second_bank[2 * index + component]);
+                        }
+                    }
+                }
+            }
+            for column in 0..width {
+                output[first + column] = (moments[column].total(), squares[column].total());
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Fit PPML after separation and topology rebasing are complete.
@@ -3644,18 +3739,19 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
             "prepared PPML score-certificate inputs are inconsistent",
         ));
     }
-    let mut residual_scale = CompensatedSum::default();
-    let mut reference_scale = CompensatedSum::default();
-    for row in 0..rows {
-        let residual = outcome[row] - mean[row];
-        let inverse_variance_weight = prior_weights[row] / mean[row];
-        residual_scale.add(inverse_variance_weight * residual * residual);
-        reference_scale.add(inverse_variance_weight * outcome[row] * outcome[row]);
-    }
-    let score_scale = residual_scale
-        .total()
-        .sqrt()
-        .max(reference_scale.total().sqrt());
+    let mut scales = [(0.0, 0.0)];
+    workspace.reduce_columns(rows, &mut scales, |_, range| {
+        let mut residual_scale = CompensatedSum::default();
+        let mut reference_scale = CompensatedSum::default();
+        for row in range {
+            let residual = outcome[row] - mean[row];
+            let inverse_variance_weight = prior_weights[row] / mean[row];
+            residual_scale.add(inverse_variance_weight * residual * residual);
+            reference_scale.add(inverse_variance_weight * outcome[row] * outcome[row]);
+        }
+        Ok((residual_scale, reference_scale))
+    })?;
+    let score_scale = scales[0].0.sqrt().max(scales[0].1.sqrt());
     if !score_scale.is_finite() {
         return Err(numerical_nonconvergence(
             "prepared PPML score scale is not finite",
@@ -3675,84 +3771,61 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
     } else {
         numeric
     };
-    let generated_parallel = numeric.is_none()
-        && rows >= 4096
-        && prepared.fit_model().columns.iter().any(|c| {
-            matches!(
-                c.kind,
-                crate::ols::PreparedOlsColumnKind::Categorical { .. }
-                    | crate::ols::PreparedOlsColumnKind::CategoricalInteraction { .. }
-            )
-        });
-    let generated_parallel = generated_parallel && !FORCE_GENERIC_OUTER_SCORE.get();
+    let generic = FORCE_GENERIC_OUTER_SCORE.get();
     let mut numeric_moments = [(0.0_f64, 0.0_f64); crate::ols::MAX_BOUND_NUMERIC_COLUMNS];
-    if let Some(numeric) = numeric.as_ref() {
-        // Each column keeps the original observation order and arithmetic.
-        // Only independent columns run concurrently; the certificate reduction
-        // below remains in canonical column order. Inputs are original rows,
-        // not previously projected controls or a cached Newton score.
-        workspace.team.install(|| {
-            use rayon::prelude::*;
-            numeric_moments[..numeric.raw_columns().len()]
-                .par_iter_mut()
-                .zip(numeric.raw_columns().par_iter())
-                .for_each(|(target, column)| {
-                    let mut moment = CompensatedSum::default();
-                    let mut square = CompensatedSum::default();
-                    for row in 0..rows {
-                        let basis = column.map_or(1.0, |values| values[row]);
-                        moment.add(prior_weights[row] * (outcome[row] - mean[row]) * basis);
-                        square.add(prior_weights[row] * mean[row] * basis * basis);
-                    }
-                    *target = (moment.total(), square.total());
-                });
-        });
-    }
     for column in 0..prepared.fit_model().columns.len() {
-        // Reuse the numeric path's bounded scalar bank for arbitrary generated
-        // width. Each job reads originals in row order; canonical reduction
-        // order below and every independently formed score remain unchanged.
-        if generated_parallel && column % numeric_moments.len() == 0 {
+        if column % numeric_moments.len() == 0 {
             let width = numeric_moments
                 .len()
                 .min(prepared.fit_model().columns.len() - column);
-            workspace.team.install(|| {
-                use rayon::prelude::*;
-                numeric_moments[..width]
-                    .par_iter_mut()
-                    .enumerate()
-                    .try_for_each(|(local, target)| -> Result<()> {
-                        let mut moment = CompensatedSum::default();
-                        let mut square = CompensatedSum::default();
+            // Independently form each score from original rows, never within
+            // controls or a cached Newton score. All access paths use the same
+            // fixed leaves; this scalar bank remains separate from FE scratch.
+            let result =
+                workspace.reduce_columns(rows, &mut numeric_moments[..width], |local, range| {
+                    let mut moment = CompensatedSum::default();
+                    let mut square = CompensatedSum::default();
+                    let mut add = |row: usize, basis: f64| {
+                        moment.add(prior_weights[row] * (outcome[row] - mean[row]) * basis);
+                        square.add(prior_weights[row] * mean[row] * basis * basis);
+                        Ok(())
+                    };
+                    if let Some(numeric) = numeric.as_ref() {
+                        let source = numeric.raw_columns()[column + local];
+                        for row in range {
+                            add(row, source.map_or(1.0, |values| values[row]))?;
+                        }
+                    } else if generic {
+                        for row in range {
+                            add(row, prepared.fit_column_value(column + local, row)?)?;
+                        }
+                    } else {
                         crate::ols::prepared_fit_view::visit_prepared_column_range(
                             prepared,
                             column + local,
-                            0..rows,
-                            |row, basis| {
-                                moment.add(prior_weights[row] * (outcome[row] - mean[row]) * basis);
-                                square.add(prior_weights[row] * mean[row] * basis * basis);
-                                Ok(())
-                            },
+                            range,
+                            &mut add,
                         )?;
-                        *target = (moment.total(), square.total());
-                        Ok(())
-                    })
-            })?;
-        }
-        let (moment, basis_square) = if generated_parallel {
-            numeric_moments[column % numeric_moments.len()]
-        } else if numeric.is_some() {
-            numeric_moments[column]
-        } else {
-            let mut moment = CompensatedSum::default();
-            let mut basis_square = CompensatedSum::default();
-            for row in 0..rows {
-                let basis = prepared.fit_column_value(column, row)?;
-                moment.add(prior_weights[row] * (outcome[row] - mean[row]) * basis);
-                basis_square.add(prior_weights[row] * mean[row] * basis * basis);
+                    }
+                    Ok((moment, square))
+                });
+            if let Err(error) = result {
+                // Only accessor errors need canonical column/row replay; an
+                // existing numerical failure must never be replaced by it.
+                if matches!(
+                    error.code,
+                    ErrorCode::InvalidArgument | ErrorCode::InvalidData
+                ) {
+                    for failed_column in column..column + width {
+                        for row in 0..rows {
+                            prepared.fit_column_value(failed_column, row)?;
+                        }
+                    }
+                }
+                return Err(error);
             }
-            (moment.total(), basis_square.total())
-        };
+        }
+        let (moment, basis_square) = numeric_moments[column % numeric_moments.len()];
         finite_absolute = finite_absolute.max(moment.abs());
         add_relative_score(
             moment,

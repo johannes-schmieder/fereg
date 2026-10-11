@@ -160,6 +160,8 @@ pub(crate) struct ReusableMapAbsorber {
     norm_sums: Vec<f64>,
     group_sums: Vec<f64>,
     group_corrections: Vec<f64>,
+    // Group columns are overwritten before each basis/certificate use. Norms
+    // may borrow this bank; cached geometry lives in certificate_geometry.
     certificate_columns: Vec<f64>,
     certificate_basis: Vec<f64>,
     certificate_geometry: Option<ReusableCertificateGeometry>,
@@ -889,6 +891,7 @@ impl ReusableMapAbsorber {
             &mut self.reference_norms[..rhs],
             &mut self.norm_scales[..rhs],
             &mut self.norm_sums[..rhs],
+            &mut self.certificate_columns,
         )?;
         // The initial certificate sees this exact input and weight frame.
         self.residual_norms[..rhs].copy_from_slice(&self.reference_norms[..rhs]);
@@ -1157,6 +1160,7 @@ impl ReusableMapAbsorber {
             &mut self.residual_norms[..rhs],
             &mut self.norm_scales[..rhs],
             &mut self.norm_sums[..rhs],
+            &mut self.certificate_columns,
         )?;
         self.group_sums[..rhs].fill(0.0);
         self.group_corrections[..rhs].fill(0.0);
@@ -1239,6 +1243,7 @@ impl ReusableMapAbsorber {
             &mut self.residual_norms[..rhs],
             &mut self.norm_scales[..rhs],
             &mut self.norm_sums[..rhs],
+            &mut self.certificate_columns,
         )?;
         self.certify_with_current_norms(residuals, weights, rhs, tolerance, geometry_valid)
     }
@@ -1729,6 +1734,7 @@ fn reusable_weighted_norms(
     output: &mut [f64],
     scales: &mut [f64],
     sums: &mut [f64],
+    partials: &mut [f64],
 ) -> Result<()> {
     if output.len() != values.ncols()
         || scales.len() != values.ncols()
@@ -1745,6 +1751,7 @@ fn reusable_weighted_norms(
         output,
         scales,
         sums,
+        partials,
         "reusable MAP weighted norm is not finite",
         "reusable MAP weighted norm is not finite",
     )
