@@ -452,10 +452,9 @@ Stata's own workers do not compete with the native team; the caller's setting is
 restored on success, error, and Break.
 {cmd:deterministic} fixes reduction
 partitions and merge order for the same platform, route, and thread count.
-{cmd:solver(auto)} is the default. It selects LSMR for exactly two or three
-categorical intercept effects when fast-memory execution and the complete
-specialized workspace fit the native memory plan; otherwise it selects MAP.
-Absorbed slopes and low-memory execution select MAP. Auto does not select CMG.
+{cmd:solver(auto)} is the default. It selects the MAP-owned projection family.
+Its numerical engine and workspace depend on the fixed-effect design and
+admitted storage. LSMR and CMG remain explicit solver requests.
 {cmd:solver(map)} requests the canonical MAP-owned projection family explicitly.
 For multiple effects with absorbed slopes, this family uses a current-weight
 coefficient-space Schur/CG kernel when its workspace fits. It prepares weighted

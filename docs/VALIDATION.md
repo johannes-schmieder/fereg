@@ -214,3 +214,26 @@ comparison `c4c91585`, retained-file manifest `5603b923`. The complete compariso
 flags input and host changes.
 Separate campaigns are descriptive: they neither replace Mac qualification nor
 establish universal speed or platform claims. No explicit-LSMR arms were run.
+
+### General scaling investigation against fixest
+
+The [detailed investigation](fixest_benchmarks.md#generalization-follow-up)
+uses unchanged runtime `e29164e6`, Linux plugin `57cc9789` and pinned fixest
+0.14.2. Reproducers, frozen synthetic inputs, captures and CPU samples remain
+under `/projectnb/welfgr/fereg/dev/20261011-fixest-general-scaling/`.
+Compact results and full hashes are in the linked report's retained evidence.
+
+| Evidence | Result |
+| --- | --- |
+| Phase/solver panel `8022196`, holdout `8022206`, CPU sample panel `8022215` | All 70 planned fits complete; all three scheduler records failed=0/exit=0, 284/519/90 s. The holdout extends to 16m rows, 4/64 controls, skewed/weak networks and 28 workers. Native captured science agrees across workers; all four original fixed-worker repeats are exact. Four default weak-network reference comparisons remain ineligible; they are not counted as speed wins. |
+| Generalization and memory | Fixed-cardinality, 16m-row OLS takes 20.441/11.758 s at 4/28 workers versus fixest 7.427/6.829; PPML 63.258/54.484 versus 31.992/25.888. Peak sampled native RSS is 6.422/10.614 GiB for OLS/PPML. These are single instrumented fits, not qualification timings. |
+| Root causes | Dense two-FE PPML setup remains about 8.9 s at 4/16 workers. Its serial neighbour-pair assembly grows 8× for 4× rows; annotation attributes 96.33% of builder-local sampled cycle weight to that loop. Dense three-FE OLS MAP controls take 22–24% less time than auto in the sampled panel, while retaining scientific agreement. Runtime and solver defaults are unchanged. |
+| Independent weak-network audit `8022296` | Direct sparse OLS agrees with native slopes within 1.11e-13, RSS within 7.22e-9 and exact graph rank/DoF. Tight fixest convergence plus exact FE counting resolves the OLS discrepancy; two strict PPML arms time out at 120 s and remain unavailable. Audit failed=0/exit=0, 318 s, 1.947G; original launcher `8022280` exited 1 before science and was repaired for four-slot affinity. |
+
+The [compact follow-up evidence](../bench/results/scc-20261011-scaling-diagnostics.json)
+has SHA-256 `3d864721`; its full hash and retained-file manifest hash are in
+the documentation commit. The stale PPML help description of auto selecting
+LSMR was corrected to match the existing MAP-owned policy. `run_tests.sh`,
+the 16 focused help checks, unchanged-production identity and local link checks
+pass; the Mac run reports the expected Linux mock-plugin audit skip. No new
+Mac timing, Windows qualification or release-performance claim is made.

@@ -29,6 +29,7 @@ budgets; licensed Stata itself was capped at four processors.
 | [Observations](../bench/results/scc-20261010-observations.csv) | All 492 planned fit positions, including skipped and failed fits, command/process times and memory sweep counts; byte-identical to the SCC report. |
 | [Inputs and identity](../bench/results/scc-20261010-inputs.json) | Full source/artifact hashes, six compact scheduler records, campaign policy and configurations, dataset topology and numeric-column hashes, validation outcomes. |
 | [Phase diagnostics](../bench/results/scc-20261010-diagnostics.json) | All 32 later probe fits, timings, iteration counts, phase measurements, numerical comparison results, source/input hashes and successful scheduler accounting. |
+| [General scaling diagnostics](../bench/results/scc-20261011-scaling-diagnostics.json) | The 32 holdout fits, six CPU-sampled fits, independent weak-network OLS witness, strict-reference outcomes, including timeouts, and full input/capture/accounting hashes. |
 
 Full raw captures and the previously reviewed 19-page PDF remain on SCC under
 `/projectnb/welfgr/fereg/runs/20261010T192805Z-ols-repair-e29164e6/`.
@@ -48,8 +49,9 @@ visible: default fixest passes 2/11, strict fixest 5/5, reghdfe 1/6 and ppmlhdfe
 1/5. Production eligibility is the declared comparison gate, not a claim that
 every reference has passed every independent oracle.
 
-At the collection cutoff (22:39 EDT), the subsequent holdout `8022206` was
-queued and CPU probe `8022215` held. Neither is included as completed evidence.
+The later holdout `8022206` and CPU probe `8022215` are now complete. Their
+generalization evidence and limits are described below; the original campaign
+and phase-probe files above remain unchanged.
 The existing [validation report](VALIDATION.md#packed-scc-campaign-after-the-ols-repair)
 records the preceding repair and cross-campaign input audit.
 
@@ -138,6 +140,144 @@ phases can nest: do not sum them as a disjoint elapsed-time decomposition.
 The probe uses frozen campaign bytes and the same binary, but some inputs were
 originally timed on other hosts. Its elapsed times must not be interpreted as
 improvements over the full campaign. It contains no candidate implementation.
+
+## Generalization follow-up
+
+The same qualified plugin was tested on 32 new fits: four and 28 workers,
+one and sixteen million rows, four and 64 finite regressors, fixed-cardinality
+three-FE designs, highly skewed group sizes and a weak worker-firm network.
+Job `8022206` completed on `scc-zj4` with failed=0/exit=0, 519 seconds wall
+time and 13.340G whole-job maxvmem. Each input was frozen and checked after
+Stata-format round-trip; reference imports verified every numeric-column hash.
+These are single diagnostic fits, not confidence-bounded performance claims.
+
+| New input | Workers | fereg s | fixest s | fereg / fixest |
+| --- | ---: | ---: | ---: | ---: |
+| OLS, 1m rows, 4 controls, three FEs with 64 levels each | 4 / 28 | 0.862 / 0.671 | 0.601 / 0.593 | 1.43 / 1.13 |
+| OLS, 16m rows, same FE cardinalities and 4 controls | 4 / 28 | 20.441 / 11.758 | 7.427 / 6.829 | 2.75 / 1.72 |
+| PPML, 16m rows, same FE cardinalities and 4 controls | 4 / 28 | 63.258 / 54.484 | 31.992 / 25.888 | 1.98 / 2.10 |
+| OLS, 1m rows, skewed two-FE groups, 4 controls | 4 / 28 | 0.591 / 0.565 | 0.550 / 0.554 | 1.07 / 1.02 |
+| PPML, 1m rows, skewed two-FE groups, 4 controls | 4 / 28 | 3.171 / 2.749 | 2.267 / 2.105 | 1.40 / 1.31 |
+| OLS, 250k rows, three FEs, 64 controls | 4 / 28 | 1.848 / 1.166 | 1.459 / 0.971 | 1.27 / 1.20 |
+
+The twelve comparisons above pass the captured coefficient, covariance,
+objective, retained-count, omission and FE-degree checks. Native cross-worker
+checks pass on all eight new inputs. The four weak-network reference fits are
+excluded from these ratios: their reported FE counts disagree with fereg, and
+default OLS also fails coefficient/objective agreement. Operational completion
+does not turn those disagreements into passing comparisons.
+
+An independent weak-network OLS audit eliminates worker effects, solves a
+grounded sparse firm Schur system with SciPy direct LU, reconstructs row
+residuals, and solves the four-control regression. It finds 282 graph components,
+FE rank 52,218 and residual DoF 947,778. Fereg's largest slope difference is
+1.11e-13 and RSS differs by 7.22e-9; slope covariance and DoF checks pass.
+Maximum reconstructed worker/firm scores are 1.69e-14/8.39e-12. This independent
+double-precision witness supports this case, not a high-precision proof or a
+PPML oracle. Default fixest instead reports 52,499 FE parameters and its OLS
+RSS differs from fereg by 0.1524. Tightening its FE tolerance to 1e-11 removes
+the coefficient/objective disagreement; convergence and FE-counting options
+must be assessed separately. Adding `ssc(K.exact=TRUE)` also restores the OLS
+covariance degrees of freedom and brings its largest covariance difference
+down to 3.45e-18. The raw `fit$nparams` count stays approximate even with that
+option, so the audit retains it separately from the covariance's actual DoF.
+These stricter reference arms ran on another node; their times are not paired
+speed comparisons with the original holdout. Both strict PPML reference arms
+hit the predeclared 120-second process cap and remain unavailable. Audit
+`8022296` completed with failed=0/exit=0, 318 seconds and 1.947G maxvmem;
+that means the bounded audit completed, not that its timed-out references passed.
+The initial launcher `8022280` exited 1 before the oracle because a reused
+whole-node CPU helper rejected its four-slot allocation. The narrow affinity
+selection repair and failed receipt are retained. No estimator changed.
+
+The sixteen-million-row OLS projection takes 12.842/5.173 seconds at four/28
+workers. The regressor solves take three iterations, versus four at one million
+rows, so growing iteration counts do not explain the worse per-row cost.
+The FE cardinalities stay below the 256-slot preconditioner boundary in this
+holdout. Data traversal, intermediate storage and parallel granularity remain
+concrete targets; these observations alone do not distinguish cache capacity,
+bandwidth and address-gather effects. PPML projection takes 26.345/23.286 seconds
+and preparation 8.889/8.587 seconds, explaining why extra cores alone help little.
+Sampled native peak RSS reaches 6.422 GiB for OLS and 10.614 GiB for PPML;
+corresponding reference peaks are 4.796 and 9.446 GiB. Sampling can miss peaks.
+
+## Measured causes and general remedies
+
+Six further fits in job `8022215` collected user-cycle function samples at
+199 Hz with the unchanged plugin. Accounting is failed=0/exit=0, 90 seconds,
+6.757G maxvmem; all six captures and scientific comparisons pass, with no lost
+samples reported. Samples cover the entire process, including import and warm-up,
+whereas the command clock excludes those operations. Percentages are CPU-cycle
+shares, not elapsed-time fractions; inlined work in Rayon symbols must not be
+misreported as thread-scheduler overhead.
+
+**Dense two-FE PPML constructs expensive weighted geometry serially.** In
+[canonical products](../crates/fereg-core/src/ols/canonical_products.rs), the
+builder aggregates FE-pair weights and visits every pair of neighbours of each
+eliminated group. The fully crossed 500-by-500 design requires 62.375 million
+pair visits per frame; 1,000-by-1,000 requires 499.5 million. Thus this setup work
+grows about eightfold when the campaign row count grows fourfold. Solver setup
+increases from 1.260 to 8.875 seconds at four workers, and remains 8.962 seconds
+at sixteen workers on the larger input. These aggregate setup clocks include
+other work and nest within the fit phases.
+
+The builder accounts for 17.04%/16.07% of whole-process sampled user cycles at
+four/sixteen workers. Instruction annotation places 96.33% of its four-worker
+local cycle weight in the neighbour-pair loop, including guarded weight arithmetic and
+four matrix updates. This supports the serial clique-assembly diagnosis. These
+frames report `iterative=1, implicit=0`: iterative solving skips factorization
+but still constructs the dense matrix.
+
+The strongest scalable experiment is a general choice between explicit and
+implicit weighted geometry based on setup plus predicted solve work and memory.
+The existing implicit operator avoids pair expansion; it is currently selected
+by storage pressure. Its admission also needs independent costing, since an
+earlier gate uses the dense-pair work estimate. Another option is matrix-row
+ownership with ordered contributions, parallelizing dense assembly without
+unordered reductions. That retains quadratic neighbour-pair work and needs
+additional admitted edge storage, so it addresses core scaling more than
+asymptotic growth. Both need fresh original-input certificates; implicit
+subtraction and any changed arithmetic require declared scope and cancellation,
+weak-network and unequal-weight witnesses. Removing all nine setup seconds is
+an unattainable upper bound, and even that alone would not erase the entire
+observed PPML gap.
+
+**OLS needs cheaper projection and less repeated row traversal.** On the
+four-million-row dense three-FE case, sampled auto/MAP command times are
+8.024/6.262 seconds at four workers and 5.405/4.095 at sixteen: about 22%/24%
+less time for MAP, with scientific agreement. No default was changed. A general
+choice based on geometry, observed contraction and total work is preferable to
+a blanket MAP switch: the sparse controls require many more iterations.
+The primary four-million-row fit spends 4.889 of 8.356 seconds in projection.
+Samples identify `within` gathers and weighted column norms as substantial
+consumers. Retaining OLS setup alone has a much smaller ceiling: final-residual
+setup is about 0.125 seconds, roughly 1.5% of that fit.
+
+The pinned `within` batch path currently solves separate right-hand sides and
+copies between row and column representations. Shared traversal across bounded
+column tiles, caller-owned outputs, retained immutable FE topology and fewer
+duplicate norm/validation passes are general candidates. Reuse numerical
+weighted geometry only while its weights and accepted frame remain valid;
+PPML changes them. Preserve each certificate's information and original-data
+authority when fusing passes. Changing reduction order is a numerical change,
+not an arithmetic-preserving optimization.
+
+**Some limits are structural, but the whole gap is not.** Stata SPI loading
+stays on its main thread; low-regressor column parallelism cannot occupy all
+cores; sparse gather locality and memory bandwidth eventually constrain both
+packages. Fereg additionally requires independent original-input certificates,
+stable rank/sample decisions and a fresh strict PPML final solve. Fixest uses
+accelerated demeaning and different stopping/counting policies (pinned sources:
+[demeaning](https://github.com/lrberge/fixest/blob/v0.14.2/src/demeaning.cpp),
+[estimation](https://github.com/lrberge/fixest/blob/v0.14.2/R/estimation.R),
+[covariance adjustments](https://github.com/lrberge/fixest/blob/v0.14.2/R/VCOV.R)); it also passes
+the dense comparisons above, so its advantage cannot simply be dismissed as
+inaccuracy. Keep the scientific contract and reduce the work needed to meet it.
+At 100 million rows and 16 regressors, one double-precision regressor bank alone
+is 12.8 GB, before outcomes, FE codes, Stata storage or solver workspaces.
+Bounded column windows and memory traffic matter more there than another small
+thread-count adjustment. No experiment here tests 100 million rows, more than
+28 cores, arbitrary weights, every slope-FE design or every graph.
 
 ## Code areas and safeguards for the next changes
 
