@@ -65,6 +65,16 @@ the default qualification host; his 2026-10-07 request additionally authorizes
 bounded Linux and Windows build/load checks without resuming GitHub workflows.
 No platform claim follows from another host's checks. See
 `docs/development_workflow.md` for entrypoints.
+
+If automated SCC SSH fails authentication, first run plain `ssh scc` in an
+interactive terminal/PTY without `BatchMode=yes`. Complete any login prompts;
+Johannes can approve two-factor authentication from his phone if requested.
+Keep the interactive connection open while retrying automated access. Verify
+with `ssh -o BatchMode=yes scc hostname` (expect the SCC login host, for example
+`scc1`), then retry the original SCC command. A failed batch-mode login alone
+does not establish that SCC access is unavailable. If interactive login also
+fails, report the actual prompt or error and request the needed user action.
+
 Arithmetic-preserving changes with zero exact replay differences and unchanged
 solver signatures may use instruction counts or function-level CPU samples on
 predeclared workloads, plus no wall-time regression beyond max(5%, 1 ms) on the
