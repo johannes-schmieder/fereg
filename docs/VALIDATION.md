@@ -16,6 +16,50 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Performance-plan qualification
 
+### A3 calibration stopped at the sparse work limit, 2026-10-11
+
+The [calibration record](../bench/results/a3-20261011-calibration.json) retains
+all 62 attempted kernel calls and their ordered trace events. The first 36
+passed the independent paired-dyadic projection and direct-Gram witnesses.
+The additional panel completed twenty calls, refused five under unchanged
+admission gates and timed out on its twenty-sixth call. That case has 16,384
+rows, 2,048 levels on each side, degree four and seventeen RHS columns. Explicit
+iterative geometry completed eleven RHS solves of 962–963 iterations before
+the unchanged 30-second subprocess limit. It has no final certificate or
+completed timing ratio. The remaining 154 calls were not attempted; there was
+no retry, fitted rule, holdout or production selector.
+
+The completed small kernels show both sides of the setup/solve tradeoff. On
+the first host, degree-four one-worker direct solving took about 0.0238 seconds
+versus 0.0430 for implicit; degree-64 sixteen-worker implicit took about 0.00895
+versus 0.0144 for direct. These are two traced kernel repetitions, not quiet-Mac
+qualification. The first and additional panels ran on different SCC hosts;
+their wall times were not pooled. The frozen starting-book hash and final
+artifact identities match exactly. Additional raw spectral features explicitly
+remain uncertified diagnostics, not floating-point iteration guarantees.
+
+The first kernel panel used 4.787 application seconds; the additional panel
+used 34.136 seconds including validation. Together with the earlier eight
+whole fits, the shared A3 book totals 253.263 seconds. Corrected plugin-FMA
+builds cost 563 and 429 scheduler seconds, both with accounting 0/0. Kernel
+jobs 8028122 and 8028140 took 17 and 46 scheduler seconds, respectively;
+the latter reports `failed=0`, `exit_status=1`, preserving the timeout.
+No unused call or time allowance authorizes continuing a stopped panel.
+
+The [disposable reproducer](../bench/results/a3-20261011-calibration.patch)
+binds base `57c5cd1e`, the diagnostic source, both frozen kernel generators and
+drivers. It installs the unchanged runtime-selected plugin FMA table while
+the generic core is compiled without global FMA. It is retained research
+material, not an instruction to rerun the stopped campaign.
+
+Tier: decision and diagnostic tooling, unchanged production artifact. The
+independent witnesses above support completed kernel observations only.
+Tolerances, sample, rank, omission, separation, default routes, certificates,
+fresh strict PPML, memory controls and SPI ownership remain unchanged. Existing
+full repository checks for identical E1 production inputs are reused; local
+links, retained-data integrity and production identity are checked at this
+documentation boundary. No new platform or release-performance claim follows.
+
 ### A2/A3/F2 first diagnostic panels, 2026-10-11
 
 The [retained discovery record](../bench/results/fable-20261011-discovery.json)

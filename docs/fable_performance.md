@@ -710,6 +710,18 @@ floating-point certificates. Refusals retain their reasons and completed work;
 budget exhaustion is incomplete, never a successful panel. No holdout is used
 to revise this calibration design or to tune a rule.
 
+The additional calibration stopped at its first timeout, as declared: cell 3,
+explicit iterative geometry, one worker exceeded 30 seconds after completing
+eleven RHS solves of 962–963 iterations each. Twenty additional calls completed
+their independent witnesses, five refused existing admission gates, and 154
+were not attempted. The first 36 kernel calls had completed successfully.
+No coefficients were fitted and no holdout was used. This incomplete grid does
+not support a general production cost/iteration rule; retain the current route.
+The [stopped calibration evidence](VALIDATION.md#a3-calibration-stopped-at-the-sparse-work-limit-2026-10-11)
+preserves costs and a disposable reproducer. Resuming or redesigning this
+calibration requires a new bounded decision rather than continuing the unused
+budget automatically.
+
 ### F1 authorized diagnosis: resolve the comparison before handoff
 
 Retain the current automatic route. The bounded F1 panel did not establish a
