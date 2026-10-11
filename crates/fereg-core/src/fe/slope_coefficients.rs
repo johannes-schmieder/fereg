@@ -75,6 +75,26 @@ fn filled<T: Clone>(n: usize, value: T) -> Result<Vec<T>> {
     result.resize(n, value);
     Ok(result)
 }
+
+fn observation_bank<R: crate::memory::VecReservation>(
+    rows: usize,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let mut result = Vec::new();
+    reservation
+        .reserve_vec(
+            &mut result,
+            rows,
+            "slope coefficient workspace exceeds admission",
+        )
+        .map_err(|_| allocation())?;
+    if result.capacity() != rows {
+        return Err(allocation());
+    }
+    crate::parallel::initialize_reserved_f64_zeros(&mut result, rows);
+    Ok(result)
+}
+
 fn eliminated_effect(design: &FeDesign) -> usize {
     design
         .effects()
@@ -130,6 +150,21 @@ impl SlopeCoefficientWorkspace {
     }
 
     pub(super) fn new(design: &FeDesign, max_rhs: usize, threads: usize) -> Result<Self> {
+        Self::new_with_observation_reservation(
+            design,
+            max_rhs,
+            threads,
+            &mut crate::memory::SystemVecReservation,
+        )
+    }
+
+    fn new_with_observation_reservation<R: crate::memory::VecReservation>(
+        design: &FeDesign,
+        max_rhs: usize,
+        threads: usize,
+        reservation: &mut R,
+    ) -> Result<Self> {
+        let started = crate::diagnostics::phase_timing_enabled().then(std::time::Instant::now);
         let (group_count, coefficients, column_count, workers) =
             dimensions(design, max_rhs, threads)?;
         let mut groups = Vec::new();
@@ -170,7 +205,7 @@ impl SlopeCoefficientWorkspace {
                 residual: filled(coefficients, 0.)?,
                 direction: filled(coefficients, 0.)?,
                 product: filled(coefficients, 0.)?,
-                observations: filled(design.nobs(), 0.)?,
+                observations: observation_bank(design.nobs(), reservation)?,
                 eliminated_scratch: filled(
                     design.effects().get(eliminated).map_or(0, |e| e.channels()),
                     0.,
@@ -180,7 +215,7 @@ impl SlopeCoefficientWorkspace {
                 checks: 0,
             });
         }
-        Ok(Self {
+        let workspace = Self {
             groups,
             workers: workspaces,
             columns: filled(column_count, 0.)?,
@@ -189,7 +224,16 @@ impl SlopeCoefficientWorkspace {
             max_rhs,
             coefficients,
             joint: None,
-        })
+        };
+        if let Some(started) = started {
+            eprintln!(
+                "FEREG_PHASE|coefficient_workspace_install|seconds={:.9}|rows={}|rhs={max_rhs}|workers={workers}|observation_bytes={}",
+                started.elapsed().as_secs_f64(),
+                design.nobs(),
+                design.nobs() as u128 * workers as u128 * 8,
+            );
+        }
+        Ok(workspace)
     }
 
     pub(super) fn elements(&self) -> usize {
@@ -622,5 +666,130 @@ impl Worker {
             square = next;
         }
         Err(invalid())
+    }
+}
+
+#[cfg(test)]
+mod initialization_tests {
+    use super::*;
+    use crate::memory::VecReservation;
+
+    #[derive(Clone, Copy)]
+    enum Fault {
+        Refuse,
+        Undersize,
+        Oversize,
+    }
+
+    #[derive(Default)]
+    struct Reservation {
+        records: Vec<(usize, usize, usize, std::thread::ThreadId)>,
+        fault: Option<(usize, Fault)>,
+    }
+
+    impl VecReservation for Reservation {
+        fn reserve_vec<T>(
+            &mut self,
+            target: &mut Vec<T>,
+            additional: usize,
+            label: &'static str,
+        ) -> Result<()> {
+            let call = self.records.len();
+            self.records
+                .push((additional, 0, 0, std::thread::current().id()));
+            let fault = self.fault.filter(|(index, _)| *index == call);
+            match fault.map(|(_, fault)| fault) {
+                Some(Fault::Refuse) => return Err(FeregError::new(ErrorCode::Allocation, label)),
+                Some(Fault::Undersize) => return Ok(()),
+                Some(Fault::Oversize) => target.try_reserve_exact(additional + 1),
+                None => target.try_reserve_exact(additional),
+            }
+            .map_err(|_| allocation())?;
+            self.records[call].1 = target.as_ptr() as usize;
+            self.records[call].2 = target.capacity();
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn observation_first_touch_preserves_admission_storage_and_reservation_sequence() {
+        let rows = 65_539;
+        let effects = [17, 13]
+            .into_iter()
+            .map(|levels| {
+                super::super::EffectTerm::new(
+                    (0..rows).map(|row| (row % levels) as u32).collect(),
+                    levels,
+                    true,
+                    Vec::new(),
+                )
+                .unwrap()
+            })
+            .collect();
+        let design = FeDesign::new(rows, effects).unwrap();
+        for threads in [1, 4, 16] {
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(threads, true).unwrap())
+                .install(|| {
+                    let coordinator = std::thread::current().id();
+                    for rhs in [1, 3] {
+                        let expected_workers = threads.min(rhs);
+                        let mut reservation = Reservation::default();
+                        let workspace =
+                            SlopeCoefficientWorkspace::new_with_observation_reservation(
+                                &design,
+                                rhs,
+                                threads,
+                                &mut reservation,
+                            )
+                            .unwrap();
+                        assert_eq!(workspace.workers.len(), expected_workers);
+                        assert_eq!(workspace.groups.len(), 30);
+                        assert_eq!(workspace.coefficients, 13);
+                        assert_eq!(workspace.columns.len(), rows * rhs);
+                        assert_eq!(workspace.roots.len(), rows);
+                        assert_eq!(reservation.records.len(), expected_workers);
+                        for (worker, &(count, pointer, capacity, thread)) in
+                            workspace.workers.iter().zip(&reservation.records)
+                        {
+                            assert_eq!(count, rows);
+                            assert_eq!(thread, coordinator);
+                            assert_eq!(worker.observations.as_ptr() as usize, pointer);
+                            assert_eq!(worker.observations.capacity(), capacity);
+                            assert_eq!(worker.observations.len(), rows);
+                            assert_eq!(capacity, rows);
+                            assert!(worker.observations.iter().all(|value| value.to_bits() == 0));
+                            assert_eq!(worker.coefficients.len(), 13);
+                            assert_eq!(worker.eliminated_scratch.len(), 1);
+                        }
+                        drop(workspace);
+                        for failed_call in 0..expected_workers {
+                            for fault in [Fault::Refuse, Fault::Undersize, Fault::Oversize] {
+                                let mut reservation = Reservation {
+                                    fault: Some((failed_call, fault)),
+                                    ..Reservation::default()
+                                };
+                                let error =
+                                    SlopeCoefficientWorkspace::new_with_observation_reservation(
+                                        &design,
+                                        rhs,
+                                        threads,
+                                        &mut reservation,
+                                    )
+                                    .err()
+                                    .expect("observation reservation must fail closed");
+                                assert_eq!(error.code, ErrorCode::Allocation);
+                                assert_eq!(error.message, allocation().message);
+                                assert_eq!(reservation.records.len(), failed_call + 1);
+                                assert!(reservation.records.iter().all(
+                                    |&(count, _, _, thread)| {
+                                        count == rows && thread == coordinator
+                                    }
+                                ));
+                            }
+                        }
+                    }
+                })
+                .unwrap();
+        }
     }
 }

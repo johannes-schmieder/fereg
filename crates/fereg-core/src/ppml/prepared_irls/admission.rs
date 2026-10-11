@@ -546,12 +546,22 @@ impl LinearInstallation {
                 component_checkpoint,
             } => {
                 session.enable_ppml_certificate_geometry(geometry)?;
-                session.enable_ppml_coefficient_solver(
+                let started = crate::diagnostics::phase_timing_enabled().then(Instant::now);
+                let installed = session.enable_ppml_coefficient_solver(
                     effective_threads,
                     workspace,
                     certificate,
                     coupling,
-                )?;
+                );
+                if let Some(started) = started {
+                    eprintln!(
+                        "FEREG_PHASE|ppml_coefficient_install|seconds={:.9}|rows={}|threads={effective_threads}|call_succeeded={}",
+                        started.elapsed().as_secs_f64(),
+                        session.fe_design().nobs(),
+                        usize::from(installed.is_ok()),
+                    );
+                }
+                installed?;
                 if let Some(allowance) = joint {
                     session.enable_ppml_joint_slopes(allowance)?;
                 }

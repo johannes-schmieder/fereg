@@ -673,10 +673,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     crate::interrupt::checkpoint()?;
     frame.validate_for(prepared)?;
     let weights = frame.weights();
-    // FE norm handoffs remain max-normalized, including explicit divisor frames.
-    let reuse_absorption_norms = weights
-        .values
-        .is_none_or(|values| values.iter().copied().fold(0.0_f64, f64::max) == weights.raw_scale);
+    let reuse_absorption_norms = weights.matches_fe_norm_scale();
     let dense = config.execution.mode == PreparedOlsExecutionMode::Fast;
     let retained_fe_parent = if dense {
         retained_fe_budget(prepared, &mut config, perturbations)?

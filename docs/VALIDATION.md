@@ -16,6 +16,297 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Performance-plan qualification
 
+### Performance-plan C/D: qualified combined workstream, 2026-10-11
+
+C/D passes arithmetic-preserving qualification. The
+[compact observations and artifact identities](../bench/results/cd-20261011-performance.json)
+retain the Mac pairs, confidence bounds, Linux instruction counts, campaign
+phase rows and installation follow-up. No tolerance, sample, rank, omission,
+separation, strict PPML solve or independent certificate changed.
+
+The preserving candidate overlaps optional factorization of Rust-owned
+categorical inputs with caller-thread numeric loading, for OLS and PPML.
+Full classification, pruning, topology, DoF and generation ownership remain
+authoritative after loading. A capsule can replace encodings only when original
+rows, source identities and canonical values agree; unsupported layouts or
+insufficient admitted storage decline the optimization. PPML consumes it once
+in generation zero and charges its complete transient capacity. No worker calls
+SPI. Errors, Break and panics join workers before rollback. Cancellation during
+factorization can wait for the current source's factorization; the polling
+interval is not a bound on that inner kernel.
+
+C3 schedules residual reconstruction and completeness scans by rows without
+changing each numerical recurrence. C4 safely initializes already-reserved
+observation banks on the installed team, retaining allocation order and capacity
+checks. D1 can reject the zero-fit shortcut from the first group's unchanged
+certificate arithmetic only inside the independently reviewed finite-error
+bounds; accepting shortcuts and final certificates still run fully. D2 reuses
+certified norms only for the identical matrix and normalization. D3 tiles Schur
+and Gram updates while preserving each element's observation order. The norm
+and score reductions that would reassociate arithmetic remain in E. The C2
+diagnosis below did not support speculative topology changes.
+
+Costs include validation of reused encodings, an extra raw-weight minimum scan
+for the bounded weighted screen, and zero initialization before parallel
+residual reconstruction. Parallel initialization can expose fewer lanes than
+requested when binary splitting encounters awkward sizes. These costs must be
+judged with the combined measurements, not omitted from the performance claim.
+
+The full repository gate passed, including 1,167 active core tests, 173 active
+FFI plugin tests and all ten separately launched allocator audits, independent
+numerical oracles and transaction mocks. The first gate stopped at two Clippy
+style findings (an equivalent boolean form and a test struct initializer);
+neither repair changed arithmetic or scientific policy. Independent review
+found no blocking ownership, error-precedence or certificate-proof issue.
+The universal Mac build passed ABI, dependency and actual-plugin load checks.
+All 73 replay cases passed with zero exact differences against qualified B,
+unchanged solver signatures, scientific witnesses and fixed-worker repeats.
+All 67 licensed fixtures and OLS/PPML public Break probes passed.
+Before commit, all 170 production module token streams and 58 other artifact
+inputs were checked against the frozen measured source and remained identical.
+
+Predeclared measurement bounds: SCC uses four frozen 50k shapes,
+two repetitions per plugin, one worker, 600 seconds per instrumented fit and
+2,700 seconds total; the seven full frozen campaign cases use 1/4 workers,
+two alternating pairs, 120 seconds per fit and 2,400 seconds total. The C2/C4
+AKM installation follow-up uses 1/4/8/16 workers, one warmup and three measured
+pairs, 120 seconds per fit and 900 seconds total. Linux phase and solver traces
+are diagnostic. The quiet Mac uses all twenty regenerated, hash-verified
+standard workloads, including K=20 at eight and sixteen workers, with tracing
+disabled and no competing measured-host work.
+
+Mac timing has two predeclared looks: fifteen paired measurements initially
+(1,800-second budget, 90 seconds per fit), then at most fifteen additional pairs
+for cells whose point estimate passes but upper bound is inconclusive, in the
+same sorted case order (900-second total continuation budget). An initial point
+estimate above its allowance stops all continuation. Each look uses the larger
+of the 98.75th-percentile paired-median bootstrap endpoint (10,000 draws, seed
+739391) and an order-statistic median upper bound with binomial tail at most
+0.0125. The latter uses rank 13 of 15 and rank 22 of 30; it avoids relying on
+nominal small-sample bootstrap coverage. All valid pairs are retained and pooled,
+and the ordinary max(5%, 1 ms) allowance is recomputed from the pooled baseline.
+Artifact/input identities and science fingerprints must agree across blocks.
+Incomplete blocks cannot qualify, and there is no third look. The median-ratio
+inference assumes stationary independent pairs; the estimated-baseline allowance
+retains the existing protocol's limitation. These are per-cell bounds, not
+simultaneous intervals; overall acceptance requires every cell to pass.
+
+Candidate/check SHA-256 identities: source archive
+`bd9a50e3a0c39458abf13f4185b3576a9600a01eb91f268281e8d8072c8c11e5`,
+source patch `237262a329cc496a4d0b85180ffe95f7a079cf448df0c5b1324886c45cba6e94`,
+full gate `0d673bf089eb0235903f7116eadb6d3b19a5f4c1b834701b73e7d04242472f1d`,
+initial style failure
+`16476f2a994366016edf1a5cf2c3fd6b229c7b6618820272535229bad3aa13b8`,
+Mac plugin `4e06dd13bd5d363a197c4d9cd0a0f8cfac99a7f46f815da1b137e0e4666d0d83`,
+Mac exact-replay summary
+`de03f92fe00bbca41c576dce5a8eca1191a1297a495b2565d4f60ef6798f7114`,
+and timing protocol
+`4e411fac43fe84201dba8aad34df2367edf3a6e453dacc1b4003bdb4a6097b1e`.
+
+While SCC queued, a bounded Mac phase probe ran one traced baseline/candidate
+pair on each frozen K=20 OLS case at 1/4/8/16 workers. All eight fits agreed
+exactly. Native seconds were 1.19236/1.02968, 0.56890/0.53278,
+0.46653/0.45228 and 0.44441/0.41507 (baseline/candidate). These single pairs
+are diagnostics, not qualification. The probe summary hash is
+`9fdf772cb0d1a86f96f6c66ee0e6164025c51c71ccb08e3afba481a9f426f378`.
+
+SCC instruction job 8026782 stopped after 16 seconds because its copied driver
+still required an executed `__fma_fma3` symbol in the comparator. Qualified B
+already removed those calls. The corrected driver retains the exact libm build
+ID, matching debug-file hash, validated Valgrind identity, full instruction
+totals and native/scientific comparisons; it allows the expected empty FMA count.
+No runtime artifact changed. The failed summary hash is
+`fa7d0755d9cccf35a7d7a048dc28ccf8dade526d0787fd9afa2177536775b1dd`;
+its log hash is
+`ae3ec5a177430a44a8ae5487d6aa0a81a555efb5d87b552412bab5766953edc1`.
+The bounded retry is job 8026800.
+
+The quiet Mac panel completed all 640 fits in 1,280.54 seconds, below its
+1,800-second bound. Every cell passed the predeclared upper bound; no
+continuation was needed. The host was Mac14,14, Apple M2 Ultra, with 24 logical
+CPUs. There were no competing builds, tests or agent tool workloads. Ordinary
+desktop activity remained visible, including Activity Monitor and sysmond;
+the qualification is not a claim of a bare operating system. All measured
+outputs and solver signatures were exact across baseline, candidate and repeats.
+
+Paired-median native-time changes (negative is faster):
+
+| Frozen Mac family | Workers | Change |
+| --- | --- | --- |
+| OLS, no FE, K=5 | 1 / 4 | +0.10% / −0.21% |
+| OLS, three FE, K=5 | 1 / 4 | −0.04% / −0.72% |
+| OLS, two FE, pweights, K=5 | 1 / 4 | −9.77% / −4.80% |
+| OLS, two FE, unit weights, K=5 | 1 / 4 | −10.56% / −6.86% |
+| OLS, two FE, K=20 | 1 / 4 / 8 / 16 | −13.35% / −8.45% / −5.60% / −5.13% |
+| OLS, wide K=64 | 1 / 4 | −5.36% / −4.24% |
+| OLS, wide K=65 | 1 / 4 | −4.26% / −5.95% |
+| OLS, wide K=129 | 1 / 4 | −3.19% / −2.53% |
+| PPML, two FE, K=5 | 1 / 4 | +0.26% / −0.40% |
+
+These point estimates do not establish every apparent gain. In particular,
+the K=129 four-worker interval includes no improvement. The largest acceptance
+upper bound among cells with the 5% allowance was 1.012652, below 1.05.
+Small gains and the small PPML/no-FE costs remain observations, not failures.
+Mac summary and assessment hashes are respectively
+`82c4fcc86a14e13772b2ec6a5d190ca8e81fda8ad05d5534aacf4715295e2dc3`
+and `e54085e4a599f141aac5263a99d51dd2ad65a35ecdf4a432001f4c020f892249`.
+
+SCC build job 8026744 passed native/profiling ABI and load checks, all eight
+hardware witnesses and the 73-case exact replay. Jobs 8026800, 8026783 and
+8026784 passed with `failed=0`, `exit_status=0`, and scheduler wall times
+472, 1,181 and 315 seconds. They shared `scc-ei3`, Xeon Gold 6226R at 2.90 GHz,
+and overlapped, with 1/4/16 slots and observed affinity exposing 32 logical CPUs.
+These are bounded Linux diagnostics, not quiet timing or Linux qualification.
+
+The four 50k instruction cells had 16 instrumented fits and eight native
+witness fits. Both repetitions and both plugins were exact; executed library
+FMA instruction totals were zero under the validated symbol/tool bindings.
+Mean instruction changes were −8.0583% (AKM PPML), −0.4261% (dense three-FE
+OLS), **+0.0294%** (dense PPML) and **+0.0159%** (sparse PPML). The latter two
+are small measured costs, not reductions or values erased as noise. The
+retained counts include both repetitions; two samples do not establish a
+precise sampling distribution. The panel took 468.56 seconds of its 2,700-second
+budget.
+
+The full campaign panel's 56 fits were exact at 1/4 workers and took 1,168.99
+seconds of 2,400. OLS AKM improved in the observed pairs. Most PPML total times
+were close; dense PPML at four workers had approximately 2.7% (1M) and 2.3%
+(4M) positive costs. Two pairs on a shared host do not support a Linux speedup
+or nonregression claim. All PPML phase rows and OLS rows 18–21 are retained in
+the compact results, including these costs.
+
+The 32-fit installation follow-up compared C/D with the earlier preparation
+snapshot and remained exact. Its medians were:
+
+| Workers | Preparation, before → after (s) | Installation, before → after (s) | Candidate observation bank |
+| ---: | ---: | ---: | ---: |
+| 1 | 0.67691 → 0.67561 | 0.11581 → 0.11586 | 8 MB |
+| 4 | 0.53475 → 0.50528 | 0.12975 → 0.11197 | 32 MB |
+| 8 | 0.50843 → 0.47562 | 0.13927 → 0.11497 | 64 MB |
+| 16 | 0.51789 → 0.47624 | 0.15640 → 0.12048 | 128 MB |
+
+This supports the preparation/installation hypothesis at higher worker counts,
+but the comparison combines C1, D1 and C4 and is not an isolated component
+ablation. Whole-fit PPML changes were much smaller than the subphase reductions.
+Sixteen-worker involuntary context switches varied substantially; all three
+measured observations and their ranges remain in the compact results. The
+panel took 312.38 seconds of its 900-second budget.
+
+Linux hashes: native plugin
+`35b9b214faf160349a4dab2b2cffb31b025bb1c59169d555719a161b17c4d5a5`,
+profiling plugin
+`e2b9b9df0ad1a3b3867e8aa63227c82337a41c0136ef52bdfa646103c6adb297`,
+exact replay
+`7d805fc4e15debfc1ae643d7c0c5b5b8b871fe5419b8e071462484208ac42c07`,
+instruction summary
+`8295fc9aa5e4eb6cf0a2a393420d574c46b20de37e42012af7cca5fe360ed8dd`,
+full campaign summary
+`386ee98ff14ce729d4a4266ff2f931aa62346980c4fda910dd271e05a0aebd15`,
+and installation summary
+`dfd93521cb08bf016b284367c9a9bbc240448c5edb05faba895ec8042d95286d`.
+
+### Performance-plan C/D: preparation diagnosis, 2026-10-11
+
+The first C/D diagnostic snapshot contained C3 residual/sample scheduling,
+D2 norm handoff, D3 ordered tiles and gated preparation clocks. It preceded
+C1 overlap, D1's initial-certificate screen and C4 workspace first-touch.
+Its 73 Mac replay cases had zero exact differences against qualified B,
+including solver signatures, independent science checks and fixed-worker
+repeats. The universal Mac build passed ABI, dependency and actual-plugin
+load checks. The initial core suite passed 1,154 tests (three ignored), and
+Clippy passed; these are snapshot checks, not final C/D qualification.
+
+C2 first measured the preparation interval instead of assuming that the
+plan's earlier worker-count growth persisted. SCC job 8026546 used the frozen
+campaign inputs for AKM, dense and sparse two-FE PPML at one million rows,
+1/4/8/16 workers, one B comparator, one candidate warmup and three candidate
+measurements per cell. Every one of the 60 fits passed its certificates and
+exact comparison, including solver signatures. Both phase and solver tracing
+were enabled. The 120-second per-fit and 1,800-second total bounds held:
+the panel took 980.68 seconds. The shared host was `scc-gd4`, Xeon Gold 6242
+at 2.80 GHz, with 16 SGE slots and observed affinity exposing 32 logical CPUs.
+Build job 8026545 and panel job 8026546 both had `failed=0` and
+`exit_status=0`. These are descriptive Linux phase measurements, not quiet-Mac
+qualification.
+
+Median preparation seconds (RRUNTIME row 28), with the observed range across
+three measured repetitions in parentheses:
+
+| Frozen PPML case | 1 worker | 4 workers | 8 workers | 16 workers |
+| --- | ---: | ---: | ---: | ---: |
+| AKM 1M | 0.67560 (0.67530–0.67726) | 0.53218 (0.53154–0.53607) | 0.50815 (0.50425–0.51582) | 0.52153 (0.51199–0.54837) |
+| Dense 1M | 0.62779 (0.62698–0.62916) | 0.48013 (0.47073–0.48105) | 0.44747 (0.44391–0.44766) | 0.45815 (0.45552–0.46162) |
+| Sparse 1M | 0.64470 (0.64408–0.64761) | 0.50394 (0.48610–0.50459) | 0.47362 (0.47257–0.47670) | 0.48691 (0.48370–0.49475) |
+
+Preparation spans input classification, initial model-generation construction
+and IRLS setup; it is not just factorization/topology. On AKM, their respective
+one-worker medians were 0.06481, 0.14424 and 0.46657 seconds. The nested
+`shared_model` clock includes materialization, factorization, memberships,
+topology and cluster binding; it fell from 0.13251 to 0.10719 seconds at sixteen
+workers. IRLS workspace setup fell from 0.17291 to 0.05624 seconds and the
+initial independent score from 0.08309 to 0.01724 seconds. Session installation
+instead rose from 0.11657 to 0.15697 seconds; dense and sparse installation
+also rose, from 0.08479 to 0.11610 and 0.10944 to 0.15101 seconds. Thus the
+broad one-to-sixteen growth hypothesis was not reproduced. The modest
+eight-to-sixteen increase points to installation, not factorization, as the
+next bounded experiment. Three samples and shared-host scheduling do not
+support a precise speedup claim. Sparse total fit time also rose at sixteen
+workers despite the relatively small preparation change; that cost is not
+explained away by this diagnosis.
+
+Inspection found a distinct serial initialization of an N-row observation
+scratch bank for each admitted coefficient worker. At N=1M and seventeen
+right-hand sides its nominal size rises from 8 MB to 128 MB between one and
+sixteen workers. This is a hypothesis for part of installation's growth,
+not proof of causality. The next first-touch comparison must report actual
+workspace admission, installation time and total preparation time, while
+retaining reservation order, capacities and exact scientific outputs.
+
+The snapshot's gated clocks do not take timestamps when phase tracing is
+disabled. Its four diagnostic lines separate inclusive and nested intervals;
+the initial-generation envelope must not be added to its own subphases.
+Hashes (SHA-256): source archive
+`f2c31d5d19a6660619c922566835814ece632dbe3c780f2ac350d0108135510c`,
+source patch `cedb853403ca72b269fec8384847ccd0f44a0c5470550f2421c78fcac6b5be68`,
+Mac plugin `fac5196b442e82d67a98a45316603053c6f8423d5b7980bd4f648cdd36dd9850`,
+Linux plugin `ee5b2a8bc6f8a725c82fcaddbf563d806117eaf133e9f61d8dcdca3407ed125f`,
+Mac exact-replay summary
+`114ae77ae2982b5986449624d0ed8635d06c7366561911adbaaa31160c9d92a6`,
+and completed SCC panel summary
+`f2d08c8c3c4ea3db77e56a750fd9aff7945eb1de6f8aa08fe6c18574c0e61162`.
+The Linux build job 8026545 also ran all eight hardware-FMA witnesses,
+including the new ordered upper-triangle tiles.
+
+During witness development, the first core compile required an explicit `f64`
+annotation in a test vector; no runtime repair was needed. A standalone plugin
+test invocation also omitted the prescribed serial test runner and failed seven
+process-global allocator assertions. Repeating it with `--test-threads=1` passed
+all 171 active tests (ten isolated audits ignored at this focused stage). The
+full repository gate remains responsible for running those audits in separate
+processes. These invocation failures are not scientific passes or hidden
+tolerance changes. The concurrent-run log hash is
+`982f5c138b444975de40f186662c102ef821d9b98b27ec62a2a0d7e96efa9b1f`;
+the serial focused-run hash is
+`d391c4665088fab438addbb93f84fefa54b0584c62aa491bdf14a2a9ce9b8c5c`.
+
+The new PPML encoding-reuse witnesses also exposed test-fixture defects before
+qualification. The exact-plan comparison initially gave only one arm a clone,
+which changed its measured spare capacity; both arms now clone identically.
+The direct-core allocation witness initially omitted the existing allocator
+observation baseline, so the observed peak included the fake SPI map and other
+preexisting test owners. Beginning the observation before each fit fixes that
+boundary; the required reduction of at least two allocation events per cached
+source then passed. Ordinary Rust equality also rejected identical NaNs in
+omitted standard errors and z statistics; these fields require IEEE-bit
+comparison. None of these repairs changes runtime arithmetic or a tolerance.
+The separation comparison also excludes observed method durations, as the
+replay contract requires, while comparing every decision and certificate.
+The failed core capacity and inference runs have hashes
+`1c4e423aa199c5e4e1b6788c600fd4db1cd71dcc0ca94382de40fe9960da93c1`
+and `284bd858c6a47abb9869cdc93866fe6632e379ad8ee02fdcef401163279bb305`;
+the failed plugin baseline run has hash
+`45f1244d946b2d6fc589b6435908bd8468b01c03f7967f7fd8c2fcb010fcee7a`.
+
 ### Performance-plan A1: failed frame-adoption experiment, 2026-10-11
 
 A1 did not meet its conditional acceptance criteria and is not in the runtime.
@@ -153,7 +444,6 @@ Artifact and witness SHA-256 identities:
 | PPML public Break probe | `f5aada3ea8df93ebc394b615bb07031d17c06bbe03831bcbf2f1ade2b1a2f3fb` |
 | Mac traced pair summary | `aff7895d5fbafeb3b9b5de2154830de7727f67a555d486f75fe94145b4de98ef` |
 | SCC 48-fit summary | `7dd95b5aa3d6422050c12733c4bfafcfe28657e7fbdb90b1146978309c843c0d` |
-
 
 ### Performance-plan B: ordered FMA coverage, 2026-10-11
 

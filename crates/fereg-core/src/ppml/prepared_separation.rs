@@ -493,6 +493,7 @@ fn prepare_initial_generation(
     Duration,
     Option<u64>,
 )> {
+    let trace_enabled = crate::diagnostics::phase_timing_enabled();
     let started = Instant::now();
     begin_phase_allocation(phase_allocation_probe, PpmlPhase::Preparation);
     let coordinator = PreparedSeparationCoordinator::new(owner);
@@ -501,6 +502,16 @@ fn prepare_initial_generation(
     let initial_preparation_peak =
         end_phase_allocation(phase_allocation_probe, PpmlPhase::Preparation);
     let initial_preparation_elapsed = started.elapsed();
+    if trace_enabled {
+        // Inclusive of generation-zero construction and coordinator setup;
+        // nested generation diagnostics are subdivisions, not additional time.
+        eprintln!(
+            "FEREG_PHASE|ppml_prepare_initial_generation|seconds={:.9}|succeeded={}|team_workers={}",
+            initial_preparation_elapsed.as_secs_f64(),
+            usize::from(coordinator.is_ok()),
+            super::preparation_trace::PreparationTrace::team_workers(),
+        );
+    }
     let coordinator = coordinator?;
     Ok((
         coordinator,

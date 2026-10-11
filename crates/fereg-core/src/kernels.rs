@@ -268,12 +268,34 @@ pub fn weighted_upper_rank_one(
     gram: &mut [f64],
 ) {
     let dimension = row.len();
-    for (local_left, destination) in rhs.iter_mut().enumerate() {
+    if rhs.is_empty() {
+        return;
+    }
+    let gram = &mut gram[..rhs.len() * dimension];
+    for (local_left, (destination, gram_row)) in rhs
+        .iter_mut()
+        .zip(gram.chunks_exact_mut(dimension))
+        .enumerate()
+    {
         let left = left_start + local_left;
         let weighted_left = weight * row[left];
         *destination = weighted_left.mul_add(response, *destination);
-        let gram_row = &mut gram[local_left * dimension..(local_left + 1) * dimension];
-        for (entry, &right_value) in gram_row[left..].iter_mut().zip(&row[left..]) {
+        // Entries are independent; their observation order and single FMA are
+        // unchanged. A fixed tile exposes the vector width without padding or
+        // touching the lower triangle.
+        const TILE: usize = 4;
+        let end = (dimension - left) / TILE * TILE;
+        let (entries, entry_tail) = gram_row[left..].split_at_mut(end);
+        let (right_values, right_tail) = row[left..].split_at(end);
+        for (entries, right_values) in entries
+            .chunks_exact_mut(TILE)
+            .zip(right_values.chunks_exact(TILE))
+        {
+            for right in 0..TILE {
+                entries[right] = weighted_left.mul_add(right_values[right], entries[right]);
+            }
+        }
+        for (entry, &right_value) in entry_tail.iter_mut().zip(right_tail) {
             *entry = weighted_left.mul_add(right_value, *entry);
         }
     }
@@ -467,6 +489,63 @@ pub(crate) use dispatch;
 #[cfg(test)]
 mod tests {
     use std::hint::black_box;
+
+    #[test]
+    fn upper_rank_one_tiles_match_exact_dyadic_gram_and_partition_bounds() {
+        for dimension in [1, 2, 3, 4, 7, 8, 9, 17, 51, 64, 65, 129] {
+            for left_start in [0, dimension / 2, dimension - 1] {
+                let count = dimension - left_start;
+                let mut rhs = vec![-0.0; count];
+                // A spare row and the lower triangle must remain untouched.
+                let mut gram = vec![7.0; (count + 1) * dimension];
+                for (weight, sign) in [(0.5, 1.0), (1.0, -1.0), (2.0, 1.0), (0.5, -1.0)] {
+                    let row: Vec<_> = (1..=dimension).map(|j| sign * j as f64).collect();
+                    super::weighted_upper_rank_one(
+                        weight,
+                        &row,
+                        2.0 * sign,
+                        left_start,
+                        &mut rhs,
+                        &mut gram,
+                    );
+                }
+                // All products and sums are dyadic and exactly representable:
+                // sum(w)=4, X_j=sign*(j+1), y=sign*2.
+                for local in 0..count {
+                    let left = left_start + local;
+                    assert_eq!(rhs[local].to_bits(), (8.0 * (left + 1) as f64).to_bits());
+                    for right in 0..dimension {
+                        let expected = if right >= left {
+                            7.0 + 4.0 * ((left + 1) * (right + 1)) as f64
+                        } else {
+                            7.0
+                        };
+                        assert_eq!(
+                            gram[local * dimension + right].to_bits(),
+                            expected.to_bits()
+                        );
+                    }
+                }
+                assert!(gram[count * dimension..].iter().all(|&v| v == 7.0));
+            }
+        }
+        super::weighted_upper_rank_one(1.0, &[], 0.0, 0, &mut [], &mut []);
+    }
+
+    #[test]
+    fn upper_rank_one_retains_exact_fma_rounding() {
+        for [a, b, c, expected, _, _] in EXACT_FMA_VECTORS {
+            let mut row = [f64::from_bits(b); 5];
+            row[0] = f64::from_bits(a);
+            let mut rhs = [f64::from_bits(c)];
+            let mut gram = [f64::from_bits(c); 5];
+            super::weighted_upper_rank_one(1.0, &row, row[1], 0, &mut rhs, &mut gram);
+            assert_eq!(rhs[0].to_bits(), expected);
+            for entry in &gram[1..] {
+                assert_eq!(entry.to_bits(), expected);
+            }
+        }
+    }
 
     // Each row is [a, b, c, R53(a*b+c), R53(R53(a*b)+c), R53(R64(a*b+c))]
     // in IEEE binary64 bits. R53/R64 use round-to-nearest, ties-to-even;

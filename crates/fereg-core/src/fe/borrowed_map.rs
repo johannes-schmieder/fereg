@@ -1707,7 +1707,11 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         let solve_started = Instant::now();
         let initial_certification_started = Instant::now();
         let initial = self.with_pilot_group_scratch(rhs_count, |design, workspace| {
-            certify_initial(design, weights, &values, config.tolerance, workspace)
+            if initial_group_rejects(design, weights, &values, config.tolerance, workspace)? {
+                Ok(None)
+            } else {
+                certify_initial(design, weights, &values, config.tolerance, workspace).map(Some)
+            }
         })?;
         // A global norm can hide projection drift in a small-mass component.
         // The same component scaling used by the checkpoint recurrence must
@@ -1721,7 +1725,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         } else {
             None
         };
-        let balanced_initial_passed = if initial.passed {
+        let balanced_initial_passed = if initial.as_ref().is_some_and(|initial| initial.passed) {
             if let Some(scaled) = balanced_weights.as_deref() {
                 let scaled =
                     validate_weights(BorrowedMapWeights::Provided(scaled), values.nrows())?;
@@ -1757,7 +1761,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             false
         };
         let initial_certification_seconds = initial_certification_started.elapsed().as_secs_f64();
-        if initial.passed && balanced_initial_passed {
+        if let Some(initial) = initial.filter(|initial| initial.passed && balanced_initial_passed) {
             return certified_result(
                 values,
                 SolveStopReason::Certified,
@@ -2778,6 +2782,38 @@ fn subtract_two_fe_left_projection(
     }
 }
 
+/// Independent RHS coordinates share a fixed-width tile, but each coordinate
+/// still receives one separately rounded product and add/subtract per row.
+#[inline(always)]
+fn schur_row_update<const SUBTRACT: bool>(weight: f64, source: &[f64], output: &mut [f64]) {
+    debug_assert_eq!(source.len(), output.len());
+    const TILE: usize = 4;
+    let end = source.len() / TILE * TILE;
+    let (source_tiles, source_tail) = source.split_at(end);
+    let (output_tiles, output_tail) = output.split_at_mut(end);
+    for (source, output) in source_tiles
+        .chunks_exact(TILE)
+        .zip(output_tiles.chunks_exact_mut(TILE))
+    {
+        for rhs in 0..TILE {
+            let product = weight * source[rhs];
+            if SUBTRACT {
+                output[rhs] -= product;
+            } else {
+                output[rhs] += product;
+            }
+        }
+    }
+    for (&source, output) in source_tail.iter().zip(output_tail) {
+        let product = weight * source;
+        if SUBTRACT {
+            *output -= product;
+        } else {
+            *output += product;
+        }
+    }
+}
+
 impl TwoFePcgWorkspace {
     fn apply_schur(
         &mut self,
@@ -2810,30 +2846,43 @@ impl TwoFePcgWorkspace {
             let weight = weights.normalized(row);
             let left_level = left_codes[row] as usize;
             let right_level = right_codes[row] as usize;
-            for rhs in 0..rhs_count {
-                self.left_work[left_level * stride + rhs] +=
-                    weight * self.direction[right_level * stride + rhs];
+            schur_row_update::<false>(
+                weight,
+                &self.direction[right_level * stride..right_level * stride + rhs_count],
+                &mut self.left_work[left_level * stride..left_level * stride + rhs_count],
+            );
+        }
+        for (work, &denominator) in self
+            .left_work
+            .chunks_exact_mut(stride)
+            .zip(&self.left_weights)
+        {
+            for value in &mut work[..rhs_count] {
+                *value /= denominator;
             }
         }
-        for (level, &denominator) in self.left_weights.iter().enumerate() {
-            for rhs in 0..rhs_count {
-                self.left_work[level * stride + rhs] /= denominator;
-            }
-        }
-        for (level, &right_weight) in self.right_weights.iter().enumerate() {
-            for rhs in 0..rhs_count {
-                let index = level * stride + rhs;
-                self.operator[index] = right_weight * self.direction[index];
+        for ((operator, direction), &right_weight) in self
+            .operator
+            .chunks_exact_mut(stride)
+            .zip(self.direction.chunks_exact(stride))
+            .zip(&self.right_weights)
+        {
+            for (value, &term) in operator[..rhs_count]
+                .iter_mut()
+                .zip(&direction[..rhs_count])
+            {
+                *value = right_weight * term;
             }
         }
         for row in 0..design.nobs() {
             let weight = weights.normalized(row);
             let left_level = left_codes[row] as usize;
             let right_level = right_codes[row] as usize;
-            for rhs in 0..rhs_count {
-                self.operator[right_level * stride + rhs] -=
-                    weight * self.left_work[left_level * stride + rhs];
-            }
+            schur_row_update::<true>(
+                weight,
+                &self.left_work[left_level * stride..left_level * stride + rhs_count],
+                &mut self.operator[right_level * stride..right_level * stride + rhs_count],
+            );
         }
         if self.operator.iter().any(|value| !value.is_finite()) {
             Err(invalid_data(
@@ -2867,9 +2916,8 @@ impl TwoFePcgWorkspace {
             left.level_index().membership_offsets(),
             |first_level, work| {
                 work.fill(0.0);
-                for local_level in 0..work.len() / stride {
+                for (local_level, level_work) in work.chunks_exact_mut(stride).enumerate() {
                     let level = first_level + local_level;
-                    let level_work = &mut work[local_level * stride..(local_level + 1) * stride];
                     for &row in left.level_index().checked_members(level)? {
                         if row >= design.nobs() {
                             return Err(invalid_argument(
@@ -2880,9 +2928,7 @@ impl TwoFePcgWorkspace {
                         let right_level = right_codes[row] as usize;
                         let source =
                             &direction[right_level * stride..right_level * stride + rhs_count];
-                        for (value, &term) in level_work[..rhs_count].iter_mut().zip(source) {
-                            *value += weight * term;
-                        }
+                        schur_row_update::<false>(weight, source, &mut level_work[..rhs_count]);
                     }
                     for value in &mut level_work[..rhs_count] {
                         *value /= left_weights[level];
@@ -2903,10 +2949,8 @@ impl TwoFePcgWorkspace {
             right.level_index().membership_offsets(),
             |first_level, operator| {
                 operator.fill(0.0);
-                for local_level in 0..operator.len() / stride {
+                for (local_level, level_operator) in operator.chunks_exact_mut(stride).enumerate() {
                     let level = first_level + local_level;
-                    let level_operator =
-                        &mut operator[local_level * stride..(local_level + 1) * stride];
                     let source = &direction[level * stride..level * stride + rhs_count];
                     for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
                         *value = right_weights[level] * term;
@@ -2921,9 +2965,7 @@ impl TwoFePcgWorkspace {
                         let left_level = left_codes[row] as usize;
                         let source =
                             &left_work[left_level * stride..left_level * stride + rhs_count];
-                        for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
-                            *value -= weight * term;
-                        }
+                        schur_row_update::<true>(weight, source, &mut level_operator[..rhs_count]);
                     }
                 }
                 Ok(())
@@ -6383,6 +6425,129 @@ fn certify_initial(
     certify_with_current_norms(design, weights, residuals, tolerance, workspace)
 }
 
+/// Reject only the reusable owner's zero-iteration shortcut. Its caller has
+/// just computed these norms from the unchanged matrix. The unit and bounded
+/// weighted finite-error proofs are documented in ARCHITECTURE.md; their
+/// conservative exponent windows are not convergence tolerances.
+fn initial_group_rejects(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    tolerance: f64,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<bool> {
+    let unit = weights.values.is_none();
+    if (unit && weights.raw_scale != 1.0)
+        || design.effects().is_empty()
+        || workspace.reference_norms.len() != values.ncols()
+        || workspace
+            .reference_norms
+            .iter()
+            .any(|&norm| !(unit && norm == 0.0 || (1e-20..=1e20).contains(&norm)))
+        || design
+            .total_term_slots()
+            .checked_mul(values.ncols())
+            .is_none()
+    {
+        return Ok(false);
+    }
+    if let Some(raw) = weights.values {
+        const LIMIT: f64 = 4_294_967_296.0;
+        if !(1.0 / LIMIT..=LIMIT).contains(&weights.raw_scale)
+            || values.nrows() as u128 > (1_u128 << 32)
+        {
+            return Ok(false);
+        }
+        // Positive division by the fixed scale is monotone. This one raw
+        // minimum scan bounds every computed normalized weight without a bank.
+        // A weighted zero norm is excluded above: sqrt(q)*x can underflow even
+        // within this window while a later group mean remains nonzero.
+        let minimum = raw.iter().copied().fold(weights.raw_scale, f64::min);
+        if minimum / weights.raw_scale < 1.0 / LIMIT {
+            return Ok(false);
+        }
+    }
+    // Validated immutable design owners establish nonempty, in-range
+    // memberships; set_rhs_count establishes all per-RHS workspace lengths.
+    // Evaluate this while the pilot scratch loan is active, exactly where the
+    // original certificate selects its serial/narrow/wide group arithmetic.
+    let parallel = certificate_parallel_workspaces_fit(design, values, workspace)?;
+    workspace
+        .residual_norms
+        .copy_from_slice(&workspace.reference_norms);
+    workspace
+        .rhs_scales
+        .copy_from_slice(&workspace.reference_norms);
+    workspace.rhs_relative_infinity_norms.fill(0.0);
+    let effect = &design.effects()[0];
+    let mut group_weight = 0.0;
+    if parallel && values.ncols() > PARALLEL_GROUP_MAX_RHS {
+        for (tile, means) in workspace
+            .group_sums
+            .chunks_mut(PARALLEL_GROUP_MAX_RHS)
+            .enumerate()
+        {
+            let start = tile * PARALLEL_GROUP_MAX_RHS;
+            group_weight = fused_group_means_by_value(
+                effect,
+                0,
+                weights,
+                values.nrows(),
+                means,
+                |row, rhs| values[(row, start + rhs)],
+            )?;
+        }
+    } else {
+        // All RHSs must share the original whole-group fallback decision.
+        group_weight = group_means(
+            effect.level_index().checked_members(0)?,
+            weights,
+            values,
+            workspace,
+            GroupMeanRoute::OnePass,
+        )?;
+    }
+    let mut fold = CertificateFold::default();
+    fold.level(
+        group_weight,
+        &workspace.group_sums,
+        &workspace.rhs_scales,
+        &mut workspace.rhs_relative_infinity_norms,
+        weights.raw_scale,
+    )?;
+    let rejected = fold.relative_infinity_norm > tolerance;
+    if rejected && crate::diagnostics::solver_trace_enabled() {
+        eprintln!(
+            "FEREG_SOLVER_TRACE|phase=initial_certificate_screen|rejected=1|weighted={}|rows={}|rhs={}|parallel={}|wide={}",
+            usize::from(!unit), values.nrows(), values.ncols(), usize::from(parallel),
+            usize::from(parallel && values.ncols() > PARALLEL_GROUP_MAX_RHS),
+        );
+    }
+    Ok(rejected)
+}
+
+fn certificate_parallel_workspaces_fit(
+    design: &BorrowedInterceptFeDesign<'_>,
+    residuals: &DenseMatrix,
+    workspace: &BorrowedMapWorkspace,
+) -> Result<bool> {
+    let maximum_levels = design
+        .effects()
+        .iter()
+        .map(crate::fe::BorrowedInterceptEffect::n_levels)
+        .max()
+        .unwrap_or(0);
+    let maximum_mean_count = maximum_levels
+        .checked_mul(residuals.ncols())
+        .ok_or_else(|| allocation("borrowed MAP certificate dimensions overflow"))?;
+    Ok(!design.effects().is_empty()
+        && crate::parallel::StagePlan::current(residuals.as_slice().len() as u128, maximum_levels)
+            .lanes
+            > 1
+        && workspace.parallel_group_weights.len() >= maximum_levels
+        && workspace.parallel_group_means.len() >= maximum_mean_count)
+}
+
 fn certify_with_current_norms(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
@@ -6399,22 +6564,7 @@ fn certify_with_current_norms(
         workspace.rhs_scales[rhs] = scale;
     }
 
-    let maximum_levels = design
-        .effects()
-        .iter()
-        .map(crate::fe::BorrowedInterceptEffect::n_levels)
-        .max()
-        .unwrap_or(0);
-    let maximum_mean_count = maximum_levels
-        .checked_mul(residuals.ncols())
-        .ok_or_else(|| allocation("borrowed MAP certificate dimensions overflow"))?;
-    if !design.effects().is_empty()
-        && crate::parallel::StagePlan::current(residuals.as_slice().len() as u128, maximum_levels)
-            .lanes
-            > 1
-        && workspace.parallel_group_weights.len() >= maximum_levels
-        && workspace.parallel_group_means.len() >= maximum_mean_count
-    {
+    if certificate_parallel_workspaces_fit(design, residuals, workspace)? {
         return certify_effects_parallel(design, weights, residuals, tolerance, workspace);
     }
 
@@ -7408,7 +7558,7 @@ fn reserved_zeros<R: WorkspaceReservation>(
             "borrowed MAP workspace reservation returned insufficient capacity",
         ));
     }
-    output.resize(elements, 0.0);
+    crate::parallel::initialize_reserved_f64_zeros(&mut output, elements);
     Ok(output)
 }
 

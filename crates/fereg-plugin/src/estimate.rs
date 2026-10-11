@@ -38,7 +38,7 @@ use fereg_core::ols::{
     CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput, LoadedOlsRows, OlsClusterTermV1,
     OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig,
     PreparedOlsColumnKind, PreparedOlsExecutionConfig, PreparedOlsExecutionMode,
-    PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
+    PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsLoadHint, PreparedOlsRobustConfig,
     PreparedOlsUnadjustedConfig,
 };
 use fereg_core::protocol::{
@@ -248,26 +248,8 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let input_team = (action.candidate_all && numeric_pipeline_effects_supported(&action.request))
         .then(|| ThreadTeam::new(action.fit.execution.threads));
     let mut loaded_rhs = None;
-    let rhs_budget = if action.fit.execution.mode != PreparedOlsExecutionMode::Fast {
-        0
-    } else {
-        action
-            .memory_plan
-            .usable_bytes
-            .map_or(usize::MAX, |usable| {
-                usize::try_from(
-                    usable
-                        .saturating_sub(action.metadata_owner_bytes)
-                        .saturating_sub(
-                            action
-                                .preparation_memory
-                                .preparation_peak_bytes(0)
-                                .unwrap_or(u128::MAX),
-                        ),
-                )
-                .unwrap_or(usize::MAX)
-            })
-    };
+    let mut load_hint = None;
+    let rhs_budget = action.loaded_rhs_budget();
     let loaded = load_ols_input_with_team(
         &action.request,
         action.candidate_all,
@@ -279,6 +261,7 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         rhs_budget,
         action.loaded_rhs_layout,
         false,
+        Some(&mut load_hint),
     )?;
     action.loaded_fit_workspace_bytes = loaded_rhs
         .as_ref()
@@ -318,7 +301,7 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 }
             }
             let (prepared, loaded_rows) =
-                prepare_ols_pipeline(loaded, loaded_rhs, numerical_action, categorical)?;
+                prepare_ols_pipeline(loaded, loaded_rhs, load_hint, numerical_action, categorical)?;
             numerical_action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
@@ -501,6 +484,25 @@ fn prepare_loaded_ols<T: Send>(
 }
 
 impl EstimateAction {
+    /// Admit the optional packed RHS beside the existing preparation peak.
+    fn loaded_rhs_budget(&self) -> usize {
+        if self.fit.execution.mode != PreparedOlsExecutionMode::Fast {
+            return 0;
+        }
+        self.memory_plan.usable_bytes.map_or(usize::MAX, |usable| {
+            usize::try_from(
+                usable
+                    .saturating_sub(self.metadata_owner_bytes)
+                    .saturating_sub(
+                        self.preparation_memory
+                            .preparation_peak_bytes(0)
+                            .unwrap_or(u128::MAX),
+                    ),
+            )
+            .unwrap_or(usize::MAX)
+        })
+    }
+
     /// One stage composition supplies conservative coverage and expected heap.
     /// Admission parents are retained even when the expected finite and FE
     /// frames are sequential and therefore have smaller overlapping parents.
@@ -1192,6 +1194,7 @@ pub(crate) fn load_ols_input(
         0,
         None,
         false,
+        None,
     )
 }
 
@@ -1211,6 +1214,7 @@ pub(crate) fn load_preparation_input(
         0,
         None,
         true,
+        None,
     )
 }
 
@@ -1280,6 +1284,7 @@ pub(crate) fn load_ols_input_with_action_team(
     memory: &mut InputMemory,
     spi: &mut dyn SpiApi,
     threads: fereg_core::ThreadConfig,
+    load_hint: Option<&mut Option<PreparedOlsLoadHint>>,
 ) -> Result<LoadedOlsInput> {
     let team = (candidate_all && numeric_pipeline_effects_supported(request))
         .then(|| ThreadTeam::new(threads));
@@ -1294,6 +1299,7 @@ pub(crate) fn load_ols_input_with_action_team(
         0,
         None,
         false,
+        load_hint,
     )
 }
 
@@ -1337,6 +1343,7 @@ fn load_ols_input_with_team(
     rhs_budget: usize,
     compiled_rhs_layout: Option<crate::numeric_pipeline::NumericRhsLayout>,
     candidate_first: bool,
+    load_hint: Option<&mut Option<PreparedOlsLoadHint>>,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
     let mut candidate = reserved_filled(n, candidate_all, "OLS candidate marker")?;
@@ -1501,16 +1508,33 @@ fn load_ols_input_with_team(
                 missing.push(&mut column.missing);
             }
         }
-        crate::numeric_pipeline::try_read_reserved(
-            spi,
-            &positions,
-            n,
-            &mut columns,
-            &mut missing,
-            team.expect("deferred input has a team"),
-            memory,
-            rhs.as_mut().zip(rhs_layout),
-        )?
+        let prepared_read = if let Some(hint) = load_hint {
+            crate::numeric_pipeline::try_read_prepared_reserved(
+                spi,
+                request,
+                &positions,
+                n,
+                &mut columns,
+                &mut missing,
+                team.expect("deferred input has a team"),
+                memory,
+                rhs.as_mut().zip(rhs_layout),
+                hint,
+            )?
+        } else {
+            false
+        };
+        prepared_read
+            || crate::numeric_pipeline::try_read_reserved(
+                spi,
+                &positions,
+                n,
+                &mut columns,
+                &mut missing,
+                team.expect("deferred input has a team"),
+                memory,
+                rhs.as_mut().zip(rhs_layout),
+            )?
     } else {
         false
     };

@@ -15,6 +15,7 @@ use crate::fe::FeSolverKind;
 use crate::ols::{
     LinearSessionPhaseAllocatorProbe, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
     OlsRequestV1, PreparedOlsColumnKind, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    PreparedOlsLoadHint,
 };
 use crate::options::MemoryMode;
 use crate::ppml_separation::{
@@ -23,6 +24,7 @@ use crate::ppml_separation::{
 };
 
 use super::memory::{begin_phase_allocation, end_phase_allocation, plan_ppml_memory_with_probe};
+use super::preparation_trace::PreparationTrace;
 use super::prepared::{
     classify_ppml_numeric_data, select_ppml_numeric_data, PpmlNumericClassification,
     PpmlNumericPreparationInput, PreparedPpmlAdjustmentKind,
@@ -153,6 +155,27 @@ pub struct LoadedPpmlInput {
     pub adjustment_kind: PreparedPpmlAdjustmentKind,
 }
 
+/// One call's raw input and optional transient categorical preparation work.
+/// Existing raw-input callers need no capsule or additional allocation.
+/// Embeddings exclude the capsule's exact owned capacity from any permanent
+/// embedding charge; core admits it only within the existing preparation bank.
+pub struct PpmlInput {
+    loaded: LoadedPpmlInput,
+    load_hint: Option<PreparedOlsLoadHint>,
+}
+
+impl From<LoadedPpmlInput> for PpmlInput {
+    fn from(loaded: LoadedPpmlInput) -> Self {
+        (loaded, None).into()
+    }
+}
+
+impl From<(LoadedPpmlInput, Option<PreparedOlsLoadHint>)> for PpmlInput {
+    fn from((loaded, load_hint): (LoadedPpmlInput, Option<PreparedOlsLoadHint>)) -> Self {
+        Self { loaded, load_hint }
+    }
+}
+
 /// Caller-thread safe points exposed by the interruptible PPML entry.
 ///
 /// The callback is deliberately accepted without `Send` or `Sync`: embeddings
@@ -195,9 +218,13 @@ pub fn fit_prepared_ppml(
 /// boundaries. The probe is never moved into a worker closure.
 pub fn fit_prepared_ppml_interruptible(
     mut request: PreparedPpmlRequestV1,
-    loaded: LoadedPpmlInput,
+    input: impl Into<PpmlInput>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<CertifiedPpmlResult> {
+    let PpmlInput {
+        loaded,
+        mut load_hint,
+    } = input.into();
     validate_request(&request, &loaded)?;
     let solver_plan = PpmlSolverPlan::new(request.solver);
     request.memory.require_fast_route = matches!(
@@ -234,14 +261,17 @@ pub fn fit_prepared_ppml_interruptible(
     // allocator phase begins only after admission, so a rejected route still
     // proves that no fit workspace was opened.
     let preparation_clock = PpmlPhaseClock::start();
+    let mut preparation_trace = PreparationTrace::new();
 
     // Build only borrowed column views and model-sized role metadata, then
     // classify the numeric sample without constructing any observation-sized
     // compact column. Route selection is frozen at this boundary (SPEC §1).
     let numeric_input = borrowed_numeric_input(&request, &loaded)?;
     let numeric_view = numeric_input.as_input();
+    let views_seconds = preparation_trace.lap();
     let classified = classify_ppml_numeric_data(&numeric_view)?;
     let numeric_classification = classified.classification();
+    let classification_seconds = preparation_trace.lap();
     let mut preflight_dimensions = conservative_preflight_dimensions_from_classification(
         &request,
         numeric_classification,
@@ -257,6 +287,11 @@ pub fn fit_prepared_ppml_interruptible(
         requested_saved_channel_count,
     )?;
     preflight_dimensions.metadata.input_owner_bytes = raw_input_owner_bytes(&request, &loaded);
+    load_hint = admit_load_hint(
+        load_hint,
+        numeric_classification,
+        preflight_dimensions.metadata,
+    );
     // This scalar refinement reads raw outcome values only after the row
     // classifier has resolved domain/error precedence. Excluded nonpositive
     // rows can only retain the wider envelope. No sample state is allocated.
@@ -273,12 +308,14 @@ pub fn fit_prepared_ppml_interruptible(
         all_positive,
         request.separation.drop_singletons,
     );
+    let shape_seconds = preparation_trace.lap();
     refine_preflight_fe_bounds(
         &request.ols,
         &loaded.ols,
         &mut preflight_dimensions,
         interrupt,
     )?;
+    let fe_bounds_seconds = preparation_trace.lap();
     if let Some(bias) = request.bias {
         preflight_dimensions.metadata.bias_workspace_bytes = super::bias::memory_bound(
             preflight_dimensions.observations,
@@ -292,9 +329,11 @@ pub fn fit_prepared_ppml_interruptible(
         request.memory,
         request.memory_preflight_probe,
     )?;
+    let admission_seconds = preparation_trace.lap();
 
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
     let numeric = select_ppml_numeric_data(classified)?;
+    let selection_seconds = preparation_trace.lap();
     // Selection is bound to the classified input. Until topology exists,
     // retain the same proven FE envelope rather than widening it back to N.
     let prepared_dimensions = preflight_dimensions;
@@ -332,14 +371,25 @@ pub fn fit_prepared_ppml_interruptible(
         numeric,
         loaded.adjustment,
     )?
+    .with_load_hint(load_hint)
     .with_generation_memory_bound(
         preliminary_plan
             .selected_inventory()
             .prepared_generation_bytes,
     );
+    let owner_seconds = preparation_trace.lap();
     let preparation_elapsed = preparation_clock.elapsed();
     let preparation_peak =
         end_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
+    if preparation_trace.enabled() {
+        eprintln!(
+            "FEREG_PHASE|ppml_prepare_input|views={views_seconds:.9}|classification={classification_seconds:.9}|shape={shape_seconds:.9}|fe_bounds={fe_bounds_seconds:.9}|admission={admission_seconds:.9}|selection={selection_seconds:.9}|owner={owner_seconds:.9}|total={:.9}|rows={}|active_rows={}|team_workers={}",
+            preparation_elapsed.as_secs_f64(),
+            numeric_classification.n_original,
+            numeric_classification.n_active,
+            PreparationTrace::team_workers(),
+        );
+    }
     let ppml = request.ppml;
     let separation = request.separation;
     let output_request = request.output;
@@ -1272,6 +1322,22 @@ fn conservative_preflight_dimensions_from_classification(
         publication_matrix_cells: request.output.publication_matrix_cells,
         threads: request.linear.execution.threads.resolved(),
         allocation_audit_enabled: request.allocation_snapshot_probe.is_some(),
+    })
+}
+
+fn admit_load_hint(
+    hint: Option<PreparedOlsLoadHint>,
+    classified: PpmlNumericClassification,
+    metadata: super::PpmlMetadataMemory,
+) -> Option<PreparedOlsLoadHint> {
+    // Before generation-zero topology, its separately charged row bank is
+    // unallocated. The capsule fits only there, beside selection/numeric
+    // copies; adoption consumes it before ordinary topology construction.
+    hint.filter(|hint| {
+        classified.n_active == classified.n_original
+            && (classified.n_active as u128)
+                .checked_mul(metadata.generation_bytes_per_row)
+                .is_some_and(|bound| hint.adoption_workspace_bytes() <= bound)
     })
 }
 

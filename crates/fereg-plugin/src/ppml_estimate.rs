@@ -42,6 +42,7 @@ use fereg_core::metadata::{
 use fereg_core::ols::{
     LoadedNumericColumn, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputRole, OlsRequestV1,
     PreparedOlsExecutionConfig, PreparedOlsExecutionMode, PreparedOlsFitConfig,
+    PreparedOlsLoadHint,
 };
 #[cfg(test)]
 use fereg_core::ppml::fit_prepared_ppml;
@@ -354,6 +355,7 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         action.metadata_capacity_bytes() + action.transport_parent_bytes,
         action.memory.usable_bytes(),
     )?;
+    let mut load_hint = None;
     let loaded = crate::estimate::load_ols_input_with_action_team(
         &action.request,
         action.candidate_all,
@@ -361,10 +363,23 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &mut input_memory,
         spi,
         action.linear.execution.threads,
+        Some(&mut load_hint),
     )?;
+    // Continue charging the surviving capsule through adjustment/bias reads.
+    // Their arrays are already included in loading_memory's parent forecast.
+    let hint_bytes = load_hint
+        .as_ref()
+        .map_or(0, PreparedOlsLoadHint::owned_bytes);
+    let hint_bytes = if input_memory.retain(hint_bytes).is_ok() {
+        hint_bytes
+    } else {
+        drop(load_hint.take());
+        0
+    };
     let adjustment = load_adjustment(action.adjustment, &loaded.candidate, spi)?;
     let bias_units = load_optional_numeric(action.bias_unit, &loaded.candidate, spi)?;
     spi.check_interrupted()?;
+    input_memory.release(hint_bytes)?;
     let phase_probe = ppml_phase_allocator_probe(action.allocation_audit);
     let mut prepared_request = prepared_ppml_request(&action, phase_probe)?;
     let prepared_input = LoadedPpmlInput {
@@ -394,9 +409,8 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             // to every phase instead of guessing allocator overhead.
             match (action_probe, action_start) {
                 (Some(probe), Some(start)) => {
-                    let before_fit = probe();
                     let embedding_resident_bytes =
-                        before_fit.current_bytes.saturating_sub(start.current_bytes);
+                        embedding_without_load_hint(probe, start.current_bytes, &mut load_hint);
                     prepared_request.memory.embedding_resident_bytes =
                         u128::from(embedding_resident_bytes)
                             .checked_add(transport_parent_bytes)
@@ -414,7 +428,7 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ));
                 }
             }
-            fit_prepared_ppml_interruptible(prepared_request, prepared_input, poll)
+            fit_prepared_ppml_interruptible(prepared_request, (prepared_input, load_hint), poll)
         },
         &mut relay_ppml_interrupts(spi, action.injection, &action.break_marker_token),
     )?;
@@ -458,6 +472,25 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         },
     )?;
     store_runtime_and_complete(&action, &shadow, &memory_report, spi)
+}
+
+fn embedding_without_load_hint(
+    probe: fereg_core::ppml::PpmlAllocatorSnapshotProbe,
+    start_bytes: u64,
+    hint: &mut Option<PreparedOlsLoadHint>,
+) -> u64 {
+    let observed = probe().current_bytes.saturating_sub(start_bytes);
+    let bytes = hint.as_ref().map_or(0, PreparedOlsLoadHint::owned_bytes);
+    if let Some(resident) = u64::try_from(bytes)
+        .ok()
+        .and_then(|bytes| observed.checked_sub(bytes))
+    {
+        return resident;
+    }
+    // The capsule is transient, never a lifetime embedding parent. If the
+    // observation cannot identify its complete capacity, drop and resnapshot.
+    drop(hint.take());
+    probe().current_bytes.saturating_sub(start_bytes)
 }
 
 // Relay core safe points to Stata's calling thread; the developer native-Break

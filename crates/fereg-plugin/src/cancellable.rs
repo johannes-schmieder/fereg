@@ -58,6 +58,77 @@ impl Drop for ResetCancellation {
     }
 }
 
+struct CancelOnUnwind;
+
+impl Drop for CancelOnUnwind {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            interrupt::request_cancellation();
+        }
+    }
+}
+
+/// Overlap optional Rust-owned preparation with caller-thread loading. Loading
+/// errors dominate the optional result; the remaining tail keeps polling SPI.
+pub(crate) fn while_loading<T: Send, U>(
+    team: ThreadTeam,
+    work: impl FnOnce() -> T + Send,
+    load: impl FnOnce(&mut dyn crate::input::SpiApi) -> Result<U>,
+    spi: &mut dyn crate::input::SpiApi,
+) -> Result<(U, T)> {
+    interrupt::reset_cancellation();
+    let _reset = ResetCancellation;
+    let shared = Shared {
+        state: Mutex::new(State {
+            output: None,
+            finished: false,
+        }),
+        changed: Condvar::new(),
+    };
+    let mut interruption = None;
+    let (loaded, output) = team.in_place_scope(|scope| {
+        // A caller panic must request cancellation before the scope joins.
+        let _cancel = CancelOnUnwind;
+        scope.spawn(|_| {
+            let _finished = Finished(&shared);
+            let output = work();
+            shared.lock().output = Some(Ok(output));
+        });
+        let loaded = load(spi);
+        if loaded.is_err() {
+            interrupt::request_cancellation();
+        }
+        let mut state = shared.lock();
+        while !state.finished {
+            let (next, timeout) = shared
+                .changed
+                .wait_timeout(state, POLL_INTERVAL)
+                .unwrap_or_else(|error| error.into_inner());
+            state = next;
+            if timeout.timed_out() && !state.finished && loaded.is_ok() && interruption.is_none() {
+                drop(state);
+                if let Err(error) = spi.check_interrupted() {
+                    interrupt::request_cancellation();
+                    interruption = Some(error);
+                }
+                state = shared.lock();
+            }
+        }
+        (loaded, state.output.take())
+    })?;
+    let loaded = loaded?;
+    if let Some(error) = interruption {
+        return Err(error);
+    }
+    let output = output.ok_or_else(|| {
+        FeregError::new(
+            ErrorCode::Internal,
+            "input preparation worker returned no result",
+        )
+    })??;
+    Ok((loaded, output))
+}
+
 pub(crate) fn run<T: Send>(
     team: ThreadTeam,
     work: impl FnOnce() -> Result<T> + Send,

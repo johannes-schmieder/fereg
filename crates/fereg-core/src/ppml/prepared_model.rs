@@ -11,6 +11,7 @@ use crate::linalg::neumaier_add;
 use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Arc;
 
+use super::preparation_trace::PreparationTrace;
 #[cfg(test)]
 use super::prepared::PreparedPpmlNumericData;
 use super::prepared::{
@@ -21,7 +22,10 @@ use crate::data::{
     DropReason, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightKind,
 };
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
-use crate::ols::prepared_categorical_data::{prepare_ppml_categorical_ols_data, PreparedOlsData};
+use crate::ols::prepared_categorical_data::{
+    prepare_ppml_categorical_ols_data, prepare_ppml_categorical_ols_data_with_load_hint,
+    PreparedOlsData,
+};
 use crate::ols::{
     prepare_ppml_categorical_ols_clustered_data, LoadedNumericColumn, LoadedOlsInput,
     OlsClusterTermV1, OlsClusteredRequestV1, OlsRequestV1, PreparedOlsClusterDesign,
@@ -246,6 +250,7 @@ impl PreparedPpmlModelGeneration {
 /// rebuild swaps in a newly allocated mask, constructs a wholly owned result,
 /// and restores the baseline mask before returning either success or error.
 pub(crate) struct PreparedPpmlModelOwner {
+    load_hint: Option<crate::ols::PreparedOlsLoadHint>,
     generation_memory_bound: Option<u128>,
     request: OlsClusteredRequestV1,
     loaded: LoadedOlsInput,
@@ -264,6 +269,11 @@ pub(crate) struct PreparedPpmlModelOwner {
 }
 
 impl PreparedPpmlModelOwner {
+    pub(crate) fn with_load_hint(mut self, hint: Option<crate::ols::PreparedOlsLoadHint>) -> Self {
+        self.load_hint = hint;
+        self
+    }
+
     pub(crate) fn with_generation_memory_bound(mut self, bytes: u128) -> Self {
         self.generation_memory_bound = Some(bytes);
         self
@@ -364,6 +374,7 @@ impl PreparedPpmlModelOwner {
         // singleton policy as part of its certified fixed point.
         request.keep_singletons = true;
         Ok(Self {
+            load_hint: None,
             generation_memory_bound: None,
             request: OlsClusteredRequestV1 {
                 ols: request,
@@ -381,7 +392,10 @@ impl PreparedPpmlModelOwner {
         })
     }
 
-    fn build_prepared_model(&self) -> Result<PreparedPpmlModel> {
+    fn build_prepared_model(
+        &self,
+        hint: Option<crate::ols::PreparedOlsLoadHint>,
+    ) -> Result<PreparedPpmlModel> {
         // PPML always enters through the categorical preparation seam, even
         // with no absorbed effects.  The plain OLS view represents its
         // structural intercept as a virtual one-level absorbed effect; that
@@ -390,6 +404,14 @@ impl PreparedPpmlModelOwner {
         // categorical topology instead leaves `_cons` in the finite design,
         // while using the identical production view once effects are present.
         if self.request.clusters.is_empty() {
+            if hint.is_some() {
+                return Ok(Arc::new(prepare_ppml_categorical_ols_data_with_load_hint(
+                    &self.request.ols,
+                    &self.loaded,
+                    &[],
+                    hint,
+                )?));
+            }
             Ok(Arc::new(prepare_ppml_categorical_ols_data(
                 &self.request.ols,
                 &self.loaded,
@@ -399,6 +421,7 @@ impl PreparedPpmlModelOwner {
             Ok(Arc::new(prepare_ppml_categorical_ols_clustered_data(
                 &self.request,
                 &self.loaded,
+                hint,
             )?))
         }
     }
@@ -588,6 +611,10 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
         retained_original_rows: &[usize],
         generation: usize,
     ) -> Result<Self::Generation> {
+        let mut preparation_trace = PreparationTrace::new();
+        // A failed first attempt consumes the optional work as well. No later
+        // separation generation can inherit even an equal-shaped capsule.
+        let load_hint = self.load_hint.take().filter(|_| generation == 0);
         validate_retained_subset(
             retained_original_rows,
             &self.candidate_original_rows,
@@ -602,9 +629,15 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
             self.stage_generation_probability_weights(retained_original_rows)?;
         let probability_scale = probability_stage.as_ref().map(|stage| stage.scale);
         let baseline_candidate = std::mem::replace(&mut self.loaded.candidate, staged_candidate);
-        let prepared_result = self.build_prepared_model();
+        let staging_seconds = preparation_trace.lap();
+        // The shared OLS boundary includes sample materialization, source
+        // factorization, membership, finalized topology and optional clusters.
+        // Keep it an inclusive aggregate rather than relabeling its internals.
+        let prepared_result = self.build_prepared_model(load_hint);
+        let shared_model_seconds = preparation_trace.lap();
         self.loaded.candidate = baseline_candidate;
         self.restore_generation_probability_weights(probability_stage);
+        let restoration_seconds = preparation_trace.lap();
         let prepared = prepared_result?;
 
         validate_prepared_generation(&prepared, retained_original_rows)?;
@@ -651,6 +684,15 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
             adjustment_report: self.adjustment_report,
         };
         prepared.validate_memory_bound(self.generation_memory_bound)?;
+        let products_seconds = preparation_trace.lap();
+        if preparation_trace.enabled() {
+            eprintln!(
+                "FEREG_PHASE|ppml_prepare_generation|generation={generation}|staging={staging_seconds:.9}|shared_model={shared_model_seconds:.9}|restoration={restoration_seconds:.9}|products={products_seconds:.9}|rows={}|cluster_dimensions={}|team_workers={}",
+                retained_original_rows.len(),
+                self.request.clusters.len(),
+                PreparationTrace::team_workers(),
+            );
+        }
         Ok(prepared)
     }
 }
@@ -1048,6 +1090,56 @@ mod tests {
         fn into_owner(self, numeric: PreparedPpmlNumericData) -> PreparedPpmlModelOwner {
             PreparedPpmlModelOwner::new(self.request, self.clusters, self.loaded, numeric)
                 .expect("prepared owner")
+        }
+    }
+
+    #[test]
+    fn load_hint_is_consumed_once_and_preserves_pweight_rollback() {
+        for first_generation in [0, 1] {
+            let mut fixture = categorical_clustered_fixture();
+            fixture.loaded.candidate.fill(true);
+            let ids = crate::ols::PreparedOlsLoadHint::source_ids(&fixture.request).unwrap();
+            let hint = crate::ols::PreparedOlsLoadHint::prepare(
+                ids.iter().map(|id| {
+                    let (_, column) = fixture
+                        .loaded
+                        .numeric_sources
+                        .iter()
+                        .find(|(source, _)| source == id)
+                        .unwrap();
+                    (*id, column.values.as_slice(), column.missing.as_slice())
+                }),
+                fixture.loaded.candidate.len(),
+                u128::MAX,
+            )
+            .unwrap();
+            let numeric = fixture.prepare_numeric();
+            let mut owner = fixture.into_owner(numeric).with_load_hint(Some(hint));
+            let baseline_candidate = owner.loaded.candidate.clone();
+            let baseline_weights = owner.loaded.probability_weight.clone();
+            let rows = owner.candidate_original_rows.to_vec();
+            owner.generation_memory_bound = Some(1);
+            assert_eq!(
+                owner
+                    .rebuild_generation(&rows, first_generation)
+                    .unwrap_err()
+                    .code,
+                ErrorCode::Allocation
+            );
+            assert!(owner.load_hint.is_none());
+            assert_eq!(owner.loaded.candidate, baseline_candidate);
+            assert_eq!(owner.loaded.probability_weight, baseline_weights);
+            owner.generation_memory_bound = None;
+            let retry = owner.rebuild_generation(&rows, 0).unwrap();
+            let later = owner.rebuild_generation(&rows, 1).unwrap();
+            assert_eq!(retry.prepared().as_ref(), later.prepared().as_ref());
+            assert_eq!(retry.prior_weights(), later.prior_weights());
+            let subset = owner
+                .rebuild_generation(&rows[..rows.len() - 2], 2)
+                .unwrap();
+            assert_eq!(subset.original_rows(), &rows[..rows.len() - 2]);
+            assert_eq!(owner.loaded.candidate, baseline_candidate);
+            assert_eq!(owner.loaded.probability_weight, baseline_weights);
         }
     }
 

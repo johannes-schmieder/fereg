@@ -736,6 +736,12 @@ struct NormalizedWeights<'a> {
 }
 
 impl<'a> NormalizedWeights<'a> {
+    // FE norm handoffs are max-normalized, including explicit divisor frames.
+    fn matches_fe_norm_scale(self) -> bool {
+        self.values
+            .is_none_or(|values| values.iter().copied().fold(0.0_f64, f64::max) == self.raw_scale)
+    }
+
     fn root(self, row: usize) -> Result<f64> {
         let root = self.value(row)?.sqrt();
         if root.is_finite() && root > 0.0 {
@@ -1473,30 +1479,45 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
     for (column, norm) in reference_norms.iter_mut().enumerate() {
         *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
     }
-    let absorbed = cmg.project_ols(weights.borrowed(), raw, config.absorb, false, false)?;
+    let mut absorbed = cmg.project_ols(weights.borrowed(), raw, config.absorb, false, false)?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared projection initial absorption did not certify",
         ));
     }
-    let (within, absorption_report, _) = absorbed.into_full_parts();
-    let mut within_norms = reserved_filled(
-        reservation,
-        generated_columns + 1,
-        0.0_f64,
-        "unable to reserve prepared projection within norms",
-    )?;
-    if rayon::current_num_threads() == 1 {
-        fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
+    // The optional FE handoff certifies this exact returned matrix with the
+    // same ordered norm recurrence. Explicit divisor frames can use a
+    // different normalization and must retain the established recomputation.
+    let cached_norms = if weights.matches_fe_norm_scale() {
+        absorbed.take_residual_norms()
     } else {
-        crate::parallel::stage_try_for_each(
-            within_norms.par_iter_mut().enumerate(),
-            within.nrows() as u128 * within.ncols() as u128,
-            |(column, norm)| -> Result<()> {
-                *norm = weighted_matrix_column_norm(&within, column, weights)?;
-                Ok(())
-            },
-        )?;
+        Vec::new()
+    };
+    let (within, absorption_report, _) = absorbed.into_full_parts();
+    let has_cached_norms = !cached_norms.is_empty();
+    let mut within_norms = if has_cached_norms {
+        cached_norms
+    } else {
+        reserved_filled(
+            reservation,
+            generated_columns + 1,
+            0.0_f64,
+            "unable to reserve prepared projection within norms",
+        )?
+    };
+    if !has_cached_norms {
+        if rayon::current_num_threads() == 1 {
+            fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
+        } else {
+            crate::parallel::stage_try_for_each(
+                within_norms.par_iter_mut().enumerate(),
+                within.nrows() as u128 * within.ncols() as u128,
+                |(column, norm)| -> Result<()> {
+                    *norm = weighted_matrix_column_norm(&within, column, weights)?;
+                    Ok(())
+                },
+            )?;
+        }
     }
     let within_outcome_norm = within_norms[0];
     let score_norms = &within_norms[1..];

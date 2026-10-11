@@ -577,11 +577,27 @@ pub fn prepare_model_owned(
     loaded: LoadedOlsInput,
     categorical: bool,
 ) -> Result<PreparedOlsData> {
+    prepare_model_owned_with_load_hint(request, clusters, loaded, categorical, None)
+}
+
+pub fn prepare_model_owned_with_load_hint(
+    request: &super::OlsRequestV1,
+    clusters: &[OlsClusterTermV1],
+    loaded: LoadedOlsInput,
+    categorical: bool,
+    hint: Option<super::PreparedOlsLoadHint>,
+) -> Result<PreparedOlsData> {
     prepare_model_with(request, clusters, |sources| {
-        if categorical {
-            crate::ols::prepared_categorical_data::prepare_categorical_ols_data_owned_with_cluster_sources(
-                request, loaded, sources,
+        if hint.is_some() {
+            crate::ols::prepared_categorical_data::prepare_owned_with_load_hint(
+                request,
+                loaded,
+                sources,
+                categorical,
+                hint,
             )
+        } else if categorical {
+            crate::ols::prepared_categorical_data::prepare_categorical_ols_data_owned_with_cluster_sources(request, loaded, sources)
         } else {
             prepare_ols_data_owned_with_cluster_sources(request, loaded, sources)
         }

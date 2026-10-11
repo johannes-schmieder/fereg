@@ -83,6 +83,43 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 #[cfg(feature = "ffi")]
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[test]
+fn embedding_snapshot_excludes_exact_hint_capacity_or_discards_it() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static CURRENT: AtomicU64 = AtomicU64::new(0);
+    fn probe() -> fereg_core::ppml::PpmlAllocatorSnapshot {
+        fereg_core::ppml::PpmlAllocatorSnapshot {
+            current_bytes: CURRENT.load(Ordering::Relaxed),
+            ..Default::default()
+        }
+    }
+    let make = || {
+        PreparedOlsLoadHint::prepare(
+            [(
+                SourceId::new(1).unwrap(),
+                &[2., 1., 2.][..],
+                &[false; 3][..],
+            )]
+            .into_iter(),
+            3,
+            u128::MAX,
+        )
+        .unwrap()
+    };
+    let mut hint = Some(make());
+    let capacity = u64::try_from(hint.as_ref().unwrap().owned_bytes()).unwrap();
+    CURRENT.store(1_024 + capacity, Ordering::Relaxed);
+    assert_eq!(embedding_without_load_hint(probe, 24, &mut hint), 1_000);
+    assert!(hint.is_some());
+    CURRENT.store(24 + capacity - 1, Ordering::Relaxed);
+    assert_eq!(
+        embedding_without_load_hint(probe, 24, &mut hint),
+        capacity - 1
+    );
+    assert!(hint.is_none());
+    assert_eq!(embedding_without_load_hint(probe, u64::MAX, &mut hint), 0);
+}
+
 #[cfg(feature = "ffi")]
 static EARLY_PREFLIGHT_CURRENT_BYTES: AtomicU64 = AtomicU64::new(0);
 #[cfg(feature = "ffi")]
@@ -120,6 +157,9 @@ struct FakeSpi {
     numeric: BTreeMap<(u32, usize), (f64, bool)>,
     matrices: BTreeMap<String, Vec<Vec<f64>>>,
     reads: usize,
+    numeric_rows_enabled: bool,
+    row_reads: usize,
+    first_numeric_width: usize,
     stores: Vec<StoreEvent>,
     record_stores: bool,
     store_calls: usize,
@@ -146,6 +186,29 @@ impl FakeSpi {
 }
 
 impl SpiApi for FakeSpi {
+    fn supports_numeric_rows(&self) -> bool {
+        self.numeric_rows_enabled
+    }
+
+    fn read_numeric_rows(
+        &mut self,
+        variables: &[u32],
+        first: usize,
+        output: &mut [f64],
+    ) -> Result<f64> {
+        if self.row_reads == 0 {
+            self.first_numeric_width = variables.len();
+        }
+        self.row_reads += 1;
+        for (row, values) in output.chunks_exact_mut(variables.len()).enumerate() {
+            for (value, variable) in values.iter_mut().zip(variables) {
+                let (number, missing) = self.read_numeric(*variable, first + row)?;
+                *value = if missing { 1e100 } else { number };
+            }
+        }
+        Ok(1e100)
+    }
+
     fn read_estimate_bundle(&mut self, buffer: &mut [u8]) -> Result<()> {
         self.macro_reads += 1;
         let value = self
@@ -520,6 +583,9 @@ fn fixture() -> (Vec<String>, FakeSpi) {
             numeric,
             matrices: std::mem::take(&mut matrices),
             reads: 0,
+            numeric_rows_enabled: false,
+            row_reads: 0,
+            first_numeric_width: 0,
             // Keep the post-snapshot RUNTIME/COMPLETE tail allocation-free
             // in the mock just as it is through the production SPI bridge.
             stores: Vec::with_capacity(1_024),
@@ -2082,6 +2148,133 @@ fn hidden_ppml_action_carries_factor_absorb_cluster_weight_and_saved_fe() {
 
 #[cfg(feature = "ffi")]
 #[test]
+fn numeric_loader_hint_is_adopted_by_ppml_generation_zero() {
+    const CHILD_ENV: &str = "FEREG_PPML_LOAD_HINT_ADOPTION_CHILD";
+    if std::env::var_os(CHILD_ENV).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD_ENV, "1")
+            .arg("ppml_estimate::tests::numeric_loader_hint_is_adopted_by_ppml_generation_zero")
+            .args(["--exact", "--nocapture", "--test-threads=1"])
+            .status()
+            .expect("isolated PPML load-hint adoption check");
+        assert!(status.success());
+        return;
+    }
+    static PREPARATION_ENDS: AtomicU64 = AtomicU64::new(0);
+    static GENERATION_EVENTS: AtomicU64 = AtomicU64::new(u64::MAX);
+    fn probe(phase: PpmlPhase, event: fereg_core::ppml::PpmlPhaseAllocatorEvent) -> u64 {
+        let peak = crate::ffi::ppml_phase_allocation_probe(phase, event);
+        if phase == PpmlPhase::Preparation
+            && event == fereg_core::ppml::PpmlPhaseAllocatorEvent::End
+            && PREPARATION_ENDS.fetch_add(1, Ordering::Relaxed) == 1
+        {
+            // Input selection is the first Preparation window; initial
+            // generation construction is the second, before IRLS workspaces.
+            GENERATION_EVENTS.store(
+                crate::ffi::test_ppml_phase_allocation_events(phase),
+                Ordering::Relaxed,
+            );
+        }
+        peak
+    }
+    let (mut args, mut spi) = categorical_absorb_cluster_weight_fixture();
+    let initial = spi.nobs;
+    for row in initial + 1..=16_384 {
+        for variable in 1..=u32::try_from(spi.nvars).unwrap() {
+            let value = spi.numeric[&(variable, (row - 1) % initial + 1)];
+            spi.numeric.insert((variable, row), value);
+        }
+    }
+    spi.nobs = 16_384;
+    spi.numeric_rows_enabled = true;
+    replace_argument(&mut args, "threads", "threads=4".to_owned());
+    let mut action = EstimatePpmlSpec::parse(&args)
+        .unwrap()
+        .decode_and_validate(&mut spi)
+        .unwrap();
+    let mut memory = crate::input_memory::InputMemory::new(None, 0).unwrap();
+    let mut hint = None;
+    let loaded = crate::estimate::load_ols_input_with_action_team(
+        &action.request,
+        action.candidate_all,
+        action.input_complete,
+        &mut memory,
+        &mut spi,
+        action.linear.execution.threads,
+        Some(&mut hint),
+    )
+    .unwrap();
+    assert!(
+        hint.is_some(),
+        "the production numeric loader must produce the capsule"
+    );
+    assert_eq!(spi.first_numeric_width, 2);
+    let sources = PreparedOlsLoadHint::source_ids(&action.request)
+        .unwrap()
+        .len() as u64;
+    let input = LoadedPpmlInput {
+        bias_units: None,
+        ols: loaded,
+        adjustment: None,
+        adjustment_kind: action.adjustment.kind(),
+    };
+    // Isolate the allocation witness from worker startup and work scheduling.
+    // The same generation-zero adoption follows a real four-worker load.
+    action.linear.execution.threads = ThreadConfig::from_requested(1, false).unwrap();
+    let request = prepared_ppml_request(&action, Some(probe)).unwrap();
+    let run = |hint| {
+        PREPARATION_ENDS.store(0, Ordering::Relaxed);
+        GENERATION_EVENTS.store(u64::MAX, Ordering::Relaxed);
+        // This direct-core allocation-count witness has no plugin action to
+        // establish its allocator baseline. Exclude the existing fake SPI,
+        // fixture owners and prior comparison result, then count this call's
+        // cloned owners and workspaces. Complete action memory coverage is
+        // checked separately by the saved-FE phase-memory witness below.
+        let _ = crate::ffi::begin_allocation_observation();
+        let result = fit_prepared_ppml_interruptible(
+            request.clone(),
+            (input.clone(), hint),
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+        let events = GENERATION_EVENTS.load(Ordering::Relaxed);
+        assert_ne!(events, u64::MAX, "generation-zero preparation was observed");
+        (result, events)
+    };
+    drop(run(None));
+    let (baseline, baseline_events) = run(None);
+    let (adopted, adopted_events) = run(hint);
+    // Each cached source avoids at least its codes and levels allocations.
+    // Both routes allocate the same fresh source descriptor Vec; the consumed
+    // hint descriptor Vec was allocated before this phase, during loading.
+    // Discarding/recomputing a capsule cannot satisfy this positive witness.
+    assert!(
+        adopted_events + 2 * sources <= baseline_events,
+        "generation-zero allocations: baseline={baseline_events}, hinted={adopted_events}"
+    );
+    assert_eq!(adopted.coefficients(), baseline.coefficients());
+    let exact_inference = |mut report: fereg_core::ppml::PpmlInferenceResult| {
+        // Include exact omitted-coordinate NaN payloads as well as every
+        // remaining inference field. Structural equality alone rejects NaN.
+        let bits = [
+            std::mem::take(&mut report.vce.covariance),
+            std::mem::take(&mut report.vce.standard_errors),
+            std::mem::take(&mut report.vce.z_statistics),
+        ]
+        .map(|values| values.into_iter().map(f64::to_bits).collect::<Vec<_>>());
+        (report, bits)
+    };
+    assert_eq!(
+        exact_inference(adopted.inference().clone()),
+        exact_inference(baseline.inference().clone()),
+    );
+    assert_eq!(adopted.sample(), baseline.sample());
+    assert_eq!(adopted.certificate(), baseline.certificate());
+    assert_eq!(adopted.memory().plan, baseline.memory().plan);
+}
+
+#[cfg(feature = "ffi")]
+#[test]
 fn saved_fe_memory_covers_measured_final_phases_across_repeated_calls() {
     const CHILD_ENV: &str = "FEREG_PPML_SAVED_FE_MEMORY_CHILD";
     if std::env::var_os(CHILD_ENV).is_none() {
@@ -2094,7 +2287,8 @@ fn saved_fe_memory_covers_measured_final_phases_across_repeated_calls() {
         return;
     }
     // Repeat an independently certified factor/FW/cluster fixture at an
-    // axis large enough to enter parallel recovery. Allocate the fake SPI
+    // axis large enough to overlap owned factor preparation and enter parallel
+    // recovery. Allocate the fake SPI
     // cells and event log before the measured action, as the real SPI
     // stores do not allocate Rust observation storage.
     for (mode, threads) in [("fast", 1), ("low", 4), ("fast", 1)] {
@@ -2108,13 +2302,21 @@ fn saved_fe_memory_covers_measured_final_phases_across_repeated_calls() {
             }
         }
         spi.nobs = rows;
+        spi.numeric_rows_enabled = true;
         spi.stores = Vec::with_capacity(rows * 8 + 1_024);
         replace_argument(&mut args, "memory", format!("memory={mode}"));
         replace_argument(&mut args, "threads", format!("threads={threads}"));
         args.push("allocation_audit=1".to_owned());
         estimate_ppml(&args, &mut spi).expect("saved-FE phase memory fit");
+        if threads > 1 {
+            assert!(spi.row_reads > 0);
+            // The ordinary factor h and FE g are prepared before the remaining
+            // outcome, regressor, frequency weight and cluster-only source.
+            assert_eq!(spi.first_numeric_width, 2);
+        }
         let runtime = &spi.matrices["RRUNTIME"];
         for phase in [
+            PpmlPhase::Preparation,
             PpmlPhase::Inference,
             PpmlPhase::FeRecovery,
             PpmlPhase::Publication,

@@ -43,7 +43,7 @@ impl InputMemory {
         Ok(())
     }
 
-    fn release(&mut self, bytes: u128) -> Result<()> {
+    pub(crate) fn release(&mut self, bytes: u128) -> Result<()> {
         self.resident = self
             .resident
             .checked_sub(bytes)

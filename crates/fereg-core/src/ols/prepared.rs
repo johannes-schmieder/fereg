@@ -74,6 +74,135 @@ pub struct LoadedOlsInput {
     pub probability_weight: Option<LoadedNumericColumn>,
 }
 
+/// Optional same-call categorical work. Only authoritative sample preparation
+/// can adopt it; this capsule never establishes availability or topology.
+#[derive(Debug)]
+pub struct PreparedOlsLoadHint {
+    rows: usize,
+    sources: Vec<PreparedCategoricalSource>,
+}
+
+impl PreparedOlsLoadHint {
+    pub fn source_ids(request: &OlsRequestV1) -> Result<Vec<SourceId>> {
+        let mut ids = Vec::new();
+        ids.try_reserve_exact(Self::categorical_ids(request).count())
+            .map_err(|_| allocation("unable to reserve speculative source identities"))?;
+        ids.extend(Self::categorical_ids(request));
+        Ok(ids)
+    }
+
+    fn categorical_ids(request: &OlsRequestV1) -> impl Iterator<Item = SourceId> + '_ {
+        request.model.sources.iter().filter_map(|source| {
+            (request.model.terms.iter().any(|term| {
+                term.components.iter().any(|component| {
+                    component.source == source.id && component.kind == ComponentKind::Categorical
+                })
+            }) || request
+                .absorbed_terms
+                .iter()
+                .any(|term| term.categorical_sources.contains(&source.id)))
+            .then_some(source.id)
+        })
+    }
+
+    /// The ordinary preparation forecast's 96N+4096 factorization scratch,
+    /// plus all completed codes/levels and descriptors, bounds sequential work.
+    pub fn workspace_bytes(rows: usize, sources: usize) -> Option<u128> {
+        let source_rows = (sources as u128).checked_mul(12)?.checked_add(96)?;
+        let descriptors = (sources as u128).checked_mul(256)?.checked_add(4096)?;
+        (rows as u128)
+            .checked_mul(source_rows)?
+            .checked_add(descriptors)
+    }
+
+    pub fn owned_bytes(&self) -> u128 {
+        crate::memory::vec_capacity_bytes(&self.sources)
+            + self
+                .sources
+                .iter()
+                .map(|source| {
+                    crate::memory::vec_capacity_bytes(&source.encoded.codes)
+                        + crate::memory::vec_capacity_bytes(&source.encoded.levels)
+                })
+                .sum::<u128>()
+    }
+
+    pub(crate) fn adoption_workspace_bytes(&self) -> u128 {
+        // Reuse moves encodings into a fresh source descriptor Vec while the
+        // consumed Vec's descriptor allocation briefly remains alive.
+        self.owned_bytes() + crate::memory::vec_capacity_bytes(&self.sources)
+    }
+
+    /// Optional errors are discarded. The normal classifier and factorization
+    /// boundary retain error precedence when a source or row axis is rejected.
+    pub fn prepare<'a>(
+        columns: impl ExactSizeIterator<Item = (SourceId, &'a [f64], &'a [bool])>,
+        rows: usize,
+        admitted: u128,
+    ) -> Option<Self> {
+        if Self::workspace_bytes(rows, columns.len())? > admitted {
+            return None;
+        }
+        let mut sources = Vec::new();
+        sources.try_reserve_exact(columns.len()).ok()?;
+        for (source, values, missing) in columns {
+            crate::interrupt::checkpoint().ok()?;
+            if values.len() != rows || missing.len() != rows || missing.iter().any(|&m| m) {
+                return None;
+            }
+            sources.push(PreparedCategoricalSource {
+                source,
+                prepared_source_index: source_index(source).ok()?,
+                encoded: factorize_f64(values).ok()?,
+            });
+        }
+        let hint = Self { rows, sources };
+        (hint.owned_bytes() <= admitted).then_some(hint)
+    }
+
+    fn into_matching_sources(
+        self,
+        request: &OlsRequestV1,
+        sample: &PreparedNumericSample,
+    ) -> Vec<PreparedCategoricalSource> {
+        let matches =
+            sample.n_original == self.rows
+                && sample.n_active() == self.rows
+                && sample
+                    .original_row_by_active
+                    .iter()
+                    .copied()
+                    .eq(0..self.rows)
+                && Self::categorical_ids(request).eq(self.sources.iter().map(|s| s.source))
+                && self.sources.iter().all(|source| {
+                    sample
+                        .regressors
+                        .get(source.prepared_source_index)
+                        .is_some_and(|values| {
+                            source.encoded.codes.len() == values.len()
+                                && source
+                                    .encoded
+                                    .codes
+                                    .iter()
+                                    .zip(values)
+                                    .all(|(&code, &value)| {
+                                        source.encoded.levels.get(code as usize).is_some_and(
+                                            |level| {
+                                                level.to_bits()
+                                                    == canonical_factor_value(value).to_bits()
+                                            },
+                                        )
+                                    })
+                        })
+                });
+        if matches {
+            self.sources
+        } else {
+            Vec::new()
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PreparedOlsColumnKind {
     Intercept,
@@ -455,15 +584,12 @@ pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedOlsData> {
-    let (model, sample) = prepare_ols_numeric_sample_owned(request, loaded, cluster_sources)?;
-    crate::ols::prepared_categorical_data::finish_prepared_model(
+    crate::ols::prepared_categorical_data::prepare_owned_with_load_hint(
         request,
+        loaded,
         cluster_sources,
-        model,
-        sample,
         false,
-        false,
-        true,
+        None,
     )
 }
 
@@ -631,6 +757,15 @@ pub(crate) fn factorize_preparation_sources(
     factorize_categorical_sources_reusing(request, sample, &[], Vec::new())
 }
 
+pub(crate) fn factorize_preparation_sources_with_hint(
+    request: &OlsRequestV1,
+    sample: &PreparedNumericSample,
+    hint: Option<PreparedOlsLoadHint>,
+) -> Result<Vec<PreparedCategoricalSource>> {
+    let previous = hint.map_or_else(Vec::new, |hint| hint.into_matching_sources(request, sample));
+    factorize_categorical_sources_reusing(request, sample, &[], previous)
+}
+
 // A one-effect unit sample is a singleton fixed point precisely when no final
 // level has one member. Build the ordinary final index once and reuse it for
 // that check. Final topology validation still independently checks every code,
@@ -693,33 +828,47 @@ fn prepare_full_retained_unweighted_sample(
 }
 
 fn is_full_retained_unweighted_sample(loaded: &LoadedOlsInput) -> bool {
-    loaded.analytic_weight.is_none()
-        && loaded.frequency_weight.is_none()
-        && loaded.probability_weight.is_none()
-        && loaded.candidate.iter().all(|candidate| *candidate)
-        && loaded.outcome.missing.iter().all(|missing| !*missing)
-        && loaded.outcome.values.iter().all(|value| value.is_finite())
-        && {
-            let complete = |(_, column): &(SourceId, LoadedNumericColumn)| {
-                column.missing.iter().all(|missing| !*missing)
-                    && column.values.iter().all(|value| value.is_finite())
-            };
-            // This predicate chooses an ownership shortcut, not error order.
-            // Failed checks still enter the authoritative classification
-            // path. Never create Rayon's global pool for standalone callers.
-            if rayon::current_thread_index().is_some()
-                && crate::parallel::StagePlan::current(
-                    loaded.candidate.len() as u128 * loaded.numeric_sources.len() as u128 * 2,
-                    loaded.numeric_sources.len(),
-                )
-                .lanes
-                    > 1
-            {
-                loaded.numeric_sources.par_iter().all(complete)
-            } else {
-                loaded.numeric_sources.iter().all(complete)
-            }
+    if loaded.analytic_weight.is_some()
+        || loaded.frequency_weight.is_some()
+        || loaded.probability_weight.is_some()
+    {
+        return false;
+    }
+    // The caller has validated every column against the candidate row axis.
+    // This Boolean chooses an ownership shortcut, not error order; a failed
+    // check still enters the authoritative classification path.
+    let complete = |start: usize, candidate: &[bool]| {
+        let end = start + candidate.len();
+        candidate.iter().all(|candidate| *candidate)
+            && loaded.outcome.missing[start..end]
+                .iter()
+                .all(|missing| !*missing)
+            && loaded.outcome.values[start..end]
+                .iter()
+                .all(|value| value.is_finite())
+            && loaded.numeric_sources.iter().all(|(_, column)| {
+                column.missing[start..end].iter().all(|missing| !*missing)
+                    && column.values[start..end]
+                        .iter()
+                        .all(|value| value.is_finite())
+            })
+    };
+    let rows = loaded.candidate.len();
+    let work = rows as u128 * (loaded.numeric_sources.len() as u128 * 2 + 3);
+    // Only use an already installed team. Row partitions expose enough work
+    // even when the number of source columns is below the worker budget.
+    if rayon::current_thread_index().is_some() {
+        let plan = crate::parallel::StagePlan::current(work, rows);
+        if plan.lanes > 1 {
+            let block = plan.chunk(rows);
+            return loaded
+                .candidate
+                .par_chunks(block)
+                .enumerate()
+                .all(|(index, candidate)| complete(index * block, candidate));
         }
+    }
+    complete(0, &loaded.candidate)
 }
 
 fn take_full_retained_unweighted_sample(loaded: LoadedOlsInput) -> Result<PreparedNumericSample> {
@@ -3043,6 +3192,208 @@ mod tests {
             probability.fe_singleton_policy(),
             PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
         );
+    }
+
+    #[test]
+    fn row_partitioned_complete_sample_matches_scalar_predicate() {
+        use crate::{ThreadConfig, ThreadTeam};
+        // Keep the scalar witness independent of the production row chunks.
+        let scalar = |loaded: &LoadedOlsInput| {
+            loaded.analytic_weight.is_none()
+                && loaded.frequency_weight.is_none()
+                && loaded.probability_weight.is_none()
+                && loaded.candidate.iter().all(|candidate| *candidate)
+                && loaded.outcome.missing.iter().all(|missing| !*missing)
+                && loaded.outcome.values.iter().all(|value| value.is_finite())
+                && loaded.numeric_sources.iter().all(|(_, column)| {
+                    column.missing.iter().all(|missing| !*missing)
+                        && column.values.iter().all(|value| value.is_finite())
+                })
+        };
+        for rows in [0, 37, 32_771] {
+            for width in [1, 3, 20] {
+                let input = LoadedOlsInput {
+                    candidate: vec![true; rows],
+                    outcome: column(&vec![1.0; rows], &vec![false; rows]),
+                    numeric_sources: (1..=width)
+                        .map(|source| {
+                            (
+                                SourceId::new(source).unwrap(),
+                                column(&vec![-0.0; rows], &vec![false; rows]),
+                            )
+                        })
+                        .collect(),
+                    analytic_weight: None,
+                    frequency_weight: None,
+                    probability_weight: None,
+                };
+                for case in 0..9 {
+                    let mut input = input.clone();
+                    if rows > 0 {
+                        let last_source = &mut input.numeric_sources[width as usize - 1].1;
+                        match case {
+                            1 => input.candidate[rows - 1] = false,
+                            2 => input.outcome.missing[rows / 2] = true,
+                            3 => input.outcome.values[0] = f64::INFINITY,
+                            4 => last_source.missing[rows - 1] = true,
+                            5 => last_source.values[rows / 2] = f64::NAN,
+                            _ => (),
+                        }
+                    }
+                    let weight = || Some(column(&vec![1.0; rows], &vec![false; rows]));
+                    match case {
+                        6 => input.analytic_weight = weight(),
+                        7 => input.frequency_weight = weight(),
+                        8 => input.probability_weight = weight(),
+                        _ => (),
+                    }
+                    let expected = scalar(&input);
+                    assert_eq!(is_full_retained_unweighted_sample(&input), expected);
+                    for workers in [1, 4, 16] {
+                        let actual =
+                            ThreadTeam::new(ThreadConfig::from_requested(workers, false).unwrap())
+                                .install(|| is_full_retained_unweighted_sample(&input))
+                                .unwrap();
+                        assert_eq!(
+                            actual, expected,
+                            "rows={rows}, width={width}, case={case}, workers={workers}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn load_hint_adopts_only_exact_authoritative_factor_rows() {
+        let factor = SourceId::new(1).unwrap();
+        let numeric = SourceId::new(2).unwrap();
+        let mut request = mixed_numeric_factor_request();
+        let mut second = self::request(2, true);
+        request
+            .model
+            .sources
+            .push(second.model.sources.pop().unwrap());
+        request.bindings.push(second.bindings.pop().unwrap());
+        let mut term = second.model.terms.pop().unwrap();
+        term.id = TermId::new(6).unwrap();
+        term.order = TermOrder::new(6).unwrap();
+        term.coefficient_slot = CoefficientSlot::new(6).unwrap();
+        request.model.terms.push(term);
+        request.absorbed_terms.push(AbsorbedTerm {
+            id: AbsorbTermId::new(1).unwrap(),
+            intercept: true,
+            categorical_sources: vec![factor],
+            slope_sources: Vec::new(),
+            label: "g".into(),
+            saved_name: String::new(),
+        });
+        let input = LoadedOlsInput {
+            candidate: vec![true; 8],
+            outcome: column(&[1., 3., 2., 5., 4., 7., 6., 9.], &[false; 8]),
+            numeric_sources: vec![
+                (
+                    factor,
+                    column(&[-0., 0., 1., 1., 2., 2., 3., 4.], &[false; 8]),
+                ),
+                (
+                    numeric,
+                    column(&[1., 2., 3., 4., 5., 6., 7., 8.], &[false; 8]),
+                ),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let make_hint = || {
+            let source = &input.numeric_sources[0].1;
+            PreparedOlsLoadHint::prepare(
+                std::iter::once((factor, source.values.as_slice(), source.missing.as_slice())),
+                8,
+                PreparedOlsLoadHint::workspace_bytes(8, 1).unwrap(),
+            )
+            .unwrap()
+        };
+        assert_eq!(PreparedOlsLoadHint::source_ids(&request).unwrap(), [factor]);
+        let hint = make_hint();
+        let codes = hint.sources[0].encoded.codes.as_ptr();
+        let (_, sample) = prepare_ols_numeric_sample_owned(&request, input.clone(), &[]).unwrap();
+        let adopted = hint.into_matching_sources(&request, &sample);
+        assert_eq!(adopted[0].encoded.codes.as_ptr(), codes);
+        assert_eq!(adopted[0].encoded.codes, [0, 0, 1, 1, 2, 2, 3, 4]);
+        assert_eq!(adopted[0].encoded.levels, [0., 1., 2., 3., 4.]);
+        assert_eq!(adopted[0].encoded.levels[0].to_bits(), 0.0_f64.to_bits());
+        let clusters = [crate::ols::OlsClusterTermV1 {
+            label: "numeric".into(),
+            sources: vec![numeric],
+        }];
+        for categorical in [false, true] {
+            for case in 0..8 {
+                let mut loaded = input.clone();
+                let mut request = request.clone();
+                match case {
+                    1 => loaded.numeric_sources[1].1.missing[0] = true,
+                    2 => loaded.candidate[0] = false,
+                    3 => loaded.numeric_sources[0].1.missing[0] = true,
+                    4 => loaded.numeric_sources[0].1.values[0] = 1.,
+                    5 => {
+                        request.bindings.push(OlsInputBinding {
+                            stata_var_position: 5,
+                            role: OlsInputRole::AnalyticWeight,
+                        });
+                        loaded.analytic_weight =
+                            Some(column(&[0., 1., 1., 1., 1., 1., 1., 1.], &[false; 8]));
+                    }
+                    6 | 7 => {
+                        loaded.numeric_sources[0].1.values[0] = -1.;
+                        loaded.numeric_sources[1].1.missing[0] = case == 6;
+                    }
+                    _ => (),
+                }
+                if let Ok((_, sample)) =
+                    prepare_ols_numeric_sample_owned(&request, loaded.clone(), &[numeric])
+                {
+                    assert_eq!(
+                        make_hint()
+                            .into_matching_sources(&request, &sample)
+                            .is_empty(),
+                        case != 0
+                    );
+                }
+                let expected =
+                    prepare_model_owned(&request, &clusters, loaded.clone(), categorical);
+                let actual = crate::ols::prepare_model_owned_with_load_hint(
+                    &request,
+                    &clusters,
+                    loaded,
+                    categorical,
+                    Some(make_hint()),
+                );
+                assert_eq!(actual, expected, "case={case}, categorical={categorical}");
+                if case == 7 {
+                    assert_eq!(actual.unwrap_err().code, ErrorCode::InvalidFactor);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn load_hint_optional_failures_do_not_establish_availability() {
+        let source = SourceId::new(1).unwrap();
+        let admitted = PreparedOlsLoadHint::workspace_bytes(2, 1).unwrap();
+        for (values, missing, budget) in [
+            ([0., 1.], [false, false], admitted - 1),
+            ([0., 1.], [true, false], admitted),
+            ([0., f64::NAN], [false, false], admitted),
+            ([0., f64::INFINITY], [false, false], admitted),
+        ] {
+            assert!(PreparedOlsLoadHint::prepare(
+                std::iter::once((source, values.as_slice(), missing.as_slice())),
+                2,
+                budget,
+            )
+            .is_none());
+        }
     }
 
     #[test]

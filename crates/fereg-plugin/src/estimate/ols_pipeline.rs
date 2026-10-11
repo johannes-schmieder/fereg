@@ -4,12 +4,13 @@ use fereg_core::ols::*;
 pub(super) fn prepare_ols_pipeline(
     loaded: LoadedOlsInput,
     loaded_rhs: Option<Vec<f64>>,
+    load_hint: Option<PreparedOlsLoadHint>,
     action: &mut EstimateAction,
     categorical: bool,
 ) -> Result<(PreparedOlsData, Option<LoadedOlsRows>)> {
     let clusters = std::mem::take(&mut action.clusters);
     let result = prepare_loaded_ols_with_moments(loaded, loaded_rhs, action, |request, input| {
-        prepare_model_owned(request, &clusters, input, categorical)
+        prepare_model_owned_with_load_hint(request, &clusters, input, categorical, load_hint)
     });
     action.clusters = clusters;
     result

@@ -3,6 +3,7 @@
 use std::sync::{Condvar, Mutex, MutexGuard};
 
 use fereg_core::error::{ErrorCode, FeregError, Result};
+use fereg_core::ols::{OlsRequestV1, PreparedOlsLoadHint};
 use fereg_core::parallel::ThreadTeam;
 
 use crate::input::SpiApi;
@@ -60,6 +61,192 @@ impl Drop for CloseOnDrop<'_> {
     }
 }
 
+struct ReservedColumns<'a> {
+    positions: Vec<u32>,
+    values: Vec<&'a mut Vec<f64>>,
+    missing: Vec<&'a mut Vec<bool>>,
+}
+
+impl<'a> ReservedColumns<'a> {
+    fn new(width: usize) -> Option<Self> {
+        let mut result = Self {
+            positions: Vec::new(),
+            values: Vec::new(),
+            missing: Vec::new(),
+        };
+        result.positions.try_reserve_exact(width).ok()?;
+        result.values.try_reserve_exact(width).ok()?;
+        result.missing.try_reserve_exact(width).ok()?;
+        Some(result)
+    }
+
+    fn partition(
+        request: &OlsRequestV1,
+        positions: &[u32],
+        columns: &'a mut [&mut Vec<f64>],
+        missing: &'a mut [&mut Vec<bool>],
+        ids: &[fereg_core::metadata::SourceId],
+    ) -> Option<(Self, Self)> {
+        let (mut early, mut late) = (Self::new(positions.len())?, Self::new(positions.len())?);
+        for (index, ((&position, values), flags)) in
+            positions.iter().zip(columns).zip(missing).enumerate()
+        {
+            let is_early = index
+                .checked_sub(1)
+                .and_then(|i| request.model.sources.get(i))
+                .is_some_and(|source| ids.contains(&source.id));
+            let group = if is_early { &mut early } else { &mut late };
+            group.positions.push(position);
+            group.values.push(&mut **values);
+            group.missing.push(&mut **flags);
+        }
+        (early.values.len() == ids.len()).then_some((early, late))
+    }
+}
+
+/// Complete the categorical columns before lending them to optional native
+/// factorization. The original source registry and numeric RHS recipe survive.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn try_read_prepared_reserved(
+    spi: &mut dyn SpiApi,
+    request: &OlsRequestV1,
+    positions: &[u32],
+    rows: usize,
+    columns: &mut [&mut Vec<f64>],
+    missing: &mut [&mut Vec<bool>],
+    team: ThreadTeam,
+    memory: &mut InputMemory,
+    rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
+    hint: &mut Option<PreparedOlsLoadHint>,
+) -> Result<bool> {
+    let width = positions.len();
+    if !(1..=MAX_COLUMNS).contains(&width)
+        || request.model.sources.len() >= width
+        || columns.len() != width
+        || missing.len() != width
+        || !spi.supports_numeric_rows()
+        || memory.admit(4096).is_err()
+    {
+        return Ok(false);
+    }
+    // Admit the bounded identity/partition descriptors before even the first
+    // optional Vec allocation; a tight budget retains the ordinary loader.
+    let Ok(ids) = PreparedOlsLoadHint::source_ids(request) else {
+        return Ok(false);
+    };
+    if ids.is_empty() || ids.len() >= width {
+        return Ok(false);
+    }
+    let copied_rhs = rhs.as_ref().map_or(0, |(_, layout)| {
+        layout
+            .width
+            .saturating_sub(usize::from(layout.append_intercept))
+    });
+    if request
+        .model
+        .sources
+        .iter()
+        .enumerate()
+        .any(|(index, source)| index + 1 < copied_rhs && ids.contains(&source.id))
+    {
+        return Ok(false);
+    }
+    if [ids.len(), width - ids.len()].into_iter().any(|columns| {
+        fereg_core::parallel::StagePlan::new(rows as u128 * columns as u128, 2, team.threads())
+            .lanes
+            <= 1
+    }) {
+        return Ok(false);
+    }
+    let Some(scratch) = PreparedOlsLoadHint::workspace_bytes(rows, ids.len()) else {
+        return Ok(false);
+    };
+    let temporary = scratch + 4096; // Both small partition descriptor banks.
+    let tiles = 2 * TILE_ROWS * width * std::mem::size_of::<f64>() + std::mem::size_of::<Handoff>();
+    if temporary + tiles as u128 > memory.remaining() as u128 {
+        return Ok(false);
+    }
+    let Some((mut early, mut late)) =
+        ReservedColumns::partition(request, positions, columns, missing, &ids)
+    else {
+        return Ok(false);
+    };
+    // Allocate both disjoint tile pairs before reading: together they contain
+    // no more elements than the ordinary full-width pair. Optional allocation
+    // failures can therefore decline without suppressing an SPI error.
+    let (Ok(early_tiles), Ok(late_tiles)) = (
+        reserve_tiles(early.positions.len()),
+        reserve_tiles(late.positions.len()),
+    ) else {
+        return Ok(false);
+    };
+    let tile_bytes = early_tiles
+        .iter()
+        .chain(&late_tiles)
+        .map(|buffer| buffer.capacity() as u128 * 8)
+        .sum::<u128>()
+        + std::mem::size_of::<Handoff>() as u128;
+    if memory.admit(temporary + tile_bytes).is_err() {
+        return Ok(false);
+    }
+    // This temporary reservation includes completed factors and the largest
+    // live factorization scratch beside either input tile pair. It is released
+    // after joining; accepted factors replace preparation's ordinary bank.
+    memory.retain(temporary)?;
+    let result = (|| {
+        if !try_read_reserved_with_tiles(
+            spi,
+            &early.positions,
+            rows,
+            &mut early.values,
+            &mut early.missing,
+            team,
+            memory,
+            None,
+            Some(early_tiles),
+        )? {
+            return Ok(false);
+        }
+        let (read, prepared) = crate::cancellable::while_loading(
+            team,
+            || {
+                PreparedOlsLoadHint::prepare(
+                    ids.iter()
+                        .copied()
+                        .zip(early.values.iter().zip(&early.missing))
+                        .map(|(id, (values, flags))| (id, values.as_slice(), flags.as_slice())),
+                    rows,
+                    scratch,
+                )
+            },
+            |spi| {
+                try_read_reserved_with_tiles(
+                    spi,
+                    &late.positions,
+                    rows,
+                    &mut late.values,
+                    &mut late.missing,
+                    team,
+                    memory,
+                    rhs,
+                    Some(late_tiles),
+                )
+            },
+            spi,
+        )?;
+        if !read {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "admitted numeric preparation tail declined",
+            ));
+        }
+        *hint = prepared;
+        Ok(true)
+    })();
+    memory.release(temporary)?;
+    result
+}
+
 /// Fill reserved empty columns directly from owned tiles. Each push initializes
 /// one element; the preflight guarantees capacity for the complete input.
 // Keep admitted buffers separate from the main-thread SPI handle.
@@ -72,7 +259,24 @@ pub(crate) fn try_read_reserved(
     missing: &mut [&mut Vec<bool>],
     team: ThreadTeam,
     memory: &mut InputMemory,
+    rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
+) -> Result<bool> {
+    try_read_reserved_with_tiles(
+        spi, positions, rows, columns, missing, team, memory, rhs, None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn try_read_reserved_with_tiles(
+    spi: &mut dyn SpiApi,
+    positions: &[u32],
+    rows: usize,
+    columns: &mut [&mut Vec<f64>],
+    missing: &mut [&mut Vec<bool>],
+    team: ThreadTeam,
+    memory: &mut InputMemory,
     mut rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
+    tiles: Option<[Vec<f64>; 2]>,
 ) -> Result<bool> {
     let width = positions.len();
     if !spi.supports_numeric_rows()
@@ -90,7 +294,7 @@ pub(crate) fn try_read_reserved(
         })
         || rhs.as_ref().is_some_and(|(v, layout)| {
             layout.width < 2
-                || layout.width > width
+                || layout.width - usize::from(layout.append_intercept) > width
                 || !v.is_empty()
                 || rows
                     .checked_mul(layout.width)
@@ -108,6 +312,7 @@ pub(crate) fn try_read_reserved(
         rows,
         team,
         memory,
+        tiles,
         |start, count, values, boundary| {
             for (column, (destination, flags)) in
                 columns.iter_mut().zip(missing.iter_mut()).enumerate()
@@ -140,6 +345,13 @@ fn append_rhs(
 ) {
     let rhs_width = layout.width;
     let copied = rhs_width - usize::from(layout.append_intercept);
+    if rhs_width > width {
+        for row in values[..count * width].chunks_exact(width) {
+            rhs.extend_from_slice(&row[..copied]);
+            rhs.push(1.0);
+        }
+        return;
+    }
     for row in 0..count {
         if rhs_width < width {
             values.copy_within(row * width..row * width + copied, row * rhs_width);
@@ -151,21 +363,8 @@ fn append_rhs(
     rhs.extend_from_slice(&values[..count * rhs_width]);
 }
 
-fn read_tiles(
-    spi: &mut dyn SpiApi,
-    positions: &[u32],
-    rows: usize,
-    team: ThreadTeam,
-    memory: &mut InputMemory,
-    mut consume: impl FnMut(usize, usize, &mut [f64], f64) + Send,
-) -> Result<bool> {
-    let width = positions.len();
+fn reserve_tiles(width: usize) -> Result<[Vec<f64>; 2]> {
     let elements = TILE_ROWS * width;
-    let bytes = 2 * elements * std::mem::size_of::<f64>() + std::mem::size_of::<Handoff>();
-    if bytes > memory.remaining() {
-        return Ok(false);
-    }
-    memory.admit(bytes as u128)?;
     let mut buffers = [Vec::new(), Vec::new()];
     for buffer in &mut buffers {
         buffer.try_reserve_exact(elements).map_err(|_| {
@@ -175,6 +374,29 @@ fn read_tiles(
             )
         })?;
     }
+    Ok(buffers)
+}
+
+fn read_tiles(
+    spi: &mut dyn SpiApi,
+    positions: &[u32],
+    rows: usize,
+    team: ThreadTeam,
+    memory: &mut InputMemory,
+    tiles: Option<[Vec<f64>; 2]>,
+    mut consume: impl FnMut(usize, usize, &mut [f64], f64) + Send,
+) -> Result<bool> {
+    let width = positions.len();
+    let elements = TILE_ROWS * width;
+    let bytes = 2 * elements * std::mem::size_of::<f64>() + std::mem::size_of::<Handoff>();
+    if bytes > memory.remaining() {
+        return Ok(false);
+    }
+    memory.admit(bytes as u128)?;
+    let mut buffers = match tiles {
+        Some(tiles) => tiles,
+        None => reserve_tiles(width)?,
+    };
     let actual = buffers
         .iter()
         .map(|buffer| buffer.capacity() as u128 * 8)
@@ -274,6 +496,10 @@ mod tests {
         failure: usize,
         panic: bool,
         boundary: f64,
+        missing_modulo: usize,
+        batches: Vec<Vec<u32>>,
+        interrupt: bool,
+        polled: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
     }
 
     impl Input {
@@ -284,6 +510,10 @@ mod tests {
                 failure: usize::MAX,
                 panic: false,
                 boundary: 1e100,
+                missing_modulo: 197,
+                batches: Vec::new(),
+                interrupt: false,
+                polled: None,
             }
         }
     }
@@ -300,6 +530,7 @@ mod tests {
         ) -> Result<f64> {
             assert_eq!(self.caller, std::thread::current().id());
             self.calls += 1;
+            self.batches.push(variables.to_vec());
             if self.calls == self.failure {
                 assert!(!self.panic, "injected producer panic");
                 return Err(FeregError::new(
@@ -309,7 +540,8 @@ mod tests {
             }
             for (row, chunk) in values.chunks_exact_mut(variables.len()).enumerate() {
                 for (column, value) in chunk.iter_mut().enumerate() {
-                    *value = if (first + row) % 197 == 0 {
+                    *value = if self.missing_modulo != 0 && (first + row) % self.missing_modulo == 0
+                    {
                         self.boundary
                     } else {
                         (first + row) as f64 + f64::from(variables[column]) * 100000.0
@@ -320,6 +552,15 @@ mod tests {
         }
         fn check_interrupted(&mut self) -> Result<()> {
             assert_eq!(self.caller, std::thread::current().id());
+            if let Some(polled) = &self.polled {
+                polled.store(true, std::sync::atomic::Ordering::Release);
+            }
+            if self.interrupt {
+                return Err(FeregError::new(
+                    ErrorCode::Interrupted,
+                    "injected caller interrupt",
+                ));
+            }
             Ok(())
         }
         fn nobs(&mut self) -> Result<usize> {
@@ -404,6 +645,205 @@ mod tests {
         Ok(read)
     }
 
+    fn isolate_cancellation_test(name: &str) -> bool {
+        const CHILD_ENV: &str = "FEREG_INPUT_PREPARATION_TEST_CHILD";
+        if std::env::var_os(CHILD_ENV).is_some() {
+            return false;
+        }
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD_ENV, "1")
+            .args([name, "--exact", "--test-threads=1"])
+            .status()
+            .expect("launch isolated input preparation test");
+        assert!(status.success());
+        true
+    }
+
+    #[test]
+    fn prepared_input_overlap_preserves_slots_rhs_and_optional_fallback() {
+        if isolate_cancellation_test("numeric_pipeline::tests::prepared_input_overlap_preserves_slots_rhs_and_optional_fallback") { return; }
+        use fereg_core::metadata::{
+            AbsorbTermId, AbsorbedTerm, CompiledTermGraph, SourceEntry, SourceId,
+        };
+        let rows = 16387;
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: (1..=3)
+                    .map(|id| SourceEntry {
+                        id: SourceId::new(id).unwrap(),
+                        canonical_name: format!("x{id}"),
+                    })
+                    .collect(),
+                terms: Vec::new(),
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![SourceId::new(3).unwrap()],
+                slope_sources: Vec::new(),
+                label: "g".into(),
+                saved_name: String::new(),
+            }],
+            bindings: Vec::new(),
+            include_intercept: true,
+            keep_singletons: false,
+        };
+        for workers in [2, 4, 16] {
+            for case in 0..6 {
+                let mut request = request.clone();
+                if case == 2 {
+                    request.absorbed_terms[0].categorical_sources[0] = SourceId::new(1).unwrap();
+                }
+                let team = ThreadTeam::new(ThreadConfig::from_requested(workers, false).unwrap());
+                let mut input = Input::new();
+                input.missing_modulo = if case == 3 { 197 } else { 0 };
+                if case >= 4 {
+                    input.failure = 6;
+                    input.panic = case == 5;
+                }
+                let mut memory = InputMemory::new(
+                    (case == 1).then_some(2 * TILE_ROWS as u128 * 4 * 8 + 4096),
+                    0,
+                )
+                .unwrap();
+                let remaining = memory.remaining();
+                let mut values = (0..4).map(|_| Vec::with_capacity(rows)).collect::<Vec<_>>();
+                let mut flags = (0..4).map(|_| Vec::with_capacity(rows)).collect::<Vec<_>>();
+                let mut rhs = Vec::with_capacity(rows * 4);
+                let mut hint = None;
+                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    try_read_prepared_reserved(
+                        &mut input,
+                        &request,
+                        &[2, 3, 4, 5],
+                        rows,
+                        &mut values.iter_mut().collect::<Vec<_>>(),
+                        &mut flags.iter_mut().collect::<Vec<_>>(),
+                        team,
+                        &mut memory,
+                        Some((
+                            &mut rhs,
+                            NumericRhsLayout {
+                                width: 4,
+                                append_intercept: true,
+                            },
+                        )),
+                        &mut hint,
+                    )
+                }));
+                if case == 5 {
+                    assert!(outcome.is_err());
+                    assert!(!fereg_core::interrupt::cancellation_requested());
+                    continue;
+                }
+                let result = outcome.unwrap();
+                assert_eq!(remaining, memory.remaining());
+                assert!(!fereg_core::interrupt::cancellation_requested());
+                if case == 4 {
+                    assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted);
+                    assert!(hint.is_none());
+                    assert_eq!(input.calls, 6);
+                    continue;
+                }
+                let accepted = !matches!(case, 1 | 2);
+                assert_eq!(result.unwrap(), accepted);
+                if !accepted {
+                    assert_eq!(input.calls, 0);
+                    assert!(values.iter().all(Vec::is_empty));
+                    assert!(flags.iter().all(Vec::is_empty));
+                    assert!(rhs.is_empty());
+                    assert!(hint.is_none());
+                    continue;
+                }
+                assert_eq!(hint.is_some(), case != 3);
+                assert_eq!(
+                    input.batches,
+                    (0..5)
+                        .map(|_| vec![5])
+                        .chain((0..5).map(|_| vec![2, 3, 4]))
+                        .collect::<Vec<_>>()
+                );
+                for row in 0..rows {
+                    let missing = case == 3 && (row + 1) % 197 == 0;
+                    for column in 0..4 {
+                        let expected = if missing {
+                            input.boundary
+                        } else {
+                            (row + 1) as f64 + (column + 2) as f64 * 100000.
+                        };
+                        assert_eq!(values[column][row], expected);
+                        assert_eq!(flags[column][row], missing);
+                        assert_eq!(
+                            rhs[row * 4 + column],
+                            if column == 3 { 1. } else { expected }
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn input_preparation_tail_polls_caller_and_joins_cancellation_or_unwind() {
+        if isolate_cancellation_test("numeric_pipeline::tests::input_preparation_tail_polls_caller_and_joins_cancellation_or_unwind") { return; }
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::Arc;
+        for mode in 0..4 {
+            let signal = Arc::new(AtomicBool::new(false));
+            let joined = AtomicBool::new(false);
+            let mut input = Input::new();
+            input.polled = Some(Arc::clone(&signal));
+            input.interrupt = mode == 1;
+            let caller = std::thread::current().id();
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                crate::cancellable::while_loading(
+                    ThreadTeam::new(ThreadConfig::from_requested(2, false).unwrap()),
+                    || {
+                        assert_ne!(caller, std::thread::current().id());
+                        let start = std::time::Instant::now();
+                        while if mode == 0 {
+                            !signal.load(Ordering::Acquire)
+                        } else {
+                            !fereg_core::interrupt::cancellation_requested()
+                        } {
+                            assert!(
+                                start.elapsed().as_secs() < 30,
+                                "caller failed to poll or cancel"
+                            );
+                            std::thread::yield_now();
+                        }
+                        joined.store(true, Ordering::Release);
+                        23
+                    },
+                    |_| -> Result<usize> {
+                        assert_eq!(caller, std::thread::current().id());
+                        assert_ne!(mode, 3, "injected caller panic");
+                        if mode == 2 {
+                            Err(FeregError::new(
+                                ErrorCode::InvalidData,
+                                "authoritative input failure",
+                            ))
+                        } else {
+                            Ok(17)
+                        }
+                    },
+                    &mut input,
+                )
+            }));
+            assert!(joined.load(Ordering::Acquire));
+            assert!(!fereg_core::interrupt::cancellation_requested());
+            match mode {
+                0 => assert_eq!(result.unwrap().unwrap(), (17, 23)),
+                1 => assert_eq!(result.unwrap().unwrap_err().code, ErrorCode::Interrupted),
+                2 => assert_eq!(
+                    result.unwrap().unwrap_err().message,
+                    "authoritative input failure"
+                ),
+                _ => assert!(result.is_err()),
+            }
+        }
+    }
+
     #[test]
     fn reserved_pipeline_preserves_values_capacities_and_failure_shutdown() {
         for append_intercept in [false, true] {
@@ -417,7 +857,12 @@ mod tests {
                 (52, 4),
                 (64, 4),
             ] {
-                for rhs_width in [2, width.div_ceil(2), width] {
+                for rhs_width in [
+                    2,
+                    width.div_ceil(2),
+                    width,
+                    width + usize::from(append_intercept),
+                ] {
                     for failure in [usize::MAX, 1, 3, 5] {
                         let rows = 16387;
                         let positions: Vec<u32> = (1..=width as u32).rev().collect();

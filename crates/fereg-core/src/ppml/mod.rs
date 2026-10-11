@@ -14,6 +14,7 @@ mod family;
 mod memory;
 mod metadata_memory;
 mod one_fe_profile;
+mod preparation_trace;
 mod prepared;
 mod prepared_estimator;
 mod prepared_irls;
@@ -50,8 +51,8 @@ pub use prepared::{
     PreparedPpmlAdjustmentReport, PreparedPpmlNumericData, PreparedPpmlWeightReport,
 };
 pub use prepared_estimator::{
-    fit_prepared_ppml, fit_prepared_ppml_interruptible, LoadedPpmlInput, PpmlInterruptPoint,
-    PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
+    fit_prepared_ppml, fit_prepared_ppml_interruptible, LoadedPpmlInput, PpmlInput,
+    PpmlInterruptPoint, PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
 };
 pub use psd::{PpmlPsdReport, PpmlPsdState};
 pub use residuals::{fill_ppml_residuals, ppml_residuals, PpmlResidualKind};

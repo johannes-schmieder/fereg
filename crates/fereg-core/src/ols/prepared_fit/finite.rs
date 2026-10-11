@@ -352,31 +352,12 @@ fn finish<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         score_norms,
     )?;
     let within_residuals = match storage {
-        ProjectedFiniteRows::Dense(within) => {
-            let mut residuals = reserved_empty(
-                reservation,
-                within.nrows(),
-                "unable to reserve finite residuals",
-            )?;
-            let hardware = crate::kernels::installed();
-            for row in 0..within.nrows() {
-                // Immutable projected coordinates retain the physical FE owner.
-                let value = crate::kernels::dispatch!(
-                    hardware,
-                    selected_residual(
-                        within[(row, 0)],
-                        &within.as_slice()[row * within.ncols() + 1..(row + 1) * within.ncols()],
-                        &workspace.kept,
-                        &coefficients
-                    )
-                );
-                if !value.is_finite() {
-                    return Err(invalid_data("prepared finite residual is not finite"));
-                }
-                residuals.push(value);
-            }
-            Some(residuals)
-        }
+        ProjectedFiniteRows::Dense(within) => Some(dense_within_residuals(
+            within,
+            &workspace.kept,
+            &coefficients,
+            reservation,
+        )?),
         ProjectedFiniteRows::Scratch { .. } => None,
     };
     let mut dropped = reserved_empty(
@@ -406,4 +387,138 @@ fn finish<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         bread,
         within_residuals,
     })
+}
+
+fn dense_within_residuals<R: FitReservation>(
+    within: &DenseMatrix,
+    kept: &[usize],
+    coefficients: &[Option<f64>],
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let mut residuals = reserved_empty(
+        reservation,
+        within.nrows(),
+        "unable to reserve finite residuals",
+    )?;
+    let hardware = crate::kernels::installed();
+    let residual = |row: &[f64]| {
+        // Immutable projected coordinates retain the physical FE owner. Each
+        // row keeps the same selected-column order and fused arithmetic.
+        let value = crate::kernels::dispatch!(
+            hardware,
+            selected_residual(row[0], &row[1..], kept, coefficients)
+        );
+        if value.is_finite() {
+            Ok(value)
+        } else {
+            Err(invalid_data("prepared finite residual is not finite"))
+        }
+    };
+    let work = within.nrows() as u128 * (kept.len() as u128 + 1);
+    if rayon::current_thread_index().is_some()
+        && crate::parallel::StagePlan::current(work, within.nrows()).lanes > 1
+    {
+        // The reservation and capacity guard above remain fallible and serial.
+        // Workers borrow initialized, disjoint outputs; ordered error merging
+        // retains the first failing row without creating a separate team.
+        residuals.resize(within.nrows(), 0.0);
+        crate::parallel::stage_try_for_each(
+            residuals
+                .par_iter_mut()
+                .zip(within.as_slice().par_chunks_exact(within.ncols())),
+            work,
+            |(target, row)| {
+                *target = residual(row)?;
+                Ok(())
+            },
+        )?;
+    } else {
+        for row in within.as_slice().chunks_exact(within.ncols()) {
+            residuals.push(residual(row)?);
+        }
+    }
+    Ok(residuals)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn row_parallel_finite_residuals_match_ordered_scalar_bits() {
+        for (rows, columns) in [(0, 0), (1, 1), (16_385, 7), (32_771, 20), (8_193, 65)] {
+            let within = DenseMatrix::from_row_major(
+                rows,
+                columns + 1,
+                (0..rows * (columns + 1))
+                    .map(|i| [0.0, -0.0, 1e-200, 1e100, -1e100, 0.125, -0.75][i % 7])
+                    .collect(),
+            )
+            .unwrap();
+            let kept: Vec<_> = (0..columns).filter(|c| c % 3 != 1).rev().collect();
+            let mut coefficients: Vec<Option<f64>> = vec![None; columns];
+            for &column in &kept {
+                coefficients[column] = Some([-0.0, 0.5, -0.25, 1e-100][column % 4]);
+            }
+            // Independent copy of the scalar recurrence: do not call the
+            // production residual kernel or share its row partitioning.
+            let expected: Vec<_> = (0..rows)
+                .map(|row| {
+                    let mut value = within[(row, 0)];
+                    for &column in &kept {
+                        value = (-coefficients[column].unwrap())
+                            .mul_add(within[(row, column + 1)], value);
+                    }
+                    value.to_bits()
+                })
+                .collect();
+            for workers in [1, 4, 16] {
+                let actual = ThreadTeam::new(ThreadConfig::from_requested(workers, false).unwrap())
+                    .install(|| {
+                        dense_within_residuals(
+                            &within,
+                            &kept,
+                            &coefficients,
+                            &mut SystemFitReservation,
+                        )
+                    })
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(
+                    actual.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                    expected,
+                    "rows={rows}, columns={columns}, workers={workers}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn row_parallel_finite_residuals_preserve_nonfinite_failure() {
+        for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            for bad_row in [0, 16_384, 32_770] {
+                let mut values = vec![1.0; 32_771 * 2];
+                values[bad_row * 2] = invalid;
+                let within = DenseMatrix::from_row_major(32_771, 2, values).unwrap();
+                for workers in [1, 4, 16] {
+                    let error =
+                        ThreadTeam::new(ThreadConfig::from_requested(workers, false).unwrap())
+                            .install(|| {
+                                dense_within_residuals(
+                                    &within,
+                                    &[0],
+                                    &[Some(0.5)],
+                                    &mut SystemFitReservation,
+                                )
+                            })
+                            .unwrap()
+                            .unwrap_err();
+                    assert_eq!(
+                        error,
+                        invalid_data("prepared finite residual is not finite")
+                    );
+                }
+            }
+        }
+    }
 }

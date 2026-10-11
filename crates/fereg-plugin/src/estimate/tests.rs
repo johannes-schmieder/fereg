@@ -2514,6 +2514,7 @@ fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
                 numeric_loaded_rhs_layout(&clustered_request.validate_and_compile().unwrap());
             let reference_loaded = load_ols_input(&request, true, false, &mut spi.clone()).unwrap();
             let mut rhs = None;
+            let mut load_hint = None;
             let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
             let loaded = load_ols_input_with_team(
                 &request,
@@ -2528,9 +2529,11 @@ fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
                 budget,
                 compiled_width,
                 false,
+                Some(&mut load_hint),
             )
             .unwrap();
             assert_eq!(loaded, reference_loaded);
+            assert_eq!(load_hint.is_some(), threads > 1);
             assert_eq!(rhs.is_some(), budget == required && threads > 1 && !reorder);
             if let Some(rows) = rhs.as_ref() {
                 assert_eq!(rows.capacity() * 8, required);
@@ -2552,11 +2555,12 @@ fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
             });
             let robust_rows = rhs.clone();
             let clustered_rows = rhs.clone();
-            let prepared_clustered = prepare_model_owned(
+            let prepared_clustered = fereg_core::ols::prepare_model_owned_with_load_hint(
                 &clustered_request.ols,
                 &clustered_request.clusters,
                 loaded,
                 false,
+                load_hint,
             )
             .unwrap();
             let prepared = prepared_clustered.ols();
@@ -2744,6 +2748,7 @@ fn slope_loaded_rhs_preserves_classification_and_inference() {
             let compiled = numeric_loaded_rhs_layout(&request.validate_ppml_and_compile().unwrap());
             let reference = load_ols_input(&request, true, false, &mut spi.clone()).unwrap();
             let mut rhs = None;
+            let mut load_hint = None;
             let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
             let required = if case == 7 { 0 } else { spi.nobs * 8 * 8 };
             let team = (case != 8)
@@ -2759,6 +2764,7 @@ fn slope_loaded_rhs_preserves_classification_and_inference() {
                 required,
                 compiled,
                 false,
+                Some(&mut load_hint),
             )
             .unwrap();
             assert_eq!(loaded, reference);
@@ -2768,7 +2774,18 @@ fn slope_loaded_rhs_preserves_classification_and_inference() {
                 assert_eq!(rows.len(), spi.nobs * layout.width);
                 assert_eq!(layout.append_intercept, request.include_intercept);
             }
-            let prepared = prepare_model_owned(&request, &[], loaded, true).unwrap();
+            let prepared = fereg_core::ols::prepare_model_owned_with_load_hint(
+                &request,
+                &[],
+                loaded,
+                true,
+                load_hint,
+            )
+            .unwrap();
+            assert_eq!(
+                prepared,
+                prepare_model_owned(&request, &[], reference, true).unwrap()
+            );
             let mut config = PreparedOlsRobustConfig::default();
             config.fit.execution.threads = ThreadConfig::from_requested(8, false).unwrap();
             let expected = fereg_core::ols::fit_prepared_model_robust_with_loaded_moments(
@@ -2937,6 +2954,7 @@ fn weighted_loaded_rhs_preserves_sample_domains_and_inference() {
                 let reference =
                     load_ols_input(&request, candidate_all, false, &mut spi.clone()).unwrap();
                 let mut rhs = None;
+                let mut load_hint = None;
                 let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
                 let loaded = load_ols_input_with_team(
                     &request,
@@ -2949,6 +2967,7 @@ fn weighted_loaded_rhs_preserves_sample_domains_and_inference() {
                     budget,
                     compiled_width,
                     false,
+                    Some(&mut load_hint),
                 )
                 .unwrap();
                 assert_eq!(loaded, reference);
@@ -2965,7 +2984,13 @@ fn weighted_loaded_rhs_preserves_sample_domains_and_inference() {
                             > 1
                 );
                 let expected = prepare_model_owned(&request, &[], reference, true);
-                let actual = prepare_model_owned(&request, &[], loaded, true);
+                let actual = fereg_core::ols::prepare_model_owned_with_load_hint(
+                    &request,
+                    &[],
+                    loaded,
+                    true,
+                    load_hint,
+                );
                 match (expected, actual) {
                     (Err(expected), Err(actual)) => assert_eq!(actual, expected),
                     (Ok(expected), Ok(actual)) => {
@@ -3228,6 +3253,7 @@ fn string_loading_budget_and_interruption_leave_no_public_stores() {
             0,
             None,
             false,
+            None,
         );
         assert_eq!(spi.store_calls, 0);
         Ok((result?, memory.peak()))

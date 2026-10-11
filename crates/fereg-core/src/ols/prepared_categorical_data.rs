@@ -827,10 +827,34 @@ pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedOlsData> {
-    let _plan = plan_categorical_absorbed_request(request)?;
-    let (model, sample) =
-        prepare_categorical_numeric_sample_owned(request, loaded, cluster_sources)?;
-    finish_prepared_model(request, cluster_sources, model, sample, true, false, true)
+    prepare_owned_with_load_hint(request, loaded, cluster_sources, true, None)
+}
+
+pub(crate) fn prepare_owned_with_load_hint(
+    request: &OlsRequestV1,
+    loaded: LoadedOlsInput,
+    cluster_sources: &[SourceId],
+    categorical: bool,
+    hint: Option<super::PreparedOlsLoadHint>,
+) -> Result<PreparedOlsData> {
+    if categorical {
+        let _plan = plan_categorical_absorbed_request(request)?;
+    }
+    let (model, sample) = if categorical {
+        prepare_categorical_numeric_sample_owned(request, loaded, cluster_sources)?
+    } else {
+        super::prepared::prepare_ols_numeric_sample_owned(request, loaded, cluster_sources)?
+    };
+    finish_prepared_model_with_hint(
+        request,
+        cluster_sources,
+        model,
+        sample,
+        categorical,
+        false,
+        true,
+        hint,
+    )
 }
 
 /// PPML preparation boundary that also admits an empty absorbed topology.
@@ -845,17 +869,31 @@ pub(crate) fn prepare_ppml_categorical_ols_data(
     loaded: &LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedOlsData> {
-    if !request.absorbed_terms.is_empty() {
-        return prepare_categorical_ols_data_with_cluster_sources_policy(
-            request,
-            loaded,
-            cluster_sources,
-            true,
-        );
-    }
+    prepare_ppml_categorical_ols_data_with_load_hint(request, loaded, cluster_sources, None)
+}
 
-    let (model, sample) = prepare_ols_numeric_sample(request, loaded, cluster_sources)?;
-    finish_prepared_model(request, cluster_sources, model, sample, true, true, true)
+pub(crate) fn prepare_ppml_categorical_ols_data_with_load_hint(
+    request: &OlsRequestV1,
+    loaded: &LoadedOlsInput,
+    cluster_sources: &[SourceId],
+    hint: Option<super::PreparedOlsLoadHint>,
+) -> Result<PreparedOlsData> {
+    let (model, sample) = if request.absorbed_terms.is_empty() {
+        prepare_ols_numeric_sample(request, loaded, cluster_sources)?
+    } else {
+        let _plan = plan_categorical_absorbed_request(request)?;
+        prepare_categorical_numeric_sample(request, loaded, cluster_sources)?
+    };
+    finish_prepared_model_with_hint(
+        request,
+        cluster_sources,
+        model,
+        sample,
+        true,
+        true,
+        true,
+        hint,
+    )
 }
 
 pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
@@ -899,7 +937,34 @@ pub(crate) fn finish_prepared_model(
     ppml_constant: bool,
     reuse_membership: bool,
 ) -> Result<PreparedOlsData> {
-    let candidate_sources = factorize_preparation_sources(request, &sample)?;
+    finish_prepared_model_with_hint(
+        request,
+        cluster_sources,
+        model,
+        sample,
+        categorical,
+        ppml_constant,
+        reuse_membership,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_prepared_model_with_hint(
+    request: &OlsRequestV1,
+    cluster_sources: &[SourceId],
+    model: PreparedOlsModel,
+    sample: PreparedNumericSample,
+    categorical: bool,
+    ppml_constant: bool,
+    reuse_membership: bool,
+    hint: Option<super::PreparedOlsLoadHint>,
+) -> Result<PreparedOlsData> {
+    let candidate_sources = if hint.is_some() {
+        super::prepared::factorize_preparation_sources_with_hint(request, &sample, hint)?
+    } else {
+        factorize_preparation_sources(request, &sample)?
+    };
     let recipes = crate::fe::bind_categorical_effect_recipes(request, &candidate_sources)?;
     let recipe_views: Vec<_> = recipes.iter().map(Vec::as_slice).collect();
     let mut membership =

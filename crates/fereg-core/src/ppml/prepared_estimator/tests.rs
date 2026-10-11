@@ -18,6 +18,144 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 static FIT_PHASE_BEGINS: AtomicUsize = AtomicUsize::new(0);
 
+fn input_factor_hint(request: &OlsRequestV1, loaded: &LoadedOlsInput) -> PreparedOlsLoadHint {
+    let ids = PreparedOlsLoadHint::source_ids(request).unwrap();
+    let rows = loaded.candidate.len();
+    PreparedOlsLoadHint::prepare(
+        ids.iter().map(|id| {
+            let (_, column) = loaded
+                .numeric_sources
+                .iter()
+                .find(|(source, _)| source == id)
+                .unwrap();
+            (*id, column.values.as_slice(), column.missing.as_slice())
+        }),
+        rows,
+        PreparedOlsLoadHint::workspace_bytes(rows, ids.len()).unwrap(),
+    )
+    .unwrap()
+}
+
+#[test]
+fn load_hint_preserves_first_plan_certificates_and_domain_precedence() {
+    let exact_inference = |mut report: crate::ppml::PpmlInferenceResult| {
+        // Omitted inference coordinates intentionally contain NaNs. Compare
+        // every numeric array by IEEE bits, then every remaining report field
+        // by structural equality; nothing is removed from the witness.
+        let bits = [
+            std::mem::take(&mut report.vce.covariance),
+            std::mem::take(&mut report.vce.standard_errors),
+            std::mem::take(&mut report.vce.z_statistics),
+        ]
+        .map(|values| values.into_iter().map(f64::to_bits).collect::<Vec<_>>());
+        (report, bits)
+    };
+    static DECISIONS: std::sync::Mutex<Vec<super::super::PpmlMemoryPreflightObservation>> =
+        std::sync::Mutex::new(Vec::new());
+    fn record(event: super::super::PpmlMemoryPreflightEvent) -> Result<()> {
+        if let super::super::PpmlMemoryPreflightEvent::Decision(observation) = event {
+            DECISIONS.lock().unwrap().push(observation);
+        }
+        Ok(())
+    }
+    for workers in [1, 4, 16] {
+        for case in 0..7 {
+            let (mut request, mut loaded) = fixture(2, false, true, true, true, false);
+            let hint = input_factor_hint(&request.ols, &loaded.ols);
+            request.linear.execution.threads =
+                crate::ThreadConfig::from_requested(workers, false).unwrap();
+            request.memory_preflight_probe = Some(record);
+            if case == 6 {
+                request.memory.available_bytes = Some(1);
+            }
+            match case {
+                1 => loaded.ols.numeric_sources[0].1.missing[0] = true,
+                2 => loaded.adjustment.as_mut().unwrap().missing[0] = true,
+                3 => loaded.ols.probability_weight.as_mut().unwrap().values[0] = 0.,
+                4 | 5 => {
+                    loaded.ols.outcome.values[0] = -1.;
+                    loaded.ols.numeric_sources[0].1.missing[0] = case == 4;
+                }
+                _ => (),
+            }
+            DECISIONS.lock().unwrap().clear();
+            let expected = fit_prepared_ppml(request.clone(), loaded.clone());
+            let expected_plans = std::mem::take(&mut *DECISIONS.lock().unwrap());
+            // Both sides receive equal owned capacities: the fit's raw-owner
+            // memory envelope deliberately includes spare Vec/String capacity.
+            let actual = fit_prepared_ppml_interruptible(
+                request.clone(),
+                (loaded.clone(), Some(hint)),
+                &mut |_| Ok(()),
+            );
+            assert_eq!(
+                *DECISIONS.lock().unwrap(),
+                expected_plans,
+                "workers={workers}, case={case}"
+            );
+            match (expected, actual) {
+                (Err(expected), Err(actual)) => assert_eq!(actual, expected),
+                (Ok(expected), Ok(actual)) => {
+                    assert_eq!(actual.coefficients(), expected.coefficients());
+                    assert_eq!(
+                        exact_inference(actual.inference().clone()),
+                        exact_inference(expected.inference().clone()),
+                    );
+                    assert_eq!(actual.sample(), expected.sample());
+                    assert_eq!(actual.output(), expected.output());
+                    assert_eq!(actual.convergence(), expected.convergence());
+                    let mut actual_separation = actual.separation().clone();
+                    let mut expected_separation = expected.separation().clone();
+                    // Observed duration is not a scientific replay field.
+                    // Keep every separation decision and certificate exact.
+                    for report in [&mut actual_separation, &mut expected_separation] {
+                        for method in &mut report.methods {
+                            method.elapsed_seconds = 0.0;
+                        }
+                    }
+                    assert_eq!(actual_separation, expected_separation);
+                    assert_eq!(actual.certificate(), expected.certificate());
+                    assert_eq!(actual.memory().plan, expected.memory().plan);
+                }
+                (expected, actual) => panic!("mismatched hint result: {expected:?} / {actual:?}"),
+            }
+        }
+    }
+}
+
+#[test]
+fn load_hint_requires_full_rows_and_bounds_coexisting_descriptors() {
+    let (request, loaded) = fixture(2, false, false, false, false, false);
+    let make = || input_factor_hint(&request.ols, &loaded.ols);
+    let n = loaded.ols.candidate.len();
+    let classified = PpmlNumericClassification {
+        n_original: n,
+        n_candidate: n,
+        n_active: n,
+    };
+    let hint = make();
+    assert!(hint.adoption_workspace_bytes() > hint.owned_bytes());
+    let mut metadata = super::super::PpmlMetadataMemory {
+        generation_bytes_per_row: hint.adoption_workspace_bytes().div_ceil(n as u128),
+        ..Default::default()
+    };
+    assert!(admit_load_hint(Some(hint), classified, metadata).is_some());
+    metadata.generation_bytes_per_row -= 1;
+    assert!(admit_load_hint(Some(make()), classified, metadata).is_none());
+    metadata.generation_bytes_per_row += 1;
+    assert!(admit_load_hint(
+        Some(make()),
+        PpmlNumericClassification {
+            n_active: n - 1,
+            ..classified
+        },
+        metadata
+    )
+    .is_none());
+    metadata.generation_bytes_per_row = u128::MAX;
+    assert!(admit_load_hint(Some(make()), classified, metadata).is_none());
+}
+
 #[test]
 fn generation_parent_bound_covers_factors_clusters_slopes_and_rebases() {
     use crate::ppml_separation::PreparedSeparationRebuilder;

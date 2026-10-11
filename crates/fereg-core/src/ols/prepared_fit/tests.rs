@@ -6385,6 +6385,90 @@ fn ppml_slope_only_topology_preserves_structural_constant() {
 }
 
 #[test]
+fn projection_norm_handoff_preserves_ordered_bits_and_explicit_divisor_fallback() {
+    let rows = 1031;
+    let x: Vec<_> = (0..rows).map(|r| (r as f64 / 19.).sin()).collect();
+    let y: Vec<_> = (0..rows)
+        .map(|r| 1. + 0.3 * x[r] + (r as f64 / 13.).cos())
+        .collect();
+    let groups: Vec<_> = (0..rows).map(|r| (r % 17) as f64).collect();
+    let firms: Vec<_> = (0..rows).map(|r| ((r / 17) % 13) as f64).collect();
+    let weights: Vec<_> = (0..rows).map(|r| [0.001, 0.5, 1., 1000.][r % 4]).collect();
+    let data = prepared_multiway_categorical_weights(
+        &y,
+        &[x],
+        &[groups, firms],
+        TestWeights::Analytic(&weights),
+    );
+    let canonical = LinearSolveFrame::from_prepared_ols(&data).unwrap();
+    for workers in [1, 4, 16] {
+        let mut config = PreparedOlsFitConfig::default();
+        config.absorb.solver = FeSolverKind::Map;
+        config.execution.threads =
+            crate::options::ThreadConfig::from_requested(workers, true).unwrap();
+        ThreadTeam::new(config.execution.threads)
+            .install(|| {
+                for divisor_factor in [1., 8.] {
+                    let mut scale = canonical.bread_weight_scale();
+                    scale.solver_weight_divisor *= divisor_factor;
+                    scale.reference_weight_multiplier *= divisor_factor;
+                    let frame =
+                        LinearSolveFrame::from_parts(&y, canonical.raw_weights(), scale).unwrap();
+                    assert_eq!(
+                        frame.weights().matches_fe_norm_scale(),
+                        divisor_factor == 1.
+                    );
+                    let mut session =
+                        crate::fe::FeSession::for_ols(&data, frame.raw_weights(), config).unwrap();
+                    let raw = data.fit_build_rhs_with_response(&y).unwrap();
+                    let mut projected = session
+                        .project_ols(frame.raw_weights(), raw, config.absorb, false, false)
+                        .unwrap();
+                    let norms = projected.take_residual_norms();
+                    assert_eq!(norms.len(), projected.residualized().ncols());
+                    if divisor_factor == 1. {
+                        for (column, norm) in norms.iter().enumerate() {
+                            let recomputed = weighted_matrix_column_norm(
+                                projected.residualized(),
+                                column,
+                                frame.weights(),
+                            )
+                            .unwrap();
+                            assert_eq!(
+                                norm.to_bits(),
+                                recomputed.to_bits(),
+                                "workers={workers}, column={column}"
+                            );
+                        }
+                    } else {
+                        assert!(norms.iter().enumerate().any(|(column, norm)| {
+                            norm.to_bits()
+                                != weighted_matrix_column_norm(
+                                    projected.residualized(),
+                                    column,
+                                    frame.weights(),
+                                )
+                                .unwrap()
+                                .to_bits()
+                        }));
+                    }
+                    let mut reservation = InjectedReservation::default();
+                    let projection =
+                        fit_projection_only_internal(&data, frame, config, &mut reservation)
+                            .unwrap();
+                    assert!(projection.certified());
+                    assert_eq!(
+                        reservation.records.iter().any(|(_, label)| *label
+                            == "unable to reserve prepared projection within norms"),
+                        divisor_factor != 1.
+                    );
+                }
+            })
+            .unwrap();
+    }
+}
+
+#[test]
 fn projection_only_matches_full_fit_without_constructing_reported_bread() {
     let x = vec![-2.0, -1.0, 0.0, 1.0, 2.0, 4.0, 5.0, 7.0];
     let y = vec![1.2, 0.9, 1.5, 4.4, 4.8, 8.2, 11.1, 15.8];

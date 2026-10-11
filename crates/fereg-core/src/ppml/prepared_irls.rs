@@ -45,6 +45,7 @@ use super::memory::{begin_phase_allocation, end_phase_allocation};
 use super::one_fe_profile::{ProfiledColumns, ProfiledOneFe, ProfiledRawColumns};
 #[cfg(test)]
 use super::plan_ppml_memory;
+use super::preparation_trace::PreparationTrace;
 use super::prepared_estimator::PpmlInterruptPoint;
 use super::prepared_model::{PpmlGenerationBinding, PreparedPpmlModelGeneration};
 use super::profiled_intercept_curve::ProfiledInterceptCurve;
@@ -678,8 +679,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     }
     begin_phase_allocation(config.phase_allocation_probe, PpmlPhase::Preparation);
     let preparation_clock = PpmlPhaseClock::start();
+    let mut preparation_trace = PreparationTrace::new();
     validate_inputs(prepared, outcome, prior_weights, offset, config)?;
     validate_memory_dimensions(prepared, memory_plan.dimensions, config)?;
+    let validation_seconds = preparation_trace.lap();
     if crate::diagnostics::solver_trace_enabled() {
         eprintln!(
             "FEREG_SOLVER_TRACE|phase=prepared_irls_start|original_rows={}|active_rows={}|finite_columns={}|memory={:?}",
@@ -693,9 +696,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // separation detector workspace. The composite owner rebases only the
     // exact final dimensions into that conservative fit-lifetime plan.
     let admission = LinearAdmission::new_public(prepared, memory_plan, &mut config, purpose)?;
+    let linear_admission_seconds = preparation_trace.lap();
     // The route and its complete fit-lifetime budget are admitted before this
     // observation-scale owned copy of the already-finalized FE topology.
     let fe_design = prepared.fit_owned_fe_design()?;
+    let fe_design_seconds = preparation_trace.lap();
     let requested_threads = config
         .linear
         .execution
@@ -727,6 +732,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // Keep the caller's requested value in telemetry, then use this explicit
     // count for every ordinary, fallback and strict linear frame in the fit.
     config.linear.execution.threads.requested = std::num::NonZeroUsize::new(effective_threads);
+    let installation_admission_seconds = preparation_trace.lap();
 
     let (coefficient_values, eta) = initialize(
         prepared,
@@ -738,6 +744,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         start,
         purpose,
     )?;
+    let starts_seconds = preparation_trace.lap();
     let objective_inputs = PreparedPoissonInputs::new_with_threads(
         outcome,
         prior_weights,
@@ -748,6 +755,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         PpmlIterationWorkspace::from_initial_state(memory_plan, eta, coefficient_values)?;
     workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
     let mut objective = workspace.evaluate_current_objective(&objective_inputs)?;
+    let workspace_seconds = preparation_trace.lap();
     let mut score_workspace = PpmlScoreWorkspace::new(&fe_design, config.linear.execution.threads)?;
     let initial_tolerance =
         scheduled_inner_tolerance(config.ppml, 1, config.ppml.inner_tolerance_initial, None);
@@ -757,6 +765,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         BorrowedMapWeights::Provided(workspace.hessian_weights()),
         ppml_bread_weight_scale(workspace.hessian_weights())?,
     )?;
+    let frame_seconds = preparation_trace.lap();
     let (mut session, profiles, initial_checkpoint_lsmr) = installation.install(
         prepared,
         frame,
@@ -768,6 +777,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         purpose,
         effective_threads,
     )?;
+    let installation_seconds = preparation_trace.lap();
     let mut direction = OrdinaryDirection::Canonical;
     let mut profiled_curve: Option<ProfiledInterceptCurve> = None;
     let mut strict_control = controller::StrictCheckpointControl::new(
@@ -785,6 +795,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .try_reserve_exact(retained_limit)
         .map_err(|_| allocation("unable to reserve prepared PPML diagnostics"))?;
     let mut total_step_halvings = 0_usize;
+    let diagnostics_seconds = preparation_trace.lap();
     let mut final_score = prepared_score_certificate(
         prepared,
         session.fe_design(),
@@ -794,6 +805,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         config.ppml.score_tolerance,
         &mut score_workspace,
     )?;
+    let initial_score_seconds = preparation_trace.lap();
     // Set with every accepted-iteration score below, before any strict cycle.
     let mut final_score_generation: u64;
     let mut previous_inner_tolerance = initial_tolerance;
@@ -807,12 +819,26 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let mut maximum_deviance_increase_relative = 0.0_f64;
     let mut exploration_terminal = PreparedPpmlMuTerminal::MaximumIterations;
     let mut allocation_audit = PpmlAllocationAuditWindow::new(config.allocation_snapshot_probe);
-    memory.record_phase(PpmlPhase::Preparation, preparation_clock.elapsed());
+    let finish_seconds = preparation_trace.lap();
+    let preparation_elapsed = preparation_clock.elapsed();
+    memory.record_phase(PpmlPhase::Preparation, preparation_elapsed);
     record_phase_allocation(
         &mut memory,
         config.phase_allocation_probe,
         PpmlPhase::Preparation,
     );
+    if preparation_trace.enabled() {
+        let purpose = match purpose {
+            PreparedPpmlIrlsPurpose::Publication => "publication",
+            PreparedPpmlIrlsPurpose::MuExploration { .. } => "mu_exploration",
+        };
+        eprintln!(
+            "FEREG_PHASE|ppml_prepare_irls|generation={model_generation}|purpose={purpose}|validation={validation_seconds:.9}|linear_admission={linear_admission_seconds:.9}|fe_design={fe_design_seconds:.9}|installation_admission={installation_admission_seconds:.9}|starts={starts_seconds:.9}|workspace={workspace_seconds:.9}|frame={frame_seconds:.9}|installation={installation_seconds:.9}|diagnostics={diagnostics_seconds:.9}|initial_score={initial_score_seconds:.9}|finish={finish_seconds:.9}|total={:.9}|rows={}|threads={effective_threads}|team_workers={}",
+            preparation_elapsed.as_secs_f64(),
+            outcome.len(),
+            PreparationTrace::team_workers(),
+        );
+    }
 
     for iteration in 1..=config.ppml.max_iterations {
         crate::interrupt::checkpoint()?;

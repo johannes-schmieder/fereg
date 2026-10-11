@@ -2,6 +2,422 @@ use super::*;
 use crate::fe::auto::direct_lsmr_tolerance;
 use crate::fe::{LevelIndex, ValidatedBorrowedInterceptSource};
 
+fn assert_initial_screen_matches_first_certificate_group(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    parallel: bool,
+) -> Vec<f64> {
+    assert_eq!(
+        certificate_parallel_workspaces_fit(design, values, workspace).unwrap(),
+        parallel
+    );
+    assert!(initial_group_rejects(design, weights, values, 1e-11, workspace).unwrap());
+    let screened_means = workspace.group_sums.clone();
+    let screened_maxima = workspace.rhs_relative_infinity_norms.clone();
+    for (reference, (residual, scale)) in workspace
+        .reference_norms
+        .iter()
+        .zip(workspace.residual_norms.iter().zip(&workspace.rhs_scales))
+    {
+        assert_eq!(reference.to_bits(), residual.to_bits());
+        assert_eq!(reference.to_bits(), scale.to_bits());
+    }
+
+    // Invoke the actual complete-certificate gather, independently of the
+    // screen's route branches, then fold only its canonical first group.
+    let effect = &design.effects()[0];
+    let columns = values.ncols();
+    let (weight, means) = if parallel {
+        let levels = effect.n_levels();
+        fill_parallel_group_statistics(
+            effect,
+            weights,
+            values,
+            &mut workspace.parallel_group_weights[..levels],
+            &mut workspace.parallel_group_means[..levels * columns],
+            GroupMeanRoute::OnePass,
+        )
+        .unwrap();
+        (
+            workspace.parallel_group_weights[0],
+            workspace.parallel_group_means[..columns].to_vec(),
+        )
+    } else {
+        let weight = group_means(
+            effect.level_index().checked_members(0).unwrap(),
+            weights,
+            values,
+            workspace,
+            GroupMeanRoute::OnePass,
+        )
+        .unwrap();
+        (weight, workspace.group_sums.clone())
+    };
+    let mut maxima = vec![0.0; columns];
+    CertificateFold::default()
+        .level(
+            weight,
+            &means,
+            &workspace.rhs_scales,
+            &mut maxima,
+            weights.raw_scale,
+        )
+        .unwrap();
+    for rhs in 0..columns {
+        assert_eq!(
+            screened_means[rhs].to_bits(),
+            means[rhs].to_bits(),
+            "mean RHS {rhs}"
+        );
+        assert_eq!(
+            screened_maxima[rhs].to_bits(),
+            maxima[rhs].to_bits(),
+            "moment RHS {rhs}"
+        );
+    }
+    screened_maxima
+}
+
+#[test]
+fn initial_unit_rejection_is_a_true_full_certificate_failure_across_group_routes() {
+    for workers in [1, 4, 16] {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+            .install(|| {
+                for rows in [257, 16_385] {
+                    let codes: Vec<_> = (0..rows).map(|r| (r % 17) as u32).collect();
+                    let index = LevelIndex::from_codes(&codes, 17).unwrap();
+                    let source = ValidatedBorrowedInterceptSource::new(&codes, 17, &index).unwrap();
+                    let design =
+                        BorrowedInterceptFeDesign::new(rows, vec![source.effect()]).unwrap();
+                    for columns in [1, 17, 64, 65, 129] {
+                        // The constant has a nonzero group mean. A tiny RHS in
+                        // the first group forces the whole OnePass group onto
+                        // scaled arithmetic; other groups keep its norm moderate.
+                        let values = DenseMatrix::from_row_major(
+                            rows,
+                            columns,
+                            (0..rows * columns)
+                                .map(|i| match i % columns {
+                                    0 => 1.0,
+                                    1 if codes[i / columns] == 0 => 1e-200,
+                                    2 => -0.0,
+                                    _ => (i as f64 * 0.17).sin(),
+                                })
+                                .collect(),
+                        )
+                        .unwrap();
+                        let weights = validate_weights(BorrowedMapWeights::Unit, rows).unwrap();
+                        let mut workspace = BorrowedMapWorkspace::new(
+                            &design,
+                            rows,
+                            columns,
+                            &mut SystemWorkspaceReservation,
+                        )
+                        .unwrap();
+                        update_workspace_norms(&values, weights, &mut workspace, true).unwrap();
+                        let partial_maxima = assert_initial_screen_matches_first_certificate_group(
+                            &design,
+                            weights,
+                            &values,
+                            &mut workspace,
+                            workers > 1 && (rows == 16_385 || columns >= 64),
+                        );
+                        let full =
+                            certify_initial(&design, weights, &values, 1e-11, &mut workspace)
+                                .unwrap();
+                        assert!(!full.passed);
+                        assert!(partial_maxima
+                            .iter()
+                            .zip(&workspace.rhs_relative_infinity_norms)
+                            .all(|(part, whole)| part <= whole));
+                        // The constant's exact mathematical relative moment is
+                        // sqrt(group_size / rows), well clear of the tolerance.
+                        let expected = ((rows.div_ceil(17) as f64) / rows as f64).sqrt();
+                        assert!((partial_maxima[0] - expected).abs() < 1e-15);
+                    }
+                }
+            })
+            .unwrap();
+    }
+}
+
+#[test]
+fn initial_unit_screen_uses_exact_group_route_during_pilot_scratch_loan() {
+    let rows = 2049;
+    let left: Vec<_> = (0..rows).map(|row| (row % 17) as u32).collect();
+    let right: Vec<_> = (0..rows).map(|row| ((row / 7) % 13) as u32).collect();
+    let left_index = LevelIndex::from_codes(&left, 17).unwrap();
+    let right_index = LevelIndex::from_codes(&right, 13).unwrap();
+    let left_source = ValidatedBorrowedInterceptSource::new(&left, 17, &left_index).unwrap();
+    let right_source = ValidatedBorrowedInterceptSource::new(&right, 13, &right_index).unwrap();
+    for workers in [4, 16] {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+            .install(|| {
+                let design = BorrowedInterceptFeDesign::new(
+                    rows,
+                    vec![left_source.effect(), right_source.effect()],
+                )
+                .unwrap();
+                // One-lane admission leaves both parallel banks empty. The
+                // installed team must select its route after the real loan.
+                let mut owner = ReusableCategoricalMapAbsorber::new(design, 129, 1).unwrap();
+                let capacities = owner.capacities();
+                let graph = owner.two_fe_pcg.as_ref().unwrap();
+                let pointers = (graph.left_work.as_ptr(), graph.left_weights.as_ptr());
+                for columns in [17, 64, 65, 129] {
+                    for tiny_rhs in [false, true] {
+                        let values = DenseMatrix::from_row_major(
+                            rows,
+                            columns,
+                            (0..rows * columns)
+                                .map(|i| match i % columns {
+                                    0 => 1.0,
+                                    1 if tiny_rhs && left[i / columns] == 0 => 1e-200,
+                                    2 => -0.0,
+                                    _ => (i as f64 * 0.17).sin(),
+                                })
+                                .collect(),
+                        )
+                        .unwrap();
+                        let weights = validate_weights(BorrowedMapWeights::Unit, rows).unwrap();
+                        owner.workspace.set_rhs_count(columns).unwrap();
+                        update_workspace_norms(&values, weights, &mut owner.workspace, true)
+                            .unwrap();
+                        assert!(!certificate_parallel_workspaces_fit(
+                            &owner.design,
+                            &values,
+                            &owner.workspace
+                        )
+                        .unwrap());
+                        owner
+                            .with_pilot_group_scratch(columns, |design, workspace| {
+                                assert_eq!(workspace.parallel_group_means.as_ptr(), pointers.0);
+                                assert_eq!(workspace.parallel_group_weights.as_ptr(), pointers.1);
+                                let _ = assert_initial_screen_matches_first_certificate_group(
+                                    design, weights, &values, workspace, true,
+                                );
+                                assert!(
+                                    !certify_initial(design, weights, &values, 1e-11, workspace)?
+                                        .passed
+                                );
+                                Ok(())
+                            })
+                            .unwrap();
+                        assert_eq!(owner.capacities(), capacities);
+                        assert!(owner.workspace.parallel_group_means.is_empty());
+                        assert!(owner.workspace.parallel_group_weights.is_empty());
+                        let graph = owner.two_fe_pcg.as_ref().unwrap();
+                        assert_eq!(
+                            (graph.left_work.as_ptr(), graph.left_weights.as_ptr()),
+                            pointers
+                        );
+                    }
+                }
+            })
+            .unwrap();
+    }
+}
+
+#[test]
+fn initial_rejection_declines_unsupported_norms_and_accepts_supplied_unit_weights() {
+    let codes = [0, 0, 1, 1];
+    let index = LevelIndex::from_codes(&codes, 2).unwrap();
+    let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
+    let design = BorrowedInterceptFeDesign::new(4, vec![source.effect()]).unwrap();
+    for weights in [
+        BorrowedMapWeights::Unit,
+        BorrowedMapWeights::Provided(&[1.0; 4]),
+    ] {
+        let weights = validate_weights(weights, 4).unwrap();
+        for scale in [0.0, 1e-100, 1e100] {
+            let values = DenseMatrix::from_row_major(4, 1, vec![scale; 4]).unwrap();
+            let mut workspace =
+                BorrowedMapWorkspace::new(&design, 4, 1, &mut SystemWorkspaceReservation).unwrap();
+            update_workspace_norms(&values, weights, &mut workspace, true).unwrap();
+            assert!(
+                !initial_group_rejects(&design, weights, &values, 1e-11, &mut workspace).unwrap()
+            );
+        }
+    }
+    let weights = validate_weights(BorrowedMapWeights::Provided(&[1.0; 4]), 4).unwrap();
+    let values = DenseMatrix::from_row_major(4, 1, vec![1.0; 4]).unwrap();
+    let mut workspace =
+        BorrowedMapWorkspace::new(&design, 4, 1, &mut SystemWorkspaceReservation).unwrap();
+    update_workspace_norms(&values, weights, &mut workspace, true).unwrap();
+    assert!(initial_group_rejects(&design, weights, &values, 1e-11, &mut workspace).unwrap());
+    assert!(
+        !certify_initial(&design, weights, &values, 1e-11, &mut workspace)
+            .unwrap()
+            .passed
+    );
+}
+
+#[test]
+fn bounded_weight_screen_matches_exact_certificate_routes_and_pilot_loans() {
+    let rows = 257;
+    let left: Vec<_> = (0..rows).map(|row| (row % 17) as u32).collect();
+    let right: Vec<_> = (0..rows).map(|row| (row % 13) as u32).collect();
+    let li = LevelIndex::from_codes(&left, 17).unwrap();
+    let ri = LevelIndex::from_codes(&right, 13).unwrap();
+    let ls = ValidatedBorrowedInterceptSource::new(&left, 17, &li).unwrap();
+    let rs = ValidatedBorrowedInterceptSource::new(&right, 13, &ri).unwrap();
+    for workers in [1, 4, 16] {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+            .install(|| {
+                let design =
+                    BorrowedInterceptFeDesign::new(rows, vec![ls.effect(), rs.effect()]).unwrap();
+                let mut owner = ReusableCategoricalMapAbsorber::new(design, 129, 1).unwrap();
+                let capacities = owner.capacities();
+                for columns in [1, 17, 64, 65, 129] {
+                    for scale in [1.0 / 4_294_967_296.0, 1.0, 4_294_967_296.0] {
+                        let raw: Vec<_> = (0..rows)
+                            .map(|row| scale * [1.0, 0.25, 1.0 / 4_294_967_296.0][row % 3])
+                            .collect();
+                        let weights =
+                            validate_weights(BorrowedMapWeights::Provided(&raw), rows).unwrap();
+                        for tiny_rhs in [false, true] {
+                            let values = DenseMatrix::from_row_major(
+                                rows,
+                                columns,
+                                (0..rows * columns)
+                                    .map(|i| match i % columns {
+                                        0 => 1.0,
+                                        1 if tiny_rhs && left[i / columns] == 0 => 1e-200,
+                                        _ => (i as f64 * 0.17).sin(),
+                                    })
+                                    .collect(),
+                            )
+                            .unwrap();
+                            owner.workspace.set_rhs_count(columns).unwrap();
+                            update_workspace_norms(&values, weights, &mut owner.workspace, true)
+                                .unwrap();
+                            owner
+                                .with_pilot_group_scratch(columns, |design, workspace| {
+                                    let partial =
+                                        assert_initial_screen_matches_first_certificate_group(
+                                            design,
+                                            weights,
+                                            &values,
+                                            workspace,
+                                            workers > 1 && columns >= 64,
+                                        );
+                                    assert!(
+                                        !certify_initial(
+                                            design, weights, &values, 1e-11, workspace
+                                        )?
+                                        .passed
+                                    );
+                                    assert!(partial
+                                        .iter()
+                                        .zip(&workspace.rhs_relative_infinity_norms)
+                                        .all(|(part, full)| part <= full));
+                                    Ok(())
+                                })
+                                .unwrap();
+                            assert_eq!(owner.capacities(), capacities);
+                            assert!(owner.workspace.parallel_group_means.is_empty());
+                            assert!(owner.workspace.parallel_group_weights.is_empty());
+                        }
+                    }
+                }
+            })
+            .unwrap();
+    }
+}
+
+#[test]
+fn weighted_initial_screen_respects_inclusive_weight_and_norm_boundaries() {
+    let codes = [0, 1];
+    let index = LevelIndex::from_codes(&codes, 2).unwrap();
+    let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
+    let design = BorrowedInterceptFeDesign::new(2, vec![source.effect()]).unwrap();
+    let low = 1.0_f64 / 4_294_967_296.0;
+    let high = 4_294_967_296.0_f64;
+    for (scale, ratio, eligible) in [
+        (low, 1.0, true),
+        (f64::from_bits(low.to_bits() - 1), 1.0, false),
+        (high, 1.0, true),
+        (f64::from_bits(high.to_bits() + 1), 1.0, false),
+        (1.0, low, true),
+        (1.0, f64::from_bits(low.to_bits() - 1), false),
+        (1.0, f64::from_bits(low.to_bits() + 1), true),
+    ] {
+        let raw = [scale, scale * ratio];
+        let weights = validate_weights(BorrowedMapWeights::Provided(&raw), 2).unwrap();
+        let values = DenseMatrix::from_row_major(2, 1, vec![1.0, 0.0]).unwrap();
+        let mut workspace =
+            BorrowedMapWorkspace::new(&design, 2, 1, &mut SystemWorkspaceReservation).unwrap();
+        update_workspace_norms(&values, weights, &mut workspace, true).unwrap();
+        assert_eq!(
+            initial_group_rejects(&design, weights, &values, 1e-11, &mut workspace).unwrap(),
+            eligible
+        );
+        assert!(
+            !certify_initial(&design, weights, &values, 1e-11, &mut workspace)
+                .unwrap()
+                .passed
+        );
+    }
+    for (norm, eligible) in [
+        (f64::from_bits(1e-20_f64.to_bits() - 1), false),
+        (1e-20, true),
+        (1e20, true),
+        (f64::from_bits(1e20_f64.to_bits() + 1), false),
+    ] {
+        let weights = validate_weights(BorrowedMapWeights::Provided(&[1.0; 2]), 2).unwrap();
+        let values = DenseMatrix::from_row_major(2, 1, vec![norm, 0.0]).unwrap();
+        let mut workspace =
+            BorrowedMapWorkspace::new(&design, 2, 1, &mut SystemWorkspaceReservation).unwrap();
+        update_workspace_norms(&values, weights, &mut workspace, true).unwrap();
+        assert_eq!(workspace.reference_norms[0].to_bits(), norm.to_bits());
+        assert_eq!(
+            initial_group_rejects(&design, weights, &values, 1e-11, &mut workspace).unwrap(),
+            eligible
+        );
+    }
+}
+
+#[test]
+fn failing_initial_group_does_not_authorize_skipping_later_certificate_errors() {
+    let codes = [0, 1];
+    let index = LevelIndex::from_codes(&codes, 2).unwrap();
+    let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
+    let design = BorrowedInterceptFeDesign::new(2, vec![source.effect()]).unwrap();
+    // The second case stays inside the bounded weight domain: the zero-norm
+    // guard must still preserve its later nonzero subnormal group-mean error.
+    for (tiny, raw_weights) in [
+        (1e-200, [1.0, f64::from_bits(1)]),
+        (f64::from_bits(1), [1.0, 0.25]),
+    ] {
+        let values = DenseMatrix::from_row_major(2, 2, vec![1.0, 0.0, 0.0, tiny]).unwrap();
+        let weights = validate_weights(BorrowedMapWeights::Provided(&raw_weights), 2).unwrap();
+        let mut workspace =
+            BorrowedMapWorkspace::new(&design, 2, 2, &mut SystemWorkspaceReservation).unwrap();
+        update_workspace_norms(&values, weights, &mut workspace, true).unwrap();
+        assert_eq!(workspace.reference_norms, [1.0, 0.0]);
+        assert!(!initial_group_rejects(&design, weights, &values, 1e-8, &mut workspace).unwrap());
+        let total = group_means(
+            &[0],
+            weights,
+            &values,
+            &mut workspace,
+            GroupMeanRoute::OnePass,
+        )
+        .unwrap();
+        let first_relative =
+            workspace.group_sums[0].abs() / workspace.reference_norms[0] * total.sqrt();
+        assert!(first_relative > 1e-8);
+        // The second RHS underflows in the weighted norm but has a nonzero mean
+        // in the second group. A first-group rejection screen would hide this
+        // existing error instead of preserving the initial certificate boundary.
+        let error = certify_initial(&design, weights, &values, 1e-8, &mut workspace).unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert!(error.to_string().contains("zero-scale certificate"));
+    }
+}
+
 #[test]
 fn automatic_initial_norm_handoff_preserves_fresh_certificate_and_workspace() {
     for threads in [1, 4] {
@@ -2656,7 +3072,17 @@ fn large_two_fe_schur_operator_is_bit_stable_across_threads() {
                 graph
             })
     };
-    for (rhs, stride) in [(1, 1), (11, 11), (52, 52), (51, 64)] {
+    for (rhs, stride) in [
+        (1, 1),
+        (7, 8),
+        (8, 8),
+        (9, 12),
+        (17, 20),
+        (52, 52),
+        (51, 64),
+        (65, 68),
+        (129, 132),
+    ] {
         let serial = build(1, rhs, stride);
         for threads in [2, 4, 8, 16] {
             let parallel = build(threads, rhs, stride);
@@ -2668,6 +3094,91 @@ fn large_two_fe_schur_operator_is_bit_stable_across_threads() {
                     expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
                     actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
                 );
+            }
+        }
+    }
+}
+
+#[test]
+fn schur_rhs_tiles_match_exact_weighted_bipartite_operator() {
+    for repetitions in [1, 4096] {
+        let rows = 4 * repetitions;
+        let left_codes: Vec<_> = (0..rows).map(|r| ((r % 4) / 2) as u32).collect();
+        let right_codes: Vec<_> = (0..rows).map(|r| (r % 2) as u32).collect();
+        let left_index = LevelIndex::from_codes(&left_codes, 2).unwrap();
+        let right_index = LevelIndex::from_codes(&right_codes, 2).unwrap();
+        let left = ValidatedBorrowedInterceptSource::new(&left_codes, 2, &left_index).unwrap();
+        let right = ValidatedBorrowedInterceptSource::new(&right_codes, 2, &right_index).unwrap();
+        let design =
+            BorrowedInterceptFeDesign::new(rows, vec![left.effect(), right.effect()]).unwrap();
+        let raw_weights: Vec<_> = (0..rows).map(|r| [1.0, 2.0, 2.0, 4.0][r % 4]).collect();
+        for weighted in [false, true] {
+            let weights = validate_weights(
+                if weighted {
+                    BorrowedMapWeights::Provided(&raw_weights)
+                } else {
+                    BorrowedMapWeights::Unit
+                },
+                rows,
+            )
+            .unwrap();
+            for threads in [1, 4, 16] {
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap()
+                    .install(|| {
+                        for width in [1, 3, 4, 7, 8, 9, 17, 51, 64, 65, 129] {
+                            let stride = width + 3;
+                            let mut graph = TwoFePcgWorkspace::new(
+                                &design,
+                                stride,
+                                &mut SystemWorkspaceReservation,
+                            )
+                            .unwrap();
+                            let mass = repetitions as f64;
+                            let group_weights = if weighted {
+                                [0.75 * mass, 1.5 * mass]
+                            } else {
+                                [2.0 * mass; 2]
+                            };
+                            graph.left_weights.copy_from_slice(&group_weights);
+                            graph.right_weights.copy_from_slice(&group_weights);
+                            graph.direction.fill(0.0);
+                            graph.left_work.fill(99.0);
+                            graph.operator.fill(99.0);
+                            for rhs in 0..width {
+                                let k = ((rhs % 7) as f64 - 3.0) / 8.0;
+                                graph.direction[rhs] = if weighted { 9.0 * k } else { 6.0 * k };
+                            }
+                            graph.apply_schur(&design, weights, width, stride).unwrap();
+                            // Complete 2x2 incidence has a rank-one Schur block.
+                            // The chosen dyadic directions give left means 3*k
+                            // and exact S*d = [a*k, -a*k], independently of code.
+                            let amplitude = if weighted { 4.5 * mass } else { 6.0 * mass };
+                            for level in 0..2 {
+                                for rhs in 0..stride {
+                                    let k = ((rhs % 7) as f64 - 3.0) / 8.0;
+                                    let mean = if rhs < width { 3.0 * k } else { 0.0 };
+                                    let product = if rhs >= width || k == 0.0 {
+                                        0.0
+                                    } else if level == 0 {
+                                        amplitude * k
+                                    } else {
+                                        -amplitude * k
+                                    };
+                                    assert_eq!(
+                                        graph.left_work[level * stride + rhs].to_bits(),
+                                        mean.to_bits()
+                                    );
+                                    assert_eq!(
+                                        graph.operator[level * stride + rhs].to_bits(),
+                                        product.to_bits()
+                                    );
+                                }
+                            }
+                        }
+                    });
             }
         }
     }
@@ -3016,6 +3527,53 @@ fn every_workspace_reservation_and_capacity_guard_fails_closed() {
         )
         .expect_err("undersized allocation must fail");
         assert_eq!(error.code, ErrorCode::Allocation, "call {skip_at}");
+    }
+}
+
+#[test]
+fn lane_initialized_banks_retain_reserved_storage_and_failure_contract() {
+    #[derive(Default)]
+    struct PointerReservation {
+        address: usize,
+        capacity: usize,
+    }
+    impl WorkspaceReservation for PointerReservation {
+        fn reserve_f64(
+            &mut self,
+            target: &mut Vec<f64>,
+            additional: usize,
+            _: &'static str,
+        ) -> Result<()> {
+            target.try_reserve_exact(additional).unwrap();
+            self.address = target.as_ptr() as usize;
+            self.capacity = target.capacity();
+            Ok(())
+        }
+    }
+    for workers in [1, 4, 16] {
+        let team =
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap());
+        team.install(|| {
+            for elements in [0, 1, 16_385, 262_147] {
+                let mut reservation = PointerReservation::default();
+                let values = reserved_zeros(elements, &mut reservation, "test bank").unwrap();
+                assert_eq!(values.as_ptr() as usize, reservation.address);
+                assert_eq!(values.capacity(), reservation.capacity);
+                assert_eq!(values.len(), elements);
+                assert!(values.iter().all(|value| value.to_bits() == 0));
+            }
+            for skip in [false, true] {
+                let mut reservation = InjectedReservation {
+                    fail_at: (!skip).then_some(0),
+                    skip_at: skip.then_some(0),
+                    ..InjectedReservation::default()
+                };
+                let error = reserved_zeros(262_147, &mut reservation, "test bank").unwrap_err();
+                assert_eq!(error.code, ErrorCode::Allocation);
+                assert_eq!(reservation.records, [(262_147, "test bank")]);
+            }
+        })
+        .unwrap();
     }
 }
 

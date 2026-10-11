@@ -58,6 +58,31 @@ impl StagePlan {
     }
 }
 
+fn reserved_zero_plan(elements: usize) -> StagePlan {
+    let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
+    StagePlan::new(elements as u128, elements, workers)
+}
+
+/// Initialize an empty, already reserved numeric bank without reallocating.
+/// The owner retains its fallible reservation and admission checks. Parallel
+/// first-touch uses only an installed team; no global pool is initialized.
+pub(crate) fn initialize_reserved_f64_zeros(output: &mut Vec<f64>, elements: usize) {
+    debug_assert!(output.is_empty() && output.capacity() >= elements);
+    let plan = reserved_zero_plan(elements);
+    if plan.lanes > 1 {
+        // Indexed collection owns initialization safely. The minimum leaf
+        // length caps concurrent leaves at the admitted stage lanes, though
+        // binary splitting can expose fewer lanes for awkward lengths.
+        (0..elements)
+            .into_par_iter()
+            .with_min_len(plan.chunk(elements))
+            .map(|_| 0.0)
+            .collect_into_vec(output);
+    } else {
+        output.resize(elements, 0.0);
+    }
+}
+
 /// Fixed leaves determine numerical order; the partial target bounds their
 /// count but is not hard admission. Existing kernels always allow one partial.
 pub(crate) fn reduction_blocks(
@@ -431,6 +456,39 @@ impl ThreadTeam {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn reserved_zero_initialization_uses_installed_lanes_and_preserves_storage() {
+        assert!(rayon::current_thread_index().is_none());
+        assert_eq!(super::reserved_zero_plan(262_147).lanes, 1);
+        let check = |workers| {
+            for elements in [0, 1, 16_385, 65_536, 262_147] {
+                let plan = super::reserved_zero_plan(elements);
+                assert_eq!(
+                    plan.lanes,
+                    super::StagePlan::new(elements as u128, elements, workers).lanes
+                );
+                assert!(elements / plan.chunk(elements) <= plan.lanes);
+                let mut values = Vec::new();
+                values.try_reserve_exact(elements).unwrap();
+                let pointer = values.as_ptr();
+                let capacity = values.capacity();
+                super::initialize_reserved_f64_zeros(&mut values, elements);
+                assert_eq!(values.as_ptr(), pointer);
+                assert_eq!(values.capacity(), capacity);
+                assert_eq!(values.len(), elements);
+                assert!(values.iter().all(|value| value.to_bits() == 0));
+            }
+        };
+        check(1);
+        for workers in [1, 4, 16] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap()
+                .install(|| check(workers));
+        }
+    }
+
     struct CountingProducer {
         range: std::ops::Range<usize>,
         leaves: std::sync::Arc<std::sync::atomic::AtomicUsize>,
