@@ -81,6 +81,7 @@ pub(super) fn refine_retained_coefficients(
         ));
     }
     let mut reader = frame.storage.reader();
+    let hardware = crate::kernels::installed();
     // Recomputed row residuals expose errors hidden by solving and checking
     // the same rounded Gram/RHS. Existing admitted banks hold all scratch.
     for pass in 0..=3 {
@@ -88,11 +89,17 @@ pub(super) fn refine_retained_coefficients(
         workspace.corrections.fill(0.0);
         for (row, &response) in frame.response.iter().enumerate() {
             reader.fill_row(row, workspace.row)?;
-            let mut residual = response;
-            for (column, &position) in frame.active_positions.iter().enumerate() {
-                let value = workspace.row[position] / frame.reference_norms[position];
-                residual = (-workspace.coefficients[column]).mul_add(value, residual);
-            }
+            let residual = crate::kernels::dispatch!(
+                hardware,
+                standardized_residual(
+                    response,
+                    workspace.row,
+                    frame.active_positions,
+                    frame.reference_norms,
+                    workspace.coefficients,
+                    None
+                )
+            );
             let weight = normalized_solver_weight(frame.weights, frame.weight_scale, row)?;
             for (column, &position) in frame.active_positions.iter().enumerate() {
                 let value =

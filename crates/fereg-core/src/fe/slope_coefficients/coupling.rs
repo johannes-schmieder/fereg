@@ -472,6 +472,7 @@ impl PreparedCoupling {
             self.preparations += 1;
         }
         let n = design.nobs();
+        let hardware = crate::kernels::installed();
         self.diagonal.fill(0.);
         for (index, g) in groups.iter().enumerate() {
             if g.effect == self.eliminated {
@@ -514,8 +515,12 @@ impl PreparedCoupling {
                         let left = geometry.basis[lb + a * ls];
                         for b in 0..geometry.ranks[rg] {
                             let at = target + a * pair.right_channels + b;
-                            pair.values[at] =
-                                left.mul_add(geometry.basis[rb + b * rs], pair.values[at]);
+                            pair.values[at] = crate::kernels::fused(
+                                hardware,
+                                left,
+                                geometry.basis[rb + b * rs],
+                                pair.values[at],
+                            );
                         }
                     }
                 }
@@ -527,6 +532,7 @@ impl PreparedCoupling {
     }
 
     fn form_schur(&mut self, design: &FeDesign, groups: &[Group]) {
+        let hardware = crate::kernels::installed();
         let p = self.dimension;
         self.schur.fill(0.);
         for (index, g) in groups.iter().enumerate() {
@@ -577,8 +583,12 @@ impl PreparedCoupling {
                 for i in 0..count {
                     for j in i..count {
                         let at = self.row_columns[i] * p + self.row_columns[j];
-                        self.schur[at] =
-                            (-self.row_values[i]).mul_add(self.row_values[j], self.schur[at]);
+                        self.schur[at] = crate::kernels::fused(
+                            hardware,
+                            -self.row_values[i],
+                            self.row_values[j],
+                            self.schur[at],
+                        );
                     }
                 }
             }

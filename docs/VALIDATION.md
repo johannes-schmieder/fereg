@@ -14,12 +14,18 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
-## Pending qualification
+## Performance-plan qualification
 
 ### Performance-plan B: ordered FMA coverage, 2026-10-11
 
-This is an arithmetic-preserving candidate, **not an accepted B workstream**.
-It extends the existing detected FMA/AVX table from five to twenty entries.
+**B qualifies with cached-dispatch source patch `4aa37b80`, Mac plugin
+`68c21a90` and Linux plugin `447fe148`.** All twenty Mac bounds pass; all
+73-case Mac/Linux replays and 56 full-size Linux fits remain exact. The final
+instruction panel has zero library FMA on every measured case. Earlier failed
+candidates and their costs are retained below.
+
+The initial candidate `2c6d1832` is arithmetic-preserving, **not an accepted B
+workstream**. It extends the existing detected FMA/AVX table from five to twenty entries.
 The six areas named in the plan now dispatch ordered dot/projection, joint
 iteration, two-FE PCG and canonical upper-Gram loops. Core bodies remain safe
 and shared with the portable path; the plugin owns target-feature wrappers.
@@ -51,11 +57,11 @@ contain hardware FMA instructions and PCG direction uses the equivalent
 multiply/add form for its unit multiplier. This is instruction-selection
 evidence, not an executed instruction count. Rosetta exposes neither FMA nor
 AVX here: all five hardware tests skip, despite their test-runner `ok` labels.
-No x86 execution or Linux qualification is claimed. SCC SSH authentication
-fails with `Permission denied (keyboard-interactive,hostbased)`, so frozen-input
-Linux A/B replay, hardware tests and cachegrind remain required. In particular,
-the requested disappearance of the `__fma_fma3` execution share is unverified.
-B stays unqualified and subsequent workstreams have not begun. Johannes
+SCC access was restored through interactive SSH; the bounded Linux checks below
+supersede the earlier authentication blocker. Linux executed all five hardware
+tests. Cachegrind found residual library FMA calls, so the initial candidate
+fails B's disappearance criterion. B stays unqualified and subsequent
+workstreams have not begun. Johannes
 conditionally approved A1 on 2026-10-11 under the [plan's eligibility and
 validation requirements](fable_performance.md#4-johanness-decisions-and-remaining-gates).
 That decision does not waive B qualification. SPEC §13 is unchanged.
@@ -161,6 +167,480 @@ identical to the timed build; only the later sentinel test assertions differ.
 | Candidate build/audit/load log | `b14b52bccc47b8986c2e2deeb05c48c34e3c653b758332b5e9c8779e199bc96e` |
 | Local OLS AKM case | `6503640e23c0955ba2b711b02f82917085503ccd16f2c58011bc64b74f04fd3e` |
 | Local PPML AKM case | `029fae2a6399992230044ff0847d11cdac4e05758704c3d6eef17538c8c1404e` |
+
+### B Linux observations and extension, 2026-10-11
+
+The initial twenty-entry candidate was built from `eb838c85` (production equal
+to `2c6d1832`) against `38fd8296`, with Rust 1.85.1, GCC 12.2 and glibc 2.28.
+SCC job 8023715 completed release/profiling build, binary audit/load, numeric
+buffer guards, all five actual FMA/AVX hardware tests, and 73/73 exact replay
+cases with unchanged solver signatures and independent witnesses.
+
+Inputs are binary64 extractions from the seven frozen campaign DTAs in the
+retained `20261010T192805Z-ols-repair-e29164e6` campaign, with hashes checked
+before and after use; they were not regenerated. Calls retain the required
+sample output, unrestricted candidates and campaign solver/separation policy.
+The following native means use two alternating pairs, phase/solver tracing,
+1/4 workers and 120-second per-fit/1500-second total limits. All 56 fits are
+exact across plugins and repeat runs at each fixed worker count, with both
+certificates passing. Dense/AKM PPML keeps four outer iterations; sparse PPML
+keeps nine, two strict cycles and one refinement. This does not assert
+cross-worker bit identity. All OLS rows 18–21 and PPML rows 1, 28–40 were
+captured, preserving missing phases.
+
+Job 8023727 completed in 1245.23 measurement seconds on Xeon Gold 6242
+(scc-gr4). The requested four-CPU binding did not constrain the reported
+32-CPU affinity. The node was shared and tracing was enabled; these are
+phase diagnostics, not quiet timing or a Linux speedup claim. Strict-phase
+means are PPML row 37. Both costs and gains are shown.
+
+| Frozen case | Workers | Base native s | Candidate native s | Base strict s | Candidate strict s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| ols-akm-1m | 1 | 2.069848 | 1.982841 | — | — |
+| ols-akm-1m | 4 | 1.096788 | 1.093844 | — | — |
+| ppml-akm-1m | 1 | 11.185748 | 10.736614 | 2.718806 | 2.549752 |
+| ppml-akm-1m | 4 | 5.519300 | 5.254834 | 1.119544 | 1.052400 |
+| ppml-dense-1m | 1 | 10.631114 | 9.862782 | 2.567979 | 2.245452 |
+| ppml-dense-1m | 4 | 5.580860 | 5.432845 | 1.405876 | 1.312754 |
+| ols-three-dense-1m | 1 | 3.239322 | 3.245102 | — | — |
+| ols-three-dense-1m | 4 | 1.633578 | 1.652328 | — | — |
+| ppml-sparse-1m | 1 | 42.871195 | 39.525806 | 19.554498 | 16.715510 |
+| ppml-sparse-1m | 4 | 21.045159 | 18.929957 | 7.646044 | 7.244020 |
+| ppml-dense-4m | 1 | 45.032531 | 42.844466 | 11.922271 | 10.963437 |
+| ppml-dense-4m | 4 | 25.499336 | 24.711165 | 7.301107 | 6.964740 |
+| ols-three-dense-4m | 1 | 17.688177 | 17.553592 | — | — |
+| ols-three-dense-4m | 4 | 7.487824 | 7.605072 | — | — |
+
+Cachegrind 3.22 job 8023764 measured only the substantive native call, using
+profiling builds, one worker and the first 50,000 rows of four frozen inputs.
+Two alternating pairs per case completed in 980.09 seconds under the declared
+600-second per-fit/2700-second total bounds. All sixteen fits were exact.
+Hardware tests also ran under Valgrind without skipping. Cache and branch
+simulation were disabled. Complete symbol totals, rather than top-function
+absence, determine library FMA counts. Matching signed AlmaLinux glibc debug
+symbols identify `__fma_fma3`; debug and loaded-library build IDs were checked.
+
+| Frozen prefix | Base instructions | Candidate instructions | Change | Base library FMA instructions | Candidate library FMA instructions |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| ppml-dense-1m | 4,167,300,758.5 | 3,928,120,662.0 | -5.7394% | 175,977,738 | 60,566,754 |
+| ols-three-dense-1m | 1,368,018,067.0 | 1,368,017,711.5 | -0.0000% | 4,814,409 | 4,814,409 |
+| ppml-sparse-1m | 11,443,414,520.0 | 8,679,314,606.5 | -24.1545% | 930,283,374 | 135,790,188 |
+| ppml-akm-1m | 66,683,371,106.0 | 43,995,700,951.5 | -34.0230% | 5,855,481,021 | 1,010,663,925 |
+
+Between-pair instruction differences were at most 0.0006%; the three-FE
+change is noise. Valgrind wall times are not performance evidence. A separate
+Callgrind caller diagnostic (8023768) found remaining work in group basis
+operators, retained residual reconstruction, numeric coefficient updates,
+canonical cross products, certificate folds and triangular solves. It was
+whole-process caller attribution, not the native instruction measurement.
+
+Failed measurement attempts remain nonpassing: 8023728 exhausted its 180-second
+first-fit bound on the AKM prefix; the completed run used the larger declared
+bound. Probe 8023745 had exact fits but missing libm symbols, so its unresolved
+counts cannot support FMA attribution. Job 8023755 failed the attribution
+guard after an incorrect debug-symbol prefix; correcting the task-local lookup
+and verifying the build ID enabled 8023764. No scientific tolerance or solver
+policy changed in response.
+
+The follow-up extends twenty entries to thirty-three, targeting those observed
+callers. It keeps every per-element operation and validation order, allocations,
+rank/sample/omission/separation decisions, worker policy, independent
+certificates and fresh strict PPML solve. Small certificate folds retain their
+interleaved checks and use a scalar detected entry; its cost must be measured.
+The first extension passed 1,146 active core tests. The subsequent certificate
+extraction failed two existing tests by applying zero-width chunks to an empty
+group; restoring the original empty-group behavior and adding explicit coverage
+made all 1,146 active tests pass (three ignored). Two independent high-effort
+Astra reviews found no remaining correctness issue, while stressing parent
+replay and measured dispatch cost. The seven x86 Mac tests compile but skip
+hardware execution under Rosetta. The current full `scripts/run_tests.sh` gate
+passes, including allocator audits, transaction mocks and independent numerical
+witnesses. The ratchet adds 288 core and 238 plugin production lines for the
+thirteen bodies and wrappers, with no additional oversized file/function.
+A Mac comparator build launched from the wrong working directory was stopped
+before producing comparison evidence and restarted inside the baseline checkout.
+The thirty-three-entry candidate passed the Mac universal build/audit/load,
+73/73 exact replay cases with unchanged solver signatures, all 67 licensed
+Stata fixtures, and both public-scope OLS/PPML Break checks. The fixture runner
+first rejected a noncanonical plugin filename before running Stata; copying the
+identical artifact to its required basename resolved that tooling error.
+SCC build job 8023807 passed the native audit/load, all seven executed FMA/AVX
+tests and 73/73 exact replays with independent witnesses.
+
+This candidate **does not qualify**. The standard Mac panel completed all 320
+fits exactly in 644.00 seconds (one warmup, seven alternating pairs per case,
+90-second per-fit and 1800-second total bounds). Nineteen timing bounds passed.
+The K=129, four-worker OLS upper bootstrap bound was 1.051078661 against 1.05,
+although its paired median ratio was 0.977195353. This is a nonpassing bound,
+not evidence of a demonstrated regression or permission to relax the allowance.
+No agents, builds or tests competed during the run; ambient desktop processes
+were present. The following table retains costs as well as gains.
+
+| Standard case | Base median s | Candidate median s | Paired median ratio | 95% interval | Bound passes |
+| --- | ---: | ---: | ---: | --- | --- |
+| ols-no-fe-k5-t1 | 0.005275 | 0.005261 | 1.002286 | [0.968808, 1.009217] | yes |
+| ols-no-fe-k5-t4 | 0.004616 | 0.004725 | 1.018100 | [1.011482, 1.066769] | yes |
+| ols-three-unit-k5-t1 | 0.585446 | 0.585340 | 1.000311 | [0.996862, 1.000776] | yes |
+| ols-three-unit-k5-t4 | 0.301226 | 0.301576 | 1.001162 | [0.998409, 1.012663] | yes |
+| ols-two-pw-k5-t1 | 0.654002 | 0.656754 | 1.000448 | [0.994806, 1.004548] | yes |
+| ols-two-pw-k5-t4 | 0.374342 | 0.374774 | 0.995349 | [0.980985, 1.013267] | yes |
+| ols-two-unit-k20-t1 | 1.192590 | 1.192593 | 0.996402 | [0.992877, 0.999713] | yes |
+| ols-two-unit-k20-t16 | 0.444602 | 0.443497 | 0.994737 | [0.993586, 0.999665] | yes |
+| ols-two-unit-k20-t4 | 0.569982 | 0.576994 | 1.014324 | [1.003129, 1.024588] | yes |
+| ols-two-unit-k20-t8 | 0.468603 | 0.474596 | 1.015585 | [0.984932, 1.025868] | yes |
+| ols-two-unit-k5-t1 | 0.481379 | 0.477421 | 0.992746 | [0.978231, 1.001479] | yes |
+| ols-two-unit-k5-t4 | 0.264745 | 0.264925 | 1.004851 | [0.992034, 1.014969] | yes |
+| ols-wide-k129-t1 | 0.754905 | 0.757999 | 1.015816 | [0.977636, 1.021017] | yes |
+| ols-wide-k129-t4 | 0.400861 | 0.398980 | 0.977195 | [0.949603, 1.051079] | **no** |
+| ols-wide-k64-t1 | 0.302252 | 0.297055 | 0.981568 | [0.966294, 0.995895] | yes |
+| ols-wide-k64-t4 | 0.169353 | 0.167513 | 0.985753 | [0.973005, 1.015971] | yes |
+| ols-wide-k65-t1 | 0.315579 | 0.314946 | 1.000732 | [0.989827, 1.007048] | yes |
+| ols-wide-k65-t4 | 0.172801 | 0.175230 | 1.020985 | [1.012910, 1.048891] | yes |
+| ppml-two-unit-k5-t1 | 0.407041 | 0.402097 | 0.987854 | [0.982752, 0.992735] | yes |
+| ppml-two-unit-k5-t4 | 0.229931 | 0.229954 | 0.994263 | [0.991941, 1.001507] | yes |
+
+Linux native-call instruction job 8024253 completed sixteen exact fits in
+980.55 seconds with the same frozen prefixes, limits and attribution rules.
+Library FMA remained on every case, so the literal disappearance criterion
+also failed. These instruction changes do not establish quiet wall-time gains.
+
+| Frozen prefix | Base instructions | Candidate instructions | Change | Candidate library FMA instructions |
+| --- | ---: | ---: | ---: | ---: |
+| ppml-dense-1m | 4,167,357,006.0 | 3,728,351,548.0 | -10.5344% | 14,400,006 |
+| ols-three-dense-1m | 1,368,016,815.5 | 1,350,884,057.0 | -1.2524% | 15 |
+| ppml-sparse-1m | 11,443,432,959.5 | 8,404,214,660.0 | -26.5586% | 38,251,782 |
+| ppml-akm-1m | 66,683,364,069.5 | 43,721,041,900.0 | -34.4349% | 913,804,857 |
+
+The corresponding 56-fit Linux native panel (8024271) completed in
+1222.12 seconds, with all fixed-worker science and signatures exact.
+All certificates pass; dense/AKM PPML retains four outer iterations and sparse
+PPML retains nine. Host scc-gd4 is shared; tracing remains enabled,
+so these phase observations establish neither Mac qualification nor a Linux
+speedup claim. Means include both alternating pairs.
+
+| Frozen case | Workers | Base native s | Candidate native s | Base strict s | Candidate strict s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| ols-akm-1m | 1 | 2.054525 | 1.929889 | — | — |
+| ols-akm-1m | 4 | 1.075328 | 1.087040 | — | — |
+| ppml-akm-1m | 1 | 11.134865 | 10.017541 | 2.722945 | 2.366631 |
+| ppml-akm-1m | 4 | 5.438297 | 5.021609 | 1.104971 | 0.996896 |
+| ppml-dense-1m | 1 | 10.304446 | 9.244334 | 2.431706 | 2.082191 |
+| ppml-dense-1m | 4 | 5.540954 | 5.258065 | 1.346294 | 1.278112 |
+| ols-three-dense-1m | 1 | 3.221288 | 3.169217 | — | — |
+| ols-three-dense-1m | 4 | 1.629021 | 1.593238 | — | — |
+| ppml-sparse-1m | 1 | 42.801137 | 37.569458 | 19.502466 | 16.243620 |
+| ppml-sparse-1m | 4 | 20.854550 | 18.088248 | 7.732623 | 7.137208 |
+| ppml-dense-4m | 1 | 44.647278 | 39.293597 | 11.869542 | 9.865655 |
+| ppml-dense-4m | 4 | 25.357428 | 23.529659 | 7.290157 | 6.639839 |
+| ols-three-dense-4m | 1 | 17.555877 | 17.354827 | — | — |
+| ols-three-dense-4m | 4 | 7.444361 | 7.180352 | — | — |
+
+The dense caller probe (8024275) attributes 4,800,000 remaining calls to the
+row-major joint residual/score loops and two to the final score certificate.
+The next candidate adds detected entries for those ordered row loops and uses
+the existing scalar entry for the certificate. Its 1,146 active core tests and
+Clippy checks pass; this source is not yet qualified. The AKM caller diagnostic
+(8024807) completed in 371.80 seconds within its 540-second bound. It accounts
+for all 304,601,619 remaining library calls: 152,783,966 in incidence center/
+scatter, 139,243,955 in reduced CG updates, 12,573,696 in the joint row loops
+and two in the final score certificate. Whole-process Callgrind is caller
+attribution only; native-call Cachegrind remains the instruction acceptance test.
+
+The resulting thirty-seven-entry candidate adds ordered incidence and CG
+step/energy bodies and reuses the existing affine direction entry. Original
+nonfused curvature, initial energy and speculative matrix products remain
+unchanged. Scales, iteration limits, tolerances, finite checks, allocations,
+solver routes and scientific decisions are unchanged. Independent dense
+elimination and known-solution CG witnesses remain in the core suite. All
+1,146 active core tests and Clippy pass; the independent high-effort review
+found no issue. Hardware tests cover empty and repeated incidence coordinates,
+CG tails, subnormals and signed zero. The final ratchet adds 366 core and 338
+plugin production lines over `ded7f627`, without another oversized file or
+function. The full repository gate passes, including allocator audits, transaction mocks,
+portable checks and independent numerical witnesses. The Mac universal build,
+ABI audit/load, 73/73 exact replays with unchanged signatures, all 67 licensed
+fixtures, and OLS/PPML Break checks pass. Linux instruction and hardware
+qualification and the final Mac timing panel remain pending. The final Mac
+panel is predeclared at fifteen alternating pairs for every standard workload,
+one warmup, 90 seconds per fit and 1800 seconds total, with the same
+max(5%, 1 ms) allowance. This does not retroactively accept the failed
+thirty-three-entry panel.
+
+
+The thirty-seven-entry Linux build (8025080) passed native release/profiling
+load/audit, all eight hardware tests and 73 exact replay cases. The initial
+measurement launches did not run fits: native job 8025103 omitted its required
+setup binding/mode, and instruction job 8025102 stopped at the hardware guard.
+Under Valgrind 3.22, the normalized selected-score signed-zero test returned
+positive zero where native hardware preserved negative zero. No assertion was
+relaxed and no production repair was made for this instrumentation failure.
+
+Independent C probe 8025110 calls libm FMA, scalar FMA and packed FMA on four
+lanes: `a=[1,1,-1,-1]`, `b=[-0,+0,+0,-0]`, `c=[-0,-0,-0,+0]`. All native
+implementations return the IEEE results `[-0,+0,-0,+0]`; all three under
+Valgrind 3.22 return `[+0,+0,+0,+0]`. Upstream's
+[release notes](https://valgrind.org/docs/manual/dist.news.html) document AMD64
+FMA-emulation accuracy improvements in 3.23. The older instruction/caller
+observations above remain diagnostic and nonqualifying.
+
+A task-local build of the official Valgrind 3.27.1 release is bounded at four
+cores, 8 GB and twenty minutes, with 180/780/120-second configure/build/install
+limits. Its source archive matches the published MD5/SHA-1 and the SHA-256
+record below. The first queued build (8025117) was canceled before execution
+to correct the probe source path; 8025123 is the corrected build. Acceptance
+requires all eight unchanged hardware tests and the independent signed-zero
+probe to pass under the new tool. The ensuing instruction panel also compares
+every instrumented result with a native run of both plugins on that exact
+prefix. Corrected native phase job 8025111 retains the original fit/time bounds.
+
+
+Valgrind 3.27.1 build 8025123 passed all eight unchanged hardware tests and the
+four-lane signed-zero probe. Native-call instruction panel 8025135 completed
+sixteen fits in 578.55 seconds. Each of the eight native prefix runs
+matched every corresponding instrumented result exactly, including solver
+signatures and observation-output hashes. The complete function totals were:
+
+| Frozen prefix | Base instructions | Candidate instructions | Change | Candidate library FMA instructions |
+| --- | ---: | ---: | ---: | ---: |
+| ppml-dense-1m | 4,167,331,794.5 | 3,693,815,352.0 | -11.3626% | 0 |
+| ols-three-dense-1m | 1,368,017,720.0 | 1,350,883,636.0 | -1.2525% | 9 |
+| ppml-sparse-1m | 11,443,434,202.0 | 8,312,554,042.0 | -27.3596% | 0 |
+| ppml-akm-1m | 66,683,392,949.0 | 41,747,983,075.5 | -37.3937% | 0 |
+
+This still did not complete coverage: the three-FE OLS row retained three
+scalar library calls (nine instructions). Caller probe 8025143 completed in
+23.86 seconds and located two in `weighted_sum_of_squares` and one in
+`certify_statistic_identities`. The Mac fifteen-pair panel was deliberately
+interrupted after 251 exact guarded fits and seven completed passing workload
+bounds, before changing these sites. That interrupted panel is not a timing
+pass. Its records and hash are retained separately from the prior failed
+seven-pair bound.
+
+The completed-coverage source keeps the thirty-seven-entry table and dispatches
+the two remaining scalar source expressions through its existing FMA entry.
+The norm square is called twice; the RMSE square is called once on this case.
+Operands, positive-zero addends, evaluation order and interleaved checks are
+unchanged. The independent statistic-identity witnesses and full repository
+gate pass. The ratchet now adds 368 core and 338 plugin production lines over
+`ded7f627`, with no additional oversized file/function. Final native builds passed their ABI/load checks. Mac replay remained exact
+on all 73 cases; all 67 licensed fixtures and OLS/PPML Break checks passed.
+Linux build job 8025154 passed all eight executed hardware witnesses and all
+73 replay cases. Valgrind 3.27.1 job 8025206 completed sixteen fits in
+622.41 seconds, with eight native preflights agreeing exactly with the
+instrumented runs. Library-FMA instruction totals are now zero in all eight
+candidate fits. This completes measured FMA coverage, not B qualification.
+
+| Frozen prefix | Base instructions, median | Candidate instructions, median | Change | Candidate library FMA instructions |
+| --- | ---: | ---: | ---: | ---: |
+| ppml-dense-1m-50k | 4,167,361,710.5 | 3,693,852,366.5 | -11.36% | 0 |
+| ols-three-dense-1m-50k | 1,368,018,900.0 | 1,350,884,951.5 | -1.25% | 0 |
+| ppml-sparse-1m-50k | 11,443,432,587.5 | 8,312,522,589.0 | -27.36% | 0 |
+| ppml-akm-1m-50k | 66,683,391,134.0 | 41,748,005,545.5 | -37.39% | 0 |
+
+The largest within-arm repeat spread is 32,960 instructions. These are
+bounded single-worker Linux instruction observations, not Mac timing gains.
+Native Linux job 8025207 hit its declared 1500-second total budget after
+47 of 56 successful guarded fits. Every completed comparison was exact;
+the interrupted four-million-row dense PPML/four-worker fit and the remaining
+fits are unavailable. Its slower shared host does not establish a wall-time
+regression or a pass. The earlier complete 56-fit panel remains attributed to
+its earlier artifact.
+
+The final Mac panel also **does not qualify**. All 640 fits (twenty workloads,
+one warmup and fifteen alternating pairs) were exact in 1281.42 seconds, but
+K=129/four-worker OLS again failed the unchanged bound: baseline/candidate
+medians 0.395245/0.398175 seconds, paired median ratio 1.010543, 95% interval
+[0.992008, 1.057668], limit 1.05. The other nineteen bounds passed. Costs remain
+visible: K=20/eight-worker OLS had paired median ratio 1.016910 (upper 1.022419),
+and four-worker PPML 1.016870 (upper 1.019245). The failed bound is retained;
+it is not replaced by an unchanged-artifact rerun.
+
+A bounded independent review identified repeated `OnceLock` table reads in
+scalar certificate loops as a concrete overhead hypothesis. For the wide
+case, roughly 130 RHS across 5,500 FE levels can cause about 715,000 table reads
+per complete certificate. The next arithmetic-preserving candidate caches the
+table outside certificate/coupling folds and residual row traversal. Public
+installation semantics, operands, check positions, reduction order, solver
+policy and tolerances remain unchanged. This is a source-level hypothesis;
+the timing variation alone does not establish causality. The complexity
+ratchet adds 391 core and 338 plugin production lines over `ded7f627`, including
+the previous coverage extension. New qualification is required.
+
+The cached-dispatch candidate passes the full repository gate, universal Mac
+ABI/load, 73/73 exact Mac replays, all 67 licensed fixtures and both public
+Break checks. Bounded independent review found no changed operands, check
+positions, reduction order, public installation semantics or unsafe code in
+the lookup-hoisting delta. Linux build job 8025383 passed native audit/load,
+all eight hardware witnesses and 73/73 exact replays.
+
+Mac qualification used the same twenty frozen workloads, one warmup and fifteen
+alternating pairs under a predeclared 1800-second total/90-second per-fit bound.
+All 640 fits were exact and all bounds passed in 1283.54 seconds. No local
+builds or agents ran during timing. The Mac14,14 host had 24 logical CPUs;
+load averages at start/end were 1.71/2.31 (one minute), with no thermal or
+performance warning. Activity Monitor and ordinary desktop processes remained
+open; their observed load and the failed earlier panels are retained. These
+results establish the workload nonregression check, not a release-speed claim
+or proof that lookup overhead alone caused the previous failures.
+
+| Frozen Mac workload | Base median s | Candidate median s | Paired median ratio | 95% upper ratio bound | Pass |
+| --- | ---: | ---: | ---: | ---: | :---: |
+| ols-no-fe-k5-t1 | 0.005265 | 0.005269 | 1.001899 | 1.010703 | yes |
+| ols-no-fe-k5-t4 | 0.004673 | 0.004662 | 0.998091 | 1.014960 | yes |
+| ols-three-unit-k5-t1 | 0.586072 | 0.586364 | 1.000768 | 1.007410 | yes |
+| ols-three-unit-k5-t4 | 0.300342 | 0.301070 | 1.001049 | 1.002883 | yes |
+| ols-two-pw-k5-t1 | 0.655622 | 0.656263 | 1.000818 | 1.003743 | yes |
+| ols-two-pw-k5-t4 | 0.373327 | 0.372299 | 0.997883 | 1.004250 | yes |
+| ols-two-unit-k20-t1 | 1.192626 | 1.190379 | 0.997721 | 1.001369 | yes |
+| ols-two-unit-k20-t16 | 0.444991 | 0.443226 | 1.000321 | 1.003870 | yes |
+| ols-two-unit-k20-t4 | 0.566583 | 0.572692 | 1.008211 | 1.016746 | yes |
+| ols-two-unit-k20-t8 | 0.471166 | 0.469543 | 0.995826 | 1.009364 | yes |
+| ols-two-unit-k5-t1 | 0.487497 | 0.490294 | 1.007776 | 1.013533 | yes |
+| ols-two-unit-k5-t4 | 0.264627 | 0.264720 | 1.001893 | 1.009534 | yes |
+| ols-wide-k129-t1 | 0.762863 | 0.752804 | 0.988493 | 1.020497 | yes |
+| ols-wide-k129-t4 | 0.384350 | 0.391891 | 1.006384 | 1.017147 | yes |
+| ols-wide-k64-t1 | 0.298219 | 0.297289 | 1.005429 | 1.012541 | yes |
+| ols-wide-k64-t4 | 0.166151 | 0.166675 | 1.012796 | 1.022620 | yes |
+| ols-wide-k65-t1 | 0.313229 | 0.311255 | 0.991602 | 0.997856 | yes |
+| ols-wide-k65-t4 | 0.172737 | 0.174030 | 1.006231 | 1.028476 | yes |
+| ppml-two-unit-k5-t1 | 0.405339 | 0.405013 | 0.999573 | 1.001791 | yes |
+| ppml-two-unit-k5-t4 | 0.229393 | 0.234549 | 1.019294 | 1.027793 | yes |
+
+Costs as well as gains remain in that table: four-worker PPML has a 1.93%
+paired median increase; K=64/four-worker OLS has a 1.28% increase. Both are
+within the unchanged allowance. The former K=129/four-worker failure now
+has interval [0.954403, 1.017147], with paired median ratio 1.006384.
+
+Linux Valgrind 3.27.1 job 8025456 completed sixteen instrumented fits in
+581.92 seconds. Eight native preflights matched the instrumented science
+exactly; every paired/repeated result and solver signature was exact. All
+candidate library-FMA instruction totals are zero. Native hardware tests and
+the independent signed-zero witness retain the corrected instrumentation
+prerequisite; no rounding assertion or tolerance was relaxed.
+
+| Frozen prefix | Base instructions, median | Candidate instructions, median | Change | Candidate library FMA instructions |
+| --- | ---: | ---: | ---: | ---: |
+| ppml-dense-1m-50k | 4,167,348,700.5 | 3,694,004,287.5 | -11.36% | 0 |
+| ols-three-dense-1m-50k | 1,368,018,265.5 | 1,350,338,462.0 | -1.29% | 0 |
+| ppml-sparse-1m-50k | 11,443,407,213.0 | 8,313,466,961.0 | -27.35% | 0 |
+| ppml-akm-1m-50k | 66,683,350,571.5 | 41,749,824,121.0 | -37.39% | 0 |
+
+The largest within-arm repeat spread is 70,273 instructions.
+The separate full-size Linux native panel (8025457) completed all 56 fits
+in 1890.32 seconds under the predeclared 2400-second total and
+120-second per-fit limits. All completed base/candidate pairs and repetitions
+have exact science and solver signatures; all certificates pass. Dense/AKM
+PPML retains four outer iterations and sparse PPML nine. Build and both
+measurement jobs have scheduler failed=0/exit=0. The shared Xeon host and
+phase/solver instrumentation make these descriptive cost observations, not
+quiet Linux or Mac timing qualification. Means include both alternating pairs.
+
+| Frozen case | Workers | Base native s | Candidate native s | Change | Base strict s | Candidate strict s |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| ols-akm-1m | 1 | 3.641185 | 3.556964 | -2.31% | — | — |
+| ols-akm-1m | 4 | 2.230758 | 2.214248 | -0.74% | — | — |
+| ppml-akm-1m | 1 | 18.879920 | 18.073212 | -4.27% | 4.227770 | 3.709725 |
+| ppml-akm-1m | 4 | 9.928838 | 9.073932 | -8.61% | 1.950056 | 1.613718 |
+| ppml-dense-1m | 1 | 19.015679 | 19.548936 | +2.80% | 4.190574 | 4.817517 |
+| ppml-dense-1m | 4 | 11.544038 | 10.518159 | -8.89% | 2.537457 | 2.472142 |
+| ols-three-dense-1m | 1 | 4.973539 | 4.942548 | -0.62% | — | — |
+| ols-three-dense-1m | 4 | 2.891701 | 2.902296 | +0.37% | — | — |
+| ppml-sparse-1m | 1 | 62.953963 | 60.134788 | -4.48% | 25.867078 | 25.064503 |
+| ppml-sparse-1m | 4 | 33.993516 | 28.996312 | -14.70% | 13.161102 | 10.548958 |
+| ppml-dense-4m | 1 | 74.896901 | 72.574617 | -3.10% | 18.288112 | 17.400576 |
+| ppml-dense-4m | 4 | 45.419287 | 41.870218 | -7.81% | 11.649183 | 10.912688 |
+| ols-three-dense-4m | 1 | 22.388316 | 22.218360 | -0.76% | — | — |
+| ols-three-dense-4m | 4 | 12.118458 | 12.675189 | +4.59% | — | — |
+
+B is qualified at this artifact: zero exact replay differences and unchanged
+solver signatures, independent numerical witnesses, zero measured library-FMA
+instructions, and all standard Mac nonregression bounds passing. No tolerance,
+sample, rank, omission, separation, solver-family policy or SPI ownership
+changed. The fresh strict PPML solve and independent certificates remain.
+
+
+Retained SHA-256 records:
+
+| Artifact / observation | SHA-256 |
+| --- | --- |
+| Linux baseline release | `166a23b18ab00a8f1929c0e44b6f57f5febb0e577d15229284b9cd2320d3807c` |
+| Linux initial candidate release | `8fb51f4669f8e4f4c1d0d992bbb37bcd1ea8bb174177e50ac3de799d341b3cb9` |
+| Linux baseline profile | `3fc36476c55de77facfcf43d228370b89392b3333a6bc85f36e976973dca6c48` |
+| Linux initial candidate profile | `e6942e88afb6b22454488dcd262df5df25d9c0d54a83af812648805441605492` |
+| Initial Linux hardware tests | `5803d7860cd60719bd08fc809035fb495bfbe9aeb422d9c01a386adc813822d4` |
+| Initial Linux replay log | `b48cf722ac01c4a37543b299c0b6b281861d0ffc931ffd2e662e66b7946e1be4` |
+| Loaded libm | `eff3c73980ea0c10daeeb029e998500d1ba643a9a8ad49a43f8978b4e013312a` |
+| Matching libm debug symbols | `c718009c8ff3f040e0a941f17212fd87db079824205435a38d9b7e4263941ed9` |
+| Follow-up source patch against ded7f627 | `980d5a34a0f5fb0d4e096f07aabaf2f084fc0e9fd86c4b1da0f9a5d24ba1d283` |
+| Follow-up full gate | `945dadf648a2f20f2d774aec3ffd72a32f82e10593cbe4deb9d0e7fad4e34d8b` |
+| Rejected zero-width certificate test run | `51a5a424944083943c94957a87b8c20d97102cd41af16593ff36768b6280ed62` |
+| Corrected core test run | `8120fea89fee81095fc4efa961e333b1cf9503e8c7b04198a6230b6b1e11f33d` |
+| Rejected comparator build | `4aa882d1e7e56eb53057c5b845ce1de864eb4a6e54885b896e316fd27464cf36` |
+| Follow-up SCC source snapshot | `a731b48c9c29eaed8dcf623cba4e5a35db2e842a8ab8571d7fad21a02d82b345` |
+| Mac comparator rebuild | `5ab89f3834e33eec571cda4ea85d008b3ae36dabb794cbb868df5b67a053671d` |
+| Mac thirty-three-entry candidate | `d927004c347261c5349635f0567fce791b2772be90000cac9d39f6cc02848340` |
+| Mac follow-up replay summary | `b2d8fe6b9ca0a3b248299e490538f7a59d3afc5775515d58cd520b609b6dfea9` |
+| Mac follow-up licensed fixtures | `9397e27d95a4515abac5be37f451eaeb22436fe690b213a016707403e1becbf3` |
+| Mac follow-up OLS Break | `6e34ae90d9ae35896ca63ce58bd1dd3b893325aa47dcfbe3cf9dfe2f763e3238` |
+| Mac follow-up PPML Break | `f5aada3ea8df93ebc394b615bb07031d17c06bbe03831bcbf2f1ade2b1a2f3fb` |
+| Rejected fixture filename | `28a351d62776a1b9edd78ebf82660b3d82f91a32a0e09a6e3cc65b3f331b192e` |
+| Mac follow-up nonpassing timing panel | `b650f8439453d34a2c5359a680b9680df0bfcb089df404d11063f9b9adef0a99` |
+| Linux follow-up instruction summary | `9d355710c03fd4f2f2c248da24c2b70384c7c631747ab8d3da4e60f147aa9f7b` |
+| Linux follow-up native summary | `505b0733d3dfc45c4e3bf3599e9ab3c25c89812ab4fe4541c794219ff5637bc2` |
+| Linux follow-up accounting | `f323f1b208033555dcc8bd467a254fadbf66c7e66653426580c9e8bd06a0bd48` |
+| AKM follow-up caller attribution | `c89307ef5bd3dc979c14fb0df68dd0d8f72c88a42ab208d3deb6e7515bc2f12e` |
+| Thirty-seven-entry source patch against ded7f627 | `157e9ec6d30144d426b663e900f63f345423a2bb626a1aec8ad206ce3ec2a9d2` |
+| Thirty-seven-entry SCC source snapshot | `86c9abf823a7aed3da5aeb59ed6b09588342ea1e64776a7bcae2b3a43ded3924` |
+| Thirty-seven-entry full gate | `02688a398e33aa2bb517c2595050d13c616ce48263edd3e321e56f2d346f18ff` |
+| Thirty-seven-entry Mac plugin | `ac74d34954b1ff3fdf6613d6f6ab80c9381ad0762efcdc7ccfaece1276becfba` |
+| Thirty-seven-entry Mac replay | `a8710ac1effa10b8e0b5af46022ecd97854877d4c6802e10eae96cf8d7f6849e` |
+| Thirty-seven-entry Mac licensed fixtures | `9397e27d95a4515abac5be37f451eaeb22436fe690b213a016707403e1becbf3` |
+| Thirty-seven-entry OLS Break | `6e34ae90d9ae35896ca63ce58bd1dd3b893325aa47dcfbe3cf9dfe2f763e3238` |
+| Thirty-seven-entry PPML Break | `f5aada3ea8df93ebc394b615bb07031d17c06bbe03831bcbf2f1ade2b1a2f3fb` |
+| Rejected Valgrind 3.22 hardware tests | `57354524dd832b2cf2b482d7888dafd6e771302bff7c9bf49ce3915d5e91a9ca` |
+| Independent FMA zero probe source | `de1aa78f2bbec19101f4a56553e59bbab236030607235a08b4cb0ae31a7a99c4` |
+| Native FMA zero results | `3dbca8400c03dad9461538a71f7fa2ddd986bc31c3d64eb2a28cb84c72b7774a` |
+| Valgrind 3.22 FMA zero results | `88c16ef6aca7be918b76e7a82bc0c4380fc4e1c6eb2ba1b31b61a7e68c32a5ea` |
+| Official Valgrind 3.27.1 source archive | `5d589152eb8071c02feab8ce6ab719e431a1fbc3e2b1700f5432632a8b9264dc` |
+| Valgrind 3.27.1 hardware tests | `98340e74a02c2a36d287fd07465e233f9d8523656d8a5b250365d5cccddbd47e` |
+| Valgrind 3.27.1 tool binding | `311da0ccd9ac0bff8ff10861260d179c01f20b4893f06ff2b5bae1f124d6670d` |
+| Valgrind 3.27.1 zero probe results | `3dbca8400c03dad9461538a71f7fa2ddd986bc31c3d64eb2a28cb84c72b7774a` |
+| Thirty-seven-entry symbolized native instruction panel | `179291d0f93858a77f55426b3eb89881a193a8b8573446d02f6dedae05e69972` |
+| Final three OLS FMA callers | `3fd8a635763b00695583757be6db24d751cac28812d96906adf00a308935e8f6` |
+| Interrupted fifteen-pair Mac panel | `a2b05c18d1b65da6547ee3088c8d3fdb86a8587050db1534d2f7f2372d0664be` |
+| Completed scalar coverage source patch against ded7f627 | `41198869f47dd53d9f24e4610254013f0eee9e0e8e1c47efbe0c8b9b6e7ee1d8` |
+| Completed scalar coverage source snapshot | `6ecbaa1535fb22e1328ecec0a3789d1608ef87d2861e302cf13b789d7b6de3c3` |
+| Completed scalar coverage full gate | `7f65358d49940d4a0d8ce33c4f4b48bd61a2791fb23ebd17b85570430175c9bf` |
+| Completed scalar coverage Mac plugin | `272e4c6019864ee3951533bedd8f7595b910f4e062f0ed75dc7d79e570fccea7` |
+| Completed scalar coverage Mac replay | `9ae793ecebf0a7ea307b55a99f4ffeab01eab1991e52412c2154fccf9cb4eab9` |
+| Completed scalar coverage licensed fixtures | `9397e27d95a4515abac5be37f451eaeb22436fe690b213a016707403e1becbf3` |
+| Completed scalar coverage OLS Break | `6e34ae90d9ae35896ca63ce58bd1dd3b893325aa47dcfbe3cf9dfe2f763e3238` |
+| Completed scalar coverage PPML Break | `f5aada3ea8df93ebc394b615bb07031d17c06bbe03831bcbf2f1ade2b1a2f3fb` |
+| Completed scalar coverage zero-FMA panel | `eeb417e48c2f51073f2d17b1e1bb241cabd766096b53ea59e1b59ca65665adc6` |
+| Completed scalar coverage incomplete native panel | `0cc0fd1fb2fc3eec625feee4fd673713d00812de66459f39bf247aed0981cfdf` |
+| Completed scalar coverage failed Mac timing | `8fa0455b9d9da448277d26ea1111606fb711a55c3076c8bf35d5724178ad5bdb` |
+| Cached-dispatch source patch | `4aa37b80f717a716942de0a541f5f00f2823dd739beb4737ef6de9302d7911be` |
+| Cached-dispatch source snapshot | `ab073eb7574581140e0cc2493bf5d2064e6ff30d534eaae3f767830d1ed658b8` |
+| Cached-dispatch full gate | `be1b8276e83a3c79f68d4cf15a95354110557426b3b377ca0addcc99c5237a10` |
+| Cached-dispatch Mac plugin | `68c21a90ef763b78c1029aeeb41011606cf0c210225873d9695b5ccacb67edc1` |
+| Cached-dispatch Mac exact replay | `5c23e755bc40806ba7f7325a374cb43fee88f21f75d2c96df47767f82ca35cdf` |
+| Cached-dispatch Mac timing | `04b36b0d19550c41d86a16af8a528812e8320dc9861190330b4b3ba1b980c055` |
+| Cached-dispatch Mac host before | `ec198af26f055c7e09d42ef7a4ea4da9764d2796140decd5ebc9aba799bfc051` |
+| Cached-dispatch Mac host after | `0be00fb52fbffd29d0a2883a163f0cceb02349681edab1d11e2462e269ee23dd` |
+| Cached-dispatch zero-FMA panel | `fdd0fedf6ed8440d3566040f43a207df4a367e239dfe4f5432d14f53524fcf1d` |
+| Cached-dispatch Linux release | `447fe148222d8339a603b043135ca9921088f68ab3298bafa53b8d3bfe096b48` |
+| Cached-dispatch Linux profile | `27b66f821c647ed20b01c0556847271fde362c932ea3649a9a4e2616283804f4` |
+| Cached-dispatch full-size native panel | `694f6c53b43ffa3da6a88d570d8a53ea2eb4adaa920e27528d9253ec85be206d` |
+| Cached-dispatch SGE accounting | `8df3211a5a97d8ef604a3774dc7c0e59f9b270972579b1097a4a23444d65b113` |
+| Completed scalar coverage Linux release | `898115854130c8b369d5c41ec3e1424a028a828ec7217db028a821ee6c29ab29` |
+| Completed scalar coverage Linux profile | `442cc82692a43c2f51a914b9f29976bb83ff9b1fa6e88c6985f5e71d9b86d6b3` |
+| Native panel summary | `26592189e7ab6d8050eadadfbd29316938794ee4a1b44b3651f51f076580a245` |
+| Symbolized instruction summary | `c147ce2c3e750e61387d811c31b6135ac8020dc3854c72be348f784de2ab2158` |
+| SGE measurement accounting | `c0fa1e5b453c85ee57b5d1212d23ab706a0e4e83466acbc7528adaedae145b9e` |
+| Caller attribution | `2088d1978995a04c75b59bd532fbaa62fd5e7245acd7b421d1b4d400d59e2cf0` |
+| Timed-out panel | `8e37e5a1c0d3b3f07012ca6b381f9a22b94dc50e5b7106fa5786ec7850bd85ae` |
+| Unattributed probe | `3395ce0cc79eba5e68b4a50783b4fc7a692a38740d30857cb853711d0337becd` |
+| Rejected symbol lookup | `ac363e09a977089061a751286f342cad7221e62be3a7554f996a12144166d7e2` |
 
 ## Accepted evidence
 

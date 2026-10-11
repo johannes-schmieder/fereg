@@ -10,11 +10,20 @@
 //! rounded; without an installed table the portable bodies run inline.
 mod ordered;
 pub use ordered::{
-    affine_direction, basis_projection, column_products, joint_step, pcg_direction, pcg_energy,
-    pcg_initialize, pcg_step, pcg_step_energy, scaled_add, subtract_projection,
-    weighted_square_sum, weighted_upper_gram,
+    affine_direction, basis_forward, basis_project, basis_projection, basis_transpose,
+    coefficient_add, column_products, grouped_cross, joint_step, normalized_add, normalized_dot,
+    pcg_direction, pcg_energy, pcg_initialize, pcg_step, pcg_step_energy, scaled_add,
+    standardized_residual, subtract_projection, weighted_product, weighted_square_sum,
+    weighted_upper_gram,
 };
-pub use ordered::{normalized_product, ordered_dot};
+pub use ordered::{
+    basis_projection_tile, multiply_add, normalized_product, ordered_dot, selected_residual,
+    subtract_products,
+};
+pub use ordered::{
+    incidence_schur_row, joint_step_energy, normalized_selected_residual,
+    normalized_selected_scores,
+};
 
 use crate::linalg::neumaier_add;
 use std::sync::OnceLock;
@@ -63,6 +72,12 @@ pub type NormalizedProduct = fn(&[f64], &[f64]) -> f64;
 /// Runtime entry for [`scaled_add`].
 pub type ScaledAdd = fn(&[f64], f64, &mut [f64]);
 
+/// Runtime entry for [`coefficient_add`].
+pub type CoefficientAdd = fn(f64, Option<&[f64]>, &mut [f64]);
+
+/// Runtime entry for [`grouped_cross`].
+pub type GroupedCross = fn(&[usize], &[f64], Option<&[f64]>, f64, f64, &[u32], &mut [f64]);
+
 /// Runtime entry for [`affine_direction`].
 pub type AffineDirection = fn(f64, &[f64], &mut [f64]);
 
@@ -74,6 +89,27 @@ pub type SubtractProjection = fn(&mut [f64], &[f64]);
 
 /// Runtime entry for [`weighted_square_sum`].
 pub type WeightedSquareSum = fn(&[f64], &[f64], f64) -> f64;
+
+/// Runtime entry for [`weighted_product`].
+pub type WeightedProduct = fn(&[f64], &[f64], &[f64]) -> f64;
+
+/// Runtime entry for [`normalized_add`].
+pub type NormalizedAdd = fn(f64, &[f64], &[f64], f64, &mut [f64]);
+
+/// Runtime entry for [`normalized_dot`].
+pub type NormalizedDot = fn(&[f64], &[f64], f64, &[f64]) -> f64;
+
+/// Runtime entry for [`standardized_residual`].
+pub type StandardizedResidual = fn(f64, &[f64], &[usize], &[f64], &[f64], Option<f64>) -> f64;
+
+/// Runtime entry for [`basis_forward`].
+pub type BasisForward = fn(&[usize], &[f64], &[f64], &mut [f64]);
+
+/// Runtime entry for [`basis_transpose`].
+pub type BasisTranspose = fn(&[usize], &[f64], usize, &[f64], Option<&mut [f64]>, bool) -> f64;
+
+/// Runtime entry for [`basis_project`].
+pub type BasisProject = fn(&[usize], &[f64], &mut [f64], &mut [f64]);
 
 /// Runtime entry for [`basis_projection`].
 pub type BasisProjection = fn(&[usize], &[Vec<f64>], &[f64], &[f64], usize, usize, f64) -> f64;
@@ -100,18 +136,55 @@ pub type PcgStepEnergy =
 /// Runtime entry for [`pcg_direction`].
 pub type PcgDirection = fn(&[f64], Option<&[f64]>, usize, &[f64], &[f64], &[f64], &mut [f64]);
 
+/// Runtime entry for [`multiply_add`].
+pub type MultiplyAdd = fn(f64, f64, f64) -> f64;
+/// Runtime entry for [`subtract_products`].
+pub type SubtractProducts = fn(&[f64], usize, &[f64], usize, usize, f64) -> f64;
+/// Runtime entry for [`basis_projection_tile`].
+pub type BasisProjectionTile =
+    fn(&[usize], &[f64], usize, &[f64], &[f64], usize, &[f64], usize, &mut [f64]);
+/// Runtime entry for [`selected_residual`].
+pub type SelectedResidual = fn(f64, &[f64], &[usize], &[Option<f64>]) -> f64;
+
+/// Runtime entry for [`normalized_selected_residual`].
+pub type NormalizedSelectedResidual = fn(f64, &[f64], &[usize], &[f64], &[f64], f64) -> f64;
+/// Runtime entry for [`normalized_selected_scores`].
+pub type NormalizedSelectedScores = fn(&[f64], &[usize], &[f64], f64, f64, &mut [f64]);
+
+/// Runtime entry for [`incidence_schur_row`].
+pub type IncidenceSchurRow = fn(&[f64], &[usize], &[f64], &mut [f64]);
+/// Runtime entry for [`joint_step_energy`].
+pub type JointStepEnergy = fn(f64, &[f64], &[f64], &mut [f64], &mut [f64]) -> f64;
+
 /// Hardware-compiled instantiations of the kernels below.
 #[derive(Clone, Copy, Debug)]
 pub struct FusedKernels {
     /// Doctor label for the arithmetic path these entries compile to.
     pub name: &'static str,
+    pub multiply_add: MultiplyAdd,
+    pub subtract_products: SubtractProducts,
+    pub basis_projection_tile: BasisProjectionTile,
+    pub selected_residual: SelectedResidual,
+    pub normalized_selected_residual: NormalizedSelectedResidual,
+    pub normalized_selected_scores: NormalizedSelectedScores,
+    pub incidence_schur_row: IncidenceSchurRow,
+    pub joint_step_energy: JointStepEnergy,
     pub ordered_dot: OrderedDot,
     pub normalized_product: NormalizedProduct,
     pub scaled_add: ScaledAdd,
+    pub coefficient_add: CoefficientAdd,
+    pub grouped_cross: GroupedCross,
     pub affine_direction: AffineDirection,
     pub joint_step: JointStep,
     pub subtract_projection: SubtractProjection,
     pub weighted_square_sum: WeightedSquareSum,
+    pub weighted_product: WeightedProduct,
+    pub normalized_add: NormalizedAdd,
+    pub normalized_dot: NormalizedDot,
+    pub standardized_residual: StandardizedResidual,
+    pub basis_forward: BasisForward,
+    pub basis_transpose: BasisTranspose,
+    pub basis_project: BasisProject,
     pub basis_projection: BasisProjection,
     pub weighted_upper_gram: WeightedUpperGram,
     pub column_products: ColumnProducts,
@@ -368,6 +441,16 @@ pub fn group_sums(
         }
     }
     Some((weight_sum, weight_correction))
+}
+
+/// Small validated scalar folds cannot move their checks into a bulk kernel.
+/// Keep their portable operation inline; the caller caches detection outside its fold.
+#[inline(always)]
+pub(crate) fn fused(hardware: Option<&FusedKernels>, left: f64, right: f64, sum: f64) -> f64 {
+    match hardware {
+        Some(hardware) => (hardware.multiply_add)(left, right, sum),
+        None => multiply_add(left, right, sum),
+    }
 }
 
 // Resolve the table outside a hot traversal; the portable body remains inline.

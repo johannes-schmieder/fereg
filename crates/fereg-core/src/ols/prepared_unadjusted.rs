@@ -1253,9 +1253,12 @@ fn certify_statistic_identities(
         ));
     }
     norm = norm.max(relative_difference(
-        statistics
-            .root_mean_squared_error
-            .mul_add(statistics.root_mean_squared_error, 0.0),
+        crate::kernels::fused(
+            crate::kernels::installed(),
+            statistics.root_mean_squared_error,
+            statistics.root_mean_squared_error,
+            0.0,
+        ),
         inputs.rss / df_r,
         (inputs.rss / df_r).max(1.0),
     )?);
@@ -1458,7 +1461,7 @@ pub(super) fn weighted_sum_of_squares(
     } else {
         scale * scaled_square_sum.sqrt()
     };
-    let sum = norm.mul_add(norm, 0.0);
+    let sum = crate::kernels::fused(crate::kernels::installed(), norm, norm, 0.0);
     if sum.is_finite() && sum >= 0.0 {
         Ok(sum)
     } else {

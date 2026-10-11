@@ -1162,6 +1162,7 @@ impl ReusableMapAbsorber {
         self.group_corrections[..rhs].fill(0.0);
         let weight_sum = weights.iter().copied().sum::<f64>();
         let root_weight_sum = weight_sum.sqrt();
+        let hardware = crate::kernels::installed();
         let mut absolute = 0.0_f64;
         let mut relative_max = 0.0_f64;
         let mut relative_square = 0.0_f64;
@@ -1184,7 +1185,7 @@ impl ReusableMapAbsorber {
                 (moment / (scale * root_weight_sum)).abs()
             };
             relative_max = relative_max.max(relative);
-            relative_square = relative.mul_add(relative, relative_square);
+            relative_square = crate::kernels::fused(hardware, relative, relative, relative_square);
         }
         Ok(FeCertificate {
             absolute_infinity_norm: absolute,
@@ -1264,6 +1265,7 @@ impl ReusableMapAbsorber {
         let mut relative_max = 0.0_f64;
         let mut relative_square = 0.0_f64;
         let mut relative_count = 0_usize;
+        let hardware = crate::kernels::installed();
         let mut geometry_offset = 0_usize;
         let mut group_index = 0_usize;
         for effect in self.design.effects() {
@@ -1307,23 +1309,29 @@ impl ReusableMapAbsorber {
                 };
                 for column in 0..rhs {
                     let denominator = self.rhs_scales[column];
-                    let mut projected_square = 0.0_f64;
+                    let mut projected = [0.0];
                     if denominator > 0.0 {
-                        for basis in 0..basis_count {
-                            let start = basis_offset + basis * basis_stride;
-                            let mut coefficient = 0.0_f64;
-                            for (local, &row) in members.iter().enumerate() {
-                                let scaled =
-                                    weights[row].sqrt() * residuals[(row, column)] / denominator;
-                                coefficient =
-                                    basis_values[start + local].mul_add(scaled, coefficient);
-                            }
-                            projected_square = coefficient.mul_add(coefficient, projected_square);
-                        }
+                        crate::kernels::dispatch!(
+                            crate::kernels::installed(),
+                            basis_projection_tile(
+                                members,
+                                &basis_values
+                                    [basis_offset..basis_offset + basis_count * basis_stride],
+                                basis_stride,
+                                weights,
+                                residuals.as_slice(),
+                                rhs,
+                                &self.rhs_scales,
+                                column,
+                                &mut projected
+                            )
+                        );
                     }
+                    let projected_square = projected[0];
                     let relative = projected_square.sqrt();
                     relative_max = relative_max.max(relative);
-                    relative_square = relative.mul_add(relative, relative_square);
+                    relative_square =
+                        crate::kernels::fused(hardware, relative, relative, relative_square);
                     relative_count += 1;
                 }
                 for channel in 0..channels {
@@ -1401,11 +1409,12 @@ impl ReusableMapAbsorber {
         let mut absolute = 0.0_f64;
         let mut maximum = 0.0_f64;
         let mut square = 0.0_f64;
+        let hardware = crate::kernels::installed();
         for result in self.certificate_groups.chunks(stride) {
             absolute = absolute.max(result[0]);
             for &relative in &result[1..rhs + 1] {
                 maximum = maximum.max(relative);
-                square = relative.mul_add(relative, square);
+                square = crate::kernels::fused(hardware, relative, relative, square);
             }
         }
         let count = first_group * rhs;
@@ -1545,26 +1554,20 @@ pub(super) fn certify_reusable_group(
     for first in (0..rhs).step_by(TILE) {
         let width = (rhs - first).min(TILE);
         let mut projected = [0.0_f64; TILE];
-        for channel in 0..rank {
-            let mut coefficients = [0.0_f64; TILE];
-            let direction = &basis[channel * members.len()..(channel + 1) * members.len()];
-            for (local, &row) in members.iter().enumerate() {
-                let root = weights[row].sqrt();
-                let values = &residuals.as_slice()[row * rhs + first..row * rhs + first + width];
-                for column in 0..width {
-                    let denominator = scales[first + column];
-                    if denominator > 0.0 {
-                        let scaled = root * values[column] / denominator;
-                        coefficients[column] =
-                            direction[local].mul_add(scaled, coefficients[column]);
-                    }
-                }
-            }
-            for column in 0..width {
-                projected[column] =
-                    coefficients[column].mul_add(coefficients[column], projected[column]);
-            }
-        }
+        crate::kernels::dispatch!(
+            crate::kernels::installed(),
+            basis_projection_tile(
+                members,
+                &basis[..rank * members.len()],
+                members.len(),
+                weights,
+                residuals.as_slice(),
+                rhs,
+                scales,
+                first,
+                &mut projected[..width]
+            )
+        );
         for column in 0..width {
             result[1 + first + column] = projected[column].sqrt();
         }

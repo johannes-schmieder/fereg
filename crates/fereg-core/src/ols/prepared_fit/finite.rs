@@ -358,13 +358,18 @@ fn finish<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                 within.nrows(),
                 "unable to reserve finite residuals",
             )?;
+            let hardware = crate::kernels::installed();
             for row in 0..within.nrows() {
                 // Immutable projected coordinates retain the physical FE owner.
-                let mut value = within[(row, 0)];
-                for &column in &workspace.kept {
-                    value = (-coefficients[column].expect("selected finite coefficient"))
-                        .mul_add(within[(row, column + 1)], value);
-                }
+                let value = crate::kernels::dispatch!(
+                    hardware,
+                    selected_residual(
+                        within[(row, 0)],
+                        &within.as_slice()[row * within.ncols() + 1..(row + 1) * within.ncols()],
+                        &workspace.kept,
+                        &coefficients
+                    )
+                );
                 if !value.is_finite() {
                     return Err(invalid_data("prepared finite residual is not finite"));
                 }

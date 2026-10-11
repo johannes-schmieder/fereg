@@ -448,6 +448,7 @@ struct Operator<'a> {
 impl Operator<'_> {
     fn forward(&self, coefficients: &[f64], output: &mut [f64]) {
         output.fill(0.);
+        let hardware = crate::kernels::installed();
         for (index, group) in self.groups.iter().enumerate() {
             if group.effect == self.eliminated {
                 continue;
@@ -456,19 +457,21 @@ impl Operator<'_> {
                 .level_index()
                 .members(group.level);
             let rank = self.geometry.ranks[index];
-            for (local, &row) in rows.iter().enumerate() {
-                let mut value = 0.;
-                for basis in 0..rank {
-                    value = self.geometry.basis[group.basis_start + basis * rows.len() + local]
-                        .mul_add(coefficients[group.coefficient_start + basis], value);
-                }
-                output[row] += value;
-            }
+            crate::kernels::dispatch!(
+                hardware,
+                basis_forward(
+                    rows,
+                    &self.geometry.basis[group.basis_start..],
+                    &coefficients[group.coefficient_start..group.coefficient_start + rank],
+                    output
+                )
+            );
         }
     }
     fn transpose(&self, values: &[f64], output: &mut [f64], all: bool) -> f64 {
         output.fill(0.);
         let mut maximum = 0.0_f64;
+        let hardware = crate::kernels::installed();
         for (index, group) in self.groups.iter().enumerate() {
             if !all && group.effect == self.eliminated {
                 continue;
@@ -476,21 +479,20 @@ impl Operator<'_> {
             let rows = self.design.effects()[group.effect]
                 .level_index()
                 .members(group.level);
-            let mut square = 0.0_f64;
-            for basis in 0..self.geometry.ranks[index] {
-                let q =
-                    &self.geometry.basis[group.basis_start + basis * rows.len()..][..rows.len()];
-                let mut value = 0.;
-                for (&row, &q) in rows.iter().zip(q) {
-                    value = q.mul_add(values[row], value);
-                }
-                if group.effect != self.eliminated {
-                    output[group.coefficient_start + basis] = value;
-                }
-                if all {
-                    square = value.mul_add(value, square);
-                }
-            }
+            let rank = self.geometry.ranks[index];
+            let destination = (group.effect != self.eliminated)
+                .then(|| &mut output[group.coefficient_start..group.coefficient_start + rank]);
+            let square = crate::kernels::dispatch!(
+                hardware,
+                basis_transpose(
+                    rows,
+                    &self.geometry.basis[group.basis_start..],
+                    rank,
+                    values,
+                    destination,
+                    all
+                )
+            );
             if all {
                 // Nonfinite eliminated moments must fail even though they no
                 // longer occupy the remaining-coordinate residual vector.
@@ -504,6 +506,7 @@ impl Operator<'_> {
         maximum
     }
     fn project_eliminated(&self, values: &mut [f64], scratch: &mut [f64]) {
+        let hardware = crate::kernels::installed();
         for (index, group) in self.groups.iter().enumerate() {
             if group.effect != self.eliminated {
                 continue;
@@ -511,27 +514,15 @@ impl Operator<'_> {
             let rows = self.design.effects()[group.effect]
                 .level_index()
                 .members(group.level);
-            // Keep the legacy matrix indices and numerical traversal order explicit.
-            #[allow(clippy::needless_range_loop)]
-            for basis in 0..self.geometry.ranks[index] {
-                let q =
-                    &self.geometry.basis[group.basis_start + basis * rows.len()..][..rows.len()];
-                let mut value = 0.;
-                for (&row, &q) in rows.iter().zip(q) {
-                    value = q.mul_add(values[row], value);
-                }
-                scratch[basis] = value;
-            }
-            for (local, &row) in rows.iter().enumerate() {
-                let mut value = 0.;
-                // Keep the legacy matrix indices and numerical traversal order explicit.
-                #[allow(clippy::needless_range_loop)]
-                for basis in 0..self.geometry.ranks[index] {
-                    value = self.geometry.basis[group.basis_start + basis * rows.len() + local]
-                        .mul_add(scratch[basis], value);
-                }
-                values[row] -= value;
-            }
+            crate::kernels::dispatch!(
+                hardware,
+                basis_project(
+                    rows,
+                    &self.geometry.basis[group.basis_start..],
+                    values,
+                    &mut scratch[..self.geometry.ranks[index]]
+                )
+            );
         }
     }
 }

@@ -25,13 +25,30 @@ mod x86_64 {
 
     const HARDWARE: FusedKernels = FusedKernels {
         name: "x86_64-fma",
+        multiply_add,
+        subtract_products,
+        basis_projection_tile,
+        selected_residual,
+        normalized_selected_residual,
+        normalized_selected_scores,
+        incidence_schur_row,
+        joint_step_energy,
         ordered_dot,
         normalized_product,
         scaled_add,
+        coefficient_add,
+        grouped_cross,
         affine_direction,
         joint_step,
         subtract_projection,
         weighted_square_sum,
+        weighted_product,
+        normalized_add,
+        normalized_dot,
+        standardized_residual,
+        basis_forward,
+        basis_transpose,
+        basis_project,
         basis_projection,
         weighted_upper_gram,
         column_products,
@@ -53,6 +70,198 @@ mod x86_64 {
     pub(super) fn hardware() -> Option<FusedKernels> {
         (std::is_x86_feature_detected!("fma") && std::is_x86_feature_detected!("avx"))
             .then_some(HARDWARE)
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn incidence_schur_row_fma(
+        coefficients: &[f64],
+        columns: &[usize],
+        direction: &[f64],
+        product: &mut [f64],
+    ) {
+        fereg_core::kernels::incidence_schur_row(coefficients, columns, direction, product)
+    }
+    fn incidence_schur_row(
+        coefficients: &[f64],
+        columns: &[usize],
+        direction: &[f64],
+        product: &mut [f64],
+    ) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { incidence_schur_row_fma(coefficients, columns, direction, product) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn joint_step_energy_fma(
+        alpha: f64,
+        direction: &[f64],
+        product: &[f64],
+        values: &mut [f64],
+        residual: &mut [f64],
+    ) -> f64 {
+        fereg_core::kernels::joint_step_energy(alpha, direction, product, values, residual)
+    }
+    fn joint_step_energy(
+        alpha: f64,
+        direction: &[f64],
+        product: &[f64],
+        values: &mut [f64],
+        residual: &mut [f64],
+    ) -> f64 {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { joint_step_energy_fma(alpha, direction, product, values, residual) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn normalized_selected_residual_fma(
+        residual: f64,
+        values: &[f64],
+        selected: &[usize],
+        scales: &[f64],
+        coefficients: &[f64],
+        root: f64,
+    ) -> f64 {
+        fereg_core::kernels::normalized_selected_residual(
+            residual,
+            values,
+            selected,
+            scales,
+            coefficients,
+            root,
+        )
+    }
+    fn normalized_selected_residual(
+        residual: f64,
+        values: &[f64],
+        selected: &[usize],
+        scales: &[f64],
+        coefficients: &[f64],
+        root: f64,
+    ) -> f64 {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe {
+            normalized_selected_residual_fma(residual, values, selected, scales, coefficients, root)
+        }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn normalized_selected_scores_fma(
+        values: &[f64],
+        selected: &[usize],
+        scales: &[f64],
+        root: f64,
+        observation: f64,
+        scores: &mut [f64],
+    ) {
+        fereg_core::kernels::normalized_selected_scores(
+            values,
+            selected,
+            scales,
+            root,
+            observation,
+            scores,
+        )
+    }
+    fn normalized_selected_scores(
+        values: &[f64],
+        selected: &[usize],
+        scales: &[f64],
+        root: f64,
+        observation: f64,
+        scores: &mut [f64],
+    ) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe {
+            normalized_selected_scores_fma(values, selected, scales, root, observation, scores)
+        }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn multiply_add_fma(left: f64, right: f64, sum: f64) -> f64 {
+        fereg_core::kernels::multiply_add(left, right, sum)
+    }
+    fn multiply_add(left: f64, right: f64, sum: f64) -> f64 {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { multiply_add_fma(left, right, sum) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn subtract_products_fma(
+        left: &[f64],
+        left_stride: usize,
+        right: &[f64],
+        right_stride: usize,
+        count: usize,
+        value: f64,
+    ) -> f64 {
+        fereg_core::kernels::subtract_products(left, left_stride, right, right_stride, count, value)
+    }
+    fn subtract_products(
+        left: &[f64],
+        left_stride: usize,
+        right: &[f64],
+        right_stride: usize,
+        count: usize,
+        value: f64,
+    ) -> f64 {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { subtract_products_fma(left, left_stride, right, right_stride, count, value) }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[target_feature(enable = "fma")]
+    unsafe fn basis_projection_tile_fma(
+        members: &[usize],
+        basis: &[f64],
+        stride: usize,
+        weights: &[f64],
+        residuals: &[f64],
+        width: usize,
+        scales: &[f64],
+        first: usize,
+        projected: &mut [f64],
+    ) {
+        fereg_core::kernels::basis_projection_tile(
+            members, basis, stride, weights, residuals, width, scales, first, projected,
+        )
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn basis_projection_tile(
+        members: &[usize],
+        basis: &[f64],
+        stride: usize,
+        weights: &[f64],
+        residuals: &[f64],
+        width: usize,
+        scales: &[f64],
+        first: usize,
+        projected: &mut [f64],
+    ) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe {
+            basis_projection_tile_fma(
+                members, basis, stride, weights, residuals, width, scales, first, projected,
+            )
+        }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn selected_residual_fma(
+        response: f64,
+        values: &[f64],
+        selected: &[usize],
+        coefficients: &[Option<f64>],
+    ) -> f64 {
+        fereg_core::kernels::selected_residual(response, values, selected, coefficients)
+    }
+    fn selected_residual(
+        response: f64,
+        values: &[f64],
+        selected: &[usize],
+        coefficients: &[Option<f64>],
+    ) -> f64 {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { selected_residual_fma(response, values, selected, coefficients) }
     }
 
     #[target_feature(enable = "fma")]
@@ -487,6 +696,178 @@ mod x86_64 {
         unsafe { normalized_product_fma(left, right) }
     }
 
+    #[target_feature(enable = "fma")]
+    unsafe fn weighted_product_fma(left: &[f64], roots: &[f64], right: &[f64]) -> f64 {
+        fereg_core::kernels::weighted_product(left, roots, right)
+    }
+
+    fn weighted_product(left: &[f64], roots: &[f64], right: &[f64]) -> f64 {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { weighted_product_fma(left, roots, right) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn normalized_add_fma(
+        coefficient: f64,
+        source: &[f64],
+        roots: &[f64],
+        scale: f64,
+        destination: &mut [f64],
+    ) {
+        fereg_core::kernels::normalized_add(coefficient, source, roots, scale, destination)
+    }
+
+    fn normalized_add(
+        coefficient: f64,
+        source: &[f64],
+        roots: &[f64],
+        scale: f64,
+        destination: &mut [f64],
+    ) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { normalized_add_fma(coefficient, source, roots, scale, destination) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn normalized_dot_fma(
+        source: &[f64],
+        roots: &[f64],
+        scale: f64,
+        residual: &[f64],
+    ) -> f64 {
+        fereg_core::kernels::normalized_dot(source, roots, scale, residual)
+    }
+
+    fn normalized_dot(source: &[f64], roots: &[f64], scale: f64, residual: &[f64]) -> f64 {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { normalized_dot_fma(source, roots, scale, residual) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn basis_forward_fma(
+        rows: &[usize],
+        basis: &[f64],
+        coefficients: &[f64],
+        output: &mut [f64],
+    ) {
+        fereg_core::kernels::basis_forward(rows, basis, coefficients, output)
+    }
+
+    fn basis_forward(rows: &[usize], basis: &[f64], coefficients: &[f64], output: &mut [f64]) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { basis_forward_fma(rows, basis, coefficients, output) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn basis_transpose_fma(
+        rows: &[usize],
+        basis: &[f64],
+        rank: usize,
+        values: &[f64],
+        output: Option<&mut [f64]>,
+        certify: bool,
+    ) -> f64 {
+        fereg_core::kernels::basis_transpose(rows, basis, rank, values, output, certify)
+    }
+
+    fn basis_transpose(
+        rows: &[usize],
+        basis: &[f64],
+        rank: usize,
+        values: &[f64],
+        output: Option<&mut [f64]>,
+        certify: bool,
+    ) -> f64 {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { basis_transpose_fma(rows, basis, rank, values, output, certify) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn basis_project_fma(
+        rows: &[usize],
+        basis: &[f64],
+        values: &mut [f64],
+        scratch: &mut [f64],
+    ) {
+        fereg_core::kernels::basis_project(rows, basis, values, scratch)
+    }
+
+    fn basis_project(rows: &[usize], basis: &[f64], values: &mut [f64], scratch: &mut [f64]) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { basis_project_fma(rows, basis, values, scratch) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn standardized_residual_fma(
+        response: f64,
+        values: &[f64],
+        positions: &[usize],
+        norms: &[f64],
+        coefficients: &[f64],
+        root: Option<f64>,
+    ) -> f64 {
+        fereg_core::kernels::standardized_residual(
+            response,
+            values,
+            positions,
+            norms,
+            coefficients,
+            root,
+        )
+    }
+
+    fn standardized_residual(
+        response: f64,
+        values: &[f64],
+        positions: &[usize],
+        norms: &[f64],
+        coefficients: &[f64],
+        root: Option<f64>,
+    ) -> f64 {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { standardized_residual_fma(response, values, positions, norms, coefficients, root) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn coefficient_add_fma(
+        coefficient: f64,
+        source: Option<&[f64]>,
+        destination: &mut [f64],
+    ) {
+        fereg_core::kernels::coefficient_add(coefficient, source, destination)
+    }
+
+    fn coefficient_add(coefficient: f64, source: Option<&[f64]>, destination: &mut [f64]) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { coefficient_add_fma(coefficient, source, destination) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn grouped_cross_fma(
+        members: &[usize],
+        weights: &[f64],
+        source: Option<&[f64]>,
+        scale: f64,
+        center: f64,
+        codes: &[u32],
+        cross: &mut [f64],
+    ) {
+        fereg_core::kernels::grouped_cross(members, weights, source, scale, center, codes, cross)
+    }
+
+    fn grouped_cross(
+        members: &[usize],
+        weights: &[f64],
+        source: Option<&[f64]>,
+        scale: f64,
+        center: f64,
+        codes: &[u32],
+        cross: &mut [f64],
+    ) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { grouped_cross_fma(members, weights, source, scale, center, codes, cross) }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -528,6 +909,21 @@ mod x86_64 {
                 );
                 let weights: Vec<_> = right.iter().map(|v| v.abs() + 0.5).collect();
                 assert_eq!(
+                    (h.weighted_product)(&left, &weights, &right).to_bits(),
+                    p::weighted_product(&left, &weights, &right).to_bits()
+                );
+                for scale in [0.25, 3.0] {
+                    assert_eq!(
+                        (h.normalized_dot)(&left, &weights, scale, &right).to_bits(),
+                        p::normalized_dot(&left, &weights, scale, &right).to_bits()
+                    );
+                    let mut actual = right.clone();
+                    let mut expected = right.clone();
+                    (h.normalized_add)(-0.7, &left, &weights, scale, &mut actual);
+                    p::normalized_add(-0.7, &left, &weights, scale, &mut expected);
+                    assert_eq!(bits(&actual), bits(&expected));
+                }
+                assert_eq!(
                     (h.weighted_square_sum)(&left, &weights, 3.0).to_bits(),
                     p::weighted_square_sum(&left, &weights, 3.0).to_bits()
                 );
@@ -537,6 +933,11 @@ mod x86_64 {
                 p::subtract_projection(&mut expected, &right);
                 assert_eq!(bits(&actual), bits(&expected));
                 for scale in [-0.0, -0.3, 0.7] {
+                    for source in [None, Some(right.as_slice())] {
+                        (h.coefficient_add)(scale, source, &mut actual);
+                        p::coefficient_add(scale, source, &mut expected);
+                        assert_eq!(bits(&actual), bits(&expected));
+                    }
                     (h.scaled_add)(&right, scale, &mut actual);
                     p::scaled_add(&right, scale, &mut expected);
                     assert_eq!(bits(&actual), bits(&expected));
@@ -590,6 +991,175 @@ mod x86_64 {
                     p::weighted_upper_gram(weight, row, &mut expected);
                 }
                 assert_eq!(bits(&actual), bits(&expected));
+            }
+        }
+
+        #[test]
+        fn hardware_group_operators_and_retained_residuals_match_portable_bits() {
+            let Some(h) = hardware() else {
+                eprintln!("skipped: this processor has no FMA/AVX hardware path");
+                return;
+            };
+            use fereg_core::kernels as p;
+            let rows = [8, 1, 5, 0];
+            let mut input = values(113, 11);
+            input[..3].copy_from_slice(&[-0.0, 0.0, f64::from_bits(1)]);
+            for rank in [0, 1, 3] {
+                let basis = values(127, rank * rows.len() + 3);
+                let coefficients = values(131, rank);
+                let mut actual = input.clone();
+                let mut expected = input.clone();
+                (h.basis_forward)(&rows, &basis, &coefficients, &mut actual);
+                p::basis_forward(&rows, &basis, &coefficients, &mut expected);
+                assert_eq!(bits(&actual), bits(&expected));
+                for certify in [false, true] {
+                    let mut actual = vec![73.0; rank + 2];
+                    let mut expected = actual.clone();
+                    let actual_square = (h.basis_transpose)(
+                        &rows,
+                        &basis,
+                        rank,
+                        &input,
+                        Some(&mut actual[1..rank + 1]),
+                        certify,
+                    );
+                    let expected_square = p::basis_transpose(
+                        &rows,
+                        &basis,
+                        rank,
+                        &input,
+                        Some(&mut expected[1..rank + 1]),
+                        certify,
+                    );
+                    assert_eq!(actual_square.to_bits(), expected_square.to_bits());
+                    assert_eq!(bits(&actual), bits(&expected));
+                    assert_eq!(actual[0], 73.0);
+                    assert_eq!(actual[rank + 1], 73.0);
+                    assert_eq!(
+                        (h.basis_transpose)(&rows, &basis, rank, &input, None, certify).to_bits(),
+                        expected_square.to_bits()
+                    );
+                }
+                let mut actual = input.clone();
+                let mut expected = input.clone();
+                let mut actual_scratch = vec![73.0; rank + 2];
+                let mut expected_scratch = actual_scratch.clone();
+                (h.basis_project)(&rows, &basis, &mut actual, &mut actual_scratch[1..rank + 1]);
+                p::basis_project(
+                    &rows,
+                    &basis,
+                    &mut expected,
+                    &mut expected_scratch[1..rank + 1],
+                );
+                assert_eq!(bits(&actual), bits(&expected));
+                assert_eq!(bits(&actual_scratch), bits(&expected_scratch));
+                for row in 0..input.len() {
+                    if !rows.contains(&row) {
+                        assert_eq!(actual[row].to_bits(), input[row].to_bits());
+                    }
+                }
+                assert_eq!(actual_scratch[0], 73.0);
+                assert_eq!(actual_scratch[rank + 1], 73.0);
+            }
+            let positions = [8, 1, 5, 0, 1];
+            let norms: Vec<_> = values(137, input.len())
+                .iter()
+                .map(|v| v.abs() + 0.5)
+                .collect();
+            let coefficients = values(139, positions.len());
+            let codes: Vec<_> = (0..input.len()).map(|row| (row % 4) as u32).collect();
+            for source in [None, Some(input.as_slice())] {
+                let mut actual = vec![73.0; 7];
+                let mut expected = actual.clone();
+                (h.grouped_cross)(&rows, &norms, source, 3.0, -0.7, &codes, &mut actual[1..6]);
+                p::grouped_cross(
+                    &rows,
+                    &norms,
+                    source,
+                    3.0,
+                    -0.7,
+                    &codes,
+                    &mut expected[1..6],
+                );
+                assert_eq!(bits(&actual), bits(&expected));
+                for index in [0, 5, 6] {
+                    assert_eq!(actual[index], 73.0);
+                }
+            }
+            for root in [None, Some(0.125), Some(1.0), Some(3.7)] {
+                for response in [-0.0, 0.0, 3.0] {
+                    assert_eq!(
+                        (h.standardized_residual)(
+                            response,
+                            &input,
+                            &positions,
+                            &norms,
+                            &coefficients,
+                            root
+                        )
+                        .to_bits(),
+                        p::standardized_residual(
+                            response,
+                            &input,
+                            &positions,
+                            &norms,
+                            &coefficients,
+                            root
+                        )
+                        .to_bits()
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn hardware_incidence_and_reduced_cg_preserve_bits() {
+            let Some(h) = hardware() else {
+                eprintln!("skipped: this processor has no FMA/AVX hardware path");
+                return;
+            };
+            use fereg_core::kernels as p;
+            let direction = [1.0, -0.0, f64::from_bits(1), -2.3, 0.0, 7.1];
+            // Repeated, nonmonotonic coordinates make scatter order observable.
+            for columns in [&[][..], &[4, 1, 4, 0, 2, 5, 3][..]] {
+                let coefficients = values(181, columns.len());
+                let mut actual = vec![0.3, -0.0, 1.1, 2.0, 0.0, -4.0, 913.0];
+                let mut expected = actual.clone();
+                (h.incidence_schur_row)(&coefficients, columns, &direction, &mut actual);
+                p::incidence_schur_row(&coefficients, columns, &direction, &mut expected);
+                assert_eq!(bits(&actual), bits(&expected));
+                assert_eq!(actual[6], 913.0);
+            }
+            for n in [0, 1, 7, 19] {
+                for alpha in [-1.7, -0.0, 0.0, 0.3, 8.1] {
+                    let mut direction = values(183, n);
+                    let product = values(185, n);
+                    let mut actual_values = values(187, n + 2);
+                    let mut actual_residual = values(189, n + 2);
+                    if n > 0 {
+                        direction[0] = f64::from_bits(1);
+                        actual_residual[0] = -0.0;
+                    }
+                    let mut expected_values = actual_values.clone();
+                    let mut expected_residual = actual_residual.clone();
+                    let actual_energy = (h.joint_step_energy)(
+                        alpha,
+                        &direction,
+                        &product,
+                        &mut actual_values[..n],
+                        &mut actual_residual[..n],
+                    );
+                    let expected_energy = p::joint_step_energy(
+                        alpha,
+                        &direction,
+                        &product,
+                        &mut expected_values[..n],
+                        &mut expected_residual[..n],
+                    );
+                    assert_eq!(actual_energy.to_bits(), expected_energy.to_bits());
+                    assert_eq!(bits(&actual_values), bits(&expected_values));
+                    assert_eq!(bits(&actual_residual), bits(&expected_residual));
+                }
             }
         }
 
@@ -796,6 +1366,158 @@ mod x86_64 {
 
         fn bits(values: &[f64]) -> Vec<u64> {
             values.iter().map(|value| value.to_bits()).collect()
+        }
+
+        #[test]
+        fn hardware_certificate_tiles_and_triangular_products_preserve_bits() {
+            let Some(h) = hardware() else {
+                eprintln!("skipped: this processor has no FMA/AVX hardware path");
+                return;
+            };
+            use fereg_core::kernels as p;
+            for count in [0, 1, 7, 19] {
+                for left_stride in [1, 3] {
+                    for right_stride in [1, 5] {
+                        let left = values(101, count * left_stride);
+                        let right = values(107, count * right_stride);
+                        for initial in [-0.0, 0.0, 1.25] {
+                            assert_eq!(
+                                (h.subtract_products)(
+                                    &left,
+                                    left_stride,
+                                    &right,
+                                    right_stride,
+                                    count,
+                                    initial
+                                )
+                                .to_bits(),
+                                p::subtract_products(
+                                    &left,
+                                    left_stride,
+                                    &right,
+                                    right_stride,
+                                    count,
+                                    initial
+                                )
+                                .to_bits()
+                            );
+                        }
+                    }
+                }
+            }
+            let members = [8, 1, 5, 0];
+            for width in [1, 3, 17, 33] {
+                let residuals = values(109, 9 * width);
+                let weights: Vec<_> = values(113, 9).iter().map(|v| v.abs() + 0.1).collect();
+                let scales: Vec<_> = (0..width)
+                    .map(|i| if i % 3 == 0 { 0.0 } else { 3.7 })
+                    .collect();
+                for rank in [0, 1, 3] {
+                    for stride in [members.len(), members.len() + 3] {
+                        let basis = values(127, rank * stride);
+                        for first in (0..width).step_by(16) {
+                            let count = (width - first).min(16);
+                            let mut actual = [f64::MAX; 18];
+                            let mut expected = actual;
+                            (h.basis_projection_tile)(
+                                &members,
+                                &basis,
+                                stride,
+                                &weights,
+                                &residuals,
+                                width,
+                                &scales,
+                                first,
+                                &mut actual[1..1 + count],
+                            );
+                            p::basis_projection_tile(
+                                &members,
+                                &basis,
+                                stride,
+                                &weights,
+                                &residuals,
+                                width,
+                                &scales,
+                                first,
+                                &mut expected[1..1 + count],
+                            );
+                            assert_eq!(bits(&actual), bits(&expected));
+                        }
+                    }
+                }
+            }
+            let mut empty_projection = [1.0];
+            (h.basis_projection_tile)(&[], &[], 0, &[], &[], 1, &[1.0], 0, &mut empty_projection);
+            assert_eq!(empty_projection[0].to_bits(), 0.0_f64.to_bits());
+            for selected in [&[][..], &[8, 2, 5, 0, 2][..]] {
+                let mut values = values(131, 9);
+                values[..3].copy_from_slice(&[-0.0, 0.0, f64::from_bits(1)]);
+                let scales = [0.125, 1.0, 3.7, 1.0e-100, 1.0e100];
+                let coefficients = [0.3, -0.0, 3.7, 1.0e-100, 1.0e100];
+                for root in [0.125, 1.0, 3.7] {
+                    for initial in [-0.0, 0.0, 1.25] {
+                        assert_eq!(
+                            (h.normalized_selected_residual)(
+                                initial,
+                                &values,
+                                selected,
+                                &scales,
+                                &coefficients,
+                                root
+                            )
+                            .to_bits(),
+                            p::normalized_selected_residual(
+                                initial,
+                                &values,
+                                selected,
+                                &scales,
+                                &coefficients,
+                                root
+                            )
+                            .to_bits()
+                        );
+                        let mut actual = [-0.0, 0.0, 0.25, f64::from_bits(1), -3.7, f64::MAX];
+                        let mut expected = actual;
+                        (h.normalized_selected_scores)(
+                            &values,
+                            selected,
+                            &scales,
+                            root,
+                            initial,
+                            &mut actual[..selected.len()],
+                        );
+                        p::normalized_selected_scores(
+                            &values,
+                            selected,
+                            &scales,
+                            root,
+                            initial,
+                            &mut expected[..selected.len()],
+                        );
+                        assert_eq!(bits(&actual), bits(&expected));
+                    }
+                }
+            }
+            let selected = [3, 0, 2];
+            let coefficients = [Some(-0.0), None, Some(3.7), Some(-1.3)];
+            let row = [f64::from_bits(1), f64::NAN, -0.0, 1.7];
+            for initial in [-0.0, 0.0, 1.25] {
+                assert_eq!(
+                    (h.selected_residual)(initial, &row, &selected, &coefficients).to_bits(),
+                    p::selected_residual(initial, &row, &selected, &coefficients).to_bits()
+                );
+            }
+            // A known fused-versus-separate rounding witness, plus signed zero.
+            for (left, right, sum) in [
+                (1.0 + f64::EPSILON, 1.0 - f64::EPSILON, -1.0),
+                (-0.0, 1.0, -0.0),
+                (f64::from_bits(1), 0.5, f64::from_bits(1)),
+            ] {
+                assert_eq!(
+                    (h.multiply_add)(left, right, sum).to_bits(),
+                    left.mul_add(right, sum).to_bits()
+                );
+            }
         }
 
         #[test]

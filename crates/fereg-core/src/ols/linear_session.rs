@@ -4671,6 +4671,27 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let scale = self.bread_weight_scale;
         let reference_norms = &retained.reference_norms;
         let coefficients = &workspace.coefficients;
+        let hardware = crate::kernels::installed();
+        let dense_residual_at = |row: usize, values: &[f64]| -> Result<f64> {
+            let root = normalized_solver_weight(weights, scale, row)?.sqrt();
+            let residual = crate::kernels::dispatch!(
+                hardware,
+                standardized_residual(
+                    within_response[row],
+                    values,
+                    &active_positions,
+                    reference_norms,
+                    coefficients,
+                    Some(root)
+                )
+            );
+            if !residual.is_finite() {
+                return Err(invalid_data(
+                    "retained weighted-linear residual is not finite",
+                ));
+            }
+            Ok(residual)
+        };
         let residual_at =
             |row: usize, value: &mut dyn FnMut(usize) -> Result<f64>| -> Result<f64> {
                 let within_value = within_response[row];
@@ -4697,7 +4718,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     .par_iter_mut()
                     .enumerate()
                     .try_for_each(|(row, target)| -> Result<()> {
-                        *target = residual_at(row, &mut |column| Ok(values[(row, column)]))?;
+                        *target = dense_residual_at(
+                            row,
+                            &values.as_slice()[row * stored_columns..(row + 1) * stored_columns],
+                        )?;
                         Ok(())
                     })?;
             }
@@ -4748,7 +4772,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             for (local_row, target) in targets.iter_mut().enumerate() {
                                 let row = chunk * chunk_rows + local_row;
                                 reader.fill_row(row, values)?;
-                                *target = residual_at(row, &mut |column| Ok(values[column]))?;
+                                *target = dense_residual_at(row, values)?;
                             }
                             Ok(())
                         })?;
@@ -4756,7 +4780,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     let mut reader = retained.storage.reader();
                     for (row, target) in workspace.residuals.iter_mut().enumerate() {
                         reader.fill_row(row, &mut workspace.row)?;
-                        *target = residual_at(row, &mut |column| Ok(workspace.row[column]))?;
+                        *target = dense_residual_at(row, &workspace.row)?;
                     }
                 }
             }

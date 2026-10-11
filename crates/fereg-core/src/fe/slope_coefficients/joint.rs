@@ -108,29 +108,20 @@ fn finite_product<C: JointFiniteDesign>(
 ) -> Result<f64> {
     // The current weighted column has a finite, already checked norm.
     // Normalize the dot product once, rather than dividing every observation.
-    let mut sums = [0.0_f64; 8];
     if let Some(values) = controls.column_slice(selected) {
-        let blocks = values.len() / sums.len();
-        for block in 0..blocks {
-            let start = block * sums.len();
-            // Keep the legacy matrix indices and numerical traversal order explicit.
-            #[allow(clippy::needless_range_loop)]
-            for lane in 0..sums.len() {
-                let row = start + lane;
-                sums[lane] = (values[row] * roots[row]).mul_add(projected[row], sums[lane]);
-            }
-        }
-        for row in blocks * sums.len()..values.len() {
-            sums[0] = (values[row] * roots[row]).mul_add(projected[row], sums[0]);
-        }
+        Ok(crate::kernels::dispatch!(
+            crate::kernels::installed(),
+            weighted_product(values, roots, projected)
+        ) / scale)
     } else {
+        let mut sums = [0.0_f64; 8];
         controls.visit_column(selected, |row, value| {
             let lane = row % sums.len();
             sums[lane] = (value * roots[row]).mul_add(projected[row], sums[lane]);
             Ok(())
         })?;
+        Ok(sums.iter().sum::<f64>() / scale)
     }
-    Ok(sums.iter().sum::<f64>() / scale)
 }
 
 // Independent row panels borrow contiguous original columns. Each residual
@@ -153,6 +144,7 @@ fn reconstruct_direct_columns<C: JointFiniteDesign>(
         return false;
     }
     const ROWS: usize = 1024;
+    let hardware = crate::kernels::installed();
     observations
         .par_chunks_mut(ROWS)
         .enumerate()
@@ -166,13 +158,16 @@ fn reconstruct_direct_columns<C: JointFiniteDesign>(
                 let values = controls
                     .column_slice(column)
                     .expect("validated immutable column");
-                for ((value, &x), &root) in target
-                    .iter_mut()
-                    .zip(&values[start..end])
-                    .zip(&roots[start..end])
-                {
-                    *value = (-coefficients[j]).mul_add(x * root / scales[j], *value);
-                }
+                crate::kernels::dispatch!(
+                    hardware,
+                    normalized_add(
+                        -coefficients[j],
+                        &values[start..end],
+                        &roots[start..end],
+                        scales[j],
+                        target
+                    )
+                );
             }
         });
     true
@@ -325,12 +320,17 @@ impl JointFiniteWorkspace {
             )?;
         } else if !direct {
             controls.visit_rows(&mut self.column_scratch, |row, values| {
-                let mut residual = original[row] - observations[row];
-                for (j, &column) in selected.iter().enumerate() {
-                    residual = (-self.coefficients[p + j])
-                        .mul_add(values[column] * roots[row] / self.scales[j], residual);
-                }
-                observations[row] = residual;
+                observations[row] = crate::kernels::dispatch!(
+                    crate::kernels::installed(),
+                    normalized_selected_residual(
+                        original[row] - observations[row],
+                        values,
+                        selected,
+                        &self.scales[..selected.len()],
+                        &self.coefficients[p..p + selected.len()],
+                        roots[row]
+                    )
+                );
                 Ok(())
             })?;
         }
@@ -348,11 +348,10 @@ impl JointFiniteWorkspace {
                     let values = controls
                         .column_slice(column)
                         .expect("validated immutable column");
-                    for ((&value, &root), &residual) in
-                        values.iter().zip(roots).zip(observations.iter())
-                    {
-                        *sum = (value * root / scale).mul_add(residual, *sum);
-                    }
+                    *sum = crate::kernels::dispatch!(
+                        crate::kernels::installed(),
+                        normalized_dot(values, roots, scale, observations)
+                    );
                 });
         } else if controls.prefers_column_scans() {
             self.residual[p..p + selected.len()]
@@ -367,10 +366,17 @@ impl JointFiniteWorkspace {
                 })?;
         } else {
             controls.visit_rows(&mut self.column_scratch, |row, values| {
-                for (j, &column) in selected.iter().enumerate() {
-                    self.residual[p + j] = (values[column] * roots[row] / self.scales[j])
-                        .mul_add(observations[row], self.residual[p + j]);
-                }
+                crate::kernels::dispatch!(
+                    crate::kernels::installed(),
+                    normalized_selected_scores(
+                        values,
+                        selected,
+                        &self.scales[..selected.len()],
+                        roots[row],
+                        observations[row],
+                        &mut self.residual[p..p + selected.len()]
+                    )
+                );
                 Ok(())
             })?;
         }

@@ -1160,20 +1160,32 @@ pub(super) fn solve_guarded_cholesky(
     forward.fill(0.0);
     solution.fill(0.0);
     for row in 0..dimension {
-        let mut value = rhs[row];
-        for column in 0..row {
-            value = (-factor[row * dimension + column]).mul_add(forward[column], value);
-        }
+        let value = crate::kernels::dispatch!(
+            crate::kernels::installed(),
+            subtract_products(&factor[row * dimension..], 1, forward, 1, row, rhs[row])
+        );
         forward[row] = value / factor[row * dimension + row];
         if !forward[row].is_finite() {
             return Ok(false);
         }
     }
     for row in (0..dimension).rev() {
-        let mut value = forward[row];
-        for column in (row + 1)..dimension {
-            value = (-factor[column * dimension + row]).mul_add(solution[column], value);
-        }
+        let later = if row + 1 == dimension {
+            &[][..]
+        } else {
+            &factor[(row + 1) * dimension + row..]
+        };
+        let value = crate::kernels::dispatch!(
+            crate::kernels::installed(),
+            subtract_products(
+                later,
+                dimension,
+                &solution[row + 1..],
+                1,
+                dimension - row - 1,
+                forward[row]
+            )
+        );
         solution[row] = value / factor[row * dimension + row];
         if !solution[row].is_finite() {
             return Ok(false);
@@ -1206,11 +1218,17 @@ pub(super) fn invert_guarded_cholesky(
     canonical_inverse.fill(0.0);
     for column in 0..dimension {
         for row in 0..dimension {
-            let mut value = f64::from(row == column);
-            for inner in 0..row {
-                value = (-factor[row * dimension + inner])
-                    .mul_add(inverse_lower[inner * dimension + column], value);
-            }
+            let value = crate::kernels::dispatch!(
+                crate::kernels::installed(),
+                subtract_products(
+                    &factor[row * dimension..],
+                    1,
+                    &inverse_lower[column..],
+                    dimension,
+                    row,
+                    f64::from(row == column)
+                )
+            );
             let solved = value / factor[row * dimension + row];
             if !solved.is_finite() {
                 return Ok(false);
@@ -1392,6 +1410,7 @@ pub(super) fn certify_normal_equations(
             ));
         }
     }
+    let hardware = crate::kernels::installed();
     let mut infinity = 0.0_f64;
     let mut square_sum = 0.0_f64;
     for row in 0..dimension {
@@ -1459,7 +1478,7 @@ pub(super) fn certify_normal_equations(
             ));
         }
         infinity = infinity.max(relative);
-        square_sum = relative.mul_add(relative, square_sum);
+        square_sum = crate::kernels::fused(hardware, relative, relative, square_sum);
         if !square_sum.is_finite() {
             return Err(invalid_data(
                 "finite-WLS normal-equation two-norm is not finite",

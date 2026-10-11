@@ -1126,12 +1126,18 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     // Each RHS owns its complete retained-level vector and compensated mean.
     // This avoids T copies of Q*W and visits each original column in group order.
     let mut cross = budget.reserve(q * width, 0.)?;
+    let hardware = crate::kernels::installed();
     cross
         .par_chunks_mut(q)
         .zip(means.par_iter_mut())
         .enumerate()
         .try_for_each(|(j, (cross, mean))| -> Result<()> {
             let scale = nonzero(scales[j]);
+            let numeric = match &columns[j] {
+                Column::Numeric(values) => Some(Some(*values)),
+                Column::Constant(value) if *value == 1.0 => Some(None),
+                _ => None,
+            };
             let mut sum = 0.;
             let mut correction = 0.;
             for g in 0..p {
@@ -1145,10 +1151,17 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 let next = sum + term;
                 correction = (next - sum) - term;
                 sum = next;
-                for &i in members {
-                    let h = b.codes()[i] as usize;
-                    let value = columns[j].value(i)? / scale - center;
-                    cross[h] = w[i].mul_add(value, cross[h]);
+                if let Some(source) = numeric {
+                    crate::kernels::dispatch!(
+                        hardware,
+                        grouped_cross(members, &w, source, scale, center, b.codes(), cross)
+                    );
+                } else {
+                    for &i in members {
+                        let h = b.codes()[i] as usize;
+                        let value = columns[j].value(i)? / scale - center;
+                        cross[h] = w[i].mul_add(value, cross[h]);
+                    }
                 }
             }
             *mean = sum * scale;
@@ -1284,7 +1297,6 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     // a Gram and independent left-score diagnostics, only in this later phase.
     let mut partials = budget.reserve(workers * stride, 0.)?;
     let groups_per_worker = p.div_ceil(workers);
-    let hardware = crate::kernels::installed();
     partials.par_chunks_mut(stride).enumerate().try_for_each(
         |(worker, partial)| -> Result<()> {
             let (gram, rest) = partial.split_at_mut(width * width);
@@ -1331,7 +1343,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                         return Err(declined());
                     }
                     maximum[j] = maximum[j].max(value);
-                    squares[j] = value.mul_add(value, squares[j]);
+                    squares[j] = crate::kernels::fused(hardware, value, value, squares[j]);
                     absolute[j] = absolute[j].max(sums[j].abs());
                 }
             }
@@ -1377,7 +1389,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 return Err(declined());
             }
             column_max = column_max.max(value);
-            column_square = value.mul_add(value, column_square);
+            column_square = crate::kernels::fused(hardware, value, value, column_square);
             column_abs = column_abs.max(score);
         }
         maximum = maximum.max(column_max / denominator);
@@ -1633,16 +1645,14 @@ fn apply_incidence_schur(
     for ((out, d), x) in product.iter_mut().zip(diagonal).zip(direction) {
         *out = d * x;
     }
+    let hardware = crate::kernels::installed();
     for row in rows {
-        let mut center = 0.;
         let coefficients = &incidence[row.start..row.end];
         let columns = &ids[row.start..row.end];
-        for (&c, &j) in coefficients.iter().zip(columns) {
-            center = c.mul_add(direction[j], center);
-        }
-        for (&c, &j) in coefficients.iter().zip(columns) {
-            product[j] = (-c).mul_add(center, product[j]);
-        }
+        crate::kernels::dispatch!(
+            hardware,
+            incidence_schur_row(coefficients, columns, direction, product)
+        );
     }
 }
 
@@ -1674,6 +1684,7 @@ fn solve_reduced_cg_with_product(
     values.fill(0.);
     let mut square: f64 = residual.iter().map(|x| x * x).sum();
     let target = tolerance * square.sqrt();
+    let hardware = crate::kernels::installed();
     for iteration in 1..=max_iterations {
         apply(direction, product);
         let curvature: f64 = direction
@@ -1685,12 +1696,10 @@ fn solve_reduced_cg_with_product(
             return Err(declined());
         }
         let alpha = square / curvature;
-        let mut next = 0.;
-        for i in 0..n {
-            values[i] = alpha.mul_add(direction[i], values[i]);
-            residual[i] = (-alpha).mul_add(product[i], residual[i]);
-            next = residual[i].mul_add(residual[i], next);
-        }
+        let next = crate::kernels::dispatch!(
+            hardware,
+            joint_step_energy(alpha, direction, product, values, residual)
+        );
         if !next.is_finite() {
             return Err(declined());
         }
@@ -1704,9 +1713,7 @@ fn solve_reduced_cg_with_product(
             return Ok(iteration);
         }
         let beta = next / square;
-        for i in 0..n {
-            direction[i] = beta.mul_add(direction[i], residual[i]);
-        }
+        crate::kernels::dispatch!(hardware, affine_direction(beta, residual, direction));
         square = next;
     }
     Err(declined())

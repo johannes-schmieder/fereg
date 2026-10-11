@@ -2385,7 +2385,8 @@ fn initial_within_sum_of_squares_low<P: PreparedOlsFitView + ?Sized>(
     outcome_norm: f64,
     intercept_cross: Option<(f64, f64)>,
 ) -> Result<f64> {
-    let uncentered = outcome_norm.mul_add(outcome_norm, 0.0);
+    let uncentered =
+        crate::kernels::fused(crate::kernels::installed(), outcome_norm, outcome_norm, 0.0);
     if !prepared.fit_report_intercept() || prepared.fit_has_absorbed_intercept() {
         return Ok(uncentered);
     }
@@ -2395,7 +2396,12 @@ fn initial_within_sum_of_squares_low<P: PreparedOlsFitView + ?Sized>(
     if outcome_norm == 0.0 || intercept_norm == 0.0 {
         return Ok(uncentered);
     }
-    let centered = (-cross / intercept_norm).mul_add(cross / intercept_norm, uncentered);
+    let centered = crate::kernels::fused(
+        crate::kernels::installed(),
+        -cross / intercept_norm,
+        cross / intercept_norm,
+        uncentered,
+    );
     if centered.is_finite() && centered >= -64.0 * f64::EPSILON * uncentered.max(1.0) {
         Ok(centered.max(0.0))
     } else {
@@ -4251,7 +4257,8 @@ fn initial_within_sum_of_squares<P: PreparedOlsFitView + ?Sized>(
     weights: NormalizedWeights<'_>,
     outcome_norm: f64,
 ) -> Result<f64> {
-    let uncentered = outcome_norm.mul_add(outcome_norm, 0.0);
+    let uncentered =
+        crate::kernels::fused(crate::kernels::installed(), outcome_norm, outcome_norm, 0.0);
     if !prepared.fit_report_intercept() || prepared.fit_has_absorbed_intercept() {
         return Ok(uncentered);
     }
@@ -4295,7 +4302,7 @@ fn initial_within_sum_of_squares<P: PreparedOlsFitView + ?Sized>(
         )?;
     }
     let norm = checked_norm(scale, scaled_square_sum)?;
-    let sum_of_squares = norm.mul_add(norm, 0.0);
+    let sum_of_squares = crate::kernels::fused(crate::kernels::installed(), norm, norm, 0.0);
     if sum_of_squares.is_finite() && sum_of_squares >= 0.0 {
         Ok(sum_of_squares)
     } else {
@@ -4468,6 +4475,7 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
             finite_score.square_sum_scale.sqrt() / response_scale,
         )
     };
+    let hardware = crate::kernels::installed();
     let mut relative_square_sum = finite_relative_two_norm * finite_relative_two_norm;
     let mut moments = finite_score.moments;
     if !relative_infinity_norm.is_finite() || !relative_square_sum.is_finite() {
@@ -4531,7 +4539,8 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
             return Err(invalid_data("prepared OLS normalized score is not finite"));
         }
         relative_infinity_norm = relative_infinity_norm.max(relative);
-        relative_square_sum = relative.mul_add(relative, relative_square_sum);
+        relative_square_sum =
+            crate::kernels::fused(hardware, relative, relative, relative_square_sum);
         if !relative_square_sum.is_finite() {
             return Err(invalid_data(
                 "prepared OLS score two-norm accumulation is not finite",

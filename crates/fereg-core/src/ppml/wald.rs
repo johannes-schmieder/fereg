@@ -191,15 +191,16 @@ pub(crate) fn compute_ppml_wald(
         }
         solution[row] /= lower[row * dimension + row];
     }
+    let hardware = crate::kernels::installed();
     let mut statistic = 0.0_f64;
     let mut residual_norm = 0.0_f64;
     let mut reference_norm = f64::MIN_POSITIVE;
     for row in 0..dimension {
-        statistic = rhs[row].mul_add(solution[row], statistic);
-        let mut fitted = 0.0_f64;
-        for column in 0..dimension {
-            fitted = matrix[row * dimension + column].mul_add(solution[column], fitted);
-        }
+        statistic = crate::kernels::fused(hardware, rhs[row], solution[row], statistic);
+        let fitted = crate::kernels::dispatch!(
+            hardware,
+            ordered_dot(&matrix[row * dimension..(row + 1) * dimension], &solution)
+        );
         residual_norm = residual_norm.max((fitted - rhs[row]).abs());
         reference_norm = reference_norm.max(fitted.abs()).max(rhs[row].abs());
     }

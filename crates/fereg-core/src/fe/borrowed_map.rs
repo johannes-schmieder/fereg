@@ -5499,6 +5499,7 @@ fn certify_structural_constant_with_current_norms(
         }
         workspace.rhs_scales[rhs] = scale;
     }
+    let hardware = crate::kernels::installed();
     let group_weight = structural_constant_means(weights, residuals, workspace)?;
     let root_group_weight = group_weight.sqrt();
     let mut absolute_infinity_norm = 0.0_f64;
@@ -5524,7 +5525,8 @@ fn certify_structural_constant_with_current_norms(
             ));
         }
         relative_infinity_norm = relative_infinity_norm.max(relative);
-        relative_square_sum = relative.mul_add(relative, relative_square_sum);
+        relative_square_sum =
+            crate::kernels::fused(hardware, relative, relative, relative_square_sum);
         let normalized_moment = mean.abs() * group_weight;
         let raw_moment = normalized_moment * weights.raw_scale;
         absolute_infinity_norm = absolute_infinity_norm.max(if raw_moment.is_finite() {
@@ -6507,6 +6509,7 @@ impl CertificateFold {
                 "borrowed MAP certificate group weight is invalid",
             ));
         }
+        let hardware = crate::kernels::installed();
         for (rhs, &mean) in means.iter().enumerate() {
             let denominator = rhs_scales[rhs];
             let relative = if denominator == 0.0 {
@@ -6525,7 +6528,8 @@ impl CertificateFold {
             }
             self.relative_infinity_norm = self.relative_infinity_norm.max(relative);
             rhs_relative_infinity_norms[rhs] = rhs_relative_infinity_norms[rhs].max(relative);
-            self.relative_square_sum = relative.mul_add(relative, self.relative_square_sum);
+            self.relative_square_sum =
+                crate::kernels::fused(hardware, relative, relative, self.relative_square_sum);
             if !self.relative_square_sum.is_finite() {
                 return Err(invalid_data(
                     "borrowed MAP certificate two-norm accumulation is not finite",

@@ -455,6 +455,7 @@ impl<'a> NumericOlsColumns<'a> {
                 "numeric predictor columns are not aligned and finite",
             ));
         }
+        let hardware = crate::kernels::installed();
         fitted
             .par_chunks_mut(NUMERIC_TILE_ROWS)
             .enumerate()
@@ -462,16 +463,11 @@ impl<'a> NumericOlsColumns<'a> {
                 let start = tile * NUMERIC_TILE_ROWS;
                 let rows = output.len();
                 for &(column, coefficient) in selected {
-                    if let Some(source) = self.columns[column] {
-                        for (target, &value) in output.iter_mut().zip(&source[start..start + rows])
-                        {
-                            *target = coefficient.mul_add(value, *target);
-                        }
-                    } else {
-                        for target in output.iter_mut() {
-                            *target = coefficient.mul_add(1.0, *target);
-                        }
-                    }
+                    let source = self.columns[column].map(|source| &source[start..start + rows]);
+                    crate::kernels::dispatch!(
+                        hardware,
+                        coefficient_add(coefficient, source, output)
+                    );
                 }
                 if output.iter().any(|value| !value.is_finite()) {
                     return Err(invalid_data("numeric finite predictor is not finite"));
@@ -493,6 +489,7 @@ impl<'a> NumericOlsColumns<'a> {
                 "numeric OLS residual update is not aligned and finite",
             ));
         }
+        let hardware = crate::kernels::installed();
         residuals
             .par_chunks_mut(NUMERIC_TILE_ROWS)
             .enumerate()
@@ -503,17 +500,11 @@ impl<'a> NumericOlsColumns<'a> {
                     let Some(coefficient) = coefficient else {
                         continue;
                     };
-                    if let Some(source) = source {
-                        for (residual, &value) in
-                            output.iter_mut().zip(&source[start..start + rows])
-                        {
-                            *residual = (-coefficient).mul_add(value, *residual);
-                        }
-                    } else {
-                        for residual in output.iter_mut() {
-                            *residual = (-coefficient).mul_add(1.0, *residual);
-                        }
-                    }
+                    let source = source.map(|source| &source[start..start + rows]);
+                    crate::kernels::dispatch!(
+                        hardware,
+                        coefficient_add(-coefficient, source, output)
+                    );
                 }
                 if output.iter().any(|v| !v.is_finite()) {
                     return Err(invalid_data("numeric OLS raw residual is not finite"));
