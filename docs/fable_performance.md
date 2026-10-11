@@ -81,22 +81,24 @@ scripts/build_macos.sh            # or build_linux.sh; produces dist/<plugin>
 bench/build_timing_harness.sh target/tmp/<task>/timing-harness
 cargo run -p fereg-oracle --example replay_large --profile ci -- \
   --output target/tmp/<task>/ppml.case --rows 1000000 --levels 200000,10000 \
-  --regressors 16 --weights unit --vce robust --graph random-mobility \
-  --solver auto --seed 739391 --ppml
+  --regressors 16 --weights unit --vce robust --graph akm-campaign \
+  --solver auto --seed 739391 --ppml --candidate-all --non-deterministic \
+  --no-observation-outputs
 FEREG_PHASE_TIMING=1 FEREG_SOLVER_TRACE=1 \
   target/tmp/<task>/timing-harness dist/<plugin> --replay CASE OUT.json
 ```
 
-The generated case does not match the campaign call: it requests six
-observation outputs, a restricted candidate marker and deterministic
-execution, and its topologies differ from the campaign's AKM. Workstream G
-adds generator flags for this; until then rewrite the case arguments
-(`candidate_all=1`, `deterministic=0`, optional observation `output_*=0`,
-`residual=none` for PPML). Keep the required sample output at position 21
-(`output_sample=21`); both wire parsers reject zero for this field. Drop the
-other output placeholder columns so the varlist has 21 variables,
-and replace the two FE columns with the campaign topology from
-`bench/campaign.py` (`make_dataset`, design `akm-baseline`). `RRUNTIME` rows
+The G3 flags above request unrestricted candidates, nondeterministic execution
+and no optional observation outputs (`residual=none` for PPML). They retain
+the required sample output at position 21 (`output_sample=21`) in this
+two-FE, sixteen-regressor, unweighted example; both wire parsers reject zero
+for this field. No unused output placeholders are written. The `akm-campaign`
+topology has five consecutive periods per worker, persistence 0.8 and random
+destination firms; its first level count must equal ceil(rows/5). It uses the
+oracle's specified RNG, so it is a campaign-shaped diagnostic, not a byte
+reproduction of NumPy's campaign inputs. SCC comparisons must still extract
+the frozen campaign data rather than regenerate it. Existing generator
+defaults and oracle graph meanings are unchanged. `RRUNTIME` rows
 18–21 hold preflight, input-load, native and total seconds for OLS; the PPML
 `RRUNTIME` holds total seconds in row 1 and phase seconds in rows 28–40 in
 `PPML_PHASES` order. `FEREG_PHASE|...` lines on stderr give sub-phase splits.

@@ -2,6 +2,26 @@ use super::{DesignSpec, Graph, Rng};
 
 pub(super) fn codes(spec: &DesignSpec, rng: &mut Rng) -> Vec<Vec<u32>> {
     let mut codes = vec![vec![0; spec.rows]; spec.levels.len()];
+    if spec.graph == Graph::AkmCampaign {
+        let firms = spec.levels[1];
+        let mut assignment: Vec<_> = (0..spec.levels[0]).map(|worker| worker % firms).collect();
+        for period in 0..5 {
+            for (worker, firm) in assignment.iter_mut().enumerate() {
+                if period > 0 {
+                    let destination = (rng.next() % firms as u64) as usize;
+                    if rng.uniform() < 0.2 {
+                        *firm = destination;
+                    }
+                }
+                let row = 5 * worker + period;
+                if row < spec.rows {
+                    codes[0][row] = worker as u32;
+                    codes[1][row] = *firm as u32;
+                }
+            }
+        }
+        return codes;
+    }
     if spec.graph == Graph::RandomMobility {
         for (column, &levels) in codes.iter_mut().zip(&spec.levels) {
             for code in column {
@@ -48,7 +68,9 @@ fn edges(left: usize, right: usize, graph: Graph) -> Vec<(usize, usize)> {
             .collect();
     }
     match graph {
-        Graph::RandomMobility => unreachable!("random mobility generates row codes directly"),
+        Graph::RandomMobility | Graph::AkmCampaign => {
+            unreachable!("mobility graphs generate row codes directly")
+        }
         Graph::DensePanel => (0..left)
             .flat_map(|a| (0..right).map(move |b| (a, b)))
             .collect(),

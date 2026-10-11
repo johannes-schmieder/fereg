@@ -644,6 +644,40 @@ Retained SHA-256 records:
 
 ## Accepted evidence
 
+### Campaign-shaped replay tooling (G3), 2026-10-11
+
+The large replay generator adds explicit unrestricted-candidate,
+nondeterministic and sample-only-output options, plus an AKM topology with
+five observations per worker and 80% persistence. Existing defaults remain
+unchanged. The topology uses the oracle RNG; it is not a byte reproduction of
+the frozen SCC campaign. All SCC comparisons continue using frozen inputs.
+This is an unchanged native artifact: only oracle/tooling code and documentation
+change. Production identity against `4d2e873b` passes for all 169 runtime
+modules and 58 artifact inputs. No estimator arithmetic, tolerances, routes, sample or rank semantics
+change.
+
+The full repository gate and all 42 benchmark-tool tests pass. All 73 default
+replay cases are byte-identical before/after. Generator witnesses check worker
+shape, determinism, persistence and the required sample output. Small OLS/PPML
+native probes each repeat exactly twice, with both certificates passing and
+21 physical columns in the two-FE/sixteen-regressor/unit-weight example. The
+shared replay wire module stays unchanged. Two helper-placement attempts failed
+the unused-code lint before the helper was scoped to the large generator;
+no lint or assertion was relaxed. Missing matplotlib/reportlab initially
+prevented report tests; installing them in the task-local environment allowed
+all tests to run.
+
+| Check | SHA-256 |
+| --- | --- |
+| G3 commit-boundary full gate | `a90b12905211d5ac131d49374c686ed112bcca20f2f76ba4d7f7937c4855f030` |
+| Native probe results | `4b787115fc017526b454195855766cbb7d487af3bdceac3ab6d7c59d1b8d67b2` |
+| Default-case identity | `2a5c4447ef7863d449cd265f32623ec70e8b4b3e3fcbb99e3122e72a49de6003` |
+| Benchmark-tool tests | `d66b9fcaa555d76fca0295b0d5ed0758e164bfe611c32548618db32f17a30913` |
+| Rejected shared helper | `d8828b7d404c9f9bf09681dd76f1b0d6f97ba332e818750dd221d6f6fcbbf3cb` |
+| Rejected helper visibility | `6f1175eefd54a2024d761e1c8909eabab09b8ad9afc445e576b972a7e7f4e5bd` |
+| Missing matplotlib | `715a473dcc33ff91c61b30f72fdd8805b14d85f4d99a149cb56af49db3d8654d` |
+| Missing reportlab | `e52be28333988596fb55d1221cce967f5f1fdafb566501bc3d5df76c6d34c5bc` |
+
 ### Performance-plan tooling, 2026-10-11
 
 G1/G2 are arithmetic-preserving tooling changes with an unchanged production

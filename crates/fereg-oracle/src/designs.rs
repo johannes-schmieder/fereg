@@ -13,6 +13,9 @@ pub enum Graph {
     Barbell,
     Disconnected,
     RandomMobility,
+    /// Five consecutive observations per worker, 0.8 persistence and random
+    /// destination firms. Uses the oracle RNG, not NumPy's campaign stream.
+    AkmCampaign,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,6 +89,11 @@ impl Rng {
 }
 
 pub fn generate(seed: u64, spec: &DesignSpec) -> Result<Design, String> {
+    if spec.graph == Graph::AkmCampaign
+        && (spec.levels.len() != 2 || spec.levels[0] != spec.rows.div_ceil(5))
+    {
+        return Err("akm-campaign requires two effects and ceil(rows/5) workers".into());
+    }
     if spec.rows == 0
         || spec
             .levels

@@ -4,22 +4,88 @@
 #[path = "../tests/support/mod.rs"]
 mod support;
 #[allow(dead_code)]
-#[path = "replay/wire.rs"]
-mod wire;
+mod wire {
+    include!("replay/wire.rs");
+
+    impl Request {
+        /// Keep the mandatory sample destination while omitting optional outputs.
+        /// Call before appending saved-effect or bias columns.
+        pub fn sample_only(&mut self, poisson: bool) {
+            assert!(self.saved.is_empty());
+            let sample = self
+                .outputs
+                .iter()
+                .find(|(key, _)| key == "sample")
+                .unwrap()
+                .1;
+            assert_eq!(self.outputs.first().unwrap().1, sample);
+            let omitted: Vec<_> = self
+                .outputs
+                .iter()
+                .filter(|(key, _)| key != "sample")
+                .map(|(key, _)| format!("output_{key}"))
+                .collect();
+            for key in omitted {
+                self.replace(&key, "0");
+            }
+            self.data.truncate(sample + 1);
+            self.outputs.retain(|(key, _)| key == "sample");
+            if poisson {
+                self.replace("residual", "none");
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod campaign_output_tests {
+        use super::*;
+        use fereg_oracle::designs::{generate, DesignSpec};
+
+        #[test]
+        fn sample_only_preserves_inputs_and_required_sample_destination() {
+            for poisson in [false, true] {
+                let design = generate(19, &DesignSpec::default()).unwrap();
+                let mut request = make(&design, poisson, "robust", "auto", false);
+                let sample = request.outputs[0].1;
+                let inputs_and_sample = request.data[..=sample].to_vec();
+                request.sample_only(poisson);
+                assert_eq!(request.data, inputs_and_sample);
+                assert_eq!(request.outputs, vec![("sample".into(), sample)]);
+                assert!(request
+                    .args
+                    .contains(&format!("output_sample={}", sample + 1)));
+                for key in if poisson {
+                    vec!["residual", "drop_reason", "xb", "absorbed", "eta", "mean"]
+                } else {
+                    vec!["residual", "drop_reason", "xb", "xbd", "absorbed"]
+                } {
+                    assert!(request.args.contains(&format!("output_{key}=0")));
+                }
+                if poisson {
+                    assert!(request.args.contains(&"residual=none".into()));
+                }
+            }
+        }
+    }
+}
 
 use fereg_oracle::designs::{generate, DesignSpec, Graph, WeightKind};
 use std::{collections::BTreeMap, path::PathBuf};
 
-const HELP: &str = "replay_large --output target/NAME.case --rows N --levels L1,L2[,L3] \
+const HELP: &str = "replay_large --output target/tmp/TASK/NAME.case --rows N --levels L1,L2[,L3] \
 --regressors K --weights unit|aw|fw|pw --vce iid|robust|cluster \
---graph akm-strong|akm-weak|chain|barbell|random-mobility --solver auto|map|lsmr|cmg \
+--graph akm-strong|akm-weak|chain|barbell|random-mobility|akm-campaign --solver auto|map|lsmr|cmg \
 --seed N [--ppml] [--threads N] [--tolerance T] [--iterations N] [--max-cells N] [--max-edges N] \
-[--zero-fraction F] [--separation METHODS]\n\
+[--zero-fraction F] [--separation METHODS] [--no-observation-outputs] [--candidate-all] [--non-deterministic]\n\
 Defaults: threads=1 tolerance=1e-8 iterations=16000 max-cells=100000000 max-edges=10000000.\n\
 PPML only: --zero-fraction draws that share of outcomes as zero (default 0) and\n\
 --separation sets the space-separated separation methods (default none).\n\
 Cluster VCE uses one cluster dimension from the oracle design. Graph labels retain\n\
-the existing oracle topology (AkmStrong is adjacent-firm mobility, not random).";
+the existing oracle topology (AkmStrong is adjacent-firm mobility, not random).\n\
+akm-campaign requires two effects and ceil(rows/5) workers: five consecutive\n\
+periods, persistence 0.8 and random destination firms. Oracle RNG draws do not\n\
+reproduce frozen NumPy campaign inputs. --no-observation-outputs keeps the\n\
+mandatory sample output; candidate and deterministic defaults are unchanged.";
 
 fn main() {
     if let Err(error) = run() {
@@ -39,6 +105,18 @@ fn run() -> Result<(), String> {
         }
         if key == "--ppml" && !poisson {
             poisson = true;
+            continue;
+        }
+        if [
+            "--no-observation-outputs",
+            "--candidate-all",
+            "--non-deterministic",
+        ]
+        .contains(&key.as_str())
+        {
+            if options.insert(key.clone(), "1".into()).is_some() {
+                return Err(format!("repeated option {key}"));
+            }
             continue;
         }
         if ![
@@ -113,12 +191,13 @@ fn run() -> Result<(), String> {
         "chain" => Graph::Chain,
         "barbell" => Graph::Barbell,
         "random-mobility" => Graph::RandomMobility,
+        "akm-campaign" => Graph::AkmCampaign,
         _ => return Err("unsupported --graph".into()),
     };
     // The oracle enumerates barbell halves densely. Refuse accidental huge
     // allocations and prefixes that omit the bridge instead of relabelling them.
     let edges = match graph {
-        Graph::RandomMobility => Some(rows),
+        Graph::RandomMobility | Graph::AkmCampaign => Some(rows),
         Graph::AkmStrong => levels[0].checked_mul(4),
         Graph::AkmWeak => levels[0].checked_mul(17),
         Graph::Chain => levels[0].max(levels[1]).checked_mul(2),
@@ -177,7 +256,13 @@ fn run() -> Result<(), String> {
         + levels.len()
         + clusters
         + usize::from(weights != WeightKind::Unit)
-        + if poisson { 7 } else { 6 };
+        + if options.contains_key("--no-observation-outputs") {
+            1
+        } else if poisson {
+            7
+        } else {
+            6
+        };
     if rows.checked_mul(columns).is_none_or(|n| n > max_cells) {
         return Err("case exceeds --max-cells (includes requested output columns)".into());
     }
@@ -217,6 +302,15 @@ fn run() -> Result<(), String> {
     request.replace("iterate", &iterations.to_string());
     request.replace("threads", &threads.to_string());
     request.replace("tolerance", &tolerance.to_string());
+    if options.contains_key("--no-observation-outputs") {
+        request.sample_only(poisson);
+    }
+    if options.contains_key("--candidate-all") {
+        request.replace("candidate_all", "1");
+    }
+    if options.contains_key("--non-deterministic") {
+        request.replace("deterministic", "0");
+    }
     if let Some(methods) = options.get("--separation") {
         request.separation(methods);
     }

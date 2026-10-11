@@ -5,6 +5,40 @@ use fereg_oracle::explicit_ols::fit_explicit_ols;
 use fereg_oracle::explicit_ppml::fit_explicit_ppml;
 
 #[test]
+fn campaign_topology_has_consecutive_workers_and_persistent_random_destinations() {
+    let spec = DesignSpec {
+        rows: 10_003,
+        levels: vec![2001, 100],
+        graph: Graph::AkmCampaign,
+        regressors: 0,
+        ..DesignSpec::default()
+    };
+    let design = generate(739391, &spec).unwrap();
+    assert_eq!(design, generate(739391, &spec).unwrap());
+    let worker = design.effects[0].codes();
+    let firm = design.effects[1].codes();
+    let mut moves = 0;
+    let mut nonadjacent = 0;
+    for row in 0..spec.rows {
+        assert_eq!(worker[row] as usize, row / 5);
+        assert!(firm[row] < 100);
+        if row % 5 == 0 {
+            assert_eq!(firm[row] as usize, (row / 5) % 100);
+        } else if firm[row] != firm[row - 1] {
+            moves += 1;
+            nonadjacent += usize::from(firm[row].abs_diff(firm[row - 1]) > 1);
+        }
+    }
+    assert!((1400..1800).contains(&moves));
+    assert!(nonadjacent > 1000);
+    let mut invalid = spec;
+    invalid.levels[0] -= 1;
+    assert!(generate(739391, &invalid).is_err());
+    invalid.levels.clear();
+    assert!(generate(739391, &invalid).is_err());
+}
+
+#[test]
 fn seeded_designs_cover_graphs_weights_slopes_missingness_and_collinearity() {
     for (j, graph) in [
         Graph::DensePanel,
