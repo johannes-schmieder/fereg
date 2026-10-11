@@ -668,6 +668,48 @@ is calibration, not an unseen holdout or a general iteration model. Trace
 overhead remains in the clocks; factorization is nested in setup, and the
 `4*N+q` admission proxy covers selected incidence work, not total setup.
 
+Before fitting a selector, extend calibration by the following fifteen cells,
+three existing geometries, workers 1/16 and two reversed-order repetitions:
+180 calls, at most 30 seconds each and 600 seconds combined. Together with the
+first 36 this uses the existing 216-call calibration maximum; the 144 holdout
+and remaining forty million-row calls stay untouched. This explicitly amends
+the earlier grid with width 4 and degree 256. Width 4 provides a narrow admitted
+RHS bank; width 2 would refuse every route on that proposed zero-prior-work cell.
+No route is changed to manufacture a feasible calibration observation.
+
+| Cell | N | Left levels | Right levels | Degree | Repeats per edge | Width | Geometry |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | 16,384 | 2,048 | 32 | 4 | 2 | 17 | Regular |
+| 2 | 16,384 | 2,048 | 256 | 4 | 2 | 17 | Regular |
+| 3 | 16,384 | 2,048 | 2,048 | 4 | 2 | 17 | Regular |
+| 4 | 131,072 | 2,048 | 128 | 4 | 16 | 17 | Regular |
+| 5 | 131,072 | 2,048 | 256 | 4 | 16 | 17 | Regular |
+| 6 | 131,072 | 2,048 | 2,048 | 4 | 16 | 17 | Regular |
+| 7 | 131,072 | 16,384 | 128 | 4 | 2 | 17 | Regular |
+| 8 | 131,072 | 4,096 | 128 | 16 | 2 | 17 | Regular |
+| 9 | 131,072 | 1,024 | 128 | 64 | 2 | 17 | Regular |
+| 10 | 131,072 | 1,024 | 1,024 | 64 | 2 | 17 | Regular |
+| 11 | 131,072 | 16,384 | 128 | 4 | 2 | 4 | Regular |
+| 12 | 131,072 | 256 | 256 | 256 | 2 | 17 | Fully crossed |
+| 13 | 131,072 | 1,024 | 128 | 64 | 2 | 17 | Two disconnected blocks |
+| 14 | 131,072 | 1,024 | 1,024 | 64 | 2 | 17 | Two blocks, two bridges weighted 2^-20 |
+| 15 | 131,072 | 1,024 | 1,024 | 64 | 2 | 17 | Same topology, bridge weights 1 |
+
+Freeze row order (left group, edge, repeated observation), neighbor rule
+`(group+17*edge) mod right_levels`, paired dyadic residuals and additive FE
+values, and seed 739391 for RHS amplitudes before these calls. Block cases apply
+the same neighbor rule locally; cells 14/15 replace the last edge of the first
+left group in each block with the other block's first right level. All nonbridge
+inputs match between those cells. Ordinary edge weights are
+`(2+(group+3*edge) mod 7)/8`; each repeated pair shares its weight and has opposite
+residuals. The allowance is 256 MiB, tolerance 1e-12 and prior work zero.
+Keep the existing exact-orthogonality and direct-Gram witness bounds, explicit
+refusals and fixed-worker scientific repeats. Raw centered-incidence energy,
+anchor mass fraction and normalized diagonals are diagnostic features, not
+floating-point certificates. Refusals retain their reasons and completed work;
+budget exhaustion is incomplete, never a successful panel. No holdout is used
+to revise this calibration design or to tune a rule.
+
 ### F1 authorized diagnosis: resolve the comparison before handoff
 
 Retain the current automatic route. The bounded F1 panel did not establish a
@@ -763,6 +805,28 @@ quiet-host confidence bounds. Any later pilot prototype needs typed untouched-
 input ownership, fully charged backup/overlap and a shared work budget: debit
 pilot work from the first-half LSMR allowance while preserving the existing
 MAP safety reserve. No routing code follows from these censored probes alone.
+
+The completed checkpoint diagnostic rejects a general four-sweep pilot on
+sparse cost. A separate geometry-only diagnostic may price a sufficient
+convergence predictor: centered pair-incidence Frobenius bounds for three
+unit-weight intercept effects, propagated through the existing symmetric MAP
+order. Exact independence is not required. Extra pairwise common directions
+remain in the bound; do not silently remove them as though they belonged to
+the common space of all three effects. The predictor never accepts a numerical
+fit or replaces any existing certificate.
+
+Before any conditional-route prototype, independently review this derivation
+and its rounding/normalization limits. A task-only probe may compute checked
+integer contingency moments with reusable smaller-level count storage and
+report their bounds, scratch capacity and setup cost, without changing solving.
+Bound its correctness checks to ten synthetic feature cases with direct
+contingency/explicit-projection witnesses, and its pricing to six original
+frozen Auto fits (dense 1M/4M and sparse 1M, workers 1/16), 120 seconds per fit,
+600 seconds total and no retries. Require exact retained scientific outputs.
+Charge all histogram visits, clearing and allocation; the measured cost must
+fit the unchanged sparse allowance before progressing. This adds no MAP pilot
+or holdout calls. Weighted models, a floating convergence guarantee and a
+default selector remain outside this diagnostic.
 
 Before any prototype, freeze its features, parameters, numerical scope,
 fallback/work-budget contract and finite validation budget. The current automatic
