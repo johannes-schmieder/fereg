@@ -447,6 +447,16 @@ not quiet-Mac route qualification. This panel has no new holdout and cannot
 observe the direct PCG's eighth-step contraction. It may support a bounded
 proposal, but does not authorize a progress threshold or default-route change.
 
+Before the first F2 fit, normalize its explicit MAP request to
+`preconditioner=off`. F1 exposed a task-driver defect: rewriting only solver and
+workers retained the frozen `preconditioner=auto`, which the native syntax
+correctly rejects with CMG or MAP. Require exactly one original auto
+preconditioner; only F2's MAP arm changes it to off. Every other argument and
+the complete data/body bytes stay unchanged. The unstarted F2 job is replaced
+with newly bound tooling; its 24-fit/1,200-second/120-second-per-fit limits and
+all scientific checks remain unchanged. F1's original request failures and
+stronger fit-statistic comparison failures remain failed, without retry.
+
 ### G. Tooling (no runtime change)
 
 1. Capture `e(fereg_runtime)` rows 18–21 (OLS) and the PPML phase rows in
@@ -467,7 +477,8 @@ proposal, but does not authorize a progress threshold or default-route change.
 | A1 | May the final accepted iteration's fresh canonical solve serve as the strict candidate? | B qualified; the bounded A1 experiment saved no solve and is deferred by Johannes's follow-up on 2026-10-11. Preserve its evidence; do not broaden eligibility |
 | A2 | May the strict canonical solve warm-start its PCG? | Still deferred after A1 measurement; bring a concrete bounded proposal before implementation |
 | A3 | Declare the explicit/implicit geometry costing rule for dense PPML | Needed before any route change |
-| F | Route handoff and dense three-FE choice | Scoped decision after comparative evidence |
+| F1 | Progress-based two-FE handoff | Retain Auto; await authorization for bounded diagnosis of the failed comparison before any handoff prototype |
+| F2 | Dense three-FE choice | Retain Auto; sparse MAP timeouts block an unconditional switch. Geometry-cost research needs a separate decision |
 | E | Accept one-time norm/certificate bit changes for thread-independent reductions | Yes, as one declared scope |
 
 ### A2 proposal awaiting authorization: retain per-RHS projection guesses
@@ -550,6 +561,80 @@ held-out results judge the frozen model and do not tune exceptions. Unstable
 predictions or gains requiring exceptions stop the experiment. This proposal
 requests costing research only; a resulting route rule needs its own decision,
 declared numerical scope, independent witnesses and qualification.
+
+### F1 proposal awaiting authorization: resolve the comparison before handoff
+
+Retain the current automatic route. The bounded F1 panel did not establish a
+passing alternative across its declared comparisons. Twenty CMG requests were
+invalid because the comparison driver retained `preconditioner=auto`; these
+syntax failures are tooling failures, not CMG performance observations. Eight
+auto/LSMR comparisons failed the stronger robust-F statistic bound on barbell
+and weak-mobility controls, although both routes passed the independent
+coefficient, covariance, fitted/residual and within-statistic witnesses. The
+independent QR covariance gives a robust F much closer to LSMR on the weak
+control. Investigate this discrepancy rather than relaxing the comparison bound
+or copying the baseline value. The original F1 attempt remains failed.
+
+The next proposed authorization is diagnostic only: trace the robust covariance
+and Wald-statistic error to its source, prepare valid CMG requests, and measure
+actual ordinary-PCG progress before choosing a handoff threshold. Bound this
+work to one working day and two substantive repair attempts. A new native panel
+would be predeclared separately, at most 60 fits/1,800 seconds with 120 seconds
+per fit on the same inputs, retaining the failed original observations. Do not
+repeat the panel until a diagnosed request or numerical repair justifies it.
+Any runtime repair needs its own declared scope and independent witnesses.
+
+An eventual Auto-only handoff should occur before reconstruction mutates the
+original RHS matrix. Return typed ownership of that unchanged input, preserve
+sample/topology/weights and saved-FE obligations, and keep explicit requests
+unchanged. Release attempted numerical banks before alternative setup or charge
+their full overlap under the public memory budget. Debit all attempted work
+against one iteration budget and preserve the existing MAP safety reserve.
+Progress may reject an attempt; only the full independent certificates may
+accept a result. The checkpoint's iteration-eight contraction rule is not
+calibrated for ordinary OLS, and the current panel does not observe that signal.
+Its chain reports 127 iterations, not the plan's historical 4,246; the latter
+reproducer was not available. No threshold or default-route change is proposed
+for approval from these observations alone.
+
+### F2 proposal awaiting authorization: geometry research with sparse protection
+
+Retain the current automatic route. MAP completed the frozen dense 1M/4M
+three-FE comparisons with lower observed native costs at 1/16 workers, but
+all four sparse MAP fits hit the unchanged 120-second limit. The 24-fit panel
+finished with twenty passes and four timeouts, without retry. These are two cold
+shared-host repetitions, not a qualified performance claim. The failed sparse
+fits have no accepted timing ratio, and the dense gains cannot justify an
+unconditional switch. Full outcomes and costs are in the
+[retained comparison record](../bench/results/f-20261011-comparisons.json).
+
+The proposed next authorization is costing research only, bounded to one
+working day and one model revision. First use the retained successful phase,
+iteration and memory observations to test whether already-available geometry
+can explain total setup-plus-solve cost. Candidate features are FE levels and
+term slots, group-size/connectivity structure, RHS width, selected memory and
+the resolved preconditioner. N alone or a campaign name is not a route rule.
+The dense 1M/4M cases have 186/297 total term slots and straddle the existing
+256-slot Diagonal/Schwarz boundary; treat that difference explicitly. Charge
+any additional setup, progress observation and overlapping memory to the
+proposed rule. Sparse timeouts are censored failures, not fitting targets with
+invented completion times. If these observations cannot support a general
+cost model, stop and specify the missing diagnostic before running more fits.
+
+Before any prototype, freeze its features, parameters, numerical scope and
+fallback/work-budget contract for Johannes's decision. The current automatic
+LSMR attempt uses a tighter direct tolerance and at most half the shared
+iteration budget, with MAP fallback from untouched original inputs. Preserve
+these protections and explicit solver contracts. No threshold, new dispatch
+branch or extra pilot is authorized by this research proposal.
+
+A proposed holdout must use distinct geometries on both sides of the existing
+preconditioner boundary, including sparse, weak/disconnected and memory-limited
+cases. Declare its cases and bounds before execution; do not reuse the current
+tuning cases or revise the rule after seeing held-out results. Independent
+explicit-design witnesses, unchanged model decisions, fixed-worker repeats,
+public memory/refusal and Break checks precede quiet-Mac qualification. The
+current 24-fit panel includes no such holdout and authorizes no default change.
 
 ## 5. Order of work and reporting
 

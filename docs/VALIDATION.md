@@ -16,6 +16,83 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Performance-plan qualification
 
+### Performance-plan F: comparative failures and route decisions, 2026-10-11
+
+The automatic routes remain unchanged. The
+[retained F1/F2 comparisons](../bench/results/f-20261011-comparisons.json)
+use qualified E1 source `d3fed590` and its Linux native artifact
+`1f6de670a17c6bc08d2fa3e482c4cdec80e1903cadb5313fc27531c80502cf9f`.
+They are bounded diagnostic comparisons of existing explicit requests, with
+phase/solver tracing and two cold, reversed-order repetitions on a shared SCC
+host. They do not qualify a route change or a performance claim. Frozen input
+and body hashes, every fit status, exact-repeat checks, phase/solver/memory rows,
+certificate gates and scheduler accounting are retained. Large campaign cases
+have cross-route checks and independent runtime certificates; the three smaller
+graph controls also have frozen full-dummy QR/HC1 witnesses.
+
+F1 job 8027562 attempted all sixty fits: 32 passed and 28 failed. Twenty CMG
+requests failed syntax because the task driver retained `preconditioner=auto`,
+which correctly requires `off` for explicit CMG. These are request-rejection
+costs, not CMG solve observations. Eight LSMR comparisons on barbell and weak
+mobility failed the unchanged stronger robust-F bound (rtol=1e-12, atol=1e-14),
+by factors 1.63 and 595.04. Both routes passed independent coefficient,
+covariance, fitted/residual and within-statistic checks. An additional
+independent QR/HC1 Wald calculation puts Auto farther from that reference than
+LSMR on those controls; it does not override the failed comparison, establish a
+production bug by itself, or authorize a relaxed bound.
+
+F1's raw one-worker native costs include about 0.175 seconds for Auto versus
+0.114 for LSMR on the chain, but 1.77 versus 7.29 on frozen 1M AKM and 1.18
+versus 3.75 on dense two-FE 1M. No failed cell receives an accepted ratio.
+The panel took 221.734 process seconds (224 scheduler seconds); accounting
+reports `failed=0`, `exit_status=1`, as expected for a failed comparison.
+There was no retry. The observed chain reports 127 iterations; the historical
+4,246-iteration reproducer was unavailable, and ordinary PCG's iteration-eight
+progress was not observed. A handoff threshold cannot be calibrated from this
+panel.
+
+Before F2's first fit, the invalid MAP request construction was corrected to
+`preconditioner=off`, guarded by an exactly-one-original-auto check. All other
+arguments and body bytes, tolerances and the predeclared limits remained
+unchanged. The original held job 8027564 was cancelled without running; new
+job 8027931 used separately hashed tooling and qualification bindings.
+
+F2 attempted all 24 fits: twenty passed, and all four sparse MAP fits timed out
+at 120 seconds, at both one and sixteen workers. The 1,200-second panel budget
+was not extended: elapsed process time was 931.087 seconds, scheduler time
+932 seconds, and maximum virtual memory 5.517 GB. Accounting reports
+`failed=0`, `exit_status=1`; there is no success sentinel. Sparse Auto completed
+in 12.18–12.32 native seconds at one worker and 2.95–2.98 at sixteen. Timeout
+durations are whole-subprocess limits, not completed native timings.
+
+Dense median native seconds, diagnostic only:
+
+| Frozen case | Workers | Auto | Explicit MAP |
+| --- | ---: | ---: | ---: |
+| 1M three-FE | 1 | 3.140 | 2.724 |
+| 1M three-FE | 16 | 1.035 | 0.911 |
+| 4M three-FE | 1 | 16.803 | 12.919 |
+| 4M three-FE | 16 | 4.814 | 3.519 |
+
+The 4M Auto sixteen-worker observations range from 4.324 to 5.303 seconds;
+two shared-host repetitions cannot establish a confidence bound. Auto used
+Diagonal LSMR with four primary iterations on dense 1M, Schwarz LSMR with ten
+on dense 4M, and Schwarz LSMR with 22 on sparse 1M. Dense MAP took four primary
+iterations. Costs include different setup, projection and final certificate
+work, not just the primary iteration count. For example, one-worker modeled
+native peaks were 1.125/0.554 GB (Auto/MAP) on dense 1M and 5.461/2.216 GB on
+dense 4M. These planner estimates are not observed RSS. Timeout fits have no
+completed solver/certificate/memory packet and receive no diagnostic ratio.
+
+The [F1 and F2 proposals](fable_performance.md#f1-proposal-awaiting-authorization-resolve-the-comparison-before-handoff)
+recommend retaining Auto. F1 needs bounded numerical/request/progress diagnosis;
+F2 needs a defensible geometry-and-total-cost model and a separately authorized
+holdout before any route prototype. A2/A3 remain separate decisions. No default
+route, tolerance, model semantics, certificate, fresh strict PPML solve, memory
+policy or SPI ownership changed in this comparison work. Production identity
+against E1 remains exact across 170 runtime modules and 58 artifact inputs;
+its qualified runtime evidence is reused for this documentation-only change.
+
 ### Performance-plan E1: qualified declared numerical scope, 2026-10-11
 
 E1 passes against qualified C/D (`aeb6ee64`). The
