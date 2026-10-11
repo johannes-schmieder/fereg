@@ -16,6 +16,62 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Performance-plan qualification
 
+### F2 geometry pricing and the missing total-cost model, 2026-10-11
+
+All six frozen Auto fits retain exact public science with the task-only
+geometry observer. The [pricing record](../bench/results/f2-20261011-geometry.json)
+binds inputs, artifacts, both observations per fit and ten independent feature
+checks. The [disposable reproducer](../bench/results/f2-20261011-geometry.patch)
+preserves the checked contingency calculation and tooling against base
+`67ba321a`. It changes no solver or numerical acceptance policy.
+
+The dense 1M/4M four-sweep bounds are 1.916e-16 and 1.752e-17; sparse pair
+bounds saturate at one and give a vacuous bound of 1393. Bounds match across
+workers and primary/residual calls. They concern exact arithmetic with true
+unit weights and one common constant; they are not floating-point convergence
+certificates. Scratch capacities are 496, 792 and 80,000 bytes respectively.
+
+| Frozen OLS case | Workers | Primary geometry ms | Residual geometry ms | Diagnostic allowance ms |
+| --- | ---: | ---: | ---: | ---: |
+| Dense 1M | 1 | 32.52 | 32.76 | 143.57 |
+| Dense 1M | 16 | 33.97 | 36.25 | 42.30 |
+| Dense 4M | 1 | 142.56 | 154.84 | 782.95 |
+| Dense 4M | 16 | 146.02 | 162.27 | 177.26 |
+| Sparse 1M | 1 | 21.06 | 21.00 | 595.94 |
+| Sparse 1M | 16 | 20.94 | 21.50 | 178.00 |
+
+Each feature computation includes three counting and three clearing passes,
+allocation, marginal checks and trace cost. The allowance is max(5%, 1 ms)
+against current-host native time minus both observer closing clocks. This
+subtraction is an approximate diagnostic reference: it cannot remove cache
+effects or supply an uninstrumented confidence interval. A hypothetical cache
+charges the primary computation once; sparse overhead is 0.18%/0.59%, while
+uncached dense sixteen-worker overhead is 8.30%/8.70%. No cache was implemented.
+Earlier MAP/checkpoint timings on another host were not pooled with these costs.
+
+The feature passes this discovery cost gate, but a total-cost selector remains
+unidentified. N, levels, preconditioner and observed LSMR iterations are
+confounded; rollback-copy and failed-attempt costs were not measured. The
+plan names the missing controlled calibration and conservative comparison
+against unavoidable Auto setup. No coefficients, route prototype or holdout
+were produced. A passing geometric prediction would still require the ordinary
+independent numerical certificate and the unchanged shared fallback budget.
+
+Pricing job 8028143 used 127.343 application seconds on `scc-gd4`; all six
+captures and terminal identity checks passed, without retry. Its isolated
+build, job 8028142 on `scc-tb4`, passed Linux binary/ABI/load and numeric guards
+in 170 scheduler seconds with accounting 0/0. Pricing accounting is also 0/0,
+with 154 scheduler seconds and 5.125 GB maximum virtual memory. This is bounded
+Linux diagnostic evidence, not quiet-Mac qualification.
+
+Tier: decision and diagnostic tooling, unchanged production artifact. Independent
+contingency/projection witnesses and exact retained outputs support the feature
+observations only. No tolerance, sample, rank, omission, separation, route,
+certificate, fresh strict PPML, memory control or SPI ownership changed.
+Existing full repository evidence for identical E1 production inputs is reused;
+retained-data integrity, local links and production identity are checked at
+this documentation boundary.
+
 ### A3 calibration stopped at the sparse work limit, 2026-10-11
 
 The [calibration record](../bench/results/a3-20261011-calibration.json) retains

@@ -840,6 +840,29 @@ fit the unchanged sparse allowance before progressing. This adds no MAP pilot
 or holdout calls. Weighted models, a floating convergence guarantee and a
 default selector remain outside this diagnostic.
 
+The six geometry-pricing calls completed with exact retained public science.
+One cached computation fits the diagnostic sparse allowance (about 21 ms,
+0.18%/0.59% of the same-host approximate Auto cost at 1/16 workers). Recomputing
+geometry for both primary and residual calls costs over 8% on the dense
+sixteen-worker cases, so that duplication is not a supported selector design.
+The bounds distinguish the observed dense and sparse inputs, but this does not
+identify a general total-cost rule. Existing dense observations change N,
+levels, preconditioner and LSMR iterations together; rollback-copy, overlap and
+failed-attempt cleanup costs are absent, and the MAP bound does not predict
+cold LSMR work. No selector or holdout follows from these calls.
+
+Stop at the following missing diagnostic rather than invent coefficients.
+A new bounded decision would freeze a controlled same-host phase calibration
+that varies RHS width, topology and the existing preconditioner regimes
+independently. Price geometry, a fallible rollback copy, MAP workspace, four
+sweeps and the original-input certificate against unavoidable Auto setup alone,
+with explicit uncertainty and abstention before distinct holdout geometries.
+If even that conservative setup-only comparison admits no useful cases, a
+separately declared cold-LSMR work predictor is necessary. Repeating the same
+dense fits does not resolve this identification gap. The
+[retained geometry pricing](VALIDATION.md#f2-geometry-pricing-and-the-missing-total-cost-model-2026-10-11)
+records both the positive feature result and the unresolved model gate.
+
 Before any prototype, freeze its features, parameters, numerical scope,
 fallback/work-budget contract and finite validation budget. The current automatic
 LSMR attempt uses a tighter direct tolerance and at most half the shared

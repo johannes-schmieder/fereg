@@ -1,0 +1,1207 @@
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -14,6 +14,8 @@
+ use super::map::ReusableMapCapacities;
+ 
+ pub(crate) mod three_fe_schur;
++mod study_f2_geometry;
++mod study_f2_observe;
+ 
+ pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
+ pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = 64;
+@@ -3636,6 +3638,7 @@
+     lsmr.tolerance = super::auto::direct_lsmr_tolerance(map.tolerance);
+     lsmr.max_iterations = lsmr.max_iterations.min((map.max_iterations / 2).max(1));
+     let validated = validate_weights(weights, values.nrows())?;
++    study_f2_observe::observe(design, weights, values.ncols(), budget);
+     let preconditioner = resolve_borrowed_lsmr_preconditioner(
+         design.effects().len(),
+         design.total_term_slots(),
+--- /dev/null
++++ b/crates/fereg-core/src/fe/borrowed_map/study_f2_geometry.rs
+@@ -0,0 +1,228 @@
++//! TASK-ONLY unit-weight geometry measurement. Never selects or accepts a solve.
++use std::time::Instant;
++
++pub trait Partition {
++    fn levels(&self) -> usize;
++    fn members(&self, level: usize) -> &[usize];
++    fn code(&self, row: usize) -> usize;
++}
++
++#[derive(Clone, Copy, Debug, Default)]
++pub struct Pair {
++    pub sum_count_squared: u128,
++    pub weighted_count_sum: u128,
++    pub numerator: u128,
++    pub denominator: u128,
++    pub coherence_upper: f64,
++    pub counting_clearing_s: f64,
++}
++
++#[derive(Debug)]
++pub struct Report {
++    pub pairs: [Pair; 3],
++    pub map_bounds: [f64; 4],
++    pub scratch_bytes: usize,
++    pub allocation_s: f64,
++    pub marginal_s: f64,
++    pub bound_s: f64,
++    pub total_s: f64,
++    pub count_visits: usize,
++    pub clear_visits: usize,
++}
++
++type Result<T> = std::result::Result<T, &'static str>;
++fn add(a: u128, b: u128) -> Result<u128> {
++    a.checked_add(b).ok_or("integer_overflow")
++}
++fn mul(a: u128, b: u128) -> Result<u128> {
++    a.checked_mul(b).ok_or("integer_overflow")
++}
++fn sub(a: u128, b: u128) -> Result<u128> {
++    a.checked_sub(b).ok_or("invalid_integer_cancellation")
++}
++fn up(x: f64) -> f64 {
++    if x == 0.0 {
++        0.0
++    } else {
++        f64::from_bits(x.to_bits() + 1)
++    }
++}
++fn down(x: f64) -> f64 {
++    f64::from_bits(x.to_bits() - 1)
++}
++fn plus(a: f64, b: f64) -> f64 {
++    up(a + b)
++}
++fn times(a: f64, b: f64) -> f64 {
++    up(a * b)
++}
++
++pub fn integer_bound(numerator: u128, denominator: u128) -> Result<f64> {
++    if denominator == 0 {
++        return Err("zero_denominator");
++    }
++    if numerator == 0 {
++        return Ok(0.0);
++    }
++    // Each integer cast is nearest-rounded; one adjacent float encloses it.
++    // Positive normal inputs here avoid underflow and signed-zero concerns.
++    let ratio = up(up(numerator as f64) / down(denominator as f64));
++    // Centered conditional expectations are contractions, hence coherence<=1.
++    Ok(up(ratio.sqrt()).min(1.0))
++}
++
++pub fn propagate(a: f64, b: f64, c: f64) -> [f64; 4] {
++    // All pairs remove the same GLOBAL constant only. Extra pair intersections
++    // remain. Start after R1 with both other block moments <= original RHS norm.
++    // For R2 R3 R2 R1: u=a+bc+ac², v=b+ac and
++    // B=[[au,av],[c³+bu,c²+bv]]. Every positive operation rounds outward.
++    let cc = times(c, c);
++    let u = plus(plus(a, times(b, c)), times(a, cc));
++    let v = plus(b, times(a, c));
++    let matrix = [
++        [times(a, u), times(a, v)],
++        [plus(times(c, cc), times(b, u)), plus(cc, times(b, v))],
++    ];
++    let mut moment = [1.0, 1.0];
++    std::array::from_fn(|_| {
++        moment = [
++            plus(
++                times(matrix[0][0], moment[0]),
++                times(matrix[0][1], moment[1]),
++            ),
++            plus(
++                times(matrix[1][0], moment[0]),
++                times(matrix[1][1], moment[1]),
++            ),
++        ];
++        moment[0].max(moment[1])
++    })
++}
++
++pub fn inspect<P: Partition>(parts: &[P], rows: usize, available: u128) -> Result<Report> {
++    let started = Instant::now();
++    if parts.len() != 3 || rows == 0 || rows > i32::MAX as usize {
++        return Err("unsupported_dimensions");
++    }
++    if parts.iter().any(|p| p.levels() == 0 || p.levels() > rows) {
++        return Err("unsupported_levels");
++    }
++    let indices = [(0, 1), (0, 2), (1, 2)];
++    let size = indices
++        .iter()
++        .map(|&(i, j)| parts[i].levels().min(parts[j].levels()))
++        .max()
++        .unwrap();
++    let requested = size
++        .checked_mul(std::mem::size_of::<u64>())
++        .ok_or("size_overflow")?;
++    // Probe scratch is released before existing solver setup. Its actual capacity
++    // is checked against the same parent-inclusive budget, never published as
++    // ordinary solver memory or allowed to change the fit's admission outcome.
++    if requested as u128 > available {
++        return Err("scratch_budget");
++    }
++    let allocation_started = Instant::now();
++    let mut counts = Vec::<u64>::new();
++    counts
++        .try_reserve_exact(size)
++        .map_err(|_| "scratch_allocation")?;
++    let scratch_bytes = counts.capacity().checked_mul(8).ok_or("size_overflow")?;
++    if scratch_bytes as u128 > available {
++        return Err("scratch_capacity_budget");
++    }
++    counts.resize(size, 0);
++    let allocation_s = allocation_started.elapsed().as_secs_f64();
++    let marginal_started = Instant::now();
++    let mut marginal_square = [0_u128; 3];
++    let mut minimum = [u128::MAX; 3];
++    for (i, part) in parts.iter().enumerate() {
++        let mut total = 0_usize;
++        for level in 0..part.levels() {
++            let count = part.members(level).len();
++            if count == 0 {
++                return Err("empty_group");
++            }
++            total = total.checked_add(count).ok_or("size_overflow")?;
++            marginal_square[i] = add(marginal_square[i], mul(count as u128, count as u128)?)?;
++            minimum[i] = minimum[i].min(count as u128);
++        }
++        if total != rows {
++            return Err("membership_shape");
++        }
++    }
++    let marginal_s = marginal_started.elapsed().as_secs_f64();
++    let mut pairs = [Pair::default(); 3];
++    let mut bound_s = 0.0;
++    for (slot, &(i, j)) in indices.iter().enumerate() {
++        let (outer, inner) = if parts[i].levels() >= parts[j].levels() {
++            (&parts[i], &parts[j])
++        } else {
++            (&parts[j], &parts[i])
++        };
++        let work_started = Instant::now();
++        let mut squares = 0_u128;
++        let mut weighted = 0_u128;
++        for level in 0..outer.levels() {
++            let members = outer.members(level);
++            let a = members.len() as u128;
++            for &row in members {
++                if row >= rows {
++                    return Err("invalid_member");
++                }
++                let b = inner.code(row);
++                if b >= inner.levels() {
++                    return Err("invalid_code");
++                }
++                squares = add(squares, add(mul(2, counts[b] as u128)?, 1)?)?;
++                counts[b] = counts[b].checked_add(1).ok_or("count_overflow")?;
++                weighted = add(weighted, mul(a, inner.members(b).len() as u128)?)?;
++            }
++            // Clear by actual membership, including repeated keys. No scan of
++            // the full contingency rectangle and no generation/tag allocation.
++            for &row in members {
++                counts[inner.code(row)] = 0;
++            }
++        }
++        let counting_clearing_s = work_started.elapsed().as_secs_f64();
++        let bound_started = Instant::now();
++        let nn = mul(rows as u128, rows as u128)?;
++        let numerator = sub(
++            add(
++                mul(nn, squares)?,
++                mul(marginal_square[i], marginal_square[j])?,
++            )?,
++            mul(mul(2, rows as u128)?, weighted)?,
++        )?;
++        let denominator = mul(mul(nn, minimum[i])?, minimum[j])?;
++        let coherence_upper = integer_bound(numerator, denominator)?;
++        pairs[slot] = Pair {
++            sum_count_squared: squares,
++            weighted_count_sum: weighted,
++            numerator,
++            denominator,
++            coherence_upper,
++            counting_clearing_s,
++        };
++        bound_s += bound_started.elapsed().as_secs_f64();
++    }
++    let bound_started = Instant::now();
++    let map_bounds = propagate(
++        pairs[0].coherence_upper,
++        pairs[1].coherence_upper,
++        pairs[2].coherence_upper,
++    );
++    bound_s += bound_started.elapsed().as_secs_f64();
++    drop(counts);
++    Ok(Report {
++        pairs,
++        map_bounds,
++        scratch_bytes,
++        allocation_s,
++        marginal_s,
++        bound_s,
++        total_s: started.elapsed().as_secs_f64(),
++        count_visits: rows * 3,
++        clear_visits: rows * 3,
++    })
++}
+--- /dev/null
++++ b/crates/fereg-core/src/fe/borrowed_map/study_f2_observe.rs
+@@ -0,0 +1,62 @@
++//! TASK-ONLY adapter. No selector, numerical result, solver report or memory-plan mutation.
++use super::{
++    study_f2_geometry::{self as probe, Partition},
++    BorrowedMapWeights,
++};
++use crate::fe::{BorrowedInterceptEffect, BorrowedInterceptFeDesign};
++use crate::memory::FeSolverMemoryBudget;
++use std::{
++    sync::atomic::{AtomicUsize, Ordering},
++    time::Instant,
++};
++
++impl Partition for BorrowedInterceptEffect<'_> {
++    fn levels(&self) -> usize {
++        self.n_levels()
++    }
++    fn members(&self, level: usize) -> &[usize] {
++        self.level_index().members(level)
++    }
++    fn code(&self, row: usize) -> usize {
++        self.codes()[row] as usize
++    }
++}
++
++pub(super) fn observe(
++    design: &BorrowedInterceptFeDesign<'_>,
++    weights: BorrowedMapWeights<'_>,
++    rhs: usize,
++    budget: Option<FeSolverMemoryBudget>,
++) {
++    if option_env!("FEREG_F2_GEOMETRY") != Some("1") || !crate::diagnostics::solver_trace_enabled()
++    {
++        return;
++    }
++    static CALL: AtomicUsize = AtomicUsize::new(0);
++    let call = CALL.fetch_add(1, Ordering::Relaxed) + 1;
++    let started = Instant::now();
++    let available = budget.map_or(u128::MAX, |b| {
++        b.usable_bytes.saturating_sub(b.execution_bytes)
++    });
++    let result = if weights == BorrowedMapWeights::Unit {
++        probe::inspect(design.effects(), design.nobs(), available)
++    } else {
++        Err("unsupported_weights")
++    };
++    let elapsed = started.elapsed().as_secs_f64();
++    match result {
++        Ok(report) => {
++            for (pair, p) in report.pairs.iter().enumerate() {
++                eprintln!("FEREG_F2_GEOMETRY|call={call}|pair={pair}|sum_count_squared={}|weighted_count_sum={}|numerator={}|denominator={}|coherence_upper={:.17e}|counting_clearing_s={:.9}", p.sum_count_squared,p.weighted_count_sum,p.numerator,p.denominator,p.coherence_upper,p.counting_clearing_s);
++            }
++            eprintln!("FEREG_F2_GEOMETRY|call={call}|status=observed|rows={}|rhs={rhs}|workers={}|lanes=1|available_bytes={available}|scratch_bytes={}|count_visits={}|clear_visits={}|allocation_s={:.9}|marginal_s={:.9}|bound_s={:.9}|feature_s={:.9}|adapter_s={elapsed:.9}|bound1={:.17e}|bound2={:.17e}|bound3={:.17e}|bound4={:.17e}|model=exact_arithmetic_unit_global_constant",design.nobs(),rayon::current_num_threads(),report.scratch_bytes,report.count_visits,report.clear_visits,report.allocation_s,report.marginal_s,report.bound_s,report.total_s,report.map_bounds[0],report.map_bounds[1],report.map_bounds[2],report.map_bounds[3]);
++        }
++        Err(reason) => eprintln!("FEREG_F2_GEOMETRY|call={call}|status=abstained|reason={reason}|rows={}|rhs={rhs}|workers={}|lanes=1|adapter_s={elapsed:.9}",design.nobs(),rayon::current_num_threads()),
++    }
++    // The closing trace includes all prior probe trace writes; its own final
++    // write is the only unclocked instrumentation. Native timing includes it.
++    eprintln!(
++        "FEREG_F2_GEOMETRY|call={call}|status=closed|including_prior_output_s={:.9}",
++        started.elapsed().as_secs_f64()
++    );
++}
+--- /dev/null
++++ b/crates/fereg-oracle/examples/f2_geometry_reference.py
+@@ -0,0 +1,43 @@
++"""Independent exact-rational contingency and explicit projection witnesses.
++
++Task-only; does not copy the probe's cancellation identity or moment recurrence.
++"""
++from fractions import Fraction as F
++
++
++def pair_reference(codes, i, j):
++    n = len(codes[0])
++    a = [codes[i].count(level) for level in range(max(codes[i])+1)]
++    b = [codes[j].count(level) for level in range(max(codes[j])+1)]
++    contingency = [[sum(x == row and y == col for x, y in zip(codes[i], codes[j]))
++                    for col in range(len(b))] for row in range(len(a))]
++    numerator = sum((n*contingency[row][col]-a[row]*b[col])**2
++                    for row in range(len(a)) for col in range(len(b)))
++    denominator = n*n*min(a)*min(b)
++    return dict(numerator=numerator, denominator=denominator,
++                sum_count_squared=sum(c*c for row in contingency for c in row),
++                weighted_count_sum=sum(contingency[row][col]*a[row]*b[col]
++                                       for row in range(len(a)) for col in range(len(b))))
++
++
++def exact_projection_witness(codes, bounds):
++    n = len(codes[0])
++    # Build each dense residual-maker matrix independently and apply it using
++    # exact fractions. No estimated contraction or floating error allowance.
++    matrices = []
++    for code in codes:
++        sizes = [code.count(level) for level in range(max(code)+1)]
++        matrices.append([[F(int(i == j))-(F(1, sizes[code[i]]) if code[i] == code[j] else F(0))
++                          for j in range(n)] for i in range(n)])
++    for raw in ([i % 7-3 for i in range(n)], [int(i == n//2) for i in range(n)]):
++        vector = list(map(F, raw))
++        norm_squared = sum(x*x for x in vector)
++        for bound in bounds:
++            for effect in (0, 1, 2, 1, 0):
++                vector = [sum(a*b for a,b in zip(row, vector)) for row in matrices[effect]]
++            for code in codes:
++                for level in range(max(code)+1):
++                    members = [i for i, c in enumerate(code) if c == level]
++                    moment = sum(vector[i] for i in members)
++                    relative_squared = moment*moment / (len(members)*norm_squared)
++                    assert relative_squared <= F(bound)**2, (relative_squared, bound)
+--- /dev/null
++++ b/bench/repro/f2_geometry/f2_geometry_diagnostic.py
+@@ -0,0 +1,207 @@
++#!/usr/bin/env python3
++"""Six bounded Auto captures of a task-only geometry observer; no route changes."""
++from __future__ import annotations
++import argparse
++import hashlib
++import json
++import math
++import os
++from pathlib import Path
++import platform
++import signal
++import subprocess
++import sys
++import time
++sys.dont_write_bytecode = True
++from study_extract import child, digest, require, save
++from f2_checkpoint_diagnostic import rewrite, traces
++CASES = ('ols-three-dense-1m', 'ols-three-dense-4m', 'ols-three-sparse-1m')
++WORKERS = (1, 16)
++BUDGET = 600
++TIMEOUT = 120
++
++
++def geometry(log):
++    lines = log.read_text(errors='replace').splitlines() if log.exists() else []
++    selected = [line for line in lines if line.startswith('FEREG_F2_GEOMETRY|')]
++    parsed = []
++    for line in selected:
++        fields = dict(part.split('=', 1) for part in line.split('|')[1:])
++        for key, value in list(fields.items()):
++            if key in ('call', 'pair', 'rows', 'rhs', 'workers', 'lanes', 'available_bytes',
++                       'scratch_bytes', 'count_visits', 'clear_visits', 'sum_count_squared',
++                       'weighted_count_sum', 'numerator', 'denominator'):
++                fields[key] = int(value)
++            elif key.endswith('_s') or key in ('coherence_upper', 'bound1', 'bound2', 'bound3', 'bound4'):
++                fields[key] = float(value)
++                require(math.isfinite(fields[key]) and fields[key] >= 0, 'invalid geometry diagnostic')
++        parsed.append(fields)
++    return {'lines': selected, 'events': parsed}
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--source', type=Path, required=True)
++    for name in ('plugin', 'harness', 'bindings', 'reference', 'manifest'):
++        parser.add_argument('--' + name, type=Path, required=True)
++        parser.add_argument('--' + name + '-sha256', required=True)
++    parser.add_argument('--cases', type=Path, required=True)
++    parser.add_argument('--output', type=Path, required=True)
++    args = parser.parse_args()
++    require(platform.system() == 'Linux' and sys.byteorder == 'little', 'SCC binary protocol required')
++    require(os.environ.get('JOB_ID', '').isdigit() and int(os.environ.get('NSLOTS', '0')) >= 16,
++            'requires SCC compute allocation, 16 reserved slots')
++    for name in ('plugin', 'harness', 'bindings', 'reference', 'manifest'):
++        require(digest(getattr(args, name)) == getattr(args, name + '_sha256'), name + ' hash mismatch')
++    declared = json.loads(args.manifest.read_text())
++    for section in ('probe_source_sha256', 'source_support_sha256'):
++        require(bool(declared.get(section)), 'missing source manifest section: ' + section)
++        for name, expected in declared[section].items():
++            require(digest(child(args.source, name)) == expected, 'source manifest mismatch: ' + name)
++    require(bool(declared.get('support_sha256')), 'missing support manifest')
++    for name, expected in declared['support_sha256'].items():
++        require(digest(child(args.manifest.parent, name)) == expected, 'support manifest mismatch: ' + name)
++    require(digest(child(args.manifest.parent, 'f2-geometry.patch')) == declared['patch_sha256'],
++            'patch manifest mismatch')
++    require(declared['tests']['status'] == 'passed' and declared['tests']['sys_flags_optimize'] == 0,
++            'non-optimized independent witnesses required')
++    sys.path.insert(0, str(args.source / 'bench'))
++    sys.path.insert(0, str(args.source / 'scripts'))
++    from native_io import case_header, diagnostics, load_json, validate_result
++    from replay_plugins import exact_view, differences
++    bindings = load_json(args.bindings.read_text())
++    for name, expected in bindings['evidence_sha256'].items():
++        require(digest(child(args.source, name)) == expected, 'retained evidence hash mismatch')
++    reference = load_json(args.reference.read_text())
++    anchors = {(r['case'], r['workers']): r for r in reference['records']
++               if r['arm'] == 'auto' and r['status'] == 'completed_capture'}
++    require(set(anchors) == {(c, w) for c in CASES for w in WORKERS}, 'six completed Auto anchors required')
++    specs = {Path(s['case']).stem: s for s in bindings['cases']}
++    manifest = args.cases / 'manifest.json'
++    require((args.cases / 'EXTRACTION_COMPLETE').read_text().strip() == digest(manifest), 'manifest sentinel mismatch')
++    extracted = load_json(manifest.read_text())
++    require(extracted['status'] == 'complete_hash_identical'
++            and extracted['bindings_sha256'] == args.bindings_sha256, 'incomplete extraction')
++    args.output.mkdir(parents=True, exist_ok=False)
++    records = [{'case': c, 'workers': w, 'arm': 'auto', 'status': 'unattempted'} for c in CASES for w in WORKERS]
++    summary = {'schema': 1, 'status': 'running', 'purpose': __doc__, 'planned_calls': 6,
++               'budget_s': BUDGET, 'per_fit_timeout_s': TIMEOUT, 'warmups': 0, 'repetitions': 1, 'retries': 0,
++               'host': {'platform': platform.platform(), 'job_id': os.environ['JOB_ID'], 'slots': os.environ['NSLOTS']},
++               'bindings': {name: getattr(args, name + '_sha256') for name in ('plugin', 'harness', 'bindings', 'reference', 'manifest')},
++               'support_sha256': {p.name: digest(p) for p in (Path(__file__), Path(__file__).with_name('study_extract.py'),
++                    Path(__file__).with_name('f2_checkpoint_diagnostic.py'), args.source/'bench/native_io.py',
++                    args.source/'scripts/replay_plugins.py')},
++               'extraction_manifest_sha256': digest(manifest), 'records': records,
++               'limitations': ['Task-only geometry observation; no default route or numerical acceptance change.',
++                    'Bounds concern exact arithmetic for true unit weights and one common global constant only.',
++                    'One cold traced call per request; no repeat or performance qualification.',
++                    'Geometry is recomputed for primary and final residual; both actual costs are charged in this observer. A future selector could first apply an unchanged full initial certificate and avoid geometry for already accepted inputs; that route and cost are not tested here.',
++                    'Scratch is dropped before original solver setup; trace reports additional temporary capacity. Public RMEMORY is unchanged.',
++                    'Closing clock includes prior trace writes; native fit timing also includes the closing write.']}
++    active = None
++    began = time.monotonic()
++    def persist():
++        summary['elapsed_s'] = time.monotonic() - began
++        save(args.output/'summary.json', summary)
++    def expire(*unused):
++        raise TimeoutError('600-second geometry panel budget exhausted')
++    signal.signal(signal.SIGALRM, expire)
++    signal.setitimer(signal.ITIMER_REAL, BUDGET)
++    try:
++        for case in CASES:
++            require(digest(child(args.cases, specs[case]['case'])) == specs[case]['sha256'], 'frozen case mismatch')
++        persist()
++        for record in records:
++            stem = record['case']+'-t'+str(record['workers'])
++            request, result, log = [args.output/(stem+s) for s in ('.case', '.json', '.log')]
++            anchor = anchors[record['case'], record['workers']]
++            spec = specs[record['case']]
++            shape, body, changes = rewrite(child(args.cases, spec['case']), request, record['workers'], 'auto', case_header)
++            require(body == anchor['body_sha256'] and spec['sha256'] == anchor['input_sha256'], 'anchor input mismatch')
++            request_sha = digest(request)
++            require(request_sha == anchor['request_sha256'], 'exact Auto request mismatch')
++            record.update(status='running', request_sha256=request_sha, input_sha256=spec['sha256'], body_sha256=body, argument_changes=changes)
++            persist()
++            remaining = BUDGET-(time.monotonic()-began)
++            if remaining <= 0: raise TimeoutError('geometry budget exhausted before call')
++            env = dict(os.environ, FEREG_PHASE_TIMING='1', FEREG_SOLVER_TRACE='1', RAYON_NUM_THREADS=str(record['workers']))
++            for name in ('FEREG_F1_STUDY_CAPTURE', 'FEREG_SOLVER_TRACE_FILE', 'LLVM_PROFILE_FILE'):
++                env.pop(name, None)
++            started = time.monotonic()
++            try:
++                with log.open('w') as stream:
++                    active = subprocess.Popen([str(args.harness.resolve()), str(args.plugin.resolve()), '--replay',
++                        str(request.resolve()), str(result.resolve())], stdout=stream, stderr=subprocess.STDOUT,
++                        env=env, start_new_session=True)
++                    try:
++                        record['process_returncode'] = active.wait(timeout=min(TIMEOUT, remaining))
++                    except subprocess.TimeoutExpired:
++                        os.killpg(active.pid, signal.SIGKILL); active.wait()
++                        record.update(status='timeout', failure_class='whole_process_timeout')
++                    finally:
++                        if active.poll() is None: os.killpg(active.pid, signal.SIGKILL); active.wait()
++                        active = None
++                record['traces'] = traces(log)
++                record['geometry'] = geometry(log)
++                if result.exists():
++                    require(result.stat().st_size <= 32*(1<<20), 'oversized result')
++                    data = load_json(result.read_text())
++                    require(data['columns'] == [], 'binary columns required')
++                    column_file = Path(str(result)+'.columns')
++                    require(column_file.stat().st_size == shape[0]*shape[1]*8, 'binary column size mismatch')
++                    record.update(wire_matrices=data['matrices'], return_code=data['return_code'], native_error=data['error'],
++                                  columns_sha256=digest(column_file))
++                    if data['return_code'] == 0:
++                        require(record.get('process_returncode') == 0 and record['status'] != 'timeout', 'process failure cannot pass')
++                        head = {k: v for k,v in data.items() if k != 'columns'}
++                        validate_result(head)
++                        expected = {'schema': 1, 'return_code': anchor['return_code'], 'error': anchor['native_error'],
++                                    'matrices': anchor['wire_matrices']}
++                        record['science_differences'] = differences(exact_view(head, False), exact_view(expected, False))
++                        if record['columns_sha256'] != anchor['columns_sha256']: record['science_differences'].append('binary_columns')
++                        require(not record['science_differences'], 'observer changed exact retained public science')
++                        record['diagnostics'] = diagnostics(head, False)
++                        events = record['geometry']['events']
++                        observations = [e for e in events if e.get('status') in ('observed','abstained')]
++                        closes = [e for e in events if e.get('status') == 'closed']
++                        require(len(observations) == len(closes) == 2, 'primary/residual geometry records required')
++                        for event, width in zip(observations, (18,1)):
++                            require(event['rows'] == shape[0] and event['rhs'] == width
++                                    and event['workers'] == record['workers'] and event['lanes'] == 1, 'geometry dimensions mismatch')
++                            pairs = [e for e in events if e.get('call') == event['call'] and 'pair' in e]
++                            if event['status'] == 'observed':
++                                require([e['pair'] for e in pairs] == [0,1,2], 'pair records incomplete')
++                        record['status'] = 'completed_exact' if all(e['status']=='observed' for e in observations) else 'completed_exact_with_abstention'
++                    elif record['status'] != 'timeout': record.update(status='native_failure', failure_class='native_error')
++                elif record['status'] != 'timeout': record.update(status='capture_failure', failure_class='missing_result')
++                require(record['status'] in ('completed_exact', 'completed_exact_with_abstention'),
++                        'native/capture failure stops dependent pricing')
++            except TimeoutError:
++                record.update(status='budget_interrupted', failure_class='panel_budget'); raise
++            except Exception as error:
++                record['capture_error'] = {'type': type(error).__name__, 'message': str(error)}
++                if record['status'] not in ('timeout', 'native_failure', 'capture_failure'):
++                    record.update(status='capture_failure', failure_class=type(error).__name__)
++                raise
++            finally:
++                record['process_s'] = time.monotonic()-started
++                if log.exists():
++                    record['traces'] = traces(log)
++                    try: record['geometry'] = geometry(log)
++                    except Exception as error: record['geometry_parse_error'] = str(error)
++                for label,path in (('result',result),('columns',Path(str(result)+'.columns')),('log',log)):
++                    if path.exists(): record[label+'_sha256'] = digest(path)
++                persist(); request.unlink(missing_ok=True)
++                print(json.dumps({k:record.get(k) for k in ('case','workers','status','failure_class','process_s')}, allow_nan=False),flush=True)
++        summary['status'] = 'complete_exact_geometry_diagnostic' if all(r['status']=='completed_exact' for r in records) else 'complete_with_failures_or_abstentions'
++    except BaseException as error:
++        summary.update(status='stopped', error={'type':type(error).__name__,'message':str(error)})
++    finally:
++        signal.setitimer(signal.ITIMER_REAL,0)
++        if active is not None and active.poll() is None: os.killpg(active.pid,signal.SIGKILL); active.wait()
++        persist()
++    print(json.dumps({'status':summary['status'],'elapsed_s':summary['elapsed_s'],'summary_sha256':digest(args.output/'summary.json')}),flush=True)
++    return int(summary['status'] != 'complete_exact_geometry_diagnostic')
++
++if __name__ == '__main__':
++    sys.exit(main())
+--- /dev/null
++++ b/bench/repro/f2_geometry/f2_checkpoint_diagnostic.py
+@@ -0,0 +1,311 @@
++#!/usr/bin/env python3
++"""Twelve predeclared SCC F2 captures; no default-route or tolerance change."""
++from __future__ import annotations
++import argparse
++import hashlib
++import json
++import math
++import os
++from pathlib import Path
++import platform
++import re
++import signal
++import subprocess
++import sys
++import time
++
++sys.dont_write_bytecode = True
++from study_extract import child, digest, require, save
++
++CASES = ('ols-three-dense-1m', 'ols-three-dense-4m', 'ols-three-sparse-1m')
++WORKERS = (1, 16)
++BUDGET = 600
++FIT_TIMEOUT = 60
++
++
++def rewrite(source, destination, workers, arm, case_header):
++    with source.open('rb') as stream, destination.open('xb') as output:
++        shape, arguments = case_header(stream)
++        require(arguments[0] == b'estimate-ols', 'F2 requires OLS')
++        before = dict(value.split(b'=', 1) for value in arguments[1:])
++        require(len(before) == len(arguments) - 1, 'duplicate input arguments')
++        for name, value in ((b'solver', b'auto'), (b'preconditioner', b'auto'),
++                            (b'iterate', b'16000'), (b'threads', b'1')):
++            require(before[name] == value, 'unexpected frozen request: ' + name.decode())
++        replacements = {b'threads': str(workers).encode()}
++        if arm == 'map':
++            replacements.update({b'solver': b'map', b'preconditioner': b'off', b'iterate': b'4'})
++        changed = [arguments[0]]
++        for raw in arguments[1:]:
++            key = raw.split(b'=', 1)[0]
++            changed.append(key + b'=' + replacements[key] if key in replacements else raw)
++        output.write(b'FEREG_REPLAY_V1\n' + (' '.join(map(str, shape)) + '\n').encode())
++        for raw in changed:
++            output.write(str(len(raw)).encode() + b'\n' + raw + b'\n')
++        body = hashlib.sha256()
++        for block in iter(lambda: stream.read(1 << 20), b''):
++            body.update(block)
++            output.write(block)
++    return shape, body.hexdigest(), {key.decode(): value.decode() for key, value in replacements.items()}
++
++
++def traces(log):
++    lines = log.read_text(errors='replace').splitlines() if log.exists() else []
++    captured = [line for line in lines if line.startswith(('FEREG_PHASE|', 'FEREG_SOLVER_TRACE|'))]
++    checkpoints, parse_errors = [], []
++    for line in captured:
++        if not line.startswith('FEREG_SOLVER_TRACE|phase=map_checkpoint|'):
++            continue
++        try:
++            fields = dict(part.split('=', 1) for part in line.split('|')[1:])
++            for key in ('pid', 'map_call', 'rows', 'rhs', 'effects', 'term_slots', 'workers',
++                        'iteration', 'max_iterations', 'check_every', 'passed'):
++                fields[key] = int(fields[key])
++            for key in ('elapsed_s', 'validation_s', 'setup_s', 'sweep_s', 'certificate_s',
++                        'checkpoint_certificate_s', 'prior_trace_output_s', 'tolerance',
++                        'relative_infinity', 'relative_two'):
++                fields[key] = float(fields[key])
++                require(math.isfinite(fields[key]), 'nonfinite checkpoint diagnostic')
++            fields['elapsed_excluding_prior_trace_s'] = fields['elapsed_s'] - fields['prior_trace_output_s']
++            fields['certificate_kind'] = ('initial_may_be_rejection_screen' if fields['iteration'] == 0
++                                          else 'full_post_sweep_certificate')
++            checkpoints.append(fields)
++        except (ValueError, KeyError) as error:
++            parse_errors.append(str(error))
++    calls = list(dict.fromkeys(point['map_call'] for point in checkpoints))
++    for point in checkpoints:
++        point['call_role'] = ('primary' if point['map_call'] == calls[0] and point['rhs'] > 1 else
++            'final_residual' if len(calls) > 1 and point['map_call'] == calls[1] and point['rhs'] == 1 else
++            'unclassified')
++    native = [float(match.group(1)) for line in lines
++              if (match := re.fullmatch(r'NATIVE_SECONDS=([0-9.]+)', line))]
++    require(len(native) <= 1, 'multiple native calls in one request')
++    return {'lines': captured, 'map_checkpoints': checkpoints, 'parse_errors': parse_errors,
++            'final_residual_observed': any(x['call_role'] == 'final_residual' for x in checkpoints),
++            'native_call_s': native[0] if native else None}
++
++
++def retained_science(data, column_hash, record, evidence):
++    changes = []
++    for name in ('RSTATUS', 'RFIT', 'RDOF', 'RCERT', 'RREC'):
++        packed = evidence['wire_matrices'][record['wire_matrix_refs'][name]]
++        reference = {'rows': packed['rows'], 'columns': packed['columns'],
++                     'bits': [packed['ieee64_hex'][i:i + 16]
++                              for i in range(0, len(packed['ieee64_hex']), 16)]}
++        if data['matrices'][name] != reference:
++            changes.append(name)
++    if column_hash != record['columns_sha256']:
++        changes.append('binary_columns')
++    return changes
++
++
++def compare_routes(left, right, numbers):
++    errors, details = [], {}
++    for name in ('RSTATUS', 'RDOF', 'RFE', 'RCLUSTER', 'RSUBSET', 'RMARKB', 'RMARKV'):
++        if left['matrices'][name] != right['matrices'][name]:
++            errors.append(name + ': discrete/metadata difference')
++    for name, rtol, atol in (('RB', 1e-7, 1e-10), ('RV', 1e-6, 1e-10), ('RFIT', 1e-12, 1e-14)):
++        a, b = left['matrices'][name], right['matrices'][name]
++        if (a['rows'], a['columns']) != (b['rows'], b['columns']):
++            errors.append(name + ': shape difference')
++            continue
++        maximum = 0.0
++        for index, (x, y) in enumerate(zip(numbers(a), numbers(b))):
++            if name == 'RFIT' and index % 2 == 0:
++                if a['bits'][index] != b['bits'][index]:
++                    errors.append(name + ': presence difference at ' + str(index))
++                continue
++            if not math.isfinite(x) or not math.isfinite(y) or max(abs(x), abs(y)) >= 8e307:
++                if a['bits'][index] != b['bits'][index]:
++                    errors.append(name + ': nonnumeric bits differ at ' + str(index))
++                continue
++            fraction = abs(x - y) / (atol + rtol * max(abs(x), abs(y)))
++            maximum = max(maximum, fraction)
++            if fraction > 1:
++                errors.append(name + ': bound failed at ' + str(index))
++        details[name] = {'rtol': rtol, 'atol': atol, 'maximum_fraction_of_bound': maximum}
++    return {'errors': errors, 'numerical_bounds': details}
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--source', type=Path, required=True)
++    for name in ('plugin', 'harness', 'bindings'):
++        parser.add_argument('--' + name, type=Path, required=True)
++        parser.add_argument('--' + name + '-sha256', required=True)
++    parser.add_argument('--cases', type=Path, required=True)
++    parser.add_argument('--output', type=Path, required=True)
++    args = parser.parse_args()
++    require(platform.system() == 'Linux' and sys.byteorder == 'little', 'SCC Linux binary-column protocol required')
++    require(os.environ.get('JOB_ID', '').isdigit() and int(os.environ.get('NSLOTS', '0')) >= 16,
++            'F2 panel requires an SCC compute allocation of at least 16 slots')
++    for name in ('plugin', 'harness', 'bindings'):
++        require(digest(getattr(args, name)) == getattr(args, name + '_sha256'), name + ' hash mismatch')
++    sys.path.insert(0, str(args.source / 'bench'))
++    from native_io import case_header, diagnostics, load_json, numbers, validate_result
++    bindings = load_json(args.bindings.read_text())
++    for name, expected in bindings['evidence_sha256'].items():
++        require(digest(child(args.source, name)) == expected, 'retained evidence hash mismatch')
++    evidence = load_json((args.source / 'bench/results/f-20261011-comparisons.json').read_text())
++    specs = {Path(value['case']).stem: value for value in bindings['cases']}
++    manifest = args.cases / 'manifest.json'
++    require((args.cases / 'EXTRACTION_COMPLETE').read_text().strip() == digest(manifest),
++            'extraction completion/manifest mismatch')
++    extracted = load_json(manifest.read_text())
++    require(extracted['status'] == 'complete_hash_identical'
++            and extracted['bindings_sha256'] == args.bindings_sha256, 'input extraction is incomplete')
++    args.output.mkdir(parents=True, exist_ok=False)
++    records = [{'case': case, 'workers': workers, 'arm': arm, 'status': 'unattempted'}
++               for case in CASES for workers in WORKERS for arm in ('auto', 'map')]
++    summary = {'schema': 1, 'status': 'running', 'purpose': 'F2 first checkpoint cost diagnosis only',
++               'planned_calls': 12, 'budget_s': BUDGET, 'per_fit_timeout_s': FIT_TIMEOUT,
++               'warmups': 0, 'repetitions': 1, 'retries': 0, 'workers': list(WORKERS),
++               'bindings_sha256': args.bindings_sha256, 'extraction_manifest_sha256': digest(manifest),
++               'plugin_sha256': args.plugin_sha256, 'harness_sha256': args.harness_sha256,
++               'driver_sha256': digest(Path(__file__)), 'helper_sha256': digest(Path(__file__).with_name('study_extract.py')),
++               'native_io_sha256': digest(args.source / 'bench/native_io.py'),
++               'host': {'platform': platform.platform(), 'machine': platform.machine(),
++                        'job_id': os.environ['JOB_ID'], 'slots': os.environ['NSLOTS']},
++               'records': records, 'comparisons': [],
++               'limitations': ['One traced capture per request, no performance qualification or repetition claim.',
++                   'MAP is explicitly capped at four iterations; exhaustion remains a failed fit.',
++                   'Failed primary projection supplies no final-residual cost.',
++                   'Iteration-zero certification may be an initial D1 rejection screen, so its value is not a contraction denominator; post-sweep certificates are full.',
++                   'Existing F same-arm RSTATUS/RFIT/RDOF/RCERT/RREC and binary columns checked exactly;'
++                   ' retained F record does not contain full RB/RV matrices for exact comparison.',
++                   'Current successful Auto/MAP RB/RV use original SPEC bounds; RFIT uses unchanged stronger 1e-12/1e-14 bounds.',
++                   'A complete original-input backup/copy is not exercised or costed by this explicit-MAP diagnostic.']}
++    began = time.monotonic()
++    active = None
++    completed = {}
++    def persist():
++        summary['elapsed_s'] = time.monotonic() - began
++        save(args.output / 'summary.json', summary)
++    def expire(*unused):
++        raise TimeoutError('600-second F2 diagnostic budget exhausted')
++    signal.signal(signal.SIGALRM, expire)
++    signal.setitimer(signal.ITIMER_REAL, BUDGET)
++    try:
++        for case in CASES:
++            require(digest(child(args.cases, specs[case]['case'])) == specs[case]['sha256'],
++                    'frozen replay hash mismatch: ' + case)
++        persist()
++        bodies = {}
++        for record in records:
++            stem = record['case'] + '-t' + str(record['workers']) + '-' + record['arm']
++            request, result, log = [args.output / (stem + suffix) for suffix in ('.case', '.json', '.log')]
++            spec = specs[record['case']]
++            shape, body, changes = rewrite(child(args.cases, spec['case']), request,
++                                           record['workers'], record['arm'], case_header)
++            require(body == bodies.setdefault(record['case'], body), 'rewritten body differs across requests')
++            record.update(input_sha256=spec['sha256'], request_sha256=digest(request),
++                          body_sha256=body, argument_changes=changes, status='running')
++            persist()
++            remaining = BUDGET - (time.monotonic() - began)
++            if remaining <= 0:
++                raise TimeoutError('F2 budget exhausted before native call')
++            env = dict(os.environ, FEREG_PHASE_TIMING='1', FEREG_SOLVER_TRACE='1',
++                       RAYON_NUM_THREADS=str(record['workers']))
++            for key in ('FEREG_SOLVER_TRACE_FILE', 'LLVM_PROFILE_FILE', 'FEREG_F1_STUDY_CAPTURE'):
++                env.pop(key, None)
++            started = time.monotonic()
++            try:
++                with log.open('w') as stream:
++                    active = subprocess.Popen([str(args.harness.resolve()), str(args.plugin.resolve()),
++                        '--replay', str(request.resolve()), str(result.resolve())], stdout=stream,
++                        stderr=subprocess.STDOUT, env=env, start_new_session=True)
++                    try:
++                        record['process_returncode'] = active.wait(timeout=min(FIT_TIMEOUT, remaining))
++                    except subprocess.TimeoutExpired:
++                        os.killpg(active.pid, signal.SIGKILL)
++                        active.wait()
++                        record.update(status='timeout', failure_class='whole_process_timeout',
++                                      timeout_s=min(FIT_TIMEOUT, remaining))
++                    finally:
++                        if active.poll() is None:
++                            os.killpg(active.pid, signal.SIGKILL)
++                            active.wait()
++                        active = None
++                record['process_s'] = time.monotonic() - started
++                record['traces'] = traces(log)
++                if result.exists():
++                    require(result.stat().st_size <= 32 * (1 << 20), 'oversized compact result')
++                    data = load_json(result.read_text())
++                    require(data['columns'] == [], 'binary columns harness required')
++                    columns = Path(str(result) + '.columns')
++                    require(columns.stat().st_size == shape[0] * shape[1] * 8, 'binary columns size mismatch')
++                    column_hash = digest(columns)
++                    record.update(wire_matrices=data['matrices'], return_code=data['return_code'],
++                                  native_error=data['error'], columns_sha256=column_hash)
++                    if data['return_code'] == 0:
++                        require(record.get('process_returncode') == 0 and record['status'] != 'timeout',
++                                'completed output does not override process failure/timeout')
++                        head = {key: value for key, value in data.items() if key != 'columns'}
++                        validate_result(head)
++                        record['diagnostics'] = diagnostics(head, False)
++                        reference = next((value for value in evidence['f2']['records']
++                            if value['case'] == record['case'] and value['workers'] == record['workers']
++                            and value['arm'] == record['arm'] and value['status'] == 'passed'), None)
++                        if reference is not None:
++                            record['retained_science_differences'] = retained_science(head, column_hash, reference, evidence)
++                            require(not record['retained_science_differences'], 'trace-only result changed retained science')
++                        completed[(record['case'], record['workers'], record['arm'])] = head
++                        record['status'] = 'completed_capture' if reference is not None else 'completed_capture_no_prior_baseline'
++                    elif record['status'] != 'timeout':
++                        record.update(status='native_failure', failure_class='native_error')
++                        if (record['arm'] == 'map' and 'borrowed MAP exhausted its iteration budget' in data['error']
++                                and any(x['iteration'] == 4 and x['outcome'] == 'exhausted'
++                                        for x in record['traces']['map_checkpoints'])):
++                            record['failure_class'] = 'bounded_map_exhaustion'
++                elif record['status'] != 'timeout':
++                    record.update(status='capture_failure', failure_class='missing_result')
++                if record['arm'] == 'map' and record['status'] in (
++                        'completed_capture', 'completed_capture_no_prior_baseline', 'native_failure'):
++                    points = record['traces']['map_checkpoints']
++                    require(not record['traces']['parse_errors'] and points
++                            and all(x['max_iterations'] == 4 and x['workers'] == record['workers']
++                                           and x['iteration'] in (0, 4) for x in points), 'MAP checkpoint trace missing/inconsistent')
++            except TimeoutError:
++                record.update(status='budget_interrupted', failure_class='panel_budget')
++                raise
++            except Exception as error:
++                record['capture_error'] = {'type': type(error).__name__, 'message': str(error)}
++                if record['status'] != 'timeout':
++                    record.update(status='capture_failure', failure_class=type(error).__name__)
++            finally:
++                record['process_s'] = time.monotonic() - started
++                if log.exists():
++                    record['traces'] = traces(log)
++                for label, path in (('result', result), ('columns', Path(str(result) + '.columns')), ('log', log)):
++                    if path.exists():
++                        record[label + '_sha256'] = digest(path)
++                persist()
++                request.unlink(missing_ok=True)
++                print(json.dumps({key: record.get(key) for key in
++                    ('case', 'workers', 'arm', 'status', 'failure_class', 'process_s', 'return_code')},
++                    allow_nan=False), flush=True)
++        for case in CASES:
++            for workers in WORKERS:
++                left, right = completed.get((case, workers, 'auto')), completed.get((case, workers, 'map'))
++                if left is not None and right is not None:
++                    summary['comparisons'].append({'case': case, 'workers': workers,
++                                                   **compare_routes(left, right, numbers)})
++        summary['status'] = 'complete_diagnostic_with_failures' if (
++            any(x['status'] != 'completed_capture' for x in records)
++            or any(x['errors'] for x in summary['comparisons'])) else 'complete_diagnostic'
++    except BaseException as error:
++        summary.update(status='stopped', error={'type': type(error).__name__, 'message': str(error)})
++    finally:
++        signal.setitimer(signal.ITIMER_REAL, 0)
++        if active is not None and active.poll() is None:
++            os.killpg(active.pid, signal.SIGKILL)
++            active.wait()
++        persist()
++    print(json.dumps({'status': summary['status'], 'elapsed_s': summary['elapsed_s'],
++                      'summary_sha256': digest(args.output / 'summary.json')}), flush=True)
++    return int(summary['status'] != 'complete_diagnostic'
++               or any(x['errors'] for x in summary['comparisons']))
++
++
++if __name__ == '__main__':
++    sys.exit(main())
+--- /dev/null
++++ b/bench/repro/f2_geometry/study_extract.py
+@@ -0,0 +1,191 @@
++#!/usr/bin/env python3
++"""Compute-node-only transport of seven frozen DTAs into hash-identical cases."""
++from __future__ import annotations
++import argparse
++import binascii
++import hashlib
++import json
++import os
++from pathlib import Path
++import re
++import signal
++import sys
++import time
++
++for _name in ('OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS'):
++    os.environ[_name] = '1'
++os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
++CHUNK = 65536
++
++
++def require(condition, message):
++    if not condition:
++        raise ValueError(message)
++
++
++def digest(path):
++    result = hashlib.sha256()
++    with Path(path).open('rb') as stream:
++        for block in iter(lambda: stream.read(1 << 20), b''):
++            result.update(block)
++    return result.hexdigest()
++
++
++def child(root, name):
++    name = Path(name)
++    require(not name.is_absolute() and '..' not in name.parts, 'unsafe relative input path')
++    path = (root / name).resolve()
++    require(path.is_relative_to(root.resolve()), 'input escaped root')
++    return path
++
++
++def save(path, value):
++    temporary = path.with_suffix(path.suffix + '.partial')
++    temporary.write_text(json.dumps(value, indent=2, allow_nan=False) + '\n')
++    temporary.replace(path)
++
++
++def template_parts(path, case_header):
++    with path.open('rb') as stream:
++        shape, arguments = case_header(stream)
++        require(shape[0] <= 1000 and shape[4] == 0, 'unexpected template dimensions')
++        for column in range(shape[1]):
++            require(stream.readline() == b'0\n', 'template must be numeric')
++            for row in range(shape[0]):
++                require(re.fullmatch(rb'[0-9a-f]{16}\n', stream.readline()) is not None,
++                        'malformed template numeric cell')
++        tail = stream.read(1 << 20)
++        require(tail and stream.read(1) == b'', 'missing/oversized template metadata')
++    return shape, arguments, tail
++
++
++def extract(spec, campaign, templates, output, case_header, np, pd, receipt):
++    source = child(campaign, spec['source'])
++    template = child(templates, spec['template'])
++    receipt.update(stage='source_identity', source_sha256=digest(source))
++    require(receipt['source_sha256'] == spec['source_sha256'], 'frozen DTA hash mismatch: ' + source.name)
++    receipt.update(stage='template_identity', template_sha256=digest(template))
++    require(receipt['template_sha256'] == spec['template_sha256'], 'template hash mismatch: ' + template.name)
++    shape, arguments, tail = template_parts(template, case_header)
++    # Reproduce the recovered original B extractor, before replay_large's G3
++    # controls existed: retain original argument positions and metadata tables.
++    # The generated template has all observation outputs; only sample survives
++    # in the frozen transport. PPML's four-row RSEP capacity stays unchanged.
++    require(shape[0] == 100 and shape[1] == spec['columns'] + (6 if spec['poisson'] else 5),
++            'original B template shape mismatch')
++    require(arguments[0] == (b'estimate-ppml' if spec['poisson'] else b'estimate-ols'),
++            'template estimator mismatch')
++    original = dict(value.split(b'=', 1) for value in arguments[1:])
++    require(len(original) == len(arguments) - 1, 'duplicate template argument')
++    require(original[b'vce'] == (b'robust' if spec['poisson'] else b'iid'),
++            'original B covariance request mismatch')
++    if spec['poisson']:
++        require(original[b'separation'] == b'fe simplex ir', 'original B separation request mismatch')
++    replacements = {'candidate_all': '1', 'deterministic': '0', 'residual': 'none',
++                    'output_sample': str(spec['columns'])}
++    for field in ['residual', 'drop_reason', 'xb', 'xbd', 'absorbed', 'eta', 'mean']:
++        replacements['output_' + field] = '0'
++    arguments = [value.split(b'=', 1)[0] + b'=' + replacements[value.split(b'=', 1)[0].decode()].encode()
++                 if value.split(b'=', 1)[0].decode() in replacements else value for value in arguments]
++    shape[1] = spec['columns']
++    names = spec['column_names']
++    require(len(names) == spec['columns'] and names[0] == 'candidate' and names[-1] == 'sample',
++            'unexpected frozen column ordering')
++    frame = pd.read_stata(source, columns=names[1:-1], convert_categoricals=False)
++    require(len(frame) == spec['rows'], 'DTA row count mismatch')
++    destination = child(output, spec['case'])
++    require(not destination.exists(), 'will not replace an existing case')
++    partial = destination.with_suffix('.case.partial')
++    shape[0] = spec['rows']
++    observed = {}
++    header = b'FEREG_REPLAY_V1\n' + (' '.join(map(str, shape)) + '\n').encode()
++    header += b''.join(str(len(value)).encode() + b'\n' + value + b'\n' for value in arguments)
++    receipt.update(stage='column_transport', header_sha256=hashlib.sha256(header).hexdigest(),
++                   tail_sha256=hashlib.sha256(tail).hexdigest(), column_sha256=observed,
++                   rows=shape[0], columns=shape[1], argument_count=shape[2], matrix_count=shape[3])
++    with partial.open('xb') as stream:
++        stream.write(header)
++        for name in names:
++            stream.write(b'0\n')
++            hashed = hashlib.sha256()
++            for start in range(0, spec['rows'], CHUNK):
++                end = min(start + CHUNK, spec['rows'])
++                if name in ('candidate', 'sample'):
++                    values = np.full(end - start, 1.0 if name == 'candidate' else 0.0, dtype='<f8')
++                else:
++                    values = frame[name].iloc[start:end].to_numpy(dtype='<f8')
++                require(np.isfinite(values).all(), 'nonfinite original input: ' + name)
++                hashed.update(values.tobytes())
++                # Big-endian binary64 hex is the replay wire encoding; this is
++                # a lossless transport conversion, not numeric regeneration.
++                hex_bytes = binascii.hexlify(values.astype('>f8').tobytes())
++                wire = np.empty((end - start, 17), dtype=np.uint8)
++                wire[:, :16] = np.frombuffer(hex_bytes, dtype=np.uint8).reshape(-1, 16)
++                wire[:, 16] = 10
++                stream.write(wire.tobytes())
++            observed[name] = hashed.hexdigest()
++            require(observed[name] == spec['column_sha256'][name], 'column hash mismatch: ' + name)
++        stream.write(tail)
++    case_hash = digest(partial)
++    receipt.update(stage='complete_identity', sha256=case_hash, bytes=partial.stat().st_size)
++    require(case_hash == spec['sha256'], 'complete frozen replay hash mismatch: ' + spec['case'])
++    partial.rename(destination)
++    receipt.update(status='complete_hash_identical', stage='complete', selection=spec['selection'])
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--source', '--repo', dest='repo', type=Path, required=True)
++    parser.add_argument('--campaign-root', type=Path, required=True)
++    parser.add_argument('--templates', type=Path, required=True)
++    parser.add_argument('--bindings', type=Path, required=True)
++    parser.add_argument('--bindings-sha256', required=True)
++    parser.add_argument('--output', type=Path, required=True)
++    args = parser.parse_args()
++    require(os.environ.get('JOB_ID', '').isdigit()
++            and os.environ.get('NSLOTS', '').isdigit()
++            and 1 <= int(os.environ['NSLOTS']) <= 16,
++            'extractor requires an SCC compute job with 1..16 reserved slots')
++    require(digest(args.bindings) == args.bindings_sha256, 'input bindings hash mismatch')
++    bindings = json.loads(args.bindings.read_text())
++    require(bindings['schema'] == 1 and len(bindings['cases']) == 7, 'unexpected input manifest')
++    require(args.campaign_root.resolve() == Path(bindings['campaign_root']), 'wrong frozen archive root')
++    for name, expected in bindings['evidence_sha256'].items():
++        require(digest(child(args.repo, name)) == expected, 'retained evidence hash mismatch')
++    sys.path.insert(0, str(args.repo / 'bench'))
++    from native_io import case_header
++    import numpy as np
++    import pandas as pd
++    args.output.mkdir(parents=True, exist_ok=False)
++    started = time.monotonic()
++    summary = {'schema': 1, 'status': 'running', 'budget_s': 1800, 'rows_regenerated': False,
++               'bindings_sha256': args.bindings_sha256, 'extractor_sha256': digest(Path(__file__)),
++               'numpy': np.__version__, 'pandas': pd.__version__, 'cases': []}
++    def expire(*unused):
++        raise TimeoutError('1800-second extraction budget exhausted')
++    signal.signal(signal.SIGALRM, expire)
++    signal.setitimer(signal.ITIMER_REAL, 1800)
++    try:
++        for spec in bindings['cases']:
++            receipt = {'case': spec['case'], 'source': spec['source'], 'status': 'running',
++                       'expected_sha256': spec['sha256']}
++            summary['cases'].append(receipt)
++            extract(spec, args.campaign_root, args.templates, args.output, case_header, np, pd, receipt)
++            summary['elapsed_s'] = time.monotonic() - started
++            save(args.output / 'manifest.json', summary)
++        summary['status'] = 'complete_hash_identical'
++    except BaseException as error:
++        summary.update(status='failed', error={'type': type(error).__name__, 'message': str(error)})
++        if summary['cases'] and summary['cases'][-1]['status'] == 'running':
++            summary['cases'][-1]['status'] = 'failed'
++        raise
++    finally:
++        signal.setitimer(signal.ITIMER_REAL, 0)
++        summary['elapsed_s'] = time.monotonic() - started
++        save(args.output / 'manifest.json', summary)
++    (args.output / 'EXTRACTION_COMPLETE').write_text(digest(args.output / 'manifest.json') + '\n')
++    print('STUDY_EXTRACTION_COMPLETE', flush=True)
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ b/bench/repro/f2_geometry/f2_geometry_feature_probe.rs
+@@ -0,0 +1,62 @@
++#[path = "f2-geometry-source/crates/fereg-core/src/fe/borrowed_map/study_f2_geometry.rs"]
++mod geometry;
++use geometry::Partition;
++struct Owned {
++    codes: Vec<usize>,
++    groups: Vec<Vec<usize>>,
++}
++impl Partition for Owned {
++    fn levels(&self) -> usize {
++        self.groups.len()
++    }
++    fn members(&self, level: usize) -> &[usize] {
++        &self.groups[level]
++    }
++    fn code(&self, row: usize) -> usize {
++        self.codes[row]
++    }
++}
++fn main() {
++    let args = std::env::args().collect::<Vec<_>>();
++    let text = std::fs::read_to_string(&args[1]).unwrap();
++    let parts = text
++        .lines()
++        .map(|line| {
++            let codes = line
++                .split_whitespace()
++                .map(|x| x.parse::<usize>().unwrap())
++                .collect::<Vec<_>>();
++            let mut groups = vec![vec![]; codes.iter().max().unwrap() + 1];
++            for (row, &code) in codes.iter().enumerate() {
++                groups[code].push(row);
++            }
++            Owned { codes, groups }
++        })
++        .collect::<Vec<_>>();
++    let rows = if args.get(2).is_some_and(|s| s == "overflow") {
++        i32::MAX as usize + 1
++    } else {
++        parts[0].codes.len()
++    };
++    let available = if args.get(2).is_some_and(|s| s == "memory") {
++        0
++    } else {
++        u128::MAX
++    };
++    match geometry::inspect(&parts, rows, available) {
++        Err(e) => println!("{{\"error\":\"{e}\"}}"),
++        Ok(r) => {
++            print!("{{\"scratch_bytes\":{},\"count_visits\":{},\"clear_visits\":{},\"allocation_s\":{},\"marginal_s\":{},\"bound_s\":{},\"total_s\":{},\"pairs\":[",r.scratch_bytes,r.count_visits,r.clear_visits,r.allocation_s,r.marginal_s,r.bound_s,r.total_s);
++            for (i, p) in r.pairs.iter().enumerate() {
++                if i != 0 {
++                    print!(",");
++                }
++                print!("{{\"sum_count_squared\":{},\"weighted_count_sum\":{},\"numerator\":{},\"denominator\":{},\"coherence_upper\":{:.17e},\"counting_clearing_s\":{}}}",p.sum_count_squared,p.weighted_count_sum,p.numerator,p.denominator,p.coherence_upper,p.counting_clearing_s);
++            }
++            println!(
++                "],\"bounds\":[{:.17e},{:.17e},{:.17e},{:.17e}]}}",
++                r.map_bounds[0], r.map_bounds[1], r.map_bounds[2], r.map_bounds[3]
++            );
++        }
++    }
++}
+--- /dev/null
++++ b/bench/repro/f2_geometry/f2_geometry_feature_tests.py
+@@ -0,0 +1,44 @@
++#!/usr/bin/env python3
++import hashlib, importlib.util, json, subprocess, sys, time
++from pathlib import Path
++from fractions import Fraction
++if sys.flags.optimize != 0:
++ raise RuntimeError('independent assertion witnesses require sys.flags.optimize == 0')
++began=time.monotonic()
++root=Path(__file__).resolve().parent
++ref=root/'f2-geometry-source/crates/fereg-oracle/examples/f2_geometry_reference.py'
++spec=importlib.util.spec_from_file_location('reference',ref)
++reference=importlib.util.module_from_spec(spec);spec.loader.exec_module(reference)
++fixtures=[
++ ('independent',[[r%2,(r//2)%2,(r//4)%2] for r in range(32)]),
++ ('truncated',[[r%3,(r//3)%3,(r//9)%3] for r in range(37)]),
++ ('weak_connected',[[int(r>=32),int(r>=32) ^ int(r in (0,32)),r%2] for r in range(64)]),
++ ('disconnected',[[2*(r//16)+(r%2),2*(r//16)+(r//2)%2,2*(r//16)+(r//4)%2] for r in range(32)]),
++ ('unequal',[[r%3,(r//3)%4,(r//12)%2] for r in range(41)]),
++ ('constant_effect',[[0,r%2,(r//2)%3] for r in range(32)]),
++ ('extra_pair_intersection',[[r//4%2,r//4%2,r%2] for r in range(32)]),
++ ('label_permutation',[[2-r%3,2-(r//3)%3,2-(r//9)%3] for r in range(37)]),
++]
++output=root/'f2-geometry-feature-results.json'
++records=[]
++for name,rows in fixtures:
++ codes=[list(column) for column in zip(*rows)]
++ path=root/'f2-geometry-feature-input.txt';path.write_text('\n'.join(' '.join(map(str,c)) for c in codes)+'\n')
++ raw=subprocess.check_output([str(root/'f2-geometry-feature-probe'),str(path)],text=True)
++ result=json.loads(raw)
++ for observed,(i,j) in zip(result['pairs'],[(0,1),(0,2),(1,2)]):
++  expected=reference.pair_reference(codes,i,j)
++  assert all(observed[k]==v for k,v in expected.items()), (name,expected,observed)
++  assert Fraction(observed['coherence_upper'])**2 >= min(Fraction(1),Fraction(expected['numerator'],expected['denominator']))
++ reference.exact_projection_witness(codes,result['bounds'])
++ assert result['count_visits']==len(rows)*3 and result['clear_visits']==len(rows)*3
++ records.append({'case':name,'rows':len(rows),'status':'passed','features':result})
++ print(name,'passed',flush=True)
++for mode,error in [('memory','scratch_budget'),('overflow','unsupported_dimensions')]:
++ result=json.loads(subprocess.check_output([str(root/'f2-geometry-feature-probe'),str(path),mode],text=True))
++ assert result=={'error':error},result
++ records.append({'case':mode,'status':'passed','result':result})
++path.unlink()
++sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
++output.write_text(json.dumps({'status':'passed','sys_flags_optimize':sys.flags.optimize,'verification_elapsed_s':time.monotonic()-began,'synthetic_geometry_cases':8,'additional_admission_cases':2,'native_estimation_calls':0,'source_sha256':sha(root/'f2-geometry-source/crates/fereg-core/src/fe/borrowed_map/study_f2_geometry.rs'),'reference_sha256':sha(ref),'records':records},indent=2)+'\n')
++print('FEATURE_TESTS_COMPLETE',sha(output))
+--- /dev/null
++++ b/bench/repro/f2_geometry/README.md
+@@ -0,0 +1,13 @@
++# F2 geometry cost diagnostic reproduction
++
++Apply this patch to commit 67ba321a2abf4dc117013d75450e56023713e088 in an isolated source checkout. It adds the reviewed observer and the exact driver/witness tool bytes used for the retained study. It does not change solver selection or scientific acceptance.
++
++For witness reproduction, copy this directory's five tool files into a fresh scratch directory, with the patched checkout available there as `f2-geometry-source`. Compile `f2_geometry_feature_probe.rs` with Rust 1.85.1, edition 2021 and optimization; run `f2_geometry_feature_tests.py` with Python assertions enabled. The script enforces `sys.flags.optimize == 0`. This is the original eight geometry fixtures plus two admission fixtures; no estimation is involved.
++
++For native cost reproduction, build the patched source using the standard Linux build script, the generic `-C target-cpu=x86-64` configuration and `FEREG_F2_GEOMETRY=1`. Keep default release features and the existing runtime FMA table. The standard build audit, loader and numeric guard checks remain required.
++
++The frozen pricing driver takes explicit source, plugin, harness, input bindings, prior checkpoint reference, evidence manifest, case and output paths. Use its `--help` interface. Its original six Auto requests are the three retained OLS three-effect cases at one and sixteen workers, with one call per cell, 120 seconds per call, 600 seconds total and no retries. It is SCC-only and requires a sixteen-slot allocation. Reconstruct existing frozen cases from their original campaign DTAs only; verify complete case, source and column hashes. The campaign evidence and exact Auto anchors are retained in `bench/results/fable-20261011-discovery.json` and the input evidence it binds.
++
++A new reproduction must create its own reviewed hash manifest and artifact identities after reproducing the independent witnesses. Original log/result hashes in the retained evidence identify the completed observation; new clock values and build hashes cannot be expected to reproduce those captures. No raw log or generated case is embedded in this patch.
++
++Interpret primary and final-residual observer clocks separately. The current diagnostic computes features twice; a future selector could avoid geometry when an unchanged initial certificate already passes. No cache or selector is implemented. The bound is for exact arithmetic, true unit weights and one shared global constant; it is not a floating-point convergence guarantee or an LSMR iteration predictor. A new native experiment requires its own explicit approval and budget.
