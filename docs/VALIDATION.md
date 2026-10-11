@@ -56,6 +56,13 @@ OLS metadata
 PPML metadata
 `afd7b1d23cae9af6a224b19c7c2fc0960f0b248e1a9fc333e1e0417bd11e6120`.
 
+A downstream audit caught that the comparison whitelist initially omitted the
+new `ols-*-K.exact=TRUE` policy label. The follow-up admits that OLS label and
+tests that differing correction DoF still fail. All 42 benchmark tests pass;
+log SHA-256
+`6deb4315f564ba536984df97986fef3111afad4568dd98360ef4fa487bf09860`.
+This follow-up changes no runtime or comparison tolerance.
+
 Artifact digests are SHA-256 prefixes; the ledger gives full values.
 
 | Date | Scope | Host | Artifact | Result |

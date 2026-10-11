@@ -62,6 +62,10 @@ class CampaignTests(unittest.TestCase):
         capture['absorbed_dof']=20
         a=dict(status='ok',capture=capture,metadata={'rss':'1'})
         self.assertTrue(compare_records(a,a,cell)['eligible'])
+        strict=dict(a,capture=dict(capture,covariance_policy='ols-iid-K.exact=TRUE'))
+        self.assertTrue(compare_records(a,strict,cell)['eligible'])
+        strict['capture']['correction_dof']=63
+        self.assertIn('correction_dof',compare_records(a,strict,cell)['reasons'])
         for key,value in [('sample_sha256','b'),('N',101),('omitted',['x1']),('beta',[2]*16),('absorbed_dof',21)]:
             b=dict(a,capture=dict(capture,**{key:value}))
             self.assertFalse(compare_records(a,b,cell)['eligible'])

@@ -351,6 +351,7 @@ def compare_records(a,b,cell):
         if x[key]!=y[key]:reasons.append(key)
     if any(not c.get('covariance_policy') for c in [x,y]):reasons.append('missing covariance policy')
     allowed={f"stock-{cell['model']}-{cell['vce']}",f"{cell['model']}-{cell['vce']}-"+('K.adj=FALSE' if cell['model']=='ppml' else 'stock')}
+    if cell['model']=='ols': allowed.add(f"ols-{cell['vce']}-K.exact=TRUE")
     if any(c.get('covariance_policy') not in allowed for c in [x,y]):reasons.append('unsupported covariance policy')
     if cell['model']=='ols':
         for key in ['residual_dof','correction_dof']:
