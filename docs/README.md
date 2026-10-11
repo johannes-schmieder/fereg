@@ -10,6 +10,7 @@
 - [Weight semantics](weight_semantics.md): weight normalization and inference.
 - [Release process](release_process.md) and [licensing](licensing.md): packaging and distribution limits.
 - [Local benchmark](../bench/README.md): small, maintained development measurements.
+- [SCC results against fixest](fixest_benchmarks.md): retained timings, phase diagnostics and optimization priorities.
 
 Completed plans, ADR history and old campaign receipts remain in Git history.
 They are not active instructions or required local artifacts.

@@ -27,6 +27,11 @@ Historical campaigns and the legacy comparator are available only in Git history
 
 ## Packed SCC comparison
 
+The [retained October 10 results and optimization analysis](../docs/fixest_benchmarks.md)
+include all configuration summaries, individual timing observations, frozen input
+identities and the subsequent phase probe. Scientific failures and unavailable
+cells remain explicit.
+
 `campaign.json` and `campaign.py` define the current bounded SCC comparison:
 56 configurations and three repetitions, with a two-way worker/firm AKM baseline
 at one million rows and 16 controls. Four workers are primary; 1/8/16-worker
