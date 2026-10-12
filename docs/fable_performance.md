@@ -1434,6 +1434,33 @@ roughly 20 to 40 ms, so items 1 to 7 together are on the order of half a
 second to a second, general and cheap rather than decisive. Take them after
 H1 and H3, each as a small preserving commit with exact replay.
 
+H6 execution declaration (2026-10-12, parent `96a400c5`): take each independent
+pass as its own arithmetic-preserving commit. Begin with item 2's complete
+sample predicates and row-partitioned numeric-source finiteness, using the
+existing installed-team `StagePlan` policy. A complete unweighted identity
+sample may pass one chunked check of values, row identities and retained flags;
+on a failed shortcut, retain the established validator and diagnostic order.
+No numerical reduction, solver signature, certificate, sample, rank, omission
+or separation policy changes. Witnesses are malformed/boundary sample tests,
+full runtime checks, actual-plugin exact replay and the mapped preparation /
+transaction fixtures; wall-time nonregression stays at the complete H boundary.
+Subsequent items remain separate commits. Item 1's public hint currently borrows
+mutable caller inputs: independent design review requires an owned OLS input
+capsule across loading/classification before removing its code/value checks.
+Independently supplied public hints and PPML's borrowed reuse retain validation.
+
+Item 2 result: the installed-team row predicate replaces the complete sample's
+serial validator scans and partitions source finiteness by rows at any model
+width. Declined shortcuts still use the original ordered validator. Three
+focused boundary tests, `run_tests.sh` (1,680 Rust executions), universal Mac
+ABI/load checks, all 73 exact replay cases, 292 worker checks and ten licensed
+preparation/transaction fixtures pass. No scientific bits or solver signatures
+change. The shortcut adds a probe before the original validator on malformed
+inputs; no wall-time improvement is claimed before the H boundary. Core runtime
+grows by 32 lines and loses one dispatch condition. See
+[validation](VALIDATION.md#h6-sample-scans-2026-10-12) and the
+[compact evidence](../bench/results/h-20261013-h6-sample-scans.json).
+
 ### H7. Small-input fixed cost (check only)
 
 The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio

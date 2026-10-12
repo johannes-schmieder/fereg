@@ -63,6 +63,25 @@ fn reserved_zero_plan(elements: usize) -> StagePlan {
     StagePlan::new(elements as u128, elements, workers)
 }
 
+/// Scan pure row predicates on an installed team without creating a global
+/// pool. A failed shortcut leaves its caller's ordered diagnostics authoritative.
+pub(crate) fn all_row_chunks(
+    rows: usize,
+    work: u128,
+    predicate: impl Fn(std::ops::Range<usize>) -> bool + Sync,
+) -> bool {
+    let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
+    let plan = StagePlan::new(work, rows, workers);
+    if plan.lanes <= 1 {
+        return predicate(0..rows);
+    }
+    let chunk = plan.chunk(rows);
+    (0..rows.div_ceil(chunk)).into_par_iter().all(|block| {
+        let start = block * chunk;
+        predicate(start..(start + chunk).min(rows))
+    })
+}
+
 /// Initialize an empty, already reserved numeric bank without reallocating.
 /// The owner retains its fallible reservation and admission checks. Parallel
 /// first-touch uses only an installed team; no global pool is initialized.

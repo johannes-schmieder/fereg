@@ -235,22 +235,20 @@ fn fill_rhs_single_thread(
     Ok(())
 }
 
-/// Validation has no reduction or ordering-dependent diagnostic. Partition
-/// wide source scans across an already installed pool. Preparation can call
-/// validation before entering the configured team, so never create an ambient
-/// global pool from this shared helper; keep those and small-model scans serial.
+/// The caller has checked source dimensions. Partition by rows so narrow
+/// models can use their installed team, without a reduction or global pool.
 pub(crate) fn numeric_sources_are_finite(sample: &crate::data::PreparedNumericSample) -> bool {
-    if sample.n_active() >= 4096
-        && sample.regressors.len() >= 8
-        && rayon::current_thread_index().is_some()
-    {
-        sample
-            .regressors
-            .par_iter()
-            .all(|source| source.iter().all(|v| v.is_finite()))
-    } else {
-        sample.regressors.iter().flatten().all(|v| v.is_finite())
-    }
+    let rows = sample.n_active();
+    crate::parallel::all_row_chunks(
+        rows,
+        rows as u128 * sample.regressors.len() as u128,
+        |range| {
+            sample
+                .regressors
+                .iter()
+                .all(|source| source[range.clone()].iter().all(|value| value.is_finite()))
+        },
+    )
 }
 
 const NUMERIC_TILE_ROWS: usize = 128;

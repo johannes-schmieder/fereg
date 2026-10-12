@@ -838,9 +838,9 @@ fn is_full_retained_unweighted_sample(loaded: &LoadedOlsInput) -> bool {
     // The caller has validated every column against the candidate row axis.
     // This Boolean chooses an ownership shortcut, not error order; a failed
     // check still enters the authoritative classification path.
-    let complete = |start: usize, candidate: &[bool]| {
-        let end = start + candidate.len();
-        candidate.iter().all(|candidate| *candidate)
+    let complete = |range: std::ops::Range<usize>| {
+        let (start, end) = (range.start, range.end);
+        loaded.candidate[range].iter().all(|candidate| *candidate)
             && loaded.outcome.missing[start..end]
                 .iter()
                 .all(|missing| !*missing)
@@ -856,20 +856,7 @@ fn is_full_retained_unweighted_sample(loaded: &LoadedOlsInput) -> bool {
     };
     let rows = loaded.candidate.len();
     let work = rows as u128 * (loaded.numeric_sources.len() as u128 * 2 + 3);
-    // Only use an already installed team. Row partitions expose enough work
-    // even when the number of source columns is below the worker budget.
-    if rayon::current_thread_index().is_some() {
-        let plan = crate::parallel::StagePlan::current(work, rows);
-        if plan.lanes > 1 {
-            let block = plan.chunk(rows);
-            return loaded
-                .candidate
-                .par_chunks(block)
-                .enumerate()
-                .all(|(index, candidate)| complete(index * block, candidate));
-        }
-    }
-    complete(0, &loaded.candidate)
+    crate::parallel::all_row_chunks(rows, work, complete)
 }
 
 fn take_full_retained_unweighted_sample(loaded: LoadedOlsInput) -> Result<PreparedNumericSample> {

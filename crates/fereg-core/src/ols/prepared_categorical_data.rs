@@ -1549,6 +1549,9 @@ fn validate_numeric_sample(sample: &PreparedNumericSample) -> Result<()> {
             "prepared categorical OLS numeric sample is not aligned",
         ));
     }
+    if valid_complete_sample(sample) {
+        return Ok(());
+    }
     if sample.outcome.iter().any(|value| !value.is_finite())
         || !crate::ols::numeric_sources_are_finite(sample)
     {
@@ -1598,6 +1601,33 @@ fn validate_numeric_sample(sample: &PreparedNumericSample) -> Result<()> {
     Ok(())
 }
 
+// Dimensions and adjustment policy were checked by the caller. This is only
+// a proof of an already valid sample; a decline retains every ordered error.
+fn valid_complete_sample(sample: &PreparedNumericSample) -> bool {
+    let rows = sample.n_active();
+    if sample.n_original != rows
+        || sample.n_candidate != rows
+        || !matches!(sample.weights, PreparedWeights::None)
+    {
+        return false;
+    }
+    let work = rows as u128 * (sample.regressors.len() as u128 + 3);
+    crate::parallel::all_row_chunks(rows, work, |range| {
+        sample.outcome[range.clone()].iter().all(|v| v.is_finite())
+            && sample
+                .regressors
+                .iter()
+                .all(|source| source[range.clone()].iter().all(|v| v.is_finite()))
+            && sample.drop_reasons[range.clone()]
+                .iter()
+                .all(|reason| *reason == DropReason::Retained)
+            && sample.original_row_by_active[range.clone()]
+                .iter()
+                .copied()
+                .eq(range)
+    })
+}
+
 fn fallible_filled_bool(len: usize, value: bool) -> Result<Vec<bool>> {
     let mut output = Vec::new();
     output
@@ -1643,6 +1673,65 @@ mod tests {
             weights: PreparedWeights::None,
             adjustment: crate::data::PreparedAdjustment::None,
             drop_reasons: vec![DropReason::Retained; 4],
+        }
+    }
+
+    #[test]
+    fn chunked_complete_sample_checks_preserve_invalid_input_precedence() {
+        use crate::error::ErrorCode;
+        use crate::parallel::ThreadTeam;
+        use crate::ThreadConfig;
+        let rows = 32_769;
+        let sample = || PreparedNumericSample {
+            n_original: rows,
+            n_candidate: rows,
+            original_row_by_active: (0..rows).collect(),
+            outcome: vec![-0.0; rows],
+            regressors: vec![vec![1.0; rows]],
+            weights: PreparedWeights::None,
+            adjustment: crate::data::PreparedAdjustment::None,
+            drop_reasons: vec![DropReason::Retained; rows],
+        };
+        for threads in [1, 4, 8] {
+            ThreadTeam::new(ThreadConfig::from_requested(threads, true).unwrap())
+                .install(|| {
+                    let complete = sample();
+                    assert!(valid_complete_sample(&complete));
+                    validate_numeric_sample(&complete).unwrap();
+                    for row in [0, rows / 4, rows / 2, rows - 1] {
+                        let mut invalid = sample();
+                        invalid.regressors[0][row] = f64::INFINITY;
+                        invalid.original_row_by_active[rows - 1] = rows;
+                        assert!(!valid_complete_sample(&invalid));
+                        let error = validate_numeric_sample(&invalid).unwrap_err();
+                        assert_eq!(error.code, ErrorCode::InvalidData);
+                        assert_eq!(
+                            error.message,
+                            "prepared categorical OLS numeric values must be finite"
+                        );
+                        invalid.regressors[0][row] = 1.0;
+                        assert_eq!(
+                            validate_numeric_sample(&invalid).unwrap_err().code,
+                            ErrorCode::InvalidArgument
+                        );
+                    }
+                    let mut weighted = sample();
+                    weighted.weights = PreparedWeights::Provided {
+                        kind: WeightKind::Frequency,
+                        values: vec![1.0; rows],
+                    };
+                    assert!(!valid_complete_sample(&weighted));
+                    validate_numeric_sample(&weighted).unwrap();
+                    let mut keep = vec![true; rows];
+                    keep[rows / 2] = false;
+                    let filtered = sample()
+                        .compact_active_rows(&keep, DropReason::MissingOutcome)
+                        .unwrap();
+                    assert!(!valid_complete_sample(&filtered));
+                    validate_numeric_sample(&filtered).unwrap();
+                    assert_eq!(complete.outcome[0].to_bits(), (-0.0_f64).to_bits());
+                })
+                .unwrap();
         }
     }
 

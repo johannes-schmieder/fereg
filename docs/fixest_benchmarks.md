@@ -236,6 +236,15 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H6 item 2 removes the serial complete-sample validation bottleneck using the
+existing worker policy, and row-partitions finiteness checks even for narrow
+models. All 73 exact plugin cases, 292 worker checks and ten licensed fixtures
+pass with unchanged solver signatures. Malformed inputs retain the old error
+order after an additional shortcut probe. Timing remains pending the whole-H
+Mac boundary, so this is not yet a measured reduction in the fixest gap. See
+[validation](VALIDATION.md#h6-sample-scans-2026-10-12) and the
+[compact record](../bench/results/h-20261013-h6-sample-scans.json).
+
 H5's socket/NUMA-controlled AKM 1M panel uses the same mask and memory nodes
 for fereg and fixest on one node. OLS speedups at 4/8/16 workers relative to
 one worker are 2.083/2.851/3.055 for fereg and 1.937/2.427/2.762 for fixest;

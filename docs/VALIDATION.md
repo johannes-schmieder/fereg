@@ -14,6 +14,42 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H6 sample scans, 2026-10-12
+
+H6 item 2 uses the installed worker team's row-chunk policy for complete-sample
+validation and numeric-source finiteness, including narrow models. The complete
+unweighted identity shortcut proves the old finite-value, retained-flag and row
+map conditions together; a failed shortcut retains the old diagnostic order.
+There is no numerical reduction or scientific-policy change.
+
+Three focused tests cover malformed samples, boundary row identities, competing
+nonfinite/axis errors, weighted and selected fallback, and signed zero at
+1/4/8 workers. The full suite passes 1,680 Rust executions in 62 invocations;
+200 Python tests have 13 optional-dependency skips. Universal Mac build,
+ABI/load/guard checks, 73 exact plugin replay cases and 292 worker checks pass.
+Solver signatures are unchanged. Ten licensed preparation, factor-availability,
+weight, candidate-sample, rebase and OLS/PPML transaction fixtures pass, with
+application return codes and terminal sentinels. Independent high-effort review
+finds no blocker. The expected Mac skip of the Linux ELF audit remains explicit;
+this item makes no new Linux or Windows qualification claim.
+
+The candidate plugin SHA-256 is
+`6e2fb08f91c862c5e9c45b6a3df652335cc8521ca689663a7279cca6860db55b`,
+compared with H8's `15824d5b0ce070d56312b9ca7af31428a8086a1064cc655f14e572b90c15f139`.
+Raw captures, both plugins, cases and source patch remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-h6/sample-validation.tar.gz`
+(25,389,514 bytes, SHA-256
+`ff74cb830b83c22168d54519e5ee165fa906188d5cc7154639b7ea9611293287`).
+The [compact record](../bench/results/h-20261013-h6-sample-scans.json) retains
+case identities and all check outcomes. An initial zero-test filter and two
+test-compilation corrections are retained, not counted as passing evidence.
+
+Core production grows 32 lines (95,133 to 95,165) and loses one dispatch
+condition; the ratchet records the complete-sample proof and diagnostic-order
+reason. A failed shortcut pays for its probe before ordinary validation.
+The twenty-workload quiet Mac performance panel remains at the complete H
+boundary; no wall-time gain is asserted here.
+
 ## H5 socket and NUMA placement, 2026-10-12
 
 Campaign tooling now groups allowed physical cores by socket, starting with
