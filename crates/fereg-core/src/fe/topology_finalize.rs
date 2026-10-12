@@ -87,6 +87,24 @@ mod validated_owner {
             Ok(Self(topology))
         }
 
+        /// Transfer checks each codes/membership pair before moving those exact
+        /// buffers into private fields. Seal that owner without a second scan.
+        pub(crate) fn from_single_source_indexes(
+            candidate_source_count: usize,
+            nobs: usize,
+            effect_recipes: &[&[usize]],
+            take_source: impl FnMut(usize) -> Result<(Vec<u32>, usize, crate::fe::LevelIndex)>,
+        ) -> Result<Self> {
+            FinalizedCategoricalTopology::from_single_source_indexes_with_reservation(
+                candidate_source_count,
+                nobs,
+                effect_recipes,
+                take_source,
+                &mut super::SystemTopologyFinalizeReservation,
+            )
+            .map(Self)
+        }
+
         pub(crate) const fn get(&self) -> &FinalizedCategoricalTopology {
             &self.0
         }
@@ -125,10 +143,6 @@ pub(crate) struct ValidatedSingleTopology<'a> {
 }
 
 impl<'a> ValidatedSingleTopology<'a> {
-    pub(crate) fn matches_owner(&self, topology: &FinalizedCategoricalTopology) -> bool {
-        std::ptr::eq(self.topology, topology)
-    }
-
     pub(crate) fn into_design(self, nobs: usize) -> Result<super::BorrowedInterceptFeDesign<'a>> {
         if self.source.effect().codes().len() != nobs {
             return Err(invalid(
@@ -153,21 +167,6 @@ impl FinalizedCategoricalTopology {
     /// Preserve an unchanged compact row axis while moving single-source
     /// membership. Source storage follows candidate order; registry storage
     /// follows first effect use, exactly as in ordinary finalization.
-    pub(crate) fn from_single_source_indexes(
-        candidate_source_count: usize,
-        nobs: usize,
-        effect_recipes: &[&[usize]],
-        take_source: impl FnMut(usize) -> Result<(Vec<u32>, usize, super::design::LevelIndex)>,
-    ) -> Result<Self> {
-        Self::from_single_source_indexes_with_reservation(
-            candidate_source_count,
-            nobs,
-            effect_recipes,
-            take_source,
-            &mut SystemTopologyFinalizeReservation,
-        )
-    }
-
     fn from_single_source_indexes_with_reservation<R: TopologyFinalizeReservation>(
         candidate_source_count: usize,
         nobs: usize,
@@ -924,8 +923,8 @@ mod tests {
                         .map(|members| members.as_ptr())
                 );
                 let receipt = owner.single_source().unwrap().unwrap();
-                assert!(receipt.matches_owner(owner.get()));
-                assert!(!receipt.matches_owner(&expected_topology));
+                assert!(std::ptr::eq(receipt.topology, owner.get()));
+                assert!(!std::ptr::eq(receipt.topology, &expected_topology));
                 assert_eq!(receipt.into_design(codes.len()).unwrap(), expected);
                 assert!(owner
                     .single_source()
@@ -1016,12 +1015,12 @@ mod tests {
                     })
                     .collect();
                 let actual =
-                    FinalizedCategoricalTopology::from_single_source_indexes(3, n, &recipes, |i| {
+                    ValidatedFinalizedTopology::from_single_source_indexes(3, n, &recipes, |i| {
                         let (codes, index) = inputs[i].take().expect("one move per source");
                         Ok((codes, levels[i], index))
                     })
                     .unwrap();
-                assert_eq!(actual, expected);
+                assert_eq!(actual.get(), &expected);
                 actual.validate().unwrap();
                 for (i, source) in actual.compacted_sources().iter().enumerate() {
                     let candidate = source.candidate_source_index();
@@ -1059,7 +1058,7 @@ mod tests {
         {
             let effects = [0, 2];
             let recipes: Vec<_> = effects.iter().map(std::slice::from_ref).collect();
-            assert!(FinalizedCategoricalTopology::from_single_source_indexes(
+            assert!(ValidatedFinalizedTopology::from_single_source_indexes(
                 2,
                 4,
                 &recipes,
@@ -1068,7 +1067,7 @@ mod tests {
             .is_err());
         }
         for changed in [vec![0, 0, 1, 1], vec![0, 1], vec![0, 1, 0, 2]] {
-            assert!(FinalizedCategoricalTopology::from_single_source_indexes(
+            assert!(ValidatedFinalizedTopology::from_single_source_indexes(
                 2,
                 4,
                 &[&[1], &[0]],
@@ -1077,25 +1076,23 @@ mod tests {
             .is_err());
         }
         for recipes in [&[&[0, 1][..]][..], &[&[][..]][..]] {
-            assert!(FinalizedCategoricalTopology::from_single_source_indexes(
-                2,
-                4,
-                recipes,
-                |_| Ok(input())
-            )
-            .is_err());
+            assert!(
+                ValidatedFinalizedTopology::from_single_source_indexes(2, 4, recipes, |_| Ok(
+                    input()
+                ))
+                .is_err()
+            );
         }
         for levels in [0, 1, 3] {
-            assert!(FinalizedCategoricalTopology::from_single_source_indexes(
-                2,
-                4,
-                &[&[1]],
-                |_| { Ok((input().0, levels, input().2)) }
-            )
-            .is_err());
+            assert!(
+                ValidatedFinalizedTopology::from_single_source_indexes(2, 4, &[&[1]], |_| {
+                    Ok((input().0, levels, input().2))
+                })
+                .is_err()
+            );
         }
         assert!(
-            FinalizedCategoricalTopology::from_single_source_indexes(2, 4, &[&[1]], |_| {
+            ValidatedFinalizedTopology::from_single_source_indexes(2, 4, &[&[1]], |_| {
                 Ok((
                     vec![0, 0, 2, 2],
                     3,
@@ -1140,10 +1137,9 @@ mod tests {
     fn transferred_empty_topology_preserves_identity_axis_without_source_access() {
         for nobs in [0, 5] {
             let topology =
-                FinalizedCategoricalTopology::from_single_source_indexes(2, nobs, &[], |_| {
+                ValidatedFinalizedTopology::from_single_source_indexes(2, nobs, &[], |_| {
                     panic!("an empty FE topology must not consume factor sources")
                 })
-                .and_then(ValidatedFinalizedTopology::new)
                 .unwrap();
             assert_eq!(topology.nobs(), nobs);
             assert_eq!(topology.retained_rows(), None);

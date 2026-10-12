@@ -51,8 +51,7 @@ fn shared_recovery_with_solve_controls(
         reconstruction_tolerance: None,
     })
 }
-#[allow(clippy::too_many_arguments)]
-fn shared_recovery_with_validated_topology(
+fn shared_recovery_with_controls(
     topology: &FinalizedCategoricalTopology,
     effects: &[CategoricalAbsorbedEffectView<'_>],
     weights: BorrowedMapWeights<'_>,
@@ -60,11 +59,7 @@ fn shared_recovery_with_validated_topology(
     requested: &[bool],
     lsmr: LsmrConfig,
     map: MapConfig,
-    validated: Option<crate::fe::ValidatedSingleTopology<'_>>,
 ) -> Result<RecoveredCategoricalEffects> {
-    if validated.is_some_and(|r| !r.matches_owner(topology)) {
-        return Err(invalid_argument("receipt belongs to another topology"));
-    }
     crate::fe::FeSession::recover(crate::fe::session::RecoveryRequest {
         topology,
         effects,
@@ -1151,7 +1146,7 @@ fn four_sweep_sd_pilot_then_lsmr_matches_strict_lsmr() {
         max_iterations: 20_000,
         ..LsmrConfig::default()
     };
-    let hybrid = shared_recovery_with_validated_topology(
+    let hybrid = shared_recovery_with_controls(
         &topology,
         &effects,
         BorrowedMapWeights::Unit,
@@ -1162,7 +1157,6 @@ fn four_sweep_sd_pilot_then_lsmr_matches_strict_lsmr() {
             tolerance: 1e-12,
             ..config()
         },
-        None,
     )
     .expect("SD recovery");
     let lsmr = shared_recovery_with_solve_controls(
@@ -1255,13 +1249,14 @@ fn shared_two_fe_graph_matches_fallible_map_coefficients() {
 }
 
 #[test]
-fn sd_lsmr_recovery_reuses_only_the_same_topology_validation() {
+fn sd_lsmr_recovery_preserves_raw_and_owned_topology_results() {
     let group = [0_u32, 0, 1, 1, 2, 2];
     let topology =
         finalize_categorical_topology(&[CategoricalCodeView::new(&group, 3)], &[&[0]], &[true; 6])
             .unwrap();
     let effects = [CategoricalAbsorbedEffectView::new(true, Vec::new()).unwrap()];
     let supplied_weights = [1.0, 3.0, 2.0, 5.0, 4.0, 7.0];
+    let owned = crate::fe::ValidatedFinalizedTopology::new(topology.clone()).unwrap();
     for weights in [
         BorrowedMapWeights::Unit,
         BorrowedMapWeights::Provided(&supplied_weights),
@@ -1274,35 +1269,20 @@ fn sd_lsmr_recovery_reuses_only_the_same_topology_validation() {
                 3 => target[0] = f64::NAN,
                 _ => {}
             }
-            let run = |receipt| {
-                shared_recovery_with_validated_topology(
-                    &topology,
+            let run = |topology| {
+                shared_recovery_with_controls(
+                    topology,
                     &effects,
                     weights,
                     &target,
                     &[true],
                     LsmrConfig::default(),
                     config(),
-                    receipt,
                 )
             };
-            assert_eq!(run(None), run(topology.validate_single_source().unwrap()));
+            assert_eq!(run(&topology), run(owned.get()));
         }
     }
-    let other = topology.clone();
-    let error = shared_recovery_with_validated_topology(
-        &topology,
-        &effects,
-        BorrowedMapWeights::Unit,
-        &[0.0; 6],
-        &[true],
-        LsmrConfig::default(),
-        config(),
-        other.validate_single_source().unwrap(),
-    )
-    .unwrap_err();
-    assert_eq!(error.code, ErrorCode::InvalidArgument);
-    assert!(error.message.contains("another topology"));
 }
 
 #[test]
@@ -1314,7 +1294,7 @@ fn shared_recovery_removes_one_weighted_effect_in_one_pass() {
     let effects = [CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("group")];
     let target = [-2.0, -2.0, 0.5, 0.5, 1.5, 1.5];
     let weights = [1.0, 3.0, 2.0, 5.0, 4.0, 7.0];
-    let recovered = shared_recovery_with_validated_topology(
+    let recovered = shared_recovery_with_controls(
         &topology,
         &effects,
         BorrowedMapWeights::Provided(&weights),
@@ -1329,7 +1309,6 @@ fn shared_recovery_removes_one_weighted_effect_in_one_pass() {
             tolerance: 1e-12,
             ..config()
         },
-        None,
     )
     .expect("direct recovery");
     assert_eq!(recovered.recovery_method(), CategoricalRecoveryMethod::Map);
@@ -1665,7 +1644,7 @@ fn weak_cycle_uses_the_hybrid_remainder_solve_and_certifies() {
         CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker"),
         CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm"),
     ];
-    let recovered = shared_recovery_with_validated_topology(
+    let recovered = shared_recovery_with_controls(
         &topology,
         &effects,
         BorrowedMapWeights::Unit,
@@ -1682,7 +1661,6 @@ fn weak_cycle_uses_the_hybrid_remainder_solve_and_certifies() {
             check_every: 1,
             symmetric: true,
         },
-        None,
     )
     .expect("hybrid weak-cycle recovery");
     assert_eq!(

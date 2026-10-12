@@ -73,7 +73,7 @@ fn compute_with_nesting_reservation_validated<R: PreparedDofReservation>(
         policy,
         cluster_dimensions,
         &[],
-        None,
+        Some(&prepared.fe_topology),
         reservation,
     )
 }

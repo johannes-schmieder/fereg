@@ -236,6 +236,15 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H6 item 3 removes repeated membership validation after checked single-source
+transfer and during absorbed DoF. Immutable ownership preserves raw-adapter
+checks and foreign-owner rejection; rebuilt interaction validation keeps its
+original scratch lifetime. All 73 exact plugin cases, 292 worker checks and
+seventeen licensed fixtures pass. An early scratch-lifetime regression was
+caught in review and repaired; no timing claim precedes the full H Mac panel.
+See [validation](VALIDATION.md#h6-membership-validation-reuse-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-membership.json).
+
 H6 item 2 removes the serial complete-sample validation bottleneck using the
 existing worker policy, and row-partitions finiteness checks even for narrow
 models. All 73 exact plugin cases, 292 worker checks and ten licensed fixtures

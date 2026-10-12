@@ -14,6 +14,46 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H6 membership validation reuse, 2026-10-12
+
+H6 item 3 seals the exact codes/membership buffers checked during single-source
+transfer and reuses the immutable topology owner in ordinary and categorical
+absorbed DoF. A foreign owner is rejected before validation is bypassed; raw
+adapters and metadata, cluster and slope checks retain their checks. Rebuilt
+topology is validated at the original finish argument after source retention
+and rebase, preserving its scratch lifetime and failure ordering.
+
+All 87 focused topology tests pass, including checked/owned DoF equality for
+multiple effects, interactions, duplicate recipes, nesting and slopes;
+foreign-owner rejection; transfer order, pointer and alias checks; malformed
+axes and reservation failures; and weighted/perturbed/NaN recovery. The final
+full suite passes 1,680 Rust executions in 62 invocations, plus 200 Python
+tests with 13 optional-dependency skips. Universal Mac ABI/load/guard checks,
+73 exact replay cases, 292 worker checks and seventeen licensed FE, DoF,
+singleton, cluster, slope, saved-output, memory and transaction fixtures pass.
+Scientific results and solver signatures remain exact. No new Linux or Windows
+qualification follows; the Mac skip of the Linux ELF audit remains explicit.
+
+Independent review caught an earlier scratch-lifetime regression: rebuilt
+interaction validation ran before candidate buffers were released. The final
+transferred/rebuilt ownership state restores the original point. The earlier
+full numerical run passed but failed the new file-size ratchet; placing the
+construction state in the existing preparation-topology module and moving a
+test-only import resolved the two tooling failures. All attempts remain in
+the raw evidence. Core production increases from 95,165 to 95,189 lines;
+dispatch and size-violation counts do not rise. No timing gain is claimed
+before the whole-H twenty-workload quiet Mac panel.
+
+Candidate plugin SHA-256:
+`752d759d991524e667f68bc0053fb3b7f458a702c4e34b2efa62147f8ad889e4`;
+parent plugin: `6e2fb08f91c862c5e9c45b6a3df652335cc8521ca689663a7279cca6860db55b`.
+Raw source, plugins, captures and checks remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-h6/membership-validation.tar.gz`
+(25,448,553 bytes, SHA-256
+`309940f93ec426e7b816b93958902102470bc081319a9a8fd8763d803aef7e43`).
+The [compact record](../bench/results/h-20261013-h6-membership.json) preserves
+the source/case identities, failures and final results.
+
 ## H6 sample scans, 2026-10-12
 
 H6 item 2 uses the installed worker team's row-chunk policy for complete-sample

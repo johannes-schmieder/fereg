@@ -1461,6 +1461,32 @@ grows by 32 lines and loses one dispatch condition. See
 [validation](VALIDATION.md#h6-sample-scans-2026-10-12) and the
 [compact evidence](../bench/results/h-20261013-h6-sample-scans.json).
 
+Item 3 declaration (parent `eff56a47`): reuse `ValidatedFinalizedTopology`
+through absorbed DoF, checking owner identity before bypassing raw validation.
+The consuming single-source transfer constructor seals only the exact buffers
+already checked during transfer. Public raw topology adapters, metadata,
+cluster and slope checks retain their validation. This removes repeated
+membership predicates without changing arithmetic, solver signatures or any
+scientific decision. Witnesses include checked/owned DoF comparisons for
+multiple effects, interactions, nesting and slopes; foreign-owner rejection;
+transfer ordering, alias and allocation failures; full runtime checks, exact
+plugin replay and mapped licensed FE/DoF/transaction fixtures. Wall timing stays
+at the complete H boundary.
+
+Item 3 result: transferred single-source membership is checked once and sealed;
+ordinary and categorical DoF reuse that exact owner with a foreign-owner guard.
+Rebuilt topology retains validation at the original finish point after source
+retention and rebase. Independent review rejected an earlier implementation
+that moved interaction scratch ahead of candidate-buffer release; the repaired
+ownership state lives in the existing preparation-topology module. All 87
+focused topology tests, `run_tests.sh` (1,680 Rust executions), universal Mac
+checks, 73 exact replay cases, 292 worker checks and seventeen licensed fixtures
+pass. Core production grows 24 lines; dispatch and size-violation counts remain
+unchanged. No arithmetic, signature, certificate or model decision changes.
+The initial size-ratchet and stale-import failures are retained. See
+[validation](VALIDATION.md#h6-membership-validation-reuse-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-membership.json).
+
 ### H7. Small-input fixed cost (check only)
 
 The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio

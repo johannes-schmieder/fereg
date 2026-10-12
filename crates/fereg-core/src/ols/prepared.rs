@@ -3,6 +3,7 @@ pub(crate) use crate::memory::VecReservation as FeTopologyReservation;
 #[path = "prepared_topology.rs"]
 mod topology;
 use topology::build_borrowed_intercept_fe_design_with_reservation;
+pub(crate) use topology::finalize_preparation_sources;
 
 use rayon::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};

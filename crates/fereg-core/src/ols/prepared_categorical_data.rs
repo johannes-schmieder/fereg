@@ -12,10 +12,10 @@ use crate::data::{DenseMatrix, DropReason, PreparedNumericSample, PreparedWeight
 use crate::error::{allocation, invalid_argument as invalid, invalid_data, Result};
 use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{
-    finalize_categorical_topology, plan_categorical_absorbed_request,
-    prune_categorical_partition_singletons, BorrowedMapWeights, CategoricalAbsorbedEffectView,
-    CategoricalCodeView, FeCoefficientBatch, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
-    RecoveredCategoricalEffects, SingletonMultiplicity, SingletonResult,
+    plan_categorical_absorbed_request, prune_categorical_partition_singletons, BorrowedMapWeights,
+    CategoricalAbsorbedEffectView, CategoricalCodeView, FeCoefficientBatch,
+    FinalizedCategoricalTopology, LsmrConfig, MapConfig, RecoveredCategoricalEffects,
+    SingletonMultiplicity, SingletonResult,
 };
 use crate::memory::push_reserved;
 use crate::memory::{estimate_intercept_recovery_memory, FeSolverMemoryBudget};
@@ -568,7 +568,7 @@ impl PreparedOlsData {
         policy: CategoricalTopologyDofPolicy,
         cluster_dimensions: &[&[u32]],
     ) -> Result<CategoricalTopologyDofReport> {
-        let validated_single = self.validate_with_reusable_topology(true)?;
+        self.validate_after_topology()?;
         compute_categorical_topology_absorbed_dof_with_slopes(
             &self.fe_topology,
             &self.effect_specs,
@@ -576,7 +576,7 @@ impl PreparedOlsData {
             policy,
             cluster_dimensions,
             &self.sample.regressors,
-            validated_single,
+            Some(&self.fe_topology),
         )
     }
 
@@ -1032,7 +1032,7 @@ fn finish_prepared_model_with_hint(
     let num_singletons = singleton.dropped_observations.len();
     let cascade_events = singleton.cascade_events;
     drop(singleton.dropped_observations);
-    let (topology, candidate_sources) = finalize_preparation_sources(
+    let (topology, candidate_sources) = super::prepared::finalize_preparation_sources(
         candidate_sources,
         &recipe_views,
         &sample,
@@ -1052,7 +1052,7 @@ fn finish_prepared_model_with_hint(
         }
     }
     let mut categorical_sources =
-        retain_model_sources(candidate_sources, &required, &topology, unchanged)?;
+        retain_model_sources(candidate_sources, &required, topology.get(), unchanged)?;
     let sample = if unchanged {
         sample
     } else {
@@ -1075,7 +1075,7 @@ fn finish_prepared_model_with_hint(
         &request.model,
         model,
         &categorical_sources,
-        &topology,
+        topology.get(),
         report_intercept,
         categorical,
     )?;
@@ -1084,7 +1084,7 @@ fn finish_prepared_model_with_hint(
         rebased,
         sample,
         categorical_sources,
-        crate::fe::ValidatedFinalizedTopology::new(topology)?,
+        topology.into_validated()?,
         effect_specs(&request.absorbed_terms, &request.model, categorical)?,
         structural_intercept,
         report_intercept,
@@ -1141,39 +1141,6 @@ fn preparation_memberships(
         output.push((index, membership));
     }
     Ok(output)
-}
-
-fn finalize_preparation_sources(
-    mut sources: Vec<PreparedCategoricalSource>,
-    recipes: &[&[usize]],
-    sample: &PreparedNumericSample,
-    active: &[bool],
-    transfer: bool,
-    membership: &mut Vec<(usize, crate::fe::LevelIndex)>,
-) -> Result<(FinalizedCategoricalTopology, Vec<PreparedCategoricalSource>)> {
-    let topology = if transfer {
-        FinalizedCategoricalTopology::from_single_source_indexes(
-            sources.len(),
-            sample.n_active(),
-            recipes,
-            |index| {
-                let position = membership
-                    .iter()
-                    .position(|(i, _)| *i == index)
-                    .ok_or_else(|| invalid("transferred topology source is missing"))?;
-                let membership = membership.swap_remove(position).1;
-                let source = &mut sources[index];
-                Ok((
-                    std::mem::take(&mut source.encoded.codes),
-                    source.encoded.n_levels(),
-                    membership,
-                ))
-            },
-        )?
-    } else {
-        finalize_categorical_topology(&categorical_views(&sources)?, recipes, active)?
-    };
-    Ok((topology, sources))
 }
 
 fn append_cluster_sources(
@@ -1499,7 +1466,7 @@ fn absorbed_slope_label(categorical: &str, slope: &str) -> Result<String> {
     Ok(output)
 }
 
-fn categorical_views(
+pub(crate) fn categorical_views(
     sources: &[PreparedCategoricalSource],
 ) -> Result<Vec<CategoricalCodeView<'_>>> {
     let mut output = Vec::new();
@@ -1662,6 +1629,7 @@ fn canonical_factor_value(value: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fe::finalize_categorical_topology;
 
     fn numeric_sample() -> PreparedNumericSample {
         PreparedNumericSample {

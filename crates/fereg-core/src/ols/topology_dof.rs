@@ -111,7 +111,7 @@ pub(crate) fn compute_categorical_topology_absorbed_dof_with_slopes(
     policy: CategoricalTopologyDofPolicy,
     cluster_dimensions: &[&[u32]],
     slope_values_by_source: &[Vec<f64>],
-    validated_single: Option<crate::fe::ValidatedSingleTopology<'_>>,
+    validated_owner: Option<&crate::fe::ValidatedFinalizedTopology>,
 ) -> Result<CategoricalTopologyDofReport> {
     let mut reservation = SystemTopologyDofReservation;
     compute_with_reservation(
@@ -121,7 +121,7 @@ pub(crate) fn compute_categorical_topology_absorbed_dof_with_slopes(
         policy,
         cluster_dimensions,
         slope_values_by_source,
-        validated_single,
+        validated_owner,
         &mut reservation,
     )
 }
@@ -177,11 +177,11 @@ pub(crate) fn compute_with_reservation<R: TopologyDofReservation>(
     policy: CategoricalTopologyDofPolicy,
     cluster_dimensions: &[&[u32]],
     slope_values_by_source: &[Vec<f64>],
-    validated_single: Option<crate::fe::ValidatedSingleTopology<'_>>,
+    validated_owner: Option<&crate::fe::ValidatedFinalizedTopology>,
     reservation: &mut R,
 ) -> Result<CategoricalTopologyDofReport> {
-    if let Some(validated) = validated_single {
-        if !validated.matches_owner(topology) {
+    if let Some(validated) = validated_owner {
+        if !std::ptr::eq(validated.get(), topology) {
             return Err(invalid_argument(
                 "absorbed-DoF validation receipt belongs to another topology",
             ));
@@ -919,70 +919,91 @@ mod tests {
     #[test]
     fn same_owner_receipt_preserves_dof_nesting_slopes_and_errors() {
         let groups = [0, 0, 1, 1, 2, 2];
-        let topology = finalize_categorical_topology(
-            &[CategoricalCodeView::new(&groups, 3)],
-            &[&[0]],
-            &[true; 6],
-        )
-        .unwrap();
         let crossing = [0, 1, 0, 1, 0, 1];
         let slope_values = vec![vec![0.0, 1.0, 2.0, 2.0, 0.0, 0.0]];
-        for policy in [
-            CategoricalTopologyDofPolicy::None,
-            CategoricalTopologyDofPolicy::FirstPair,
-            CategoricalTopologyDofPolicy::Pairwise,
-            CategoricalTopologyDofPolicy::Continuous,
+        for recipes in [
+            vec![vec![0]],
+            vec![vec![0], vec![1]],
+            vec![vec![0], vec![0, 1], vec![0]],
         ] {
-            for clusters in [
-                vec![],
-                vec![groups.as_slice()],
-                vec![crossing.as_slice()],
-                vec![groups.as_slice(), crossing.as_slice()],
-                vec![&groups[..5]],
+            let views: Vec<_> = recipes.iter().map(Vec::as_slice).collect();
+            let topology = crate::fe::ValidatedFinalizedTopology::new(
+                finalize_categorical_topology(
+                    &[
+                        CategoricalCodeView::new(&groups, 3),
+                        CategoricalCodeView::new(&crossing, 2),
+                    ],
+                    &views,
+                    &[true; 6],
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            for policy in [
+                CategoricalTopologyDofPolicy::None,
+                CategoricalTopologyDofPolicy::FirstPair,
+                CategoricalTopologyDofPolicy::Pairwise,
+                CategoricalTopologyDofPolicy::Continuous,
             ] {
-                for with_slope in [false, true] {
-                    let mut effect = CategoricalTopologyDofEffectSpec {
-                        term_id: AbsorbTermId::new(1).unwrap(),
-                        sources: vec![SourceId::new(1).unwrap()],
-                        intercept: true,
-                        label: "g".to_owned(),
-                        slopes: Vec::new(),
-                    };
-                    if with_slope {
-                        effect.slopes.push(CategoricalTopologyDofSlopeSpec {
-                            source: SourceId::new(1).unwrap(),
-                            label: "g#c.t".to_owned(),
-                        });
-                    }
-                    for values in [slope_values.as_slice(), &[]] {
-                        let run = |receipt| {
-                            compute_categorical_topology_absorbed_dof_with_slopes(
-                                &topology,
-                                std::slice::from_ref(&effect),
-                                true,
-                                policy,
-                                &clusters,
-                                values,
-                                receipt,
-                            )
-                        };
-                        assert_eq!(run(None), run(topology.validate_single_source().unwrap()));
+                for clusters in [
+                    vec![],
+                    vec![groups.as_slice()],
+                    vec![crossing.as_slice()],
+                    vec![groups.as_slice(), crossing.as_slice()],
+                    vec![&groups[..5]],
+                ] {
+                    for with_slope in [false, true] {
+                        let effects: Vec<_> = recipes
+                            .iter()
+                            .enumerate()
+                            .map(|(i, recipe)| CategoricalTopologyDofEffectSpec {
+                                term_id: AbsorbTermId::new(i as u32 + 1).unwrap(),
+                                sources: recipe
+                                    .iter()
+                                    .map(|&s| SourceId::new(s as u32 + 1).unwrap())
+                                    .collect(),
+                                intercept: true,
+                                label: format!("g{i}"),
+                                slopes: if with_slope {
+                                    vec![CategoricalTopologyDofSlopeSpec {
+                                        source: SourceId::new(1).unwrap(),
+                                        label: "g#c.t".to_owned(),
+                                    }]
+                                } else {
+                                    Vec::new()
+                                },
+                            })
+                            .collect();
+                        for values in [slope_values.as_slice(), &[]] {
+                            let run = |receipt| {
+                                compute_categorical_topology_absorbed_dof_with_slopes(
+                                    topology.get(),
+                                    &effects,
+                                    true,
+                                    policy,
+                                    &clusters,
+                                    values,
+                                    receipt,
+                                )
+                            };
+                            assert_eq!(run(None), run(Some(&topology)));
+                        }
                     }
                 }
             }
+            let other = crate::fe::ValidatedFinalizedTopology::new(topology.get().clone()).unwrap();
+            let error = compute_categorical_topology_absorbed_dof_with_slopes(
+                topology.get(),
+                &[],
+                true,
+                CategoricalTopologyDofPolicy::Pairwise,
+                &[],
+                &[],
+                Some(&other),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, ErrorCode::InvalidArgument);
+            assert!(error.message.contains("another topology"));
         }
-        let other = topology.clone();
-        let error = compute_categorical_topology_absorbed_dof_with_slopes(
-            &topology,
-            &[],
-            true,
-            CategoricalTopologyDofPolicy::Pairwise,
-            &[],
-            &[],
-            other.validate_single_source().unwrap(),
-        )
-        .unwrap_err();
-        assert_eq!(error.code, ErrorCode::InvalidArgument);
-        assert!(error.message.contains("another topology"));
     }
 }

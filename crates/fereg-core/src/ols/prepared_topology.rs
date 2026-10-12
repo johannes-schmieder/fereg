@@ -1,6 +1,7 @@
 //! Ordinary grammar finishes directly into the shared immutable FE topology.
 
 use super::*;
+use crate::fe::{finalize_categorical_topology, FinalizedCategoricalTopology};
 
 impl PreparedOlsData {
     pub(crate) fn validate_fe_bindings(&self) -> Result<()> {
@@ -73,4 +74,67 @@ pub(super) fn build_borrowed_intercept_fe_design_with_reservation<'a, R: FeTopol
         )?;
     }
     BorrowedInterceptFeDesign::new(prepared.sample.n_active(), effects)
+}
+
+// Transfer already checked its exact immutable membership. Rebuilt topology
+// keeps validation at the original publication point, after candidate buffers
+// are released, so interaction scratch and failure ordering do not move earlier.
+pub(crate) enum PreparationTopology {
+    Transferred(crate::fe::ValidatedFinalizedTopology),
+    Rebuilt(FinalizedCategoricalTopology),
+}
+
+impl PreparationTopology {
+    pub(crate) fn get(&self) -> &FinalizedCategoricalTopology {
+        match self {
+            Self::Transferred(owner) => owner.get(),
+            Self::Rebuilt(topology) => topology,
+        }
+    }
+
+    pub(crate) fn into_validated(self) -> Result<crate::fe::ValidatedFinalizedTopology> {
+        match self {
+            Self::Transferred(owner) => Ok(owner),
+            Self::Rebuilt(topology) => crate::fe::ValidatedFinalizedTopology::new(topology),
+        }
+    }
+}
+
+pub(crate) fn finalize_preparation_sources(
+    mut sources: Vec<PreparedCategoricalSource>,
+    recipes: &[&[usize]],
+    sample: &PreparedNumericSample,
+    active: &[bool],
+    transfer: bool,
+    membership: &mut Vec<(usize, crate::fe::LevelIndex)>,
+) -> Result<(PreparationTopology, Vec<PreparedCategoricalSource>)> {
+    let topology = if transfer {
+        PreparationTopology::Transferred(
+            crate::fe::ValidatedFinalizedTopology::from_single_source_indexes(
+                sources.len(),
+                sample.n_active(),
+                recipes,
+                |index| {
+                    let position = membership
+                        .iter()
+                        .position(|(i, _)| *i == index)
+                        .ok_or_else(|| invalid("transferred topology source is missing"))?;
+                    let membership = membership.swap_remove(position).1;
+                    let source = &mut sources[index];
+                    Ok((
+                        std::mem::take(&mut source.encoded.codes),
+                        source.encoded.n_levels(),
+                        membership,
+                    ))
+                },
+            )?,
+        )
+    } else {
+        PreparationTopology::Rebuilt(finalize_categorical_topology(
+            &crate::ols::prepared_categorical_data::categorical_views(&sources)?,
+            recipes,
+            active,
+        )?)
+    };
+    Ok((topology, sources))
 }
