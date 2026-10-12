@@ -9,9 +9,17 @@ pub(super) fn prepare_ols_pipeline(
     categorical: bool,
 ) -> Result<(PreparedOlsData, Option<LoadedOlsRows>)> {
     let clusters = std::mem::take(&mut action.clusters);
-    let result = prepare_loaded_ols_with_moments(loaded, loaded_rhs, action, |request, input| {
-        prepare_model_owned_with_load_hint(request, &clusters, input, categorical, load_hint)
-    });
+    let result =
+        prepare_loaded_ols_with_moments(loaded, loaded_rhs, action, |request, input, scratch| {
+            prepare_model_owned_with_load_hint(
+                request,
+                &clusters,
+                input,
+                categorical,
+                load_hint,
+                scratch,
+            )
+        });
     action.clusters = clusters;
     result
 }

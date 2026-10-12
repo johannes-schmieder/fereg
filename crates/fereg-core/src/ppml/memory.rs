@@ -617,6 +617,9 @@ pub struct PpmlMemoryInventory {
     /// plugin-owned publication matrices and is live only in Publication.
     pub publication_validator_workspace_bytes: u128,
     pub diagnostic_bytes: u128,
+    /// Bounded membership-construction scratch, used only by generation zero
+    /// on the fast route and released before separation or IRLS.
+    pub preparation_membership_scratch_bytes: u128,
     pub preparation_peak_bytes: u128,
     /// Largest pre-fit detector phase (FE, simplex, or iterated rectifier).
     pub separation_peak_bytes: u128,
@@ -680,6 +683,9 @@ pub struct PpmlMemoryPlan {
     pub embedding_resident_bytes: u128,
     pub safety_headroom_bytes: u128,
     pub usable_bytes: Option<u128>,
+    /// Selected peak before optional generation-zero membership scratch.
+    /// Later solver/detector storage does not overlap that scratch.
+    pub(crate) required_peak_bytes: u128,
     /// Retained workspace for the selected PPML-specific ordinary-frame
     /// engine. MAP is already included in the base route inventory.
     pub solver_workspace_bytes: u128,
@@ -748,20 +754,25 @@ impl PpmlMemoryPlan {
             .saturating_add(self.reusable_certificate_bytes)
             .saturating_add(self.reusable_slope_bytes);
         let separate = self.separation_projection_bytes;
-        self.selected_inventory()
-            .peak_bytes
+        let later = self
+            .required_peak_bytes
             .saturating_add(if ordinary > separate {
                 ordinary
             } else {
                 separate
-            })
+            });
+        let preparation = self.selected_inventory().preparation_peak_bytes;
+        if later > preparation {
+            later
+        } else {
+            preparation
+        }
     }
 
     // Charges contain the other two optional buffers and the proposed replacement.
     fn reusable_workspaces_fit(&self, charges: [u128; 3]) -> bool {
         let Some(base) = self
-            .selected_inventory()
-            .peak_bytes
+            .required_peak_bytes
             .checked_add(self.solver_workspace_bytes)
         else {
             return false;
@@ -769,7 +780,11 @@ impl PpmlMemoryPlan {
         charges
             .into_iter()
             .try_fold(base, u128::checked_add)
-            .is_some_and(|peak| self.usable_bytes.is_none_or(|usable| peak <= usable))
+            .is_some_and(|peak| {
+                self.usable_bytes.is_none_or(|usable| {
+                    peak.max(self.selected_inventory().preparation_peak_bytes) <= usable
+                })
+            })
     }
 
     /// Optional storage must never make an otherwise affordable fit fail.
@@ -810,9 +825,10 @@ impl PpmlMemoryPlan {
     }
 
     pub(crate) fn admit_separation_projection(&mut self, bytes: u128) -> bool {
-        let Some(peak) = self.selected_inventory().peak_bytes.checked_add(bytes) else {
+        let Some(peak) = self.required_peak_bytes.checked_add(bytes) else {
             return false;
         };
+        let peak = peak.max(self.selected_inventory().preparation_peak_bytes);
         if self.usable_bytes.is_some_and(|usable| peak > usable) {
             return false;
         }
@@ -822,17 +838,17 @@ impl PpmlMemoryPlan {
 
     pub(crate) fn with_solver_workspace(mut self, bytes: u128) -> Result<Self> {
         let peak = self
-            .selected_inventory()
-            .peak_bytes
+            .required_peak_bytes
             .checked_add(bytes)
             .and_then(|n| n.checked_add(self.reusable_projection_bytes))
             .and_then(|n| n.checked_add(self.reusable_certificate_bytes))
             .and_then(|n| n.checked_add(self.reusable_slope_bytes))
-            .ok_or_else(|| allocation("PPML solver workspace peak overflows"))?;
+            .ok_or_else(|| allocation("PPML solver workspace peak overflows"))?
+            .max(self.selected_inventory().preparation_peak_bytes);
         if self.usable_bytes.is_some_and(|usable| peak > usable) {
             return Err(allocation(format!(
                 "public PPML FE solver workspace does not fit the selected memory plan: solver_workspace={bytes}, execution={}, usable={}",
-                self.selected_inventory().peak_bytes,
+                self.required_peak_bytes,
                 self.usable_bytes.unwrap_or(0),
             )));
         }
@@ -874,10 +890,18 @@ impl PpmlMemoryPlan {
                 .saturating_add(self.reusable_projection_bytes)
                 .saturating_add(self.reusable_certificate_bytes)
                 .saturating_add(self.reusable_slope_bytes),
-            PpmlPhase::Preparation => base
-                .saturating_add(self.reusable_projection_bytes)
-                .saturating_add(self.reusable_certificate_bytes)
-                .saturating_add(self.reusable_slope_bytes),
+            PpmlPhase::Preparation => {
+                let later = base
+                    .saturating_sub(inventory.preparation_membership_scratch_bytes)
+                    .saturating_add(self.reusable_projection_bytes)
+                    .saturating_add(self.reusable_certificate_bytes)
+                    .saturating_add(self.reusable_slope_bytes);
+                if later > base {
+                    later
+                } else {
+                    base
+                }
+            }
             PpmlPhase::SeparationFe
             | PpmlPhase::SeparationSimplex
             | PpmlPhase::SeparationIr
@@ -917,7 +941,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
     config: PpmlMemoryConfig,
     probe: Option<PpmlMemoryPreflightProbe>,
 ) -> Result<PpmlMemoryPlan> {
-    let estimate = estimate_ppml_memory(dimensions, config)?;
+    let mut estimate = estimate_ppml_memory(dimensions, config)?;
     // Model and validate first so a malformed request cannot leave an
     // embedding's begin/decision observation window half-open. Estimation is
     // scalar arithmetic and does not construct a PPML workspace.
@@ -937,6 +961,31 @@ pub(crate) fn plan_ppml_memory_with_probe(
         (MemoryMode::Auto, false) if fits(estimate.low.peak_bytes) => Some(PpmlMemoryRoute::Low),
         (MemoryMode::Fast | MemoryMode::Low | MemoryMode::Auto, _) => None,
     };
+    let required_peak_bytes = match selected {
+        Some(PpmlMemoryRoute::Fast) => estimate.fast.peak_bytes,
+        Some(PpmlMemoryRoute::Low) => estimate.low.peak_bytes,
+        None => 0,
+    };
+    // Keep the original route decision and required admission boundary.
+    // This scratch is optional and lives only during generation-zero input
+    // preparation, before any later solver or detector workspace exists.
+    if selected == Some(PpmlMemoryRoute::Fast)
+        && dimensions.threads > 1
+        && dimensions.fe_dimensions > 0
+    {
+        let ceiling = LevelIndex::parallel_scratch_bytes(dimensions.observations)
+            .min(u128::MAX - estimate.fast.preparation_peak_bytes);
+        let scratch = usable_bytes.map_or(ceiling, |usable| {
+            ceiling.min(usable.saturating_sub(estimate.fast.preparation_peak_bytes))
+        });
+        estimate.fast.preparation_membership_scratch_bytes = scratch;
+        estimate.fast.preparation_peak_bytes =
+            checked_sum(&[estimate.fast.preparation_peak_bytes, scratch])?;
+        estimate.fast.peak_bytes = estimate
+            .fast
+            .peak_bytes
+            .max(estimate.fast.preparation_peak_bytes);
+    }
     if let Some(probe) = probe {
         probe(PpmlMemoryPreflightEvent::Decision(
             PpmlMemoryPreflightObservation {
@@ -986,6 +1035,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
         embedding_resident_bytes: config.embedding_resident_bytes,
         safety_headroom_bytes,
         usable_bytes,
+        required_peak_bytes,
         solver_workspace_bytes: 0,
         separation_projection_bytes: 0,
         reusable_projection_bytes: 0,
@@ -1137,6 +1187,7 @@ fn estimate_route(
         publication_result_bytes: publication.publication_result_bytes,
         publication_validator_workspace_bytes: publication.publication_validator_workspace_bytes,
         diagnostic_bytes: publication.diagnostic_bytes,
+        preparation_membership_scratch_bytes: 0,
         preparation_peak_bytes: iteration_peaks.preparation_peak_bytes,
         separation_peak_bytes: separation_peaks.separation_peak_bytes,
         separation_mu_peak_bytes: separation_peaks.separation_mu_peak_bytes,

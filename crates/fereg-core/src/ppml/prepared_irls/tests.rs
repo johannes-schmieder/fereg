@@ -148,7 +148,7 @@ fn prepared_no_fe_categorical(outcome: &[f64], regressors: &[Vec<f64>]) -> crate
         numeric_sources.push((entry.id, loaded(values)));
         sources.push(entry);
     }
-    crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+    crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data_with_load_hint(
         &OlsRequestV1 {
             model: CompiledTermGraph { sources, terms },
             absorbed_terms: Vec::new(),
@@ -165,6 +165,8 @@ fn prepared_no_fe_categorical(outcome: &[f64], regressors: &[Vec<f64>]) -> crate
             probability_weight: None,
         },
         &[],
+        None,
+        0,
     )
     .expect("prepared fixture")
 }

@@ -396,7 +396,7 @@ fn prepare_loaded_ols_with_moments<T: Send>(
     loaded: LoadedOlsInput,
     loaded_rhs: Option<Vec<f64>>,
     action: &mut EstimateAction,
-    prepare: impl FnOnce(&OlsRequestV1, LoadedOlsInput) -> Result<T> + Send,
+    prepare: impl FnOnce(&OlsRequestV1, LoadedOlsInput, u128) -> Result<T> + Send,
 ) -> Result<(T, Option<LoadedOlsRows>)> {
     let started = Instant::now();
     let nrows = loaded.candidate.len();
@@ -425,12 +425,32 @@ fn prepare_loaded_ols_with_moments<T: Send>(
                     .is_some_and(|peak| peak <= usable)
             })
     });
+    // Preserve the existing moment-cache decision before spending headroom on
+    // transient membership scratch. Weighted and complex preparations do not
+    // reuse this membership route.
+    let membership_scratch = if action.memory_plan.selected == MemoryMode::Fast
+        && action.fit.execution.threads.resolved() > 1
+        && loaded.analytic_weight.is_none()
+        && loaded.frequency_weight.is_none()
+        && loaded.probability_weight.is_none()
+        && !action.request.absorbed_terms.is_empty()
+    {
+        action.preparation_memory.admit_membership_scratch(
+            fereg_core::fe::LevelIndex::parallel_scratch_bytes(nrows),
+            action.memory_plan.usable_bytes,
+            action.metadata_owner_bytes
+                + action.loaded_fit_workspace_bytes
+                + moment_bytes.unwrap_or(0) as u128,
+        )?
+    } else {
+        0
+    };
     let result = if let Some(bytes) = moment_bytes {
         action.loaded_fit_workspace_bytes += bytes as u128;
         let request = &action.request;
         ThreadTeam::new(action.fit.execution.threads).install(|| {
             let (prepared, rows) = rayon::join(
-                || prepare(request, loaded),
+                || prepare(request, loaded, membership_scratch),
                 || {
                     loaded_rhs.map(|rows| {
                         LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)
@@ -441,7 +461,7 @@ fn prepare_loaded_ols_with_moments<T: Send>(
         })?
     } else {
         let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
-            prepare(&action.request, loaded)
+            prepare(&action.request, loaded, membership_scratch)
         })?;
         Ok((prepared, loaded_rhs.map(LoadedOlsRows::from)))
     };

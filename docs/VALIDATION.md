@@ -16,6 +16,132 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Performance-plan qualification
 
+### C2 parallel preparation candidate, 2026-10-11–12
+
+The [retained C2 evidence](../bench/results/c2-20261011-performance.json)
+compares the isolated candidate with `d9865e57`. This is arithmetic-preserving
+work: integer range checks and membership validation use the installed worker
+team, and an optional counting/scatter constructor preserves the original
+ascending observation order within every canonical level. Ordered error joins
+preserve first-error precedence. Factorization, singleton semantics, sample,
+rank, omission, separation, floating-point reductions and solver policy are
+unchanged. Independent source factorization and a general topology rewrite
+remain outside this candidate.
+
+The counting/scatter path serves eligible unweighted reusable membership.
+Optional membership scratch is admitted only after the original Fast/Auto/Low
+route and existing cache decisions. Low mode receives none; insufficient spare
+memory or optional allocation failure falls back to the original constructor.
+The offer is capped at min(8N bytes, 128 MiB), source constructions are sequential,
+and actual scratch capacities are checked. PPML consumes the offer only in
+generation zero; later solver/cache admission excludes this already-freed
+scratch. At 16M rows and 160,000 firm levels, twelve useful blocks require
+46,080,288 transient bytes on the measured 64-bit hosts. Retained preparation
+bytes are unchanged.
+
+The final general scheduling rule requires at least four useful blocks and
+limits block-count × level-count to N/8. A broader N/4/two-block prototype
+regressed 1M-row membership construction by 43–51% at N/8 levels. Raising the
+minimum to four still regressed the N/16-level boundary by 13–30% on a second
+host. The final N/8 work cap declines those cases at every size, including large
+cases where the broader policy had helped. Its one bounded final density
+screen found no median increase beyond max(5%, 1 ms). All three policies'
+observations remain separate in the evidence; no further constant tuning or
+sampling continuation was used.
+
+Final preparation diagnostics on SCC `scc-ed3` used two alternating process
+pairs, each with one warmup and two measured preparations. Generation, cloning
+and comparison were outside timing; the gated stage clocks were enabled.
+Complete-result fingerprints and retained bytes agree across arms.
+
+| AKM preparation, four controls | Workers | Baseline s | Candidate s | Reduction |
+| --- | ---: | ---: | ---: | ---: |
+| 1M rows | 16 | 0.052202 | 0.036342 | 30.4% |
+| 16M rows | 16 | 0.930398 | 0.555805 | 40.3% |
+
+These are preparation observations, not whole-fit or Mac speed claims. Earlier
+three-way diagnostics separate the validation and membership changes; the final
+artifact has its own measurements. At 16M rows, unchanged source factorization
+still takes about 0.147 s in this probe, so substantial serial work remains.
+The probe supplies no overlapped-load hint; complete native fits retain C1's
+existing overlap and must be measured separately.
+
+The final native panel reserved all 28 cores of SCC `scc-wo4` (two Xeon
+E5-2680 v4 sockets), with tracing disabled. The twenty frozen standard workloads
+used one warmup and seven alternating pairs: all 320 calls retain exact science
+and solver signatures. Seventeen cases pass the prescribed paired-bootstrap
+nonregression bound. No-FE K=5/four workers, three-FE K=5/one worker, and weighted
+two-FE K=5/four workers remain inconclusive; their point ratios are 0.9989,
+1.0347 and 0.9605, but upper bounds are 1.0666, 1.0569 and 1.0782 against 1.05.
+Every point estimate is within its allowance. There was no continuation or
+resampling. Thus this panel does not establish full standard nonregression.
+
+Separate campaign-shaped AKM inputs used seed 739391, unit weights, robust
+inference and three alternating pairs without a dedicated warmup. The table
+uses median RRUNTIME **total** seconds, including OLS loading, rather than the
+OLS native-only field used by the driver's default summary. These are
+descriptive observations, not confidence-qualified performance passes.
+
+| Native transaction | Workers | Baseline s | Candidate s | Change |
+| --- | ---: | ---: | ---: | ---: |
+| OLS 1M, K=16 | 1 | 3.481277 | 3.516486 | +1.0% |
+| OLS 1M, K=16 | 4 | 2.050752 | 2.185939 | +6.6% |
+| OLS 1M, K=16 | 16 | 1.350190 | 1.296027 | −4.0% |
+| PPML 1M, K=16 | 1 | 17.742044 | 17.762970 | +0.1% |
+| PPML 1M, K=16 | 4 | 8.844992 | 8.584369 | −2.9% |
+| PPML 1M, K=16 | 16 | 6.125746 | 5.978354 | −2.4% |
+| OLS 16M, K=4 | 4 | 21.586503 | 19.842369 | −8.1% |
+| OLS 16M, K=4 | 16 | 12.824662 | 11.467164 | −10.6% |
+
+The four-worker 1M OLS slowdown remains unresolved. Existing load and solver
+clocks do not isolate its cause, and no extra samples were taken to erase it.
+At sixteen workers, PPML's complete preparation phase changes from 0.921854 to
+0.868597 seconds (5.8% lower), much less than the isolated unit-weighted OLS
+preparation probe. Faster preparation therefore does not imply a corresponding
+whole-fit gain or monotonic improvement with worker count.
+
+The 16M panel's original 900-second budget includes replay transport and result
+validation. It stopped during the ninth call, after eight successful calls.
+One fixed continuation on the same host was limited to the four missing
+originally planned calls and 600 additional seconds. The original timeout and
+every successful observation are retained separately. No completed call was
+repeated, and the intended design remains three pairs per cell. This operational
+continuation makes no confidence-qualified claim and does not revisit any
+standard-panel cell.
+
+All 48 successful campaign-shaped calls retain exact baseline/candidate science
+and solver signatures. Across worker counts, the retained headers preserve the
+existing discrete-decision policy and the complete streamed columns have equal
+hashes; coefficients and covariance agree within the existing replay tolerances.
+The continuation finishes with scheduler accounting 0/0. The original timing
+job's 0/1 exit remains explicit because of its budget stop. The larger OLS case
+supports useful C2 gains, while the full record still falls short of uniform
+nonregression or Mac qualification.
+
+Independent review covered stable ordering, fallible allocation, original
+admission boundaries and PPML scratch lifetimes. Witnesses include an independent
+row-filter membership reference, malformed membership/error ordering, worker
+counts 1/2/3/4/16, exact budget and density boundaries, injected reservation
+failures, OLS moment-cache admission and PPML generation/rollback behavior.
+The complexity ratchet records scoped increases of 231 core and 38 plugin
+production lines, with no increase in oversized file/function counts.
+
+The final source passes `./scripts/run_tests.sh` on SCC, including the
+independent scientific oracles, allocator checks, Clippy, formatting and the
+complexity gate. The Linux release artifact passes the glibc/dependency/export
+audit, actual-plugin ABI/load/selftest and both UBSan numeric guards. Native
+replay has 73/73 exact comparisons and 219 additional worker-count checks at
+2/4/16 workers, with scientific agreement, fixed-worker repeatability and stable
+discrete decisions. All eight mapped Stata fixtures and both OLS/PPML Break
+checks pass. The evidence retains failed setup/launcher attempts and identifies
+the completed components reused by their focused continuations.
+
+Eighteen Linux-regenerated standard inputs differed from the pinned Mac hashes;
+none were timed. Existing Mac generators recreated all twenty exact frozen
+files in 9.7 seconds, then transferred them to SCC. This was data generation
+only: no Mac build, estimation test or timing was run. The candidate remains
+separate from main and is not Mac-qualified or a release performance claim.
+
 ### A2 retained-guess prototype stopped at discovery, 2026-10-11
 
 The [prototype record](../bench/results/a2-20261011-prototype.json) preserves

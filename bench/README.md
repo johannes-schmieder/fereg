@@ -145,6 +145,27 @@ the paired-median bootstrap upper bound against max(5%, 1 ms) per workload.
 Run only on a quiet host (no builds, agents or Stata). The former three-FE LSMR
 timing inputs are not reproducible from a tracked recipe and are not frozen.
 
+### Categorical preparation probes
+
+The oracle examples `preparation_probe` and `membership_probe` isolate costs
+before a complete native timing panel. Build them with the `profiling` profile
+and put the Cargo target directory under the task's `target/tmp/` directory.
+`preparation_probe ROWS WORKERS REPEATS akm|dense unit|aw|missing [fast]`
+times owned preparation, with generation, cloning and exact repeat checks
+outside timing. Its optional `fast` argument admits the bounded membership
+scratch; the default uses no optional scratch. Set `FEREG_PHASE_TIMING=1` for
+the categorical stage clocks. Compare frozen binaries on the same host and
+check complete-result fingerprints and retained bytes before comparing times.
+
+`membership_probe ROWS WORKERS LEVELS uniform|skew` compares the production
+serial and optional parallel constructors in alternating order, including one
+warmup and four measured pairs. Every result must equal the serial reference,
+including observation order. Both probes cap inputs at 16 million rows and
+32 workers; preparation caps measured repetitions at seven. These diagnostic
+observations do not replace the full scientific gate, native replay or quiet
+qualification-host timing. The [C2 evidence](results/c2-20261011-performance.json)
+retains the bounded exploration and the final candidate separately.
+
 ## Stata-free native A/B observations
 
 `replay_large` creates numeric replay cases from the existing oracle designs;

@@ -1,6 +1,20 @@
 use crate::error::{allocation, ErrorCode, FeregError, Result};
 use crate::memory::SystemVecReservation as SystemReservation;
 use crate::memory::VecReservation as LevelIndexReservation;
+use rayon::prelude::*;
+
+/// Range checks have a single Boolean result and do not allocate or reduce
+/// floating-point values. Direct callers never create a global worker pool.
+pub(super) fn codes_in_range(codes: &[u32], levels: usize) -> bool {
+    let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
+    let plan = crate::parallel::StagePlan::new(codes.len() as u128, codes.len(), workers);
+    let valid = |chunk: &[u32]| chunk.iter().all(|&code| (code as usize) < levels);
+    if plan.lanes > 1 {
+        codes.par_chunks(plan.chunk(codes.len())).all(valid)
+    } else {
+        valid(codes)
+    }
+}
 
 /// Compressed observation membership for one categorical effect.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,6 +32,48 @@ impl LevelIndex {
     pub fn from_codes(codes: &[u32], n_levels: usize) -> Result<Self> {
         let mut reservation = SystemReservation;
         Self::from_codes_with_reservation(codes, n_levels, &mut reservation)
+    }
+
+    /// Maximum optional transient preparation scratch. The caller admits this
+    /// beside existing owners; source constructions consume it sequentially.
+    #[must_use]
+    pub fn parallel_scratch_bytes(rows: usize) -> u128 {
+        (rows as u128 * 8).min(128 * 1024 * 1024)
+    }
+
+    /// Stable membership with caller-admitted optional scratch. Low-memory and
+    /// unadmitted callers keep `from_codes`; every declined attempt releases
+    /// all temporary owners before the original constructor runs.
+    pub fn from_codes_with_scratch(codes: &[u32], n_levels: usize, admitted: u128) -> Result<Self> {
+        let mut reservation = SystemReservation;
+        Self::with_scratch_reservation(codes, n_levels, admitted, &mut reservation)
+    }
+
+    fn with_scratch_reservation<R: LevelIndexReservation>(
+        codes: &[u32],
+        n_levels: usize,
+        admitted: u128,
+        reservation: &mut R,
+    ) -> Result<Self> {
+        let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
+        let per_block = n_levels as u128
+            * (std::mem::size_of::<usize>() + std::mem::size_of::<&mut [usize]>()) as u128
+            + std::mem::size_of::<Vec<&mut [usize]>>() as u128;
+        let budget = admitted.min(Self::parallel_scratch_bytes(codes.len()));
+        // Bound serial histogram/descriptor construction to an eighth of N.
+        let lanes = crate::parallel::StagePlan::new(codes.len() as u128, codes.len(), workers)
+            .lanes
+            .min(codes.len() / n_levels.max(1) / 8)
+            .min(usize::try_from(budget / per_block).unwrap_or(usize::MAX));
+        // The extra count/scatter passes and descriptor construction need at
+        // least four useful blocks to amortize their setup. Smaller schedules
+        // keep the original constructor, even if more memory is available.
+        if n_levels > 0 && lanes >= 4 {
+            if let Some(index) = parallel_level_index(codes, n_levels, lanes, budget, reservation) {
+                return Ok(index);
+            }
+        }
+        Self::from_codes_with_reservation(codes, n_levels, reservation)
     }
 
     /// Ordered codes already have the final membership order. Reject the
@@ -179,6 +235,99 @@ impl LevelIndex {
     }
 }
 
+fn optional_level_storage<T, R: LevelIndexReservation>(
+    count: usize,
+    reservation: &mut R,
+) -> Option<Vec<T>> {
+    let mut values = Vec::new();
+    reservation
+        .reserve_vec(
+            &mut values,
+            count,
+            "unable to reserve parallel fixed-effect storage",
+        )
+        .ok()?;
+    Some(values)
+}
+
+fn parallel_level_index<R: LevelIndexReservation>(
+    codes: &[u32],
+    levels: usize,
+    blocks: usize,
+    admitted: u128,
+    reservation: &mut R,
+) -> Option<LevelIndex> {
+    let cells = levels.checked_mul(blocks)?;
+    let mut counts = optional_level_storage::<usize, _>(cells, reservation)?;
+    let mut destinations: Vec<Vec<&mut [usize]>> = optional_level_storage(blocks, reservation)?;
+    for _ in 0..blocks {
+        destinations.push(optional_level_storage(levels, reservation)?);
+    }
+    let scratch = crate::memory::vec_capacity_bytes(&counts)
+        + crate::memory::vec_capacity_bytes(&destinations)
+        + destinations
+            .iter()
+            .map(crate::memory::vec_capacity_bytes)
+            .sum::<u128>();
+    if scratch > admitted {
+        return None;
+    }
+    counts.resize(cells, 0);
+    let chunk = codes.len().div_ceil(blocks).max(1);
+    let valid = codes
+        .par_chunks(chunk)
+        .zip(counts.par_chunks_mut(levels))
+        .map(|(rows, counts)| {
+            for &code in rows {
+                let Some(count) = counts.get_mut(code as usize) else {
+                    return false;
+                };
+                *count += 1;
+            }
+            true
+        })
+        .all(|valid| valid);
+    if !valid {
+        return None;
+    }
+    let mut offsets = optional_level_storage(levels.checked_add(1)?, reservation)?;
+    offsets.push(0_usize);
+    for level in 0..levels {
+        let size: usize = (0..blocks)
+            .map(|block| counts[block * levels + level])
+            .sum();
+        offsets.push(offsets[level].checked_add(size)?);
+    }
+    let mut observations = optional_level_storage(codes.len(), reservation)?;
+    observations.resize(codes.len(), 0_usize);
+    let mut tail = observations.as_mut_slice();
+    for level in 0..levels {
+        for block in 0..blocks {
+            let (segment, rest) = tail.split_at_mut(counts[block * levels + level]);
+            destinations[block].push(segment);
+            tail = rest;
+        }
+    }
+    debug_assert!(tail.is_empty());
+    destinations
+        .into_par_iter()
+        .zip(counts.par_chunks_mut(levels))
+        .zip(codes.par_chunks(chunk))
+        .enumerate()
+        .for_each(|(block, ((mut destinations, cursors), rows))| {
+            cursors.fill(0);
+            for (offset, &code) in rows.iter().enumerate() {
+                let level = code as usize;
+                destinations[level][cursors[level]] = block * chunk + offset;
+                cursors[level] += 1;
+            }
+        });
+    Some(LevelIndex {
+        offsets,
+        observations,
+    })
+}
+
 /// One intercept-only fixed-effect term borrowed from validated prepared data.
 ///
 /// This view never owns or copies observation-scale codes or level membership.
@@ -279,15 +428,14 @@ impl<'a> ValidatedBorrowedInterceptSource<'a> {
                 "borrowed fixed-effect empty observation and level counts disagree",
             ));
         }
-        if codes.iter().any(|code| *code as usize >= n_levels) {
+        if !codes_in_range(codes, n_levels) {
             return Err(FeregError::new(
                 ErrorCode::InvalidData,
                 "borrowed fixed-effect code exceeds its declared level count",
             ));
         }
 
-        let mut membership_count = 0_usize;
-        for level in 0..n_levels {
+        let validate_level = |level| {
             let members = level_index.checked_members(level)?;
             if members.is_empty() {
                 return Err(FeregError::new(
@@ -295,9 +443,6 @@ impl<'a> ValidatedBorrowedInterceptSource<'a> {
                     "borrowed fixed-effect membership contains an empty final level",
                 ));
             }
-            membership_count = membership_count
-                .checked_add(members.len())
-                .ok_or_else(|| allocation("borrowed fixed-effect membership count overflows"))?;
             for observation in members {
                 if *observation >= codes.len() || codes[*observation] as usize != level {
                     return Err(FeregError::new(
@@ -306,7 +451,26 @@ impl<'a> ValidatedBorrowedInterceptSource<'a> {
                     ));
                 }
             }
+            Ok(())
+        };
+        let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
+        if crate::parallel::StagePlan::new(codes.len() as u128, n_levels, workers).lanes > 1 {
+            // Ordered joins retain the first failing level's original error.
+            crate::parallel::stage_try_for_each(
+                (0..n_levels).into_par_iter(),
+                codes.len() as u128,
+                validate_level,
+            )?;
+        } else {
+            (0..n_levels).try_for_each(validate_level)?;
         }
+        // Accepted adjacent ranges share endpoints and lie within observations.
+        // Their lengths telescope; no accepted prefix can overflow usize.
+        let membership_count = if n_levels == 0 {
+            0
+        } else {
+            level_index.offsets[n_levels] - level_index.offsets[0]
+        };
         if membership_count != codes.len() {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -715,6 +879,134 @@ mod tests {
     }
 
     #[test]
+    fn parallel_membership_matches_row_filter_and_every_optional_failure_falls_back() {
+        let codes: Vec<_> = (0..131_073).map(|row| ((row * 73) % 11) as u32).collect();
+        let reference = LevelIndex::from_codes(&codes, 14).unwrap();
+        for workers in [1, 2, 3, 4, 16] {
+            let team = crate::ThreadTeam::new(
+                crate::ThreadConfig::from_requested(workers, false).unwrap(),
+            );
+            team.install(|| {
+                let mut successful = InjectedReservation::default();
+                let candidate =
+                    LevelIndex::with_scratch_reservation(&codes, 14, u128::MAX, &mut successful)
+                        .unwrap();
+                assert_eq!(candidate, reference);
+                for level in 0..14 {
+                    let expected: Vec<_> = codes
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(row, &code)| (code as usize == level).then_some(row))
+                        .collect();
+                    assert_eq!(candidate.members(level), expected);
+                }
+                if workers >= 4 {
+                    assert!(successful.calls > 4, "exercise parallel construction");
+                    for fail_at in 0..successful.calls {
+                        let mut injected = InjectedReservation {
+                            fail_at: Some(fail_at),
+                            calls: 0,
+                        };
+                        assert_eq!(
+                            LevelIndex::with_scratch_reservation(
+                                &codes,
+                                14,
+                                u128::MAX,
+                                &mut injected
+                            )
+                            .unwrap(),
+                            reference
+                        );
+                    }
+                } else {
+                    assert_eq!(
+                        successful.calls, 4,
+                        "small schedules keep serial construction"
+                    );
+                }
+                for budget in [0, 1439, 1440, 1441, 131_073 * 8] {
+                    let mut reservations = InjectedReservation::default();
+                    assert_eq!(
+                        LevelIndex::with_scratch_reservation(&codes, 14, budget, &mut reservations)
+                            .unwrap(),
+                        reference
+                    );
+                    assert_eq!(reservations.calls > 4, workers >= 4 && budget >= 1440);
+                }
+                let mut invalid = codes.clone();
+                invalid[17] = 16;
+                invalid[90_000] = u32::MAX;
+                assert_eq!(
+                    LevelIndex::from_codes_with_scratch(&invalid, 14, u128::MAX).unwrap_err(),
+                    LevelIndex::from_codes(&invalid, 14).unwrap_err()
+                );
+            })
+            .unwrap();
+        }
+        // Direct callers keep the serial path, even with an unlimited offer.
+        assert_eq!(
+            LevelIndex::from_codes_with_scratch(&codes, 14, u128::MAX).unwrap(),
+            reference
+        );
+    }
+
+    #[test]
+    fn parallel_membership_declines_excess_actual_capacity_and_high_cardinality() {
+        struct ExtraCapacity;
+        impl LevelIndexReservation for ExtraCapacity {
+            fn reserve_vec<T>(
+                &mut self,
+                target: &mut Vec<T>,
+                additional: usize,
+                _: &'static str,
+            ) -> Result<()> {
+                target
+                    .try_reserve_exact(additional + 1000)
+                    .map_err(|_| allocation("test reserve"))
+            }
+        }
+        let codes: Vec<_> = (0..100_001).map(|row| (row % 7) as u32).collect();
+        let team = crate::ThreadTeam::new(crate::ThreadConfig::from_requested(16, false).unwrap());
+        team.install(|| {
+            assert!(parallel_level_index(&codes, 7, 4, 768, &mut ExtraCapacity).is_none());
+            assert_eq!(
+                LevelIndex::with_scratch_reservation(&codes, 7, 768, &mut ExtraCapacity).unwrap(),
+                LevelIndex::from_codes(&codes, 7).unwrap()
+            );
+            let mut reservations = InjectedReservation::default();
+            LevelIndex::with_scratch_reservation(&codes, 50_001, u128::MAX, &mut reservations)
+                .unwrap();
+            assert_eq!(
+                reservations.calls, 4,
+                "histogram overhead declines before allocation"
+            );
+            // The row/level work cap admits four blocks at 3,125 levels,
+            // but only three at 3,126, which must decline before allocation.
+            for (levels, calls) in [(3125, 8), (3126, 4)] {
+                let mut reservations = InjectedReservation::default();
+                assert_eq!(
+                    LevelIndex::with_scratch_reservation(
+                        &codes,
+                        levels,
+                        u128::MAX,
+                        &mut reservations
+                    )
+                    .unwrap(),
+                    LevelIndex::from_codes(&codes, levels).unwrap()
+                );
+                assert_eq!(reservations.calls, calls);
+            }
+            for (codes, levels) in [(vec![], 0), (vec![], 3), (vec![0], 1), (vec![0], 0)] {
+                assert_eq!(
+                    LevelIndex::from_codes_with_scratch(&codes, levels, u128::MAX),
+                    LevelIndex::from_codes(&codes, levels)
+                );
+            }
+        })
+        .unwrap();
+    }
+
+    #[test]
     fn level_index_rejects_out_of_range_codes() {
         assert_eq!(
             LevelIndex::from_codes(&[0, 2], 2)
@@ -801,5 +1093,140 @@ mod ordered_index_tests {
             LevelIndex::try_from_ordered_codes(&[], usize::MAX).unwrap_err(),
             LevelIndex::from_codes(&[], usize::MAX).unwrap_err()
         );
+    }
+}
+
+#[cfg(test)]
+mod parallel_validation_tests {
+    use super::*;
+    use crate::{ThreadConfig, ThreadTeam};
+
+    #[test]
+    fn code_range_checks_match_integer_bounds_at_stage_edges() {
+        assert!(rayon::current_thread_index().is_none());
+        for workers in [1, 2, 16] {
+            let team = ThreadTeam::new(ThreadConfig::from_requested(workers, false).unwrap());
+            for rows in [0_usize, 1, 16_383, 16_384, 131_073] {
+                let mut codes: Vec<_> = (0..rows).map(|row| (row % 17) as u32).collect();
+                assert!(codes_in_range(&codes, 17));
+                assert!(team.install(|| codes_in_range(&codes, 17)).unwrap());
+                for row in [0, rows / 2, rows.saturating_sub(1)] {
+                    if rows == 0 {
+                        continue;
+                    }
+                    let original = codes[row];
+                    for invalid in [17, u32::MAX] {
+                        codes[row] = invalid;
+                        assert!(!codes_in_range(&codes, 17));
+                        assert!(!team.install(|| codes_in_range(&codes, 17)).unwrap());
+                    }
+                    codes[row] = original;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn parallel_membership_checks_preserve_error_order_and_coverage() {
+        let rows = 131_073;
+        let levels = 17;
+        let original: Vec<_> = (0..rows).map(|row| (row % levels) as u32).collect();
+        let index = LevelIndex::from_codes(&original, levels).unwrap();
+        for workers in [1, 2, 16] {
+            let team = ThreadTeam::new(ThreadConfig::from_requested(workers, false).unwrap());
+            for case in 0..10 {
+                let mut codes = original.clone();
+                let mut index = index.clone();
+                let expected = match case {
+                    0 => None,
+                    1 => {
+                        codes[rows - 1] = 17;
+                        index.observations[0] = rows;
+                        Some((
+                            ErrorCode::InvalidData,
+                            "borrowed fixed-effect code exceeds its declared level count",
+                        ))
+                    }
+                    2 => {
+                        index.offsets[1] = 0;
+                        index.observations[rows - 1] = rows;
+                        Some((
+                            ErrorCode::InvalidArgument,
+                            "borrowed fixed-effect membership contains an empty final level",
+                        ))
+                    }
+                    3 => {
+                        index.observations[0] = rows;
+                        index.offsets[levels] = index.offsets[levels - 1];
+                        Some((
+                            ErrorCode::InvalidArgument,
+                            "borrowed fixed-effect membership does not match its codes",
+                        ))
+                    }
+                    4 => {
+                        index.offsets[0] = 1;
+                        Some((
+                            ErrorCode::InvalidArgument,
+                            "borrowed fixed-effect membership does not cover its observation axis",
+                        ))
+                    }
+                    5 => {
+                        index.observations[rows - 1] = rows;
+                        Some((
+                            ErrorCode::InvalidArgument,
+                            "borrowed fixed-effect membership does not match its codes",
+                        ))
+                    }
+                    6 | 7 => {
+                        index.observations[0] = rows;
+                        index.offsets[levels] = if case == 6 {
+                            index.offsets[levels - 1] - 1
+                        } else {
+                            rows + 1
+                        };
+                        Some((
+                            ErrorCode::InvalidArgument,
+                            "borrowed fixed-effect membership does not match its codes",
+                        ))
+                    }
+                    _ => {
+                        if case == 8 {
+                            index.offsets[0] = index.offsets[1] + 1;
+                        } else {
+                            index.offsets[1] = rows + 1;
+                        }
+                        index.observations[rows - 1] = rows;
+                        Some((
+                            ErrorCode::Internal,
+                            "fixed-effect membership offsets are inconsistent",
+                        ))
+                    }
+                };
+                for _ in 0..2 {
+                    let actual = team
+                        .install(|| {
+                            ValidatedBorrowedInterceptSource::new(&codes, levels, &index)
+                                .map(|_| ())
+                        })
+                        .unwrap();
+                    match expected {
+                        None => assert_eq!(actual, Ok(())),
+                        Some((code, message)) => {
+                            assert_eq!(actual.unwrap_err(), FeregError::new(code, message))
+                        }
+                    }
+                }
+            }
+            for offsets in [vec![], vec![0]] {
+                let empty = LevelIndex {
+                    offsets,
+                    observations: vec![],
+                };
+                assert!(team
+                    .install(|| ValidatedBorrowedInterceptSource::new(&[], 0, &empty).map(|_| ()))
+                    .unwrap()
+                    .is_ok());
+            }
+        }
     }
 }

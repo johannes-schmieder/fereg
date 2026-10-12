@@ -23,8 +23,7 @@ use crate::data::{
 };
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::ols::prepared_categorical_data::{
-    prepare_ppml_categorical_ols_data, prepare_ppml_categorical_ols_data_with_load_hint,
-    PreparedOlsData,
+    prepare_ppml_categorical_ols_data_with_load_hint, PreparedOlsData,
 };
 use crate::ols::{
     prepare_ppml_categorical_ols_clustered_data, LoadedNumericColumn, LoadedOlsInput,
@@ -251,6 +250,7 @@ impl PreparedPpmlModelGeneration {
 /// and restores the baseline mask before returning either success or error.
 pub(crate) struct PreparedPpmlModelOwner {
     load_hint: Option<crate::ols::PreparedOlsLoadHint>,
+    membership_scratch: u128,
     generation_memory_bound: Option<u128>,
     request: OlsClusteredRequestV1,
     loaded: LoadedOlsInput,
@@ -271,6 +271,11 @@ pub(crate) struct PreparedPpmlModelOwner {
 impl PreparedPpmlModelOwner {
     pub(crate) fn with_load_hint(mut self, hint: Option<crate::ols::PreparedOlsLoadHint>) -> Self {
         self.load_hint = hint;
+        self
+    }
+
+    pub(crate) fn with_membership_scratch(mut self, bytes: u128) -> Self {
+        self.membership_scratch = bytes;
         self
     }
 
@@ -375,6 +380,7 @@ impl PreparedPpmlModelOwner {
         request.keep_singletons = true;
         Ok(Self {
             load_hint: None,
+            membership_scratch: 0,
             generation_memory_bound: None,
             request: OlsClusteredRequestV1 {
                 ols: request,
@@ -395,6 +401,7 @@ impl PreparedPpmlModelOwner {
     fn build_prepared_model(
         &self,
         hint: Option<crate::ols::PreparedOlsLoadHint>,
+        membership_scratch: u128,
     ) -> Result<PreparedPpmlModel> {
         // PPML always enters through the categorical preparation seam, even
         // with no absorbed effects.  The plain OLS view represents its
@@ -404,24 +411,19 @@ impl PreparedPpmlModelOwner {
         // categorical topology instead leaves `_cons` in the finite design,
         // while using the identical production view once effects are present.
         if self.request.clusters.is_empty() {
-            if hint.is_some() {
-                return Ok(Arc::new(prepare_ppml_categorical_ols_data_with_load_hint(
-                    &self.request.ols,
-                    &self.loaded,
-                    &[],
-                    hint,
-                )?));
-            }
-            Ok(Arc::new(prepare_ppml_categorical_ols_data(
+            Ok(Arc::new(prepare_ppml_categorical_ols_data_with_load_hint(
                 &self.request.ols,
                 &self.loaded,
                 &[],
+                hint,
+                membership_scratch,
             )?))
         } else {
             Ok(Arc::new(prepare_ppml_categorical_ols_clustered_data(
                 &self.request,
                 &self.loaded,
                 hint,
+                membership_scratch,
             )?))
         }
     }
@@ -615,6 +617,14 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
         // A failed first attempt consumes the optional work as well. No later
         // separation generation can inherit even an equal-shaped capsule.
         let load_hint = self.load_hint.take().filter(|_| generation == 0);
+        // Histogram scratch is admitted only for generation-zero preparation;
+        // replacement generations keep their existing memory envelope.
+        let membership_scratch = std::mem::take(&mut self.membership_scratch);
+        let membership_scratch = if generation == 0 {
+            membership_scratch
+        } else {
+            0
+        };
         validate_retained_subset(
             retained_original_rows,
             &self.candidate_original_rows,
@@ -633,7 +643,7 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
         // The shared OLS boundary includes sample materialization, source
         // factorization, membership, finalized topology and optional clusters.
         // Keep it an inclusive aggregate rather than relabeling its internals.
-        let prepared_result = self.build_prepared_model(load_hint);
+        let prepared_result = self.build_prepared_model(load_hint, membership_scratch);
         let shared_model_seconds = preparation_trace.lap();
         self.loaded.candidate = baseline_candidate;
         self.restore_generation_probability_weights(probability_stage);
@@ -1094,7 +1104,7 @@ mod tests {
     }
 
     #[test]
-    fn load_hint_is_consumed_once_and_preserves_pweight_rollback() {
+    fn preparation_options_are_consumed_once_and_preserve_pweight_rollback() {
         for first_generation in [0, 1] {
             let mut fixture = categorical_clustered_fixture();
             fixture.loaded.candidate.fill(true);
@@ -1114,7 +1124,10 @@ mod tests {
             )
             .unwrap();
             let numeric = fixture.prepare_numeric();
-            let mut owner = fixture.into_owner(numeric).with_load_hint(Some(hint));
+            let mut owner = fixture
+                .into_owner(numeric)
+                .with_load_hint(Some(hint))
+                .with_membership_scratch(4096);
             let baseline_candidate = owner.loaded.candidate.clone();
             let baseline_weights = owner.loaded.probability_weight.clone();
             let rows = owner.candidate_original_rows.to_vec();
@@ -1127,6 +1140,7 @@ mod tests {
                 ErrorCode::Allocation
             );
             assert!(owner.load_hint.is_none());
+            assert_eq!(owner.membership_scratch, 0);
             assert_eq!(owner.loaded.candidate, baseline_candidate);
             assert_eq!(owner.loaded.probability_weight, baseline_weights);
             owner.generation_memory_bound = None;
