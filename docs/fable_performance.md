@@ -1020,7 +1020,8 @@ arithmetic-preserving; step c is the approved ulp-scope change.
    `ObservationFrame::gather` in a diagnostic build. Count `Solver`
    constructions per fit (`BorrowedLsmrPrepared` already counts `builds` and
    `batches`). Controls: 1M fixed64 as-is and sorted, and 4M three-dense.
-   A gap under 20% at 16M refutes the hypothesis: record it and skip to H2.
+   A gap under 20% at 16M refutes the hypothesis: record it and proceed to H3
+   (Johannes's revised handover order).
 2. a. Parallelize `permute_obs_in`, `permute_obs_out` and the frame gather
    with chunked parallel iterators. Pure data movement, no reduction.
 3. b. Parallelize the other serial per-RHS passes listed above that carry no
@@ -1056,6 +1057,41 @@ arithmetic-preserving; step c is the approved ulp-scope change.
 integrate through a pinned revision bump in `crates/fereg-core/Cargo.toml`.
 Measure on the 16M input at 4 and 28 workers, the 1M fixed64 and AKM controls,
 and the twenty frozen standard workloads at the workstream boundary.
+
+H1 confirmation declaration (2026-10-12, source `c8851b5c`): ten diagnostic
+fits, without fit warm-ups or repetitions: as-is/sorted 1M and 16M fixed64
+at 4/28 workers, followed by the frozen 4M three-dense control at 4/28 workers.
+The 16M input hash is
+`0cfe985f04173707bd0c04f906dc77296703cfff797072d7903a82004595750d`;
+the fixed64 seed is 98317561. Stable sorting uses `g3` then original `obs_id`,
+outside the command clock; the third term wins the 64-coefficient tie.
+Sorting permutes the sample's order: coefficient/VCE agreement must meet
+SPEC section 20, and sample, rank, omissions, DoF, singleton accounting and
+discrete solver decisions must remain identical. Both arms use the same
+affinity mask. Trace-only clocks and construction counters live in an isolated
+diagnostic copy of pinned within `297f32d9`; no production change is made.
+Each process is capped at 120 seconds, the panel at 2,400 seconds and the
+confirmation at half a day/twelve fits. The two unallocated fits do not
+authorize repeated sampling. Compare `(as-is projection - sorted projection)
+/ as-is projection` separately at both worker counts; mixed results are
+reported before implementation. Build/loader checks are separate from these
+ten frozen-input fits. Raw evidence stays on SCC; the compact result will be
+`bench/results/h-20261013-h1.json`.
+
+H1 decision (2026-10-12): stop after confirmation and proceed to H3. All ten
+fits complete and their scientific comparisons pass, but sorting increases
+16M projection time by 5.51%/1.47% at 4/28 workers; both reductions are below
+the required 20%. The 1M reductions are 9.18%/12.27%. Two Solver constructions
+and two batches occur per fit, with no retained prepared-session trace.
+No phase-2 step, within change or pin bump is implemented, and the two unused
+fits are not spent. See [results](VALIDATION.md#h1-locality-sort-confirmation-hypothesis-refuted-2026-10-12)
+and [compact evidence](../bench/results/h-20261013-h1.json). The original
+cost explanation above is the tested hypothesis, not an established cause.
+Source review also finds that `Solver::new` already accepts an owned prebuilt
+`Design`, explicit categorical OLS already uses a retained session, and PPML
+refreshes Schwarz only at its existing refresh points rather than every
+weight change. Those facts would constrain any later H1 proposal; they do
+not authorize one after this stopping rule.
 
 ### H2. Dense three-FE route prototype (approved 2026-10-12)
 

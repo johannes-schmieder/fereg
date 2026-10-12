@@ -14,6 +14,60 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H1 locality-sort confirmation: hypothesis refuted, 2026-10-12
+
+The ten-fit diagnostic panel on `scc-zj4` rejects H1 under its predeclared
+20% projection-time gate. Sorting rows is a sample-order permutation:
+coefficients and covariance agree within the unchanged SPEC tolerances;
+sample, rank, omission, DoF, singleton accounting, published solver decisions
+and indexed per-RHS convergence/iteration decisions are identical. All five
+cross-worker comparisons also pass. No H1 production change or within pin
+bump was made; the next item is H3.
+
+| Input | Workers | As-is projection s | Sorted projection s | Reduction |
+| --- | ---: | ---: | ---: | ---: |
+| Fixed64, 1M | 4 | 0.343621 | 0.312060 | 9.2% |
+| Fixed64, 1M | 28 | 0.205888 | 0.180632 | 12.3% |
+| Fixed64, 16M | 4 | 11.789560 | 12.438800 | −5.5% |
+| Fixed64, 16M | 28 | 4.735098 | 4.804807 | −1.5% |
+
+The selected dominant term is `g3`, with 64 coefficients, unsorted in the
+original input and sorted in the paired arm. The 16M main-projection
+`time_setup/time_solve` values are 0.844177/9.388235 seconds as-is versus
+0.516879/10.470788 sorted at four workers, and 0.644289/3.065378 versus
+0.377849/3.425807 at 28 workers. Across each complete as-is 16M fit, frame
+gathers sum to 0.161995/0.162676 seconds, incoming permutations to
+0.336065/0.330757, and outgoing permutations to 0.374020/0.394567 at 4/28
+workers. These are summed call clocks with concurrent RHS work; they are not
+additive elapsed-time components. Sorted arms remove frame gathers and reduce
+the permutation calls to no-ops, yet do not improve the measured projection.
+
+Every fit constructs two Solvers and runs two batches: the main projection
+and final residual projection. The fixed64 main batch has six RHSs; the dense
+control has eighteen. No retained `BorrowedLsmrPrepared` session is used by
+these automatic fits. The 4M three-dense controls take 4.781414/1.897625
+seconds in projection at 4/28 workers. The largest coefficient difference
+under row sorting is 7.63e-14; covariance differences are at most 1.86e-20.
+
+Panel `8034071` completed all ten fits in 91.63 seconds; scheduler accounting
+is failed=0/exit=0, 97 seconds, 8.653G maxvmem. Two allowed fits remain unused;
+there was no measurement retry. The diagnostic plugin (`3802d41b…`) builds
+source `c8851b5c` with trace-only changes to within `297f32d9`. Its Linux binary
+audit, actual-plugin ABI/load tests and numeric guards pass. Initial setup
+`8034036` exited 101 because the offline cache lacked the within test dependency
+`proptest`; after fetching pinned test dependencies, `8034061` passed two
+observation and eight design tests (failed=0/exit=0). Four interleaved trace
+writes retain complete phase-tagged payloads; the decoder recovers both events
+and checks every expected call count. Indexed fereg traces establish RHS
+decisions independently of completion order. No observation was dropped.
+
+The [compact record](../bench/results/h-20261013-h1.json) retains the plan,
+hashes, clocks, comparisons, environment and failed setup. Raw captures and
+diagnostic sources remain in its SCC run directory. These single diagnostic
+fits establish the stopping-rule outcome, not a confidence-bounded speed claim
+or Mac qualification. Production tokens and artifact inputs remain unchanged;
+this documentation/result commit reuses current runtime validation.
+
 <a id="c2-qualification-follow-up-stopped-without-adoption-2026-10-12"></a>
 
 ## C2 adoption with unresolved timing, 2026-10-12

@@ -236,6 +236,22 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+Workstream H1's bounded follow-up on 2026-10-12 refutes the proposed
+locality-sort explanation under its predeclared 20% gate. On the same frozen
+16M fixed64 input, pre-sorting by the selected dominant factor `g3` changes
+projection from 11.790 to 12.439 seconds at four workers and from 4.735 to
+4.805 at 28 workers. The 1M controls improve only 9.2%/12.3%. Sorting permutes
+sample order: coefficients/covariance pass SPEC tolerances and every captured
+discrete model and indexed solver decision is identical, including across
+workers. Two Solvers are constructed per fit. Frame gathers and permutations
+are measurable, but eliminating them in the sorted arms does not produce the
+predicted projection gain. H1 stops without a runtime or dependency change;
+H3 follows. All ten fits completed on `scc-zj4` (job `8034071`, failed=0/exit=0).
+See [validation](VALIDATION.md#h1-locality-sort-confirmation-hypothesis-refuted-2026-10-12)
+and the [compact record](../bench/results/h-20261013-h1.json). These are single
+diagnostic fits on the current runtime with trace-only instrumentation; they
+do not revise the historical fixest ratios below or establish a release claim.
+
 The same qualified plugin was tested on 32 new fits: four and 28 workers,
 one and sixteen million rows, four and 64 finite regressors, fixed-cardinality
 three-FE designs, highly skewed group sizes and a weak worker-firm network.
