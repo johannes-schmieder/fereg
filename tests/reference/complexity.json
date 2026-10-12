@@ -2,52 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 94851,
-      "before": 94620,
-      "metric": "fereg-core/production_lines",
-      "reason": "C2 arithmetic-preserving preparation: parallel integer-only code and membership validation; bounded stable histogram membership with fallible serial fallback; explicit optional Fast scratch admission and generation-zero lifetime. Row order, arithmetic, errors and required memory-route boundaries are preserved."
-    },
-    {
-      "after": 1243,
-      "before": 1238,
+      "after": 1246,
+      "before": 1243,
       "metric": "fereg-core/dispatch_candidates",
-      "reason": "Generic installed-worker and row/level-work limits select optional stable membership; original required memory-route decisions precede optional scratch admission. No benchmark or estimator-specific routing."
+      "reason": "H3 arithmetic-preserving Schur assembly: disjoint component-major row ownership repeats neighbour totals but retains each cell summation order. Optional scratch borrows only spare capacity in the existing admitted phase peak; the production serial fallback preserves all solver, geometry, memory-route and acceptance decisions."
     },
     {
-      "after": 15001,
-      "before": 14963,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Admit transient membership scratch only after the existing OLS moment-cache decision, using remaining Fast preparation headroom; pass the admitted ceiling to owned preparation."
-    },
-    {
-      "after": 136,
-      "before": 135,
-      "metric": "fereg-plugin/dispatch_candidates",
-      "reason": "Optional OLS membership scratch is restricted to installed multiworker Fast preparation with unweighted absorbed effects; original Fast/Auto/Low selection is unchanged."
-    },
-    {
-      "after": 3342,
-      "before": 3298,
-      "metric": "file/crates/fereg-core/src/ppml/memory.rs",
-      "reason": "Track optional preparation scratch separately from the original required peak, preserving later solver/detector/reusable-buffer admission after generation-zero scratch is released."
-    },
-    {
-      "after": 1623,
-      "before": 1618,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_estimator.rs",
-      "reason": "Pass the selected Fast preparation scratch ceiling into the existing single generation owner."
-    },
-    {
-      "after": 476,
-      "before": 471,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_estimator.rs/fit_prepared_ppml_interruptible#1",
-      "reason": "The existing PPML owner construction receives the preflight-selected scratch allowance; no extra estimator route or scientific decision."
-    },
-    {
-      "after": 3207,
-      "before": 3190,
-      "metric": "file/crates/fereg-plugin/src/estimate.rs",
-      "reason": "Charge optional membership scratch after existing moment admission, with metadata and overlapping owners included; preserve subsequent prepared-owner reconciliation."
+      "after": 95071,
+      "before": 94851,
+      "metric": "fereg-core/production_lines",
+      "reason": "H3 arithmetic-preserving Schur assembly: disjoint component-major row ownership repeats neighbour totals but retains each cell summation order. Optional scratch borrows only spare capacity in the existing admitted phase peak; the production serial fallback preserves all solver, geometry, memory-route and acceptance decisions."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -6320,200 +6284,236 @@
         "dispatch_candidates": [
           {
             "condition": "n == 0 || p == 0 || q == 0 || width < 2 || threads == 0",
-            "line": 135
+            "line": 141
           },
           {
             "condition": "storage . rows ( ) != self . design . nobs ( ) || storage . columns ( ) + 1 != self . columns . len ( )",
-            "line": 447
+            "line": 453
           },
           {
             "condition": "storage . nrows ( ) != self . design . nobs ( ) || storage . ncols ( ) != columns",
-            "line": 489
-          },
-          {
-            "condition": "columns == 0",
             "line": 495
           },
           {
+            "condition": "columns == 0",
+            "line": 501
+          },
+          {
             "condition": "design . effects ( ) . len ( ) == 3 && design . nobs ( ) == response . len ( )",
-            "line": 595
+            "line": 601
           },
           {
             "condition": "design . effects ( ) . len ( ) != 2 || design . nobs ( ) != response . len ( )",
-            "line": 608
+            "line": 614
           },
           {
             "condition": "build ( prepared , generated , response , weights , divisor , config , design , left , plan , allowance , obsolete_projection , )",
-            "line": 629
+            "line": 635
           },
           {
             "condition": "error . code == ErrorCode :: NonConvergence => Ok ( None ) , Err ( error ) => Err ( error ) , } } # [ allow ( clippy :: too_many_arguments ) ] fn build < 'a , P : PreparedOlsFitView + Sync + ? Sized > ( prepared : & 'a P , generated : & [ usize ] , response : & 'a [ f64 ] , weights : BorrowedMapWeights < '_ > , divisor : f64 , config : MapConfig , design : BorrowedInterceptFeDesign < 'a > , left_effect : usize , plan : Plan , allowance : u128 , obsolete_projection : & mut Vec < f64 > , ) -> Result < Products < 'a , P > >",
-            "line": 643
+            "line": 649
           },
           {
             "condition": "columns . capacity ( ) as u128 * size_of :: < Column < '_ , P > > ( ) as u128 > width as u128 * 32",
-            "line": 679
+            "line": 685
           },
           {
             "condition": "values . len ( ) != n",
-            "line": 695
+            "line": 701
           },
           {
             "condition": "codes . len ( ) != n",
-            "line": 710
+            "line": 716
           },
           {
             "condition": "bytes > allowance . saturating_sub ( obsolete_projection . capacity ( ) as u128 * 8 )",
-            "line": 843
+            "line": 849
           },
           {
             "condition": "let BorrowedMapWeights :: Provided ( values ) = weights",
-            "line": 858
-          },
-          {
-            "condition": "values . len ( ) != n",
-            "line": 859
-          },
-          {
-            "condition": "weights",
             "line": 864
           },
           {
+            "condition": "values . len ( ) != n",
+            "line": 865
+          },
+          {
+            "condition": "weights",
+            "line": 870
+          },
+          {
+            "condition": "implicit || ! assembly :: try_parallel ( geometry , & mut matrix , & mut totals , & mut touched , workers , & mut budget , ) ?",
+            "line": 899
+          },
+          {
             "condition": "! factor [ n + free [ h ] ] . is_finite ( )",
-            "line": 1007
+            "line": 982
           },
           {
             "condition": "& columns [ j ]",
-            "line": 1136
+            "line": 1111
           },
           {
             "condition": "matrix . len ( ) != n * n",
-            "line": 1612
+            "line": 1587
           },
           {
             "condition": "scratch . len ( ) < 3 * n",
-            "line": 1667
+            "line": 1642
           }
         ],
         "functions": {
           "allocation#1": {
-            "line": 37,
+            "line": 38,
             "lines": 6
           },
           "apply_incidence_schur#1": {
-            "line": 1637,
+            "line": 1612,
             "lines": 21
           },
           "build#1": {
-            "line": 649,
-            "lines": 897
+            "line": 655,
+            "lines": 866
           },
           "clone#1": {
-            "line": 305,
+            "line": 311,
             "lines": 8
           },
           "declined#1": {
-            "line": 31,
+            "line": 32,
             "lines": 6
           },
           "group_coefficient#1": {
-            "line": 1550,
+            "line": 1525,
             "lines": 26
           },
           "group_effect_mean#1": {
-            "line": 1722,
+            "line": 1697,
             "lines": 13
           },
           "merge#1": {
-            "line": 1736,
+            "line": 1711,
             "lines": 11
           },
           "minimum_storage_bytes#1": {
-            "line": 191,
+            "line": 197,
             "lines": 6
           },
           "new#1": {
-            "line": 51,
+            "line": 52,
             "lines": 8
           },
           "new#2": {
-            "line": 125,
+            "line": 131,
             "lines": 49
           },
           "nonzero#1": {
-            "line": 555,
+            "line": 561,
             "lines": 7
           },
           "output_tile_rows#1": {
-            "line": 185,
+            "line": 191,
             "lines": 5
           },
           "prepare#1": {
-            "line": 345,
+            "line": 351,
             "lines": 42
           },
           "reduced_matrix_product#1": {
-            "line": 1579,
+            "line": 1554,
             "lines": 24
           },
           "release#1": {
-            "line": 62,
+            "line": 63,
             "lines": 10
           },
           "reserve#1": {
-            "line": 82,
-            "lines": 20
+            "line": 103,
+            "lines": 5
+          },
+          "reserve_empty#1": {
+            "line": 83,
+            "lines": 19
           },
           "residual#1": {
-            "line": 412,
+            "line": 418,
             "lines": 33
           },
           "root#1": {
-            "line": 562,
+            "line": 568,
             "lines": 7
           },
           "set_limit#1": {
-            "line": 75,
+            "line": 76,
             "lines": 6
           },
           "solve_reduced_cg#1": {
-            "line": 1604,
+            "line": 1579,
             "lines": 23
           },
           "solve_reduced_cg_with_product#1": {
-            "line": 1659,
+            "line": 1634,
             "lines": 62
           },
           "storage_bytes#1": {
-            "line": 198,
+            "line": 204,
             "lines": 3
           },
           "storage_bytes_for#1": {
-            "line": 202,
+            "line": 208,
             "lines": 90
           },
           "topology_storage_bytes#1": {
-            "line": 175,
+            "line": 181,
             "lines": 9
           },
           "try_build#1": {
-            "line": 571,
+            "line": 577,
             "lines": 76
           },
           "value#1": {
-            "line": 316,
+            "line": 322,
             "lines": 8
           },
           "write_controls#1": {
-            "line": 446,
+            "line": 452,
             "lines": 40
           },
           "write_dense#1": {
-            "line": 487,
+            "line": 493,
             "lines": 66
           }
         },
-        "production_lines": 1618
+        "production_lines": 1596
+      },
+      "crates/fereg-core/src/ols/canonical_products/assembly.rs": {
+        "chunk_candidates": [],
+        "dispatch_candidates": [
+          {
+            "condition": "budget . reserve ( extra , 0_usize )",
+            "line": 124
+          },
+          {
+            "condition": "budget . reserve_empty :: < Lane < '_ > > ( count )",
+            "line": 131
+          }
+        ],
+        "functions": {
+          "fill_lane#1": {
+            "line": 200,
+            "lines": 59
+          },
+          "serial#1": {
+            "line": 19,
+            "lines": 70
+          },
+          "try_parallel#1": {
+            "line": 101,
+            "lines": 98
+          }
+        },
+        "production_lines": 242
       },
       "crates/fereg-core/src/ols/canonical_products/three.rs": {
         "chunk_candidates": [],
@@ -20693,10 +20693,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 12,
-        "dispatch_candidates": 1243,
+        "dispatch_candidates": 1246,
         "files_over_1500": 15,
         "functions_over_150": 61,
-        "production_lines": 94851
+        "production_lines": 95071
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -20708,5 +20708,5 @@
     },
     "schema": 1
   },
-  "reason": "C2 bounded stable membership and parallel integer validation; exact scientific scope, optional Fast-only scratch, unchanged required route/admission."
+  "reason": "H3 ordered parallel neighbour-pair assembly; original serial assembly remains the one-worker and scratch-limited production fallback."
 }

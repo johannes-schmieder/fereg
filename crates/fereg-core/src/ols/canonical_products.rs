@@ -18,6 +18,7 @@ use std::mem::size_of;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
+mod assembly;
 mod three;
 pub(crate) fn canonical_three_workspace_bytes(
     n: usize,
@@ -79,7 +80,7 @@ impl Budget {
         Ok(())
     }
 
-    fn reserve<T: Clone>(&mut self, n: usize, value: T) -> Result<Vec<T>> {
+    fn reserve_empty<T>(&mut self, n: usize) -> Result<Vec<T>> {
         let mut result = Vec::new();
         let bytes = (n as u128)
             .checked_mul(size_of::<T>() as u128)
@@ -96,6 +97,11 @@ impl Budget {
         {
             self.peak = self.peak.max(self.limit - self.remaining);
         }
+        Ok(result)
+    }
+
+    fn reserve<T: Clone>(&mut self, n: usize, value: T) -> Result<Vec<T>> {
+        let mut result = self.reserve_empty(n)?;
         result.resize(n, value);
         Ok(result)
     }
@@ -881,57 +887,26 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     let mut matrix = budget.reserve(matrix_cells, 0.)?;
     let mut totals = budget.reserve(q, 0.)?;
     let mut touched = budget.reserve(q, 0_usize)?;
-    // Keep the legacy matrix indices and numerical traversal order explicit.
-    #[allow(clippy::needless_range_loop)]
-    for g in 0..p {
-        let mut count = 0;
-        for &i in a.level_index().members(g) {
-            let h = b.codes()[i] as usize;
-            if totals[h] == 0. {
-                touched[count] = h;
-                count += 1;
-            }
-            totals[h] += w[i];
-        }
-        touched[..count].sort_unstable();
-        if count == 0 {
-            return Err(declined());
-        }
-        if implicit {
-            // Prefix/suffix sums form each Schur diagonal without subtracting
-            // nearly equal group masses. The diagonal is a preconditioner;
-            // acceptance still uses independently reconstructed original rows.
-            let mut prefix = 0.;
-            for &h in &touched[..count] {
-                matrix[h] += (totals[h] / mass_a[g]) * prefix;
-                prefix += totals[h];
-            }
-            let mut suffix = 0.;
-            for &h in touched[..count].iter().rev() {
-                matrix[h] += (totals[h] / mass_a[g]) * suffix;
-                suffix += totals[h];
-            }
-        } else {
-            for (position, &h) in touched[..count].iter().enumerate() {
-                let block = components[parent[h]];
-                let size = block.len + 1;
-                let row = local[h];
-                for &j in &touched[position + 1..count] {
-                    let value = (totals[h].max(totals[j]) / mass_a[g]) * totals[h].min(totals[j]);
-                    if !value.is_finite() || value <= 0. {
-                        return Err(declined());
-                    }
-                    let column = local[j];
-                    matrix[block.matrix_offset + row * size + column] -= value;
-                    matrix[block.matrix_offset + column * size + row] -= value;
-                    matrix[block.matrix_offset + row * size + row] += value;
-                    matrix[block.matrix_offset + column * size + column] += value;
-                }
-            }
-        }
-        for &h in &touched[..count] {
-            totals[h] = 0.;
-        }
+    let geometry = assembly::Geometry {
+        members: a.level_index(),
+        codes: b.codes(),
+        w: &w,
+        mass_a: &mass_a,
+        parent: &parent,
+        local: &local,
+        components: &components,
+    };
+    if implicit
+        || !assembly::try_parallel(
+            geometry,
+            &mut matrix,
+            &mut totals,
+            &mut touched,
+            workers,
+            &mut budget,
+        )?
+    {
+        assembly::serial(geometry, &mut matrix, &mut totals, &mut touched, implicit)?;
     }
     for h in 0..q {
         let r = parent[h];

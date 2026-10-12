@@ -14,6 +14,70 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H3 ordered parallel assembly, 2026-10-12
+
+The canonical two-FE Schur builder now partitions packed matrix rows across
+workers while preserving every cell's summation order. Each pair is evaluated
+twice; each lane repeats the neighbour totals and sorting. Optional scratch
+uses spare bytes inside the existing admitted phase peak and is released
+before factorization. One worker or unavailable scratch uses the original
+serial assembly. Solver selection, certificates, tolerances, sample, rank,
+omission, separation and published stop decisions are unchanged.
+
+Before timing, the retained A3 geometries passed raw bitwise matrix comparisons
+at 1/2/4/16 workers, including restricted scratch, interleaved disconnected
+components, singleton blocks and extreme weight scales. Both frozen dense
+PPML inputs then passed all four current-weight matrix comparisons at sixteen
+workers. Their dataset hashes equal the retained A3 hashes. The 24-fit panel
+used two alternating pairs per cell, the same affinity mask for both arms,
+120 seconds per process and a 2,400-second total cap, without retries.
+
+| Rows | Workers | Baseline native s | Candidate native s | Paired reduction |
+| --- | ---: | ---: | ---: | ---: |
+| 1M | 1 | 9.176909 | 9.185863 | −0.10% |
+| 1M | 4 | 5.303372 | 4.900105 | 7.62% |
+| 1M | 16 | 3.991165 | 3.075145 | 22.95% |
+| 4M | 1 | 40.915626 | 40.580177 | 0.82% |
+| 4M | 4 | 24.615295 | 19.401213 | 21.18% |
+| 4M | 16 | 19.540483 | 11.635927 | 40.45% |
+
+Times are arithmetic means; reductions use geometric means of paired ratios.
+All twelve pairs have exact captured coefficients, covariance, sample hashes,
+scientific metadata and timing-stripped solver traces. Repeated scans do not
+outweigh the observed gain at four workers on these inputs. The one-worker
+changes are below the workstream allowance and are observations, not gains.
+Maximum sampled process-tree RSS is 4,712.77/4,715.99 MiB for baseline/candidate.
+The older A3 current/implicit native times at sixteen workers were
+3.8060/2.7205 seconds at 1M and 18.4272/10.8961 at 4M; at one worker they were
+9.3315/8.3492 and 39.0529/31.6992. Different hosts, sources and native harnesses
+prevent pooling those observations with this Stata-side panel. A3 cost-model
+calibration remains stopped; no implicit-route change was made.
+
+Mac checks pass: `run_tests.sh` (1,678 Rust test executions and the Python,
+oracle, allocation, ABI and tooling checks), universal build/load audits,
+73 exact baseline replay cases, 292 additional thread/repeat checks and all
+17 mapped licensed PPML scientific/transaction fixtures. Linux builds and
+native audits pass; its 21 canonical-product tests pass. Independent Astra
+review found no production correctness blocker. The complexity ratchet records
+220 additional production lines and three resource-related dispatch candidates.
+`--compare-production ac8aa81f` identifies the two changed runtime modules;
+this is arithmetic-preserving work, not an unchanged artifact.
+
+Build job `8034161` passed (520 seconds, 3.875G maxvmem); panel `8034163` passed
+on `scc-zj4` (574 seconds, 6.631G), both failed=0/exit=0. The timed panel took
+531.72 seconds. The first Mac full-suite invocation stopped on a new test's
+Clippy iterator lint; the corrected full suite passed. The first analysis
+mistakenly included clocks among scientific fields; removing only `time_*`
+and trace `seconds` clocks gives the exact comparisons above. Both attempts
+remain retained, as does the first compact-record size check. No fit was rerun.
+
+The [compact record](../bench/results/h-20261013-h3.json) binds source, plugins,
+inputs, observations and validation captures. Raw material remains under
+`/projectnb/welfgr/fereg/runs/h-20261013-h3/`. These two-pair, trace-enabled SCC
+observations are not a release performance claim. Quiet nonregression timing
+on the twenty frozen Mac workloads remains due once at the H workstream
+boundary; no new Windows qualification is claimed.
+
 ## H1 locality-sort confirmation: hypothesis refuted, 2026-10-12
 
 The ten-fit diagnostic panel on `scc-zj4` rejects H1 under its predeclared

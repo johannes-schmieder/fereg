@@ -236,6 +236,22 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+Workstream H3's preserving row-owned assembly reduces dense two-FE PPML
+native time from 24.615 to 19.401 seconds at 4M/four workers and from 19.540
+to 11.636 at 4M/sixteen workers. At 1M the corresponding changes are
+5.303 to 4.900 and 3.991 to 3.075 seconds. Two alternating pairs per cell
+give reductions of 21.2%/40.5% at 4M and 7.6%/23.0% at 1M. One-worker changes
+are −0.1%/0.8%, below the allowance; repeated neighbour scans and two pair
+evaluations are retained costs. All twelve A/B comparisons have exact captured
+science and unchanged solver signatures. Raw matrix equality on A3 kernel
+geometries and the hash-identical 1M/4M inputs preceded timing. The older A3
+current/implicit sixteen-worker observations were 3.806/2.721 seconds at 1M
+and 18.427/10.896 at 4M. Those use a different host/source/harness and are not
+pooled with this panel; implicit routing and its cost-model calibration remain
+unchanged. The [validation record](VALIDATION.md#h3-ordered-parallel-assembly-2026-10-12)
+and [compact evidence](../bench/results/h-20261013-h3.json) retain all costs,
+checks and attempts. Standard Mac timing is still due at the H boundary.
+
 Workstream H1's bounded follow-up on 2026-10-12 refutes the proposed
 locality-sort explanation under its predeclared 20% gate. On the same frozen
 16M fixed64 input, pre-sorting by the selected dominant factor `g3` changes

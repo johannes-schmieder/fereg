@@ -1139,6 +1139,53 @@ dense two-FE PPML 4M at sixteen workers from 18.4 s toward the forced-implicit
 10.9 s, and about 1 s at 1M. The stopped A3 cost-model calibration stays
 stopped; this item needs no selector.
 
+H3 implementation declaration (2026-10-12, baseline `ac8aa81f`): preserve
+every scientific bit and solver signature. Own contiguous component-major
+matrix rows per lane; visit eliminated groups and accumulated neighbour lists
+in the original order. An owned diagonal receives earlier endpoints in order,
+then later endpoints in order; its upper off-diagonal cells receive the same
+ordered subtractions. Mirror upper to lower only after assembly. Each pair is
+evaluated twice. The current serial code actually updates both triangles
+directly; the mirror is justified by those identical ordered contributions.
+Extra per-lane totals, touched lists and descriptors use only spare bytes in
+the existing admitted phase peak. Insufficient scratch or a failed optional
+allocation retains serial assembly, with unchanged dense/implicit selection,
+center retention, output mode and estimator acceptance. One worker keeps the
+original serial loop. Duplicate scans include floating additions and sorting,
+so their cost is measured rather than described as integer-only work.
+
+Before timing, require bitwise matrix equality against the retained serial
+assembly on the retained A3 kernel geometries and frozen dense 1M/4M inputs,
+plus the existing weighted-contrast, disconnected, cancellation and full-fit
+oracles. Exact plugin replay and `./scripts/run_tests.sh` remain required.
+The diagnostic timing allocation is two alternating pairs for each dense
+two-FE PPML 1M/4M cell at 1/4/16 workers: 24 fits, 120 seconds per fit,
+2,400 seconds total, no measurement retry. Compare with the retained A3
+current/implicit observations without pooling hosts. Stop within one working
+day or ten substantive unsuccessful repairs. No A3 calibration, private
+accumulator reduction, tolerance or model-semantic change is authorized by
+this declaration. Final Mac wall-time qualification follows the stable
+Workstream H candidate, not this diagnostic panel.
+
+H3 decision (2026-10-12): retain the preserving row-owner implementation.
+Raw matrix equality passes on the retained A3 geometries and all four matrices
+from the frozen dense 1M/4M inputs before the 24-fit panel. Each pair is
+evaluated twice; neighbour totals and sorting repeat per lane. The optional
+scratch stays within spare capacity of the already admitted phase peak;
+serial assembly remains the one-worker and allocation-limited fallback.
+Every captured scientific value and timing-stripped solver signature is exact
+in all twelve A/B pairs. Native paired reductions at four/sixteen workers are
+7.62%/22.95% at 1M and 21.18%/40.45% at 4M. One-worker changes are −0.10%/0.82%,
+below the allowance. The two arms' sampled process-tree RSS maxima differ by 3.22 MiB. No private accumulators, arithmetic change,
+new geometry route, tolerance change or acceptance gate was introduced.
+The full Mac runtime suite, exact and threaded plugin replay, 17 licensed
+PPML fixtures, Linux native checks and independent review pass. The initial
+test lint and clock-classification mistake remain recorded; no fit was retried.
+See [validation](VALIDATION.md#h3-ordered-parallel-assembly-2026-10-12) and
+[compact results](../bench/results/h-20261013-h3.json). A3 calibration stays
+stopped. Quiet Mac nonregression remains due once at the complete H boundary.
+Proceed to H8 with the approved certificate-only acceptance rule.
+
 ### H4. C1 overlap oversubscription (Stata-side A/B)
 
 On one SCC node with the frozen 1M AKM OLS input, alternate overlap on and off
