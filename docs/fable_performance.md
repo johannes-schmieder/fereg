@@ -1685,6 +1685,115 @@ No timing gain is claimed. See
 [validation](VALIDATION.md#h6-uniform-candidate-markers-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-candidate-mask.json).
 
+Item 7 execution declaration (parent `2d5dc7dc`): fuse the LSMR residual
+certificate's weighted data read with the caller's Fast OLS within-norm
+recurrence. Keep two distinct states: the existing 512-row FE leaves merged
+in their original order, and the uninterrupted row-order dense OLS scaled
+sum. Neither consumer changes arithmetic. Use bounded stack column blocks
+and the installed-team scheduling policy, without row-count or case fences.
+Eligibility comes from the initial prepared OLS frame and matching normalized
+weight scale; Low, PPML, raw frames, final residuals and continuations keep
+their existing paths. Existing MAP norm handoff is unchanged.
+
+Within the fresh LSMR certificate workspace, temporarily place dense norms in
+`rhs_scales`. At the original scale check, retain the original RHS order and
+`max(reference, residual)` expression, move each dense norm to the now-dead
+`reference_norms` slot, and run the unchanged group certificate using the
+original scales. Only after all original coefficient allocations and actual
+capacity admissions may a passing result transfer this already-accounted bank.
+No new heap bank or early mandatory admission is introduced; dense-only invalidity
+disables the optional cache and preserves the caller's original error path.
+Failed certificates discard it before the unchanged continuation. The requested
+certificate, solver signatures, sample, rank, omission and separation stay exact.
+
+Witnesses compare both states with independent retained recurrences at leaf
+boundaries (511/512/513 rows), extreme/subnormal/zero values and nonuniform
+weights, check invalid-input error precedence, both automatic and retained
+LSMR with/without coefficients, certificate failure, and exact/short/overcapacity
+memory admission. Full runtime, 73-case exact replay and mapped licensed checks
+remain required. Before whole-H timing, one bounded diagnostic kernel panel
+compares the original separate passes against the fused pass at 1M rows,
+widths 1/6/17/65, workers 1/4/8 and unit/nonuniform positive weights. Matrix
+cell i is `((i % 173) - 86) / 91`; nonuniform weights repeat
+`[0.25, 0.5, 1, 7]` and normalize by 7. Original certificate scratch uses
+`categorical_parallel_counts` at maximum FE level count 64 (the fixed64
+family), including zero scratch at one worker. Use one warm-up pair and three
+alternating measured pairs per cell, 300 seconds total, no retry.
+Run this panel without competing work on its host and retain all cells, including
+costs. This is targeted profiling, not a release performance claim. Whole-H
+nonregression remains the single standard Mac panel after production edits.
+The Mac host remained busy before any timing began, so this diagnostic uses
+one isolated 28-core SCC node, with its eight-CPU mask and memory on one
+socket for both implementations. Reserve four slots/4 GB per core/25 minutes
+for build and a one-test smoke, then 28 slots/3 GB per core/10 minutes for the
+single 300-second panel; no host pin or numerical retry. Record source and
+binary hashes, placement, THP, logs and successful accounting for both jobs.
+This host choice does not satisfy the final Mac timing requirement.
+
+Item 7 result: initial Fast OLS automatic and retained LSMR can transfer
+an already-accounted norm bank after the original coefficient/admission
+checks. The fused data read retains both original recurrences; certificate
+failure, dense-only invalidity, Low, PPML and raw/final frames preserve their
+existing behavior. All 13 focused executions, the full suite (1,714 Rust
+executions), universal Mac checks, 73 exact replay cases, 292 worker checks
+and twenty licensed fixtures pass. Independent architecture review approves
+the provenance, error-order and allocation boundaries. Seven fixture/migration
+failures are retained, including incorrect test assumptions about automatic
+MAP continuation; no production solver repair was made. Core adds 218
+production lines and two dispatch sites; no new size violations.
+
+The single declared diagnostic panel on an isolated SCC node completed 24 cells
+and 72 measured pairs, checking both norm banks bitwise after every warm-up and measured pair.
+Paired median fused/separate ratios range from 0.7406
+(width 1, 8 workers, unit weights) to 1.1910
+(width 65, 4 workers, unit weights). All cells and their three-pair ranges remain in the compact
+record. Six columns at four workers cost 12.77%/12.13% more for unit/nonuniform
+weights; 65 columns cost 19.10%/16.76% more at four workers and 14.98%/15.19%
+more at eight. Those costs remain visible in this preserving candidate; there
+is no claim that the fused kernel is faster for every shape. Three pairs
+quantify observed variability only; they do not establish a release-performance
+claim. Sharing a read changes the distribution of parallel work, and both arithmetic states still require their original
+updates. Whole-fit nonregression remains the complete H boundary.
+
+See [validation](VALIDATION.md#h6-dual-order-lsmr-norm-handoff-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-norms.json).
+
+FE numeric-column release declaration: release redundant finalized OLS FE
+numeric columns only after singleton processing, reencoding, rebasing and
+cluster certification. Original request roles and finalized bindings exclude
+ordinary sources (including omitted terms), slopes, interactions and cluster
+sources; PPML retains every numeric column. A generic sample bank separates
+raw preparation from an opaque finalized bank whose slots remain either raw
+vectors or privately proved encoded sources. Preserve every source index;
+never use an empty numeric slice as an encoded placeholder or reconstruct the
+released f64 column. Raw public validators retain their existing contract.
+
+The private owned-OLS preparation boundary holds the original request and
+checks exact canonical raw/code correspondence without allocating. Proof,
+optional reservation or capacity-admission refusal retains Raw and the original
+later diagnostics. After the unchanged moment decision and membership
+admission, pass a finalized-owner ceiling: the smaller of the recorded
+preparation peak and usable bytes minus metadata, actual loaded-RHS capacity
+and the full admitted moment workspace. Checked arithmetic failure disables
+release. Drop temporary cluster-source IDs before conversion; charge complete
+Raw ownership plus requested, then actual, new slot capacity while all old
+numeric buffers and their outer descriptors remain live. Final physical
+ownership must not exceed the original owner. No new mandatory allocation,
+error, estimate rejection or solver routing rule is introduced.
+
+Retain the pre-release owner-byte scalar for the existing execution, output
+and recovery admissions. Actual owned bytes remain available for observed
+memory accounting. This deliberately preserves Fast/Low selection, coefficient
+retention and solver budgets after releasing storage. All scientific bits,
+solver signatures, arithmetic, tolerances, certificates, sample, rank, omission,
+separation and publication decisions remain exact. Independent review and
+focused witnesses cover raw pointer/capacity identity, exact savings, signed
+zero, invalid correspondence and error order, exact/short/overcapacity
+conversion admission, concurrent moments, singleton reencoding, omitted/shared
+roles, clustered and saved-FE recovery, PPML retention, Fast/Low, finite-budget
+routing and output admission. Full runtime, exact replay and mapped licensed
+checks precede integration; whole-H timing remains the single final Mac panel.
+
 ### H7. Small-input fixed cost (check only)
 
 The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio
@@ -1692,6 +1801,35 @@ The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio
 One bounded Stata-side A/B of the current plugin against the October 10
 plugin on one host at 100k rows decides whether this is host noise or added
 per-call cost from C1/C2/E1 at small N. Report; do not tune.
+
+H7 execution declaration: after the final H6 source is frozen, compare its
+Linux plugin with the retained October 10 `e29164e6` plugin (SHA-256
+`57cc9789efd6ecc810d6dd82c55822dac3bd537bd7be32bb7a4bcd82e2a574a1`)
+through `bench/campaign_stata.do`, with the same current frontend and frozen
+100k AKM OLS/PPML inputs. Both use four physical cores and memory on one socket
+of one isolated SCC node. Record placement, THP, environment and every plugin,
+input and runtime identity. Export solver diagnostics only after stopping the
+command clock; trace-only clocks remain disabled.
+
+Use seven alternating measured pairs and one excluded warm-up pair per model:
+28 measured fits and four warm-up fits. Four independent 1,200-row smoke fits
+precede the panel; each fresh Stata process also performs its existing small
+initialization fit, for 72 estimator invocations total. Bound each process at
+120 seconds and the panel at 900 seconds, with no retry, continuation or tuning.
+Reserve four slots/4 GB per core/25 minutes for setup and 28 slots on a 28-core
+node/3 GB per core/20 minutes for the panel (11 slot-hours maximum). Capture
+accepted job IDs and require successful scheduler accounting, native audits,
+independent smoke checks, complete outputs and preserved runtime hashes.
+
+Analyze paired median current/October-10 ratios with 10,000 fixed-seed
+(739391) bootstrap resamples and a 95% interval. A lower bound above
+`1 + max(5%, 1 ms / baseline median)` supports added cost; an upper bound
+within that allowance supports nonregression; otherwise report inconclusive.
+Retain every observation. Existing campaign tolerances govern continuous
+results; sample, rank, omission, singleton, separation and DoF decisions stay
+exact, as do each plugin's fixed-worker repeats. Report clock-stripped solver
+signatures and H8 iteration changes. This two-arm comparison cannot isolate
+all intervening changes or by itself prove the historical host-noise cause.
 
 ### H8. Consistent recurrence tolerances across automatic routes (approved 2026-10-12)
 

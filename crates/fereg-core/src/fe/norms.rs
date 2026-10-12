@@ -5,6 +5,9 @@ use crate::{
 };
 use rayon::prelude::*;
 
+mod dense;
+pub(super) use dense::column_norms as column_norms_with_dense;
+
 const LEAF_ROWS: usize = super::borrowed_map::PARALLEL_DOT_CHUNK_ROWS;
 const TILE_COLUMNS: usize = 64;
 const MAX_WAVE_LEAVES: usize = 128;
@@ -187,7 +190,7 @@ fn finish(scale: f64, sum: f64, message: &'static str) -> Result<f64> {
 
 #[cfg(test)]
 #[path = "../../../fereg-testkit/src/fixed_leaf_norm_reference.rs"]
-mod reference;
+pub(super) mod reference;
 
 #[cfg(test)]
 mod tests {

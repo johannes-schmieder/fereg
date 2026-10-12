@@ -39,3 +39,32 @@ pub fn legacy_scalar_norm_state(values: impl Iterator<Item = f64>) -> (f64, f64,
     };
     (norm, scale, sum)
 }
+
+/// Retained certificate tree: 512-row scalar leaves, merged in ascending order.
+pub fn fixed_leaf_norm_state(values: &[f64]) -> (f64, f64, f64) {
+    let mut scale = 0.0;
+    let mut sum = 1.0;
+    for leaf in values.chunks(512) {
+        let (_, next_scale, next_sum) = legacy_scalar_norm_state(leaf.iter().copied());
+        if next_scale == 0.0 {
+            continue;
+        }
+        if scale < next_scale {
+            let ratio = scale / next_scale;
+            sum = next_sum + sum * ratio * ratio;
+            scale = next_scale;
+        } else {
+            let ratio = next_scale / scale;
+            sum += next_sum * ratio * ratio;
+        }
+    }
+    (
+        if scale == 0.0 {
+            0.0
+        } else {
+            scale * sum.sqrt()
+        },
+        scale,
+        sum,
+    )
+}

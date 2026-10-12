@@ -578,7 +578,14 @@ impl<'a> FeSession<'a> {
         final_residual: bool,
         raw_final: bool,
     ) -> Result<CertifiedBorrowedMap> {
-        self.project_ols_input(weights, values.into(), config, final_residual, raw_final)
+        self.project_ols_input(
+            weights,
+            values.into(),
+            config,
+            final_residual,
+            raw_final,
+            false,
+        )
     }
 
     pub(crate) fn project_initial_ols(
@@ -586,8 +593,9 @@ impl<'a> FeSession<'a> {
         weights: BorrowedMapWeights<'_>,
         values: crate::ols::OlsProjectionInput,
         config: super::AbsorbConfig,
+        dense_norms: bool,
     ) -> Result<CertifiedBorrowedMap> {
-        self.project_ols_input(weights, values, config, false, false)
+        self.project_ols_input(weights, values, config, false, false, dense_norms)
     }
 
     fn project_ols_input(
@@ -597,6 +605,7 @@ impl<'a> FeSession<'a> {
         mut config: super::AbsorbConfig,
         final_residual: bool,
         raw_final: bool,
+        dense_norms: bool,
     ) -> Result<CertifiedBorrowedMap> {
         let admission = config;
         if let Some(stored) = self.absorb_config {
@@ -624,6 +633,7 @@ impl<'a> FeSession<'a> {
                     weights: 0,
                 },
                 config,
+                dense_norms,
             )
         } else if let Some(p) = self.categorical.as_mut() {
             p.absorb_ols(weights, values, config.map, final_residual)
@@ -653,6 +663,7 @@ impl<'a> FeSession<'a> {
                 config,
                 self.structural_constant,
                 final_residual,
+                dense_norms,
             )
         } else {
             let mut values = values.into_values();
@@ -708,6 +719,7 @@ pub(crate) fn project_intercepts(
     config: super::AbsorbConfig,
     structural_constant: bool,
     final_residual: bool,
+    dense_norms: bool,
 ) -> Result<CertifiedBorrowedMap> {
     use super::FeSolverKind as S;
     match config.solver {
@@ -721,6 +733,7 @@ pub(crate) fn project_intercepts(
             structural_constant,
             config.retain_coefficients,
             final_residual,
+            dense_norms,
         ),
         S::Lsmr if !design.effects().is_empty() => super::absorb_borrowed_intercept_lsmr(
             design,

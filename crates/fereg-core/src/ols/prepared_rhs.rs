@@ -1739,6 +1739,7 @@ mod tests {
                                         weights,
                                         OlsProjectionInput::Prepared(rhs),
                                         config.absorb,
+                                        false,
                                     )
                                     .unwrap();
                                 let mut ordinary = FeSession::for_ols(&prepared, weights, config)
@@ -1816,6 +1817,7 @@ mod tests {
             config,
             true,
             false,
+            false,
         )
         .unwrap_err();
         assert_eq!(error.code, ErrorCode::InvalidArgument);
@@ -1828,6 +1830,7 @@ mod tests {
             values.into(),
             config,
             true,
+            false,
             false,
         )
         .unwrap_err();
@@ -1862,6 +1865,7 @@ mod tests {
                 OlsProjectionInput::Prepared(rhs),
                 crate::fe::AbsorbConfig::default(),
                 true,
+                false,
                 false,
             )
             .unwrap_err()

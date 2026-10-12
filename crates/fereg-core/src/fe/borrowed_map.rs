@@ -13,6 +13,7 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 
 use super::map::ReusableMapCapacities;
 
+mod lsmr_norms;
 pub(crate) mod three_fe_schur;
 
 pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
@@ -3550,6 +3551,7 @@ pub(crate) fn project_borrowed_intercept_structural(
     structural_constant: bool,
     retain: bool,
     final_residual: bool,
+    dense_norms: bool,
 ) -> Result<CertifiedBorrowedMap> {
     validate_config(map)?;
     if values.nrows() != design.nobs() || values.nrows() == 0 || values.ncols() == 0 {
@@ -3670,7 +3672,17 @@ pub(crate) fn project_borrowed_intercept_structural(
             return Ok(result);
         }
     }
-    project_general_categorical(design, weights, values, map, lsmr, budget, retain, estimate)
+    project_general_categorical(
+        design,
+        weights,
+        values,
+        map,
+        lsmr,
+        budget,
+        retain,
+        estimate,
+        dense_norms,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -3683,6 +3695,7 @@ fn project_general_categorical(
     budget: Option<FeSolverMemoryBudget>,
     retain: bool,
     estimate: crate::memory::FeSolverMemoryEstimate,
+    dense_norms: bool,
 ) -> Result<CertifiedBorrowedMap> {
     lsmr.tolerance = super::auto::direct_lsmr_tolerance(map.tolerance);
     lsmr.max_iterations = lsmr.max_iterations.min((map.max_iterations / 2).max(1));
@@ -3697,6 +3710,7 @@ fn project_general_categorical(
     let mut attempted = None;
     if budget.is_none_or(|b| b.fits(bytes)) {
         let mut memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, budget, 0)?;
+        let mut norms = Vec::new();
         let (candidate, mut report, _, coefficients) = run_borrowed_lsmr_with_prepared(
             design,
             validated,
@@ -3708,14 +3722,20 @@ fn project_general_categorical(
             retain,
             None,
             &mut memory,
+            dense_norms.then_some(&mut norms),
         )?;
         attempted_peak = attempted_peak.max(report.solver_workspace_peak);
         report.requested_solver = FeSolverKind::Auto;
         if report.certified() {
-            return if let Some(c) = coefficients {
+            let result = if let Some(c) = coefficients {
                 CertifiedBorrowedMap::from_certified_parts_with_coefficients(candidate, report, c)
             } else {
                 CertifiedBorrowedMap::from_certified_parts(candidate, report)
+            }?;
+            return if norms.is_empty() {
+                Ok(result)
+            } else {
+                result.with_residual_norms(norms)
             };
         }
         // The candidate and coefficient bank are released before continuation.
@@ -4097,6 +4117,7 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
         values: DenseMatrix,
         generation: super::MapGeometryGeneration,
         config: super::AbsorbConfig,
+        dense_norms: bool,
     ) -> Result<CertifiedBorrowedMap> {
         // Invalidate numerical geometry before a fallible current-frame check.
         // Only the enclosing immutable binding issues a generation identity.
@@ -4129,6 +4150,7 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
         );
         let mut memory =
             BorrowedLsmrCallMemory::new(estimate, preconditioner, config.solver_memory_budget, 0)?;
+        let mut norms = Vec::new();
         let (residualized, report, _, coefficients) = run_borrowed_lsmr_with_prepared(
             &self.design,
             weights,
@@ -4140,6 +4162,7 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
             config.retain_coefficients,
             Some(&mut self.prepared),
             &mut memory,
+            dense_norms.then_some(&mut norms),
         )?;
         let result = if let Some(coefficients) = coefficients {
             CertifiedBorrowedMap::from_certified_parts_with_coefficients(
@@ -4151,7 +4174,11 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
             CertifiedBorrowedMap::from_certified_parts(residualized, report)
         }?;
         self.generation = Some(generation);
-        Ok(result)
+        if norms.is_empty() {
+            Ok(result)
+        } else {
+            result.with_residual_norms(norms)
+        }
     }
 }
 
@@ -4419,6 +4446,7 @@ fn run_borrowed_lsmr(
         retain_coefficients,
         None,
         &mut memory,
+        None,
     )
 }
 
@@ -4436,6 +4464,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     retain_coefficients: bool,
     prepared: Option<&mut BorrowedLsmrPrepared<'a>>,
     memory: &mut BorrowedLsmrCallMemory,
+    dense_norms: Option<&mut Vec<f64>>,
 ) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
     crate::interrupt::checkpoint()?;
     let total_started = Instant::now();
@@ -4582,12 +4611,13 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             .copy_from_slice(reference_norms);
     }
     let certification_started = Instant::now();
-    let certificate = certify(
+    let (certificate, dense_valid) = lsmr_norms::certify(
         design,
         weights,
         &lsmr_values,
         certificate_tolerance,
         &mut certificate_workspace,
+        dense_norms.is_some(),
     )?;
     let certification_seconds = certification_started.elapsed().as_secs_f64();
     if crate::diagnostics::solver_trace_enabled() {
@@ -4676,6 +4706,11 @@ fn run_borrowed_lsmr_with_prepared<'a>(
                 .as_ref()
                 .map_or(0, FeCoefficientBatch::retained_bytes),
     )?;
+    if report.certified() && dense_valid {
+        if let Some(norms) = dense_norms {
+            *norms = std::mem::take(&mut certificate_workspace.reference_norms);
+        }
+    }
     report.solver_workspace_peak = memory.peak;
     Ok((lsmr_values, report, owned_setup_seconds, coefficients))
 }
@@ -6567,6 +6602,16 @@ fn certify_with_current_norms(
         workspace.rhs_scales[rhs] = scale;
     }
 
+    certify_with_current_scales(design, weights, residuals, tolerance, workspace)
+}
+
+fn certify_with_current_scales(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    residuals: &DenseMatrix,
+    tolerance: f64,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<FeCertificate> {
     if certificate_parallel_workspaces_fit(design, residuals, workspace)? {
         return certify_effects_parallel(design, weights, residuals, tolerance, workspace);
     }

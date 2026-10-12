@@ -9406,3 +9406,69 @@ fn fill_raw_moment_cache_columnwise(
         },
     )
 }
+
+#[test]
+fn norm_handoff_initial_ols_provenance_preserves_complete_fit_bits() {
+    let rows = 513;
+    let x = (0..rows)
+        .map(|r| (r as f64 * 0.13).sin())
+        .collect::<Vec<_>>();
+    let y = (0..rows)
+        .map(|r| 2.0 + 0.3 * x[r] + (r as f64 * 0.19).cos())
+        .collect::<Vec<_>>();
+    let effects = [7, 11, 13].map(|levels| {
+        (0..rows)
+            .map(|r| ((r * 17 + r / 5) % levels) as f64)
+            .collect::<Vec<_>>()
+    });
+    let weights = (0..rows)
+        .map(|r| [0.25, 1.0, 7.0][r % 3])
+        .collect::<Vec<_>>();
+    for weighted in [false, true] {
+        let data = prepared_multiway_categorical_weights(
+            &y,
+            std::slice::from_ref(&x),
+            &effects,
+            if weighted {
+                TestWeights::Analytic(&weights)
+            } else {
+                TestWeights::Unit
+            },
+        );
+        let canonical = LinearSolveFrame::from_prepared_ols(&data).unwrap();
+        let raw = LinearSolveFrame::from_parts(
+            canonical.response(),
+            canonical.raw_weights(),
+            canonical.bread_weight_scale(),
+        )
+        .unwrap();
+        assert!(canonical.dense_norm_handoff(PreparedOlsExecutionMode::Fast, true));
+        assert!(!canonical.dense_norm_handoff(PreparedOlsExecutionMode::Fast, false));
+        assert!(!canonical.dense_norm_handoff(PreparedOlsExecutionMode::Low, true));
+        assert!(!raw.dense_norm_handoff(PreparedOlsExecutionMode::Fast, true));
+        for solver in [FeSolverKind::Auto, FeSolverKind::Lsmr] {
+            for workers in [1, 4] {
+                let mut config = PreparedOlsFitConfig::default();
+                config.absorb.solver = solver;
+                config.execution.threads =
+                    crate::ThreadConfig::from_requested(workers, true).unwrap();
+                let normalize = |mut fit: CertifiedPreparedOlsFit| {
+                    for report in [
+                        &mut fit.absorption_report,
+                        &mut fit.residual_absorption_report,
+                    ] {
+                        report.setup_seconds = 0.0;
+                        report.solve_seconds = 0.0;
+                        report.certification_seconds = 0.0;
+                    }
+                    fit
+                };
+                let expected =
+                    normalize(fit_prepared_weighted_linear_once(&data, raw, config).unwrap());
+                let actual =
+                    normalize(fit_prepared_weighted_linear_once(&data, canonical, config).unwrap());
+                assert_eq!(actual, expected);
+            }
+        }
+    }
+}

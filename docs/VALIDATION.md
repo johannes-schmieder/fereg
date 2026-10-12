@@ -14,6 +14,89 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H6 dual-order LSMR norm handoff, 2026-10-12
+
+H6 item 7 shares each weighted residual read between the original fixed
+512-row certificate leaves (merged in ascending order) and the uninterrupted
+row-order dense OLS scaled norm. The two states remain separate; neither
+consumer changes its arithmetic. Bounded stack column blocks use the installed
+team policy. Private initial prepared-OLS provenance, Fast mode and the matching
+normalized weight scale enable the handoff for retained and automatic LSMR.
+Low, PPML, raw frames, final residuals and continuations retain their prior
+paths; existing MAP norm handoff is unchanged.
+
+The single-use certificate workspace lends its initially unused RHS scales,
+then its dead reference-norm bank. Original RHS scale checks and group-certificate
+folds retain their exact order. Only after all original coefficient allocations
+and actual-capacity admissions can a passing certificate transfer that bank.
+No extra heap bank or mandatory admission precedes the original checks.
+Dense-only norm invalidity disables the cache and preserves the caller's old
+error path. Failed LSMR certificates discard it before unchanged continuation.
+Tolerances, certificates, scientific results, solver signatures, sample, rank,
+omission, separation, publication and rollback remain exact.
+
+All 13 focused executions pass. Independent retained recurrences cover widths
+1/6/17/65, leaf boundaries, zero/subnormal/extreme values, nonuniform weights,
+worker counts and invalid-input precedence. Other witnesses cover private frame
+provenance, normalized-scale mismatch, workspace pointer/capacity, original
+RHS-scale errors, complete fits, automatic/retained LSMR with and without
+coefficients, finite budgets and MAP continuation. Candidate and comparator
+are checked at identical budgets: automatic routing can legitimately use MAP
+at or below the observed LSMR peak, or after a failed LSMR certificate.
+The cache never determines that choice.
+
+Workspace Clippy/formatting and independent high-effort architecture review
+pass. The full suite passes 1,714 Rust executions in 62 invocations and
+200 Python tests with 13 optional dependency skips. Universal Mac native
+ABI/load/guard checks, 73 exact plugin replay cases, 292 worker checks and
+twenty licensed preparation, FE, LSMR, weight, memory, saved-output and
+transaction fixtures pass. The expected Linux-ELF audit skip remains on Mac;
+the Linux diagnostic kernel and one focused workspace smoke pass, but they
+do not establish Linux plugin qualification. There is no new Windows check.
+
+Seven unsuccessful fixture/migration attempts remain in raw evidence: direct
+call adapters and moved access, a reference-module path, then five overly
+specific expectations about rejection or continuation/norm-bank behavior.
+They did not cause a production solver, certificate or diagnostic-policy repair.
+Collection also corrected a parser that omitted the first timing line's Rust
+test prefix and a mismatched review-schema key in the record writer. The
+original raw timing log and failed writer are retained; no checks or timings
+were repeated to obtain a pass.
+Core adds 218 production lines and two dispatch sites; plugin production
+and size-violation counts are unchanged. FE numeric-column release remains
+separate work.
+
+The single declared diagnostic panel on an isolated SCC node completed 24 cells
+and 72 measured pairs, checking both norm banks bitwise after every warm-up and measured pair.
+Paired median fused/separate ratios range from 0.7406
+(width 1, 8 workers, unit weights) to 1.1910
+(width 65, 4 workers, unit weights). All cells and their three-pair ranges remain in the compact
+record. Six columns at four workers cost 12.77%/12.13% more for unit/nonuniform
+weights; 65 columns cost 19.10%/16.76% more at four workers and 14.98%/15.19%
+more at eight. Those costs remain visible in this preserving candidate; there
+is no claim that the fused kernel is faster for every shape. Three pairs
+quantify observed variability only; they do not establish a release-performance
+claim. Sharing a read changes the distribution of parallel work, and both arithmetic states still require their original
+updates. Whole-fit nonregression remains the complete H boundary.
+
+SCC setup job `8038695` on `scc-gr4` used four slots for 141 seconds,
+maximum virtual memory 3.959G. Panel job `8038696` on `scc-yj3` used
+28 slots for 46 seconds, maximum virtual memory 1.424G; the diagnostic test
+itself took 31.02 seconds. Both jobs report `failed=0`, `exit_status=0`.
+The panel used CPUs `0,2,4,6,8,10,12,14` and memory node/socket 0, with
+THP `[always] madvise never`. Its Linux diagnostic binary SHA-256 is
+`d6f10e06ca3454bc3017eeba5fc0983c4562dea509fdb9f6ec2c3419c599e3ce`.
+
+Candidate plugin SHA-256:
+`d5e240f6da750a6b104571e4fdcb13efb429613117dbd7391d852d7e1a20ae75`;
+parent plugin: `e29f2e71b41f95953d7d68b398227e8cb33f9bd6e35097c25d8b9a37acc18a9b`.
+Raw source, plugins, review, diagnostic panel and all checks remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-h6/norm-validation.tar.gz`
+(52,497,401 bytes, SHA-256
+`25bc603a79bc82fca42b3e07fff55be136dc598cd0cb898e6c6b9e930239a15d`).
+The [compact record](../bench/results/h-20261013-h6-norms.json) binds the
+source, diagnostic binary and qualification identities.
+
 ## H6 uniform candidate markers, 2026-10-12
 
 H6 item 6b retains all-candidate inputs as a repeated true scalar. A concrete

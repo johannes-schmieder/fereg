@@ -236,6 +236,27 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H6 item 7 fuses the LSMR certificate and Fast OLS norm data read while
+retaining their different original recurrence orders. It reuses the existing
+certificate bank after its original admissions; all 73 plugin replay cases,
+292 worker checks and twenty licensed fixtures pass exactly, with unchanged
+solver signatures. Core adds 218 production lines and two dispatch sites.
+The single declared diagnostic panel on an isolated SCC node completed 24 cells
+and 72 measured pairs, checking both norm banks bitwise after every warm-up and measured pair.
+Paired median fused/separate ratios range from 0.7406
+(width 1, 8 workers, unit weights) to 1.1910
+(width 65, 4 workers, unit weights). All cells and their three-pair ranges remain in the compact
+record. Six columns at four workers cost 12.77%/12.13% more for unit/nonuniform
+weights; 65 columns cost 19.10%/16.76% more at four workers and 14.98%/15.19%
+more at eight. Those costs remain visible in this preserving candidate; there
+is no claim that the fused kernel is faster for every shape. Three pairs
+quantify observed variability only; they do not establish a release-performance
+claim. Sharing a read changes the distribution of parallel work, and both arithmetic states still require their original
+updates. Whole-fit nonregression remains the complete H boundary.
+
+See [validation](VALIDATION.md#h6-dual-order-lsmr-norm-handoff-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-norms.json).
+
 H6 item 6b removes the all-candidate input's N-byte marker allocation/fill and
 repeated all/count scans. Explicit masks keep their SPI order and capacity;
 PPML restores the complete original owner after rebasing. Future-mask admission

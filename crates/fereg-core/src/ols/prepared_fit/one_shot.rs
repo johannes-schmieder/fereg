@@ -189,6 +189,7 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             DenseMatrix::from_row_major(0, 0, Vec::new())?.into(),
         ),
         config.absorb,
+        frame.dense_norm_handoff(config.execution.mode, reuse_absorption_norms),
     )?;
     if !absorbed.report().certified() {
         return Err(invalid_data(

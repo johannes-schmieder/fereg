@@ -784,6 +784,7 @@ impl<'a> NormalizedWeights<'a> {
 /// rebuilding the prepared design.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct LinearSolveFrame<'a> {
+    prepared_ols: bool,
     response: &'a [f64],
     weights: NormalizedWeights<'a>,
     bread_weight_scale: PreparedOlsBreadWeightScale,
@@ -794,6 +795,7 @@ impl<'a> LinearSolveFrame<'a> {
         let weights = normalized_weights(prepared)?;
         let bread_weight_scale = prepared_bread_weight_scale(prepared, weights)?;
         Ok(Self {
+            prepared_ols: true,
             response: &prepared.fit_sample().outcome,
             weights,
             bread_weight_scale,
@@ -849,6 +851,7 @@ impl<'a> LinearSolveFrame<'a> {
             }
         };
         Ok(Self {
+            prepared_ols: false,
             response,
             weights: NormalizedWeights {
                 values,
@@ -857,6 +860,10 @@ impl<'a> LinearSolveFrame<'a> {
             },
             bread_weight_scale,
         })
+    }
+
+    fn dense_norm_handoff(self, mode: PreparedOlsExecutionMode, matching_scale: bool) -> bool {
+        self.prepared_ols && mode == PreparedOlsExecutionMode::Fast && matching_scale
     }
 
     pub(crate) const fn response(self) -> &'a [f64] {
