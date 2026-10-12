@@ -507,6 +507,7 @@ of opportunity alone does not authorize broadening their implementation scope.
 | H1c | Skip the `within` locality sort when it cannot change the scatter kernel (declared ulp scope) | Approved by Johannes on 2026-10-12; see section 6 |
 | H2 | Dense three-FE MAP prototype gated by the certified contraction bound, LSMR fallback | Prototype approved by Johannes on 2026-10-12; freeze rule, fields, witnesses and budget first; see section 6 |
 | H3 | Parallel neighbour-pair assembly in canonical products | Arithmetic-preserving variant needs no decision; the private-accumulator variant is a separate ulp-scope declaration |
+| H8 | Consistent recurrence targets across automatic routes, certificate unchanged | Approved by Johannes on 2026-10-12: a hundredth of the request with the 1e-14 floor, acceptance only by the certificate at the request, no new rejection or re-route; see section 6 |
 
 ### A2 authorized discovery: retain per-RHS projection guesses
 
@@ -931,8 +932,9 @@ default change.
 4. C and D as one preserving workstream with a single wall-time
    nonregression at its end.
 5. E as one declared scope; F as separate route decisions.
-6. Workstream H (section 6) after C2: H1 and H3 first, H2 under its approval,
-   H4/H5 as bounded checks and tooling, H6 by removed pass, H7 check only.
+6. Workstream H (section 6) after C2: H1 and H3 first, then H8 so H2 is
+   judged against consistent tolerances, H2 under its approval, H4/H5 as
+   bounded checks and tooling, H6 by removed pass, H7 check only.
 
 Each commit states its tier, its witnesses and what it did not change.
 Report costs as well as gains, keep failed attempts visible, and delete
@@ -944,8 +946,9 @@ or separation semantics, or add a benchmark-specific fence to win a cell.
 
 Johannes reviewed the October 12 rerun and the C2 adoption on 2026-10-12 and
 authorized this workstream. He approved the dense three-FE route prototype
-(H2) and the declared ulp-scope change in H1 step c. Everything else below is
-arithmetic-preserving or tooling. The order is by expected general gain per
+(H2), the declared ulp-scope change in H1 step c and the tolerance
+consistency rule in H8. Everything else below is arithmetic-preserving or
+tooling. The order is by expected general gain per
 unit of risk; H1 and H3 come first because each removes a serial cost that
 grows with the data rather than with the worker count.
 
@@ -1188,6 +1191,63 @@ The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio
 One bounded Stata-side A/B of the current plugin against the October 10
 plugin on one host at 100k rows decides whether this is host noise or added
 per-call cost from C1/C2/E1 at small N. Report; do not tune.
+
+### H8. Consistent recurrence tolerances across automatic routes (approved 2026-10-12)
+
+Facts. Explicit `solver(lsmr)` iterates to a hundredth of the requested
+tolerance (floor 1e-15, never looser than the request); automatic LSMR uses
+`direct_lsmr_tolerance` (a hundredth, floor 1e-14); CMG uses
+`PCG_TOLERANCE_MULTIPLIER = 0.01`; PPML's inner schedule tightens to
+`min(0.1 x tolerance, 1e-12)`. All of them certify the FE moments at the
+requested tolerance. The two-FE automatic OLS route
+(`fe/borrowed_map.rs::absorb_two_fe_pcg_reusing`) instead stops each
+right-hand side when `two_fe_pcg_rhs_ready` sees its Schur group-moment proxy
+below half the requested tolerance, then reconstructs and runs the same
+certificate. The F1 record shows the consequence on a weakly connected
+control: projected regressors accurate to 2.6e-6 under that route and to
+3.3e-13 under LSMR, with the robust F statistic moving at the 1e-5 level
+while coefficients still passed. Tightening the two-FE stop to 1e-10 did not
+make those F witnesses pass; CMG and LSMR did. So the stop rule is an
+inconsistency to remove, and the weak-graph accuracy is a separate question.
+
+Johannes's decision on 2026-10-12: tolerances must be consistent across the
+automatic routes, ulp-level and small result changes in the direction of
+accuracy are accepted, and no change may reject or re-route estimates that
+pass the certificate at the requested tolerance.
+
+Rule to implement:
+
+1. The two-FE automatic route aims its recurrence at a hundredth of the
+   requested tolerance with the same 1e-14 floor as automatic LSMR, in its
+   existing proxy metric, never looser than the request. Derive it from the
+   same helper the other routes use so there is one definition.
+2. The independent certificate at the requested tolerance remains the only
+   acceptance gate. A right-hand side whose recurrence budget is exhausted
+   while the certificate passes at the request is accepted and reported with
+   a stop reason, not failed and not re-routed. MAP polishing and LSMR
+   fallback trigger only when the certificate at the request fails, exactly
+   as today. No new failure mode, no tighter certificate, no new fence.
+3. PPML's scheduled inner tolerance is already at or below this target and
+   is unchanged. The 1e-14 final residual projection for saved outputs is
+   unchanged. Explicit user requests keep their current contracts.
+4. The stronger question, whether the certificate should bound the projected
+   regressors rather than the FE moments on badly conditioned graphs, is a
+   design decision for Johannes, not part of this item. Keep the F1 barbell
+   and weak controls as retained witnesses and say in `SPEC.md` and the user
+   guide that automatic routes can differ at roughly the 1e-5 level in
+   derived statistics on weakly connected graphs.
+
+Evidence: result-changing on cases where the two-FE recurrence used to stop
+early. Declared fields: projected columns, FE coefficients, coefficients,
+covariance, fit statistics; sample, rank, omission, separation and all stop
+decisions exact. Witnesses: the F1 independent QR and 80-digit algebra on the
+retained barbell and weak controls, the existing replay with
+`--affected-scope`, and the fereg-oracle two-FE comparisons. Measure the
+campaign two-FE OLS cells (AKM 1M at 1/4/16 workers, dense 1M/4M, sparse 1M)
+before and after; report the iteration and time cost. If the two-FE OLS
+native time rises by more than ten percent on any campaign cell, report to
+Johannes before integrating rather than weakening the rule. Bounded to two
+working days.
 
 ### Evidence and stop rules for H
 
