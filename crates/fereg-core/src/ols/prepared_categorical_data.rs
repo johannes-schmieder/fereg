@@ -854,7 +854,7 @@ pub(crate) fn prepare_owned_with_load_hint(
         categorical,
         false,
         true,
-        hint,
+        hint.map(super::prepared::PreparedSourceReuse::Checked),
         membership_scratch,
     )
 }
@@ -887,7 +887,7 @@ pub(crate) fn prepare_ppml_categorical_ols_data_with_load_hint(
         true,
         true,
         true,
-        hint,
+        hint.map(super::prepared::PreparedSourceReuse::Checked),
         membership_scratch,
     )
 }
@@ -962,7 +962,7 @@ fn preparation_phase_timer(rows: usize) -> impl FnMut(&str) {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn finish_prepared_model_with_hint(
+pub(super) fn finish_prepared_model_with_hint(
     request: &OlsRequestV1,
     cluster_sources: &[SourceId],
     model: PreparedOlsModel,
@@ -970,7 +970,7 @@ fn finish_prepared_model_with_hint(
     categorical: bool,
     ppml_constant: bool,
     reuse_membership: bool,
-    hint: Option<super::PreparedOlsLoadHint>,
+    hint: Option<super::prepared::PreparedSourceReuse>,
     membership_scratch: u128,
 ) -> Result<PreparedOlsData> {
     let mut phase = preparation_phase_timer(sample.n_active());

@@ -236,6 +236,17 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H6 item 1 avoids same-call hint rescans by keeping early OLS FE columns owned
+until authoritative preparation. Full unweighted transfers reuse their exact
+encodings; weighted/classified, borrowed and PPML hints remain checked. All
+73 exact replay cases, 292 worker checks and seventeen licensed fixtures pass.
+The owner costs 56 descriptor bytes per early source on the Mac, with no raw
+buffer copy and unchanged moment-cache admission; 275 production lines and
+five dispatch candidates are added. The initial weighted-refactorization cost
+was caught and removed before integration. Its timing effect remains unmeasured
+until the H boundary. See [validation](VALIDATION.md#h6-owned-load-hints-2026-10-12)
+and [compact evidence](../bench/results/h-20261013-h6-load-hint.json).
+
 H6 item 4 removes a repeated initial-OLS finite scan by preserving the exact
 RHS builder's immutable owner. Raw, final-residual and PPML checks remain.
 All 73 exact plugin cases, 292 worker checks and seventeen licensed fixtures

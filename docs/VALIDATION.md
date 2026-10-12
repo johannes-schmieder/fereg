@@ -14,6 +14,53 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H6 owned load hints, 2026-10-12
+
+H6 item 1 moves early OLS categorical columns into a private immutable owner
+during overlapped factorization. Core restores ordered matching vacant slots
+after request compilation, then runs the established loaded-input, weight,
+availability and categorical-domain checks. Only the actual complete unweighted
+transfer with matching source identities bypasses the hint's identity and
+code/value rescans. Weighted/classified inputs, independent borrowed hints and
+PPML retain the existing checked reuse. All arithmetic, signatures, requested
+tolerances, certificates and sample/rank/omission/separation decisions remain.
+
+Three focused core tests pass, covering 104 capsule/plain comparisons, missing
+values, candidates, weights, clusters, singleton pruning, changed requests,
+malformed slots, raw pointer/capacity preservation and positive-weight checked
+encoding reuse. Plugin tests verify early/late completeness errors and unchanged
+moment-cache and membership-scratch budget decisions. The overlap test exercises
+both ownership modes at 2/4/16 workers, including exact-budget success,
+one-byte-short refusal before any SPI read, optional factorization refusal,
+late SPI interruption/panic and joined cancellation. The full suite passes
+1,687 Rust executions in 62 invocations, plus 200 Python tests with 13 optional
+dependency skips. Universal Mac ABI/load/guard checks, 73 exact replay cases,
+292 worker checks and seventeen licensed preparation/FE/weight/memory/output/
+transaction fixtures pass. Independent high-effort architectural review approves.
+The Mac Linux-ELF skip remains; no new Linux or Windows qualification is claimed.
+
+The capsule adds 56 descriptor bytes per early source on this host; its raw
+buffers are moved without copying and descriptors are freed before
+classification. Completed encodings plus descriptors fit the original
+preparation envelope, preserving the moment-cache decision. Core production
+grows 176 lines and two dispatch candidates; plugin production grows 99 lines
+and three candidates. There is no new size violation. The first draft discarded
+classified hints and would have added weighted refactorization; checked reuse
+was restored. A function-size violation was resolved through column-preparation
+and target-ownership methods, and a test-only Clippy failure through lexical
+borrow scope. These attempts and initial toolchain-path failures remain recorded.
+No timing gain precedes the whole-H Mac panel.
+
+Candidate plugin SHA-256:
+`fc315ad83d18f6074375dd16b93e9cb0d4318852f3bd3e91b5644dbadeaa54c7`;
+parent plugin: `00a9daac0366fdb9f308406fda618cff96cdf026984a69f9a39d5afa7c33020c`.
+Raw source, plugins, captures and checks remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-h6/loadhint-validation.tar.gz`
+(25,673,546 bytes, SHA-256
+`695d41c31f310158c2671d188881c3beaf7c21b3d07eb11dd9d7ddafa88c55b5`).
+The [compact record](../bench/results/h-20261013-h6-load-hint.json) preserves
+source identities, failed attempts, checks and review limitations.
+
 ## H6 checked initial RHS, 2026-10-12
 
 H6 item 4 keeps the immutable `PreparedOlsRhs` owner through initial ordinary

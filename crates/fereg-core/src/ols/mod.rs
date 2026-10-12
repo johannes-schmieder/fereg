@@ -59,7 +59,8 @@ pub use prepared::{
     LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1,
     PreparedCategoricalSource, PreparedOlsCategoricalComponent, PreparedOlsCoefficient,
     PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData,
-    PreparedOlsFeSingletonPolicy, PreparedOlsLoadHint, PreparedOlsModel, PreparedOlsSingletons,
+    PreparedOlsFeSingletonPolicy, PreparedOlsLoadColumns, PreparedOlsLoadHint, PreparedOlsModel,
+    PreparedOlsSingletons,
 };
 pub(crate) use prepared_categorical_clusters::prepare_ppml_categorical_ols_clustered_data;
 pub use prepared_clustered::{
@@ -69,8 +70,9 @@ pub use prepared_clustered::{
     PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
 };
 pub use prepared_clusters::{
-    compile_prepared_model, prepare_model, prepare_model_owned, prepare_model_owned_with_load_hint,
-    OlsClusterTermV1, OlsClusteredRequestV1, PreparedOlsClusterDesign, PreparedOlsClusterDimension,
+    compile_prepared_model, prepare_model, prepare_model_owned,
+    prepare_model_owned_with_load_columns, prepare_model_owned_with_load_hint, OlsClusterTermV1,
+    OlsClusteredRequestV1, PreparedOlsClusterDesign, PreparedOlsClusterDimension,
 };
 pub use prepared_dof::{
     compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect,

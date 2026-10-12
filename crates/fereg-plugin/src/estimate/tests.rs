@@ -1847,10 +1847,29 @@ fn optional_membership_scratch_preserves_ols_modes_and_moment_cache_at_budget_bo
             assert_eq!(action.loaded_rhs_budget() >= rhs_bytes as usize, fast);
             action.loaded_fit_workspace_bytes = if fast { rhs_bytes } else { 0 };
             let original_peak = action.preparation_memory.preparation_peak_bytes(0).unwrap();
+            let mut owned_loaded = loaded.clone();
+            let factor = action.request.absorbed_terms[0].categorical_sources[0];
+            let column = owned_loaded
+                .numeric_sources
+                .iter_mut()
+                .find(|(id, _)| *id == factor)
+                .unwrap();
+            let raw = std::mem::replace(
+                &mut column.1,
+                LoadedNumericColumn {
+                    values: Vec::new(),
+                    missing: Vec::new(),
+                },
+            );
+            let capsule = fereg_core::ols::PreparedOlsLoadColumns::prepare(
+                vec![(factor, raw)],
+                spi.nobs,
+                u128::MAX,
+            );
             let (prepared, rows) = prepare_ols_pipeline(
-                loaded.clone(),
+                owned_loaded,
                 fast.then(|| rhs.clone()),
-                None,
+                Some(capsule),
                 &mut action,
                 true,
             )
@@ -1900,6 +1919,95 @@ fn optional_membership_scratch_preserves_ols_modes_and_moment_cache_at_budget_bo
         }
     }
     assert_eq!(spi.store_calls, 0);
+}
+
+#[test]
+fn owned_load_columns_preserve_completeness_and_preparation() {
+    let (args, mut base) = saved_output_fixture();
+    base.nobs = 16_387;
+    base.numeric_rows_enabled = true;
+    base.data.clear();
+    for row in 1..=base.nobs {
+        let x = (row as f64).sin();
+        for (variable, value) in [
+            (1, 1.0),
+            (2, 2.0 + 3.0 * x + (row % 97) as f64),
+            (3, x),
+            (4, (row % 97) as f64),
+            (5, 1.0),
+        ] {
+            base.data.insert((variable, row), (value, false));
+        }
+    }
+    let mut spec = EstimateActionSpec::parse(&args).unwrap();
+    spec.threads = 4;
+    spec.candidate_all = true;
+    let action = spec
+        .decode_with_memory_limit(&mut base, || Ok(None))
+        .unwrap();
+    for case in 0..5 {
+        let mut spi = base.clone();
+        if case != 0 {
+            let variable = if case % 2 == 1 { 4 } else { 2 };
+            spi.data.insert((variable, 3), (1e100, true));
+        }
+        let complete = case < 3;
+        let expected = load_ols_input(&action.request, true, complete, &mut spi.clone());
+        let mut capsule = None;
+        let mut rhs = None;
+        let mut memory = loading_memory(&action.request, spi.nobs, 0, 0, None).unwrap();
+        let loaded = load_ols_input_with_team(
+            &action.request,
+            true,
+            complete,
+            &mut memory,
+            &mut spi,
+            Some(ThreadTeam::new(action.fit.execution.threads)),
+            &mut rhs,
+            usize::MAX,
+            action.loaded_rhs_layout,
+            false,
+            Some(crate::numeric_pipeline::PreparedLoadTarget::Owned(
+                &mut capsule,
+            )),
+        );
+        assert_eq!(spi.store_calls, 0);
+        match (expected, loaded) {
+            (Err(expected), Err(actual)) => assert_eq!(actual, expected),
+            (Ok(expected), Ok(actual)) => {
+                let capsule = capsule.expect("early columns transferred to their owner");
+                for (id, column) in capsule.columns() {
+                    let slot = actual
+                        .numeric_sources
+                        .iter()
+                        .find(|(source, _)| *source == id)
+                        .unwrap();
+                    assert!(slot.1.values.is_empty() && slot.1.missing.is_empty());
+                    assert_eq!(
+                        column,
+                        &expected
+                            .numeric_sources
+                            .iter()
+                            .find(|(source, _)| *source == id)
+                            .unwrap()
+                            .1
+                    );
+                }
+                let reference = prepare_model_owned(&action.request, &[], expected, true).unwrap();
+                let prepared = fereg_core::ols::prepare_model_owned_with_load_columns(
+                    &action.request,
+                    &[],
+                    actual,
+                    true,
+                    Some(capsule),
+                    0,
+                )
+                .unwrap();
+                assert_eq!(prepared, reference);
+            }
+            _ => panic!("owned loading changed completeness validation"),
+        }
+    }
 }
 
 #[test]
@@ -2688,7 +2796,9 @@ fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
                 budget,
                 compiled_width,
                 false,
-                Some(&mut load_hint),
+                Some(crate::numeric_pipeline::PreparedLoadTarget::Borrowed(
+                    &mut load_hint,
+                )),
             )
             .unwrap();
             assert_eq!(loaded, reference_loaded);
@@ -2924,7 +3034,9 @@ fn slope_loaded_rhs_preserves_classification_and_inference() {
                 required,
                 compiled,
                 false,
-                Some(&mut load_hint),
+                Some(crate::numeric_pipeline::PreparedLoadTarget::Borrowed(
+                    &mut load_hint,
+                )),
             )
             .unwrap();
             assert_eq!(loaded, reference);
@@ -3128,7 +3240,9 @@ fn weighted_loaded_rhs_preserves_sample_domains_and_inference() {
                     budget,
                     compiled_width,
                     false,
-                    Some(&mut load_hint),
+                    Some(crate::numeric_pipeline::PreparedLoadTarget::Borrowed(
+                        &mut load_hint,
+                    )),
                 )
                 .unwrap();
                 assert_eq!(loaded, reference);

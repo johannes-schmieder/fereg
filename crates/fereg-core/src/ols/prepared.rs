@@ -4,6 +4,12 @@ pub(crate) use crate::memory::VecReservation as FeTopologyReservation;
 mod topology;
 use topology::build_borrowed_intercept_fe_design_with_reservation;
 pub(crate) use topology::finalize_preparation_sources;
+#[path = "prepared_load.rs"]
+mod load;
+pub use load::PreparedOlsLoadColumns;
+pub(crate) use load::{
+    prepare_numeric_sample_owned_with_columns, prepare_owned_with_load_columns, PreparedSourceReuse,
+};
 
 use rayon::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
@@ -620,16 +626,8 @@ fn prepare_numeric_sample_owned(
     cluster_sources: &[SourceId],
     categorical: bool,
 ) -> Result<(PreparedOlsModel, PreparedNumericSample)> {
-    let model = request.compile_model(cluster_sources, categorical)?;
-    validate_loaded(request, &loaded)?;
-    validate_candidate_weight_domain(&loaded)?;
-    let sample = if is_full_retained_unweighted_sample(&loaded) {
-        take_full_retained_unweighted_sample(loaded)?
-    } else {
-        take_classified_sample(request, loaded, cluster_sources)?
-    };
-    validate_available_categorical_domain(request, &sample)?;
-    Ok((model, sample))
+    prepare_numeric_sample_owned_with_columns(request, loaded, cluster_sources, categorical, None)
+        .map(|(model, sample, _)| (model, sample))
 }
 
 pub(crate) fn prepare_ols_data_with_cluster_sources(
@@ -762,9 +760,9 @@ pub(crate) fn factorize_preparation_sources(
 pub(crate) fn factorize_preparation_sources_with_hint(
     request: &OlsRequestV1,
     sample: &PreparedNumericSample,
-    hint: Option<PreparedOlsLoadHint>,
+    hint: Option<PreparedSourceReuse>,
 ) -> Result<Vec<PreparedCategoricalSource>> {
-    let previous = hint.map_or_else(Vec::new, |hint| hint.into_matching_sources(request, sample));
+    let previous = hint.map_or_else(Vec::new, |hint| hint.into_sources(request, sample));
     factorize_categorical_sources_reusing(request, sample, &[], previous)
 }
 
@@ -3249,6 +3247,240 @@ mod tests {
                         );
                     }
                 }
+            }
+        }
+    }
+
+    fn load_columns_fixture() -> (OlsRequestV1, LoadedOlsInput) {
+        let mut request = request(2, true);
+        request.absorbed_terms.push(AbsorbedTerm {
+            id: AbsorbTermId::new(1).unwrap(),
+            intercept: true,
+            categorical_sources: vec![SourceId::new(1).unwrap()],
+            slope_sources: Vec::new(),
+            label: "g".into(),
+            saved_name: String::new(),
+        });
+        let input = LoadedOlsInput {
+            candidate: vec![true; 8],
+            outcome: column(&[1., 3., 2., 5., 4., 7., 6., 9.], &[false; 8]),
+            numeric_sources: vec![
+                (
+                    SourceId::new(1).unwrap(),
+                    column(&[-0., 0., 1., 1., 2., 2., 3., 4.], &[false; 8]),
+                ),
+                (
+                    SourceId::new(2).unwrap(),
+                    column(&[1., 2., 3., 4., 5., 6., 7., 8.], &[false; 8]),
+                ),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        (request, input)
+    }
+
+    fn load_columns_take(
+        input: &mut LoadedOlsInput,
+        indices: &[usize],
+        budget: u128,
+    ) -> PreparedOlsLoadColumns {
+        let columns = indices
+            .iter()
+            .map(|&index| {
+                let (id, column) = &mut input.numeric_sources[index];
+                (
+                    *id,
+                    std::mem::replace(
+                        column,
+                        LoadedNumericColumn {
+                            values: Vec::new(),
+                            missing: Vec::new(),
+                        },
+                    ),
+                )
+            })
+            .collect();
+        PreparedOlsLoadColumns::prepare(columns, input.candidate.len(), budget)
+    }
+
+    #[test]
+    fn load_columns_preserve_preparation_and_error_precedence() {
+        use crate::ols::prepare_model_owned_with_load_columns;
+        let clusters = [crate::ols::OlsClusterTermV1 {
+            label: "numeric".into(),
+            sources: vec![SourceId::new(2).unwrap()],
+        }];
+        for categorical in [false, true] {
+            for clustered in [false, true] {
+                for admitted in [0, u128::MAX] {
+                    for case in 0..13 {
+                        let (mut request, mut input) = load_columns_fixture();
+                        match case {
+                            1 => input.numeric_sources[1].1.missing[0] = true,
+                            2 => input.candidate[0] = false,
+                            3 => input.numeric_sources[0].1.missing[0] = true,
+                            4 => input.outcome.missing[0] = true,
+                            5 | 6 | 12 => {
+                                request.bindings.push(OlsInputBinding {
+                                    stata_var_position: 5,
+                                    role: OlsInputRole::AnalyticWeight,
+                                });
+                                input.analytic_weight = Some(column(
+                                    &[
+                                        if case == 5 {
+                                            0.
+                                        } else if case == 6 {
+                                            -1.
+                                        } else {
+                                            2.
+                                        },
+                                        1.,
+                                        1.,
+                                        1.,
+                                        1.,
+                                        1.,
+                                        1.,
+                                        1.,
+                                    ],
+                                    &[false; 8],
+                                ));
+                            }
+                            7 => input.numeric_sources[0].1.values[0] = f64::INFINITY,
+                            8 => input.outcome.values[0] = f64::NAN,
+                            9 => {
+                                request.bindings.pop();
+                                input.numeric_sources[0].1.values.clear();
+                            }
+                            10 => request.absorbed_terms.clear(),
+                            11 => request.keep_singletons = true,
+                            _ => (),
+                        }
+                        let cluster_terms = if clustered { &clusters[..] } else { &[] };
+                        let expected = prepare_model_owned(
+                            &request,
+                            cluster_terms,
+                            input.clone(),
+                            categorical,
+                        );
+                        let capsule = load_columns_take(&mut input, &[0], admitted);
+                        let actual = prepare_model_owned_with_load_columns(
+                            &request,
+                            cluster_terms,
+                            input,
+                            categorical,
+                            Some(capsule),
+                            0,
+                        );
+                        assert_eq!(actual, expected, "case={case}, categorical={categorical}, clusters={clustered}, budget={admitted}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn load_columns_transfer_keeps_raw_buffers_and_only_adopts_complete_sources() {
+        for case in 0..6 {
+            let (mut request, mut input) = load_columns_fixture();
+            let capsule =
+                load_columns_take(&mut input, &[0], if case == 4 { 0 } else { u128::MAX });
+            let (_, raw) = capsule.columns().next().unwrap();
+            let pointer = raw.values.as_ptr();
+            let capacity = raw.values.capacity();
+            assert!(
+                capsule.descriptor_bytes()
+                    >= std::mem::size_of::<(SourceId, LoadedNumericColumn)>() as u128
+            );
+            assert_eq!(capsule.encoding_bytes() == 0, case == 4);
+            match case {
+                1 => input.candidate[0] = false,
+                2 => request.absorbed_terms.clear(),
+                3 => input.outcome.missing[0] = true,
+                5 => {
+                    request.bindings.push(OlsInputBinding {
+                        stata_var_position: 5,
+                        role: OlsInputRole::AnalyticWeight,
+                    });
+                    input.analytic_weight =
+                        Some(column(&[1., 2., 1., 2., 1., 2., 1., 2.], &[false; 8]));
+                }
+                _ => (),
+            }
+            let (_, sample, reuse) = prepare_numeric_sample_owned_with_columns(
+                &request,
+                input,
+                &[],
+                false,
+                Some(capsule),
+            )
+            .unwrap();
+            assert_eq!(
+                matches!(&reuse, Some(PreparedSourceReuse::Owned(_))),
+                case == 0
+            );
+            assert_eq!(reuse.is_some(), case != 4);
+            if matches!(case, 0 | 2 | 4) {
+                assert_eq!(sample.regressors[0].as_ptr(), pointer);
+                assert_eq!(sample.regressors[0].capacity(), capacity);
+                assert_eq!(sample.regressors[0][0].to_bits(), (-0.0_f64).to_bits());
+            }
+            match reuse {
+                Some(PreparedSourceReuse::Owned(sources)) => {
+                    assert_eq!(sources[0].encoded.codes, [0, 0, 1, 1, 2, 2, 3, 4]);
+                    assert_eq!(sources[0].encoded.levels[0].to_bits(), 0.0_f64.to_bits());
+                }
+                Some(PreparedSourceReuse::Checked(hint)) => {
+                    let codes = hint.sources[0].encoded.codes.as_ptr();
+                    let sources = hint.into_matching_sources(&request, &sample);
+                    assert_eq!(!sources.is_empty(), case == 5);
+                    if case == 5 {
+                        assert_eq!(sources[0].encoded.codes.as_ptr(), codes);
+                    }
+                }
+                None => (),
+            }
+        }
+    }
+
+    #[test]
+    fn load_columns_reject_foreign_slots_after_metadata() {
+        use crate::ols::prepare_model_owned_with_load_columns;
+        for case in 0..6 {
+            let (mut request, mut input) = load_columns_fixture();
+            let capsule = load_columns_take(
+                &mut input,
+                if case == 4 { &[1, 0] } else { &[0] },
+                u128::MAX,
+            );
+            match case {
+                0 => input.numeric_sources[0].1.values.push(1.),
+                1 => input.numeric_sources[0].1.missing.push(false),
+                2 => input.numeric_sources[0].0 = SourceId::new(2).unwrap(),
+                3 => input.numeric_sources.clear(),
+                4 => (),
+                5 => {
+                    input.numeric_sources.clear();
+                    request.bindings.pop();
+                }
+                _ => unreachable!(),
+            }
+            let expected_metadata = request.compile_model(&[], false).err();
+            let error = prepare_model_owned_with_load_columns(
+                &request,
+                &[],
+                input,
+                false,
+                Some(capsule),
+                0,
+            )
+            .unwrap_err();
+            if let Some(expected) = expected_metadata {
+                assert_eq!(error, expected);
+            } else {
+                assert_eq!(error.code, ErrorCode::InvalidArgument);
+                assert!(error.message.contains("owned load column"));
             }
         }
     }

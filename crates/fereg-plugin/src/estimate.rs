@@ -248,7 +248,7 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let input_team = (action.candidate_all && numeric_pipeline_effects_supported(&action.request))
         .then(|| ThreadTeam::new(action.fit.execution.threads));
     let mut loaded_rhs = None;
-    let mut load_hint = None;
+    let mut load_columns = None;
     let rhs_budget = action.loaded_rhs_budget();
     let loaded = load_ols_input_with_team(
         &action.request,
@@ -261,7 +261,9 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         rhs_budget,
         action.loaded_rhs_layout,
         false,
-        Some(&mut load_hint),
+        Some(crate::numeric_pipeline::PreparedLoadTarget::Owned(
+            &mut load_columns,
+        )),
     )?;
     action.loaded_fit_workspace_bytes = loaded_rhs
         .as_ref()
@@ -300,8 +302,13 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     std::thread::sleep(std::time::Duration::from_millis(1));
                 }
             }
-            let (prepared, loaded_rows) =
-                prepare_ols_pipeline(loaded, loaded_rhs, load_hint, numerical_action, categorical)?;
+            let (prepared, loaded_rows) = prepare_ols_pipeline(
+                loaded,
+                loaded_rhs,
+                load_columns,
+                numerical_action,
+                categorical,
+            )?;
             numerical_action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
@@ -1319,7 +1326,7 @@ pub(crate) fn load_ols_input_with_action_team(
         0,
         None,
         false,
-        load_hint,
+        load_hint.map(crate::numeric_pipeline::PreparedLoadTarget::Borrowed),
     )
 }
 
@@ -1363,7 +1370,7 @@ fn load_ols_input_with_team(
     rhs_budget: usize,
     compiled_rhs_layout: Option<crate::numeric_pipeline::NumericRhsLayout>,
     candidate_first: bool,
-    load_hint: Option<&mut Option<PreparedOlsLoadHint>>,
+    mut load_hint: Option<crate::numeric_pipeline::PreparedLoadTarget<'_>>,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
     let mut candidate = reserved_filled(n, candidate_all, "OLS candidate marker")?;
@@ -1528,7 +1535,7 @@ fn load_ols_input_with_team(
                 missing.push(&mut column.missing);
             }
         }
-        let prepared_read = if let Some(hint) = load_hint {
+        let prepared_read = if let Some(hint) = load_hint.as_mut() {
             crate::numeric_pipeline::try_read_prepared_reserved(
                 spi,
                 request,
@@ -1637,7 +1644,10 @@ fn load_ols_input_with_team(
         if candidate_all
             && all_sources_numeric
             && input_complete
-            && missing.iter().any(|flags| flags.iter().any(|flag| *flag))
+            && (missing.iter().any(|flags| flags.iter().any(|flag| *flag))
+                || load_hint
+                    .as_ref()
+                    .is_some_and(|target| target.has_missing()))
         {
             return Err(invalid_data(
                 "Stata completeness certificate disagrees with numeric input",

@@ -606,6 +606,28 @@ pub fn prepare_model_owned_with_load_hint(
     })
 }
 
+/// Consume optional early-column owners without exposing their raw values for
+/// mutation between factorization and authoritative sample preparation.
+pub fn prepare_model_owned_with_load_columns(
+    request: &super::OlsRequestV1,
+    clusters: &[OlsClusterTermV1],
+    loaded: LoadedOlsInput,
+    categorical: bool,
+    columns: Option<super::PreparedOlsLoadColumns>,
+    membership_scratch: u128,
+) -> Result<PreparedOlsData> {
+    prepare_model_with(request, clusters, |sources| {
+        crate::ols::prepared::prepare_owned_with_load_columns(
+            request,
+            loaded,
+            sources,
+            categorical,
+            columns,
+            membership_scratch,
+        )
+    })
+}
+
 /// Borrowed counterpart of [`prepare_model_owned`]. The loaded columns stay
 /// with the caller; PPML's preparation uses the same borrowed kernel to
 /// re-prepare every separation generation from one retained input.

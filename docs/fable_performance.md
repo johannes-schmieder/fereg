@@ -1515,6 +1515,42 @@ before the H boundary. See
 [validation](VALIDATION.md#h6-checked-initial-rhs-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-finite-inputs.json).
 
+Item 1 declaration (parent `1b0922f1`): keep the early OLS categorical columns
+inside an owned capsule through optional factorization and authoritative
+preparation. Core alone restores their vacated slots and consumes the capsule;
+reuse without code/value revalidation requires the actual complete unweighted
+sample-transfer branch and matching requested categorical source identities.
+Classified inputs, independently supplied borrowed hints and PPML retain their
+existing checks. Preserve metadata, loaded-input, weight, availability and
+categorical-domain error ordering, SPI/Break authority and all numerical/model
+decisions. Move the raw buffers without copying; admit descriptor storage
+before the first SPI read and account for its lifetime beside tiles, factors
+and moment preparation. Optional refusal before reading keeps the existing
+loader; after reading, raw ownership must survive optional factorization failure.
+Witnesses compare capsule/plain preparation including missing values, weights,
+clusters and singleton pruning; changed requests and candidate masks; pointer
+and capacity ownership; allocation refusal, completeness errors, late SPI
+failure and Break; unchanged borrowed-hint/PPML tests; full runtime checks,
+exact replay and licensed transactions. Timing remains at the H boundary.
+
+Item 1 result: early OLS columns now stay owned alongside their optional
+encodings until core restoration and classification. Only the actual complete
+unweighted transfer skips self-revalidation; weighted/classified cases retain
+the old checked reuse, avoiding an unnecessary refactorization in the first
+draft. Three focused core tests cover 104 capsule/plain comparisons, signed
+zero, changed requests, malformed slots and raw/encoding pointer identity.
+Plugin witnesses cover early/late completeness contradictions, optional
+refusal, late SPI error/panic, exact and one-byte-short budgets at 2/4/16
+workers, and unchanged moment-cache decisions. The full suite passes 1,687
+Rust executions; universal Mac checks, 73 exact replay cases, 292 worker
+checks and seventeen licensed fixtures pass. Independent review approves.
+The cost is a 56-byte descriptor per early source on this host, freed before
+classification, plus 176 core and 99 plugin production lines. Raw observation
+buffers are moved, never copied. The new-function size and test-only Clippy
+failures were repaired and retained. No wall-time improvement is asserted.
+See [validation](VALIDATION.md#h6-owned-load-hints-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-load-hint.json).
+
 ### H7. Small-input fixed cost (check only)
 
 The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio

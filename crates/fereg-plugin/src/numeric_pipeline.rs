@@ -3,7 +3,9 @@
 use std::sync::{Condvar, Mutex, MutexGuard};
 
 use fereg_core::error::{ErrorCode, FeregError, Result};
-use fereg_core::ols::{OlsRequestV1, PreparedOlsLoadHint};
+use fereg_core::ols::{
+    LoadedNumericColumn, OlsRequestV1, PreparedOlsLoadColumns, PreparedOlsLoadHint,
+};
 use fereg_core::parallel::ThreadTeam;
 
 use crate::input::SpiApi;
@@ -80,6 +82,46 @@ impl<'a> ReservedColumns<'a> {
         Some(result)
     }
 
+    fn prepare(
+        &mut self,
+        ids: &[fereg_core::metadata::SourceId],
+        rows: usize,
+        admitted: u128,
+        owned: Option<Vec<(fereg_core::metadata::SourceId, LoadedNumericColumn)>>,
+    ) -> (Option<PreparedOlsLoadHint>, Option<PreparedOlsLoadColumns>) {
+        if let Some(mut columns) = owned {
+            for (id, (values, flags)) in ids
+                .iter()
+                .copied()
+                .zip(self.values.iter_mut().zip(&mut self.missing))
+            {
+                columns.push((
+                    id,
+                    LoadedNumericColumn {
+                        values: std::mem::take(*values),
+                        missing: std::mem::take(*flags),
+                    },
+                ));
+            }
+            (
+                None,
+                Some(PreparedOlsLoadColumns::prepare(columns, rows, admitted)),
+            )
+        } else {
+            (
+                PreparedOlsLoadHint::prepare(
+                    ids.iter()
+                        .copied()
+                        .zip(self.values.iter().zip(&self.missing))
+                        .map(|(id, (values, flags))| (id, values.as_slice(), flags.as_slice())),
+                    rows,
+                    admitted,
+                ),
+                None,
+            )
+        }
+    }
+
     fn partition(
         request: &OlsRequestV1,
         positions: &[u32],
@@ -104,6 +146,53 @@ impl<'a> ReservedColumns<'a> {
     }
 }
 
+pub(crate) enum PreparedLoadTarget<'a> {
+    Borrowed(&'a mut Option<PreparedOlsLoadHint>),
+    Owned(&'a mut Option<PreparedOlsLoadColumns>),
+}
+
+impl PreparedLoadTarget<'_> {
+    fn store(&mut self, prepared: (Option<PreparedOlsLoadHint>, Option<PreparedOlsLoadColumns>)) {
+        match self {
+            Self::Borrowed(hint) => **hint = prepared.0,
+            Self::Owned(columns) => **columns = prepared.1,
+        }
+    }
+
+    fn descriptor_bytes(&self, sources: usize) -> u128 {
+        if matches!(self, Self::Owned(_)) {
+            sources as u128
+                * std::mem::size_of::<(fereg_core::metadata::SourceId, LoadedNumericColumn)>()
+                    as u128
+        } else {
+            0
+        }
+    }
+
+    fn reserve_columns(
+        &self,
+        sources: usize,
+    ) -> Option<Vec<(fereg_core::metadata::SourceId, LoadedNumericColumn)>> {
+        let mut columns = Vec::new();
+        if matches!(self, Self::Owned(_)) {
+            columns.try_reserve_exact(sources).ok()?;
+            if columns.capacity() != sources {
+                return None;
+            }
+        }
+        Some(columns)
+    }
+
+    pub(crate) fn has_missing(&self) -> bool {
+        match self {
+            Self::Owned(Some(columns)) => columns
+                .columns()
+                .any(|(_, column)| column.missing.iter().any(|&missing| missing)),
+            _ => false,
+        }
+    }
+}
+
 /// Complete the categorical columns before lending them to optional native
 /// factorization. The original source registry and numeric RHS recipe survive.
 #[allow(clippy::too_many_arguments)]
@@ -117,7 +206,7 @@ pub(crate) fn try_read_prepared_reserved(
     team: ThreadTeam,
     memory: &mut InputMemory,
     rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
-    hint: &mut Option<PreparedOlsLoadHint>,
+    target: &mut PreparedLoadTarget<'_>,
 ) -> Result<bool> {
     let width = positions.len();
     if !(1..=MAX_COLUMNS).contains(&width)
@@ -161,11 +250,17 @@ pub(crate) fn try_read_prepared_reserved(
     let Some(scratch) = PreparedOlsLoadHint::workspace_bytes(rows, ids.len()) else {
         return Ok(false);
     };
-    let temporary = scratch + 4096; // Both small partition descriptor banks.
+    let owns_columns = matches!(target, PreparedLoadTarget::Owned(_));
+    let descriptor_bytes = target.descriptor_bytes(ids.len());
+    let temporary = scratch + 4096 + descriptor_bytes;
+    // Both partition banks and the owned capsule are admitted before reading.
     let tiles = 2 * TILE_ROWS * width * std::mem::size_of::<f64>() + std::mem::size_of::<Handoff>();
     if temporary + tiles as u128 > memory.remaining() as u128 {
         return Ok(false);
     }
+    let Some(owned_columns) = target.reserve_columns(ids.len()) else {
+        return Ok(false);
+    };
     let Some((mut early, mut late)) =
         ReservedColumns::partition(request, positions, columns, missing, &ids)
     else {
@@ -210,13 +305,11 @@ pub(crate) fn try_read_prepared_reserved(
         let (read, prepared) = crate::cancellable::while_loading(
             team,
             || {
-                PreparedOlsLoadHint::prepare(
-                    ids.iter()
-                        .copied()
-                        .zip(early.values.iter().zip(&early.missing))
-                        .map(|(id, (values, flags))| (id, values.as_slice(), flags.as_slice())),
+                early.prepare(
+                    &ids,
                     rows,
-                    scratch,
+                    scratch + descriptor_bytes,
+                    owns_columns.then_some(owned_columns),
                 )
             },
             |spi| {
@@ -240,10 +333,15 @@ pub(crate) fn try_read_prepared_reserved(
                 "admitted numeric preparation tail declined",
             ));
         }
-        *hint = prepared;
+        target.store(prepared);
         Ok(true)
     })();
     memory.release(temporary)?;
+    if let PreparedLoadTarget::Owned(Some(columns)) = target {
+        // The raw banks were already counted; only the added descriptors
+        // survive the joined optional preparation beside the ordinary loader.
+        memory.retain(columns.descriptor_bytes())?;
+    }
     result
 }
 
@@ -688,8 +786,9 @@ mod tests {
             include_intercept: true,
             keep_singletons: false,
         };
-        for workers in [2, 4, 16] {
-            for case in 0..6 {
+        for (workers, owned) in [2, 4, 16].into_iter().flat_map(|n| [(n, false), (n, true)]) {
+            let mut exact_budget = None;
+            for case in 0..8 {
                 let mut request = request.clone();
                 if case == 2 {
                     request.absorbed_terms[0].categorical_sources[0] = SourceId::new(1).unwrap();
@@ -697,55 +796,82 @@ mod tests {
                 let team = ThreadTeam::new(ThreadConfig::from_requested(workers, false).unwrap());
                 let mut input = Input::new();
                 input.missing_modulo = if case == 3 { 197 } else { 0 };
-                if case >= 4 {
+                if matches!(case, 4 | 5) {
                     input.failure = 6;
                     input.panic = case == 5;
                 }
-                let mut memory = InputMemory::new(
-                    (case == 1).then_some(2 * TILE_ROWS as u128 * 4 * 8 + 4096),
-                    0,
-                )
-                .unwrap();
+                let budget = match case {
+                    1 => Some(2 * TILE_ROWS as u128 * 4 * 8 + 4096),
+                    6 => exact_budget,
+                    7 => exact_budget.map(|bytes| bytes - 1),
+                    _ => None,
+                };
+                let mut memory = InputMemory::new(budget, 0).unwrap();
                 let remaining = memory.remaining();
                 let mut values = (0..4).map(|_| Vec::with_capacity(rows)).collect::<Vec<_>>();
                 let mut flags = (0..4).map(|_| Vec::with_capacity(rows)).collect::<Vec<_>>();
                 let mut rhs = Vec::with_capacity(rows * 4);
                 let mut hint = None;
-                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    try_read_prepared_reserved(
-                        &mut input,
-                        &request,
-                        &[2, 3, 4, 5],
-                        rows,
-                        &mut values.iter_mut().collect::<Vec<_>>(),
-                        &mut flags.iter_mut().collect::<Vec<_>>(),
-                        team,
-                        &mut memory,
-                        Some((
-                            &mut rhs,
-                            NumericRhsLayout {
-                                width: 4,
-                                append_intercept: true,
-                            },
-                        )),
-                        &mut hint,
-                    )
-                }));
+                let mut capsule = None;
+                let early_pointer = values[3].as_ptr();
+                let early_capacity = values[3].capacity();
+                let (outcome, missing_in_capsule) = {
+                    let mut target = if owned {
+                        PreparedLoadTarget::Owned(&mut capsule)
+                    } else {
+                        PreparedLoadTarget::Borrowed(&mut hint)
+                    };
+                    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        try_read_prepared_reserved(
+                            &mut input,
+                            &request,
+                            &[2, 3, 4, 5],
+                            rows,
+                            &mut values.iter_mut().collect::<Vec<_>>(),
+                            &mut flags.iter_mut().collect::<Vec<_>>(),
+                            team,
+                            &mut memory,
+                            Some((
+                                &mut rhs,
+                                NumericRhsLayout {
+                                    width: 4,
+                                    append_intercept: true,
+                                },
+                            )),
+                            &mut target,
+                        )
+                    }));
+                    (outcome, target.has_missing())
+                };
                 if case == 5 {
                     assert!(outcome.is_err());
                     assert!(!fereg_core::interrupt::cancellation_requested());
                     continue;
                 }
                 let result = outcome.unwrap();
-                assert_eq!(remaining, memory.remaining());
+                let retained = capsule
+                    .as_ref()
+                    .map_or(0, |c| c.descriptor_bytes() as usize);
+                assert_eq!(
+                    memory.remaining(),
+                    if budget.is_some() {
+                        remaining - retained
+                    } else {
+                        remaining
+                    }
+                );
+                if case == 0 {
+                    exact_budget = Some(memory.peak());
+                }
                 assert!(!fereg_core::interrupt::cancellation_requested());
                 if case == 4 {
                     assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted);
                     assert!(hint.is_none());
+                    assert!(capsule.is_none());
                     assert_eq!(input.calls, 6);
                     continue;
                 }
-                let accepted = !matches!(case, 1 | 2);
+                let accepted = !matches!(case, 1 | 2 | 7);
                 assert_eq!(result.unwrap(), accepted);
                 if !accepted {
                     assert_eq!(input.calls, 0);
@@ -753,9 +879,22 @@ mod tests {
                     assert!(flags.iter().all(Vec::is_empty));
                     assert!(rhs.is_empty());
                     assert!(hint.is_none());
+                    assert!(capsule.is_none());
                     continue;
                 }
-                assert_eq!(hint.is_some(), case != 3);
+                assert_eq!(hint.is_some(), !owned && case != 3);
+                assert_eq!(capsule.is_some(), owned);
+                assert_eq!(missing_in_capsule, owned && case == 3);
+                let early = capsule.as_ref().map(|capsule| {
+                    let (id, column) = capsule.columns().next().unwrap();
+                    assert_eq!(id, SourceId::new(3).unwrap());
+                    assert_eq!(column.values.as_ptr(), early_pointer);
+                    assert_eq!(column.values.capacity(), early_capacity);
+                    assert!(values[3].is_empty() && flags[3].is_empty());
+                    assert_eq!(capsule.encoding_bytes() > 0, case != 3);
+                    assert!(memory.peak() >= capsule.descriptor_bytes() + capsule.encoding_bytes());
+                    column
+                });
                 assert_eq!(
                     input.batches,
                     (0..5)
@@ -771,8 +910,12 @@ mod tests {
                         } else {
                             (row + 1) as f64 + (column + 2) as f64 * 100000.
                         };
-                        assert_eq!(values[column][row], expected);
-                        assert_eq!(flags[column][row], missing);
+                        let (column_values, column_flags) = match early.filter(|_| column == 3) {
+                            Some(column) => (&column.values, &column.missing),
+                            None => (&values[column], &flags[column]),
+                        };
+                        assert_eq!(column_values[row], expected);
+                        assert_eq!(column_flags[row], missing);
                         assert_eq!(
                             rhs[row * 4 + column],
                             if column == 3 { 1. } else { expected }
