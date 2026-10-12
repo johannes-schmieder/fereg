@@ -1201,6 +1201,143 @@ retained F2 bounds and fourteen licensed fixtures pass on the prototype.
 A new candidate or additional measurement budget requires a new declaration;
 H4 continues on the accepted production runtime.
 
+### H2 follow-up: reduce geometry cost (authorized 2026-10-12)
+
+Johannes reopened H2 after reviewing its dense gains and sparse-cost failure.
+The original 21 ms outcome remains failed. This new workstream starts from
+`be357256`, ports the retained prototype onto completed H6 ownership, and
+keeps the same mathematical eligibility, requested-tolerance certificate,
+untouched-input fallback, work budget, original FE order and memory admission.
+Its numerical scope and independent witnesses are those declared for H2 above;
+explicit/weighted requests, PPML, final residuals, sample, rank, omission and
+separation remain protected. Geometry-only changes must preserve the old
+computed eligibility exactly at each requested target.
+
+Before production edits, the bounded candidates are: (1) decline once the
+same outward-rounded four-sweep calculation with unknown pair bounds set to
+zero already fails all four checkpoints; (2) accumulate exact integer pair
+moments once per occupied contingency cell during the existing histogram
+clearing pass instead of once per row. Positive arithmetic monotonicity proves
+(1) preserves the old eligibility; exact integer contingency identities prove
+(2) preserves completed bounds and overflow behavior. Retain the original
+prototype as a diagnostic comparator, independent rational/dense projection
+witnesses, rounding/overflow/budget/Break cases and exact declined-route replay.
+No new row-count, case, timing or empirical route fence is authorized.
+An additional target-independent alternative to (1) is an exact marginal
+lower bound: with Q_i=sum n_i^2 and M_i=max n_i, S=sum n_ij^2 >= N and
+W=sum n_ij*n_i*n_j <= min(M_i*Q_j,M_j*Q_i). If checked arithmetic proves
+N^3+Q_i*Q_j-2*N*min(M_i*Q_j,M_j*Q_i) >= N^2*min_i*min_j, the old capped
+pair bound is exactly one. First prove 2*N^4 fits u128 so no original
+intermediate could overflow; otherwise skip the optional shortcut. This avoids
+a target-dependent cached decline, preserving later looser session targets.
+
+The first candidate chooses the target-independent marginal shortcut and cell
+aggregation. No partial-target cache is introduced. Independent high-effort
+review found no production blocker; add explicit cancellation, consumed-pilot
+norm/coefficient recovery and a 21,504-row parallel dummy-QR witness before
+qualification. A task-only diagnostic compared both geometry implementations
+on hash-verified frozen FE columns, five alternating pairs after an untimed
+exact-bounds check. It used the optimized CI test profile with debug assertions;
+those kernel observations are not release timings. The diagnostic source is
+removed before the production freeze. The large quiet Mac panel uses the same
+frozen Stata datasets and maintained campaign entrypoint, with native and command
+clocks, platform plugin-name adjustment and tracing disabled. Its paired native
+analysis uses the maintained bootstrap; independent science and exact repeats
+are checked from exports outside the timed command.
+
+Stop after at most three geometry candidates and ten substantive failed repairs
+or one working day on a blocker. Targeted kernel profiling precedes the frozen
+full-fit candidate. One SCC panel uses the frozen dense 1M/4M and sparse 1M
+inputs at 1/4/16 workers, three alternating pairs per cell (54 fits), 120 seconds
+per fit and 2,400 seconds total, without retries. Compare against current
+production on the same allocated host and placement; preserve every outcome.
+Report geometry separately and retain the historical 21 ms comparison, but do
+not treat a clock from another host as proof of incremental end-to-end cost.
+
+Adoption requires independent science and unchanged protected decisions, a
+material dense gain and sparse/small-input nonregression under the existing
+max(5%, 1 ms) allowance. Finish production and focused checks before quiet Mac
+qualification: one fixed fifteen-pair panel on all twenty standard workloads,
+and one fixed fifteen-pair panel on dense 1M/4M and sparse 1M at 1/4 workers,
+after warmup, using the maintained paired-median 95% bootstrap and 3,600 seconds
+per panel. No continuation or sampling until a pass. All cross-plugin numerical
+differences require the declared scope and independent witnesses; fixed-worker
+repeats remain exact. Qualification is incremental to `be357256`; the previous
+H-wide inconclusive cell remains historical and is not retroactively passed.
+A failed/inconclusive qualification preserves the candidate and evidence without
+claiming adoption or a release speedup. Record results in VALIDATION and the
+benchmark generalization section, compact records below 300 KB, raw captures
+on SCC, and delete `target/tmp/h2-followup/` at closure.
+
+### H2 follow-up candidate 2: certify at the predicted sweep
+
+The first candidate's fixed panels are closed. All science/repeat checks passed.
+The standard Mac panel has nineteen passes and one inconclusive cell (129-column
+OLS at four workers, ratio 1.02043, interval [0.97225, 1.05460]). The large panel
+finds dense 4M native gains of 25.97%/23.17% at 1/4 workers, but dense 1M at four
+workers regresses 6.85% (interval [1.05489, 1.07918]); one-worker 1M costs 1.48%.
+Sparse 1M costs 0.01%/0.39%, within the allowance. This candidate is not adopted.
+All observations and the unchanged first candidate remain retained separately.
+SCC's 54-fit panel passes science; sparse geometry is 15.52–16.10 ms, below the
+old 21 ms number on this different host. That does not rewrite the old failure.
+
+Before the second candidate's edits: retain complete geometry and its eligibility
+bits, but pass its predicted sweep for the current recurrence target to the
+automatic pilot. Add a requested-tolerance certificate at that sweep, alongside
+the initial, ordinary cadence and fourth-sweep checks, deduplicating coincidences.
+A finite certificate miss at the prediction checkpoint continues normally;
+existing InvalidData fallback and other error propagation remain. The numerical scope includes
+successful automatic three-FE results and iteration diagnostics from earlier
+acceptance. Explicit MAP behavior, requested certificate, four-sweep maximum,
+actual-work debit, untouched-input fallback, final projection, memory admission
+and every protected discrete decision remain unchanged. SPEC and the public
+Stata help expose no exclusive checkpoint cadence promise. Independent Astra
+analysis endorses this concrete saved-sweep hypothesis, conditional on witnesses;
+it is not a new acceptance rule or a resampling of candidate 1.
+
+Witnesses before timing: independent dummy-QR and projection tests, retained FE
+reconstruction, fixed-worker repeats and stable acceptance/iteration decisions at
+1/4/16 workers, failed predicted checkpoint followed by fourth-sweep acceptance,
+and four-sweep failure followed by fresh LSMR norms/coefficients and correct work
+accounting. Run the full suite, universal native checks, 73-case exact protected
+replay/292 worker checks and the 26 mapped licensed fixtures again. Bound targeted
+profiling to dense 1M/4M at four workers, three first/second-candidate pairs after
+warmup (16 fits, 300 seconds); finish source, focused checks and this diagnostic
+before qualification. Retain an unsuccessful extra-certificate cost witness too.
+
+Qualification is frozen before measurements: a new SCC 36-fit panel (two pairs
+on the same three inputs at 1/4/16 workers, 120 seconds/fit, 1,800 seconds total)
+and a new Mac large panel (same six cells, fifteen pairs after warmup, 3,600-second
+budget). For the twenty standard Mac workloads, use two fixed fifteen-pair blocks
+with warmup in each, regardless of intermediate outcomes: thirty pairs per cell,
+1,800 seconds/block, 3,600 seconds total. Combine all pairs once using the same
+paired-median 95% bootstrap and max(5%, 1 ms) allowance; neither individual block
+is an adoption decision. This larger fixed sample addresses the observed wide
+cell uncertainty on the new artifact. No continuation, favorable-cell selection,
+or further sampling is authorized. Candidate 1's observations remain its own
+failed/inconclusive outcome. All other adoption requirements above remain.
+
+Candidate 2 result (2026-10-12): adopted after the declared Mac panels.
+All twenty combined thirty-pair standard cells and all six fifteen-pair large
+cells pass. Dense 1M native gains are 13.05%/6.46% at 1/4 workers; dense 4M gains
+are 37.38%/32.31%. Full-command gains are 12.21%/5.72% and 35.80%/29.34%.
+Sparse costs 0.02%/0.48%; standard wide64/four workers costs 1.82%, all within
+the unchanged allowance. The candidate, source and inputs stayed frozen.
+No continuation, fit retry or dropped observation occurred.
+
+The full driver (1,746 Rust executions), 73-case exact replay/292 worker checks,
+universal Mac build/ABI, 26 licensed fixtures, independent witnesses and
+high-effort review pass. Fourteen Rust executions are ignored and thirteen
+optional Python checks skipped. SCC build/ABI/focused tests and all 36 fits, eighteen paired
+science checks and fixed-worker repeat checks pass. SCC dense gains support the mechanism, but its
+sixteen-worker sparse timing costs 15.08% in two pairs and remains unresolved;
+no Linux performance claim follows. The saved-sweep profile and artificial
+failed-checkpoint cost are preserved. Candidate 1 and original H2 failures
+remain distinct, as does the prior H-wide inconclusive outcome. See the
+[full validation](VALIDATION.md#h2-follow-up-certified-dense-three-fe-gains-2026-10-12),
+[first candidate](../bench/results/h2-followup-20261012-first.json) and
+[adopted candidate](../bench/results/h2-followup-20261012-second.json).
+
 ### H3. Parallel neighbour-pair assembly for canonical products
 
 In `ols/canonical_products.rs::build`, the explicit geometry accumulates each

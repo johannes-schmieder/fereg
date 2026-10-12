@@ -1615,6 +1615,7 @@ fn retained_lsmr_reuses_preparation_and_preserves_each_batch() {
                                 true,
                                 false,
                                 false,
+                                None,
                             )
                         } else {
                             absorb_borrowed_intercept_lsmr(
@@ -2898,6 +2899,7 @@ fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
             false,
             false,
             false,
+            None,
         )
         .unwrap();
         assert_eq!(ordinary.residualized(), structural.residualized());
@@ -5079,6 +5081,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         false,
         false,
         false,
+        None,
     )
     .expect("direct auto");
     assert_eq!(direct.report().requested_solver, FeSolverKind::Auto);
@@ -5107,6 +5110,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         false,
         false,
         false,
+        None,
     )
     .expect("early MAP");
     assert_eq!(early.report().used_solver, FeSolverKind::Map);
@@ -5138,6 +5142,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         false,
         false,
         false,
+        None,
     )
     .expect("CG auto");
     assert_eq!(cg.report().requested_solver, FeSolverKind::Auto);
@@ -5179,6 +5184,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
         true,
         false,
         false,
+        None,
     )
     .expect("routed auto");
     assert_eq!(result.report().requested_solver, FeSolverKind::Auto);
@@ -5197,6 +5203,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
         false,
         false,
         false,
+        None,
     )
     .expect("direct LSMR auto");
     assert_eq!(direct.report().requested_solver, FeSolverKind::Auto);
@@ -5326,6 +5333,7 @@ fn uncertified_lsmr_candidate_is_polished_and_fully_accounted() {
         true,
         false,
         false,
+        None,
     )
     .expect("polished auto result");
     let report = result.report();
@@ -5394,6 +5402,7 @@ fn constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fit
             false,
             false,
             false,
+            None,
         )
     };
     // The original certificate norm remains live beside the CG continuation.
@@ -5735,6 +5744,7 @@ fn norm_handoff_lsmr_routes_preserve_certificates_coefficients_and_memory() {
                                     retain,
                                     false,
                                     cache,
+                                    None,
                                 );
                             }
                             let mut session = BorrowedLsmrAbsorber::new(design(), weights, config)?;
@@ -5926,6 +5936,7 @@ fn norm_handoff_failed_lsmr_certificate_and_auto_continuation_discard_cache() {
             false,
             false,
             cache,
+            None,
         )
         .unwrap()
     };

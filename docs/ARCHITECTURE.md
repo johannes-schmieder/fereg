@@ -94,6 +94,18 @@ live in the pinned `within`/`schwarz-precond` dependency. Changes there obey the
 same scientific and performance evidence rules and enter through a pinned
 revision bump.
 
+Automatic unit-weight, symmetric three-FE OLS may first attempt at most four
+MAP sweeps when complete, outward-rounded pair-incidence geometry predicts
+convergence at the current recurrence target. Exact integer marginal bounds
+can prove a saturated pair without scanning its contingency cells; otherwise
+moments accumulate once per occupied cell. Geometry chooses only an additional
+certificate checkpoint. The unchanged requested certificate alone accepts;
+initial, configured-cadence and fourth-sweep checks remain. Failed attempts
+drop their candidate/norm/coefficient storage before LSMR starts on untouched
+inputs, debiting actual work and preserving memory admission. Explicit solvers,
+weighted requests, PPML and final residual projection retain their routes.
+See the [independent checks and performance limits](VALIDATION.md#h2-follow-up-certified-dense-three-fe-gains-2026-10-12).
+
 Thread counts are worker budgets. Shared planned lanes retain deterministic
 arithmetic leaves and ordered merges. One-FE, two-FE and general-FE algorithms
 remain distinct where mathematics warrants them; benchmark-specific route fences

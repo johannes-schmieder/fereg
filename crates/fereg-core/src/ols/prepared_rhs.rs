@@ -1831,6 +1831,7 @@ mod tests {
             true,
             false,
             false,
+            None,
         )
         .unwrap_err();
         assert_eq!(error.code, ErrorCode::InvalidArgument);
@@ -1845,6 +1846,7 @@ mod tests {
             true,
             false,
             false,
+            None,
         )
         .unwrap_err();
         assert_eq!(error.code, ErrorCode::InvalidData);
@@ -1880,6 +1882,7 @@ mod tests {
                 true,
                 false,
                 false,
+                None,
             )
             .unwrap_err()
             .code,

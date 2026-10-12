@@ -14,6 +14,7 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 use super::map::ReusableMapCapacities;
 
 mod lsmr_norms;
+pub(crate) mod three_fe_map;
 pub(crate) mod three_fe_schur;
 
 pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
@@ -3552,6 +3553,7 @@ pub(crate) fn project_borrowed_intercept_structural(
     retain: bool,
     final_residual: bool,
     dense_norms: bool,
+    three_fe_geometry: Option<three_fe_map::Geometry>,
 ) -> Result<CertifiedBorrowedMap> {
     validate_config(map)?;
     if values.nrows() != design.nobs() || values.nrows() == 0 || values.ncols() == 0 {
@@ -3672,6 +3674,7 @@ pub(crate) fn project_borrowed_intercept_structural(
             return Ok(result);
         }
     }
+    let map_first = three_fe_geometry.and_then(|g| g.map_checkpoint(weights, map, final_residual));
     project_general_categorical(
         design,
         weights,
@@ -3682,6 +3685,7 @@ pub(crate) fn project_borrowed_intercept_structural(
         retain,
         estimate,
         dense_norms,
+        map_first,
     )
 }
 
@@ -3696,9 +3700,31 @@ fn project_general_categorical(
     retain: bool,
     estimate: crate::memory::FeSolverMemoryEstimate,
     dense_norms: bool,
+    map_first: Option<usize>,
 ) -> Result<CertifiedBorrowedMap> {
     lsmr.tolerance = super::auto::direct_lsmr_tolerance(map.tolerance);
     lsmr.max_iterations = lsmr.max_iterations.min((map.max_iterations / 2).max(1));
+    let mut pilot = if let Some(checkpoint) =
+        map_first.filter(|_| lsmr.max_iterations > three_fe_map::SWEEPS)
+    {
+        three_fe_map::attempt(
+            design,
+            &values,
+            map,
+            budget,
+            retain,
+            estimate.coefficient_batch_bytes,
+            checkpoint,
+        )?
+    } else {
+        three_fe_map::Attempt::default()
+    };
+    if let Some(mut result) = pilot.result.take() {
+        result.report.requested_solver = FeSolverKind::Auto;
+        result.report.pilot_iterations = pilot.iterations;
+        return Ok(result);
+    }
+    lsmr.max_iterations -= pilot.iterations;
     let validated = validate_weights(weights, values.nrows())?;
     let preconditioner = resolve_borrowed_lsmr_preconditioner(
         design.effects().len(),
@@ -3706,7 +3732,7 @@ fn project_general_categorical(
         lsmr.preconditioner,
     );
     let bytes = estimate.lsmr_bytes(preconditioner);
-    let mut attempted_peak = SolverWorkspacePeak::ZERO;
+    let mut attempted_peak = pilot.peak;
     let mut attempted = None;
     if budget.is_none_or(|b| b.fits(bytes)) {
         let mut memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, budget, 0)?;
@@ -3727,6 +3753,7 @@ fn project_general_categorical(
         attempted_peak = attempted_peak.max(report.solver_workspace_peak);
         report.requested_solver = FeSolverKind::Auto;
         if report.certified() {
+            pilot.record(&mut report);
             let result = if let Some(c) = coefficients {
                 CertifiedBorrowedMap::from_certified_parts_with_coefficients(candidate, report, c)
             } else {
@@ -3742,7 +3769,7 @@ fn project_general_categorical(
         // A report survives the failed certificate; input remains unchanged.
         attempted = Some(report);
     }
-    let consumed = attempted.as_ref().map_or(0, |r| r.iterations);
+    let consumed = pilot.iterations + attempted.as_ref().map_or(0, |r| r.iterations);
     let remaining = map
         .max_iterations
         .checked_sub(consumed)
@@ -3786,6 +3813,7 @@ fn project_general_categorical(
         result.report.fallback_used = true;
         result.report.warnings.push("general FE solve did not certify; MAP used original inputs within the remaining budget".to_owned());
     }
+    pilot.record(&mut result.report);
     Ok(result)
 }
 

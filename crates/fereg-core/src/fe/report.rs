@@ -76,9 +76,9 @@ pub struct SolveReport {
     pub requested_preconditioner: Option<LsmrPreconditioner>,
     /// Effective LSMR preconditioner, or `None` for non-LSMR routes.
     pub used_preconditioner: Option<LsmrPreconditioner>,
-    /// Bounded automatic-routing pilot sweeps included in setup cost.
+    /// Bounded automatic-routing pilot sweeps included in reported work.
     pub pilot_iterations: usize,
-    /// Observed pilot contraction ratio; zero means no pilot was run.
+    /// Observed pilot contraction ratio; zero means no contraction was measured.
     pub pilot_contraction: f64,
     /// Deterministic, diagnostic-only warnings from routing or preconditioning.
     pub warnings: Vec<String>,

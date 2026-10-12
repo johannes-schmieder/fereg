@@ -2,28 +2,22 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 96199,
-      "before": 95828,
-      "metric": "fereg-core/production_lines",
-      "reason": "H6 releases redundant finalized OLS FE numeric columns through sealed source-indexed ownership after canonical validation. Original request roles protect ordinary/omitted, slope, interaction and cluster sources; PPML remains raw. Optional descriptor overlap is admitted against the full original owner and concurrent preparation workspace. The original owner-byte scalar preserves existing execution/output/recovery budgets and every scientific or routing decision."
-    },
-    {
-      "after": 1253,
-      "before": 1250,
+      "after": 1264,
+      "before": 1253,
       "metric": "fereg-core/dispatch_candidates",
-      "reason": "H6 releases redundant finalized OLS FE numeric columns through sealed source-indexed ownership after canonical validation. Original request roles protect ordinary/omitted, slope, interaction and cluster sources; PPML remains raw. Optional descriptor overlap is admitted against the full original owner and concurrent preparation workspace. The original owner-byte scalar preserves existing execution/output/recovery budgets and every scientific or routing decision."
+      "reason": "Reopened H2: bounded unit-weight three-FE MAP, exact integer geometry with marginal saturation and per-cell moments, and an additional predicted-sweep requested-certificate check. Same eligibility, bounded work/memory, protected routes and untouched-input fallback; H6 ownership/norm recovery retained."
     },
     {
-      "after": 15123,
-      "before": 15096,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "H6 releases redundant finalized OLS FE numeric columns through sealed source-indexed ownership after canonical validation. Original request roles protect ordinary/omitted, slope, interaction and cluster sources; PPML remains raw. Optional descriptor overlap is admitted against the full original owner and concurrent preparation workspace. The original owner-byte scalar preserves existing execution/output/recovery budgets and every scientific or routing decision."
+      "after": 96648,
+      "before": 96199,
+      "metric": "fereg-core/production_lines",
+      "reason": "Reopened H2: bounded unit-weight three-FE MAP, exact integer geometry with marginal saturation and per-cell moments, and an additional predicted-sweep requested-certificate check. Same eligibility, bounded work/memory, protected routes and untouched-input fallback; H6 ownership/norm recovery retained."
     },
     {
-      "after": 3237,
-      "before": 3215,
-      "metric": "file/crates/fereg-plugin/src/estimate.rs",
-      "reason": "H6 releases redundant finalized OLS FE numeric columns through sealed source-indexed ownership after canonical validation. Original request roles protect ordinary/omitted, slope, interaction and cluster sources; PPML remains raw. Optional descriptor overlap is admitted against the full original owner and concurrent preparation workspace. The original owner-byte scalar preserves existing execution/output/recovery budgets and every scientific or routing decision."
+      "after": 7188,
+      "before": 7160,
+      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
+      "reason": "Reopened H2: bounded unit-weight three-FE MAP, exact integer geometry with marginal saturation and per-cell moments, and an additional predicted-sweep requested-certificate check. Same eligibility, bounded work/memory, protected routes and untouched-input fallback; H6 ownership/norm recovery retained."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -830,1140 +824,1140 @@
         "dispatch_candidates": [
           {
             "condition": "rhs_count == 0 || effect_channels . len ( ) != level_counts . len ( )",
-            "line": 127
+            "line": 128
           },
           {
             "condition": "values . len ( ) != coefficients_per_rhs . saturating_mul ( rhs_count ) || values . iter ( ) . any ( | value | ! value . is_finite ( ) )",
-            "line": 133
+            "line": 134
           },
           {
             "condition": "self . effect_channels . get ( effect ) != Some ( & 1 ) || level >= self . level_counts . get ( effect ) . copied ( ) . unwrap_or ( 0 ) || means . len ( ) != self . rhs_count",
-            "line": 220
+            "line": 221
           },
           {
             "condition": "self . effect_channels . get ( effect ) != Some ( & 1 ) || self . level_counts . get ( effect ) . copied ( ) != Some ( levels ) || means . len ( ) != levels . saturating_mul ( self . rhs_count )",
-            "line": 250
+            "line": 251
           },
           {
             "condition": "levels . saturating_mul ( self . rhs_count ) >= PARALLEL_PROJECTION_MIN_ROWS && self . rhs_count > 1 && rayon :: current_num_threads ( ) > 1",
-            "line": 259
+            "line": 260
           },
           {
             "condition": "! self . same_layout ( other ) || scales . len ( ) != self . rhs_count",
-            "line": 403
+            "line": 404
           },
           {
             "condition": "values . len ( ) != elements",
-            "line": 557
+            "line": 558
           },
           {
             "condition": "means . len ( ) != self . rhs_count || self . level_counts . get ( effect ) . is_none_or ( | & levels | level >= levels )",
-            "line": 609
+            "line": 610
           },
           {
             "condition": "self . level_counts . get ( effect ) . copied ( ) != Some ( levels ) || means . len ( ) != levels . saturating_mul ( self . rhs_count )",
-            "line": 645
+            "line": 646
           },
           {
             "condition": "norms . len ( ) != self . residualized . ncols ( ) || norms . iter ( ) . any ( | v | ! v . is_finite ( ) || * v < 0.0 )",
-            "line": 716
+            "line": 717
           },
           {
             "condition": "! report . certified ( ) || coefficients . rhs_count ( ) != residualized . ncols ( ) || coefficients . coefficients_per_rhs ( ) == 0",
-            "line": 772
+            "line": 773
           },
           {
             "condition": "rhs_count > values . capacity ( )",
-            "line": 1059
+            "line": 1060
           },
           {
             "condition": "components . n_components <= 1",
-            "line": 1119
+            "line": 1120
           },
           {
             "condition": "max_rhs == 0 || parallel_threads == 0",
-            "line": 1396
+            "line": 1397
           },
           {
             "condition": "! matches ! ( design . effects ( ) . len ( ) , 1.. = 3 )",
-            "line": 1401
+            "line": 1402
           },
           {
             "condition": "rhs_positions . len ( ) != output . len ( ) || rhs_positions . clone ( ) . any ( | position | position >= values . ncols ( ) )",
-            "line": 1618
+            "line": 1619
           },
           {
             "condition": "self . design . effects ( ) . len ( ) != 1",
-            "line": 1628
+            "line": 1629
           },
           {
             "condition": "weights",
-            "line": 1633
+            "line": 1634
           },
           {
             "condition": "raw_scale != norm_weight_scale",
-            "line": 1637
+            "line": 1638
           },
           {
             "condition": "norms . len ( ) != absorbed . residualized ( ) . ncols ( )",
-            "line": 1641
+            "line": 1642
           },
           {
             "condition": "values . nrows ( ) != self . design . nobs ( ) || values . nrows ( ) == 0 || rhs_count == 0 || rhs_count > self . max_rhs",
-            "line": 1709
+            "line": 1710
           },
           {
             "condition": "initial_group_rejects ( design , weights , & values , config . tolerance , workspace ) ?",
-            "line": 1729
+            "line": 1730
           },
           {
             "condition": "self . checkpoint_lsmr_enabled && self . checkpoint_component_scaling && matches ! ( self . design . effects ( ) . len ( ) , 2 | 3 )",
-            "line": 1739
+            "line": 1740
           },
           {
             "condition": "let Some ( scaled ) = balanced_weights . as_deref ( )",
-            "line": 1748
+            "line": 1749
           },
           {
             "condition": "self . checkpoint_lsmr_enabled && matches ! ( self . design . effects ( ) . len ( ) , 2 | 3 )",
-            "line": 1782
+            "line": 1783
           },
           {
             "condition": "balanced_weights . as_deref ( )",
-            "line": 1786
+            "line": 1787
           },
           {
             "condition": "balanced_weights . is_none ( ) && allow_schur",
-            "line": 1797
-          },
-          {
-            "condition": "self . design . effects ( ) . len ( ) == 2",
             "line": 1798
           },
           {
+            "condition": "self . design . effects ( ) . len ( ) == 2",
+            "line": 1799
+          },
+          {
             "condition": "self . design . effects ( ) . len ( ) == 1 || iteration % config . check_every == 0 || iteration == config . max_iterations",
-            "line": 1996
+            "line": 1997
           },
           {
             "condition": "! self . checkpoint_lsmr_enabled || self . two_fe_pcg . is_none ( ) || values . ncols ( ) == 0 || values . ncols ( ) > self . max_rhs || config . max_iterations <= GRAPH_PROGRESS_CHECK_ITERATIONS",
-            "line": 2028
+            "line": 2029
           },
           {
             "condition": "design . effects ( ) . len ( ) != 2 || stride < rhs_count || graph . left_weights . len ( ) != left_levels || graph . right_weights . len ( ) != right_levels || graph . left_rhs . len ( ) != left_levels . saturating_mul ( stride ) || graph . left_work . len ( ) != left_levels . saturating_mul ( stride ) || graph . solution . len ( ) != right_levels . saturating_mul ( stride ) || graph . residual . len ( ) != right_levels . saturating_mul ( stride ) || graph . direction . len ( ) != right_levels . saturating_mul ( stride ) || graph . operator . len ( ) != right_levels . saturating_mul ( stride )",
-            "line": 2212
+            "line": 2213
           },
           {
             "condition": "rhs_count > scalars . capacity ( )",
-            "line": 2234
+            "line": 2235
           },
           {
             "condition": "graph . left_weights . iter ( ) . chain ( & graph . right_weights ) . any ( | weight | ! weight . is_finite ( ) || * weight <= 0.0 ) || graph . left_rhs . iter ( ) . chain ( & graph . residual ) . any ( | value | ! value . is_finite ( ) )",
-            "line": 2271
+            "line": 2272
           },
           {
             "condition": "crate :: parallel :: StagePlan :: current ( design . nobs ( ) as u128 * rhs_count as u128 , design . effects ( ) . iter ( ) . map ( | e | e . n_levels ( ) ) . max ( ) . unwrap_or ( 0 ) , ) . lanes > 1",
-            "line": 2853
+            "line": 2854
           },
           {
             "condition": "row >= design . nobs ( )",
-            "line": 2950
+            "line": 2951
           },
           {
             "condition": "row >= design . nobs ( )",
-            "line": 2987
+            "line": 2988
           },
           {
             "condition": "values . as_slice ( ) . len ( ) >= PARALLEL_PROJECTION_MIN_ROWS && rayon :: current_num_threads ( ) > 1",
-            "line": 3259
+            "line": 3260
           },
           {
             "condition": "design . nobs ( ) != values . nrows ( ) || values . nrows ( ) == 0 || values . ncols ( ) == 0 || design . effects ( ) . is_empty ( )",
-            "line": 3317
+            "line": 3318
           },
           {
             "condition": "design . nobs ( ) != values . nrows ( ) || values . nrows ( ) == 0 || values . ncols ( ) == 0",
-            "line": 3521
+            "line": 3522
           },
           {
             "condition": "values . nrows ( ) != design . nobs ( ) || values . nrows ( ) == 0 || values . ncols ( ) == 0",
-            "line": 3557
+            "line": 3559
           },
           {
             "condition": "design . effects ( ) . len ( ) <= 1",
-            "line": 3565
+            "line": 3567
           },
           {
             "condition": "budget . is_some_and ( | b | ! b . fits ( bytes ) )",
-            "line": 3572
+            "line": 3574
           },
           {
             "condition": "design . effects ( ) . len ( ) == 2",
-            "line": 3604
+            "line": 3606
           },
           {
             "condition": "budget . is_none_or ( | b | b . fits ( bytes ) )",
-            "line": 3621
+            "line": 3623
           },
           {
             "condition": "budget . is_none_or ( | b | b . fits ( compact ) )",
-            "line": 3660
+            "line": 3662
           },
           {
             "condition": "budget . is_none_or ( | b | b . fits ( bytes ) )",
-            "line": 3711
+            "line": 3737
           },
           {
             "condition": "budget . is_some_and ( | b | ! b . fits ( map_bytes ) )",
-            "line": 3763
+            "line": 3790
           },
           {
             "condition": "weights . values",
-            "line": 3793
+            "line": 3821
           },
           {
             "condition": "norms . len ( ) != self . values . ncols ( ) || norms . iter ( ) . any ( | v | ! v . is_finite ( ) || * v < 0. )",
-            "line": 3867
+            "line": 3895
           },
           {
             "condition": "count == 0 || count == norms . len ( )",
-            "line": 3873
+            "line": 3901
           },
           {
             "condition": "! fits ( positions . capacity ( ) )",
-            "line": 3933
+            "line": 3961
           },
           {
             "condition": "self . budget . is_some_and ( | budget | ! budget . fits ( bytes ) )",
-            "line": 4214
+            "line": 4242
           },
           {
             "condition": "lsmr_config . local_size == Some ( 0 )",
-            "line": 4484
+            "line": 4512
           },
           {
             "condition": "reference_norms . len ( ) != values . ncols ( ) || reference_norms . iter ( ) . any ( | norm | ! norm . is_finite ( ) || * norm < 0.0 )",
-            "line": 4600
+            "line": 4628
           },
           {
             "condition": "coefficients . rhs_count ( ) != result . residualized . ncols ( ) || coefficients . coefficients_per_rhs ( ) == 0",
-            "line": 4766
+            "line": 4794
           },
           {
             "condition": "design . nobs ( ) != values . nrows ( )",
-            "line": 4815
+            "line": 4843
           },
           {
             "condition": "values . nrows ( ) == 0 || values . ncols ( ) == 0",
-            "line": 4820
+            "line": 4848
           },
           {
             "condition": "reference_norms . len ( ) != values . ncols ( ) || reference_norms . iter ( ) . any ( | norm | ! norm . is_finite ( ) || * norm < 0.0 )",
-            "line": 4860
+            "line": 4888
           },
           {
             "condition": "design . nobs ( ) != values . nrows ( )",
-            "line": 5292
+            "line": 5320
           },
           {
             "condition": "values . nrows ( ) == 0 || values . ncols ( ) == 0",
-            "line": 5297
+            "line": 5325
           },
           {
             "condition": "design . effects ( ) . len ( ) <= 1 || iteration % config . check_every == 0 || iteration == config . max_iterations",
-            "line": 5392
+            "line": 5420
           },
           {
             "condition": "weights",
-            "line": 5435
+            "line": 5463
           },
           {
             "condition": "values . len ( ) != nrows",
-            "line": 5441
+            "line": 5469
           },
           {
             "condition": "values . iter ( ) . any ( | weight | ! weight . is_finite ( ) || * weight <= 0.0 )",
-            "line": 5446
+            "line": 5474
           },
           {
             "condition": "values . iter ( ) . any ( | weight | * weight / raw_scale == 0.0 )",
-            "line": 5455
+            "line": 5483
           },
           {
             "condition": "! total_weight . is_finite ( ) || total_weight <= 0.0",
-            "line": 5510
+            "line": 5538
           },
           {
             "condition": "effect . codes ( ) . len ( ) != values . nrows ( )",
-            "line": 5700
+            "line": 5728
           },
           {
             "condition": "crate :: parallel :: StagePlan :: current ( values . nrows ( ) as u128 * values . ncols ( ) as u128 , effect . n_levels ( ) , ) . lanes > 1 && workspace . parallel_group_means . len ( ) >= parallel_mean_count",
-            "line": 5718
+            "line": 5746
           },
           {
             "condition": "observation >= values . nrows ( )",
-            "line": 5784
+            "line": 5812
           },
           {
             "condition": "columns <= PARALLEL_GROUP_MAX_RHS",
-            "line": 5828
+            "line": 5856
           },
           {
             "condition": "batch . rhs_count ( ) != columns",
-            "line": 5893
+            "line": 5921
           },
           {
             "condition": "group_weights . len ( ) != levels || means . len ( ) != levels . checked_mul ( columns ) . ok_or_else ( || allocation ( <string> ) ) ?",
-            "line": 6040
-          },
-          {
-            "condition": "columns <= PARALLEL_GROUP_MAX_RHS",
             "line": 6068
           },
           {
+            "condition": "columns <= PARALLEL_GROUP_MAX_RHS",
+            "line": 6096
+          },
+          {
             "condition": "members . is_empty ( ) || means . len ( ) != columns || columns > PARALLEL_GROUP_MAX_RHS",
-            "line": 6135
+            "line": 6163
           },
           {
             "condition": "members . is_empty ( ) || means . len ( ) > PARALLEL_GROUP_MAX_RHS",
-            "line": 6162
+            "line": 6190
           },
           {
             "condition": "observation >= nrows",
-            "line": 6176
+            "line": 6204
           },
           {
             "condition": "weights . values . is_some ( )",
-            "line": 6181
+            "line": 6209
           },
           {
             "condition": "weights . values . is_some ( )",
-            "line": 6193
+            "line": 6221
           },
           {
             "condition": "! total_weight . is_finite ( ) || total_weight <= 0.0",
-            "line": 6198
+            "line": 6226
           },
           {
             "condition": "let Some ( weight_values ) = weights . values",
-            "line": 6203
+            "line": 6231
           },
           {
             "condition": "means . len ( ) != levels . saturating_mul ( columns ) || batch . rhs_count ( ) != columns",
-            "line": 6253
+            "line": 6281
           },
           {
             "condition": "! total_weight . is_finite ( ) || total_weight <= 0.0",
-            "line": 6352
+            "line": 6380
           },
           {
             "condition": "! total_weight . is_finite ( ) || total_weight <= 0.0",
-            "line": 6403
+            "line": 6431
           },
           {
             "condition": "( unit && weights . raw_scale != 1.0 ) || design . effects ( ) . is_empty ( ) || workspace . reference_norms . len ( ) != values . ncols ( ) || workspace . reference_norms . iter ( ) . any ( | & norm | ! ( unit && norm == 0.0 || ( 1e - 20.. = 1e20 ) . contains ( & norm ) ) ) || design . total_term_slots ( ) . checked_mul ( values . ncols ( ) ) . is_none ( )",
-            "line": 6478
+            "line": 6506
           },
           {
             "condition": "let Some ( raw ) = weights . values",
-            "line": 6492
+            "line": 6520
           },
           {
             "condition": "! ( 1.0 / LIMIT ..= LIMIT ) . contains ( & weights . raw_scale ) || values . nrows ( ) as u128 > ( 1_u128 < < 32 )",
-            "line": 6494
-          },
-          {
-            "condition": "minimum / weights . raw_scale < 1.0 / LIMIT",
-            "line": 6504
-          },
-          {
-            "condition": "parallel && values . ncols ( ) > PARALLEL_GROUP_MAX_RHS",
             "line": 6522
           },
           {
+            "condition": "minimum / weights . raw_scale < 1.0 / LIMIT",
+            "line": 6532
+          },
+          {
+            "condition": "parallel && values . ncols ( ) > PARALLEL_GROUP_MAX_RHS",
+            "line": 6550
+          },
+          {
             "condition": "! root_group_weight . is_finite ( ) || root_group_weight <= 0.0",
-            "line": 6705
+            "line": 6733
           },
           {
             "condition": "projection . nrows ( ) != input . nrows ( ) || projection . ncols ( ) != columns || input . nrows ( ) != design . nobs ( ) || columns == 0",
-            "line": 6789
+            "line": 6817
           },
           {
             "condition": "plan . lanes > 1 && workspace . parallel_group_means . len ( ) >= cells",
-            "line": 6810
+            "line": 6838
           },
           {
             "condition": "residual . nrows ( ) != input . nrows ( ) || residual . ncols ( ) != input . ncols ( )",
-            "line": 6936
+            "line": 6964
           },
           {
             "condition": "symmetric && design . effects ( ) . len ( ) > 1",
-            "line": 7011
+            "line": 7039
           },
           {
             "condition": "x0 . nrows ( ) != x1 . nrows ( ) || x0 . ncols ( ) != x1 . ncols ( ) || x0 . nrows ( ) != x2 . nrows ( ) || x0 . ncols ( ) != x2 . ncols ( )",
-            "line": 7032
+            "line": 7060
           },
           {
             "condition": "left . nrows ( ) != right . nrows ( ) || left . ncols ( ) != right . ncols ( ) || output . len ( ) != left . ncols ( ) || corrections . len ( ) != left . ncols ( )",
-            "line": 7084
-          },
-          {
-            "condition": "left . nrows ( ) >= PARALLEL_PROJECTION_MIN_ROWS && left . ncols ( ) <= FUSED_PARALLEL_MAX_RHS && rayon :: current_num_threads ( ) > 1 && parallel_sums . len ( ) >= parallel_elements",
-            "line": 7099
-          },
-          {
-            "condition": "let Some ( weight_values ) = weights . values",
             "line": 7112
           },
           {
+            "condition": "left . nrows ( ) >= PARALLEL_PROJECTION_MIN_ROWS && left . ncols ( ) <= FUSED_PARALLEL_MAX_RHS && rayon :: current_num_threads ( ) > 1 && parallel_sums . len ( ) >= parallel_elements",
+            "line": 7127
+          },
+          {
+            "condition": "let Some ( weight_values ) = weights . values",
+            "line": 7140
+          },
+          {
             "condition": "numerators . len ( ) != denominators . len ( ) || output . len ( ) != numerators . len ( )",
-            "line": 7196
+            "line": 7224
           },
           {
             "condition": "alpha . len ( ) != residual_square . len ( ) || alpha . len ( ) != improvement_potential . len ( ) || alpha . len ( ) != values . ncols ( ) || values . nrows ( ) != direction . nrows ( ) || values . ncols ( ) != direction . ncols ( )",
-            "line": 7229
+            "line": 7257
           },
           {
             "condition": "! weighted . is_finite ( )",
-            "line": 7295
+            "line": 7323
           },
           {
             "condition": "alpha . len ( ) != values . ncols ( ) || residual . nrows ( ) != values . nrows ( ) || residual . ncols ( ) != values . ncols ( ) || direction . nrows ( ) != values . nrows ( ) || direction . ncols ( ) != values . ncols ( ) || projection . nrows ( ) != values . nrows ( ) || projection . ncols ( ) != values . ncols ( )",
-            "line": 7340
+            "line": 7368
           },
           {
             "condition": "values . nrows ( ) >= PARALLEL_PROJECTION_MIN_ROWS && rayon :: current_num_threads ( ) > 1",
-            "line": 7351
+            "line": 7379
           },
           {
             "condition": "direction . nrows ( ) != residual . nrows ( ) || direction . ncols ( ) != residual . ncols ( ) || beta . len ( ) != direction . ncols ( )",
-            "line": 7390
+            "line": 7418
           },
           {
             "condition": "direction . nrows ( ) >= PARALLEL_PROJECTION_MIN_ROWS && rayon :: current_num_threads ( ) > 1",
-            "line": 7396
+            "line": 7424
           },
           {
             "condition": "current . len ( ) != initial . len ( )",
-            "line": 7431
+            "line": 7459
           },
           {
             "condition": "output . len ( ) != values . ncols ( ) || scales . len ( ) != values . ncols ( ) || scaled_square_sums . len ( ) != values . ncols ( )",
-            "line": 7489
+            "line": 7517
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 7606
+            "line": 7634
           },
           {
             "condition": "workspace . parallel_dot_sums . len ( ) >= workspace . parallel_group_means . len ( )",
-            "line": 7709
+            "line": 7737
           }
         ],
         "functions": {
           "absorb#1": {
-            "line": 1700,
+            "line": 1701,
             "lines": 320
           },
           "absorb#2": {
-            "line": 4114,
+            "line": 4142,
             "lines": 69
           },
           "absorb_borrowed_intercept_cg#1": {
-            "line": 3203,
+            "line": 3204,
             "lines": 23
           },
           "absorb_borrowed_intercept_irons_tuck_certified#1": {
-            "line": 3309,
+            "line": 3310,
             "lines": 189
           },
           "absorb_borrowed_intercept_lsmr#1": {
-            "line": 3229,
+            "line": 3230,
             "lines": 28
           },
           "absorb_borrowed_intercept_map#1": {
-            "line": 3150,
+            "line": 3151,
             "lines": 19
           },
           "absorb_borrowed_intercept_map_certified#1": {
-            "line": 3136,
+            "line": 3137,
             "lines": 8
           },
           "absorb_cg_with_reservation#1": {
-            "line": 4793,
+            "line": 4821,
             "lines": 488
           },
           "absorb_ols#1": {
-            "line": 1685,
+            "line": 1686,
             "lines": 14
           },
           "absorb_ppml#1": {
-            "line": 1674,
+            "line": 1675,
             "lines": 8
           },
           "absorb_two_fe_pcg#1": {
-            "line": 2129,
+            "line": 2130,
             "lines": 43
           },
           "absorb_two_fe_pcg_reusing#1": {
-            "line": 2175,
+            "line": 2176,
             "lines": 581
           },
           "absorb_with_reservation_mode#1": {
-            "line": 5282,
+            "line": 5310,
             "lines": 137
           },
           "absorb_with_selected_norms#1": {
-            "line": 1609,
+            "line": 1610,
             "lines": 42
           },
           "add_assign#1": {
-            "line": 308,
+            "line": 309,
             "lines": 18
           },
           "add_intercept#1": {
-            "line": 195,
+            "line": 196,
             "lines": 23
           },
           "add_intercept_level#1": {
-            "line": 219,
+            "line": 220,
             "lines": 24
           },
           "add_intercept_level#2": {
-            "line": 470,
+            "line": 471,
             "lines": 3
           },
           "add_intercept_level#3": {
-            "line": 608,
+            "line": 609,
             "lines": 30
           },
           "add_intercept_level_major#1": {
-            "line": 244,
+            "line": 245,
             "lines": 63
           },
           "add_intercept_level_major#2": {
-            "line": 474,
+            "line": 475,
             "lines": 8
           },
           "add_intercept_level_major#3": {
-            "line": 639,
+            "line": 640,
             "lines": 31
           },
           "add_scaled_rhs#1": {
-            "line": 362,
+            "line": 363,
             "lines": 21
           },
           "add_to#1": {
-            "line": 7630,
+            "line": 7658,
             "lines": 18
           },
           "apply_schur#1": {
-            "line": 2846,
+            "line": 2847,
             "lines": 77
           },
           "apply_schur_parallel#1": {
-            "line": 2924,
+            "line": 2925,
             "lines": 86
           },
           "assign_sum_scaled_rhs#1": {
-            "line": 384,
+            "line": 385,
             "lines": 17
           },
           "attach_optional_coefficients#1": {
-            "line": 4761,
+            "line": 4789,
             "lines": 14
           },
           "attach_optional_map_coefficients#1": {
-            "line": 4776,
+            "line": 4804,
             "lines": 16
           },
           "borrowed_cg_recovery_workspace_bytes#1": {
-            "line": 852,
+            "line": 853,
             "lines": 15
           },
           "borrowed_irons_tuck_candidate#1": {
-            "line": 7027,
+            "line": 7055,
             "lines": 48
           },
           "borrowed_lsmr_effects#1": {
-            "line": 4356,
+            "line": 4384,
             "lines": 13
           },
           "borrowed_residual_sweep_recording#1": {
-            "line": 6992,
+            "line": 7020,
             "lines": 34
           },
           "borrowed_symmetric_projection_from_group_means_recording#1": {
-            "line": 6780,
+            "line": 6808,
             "lines": 99
           },
           "borrowed_symmetric_projection_into_recording#1": {
-            "line": 6928,
+            "line": 6956,
             "lines": 63
           },
           "borrowed_weights#1": {
-            "line": 3792,
+            "line": 3820,
             "lines": 6
           },
           "borrowed_within_preconditioner#1": {
-            "line": 4732,
+            "line": 4760,
             "lines": 8
           },
           "build_retained_borrowed_lsmr#1": {
-            "line": 4370,
+            "line": 4398,
             "lines": 35
           },
           "capacities#1": {
-            "line": 1569,
+            "line": 1570,
             "lines": 37
           },
           "capacity_elements#1": {
-            "line": 1301,
+            "line": 1302,
             "lines": 13
           },
           "certificate_parallel_workspaces_fit#1": {
-            "line": 6567,
+            "line": 6595,
             "lines": 21
           },
           "certified_result#1": {
-            "line": 7538,
+            "line": 7566,
             "lines": 20
           },
           "certified_rhs_norms#1": {
-            "line": 1539,
+            "line": 1540,
             "lines": 3
           },
           "certified_solver_result#1": {
-            "line": 7560,
+            "line": 7588,
             "lines": 29
           },
           "certify#1": {
-            "line": 6442,
+            "line": 6470,
             "lines": 10
           },
           "certify_borrowed_intercept_candidate_with_workspace#1": {
-            "line": 3514,
+            "line": 3515,
             "lines": 26
           },
           "certify_effects_parallel#1": {
-            "line": 6648,
+            "line": 6676,
             "lines": 36
           },
           "certify_initial#1": {
-            "line": 6453,
+            "line": 6481,
             "lines": 12
           },
           "certify_initial_structural_constant#1": {
-            "line": 5555,
+            "line": 5583,
             "lines": 11
           },
           "certify_structural_constant#1": {
-            "line": 5545,
+            "line": 5573,
             "lines": 9
           },
           "certify_structural_constant_with_current_norms#1": {
-            "line": 5567,
+            "line": 5595,
             "lines": 66
           },
           "certify_with_current_norms#1": {
-            "line": 6589,
+            "line": 6617,
             "lines": 18
           },
           "certify_with_current_scales#1": {
-            "line": 6608,
+            "line": 6636,
             "lines": 39
           },
           "cg_audit_remaining_energy#1": {
-            "line": 7268,
+            "line": 7296,
             "lines": 64
           },
           "cg_hestenes_error_and_update#1": {
-            "line": 7221,
+            "line": 7249,
             "lines": 46
           },
           "cg_largest_relative_residual#1": {
-            "line": 7430,
+            "line": 7458,
             "lines": 27
           },
           "cg_projection_action#1": {
-            "line": 6898,
+            "line": 6926,
             "lines": 29
           },
           "cg_ratios_into#1": {
-            "line": 7190,
+            "line": 7218,
             "lines": 30
           },
           "cg_update_direction#1": {
-            "line": 7385,
+            "line": 7413,
             "lines": 42
           },
           "cg_update_solution_and_residual#1": {
-            "line": 7333,
+            "line": 7361,
             "lines": 51
           },
           "checkpoint_schur_copy#1": {
-            "line": 7660,
+            "line": 7688,
             "lines": 14
           },
           "coefficient_count#1": {
-            "line": 689,
+            "line": 690,
             "lines": 19
           },
           "coefficients_per_rhs#1": {
-            "line": 456,
+            "line": 457,
             "lines": 3
           },
           "compensated_add#1": {
-            "line": 7518,
+            "line": 7546,
             "lines": 9
           },
           "compensated_finite#1": {
-            "line": 7528,
+            "line": 7556,
             "lines": 9
           },
           "component_scaled_checkpoint_weights#1": {
-            "line": 1105,
+            "line": 1106,
             "lines": 37
           },
           "drop#1": {
-            "line": 1336,
+            "line": 1337,
             "lines": 10
           },
           "effect_channels#1": {
-            "line": 443,
+            "line": 444,
             "lines": 3
           },
           "enable_checkpoint_lsmr#1": {
-            "line": 1495,
+            "line": 1496,
             "lines": 4
           },
           "enable_component_checkpoint_scaling#1": {
-            "line": 1500,
+            "line": 1501,
             "lines": 3
           },
           "extrapolate_irons_tuck#1": {
-            "line": 417,
+            "line": 418,
             "lines": 25
           },
           "fallible_matrix_copy#1": {
-            "line": 7465,
+            "line": 7493,
             "lines": 5
           },
           "fallible_matrix_zeros#1": {
-            "line": 7471,
+            "line": 7499,
             "lines": 9
           },
           "fill_parallel_group_statistics#1": {
-            "line": 6030,
+            "line": 6058,
             "lines": 75
           },
           "fill_two_fe_group_rhs#1": {
-            "line": 2761,
+            "line": 2762,
             "lines": 33
           },
           "fill_zero#1": {
-            "line": 346,
+            "line": 347,
             "lines": 3
           },
           "finish#1": {
-            "line": 6754,
+            "line": 6782,
             "lines": 18
           },
           "from_certified_parts#1": {
-            "line": 750,
+            "line": 751,
             "lines": 16
           },
           "from_certified_parts_with_coefficients#1": {
-            "line": 767,
+            "line": 768,
             "lines": 20
           },
           "from_values#1": {
-            "line": 121,
+            "line": 122,
             "lines": 46
           },
           "fused_group_means_by_value#1": {
-            "line": 6153,
+            "line": 6181,
             "lines": 92
           },
           "fused_group_means_for_level#1": {
-            "line": 6125,
+            "line": 6153,
             "lines": 27
           },
           "group_means#1": {
-            "line": 6261,
+            "line": 6289,
             "lines": 21
           },
           "include#1": {
-            "line": 4210,
+            "line": 4238,
             "lines": 12
           },
           "include_payload#1": {
-            "line": 4223,
+            "line": 4251,
             "lines": 8
           },
           "initial_group_rejects#1": {
-            "line": 6470,
+            "line": 6498,
             "lines": 96
           },
           "intercept_zeros#1": {
-            "line": 168,
+            "line": 169,
             "lines": 18
           },
           "into_batch#1": {
-            "line": 537,
+            "line": 538,
             "lines": 64
           },
           "into_design#1": {
-            "line": 4110,
+            "line": 4138,
             "lines": 3
           },
           "into_full_parts#1": {
-            "line": 746,
+            "line": 747,
             "lines": 3
           },
           "into_parts#1": {
-            "line": 742,
+            "line": 743,
             "lines": 3
           },
           "kernel_group_means#1": {
-            "line": 6309,
+            "line": 6337,
             "lines": 67
           },
           "level#1": {
-            "line": 6696,
+            "line": 6724,
             "lines": 57
           },
           "level_counts#1": {
-            "line": 447,
+            "line": 448,
             "lines": 3
           },
           "level_major_values_mut#1": {
-            "line": 483,
+            "line": 484,
             "lines": 7
           },
           "level_major_values_mut#2": {
-            "line": 671,
+            "line": 672,
             "lines": 16
           },
           "mark_auto#1": {
-            "line": 4741,
+            "line": 4769,
             "lines": 19
           },
           "matrix_infinity_norm#1": {
-            "line": 3258,
+            "line": 3259,
             "lines": 23
           },
           "max_rhs#1": {
-            "line": 1534,
+            "line": 1535,
             "lines": 3
           },
           "modeled_bytes#1": {
-            "line": 7459,
+            "line": 7487,
             "lines": 5
           },
           "new#1": {
-            "line": 948,
+            "line": 949,
             "lines": 14
           },
           "new#2": {
-            "line": 1167,
+            "line": 1168,
             "lines": 67
           },
           "new#3": {
-            "line": 1325,
+            "line": 1326,
             "lines": 8
           },
           "new#4": {
-            "line": 1391,
+            "line": 1392,
             "lines": 103
           },
           "new#5": {
-            "line": 3819,
+            "line": 3847,
             "lines": 46
           },
           "new#6": {
-            "line": 4090,
+            "line": 4118,
             "lines": 19
           },
           "new#7": {
-            "line": 4194,
+            "line": 4222,
             "lines": 15
           },
           "new_with_parallelism#1": {
-            "line": 963,
+            "line": 964,
             "lines": 85
           },
           "normalized#1": {
-            "line": 3123,
+            "line": 3124,
             "lines": 4
           },
           "owner_bytes#1": {
-            "line": 1359,
+            "line": 1360,
             "lines": 31
           },
           "payload_bytes#1": {
-            "line": 1543,
+            "line": 1544,
             "lines": 26
           },
           "payload_peak#1": {
-            "line": 885,
+            "line": 886,
             "lines": 18
           },
           "planned_payload_bytes#1": {
-            "line": 924,
+            "line": 925,
             "lines": 23
           },
           "polish#1": {
-            "line": 3191,
+            "line": 3192,
             "lines": 7
           },
           "ppml_operator_work#1": {
-            "line": 1351,
+            "line": 1352,
             "lines": 7
           },
           "prepare_component_topology#1": {
-            "line": 1235,
+            "line": 1236,
             "lines": 54
           },
           "project_borrowed_intercept_structural#1": {
-            "line": 3544,
-            "lines": 143
+            "line": 3545,
+            "lines": 146
           },
           "project_effect_parallel#1": {
-            "line": 5813,
+            "line": 5841,
             "lines": 54
           },
           "project_effect_parallel_fused#1": {
-            "line": 5868,
+            "line": 5896,
             "lines": 101
           },
           "project_effect_recording#1": {
-            "line": 5634,
+            "line": 5662,
             "lines": 16
           },
           "project_effect_recording_from_input#1": {
-            "line": 5669,
+            "line": 5697,
             "lines": 17
           },
           "project_effect_recording_impl#1": {
-            "line": 5687,
+            "line": 5715,
             "lines": 58
           },
           "project_effect_recording_with_complement#1": {
-            "line": 5651,
+            "line": 5679,
             "lines": 17
           },
           "project_effect_serial#1": {
-            "line": 5746,
+            "line": 5774,
             "lines": 66
           },
           "project_general_categorical#1": {
-            "line": 3689,
-            "lines": 102
+            "line": 3693,
+            "lines": 126
           },
           "project_structural_constant#1": {
-            "line": 5468,
+            "line": 5496,
             "lines": 19
           },
           "projection_group_means#1": {
-            "line": 6880,
+            "line": 6908,
             "lines": 17
           },
           "projection_level_means#1": {
-            "line": 6106,
+            "line": 6134,
             "lines": 16
           },
           "reconstruct_two_fe_pcg_candidate#1": {
-            "line": 3056,
+            "line": 3057,
             "lines": 58
           },
           "record_parallel_group_means#1": {
-            "line": 6246,
+            "line": 6274,
             "lines": 14
           },
           "refresh_component_scales#1": {
-            "line": 1290,
+            "line": 1291,
             "lines": 10
           },
           "relative_reconstruction_infinity_norm#1": {
-            "line": 3282,
+            "line": 3283,
             "lines": 23
           },
           "report#1": {
-            "line": 733,
+            "line": 734,
             "lines": 3
           },
           "reserve_f64#1": {
-            "line": 836,
+            "line": 837,
             "lines": 10
           },
           "reserved_zeros#1": {
-            "line": 7599,
+            "line": 7627,
             "lines": 15
           },
           "residualized#1": {
-            "line": 728,
+            "line": 729,
             "lines": 3
           },
           "resolve_borrowed_lsmr_preconditioner#1": {
-            "line": 4718,
+            "line": 4746,
             "lines": 13
           },
           "retained_bytes#1": {
-            "line": 96,
+            "line": 97,
             "lines": 7
           },
           "rhs#1": {
-            "line": 187,
+            "line": 188,
             "lines": 7
           },
           "rhs_count#1": {
-            "line": 460,
+            "line": 461,
             "lines": 3
           },
           "rhs_count#2": {
-            "line": 466,
+            "line": 467,
             "lines": 3
           },
           "rhs_count#3": {
-            "line": 604,
+            "line": 605,
             "lines": 3
           },
           "root#1": {
-            "line": 1236,
+            "line": 1237,
             "lines": 7
           },
           "run_borrowed_lsmr#1": {
-            "line": 4407,
+            "line": 4435,
             "lines": 45
           },
           "run_borrowed_lsmr_with_prepared#1": {
-            "line": 4456,
+            "line": 4484,
             "lines": 261
           },
           "same_layout#1": {
-            "line": 411,
+            "line": 412,
             "lines": 5
           },
           "scaled_kernel_group_means#1": {
-            "line": 6379,
+            "line": 6407,
             "lines": 62
           },
           "schur_row_update#1": {
-            "line": 2816,
+            "line": 2817,
             "lines": 28
           },
           "selected_retry#1": {
-            "line": 3866,
+            "line": 3894,
             "lines": 78
           },
           "set_rhs_count#1": {
-            "line": 1049,
+            "line": 1050,
             "lines": 19
           },
           "set_solver_workspace_peak#1": {
-            "line": 737,
+            "line": 738,
             "lines": 3
           },
           "solve#1": {
-            "line": 4245,
+            "line": 4273,
             "lines": 109
           },
           "solve_attempt#1": {
-            "line": 3945,
+            "line": 3973,
             "lines": 134
           },
           "structural_constant_means#1": {
-            "line": 5488,
+            "line": 5516,
             "lines": 56
           },
           "subtract_parallel_level_means#1": {
-            "line": 5972,
+            "line": 6000,
             "lines": 57
           },
           "subtract_two_fe_left_projection#1": {
-            "line": 2795,
+            "line": 2796,
             "lines": 17
           },
           "take_checkpoint_lsmr_fatal_failure#1": {
-            "line": 1518,
+            "line": 1519,
             "lines": 15
           },
           "take_residual_norms#1": {
-            "line": 712,
+            "line": 713,
             "lines": 3
           },
           "trace#1": {
-            "line": 7649,
+            "line": 7677,
             "lines": 9
           },
           "trace_two_fe_pcg_stop#1": {
-            "line": 3012,
+            "line": 3013,
             "lines": 7
           },
           "try_checkpoint_schur#1": {
-            "line": 2021,
+            "line": 2022,
             "lines": 106
           },
           "try_clone#1": {
-            "line": 327,
+            "line": 328,
             "lines": 18
           },
           "two_fe_pcg_rhs_ready#1": {
-            "line": 3020,
+            "line": 3021,
             "lines": 35
           },
           "update_workspace_norms#1": {
-            "line": 7694,
+            "line": 7722,
             "lines": 29
           },
           "validate_binary_layout#1": {
-            "line": 402,
+            "line": 403,
             "lines": 8
           },
           "validate_config#1": {
-            "line": 5420,
+            "line": 5448,
             "lines": 13
           },
           "validate_weights#1": {
-            "line": 5434,
+            "line": 5462,
             "lines": 33
           },
           "weighted_column_norms#1": {
-            "line": 7481,
+            "line": 7509,
             "lines": 36
           },
           "weighted_dot_columns_into#1": {
-            "line": 7076,
+            "line": 7104,
             "lines": 113
           },
           "with_pilot_group_scratch#1": {
-            "line": 1652,
+            "line": 1653,
             "lines": 21
           },
           "with_residual_norms#1": {
-            "line": 715,
+            "line": 716,
             "lines": 11
           },
           "zero_certificate#1": {
-            "line": 7590,
+            "line": 7618,
             "lines": 8
           },
           "zero_rhs#1": {
-            "line": 350,
+            "line": 351,
             "lines": 11
           },
           "zeros#1": {
-            "line": 104,
+            "line": 105,
             "lines": 16
           },
           "zeros#2": {
-            "line": 493,
+            "line": 494,
             "lines": 43
           }
         },
-        "production_lines": 7160
+        "production_lines": 7188
       },
       "crates/fereg-core/src/fe/borrowed_map/lsmr_norms.rs": {
         "chunk_candidates": [],
@@ -1975,6 +1969,102 @@
           }
         },
         "production_lines": 42
+      },
+      "crates/fereg-core/src/fe/borrowed_map/three_fe_map.rs": {
+        "chunk_candidates": [],
+        "dispatch_candidates": [
+          {
+            "condition": "let Err ( e ) = update_workspace_norms ( original , weights , & mut workspace , true )",
+            "line": 114
+          },
+          {
+            "condition": "let Err ( e ) = borrowed_residual_sweep_recording ( design , weights , & mut values , & mut workspace , coefficients . as_mut ( ) , true , )",
+            "line": 127
+          }
+        ],
+        "functions": {
+          "attempt#1": {
+            "line": 46,
+            "lines": 131
+          },
+          "default#1": {
+            "line": 24,
+            "lines": 9
+          },
+          "finish#1": {
+            "line": 178,
+            "lines": 23
+          },
+          "record#1": {
+            "line": 36,
+            "lines": 8
+          }
+        },
+        "production_lines": 178
+      },
+      "crates/fereg-core/src/fe/borrowed_map/three_fe_map/geometry.rs": {
+        "chunk_candidates": [],
+        "dispatch_candidates": [
+          {
+            "condition": "effects . len ( ) != 3 || design . nobs ( ) == 0",
+            "line": 17
+          },
+          {
+            "condition": "budget . is_some_and ( | b | ! b . fits ( bytes ) )",
+            "line": 26
+          },
+          {
+            "condition": "counts . try_reserve_exact ( size ) . is_err ( )",
+            "line": 30
+          },
+          {
+            "condition": "budget . is_some_and ( | b | ! b . fits ( bytes ) )",
+            "line": 35
+          },
+          {
+            "condition": "marginal_saturation ( design . nobs ( ) as u128 , [ squares [ i ] , squares [ j ] ] , [ minimum [ i ] , minimum [ j ] ] , [ maximum [ i ] , maximum [ j ] ] , ) == Some ( true )",
+            "line": 59
+          },
+          {
+            "condition": "final_residual || ! map . symmetric || ! matches ! ( weights , BorrowedMapWeights :: Unit )",
+            "line": 102
+          },
+          {
+            "condition": "a . n_levels ( ) >= b . n_levels ( )",
+            "line": 139
+          },
+          {
+            "condition": "n == 0",
+            "line": 169
+          }
+        ],
+        "functions": {
+          "inspect#1": {
+            "line": 12,
+            "lines": 83
+          },
+          "integer_bound#1": {
+            "line": 199,
+            "lines": 12
+          },
+          "map_checkpoint#1": {
+            "line": 96,
+            "lines": 11
+          },
+          "pair_moments#1": {
+            "line": 134,
+            "lines": 56
+          },
+          "predicted_sweeps#1": {
+            "line": 108,
+            "lines": 3
+          },
+          "up#1": {
+            "line": 191,
+            "lines": 7
+          }
+        },
+        "production_lines": 210
       },
       "crates/fereg-core/src/fe/borrowed_map/three_fe_schur.rs": {
         "chunk_candidates": [],
@@ -4066,248 +4156,252 @@
         "dispatch_candidates": [
           {
             "condition": "let Some ( p ) = & self . categorical",
-            "line": 76
+            "line": 77
           },
           {
             "condition": "let Some ( p ) = self . categorical . as_mut ( )",
-            "line": 104
+            "line": 105
           },
           {
             "condition": "let Some ( p ) = self . categorical . as_mut ( )",
-            "line": 131
+            "line": 132
           },
           {
             "condition": "design . effects ( ) . len ( ) == 2 =>",
-            "line": 249
+            "line": 251
           },
           {
             "condition": "config . absorb . solver_memory_budget . is_some_and ( | b | ! b . fits ( bytes ) )",
-            "line": 275
+            "line": 277
+          },
+          {
+            "condition": "config . absorb . solver == super :: FeSolverKind :: Auto && design . effects ( ) . len ( ) == 3 && matches ! ( weights , BorrowedMapWeights :: Unit ) && config . absorb . map . symmetric",
+            "line": 295
           },
           {
             "condition": "config . solver_memory_budget . is_some_and ( | b | ! b . fits ( bytes ) )",
-            "line": 301
+            "line": 329
           },
           {
             "condition": "prepared . fit_model ( ) . columns . is_empty ( )",
-            "line": 321
-          },
-          {
-            "condition": "self . normalized . capacity ( ) != design . nobs ( )",
-            "line": 340
-          },
-          {
-            "condition": "weights",
-            "line": 345
-          },
-          {
-            "condition": "values . len ( ) != design . nobs ( ) || values . iter ( ) . any ( | w | ! w . is_finite ( ) || * w <= 0. )",
             "line": 349
           },
           {
+            "condition": "self . normalized . capacity ( ) != design . nobs ( )",
+            "line": 368
+          },
+          {
+            "condition": "weights",
+            "line": 373
+          },
+          {
+            "condition": "values . len ( ) != design . nobs ( ) || values . iter ( ) . any ( | w | ! w . is_finite ( ) || * w <= 0. )",
+            "line": 377
+          },
+          {
             "condition": "let Some ( mut budget ) = absorb . solver_memory_budget",
-            "line": 366
+            "line": 394
           },
           {
             "condition": "config . solver_memory_budget . is_some_and ( | b | ! b . fits ( total ) )",
-            "line": 410
+            "line": 438
           },
           {
             "condition": "e . code == ErrorCode :: Allocation => Ok ( None ) , Err ( e ) => Err ( e ) , } } fn prepare_general_operations ( & mut self , p : & mut ReusableMapAbsorber , base : u128 , config : crate :: ols :: PreparedOlsFitConfig , ) -> Result < ( ) >",
-            "line": 416
+            "line": 444
           },
           {
             "condition": "p . has_certificate_geometry ( )",
-            "line": 440
+            "line": 468
           },
           {
             "condition": "let Some ( plan ) = super :: projection :: ParallelProjectionPlan :: for_design_and_threads ( p . design ( ) , p . max_rhs ( ) , config . execution . threads . resolved ( ) , ) ?",
-            "line": 451
+            "line": 479
           },
           {
             "condition": "p . design ( ) . effects ( ) . len ( ) != 2 || ! p . has_certificate_geometry ( )",
-            "line": 475
+            "line": 503
           },
           {
             "condition": "let Some ( coupling ) = ReusableMapAbsorber :: coefficient_coupling_bytes ( p . design ( ) , p . max_rhs ( ) ) ?",
-            "line": 493
+            "line": 521
           },
           {
             "condition": "self . ols_chunked_norms && crate :: parallel :: StagePlan :: current ( rows as u128 , rows ) . lanes > 1",
-            "line": 519
+            "line": 547
           },
           {
             "condition": "admission . solver_memory_budget . is_some_and ( | b | ! b . fits ( bytes ) )",
-            "line": 545
+            "line": 573
           },
           {
             "condition": "crate :: memory :: Capacity :: new ( rhs as u128 ) . filled ( 0.0 , <string> )",
-            "line": 554
+            "line": 582
           },
           {
             "condition": "let Some ( p ) = & self . general",
-            "line": 561
+            "line": 589
           },
           {
             "condition": "let Some ( p ) = self . cmg . as_mut ( )",
-            "line": 614
+            "line": 642
           },
           {
             "condition": "let Some ( p ) = self . lsmr . as_mut ( )",
-            "line": 626
+            "line": 654
           },
           {
             "condition": "let Some ( p ) = self . categorical . as_mut ( )",
-            "line": 638
+            "line": 666
           },
           {
             "condition": "let Some ( p ) = self . general . as_mut ( )",
-            "line": 640
+            "line": 668
           },
           {
             "condition": "! design . effects ( ) . is_empty ( ) => super :: absorb_borrowed_intercept_lsmr ( design , weights , values . into_values ( ) , config . lsmr , config . retain_coefficients , ) , S :: Cg =>",
-            "line": 738
+            "line": 770
           },
           {
             "condition": "let Some ( c ) = r . retained . filter ( | _ | memory . is_none_or ( | m | fits ( m . retained_peak_bytes ) ) )",
-            "line": 865
+            "line": 897
           },
           {
             "condition": "recover :: recover_finalized_categorical_effects_from_coefficients_selected_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , c , r . map . tolerance , r . known_connected , r . materialize_absorbed_sum )",
-            "line": 870
+            "line": 902
           },
           {
             "condition": "r . effects . len ( ) == 1 && ! r . effects [ 0 ] . slopes ( ) . is_empty ( ) && r . effects [ 0 ] . channels ( ) <= 4",
-            "line": 878
+            "line": 910
           },
           {
             "condition": "recover :: recover_finalized_single_slope_direct_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , r . map . tolerance , r . materialize_absorbed_sum , false , )",
-            "line": 891
+            "line": 923
           },
           {
             "condition": "intercepts && r . effects . len ( ) == 2 && memory . is_some_and ( | m | fits ( m . retained_peak_bytes ) )",
-            "line": 909
+            "line": 941
           },
           {
             "condition": "recover :: recover_finalized_two_effects_graph_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , r . map . tolerance , r . known_connected , r . materialize_absorbed_sum , )",
-            "line": 912
+            "line": 944
           },
           {
             "condition": "memory . is_some_and ( | m | ! fits ( m . map_peak_bytes ) )",
-            "line": 930
+            "line": 962
           },
           {
             "condition": "n",
-            "line": 967
+            "line": 999
           }
         ],
         "functions": {
           "absorb#1": {
-            "line": 122,
+            "line": 123,
             "lines": 35
           },
           "admit#1": {
-            "line": 300,
+            "line": 328,
             "lines": 11
           },
           "attach_ols_norms#1": {
-            "line": 508,
+            "line": 536,
             "lines": 64
           },
           "borrows_raw_weights#1": {
-            "line": 93,
+            "line": 94,
             "lines": 3
           },
           "capacities#1": {
-            "line": 65,
+            "line": 66,
             "lines": 28
           },
           "categorical#1": {
-            "line": 38,
+            "line": 39,
             "lines": 10
           },
           "default#1": {
-            "line": 160,
-            "lines": 19
+            "line": 161,
+            "lines": 20
           },
           "design#1": {
-            "line": 53,
+            "line": 54,
             "lines": 6
           },
           "enable_checkpoint_lsmr#1": {
-            "line": 103,
+            "line": 104,
             "lines": 5
           },
           "for_ols#1": {
-            "line": 182,
+            "line": 184,
             "lines": 20
           },
           "for_ols_rhs#1": {
-            "line": 203,
-            "lines": 96
+            "line": 205,
+            "lines": 122
           },
           "general#1": {
-            "line": 32,
+            "line": 33,
             "lines": 6
           },
           "include_recovery_peak#1": {
-            "line": 963,
+            "line": 995,
             "lines": 10
           },
           "max_rhs#1": {
-            "line": 59,
+            "line": 60,
             "lines": 6
           },
           "numerical_recovery_miss#1": {
-            "line": 955,
+            "line": 987,
             "lines": 8
           },
           "optional#1": {
-            "line": 400,
+            "line": 428,
             "lines": 20
           },
           "ppml_operator_work#1": {
-            "line": 48,
+            "line": 49,
             "lines": 5
           },
           "prepare_coefficient_operation#1": {
-            "line": 469,
+            "line": 497,
             "lines": 38
           },
           "prepare_general_operations#1": {
-            "line": 421,
+            "line": 449,
             "lines": 47
           },
           "prepare_owned#1": {
-            "line": 312,
+            "line": 340,
             "lines": 85
           },
           "project_initial_ols#1": {
-            "line": 591,
+            "line": 619,
             "lines": 9
           },
           "project_intercepts#1": {
-            "line": 715,
-            "lines": 82
+            "line": 745,
+            "lines": 84
           },
           "project_ols#1": {
-            "line": 573,
+            "line": 601,
             "lines": 17
           },
           "project_ols_input#1": {
-            "line": 601,
-            "lines": 112
+            "line": 629,
+            "lines": 113
           },
           "recover#1": {
-            "line": 814,
+            "line": 846,
             "lines": 140
           },
           "supports_fused_projection#1": {
-            "line": 96,
+            "line": 97,
             "lines": 3
           }
         },
-        "production_lines": 907
+        "production_lines": 939
       },
       "crates/fereg-core/src/fe/singleton.rs": {
         "chunk_candidates": [],
@@ -4923,19 +5017,19 @@
         ],
         "functions": {
           "absorb_finalized_categorical_topology_map_certified#1": {
-            "line": 59,
+            "line": 60,
             "lines": 15
           },
           "absorb_finalized_categorical_topology_map_with_reservation#1": {
             "line": 35,
-            "lines": 24
+            "lines": 25
           },
           "bind_with_reservation#1": {
             "line": 11,
             "lines": 24
           }
         },
-        "production_lines": 71
+        "production_lines": 72
       },
       "crates/fereg-core/src/fe/topology_registry.rs": {
         "chunk_candidates": [],
@@ -21135,10 +21229,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 12,
-        "dispatch_candidates": 1253,
+        "dispatch_candidates": 1264,
         "files_over_1500": 15,
         "functions_over_150": 61,
-        "production_lines": 96199
+        "production_lines": 96648
       },
       "fereg-plugin": {
         "chunk_candidates": 3,

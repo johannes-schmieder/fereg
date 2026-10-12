@@ -14,6 +14,121 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H2 follow-up: certified dense three-FE gains, 2026-10-12
+
+The second reopened H2 candidate passes incremental Mac qualification against
+`be357256` and is adopted. Automatic unit-weight, symmetric three-FE OLS can
+use a geometry-qualified MAP attempt, accepted only by the unchanged requested
+certificate. Exact marginal saturation avoids unnecessary sparse pair scans;
+integer moments accumulate once per occupied cell. Complete geometry predicts
+a sweep at the current recurrence target. Checking the certificate there saves
+the fourth sweep on the measured dense inputs. Initial, configured-cadence and
+fourth-sweep checks remain; a finite miss continues and a failed pilot falls
+back on untouched inputs within the shared work and memory budget.
+
+Fifteen alternating measured pairs after one warmup per cell, tracing disabled,
+complete 192 licensed Stata fits in 1,041.614 seconds. The maintained 10,000-draw
+paired-median bootstrap (seed 739391) uses its 95% upper bound against
+max(5%, 1 ms). All six cells pass nonregression. Dense 1M native reductions are
+13.05%/6.46% at 1/4 workers; dense 4M reductions are 37.38%/32.31%.
+Command reductions are 12.21%/5.72% and 35.80%/29.34%, respectively.
+Percentages use paired ratios, so they need not equal ratios of marginal medians.
+
+| Frozen input | Workers | Native median seconds | Paired native ratio [95% interval] | Command median seconds | Command reduction |
+| --- | ---: | --- | --- | --- | ---: |
+| dense-1m | 1 | 1.915437 → 1.667007 | 0.86953 [0.86871, 0.87241] | 2.049060 → 1.799667 | 12.21% |
+| dense-1m | 4 | 0.664414 → 0.625105 | 0.93542 [0.92980, 0.94204] | 0.769980 → 0.730213 | 5.72% |
+| dense-4m | 1 | 11.224951 → 7.032553 | 0.62620 [0.62381, 0.62903] | 11.737197 → 7.533507 | 35.80% |
+| dense-4m | 4 | 3.579673 → 2.425196 | 0.67690 [0.67539, 0.68378] | 3.982470 → 2.816806 | 29.34% |
+| sparse-1m | 1 | 6.346304 → 6.345033 | 1.00016 [0.99775, 1.00229] | 6.478861 → 6.477881 | -0.02% |
+| sparse-1m | 4 | 1.886580 → 1.891642 | 1.00481 [1.00041, 1.01097] | 1.992559 → 1.998368 | -0.47% |
+
+The twenty standard workloads also pass: two fixed fifteen-pair blocks,
+warmup in each, combined once into thirty pairs per cell (1,280 native calls,
+2,564.605 seconds within the 3,600-second total and 1,800-second block limits).
+All captured science is exact across both plugins and both blocks. The largest
+observed standard cost is wide64/four workers: 1.82%, interval [0.46%, 3.28%].
+Sparse 1M/four workers costs 0.48%, interval [0.04%, 1.10%]. These are retained
+costs inside the allowance. No observations were dropped, fits retried or
+panels continued. Frozen plugin/source/input hashes were checked. The Mac ran
+without competing development builds, tests or agent tools; ordinary application
+activity remained. Retained preflight snapshots are not continuous monitoring.
+
+The numerical scope covers successful automatic three-FE results and solver
+iteration diagnostics. Sample, rank, omission, separation and requested tolerance
+are unchanged. Explicit solvers, weighted routes, PPML and final residual
+projection retain their policies. All large-case pairs pass coefficient and
+covariance agreement; each artifact repeats captured science and solver
+signatures exactly at fixed workers. Sparse captured science remains exact
+across artifacts. Cross-worker science and discrete solver decisions pass at
+1/4 on Mac and 1/4/16 on Linux. This does not strengthen the requested certificate
+or resolve the separate strong-F question recorded under H8.
+
+`./scripts/run_tests.sh` passes: 1,746 Rust test executions in 64 successful
+invocations, plus the required tooling, allocation, FFI and complexity checks.
+Fourteen Rust test executions are ignored and thirteen optional Python checks
+are skipped because the local Python lacks NumPy/SciPy; these are not claimed
+as passes. Universal Mac build, both binary slices, actual ABI/load guards,
+73-case replay with zero exact parent differences and all 292 worker checks,
+and 26 mapped licensed Stata fixtures pass. New witnesses include independent
+integer pair moments, eight pinned F2 geometries, generated designs with every
+FE order, dense dummy-QR robust OLS, saved-FE reconstruction, Fast/Low memory,
+parallel repeats, Break, allocation, consumed-work accounting and fresh norms
+and coefficients after fallback. A finite predicted-checkpoint miss reaches a
+fourth-sweep pass with exact residual/coefficient agreement. Independent
+high-effort Astra reviews found no blocking defect. Production complexity rises
+by 449 core lines and eleven dispatch candidates; the scoped ratchet records why.
+
+Before qualification, a fixed sixteen-fit profile against candidate 1 confirms
+four → three main sweeps and native reductions of 13.95%/11.73% at 1M/4M with
+four workers. This trace-enabled profile is diagnostic, not pooled with release
+timings. An artificial 256-row failed-pilot witness retains the added-check cost:
+median 66.26 → 71.21 microseconds per attempt (five alternating pairs of 1,000
+attempts in optimized CI). Geometry normally declines that input. Temporary
+profiling code was removed before the final full suite and artifact freeze.
+
+The bounded Linux check also completes: setup `8044213` on `scc-tb4` and probe
+`8044217` on `scc-zj4`, both failed=0/exit=0. Linux x86-64 binary/ABI/load guards,
+thirteen focused core tests and six independent oracle tests pass. The 36-fit,
+two-pair-per-cell trace-enabled panel passes science and repeats. Dense paired
+native reductions are 13.23%/11.48%/10.64% at 1M and 34.23%/22.82%/20.88% at
+4M for 1/4/16 workers. Sparse geometry is 6.17–6.33 ms on this host. However,
+sparse at sixteen workers costs 15.08% (individual paired costs 10.01% and
+20.38%); its mean native times are 2.502 → 2.888 seconds. That unfavorable
+observation remains unresolved: it is neither dismissed as noise nor used to
+claim confidence-qualified Linux performance. No new Windows qualification or
+fixest comparison follows from this work.
+
+Candidate 1 remains **not adopted**: cheaper geometry alone gave dense 4M
+native gains of 25.97%/23.17%, but dense 1M/four workers regressed 6.85%
+(interval [1.05489, 1.07918]) and the standard wide129/four-worker cell remained
+inconclusive. Its 54-fit SCC panel and independent checks passed. Its source
+and observations are retained separately; none are relabeled as candidate 2
+evidence. The original H2 29.8–30.9 ms sparse failure against 21 ms also remains
+failed. This reopening supports a new incremental Mac gain, not a retrospective
+pass for the earlier H-wide inconclusive cell.
+
+Evidence: [candidate 1 record](../bench/results/h2-followup-20261012-first.json),
+[its checked source patch](../bench/results/h2-followup-20261012-first.patch), and
+[candidate 2 record](../bench/results/h2-followup-20261012-second.json).
+Every warmup and measured timing is retained there. Raw captures, frozen source,
+plugins, drivers, logs and exports are preserved on SCC, with remote hashes
+verified before local cleanup:
+
+- `/projectnb/welfgr/fereg/runs/h2-followup-20261012/mac-first-captures.tar.gz`,
+  SHA-256 `9abcff312dc0b15c82c2b5d1a152c326e946564ab956027721c0077af0d041c1`.
+- `/projectnb/welfgr/fereg/runs/h2-followup-20261012/second/mac-second-captures.tar.gz`,
+  SHA-256 `9e30a10d742a8591a779e93498596db57c8e9639636be9407dfc6e97f3d925c4`.
+
+Baseline Mac plugin:
+`a97f0c28ec913a6b26b4f1a2388eb95688a60479f402d1bcb57d4cdcfc80d1ce`.
+Adopted Mac plugin:
+`545bebd0ad51354e17403f5e764b69aadd65232acd8d900eebbf5739bb1d175b`.
+Frozen source archive and manifest hashes, input/driver hashes, all SCC
+observations and cross-worker checks are in the compact record. Dataset bytes
+remain in their original SCC campaign; standard cases are regenerated from the
+pinned specification and hash-verified. No ignored local path is retained evidence.
+
 ## H complete workstream Mac boundary, 2026-10-12
 
 The final H6 plugin was frozen after runtime/native/replay/licensed qualification

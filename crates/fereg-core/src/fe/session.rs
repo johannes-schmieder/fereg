@@ -24,6 +24,7 @@ pub(crate) struct FeSession<'a> {
     pub(crate) resident_bytes: u128,
     norm_handoff_peak: Option<u128>,
     ols_chunked_norms: bool,
+    three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
     pub(crate) structural_constant: bool,
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
 }
@@ -172,6 +173,7 @@ impl Default for FeSession<'_> {
             resident_bytes: 0,
             norm_handoff_peak: None,
             ols_chunked_norms: false,
+            three_fe_geometry: None,
             structural_constant: false,
             absorb_config: None,
         }
@@ -289,7 +291,33 @@ impl<'a> FeSession<'a> {
                     p.retain_coefficients = config.absorb.retain_coefficients;
                     owner.categorical = Some(p);
                 }
-                _ => owner.binding = Some(design),
+                _ => {
+                    if config.absorb.solver == super::FeSolverKind::Auto
+                        && design.effects().len() == 3
+                        && matches!(weights, BorrowedMapWeights::Unit)
+                        && config.absorb.map.symmetric
+                    {
+                        let started = std::time::Instant::now();
+                        let (geometry, peak) =
+                            super::borrowed_map::three_fe_map::Geometry::inspect(
+                                &design,
+                                config.absorb.solver_memory_budget,
+                            )?;
+                        owner.three_fe_geometry = geometry;
+                        owner.peak = owner.peak.max(peak);
+                        owner.setup_seconds = started.elapsed().as_secs_f64();
+                        if crate::diagnostics::solver_trace_enabled() {
+                            crate::diagnostics::emit_solver_trace(&format!(
+                                "FEREG_SOLVER_TRACE|phase=three_fe_geometry|seconds={:.17e}|predicted_sweeps={:?}",
+                                owner.setup_seconds,
+                                geometry.and_then(|g| g.predicted_sweeps(
+                                    super::auto::direct_lsmr_tolerance(config.absorb.map.tolerance)
+                                )),
+                            ));
+                        }
+                    }
+                    owner.binding = Some(design);
+                }
             }
         } else {
             owner.prepare_owned(prepared, weights, rhs, config)?;
@@ -664,6 +692,7 @@ impl<'a> FeSession<'a> {
                 self.structural_constant,
                 final_residual,
                 dense_norms,
+                self.three_fe_geometry,
             )
         } else {
             let mut values = values.into_values();
@@ -712,6 +741,7 @@ impl<'a> FeSession<'a> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn project_intercepts(
     design: &super::BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
@@ -720,6 +750,7 @@ pub(crate) fn project_intercepts(
     structural_constant: bool,
     final_residual: bool,
     dense_norms: bool,
+    three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
 ) -> Result<CertifiedBorrowedMap> {
     use super::FeSolverKind as S;
     match config.solver {
@@ -734,6 +765,7 @@ pub(crate) fn project_intercepts(
             config.retain_coefficients,
             final_residual,
             dense_norms,
+            three_fe_geometry,
         ),
         S::Lsmr if !design.effects().is_empty() => super::absorb_borrowed_intercept_lsmr(
             design,

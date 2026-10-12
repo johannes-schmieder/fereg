@@ -458,11 +458,12 @@ this check, and production is unchanged. See the
 [RRUNTIME table](VALIDATION.md#h4-overlap-check-no-load-inflation-2026-10-12)
 and [all thirty observations](../bench/results/h-20261013-h4.json).
 
-H2's approved dense three-FE MAP prototype passes its independent science,
-replay and transaction checks, but fails the sparse-cost requirement: all six
+The original H2 dense three-FE MAP prototype passed its independent science,
+replay and transaction checks, but failed the sparse-cost requirement: all six
 sparse geometry observations are 29.8–30.9 ms against the declared 21 ms cap.
-It is retained as a checked patch and **not adopted**; production stays at the
-H8 route. No fit is retried. Dense 4M native means fall 22.806 → 16.315,
+It was retained as a checked patch and **not adopted** at that boundary;
+production then stayed at the H8 route. No fit is retried. Dense 4M native means
+fall 22.806 → 16.315,
 7.407 → 5.981 and 4.372 → 3.712 seconds at 1/4/16 workers; 1M changes are
 -1.70%/-3.52%/+3.05%. Sparse remains on LSMR with exact captured science and
 unchanged solver signatures. At 4M/four workers command time is 8.684 → 7.244 s,
@@ -472,6 +473,20 @@ The geometry cost, candidate-copy/workspace cost, small-input result and failed
 gate are retained in [validation](VALIDATION.md#h2-dense-three-fe-prototype-sparse-cost-gate-failed-2026-10-12),
 [all observations](../bench/results/h-20261013-h2.json) and the
 [prototype source](../bench/results/h-20261013-h2.patch).
+
+The reopened H2 work subsequently produces a qualified incremental Mac gain.
+Cheaper exact geometry plus a certificate at the predicted sweep lets eligible
+dense three-FE OLS finish after three MAP sweeps. Against `be357256`, fixed
+fifteen-pair panels reduce full-command time by 12.21%/5.72% at 1M and
+35.80%/29.34% at 4M, for 1/4 workers. Native reductions are 13.05%/6.46% and
+37.38%/32.31%. Sparse controls and all twenty standard workloads pass the
+unchanged nonregression allowance; all declared independent scientific checks
+pass. Candidate 1's one-million-row regression and wide-case uncertainty remain
+retained failures, and the adopted candidate's short SCC panel retains a 15.08%
+sparse cost at sixteen workers. This supports the measured Mac gain, not a
+Linux performance claim, a new fixest ratio or a retrospective pass for H-wide.
+See [qualification and limitations](VALIDATION.md#h2-follow-up-certified-dense-three-fe-gains-2026-10-12)
+and [all observations](../bench/results/h2-followup-20261012-second.json).
 
 Workstream H8 makes ordinary two-FE OLS aim at the shared hundredth-request
 recurrence target while preserving the requested certificate, PPML and final
