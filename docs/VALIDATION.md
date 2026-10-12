@@ -14,6 +14,92 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H2 dense three-FE prototype: sparse-cost gate failed, 2026-10-12
+
+The approved prototype completed its fixed 36-fit panel and all scientific
+checks, but **was not adopted**: sparse geometry took 29.785–30.855 ms,
+exceeding the declared 21 ms limit in all six candidate captures. The production
+runtime remains `a05ae5d7`. No cell was retried and no threshold was relaxed.
+The [complete prototype patch](../bench/results/h-20261013-h2.patch) applies to
+that parent and reproduces all eleven saved source/test/inventory files exactly;
+the [compact record](../bench/results/h-20261013-h2.json) retains the outcomes.
+This commit is an unchanged artifact with retained experimental source.
+
+The rule was frozen in Workstream H section 6 before implementation. Unit-weight
+ordinary three-intercept OLS caches exact-integer centred pair Frobenius bounds
+once per session, predicts at most four symmetric sweeps at the H8 recurrence
+target, and accepts only through the unchanged requested-tolerance certificate.
+A missed pilot releases its candidate before LSMR uses the untouched original;
+actual pilot sweeps debit the existing first-half allowance. The final MAP
+reserve, explicit/weighted requests, PPML and final-residual route remain intact.
+Candidate, histogram, norm workspace and preallocated canonical coefficients
+are admitted; caller norm kernels are unchanged. Numerical and route scope is
+recorded in section 6; sample, rank, omission and separation remain exact.
+
+Two alternating pairs per frozen input/worker cell give these native means and
+paired geometric-mean changes. Both arms use the same physical-core mask.
+
+| Input | Workers | Parent native s | Prototype native s | Paired change |
+| --- | ---: | ---: | ---: | ---: |
+| dense-1m | 1 | 3.474 | 3.415 | -1.70% |
+| dense-1m | 4 | 1.502 | 1.449 | -3.52% |
+| dense-1m | 16 | 0.838 | 0.864 | +3.05% |
+| dense-4m | 1 | 22.806 | 16.315 | -28.46% |
+| dense-4m | 4 | 7.407 | 5.981 | -19.26% |
+| dense-4m | 16 | 4.372 | 3.712 | -15.07% |
+| sparse-1m | 1 | 13.458 | 13.449 | -0.07% |
+| sparse-1m | 4 | 4.742 | 4.587 | -3.20% |
+| sparse-1m | 16 | 2.766 | 2.799 | +1.31% |
+
+All eighteen paired science/discrete checks pass, as do all eighteen fixed-worker
+repeats. Maximum coefficient/VCE differences are 3.86e-14/1.84e-20. Sparse remains
+on LSMR with exact captured coefficients, covariance, statistics and solver
+signatures, apart from clocks. Main/final iterations are 4/1 → 4/1 at dense 1M,
+10/1 → 4/1 at dense 4M, and unchanged 22/2 at sparse 1M. All dense candidates
+predict three sweeps and certify at the four-sweep checkpoint; all final solves
+remain LSMR. Geometry costs 37.7–40.1 ms at dense 1M and 169.2–182.1 ms at 4M.
+The 1M/sixteen-worker native cost rises 3.05%; all observations are retained.
+
+At 4M/four workers command time is 8.684 → 7.244 seconds. The prototype still
+exceeds the retained fixest 4.224-second observation by 3.020 seconds (71.5%);
+closing that numerical gap would require another 41.7% of its command time.
+Those fixest bytes were measured on another host/source, so this is a remaining
+scale comparison, not a new paired fixest claim. Two pairs with tracing are
+descriptive SCC evidence; the twenty quiet Mac workloads remain at the H boundary.
+
+Mac prototype validation passes: full `scripts/run_tests.sh` (1,691 Rust test
+executions in 63 invocations, tooling/oracle/transaction checks), universal
+build and actual-plugin audit/load, all 73 replay cases with zero exact parent
+differences, all 292 checks at 2/4/8/16 workers, and fourteen licensed fixtures.
+The added licensed eligible-MAP fixture checks saved effects, reconstruction,
+predictions and robust covariance against full dummy regression in Fast/Low at
+1/4 workers. Five independent oracle tests cover nonuniform and perturbed
+products, extra intersections, disconnected designs, weights and explicit LSMR.
+Seven core tests cover rounding, acceptance at the request, allocation refusal,
+coefficient reconstruction and shared work. A subsequent focused test reproduces
+all four bounds of all eight retained F2 rational-projection fixtures bitwise;
+its Clippy check passes. No production tokens changed after the candidate freeze.
+
+Independent Astra review identified and resolved an inappropriate norm handoff,
+a missing fallback diagnostic, post-certificate coefficient allocation, and
+geometry error/Break handling. Initial compile/test-name/import mistakes and
+Clippy's decimal-precision warning are retained; exact binary64 bit constants
+preserve the frozen F2 witness. A local Python cache-path refusal was resolved by
+syntax-only parsing. There were no scientific fit failures or retries. These
+prototype tests are retained in the patch rather than installed without their
+runtime implementation. Current runtime/artifact identity equals the parent,
+so its valid H8 runtime evidence is reused for this documentation-only closure.
+
+SCC setup `8035579` on `scc-gd4` passes with failed=0/exit=0, 364 seconds and
+3.967G maxvmem; its seven focused Linux tests and native guards pass. Panel
+`8035584` on `scc-wf2`, 28 physical cores, passes with failed=0/exit=0, 423 seconds
+and 6.209G maxvmem. Its timed panel uses 406.846 of 2,400 seconds. Source archives,
+plugins, scripts, raw captures and both Mac validation archives remain under
+`/projectnb/welfgr/fereg/runs/h-20261013-h2`. The final Mac archive is 25,396,960
+bytes, SHA-256 `3d5dbd3a0096eef90a7b641bcbe82427907af2740d95470beba51825df8fd64a`.
+The prototype would add 388 production lines and eight dispatch candidates;
+this closure adds none. No new Windows qualification is claimed.
+
 ## H8 recurrence consistency with measured sparse cost, 2026-10-12
 
 The approved ordinary automatic two-FE OLS change uses the existing automatic

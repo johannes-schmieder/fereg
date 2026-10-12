@@ -1,0 +1,3262 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index 7f3d2a75..2b31bb17 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -13,6 +13,7 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
+ 
+ use super::map::ReusableMapCapacities;
+ 
++pub(crate) mod three_fe_map;
+ pub(crate) mod three_fe_schur;
+ 
+ pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
+@@ -3553,6 +3554,7 @@ pub(crate) fn project_borrowed_intercept_structural(
+     structural_constant: bool,
+     retain: bool,
+     final_residual: bool,
++    three_fe_geometry: Option<three_fe_map::Geometry>,
+ ) -> Result<CertifiedBorrowedMap> {
+     validate_config(map)?;
+     if values.nrows() != design.nobs() || values.nrows() == 0 || values.ncols() == 0 {
+@@ -3676,7 +3678,15 @@ pub(crate) fn project_borrowed_intercept_structural(
+             return Ok(result);
+         }
+     }
+-    project_general_categorical(design, weights, values, map, lsmr, budget, retain, estimate)
++    let map_first = !final_residual
++        && map.symmetric
++        && matches!(weights, BorrowedMapWeights::Unit)
++        && three_fe_geometry
++            .and_then(|g| g.predicted_sweeps(super::auto::direct_lsmr_tolerance(map.tolerance)))
++            .is_some();
++    project_general_categorical(
++        design, weights, values, map, lsmr, budget, retain, estimate, map_first,
++    )
+ }
+ 
+ #[allow(clippy::too_many_arguments)]
+@@ -3689,9 +3699,28 @@ fn project_general_categorical(
+     budget: Option<FeSolverMemoryBudget>,
+     retain: bool,
+     estimate: crate::memory::FeSolverMemoryEstimate,
++    map_first: bool,
+ ) -> Result<CertifiedBorrowedMap> {
+     lsmr.tolerance = super::auto::direct_lsmr_tolerance(map.tolerance);
+     lsmr.max_iterations = lsmr.max_iterations.min((map.max_iterations / 2).max(1));
++    let mut pilot = if map_first && lsmr.max_iterations > three_fe_map::SWEEPS {
++        three_fe_map::attempt(
++            design,
++            &values,
++            map,
++            budget,
++            retain,
++            estimate.coefficient_batch_bytes,
++        )?
++    } else {
++        three_fe_map::Attempt::default()
++    };
++    if let Some(mut result) = pilot.result.take() {
++        result.report.requested_solver = FeSolverKind::Auto;
++        result.report.pilot_iterations = pilot.iterations;
++        return Ok(result);
++    }
++    lsmr.max_iterations -= pilot.iterations;
+     let validated = validate_weights(weights, values.nrows())?;
+     let preconditioner = resolve_borrowed_lsmr_preconditioner(
+         design.effects().len(),
+@@ -3699,7 +3728,7 @@ fn project_general_categorical(
+         lsmr.preconditioner,
+     );
+     let bytes = estimate.lsmr_bytes(preconditioner);
+-    let mut attempted_peak = SolverWorkspacePeak::ZERO;
++    let mut attempted_peak = pilot.peak;
+     let mut attempted = None;
+     if budget.is_none_or(|b| b.fits(bytes)) {
+         let mut memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, budget, 0)?;
+@@ -3718,6 +3747,7 @@ fn project_general_categorical(
+         attempted_peak = attempted_peak.max(report.solver_workspace_peak);
+         report.requested_solver = FeSolverKind::Auto;
+         if report.certified() {
++            pilot.record(&mut report);
+             return if let Some(c) = coefficients {
+                 CertifiedBorrowedMap::from_certified_parts_with_coefficients(candidate, report, c)
+             } else {
+@@ -3728,7 +3758,7 @@ fn project_general_categorical(
+         // A report survives the failed certificate; input remains unchanged.
+         attempted = Some(report);
+     }
+-    let consumed = attempted.as_ref().map_or(0, |r| r.iterations);
++    let consumed = pilot.iterations + attempted.as_ref().map_or(0, |r| r.iterations);
+     let remaining = map
+         .max_iterations
+         .checked_sub(consumed)
+@@ -3772,6 +3802,7 @@ fn project_general_categorical(
+         result.report.fallback_used = true;
+         result.report.warnings.push("general FE solve did not certify; MAP used original inputs within the remaining budget".to_owned());
+     }
++    pilot.record(&mut result.report);
+     Ok(result)
+ }
+ 
+diff --git a/crates/fereg-core/src/fe/borrowed_map/tests.rs b/crates/fereg-core/src/fe/borrowed_map/tests.rs
+index 47e9531f..eea4cc51 100644
+--- a/crates/fereg-core/src/fe/borrowed_map/tests.rs
++++ b/crates/fereg-core/src/fe/borrowed_map/tests.rs
+@@ -1603,6 +1603,7 @@ fn retained_lsmr_reuses_preparation_and_preserves_each_batch() {
+                                 false,
+                                 true,
+                                 false,
++                                None,
+                             )
+                         } else {
+                             absorb_borrowed_intercept_lsmr(
+@@ -2883,6 +2884,7 @@ fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
+             false,
+             false,
+             false,
++            None,
+         )
+         .unwrap();
+         assert_eq!(ordinary.residualized(), structural.residualized());
+@@ -5061,6 +5063,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
+         false,
+         false,
+         false,
++        None,
+     )
+     .expect("direct auto");
+     assert_eq!(direct.report().requested_solver, FeSolverKind::Auto);
+@@ -5086,6 +5089,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
+         false,
+         false,
+         false,
++        None,
+     )
+     .expect("early MAP");
+     assert_eq!(early.report().used_solver, FeSolverKind::Map);
+@@ -5115,6 +5119,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
+         false,
+         false,
+         false,
++        None,
+     )
+     .expect("CG auto");
+     assert_eq!(cg.report().requested_solver, FeSolverKind::Auto);
+@@ -5155,6 +5160,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
+         false,
+         true,
+         false,
++        None,
+     )
+     .expect("routed auto");
+     assert_eq!(result.report().requested_solver, FeSolverKind::Auto);
+@@ -5172,6 +5178,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
+         false,
+         false,
+         false,
++        None,
+     )
+     .expect("direct LSMR auto");
+     assert_eq!(direct.report().requested_solver, FeSolverKind::Auto);
+@@ -5300,6 +5307,7 @@ fn uncertified_lsmr_candidate_is_polished_and_fully_accounted() {
+         false,
+         true,
+         false,
++        None,
+     )
+     .expect("polished auto result");
+     let report = result.report();
+@@ -5365,6 +5373,7 @@ fn constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fit
+             false,
+             false,
+             false,
++            None,
+         )
+     };
+     // The original certificate norm remains live beside the CG continuation.
+diff --git a/crates/fereg-core/src/fe/report.rs b/crates/fereg-core/src/fe/report.rs
+index bff8b4f4..e8207546 100644
+--- a/crates/fereg-core/src/fe/report.rs
++++ b/crates/fereg-core/src/fe/report.rs
+@@ -76,9 +76,9 @@ pub struct SolveReport {
+     pub requested_preconditioner: Option<LsmrPreconditioner>,
+     /// Effective LSMR preconditioner, or `None` for non-LSMR routes.
+     pub used_preconditioner: Option<LsmrPreconditioner>,
+-    /// Bounded automatic-routing pilot sweeps included in setup cost.
++    /// Bounded automatic-routing pilot sweeps included in reported work.
+     pub pilot_iterations: usize,
+-    /// Observed pilot contraction ratio; zero means no pilot was run.
++    /// Observed pilot contraction ratio; zero means no contraction was measured.
+     pub pilot_contraction: f64,
+     /// Deterministic, diagnostic-only warnings from routing or preconditioning.
+     pub warnings: Vec<String>,
+diff --git a/crates/fereg-core/src/fe/session.rs b/crates/fereg-core/src/fe/session.rs
+index ba31d688..61e7a6c9 100644
+--- a/crates/fereg-core/src/fe/session.rs
++++ b/crates/fereg-core/src/fe/session.rs
+@@ -24,6 +24,7 @@ pub(crate) struct FeSession<'a> {
+     pub(crate) resident_bytes: u128,
+     norm_handoff_peak: Option<u128>,
+     ols_chunked_norms: bool,
++    three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
+     pub(crate) structural_constant: bool,
+     pub(crate) absorb_config: Option<super::AbsorbConfig>,
+ }
+@@ -172,6 +173,7 @@ impl Default for FeSession<'_> {
+             resident_bytes: 0,
+             norm_handoff_peak: None,
+             ols_chunked_norms: false,
++            three_fe_geometry: None,
+             structural_constant: false,
+             absorb_config: None,
+         }
+@@ -289,7 +291,33 @@ impl<'a> FeSession<'a> {
+                     p.retain_coefficients = config.absorb.retain_coefficients;
+                     owner.categorical = Some(p);
+                 }
+-                _ => owner.binding = Some(design),
++                _ => {
++                    if config.absorb.solver == super::FeSolverKind::Auto
++                        && design.effects().len() == 3
++                        && matches!(weights, BorrowedMapWeights::Unit)
++                        && config.absorb.map.symmetric
++                    {
++                        let started = std::time::Instant::now();
++                        let (geometry, peak) =
++                            super::borrowed_map::three_fe_map::Geometry::inspect(
++                                &design,
++                                config.absorb.solver_memory_budget,
++                            )?;
++                        owner.three_fe_geometry = geometry;
++                        owner.peak = owner.peak.max(peak);
++                        owner.setup_seconds = started.elapsed().as_secs_f64();
++                        if crate::diagnostics::solver_trace_enabled() {
++                            crate::diagnostics::emit_solver_trace(&format!(
++                                "FEREG_SOLVER_TRACE|phase=three_fe_geometry|seconds={:.17e}|predicted_sweeps={:?}",
++                                owner.setup_seconds,
++                                geometry.and_then(|g| g.predicted_sweeps(
++                                    super::auto::direct_lsmr_tolerance(config.absorb.map.tolerance)
++                                )),
++                            ));
++                        }
++                    }
++                    owner.binding = Some(design);
++                }
+             }
+         } else {
+             owner.prepare_owned(prepared, weights, rhs, config)?;
+@@ -631,6 +659,7 @@ impl<'a> FeSession<'a> {
+                 config,
+                 self.structural_constant,
+                 final_residual,
++                self.three_fe_geometry,
+             )
+         } else {
+             let mut values = values;
+@@ -686,6 +715,7 @@ pub(crate) fn project_intercepts(
+     config: super::AbsorbConfig,
+     structural_constant: bool,
+     final_residual: bool,
++    three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
+ ) -> Result<CertifiedBorrowedMap> {
+     use super::FeSolverKind as S;
+     match config.solver {
+@@ -699,6 +729,7 @@ pub(crate) fn project_intercepts(
+             structural_constant,
+             config.retain_coefficients,
+             final_residual,
++            three_fe_geometry,
+         ),
+         S::Lsmr if !design.effects().is_empty() => super::absorb_borrowed_intercept_lsmr(
+             design,
+diff --git a/crates/fereg-core/src/fe/topology_map.rs b/crates/fereg-core/src/fe/topology_map.rs
+index e3ec6ed6..6b1bfacf 100644
+--- a/crates/fereg-core/src/fe/topology_map.rs
++++ b/crates/fereg-core/src/fe/topology_map.rs
+@@ -53,6 +53,7 @@ fn absorb_finalized_categorical_topology_map_with_reservation<R: TopologyMapRese
+         },
+         false,
+         false,
++        None,
+     )
+ }
+ pub fn absorb_finalized_categorical_topology_map_certified(
+diff --git a/tests/reference/complexity.json b/tests/reference/complexity.json
+index 941a9d33..8e90f94c 100644
+--- a/tests/reference/complexity.json
++++ b/tests/reference/complexity.json
+@@ -2,28 +2,22 @@
+   "definition": "docs/development_workflow.md#complexity-inventory",
+   "growth": [
+     {
+-      "after": 95133,
+-      "before": 95071,
+-      "metric": "fereg-core/production_lines",
+-      "reason": "Approved H8 recurrence consistency: ordinary two-FE OLS shares the automatic LSMR target; PPML and final-residual callers retain their old targets. Certificate-only acceptance and budgets are unchanged. Trace-only per-RHS stop reasons report proxy completion, exhaustion or breakdown without changing public stop codes."
++      "after": 1254,
++      "before": 1246,
++      "metric": "fereg-core/dispatch_candidates",
++      "reason": "Approved H2 bounded three-FE MAP prototype: one cached exact-integer geometry bound, outward-rounded sweep prediction, request-certified optional MAP with untouched-input fallback, shared work debit and capacity admission. Explicit, weighted, PPML and final-residual routes and caller norm kernels are unchanged."
+     },
+     {
+-      "after": 7122,
+-      "before": 7070,
+-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
+-      "reason": "Approved H8 recurrence consistency: ordinary two-FE OLS shares the automatic LSMR target; PPML and final-residual callers retain their old targets. Certificate-only acceptance and budgets are unchanged. Trace-only per-RHS stop reasons report proxy completion, exhaustion or breakdown without changing public stop codes."
+-    },
+-    {
+-      "after": 323,
+-      "before": 321,
+-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb#1",
+-      "reason": "Approved H8 recurrence consistency: ordinary two-FE OLS shares the automatic LSMR target; PPML and final-residual callers retain their old targets. Certificate-only acceptance and budgets are unchanged. Trace-only per-RHS stop reasons report proxy completion, exhaustion or breakdown without changing public stop codes."
++      "after": 95521,
++      "before": 95133,
++      "metric": "fereg-core/production_lines",
++      "reason": "Approved H2 bounded three-FE MAP prototype: one cached exact-integer geometry bound, outward-rounded sweep prediction, request-certified optional MAP with untouched-input fallback, shared work debit and capacity admission. Explicit, weighted, PPML and final-residual routes and caller norm kernels are unchanged."
+     },
+     {
+-      "after": 581,
+-      "before": 564,
+-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb_two_fe_pcg_reusing#1",
+-      "reason": "Approved H8 recurrence consistency: ordinary two-FE OLS shares the automatic LSMR target; PPML and final-residual callers retain their old targets. Certificate-only acceptance and budgets are unchanged. Trace-only per-RHS stop reasons report proxy completion, exhaustion or breakdown without changing public stop codes."
++      "after": 7153,
++      "before": 7122,
++      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
++      "reason": "Approved H2 bounded three-FE MAP prototype: one cached exact-integer geometry bound, outward-rounded sweep prediction, request-certified optional MAP with untouched-input fallback, shared work debit and capacity admission. Explicit, weighted, PPML and final-residual routes and caller norm kernels are unchanged."
+     }
+   ],
+   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
+@@ -632,1136 +626,1212 @@
+         "dispatch_candidates": [
+           {
+             "condition": "rhs_count == 0 || effect_channels . len ( ) != level_counts . len ( )",
+-            "line": 126
++            "line": 127
+           },
+           {
+             "condition": "values . len ( ) != coefficients_per_rhs . saturating_mul ( rhs_count ) || values . iter ( ) . any ( | value | ! value . is_finite ( ) )",
+-            "line": 132
++            "line": 133
+           },
+           {
+             "condition": "self . effect_channels . get ( effect ) != Some ( & 1 ) || level >= self . level_counts . get ( effect ) . copied ( ) . unwrap_or ( 0 ) || means . len ( ) != self . rhs_count",
+-            "line": 219
++            "line": 220
+           },
+           {
+             "condition": "self . effect_channels . get ( effect ) != Some ( & 1 ) || self . level_counts . get ( effect ) . copied ( ) != Some ( levels ) || means . len ( ) != levels . saturating_mul ( self . rhs_count )",
+-            "line": 249
++            "line": 250
+           },
+           {
+             "condition": "levels . saturating_mul ( self . rhs_count ) >= PARALLEL_PROJECTION_MIN_ROWS && self . rhs_count > 1 && rayon :: current_num_threads ( ) > 1",
+-            "line": 258
++            "line": 259
+           },
+           {
+             "condition": "! self . same_layout ( other ) || scales . len ( ) != self . rhs_count",
+-            "line": 402
++            "line": 403
+           },
+           {
+             "condition": "values . len ( ) != elements",
+-            "line": 556
++            "line": 557
+           },
+           {
+             "condition": "means . len ( ) != self . rhs_count || self . level_counts . get ( effect ) . is_none_or ( | & levels | level >= levels )",
+-            "line": 608
++            "line": 609
+           },
+           {
+             "condition": "self . level_counts . get ( effect ) . copied ( ) != Some ( levels ) || means . len ( ) != levels . saturating_mul ( self . rhs_count )",
+-            "line": 644
++            "line": 645
+           },
+           {
+             "condition": "norms . len ( ) != self . residualized . ncols ( ) || norms . iter ( ) . any ( | v | ! v . is_finite ( ) || * v < 0.0 )",
+-            "line": 715
++            "line": 716
+           },
+           {
+             "condition": "! report . certified ( ) || coefficients . rhs_count ( ) != residualized . ncols ( ) || coefficients . coefficients_per_rhs ( ) == 0",
+-            "line": 771
++            "line": 772
+           },
+           {
+             "condition": "rhs_count > values . capacity ( )",
+-            "line": 1058
++            "line": 1059
+           },
+           {
+             "condition": "components . n_components <= 1",
+-            "line": 1118
++            "line": 1119
+           },
+           {
+             "condition": "max_rhs == 0 || parallel_threads == 0",
+-            "line": 1395
++            "line": 1396
+           },
+           {
+             "condition": "! matches ! ( design . effects ( ) . len ( ) , 1.. = 3 )",
+-            "line": 1400
++            "line": 1401
+           },
+           {
+             "condition": "rhs_positions . len ( ) != output . len ( ) || rhs_positions . clone ( ) . any ( | position | position >= values . ncols ( ) )",
+-            "line": 1617
++            "line": 1618
+           },
+           {
+             "condition": "self . design . effects ( ) . len ( ) != 1",
+-            "line": 1627
++            "line": 1628
+           },
+           {
+             "condition": "weights",
+-            "line": 1632
++            "line": 1633
+           },
+           {
+             "condition": "raw_scale != norm_weight_scale",
+-            "line": 1636
++            "line": 1637
+           },
+           {
+             "condition": "norms . len ( ) != absorbed . residualized ( ) . ncols ( )",
+-            "line": 1640
++            "line": 1641
+           },
+           {
+             "condition": "values . nrows ( ) != self . design . nobs ( ) || values . nrows ( ) == 0 || rhs_count == 0 || rhs_count > self . max_rhs",
+-            "line": 1708
++            "line": 1709
+           },
+           {
+             "condition": "initial_group_rejects ( design , weights , & values , config . tolerance , workspace ) ?",
+-            "line": 1731
++            "line": 1732
+           },
+           {
+             "condition": "self . checkpoint_lsmr_enabled && self . checkpoint_component_scaling && matches ! ( self . design . effects ( ) . len ( ) , 2 | 3 )",
+-            "line": 1741
++            "line": 1742
+           },
+           {
+             "condition": "let Some ( scaled ) = balanced_weights . as_deref ( )",
+-            "line": 1750
++            "line": 1751
+           },
+           {
+             "condition": "self . checkpoint_lsmr_enabled && matches ! ( self . design . effects ( ) . len ( ) , 2 | 3 )",
+-            "line": 1784
++            "line": 1785
+           },
+           {
+             "condition": "balanced_weights . as_deref ( )",
+-            "line": 1788
++            "line": 1789
+           },
+           {
+             "condition": "balanced_weights . is_none ( ) && allow_schur",
+-            "line": 1799
++            "line": 1800
+           },
+           {
+             "condition": "self . design . effects ( ) . len ( ) == 2",
+-            "line": 1800
++            "line": 1801
+           },
+           {
+             "condition": "self . design . effects ( ) . len ( ) == 1 || iteration % config . check_every == 0 || iteration == config . max_iterations",
+-            "line": 1998
++            "line": 1999
+           },
+           {
+             "condition": "! self . checkpoint_lsmr_enabled || self . two_fe_pcg . is_none ( ) || values . ncols ( ) == 0 || values . ncols ( ) > self . max_rhs || config . max_iterations <= GRAPH_PROGRESS_CHECK_ITERATIONS",
+-            "line": 2030
++            "line": 2031
+           },
+           {
+             "condition": "design . effects ( ) . len ( ) != 2 || stride < rhs_count || graph . left_weights . len ( ) != left_levels || graph . right_weights . len ( ) != right_levels || graph . left_rhs . len ( ) != left_levels . saturating_mul ( stride ) || graph . left_work . len ( ) != left_levels . saturating_mul ( stride ) || graph . solution . len ( ) != right_levels . saturating_mul ( stride ) || graph . residual . len ( ) != right_levels . saturating_mul ( stride ) || graph . direction . len ( ) != right_levels . saturating_mul ( stride ) || graph . operator . len ( ) != right_levels . saturating_mul ( stride )",
+-            "line": 2214
++            "line": 2215
+           },
+           {
+             "condition": "rhs_count > scalars . capacity ( )",
+-            "line": 2236
++            "line": 2237
+           },
+           {
+             "condition": "graph . left_weights . iter ( ) . chain ( & graph . right_weights ) . any ( | weight | ! weight . is_finite ( ) || * weight <= 0.0 ) || graph . left_rhs . iter ( ) . chain ( & graph . residual ) . any ( | value | ! value . is_finite ( ) )",
+-            "line": 2273
++            "line": 2274
+           },
+           {
+             "condition": "crate :: parallel :: StagePlan :: current ( design . nobs ( ) as u128 * rhs_count as u128 , design . effects ( ) . iter ( ) . map ( | e | e . n_levels ( ) ) . max ( ) . unwrap_or ( 0 ) , ) . lanes > 1",
+-            "line": 2855
++            "line": 2856
+           },
+           {
+             "condition": "row >= design . nobs ( )",
+-            "line": 2952
++            "line": 2953
+           },
+           {
+             "condition": "row >= design . nobs ( )",
+-            "line": 2989
++            "line": 2990
+           },
+           {
+             "condition": "values . as_slice ( ) . len ( ) >= PARALLEL_PROJECTION_MIN_ROWS && rayon :: current_num_threads ( ) > 1",
+-            "line": 3261
++            "line": 3262
+           },
+           {
+             "condition": "design . nobs ( ) != values . nrows ( ) || values . nrows ( ) == 0 || values . ncols ( ) == 0 || design . effects ( ) . is_empty ( )",
+-            "line": 3319
++            "line": 3320
+           },
+           {
+             "condition": "design . nobs ( ) != values . nrows ( ) || values . nrows ( ) == 0 || values . ncols ( ) == 0",
+-            "line": 3523
++            "line": 3524
+           },
+           {
+             "condition": "values . nrows ( ) != design . nobs ( ) || values . nrows ( ) == 0 || values . ncols ( ) == 0",
+-            "line": 3558
++            "line": 3560
+           },
+           {
+             "condition": "design . effects ( ) . len ( ) <= 1",
+-            "line": 3569
++            "line": 3571
+           },
+           {
+             "condition": "budget . is_some_and ( | b | ! b . fits ( bytes ) )",
+-            "line": 3576
++            "line": 3578
+           },
+           {
+             "condition": "design . effects ( ) . len ( ) == 2",
+-            "line": 3608
++            "line": 3610
+           },
+           {
+             "condition": "budget . is_none_or ( | b | b . fits ( bytes ) )",
+-            "line": 3625
++            "line": 3627
+           },
+           {
+             "condition": "budget . is_none_or ( | b | b . fits ( compact ) )",
+-            "line": 3664
++            "line": 3666
+           },
+           {
+             "condition": "budget . is_none_or ( | b | b . fits ( bytes ) )",
+-            "line": 3704
++            "line": 3733
+           },
+           {
+             "condition": "budget . is_some_and ( | b | ! b . fits ( map_bytes ) )",
+-            "line": 3749
++            "line": 3779
+           },
+           {
+             "condition": "weights . values",
+-            "line": 3779
++            "line": 3810
+           },
+           {
+             "condition": "norms . len ( ) != self . values . ncols ( ) || norms . iter ( ) . any ( | v | ! v . is_finite ( ) || * v < 0. )",
+-            "line": 3853
++            "line": 3884
+           },
+           {
+             "condition": "count == 0 || count == norms . len ( )",
+-            "line": 3859
++            "line": 3890
+           },
+           {
+             "condition": "! fits ( positions . capacity ( ) )",
+-            "line": 3919
++            "line": 3950
+           },
+           {
+             "condition": "self . budget . is_some_and ( | budget | ! budget . fits ( bytes ) )",
+-            "line": 4193
++            "line": 4224
+           },
+           {
+             "condition": "lsmr_config . local_size == Some ( 0 )",
+-            "line": 4461
++            "line": 4492
+           },
+           {
+             "condition": "reference_norms . len ( ) != values . ncols ( ) || reference_norms . iter ( ) . any ( | norm | ! norm . is_finite ( ) || * norm < 0.0 )",
+-            "line": 4577
++            "line": 4608
+           },
+           {
+             "condition": "coefficients . rhs_count ( ) != result . residualized . ncols ( ) || coefficients . coefficients_per_rhs ( ) == 0",
+-            "line": 4737
++            "line": 4768
+           },
+           {
+             "condition": "design . nobs ( ) != values . nrows ( )",
+-            "line": 4786
++            "line": 4817
+           },
+           {
+             "condition": "values . nrows ( ) == 0 || values . ncols ( ) == 0",
+-            "line": 4791
++            "line": 4822
+           },
+           {
+             "condition": "reference_norms . len ( ) != values . ncols ( ) || reference_norms . iter ( ) . any ( | norm | ! norm . is_finite ( ) || * norm < 0.0 )",
+-            "line": 4831
++            "line": 4862
+           },
+           {
+             "condition": "design . nobs ( ) != values . nrows ( )",
+-            "line": 5263
++            "line": 5294
+           },
+           {
+             "condition": "values . nrows ( ) == 0 || values . ncols ( ) == 0",
+-            "line": 5268
++            "line": 5299
+           },
+           {
+             "condition": "design . effects ( ) . len ( ) <= 1 || iteration % config . check_every == 0 || iteration == config . max_iterations",
+-            "line": 5363
++            "line": 5394
+           },
+           {
+             "condition": "weights",
+-            "line": 5406
++            "line": 5437
+           },
+           {
+             "condition": "values . len ( ) != nrows",
+-            "line": 5412
++            "line": 5443
+           },
+           {
+             "condition": "values . iter ( ) . any ( | weight | ! weight . is_finite ( ) || * weight <= 0.0 )",
+-            "line": 5417
++            "line": 5448
+           },
+           {
+             "condition": "values . iter ( ) . any ( | weight | * weight / raw_scale == 0.0 )",
+-            "line": 5426
++            "line": 5457
+           },
+           {
+             "condition": "! total_weight . is_finite ( ) || total_weight <= 0.0",
+-            "line": 5481
++            "line": 5512
+           },
+           {
+             "condition": "effect . codes ( ) . len ( ) != values . nrows ( )",
+-            "line": 5671
++            "line": 5702
+           },
+           {
+             "condition": "crate :: parallel :: StagePlan :: current ( values . nrows ( ) as u128 * values . ncols ( ) as u128 , effect . n_levels ( ) , ) . lanes > 1 && workspace . parallel_group_means . len ( ) >= parallel_mean_count",
+-            "line": 5689
++            "line": 5720
+           },
+           {
+             "condition": "observation >= values . nrows ( )",
+-            "line": 5755
++            "line": 5786
+           },
+           {
+             "condition": "columns <= PARALLEL_GROUP_MAX_RHS",
+-            "line": 5799
++            "line": 5830
+           },
+           {
+             "condition": "batch . rhs_count ( ) != columns",
+-            "line": 5864
++            "line": 5895
+           },
+           {
+             "condition": "group_weights . len ( ) != levels || means . len ( ) != levels . checked_mul ( columns ) . ok_or_else ( || allocation ( <string> ) ) ?",
+-            "line": 6011
++            "line": 6042
+           },
+           {
+             "condition": "columns <= PARALLEL_GROUP_MAX_RHS",
+-            "line": 6039
++            "line": 6070
+           },
+           {
+             "condition": "members . is_empty ( ) || means . len ( ) != columns || columns > PARALLEL_GROUP_MAX_RHS",
+-            "line": 6106
++            "line": 6137
+           },
+           {
+             "condition": "members . is_empty ( ) || means . len ( ) > PARALLEL_GROUP_MAX_RHS",
+-            "line": 6133
++            "line": 6164
+           },
+           {
+             "condition": "observation >= nrows",
+-            "line": 6147
++            "line": 6178
+           },
+           {
+             "condition": "weights . values . is_some ( )",
+-            "line": 6152
++            "line": 6183
+           },
+           {
+             "condition": "weights . values . is_some ( )",
+-            "line": 6164
++            "line": 6195
+           },
+           {
+             "condition": "! total_weight . is_finite ( ) || total_weight <= 0.0",
+-            "line": 6169
++            "line": 6200
+           },
+           {
+             "condition": "let Some ( weight_values ) = weights . values",
+-            "line": 6174
++            "line": 6205
+           },
+           {
+             "condition": "means . len ( ) != levels . saturating_mul ( columns ) || batch . rhs_count ( ) != columns",
+-            "line": 6224
++            "line": 6255
+           },
+           {
+             "condition": "! total_weight . is_finite ( ) || total_weight <= 0.0",
+-            "line": 6323
++            "line": 6354
+           },
+           {
+             "condition": "! total_weight . is_finite ( ) || total_weight <= 0.0",
+-            "line": 6374
++            "line": 6405
+           },
+           {
+             "condition": "( unit && weights . raw_scale != 1.0 ) || design . effects ( ) . is_empty ( ) || workspace . reference_norms . len ( ) != values . ncols ( ) || workspace . reference_norms . iter ( ) . any ( | & norm | ! ( unit && norm == 0.0 || ( 1e - 20.. = 1e20 ) . contains ( & norm ) ) ) || design . total_term_slots ( ) . checked_mul ( values . ncols ( ) ) . is_none ( )",
+-            "line": 6449
++            "line": 6480
+           },
+           {
+             "condition": "let Some ( raw ) = weights . values",
+-            "line": 6463
++            "line": 6494
+           },
+           {
+             "condition": "! ( 1.0 / LIMIT ..= LIMIT ) . contains ( & weights . raw_scale ) || values . nrows ( ) as u128 > ( 1_u128 < < 32 )",
+-            "line": 6465
++            "line": 6496
+           },
+           {
+             "condition": "minimum / weights . raw_scale < 1.0 / LIMIT",
+-            "line": 6475
++            "line": 6506
+           },
+           {
+             "condition": "parallel && values . ncols ( ) > PARALLEL_GROUP_MAX_RHS",
+-            "line": 6493
++            "line": 6524
+           },
+           {
+             "condition": "! root_group_weight . is_finite ( ) || root_group_weight <= 0.0",
+-            "line": 6666
++            "line": 6697
+           },
+           {
+             "condition": "projection . nrows ( ) != input . nrows ( ) || projection . ncols ( ) != columns || input . nrows ( ) != design . nobs ( ) || columns == 0",
+-            "line": 6750
++            "line": 6781
+           },
+           {
+             "condition": "plan . lanes > 1 && workspace . parallel_group_means . len ( ) >= cells",
+-            "line": 6771
++            "line": 6802
+           },
+           {
+             "condition": "residual . nrows ( ) != input . nrows ( ) || residual . ncols ( ) != input . ncols ( )",
+-            "line": 6897
++            "line": 6928
+           },
+           {
+             "condition": "symmetric && design . effects ( ) . len ( ) > 1",
+-            "line": 6972
++            "line": 7003
+           },
+           {
+             "condition": "x0 . nrows ( ) != x1 . nrows ( ) || x0 . ncols ( ) != x1 . ncols ( ) || x0 . nrows ( ) != x2 . nrows ( ) || x0 . ncols ( ) != x2 . ncols ( )",
+-            "line": 6993
++            "line": 7024
+           },
+           {
+             "condition": "left . nrows ( ) != right . nrows ( ) || left . ncols ( ) != right . ncols ( ) || output . len ( ) != left . ncols ( ) || corrections . len ( ) != left . ncols ( )",
+-            "line": 7045
++            "line": 7076
+           },
+           {
+             "condition": "left . nrows ( ) >= PARALLEL_PROJECTION_MIN_ROWS && left . ncols ( ) <= FUSED_PARALLEL_MAX_RHS && rayon :: current_num_threads ( ) > 1 && parallel_sums . len ( ) >= parallel_elements",
+-            "line": 7060
++            "line": 7091
+           },
+           {
+             "condition": "let Some ( weight_values ) = weights . values",
+-            "line": 7073
++            "line": 7104
+           },
+           {
+             "condition": "numerators . len ( ) != denominators . len ( ) || output . len ( ) != numerators . len ( )",
+-            "line": 7157
++            "line": 7188
+           },
+           {
+             "condition": "alpha . len ( ) != residual_square . len ( ) || alpha . len ( ) != improvement_potential . len ( ) || alpha . len ( ) != values . ncols ( ) || values . nrows ( ) != direction . nrows ( ) || values . ncols ( ) != direction . ncols ( )",
+-            "line": 7190
++            "line": 7221
+           },
+           {
+             "condition": "! weighted . is_finite ( )",
+-            "line": 7256
++            "line": 7287
+           },
+           {
+             "condition": "alpha . len ( ) != values . ncols ( ) || residual . nrows ( ) != values . nrows ( ) || residual . ncols ( ) != values . ncols ( ) || direction . nrows ( ) != values . nrows ( ) || direction . ncols ( ) != values . ncols ( ) || projection . nrows ( ) != values . nrows ( ) || projection . ncols ( ) != values . ncols ( )",
+-            "line": 7301
++            "line": 7332
+           },
+           {
+             "condition": "values . nrows ( ) >= PARALLEL_PROJECTION_MIN_ROWS && rayon :: current_num_threads ( ) > 1",
+-            "line": 7312
++            "line": 7343
+           },
+           {
+             "condition": "direction . nrows ( ) != residual . nrows ( ) || direction . ncols ( ) != residual . ncols ( ) || beta . len ( ) != direction . ncols ( )",
+-            "line": 7351
++            "line": 7382
+           },
+           {
+             "condition": "direction . nrows ( ) >= PARALLEL_PROJECTION_MIN_ROWS && rayon :: current_num_threads ( ) > 1",
+-            "line": 7357
++            "line": 7388
+           },
+           {
+             "condition": "current . len ( ) != initial . len ( )",
+-            "line": 7392
++            "line": 7423
+           },
+           {
+             "condition": "output . len ( ) != values . ncols ( ) || scales . len ( ) != values . ncols ( ) || scaled_square_sums . len ( ) != values . ncols ( )",
+-            "line": 7450
++            "line": 7481
+           },
+           {
+             "condition": "output . capacity ( ) < elements",
+-            "line": 7567
++            "line": 7598
+           },
+           {
+             "condition": "workspace . parallel_dot_sums . len ( ) >= workspace . parallel_group_means . len ( )",
+-            "line": 7670
++            "line": 7701
+           }
+         ],
+         "functions": {
+           "absorb#1": {
+-            "line": 1699,
++            "line": 1700,
+             "lines": 323
+           },
+           "absorb#2": {
+-            "line": 4100,
++            "line": 4131,
+             "lines": 62
+           },
+           "absorb_borrowed_intercept_cg#1": {
+-            "line": 3205,
++            "line": 3206,
+             "lines": 23
+           },
+           "absorb_borrowed_intercept_irons_tuck_certified#1": {
+-            "line": 3311,
++            "line": 3312,
+             "lines": 189
+           },
+           "absorb_borrowed_intercept_lsmr#1": {
+-            "line": 3231,
++            "line": 3232,
+             "lines": 28
+           },
+           "absorb_borrowed_intercept_map#1": {
+-            "line": 3152,
++            "line": 3153,
+             "lines": 19
+           },
+           "absorb_borrowed_intercept_map_certified#1": {
+-            "line": 3138,
++            "line": 3139,
+             "lines": 8
+           },
+           "absorb_cg_with_reservation#1": {
+-            "line": 4764,
++            "line": 4795,
+             "lines": 488
+           },
+           "absorb_ols#1": {
+-            "line": 1684,
++            "line": 1685,
+             "lines": 14
+           },
+           "absorb_ppml#1": {
+-            "line": 1673,
++            "line": 1674,
+             "lines": 8
+           },
+           "absorb_two_fe_pcg#1": {
+-            "line": 2131,
++            "line": 2132,
+             "lines": 43
+           },
+           "absorb_two_fe_pcg_reusing#1": {
+-            "line": 2177,
++            "line": 2178,
+             "lines": 581
+           },
+           "absorb_with_reservation_mode#1": {
+-            "line": 5253,
++            "line": 5284,
+             "lines": 137
+           },
+           "absorb_with_selected_norms#1": {
+-            "line": 1608,
++            "line": 1609,
+             "lines": 42
+           },
+           "add_assign#1": {
+-            "line": 307,
++            "line": 308,
+             "lines": 18
+           },
+           "add_intercept#1": {
+-            "line": 194,
++            "line": 195,
+             "lines": 23
+           },
+           "add_intercept_level#1": {
+-            "line": 218,
++            "line": 219,
+             "lines": 24
+           },
+           "add_intercept_level#2": {
+-            "line": 469,
++            "line": 470,
+             "lines": 3
+           },
+           "add_intercept_level#3": {
+-            "line": 607,
++            "line": 608,
+             "lines": 30
+           },
+           "add_intercept_level_major#1": {
+-            "line": 243,
++            "line": 244,
+             "lines": 63
+           },
+           "add_intercept_level_major#2": {
+-            "line": 473,
++            "line": 474,
+             "lines": 8
+           },
+           "add_intercept_level_major#3": {
+-            "line": 638,
++            "line": 639,
+             "lines": 31
+           },
+           "add_scaled_rhs#1": {
+-            "line": 361,
++            "line": 362,
+             "lines": 21
+           },
+           "add_to#1": {
+-            "line": 7591,
++            "line": 7622,
+             "lines": 18
+           },
+           "apply_schur#1": {
+-            "line": 2848,
++            "line": 2849,
+             "lines": 77
+           },
+           "apply_schur_parallel#1": {
+-            "line": 2926,
++            "line": 2927,
+             "lines": 86
+           },
+           "assign_sum_scaled_rhs#1": {
+-            "line": 383,
++            "line": 384,
+             "lines": 17
+           },
+           "attach_optional_coefficients#1": {
+-            "line": 4732,
++            "line": 4763,
+             "lines": 14
+           },
+           "attach_optional_map_coefficients#1": {
+-            "line": 4747,
++            "line": 4778,
+             "lines": 16
+           },
+           "borrowed_cg_recovery_workspace_bytes#1": {
+-            "line": 851,
++            "line": 852,
+             "lines": 15
+           },
+           "borrowed_irons_tuck_candidate#1": {
+-            "line": 6988,
++            "line": 7019,
+             "lines": 48
+           },
+           "borrowed_lsmr_effects#1": {
+-            "line": 4335,
++            "line": 4366,
+             "lines": 13
+           },
+           "borrowed_residual_sweep_recording#1": {
+-            "line": 6953,
++            "line": 6984,
+             "lines": 34
+           },
+           "borrowed_symmetric_projection_from_group_means_recording#1": {
+-            "line": 6741,
++            "line": 6772,
+             "lines": 99
+           },
+           "borrowed_symmetric_projection_into_recording#1": {
+-            "line": 6889,
++            "line": 6920,
+             "lines": 63
+           },
+           "borrowed_weights#1": {
+-            "line": 3778,
++            "line": 3809,
+             "lines": 6
+           },
+           "borrowed_within_preconditioner#1": {
+-            "line": 4703,
++            "line": 4734,
+             "lines": 8
+           },
+           "build_retained_borrowed_lsmr#1": {
+-            "line": 4349,
++            "line": 4380,
+             "lines": 35
+           },
+           "capacities#1": {
+-            "line": 1568,
++            "line": 1569,
+             "lines": 37
+           },
+           "capacity_elements#1": {
+-            "line": 1300,
++            "line": 1301,
+             "lines": 13
+           },
+           "certificate_parallel_workspaces_fit#1": {
+-            "line": 6538,
++            "line": 6569,
+             "lines": 21
+           },
+           "certified_result#1": {
+-            "line": 7499,
++            "line": 7530,
+             "lines": 20
+           },
+           "certified_rhs_norms#1": {
+-            "line": 1538,
++            "line": 1539,
+             "lines": 3
+           },
+           "certified_solver_result#1": {
+-            "line": 7521,
++            "line": 7552,
+             "lines": 29
+           },
+           "certify#1": {
+-            "line": 6413,
++            "line": 6444,
+             "lines": 10
+           },
+           "certify_borrowed_intercept_candidate_with_workspace#1": {
+-            "line": 3516,
++            "line": 3517,
+             "lines": 26
+           },
+           "certify_effects_parallel#1": {
+-            "line": 6609,
++            "line": 6640,
+             "lines": 36
+           },
+           "certify_initial#1": {
+-            "line": 6424,
++            "line": 6455,
+             "lines": 12
+           },
+           "certify_initial_structural_constant#1": {
+-            "line": 5526,
++            "line": 5557,
+             "lines": 11
+           },
+           "certify_structural_constant#1": {
+-            "line": 5516,
++            "line": 5547,
+             "lines": 9
+           },
+           "certify_structural_constant_with_current_norms#1": {
+-            "line": 5538,
++            "line": 5569,
+             "lines": 66
+           },
+           "certify_with_current_norms#1": {
+-            "line": 6560,
++            "line": 6591,
+             "lines": 48
+           },
+           "cg_audit_remaining_energy#1": {
+-            "line": 7229,
++            "line": 7260,
+             "lines": 64
+           },
+           "cg_hestenes_error_and_update#1": {
+-            "line": 7182,
++            "line": 7213,
+             "lines": 46
+           },
+           "cg_largest_relative_residual#1": {
+-            "line": 7391,
++            "line": 7422,
+             "lines": 27
+           },
+           "cg_projection_action#1": {
+-            "line": 6859,
++            "line": 6890,
+             "lines": 29
+           },
+           "cg_ratios_into#1": {
+-            "line": 7151,
++            "line": 7182,
+             "lines": 30
+           },
+           "cg_update_direction#1": {
+-            "line": 7346,
++            "line": 7377,
+             "lines": 42
+           },
+           "cg_update_solution_and_residual#1": {
+-            "line": 7294,
++            "line": 7325,
+             "lines": 51
+           },
+           "checkpoint_schur_copy#1": {
+-            "line": 7621,
++            "line": 7652,
+             "lines": 14
+           },
+           "coefficient_count#1": {
+-            "line": 688,
++            "line": 689,
+             "lines": 19
+           },
+           "coefficients_per_rhs#1": {
+-            "line": 455,
++            "line": 456,
+             "lines": 3
+           },
+           "compensated_add#1": {
+-            "line": 7479,
++            "line": 7510,
+             "lines": 9
+           },
+           "compensated_finite#1": {
+-            "line": 7489,
++            "line": 7520,
+             "lines": 9
+           },
+           "component_scaled_checkpoint_weights#1": {
+-            "line": 1104,
++            "line": 1105,
+             "lines": 37
+           },
+           "drop#1": {
+-            "line": 1335,
++            "line": 1336,
+             "lines": 10
+           },
+           "effect_channels#1": {
+-            "line": 442,
++            "line": 443,
+             "lines": 3
+           },
+           "enable_checkpoint_lsmr#1": {
+-            "line": 1494,
++            "line": 1495,
+             "lines": 4
+           },
+           "enable_component_checkpoint_scaling#1": {
+-            "line": 1499,
++            "line": 1500,
+             "lines": 3
+           },
+           "extrapolate_irons_tuck#1": {
+-            "line": 416,
++            "line": 417,
+             "lines": 25
+           },
+           "fallible_matrix_copy#1": {
+-            "line": 7426,
++            "line": 7457,
+             "lines": 5
+           },
+           "fallible_matrix_zeros#1": {
+-            "line": 7432,
++            "line": 7463,
+             "lines": 9
+           },
+           "fill_parallel_group_statistics#1": {
+-            "line": 6001,
++            "line": 6032,
+             "lines": 75
+           },
+           "fill_two_fe_group_rhs#1": {
+-            "line": 2763,
++            "line": 2764,
+             "lines": 33
+           },
+           "fill_zero#1": {
+-            "line": 345,
++            "line": 346,
+             "lines": 3
+           },
+           "finish#1": {
+-            "line": 6715,
++            "line": 6746,
+             "lines": 18
+           },
+           "from_certified_parts#1": {
+-            "line": 749,
++            "line": 750,
+             "lines": 16
+           },
+           "from_certified_parts_with_coefficients#1": {
+-            "line": 766,
++            "line": 767,
+             "lines": 20
+           },
+           "from_values#1": {
+-            "line": 120,
++            "line": 121,
+             "lines": 46
+           },
+           "fused_group_means_by_value#1": {
+-            "line": 6124,
++            "line": 6155,
+             "lines": 92
+           },
+           "fused_group_means_for_level#1": {
+-            "line": 6096,
++            "line": 6127,
+             "lines": 27
+           },
+           "group_means#1": {
+-            "line": 6232,
++            "line": 6263,
+             "lines": 21
+           },
+           "include#1": {
+-            "line": 4189,
++            "line": 4220,
+             "lines": 12
+           },
+           "include_payload#1": {
+-            "line": 4202,
++            "line": 4233,
+             "lines": 8
+           },
+           "initial_group_rejects#1": {
+-            "line": 6441,
++            "line": 6472,
+             "lines": 96
+           },
+           "intercept_zeros#1": {
+-            "line": 167,
++            "line": 168,
+             "lines": 18
+           },
+           "into_batch#1": {
+-            "line": 536,
++            "line": 537,
+             "lines": 64
+           },
+           "into_design#1": {
+-            "line": 4096,
++            "line": 4127,
+             "lines": 3
+           },
+           "into_full_parts#1": {
+-            "line": 745,
++            "line": 746,
+             "lines": 3
+           },
+           "into_parts#1": {
+-            "line": 741,
++            "line": 742,
+             "lines": 3
+           },
+           "kernel_group_means#1": {
+-            "line": 6280,
++            "line": 6311,
+             "lines": 67
+           },
+           "level#1": {
+-            "line": 6657,
++            "line": 6688,
+             "lines": 57
+           },
+           "level_counts#1": {
+-            "line": 446,
++            "line": 447,
+             "lines": 3
+           },
+           "level_major_values_mut#1": {
+-            "line": 482,
++            "line": 483,
+             "lines": 7
+           },
+           "level_major_values_mut#2": {
+-            "line": 670,
++            "line": 671,
+             "lines": 16
+           },
+           "mark_auto#1": {
+-            "line": 4712,
++            "line": 4743,
+             "lines": 19
+           },
+           "matrix_infinity_norm#1": {
+-            "line": 3260,
++            "line": 3261,
+             "lines": 23
+           },
+           "max_rhs#1": {
+-            "line": 1533,
++            "line": 1534,
+             "lines": 3
+           },
+           "modeled_bytes#1": {
+-            "line": 7420,
++            "line": 7451,
+             "lines": 5
+           },
+           "new#1": {
+-            "line": 947,
++            "line": 948,
+             "lines": 14
+           },
+           "new#2": {
+-            "line": 1166,
++            "line": 1167,
+             "lines": 67
+           },
+           "new#3": {
+-            "line": 1324,
++            "line": 1325,
+             "lines": 8
+           },
+           "new#4": {
+-            "line": 1390,
++            "line": 1391,
+             "lines": 103
+           },
+           "new#5": {
+-            "line": 3805,
++            "line": 3836,
+             "lines": 46
+           },
+           "new#6": {
+-            "line": 4076,
++            "line": 4107,
+             "lines": 19
+           },
+           "new#7": {
+-            "line": 4173,
++            "line": 4204,
+             "lines": 15
+           },
+           "new_with_parallelism#1": {
+-            "line": 962,
++            "line": 963,
+             "lines": 85
+           },
+           "normalized#1": {
+-            "line": 3125,
++            "line": 3126,
+             "lines": 4
+           },
+           "owner_bytes#1": {
+-            "line": 1358,
++            "line": 1359,
+             "lines": 31
+           },
+           "payload_bytes#1": {
+-            "line": 1542,
++            "line": 1543,
+             "lines": 26
+           },
+           "payload_peak#1": {
+-            "line": 884,
++            "line": 885,
+             "lines": 18
+           },
+           "planned_payload_bytes#1": {
+-            "line": 923,
++            "line": 924,
+             "lines": 23
+           },
+           "polish#1": {
+-            "line": 3193,
++            "line": 3194,
+             "lines": 7
+           },
+           "ppml_operator_work#1": {
+-            "line": 1350,
++            "line": 1351,
+             "lines": 7
+           },
+           "prepare_component_topology#1": {
+-            "line": 1234,
++            "line": 1235,
+             "lines": 54
+           },
+           "project_borrowed_intercept_structural#1": {
+-            "line": 3546,
+-            "lines": 135
++            "line": 3547,
++            "lines": 144
+           },
+           "project_effect_parallel#1": {
+-            "line": 5784,
++            "line": 5815,
+             "lines": 54
+           },
+           "project_effect_parallel_fused#1": {
+-            "line": 5839,
++            "line": 5870,
+             "lines": 101
+           },
+           "project_effect_recording#1": {
+-            "line": 5605,
++            "line": 5636,
+             "lines": 16
+           },
+           "project_effect_recording_from_input#1": {
+-            "line": 5640,
++            "line": 5671,
+             "lines": 17
+           },
+           "project_effect_recording_impl#1": {
+-            "line": 5658,
++            "line": 5689,
+             "lines": 58
+           },
+           "project_effect_recording_with_complement#1": {
+-            "line": 5622,
++            "line": 5653,
+             "lines": 17
+           },
+           "project_effect_serial#1": {
+-            "line": 5717,
++            "line": 5748,
+             "lines": 66
+           },
+           "project_general_categorical#1": {
+-            "line": 3683,
+-            "lines": 94
++            "line": 3693,
++            "lines": 115
+           },
+           "project_structural_constant#1": {
+-            "line": 5439,
++            "line": 5470,
+             "lines": 19
+           },
+           "projection_group_means#1": {
+-            "line": 6841,
++            "line": 6872,
+             "lines": 17
+           },
+           "projection_level_means#1": {
+-            "line": 6077,
++            "line": 6108,
+             "lines": 16
+           },
+           "reconstruct_two_fe_pcg_candidate#1": {
+-            "line": 3058,
++            "line": 3059,
+             "lines": 58
+           },
+           "record_parallel_group_means#1": {
+-            "line": 6217,
++            "line": 6248,
+             "lines": 14
+           },
+           "refresh_component_scales#1": {
+-            "line": 1289,
++            "line": 1290,
+             "lines": 10
+           },
+           "relative_reconstruction_infinity_norm#1": {
+-            "line": 3284,
++            "line": 3285,
+             "lines": 23
+           },
+           "report#1": {
+-            "line": 732,
++            "line": 733,
+             "lines": 3
+           },
+           "reserve_f64#1": {
+-            "line": 835,
++            "line": 836,
+             "lines": 10
+           },
+           "reserved_zeros#1": {
+-            "line": 7560,
++            "line": 7591,
+             "lines": 15
+           },
+           "residualized#1": {
+-            "line": 727,
++            "line": 728,
+             "lines": 3
+           },
+           "resolve_borrowed_lsmr_preconditioner#1": {
+-            "line": 4689,
++            "line": 4720,
+             "lines": 13
+           },
+           "retained_bytes#1": {
+-            "line": 95,
++            "line": 96,
+             "lines": 7
+           },
+           "rhs#1": {
+-            "line": 186,
++            "line": 187,
+             "lines": 7
+           },
+           "rhs_count#1": {
+-            "line": 459,
++            "line": 460,
+             "lines": 3
+           },
+           "rhs_count#2": {
+-            "line": 465,
++            "line": 466,
+             "lines": 3
+           },
+           "rhs_count#3": {
+-            "line": 603,
++            "line": 604,
+             "lines": 3
+           },
+           "root#1": {
+-            "line": 1235,
++            "line": 1236,
+             "lines": 7
+           },
+           "run_borrowed_lsmr#1": {
+-            "line": 4386,
++            "line": 4417,
+             "lines": 44
+           },
+           "run_borrowed_lsmr_with_prepared#1": {
+-            "line": 4434,
++            "line": 4465,
+             "lines": 254
+           },
+           "same_layout#1": {
+-            "line": 410,
++            "line": 411,
+             "lines": 5
+           },
+           "scaled_kernel_group_means#1": {
+-            "line": 6350,
++            "line": 6381,
+             "lines": 62
+           },
+           "schur_row_update#1": {
+-            "line": 2818,
++            "line": 2819,
+             "lines": 28
+           },
+           "selected_retry#1": {
+-            "line": 3852,
++            "line": 3883,
+             "lines": 78
+           },
+           "set_rhs_count#1": {
+-            "line": 1048,
++            "line": 1049,
+             "lines": 19
+           },
+           "set_solver_workspace_peak#1": {
+-            "line": 736,
++            "line": 737,
+             "lines": 3
+           },
+           "solve#1": {
+-            "line": 4224,
++            "line": 4255,
+             "lines": 109
+           },
+           "solve_attempt#1": {
+-            "line": 3931,
++            "line": 3962,
+             "lines": 134
+           },
+           "structural_constant_means#1": {
+-            "line": 5459,
++            "line": 5490,
+             "lines": 56
+           },
+           "subtract_parallel_level_means#1": {
+-            "line": 5943,
++            "line": 5974,
+             "lines": 57
+           },
+           "subtract_two_fe_left_projection#1": {
+-            "line": 2797,
++            "line": 2798,
+             "lines": 17
+           },
+           "take_checkpoint_lsmr_fatal_failure#1": {
+-            "line": 1517,
++            "line": 1518,
+             "lines": 15
+           },
+           "take_residual_norms#1": {
+-            "line": 711,
++            "line": 712,
+             "lines": 3
+           },
+           "trace#1": {
+-            "line": 7610,
++            "line": 7641,
+             "lines": 9
+           },
+           "trace_two_fe_pcg_stop#1": {
+-            "line": 3014,
++            "line": 3015,
+             "lines": 7
+           },
+           "try_checkpoint_schur#1": {
+-            "line": 2023,
++            "line": 2024,
+             "lines": 106
+           },
+           "try_clone#1": {
+-            "line": 326,
++            "line": 327,
+             "lines": 18
+           },
+           "two_fe_pcg_rhs_ready#1": {
+-            "line": 3022,
++            "line": 3023,
+             "lines": 35
+           },
+           "update_workspace_norms#1": {
+-            "line": 7655,
++            "line": 7686,
+             "lines": 29
+           },
+           "validate_binary_layout#1": {
+-            "line": 401,
++            "line": 402,
+             "lines": 8
+           },
+           "validate_config#1": {
+-            "line": 5391,
++            "line": 5422,
+             "lines": 13
+           },
+           "validate_weights#1": {
+-            "line": 5405,
++            "line": 5436,
+             "lines": 33
+           },
+           "weighted_column_norms#1": {
+-            "line": 7442,
++            "line": 7473,
+             "lines": 36
+           },
+           "weighted_dot_columns_into#1": {
+-            "line": 7037,
++            "line": 7068,
+             "lines": 113
+           },
+           "with_pilot_group_scratch#1": {
+-            "line": 1651,
++            "line": 1652,
+             "lines": 21
+           },
+           "with_residual_norms#1": {
+-            "line": 714,
++            "line": 715,
+             "lines": 11
+           },
+           "zero_certificate#1": {
+-            "line": 7551,
++            "line": 7582,
+             "lines": 8
+           },
+           "zero_rhs#1": {
+-            "line": 349,
++            "line": 350,
+             "lines": 11
+           },
+           "zeros#1": {
+-            "line": 103,
++            "line": 104,
+             "lines": 16
+           },
+           "zeros#2": {
+-            "line": 492,
++            "line": 493,
+             "lines": 43
+           }
+         },
+-        "production_lines": 7122
++        "production_lines": 7153
++      },
++      "crates/fereg-core/src/fe/borrowed_map/three_fe_map.rs": {
++        "chunk_candidates": [],
++        "dispatch_candidates": [
++          {
++            "condition": "let Err ( e ) = update_workspace_norms ( original , weights , & mut workspace , true )",
++            "line": 113
++          },
++          {
++            "condition": "let Err ( e ) = borrowed_residual_sweep_recording ( design , weights , & mut values , & mut workspace , coefficients . as_mut ( ) , true , )",
++            "line": 126
++          }
++        ],
++        "functions": {
++          "attempt#1": {
++            "line": 46,
++            "lines": 124
++          },
++          "default#1": {
++            "line": 24,
++            "lines": 9
++          },
++          "finish#1": {
++            "line": 171,
++            "lines": 23
++          },
++          "record#1": {
++            "line": 36,
++            "lines": 8
++          }
++        },
++        "production_lines": 173
++      },
++      "crates/fereg-core/src/fe/borrowed_map/three_fe_map/geometry.rs": {
++        "chunk_candidates": [],
++        "dispatch_candidates": [
++          {
++            "condition": "effects . len ( ) != 3 || design . nobs ( ) == 0",
++            "line": 16
++          },
++          {
++            "condition": "budget . is_some_and ( | b | ! b . fits ( bytes ) )",
++            "line": 25
++          },
++          {
++            "condition": "counts . try_reserve_exact ( size ) . is_err ( )",
++            "line": 29
++          },
++          {
++            "condition": "budget . is_some_and ( | b | ! b . fits ( bytes ) )",
++            "line": 34
++          },
++          {
++            "condition": "effects [ i ] . n_levels ( ) >= effects [ j ] . n_levels ( )",
++            "line": 56
++          }
++        ],
++        "functions": {
++          "inspect#1": {
++            "line": 11,
++            "lines": 109
++          },
++          "integer_bound#1": {
++            "line": 134,
++            "lines": 12
++          },
++          "predicted_sweeps#1": {
++            "line": 121,
++            "lines": 3
++          },
++          "up#1": {
++            "line": 126,
++            "lines": 7
++          }
++        },
++        "production_lines": 152
+       },
+       "crates/fereg-core/src/fe/borrowed_map/three_fe_schur.rs": {
+         "chunk_candidates": [],
+@@ -3829,240 +3899,244 @@
+         "dispatch_candidates": [
+           {
+             "condition": "let Some ( p ) = & self . categorical",
+-            "line": 76
++            "line": 77
+           },
+           {
+             "condition": "let Some ( p ) = self . categorical . as_mut ( )",
+-            "line": 104
++            "line": 105
+           },
+           {
+             "condition": "let Some ( p ) = self . categorical . as_mut ( )",
+-            "line": 131
++            "line": 132
+           },
+           {
+             "condition": "design . effects ( ) . len ( ) == 2 =>",
+-            "line": 249
++            "line": 251
+           },
+           {
+             "condition": "config . absorb . solver_memory_budget . is_some_and ( | b | ! b . fits ( bytes ) )",
+-            "line": 275
++            "line": 277
++          },
++          {
++            "condition": "config . absorb . solver == super :: FeSolverKind :: Auto && design . effects ( ) . len ( ) == 3 && matches ! ( weights , BorrowedMapWeights :: Unit ) && config . absorb . map . symmetric",
++            "line": 295
+           },
+           {
+             "condition": "config . solver_memory_budget . is_some_and ( | b | ! b . fits ( bytes ) )",
+-            "line": 301
++            "line": 329
+           },
+           {
+             "condition": "prepared . fit_model ( ) . columns . is_empty ( )",
+-            "line": 321
++            "line": 349
+           },
+           {
+             "condition": "self . normalized . capacity ( ) != design . nobs ( )",
+-            "line": 340
++            "line": 368
+           },
+           {
+             "condition": "weights",
+-            "line": 345
++            "line": 373
+           },
+           {
+             "condition": "values . len ( ) != design . nobs ( ) || values . iter ( ) . any ( | w | ! w . is_finite ( ) || * w <= 0. )",
+-            "line": 349
++            "line": 377
+           },
+           {
+             "condition": "let Some ( mut budget ) = absorb . solver_memory_budget",
+-            "line": 366
++            "line": 394
+           },
+           {
+             "condition": "config . solver_memory_budget . is_some_and ( | b | ! b . fits ( total ) )",
+-            "line": 410
++            "line": 438
+           },
+           {
+             "condition": "e . code == ErrorCode :: Allocation => Ok ( None ) , Err ( e ) => Err ( e ) , } } fn prepare_general_operations ( & mut self , p : & mut ReusableMapAbsorber , base : u128 , config : crate :: ols :: PreparedOlsFitConfig , ) -> Result < ( ) >",
+-            "line": 416
++            "line": 444
+           },
+           {
+             "condition": "p . has_certificate_geometry ( )",
+-            "line": 440
++            "line": 468
+           },
+           {
+             "condition": "let Some ( plan ) = super :: projection :: ParallelProjectionPlan :: for_design_and_threads ( p . design ( ) , p . max_rhs ( ) , config . execution . threads . resolved ( ) , ) ?",
+-            "line": 451
++            "line": 479
+           },
+           {
+             "condition": "p . design ( ) . effects ( ) . len ( ) != 2 || ! p . has_certificate_geometry ( )",
+-            "line": 475
++            "line": 503
+           },
+           {
+             "condition": "let Some ( coupling ) = ReusableMapAbsorber :: coefficient_coupling_bytes ( p . design ( ) , p . max_rhs ( ) ) ?",
+-            "line": 493
++            "line": 521
+           },
+           {
+             "condition": "self . ols_chunked_norms && crate :: parallel :: StagePlan :: current ( rows as u128 , rows ) . lanes > 1",
+-            "line": 519
++            "line": 547
+           },
+           {
+             "condition": "admission . solver_memory_budget . is_some_and ( | b | ! b . fits ( bytes ) )",
+-            "line": 545
++            "line": 573
+           },
+           {
+             "condition": "crate :: memory :: Capacity :: new ( rhs as u128 ) . filled ( 0.0 , <string> )",
+-            "line": 554
++            "line": 582
+           },
+           {
+             "condition": "let Some ( p ) = & self . general",
+-            "line": 561
++            "line": 589
+           },
+           {
+             "condition": "let Some ( p ) = self . cmg . as_mut ( )",
+-            "line": 585
++            "line": 613
+           },
+           {
+             "condition": "let Some ( p ) = self . lsmr . as_mut ( )",
+-            "line": 596
++            "line": 624
+           },
+           {
+             "condition": "let Some ( p ) = self . categorical . as_mut ( )",
+-            "line": 607
++            "line": 635
+           },
+           {
+             "condition": "let Some ( p ) = self . general . as_mut ( )",
+-            "line": 609
++            "line": 637
+           },
+           {
+             "condition": "! design . effects ( ) . is_empty ( ) => super :: absorb_borrowed_intercept_lsmr ( design , weights , values , config . lsmr , config . retain_coefficients , ) , S :: Cg =>",
+-            "line": 703
++            "line": 734
+           },
+           {
+             "condition": "let Some ( c ) = r . retained . filter ( | _ | memory . is_none_or ( | m | fits ( m . retained_peak_bytes ) ) )",
+-            "line": 825
++            "line": 856
+           },
+           {
+             "condition": "recover :: recover_finalized_categorical_effects_from_coefficients_selected_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , c , r . map . tolerance , r . known_connected , r . materialize_absorbed_sum )",
+-            "line": 830
++            "line": 861
+           },
+           {
+             "condition": "r . effects . len ( ) == 1 && ! r . effects [ 0 ] . slopes ( ) . is_empty ( ) && r . effects [ 0 ] . channels ( ) <= 4",
+-            "line": 838
++            "line": 869
+           },
+           {
+             "condition": "recover :: recover_finalized_single_slope_direct_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , r . map . tolerance , r . materialize_absorbed_sum , false , )",
+-            "line": 851
++            "line": 882
+           },
+           {
+             "condition": "intercepts && r . effects . len ( ) == 2 && memory . is_some_and ( | m | fits ( m . retained_peak_bytes ) )",
+-            "line": 869
++            "line": 900
+           },
+           {
+             "condition": "recover :: recover_finalized_two_effects_graph_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , r . map . tolerance , r . known_connected , r . materialize_absorbed_sum , )",
+-            "line": 872
++            "line": 903
+           },
+           {
+             "condition": "memory . is_some_and ( | m | ! fits ( m . map_peak_bytes ) )",
+-            "line": 890
++            "line": 921
+           },
+           {
+             "condition": "n",
+-            "line": 927
++            "line": 958
+           }
+         ],
+         "functions": {
+           "absorb#1": {
+-            "line": 122,
++            "line": 123,
+             "lines": 35
+           },
+           "admit#1": {
+-            "line": 300,
++            "line": 328,
+             "lines": 11
+           },
+           "attach_ols_norms#1": {
+-            "line": 508,
++            "line": 536,
+             "lines": 64
+           },
+           "borrows_raw_weights#1": {
+-            "line": 93,
++            "line": 94,
+             "lines": 3
+           },
+           "capacities#1": {
+-            "line": 65,
++            "line": 66,
+             "lines": 28
+           },
+           "categorical#1": {
+-            "line": 38,
++            "line": 39,
+             "lines": 10
+           },
+           "default#1": {
+-            "line": 160,
+-            "lines": 19
++            "line": 161,
++            "lines": 20
+           },
+           "design#1": {
+-            "line": 53,
++            "line": 54,
+             "lines": 6
+           },
+           "enable_checkpoint_lsmr#1": {
+-            "line": 103,
++            "line": 104,
+             "lines": 5
+           },
+           "for_ols#1": {
+-            "line": 182,
++            "line": 184,
+             "lines": 20
+           },
+           "for_ols_rhs#1": {
+-            "line": 203,
+-            "lines": 96
++            "line": 205,
++            "lines": 122
+           },
+           "general#1": {
+-            "line": 32,
++            "line": 33,
+             "lines": 6
+           },
+           "include_recovery_peak#1": {
+-            "line": 923,
++            "line": 954,
+             "lines": 10
+           },
+           "max_rhs#1": {
+-            "line": 59,
++            "line": 60,
+             "lines": 6
+           },
+           "numerical_recovery_miss#1": {
+-            "line": 915,
++            "line": 946,
+             "lines": 8
+           },
+           "optional#1": {
+-            "line": 400,
++            "line": 428,
+             "lines": 20
+           },
+           "ppml_operator_work#1": {
+-            "line": 48,
++            "line": 49,
+             "lines": 5
+           },
+           "prepare_coefficient_operation#1": {
+-            "line": 469,
++            "line": 497,
+             "lines": 38
+           },
+           "prepare_general_operations#1": {
+-            "line": 421,
++            "line": 449,
+             "lines": 47
+           },
+           "prepare_owned#1": {
+-            "line": 312,
++            "line": 340,
+             "lines": 85
+           },
+           "project_intercepts#1": {
+-            "line": 682,
+-            "lines": 75
++            "line": 711,
++            "lines": 77
+           },
+           "project_ols#1": {
+-            "line": 573,
+-            "lines": 107
++            "line": 601,
++            "lines": 108
+           },
+           "recover#1": {
+-            "line": 774,
++            "line": 805,
+             "lines": 140
+           },
+           "supports_fused_projection#1": {
+-            "line": 96,
++            "line": 97,
+             "lines": 3
+           }
+         },
+-        "production_lines": 869
++        "production_lines": 900
+       },
+       "crates/fereg-core/src/fe/singleton.rs": {
+         "chunk_candidates": [],
+@@ -4713,19 +4787,19 @@
+         ],
+         "functions": {
+           "absorb_finalized_categorical_topology_map_certified#1": {
+-            "line": 58,
++            "line": 59,
+             "lines": 15
+           },
+           "absorb_finalized_categorical_topology_map_with_reservation#1": {
+             "line": 35,
+-            "lines": 23
++            "lines": 24
+           },
+           "bind_with_reservation#1": {
+             "line": 11,
+             "lines": 24
+           }
+         },
+-        "production_lines": 70
++        "production_lines": 71
+       },
+       "crates/fereg-core/src/fe/topology_registry.rs": {
+         "chunk_candidates": [],
+@@ -20717,10 +20791,10 @@
+     "metrics": {
+       "fereg-core": {
+         "chunk_candidates": 12,
+-        "dispatch_candidates": 1246,
++        "dispatch_candidates": 1254,
+         "files_over_1500": 15,
+         "functions_over_150": 61,
+-        "production_lines": 95133
++        "production_lines": 95521
+       },
+       "fereg-plugin": {
+         "chunk_candidates": 3,
+@@ -20732,5 +20806,5 @@
+     },
+     "schema": 1
+   },
+-  "reason": "H3 ordered parallel neighbour-pair assembly; original serial assembly remains the one-worker and scratch-limited production fallback."
++  "reason": "Approved H2 bounded three-FE MAP prototype: one cached exact-integer geometry bound, outward-rounded sweep prediction, request-certified optional MAP with untouched-input fallback, shared work debit and capacity admission. Explicit, weighted, PPML and final-residual routes and caller norm kernels are unchanged."
+ }
+diff --git a/crates/fereg-core/src/fe/borrowed_map/three_fe_map.rs b/crates/fereg-core/src/fe/borrowed_map/three_fe_map.rs
+new file mode 100644
+index 00000000..d30cca8d
+--- /dev/null
++++ b/crates/fereg-core/src/fe/borrowed_map/three_fe_map.rs
+@@ -0,0 +1,193 @@
++//! A geometry-qualified, bounded MAP attempt on untouched OLS inputs.
++use super::*;
++
++mod geometry;
++#[cfg(test)]
++mod tests;
++pub(crate) use geometry::Geometry;
++
++pub(super) const SWEEPS: usize = 4;
++
++crate::fault::fault_plan! {
++    static SETUP_FAILURE: Option<ErrorCode> = None;
++}
++
++pub(super) struct Attempt {
++    pub result: Option<CertifiedBorrowedMap>,
++    pub iterations: usize,
++    pub setup_seconds: f64,
++    pub solve_seconds: f64,
++    pub peak: SolverWorkspacePeak,
++}
++
++impl Default for Attempt {
++    fn default() -> Self {
++        Self {
++            result: None,
++            iterations: 0,
++            setup_seconds: 0.0,
++            solve_seconds: 0.0,
++            peak: SolverWorkspacePeak::ZERO,
++        }
++    }
++}
++
++impl Attempt {
++    pub(super) fn record(&self, report: &mut SolveReport) {
++        report.iterations += self.iterations;
++        report.pilot_iterations = self.iterations;
++        report.setup_seconds += self.setup_seconds;
++        report.solve_seconds += self.solve_seconds;
++        report.fallback_used |= self.iterations > 0;
++        report.solver_workspace_peak = report.solver_workspace_peak.max(self.peak);
++    }
++}
++
++pub(super) fn attempt(
++    design: &BorrowedInterceptFeDesign<'_>,
++    original: &DenseMatrix,
++    map: MapConfig,
++    budget: Option<FeSolverMemoryBudget>,
++    retain: bool,
++    coefficient_bytes: u128,
++) -> Result<Attempt> {
++    let started = Instant::now();
++    let mut trial = Attempt::default();
++    let workspace_bytes = BorrowedMapWorkspace::planned_payload_bytes(
++        design,
++        original.nrows(),
++        original.ncols(),
++        rayon::current_num_threads(),
++    )?;
++    let bytes = workspace_bytes
++        .checked_add(original.as_slice().len() as u128 * 8)
++        .and_then(|b| b.checked_add(if retain { coefficient_bytes } else { 0 }));
++    let Some(bytes) = bytes.filter(|&b| budget.is_none_or(|limit| limit.fits(b))) else {
++        return Ok(trial);
++    };
++    // Record the admitted construction overlap even if a later optional
++    // reservation fails after an earlier bank was allocated.
++    trial.peak = SolverWorkspacePeak::from_bytes(bytes)?;
++    let setup: Result<_> = (|| {
++        let candidate = fallible_matrix_copy(original, "unable to reserve bounded MAP candidate")?;
++        if let Some(code) = SETUP_FAILURE.replace(None) {
++            return Err(FeregError::new(
++                code,
++                "bounded MAP workspace reservation failed",
++            ));
++        }
++        let workspace = BorrowedMapWorkspace::new(
++            design,
++            original.nrows(),
++            original.ncols(),
++            &mut SystemWorkspaceReservation,
++        )?;
++        let coefficients = retain
++            .then(|| FeCoefficientBatch::intercept_zeros(design, original.ncols()))
++            .transpose()?;
++        Ok((candidate, workspace, coefficients))
++    })();
++    let (mut values, mut workspace, mut coefficients) = match setup {
++        Ok(state) => state,
++        Err(e) if e.code == ErrorCode::Allocation => {
++            trial.setup_seconds = started.elapsed().as_secs_f64();
++            return Ok(trial);
++        }
++        Err(e) => return Err(e),
++    };
++    // The original remains live in its execution admission. The new candidate,
++    // workspace and coefficient batch are charged separately. Record directly
++    // in the final RHS-major batch: no conversion allocation follows a pass.
++    let retained_coefficients = coefficients
++        .as_ref()
++        .map_or(0, FeCoefficientBatch::retained_bytes);
++    let actual = modeled_bytes(workspace.payload_peak()?)?
++        + values.storage_capacity() as u128 * 8
++        + retained_coefficients;
++    if actual > bytes {
++        trial.peak = SolverWorkspacePeak::from_bytes(actual)?;
++        trial.setup_seconds = started.elapsed().as_secs_f64();
++        return Ok(trial);
++    }
++    let weights = validate_weights(BorrowedMapWeights::Unit, original.nrows())?;
++    if let Err(e) = update_workspace_norms(original, weights, &mut workspace, true) {
++        if e.code != ErrorCode::InvalidData {
++            return Err(e);
++        }
++        trial.setup_seconds = started.elapsed().as_secs_f64();
++        return Ok(trial);
++    }
++    trial.setup_seconds = started.elapsed().as_secs_f64();
++    let solve = Instant::now();
++    for iteration in 0..=SWEEPS {
++        crate::interrupt::checkpoint()?;
++        if iteration > 0 {
++            trial.iterations = iteration;
++            if let Err(e) = borrowed_residual_sweep_recording(
++                design,
++                weights,
++                &mut values,
++                &mut workspace,
++                coefficients.as_mut(),
++                true,
++            ) {
++                if e.code != ErrorCode::InvalidData {
++                    return Err(e);
++                }
++                break;
++            }
++        }
++        if iteration == 0 || iteration % map.check_every == 0 || iteration == SWEEPS {
++            let certificate = if iteration == 0 {
++                certify_initial(design, weights, &values, map.tolerance, &mut workspace)
++            } else {
++                certify(design, weights, &values, map.tolerance, &mut workspace)
++            };
++            let certificate = match certificate {
++                Ok(certificate) => certificate,
++                Err(e) if e.code == ErrorCode::InvalidData => break,
++                Err(e) => return Err(e),
++            };
++            if certificate.passed {
++                trial.result = Some(finish(
++                    values,
++                    iteration,
++                    certificate,
++                    &trial,
++                    solve.elapsed().as_secs_f64(),
++                    workspace,
++                    coefficients,
++                )?);
++                return Ok(trial);
++            }
++        }
++    }
++    trial.solve_seconds = solve.elapsed().as_secs_f64();
++    // Failed candidate, coefficient and norm storage are dropped here, before
++    // the caller constructs LSMR on the unchanged original matrix.
++    Ok(trial)
++}
++
++fn finish(
++    values: DenseMatrix,
++    iteration: usize,
++    certificate: FeCertificate,
++    trial: &Attempt,
++    seconds: f64,
++    workspace: BorrowedMapWorkspace,
++    coefficients: Option<FeCoefficientBatch>,
++) -> Result<CertifiedBorrowedMap> {
++    let mut result = certified_result(
++        values,
++        SolveStopReason::Certified,
++        iteration,
++        certificate,
++        trial.setup_seconds,
++        seconds,
++    )?;
++    result.set_solver_workspace_peak(trial.peak);
++    // Preserve the caller's established norm kernel, particularly Low's fixed
++    // leaves. A norm handoff is a separate H6 change, not part of this pilot.
++    drop(workspace);
++    attach_optional_coefficients(result, coefficients)
++}
+diff --git a/crates/fereg-core/src/fe/borrowed_map/three_fe_map/geometry.rs b/crates/fereg-core/src/fe/borrowed_map/three_fe_map/geometry.rs
+new file mode 100644
+index 00000000..fc29cff1
+--- /dev/null
++++ b/crates/fereg-core/src/fe/borrowed_map/three_fe_map/geometry.rs
+@@ -0,0 +1,301 @@
++use super::super::*;
++
++/// Exact-arithmetic moment bounds for four symmetric sweeps. Every pair
++/// removes the same global constant; extra common directions remain.
++#[derive(Clone, Copy, Debug)]
++pub(crate) struct Geometry {
++    bounds: [f64; 4],
++}
++
++impl Geometry {
++    pub(crate) fn inspect(
++        design: &BorrowedInterceptFeDesign<'_>,
++        budget: Option<FeSolverMemoryBudget>,
++    ) -> Result<(Option<Self>, SolverWorkspacePeak)> {
++        let effects = design.effects();
++        if effects.len() != 3 || design.nobs() == 0 {
++            return Ok((None, SolverWorkspacePeak::ZERO));
++        }
++        let size = [(0, 1), (0, 2), (1, 2)]
++            .into_iter()
++            .map(|(i, j)| effects[i].n_levels().min(effects[j].n_levels()))
++            .max()
++            .unwrap_or(0);
++        let bytes = size as u128 * 8;
++        if budget.is_some_and(|b| !b.fits(bytes)) {
++            return Ok((None, SolverWorkspacePeak::ZERO));
++        }
++        let mut counts = Vec::<u64>::new();
++        if counts.try_reserve_exact(size).is_err() {
++            return Ok((None, SolverWorkspacePeak::ZERO));
++        }
++        let bytes = counts.capacity() as u128 * 8;
++        let peak = SolverWorkspacePeak::from_bytes(bytes)?;
++        if budget.is_some_and(|b| !b.fits(bytes)) {
++            return Ok((None, peak));
++        }
++        counts.resize(size, 0);
++        let mut squares = [0_u128; 3];
++        let mut minimum = [u128::MAX; 3];
++        for (i, effect) in effects.iter().enumerate() {
++            for level in 0..effect.n_levels() {
++                if level % 1024 == 0 {
++                    crate::interrupt::checkpoint()?;
++                }
++                let n = effect.level_index().checked_members(level)?.len() as u128;
++                let Some(sum) = n.checked_mul(n).and_then(|v| squares[i].checked_add(v)) else {
++                    return Ok((None, peak));
++                };
++                squares[i] = sum;
++                minimum[i] = minimum[i].min(n);
++            }
++        }
++        let mut coherence = [0.0; 3];
++        for (slot, (i, j)) in [(0, 1), (0, 2), (1, 2)].into_iter().enumerate() {
++            crate::interrupt::checkpoint()?;
++            let (outer, inner) = if effects[i].n_levels() >= effects[j].n_levels() {
++                (&effects[i], &effects[j])
++            } else {
++                (&effects[j], &effects[i])
++            };
++            let mut count_square = 0_u128;
++            let mut weighted = 0_u128;
++            for level in 0..outer.n_levels() {
++                if level % 1024 == 0 {
++                    crate::interrupt::checkpoint()?;
++                }
++                let members = outer.level_index().checked_members(level)?;
++                for (position, &row) in members.iter().enumerate() {
++                    if position % 16_384 == 0 {
++                        crate::interrupt::checkpoint()?;
++                    }
++                    let code = inner.codes()[row] as usize;
++                    let inner_count = inner.level_index().checked_members(code)?.len() as u128;
++                    let n = counts[code] as u128;
++                    let Some((next_square, next_weighted)) = (|| {
++                        Some((
++                            count_square.checked_add(n.checked_mul(2)?.checked_add(1)?)?,
++                            weighted
++                                .checked_add((members.len() as u128).checked_mul(inner_count)?)?,
++                        ))
++                    })() else {
++                        return Ok((None, peak));
++                    };
++                    count_square = next_square;
++                    weighted = next_weighted;
++                    let Some(next) = counts[code].checked_add(1) else {
++                        return Ok((None, peak));
++                    };
++                    counts[code] = next;
++                }
++                for (position, &row) in members.iter().enumerate() {
++                    if position % 16_384 == 0 {
++                        crate::interrupt::checkpoint()?;
++                    }
++                    counts[inner.codes()[row] as usize] = 0;
++                }
++            }
++            let pair = (|| {
++                let n = design.nobs() as u128;
++                let nn = n.checked_mul(n)?;
++                let numerator = nn
++                    .checked_mul(count_square)?
++                    .checked_add(squares[i].checked_mul(squares[j])?)?
++                    .checked_sub(n.checked_mul(2)?.checked_mul(weighted)?)?;
++                let denominator = nn.checked_mul(minimum[i])?.checked_mul(minimum[j])?;
++                integer_bound(numerator, denominator)
++            })();
++            let Some(bound) = pair else {
++                return Ok((None, peak));
++            };
++            coherence[slot] = bound;
++        }
++        Ok((
++            Some(Self {
++                bounds: propagate(coherence),
++            }),
++            peak,
++        ))
++    }
++
++    pub(crate) fn predicted_sweeps(self, target: f64) -> Option<usize> {
++        self.bounds.iter().position(|&b| b <= target).map(|i| i + 1)
++    }
++}
++
++fn up(x: f64) -> f64 {
++    if x == 0.0 {
++        0.0
++    } else {
++        f64::from_bits(x.to_bits() + 1)
++    }
++}
++
++fn integer_bound(numerator: u128, denominator: u128) -> Option<f64> {
++    if denominator == 0 {
++        return None;
++    }
++    if numerator == 0 {
++        return Some(0.0);
++    }
++    // One adjacent float encloses each nearest-rounded integer conversion.
++    // Positive u128 ratios and the four powers below stay in the normal range.
++    let lower_denominator = f64::from_bits((denominator as f64).to_bits() - 1);
++    Some(up(up(up(numerator as f64) / lower_denominator).sqrt()).min(1.0))
++}
++
++fn propagate([a, b, c]: [f64; 3]) -> [f64; 4] {
++    let plus = |x, y| up(x + y);
++    let times = |x, y| up(x * y);
++    let cc = times(c, c);
++    let u = plus(plus(a, times(b, c)), times(a, cc));
++    let v = plus(b, times(a, c));
++    let matrix = [
++        [times(a, u), times(a, v)],
++        [plus(times(c, cc), times(b, u)), plus(cc, times(b, v))],
++    ];
++    let mut moment = [1.0, 1.0];
++    std::array::from_fn(|_| {
++        moment = matrix.map(|row| plus(times(row[0], moment[0]), times(row[1], moment[1])));
++        moment[0].max(moment[1])
++    })
++}
++
++#[cfg(test)]
++mod tests {
++    #[test]
++    fn integer_and_sweep_bounds_round_outward_at_eligibility_boundary() {
++        use super::*;
++        assert_eq!(integer_bound(0, 1), Some(0.));
++        assert_eq!(integer_bound(1, 0), None);
++        assert!(integer_bound(1, 4).unwrap() > 0.5);
++        assert!(integer_bound((1_u128 << 100) + 1, 1_u128 << 102).unwrap() > 0.5);
++        assert_eq!(integer_bound(u128::MAX, 1), Some(1.));
++        assert_eq!(propagate([0.; 3]), [0.; 4]);
++        let bounds = propagate([0.01; 3]);
++        let g = Geometry { bounds };
++        assert_eq!(g.predicted_sweeps(bounds[3]), Some(4));
++        assert_eq!(
++            g.predicted_sweeps(f64::from_bits(bounds[3].to_bits() - 1)),
++            None
++        );
++        assert!(propagate([1.; 3]).iter().all(|&b| b > 1.));
++    }
++
++    #[test]
++    fn retained_f2_rational_projection_witness_bounds_are_exact() {
++        use super::*;
++        use crate::fe::{LevelIndex, ValidatedBorrowedInterceptSource};
++        // Frozen bounds were independently checked by exact rational projection
++        // in bench/results/f2-20261011-geometry.json; keep all eight inputs.
++        let cases: [(usize, [u64; 4]); 8] = [
++            (32, [0x0, 0x0, 0x0, 0x0]),
++            (
++                37,
++                [
++                    0x3f8ef6c1c33f179a,
++                    0x3f2938fee5b28a03,
++                    0x3ec43f08f7784620,
++                    0x3e603aa997cea259,
++                ],
++            ),
++            (
++                64,
++                [
++                    0x3fec20000000000b,
++                    0x3fe8b82000000014,
++                    0x3fe5b9d42000001b,
++                    0x3fe3185370200020,
++                ],
++            ),
++            (
++                32,
++                [
++                    0x401c000000000007,
++                    0x404480000000000b,
++                    0x406de00000000015,
++                    0x4095c40000000015,
++                ],
++            ),
++            (
++                41,
++                [
++                    0x3fa534c98596e2ae,
++                    0x3f57704bdaddd1d9,
++                    0x3f0975dd6873e244,
++                    0x3ebb9b02fa80b04d,
++                ],
++            ),
++            (32, [0x0, 0x0, 0x0, 0x0]),
++            (
++                32,
++                [
++                    0x3ff0000000000005,
++                    0x3ff000000000000a,
++                    0x3ff000000000000f,
++                    0x3ff0000000000014,
++                ],
++            ),
++            (
++                37,
++                [
++                    0x3f8ef6c1c33f179a,
++                    0x3f2938fee5b28a03,
++                    0x3ec43f08f7784620,
++                    0x3e603aa997cea259,
++                ],
++            ),
++        ];
++        for (case, (rows, expected)) in cases.into_iter().enumerate() {
++            let triples: Vec<[u32; 3]> = (0..rows)
++                .map(|r| {
++                    let codes = match case {
++                        0 => [r % 2, r / 2 % 2, r / 4 % 2],
++                        1 => [r % 3, r / 3 % 3, r / 9 % 3],
++                        2 => [
++                            usize::from(r >= 32),
++                            usize::from(r >= 32) ^ usize::from(r == 0 || r == 32),
++                            r % 2,
++                        ],
++                        3 => [
++                            2 * (r / 16) + r % 2,
++                            2 * (r / 16) + r / 2 % 2,
++                            2 * (r / 16) + r / 4 % 2,
++                        ],
++                        4 => [r % 3, r / 3 % 4, r / 12 % 2],
++                        5 => [0, r % 2, r / 2 % 3],
++                        6 => [r / 4 % 2, r / 4 % 2, r % 2],
++                        7 => [2 - r % 3, 2 - r / 3 % 3, 2 - r / 9 % 3],
++                        _ => unreachable!(),
++                    };
++                    codes.map(|c| c as u32)
++                })
++                .collect();
++            let codes: [Vec<u32>; 3] =
++                std::array::from_fn(|c| triples.iter().map(|r| r[c]).collect());
++            let levels = codes
++                .each_ref()
++                .map(|c| *c.iter().max().unwrap() as usize + 1);
++            let indexes: Vec<_> = codes
++                .iter()
++                .zip(levels)
++                .map(|(c, n)| LevelIndex::from_codes(c, n).unwrap())
++                .collect();
++            let sources: Vec<_> = codes
++                .iter()
++                .zip(levels)
++                .zip(&indexes)
++                .map(|((c, n), i)| ValidatedBorrowedInterceptSource::new(c, n, i).unwrap())
++                .collect();
++            let design =
++                BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect())
++                    .unwrap();
++            let (geometry, _) = Geometry::inspect(&design, None).unwrap();
++            assert_eq!(
++                geometry.unwrap().bounds.map(f64::to_bits),
++                expected,
++                "F2 case {case}"
++            );
++        }
++    }
++}
+diff --git a/crates/fereg-core/src/fe/borrowed_map/three_fe_map/tests.rs b/crates/fereg-core/src/fe/borrowed_map/three_fe_map/tests.rs
+new file mode 100644
+index 00000000..1f8fd711
+--- /dev/null
++++ b/crates/fereg-core/src/fe/borrowed_map/three_fe_map/tests.rs
+@@ -0,0 +1,256 @@
++use super::*;
++use crate::fe::{LevelIndex, ValidatedBorrowedInterceptSource};
++
++fn fixture(weak: bool, run: impl FnOnce(&BorrowedInterceptFeDesign<'_>, DenseMatrix)) {
++    let rows = 256;
++    let codes: [Vec<u32>; 3] = std::array::from_fn(|effect| {
++        (0..rows)
++            .map(|r| {
++                if weak && effect == 1 {
++                    ((r / 8 + usize::from(r == 0)) % 2) as u32
++                } else {
++                    ((r / [8, 4, 2][effect]) % 2) as u32
++                }
++            })
++            .collect()
++    });
++    let indexes: Vec<_> = codes
++        .iter()
++        .map(|c| LevelIndex::from_codes(c, 2).unwrap())
++        .collect();
++    let sources: Vec<_> = codes
++        .iter()
++        .zip(&indexes)
++        .map(|(c, i)| ValidatedBorrowedInterceptSource::new(c, 2, i).unwrap())
++        .collect();
++    let design =
++        BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect()).unwrap();
++    let values = DenseMatrix::from_row_major(
++        rows,
++        2,
++        (0..rows)
++            .flat_map(|r| {
++                [
++                    (r as f64 * 0.17).sin() + codes[0][r] as f64,
++                    (r as f64 * 0.31).cos() + codes[1][r] as f64,
++                ]
++            })
++            .collect(),
++    )
++    .unwrap();
++    run(&design, values);
++}
++
++#[test]
++fn geometry_is_optional_and_keeps_additional_common_directions() {
++    for weak in [false, true] {
++        fixture(weak, |design, _| {
++            let (geometry, peak) = Geometry::inspect(design, None).unwrap();
++            assert_eq!(peak.bytes(), Some(16));
++            assert_eq!(
++                geometry.unwrap().predicted_sweeps(1e-10),
++                if weak { None } else { Some(1) }
++            );
++            let (refused, peak) = Geometry::inspect(
++                design,
++                Some(FeSolverMemoryBudget {
++                    execution_bytes: 10,
++                    usable_bytes: 25,
++                }),
++            )
++            .unwrap();
++            assert!(refused.is_none());
++            assert_eq!(peak, SolverWorkspacePeak::ZERO);
++        });
++    }
++}
++
++#[test]
++fn passing_requested_certificate_is_accepted_without_a_tighter_gate() {
++    fixture(false, |design, values| {
++        let map = MapConfig {
++            tolerance: 0.9,
++            ..MapConfig::default()
++        };
++        let result = attempt(design, &values, map, None, false, 0).unwrap();
++        assert_eq!(result.iterations, 0);
++        let result = result.result.unwrap();
++        assert!(result.report.certified());
++        assert!(
++            result.report.certificate.relative_infinity_norm
++                > super::super::super::auto::direct_lsmr_tolerance(map.tolerance)
++        );
++        assert_eq!(result.residualized(), &values);
++        assert!(result.residual_norms.is_empty());
++    });
++}
++
++#[test]
++fn refused_or_failed_attempt_preserves_original_and_records_work() {
++    fixture(true, |design, values| {
++        let original = values.clone();
++        let map = MapConfig {
++            tolerance: 1e-14,
++            ..MapConfig::default()
++        };
++        let refused = attempt(
++            design,
++            &values,
++            map,
++            Some(FeSolverMemoryBudget {
++                execution_bytes: 0,
++                usable_bytes: 0,
++            }),
++            false,
++            0,
++        )
++        .unwrap();
++        assert!(refused.result.is_none());
++        assert_eq!(refused.iterations, 0);
++        assert_eq!(refused.peak, SolverWorkspacePeak::ZERO);
++        let failed = attempt(design, &values, map, None, false, 0).unwrap();
++        assert!(failed.result.is_none());
++        assert_eq!(failed.iterations, SWEEPS);
++        assert_eq!(values, original);
++        assert!(failed.peak.bytes().unwrap() > values.as_slice().len() as u64 * 8);
++    });
++}
++
++#[test]
++fn successful_candidate_preserves_coefficients_and_admission() {
++    fixture(false, |design, values| {
++        let estimate =
++            estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1, None).unwrap();
++        let map = MapConfig {
++            tolerance: 1e-12,
++            ..MapConfig::default()
++        };
++        let trial = attempt(
++            design,
++            &values,
++            map,
++            None,
++            true,
++            estimate.coefficient_batch_bytes,
++        )
++        .unwrap();
++        let bytes = trial.peak.bytes().unwrap();
++        let result = trial.result.unwrap();
++        assert!(result.report.certified());
++        assert_eq!(trial.iterations, SWEEPS);
++        let coefficients = result.coefficients.as_ref().unwrap();
++        for row in 0..values.nrows() {
++            for rhs in 0..values.ncols() {
++                let fitted: f64 = design
++                    .effects()
++                    .iter()
++                    .enumerate()
++                    .map(|(e, effect)| {
++                        coefficients.values[rhs * 6 + e * 2 + effect.codes()[row] as usize]
++                    })
++                    .sum();
++                assert!(
++                    (fitted + result.residualized()[(row, rhs)] - values[(row, rhs)]).abs() < 1e-14
++                );
++            }
++        }
++        assert!(result.report.solver_workspace_peak.bytes().unwrap() <= bytes);
++        let admitted = attempt(
++            design,
++            &values,
++            map,
++            Some(FeSolverMemoryBudget {
++                execution_bytes: 123,
++                usable_bytes: bytes as u128 + 123,
++            }),
++            true,
++            estimate.coefficient_batch_bytes,
++        )
++        .unwrap();
++        assert_eq!(
++            admitted.result.unwrap().residualized(),
++            result.residualized()
++        );
++    });
++}
++
++#[test]
++fn partial_optional_allocation_refusal_drops_candidate_but_fatal_errors_propagate() {
++    fixture(false, |design, values| {
++        SETUP_FAILURE.set(Some(ErrorCode::Allocation));
++        let refused = attempt(design, &values, MapConfig::default(), None, false, 0).unwrap();
++        assert!(refused.result.is_none());
++        assert_eq!(refused.iterations, 0);
++        assert!(refused.peak.bytes().unwrap() >= values.as_slice().len() as u64 * 8);
++        SETUP_FAILURE.set(Some(ErrorCode::Internal));
++        assert!(
++            matches!(attempt(design, &values, MapConfig::default(), None, false, 0),
++            Err(e) if e.code == ErrorCode::Internal)
++        );
++        let overflow =
++            attempt(design, &values, MapConfig::default(), None, true, u128::MAX).unwrap();
++        assert!(overflow.result.is_none());
++        assert_eq!(overflow.peak, SolverWorkspacePeak::ZERO);
++    });
++}
++
++#[test]
++fn pilot_debits_first_half_work_and_keeps_the_final_reserve() {
++    fixture(true, |design, values| {
++        let estimate =
++            estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1, None).unwrap();
++        let map = MapConfig {
++            tolerance: 1e-10,
++            max_iterations: 80,
++            ..MapConfig::default()
++        };
++        let result = super::super::project_general_categorical(
++            design,
++            BorrowedMapWeights::Unit,
++            values.clone(),
++            map,
++            LsmrConfig::default(),
++            None,
++            false,
++            estimate,
++            true,
++        )
++        .unwrap();
++        assert_eq!(result.report.pilot_iterations, SWEEPS);
++        assert!(result.report.fallback_used);
++        assert_eq!(result.report.used_solver, FeSolverKind::Lsmr);
++        assert!(result.report.iterations <= map.max_iterations / 2);
++        let short = MapConfig {
++            max_iterations: 8,
++            ..map
++        };
++        let without = super::super::project_general_categorical(
++            design,
++            BorrowedMapWeights::Unit,
++            values.clone(),
++            short,
++            LsmrConfig::default(),
++            None,
++            false,
++            estimate,
++            false,
++        )
++        .unwrap();
++        let skipped = super::super::project_general_categorical(
++            design,
++            BorrowedMapWeights::Unit,
++            values,
++            short,
++            LsmrConfig::default(),
++            None,
++            false,
++            estimate,
++            true,
++        )
++        .unwrap();
++        assert_eq!(skipped.report.pilot_iterations, 0);
++        assert_eq!(skipped.report.iterations, without.report.iterations);
++        assert_eq!(skipped.report.used_solver, without.report.used_solver);
++        assert_eq!(skipped.residualized(), without.residualized());
++    });
++}
+diff --git a/crates/fereg-oracle/tests/three_fe_map.rs b/crates/fereg-oracle/tests/three_fe_map.rs
+new file mode 100644
+index 00000000..89fa37b4
+--- /dev/null
++++ b/crates/fereg-oracle/tests/three_fe_map.rs
+@@ -0,0 +1,258 @@
++#![deny(clippy::too_many_lines)]
++//! Independent H2 witnesses through the public prepared-OLS fit entry point.
++mod support;
++
++use fereg_core::{
++    CertifiedPreparedOlsFit, FeSolverKind, PreparedOlsExecutionMode, PreparedOlsFitConfig,
++    ThreadConfig,
++};
++use fereg_oracle::compare::{COEFFICIENT, INFERENCE, PREDICTION};
++use fereg_oracle::designs::{Design, WeightKind};
++use fereg_oracle::explicit_dummy::{
++    design::ExplicitFeDesign, fe_remaining_projection_with_reference,
++};
++use fereg_oracle::explicit_ols::{fit_explicit_ols, DummyEffect, OracleMatrix};
++
++/// Unequal cell counts factor into three marginal multiplicities. Appending
++/// one observation perturbs independence without changing any level or rank.
++fn product_design(perturbed: bool) -> Design {
++    let mut codes: [Vec<u32>; 3] = std::array::from_fn(|_| Vec::new());
++    for (a, na) in [1, 2, 3].into_iter().enumerate() {
++        for (b, nb) in [1, 2, 4].into_iter().enumerate() {
++            for (c, nc) in [1, 3].into_iter().enumerate() {
++                for _ in 0..8 * na * nb * nc {
++                    codes[0].push(a as u32);
++                    codes[1].push(b as u32);
++                    codes[2].push(c as u32);
++                }
++            }
++        }
++    }
++    if perturbed {
++        for code in &mut codes {
++            code.push(0);
++        }
++    }
++    from_codes(codes)
++}
++
++fn from_codes(codes: [Vec<u32>; 3]) -> Design {
++    let n = codes[0].len();
++    let x: Vec<_> = (0..n)
++        .map(|i| ((17 * i % 101) as f64 * 0.13).sin())
++        .collect();
++    let z: Vec<_> = (0..n)
++        .map(|i| ((31 * i % 97) as f64 * 0.17).cos())
++        .collect();
++    let outcome = (0..n)
++        .map(|i| {
++            1.2 * x[i] - 0.6 * z[i] + 0.4 * f64::from(codes[0][i]) - 0.3 * f64::from(codes[1][i])
++                + 0.2 * f64::from(codes[2][i])
++                + 0.04 * ((i * 11 % 71) as f64).sin()
++        })
++        .collect();
++    Design {
++        outcome,
++        regressors: vec![x, z],
++        effects: codes
++            .into_iter()
++            .map(|codes| {
++                let levels = codes.iter().copied().max().unwrap() as usize + 1;
++                DummyEffect::new(codes, levels, true, vec![]).unwrap()
++            })
++            .collect(),
++        weight_kind: WeightKind::Unit,
++        weights: vec![1.; n],
++        missing: vec![false; n],
++        clusters: vec![],
++    }
++}
++
++/// Independent explicit contingency rectangle, not the production streaming
++/// cancellation identity. This deliberately retains extra common directions.
++fn pair_bound(design: &Design, i: usize, j: usize) -> f64 {
++    let a = &design.effects[i];
++    let b = &design.effects[j];
++    let n = design.outcome.len() as i128;
++    let mut rows = vec![0_i128; a.n_levels()];
++    let mut columns = vec![0_i128; b.n_levels()];
++    let mut counts = vec![vec![0_i128; b.n_levels()]; a.n_levels()];
++    for (&a, &b) in a.codes().iter().zip(b.codes()) {
++        rows[a as usize] += 1;
++        columns[b as usize] += 1;
++        counts[a as usize][b as usize] += 1;
++    }
++    let mut numerator = 0_i128;
++    for (r, &nr) in rows.iter().enumerate() {
++        for (c, &nc) in columns.iter().enumerate() {
++            numerator += (n * counts[r][c] - nr * nc).pow(2);
++        }
++    }
++    let denominator = n * n * rows.iter().min().unwrap() * columns.iter().min().unwrap();
++    (numerator as f64 / denominator as f64).sqrt().min(1.)
++}
++
++fn config(mode: PreparedOlsExecutionMode, workers: usize, retain: bool) -> PreparedOlsFitConfig {
++    let threads = ThreadConfig::from_requested(workers, true).unwrap();
++    let mut config = PreparedOlsFitConfig::default();
++    config.execution.mode = mode;
++    config.execution.poolsize = 1;
++    config.execution.threads = threads;
++    config.absorb.lsmr.threads = threads;
++    config.absorb.retain_coefficients = retain;
++    config.allow_final_fe_recovery = true;
++    config.final_residual_tolerance = Some(1e-14);
++    config
++}
++
++fn check_oracle(design: &Design, config: PreparedOlsFitConfig) -> CertifiedPreparedOlsFit {
++    let (problem, expected_rows) = design.oracle_problem(false).unwrap();
++    let oracle = fit_explicit_ols(&problem).expect("independent full-dummy OLS");
++    let (fit, rows) = support::native_fit(design, config, false).expect("prepared OLS");
++    assert_eq!(rows, expected_rows);
++    assert_eq!(rows.len(), design.outcome.len());
++    assert_eq!(fit.finite_rank(), oracle.finite_regressor_rank);
++    assert!(fit.dropped_generated_columns().is_empty());
++    for (actual, expected) in fit.coefficients().iter().zip(&oracle.coefficients) {
++        COEFFICIENT
++            .check(actual.value.unwrap(), expected.unwrap())
++            .unwrap();
++    }
++    PREDICTION
++        .check_slice(fit.residuals(), &oracle.residuals)
++        .unwrap();
++    let fitted: Vec<_> = design
++        .outcome
++        .iter()
++        .zip(fit.residuals())
++        .map(|(y, r)| y - r)
++        .collect();
++    PREDICTION
++        .check_slice(&fitted, &oracle.fitted_values)
++        .unwrap();
++    let mut projection = problem.clone();
++    projection.regressors.clear();
++    let within = fit_explicit_ols(&projection).expect("independent outcome FE projection");
++    INFERENCE
++        .check(
++            fit.initial_absorbed_outcome_sum_of_squares(),
++            within.weighted_rss,
++        )
++        .unwrap();
++    assert!(fit.absorption_report().certified());
++    assert!(fit.residual_absorption_report().certified());
++    // The new leading MAP attempt must not select MAP for final residuals.
++    assert_eq!(
++        fit.residual_absorption_report().used_solver,
++        FeSolverKind::Lsmr
++    );
++    if config.absorb.retain_coefficients && config.execution.mode == PreparedOlsExecutionMode::Fast
++    {
++        assert!(fit.recovered_fe_coefficients().is_some());
++    }
++    let explicit = ExplicitFeDesign::new(rows.len(), problem.effects).unwrap();
++    let weights = match problem.weights {
++        fereg_oracle::explicit_ols::OracleWeights::Unit => vec![1.; rows.len()],
++        fereg_oracle::explicit_ols::OracleWeights::Wls(w) => w,
++        fereg_oracle::explicit_ols::OracleWeights::Frequency(_) => unreachable!(),
++    };
++    let residuals = OracleMatrix::from_row_major(rows.len(), 1, fit.residuals().to_vec()).unwrap();
++    let original = OracleMatrix::from_row_major(rows.len(), 1, problem.outcome).unwrap();
++    let audit =
++        fe_remaining_projection_with_reference(&explicit, &weights, &residuals, &original).unwrap();
++    assert!(audit.maximum_relative_two_norm < 1e-10, "{audit:?}");
++    fit
++}
++
++#[test]
++fn nonuniform_independent_and_perturbed_marginals_select_certified_map() {
++    for perturbed in [false, true] {
++        let design = product_design(perturbed);
++        for (i, j) in [(0, 1), (0, 2), (1, 2)] {
++            let bound = pair_bound(&design, i, j);
++            assert!(bound < 0.01);
++            if !perturbed {
++                assert_eq!(bound, 0.);
++            }
++        }
++        // For every a,b,c <= .01, the positive 2x2 majorant has maximum
++        // row sum < .001. Four powers are therefore <1e-12, safely below
++        // the ordinary 1e-12 recurrence target, without reproducing it.
++        for mode in [
++            PreparedOlsExecutionMode::Fast,
++            PreparedOlsExecutionMode::Low,
++        ] {
++            for workers in [1, 4] {
++                for retain in [false, true] {
++                    let fit = check_oracle(&design, config(mode, workers, retain));
++                    assert_eq!(fit.absorption_report().used_solver, FeSolverKind::Map);
++                    assert!(!fit.absorption_report().fallback_used);
++                }
++            }
++        }
++    }
++}
++
++#[test]
++fn extra_pair_intersection_and_disconnected_components_stay_on_lsmr() {
++    for disconnected in [false, true] {
++        let mut codes: [Vec<u32>; 3] = std::array::from_fn(|_| Vec::new());
++        for component in 0..2 {
++            for a in 0..2 {
++                for b in 0..2 {
++                    for c in 0..2 {
++                        for _ in 0..8 {
++                            codes[0].push(component * 2 + a);
++                            codes[1].push(component * 2 + b);
++                            codes[2].push(if disconnected { component * 2 + c } else { c });
++                        }
++                    }
++                }
++            }
++        }
++        let design = from_codes(codes);
++        assert_eq!(pair_bound(&design, 0, 1), 1.);
++        // When connected through effect 3, the common direction of effects
++        // 1/2 is still real and must not be removed by pairwise centering.
++        for mode in [
++            PreparedOlsExecutionMode::Fast,
++            PreparedOlsExecutionMode::Low,
++        ] {
++            let fit = check_oracle(&design, config(mode, 1, true));
++            assert_eq!(fit.absorption_report().used_solver, FeSolverKind::Lsmr);
++        }
++    }
++}
++
++#[test]
++fn changing_observation_weights_do_not_use_unit_geometry() {
++    let mut design = product_design(false);
++    design.weight_kind = WeightKind::Analytic;
++    design.weights = (0..design.outcome.len())
++        .map(|i| 0.5 + (i % 7) as f64 / 5.)
++        .collect();
++    for mode in [
++        PreparedOlsExecutionMode::Fast,
++        PreparedOlsExecutionMode::Low,
++    ] {
++        let fit = check_oracle(&design, config(mode, 1, true));
++        assert_eq!(fit.absorption_report().used_solver, FeSolverKind::Lsmr);
++    }
++}
++
++#[test]
++fn explicit_lsmr_preserves_its_route_on_map_eligible_geometry() {
++    let design = product_design(true);
++    let mut config = config(PreparedOlsExecutionMode::Fast, 1, true);
++    config.absorb.solver = FeSolverKind::Lsmr;
++    let fit = check_oracle(&design, config);
++    assert_eq!(fit.absorption_report().used_solver, FeSolverKind::Lsmr);
++}
++
++#[test]
++fn fe_only_projection_matches_full_dummy_qr() {
++    let mut design = product_design(true);
++    design.regressors.clear();
++    let fit = check_oracle(&design, config(PreparedOlsExecutionMode::Fast, 1, true));
++    assert_eq!(fit.absorption_report().used_solver, FeSolverKind::Map);
++}
+diff --git a/tests/stata/development/ols_three_fe_map_oracle.do b/tests/stata/development/ols_three_fe_map_oracle.do
+new file mode 100644
+index 00000000..58d27c13
+--- /dev/null
++++ b/tests/stata/development/ols_three_fe_map_oracle.do
+@@ -0,0 +1,47 @@
++version 18.0
++clear all
++set more off
++set seed 2026101302
++set obs 4000
++generate long g1 = mod(_n-1,8)
++generate long g2 = mod(floor((_n-1)/8),10)
++generate long g3 = mod(floor((_n-1)/80),5)
++forvalues j=1/3 {
++    generate double x`j' = rnormal()
++}
++generate double y = .7*x1-.3*x2+.1*x3+g1/8-g2/10+g3/5+rnormal()
++
++* Full dummy QR is independent of the automatic FE projection.
++quietly regress y x1-x3 i.g1 i.g2 i.g3, vce(robust)
++matrix oracle_b = e(b)
++matrix oracle_v = e(V)
++scalar oracle_df = e(df_r)
++predict double oracle_fitted, xb
++predict double oracle_residual, residuals
++foreach mode in fast low {
++    foreach t in 1 4 {
++        quietly fereg y x1-x3, absorb(s1=g1 s2=g2 s3=g3) ///
++            memory(`mode') poolsize(1) threads(`t') vce(robust) residuals(resid)
++        assert e(N) == 4000
++        assert e(rank) == 3
++        assert e(df_r) == oracle_df
++        assert e(fereg_solver)[1,2] == 2
++        assert e(fereg_solver)[1,11] == 0
++        assert e(fereg_solver)[2,2] == 3
++        forvalues j=1/3 {
++            assert abs(e(b)[1,`j']-oracle_b[1,`j']) < 1e-9
++            forvalues k=1/3 {
++                assert abs(e(V)[`j',`k']-oracle_v[`j',`k']) < 1e-10
++            }
++        }
++        predict double fitted, xbd
++        predict double xb, xb
++        predict double d, d
++        assert abs(fitted-oracle_fitted) < 1e-9
++        assert abs(resid-oracle_residual) < 1e-9
++        assert abs(y-xb-d-resid) < 1e-9
++        assert abs(d-s1-s2-s3) < 1e-9
++        drop s1 s2 s3 resid fitted xb d
++    }
++}
++display as result "END_FIXTURE|ols_three_fe_map_oracle|rc=0"

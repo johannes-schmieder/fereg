@@ -1113,6 +1113,94 @@ from the F panel: dense 4M at one worker 16.803 to 12.919 s, at sixteen
 workers; report what remains after the prototype so the next decision is
 informed.
 
+H2 implementation declaration (2026-10-12, baseline `a05ae5d7`, before code):
+use the retained F2 centred pair-incidence bound for ordinary automatic OLS
+with three categorical intercept effects, unit weights and symmetric sweeps.
+Preserve original effect order. For each pair, compute the checked-integer
+sum of `(N*n_ab - n_a*n_b)^2`, divide by `N^2*min(n_a)*min(n_b)`, and take
+an outward-rounded square root capped at one. All three pairs remove only the
+same global constant; additional common directions stay in the bound. There
+is no row-count/case fence, empirical cost selector or weighted extension.
+Checked arithmetic overflow or unavailable optional scratch declines the new
+attempt and leaves the existing solver path intact.
+
+With pair bounds `a=mu12`, `b=mu13`, `c=mu23`, define `u=a+bc+ac^2`,
+`v=b+ac`, and `B=[[au,av],[c^3+bu,c^2+bv]]`. Starting at `(1,1)`, propagate
+four powers with outward rounding. Predict the first complete symmetric
+`0,1,2,1,0` sweep whose maximum block-moment bound is at most
+`direct_lsmr_tolerance(request)`. Admit only predictions of one through four
+sweeps and attempt at most the existing first four-sweep checkpoint. Four is
+the existing checkpoint cadence, not a fitted campaign threshold. The bound
+is an exact-arithmetic eligibility witness, not a floating-point convergence
+guarantee. Cache the immutable bounds or decline once per OLS session,
+including low-memory batches; never scan sparse geometry again for final
+residuals. Explicit requests, PPML and the final-residual projection remain
+on their existing paths.
+
+The new MAP attempt uses the H8 target to predict its work, but its numerical
+certificate stays at the **requested** tolerance and is the sole acceptance
+gate, following Johannes's direct handover. A passing candidate is accepted;
+do not impose a second tightened certificate. On a certificate miss, release
+the candidate and its coefficient/workspace state and let existing LSMR use
+the untouched input. Debit actual pilot sweeps from its existing first-half
+allowance, preserve the final MAP reserve, and report all consumed work.
+Abstain before the attempt if four sweeps cannot leave an LSMR iteration.
+Charge histogram capacity, candidate copy, MAP workspace, original-reference
+norms, coefficient products and all live overlaps to the existing admission.
+Optional pre-attempt allocation refusal leaves the original route; Break and
+non-numerical fatal errors remain fatal. No failed geometry prediction or
+missed recurrence target rejects a request-certified estimate.
+The implementation records retained coefficients directly in a preallocated
+canonical batch, so no conversion allocation follows a passing certificate;
+its actual capacity is checked before sweeps. H2 does not hand solver norms
+to callers: their established norm reduction remains intact. A missed pilot
+with consumed sweeps is reported as fallback when LSMR certifies.
+
+Affected numerical fields are projected columns, FE coefficients, coefficients,
+covariance, fit statistics and downstream numerical outputs/diagnostics. The
+successful ordinary three-FE route and associated work/preconditioner diagnostics
+may intentionally change from LSMR to MAP; final acceptance remains certified.
+Sample, rank, omission, separation, requested tolerances and all unaffected
+results stay exact. The existing 73-case Mac replay remains an exact control:
+its only unit-weight three-FE Auto case (`ols-12`) has a four-sweep bound near
+9.74e-4 and declines at its 1e-12 recurrence target. Keep its input unchanged.
+
+Independent witnesses: retained F2 exact contingency and rational projection
+cases, supplemented by nonuniform marginals, extra pair intersections,
+disconnected geometry, rounding boundaries and memory refusal; explicit
+projection/dense OLS oracles on synthetic eligible and declined designs;
+fereg-oracle dense/weak comparisons; actual-plugin replay; and frozen F-panel
+inputs. Retain original science bounds and all failures. The campaign is
+36 measured fits: frozen dense 1M/4M and sparse 1M, 1/4/16 workers, two
+alternating pairs each, 120 seconds per process and 2,400 seconds total,
+no retry. The campaign entrypoint's separate small initialization is outside
+the estimate clock but inside each process limit. Sparse must remain on LSMR
+and pay no more than the retained 21 ms geometry cost; this is a measured
+overhead gate, never a clock-based runtime route. Compare the final 4M/four-
+worker command cost with fixest's retained 4.224 seconds, identifying the
+separate host/source limitations. The twenty quiet Mac workloads remain at
+the H boundary. The ten-repair/one-working-day blocker rule remains in force.
+
+H2 outcome (2026-10-12): the fixed 36-fit panel completed without retry,
+but the prototype is **not adopted**. All six sparse geometry clocks are
+29.785–30.855 ms, above the 21 ms requirement; sparse otherwise stays on LSMR
+with exact captured science and unchanged solver signatures. Do not reinterpret
+that cost as a pass or spend another fit under this declaration. The checked
+[source patch](../bench/results/h-20261013-h2.patch) against `a05ae5d7` retains
+the implementation and witnesses; production remains the parent artifact.
+All eighteen paired science/discrete comparisons and fixed-worker repeats pass.
+Dense 4M native means improve 22.806 → 16.315, 7.407 → 5.981 and 4.372 → 3.712 s
+at 1/4/16 workers. Dense 1M changes are -1.70%/-3.52%/+3.05%; geometry itself
+costs 37.7–40.1 ms at 1M and 169.2–182.1 ms at 4M. Command time at 4M/four
+workers is 7.244 s, still 3.020 s above the retained fixest 4.224 s on another
+host/source. All costs and the failed gate remain in
+[validation](VALIDATION.md#h2-dense-three-fe-prototype-sparse-cost-gate-failed-2026-10-12)
+and the [compact record](../bench/results/h-20261013-h2.json). The 73-case exact
+replay, 292 worker checks, full suite, independent projection witnesses,
+retained F2 bounds and fourteen licensed fixtures pass on the prototype.
+A new candidate or additional measurement budget requires a new declaration;
+H4 continues on the accepted production runtime.
+
 ### H3. Parallel neighbour-pair assembly for canonical products
 
 In `ols/canonical_products.rs::build`, the explicit geometry accumulates each

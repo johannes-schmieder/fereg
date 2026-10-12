@@ -236,6 +236,21 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H2's approved dense three-FE MAP prototype passes its independent science,
+replay and transaction checks, but fails the sparse-cost requirement: all six
+sparse geometry observations are 29.8–30.9 ms against the declared 21 ms cap.
+It is retained as a checked patch and **not adopted**; production stays at the
+H8 route. No fit is retried. Dense 4M native means fall 22.806 → 16.315,
+7.407 → 5.981 and 4.372 → 3.712 seconds at 1/4/16 workers; 1M changes are
+-1.70%/-3.52%/+3.05%. Sparse remains on LSMR with exact captured science and
+unchanged solver signatures. At 4M/four workers command time is 8.684 → 7.244 s,
+leaving 3.020 s relative to fixest's retained 4.224 s (different host/source).
+Two pairs per cell are descriptive rather than a release performance claim.
+The geometry cost, candidate-copy/workspace cost, small-input result and failed
+gate are retained in [validation](VALIDATION.md#h2-dense-three-fe-prototype-sparse-cost-gate-failed-2026-10-12),
+[all observations](../bench/results/h-20261013-h2.json) and the
+[prototype source](../bench/results/h-20261013-h2.patch).
+
 Workstream H8 makes ordinary two-FE OLS aim at the shared hundredth-request
 recurrence target while preserving the requested certificate, PPML and final
 projection policies. The frozen 48-fit SCC panel reports the accuracy cost:
