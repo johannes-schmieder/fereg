@@ -2,40 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1247,
-      "before": 1245,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "H6 owned early-column capsule preserves factorization provenance across SPI loading and authoritative preparation; descriptor admission and raw-input error precedence remain explicit, while borrowed/PPML hints retain checked reuse."
-    },
-    {
-      "after": 95417,
-      "before": 95241,
+      "after": 95421,
+      "before": 95417,
       "metric": "fereg-core/production_lines",
-      "reason": "H6 owned early-column capsule preserves factorization provenance across SPI loading and authoritative preparation; descriptor admission and raw-input error precedence remain explicit, while borrowed/PPML hints retain checked reuse."
-    },
-    {
-      "after": 139,
-      "before": 136,
-      "metric": "fereg-plugin/dispatch_candidates",
-      "reason": "H6 owned early-column capsule preserves factorization provenance across SPI loading and authoritative preparation; descriptor admission and raw-input error precedence remain explicit, while borrowed/PPML hints retain checked reuse."
-    },
-    {
-      "after": 15100,
-      "before": 15001,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "H6 owned early-column capsule preserves factorization provenance across SPI loading and authoritative preparation; descriptor admission and raw-input error precedence remain explicit, while borrowed/PPML hints retain checked reuse."
-    },
-    {
-      "after": 3217,
-      "before": 3207,
-      "metric": "file/crates/fereg-plugin/src/estimate.rs",
-      "reason": "H6 owned early-column capsule preserves factorization provenance across SPI loading and authoritative preparation; descriptor admission and raw-input error precedence remain explicit, while borrowed/PPML hints retain checked reuse."
-    },
-    {
-      "after": 369,
-      "before": 366,
-      "metric": "function/crates/fereg-plugin/src/estimate.rs/load_ols_input_with_team#1",
-      "reason": "H6 owned early-column capsule preserves factorization provenance across SPI loading and authoritative preparation; descriptor admission and raw-input error precedence remain explicit, while borrowed/PPML hints retain checked reuse."
+      "reason": "H6 membership initialization generalizes the existing reserved f64 helper to safely initialize copied scalar values on the installed team; the same pre-reserved bank, scatter order and admission remain unchanged."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -12175,28 +12145,28 @@
         "dispatch_candidates": [
           {
             "condition": "buffers . scratch . len ( ) <= 1 || levels == 1",
-            "line": 215
+            "line": 219
           },
           {
             "condition": "let Some ( name ) = thread . name ( )",
-            "line": 313
+            "line": 317
           },
           {
             "condition": "let Some ( size ) = thread . stack_size ( )",
-            "line": 316
+            "line": 320
           },
           {
             "condition": "on_own_worker",
-            "line": 350
+            "line": 354
           },
           {
             "condition": "guard . as_ref ( ) . is_none_or ( | cached | cached . threads != self . threads )",
-            "line": 454
+            "line": 458
           }
         ],
         "functions": {
           "acquire#1": {
-            "line": 444,
+            "line": 448,
             "lines": 30
           },
           "all_row_chunks#1": {
@@ -12204,7 +12174,7 @@
             "lines": 16
           },
           "callback#1": {
-            "line": 160,
+            "line": 164,
             "lines": 6
           },
           "chunk#1": {
@@ -12216,19 +12186,19 @@
             "lines": 3
           },
           "deterministic#1": {
-            "line": 410,
+            "line": 414,
             "lines": 3
           },
           "drop#1": {
-            "line": 294,
+            "line": 298,
             "lines": 3
           },
           "drop#2": {
-            "line": 344,
+            "line": 348,
             "lines": 16
           },
           "group_blocks#1": {
-            "line": 201,
+            "line": 205,
             "lines": 66
           },
           "groups_mut#1": {
@@ -12236,27 +12206,27 @@
             "lines": 21
           },
           "in_place_scope#1": {
-            "line": 429,
+            "line": 433,
             "lines": 12
           },
-          "initialize_reserved_f64_zeros#1": {
+          "initialize_reserved#1": {
             "line": 88,
-            "lines": 16
+            "lines": 20
           },
           "install#1": {
-            "line": 335,
+            "line": 339,
             "lines": 6
           },
           "install#2": {
-            "line": 386,
+            "line": 390,
             "lines": 7
           },
           "install#3": {
-            "line": 418,
+            "line": 422,
             "lines": 7
           },
           "join#1": {
-            "line": 286,
+            "line": 290,
             "lines": 5
           },
           "new#1": {
@@ -12264,35 +12234,35 @@
             "lines": 6
           },
           "new#2": {
-            "line": 300,
+            "line": 304,
             "lines": 34
           },
           "new#3": {
-            "line": 397,
+            "line": 401,
             "lines": 6
           },
           "reduction_blocks#1": {
-            "line": 107,
+            "line": 111,
             "lines": 23
           },
-          "reserved_zero_plan#1": {
+          "reserved_initialization_plan#1": {
             "line": 61,
             "lines": 4
           },
           "stage_producer#1": {
-            "line": 168,
+            "line": 172,
             "lines": 22
           },
           "stage_try_for_each#1": {
-            "line": 134,
+            "line": 138,
             "lines": 13
           },
           "threads#1": {
-            "line": 378,
+            "line": 382,
             "lines": 7
           },
           "threads#2": {
-            "line": 405,
+            "line": 409,
             "lines": 3
           },
           "trace#1": {
@@ -12300,7 +12270,7 @@
             "lines": 5
           }
         },
-        "production_lines": 401
+        "production_lines": 405
       },
       "crates/fereg-core/src/ppml/bias.rs": {
         "chunk_candidates": [],
@@ -20848,7 +20818,7 @@
         "dispatch_candidates": 1247,
         "files_over_1500": 15,
         "functions_over_150": 61,
-        "production_lines": 95417
+        "production_lines": 95421
       },
       "fereg-plugin": {
         "chunk_candidates": 3,

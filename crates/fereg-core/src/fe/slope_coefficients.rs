@@ -91,7 +91,7 @@ fn observation_bank<R: crate::memory::VecReservation>(
     if result.capacity() != rows {
         return Err(allocation());
     }
-    crate::parallel::initialize_reserved_f64_zeros(&mut result, rows);
+    crate::parallel::initialize_reserved(&mut result, rows, 0.0_f64);
     Ok(result)
 }
 

@@ -1551,6 +1551,32 @@ failures were repaired and retained. No wall-time improvement is asserted.
 See [validation](VALIDATION.md#h6-owned-load-hints-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-load-hint.json).
 
+Item 6a declaration (parent `d34359b5`): initialize the already reserved
+membership observation bank on the installed team using the existing safe
+indexed-collection helper, generalized to copied scalar values. Keep the same
+fallible reservation, actual-capacity accounting, scatter destinations and row
+order. This removes the serial initialization bottleneck, not the overwritten
+writes: safe mutable scatter slices still require initialized elements, so the
+bank receives the same 8N zero bytes and 8N scatter bytes on a 64-bit host.
+No extra observation bank, unsafe conversion, arithmetic or solver decision is
+introduced. Witnesses cover pointer/capacity preservation for f64 and usize,
+exact serial/parallel membership and every optional reservation failure, full
+runtime checks, exact plugin replay and licensed preparation transactions.
+The candidate marker and identity/drop-reason representations remain separate
+changes; timing stays at the complete H boundary.
+
+Item 6a result: membership first-touch now uses installed-team indexed
+collection into its existing fallibly reserved bank. Ten focused storage and
+membership tests, the full suite (1,687 Rust executions), universal Mac checks,
+73 exact replay cases, 292 worker checks and seventeen licensed fixtures pass.
+Allocation identity/capacity, scatter order, scientific bits and solver
+signatures are unchanged. Four core production lines are added; dispatch and
+size-violation counts are unchanged. The 8N-byte zero writes remain before the
+8N-byte scatter writes; no extra observation bank is introduced. No failed
+repair or timing gain is claimed. See
+[validation](VALIDATION.md#h6-membership-initialization-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-initialization.json).
+
 ### H7. Small-input fixed cost (check only)
 
 The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio

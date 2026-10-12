@@ -236,6 +236,15 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H6 item 6a parallelizes membership-bank initialization with the existing
+installed-team policy and reserved storage. All 73 exact replay cases,
+292 worker checks and seventeen licensed fixtures pass; scatter order and
+solver signatures remain exact. The zero and scatter writes still total 16N
+bytes on a 64-bit host, with no additional observation bank. Four production
+lines are added, and no timing gain is claimed before the H boundary. See
+[validation](VALIDATION.md#h6-membership-initialization-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-initialization.json).
+
 H6 item 1 avoids same-call hint rescans by keeping early OLS FE columns owned
 until authoritative preparation. Full unweighted transfers reuse their exact
 encodings; weighted/classified, borrowed and PPML hints remain checked. All

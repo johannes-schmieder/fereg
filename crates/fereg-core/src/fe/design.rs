@@ -299,7 +299,7 @@ fn parallel_level_index<R: LevelIndexReservation>(
         offsets.push(offsets[level].checked_add(size)?);
     }
     let mut observations = optional_level_storage(codes.len(), reservation)?;
-    observations.resize(codes.len(), 0_usize);
+    crate::parallel::initialize_reserved(&mut observations, codes.len(), 0_usize);
     let mut tail = observations.as_mut_slice();
     for level in 0..levels {
         for block in 0..blocks {

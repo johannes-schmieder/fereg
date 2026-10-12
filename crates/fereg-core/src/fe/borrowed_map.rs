@@ -7563,7 +7563,7 @@ fn reserved_zeros<R: WorkspaceReservation>(
             "borrowed MAP workspace reservation returned insufficient capacity",
         ));
     }
-    crate::parallel::initialize_reserved_f64_zeros(&mut output, elements);
+    crate::parallel::initialize_reserved(&mut output, elements, 0.0_f64);
     Ok(output)
 }
 

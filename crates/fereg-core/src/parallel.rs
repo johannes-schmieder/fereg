@@ -58,7 +58,7 @@ impl StagePlan {
     }
 }
 
-fn reserved_zero_plan(elements: usize) -> StagePlan {
+fn reserved_initialization_plan(elements: usize) -> StagePlan {
     let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
     StagePlan::new(elements as u128, elements, workers)
 }
@@ -85,9 +85,13 @@ pub(crate) fn all_row_chunks(
 /// Initialize an empty, already reserved numeric bank without reallocating.
 /// The owner retains its fallible reservation and admission checks. Parallel
 /// first-touch uses only an installed team; no global pool is initialized.
-pub(crate) fn initialize_reserved_f64_zeros(output: &mut Vec<f64>, elements: usize) {
+pub(crate) fn initialize_reserved<T: Copy + Send + Sync>(
+    output: &mut Vec<T>,
+    elements: usize,
+    value: T,
+) {
     debug_assert!(output.is_empty() && output.capacity() >= elements);
-    let plan = reserved_zero_plan(elements);
+    let plan = reserved_initialization_plan(elements);
     if plan.lanes > 1 {
         // Indexed collection owns initialization safely. The minimum leaf
         // length caps concurrent leaves at the admitted stage lanes, though
@@ -95,10 +99,10 @@ pub(crate) fn initialize_reserved_f64_zeros(output: &mut Vec<f64>, elements: usi
         (0..elements)
             .into_par_iter()
             .with_min_len(plan.chunk(elements))
-            .map(|_| 0.0)
+            .map(|_| value)
             .collect_into_vec(output);
     } else {
-        output.resize(elements, 0.0);
+        output.resize(elements, value);
     }
 }
 
@@ -476,12 +480,12 @@ impl ThreadTeam {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn reserved_zero_initialization_uses_installed_lanes_and_preserves_storage() {
+    fn reserved_initialization_uses_installed_lanes_and_preserves_storage() {
         assert!(rayon::current_thread_index().is_none());
-        assert_eq!(super::reserved_zero_plan(262_147).lanes, 1);
+        assert_eq!(super::reserved_initialization_plan(262_147).lanes, 1);
         let check = |workers| {
             for elements in [0, 1, 16_385, 65_536, 262_147] {
-                let plan = super::reserved_zero_plan(elements);
+                let plan = super::reserved_initialization_plan(elements);
                 assert_eq!(
                     plan.lanes,
                     super::StagePlan::new(elements as u128, elements, workers).lanes
@@ -491,11 +495,20 @@ mod tests {
                 values.try_reserve_exact(elements).unwrap();
                 let pointer = values.as_ptr();
                 let capacity = values.capacity();
-                super::initialize_reserved_f64_zeros(&mut values, elements);
+                super::initialize_reserved(&mut values, elements, 0.0_f64);
                 assert_eq!(values.as_ptr(), pointer);
                 assert_eq!(values.capacity(), capacity);
                 assert_eq!(values.len(), elements);
                 assert!(values.iter().all(|value| value.to_bits() == 0));
+                let mut indices = Vec::new();
+                indices.try_reserve_exact(elements).unwrap();
+                let pointer = indices.as_ptr();
+                let capacity = indices.capacity();
+                super::initialize_reserved(&mut indices, elements, 0_usize);
+                assert_eq!(indices.as_ptr(), pointer);
+                assert_eq!(indices.capacity(), capacity);
+                assert_eq!(indices.len(), elements);
+                assert!(indices.iter().all(|&value| value == 0));
             }
         };
         check(1);

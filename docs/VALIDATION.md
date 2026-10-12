@@ -14,6 +14,43 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H6 membership initialization, 2026-10-12
+
+H6 item 6a initializes the membership observation bank through the existing
+safe indexed-collection helper, generalized from f64 zeroes to copied scalar
+values. It uses the installed team's scheduling policy and the same fallible
+reservation and actual-capacity admission. Scatter destinations and per-level
+observation order, numerical kernels, solver signatures, requested tolerances,
+certificates and sample/rank/omission/separation decisions remain unchanged.
+
+Ten focused checks pass: f64/usize initialization at empty, single-element and
+chunk-boundary lengths outside a pool and at 1/4/16 workers preserves pointer,
+capacity and bits; serial/parallel membership, optional reservation failures,
+invalid codes, excess capacity and high-cardinality admission remain exact.
+The full suite passes 1,687 Rust executions in 62 invocations and 200 Python
+tests with 13 optional dependency skips. Universal Mac ABI/load/guard checks,
+73 exact plugin replay cases, 292 worker checks and seventeen licensed
+preparation/FE/weight/memory/output/transaction fixtures pass. The expected
+Mac Linux-ELF audit skip remains; no Linux or Windows claim follows.
+
+This parallelizes the serial fill but does not remove its writes: safe mutable
+scatter slices require initialization, so the bank still receives 8N zero
+bytes followed by 8N scatter bytes on a 64-bit host. There is no extra
+observation bank, unsafe conversion or new allocation. Core production grows
+four lines; dispatch and size-violation counts are unchanged. No unsuccessful
+repair occurred. Candidate markers and complete-sample drop reasons remain
+separate H6 changes. Timing evidence is deferred to the whole-H Mac boundary.
+
+Candidate plugin SHA-256:
+`65ce7a7925bc16f9a7c82e6211a35d92914e148d92196b451ca3a38326c0b6ab`;
+parent plugin: `fc315ad83d18f6074375dd16b93e9cb0d4318852f3bd3e91b5644dbadeaa54c7`.
+Raw source, plugins and checks remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-h6/initialization-validation.tar.gz`
+(25,442,866 bytes, SHA-256
+`d4a3ebdf2c7b6b9269e21e679354408758dae008af70df6be8c9a730fde8f592`).
+The [compact record](../bench/results/h-20261013-h6-initialization.json)
+retains source identities, validation and limitations.
+
 ## H6 owned load hints, 2026-10-12
 
 H6 item 1 moves early OLS categorical columns into a private immutable owner
