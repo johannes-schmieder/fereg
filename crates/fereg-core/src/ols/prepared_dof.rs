@@ -701,7 +701,7 @@ mod tests {
         };
         let raw_weights = weight_values(weights);
         let loaded = LoadedOlsInput {
-            candidate: vec![true; n],
+            candidate: vec![true; n].into(),
             outcome: loaded_column(vec![1.0; n]),
             numeric_sources: sources_with_codes
                 .iter()

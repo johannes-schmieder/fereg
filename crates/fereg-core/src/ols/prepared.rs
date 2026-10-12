@@ -73,7 +73,7 @@ pub struct LoadedNumericColumn {
 /// entries in `numeric_sources`; no separate observation-scale FE copy exists.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoadedOlsInput {
-    pub candidate: Vec<bool>,
+    pub candidate: crate::data::UniformValues<bool>,
     pub outcome: LoadedNumericColumn,
     pub numeric_sources: Vec<(SourceId, LoadedNumericColumn)>,
     pub analytic_weight: Option<LoadedNumericColumn>,
@@ -693,7 +693,7 @@ fn prepare_numeric_sample(
         }
     };
     let input = NumericPreparationInput {
-        candidate: &loaded.candidate,
+        candidate: loaded.candidate.view(),
         outcome: NumericColumnView::with_missing(&loaded.outcome.values, &loaded.outcome.missing),
         regressors: &regressor_views,
         weights,
@@ -830,7 +830,7 @@ fn is_full_retained_unweighted_sample(loaded: &LoadedOlsInput) -> bool {
     // check still enters the authoritative classification path.
     let complete = |range: std::ops::Range<usize>| {
         let (start, end) = (range.start, range.end);
-        loaded.candidate[range].iter().all(|candidate| *candidate)
+        loaded.candidate.view().slice(range).all_true()
             && loaded.outcome.missing[start..end]
                 .iter()
                 .all(|missing| !*missing)
@@ -887,11 +887,7 @@ fn take_classified_sample(
     cluster_sources: &[SourceId],
 ) -> Result<PreparedNumericSample> {
     let n_original = loaded.candidate.len();
-    let n_candidate = loaded
-        .candidate
-        .iter()
-        .filter(|candidate| **candidate)
-        .count();
+    let n_candidate = loaded.candidate.view().count_true();
     let mut drop_reasons = Vec::new();
     drop_reasons
         .try_reserve_exact(n_original)
@@ -912,7 +908,7 @@ fn take_classified_sample(
             .map(|(_, column)| NumericColumnView::with_missing(&column.values, &column.missing)),
     );
     let input = NumericPreparationInput {
-        candidate: &loaded.candidate,
+        candidate: loaded.candidate.view(),
         outcome: NumericColumnView::with_missing(&loaded.outcome.values, &loaded.outcome.missing),
         regressors: &regressor_views,
         weights: loaded_weight(&loaded).map_or(WeightInput::None, |(kind, column)| {
@@ -1747,7 +1743,7 @@ mod tests {
         let request = request(1, true);
         for n in [0, 1, 9] {
             let loaded = LoadedOlsInput {
-                candidate: vec![true; n],
+                candidate: vec![true; n].into(),
                 outcome: column(&vec![-0.0; n], &vec![false; n]),
                 numeric_sources: vec![(
                     SourceId::new(1).unwrap(),
@@ -1791,7 +1787,7 @@ mod tests {
         let negative_zero = -0.0_f64;
         let tiny = f64::from_bits(1);
         let loaded = LoadedOlsInput {
-            candidate: vec![false, true, true, true, true, true],
+            candidate: vec![false, true, true, true, true, true].into(),
             outcome: column(
                 &[99.0, negative_zero, 2.0, 3.0, 4.0, tiny],
                 &[false, false, true, false, false, false],
@@ -1860,7 +1856,7 @@ mod tests {
     fn owned_complete_sample_fast_path_matches_borrowed_preparation_exactly() {
         let request = request(2, true);
         let loaded = LoadedOlsInput {
-            candidate: vec![true; 5],
+            candidate: vec![true; 5].into(),
             outcome: column(&[1.0, -0.0, 3.5, f64::from_bits(1), -7.0], &[false; 5]),
             numeric_sources: vec![
                 (
@@ -1887,7 +1883,7 @@ mod tests {
             let request = request(width, true);
             let n = 32_771;
             let full = LoadedOlsInput {
-                candidate: vec![true; n],
+                candidate: vec![true; n].into(),
                 outcome: LoadedNumericColumn {
                     values: vec![1.0; n],
                     missing: vec![false; n],
@@ -1912,17 +1908,17 @@ mod tests {
                 if case > 0 {
                     loaded.numeric_sources[width - 1].1.values[71] = f64::NAN;
                     loaded.numeric_sources[width - 1].1.missing[71] = case == 1;
-                    loaded.candidate[71] = case != 3;
+                    loaded.candidate.explicit_mut().unwrap()[71] = case != 3;
                 }
                 if case == 4 {
-                    loaded.candidate.fill(false);
+                    loaded.candidate.explicit_mut().unwrap().fill(false);
                 }
                 if case == 5 {
                     loaded.outcome.missing.fill(true);
                 }
                 if case == 6 {
                     for row in 0..n {
-                        loaded.candidate[row] = row % 13 == 0;
+                        loaded.candidate.explicit_mut().unwrap()[row] = row % 13 == 0;
                     }
                 }
                 let serial = prepare_model(&request, &[], &loaded, false);
@@ -1952,7 +1948,7 @@ mod tests {
         let request = request(1, true);
         for restricted in [false, true] {
             let loaded = LoadedOlsInput {
-                candidate: vec![!restricted, true, true, true, !restricted, true],
+                candidate: vec![!restricted, true, true, true, !restricted, true].into(),
                 outcome: column(
                     &[0.0, -0.0, 3.0, f64::from_bits(1), 5.0, f64::MAX],
                     &[false; 6],
@@ -2000,7 +1996,10 @@ mod tests {
             });
             for case in 0..5 {
                 let mut loaded = LoadedOlsInput {
-                    candidate: (0..n).map(|row| case != 2 || row % 3 == 0).collect(),
+                    candidate: (0..n)
+                        .map(|row| case != 2 || row % 3 == 0)
+                        .collect::<Vec<_>>()
+                        .into(),
                     outcome: LoadedNumericColumn {
                         values: vec![-0.0; n],
                         missing: vec![false; n],
@@ -2047,7 +2046,7 @@ mod tests {
                     // missing outcomes, and chooses the first original row.
                     weight.values[2] = -1.0;
                     weight.values[16_386] = -2.0;
-                    loaded.candidate[2] = case != 4;
+                    loaded.candidate.explicit_mut().unwrap()[2] = case != 4;
                 }
                 match kind {
                     WeightKind::Analytic => loaded.analytic_weight = Some(weight),
@@ -2110,7 +2109,7 @@ mod tests {
             let request = two_way_singleton_request(keep);
             for excluded in [false, true] {
                 let mut loaded = two_way_singleton_input();
-                loaded.candidate[0] = !excluded;
+                loaded.candidate.explicit_mut().unwrap()[0] = !excluded;
                 loaded.outcome.missing[1] = true;
                 assert_eq!(
                     prepare_model(&request, &[], &loaded, false).unwrap(),
@@ -2124,7 +2123,7 @@ mod tests {
     fn numeric_factor_main_effects_preserve_slots_factorize_once_and_allow_dual_use() {
         let request = mixed_numeric_factor_request();
         let loaded = LoadedOlsInput {
-            candidate: vec![false, true, true, true, true, true],
+            candidate: vec![false, true, true, true, true, true].into(),
             outcome: column(
                 &[99.0, 1.0, 2.0, 3.0, 4.0, 5.0],
                 &[false, false, false, true, false, false],
@@ -2219,7 +2218,7 @@ mod tests {
         for invalid_value in [-1.0, 1.5] {
             let request = mixed_numeric_factor_request();
             let loaded = LoadedOlsInput {
-                candidate: vec![false, true],
+                candidate: vec![false, true].into(),
                 outcome: column(&[1.0, 2.0], &[false, false]),
                 numeric_sources: vec![(
                     SourceId::new(1).expect("source"),
@@ -2233,7 +2232,7 @@ mod tests {
                 .expect("off-candidate invalid factor value");
 
             let mut candidate_invalid = loaded;
-            candidate_invalid.candidate[0] = true;
+            candidate_invalid.candidate.explicit_mut().unwrap()[0] = true;
             let error = prepare_model(&request, &[], &candidate_invalid, false)
                 .expect_err("candidate invalid factor value");
             assert_eq!(error.code, ErrorCode::InvalidFactor);
@@ -2257,7 +2256,7 @@ mod tests {
     fn all_categorical_interactions_preserve_slots_and_evaluate_without_materialization() {
         let request = all_categorical_interaction_request();
         let loaded = LoadedOlsInput {
-            candidate: vec![true; 5],
+            candidate: vec![true; 5].into(),
             outcome: column(
                 &[10.0, 11.0, 12.0, 13.0, 14.0],
                 &[false, false, false, true, true],
@@ -2337,7 +2336,7 @@ mod tests {
     fn categorical_interaction_values_are_stable_under_row_permutation() {
         let request = all_categorical_interaction_request();
         let make_loaded = |order: &[usize]| LoadedOlsInput {
-            candidate: vec![true; order.len()],
+            candidate: vec![true; order.len()].into(),
             outcome: column(
                 &order
                     .iter()
@@ -2409,7 +2408,7 @@ mod tests {
     #[test]
     fn empty_and_all_dropped_samples_are_valid_preparation_results() {
         let no_fe = LoadedOlsInput {
-            candidate: vec![true, true],
+            candidate: vec![true, true].into(),
             outcome: column(&[1.0, 2.0], &[false; 2]),
             numeric_sources: Vec::new(),
             analytic_weight: None,
@@ -2425,7 +2424,7 @@ mod tests {
         assert!(design.effects().is_empty());
 
         let empty = LoadedOlsInput {
-            candidate: Vec::new(),
+            candidate: Vec::new().into(),
             outcome: column(&[], &[]),
             numeric_sources: Vec::new(),
             analytic_weight: None,
@@ -2438,7 +2437,7 @@ mod tests {
         assert!(prepared.model.columns.is_empty());
 
         let dropped = LoadedOlsInput {
-            candidate: vec![true, false],
+            candidate: vec![true, false].into(),
             outcome: column(&[1.0, 2.0], &[true, false]),
             numeric_sources: Vec::new(),
             analytic_weight: None,
@@ -2517,7 +2516,7 @@ mod tests {
         let tiny = f64::from_bits(1);
         let huge = 1.0e300_f64;
         let loaded = LoadedOlsInput {
-            candidate: vec![false, true, true, true, true, true],
+            candidate: vec![false, true, true, true, true, true].into(),
             outcome: column(&[9.0, 1.0, 2.0, 3.0, 4.0, 5.0], &[false; 6]),
             numeric_sources: vec![(
                 SourceId::new(1).expect("id"),
@@ -2569,7 +2568,7 @@ mod tests {
             role: OlsInputRole::AnalyticWeight,
         });
         let off_candidate = LoadedOlsInput {
-            candidate: vec![false, true],
+            candidate: vec![false, true].into(),
             outcome: column(&[1.0, 2.0], &[false; 2]),
             numeric_sources: Vec::new(),
             analytic_weight: Some(column(&[-1.0, 2.0], &[false; 2])),
@@ -2584,7 +2583,7 @@ mod tests {
         );
 
         let mut candidate_negative = off_candidate;
-        candidate_negative.candidate = vec![true, true];
+        candidate_negative.candidate = vec![true, true].into();
         let error = prepare_model(&request, &[], &candidate_negative, false)
             .expect_err("candidate-negative analytic weight");
         assert_eq!(error.code, ErrorCode::NegativeWeight);
@@ -2612,7 +2611,7 @@ mod tests {
         );
 
         let unbound_loaded = LoadedOlsInput {
-            candidate: vec![true],
+            candidate: vec![true].into(),
             outcome: column(&[1.0], &[false]),
             numeric_sources: Vec::new(),
             analytic_weight: Some(column(&[1.0], &[false])),
@@ -2636,7 +2635,7 @@ mod tests {
         });
         let maximum = f64::from(u32::MAX);
         let loaded = LoadedOlsInput {
-            candidate: vec![true, true, true, true, false],
+            candidate: vec![true, true, true, true, false].into(),
             outcome: column(&[1.0, 2.0, 3.0, 4.0, 5.0], &[false; 5]),
             numeric_sources: Vec::new(),
             analytic_weight: None,
@@ -2695,7 +2694,7 @@ mod tests {
                 role: OlsInputRole::FrequencyWeight,
             });
             let loaded = LoadedOlsInput {
-                candidate: vec![true],
+                candidate: vec![true].into(),
                 outcome: column(&[1.0], &[false]),
                 numeric_sources: Vec::new(),
                 analytic_weight: None,
@@ -2749,7 +2748,7 @@ mod tests {
         );
 
         let unbound_loaded = LoadedOlsInput {
-            candidate: vec![true],
+            candidate: vec![true].into(),
             outcome: column(&[1.0], &[false]),
             numeric_sources: Vec::new(),
             analytic_weight: None,
@@ -2774,7 +2773,7 @@ mod tests {
         let tiny = f64::from_bits(1);
         let huge = 1.0e300_f64;
         let loaded = LoadedOlsInput {
-            candidate: vec![false, true, true, true],
+            candidate: vec![false, true, true, true].into(),
             outcome: column(&[1.0, 2.0, 3.0, 4.0], &[false; 4]),
             numeric_sources: Vec::new(),
             analytic_weight: None,
@@ -2822,7 +2821,7 @@ mod tests {
                 role: OlsInputRole::ProbabilityWeight,
             });
             let loaded = LoadedOlsInput {
-                candidate: vec![true],
+                candidate: vec![true].into(),
                 outcome: column(&[1.0], &[false]),
                 numeric_sources: Vec::new(),
                 analytic_weight: None,
@@ -2878,7 +2877,7 @@ mod tests {
         }
 
         let unbound_loaded = LoadedOlsInput {
-            candidate: vec![true],
+            candidate: vec![true].into(),
             outcome: column(&[1.0], &[false]),
             numeric_sources: Vec::new(),
             analytic_weight: None,
@@ -2933,7 +2932,7 @@ mod tests {
         ];
         request.keep_singletons = true;
         let loaded = LoadedOlsInput {
-            candidate: vec![false, true, true, true, true, true],
+            candidate: vec![false, true, true, true, true, true].into(),
             outcome: column(&[0.0, f64::NAN, 2.0, 3.0, 4.0, 5.0], &[false; 6]),
             numeric_sources: vec![
                 (
@@ -3038,7 +3037,7 @@ mod tests {
 
     fn two_way_singleton_input() -> LoadedOlsInput {
         LoadedOlsInput {
-            candidate: vec![true; 9],
+            candidate: vec![true; 9].into(),
             outcome: column(&[1.2, 1.8, 2.4, 3.1, 3.7, 4.0, 4.5, 5.0, 5.6], &[false; 9]),
             numeric_sources: vec![
                 (
@@ -3305,7 +3304,7 @@ mod tests {
         for rows in [0, 37, 32_771] {
             for width in [1, 3, 20] {
                 let input = LoadedOlsInput {
-                    candidate: vec![true; rows],
+                    candidate: vec![true; rows].into(),
                     outcome: column(&vec![1.0; rows], &vec![false; rows]),
                     numeric_sources: (1..=width)
                         .map(|source| {
@@ -3324,7 +3323,7 @@ mod tests {
                     if rows > 0 {
                         let last_source = &mut input.numeric_sources[width as usize - 1].1;
                         match case {
-                            1 => input.candidate[rows - 1] = false,
+                            1 => input.candidate.explicit_mut().unwrap()[rows - 1] = false,
                             2 => input.outcome.missing[rows / 2] = true,
                             3 => input.outcome.values[0] = f64::INFINITY,
                             4 => last_source.missing[rows - 1] = true,
@@ -3367,7 +3366,7 @@ mod tests {
             saved_name: String::new(),
         });
         let input = LoadedOlsInput {
-            candidate: vec![true; 8],
+            candidate: vec![true; 8].into(),
             outcome: column(&[1., 3., 2., 5., 4., 7., 6., 9.], &[false; 8]),
             numeric_sources: vec![
                 (
@@ -3424,7 +3423,7 @@ mod tests {
                         let (mut request, mut input) = load_columns_fixture();
                         match case {
                             1 => input.numeric_sources[1].1.missing[0] = true,
-                            2 => input.candidate[0] = false,
+                            2 => input.candidate.explicit_mut().unwrap()[0] = false,
                             3 => input.numeric_sources[0].1.missing[0] = true,
                             4 => input.outcome.missing[0] = true,
                             5 | 6 | 12 => {
@@ -3500,7 +3499,7 @@ mod tests {
             );
             assert_eq!(capsule.encoding_bytes() == 0, case == 4);
             match case {
-                1 => input.candidate[0] = false,
+                1 => input.candidate.explicit_mut().unwrap()[0] = false,
                 2 => request.absorbed_terms.clear(),
                 3 => input.outcome.missing[0] = true,
                 5 => {
@@ -3615,7 +3614,7 @@ mod tests {
             saved_name: String::new(),
         });
         let input = LoadedOlsInput {
-            candidate: vec![true; 8],
+            candidate: vec![true; 8].into(),
             outcome: column(&[1., 3., 2., 5., 4., 7., 6., 9.], &[false; 8]),
             numeric_sources: vec![
                 (
@@ -3659,7 +3658,7 @@ mod tests {
                 let mut request = request.clone();
                 match case {
                     1 => loaded.numeric_sources[1].1.missing[0] = true,
-                    2 => loaded.candidate[0] = false,
+                    2 => loaded.candidate.explicit_mut().unwrap()[0] = false,
                     3 => loaded.numeric_sources[0].1.missing[0] = true,
                     4 => loaded.numeric_sources[0].1.values[0] = 1.,
                     5 => {
@@ -3738,7 +3737,7 @@ mod tests {
                     saved_name: String::new(),
                 }];
                 let input = LoadedOlsInput {
-                    candidate: vec![true; n],
+                    candidate: vec![true; n].into(),
                     outcome: column(&vec![1.0; n], &vec![false; n]),
                     numeric_sources: (1..=width as u32)
                         .map(|j| {
@@ -3766,7 +3765,7 @@ mod tests {
                 for case in 0..6 {
                     let mut input = input.clone();
                     match case {
-                        1 => input.candidate[0] = false,
+                        1 => input.candidate.explicit_mut().unwrap()[0] = false,
                         2 => input.outcome.missing[1] = true,
                         3 => input.numeric_sources[width - 1].1.values[1] = f64::NAN,
                         4 => input.numeric_sources[width - 1].1.values[n / 2] = 1e12,
@@ -3834,7 +3833,7 @@ mod tests {
         request.model.terms.extend([interaction, kept]);
         let n = 97;
         let mut input = LoadedOlsInput {
-            candidate: vec![true; n],
+            candidate: vec![true; n].into(),
             outcome: column(&vec![1.0; n], &vec![false; n]),
             numeric_sources: vec![
                 (
@@ -3863,7 +3862,7 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        input.candidate[0] = false;
+        input.candidate.explicit_mut().unwrap()[0] = false;
         input.numeric_sources[1].1.values[0] = -1.5;
         input.numeric_sources[0].1.missing[3] = true;
         (request, input)
@@ -3941,7 +3940,7 @@ mod tests {
                 saved_name: String::new(),
             }];
             let loaded = LoadedOlsInput {
-                candidate: vec![true; n],
+                candidate: vec![true; n].into(),
                 outcome: column(&vec![1.0; n], &vec![false; n]),
                 numeric_sources: vec![(
                     SourceId::new(1).unwrap(),
@@ -3996,7 +3995,7 @@ mod tests {
                         codes[n / 2] = 1e12;
                     }
                     let mut loaded = LoadedOlsInput {
-                        candidate: vec![true; n],
+                        candidate: vec![true; n].into(),
                         outcome: column(
                             &(0..n).map(|r| (r % 97) as f64).collect::<Vec<_>>(),
                             &vec![false; n],
@@ -4011,7 +4010,7 @@ mod tests {
                     };
                     for exclusions in [false, true] {
                         if exclusions {
-                            loaded.candidate[0] = false;
+                            loaded.candidate.explicit_mut().unwrap()[0] = false;
                             loaded.outcome.missing[1] = true;
                         }
                         let finish = |reuse| {
@@ -4081,7 +4080,7 @@ mod tests {
                             .map(|id| SourceId::new(id).unwrap())
                             .collect();
                         let mut loaded = LoadedOlsInput {
-                            candidate: vec![true; n],
+                            candidate: vec![true; n].into(),
                             outcome: column(
                                 &(0..n).map(|r| (r % 97) as f64).collect::<Vec<_>>(),
                                 &vec![false; n],
@@ -4132,7 +4131,7 @@ mod tests {
                             });
                         }
                         if changed_sample {
-                            loaded.candidate[0] = false;
+                            loaded.candidate.explicit_mut().unwrap()[0] = false;
                             loaded.outcome.missing[1] = true;
                             loaded.numeric_sources[0].1.missing[3] = true;
                             loaded.numeric_sources[1].1.values[10] = 1e12;
@@ -4168,7 +4167,7 @@ mod tests {
             role: OlsInputRole::FrequencyWeight,
         });
         let loaded = LoadedOlsInput {
-            candidate: vec![true, true],
+            candidate: vec![true, true].into(),
             outcome: column(&[1.0, 2.0], &[false; 2]),
             numeric_sources: vec![(
                 SourceId::new(1).expect("source"),
@@ -4240,7 +4239,7 @@ mod tests {
             saved_name: String::new(),
         }];
         let loaded = LoadedOlsInput {
-            candidate: vec![true; 3],
+            candidate: vec![true; 3].into(),
             outcome: column(&[1.0, 2.0, 3.0], &[false; 3]),
             numeric_sources: vec![(
                 SourceId::new(1).expect("source"),
@@ -4324,7 +4323,7 @@ mod tests {
             saved_name: String::new(),
         }];
         let loaded = LoadedOlsInput {
-            candidate: vec![true, true],
+            candidate: vec![true, true].into(),
             outcome: column(&[1.0, 2.0], &[false; 2]),
             numeric_sources: vec![(
                 SourceId::new(1).expect("source"),
@@ -4526,7 +4525,7 @@ mod tests {
             .collect();
         request.keep_singletons = true;
         let loaded = LoadedOlsInput {
-            candidate: vec![true; 6],
+            candidate: vec![true; 6].into(),
             outcome: column(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], &[false; 6]),
             numeric_sources: vec![(source, column(&[1.0, 1.0, 2.0, 2.0, 3.0, 3.0], &[false; 6]))],
             analytic_weight: None,

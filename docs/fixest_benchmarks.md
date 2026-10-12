@@ -236,6 +236,16 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H6 item 6b removes the all-candidate input's N-byte marker allocation/fill and
+repeated all/count scans. Explicit masks keep their SPI order and capacity;
+PPML restores the complete original owner after rebasing. Future-mask admission
+remains conservative. All 73 replay cases are exact, 292 worker checks and
+seventeen licensed fixtures pass, with unchanged scientific decisions and
+solver signatures. Core adds 71 production lines and plugin 23. No timing gain
+is claimed before the H boundary. See
+[validation](VALIDATION.md#h6-uniform-candidate-markers-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-candidate-mask.json).
+
 H6 item 5b removes the complete OLS sample's N-byte drop-reason bank with
 logical uniform storage. Actual row deletion materializes it under unchanged
 compaction admission; classified masks and PPML mutable ledgers retain explicit

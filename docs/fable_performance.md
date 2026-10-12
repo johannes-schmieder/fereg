@@ -1650,6 +1650,41 @@ change and no timing claim. See
 [validation](VALIDATION.md#h6-uniform-drop-reasons-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-drop-mask.json).
 
+Item 6b declaration (parent `71bb1d4d`): use the same repeated/explicit
+owner for candidate markers. An all-candidate input keeps a repeated true
+value with no N-byte allocation or fill. Add a concrete borrowed logical view
+so classifiers, chunked SPI reads and PPML adjustments consume the same
+representation without materialization or a second classification path.
+Explicit markers retain their reservation point and SPI read/write order;
+all-candidate chunked loading keeps its existing no-mask path. Repeated true
+or false is raw data, never a validation receipt: dimensions, metadata,
+source-use, weight-domain, factor and exclusion precedence remain unchanged.
+Logical reads do not allocate. PPML stages its existing explicit original-axis
+mask, swaps the complete owner and restores its variant, pointer and capacity
+before propagating any returned error, alongside probability weights. Count
+actual retained capacities but preserve loading, compaction and PPML future
+mask forecasts. No numerical kernel, solver signature, requested tolerance,
+certificate or sample/rank/omission/separation rule changes. Witnesses compare
+repeated and explicit true/false markers, malformed and excluded inputs,
+numeric/string scalar/batched SPI paths and errors, memory boundaries and
+PPML generation restoration; full runtime checks, exact plugin replay and
+licensed transactions remain required. Timing stays at the complete H boundary.
+
+Item 6b result: all-candidate inputs keep a repeated true value, removing
+the N-byte marker allocation/fill and allowing constant-time logical all/count
+checks. Explicit masks retain SPI ordering and capacity; PPML restores the
+entire original owner and weight bits before returning. Future-mask forecasts
+stay unchanged. All 78 focused/mapped executions, Clippy, the full suite
+(1,707 Rust executions), universal Mac checks, 73 exact plugin cases,
+292 worker checks and seventeen licensed fixtures pass. Independent review
+approves the borrowed-view, exclusion and restoration boundaries. Core adds
+71 production lines and plugin 23; size-violation, dispatch and chunk counts
+are unchanged. Two fixture-adapter compile failures and one incorrect all-false
+PPML fixture expectation are retained; no production scientific repair.
+No timing gain is claimed. See
+[validation](VALIDATION.md#h6-uniform-candidate-markers-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-candidate-mask.json).
+
 ### H7. Small-input fixed cost (check only)
 
 The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio

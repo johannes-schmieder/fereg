@@ -909,7 +909,7 @@ pub(super) mod tests {
             }];
             loaded.numeric_sources[2].1.missing[0] = true;
             loaded.numeric_sources[2].1.missing[6] = true;
-            loaded.candidate[7] = false;
+            loaded.candidate.explicit_mut().unwrap()[7] = false;
             if let Some(role) = role {
                 request.ols.bindings.push(OlsInputBinding {
                     stata_var_position: 6,
@@ -970,7 +970,8 @@ pub(super) mod tests {
         permuted.candidate = permutation
             .iter()
             .map(|row| loaded.candidate[*row])
-            .collect();
+            .collect::<Vec<_>>()
+            .into();
         permuted.outcome.values = permutation
             .iter()
             .map(|row| loaded.outcome.values[*row])
@@ -1175,7 +1176,7 @@ pub(super) mod tests {
             }],
         };
         let loaded = LoadedOlsInput {
-            candidate: vec![true; 8],
+            candidate: vec![true; 8].into(),
             outcome: column(vec![1.0, 2.0, 2.5, 4.0, 5.0, 6.5, 7.0, 8.0]),
             numeric_sources: vec![
                 (x, column(vec![-2.0, -1.0, 0.0, 1.0, -1.5, 0.5, 2.0, 3.0])),

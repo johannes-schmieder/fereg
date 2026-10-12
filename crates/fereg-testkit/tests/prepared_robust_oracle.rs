@@ -653,7 +653,7 @@ fn prepare_continuous_case(
         },
         &[],
         LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded_column(outcome.to_vec()),
             numeric_sources: regressors
                 .iter()
@@ -772,7 +772,7 @@ fn prepare_one_fe_factor_case(csv: &str) -> PreparedOlsData {
         },
         &[],
         LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded_column(outcome),
             numeric_sources: vec![
                 (x_source, loaded_column(x1)),
@@ -838,7 +838,7 @@ fn prepare_repeated_effect_case(outcome: &[f64], x: &[f64], codes: &[u32]) -> Pr
         },
         &[],
         LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded_column(outcome.to_vec()),
             numeric_sources: vec![
                 (x_source, loaded_column(x.to_vec())),

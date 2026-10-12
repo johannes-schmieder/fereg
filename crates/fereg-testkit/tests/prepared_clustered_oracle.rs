@@ -1194,7 +1194,7 @@ fn case_inputs(
             clusters: cluster_terms,
         },
         LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded_column(outcome.to_vec()),
             numeric_sources,
             analytic_weight: matches!(weights, CaseWeights::Analytic(_))

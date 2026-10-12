@@ -1399,7 +1399,7 @@ fn with_certified_fixture_probe(
         &mut spi,
     )
     .expect("PPML fixture input");
-    let adjustment = load_adjustment(action.adjustment, &loaded.candidate, &mut spi)
+    let adjustment = load_adjustment(action.adjustment, loaded.candidate.view(), &mut spi)
         .expect("PPML fixture adjustment");
     let result = fit_prepared_ppml(
         PreparedPpmlRequestV1 {
@@ -1793,7 +1793,7 @@ fn no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing() {
             &mut spi,
         )
         .expect("N=100,000 loaded input");
-        let adjustment = load_adjustment(action.adjustment, &loaded.candidate, &mut spi)
+        let adjustment = load_adjustment(action.adjustment, loaded.candidate.view(), &mut spi)
             .expect("N=100,000 adjustment");
         let mut memory = action.memory;
         memory.available_bytes = Some(1);

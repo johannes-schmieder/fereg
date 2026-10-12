@@ -1100,7 +1100,7 @@ mod tests {
             &request,
             &[],
             &LoadedOlsInput {
-                candidate: vec![true; 4],
+                candidate: vec![true; 4].into(),
                 outcome: loaded(vec![1.0, 3.0, 4.0, 8.0]),
                 numeric_sources: if with_fe {
                     vec![
@@ -1150,7 +1150,7 @@ mod tests {
             request.model.terms.clear();
             request.bindings.truncate(2);
             let mut input = LoadedOlsInput {
-                candidate: vec![true; n],
+                candidate: vec![true; n].into(),
                 outcome: loaded((0..n).map(|r| (r as f64).cos()).collect()),
                 numeric_sources: Vec::new(),
                 analytic_weight: None,
@@ -1335,7 +1335,7 @@ mod tests {
             &request,
             &[],
             &LoadedOlsInput {
-                candidate: vec![true; 4],
+                candidate: vec![true; 4].into(),
                 outcome: loaded(vec![10.0, 11.0, 12.0, 13.0]),
                 numeric_sources: vec![
                     (g.id, loaded(vec![1.0, 2.0, 2.0, 1.0])),
@@ -1437,7 +1437,7 @@ mod tests {
             let gv: Vec<_> = (0..n).map(|r| (1 + r % 7) as f64).collect();
             let hv: Vec<_> = (0..n).map(|r| (1 + (r / 7) % 3) as f64).collect();
             let input = LoadedOlsInput {
-                candidate: vec![true; n],
+                candidate: vec![true; n].into(),
                 outcome: loaded((0..n).map(|r| r as f64).collect()),
                 numeric_sources: vec![
                     (x.id, loaded(xv.clone())),
@@ -1702,7 +1702,7 @@ mod tests {
                             &request,
                             &[],
                             &LoadedOlsInput {
-                                candidate: vec![true; rows],
+                                candidate: vec![true; rows].into(),
                                 outcome: loaded(
                                     (0..rows).map(|r| ((r + 1) as f64 * 0.11).sin()).collect(),
                                 ),
@@ -1842,7 +1842,7 @@ mod tests {
             &request,
             &[],
             &LoadedOlsInput {
-                candidate: Vec::new(),
+                candidate: Vec::new().into(),
                 outcome: loaded(Vec::new()),
                 numeric_sources: vec![(SourceId::new(1).expect("x"), loaded(Vec::new()))],
                 analytic_weight: None,

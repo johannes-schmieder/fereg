@@ -373,7 +373,7 @@ fn prepare_case(
         clusters: clusters.to_vec(),
     };
     let loaded = LoadedOlsInput {
-        candidate: vec![true; nobs],
+        candidate: vec![true; nobs].into(),
         outcome: loaded_column(case.outcome.clone()),
         numeric_sources,
         analytic_weight: None,

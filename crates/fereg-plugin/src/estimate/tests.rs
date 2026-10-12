@@ -1271,7 +1271,7 @@ fn construction_and_transient_frame_peaks_bound_independent_allocations() {
                         .push(SourceId::new(1).unwrap());
                 }
                 let loaded = LoadedOlsInput {
-                    candidate: vec![true; rows],
+                    candidate: vec![true; rows].into(),
                     outcome: LoadedNumericColumn {
                         values: (0..rows)
                             .map(|i| {
@@ -1512,7 +1512,7 @@ fn inference_residual_overlap_stays_within_existing_frame() {
             missing: vec![false; rows],
         };
         let loaded = LoadedOlsInput {
-            candidate: vec![true; rows],
+            candidate: vec![true; rows].into(),
             outcome,
             numeric_sources,
             analytic_weight: None,
@@ -2260,7 +2260,7 @@ fn candidate_numeric_runs_preserve_coordinates_and_bound_bulk_reads() {
         &[2, 3],
         &mut [&mut values, &mut peer],
         &mut [&mut missing, &mut peer_missing],
-        Some(&candidate),
+        Some((&candidate[..]).into()),
     )
     .expect("candidate run input");
     assert_eq!(
@@ -2314,7 +2314,7 @@ fn candidate_numeric_loading_rejects_bad_shapes_and_polls_empty_runs() {
         &[2],
         &mut [&mut values],
         &mut [&mut missing],
-        Some(&[true; 3])
+        Some((&[true; 3][..]).into())
     )
     .is_err());
     assert_eq!(spi.numeric_reads, 0);
@@ -2327,7 +2327,7 @@ fn candidate_numeric_loading_rejects_bad_shapes_and_polls_empty_runs() {
         &[2],
         &mut [&mut values],
         &mut [&mut missing],
-        Some(&candidate),
+        Some((&candidate[..]).into()),
     )
     .expect_err("excluded scan remains interruptible");
     assert_eq!(error.code, ErrorCode::Interrupted);
@@ -2427,6 +2427,132 @@ fn complete_candidate_universe_skips_candidate_spi_reads() {
     assert_eq!(spi.receipt_complete(), 1.0);
 }
 
+#[test]
+fn candidate_uniform_loader_avoids_marker_storage_for_numeric_and_string_paths() {
+    use fereg_core::data::UniformValues;
+    for strings in [false, true] {
+        for rows in [6, INPUT_CANDIDATE_BATCH_MIN_ROWS + 33] {
+            let (args, mut spi) = fixture(OlsVceKind::Clustered);
+            spi.nobs = rows;
+            spi.data.clear();
+            if strings {
+                spi.string_variables.insert(4);
+            }
+            for row in 1..=rows {
+                for (variable, value) in [
+                    (1, 1.0),
+                    (2, row as f64),
+                    (3, -(row as f64)),
+                    (4, (row % 3) as f64),
+                ] {
+                    spi.data.insert((variable, row), (value, false));
+                }
+                spi.string_data
+                    .insert((4, row), format!("g{}", row % 3).into_bytes());
+            }
+            let action = EstimateActionSpec::parse(&args)
+                .unwrap()
+                .decode_and_validate(&mut spi)
+                .unwrap();
+            let mut raw_spi = spi.clone();
+            let explicit = load_ols_input(&action.request, false, false, &mut raw_spi).unwrap();
+            spi.data.retain(|(variable, _), _| *variable != 1);
+            let mut implicit_spi = spi.clone();
+            let repeated = load_ols_input(&action.request, true, false, &mut implicit_spi).unwrap();
+            assert!(
+                matches!(repeated.candidate, UniformValues::Repeated { len, value: true } if len == rows)
+            );
+            assert!(matches!(explicit.candidate, UniformValues::Explicit(_)));
+            assert_eq!(repeated.candidate, explicit.candidate);
+            assert_eq!(repeated.outcome, explicit.outcome);
+            assert_eq!(repeated.numeric_sources, explicit.numeric_sources);
+            assert_eq!(raw_spi.numeric_reads, implicit_spi.numeric_reads + rows);
+            assert_eq!(implicit_spi.store_calls, 0);
+            if !strings {
+                assert!(implicit_spi
+                    .numeric_batches
+                    .iter()
+                    .all(|(_, _, variables)| variables == &[2, 3, 4]));
+            }
+            let mut no_marker = action.request.clone();
+            no_marker
+                .bindings
+                .retain(|binding| !matches!(binding.role, OlsInputRole::Candidate));
+            assert!(load_ols_input(&no_marker, true, false, &mut spi.clone()).is_ok());
+            let missing = load_ols_input(&no_marker, false, false, &mut spi.clone()).unwrap_err();
+            assert_eq!(missing.code, ErrorCode::InvalidArgument);
+            let mut late = spi.clone();
+            late.data.remove(&(2, rows));
+            assert_eq!(
+                load_ols_input(&action.request, true, false, &mut late)
+                    .unwrap_err()
+                    .message,
+                "test numeric cell is absent"
+            );
+            assert_eq!(late.store_calls, 0);
+            let mut interrupted = spi.clone();
+            interrupted.interrupt_at = Some(interrupted.interrupt_checks + 1);
+            assert_eq!(
+                load_ols_input(&action.request, true, false, &mut interrupted)
+                    .unwrap_err()
+                    .code,
+                ErrorCode::Interrupted
+            );
+            assert_eq!(interrupted.store_calls, 0);
+        }
+    }
+}
+
+#[test]
+fn candidate_uniform_false_chunk_view_skips_reads_but_preserves_shape_and_break_checks() {
+    use fereg_core::data::UniformValuesRef;
+    let (_, mut spi) = fixture(OlsVceKind::Iid);
+    let rows = 2 * INPUT_INTERRUPT_POLL_STRIDE;
+    let mut values = vec![123.0; rows];
+    let mut missing = vec![true; rows];
+    let view = UniformValuesRef::Repeated {
+        len: rows,
+        value: &false,
+    };
+    read_numeric_columns_in_chunks(
+        &mut spi,
+        &[2],
+        &mut [&mut values],
+        &mut [&mut missing],
+        Some(view),
+    )
+    .unwrap();
+    assert_eq!(spi.numeric_reads, 0);
+    assert!(values.iter().all(|v| *v == 123.0));
+    assert!(missing.iter().all(|v| *v));
+    let wrong = UniformValuesRef::Repeated {
+        len: rows - 1,
+        value: &false,
+    };
+    assert!(read_numeric_columns_in_chunks(
+        &mut spi,
+        &[2],
+        &mut [&mut values],
+        &mut [&mut missing],
+        Some(wrong)
+    )
+    .is_err());
+    spi.interrupt_at = Some(spi.interrupt_checks + 2);
+    assert_eq!(
+        read_numeric_columns_in_chunks(
+            &mut spi,
+            &[2],
+            &mut [&mut values],
+            &mut [&mut missing],
+            Some(view)
+        )
+        .unwrap_err()
+        .code,
+        ErrorCode::Interrupted
+    );
+    assert_eq!(spi.numeric_reads, 0);
+}
+
 fn axis_prepared_sample(rows: usize, exclude: bool) -> PreparedOlsData {
     let request = OlsRequestV1 {
         model: CompiledTermGraph {
@@ -2452,7 +2578,7 @@ fn axis_prepared_sample(rows: usize, exclude: bool) -> PreparedOlsData {
         candidate[rows / 2] = false;
     }
     let loaded = LoadedOlsInput {
-        candidate,
+        candidate: candidate.into(),
         outcome: LoadedNumericColumn {
             values: vec![1.0; rows],
             missing: vec![false; rows],

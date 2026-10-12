@@ -997,7 +997,7 @@ fn pinned_full_ibn_span_has_one_finite_contrast_and_report_only_cons() {
             },
             &[],
             &LoadedOlsInput {
-                candidate: vec![true; y.len()],
+                candidate: vec![true; y.len()].into(),
                 outcome: loaded(&y),
                 numeric_sources: vec![(foreign.id, loaded(&foreign_values))],
                 analytic_weight: None,
@@ -1478,7 +1478,7 @@ fn prepared_input(
             keep_singletons: true,
         },
         LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded(outcome),
             numeric_sources,
             analytic_weight,

@@ -14,7 +14,7 @@ use crate::linalg::neumaier_add;
 /// constructs the generic mutually exclusive `AdjustmentInput`.
 #[derive(Debug)]
 pub struct PpmlNumericPreparationInput<'a> {
-    pub candidate: &'a [bool],
+    pub candidate: crate::data::UniformValuesRef<'a, bool>,
     pub outcome: NumericColumnView<'a>,
     /// Deduplicated numeric model sources in registry order.
     pub numeric_sources: &'a [NumericColumnView<'a>],
@@ -972,7 +972,7 @@ mod tests {
         outcome: &'a [f64],
     ) -> PpmlNumericPreparationInput<'a> {
         PpmlNumericPreparationInput {
-            candidate,
+            candidate: candidate.into(),
             outcome: NumericColumnView::new(outcome),
             numeric_sources: &[],
             source_uses: &[],
@@ -1210,6 +1210,40 @@ mod tests {
     }
 
     #[test]
+    fn candidate_uniform_classified_selection_keeps_its_borrowed_provenance() {
+        use crate::data::UniformValues;
+        let y = [1., 2., 3., 4.];
+        for value in [false, true] {
+            let owner = UniformValues::Repeated { len: 4, value };
+            let explicit = [value; 4];
+            let repeated = PpmlNumericPreparationInput {
+                candidate: owner.view(),
+                ..unweighted_input(&explicit, &y)
+            };
+            let raw = unweighted_input(&explicit, &y);
+            match (
+                classify_ppml_numeric_data(&repeated),
+                classify_ppml_numeric_data(&raw),
+            ) {
+                (Ok(a), Ok(b)) => {
+                    assert!(value);
+                    assert_eq!(a.classification(), b.classification());
+                    assert_eq!(
+                        select_ppml_numeric_data(a).unwrap().original_row_by_active,
+                        select_ppml_numeric_data(b).unwrap().original_row_by_active
+                    );
+                }
+                (Err(a), Err(b)) => {
+                    assert!(!value);
+                    assert_eq!(a, b);
+                    assert_eq!(a.code, ErrorCode::InsufficientObservations);
+                }
+                _ => panic!("uniform candidate changed classification"),
+            }
+        }
+    }
+
+    #[test]
     fn allocation_free_classification_matches_materialized_shape_and_error_precedence() {
         let candidate = [true, true, false, true, true];
         let outcome = [1.0, 9.0, -7.0, 0.0, 3.0];
@@ -1222,7 +1256,7 @@ mod tests {
         )];
         let uses = [NumericSourceUse::ordinary()];
         let input = PpmlNumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::with_missing(&outcome, &outcome_missing),
             numeric_sources: &sources,
             source_uses: &uses,
@@ -1250,7 +1284,7 @@ mod tests {
         let weight = [f64::NAN, 1.0];
         let offset = [0.0, f64::NAN];
         let invalid = PpmlNumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&outcome),
             numeric_sources: &[],
             source_uses: &[],
@@ -1917,7 +1951,7 @@ mod tests {
             },
         ];
         let input = PpmlNumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::with_missing(&outcome, &outcome_missing),
             numeric_sources: &sources,
             source_uses: &uses,
@@ -1978,7 +2012,7 @@ mod tests {
         )];
         let uses = [NumericSourceUse::ordinary()];
         let input = PpmlNumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&outcome),
             numeric_sources: &sources,
             source_uses: &uses,
@@ -2010,7 +2044,7 @@ mod tests {
             cluster: true,
         }];
         let input = PpmlNumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&outcome),
             numeric_sources: &sources,
             source_uses: &uses,
@@ -2037,7 +2071,7 @@ mod tests {
         let source = [1.0];
         let sources = [NumericColumnView::new(&source)];
         let input = PpmlNumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&outcome),
             numeric_sources: &sources,
             source_uses: &[],

@@ -473,7 +473,7 @@ fn numerical_proposal_boundary_rejects_every_identity_and_shape_forgery() {
     let (request, clusters, mut loaded, uses) = fixture();
     // Original row zero remains a real source observation but is inactive
     // in generation zero, which distinguishes inactive from out-of-range.
-    loaded.candidate[0] = false;
+    loaded.candidate.explicit_mut().unwrap()[0] = false;
     let numeric = prepare_numeric(&loaded, &uses);
     let owner =
         PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).expect("prepared owner");
@@ -965,7 +965,7 @@ fn simplex_report_bank_grows_past_the_preflighted_generations() {
     request.absorbed_terms.clear();
     request.bindings.truncate(2);
     request.keep_singletons = true;
-    loaded.candidate = vec![true; rows];
+    loaded.candidate = vec![true; rows].into();
     loaded.outcome = column(&(0..rows).map(|i| f64::from(i >= zeros)).collect::<Vec<_>>());
     loaded.numeric_sources.clear();
     for j in 0..zeros {
@@ -1630,7 +1630,7 @@ fn accepted_cascade_rows_do_not_retain_detector_sized_capacity() {
 #[test]
 fn public_report_is_candidate_compact_while_final_reasons_use_original_rows() {
     let (request, clusters, mut loaded, uses) = fixture();
-    loaded.candidate[0] = false;
+    loaded.candidate.explicit_mut().unwrap()[0] = false;
     let numeric = prepare_numeric(&loaded, &uses);
     let owner =
         PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).expect("prepared owner");
@@ -1931,7 +1931,7 @@ fn rectifier_projection_certifies_the_deferred_intercept_under_a_slope_fe() {
     let x = SourceId::new(1).unwrap();
     request.absorbed_terms[0].slope_sources = vec![x];
     uses[0].fixed_effect = true;
-    loaded.candidate = vec![true; 12];
+    loaded.candidate = vec![true; 12].into();
     loaded.outcome = column(&[0., 1., 2., 3., 4., 0., 1., 2., 3., 1., 0., 2.]);
     loaded.numeric_sources[0].1 =
         column(&[0.5, 1., -1., 2., 1.5, -0.5, 0.25, 3., 2., -1., 1., 0.75]);
@@ -1988,7 +1988,7 @@ fn rectifier_fixed_point_evidence_checks_fe_slope_channels() {
     let h = SourceId::new(3).unwrap();
     request.absorbed_terms[0].slope_sources = vec![h];
     uses[2].fixed_effect = true;
-    loaded.candidate = vec![true; 12];
+    loaded.candidate = vec![true; 12].into();
     loaded.outcome = column(&[0., 1., 2., 3., 4., 0., 1., 2., 3., 1., 0., 2.]);
     let xs = [0.5, 1., -1., 2., 1.5, -0.5, 0.25, 3., 2., -1., 1., 0.75];
     loaded.numeric_sources[0].1 = column(&xs);
@@ -2257,7 +2257,7 @@ fn fixture() -> (
         keep_singletons: false,
     };
     let loaded = LoadedOlsInput {
-        candidate: vec![true; 6],
+        candidate: vec![true; 6].into(),
         outcome: column(&[0.0, 0.0, 1.0, 0.0, 1.0, 0.0]),
         numeric_sources: vec![
             (x, column(&[0.0, 0.0, 0.0, -1.0, 0.0, 0.0])),
@@ -2303,7 +2303,7 @@ fn prepare_numeric_with<'a>(
         .map(|(_, source)| NumericColumnView::with_missing(&source.values, &source.missing))
         .collect::<Vec<_>>();
     prepare_ppml_numeric_data(&PpmlNumericPreparationInput {
-        candidate: &loaded.candidate,
+        candidate: loaded.candidate.view(),
         outcome: NumericColumnView::with_missing(&loaded.outcome.values, &loaded.outcome.missing),
         numeric_sources: &sources,
         source_uses: uses,

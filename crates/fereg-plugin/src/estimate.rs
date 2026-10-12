@@ -1373,7 +1373,14 @@ fn load_ols_input_with_team(
     mut load_hint: Option<crate::numeric_pipeline::PreparedLoadTarget<'_>>,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
-    let mut candidate = reserved_filled(n, candidate_all, "OLS candidate marker")?;
+    let mut candidate = if candidate_all {
+        fereg_core::data::UniformValues::Repeated {
+            len: n,
+            value: true,
+        }
+    } else {
+        reserved_filled(n, false, "OLS candidate marker")?.into()
+    };
     let mut candidate_position = if candidate_all {
         None
     } else {
@@ -1383,7 +1390,12 @@ fn load_ols_input_with_team(
         if let Some(position) = candidate_position.take() {
             // Developer diagnostics require the complete marker to be valid
             // before any outcome/source observation is read.
-            for (row, retained) in candidate.iter_mut().enumerate() {
+            for (row, retained) in candidate
+                .explicit_mut()
+                .expect("marker reads own explicit storage")
+                .iter_mut()
+                .enumerate()
+            {
                 spi.check_interrupted()?;
                 *retained = read_candidate_marker(spi, position, row + 1)?;
             }
@@ -1590,7 +1602,12 @@ fn load_ols_input_with_team(
     }
     if candidate_all && all_sources_numeric || n >= INPUT_CANDIDATE_BATCH_MIN_ROWS {
         if let Some(position) = candidate_position {
-            for (row, retained) in candidate.iter_mut().enumerate() {
+            for (row, retained) in candidate
+                .explicit_mut()
+                .expect("marker reads own explicit storage")
+                .iter_mut()
+                .enumerate()
+            {
                 if row % INPUT_INTERRUPT_POLL_STRIDE == 0 {
                     spi.check_interrupted()?;
                 }
@@ -1638,7 +1655,7 @@ fn load_ols_input_with_team(
                 &positions,
                 &mut columns,
                 &mut missing,
-                (!candidate_all).then_some(candidate.as_slice()),
+                (!candidate_all).then_some(candidate.view()),
             )?;
         }
         if candidate_all
@@ -1674,17 +1691,19 @@ fn load_ols_input_with_team(
             }
         }
     } else {
-        for (zero_based, retained_slot) in candidate.iter_mut().enumerate() {
+        for zero_based in 0..n {
             if zero_based % INPUT_INTERRUPT_POLL_STRIDE == 0 {
                 spi.check_interrupted()?;
             }
             let observation = zero_based + 1;
             let retained_candidate = if let Some(candidate_position) = candidate_position {
                 let retained = read_candidate_marker(spi, candidate_position, observation)?;
-                *retained_slot = retained;
+                candidate
+                    .explicit_mut()
+                    .expect("marker reads own explicit storage")[zero_based] = retained;
                 retained
             } else {
-                *retained_slot
+                candidate[zero_based]
             };
             if !retained_candidate {
                 continue;
@@ -1744,7 +1763,7 @@ pub(crate) fn read_numeric_columns_in_chunks(
     positions: &[u32],
     columns: &mut [&mut [f64]],
     missing: &mut [&mut [bool]],
-    candidate: Option<&[bool]>,
+    candidate: Option<fereg_core::data::UniformValuesRef<'_, bool>>,
 ) -> Result<()> {
     if positions.len() != columns.len()
         || missing.len() != columns.len()
@@ -1780,7 +1799,11 @@ pub(crate) fn read_numeric_columns_in_chunks(
         }
         let mut end = start.saturating_add(INPUT_BULK_READ_CHUNK_ROWS).min(rows);
         if let Some(candidate) = candidate {
-            if let Some(excluded) = candidate[start..end].iter().position(|retained| !*retained) {
+            if let Some(excluded) = candidate
+                .slice(start..end)
+                .iter()
+                .position(|retained| !*retained)
+            {
                 end = start + excluded;
             }
         }

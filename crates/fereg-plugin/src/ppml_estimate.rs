@@ -376,8 +376,8 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         drop(load_hint.take());
         0
     };
-    let adjustment = load_adjustment(action.adjustment, &loaded.candidate, spi)?;
-    let bias_units = load_optional_numeric(action.bias_unit, &loaded.candidate, spi)?;
+    let adjustment = load_adjustment(action.adjustment, loaded.candidate.view(), spi)?;
+    let bias_units = load_optional_numeric(action.bias_unit, loaded.candidate.view(), spi)?;
     spi.check_interrupted()?;
     input_memory.release(hint_bytes)?;
     let phase_probe = ppml_phase_allocator_probe(action.allocation_audit);
@@ -1128,7 +1128,7 @@ impl EstimatePpmlSpec {
 /// fallible reservation.
 fn load_adjustment(
     binding: AdjustmentBinding,
-    candidate: &[bool],
+    candidate: fereg_core::data::UniformValuesRef<'_, bool>,
     spi: &mut dyn SpiApi,
 ) -> Result<Option<LoadedNumericColumn>> {
     load_optional_numeric(binding.position(), candidate, spi)
@@ -1136,7 +1136,7 @@ fn load_adjustment(
 
 fn load_optional_numeric(
     position: Option<u32>,
-    candidate: &[bool],
+    candidate: fereg_core::data::UniformValuesRef<'_, bool>,
     spi: &mut dyn SpiApi,
 ) -> Result<Option<LoadedNumericColumn>> {
     let Some(position) = position else {

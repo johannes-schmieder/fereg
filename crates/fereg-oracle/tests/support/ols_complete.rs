@@ -87,8 +87,8 @@ pub fn case(seed: usize) -> Case {
         }
         loaded.numeric_sources[c.get() as usize - 1].1.missing[6] = true;
     }
-    loaded.candidate[0] = false;
-    loaded.candidate[8] = false;
+    loaded.candidate.explicit_mut().unwrap()[0] = false;
+    loaded.candidate.explicit_mut().unwrap()[8] = false;
     loaded.outcome.missing[1] = true;
     loaded.numeric_sources[0].1.missing[2] = true;
     loaded.numeric_sources[f.get() as usize - 1].1.missing[4] = true;

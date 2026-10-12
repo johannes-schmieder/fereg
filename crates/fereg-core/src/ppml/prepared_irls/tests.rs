@@ -107,7 +107,7 @@ fn prepared_with_factor_sources(
         &request,
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded(outcome),
             numeric_sources,
             analytic_weight: None,
@@ -157,7 +157,7 @@ fn prepared_no_fe_categorical(outcome: &[f64], regressors: &[Vec<f64>]) -> crate
             keep_singletons: true,
         },
         &LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded(outcome),
             numeric_sources,
             analytic_weight: None,
@@ -889,7 +889,7 @@ fn prepared_two_fe_with_codes(
         },
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded(outcome),
             numeric_sources: vec![
                 (x.id, loaded(regressor)),
@@ -977,7 +977,7 @@ fn prepared_joint_slopes(
         },
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded(outcome),
             numeric_sources: vec![
                 (x.id, loaded(regressor)),
@@ -1247,7 +1247,7 @@ fn prepared_three_fe(
         },
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; rows],
+            candidate: vec![true; rows].into(),
             outcome: loaded(&outcome),
             numeric_sources: vec![
                 (x.id, loaded(&x_values)),
@@ -3561,7 +3561,7 @@ fn higher_dimensional_categorical_frames_preserve_weighted_poisson_truth() {
             },
             &[],
             &LoadedOlsInput {
-                candidate: vec![true; n],
+                candidate: vec![true; n].into(),
                 outcome: loaded(&y),
                 numeric_sources,
                 analytic_weight: None,

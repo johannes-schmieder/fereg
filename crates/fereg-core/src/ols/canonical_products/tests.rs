@@ -88,7 +88,7 @@ fn prepared_effects(y: &[f64], x: &[Vec<f64>], effects: &[&[f64]]) -> PreparedOl
         },
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; y.len()],
+            candidate: vec![true; y.len()].into(),
             outcome: LoadedNumericColumn {
                 values: y.to_vec(),
                 missing: vec![false; y.len()],

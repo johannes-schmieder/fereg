@@ -90,7 +90,7 @@ pub fn inputs(design: &Design, keep_singletons: bool) -> (OlsRequestV1, LoadedOl
         keep_singletons,
     };
     let loaded = LoadedOlsInput {
-        candidate: vec![true; design.outcome.len()],
+        candidate: vec![true; design.outcome.len()].into(),
         outcome: LoadedNumericColumn {
             values: design.outcome.clone(),
             missing: design.missing.clone(),

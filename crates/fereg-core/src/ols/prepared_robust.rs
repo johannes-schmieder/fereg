@@ -2305,7 +2305,7 @@ mod tests {
                 keep_singletons: true,
             },
             LoadedOlsInput {
-                candidate: vec![true; outcome.len()],
+                candidate: vec![true; outcome.len()].into(),
                 outcome: loaded(outcome),
                 numeric_sources,
                 analytic_weight,

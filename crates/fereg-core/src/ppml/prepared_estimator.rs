@@ -841,7 +841,7 @@ fn validate_public_solver_request(request: &PreparedPpmlRequestV1) -> Result<()>
 }
 
 struct BorrowedPpmlNumericInput<'a> {
-    candidate: &'a [bool],
+    candidate: crate::data::UniformValuesRef<'a, bool>,
     outcome: NumericColumnView<'a>,
     numeric_sources: Vec<NumericColumnView<'a>>,
     source_uses: Vec<NumericSourceUse>,
@@ -927,7 +927,7 @@ fn borrowed_numeric_input<'a>(
         PreparedPpmlAdjustmentKind::Exposure => (None, adjustment),
     };
     Ok(BorrowedPpmlNumericInput {
-        candidate: &loaded.ols.candidate,
+        candidate: loaded.ols.candidate.view(),
         outcome: NumericColumnView::with_missing(
             &loaded.ols.outcome.values,
             &loaded.ols.outcome.missing,
@@ -1358,7 +1358,7 @@ fn raw_input_owner_bytes(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInp
             .iter()
             .map(|cluster| cluster.label.capacity() as u128 + bytes(&cluster.sources))
             .sum::<u128>()
-        + bytes(&loaded.ols.candidate)
+        + loaded.ols.candidate.owned_buffer_bytes()
         + column(&loaded.ols.outcome)
         + bytes(&loaded.ols.numeric_sources)
         + loaded

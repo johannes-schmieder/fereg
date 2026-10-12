@@ -4,7 +4,7 @@ use crate::error::{allocation, Result};
 use crate::memory::vec_capacity_bytes;
 
 /// A storage representation, not a validation receipt for aligned sample data.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UniformValues<T> {
     Repeated { len: usize, value: T },
     Explicit(Vec<T>),
@@ -22,15 +22,27 @@ impl<T> UniformValues<T> {
         self.len() == 0
     }
 
-    pub fn get(&self, index: usize) -> Option<&T> {
+    pub fn view(&self) -> UniformValuesRef<'_, T> {
         match self {
-            Self::Repeated { len, value } => (index < *len).then_some(value),
-            Self::Explicit(values) => values.get(index),
+            Self::Repeated { len, value } => UniformValuesRef::Repeated { len: *len, value },
+            Self::Explicit(values) => values.as_slice().into(),
         }
     }
 
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.view().get(index)
+    }
+
     pub fn iter(&self) -> impl ExactSizeIterator<Item = &T> + DoubleEndedIterator {
-        (0..self.len()).map(|index| self.get(index).expect("uniform value index is bounded"))
+        self.view().iter()
+    }
+
+    /// Borrow already explicit storage; never materialize a repeated owner.
+    pub fn explicit_mut(&mut self) -> Option<&mut [T]> {
+        match self {
+            Self::Repeated { .. } => None,
+            Self::Explicit(values) => Some(values),
+        }
     }
 
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
@@ -93,10 +105,128 @@ impl<T: PartialEq> PartialEq for UniformValues<T> {
 
 impl<T: Eq> Eq for UniformValues<T> {}
 
+/// A nonallocating view of an owned repeated value or a borrowed raw slice.
+#[derive(Debug)]
+pub enum UniformValuesRef<'a, T> {
+    Repeated { len: usize, value: &'a T },
+    Explicit(&'a [T]),
+}
+
+impl<T> Copy for UniformValuesRef<'_, T> {}
+impl<T> Clone for UniformValuesRef<'_, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'a, T> UniformValuesRef<'a, T> {
+    pub fn len(self) -> usize {
+        match self {
+            Self::Repeated { len, .. } => len,
+            Self::Explicit(values) => values.len(),
+        }
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn get(self, index: usize) -> Option<&'a T> {
+        match self {
+            Self::Repeated { len, value } => (index < len).then_some(value),
+            Self::Explicit(values) => values.get(index),
+        }
+    }
+
+    pub fn iter(self) -> impl ExactSizeIterator<Item = &'a T> + DoubleEndedIterator {
+        (0..self.len()).map(move |index| self.get(index).expect("uniform view index is bounded"))
+    }
+
+    pub fn slice(self, range: std::ops::Range<usize>) -> Self {
+        assert!(
+            range.start <= range.end && range.end <= self.len(),
+            "uniform view range is out of bounds"
+        );
+        match self {
+            Self::Repeated { value, .. } => Self::Repeated {
+                len: range.len(),
+                value,
+            },
+            Self::Explicit(values) => Self::Explicit(&values[range]),
+        }
+    }
+}
+
+impl UniformValuesRef<'_, bool> {
+    pub fn count_true(self) -> usize {
+        match self {
+            Self::Repeated { len, value } => {
+                if *value {
+                    len
+                } else {
+                    0
+                }
+            }
+            Self::Explicit(values) => values.iter().filter(|value| **value).count(),
+        }
+    }
+
+    pub fn all_true(self) -> bool {
+        self.is_empty()
+            || match self {
+                Self::Repeated { value, .. } => *value,
+                Self::Explicit(values) => values.iter().all(|value| *value),
+            }
+    }
+}
+
+impl<T> std::ops::Index<usize> for UniformValuesRef<'_, T> {
+    type Output = T;
+    fn index(&self, index: usize) -> &T {
+        self.get(index)
+            .expect("uniform view index is out of bounds")
+    }
+}
+
+impl<'a, T> From<&'a [T]> for UniformValuesRef<'a, T> {
+    fn from(values: &'a [T]) -> Self {
+        Self::Explicit(values)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::data::DropReason;
+
+    #[test]
+    fn candidate_uniform_views_preserve_logical_ranges_without_materialization() {
+        for len in [0, 1, 37] {
+            for value in [false, true] {
+                let mut owner = UniformValues::Repeated { len, value };
+                let explicit = vec![value; len];
+                assert!(owner.explicit_mut().is_none());
+                assert_eq!(owner.owned_buffer_bytes(), 0);
+                let view = owner.view();
+                assert_eq!(view.count_true(), explicit.iter().filter(|v| **v).count());
+                assert_eq!(view.all_true(), explicit.iter().all(|v| *v));
+                assert_eq!(view.get(len), None);
+                for start in 0..=len {
+                    let slice = view.slice(start..len);
+                    assert_eq!(slice.iter().copied().collect::<Vec<_>>(), explicit[start..]);
+                    assert_eq!(slice.iter().rev().count(), len - start);
+                }
+            }
+        }
+        let mut raw = Vec::with_capacity(41);
+        raw.extend([true, false, true]);
+        let identity = (raw.as_ptr(), raw.capacity());
+        let mut owner = UniformValues::Explicit(raw);
+        owner.explicit_mut().unwrap()[1] = true;
+        assert!(owner.view().all_true());
+        let raw = owner.into_vec().unwrap();
+        assert_eq!((raw.as_ptr(), raw.capacity()), identity);
+    }
 
     #[test]
     fn drop_uniform_sequence_access_and_fallible_materialization() {

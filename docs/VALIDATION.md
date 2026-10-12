@@ -14,6 +14,62 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H6 uniform candidate markers, 2026-10-12
+
+H6 item 6b retains all-candidate inputs as a repeated true scalar. A concrete
+borrowed logical view carries candidates through numeric classification,
+chunked SPI transfer and PPML adjustment loading, with no materialization or
+second classifier. All-candidate chunked loading keeps its existing no-mask
+path. Explicit marker reservations, read/write ordering, interruption polling
+and string encounter order remain intact. Repeated true or false is raw data,
+not a receipt: column dimensions, metadata/source-use validation, candidate
+weight domains, factor validation and exclusion precedence remain authoritative.
+All arithmetic, solver signatures, tolerances, certificates and sample/rank/
+omission/separation decisions stay exact.
+
+PPML keeps its existing explicit staged original-axis mask. It swaps the entire
+candidate owner and restores the prior repeated variant or explicit pointer/
+capacity, together with probability-weight bits, before propagating a returned
+failure. No fallible conversion is inserted inside that restoration interval.
+Raw owner accounting uses actual capacities, while loading, compaction and PPML
+future-mask forecasts remain unchanged. Thus the retained all-candidate input
+saves N bytes without undercounting a later explicit replacement. Eliminated
+allocations remove their own failure points. Logical all-true and candidate
+counts take constant time for repeated values.
+
+All 78 focused/mapped executions pass: seven new witnesses, thirteen PPML
+owner tests, twenty-seven PPML numeric tests, fourteen independent numeric
+sample cases, sixteen plugin candidate tests and one owned-capsule test.
+Coverage includes repeated/explicit true and false inputs, malformed shapes,
+excluded invalid values/weights, range/lifetime/capacity semantics, numeric and
+string scalar/batched SPI paths, Break on excluded chunks, PPML provenance and
+restoration, and retained versus future mask admission. Workspace compilation,
+Clippy, formatting and independent high-effort architecture review pass.
+The full suite passes 1,707 Rust executions in 62 invocations and 200 Python
+tests with 13 optional dependency skips. Universal Mac ABI/load/guard checks,
+73 exact replay cases, 292 worker checks and seventeen licensed preparation,
+FE, weight, memory, output and transaction fixtures pass. The expected Linux-ELF
+skip remains on Mac; there is no new Linux or Windows qualification.
+
+Two initial test-compilation checks found missing fixture adapters (a permutation
+collect, then reverse/array-view conversions). The first focused PPML all-false
+fixture incorrectly unwrapped the existing insufficient-observations error;
+it now compares repeated/explicit errors. These three attempts remain visible;
+no production numerical or diagnostic policy was repaired. Core adds 71
+production lines and plugin 23; size-violation, dispatch and chunk counts are
+unchanged. Norm handoff and FE numeric-column release remain separate H6 work.
+Timing remains at the complete H boundary.
+
+Candidate plugin SHA-256:
+`e29f2e71b41f95953d7d68b398227e8cb33f9bd6e35097c25d8b9a37acc18a9b`;
+parent plugin: `80f89d6ae8057be42e533492d1f1bb06c0ea6e72de88daf93333eb1656a1265b`.
+Raw source, plugins, review and checks remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-h6/candidate-validation.tar.gz`
+(25,494,059 bytes, SHA-256
+`d9467040a35b36253d5d075595f01a6509100e107394208dfa3533e033e124af`).
+The [compact record](../bench/results/h-20261013-h6-candidate-mask.json) binds
+source identities and evidence.
+
 ## H6 uniform drop reasons, 2026-10-12
 
 H6 item 5b replaces the complete unweighted OLS sample's allocated Retained

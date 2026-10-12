@@ -640,7 +640,8 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
         let probability_stage =
             self.stage_generation_probability_weights(retained_original_rows)?;
         let probability_scale = probability_stage.as_ref().map(|stage| stage.scale);
-        let baseline_candidate = std::mem::replace(&mut self.loaded.candidate, staged_candidate);
+        let baseline_candidate =
+            std::mem::replace(&mut self.loaded.candidate, staged_candidate.into());
         let staging_seconds = preparation_trace.lap();
         // The shared OLS boundary includes sample materialization, source
         // factorization, membership, finalized topology and optional clusters.
@@ -731,12 +732,7 @@ fn validate_loaded_numeric_pair(
     }
     if sample.n_original != original
         || sample.drop_reasons.len() != original
-        || sample.n_candidate
-            != loaded
-                .candidate
-                .iter()
-                .filter(|candidate| **candidate)
-                .count()
+        || sample.n_candidate != loaded.candidate.view().count_true()
         || sample.outcome.len() != sample.n_active()
         || sample.regressors.len() != loaded.numeric_sources.len()
         || sample
@@ -1080,7 +1076,7 @@ mod tests {
                 .as_ref()
                 .expect("fixture probability weight");
             prepare_ppml_numeric_data(&PpmlNumericPreparationInput {
-                candidate: &self.loaded.candidate,
+                candidate: self.loaded.candidate.view(),
                 outcome: NumericColumnView::with_missing(
                     &self.loaded.outcome.values,
                     &self.loaded.outcome.missing,
@@ -1119,9 +1115,9 @@ mod tests {
                     if !absorbed {
                         fixture.request.absorbed_terms.clear();
                     }
-                    fixture.loaded.candidate.fill(true);
+                    fixture.loaded.candidate.explicit_mut().unwrap().fill(true);
                     if excluded {
-                        fixture.loaded.candidate[7] = false;
+                        fixture.loaded.candidate.explicit_mut().unwrap()[7] = false;
                     }
                     fixture.loaded.probability_weight = None;
                     // Use the second source for both optional grammars so source
@@ -1187,7 +1183,7 @@ mod tests {
     fn preparation_options_are_consumed_once_and_preserve_pweight_rollback() {
         for first_generation in [0, 1] {
             let mut fixture = categorical_clustered_fixture();
-            fixture.loaded.candidate.fill(true);
+            fixture.loaded.candidate.explicit_mut().unwrap().fill(true);
             let ids = crate::ols::PreparedOlsLoadHint::source_ids(&fixture.request).unwrap();
             let hint = crate::ols::PreparedOlsLoadHint::prepare(
                 ids.iter().map(|id| {
@@ -1419,6 +1415,71 @@ mod tests {
         assert_eq!(final_reasons[4], DropReason::Singleton);
         assert_eq!(final_reasons[7], DropReason::ExcludedByIfIn);
         assert_eq!(outcome.prepared.weight_report().physical_observations, 5);
+    }
+
+    #[test]
+    fn candidate_uniform_generation_restores_owner_storage_and_weight_bits() {
+        use crate::data::UniformValues;
+        for implicit in [false, true] {
+            let mut fixture = categorical_clustered_fixture();
+            let mut explicit = Vec::with_capacity(43);
+            explicit.resize(8, true);
+            let expected_storage = (explicit.as_ptr(), explicit.capacity());
+            fixture.loaded.candidate = if implicit {
+                UniformValues::Repeated {
+                    len: 8,
+                    value: true,
+                }
+            } else {
+                explicit.into()
+            };
+            let numeric = fixture.prepare_numeric();
+            let mut owner = fixture.into_owner(numeric);
+            let baseline_weights = owner.loaded.probability_weight.clone();
+            for fail in [true, false, true, false] {
+                let rows: &[usize] = if fail {
+                    &[0, 2, 4, 6]
+                } else {
+                    &[0, 1, 2, 3, 4, 5, 6]
+                };
+                let result = owner.rebuild_generation(rows, 1);
+                if fail {
+                    assert_eq!(result.unwrap_err().code, ErrorCode::InvalidData);
+                } else {
+                    assert_eq!(result.unwrap().original_rows(), rows);
+                }
+                match &owner.loaded.candidate {
+                    UniformValues::Repeated { len, value } => {
+                        assert!(implicit && *value);
+                        assert_eq!(*len, 8);
+                    }
+                    UniformValues::Explicit(values) => {
+                        assert!(!implicit);
+                        assert_eq!((values.as_ptr(), values.capacity()), expected_storage);
+                        assert!(values.iter().all(|v| *v));
+                    }
+                }
+                assert_eq!(owner.loaded.probability_weight, baseline_weights);
+                assert_eq!(
+                    owner
+                        .loaded
+                        .probability_weight
+                        .as_ref()
+                        .unwrap()
+                        .values
+                        .iter()
+                        .map(|v| v.to_bits())
+                        .collect::<Vec<_>>(),
+                    baseline_weights
+                        .as_ref()
+                        .unwrap()
+                        .values
+                        .iter()
+                        .map(|v| v.to_bits())
+                        .collect::<Vec<_>>()
+                );
+            }
+        }
     }
 
     #[test]
@@ -1695,7 +1756,7 @@ mod tests {
                 sources: vec![h],
             }],
             loaded: LoadedOlsInput {
-                candidate: vec![true, true, true, true, true, true, true, false],
+                candidate: vec![true, true, true, true, true, true, true, false].into(),
                 outcome: column(&[1.0, 0.0, 2.0, 0.0, 3.0, 0.0, 4.0, 0.0]),
                 numeric_sources: vec![
                     (x, column(&[0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0])),

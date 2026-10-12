@@ -460,7 +460,7 @@ fn prepared(
         },
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded(outcome),
             numeric_sources,
             analytic_weight,
@@ -883,7 +883,7 @@ fn ppml_slope_availability_preserves_classification_and_final_design() {
                     });
                 }
                 let mut input = LoadedOlsInput {
-                    candidate: vec![true; n],
+                    candidate: vec![true; n].into(),
                     outcome: loaded(&vec![1.0; n]),
                     numeric_sources: request
                         .model
@@ -922,7 +922,7 @@ fn ppml_slope_availability_preserves_classification_and_final_design() {
                     input.numeric_sources[zi].1.values[6] = f64::INFINITY;
                 }
                 if case == 4 {
-                    input.candidate[3] = false;
+                    input.candidate.explicit_mut().unwrap()[3] = false;
                     input.numeric_sources[zi].1.values[3] = f64::NAN;
                 }
                 if case == 6 {
@@ -1100,7 +1100,7 @@ fn compact_slope_availability_preserves_legacy_samples_models_and_topology() {
                     numeric_sources[gi].1.values[0] = 100_000.0;
                 }
                 let mut input = LoadedOlsInput {
-                    candidate: vec![true; n],
+                    candidate: vec![true; n].into(),
                     outcome: loaded(&vec![1.0; n]),
                     numeric_sources,
                     analytic_weight: None,
@@ -1108,7 +1108,7 @@ fn compact_slope_availability_preserves_legacy_samples_models_and_topology() {
                     probability_weight: None,
                 };
                 if case == 4 {
-                    input.candidate[3] = false;
+                    input.candidate.explicit_mut().unwrap()[3] = false;
                     input.numeric_sources[si].1.values[3] = f64::NAN;
                 }
                 if kind > 0 {
@@ -1222,7 +1222,7 @@ fn single_slope_cache_is_ols_only_and_preserves_full_fit() {
                 })
                 .collect();
             let input = LoadedOlsInput {
-                candidate: vec![true; n],
+                candidate: vec![true; n].into(),
                 outcome: loaded(&y),
                 numeric_sources: vec![
                     (x.id, loaded(&columns[0])),
@@ -1340,7 +1340,7 @@ fn multipartition_slope_owner_preserves_span_and_admission_boundaries() {
         keep_singletons: true,
     };
     let input = LoadedOlsInput {
-        candidate: vec![true; n],
+        candidate: vec![true; n].into(),
         outcome: loaded(&outcome),
         numeric_sources: vec![
             (g.id, loaded(&groups)),
@@ -1462,7 +1462,7 @@ fn generic_prepared_slope_admits_owned_design_unit_weights_and_solver_together()
         keep_singletons: true,
     };
     let input = LoadedOlsInput {
-        candidate: vec![true; n],
+        candidate: vec![true; n].into(),
         outcome: loaded(&y),
         numeric_sources: vec![(group.id, loaded(&groups)), (slope.id, loaded(&slopes))],
         analytic_weight: None,
@@ -1681,7 +1681,7 @@ fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
             keep_singletons: true,
         };
         let input = LoadedOlsInput {
-            candidate: vec![true; n],
+            candidate: vec![true; n].into(),
             outcome: loaded(&y),
             numeric_sources: vec![(group.id, loaded(&groups)), (slope.id, loaded(&slopes))],
             analytic_weight: None,
@@ -2148,7 +2148,7 @@ fn prepared_multiway_categorical_weights(
         },
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded(outcome),
             numeric_sources,
             analytic_weight,
@@ -5263,7 +5263,7 @@ fn pinned_full_ibn_span_keeps_cons_and_earlier_indicator() {
         &request,
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded(&outcome),
             numeric_sources: vec![(foreign.id, loaded(&foreign_values))],
             analytic_weight: None,
@@ -5341,7 +5341,7 @@ fn factor_interaction_omission_and_vanished_level_keep_exact_slot_semantics() {
         &request,
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded(&outcome),
             numeric_sources: vec![(g.id, loaded(&g_values)), (h.id, loaded(&h_values))],
             analytic_weight: None,
@@ -5563,7 +5563,7 @@ fn categorical_one_fe_initial_projection_preserves_warm_and_retained_paths() {
         &request,
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; rows],
+            candidate: vec![true; rows].into(),
             outcome: loaded(&outcome),
             numeric_sources: vec![
                 (x.id, loaded(&outcome)),
@@ -5719,7 +5719,7 @@ fn categorical_ols_adapter_and_borrowed_frame_are_exact() {
         &request,
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded(&outcome),
             numeric_sources: vec![(x.id, loaded(&x_values)), (g.id, loaded(&g_values))],
             analytic_weight: None,
@@ -6057,7 +6057,7 @@ fn categorical_recovery_uses_explicit_final_hessian_weights_for_normalization() 
         &request,
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; target.len()],
+            candidate: vec![true; target.len()].into(),
             outcome: loaded(&target),
             numeric_sources: vec![
                 (worker.id, loaded(&worker_codes)),
@@ -6160,7 +6160,7 @@ fn empty_categorical_topology_preserves_finite_intercept_across_session_routes()
         keep_singletons: true,
     };
     let loaded_with = |outcome: &[f64], analytic_weight: &[f64]| LoadedOlsInput {
-        candidate: vec![true; outcome.len()],
+        candidate: vec![true; outcome.len()].into(),
         outcome: loaded(outcome),
         numeric_sources: vec![(x.id, loaded(&x_values))],
         analytic_weight: Some(loaded(analytic_weight)),
@@ -6343,7 +6343,7 @@ fn ppml_slope_only_topology_preserves_structural_constant() {
         keep_singletons: true,
     };
     let loaded_input = LoadedOlsInput {
-        candidate: vec![true; 6],
+        candidate: vec![true; 6].into(),
         outcome: loaded(&[1.0, 2.0, 1.5, 3.0, 2.5, 4.0]),
         numeric_sources: vec![
             (group.id, loaded(&[1.0, 1.0, 1.0, 2.0, 2.0, 2.0])),

@@ -90,7 +90,7 @@ fn fixture_extra_columns(
         values,
     };
     let input = LoadedOlsInput {
-        candidate: vec![true; n],
+        candidate: vec![true; n].into(),
         outcome: loaded(y),
         numeric_sources: sources
             .iter()

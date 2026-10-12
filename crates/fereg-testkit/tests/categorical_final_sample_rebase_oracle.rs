@@ -87,7 +87,7 @@ fn single_level_and_omitted_only_recipes_preserve_science_and_original_slots() {
                     .code,
                 fereg_core::ErrorCode::InvalidFactor
             );
-            loaded.candidate[2] = false;
+            loaded.candidate.explicit_mut().unwrap()[2] = false;
             prepare_model(&request, &[], &loaded, true)
                 .expect("excluded invalid factor is not a domain failure");
         }
@@ -136,7 +136,7 @@ fn singleton_fixture() -> (OlsRequestV1, LoadedOlsInput, Vec<f64>, Vec<f64>, Vec
         keep_singletons: false,
     };
     let loaded = LoadedOlsInput {
-        candidate: vec![true; y.len()],
+        candidate: vec![true; y.len()].into(),
         outcome: loaded_column(y.clone()),
         numeric_sources: vec![
             (source(1), loaded_column(x.clone())),
@@ -437,7 +437,7 @@ fn small_fixture(
     outcome.missing[0] = true;
     outcome.missing[9] = true;
     let loaded = LoadedOlsInput {
-        candidate: vec![true; 10],
+        candidate: vec![true; 10].into(),
         outcome,
         numeric_sources: data
             .into_iter()

@@ -646,7 +646,7 @@ mod tests {
             ],
         };
         let loaded = LoadedOlsInput {
-            candidate: vec![true; 4],
+            candidate: vec![true; 4].into(),
             outcome: LoadedNumericColumn {
                 values: vec![1.; 4],
                 missing: vec![false; 4],

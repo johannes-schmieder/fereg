@@ -1359,7 +1359,7 @@ fn prepare_case(
     }
     let raw_weight = weight_values(weights);
     let loaded = LoadedOlsInput {
-        candidate: vec![true; n],
+        candidate: vec![true; n].into(),
         outcome: loaded_column(outcome.to_vec()),
         numeric_sources: regressors
             .iter()
@@ -1503,7 +1503,7 @@ fn prepare_one_fe_factor_case(core: &str) -> PreparedOlsData {
         },
         &[],
         &LoadedOlsInput {
-            candidate: vec![true; outcome.len()],
+            candidate: vec![true; outcome.len()].into(),
             outcome: loaded_column(outcome),
             numeric_sources: vec![
                 (x_source, loaded_column(x1)),

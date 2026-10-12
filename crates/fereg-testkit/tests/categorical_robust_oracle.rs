@@ -320,7 +320,7 @@ fn prepare_case(
     }
     let raw_weight = weight_values(weights);
     let loaded = LoadedOlsInput {
-        candidate: vec![true; nobs],
+        candidate: vec![true; nobs].into(),
         outcome: loaded_column(case.outcome.clone()),
         numeric_sources: case
             .regressors

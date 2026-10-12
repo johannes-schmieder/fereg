@@ -17,5 +17,5 @@ pub use sample::{
     DomainDecision, DropReason, NumericColumnView, NumericDomainPolicy, NumericPreparationInput,
     NumericSourceUse, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightInput,
 };
-pub use uniform_values::UniformValues;
+pub use uniform_values::{UniformValues, UniformValuesRef};
 pub use weights::WeightKind;

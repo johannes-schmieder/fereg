@@ -362,7 +362,7 @@ fn prepare_case(
     };
     let raw_weight = weight_values(weights);
     let loaded = LoadedOlsInput {
-        candidate: vec![true; n],
+        candidate: vec![true; n].into(),
         outcome: loaded_column(outcome),
         numeric_sources: codes
             .iter()

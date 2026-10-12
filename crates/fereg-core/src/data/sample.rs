@@ -88,7 +88,7 @@ pub enum AdjustmentInput<'a> {
 /// Borrowed numeric sources used to construct the authoritative numeric sample.
 #[derive(Debug)]
 pub struct NumericPreparationInput<'a> {
-    pub candidate: &'a [bool],
+    pub candidate: super::UniformValuesRef<'a, bool>,
     pub outcome: NumericColumnView<'a>,
     pub regressors: &'a [NumericColumnView<'a>],
     pub weights: WeightInput<'a>,
@@ -483,11 +483,7 @@ pub(crate) fn classify_numeric_sample_with_source_uses<
     let n_original = input.candidate.len();
     validate_input(input, n_original)?;
     validate_source_uses(input, Some(source_uses))?;
-    let n_candidate = input
-        .candidate
-        .iter()
-        .filter(|candidate| **candidate)
-        .count();
+    let n_candidate = input.candidate.count_true();
     // Retain the same checked output-shape boundary as materialization.  This
     // is scalar arithmetic only and therefore cannot create a large buffer.
     check_output_dimensions(input, n_original, n_candidate)?;
@@ -531,11 +527,7 @@ pub(crate) fn classify_numeric_sample_into_mask<P: NumericDomainPolicy + Sync>(
     let n_original = input.candidate.len();
     validate_input(input, n_original)?;
     validate_source_uses(input, Some(source_uses))?;
-    let n_candidate = input
-        .candidate
-        .iter()
-        .filter(|candidate| **candidate)
-        .count();
+    let n_candidate = input.candidate.count_true();
     check_output_dimensions(input, n_original, n_candidate)?;
     if reasons.len() != n_original {
         return Err(FeregError::new(
@@ -600,11 +592,7 @@ fn prepare_numeric_sample_with_plan<P: NumericDomainPolicy, R: Reserve>(
     let n_original = input.candidate.len();
     validate_input(input, n_original)?;
     validate_source_uses(input, source_uses)?;
-    let n_candidate = input
-        .candidate
-        .iter()
-        .filter(|candidate| **candidate)
-        .count();
+    let n_candidate = input.candidate.count_true();
     check_output_dimensions(input, n_original, n_candidate)?;
 
     let mut drop_reasons = reserved_vec(
@@ -1014,7 +1002,7 @@ mod allocation_tests {
                 }
             }
             let input = NumericPreparationInput {
-                candidate: &candidate,
+                candidate: (&candidate[..]).into(),
                 outcome: NumericColumnView::new(&outcome),
                 regressors: &columns,
                 weights: WeightInput::None,
@@ -1096,7 +1084,7 @@ mod allocation_tests {
         let offset = [0.0, 0.0, 0.0];
         let regressors = [NumericColumnView::new(&x1), NumericColumnView::new(&x2)];
         let input = NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&y),
             regressors: &regressors,
             weights: WeightInput::Provided {
@@ -1154,7 +1142,7 @@ mod allocation_tests {
         let candidate = [true];
         let y = [1.0];
         let input = NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&y),
             regressors: &[],
             weights: WeightInput::None,
@@ -1187,7 +1175,7 @@ mod allocation_tests {
     fn zero_sized_supplied_columns_use_the_same_fallible_path() {
         let regressors = [NumericColumnView::new(&[])];
         let input = NumericPreparationInput {
-            candidate: &[],
+            candidate: (&[][..]).into(),
             outcome: NumericColumnView::new(&[]),
             regressors: &regressors,
             weights: WeightInput::Provided {
@@ -1224,7 +1212,7 @@ mod allocation_tests {
         let exposure = [4.0, 5.0, 6.0];
         let regressors = [NumericColumnView::new(&x)];
         let input = NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&y),
             regressors: &regressors,
             weights: WeightInput::Provided {

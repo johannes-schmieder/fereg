@@ -334,7 +334,7 @@ fn positive_outcomes_bound_report_banks_across_routes_weights_and_singletons() {
 fn excluded_zero_keeps_conservative_admission_but_compact_report_bank() {
     let (mut request, mut loaded) = fixture(2, false, false, false, false, false);
     request.separation = SeparationConfig::default();
-    loaded.ols.candidate[11] = false;
+    loaded.ols.candidate.explicit_mut().unwrap()[11] = false;
     loaded.ols.outcome.values[11] = 0.0;
     let result = fit_prepared_ppml(request, loaded).expect("excluded zero");
     assert_eq!(
@@ -1108,7 +1108,7 @@ fn constant_wald_fixture(slopes: bool, scale: f64) -> (PreparedPpmlRequestV1, Lo
         stata_var_position: if slopes { 5 } else { 4 },
         role: OlsInputRole::NumericSource(f),
     });
-    loaded.ols.candidate = vec![true; 6];
+    loaded.ols.candidate = vec![true; 6].into();
     loaded.ols.outcome = column(if slopes {
         &[1.25, 0.5, 1.25, 3.5, 2.0, 3.5]
     } else {
@@ -1884,7 +1884,7 @@ fn saved_fe_recovery_uses_the_hessian_of_the_published_strict_state() {
     let fixed_effect = (1..=rows)
         .map(|row| (1 + (row - 1) % 8) as f64)
         .collect::<Vec<_>>();
-    loaded.ols.candidate = vec![true; rows];
+    loaded.ols.candidate = vec![true; rows].into();
     loaded.ols.outcome = column(&outcome);
     loaded.ols.numeric_sources[0].1 = column(&x);
     loaded.ols.numeric_sources[1].1 = column(&fixed_effect);
@@ -2467,7 +2467,7 @@ fn fixture(
     let loaded = LoadedPpmlInput {
         bias_units: None,
         ols: LoadedOlsInput {
-            candidate: vec![true; rows],
+            candidate: vec![true; rows].into(),
             outcome,
             numeric_sources,
             analytic_weight: None,
@@ -2589,7 +2589,7 @@ fn bias_weight_scale_low_memory_and_row_order() {
             request.memory.requested = MemoryMode::Low;
             request.memory.poolsize = 1;
         } else {
-            loaded.ols.candidate.reverse();
+            loaded.ols.candidate.explicit_mut().unwrap().reverse();
             for col in std::iter::once(&mut loaded.ols.outcome)
                 .chain(loaded.ols.numeric_sources.iter_mut().map(|(_, c)| c))
                 .chain(loaded.ols.probability_weight.iter_mut())
@@ -2666,7 +2666,7 @@ fn bias_rejects_fe_aligned_relabelled_and_partially_supported_units() {
     let (mut request, mut loaded) = bias_fixture(false);
     request.ols.keep_singletons = true;
     request.separation.drop_singletons = false;
-    loaded.ols.candidate[0] = false;
+    loaded.ols.candidate.explicit_mut().unwrap()[0] = false;
     let e = fit_prepared_ppml(request, loaded).unwrap_err();
     assert!(e.message.contains("FE1: 1/6 and FE2: 0/2"), "{e}");
 }
@@ -2807,7 +2807,7 @@ fn bias_frequency_multiplicity_preserves_independent_units() {
         col.values = repeat(&col.values);
         col.missing = vec![false; col.values.len()];
     }
-    loaded.ols.candidate = vec![true; loaded.ols.outcome.values.len()];
+    loaded.ols.candidate = vec![true; loaded.ols.outcome.values.len()].into();
     let repeated = fit_prepared_ppml(request, loaded).unwrap();
     assert_eq!(
         original.bias().unwrap().units,
@@ -2901,7 +2901,7 @@ fn factor_rebase_fixture() -> (PreparedPpmlRequestV1, LoadedPpmlInput) {
     let loaded = LoadedPpmlInput {
         bias_units: None,
         ols: LoadedOlsInput {
-            candidate: vec![true; rows],
+            candidate: vec![true; rows].into(),
             outcome,
             numeric_sources: vec![
                 (
@@ -3059,4 +3059,24 @@ fn column(values: &[f64]) -> LoadedNumericColumn {
         values: values.to_vec(),
         missing: vec![false; values.len()],
     }
+}
+
+#[test]
+fn candidate_uniform_raw_owner_memory_counts_actual_explicit_capacity() {
+    use crate::data::UniformValues;
+    let (request, mut loaded) = fixture(1, false, false, false, false, false);
+    let rows = loaded.ols.candidate.len();
+    loaded.ols.candidate = UniformValues::Repeated {
+        len: rows,
+        value: true,
+    };
+    let implicit = raw_input_owner_bytes(&request, &loaded);
+    let mut explicit = Vec::with_capacity(rows + 73);
+    explicit.resize(rows, true);
+    let capacity = explicit.capacity() as u128;
+    loaded.ols.candidate = explicit.into();
+    assert_eq!(
+        raw_input_owner_bytes(&request, &loaded),
+        implicit + capacity
+    );
 }

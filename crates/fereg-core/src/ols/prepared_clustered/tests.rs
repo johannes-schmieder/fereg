@@ -73,7 +73,13 @@ fn outcome_overlap_preserves_clustered_statistics_and_covariance() {
         label: "a".to_owned(),
         saved_name: String::new(),
     }];
-    loaded.candidate = loaded.candidate.repeat(2049);
+    loaded.candidate = loaded
+        .candidate
+        .iter()
+        .copied()
+        .collect::<Vec<_>>()
+        .repeat(2049)
+        .into();
     loaded.outcome.values = loaded.outcome.values.repeat(2049);
     loaded.outcome.missing = loaded.outcome.missing.repeat(2049);
     for (_, column) in &mut loaded.numeric_sources {
@@ -195,7 +201,13 @@ fn low_memory_small_cluster_table_matches_legacy_group_influences() {
     let (mut request, mut loaded) = super::super::prepared_clusters::tests::fixture();
     request.ols.include_intercept = true;
     let original = loaded.clone();
-    loaded.candidate = original.candidate.repeat(512);
+    loaded.candidate = original
+        .candidate
+        .iter()
+        .copied()
+        .collect::<Vec<_>>()
+        .repeat(512)
+        .into();
     loaded.outcome.values = original.outcome.values.repeat(512);
     loaded.outcome.missing = original.outcome.missing.repeat(512);
     for ((_, target), (_, source)) in loaded
@@ -237,7 +249,13 @@ fn low_memory_batched_cluster_tables_match_legacy_and_fail_closed() {
         })
         .collect();
     let original = loaded.clone();
-    loaded.candidate = original.candidate.repeat(512);
+    loaded.candidate = original
+        .candidate
+        .iter()
+        .copied()
+        .collect::<Vec<_>>()
+        .repeat(512)
+        .into();
     loaded.outcome.values = original.outcome.values.repeat(512);
     loaded.outcome.missing = original.outcome.missing.repeat(512);
     for ((_, target), (_, source)) in loaded

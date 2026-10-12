@@ -330,7 +330,7 @@ fn prepare_case(
         .collect::<Vec<_>>();
     let raw_weights = weight_values(weights);
     let loaded = LoadedOlsInput {
-        candidate: vec![true; nobs],
+        candidate: vec![true; nobs].into(),
         outcome: loaded_column(case.outcome.clone()),
         numeric_sources,
         analytic_weight: matches!(weights, CaseWeights::Analytic(_))

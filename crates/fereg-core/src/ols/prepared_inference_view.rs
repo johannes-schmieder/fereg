@@ -418,7 +418,7 @@ mod tests {
             missing: vec![false; values.len()],
         };
         let loaded = LoadedOlsInput {
-            candidate: vec![true; 6],
+            candidate: vec![true; 6].into(),
             outcome: column(&[1., 2., 3., 4., 5., 6.]),
             numeric_sources: vec![
                 (g, column(&[0., 0., 0., 1., 1., 1.])),

@@ -536,7 +536,7 @@ fn prepare_case(
         keep_singletons: false,
     };
     let loaded = LoadedOlsInput {
-        candidate: vec![true; y.len()],
+        candidate: vec![true; y.len()].into(),
         outcome: column(y.iter().copied()),
         numeric_sources: vec![
             (source(0), column(x1.iter().copied())),
@@ -630,7 +630,7 @@ fn prepare_multiple_slope_only_case(
         keep_singletons: false,
     };
     let loaded = LoadedOlsInput {
-        candidate: vec![true; y.len()],
+        candidate: vec![true; y.len()].into(),
         outcome: column(y.iter().copied()),
         numeric_sources: vec![
             (source(0), column(x1.iter().copied())),

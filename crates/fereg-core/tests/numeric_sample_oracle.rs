@@ -19,7 +19,7 @@ fn unified_source_roles_lock_regressor_weight_and_fixed_effect_precedence() {
         NumericColumnView::new(&fe_only),
     ];
     let input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&outcome),
         regressors: &regressors,
         weights: WeightInput::Provided {
@@ -128,7 +128,7 @@ fn literal_oracle_locks_precedence_masks_and_policy_order() {
         NumericColumnView::new(&second_regressor),
     ];
     let input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::with_missing(&outcome, &outcome_missing),
         regressors: &regressors,
         weights: WeightInput::Provided {
@@ -203,7 +203,7 @@ fn every_nonfinite_value_is_unavailable_before_its_policy_hook() {
     let exposure = [1.0, 1.0, 1.0, 1.0, 1.0, f64::INFINITY, 1.0];
     let regressors = [NumericColumnView::new(&regressor)];
     let input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&outcome),
         regressors: &regressors,
         weights: WeightInput::Provided {
@@ -253,7 +253,7 @@ fn finite_missing_masks_are_authoritative_for_regressors_and_adjustments() {
         &regressor_missing,
     )];
     let input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&outcome),
         regressors: &regressors,
         weights: WeightInput::None,
@@ -282,7 +282,7 @@ fn candidate_exclusion_never_invokes_a_fatal_policy() {
     let candidate = [false];
     let outcome = [f64::NAN];
     let input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&outcome),
         regressors: &[],
         weights: WeightInput::None,
@@ -302,7 +302,7 @@ fn candidate_exclusion_never_invokes_a_fatal_policy() {
     let candidate = [true];
     let outcome = [1.0];
     let input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&outcome),
         regressors: &[],
         weights: WeightInput::None,
@@ -320,7 +320,7 @@ fn a_missing_later_regressor_drops_the_row_without_losing_column_count() {
     let x2 = [30.0, f64::NAN];
     let regressors = [NumericColumnView::new(&x1), NumericColumnView::new(&x2)];
     let input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&outcome),
         regressors: &regressors,
         weights: WeightInput::None,
@@ -344,7 +344,7 @@ fn retained_values_are_bit_exact_without_weight_or_adjustment_transforms() {
     let offset = [-0.0, f64::from_bits(4), f64::MAX, -f64::MAX];
     let regressors = [NumericColumnView::new(&x1), NumericColumnView::new(&x2)];
     let input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&values),
         regressors: &regressors,
         weights: WeightInput::Provided {
@@ -371,7 +371,7 @@ fn retained_values_are_bit_exact_without_weight_or_adjustment_transforms() {
 
     let exposure = [f64::from_bits(5), -0.0, f64::MAX, -f64::MAX];
     let exposure_input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&values),
         regressors: &regressors,
         weights: WeightInput::None,
@@ -399,7 +399,7 @@ fn all_weight_kinds_and_both_adjustment_kinds_reach_the_policy_unchanged() {
     ] {
         for use_exposure in [false, true] {
             let input = NumericPreparationInput {
-                candidate: &candidate,
+                candidate: (&candidate[..]).into(),
                 outcome: NumericColumnView::new(&outcome),
                 regressors: &[],
                 weights: WeightInput::Provided {
@@ -430,7 +430,7 @@ fn exposure_drop_and_error_are_distinct_from_availability() {
     let outcome = [1.0, 2.0];
     let exposure = [0.0, -1.0];
     let input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&outcome),
         regressors: &[],
         weights: WeightInput::None,
@@ -465,7 +465,7 @@ fn weight_and_offset_policy_errors_are_fatal() {
     let weight = [2.0];
     let offset = [3.0];
     let input = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&outcome),
         regressors: &[],
         weights: WeightInput::Provided {
@@ -487,7 +487,7 @@ fn weight_and_offset_policy_errors_are_fatal() {
 #[test]
 fn zero_sized_zero_candidate_and_all_dropped_inputs_are_valid() {
     let empty = NumericPreparationInput {
-        candidate: &[],
+        candidate: (&[][..]).into(),
         outcome: NumericColumnView::new(&[]),
         regressors: &[],
         weights: WeightInput::None,
@@ -504,7 +504,7 @@ fn zero_sized_zero_candidate_and_all_dropped_inputs_are_valid() {
     let candidate = [false, false];
     let outcome = [1.0, 2.0];
     let no_candidate = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&outcome),
         regressors: &[],
         weights: WeightInput::None,
@@ -521,7 +521,7 @@ fn zero_sized_zero_candidate_and_all_dropped_inputs_are_valid() {
     let weights = [1.0, 2.0];
     let exposure = [3.0, 4.0];
     let all_dropped = NumericPreparationInput {
-        candidate: &candidate,
+        candidate: (&candidate[..]).into(),
         outcome: NumericColumnView::new(&missing),
         regressors: &regressors,
         weights: WeightInput::Provided {
@@ -559,35 +559,35 @@ fn every_value_and_mask_length_mismatch_is_rejected_before_policy_calls() {
     let short_mask = [false];
     let cases = [
         NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&short),
             regressors: &[],
             weights: WeightInput::None,
             adjustment: AdjustmentInput::None,
         },
         NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::with_missing(&good, &short_mask),
             regressors: &[],
             weights: WeightInput::None,
             adjustment: AdjustmentInput::None,
         },
         NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&good),
             regressors: &[NumericColumnView::new(&short)],
             weights: WeightInput::None,
             adjustment: AdjustmentInput::None,
         },
         NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&good),
             regressors: &[NumericColumnView::with_missing(&good, &short_mask)],
             weights: WeightInput::None,
             adjustment: AdjustmentInput::None,
         },
         NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&good),
             regressors: &[],
             weights: WeightInput::Provided {
@@ -597,7 +597,7 @@ fn every_value_and_mask_length_mismatch_is_rejected_before_policy_calls() {
             adjustment: AdjustmentInput::None,
         },
         NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&good),
             regressors: &[],
             weights: WeightInput::Provided {
@@ -607,14 +607,14 @@ fn every_value_and_mask_length_mismatch_is_rejected_before_policy_calls() {
             adjustment: AdjustmentInput::None,
         },
         NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&good),
             regressors: &[],
             weights: WeightInput::None,
             adjustment: AdjustmentInput::Offset(NumericColumnView::new(&short)),
         },
         NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&good),
             regressors: &[],
             weights: WeightInput::None,
@@ -624,14 +624,14 @@ fn every_value_and_mask_length_mismatch_is_rejected_before_policy_calls() {
             )),
         },
         NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&good),
             regressors: &[],
             weights: WeightInput::None,
             adjustment: AdjustmentInput::Exposure(NumericColumnView::new(&short)),
         },
         NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&good),
             regressors: &[],
             weights: WeightInput::None,
@@ -666,7 +666,7 @@ fn deterministic_permutations_preserve_original_order_and_literal_oracle() {
         let candidate = permutation.map(|index| base_candidate[index]);
         let regressors = [NumericColumnView::new(&x)];
         let input = NumericPreparationInput {
-            candidate: &candidate,
+            candidate: (&candidate[..]).into(),
             outcome: NumericColumnView::new(&y),
             regressors: &regressors,
             weights: WeightInput::None,
@@ -716,4 +716,56 @@ fn assert_bits(actual: &[f64], expected: &[f64]) {
             .map(|value| value.to_bits())
             .collect::<Vec<_>>()
     );
+}
+
+#[test]
+fn candidate_uniform_raw_masks_preserve_domains_shapes_and_source_use_errors() {
+    use fereg_core::data::UniformValues;
+    let good = [1.0, 2.0, 3.0];
+    let invalid = [f64::NAN, f64::INFINITY, -1.0];
+    let sources = [NumericColumnView::new(&invalid)];
+    for value in [false, true] {
+        for case in 0..6 {
+            let repeated = UniformValues::Repeated { len: 3, value };
+            let explicit = vec![value; 3];
+            let input = NumericPreparationInput {
+                candidate: repeated.view(),
+                outcome: NumericColumnView::new(if case == 1 { &good[..2] } else { &invalid }),
+                regressors: &sources,
+                weights: WeightInput::Provided {
+                    kind: WeightKind::Analytic,
+                    column: NumericColumnView::new(if case == 2 { &good[..2] } else { &invalid }),
+                },
+                adjustment: AdjustmentInput::Exposure(NumericColumnView::new(if case == 3 {
+                    &good[..2]
+                } else {
+                    &invalid
+                })),
+            };
+            let roles = [NumericSourceUse::ordinary_and_fixed_effect()];
+            let uses = if case == 4 { &[][..] } else { &roles[..] };
+            let first_policy = LiteralPolicy::default();
+            let first = prepare_numeric_sample_with_source_uses(&input, uses, &first_policy);
+            let second_policy = LiteralPolicy::default();
+            let second = prepare_numeric_sample_with_source_uses(
+                &NumericPreparationInput {
+                    candidate: explicit.as_slice().into(),
+                    ..input
+                },
+                uses,
+                &second_policy,
+            );
+            assert_eq!(first, second, "value={value}, case={case}");
+            assert_eq!(*first_policy.calls.borrow(), *second_policy.calls.borrow());
+            if !value && (case == 0 || case == 5) {
+                let sample = first.unwrap();
+                assert_eq!(sample.n_candidate, 0);
+                assert!(sample
+                    .drop_reasons
+                    .iter()
+                    .all(|r| *r == DropReason::ExcludedByIfIn));
+                assert!(first_policy.calls.borrow().is_empty());
+            }
+        }
+    }
 }
