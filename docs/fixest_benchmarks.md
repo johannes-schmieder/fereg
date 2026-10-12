@@ -236,18 +236,55 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
-Final H boundary prerequisite result: the final H6 Mac plugin passes the
-pre-H3 comparison on all 73 replay cases and 292 checks at 2/4/8/16 workers
-under the pinned H8 scope. There are zero exact, intentional, scientific,
-repeat or discrete differences. All twenty frozen timing inputs are regenerated
-and hash-verified; the launch/collection tools and bound artifact plan received
-independent review. The timing panel has not started: Activity Monitor remained
-active and the requested quiet-host coordination has not been confirmed.
-No whole-H wall-time nonregression or release-performance claim follows.
-Prepared inputs, plugins, replay and tools are retained on SCC so the unchanged
-seven-pair panel can resume after coordination without repeating completed
-scientific work. See [validation](VALIDATION.md#h-final-mac-boundary-prerequisites-2026-10-12)
-and [compact evidence](../bench/results/h-20261013-boundary-prerequisites.json).
+Final H boundary result: the single declared quiet Mac panel completed
+all twenty workloads and 320 native calls in 643.298 seconds.
+Nineteen workloads pass nonregression; one remains inconclusive. No cell
+meets the declared criterion for a material regression. The whole-H timing
+gate does not pass; no overall release-performance claim follows. All
+observations are retained, with no retry, continuation, tuning or selected
+resampling. The inconclusive cell is 129-column OLS at four workers: paired ratio
+1.038577, 95% interval [0.981125, 1.059293] against allowance 1.05. It proves
+neither material regression nor host noise. Activity Monitor was temporarily
+paused with an automatic resume guard and restored after timing; indexing
+settled before launch. Both plugins repeat scientific results and
+clock-stripped solver signatures exactly on every timing workload.
+The separate 73-case H8-scoped replay passes all 292 worker checks; all
+unaffected fields and discrete decisions remain exact. See
+[validation](VALIDATION.md#h-complete-workstream-mac-boundary-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-boundary.json).
+
+| Frozen workload | Baseline ms | Final H ms | Paired ratio [95% interval] | Result |
+| --- | ---: | ---: | --- | --- |
+| ols-no-fe-k5-t1 | 5.406 | 5.422 | 1.0056 [0.9846, 1.0613] | nonregression |
+| ols-no-fe-k5-t4 | 4.948 | 4.847 | 0.9768 [0.9537, 0.9957] | nonregression |
+| ols-three-unit-k5-t1 | 597.467 | 592.861 | 0.9898 [0.9859, 0.9937] | nonregression |
+| ols-three-unit-k5-t4 | 300.353 | 296.408 | 0.9888 [0.9835, 0.9899] | nonregression |
+| ols-two-pw-k5-t1 | 616.578 | 620.980 | 1.0043 [1.0003, 1.0205] | nonregression |
+| ols-two-pw-k5-t4 | 345.114 | 344.917 | 1.0011 [0.9916, 1.0076] | nonregression |
+| ols-two-unit-k20-t1 | 1080.894 | 1073.602 | 0.9943 [0.9914, 1.0038] | nonregression |
+| ols-two-unit-k20-t16 | 401.055 | 384.896 | 0.9636 [0.9578, 0.9735] | nonregression |
+| ols-two-unit-k20-t4 | 515.078 | 503.198 | 0.9794 [0.9735, 0.9831] | nonregression |
+| ols-two-unit-k20-t8 | 431.148 | 417.789 | 0.9663 [0.9634, 0.9763] | nonregression |
+| ols-two-unit-k5-t1 | 453.701 | 441.698 | 0.9774 [0.9692, 0.9805] | nonregression |
+| ols-two-unit-k5-t4 | 234.829 | 225.833 | 0.9599 [0.9568, 0.9652] | nonregression |
+| ppml-two-unit-k5-t1 | 427.760 | 424.873 | 0.9942 [0.9930, 0.9974] | nonregression |
+| ppml-two-unit-k5-t4 | 233.805 | 234.139 | 1.0007 [0.9990, 1.0023] | nonregression |
+| ols-wide-k129-t1 | 746.397 | 759.753 | 0.9945 [0.9810, 1.0424] | nonregression |
+| ols-wide-k129-t4 | 379.652 | 396.701 | 1.0386 [0.9811, 1.0593] | inconclusive |
+| ols-wide-k64-t1 | 292.702 | 295.491 | 1.0112 [0.9982, 1.0247] | nonregression |
+| ols-wide-k64-t4 | 162.367 | 164.951 | 1.0068 [1.0001, 1.0443] | nonregression |
+| ols-wide-k65-t1 | 305.234 | 311.299 | 1.0207 [1.0096, 1.0495] | nonregression |
+| ols-wide-k65-t4 | 170.262 | 171.271 | 1.0112 [1.0087, 1.0238] | nonregression |
+
+Final H boundary prerequisites, retained before timing: the final H6 Mac
+plugin passed the pre-H3 comparison on all 73 replay cases and 292 checks at
+2/4/8/16 workers under the pinned H8 scope, with zero exact, intentional,
+scientific, repeat or discrete differences. Twenty frozen timing inputs and
+the reviewed launch/collection tools were preserved on SCC while host
+coordination was pending. That historical prerequisite record remains intact;
+the completed panel is reported in the final boundary result. See
+[validation](VALIDATION.md#h-final-mac-boundary-prerequisites-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-boundary-prerequisites.json).
 
 H7 compared the final H6 plugin against the retained October 10 plugin on
 one SCC node using the same frozen 100k AKM OLS/PPML inputs, current frontend

@@ -14,6 +14,87 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H complete workstream Mac boundary, 2026-10-12
+
+The final H6 plugin was frozen after runtime/native/replay/licensed qualification
+and compared with the retained pre-H3 universal Mac baseline on the twenty
+regenerated, hash-verified standard workloads. The host was coordinated quiet;
+no agent tools, builds or tests competed with native timing. Seven alternating
+measured pairs followed one excluded warm-up pair per workload: 320 native
+calls, completed in 643.298 seconds within the 1,800-second panel
+and 90-second process limits. Plugin, harness and input hashes match before
+and after. No continuation, retry, tuning or selected resampling occurred.
+
+The locked Mac prevented UI coordination. A bounded process pause stopped
+Activity Monitor's sampling without terminating it; its original process
+resumed automatically after the panel. Post-restoration Spotlight indexing
+settled before launch. Prelaunch checks and pre/post CPU deltas are retained;
+the highest surviving background process averaged 5.20% of one core on this
+24-core Mac. This is snapshot evidence, not continuous host monitoring.
+
+Nineteen workloads pass nonregression; one remains inconclusive. No cell
+meets the declared criterion for a material regression. The whole-H timing
+gate does not pass; no overall release-performance claim follows.
+
+| Frozen workload | Baseline ms | Final H ms | Paired ratio [95% interval] | Result |
+| --- | ---: | ---: | --- | --- |
+| ols-no-fe-k5-t1 | 5.406 | 5.422 | 1.0056 [0.9846, 1.0613] | nonregression |
+| ols-no-fe-k5-t4 | 4.948 | 4.847 | 0.9768 [0.9537, 0.9957] | nonregression |
+| ols-three-unit-k5-t1 | 597.467 | 592.861 | 0.9898 [0.9859, 0.9937] | nonregression |
+| ols-three-unit-k5-t4 | 300.353 | 296.408 | 0.9888 [0.9835, 0.9899] | nonregression |
+| ols-two-pw-k5-t1 | 616.578 | 620.980 | 1.0043 [1.0003, 1.0205] | nonregression |
+| ols-two-pw-k5-t4 | 345.114 | 344.917 | 1.0011 [0.9916, 1.0076] | nonregression |
+| ols-two-unit-k20-t1 | 1080.894 | 1073.602 | 0.9943 [0.9914, 1.0038] | nonregression |
+| ols-two-unit-k20-t16 | 401.055 | 384.896 | 0.9636 [0.9578, 0.9735] | nonregression |
+| ols-two-unit-k20-t4 | 515.078 | 503.198 | 0.9794 [0.9735, 0.9831] | nonregression |
+| ols-two-unit-k20-t8 | 431.148 | 417.789 | 0.9663 [0.9634, 0.9763] | nonregression |
+| ols-two-unit-k5-t1 | 453.701 | 441.698 | 0.9774 [0.9692, 0.9805] | nonregression |
+| ols-two-unit-k5-t4 | 234.829 | 225.833 | 0.9599 [0.9568, 0.9652] | nonregression |
+| ppml-two-unit-k5-t1 | 427.760 | 424.873 | 0.9942 [0.9930, 0.9974] | nonregression |
+| ppml-two-unit-k5-t4 | 233.805 | 234.139 | 1.0007 [0.9990, 1.0023] | nonregression |
+| ols-wide-k129-t1 | 746.397 | 759.753 | 0.9945 [0.9810, 1.0424] | nonregression |
+| ols-wide-k129-t4 | 379.652 | 396.701 | 1.0386 [0.9811, 1.0593] | inconclusive |
+| ols-wide-k64-t1 | 292.702 | 295.491 | 1.0112 [0.9982, 1.0247] | nonregression |
+| ols-wide-k64-t4 | 162.367 | 164.951 | 1.0068 [1.0001, 1.0443] | nonregression |
+| ols-wide-k65-t1 | 305.234 | 311.299 | 1.0207 [1.0096, 1.0495] | nonregression |
+| ols-wide-k65-t4 | 170.262 | 171.271 | 1.0112 [1.0087, 1.0238] | nonregression |
+
+The inconclusive cell is 129-column OLS at four workers: baseline/final
+medians are 379.652/396.701 ms, with a paired ratio of 1.038577 and 95% interval
+[0.981125, 1.059293]. Its upper bound exceeds the 1.05 allowance. This does
+not establish a material regression or host noise. The bounded panel is
+closed; a new experiment requires a new declaration, not a replacement run.
+
+The unchanged rule uses a 10,000-draw paired-median bootstrap with seed 739391
+and its 95% upper bound against max(5%, 1 ms). A lower bound above that allowance
+is reported as a material regression; a straddling interval is inconclusive,
+never a pass. Every measured and warm-up observation remains in the compact
+record. Gains below the allowance are observations rather than failures.
+
+Each plugin repeats science and solver signatures exactly on all twenty timing
+workloads. Cross-plugin qualification uses the separate 73-case replay at
+2/4/8/16 workers and the predeclared H8 recurrence scope: all 292 worker checks
+pass, with exact unaffected fields and discrete decisions. This is distinct
+from claiming cross-plugin bitwise identity on the twenty timing workloads.
+H1 refuted the locality hypothesis and introduced no runtime change. H2 was
+not integrated because sparse geometry exceeded its 21-ms cap. H4 left overlap
+unchanged; H5 changes campaign placement only. H3, H8 and preserving H6 slices
+are the integrated runtime work.
+
+Baseline plugin: `9ced317e7cb995510995490e76dd492b491ee7a830a7147884ac5b76c73e38c8`.
+Final plugin: `a97f0c28ec913a6b26b4f1a2388eb95688a60479f402d1bcb57d4cdcfc80d1ce`.
+Evidence source commit: `da1ab207abf19e201b1c9f8ac33ab9a5fe2c61f6`;
+frozen runtime source: `53337e65d625edeb8167391aa233d78dd71900f5`.
+Production identity remains exact across 177 modules and 58 artifact inputs.
+Recalculation from stored observations reproduces all twenty reported medians,
+intervals and verdicts. The prior 1,726 Rust test executions, 73-case replay,
+292 worker checks and 25 licensed transaction checks remain valid unchanged.
+Raw artifacts, inputs, host snapshots and observations remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-boundary/boundary-validation.tar.gz`
+(1,323,733,201 bytes; SHA-256 `d75bd2be4a9d4bf4c43dc67f8b5204ca123ba18695ffd5a0fd2fb8b2a6d719fe`).
+The [compact record](../bench/results/h-20261013-boundary.json) retains the
+panel and scoped replay. No Windows performance claim follows.
+
 ## H final Mac boundary prerequisites, 2026-10-12
 
 The final H6 universal Mac plugin
@@ -31,17 +112,17 @@ review checked the launch and reporting tools, 320-call count, artifact
 identities, per-plugin repeat rule and unchanged paired-bootstrap allowance.
 Before any timing, it found and repaired a missing launch check for scope and
 per-case worker identities. The final plan binds those prerequisites and keeps
-`quiet_host_confirmed=false`. Activity Monitor was still using CPU after the
-correctness checks, and the requested quiet-host coordination remains pending.
-No timing observation exists, no repetition was discarded and no continuation
-was used. There is no whole-H timing pass or release-performance claim.
+`quiet_host_confirmed=false` in that historical capture. Activity Monitor was
+still using CPU after correctness checks. No timing observation existed at
+that stage. The subsequent completed panel is recorded in
+[the final result](#h-complete-workstream-mac-boundary-2026-10-12); it leaves
+one cell inconclusive and establishes no whole-H timing pass.
 
 The prepared panel remains seven alternating measured pairs plus one excluded
 warm-up pair per workload, 90 seconds per process, 1,800 seconds total, with
-no retry or continuation. Restore and hash-check the retained artifacts before
-resuming it in a coordinated quiet Mac window. Completed correctness evidence
-remains reusable only while those artifacts stay identical. H7 is complete;
-this quiet timing panel is the remaining Workstream H measurement.
+no retry or continuation. Those exact artifacts were later restored and
+hash-checked, and the completed scientific evidence was reused unchanged for
+the final panel. The original pending record remains historical evidence.
 
 Raw plugins, frozen inputs, replay captures, host snapshots, reviewed tools and
 plan are retained in
@@ -49,7 +130,7 @@ plan are retained in
 (1,423,154,235 bytes; SHA-256
 `009d6a83ae59301aa3f674a202b6940e94fb4b16586be7102b7a24b5a470f87c`).
 The [compact record](../bench/results/h-20261013-boundary-prerequisites.json)
-uses archive-relative identifiers and explicitly records that timing is pending.
+uses archive-relative identifiers and records that timing was pending at capture.
 
 ## H6 finalized FE numeric-column release, 2026-10-12
 

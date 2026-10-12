@@ -2011,18 +2011,32 @@ afterward. Pause measured-host agent/build/test work and coordinate unrelated
 applications before the quiet window. Report failed or inconclusive cells
 without tuning or replacing their observations.
 
-Final H boundary prerequisite result: the final H6 Mac plugin passes the
-pre-H3 comparison on all 73 replay cases and 292 checks at 2/4/8/16 workers
-under the pinned H8 scope. There are zero exact, intentional, scientific,
-repeat or discrete differences. All twenty frozen timing inputs are regenerated
-and hash-verified; the launch/collection tools and bound artifact plan received
-independent review. The timing panel has not started: Activity Monitor remained
-active and the requested quiet-host coordination has not been confirmed.
-No whole-H wall-time nonregression or release-performance claim follows.
-Prepared inputs, plugins, replay and tools are retained on SCC so the unchanged
-seven-pair panel can resume after coordination without repeating completed
-scientific work. See [validation](VALIDATION.md#h-final-mac-boundary-prerequisites-2026-10-12)
-and [compact evidence](../bench/results/h-20261013-boundary-prerequisites.json).
+Final H boundary prerequisites, retained before timing: the final H6 Mac
+plugin passed the pre-H3 comparison on all 73 replay cases and 292 checks at
+2/4/8/16 workers under the pinned H8 scope, with zero exact, intentional,
+scientific, repeat or discrete differences. Twenty frozen timing inputs and
+the reviewed launch/collection tools were preserved on SCC while host
+coordination was pending. That historical prerequisite record remains intact;
+the completed panel is reported in the final boundary result. See
+[validation](VALIDATION.md#h-final-mac-boundary-prerequisites-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-boundary-prerequisites.json).
+
+Final H boundary result: the single declared quiet Mac panel completed
+all twenty workloads and 320 native calls in 643.298 seconds.
+Nineteen workloads pass nonregression; one remains inconclusive. No cell
+meets the declared criterion for a material regression. The whole-H timing
+gate does not pass; no overall release-performance claim follows. All
+observations are retained, with no retry, continuation, tuning or selected
+resampling. The inconclusive cell is 129-column OLS at four workers: paired ratio
+1.038577, 95% interval [0.981125, 1.059293] against allowance 1.05. It proves
+neither material regression nor host noise. Activity Monitor was temporarily
+paused with an automatic resume guard and restored after timing; indexing
+settled before launch. Both plugins repeat scientific results and
+clock-stripped solver signatures exactly on every timing workload.
+The separate 73-case H8-scoped replay passes all 292 worker checks; all
+unaffected fields and discrete decisions remain exact. See
+[validation](VALIDATION.md#h-complete-workstream-mac-boundary-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-boundary.json).
 
 ### Evidence and stop rules for H
 
