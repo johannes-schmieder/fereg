@@ -1,0 +1,3330 @@
+{
+  "schema": 1,
+  "item": "H final Mac boundary prerequisites",
+  "status": "scientific prerequisites passed; quiet Mac timing pending",
+  "timing_started": false,
+  "raw_root": "/projectnb/welfgr/fereg/runs/h-20261013-boundary",
+  "plan": {
+    "item": "H final Mac boundary",
+    "source_commit": "53337e65d625edeb8167391aa233d78dd71900f5",
+    "repetitions": 7,
+    "warmup_pairs_per_case": 1,
+    "workloads": 20,
+    "native_calls": 320,
+    "total_seconds": 1800,
+    "process_seconds": 90,
+    "continuations": 0,
+    "retries": 0,
+    "quiet_host_confirmed": false,
+    "quiet_host_status": "Awaiting requested coordination: Activity Monitor remained active after correctness qualification. No timing launched.",
+    "artifacts": {
+      "baseline.plugin": "9ced317e7cb995510995490e76dd492b491ee7a830a7147884ac5b76c73e38c8",
+      "candidate.plugin": "a97f0c28ec913a6b26b4f1a2388eb95688a60479f402d1bcb57d4cdcfc80d1ce",
+      "timing-harness": "9915cf3f59a40d234be6abd6799087527ae29b3eeea00a51e4502345f17b9260",
+      "cases.json": "cf82971b174ca1b9ae9294639dd96d61a03f1d18ad5aee8cdfa2d123d1f40e5d",
+      "run-boundary.py": "35a098477845bb0b98b67ae189485c384a0b7f8cf1f41ee25ed50db62b1baa00",
+      "replay/summary.json": "4d073423993bce179aab38fde50d4f86db9a619a916b34aa4916097ea0675dc8",
+      "bench/time_exact.py": "06eae41fac72789f2e5df6248cea8cb07c24bca0ae831642ef7975e40f3e30e4",
+      "bench/standard_cases.json": "47a35bade636a01bd69d4ee3a6aadc44befb6178d9f7882c80f5374f7509f16e",
+      "tests/replay/scopes/2026-10-12-h8-two-fe-recurrence-macos.json": "b4484ac974ef7c353f07ad342b70df1aa7a2a68d655a700348aa0c9f5c51a260",
+      "tests/replay/intentional_changes.json": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a"
+    },
+    "analysis": "Unchanged paired-median bootstrap 10000 draws seed739391, 95% upper bound <= 1+max(5%,1ms/baseline median). Preserve all observations; no continuation.",
+    "scientific_rule": "73-case H8-scoped cross-plugin replay at workers2/4/8/16; exact scientific and solver repeats per plugin on every timing workload."
+  },
+  "cases": {
+    "verified": true,
+    "case_sha256": {
+      "ols-no-fe-k5-t1.case": "90d5e847be680a4f7bd830aba11633241ac0f649febdd428ae431787b3d4282a",
+      "ols-no-fe-k5-t4.case": "760103726f0f24c3f8b051c62229ee4c5fc672f513035c5b523161489798cc77",
+      "ols-three-unit-k5-t1.case": "ed33b8aaf6bcf0bd6dd5930bbbb33e6117aff4291b483b8af8a340eefb2c4253",
+      "ols-three-unit-k5-t4.case": "4860b0b4d8d436488e19bf1c3d278487d52f0a1672a374cb4735d7565c30a8dd",
+      "ols-two-pw-k5-t1.case": "4d767fab45300f32591e91ad47d0974e9170364c912796f235811d39458d4c00",
+      "ols-two-pw-k5-t4.case": "0de1661e0f3fbf5c66faf50d96e6f21b868d754dbd0ad6eda3fefc8ca7dfc0bc",
+      "ols-two-unit-k20-t1.case": "0cd95bc9fe662c41d5cc9590cb40bf80bd726d05a8bcc9d5283b9630fd903011",
+      "ols-two-unit-k20-t16.case": "b6994b1352d06895f3827415300028af8ee1ddf400085f123524040f183b79c0",
+      "ols-two-unit-k20-t4.case": "79ba374b45b03445f991a29ee106e0af1234ed8ca5fc54244bfad47f2a5f4293",
+      "ols-two-unit-k20-t8.case": "262797c96897d69def16535dab623b79bb38f49f07de37cfa502d7ddbd819226",
+      "ols-two-unit-k5-t1.case": "ae8298f23d77ecde95fb4bca8dd3c27e71b47425e89db4f3b74c293cbffec59a",
+      "ols-two-unit-k5-t4.case": "0bff55b4e2762a6a716ef86dc01e1b2be61d00889ea2eaccfcd5a66f661560a2",
+      "ppml-two-unit-k5-t1.case": "8f0d60760796e27256be875ffa1ce239c5d5dd9c2f0079b605ad5493d191a857",
+      "ppml-two-unit-k5-t4.case": "2b61166cefcb0d1bd5be7ff6682c158f5a1d5d5e5c1b20bb50621cfeef124636",
+      "ols-wide-k129-t1.case": "59c6e6abde51d7b20fc296b2ca9f2a7fa8d8633a3b705959cdf2232117f60fd7",
+      "ols-wide-k129-t4.case": "e8c7dc3c492b6f6bda48b54748d732c60a6465575a9d70307a6c314149021bd4",
+      "ols-wide-k64-t1.case": "71cbbcf9684c8433c4653d30eee649ee9be81da1bf6fe2c8c1cf1ddd6115c304",
+      "ols-wide-k64-t4.case": "447228d9c5e937771e9820f9a58e21fed46782c3c9108f39b84e8a8a9602f9cd",
+      "ols-wide-k65-t1.case": "f44113edb1266d49bac339e0be466e1d5a72b891be7e17c48644c413057814ef",
+      "ols-wide-k65-t4.case": "23f764c49e84febb09451fa02809a8cfcd3ff6221cf81463530c2d1871905e90"
+    },
+    "generators": {
+      "standard_cases": "24d5a41e2180954f1839ea359e8382a086ad7b47d093ed90d193eacf902ea0e6",
+      "replay_large": "1c74736470f6cc30aca986bc37388efb6b340267564ea69b6fc58fb3a9ee6432"
+    },
+    "manifest_sha256": "47a35bade636a01bd69d4ee3a6aadc44befb6178d9f7882c80f5374f7509f16e"
+  },
+  "replay": {
+    "schema": 1,
+    "plugin_sha256": "a97f0c28ec913a6b26b4f1a2388eb95688a60479f402d1bcb57d4cdcfc80d1ce",
+    "baseline_sha256": "9ced317e7cb995510995490e76dd492b491ee7a830a7147884ac5b76c73e38c8",
+    "known_defect_cases": 0,
+    "scientific_pass_cases": 73,
+    "candidate_fixes": [
+      "frequency-singleton",
+      "full-matrix-covariance",
+      "slope-dof"
+    ],
+    "baseline_fixes": [
+      "frequency-singleton",
+      "full-matrix-covariance",
+      "slope-dof"
+    ],
+    "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+    "affected_scope_sha256": "b4484ac974ef7c353f07ad342b70df1aa7a2a68d655a700348aa0c9f5c51a260",
+    "cases": [
+      {
+        "case": "known-12",
+        "input_sha256": "51d8dd7625663644eb7795c2420d758e9896fe299d92fb4ddcdd530cd5285992",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": "full-matrix-covariance",
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "2148850231730adf34a79dc8b65e70048c7cc6520f1a403ad4c562be89a7b2ca",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "ee0c4475d257996d525210a763e3a81bb22a1fd0996d720d313d33ed19e8ab85",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "77242fec3cd7676f74f874bedcb7e94a80725572134240f37ba61059bfe408c2",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "212a2a21d8174f07b5ab4ff9f9dd638d788ae8bdf13f4e62e4c165a8f456ec77",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "known-294",
+        "input_sha256": "b0f7216bd50b23a3d8f84cf880bfaaacec070c70ac1a4302a929e80a0c9f8f8c",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": "slope-dof",
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "19cd44009b9ee28354c6df28346c63342d9ff2a820b1127d6310e6793ffe4df8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "0767dc2bca70a2b550db8897725586d698d16e6effe9c2d1d69e0cfbf57733bc",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "e8eb1f1c0a443948fa43479458b46fb6eca31b3d9bd100979806a6d856bb5590",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "fc23306f6fe98c8466b23cc3e759751bf5de99feebc5c635ab4dce6e9cfa25b7",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "known-66",
+        "input_sha256": "d854cc778148b810706f81f155efe70d9d46cc1c4899d5dd8220e6d726284d6a",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": "frequency-singleton",
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "6df4ccea164498719fab27b441c409cccf36138265c812fd97f7ca4b49a8dc57",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "c20d3f0b5523a7cd94c013f1131ae30a8c9299eaa06e5a93fd50f30ec7fe1256",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "1f78b2559ccb89f1f5a9ba22bd5f288f762e997c4f69a69c597c487e47c4e434",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "de93f640c119469348a00ce1e1098af2cc04120c5a9cbb32022031012fd709eb",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-00",
+        "input_sha256": "f803d679133f8f73ea2bc5fda261df0884cd1828a6c45939f60b0d27fd218f21",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "96f867d5722fcd89741259b46d62b8a1dde54309224cd1edf94abf97effc3b06",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "b559b534491d426cdc0d0296561593aaf39c5db17d0fdd7353f0a89b18bcb6c6",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "feca36bbacf9a473e98665483e8c1aef04e74992114dfa4952bbf5c98a026aac",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "d24efb904bd234b9cebdc800f0f81dba28726bfa210d1cd43fab98e2c9cd8241",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-01",
+        "input_sha256": "49e2b3f22fe22e8f9f501387cfe8ebeacc4b23a15875890eb624df56daf68f1e",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "80e5a264ebd6413f7cfb5f8a9d351499efbd9db3d5fbc2a7c5228799cbef1b0b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "2d7cf47eb48f33f75a45239213e69dfe687191ea7af069115486e388e02e3826",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "7278dee934cd6e0c574578c784635c0dd67ae48f05b0442014907f5db25ece89",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "501350481cf3fefb7ab7f1bc8c4d4f69fe4e48434df136b2bfab09bf83ddb68c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-02",
+        "input_sha256": "d7382ee5b52c016f3d5a167e74c23a6533ef69d2e835bf9d619f1915e393ffb9",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "10596ccb584e4c246e816e5c69b62b4e1cbfafbcc939e4e85845e1fd7e3cfec3",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "5bb699cf6063bc8428a44342eccca61deac6c7230a38cfd584937b7ad01a8e1e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "e23380f48f85f70504103deb64cdaec797b1e6bc6e65dd3fb092532520c12967",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "f271efef6b0d362728ef1b463d227a81690b97f28bd78aece26327c75b44879f",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-03",
+        "input_sha256": "6ed7d886edbfb12aee0cf7b7280e6766207f01d514ffdd08b2df7d204f3fd7a2",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "2a734815b22f25ec7a2e4e8ede8595276039a057dc87c1e104b4f12a781b25ce",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "b7d9c9c5dd878089a6bb8d3953de73002f16af87df41ad6d4e3171af50e32b69",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "b5f2281c19311fe761eec5e318b859d0d0e6257a8f23e1428974bf771af43f00",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "ed352c104b26f9eb2730110d41f4129ce8fb99f347c5192b8f95007352809cb8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-04",
+        "input_sha256": "5d4eb10c7222ae163e38de890c852779d04eb24222cfed76b28e0f330ab8aea8",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "19610837dc8112e3686a45400f9a04de83d79de484e021adb9d5fba4dc28a650",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "548261333f05c1749691d00635ae48f433626f1509bae9697105b6264091e74d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "76a02b263e82a83a727efd1dae23890dae8ffa1c7738cf521a3f8fc94cb7c6cf",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "4aee3e2c30e4eff36c7a9068271cb0e246bf0f820aafbdc53658d58447e28c90",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-05",
+        "input_sha256": "8243c2b7f3cedcdf8d98c1859a3b3174199514006298c4d705e114cb40a11516",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "05d7b986b9444c5bd7b2cfecde8854fc58abe607215a6f695f141ef3ede2984c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "4075809fcbb4b07658b4fdaf8323e3559d461dc84483fcc1e6ba187a0c6cec02",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "36e88f6c9d87827e73ba0efc265eb7ee45a0e3b616b9561840626763919f9080",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "ce265ad902af10a90f545152a499d5a95c6ce9e683b5e6023bc80d3799b801d8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-06",
+        "input_sha256": "52d35d65837dab26d5f15b1c4d8756d048da5ba04795dea693d43a06847dfae7",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "728f9304e4d5a49dbb11ac687fadb16968009d7e359395babf0470a076ea2b8a",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "dd68b9dafaa33e1b6b6ab097f378e2afd29d365922987cfe0ba84cf29cf00dd1",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "7770d413925e6ac00f3391af7093e443cdd47f77b19b2d3961f309e99edbcff4",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "579e790019842714d100cafce9168ee4ddee1cea4e80d24070a783ef6ac2240f",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-07",
+        "input_sha256": "624677e880bdb73b196e7c7f9c3ef0ce26f3e937292ce13df2b4a1e1108e7a6c",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "0f8d5a072dc5443ebbdcc08864210b3ea81b5251a1055e86fba925ba6f58bdd2",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "988b59a2429cbdc458d7d4b2bdc349861765b4478db059efad2e37b0b4b95180",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "bddfe6f7cd8b0540cfeea0502dc095b04050a570e6ad3c09b97b2346fd40f4ba",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "28d4c834fcbb461d71c682ec90f3ddbb7dc3beca65cdb872227835c75e1825f5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-08",
+        "input_sha256": "78c09d055b3f8c9d31fc4c7c38070a278021d0ff030227dc6849e8d896cdd6fc",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "b092150ff03a5b9fcf6513aaa70881cfb56a7e9798f39d90f85bac350de26f0e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "cff95257b917ccbb215ab21c44cb87544d1d1683b9fe0bda66cda6ca443f8364",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "b73ad517ad5a7b799a373cee2759442c0acf804e1eb94d20e0bf471e17ba8a25",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "75a42f270a6807d66a2f8a081b4b9056315e28d0a9e2667eedc94ab6f85bf855",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-09",
+        "input_sha256": "6d8b6d8667d663224ee7a51e1ece87261fcc77f3326e53536a5a5d57cc60ed8f",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": true,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "635822c143945b10d007dda1c8c70872486a102618449730713b75bdc5c994f8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "05adb8750f5640530f8fc22a023c64902b57f2f249d4f6d343244a3b71d10614",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "e5903bc4e02a28e4682eb9ec167b5a6c9a4d550fcd6781ab79c2059654c6233e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "e997bf5459184e39b383fe1631ca150d701b5c45e98d9b1c91d2a2eb6967a41d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-10",
+        "input_sha256": "607c62d373eff00a0eb07ec917ce25b6ef607c7f593593186ea7e3cd686a64c8",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "e450c40ab7045e73d2177227302a929040c1173207c1627c0f7b3bd674278fbb",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "df69c1f35af334c75cee6dc357c39e34218348dbcdb9b56c7709276d9904fc13",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "675bbbb63f42dc480b5a5b6ca9d0655fd4ac9d2630d3915c8c40f94d33dacb51",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "6b2691247d8c1e8c0c7fc4bb8881a6a855bdd86f25b8c45628b66f25c9ae59b8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-11",
+        "input_sha256": "40e733998d249f047e563d4821226704643963d81ab987a362c612b036eb186c",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "8324e45d73b88032226eb6ad096e51c423e44ffde613ac815fa7c23e4f0a0e05",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "75884a79a42553f63475f5cb2e30948a8741b87fb3b6bced9761326f85b96900",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "9f3f1572947750d90220dd12ba436ba23737901a29ec3173cb221a7cfa753e3c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "0f055edfa3dd77a8ee183e8be893a4a87ee5609a9a359c85bcba046cf399f261",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-12",
+        "input_sha256": "82f977133042eb31e30ee6c18e58b10ad5524c7d2ebb76365a60691dbf381d74",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "a94622d0ab886dffb95474c04eb1532ae66ef04bbc7fd075155e76b19c12b6d4",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "a6060c5de21960cacd1f99baaeebcfee1ba1f40356661717b5f861bc2e4592c5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "7a879ac07f9bb920d060c37a70d0af9799395012a6da57bf38f697880e28e1a5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "f0d6916ee0e5d1de88df14421cd69b3890e1d1671c8f67296a425b042231775a",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-13",
+        "input_sha256": "9b6219f44da994cb8255daff8217b3f7aa4f2f124a6c976d19a28ebd900a709e",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "8ad8c06552340e7733be1643a3d0c13db0d52f51b6ce3c7c8419689548df4a40",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "cffb8f6cb9ed5c942e3a4171458db00e28f3836fd8648fb5f771a4b6c81bce51",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "a0de92b01c3bd177c681e6b338cbbe460660a59f653fb574c9bde6b7de67553f",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "fff7cf304e0351513f7d9a08f24b79a4bf6db89ba66fae61ed7dde1fb3d48791",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-14",
+        "input_sha256": "0d2c0a27e17151347f92fc1920e94ee005c51af406bf2ed78bef18c70161ed02",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "a2c082e12ab9095d161f31d68412466553ea6e0efd821cf32182ff2b0ca9f791",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "23c31ff875297f1572924f6b9cde466619f04cf7e337b351a3af80af61738f3b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "73a725c6b3dcd8ddaa7177662f5602e1a1d14b250d4357ad9a077a549e5be916",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "bf8ccc00b05d32723c9328604da3796444c5a986059aaae91cb3ec0a738dbf36",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-15",
+        "input_sha256": "2ccf67d77c887716acd18b9b6d808bc82e71b7efddc188ccaebd33a05e67a2e7",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "d4e48d75c858ef914f0beb4908a4e84dc7aab5d00422a7606d3a289728fefca6",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "e93652a25f63601602e435f19e02971465097bb4ea3903ccf820ab93c6fd7976",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "8d78b45f2d21cb6fe701ecac027f1dc3d00f5d41b75c59f7f43e1378d5e8309c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "d795df12fb69da9ffb0f11992a9a1b703c041aa16c70e31004ccdede221d6174",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-16",
+        "input_sha256": "f3c58601fdcee4855d7bede3c8fa90b2a76973f2fba7edccf29f5d5af7059f81",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "6224093041733e4c80792ef57de3ff19417b0e32949b70190fe0222e34f4d5b4",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "341b219bd924a63c9871d1a458cf15eed95d89cc9b344c98aaabb6b4fc5317de",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "5ca65e5f90945bd01a05306842ac669d28371199fa900c8a030e55b5c65b7508",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "e2131ac32e0d7a9dcb62669819b692505434477def3f99e470fafc956f017f3b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-17",
+        "input_sha256": "e5e3fd47427d7ba1f71e7cb9b6bec8b41bd848b8176d848de445b45186ee4a7b",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "502b97f695bd073442298577bb9ef99a9f8641b927739edc34b6d8b5538ef44b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "cf6e5fd8a309762c240b3842ef407cafa81a8dd0b585bc25758831a6863c1bab",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "533126350affdfb34145ca84d5f976984845df9a800814cde8f692eaab1a8d48",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "44634fc51562e7c67cb20d44473038b0803112c2e2b7d83cef90d10c69a6c30c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-18",
+        "input_sha256": "faa6f4fe7cb50e47f4ec0f1b7756aff75cd7c84a075704e24cac4a6de0d9d003",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "5a278145c9b5b9c35c0957093e1513e2a6d5092b403ba58ca8f2ba2eb296d000",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "f80b29b051bb7f218732340363abe7c049ef1e23dead6e894616d7c73b426d91",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "6090395ba2c743465c541a74caf2d80f796f89241a4a8d2c528757826ba486e3",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "a57be84ee0d7b63f3c52a7b94ed74a8bf32ec5b98bea4df19ad57ffbf1df0f6d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-19",
+        "input_sha256": "e1fa3564bec2aada7b97405b53644ff86bfa83eea959dfa784108883769715da",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "cd3564366cd1908344e98dcd204eb72adfddab0c7e68f9ff4e106ba9806fa62c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "b38218ca48b6e1852db852472a7c1e5f078a58869b4208b13bb424a695485ad7",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "a166c1ac13033f2b32d8782346329743e128edf3a5fc6bb163bf33fc15caea74",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "9988aaf272585af9ecf2b8d6f91c795509b777cb952d6e011c96892c9f049bd6",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-20",
+        "input_sha256": "7522fcf7365480249585ab830d611881164b063113886933b0fe4f80207346cb",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "479cdca23386be33259133c939391ec5185f3b8bf098b5a8a325f2e1048bd3ac",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "443d17db7e97f068baf3a1933b79d79a8e2320565218fe418949d11867a124cf",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "5c39bd9dea5515388f81296376ba8f192b90f22452b89d18032427f5d9431983",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "1cb5465aa2348f1fbae07cb48a99e255bd603af34c6025167c56bfcb3cf1efb5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-21",
+        "input_sha256": "ff8ffd189f20210b103c38958c2d58f911c7c555985848cb71721d487f77fcd3",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "1effb9394c6f68634269c8f4a3b4ebc67551eda8903b33020537130a211ad54f",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "693a6f8f1275ea3a98d8d5b2c4524bef900c6c81a882300001d7eb58764d7344",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "451ae1b27bb76def743db52748979718ce96d77448c9fd4ea6df4efd55958d1d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "ee5c60eddc7b906c9c9aaa4aace2cb599fec2fa11e0b668556ef8b64654a0b96",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-22",
+        "input_sha256": "e946b05091ede95f792d614d1825aa02157b5d28563afa51a41f4492c996c1ac",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "97e6fd8a07e9a7318ca06a2ed352b0a219e955cad2090ba4581ffbee837200a5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "d956caa34db8e316e9ed02147b74e9a16024ef9dbcf806f47eb37319f7760563",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "168ceb1171e8f4de8cb1ec2f3e1755b0bafe64fc8ee4c623eeb4b2efecab4e27",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "60155655a34e13aecc2bdba28c3d833524cf04a901930272b3dbc3e347b0fb2a",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-23",
+        "input_sha256": "e9f4a45ad4a10d8ca8528d5a65c2b97f5f529ef54bf210bcb7bab064a5aa21fa",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "a0a3f0732387b95174558a9e6fe47c1b8b881abb5b0647bc127baf485c67f9b6",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "6e077dd2467e64e6611c75d55b7bda0f5b58bcefa7c2772865ebb31a07c15e2e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "e115eb4e96a2b1cbec8cfe1ac509cf8653df59dac4aced357305b601fdb6cbc7",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "80c51fbcdcb500c67ca37f9244c31fe8a9df57b3a93c2a4a47afe4b644b8712e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-24",
+        "input_sha256": "1e9b4c7b5b2810f92016471ebc25a19df3823629f195e371594cf63141d45701",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": true,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "625a6f8a76b94cbef00e213c099d748e696a9b619d92a2e6961c596cde21217e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "f36b6e686599ab2292c4f037e85d5ac4c8924a228e9f74e0b0d55a89afc751c8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "88c13c72d5f7ff00aa12bd45f8998fe732752175fdbf52123d84ff1802c29c5b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "ae88684c6b699143bfded5fabec2d8937d09c24fe3d9fa855745e292d4b2685b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-25",
+        "input_sha256": "b19f59b86558326620ba71a1bb3dec6ab23af697561d27c6cac81fdd3016ab66",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "c8295a3e8898592ee9ac36ef6f80ebf67e3a538c70b31c05c464a2d965c10ea6",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "877d3509612c581519f8c12772adbf1faa489df04374bbd4061c63b226cd139c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "d521dc2d1e88969b3397277597b9a91a80ca7284fbccc5d5f10339f3a6e9faec",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "16adfd034ce7ddef05f27a6e176f505d9ce526c1d64a6e6dcdde2849b4fbb964",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-26",
+        "input_sha256": "6242608b1a38dddc572b2bf2ab74f7d297a17d868e0be1f841b122cb6f02767a",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "7d6561a6515f8d35e43d8fa5225bc322031ef49331677a870a01405af68bea13",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "20a8027d3605abc1bb52c252b1df711834bac98d7b399df1b6afebf55c2531c0",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "a438bf26200fc812ada8c1866a238f4d019ce529a39efbad712bf5b71f7b28b3",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "d0cf2d46dce168a5bfbee49c622bafa299b60bb4670ff25051b3df2561245692",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-27",
+        "input_sha256": "43b99c03d7ef2e52a004febf561ee3f720121d217f974e787434f96731158d0a",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": true,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "00f4cf21c9bc0f50889e149d734b4d3b3c2fabaaa27a64976ccbd00c44345736",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "6bc595c8bc13275ed4a6ddc0bc4684808c72aaaf4f40ed7ed8819bdd2ec6e9c7",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "e885ed223a35c3e6a5fd97d78cde362a7b10dda17faf49caa661b3fd21a73c26",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "75536d25b0f5b73d0be5630d2ae2a0f8cac6322a310f84be42fc61a9d505e62f",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-28",
+        "input_sha256": "2e265c6fdbc273c2da8e11e5ddc500737a2c474d12f8f305026a714761f17e1c",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "3497b7b4610ccddb30d6807f3eb5263fd4d0d77b4ef3312608ac06d6a30e8c74",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "05ed42672e2e06606e2b43ccd83a692c2a73b13ce9805432afd7bb2f22c08e37",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "2e1ab8aa59469369d1182a8065a546749482a7c8428ad2a71eeb62c5733fd2e9",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "c6d78b8d6caaed07ea2555cbb99c843161ab53e56b46de1a90c91c5c692a4767",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-29",
+        "input_sha256": "9b57e1d1ad4d4647968cf78a28b3625121c496fd957d9ae9079db1c989d86dcf",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "7ae2ff71d4240240406c8667c3dab02dfa27db3b1cf28be5456ac7df8b5d97d5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "e020731e22b9d4d859b756ea6a1cb9ef1b5f183c2e726002eeb74169a42cfd5b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "af707b8c607a58cc2fdadf3d109522b836b6793030f66aa6107da4b7c0e69029",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "4ef5f1d087cce23c1e6fb799d02ede9def2b46b9b4661d9c198cb4cf8d766250",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-30",
+        "input_sha256": "054ae81a16e773242291e82d013392179a76a8be1d56b48a8762eac7b2712d14",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "bb0fc38547a0dc3142c167d26c68250b13d98ab8d64c3d7236de14b88e353285",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "fe5c12523d1ce804a4f9093d4c95279f2ab9fcc52d874bc9170c27902c7814d3",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "81a55fae5754a3c4732fd78b830f3265b90c57fa8c7886c41952b98352e38895",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "e608ad962b989988bb279a6783a3e59804f807e0d3ae7f51ba5a0cc4d87a3f3d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ols-31",
+        "input_sha256": "15a46d78fee56550c4c2abc14bb4764a675a652b4b9cb437aa984cf499abcfb3",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "53c1a83372c0bfa24c325cd4e97bcf5c8e5a1a3c6078fed80ad42898af1ccf15",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "570e7ef36bb0c44d90b32e00f4e21c5834da33fdcfe6915fa8efb51ed19d3557",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "fc1fdf1f0098e86490785f8fccc5fab3f2639a718eeb6d64a7de5868c15792e4",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "026b95e4cca45a640be1cfea8788e83dc6113fb1a972a782eff604abf98fd2f8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-00",
+        "input_sha256": "93c53efa6f43c1267f76c80c3fcc1c70de4b755e7b5896f44d6d7326e9dec409",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "c69337cd708da06a9c9333fe9bd423bfa5e8cfbb91af1085ceba25ed7f4f0402",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "95545fd1463dbe61589bc41baeaf93bec4d90addb4b234266bff1b2dd94af025",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "4ca1baf9f322d70ed65a2b49c4d556b4b85782c4a0c115713cf5c698c1af93a2",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "97da3f9819b9cea62cc2acf9a2de477d3e30aad9a11b18d7b6469b016b6472fc",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-01",
+        "input_sha256": "d6d2f66c3350a26c7687ed335c01501df5b871aa5647b898ebf2400babca019a",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "66cff2f470569a50ca7e360e1c12616f681fe601b9f9e543bc48d51d1bcbd84d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "8bae8364a3d8daa8528c14aa63847ea580114127c67648816a711a5e5c7722d8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "a6fbc6ef705622ae685b6c257374c67f20d8c359647297efad32f5e38857ba26",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "f87056f8ee039da0560031b24c214718f5f740606b1c29b2ce535692a6510c90",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-02",
+        "input_sha256": "c308c31e167cd492ee5145458df45745361685608c6ca7a751883e20f63e1102",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "fca243062098c15c3e99dcedc3ebf47c0ad8438db259fef2fa8831b68ccbf751",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "f3840da52ebcc59e094f2a7131f64fcd07376b57582a731e983beb2b25871481",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "938d85ae79a35a8c29c19c639dff722615ee41fc91471b1a0d9cefe0e9267d50",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "9346066209790768f3402900ce80372fcc9db276aac65141e73bdf1e125544ab",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-03",
+        "input_sha256": "71911f5efd1cfa281f1a4f0bfea9311584a72e7053331a641e1fc739850d620c",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "b182b8fc0e9296e368de7295c8d888fb31b844faababf8663216d540f59e2387",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "0b315c8a77819fcea483c863c69b748b2a6e891e66e0ab38b617dd29ec52a25e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "720f604c7bbd4dc38eaa730573284bc7dd30d1019144bf6aebe79ffd33db315e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "18f3340452edd8df590f7dcc90016443779945e78ea6c0b3dabb40f14166b9ef",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-04",
+        "input_sha256": "b2574be81d83ba4c48359db3b74919380c96b8e2d0242274462560b9cd17a849",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "c5264769f51b2950241fdc415ad94c414daf0c3e359e343845e3c3d6b2ac09f2",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "753a3a40fcebc96147e0a501daa66f553d059813d6c997e0c82512c05abb3b97",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "f6a4ce5c9fd5e3d1748a15d69550aa89798ff7322a7f2dd4dbb5b30b6fc5357b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "255bda0ff362e1586dd3e37f7a2a8a544c41faaa3c619ebf5fd3b26595544151",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-05",
+        "input_sha256": "332a68999d842b5da46f8241c523cc0f277307224440d1c5e95f23c21c2f2963",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "4022862a9efb01e749fb1b8123dde0cc02d63ecfcb951a0f75eb7c3142176672",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "72504104c25b8845315bdec1d7c483b1d81316e11624e20095242094364e220d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "5196d62fb148dd92bec1b5865525af87a081bfb86ac87ac21e5702ad766455ac",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "bee6d65af296d971cb4bb30f082799e9a5b5d7759836bc520af938e96d23b8cd",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-06",
+        "input_sha256": "cd40ca79df14d3c818e2d7011df83f060680c86eee63ab2aed2a876913d389d1",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "b88e67e9b65a994856e65b3a4e26a39c6971b6ba61cfa5337b5b54af06e5bf1f",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "174e74fddde59365f0ab916e7b80f6f634a40a9a275eb9fd1446e3d4753933c4",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "f4d34f4db8b602efb9d6b4dbccf6ac0f02c16cd0abaaa3afbd2f5cc227ddbe29",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "bb532714923b5b679fd1617938ec575f6f2571c2500c2d16434f0ff873bcf9b3",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-07",
+        "input_sha256": "33a89e8c3be83be9c4ac4fc4f3508c9236d1a0047d3f9f5a80df773806852b14",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "7840c53b58782f10fd905732da1979412694fc818619790b3cf30847ac68094e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "9d50fb4a56dd259f2c823cb844d1e5262000c6c030b4afceda18d612fa08e623",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "6862e25da4f34ed83c7860242e5bcf861514be014a5ad69669fe7e3f0fb0eaa5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "a65e42cb467b5f9f5bd7df10f4d4405a6e8801918495f90417ebad7168b954bb",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-08",
+        "input_sha256": "a71debfd839a8718b45c6e9cb60aad916e3d313d86c12ae427690379a0957ab9",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "2a1b070818e6bb622413bd0e2752f88609e29c7388073e0d9b8b78fbac894513",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "92dc6f6b9c15c3f7e290148f46e05cad0585a78fa04e9dc328b96c0d63af8ea1",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "ad4fe4f53b903a066a4d941e8c698db767646944736a90b087dac465f203988d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "90d4b1afafd9d340a56dde35987c5dd885bbcf72e297386cdd4e12c9057b6cc0",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-09",
+        "input_sha256": "1f59e65ca736e0ff91cff3a6fa131a061b483bba97118372c27bf9b63f89f09e",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "a42c4916b935bcd50520fdee36e64b49c9c63afc29e2561328d8c3098d5f900d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "06f2bfc257d587bdc6e1aa8da1409500c3df886f2b82c67d6fdd4d0b726b659c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "eb86e0552b7d5ae36cda9cec40c3b001b3d2829005a988b1835d7eb17d94ab84",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "555850ec97e7ee16ae1b3e4d654828107131589cc926fe4c954efd4aaec92c64",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-10",
+        "input_sha256": "9b0a9f4b0f82522b97f24e69e4ebc4ac63610cd4609f97f5d7ca89837e4ec44d",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "d513fee2f2a8aae9e73d23339685a6ca675f0e52b61525a7457877569d0452d9",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "5673ab177f5661856661ef24b86be613eabae8b7919451e1ab276289f73575d2",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "ef851aed51a06827659b59317208433ee78c94e81c1cc7b0f483f76fc88c895e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "e5fa7f17458daae0b6b7f17ee8493155299a98ad2981fdd78a748f3793cfd589",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-11",
+        "input_sha256": "586fb532bfc42860b7b21a3e650f0630b209c6b64cd727f844cf214c246d8e0b",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "d996d533fd43b21f7f60bfd5596ba8007553dd31a14c62091b92e808b5fef8c6",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "3d060b9e6a1946b898ef98b7a7716aa4d1e56f1aff8aaa25b16aa8eb0d871c1b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "68383cdc76096d1ae6287bbab761db1333840c59b6dd83775380ef19f93f63f2",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "c6fa04f522639c39036e6ecda07e6dc958d9268526f752c16774058e78a1f7f4",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-12",
+        "input_sha256": "022f1591ba64f21c47cd3baceb7697ea5e01951ca5658961d98f4510442a5e67",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "ca5bfb8682611262e5df41fd5a167a9ff1ac76b697d38ddbc6fa22b0dffdcf2f",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "4269bad4297884999a63a9b3191eaadb8303fbacacb09c3f229f45aca2f9ff4d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "b3c8dab3a77fa618e1ab2aadc103d1b49d44aa6177f67663f60a68e812b95baf",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "302352d8a4e7b1f5a57e925a61659375ad1df5400f7ee9d14db76851249f1ac1",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-13",
+        "input_sha256": "d8f51cb7cc4348c5f9f56b50a723a1d2553521e0466e41c59fc30fea13432fcb",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "fd2cab0f12daa67236fa1d9b4cf5fce6017f212a166a3d4d515cd088c1bccfae",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "744a258fd2a2378eefe6993ca3ebd65e01cc8e5564605e9dad32d225ae28770e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "88f8865c17ddbbc53d5c1820491ec7eef482ac9f92606b1bf42f01fd87aaf745",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "0af53e0ae6133a8ec050872f8e8f3e298e5a913660a401167f4bfed96bc07641",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-14",
+        "input_sha256": "72b2cd406f727e7575c908f6a46e0a6c8e30e7ec85a8a39f31f68014c9ed5593",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "e976248abb492a564d872541167a7b7b7a9109e1bf68480d8a9be91064c23e9c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "a14d8ce71659238b59885bc8ddfbb7a6e7ad53a466a2acb093f6bdd8e0aaed2b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "56d90fda72d1864cdec5f109b6e0674840b7da1c6765c4873fc0bab3da32e8cd",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "adcf1493592f7327380128cf961a4fffbfd9e12f319a557be0e9c6476e47d69d",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-15",
+        "input_sha256": "fd57f0ae612468605ea361cc901469a3725e0df35decee05c1418c3951a45059",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "35f984935516ed09f07152ce0c2f76a1efde78279defa2975a33107aa9994c0c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "6bf8580ca93a1bc02c83bf0eae93e1fab9ee50b3b527f27edadd5920d8891e6b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "a2c95c7fd522f8607a504991fafe0c50c1420c77e32910822cb5e072adf52af1",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "7b78b925bdb077d083fe15f1a9f5fc8a9558308ea19fb46691857065c778140c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-16",
+        "input_sha256": "b50473f29c3720990f72190c129812ed9603f94a5f10f1c80362deb8477cc0d2",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "ee0b6dd94c5fd18b5eab2ed2603d19ee2d5bcda2479657a31c3fab6a70dd5575",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "0cb0c41c31b461d8d3490dbc0cf7fd0549bac2492af09e336c050137bc2ad16c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "61afd41bb92b3ba1af32d6da1b80094513a75aed58fbfa6932c2a61324cd4576",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "ceffc25770a98c72884a68b467c79afd463e482cab29db49e60a344bbe8d822f",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-17",
+        "input_sha256": "dcc1e62d876774e1e160c99a9eebb5b4e3fef4383e9b7e2baa9b786f9f468e96",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "88403b18f54ad2cc9abe726cc13e9a65208194430649314c3941181f6656b21e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "521ef4912c83314aaffa873da46369f2a2b9b082367f2f9d65abfac6499b5208",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "5a472675ed879e77339204f99af60b2e22b74cb2c32dc48e4c4866198990fb18",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "7580a5d98ddb4c45e410ac56edba7b04a4067b7916a0750c8c4607b72b31e6dc",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-18",
+        "input_sha256": "cd0ad712a091d0d9e7f41fc742b2bf21e8491ca15e0aa4fd0217e6ae32f53798",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "d45000a2c0990f80171cfdcd83fdb0c34fb6a9ac1a7f2571ea470304a3b108de",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "625bd0d03f77464a7510bd1b331adaf8eee0e5f3f3d260fee0775799e23cb874",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "d4c4458fc441bcc310d6a2f962fa94b47ac87e22dae3a9c42b04ae6030665ee4",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "1cd444ec7530145e745ef6b668f577a87ef255d17be17bd5e8631ac57597af05",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-19",
+        "input_sha256": "ea9eab8496dbb510d0538b48dd1e4ec7fdafd97f0c8590973b2267f6b6b37157",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "1a2c32b798b1d0b06375076b6a0b6a927c4e4103391bbc591c5b040271221489",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "8d726384667cc816f7159656f3645f69b461dcb8aa922696a03a035a5d62da12",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "ef56f9132ed5e551ba57fc342ab1a89f7c339f13fbbc089d6c4ab178b143d245",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "41a14d8feb45b0143f7b019505413a86f6a65831457fb760c089f7b2a32cb218",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-20",
+        "input_sha256": "81658bc23f578f6ae6229fa83b1ba6f25339f1ce581258163dfa62d41f8636e2",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "e45b84c047d11ebaca94f1fec7c004e5d90e1a200a002625e9187fcbcb15a270",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "e9d1744dd7cdd517fd07d86ac93bcdda35ffe3b350783d2248b7e5e7041f549b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "a069b1465918d35359dc552dd2876ba39bbb25c2f5316ccd723abbdf395184d3",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "6685e139eafc111f79576709fd299e62613a096ed6225e615812c3fb5f9ae0a5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-21",
+        "input_sha256": "d935207955ca971ca6e8feaa021607f112745fbf15089bedf2391afbf57305f0",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "d775a29aa60cdbd49550cb159676ac7683c2703e5baed3d8d563bfd79dc0d3b9",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "4bbe6110490da43f01bb9a4f3ef7bab1d7d52deaa7c32e14dcbad47e07a3a5cd",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "dcb94bb3dae560127e58608e302a3b43118aa5f6bdf71fa86f9c1300ce1d5158",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "0eb109fcb42856891801b960805ce95418bdf13d1e901553712ea28c5161e5b5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-22",
+        "input_sha256": "3f0256e9d5f48c45ed3741a623d69d07d73a25d1978fabf0fb65a15805d64264",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "13fe170c285b6ddc1596a818db682d24026feff3c18b38bc9c2745bb7dc92b1f",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "682b4367f36dde8eb2a3080fb8f5963d6546aef18034b727879243acb82cf22e",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "83097a68f417d1bf288c3898058a5a28d93b3f50e0b0d39db6eae01f49308717",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "1a0511ad1ce2578542985aa3be6d94fff9846b5098437a47359ab0e13110f131",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-23",
+        "input_sha256": "ab342a7d881a4ded89fc1fb323fb00f94d60727f1769dc5991e14a6320bd4faf",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "dba8d6e962b61e7451f9e6f26d8c2b886f08b7eb4b330545330a85462a44cfdc",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "f46c5ad8eda55fdec2f5fb78ec75a2a7f893e5cc2be8b82ddc2d241bba82a93c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "c91307a3c8efe1e725cc2dc0205d038cf0446cf17ddbed928d4719e0afd96ccb",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "99b3fc75423050079e9e7b639412fa9a3fef7ece23e9cd9f1615368e9d65bfb1",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-24",
+        "input_sha256": "13f3bcc6b384a8b1f0978a9d8b5b33ce7054044e76339828ad5c6f90629b22aa",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "be9f94a673ad3e476c551d3b60a94eb6b224ce15e732cdd2b03ec0a2e92f7e69",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "ff6ea963456c2d6a82416501e4b3f630821aaf2be44604cdb2f23985d10bdc3b",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "ae5d39cbdd38eac289b361c67915f6972c314e3348cd96e0d989a45d11a3cd1c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "68aecc757623ef4e4002efe07b895b2ead2607edde5d24c7ba4e90dc27854100",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-25",
+        "input_sha256": "267213b936ece51d58aea019675f4c1b3e63c5cdb9cfe17d9263c57c744f21fc",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "651c09b81e4afbbc312896618701cf5f13ab912353c3fd5b7004ac3decb33974",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "bc6357df9c98c31ff00adb7517eb766881362acd04f43cd19999106876e3fe00",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "9b46d89461e85011de3e5f18cdae61c6831751dd53d0b87a7a090c96e2b69196",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "4425431123e2f6612d870434095b7fd2c42a6f00a81a90b7c871cad5db943816",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-26",
+        "input_sha256": "63b9c0c397970fa6e60a21460881858ab8bf69ac4791ffd045a9af1bd8df4108",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "b20b5f8628b3cc91c414cb23b6cfd9549aeb9f8f0cfff71bf3d2161e3e57c613",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "68de6b42aaed4581f7e48ae42437d9ef10807203e35cce058387fba8c5c05fdd",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "5efa472958c10f4b044a1b7932fd30c5dcdfcca1c4bba3890d9689d7f853a45c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "637ee2fb70f4a231f9f65189e9c9bfa97d839c41f8cfac58c048c2e7573558f0",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-27",
+        "input_sha256": "5f0e46bc75da6bb7083033f0ece30d72723e12bb22273a40c13675c401673bac",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "dfb3ec737698319a5fe6abe8ebdde19495ca0732da19a9b8b261231af9d5abd2",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "3cf6eddd948635d301d45b887c4b198155f441a2dac7fa95982b81d68f648eb2",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "a24c133b3ed96b762c5abb6f334e7f67d75435fb6f02fbe9c58abac6c6a34fd8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "27987847432c96cfecbd95763ad1ecd95e95240119bba97f46f89e730e977f46",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-28",
+        "input_sha256": "9d0e2d14757d5412888ea0291e27e21f0550d9b02b6f925a8559973a1bc059df",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "ce5e15e34a51a05b3872e2ba0907f79af0e71cd4638a6e37ad60d2165cb06d2c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "5507259f1a859ce5dde639cd1332c135a4706303dd5704687ef24f1c77c819f8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "20e3ad406eb8b5e2c66085db2bd541b3ad0d31fe4d40a3ce377cd3d950ddb028",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "18035850a46f7887579a0f2f5f46921514b4881668ad5da41e057b3fd02c3449",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-29",
+        "input_sha256": "a3b09fe79e92eff73ead4547ddf3270600169a61aee50c3ebadfa2f93006621f",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "f13f9554b4f276da64c1ee20d6de001e2abf767d2332a4fb4df9c7a5ec1ea2e4",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "2e1cb9b674535d6f758ed700e8c78226d55fd99dcd29f672aaf62bab55a91c01",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "83f41205e202a2f2bb5274259d3acfd731c80f386c547d25237df244544919e3",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "7c9805947028ffe43b17636ff6465646b5b6cf001144d24de41fae2522f4af50",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-30",
+        "input_sha256": "10445e0c7faab54df59abdf8ea32ea85482828c85adcf21fc24939cdd69b6de4",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "f2d6c917ec3ca9101b4baf0412e3349903633180bf3833d66b0433716880e757",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "45375173ae1099d7d463ccb4972dba61f1c2c16422cb381ee4ff2ff005f9faeb",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "e2324e4ea491bfac09412851492e61e43837fe1a7950babb0260888b2e3afdbe",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "05cbe4bf654fd12063f9ef9882fcd84ca365a498917fb5a4c9c1dec5b2f35367",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-31",
+        "input_sha256": "35cae7aad60693ca3cdad33a41670cd43aaae5d043d4bb036be44268cc73a570",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "84e63e6ad5b8b2b56b9018816ceb361cfd084bae85867da0f5ef78bb650fee28",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "4fe94cc831295eed653a936a9f3d7c2f6c17cda4d12e9964a62b767e41200882",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "e3e1f48f5b1aa38e0305ce6b2371b5f33953b8b355d789a06374fe2475d2e6bb",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "b7e72cc72d1d8fefcc86a129fadd8a3b0fccffe6d70cadb9bf7bd28a49f91b38",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-bias-exact",
+        "input_sha256": "8c3a1c0cfd37dd89713e7c6c7907c0030d962aa2e5f510dc98a18e97a933726f",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "704a13618b6c75382928b2b00904352d8a6653ba5e0d3a15b70ebad3cc286ac5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "42156a2da4b25e208a97315a2def500b3ac4ab5ccf38e508a879bca4fbbe49df",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "e7a84bf8dcd5955c46aac489d7a97986a57e2b5f3e20e6293ce302f7108ba996",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "bb96f47d3ce63c7ab0182e6526f4ad3c5c17ccfd15e55cb4b37c8d2872b650b4",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-bias-randomized",
+        "input_sha256": "0e55c53cddf5fb42610e11953351e794971a384e063bc33cf3f49a5d26d7a1a9",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "ed5c159aa41ad0deafcde45f4dece4fbcbd20fc62f4673e52c574ac65d178ff0",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "4f352ded353e7701e54f816bb21c16fb7e2fff64e0a315adb6c9a7a932e413c1",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "3cdb0811f281875f48f5cc754186e915e3e39e1116ef2cebb879141d4ebb7cb5",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "b0110335981980e8cda2fc95a1eada6230a6a13dbd74ad84fb1bf5c517f5a433",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-separation-fe",
+        "input_sha256": "261be021949423a05ebd184ea56cd34f94d545e60177df17d6c27bfa9cdf3ee8",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "cdd1b36a9915e2f2e9deccc3060bc3c7cfe52d45bc331adec45b82d016664d54",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "c0056759fc4267ee2c479406bdccc4f09f6f2aad01e571970b33153e6c92fa3c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "9af4709209101f1b2f46918262446e5eca1361c5efa489267ad44e93a09149fc",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "770d60b0a2e40c6779b4a3ea8b21931dccc10deb7be203bcde0896498a9bf3e6",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-separation-ir",
+        "input_sha256": "f9e7efb7fb3024de86cfb881ab956ff7e9c019ad2cb0d00e727f27a5069948a3",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "ce8fe05d534cc8faefcba66a964bd14583c5bfdd8e5a5606c8abaf4325ae865f",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "66102c8f14a2f4c1d648739a254f32241d0620b67065e3581988801e72c741de",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "c18fc9020d9e139bce6c8fa5cc32ec62f33eca51a3defa34d301521a3c253988",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "bbabaa3990275ccbf3c2a99c143b0bbc5a1a5a40bc312edec68d18f7deff33f2",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-separation-mu",
+        "input_sha256": "a1993ef67c77da0d61a6b0b54662c816b267036a89ad3e44c4aeceededda90ae",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "b89e4d6421662561b0a9678a559de11b5ed73c50adf00e33f38ea973260db407",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "95e7826d4eb88e181b6ca4a78726fc82ad006b165dd740aa16987c27b9f455b1",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "429ef0a63c466f19bff051c8041809554ffb400f9dc58e796d1c4306285c39b8",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "ebe3f14281b83f7cc4e337c35501a2f14f92005d6394d74e8638a728517d4f8a",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      },
+      {
+        "case": "ppml-separation-simplex",
+        "input_sha256": "8a4ca5d1e312bf7e5535db824e7ae66d2986d7c83f8568aa6aca155d382b9433",
+        "exact_differences": [],
+        "science_errors": [],
+        "known_defect": null,
+        "repaired_defect": null,
+        "intentional_differences": [],
+        "baseline_science_errors": [],
+        "discrete_differences": [],
+        "affected_scope": false,
+        "return_code": 0,
+        "thread_checks": [
+          {
+            "threads": 2,
+            "input_sha256": "096a37ba271da3615c8cedb8bab8ed218aebc1195b5fcc0971178f2d0c20f097",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 4,
+            "input_sha256": "4e29cf8ccd91398c032fc57189f00942a640a8860cbdc3831f30849f1eee0467",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 8,
+            "input_sha256": "244c266f0fa0deb795ba56290a529e3c5c82cc139031d52121674373ea283b39",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          },
+          {
+            "threads": 16,
+            "input_sha256": "d0a06d2c00e3de391e49e96da04c86c581540c2daad0fbd40a8e593ed4a4a87c",
+            "science_errors": [],
+            "repeat_differences": [],
+            "discrete_differences": []
+          }
+        ]
+      }
+    ],
+    "passed": true
+  },
+  "review": {
+    "decision": "approved-conditioned-on-quiet-window",
+    "review_type": "bounded independent static review; no execution of panel, generators, builds or tests",
+    "reviewed_sha256": {
+      "run-boundary.py": "35a098477845bb0b98b67ae189485c384a0b7f8cf1f41ee25ed50db62b1baa00",
+      "record-boundary.py": "5fcad33e167fe68a576e7d9ca5d8ee389f9943d573bfcd54954755a0b0fa581b",
+      "document-boundary.py": "0e4de1e87e13ef9ac3908f679fd51a6bb22fc887364bb69f50ed08dbec29b391",
+      "prepare-cases.py": "6e802084595a7ea81e25efc6d12a8c26ae8a3ba922bc8630b6e0e3c2745cdf1c",
+      "cases.json": "cf82971b174ca1b9ae9294639dd96d61a03f1d18ad5aee8cdfa2d123d1f40e5d",
+      "tooling-attempts.json": "04e34c00831768693496e1407b0cbe9e341e4c9a84b53b3eda43bf3d5167e791"
+    },
+    "dependency_sha256": {
+      "bench/time_exact.py": "06eae41fac72789f2e5df6248cea8cb07c24bca0ae831642ef7975e40f3e30e4",
+      "bench/standard_cases.json": "47a35bade636a01bd69d4ee3a6aadc44befb6178d9f7882c80f5374f7509f16e",
+      "scripts/replay_plugins.py": "4bbf615580c10353155c35d2399fe042a9991da725612b24504265d56b3b7030",
+      "tests/replay/scopes/2026-10-12-h8-two-fe-recurrence-macos.json": "b4484ac974ef7c353f07ad342b70df1aa7a2a68d655a700348aa0c9f5c51a260",
+      "tests/replay/intentional_changes.json": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a"
+    },
+    "confirmed": [
+      "All20 actual timing inputs and cases.json match the union of standard and wide cases in bench/standard_cases.json; cases manifest digest also matches.",
+      "20 workloads times2plugins times(1excluded warmup+7measured) equals320 native calls:280measured and40warmup. Alternating pairs retain pairing order for ratios.",
+      "time_exact.py checks per-plugin exact scientific/clock-stripped solver fingerprints including output column hashes on warmup and repeats; result-changing mode intentionally does not impose cross-plugin20-case exactness.",
+      "Plugin, input and harness hashes are checked before and after timing by time_exact.py. Output directory must be new; process failures or total-budget exhaustion fail rather than resample.",
+      "90-second subprocess bound and1800-second cumulative remaining-budget logic are delegated unchanged to time_exact.py; outer driver timeout1830 bounds cleanup. No continuation or retry loop introduced.",
+      "Seven measured paired ratios feed fixedseed739391 10000-draw median bootstrap. UpperCI<=1+max(5%,1ms/baselineMedian) passes; lowerCI>allowance is material-regression; otherwise inconclusive. Overall gate uses all20 passes.",
+      "Recording retains all320 observations and raw archive identity. Documentation distinguishes per-plugin20-case repeatability from separate73-case cross-plugin H8-scoped qualification, and explicitly reports a failed or inconclusive overall timing gate."
+    ],
+    "limitations": [
+      "Timing remains blocked until the lead establishes the coordinated quiet Mac window and updates the quiet-host confirmation. The reviewed driver currently refuses launch because quiet_host_confirmed is false.",
+      "The final plan binds native artifacts, driver, benchmark helper, frozen cases manifest, replay summary, H8 scope and policy. Reporting-tool identities remain bound in this review; they are not additional native timing inputs.",
+      "Reviewer verified artifact and replay identities statically, without rerunning correctness checks, builds, generators or timings. No timing outcome or performance claim is established.",
+      "After this report update the reviewer stops tools to avoid competing with a subsequently coordinated quiet timing window."
+    ],
+    "resolved_findings": [
+      {
+        "severity": "blocking-before-timing",
+        "paths": [
+          "run-boundary.py",
+          "record-boundary.py"
+        ],
+        "description": "Launch gate checks passed replay, 73 cases and plugin hashes but does not verify intended H8 affected scope or per-case 2/4/8/16 worker identities. Recording checks aggregate292 only. A passed replay with absent worker checks or another scope can pass the timing launch prerequisite, and another four-worker panel can support stronger incorrect documentation.",
+        "required_change": "Before timing and recording, bind replay affected_scope_sha256 and policy_sha256 to intended frozen inputs and require every case thread_checks threads exactly [2,4,8,16].",
+        "resolution": "Both driver and collector now compare replay scope and policy hashes to pinned files and require exact per-case worker identities [2,4,8,16] before their respective actions. The prelaunch finding is retained in tooling-attempts.json; no timing ran."
+      }
+    ],
+    "blockers": [],
+    "final_plan_review": {
+      "plan_sha256_before_quiet_confirmation": "a36a70f64a1461efce0a17376f2e973026a60dd796724ccb290b11b135ba07ef",
+      "source_commit": "53337e65d625edeb8167391aa233d78dd71900f5",
+      "all_bound_artifacts_match": true,
+      "reviewed_tooling_unchanged": true,
+      "plugin_sha256": "a97f0c28ec913a6b26b4f1a2388eb95688a60479f402d1bcb57d4cdcfc80d1ce",
+      "baseline_sha256": "9ced317e7cb995510995490e76dd492b491ee7a830a7147884ac5b76c73e38c8",
+      "replay_summary_sha256": "4d073423993bce179aab38fde50d4f86db9a619a916b34aa4916097ea0675dc8",
+      "scope_sha256": "b4484ac974ef7c353f07ad342b70df1aa7a2a68d655a700348aa0c9f5c51a260",
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "cases": 73,
+      "worker_checks": 292,
+      "workers_each_case": [
+        2,
+        4,
+        8,
+        16
+      ],
+      "exact_differences": 0,
+      "intentional_differences": 0,
+      "science_repeat_discrete_errors": 0,
+      "quiet_host_confirmed": false,
+      "timing_launched_by_reviewer": false
+    }
+  },
+  "reason": "Activity Monitor remained active after correctness qualification. User coordination was requested under the repository quiet-host rule; no reply had arrived and no timing was launched.",
+  "raw_archive": {
+    "name": "prerequisites.tar.gz",
+    "bytes": 1423154235,
+    "sha256": "009d6a83ae59301aa3f674a202b6940e94fb4b16586be7102b7a24b5a470f87c"
+  },
+  "raw_sha256": {
+    "baseline.plugin": "9ced317e7cb995510995490e76dd492b491ee7a830a7147884ac5b76c73e38c8",
+    "boundary-review.json": "c4c030c34082d266a9e4c470575b7f08a8a61da10fe51844ef55ed6d2b988101",
+    "build-harness.log": "3ae648062b51a26bfe05c99a3162fff3c1b998ee8b4f4c8a6a09a568d683f602",
+    "candidate.plugin": "a97f0c28ec913a6b26b4f1a2388eb95688a60479f402d1bcb57d4cdcfc80d1ce",
+    "cases.json": "cf82971b174ca1b9ae9294639dd96d61a03f1d18ad5aee8cdfa2d123d1f40e5d",
+    "document-boundary.py": "0e4de1e87e13ef9ac3908f679fd51a6bb22fc887364bb69f50ed08dbec29b391",
+    "h6-archive-checks.sha256": "e8ed71579c1dc627333a99f62278742fda1e2ff324c7dff5d30f528222ef92be",
+    "host-awaiting-quiet.txt": "fe837aba616a4e8e08d5cf9370081f3a02392186ca1487c5094a994cf65cfd40",
+    "host-hardware.txt": "403a03e95148da820ae8561bd397ace2bb87a0fb0fd0a78b314373836b140fef",
+    "plan.json": "a36a70f64a1461efce0a17376f2e973026a60dd796724ccb290b11b135ba07ef",
+    "prepare-cases.log": "b41f5d21012ed9ed3a5fae1aa4ff237a9c660b49c4fecf93eec4069d9414099d",
+    "prepare-cases.py": "6e802084595a7ea81e25efc6d12a8c26ae8a3ba922bc8630b6e0e3c2745cdf1c",
+    "prerequisites-record.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "record-boundary.py": "5fcad33e167fe68a576e7d9ca5d8ee389f9943d573bfcd54954755a0b0fa581b",
+    "record-prerequisites.py": "336a9fa92f8caff95f8e10b818b36b13860bc3497082bd385b4506c80249c760",
+    "replay.log": "7cb5d34b2e246c3a5ce1fce1fa64eb74456a1a5973f9151533c25e80b518a282",
+    "run-boundary.py": "35a098477845bb0b98b67ae189485c384a0b7f8cf1f41ee25ed50db62b1baa00",
+    "timing-harness": "9915cf3f59a40d234be6abd6799087527ae29b3eeea00a51e4502345f17b9260",
+    "tooling-attempts.json": "04e34c00831768693496e1407b0cbe9e341e4c9a84b53b3eda43bf3d5167e791"
+  },
+  "limitations": [
+    "No whole-H wall-time nonregression result or release-performance claim.",
+    "No continuation or retry is declared; the original seven-pair panel remains unstarted.",
+    "Restore the retained prepared artifacts, verify their hashes and coordinate the quiet host before running the panel. Completed scientific checks remain reusable while the artifacts stay identical."
+  ],
+  "retention_note": "Review task-output identifiers are expressed relative to the retained archive; its original hash-bound review is preserved inside the raw archive."
+}

@@ -14,6 +14,43 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H final Mac boundary prerequisites, 2026-10-12
+
+The final H6 universal Mac plugin
+`a97f0c28ec913a6b26b4f1a2388eb95688a60479f402d1bcb57d4cdcfc80d1ce`
+passes the pre-H3 baseline
+`9ced317e7cb995510995490e76dd492b491ee7a830a7147884ac5b76c73e38c8`
+comparison on all 73 replay cases and 292 checks at 2/4/8/16 workers. The
+pinned H8 affected scope and intentional-change policy are verified. Exact,
+intentional, scientific, repeated-run and discrete difference lists are empty.
+The result reuses the independently witnessed H8 declaration; it does not
+replace the retained weak-graph diagnostic or claim stronger certification.
+
+All twenty standard timing inputs match the frozen manifest. Independent
+review checked the launch and reporting tools, 320-call count, artifact
+identities, per-plugin repeat rule and unchanged paired-bootstrap allowance.
+Before any timing, it found and repaired a missing launch check for scope and
+per-case worker identities. The final plan binds those prerequisites and keeps
+`quiet_host_confirmed=false`. Activity Monitor was still using CPU after the
+correctness checks, and the requested quiet-host coordination remains pending.
+No timing observation exists, no repetition was discarded and no continuation
+was used. There is no whole-H timing pass or release-performance claim.
+
+The prepared panel remains seven alternating measured pairs plus one excluded
+warm-up pair per workload, 90 seconds per process, 1,800 seconds total, with
+no retry or continuation. Restore and hash-check the retained artifacts before
+resuming it in a coordinated quiet Mac window. Completed correctness evidence
+remains reusable only while those artifacts stay identical. H7 is complete;
+this quiet timing panel is the remaining Workstream H measurement.
+
+Raw plugins, frozen inputs, replay captures, host snapshots, reviewed tools and
+plan are retained in
+`/projectnb/welfgr/fereg/runs/h-20261013-boundary/prerequisites.tar.gz`
+(1,423,154,235 bytes; SHA-256
+`009d6a83ae59301aa3f674a202b6940e94fb4b16586be7102b7a24b5a470f87c`).
+The [compact record](../bench/results/h-20261013-boundary-prerequisites.json)
+uses archive-relative identifiers and explicitly records that timing is pending.
+
 ## H6 finalized FE numeric-column release, 2026-10-12
 
 After final owned-OLS singleton processing, reencoding, rebasing and cluster

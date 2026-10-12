@@ -2011,6 +2011,19 @@ afterward. Pause measured-host agent/build/test work and coordinate unrelated
 applications before the quiet window. Report failed or inconclusive cells
 without tuning or replacing their observations.
 
+Final H boundary prerequisite result: the final H6 Mac plugin passes the
+pre-H3 comparison on all 73 replay cases and 292 checks at 2/4/8/16 workers
+under the pinned H8 scope. There are zero exact, intentional, scientific,
+repeat or discrete differences. All twenty frozen timing inputs are regenerated
+and hash-verified; the launch/collection tools and bound artifact plan received
+independent review. The timing panel has not started: Activity Monitor remained
+active and the requested quiet-host coordination has not been confirmed.
+No whole-H wall-time nonregression or release-performance claim follows.
+Prepared inputs, plugins, replay and tools are retained on SCC so the unchanged
+seven-pair panel can resume after coordination without repeating completed
+scientific work. See [validation](VALIDATION.md#h-final-mac-boundary-prerequisites-2026-10-12)
+and [compact evidence](../bench/results/h-20261013-boundary-prerequisites.json).
+
 ### Evidence and stop rules for H
 
 `./scripts/run_tests.sh` and `scripts/run_plugin_replay.sh` on every runtime
