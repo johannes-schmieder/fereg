@@ -1623,7 +1623,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 "reusable categorical MAP norm selection is not aligned",
             ));
         }
-        let absorbed = self.absorb(weights, values, config)?;
+        let absorbed = self.absorb_ppml(weights, values, config)?;
         if self.design.effects().len() != 1 {
             return Ok((absorbed, false));
         }
@@ -1670,11 +1670,38 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         }
     }
 
-    pub(crate) fn absorb(
+    pub(crate) fn absorb_ppml(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: MapConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.absorb(weights, values, config, 0.5 * config.tolerance)
+    }
+
+    /// Ordinary OLS shares the automatic LSMR recurrence target. The final
+    /// residual keeps its existing target, independently of the request floor.
+    pub(crate) fn absorb_ols(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: MapConfig,
+        final_residual: bool,
+    ) -> Result<CertifiedBorrowedMap> {
+        let target = if final_residual {
+            0.5 * config.tolerance
+        } else {
+            super::auto::direct_lsmr_tolerance(config.tolerance)
+        };
+        self.absorb(weights, values, config, target)
+    }
+
+    fn absorb(
         &mut self,
         weights: BorrowedMapWeights<'_>,
         mut values: DenseMatrix,
         config: MapConfig,
+        recurrence_tolerance: f64,
     ) -> Result<CertifiedBorrowedMap> {
         validate_config(config)?;
         let rhs_count = values.ncols();
@@ -1898,7 +1925,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                         "checkpoint projection exhausted its shared work budget",
                     )
                 })?;
-            let fallback = self.absorb(
+            let fallback = self.absorb_ppml(
                 raw_weights,
                 values,
                 MapConfig {
@@ -1948,6 +1975,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 weights,
                 values,
                 config,
+                recurrence_tolerance,
                 0,
                 1.0,
                 setup_seconds,
@@ -2041,6 +2069,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             weights,
             candidate,
             config,
+            0.5 * config.tolerance,
             0,
             cost.contraction,
             0.0,
@@ -2104,6 +2133,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         weights: ValidatedWeights<'_>,
         values: DenseMatrix,
         config: MapConfig,
+        recurrence_tolerance: f64,
         completed_pilot_iterations: usize,
         pilot_contraction: f64,
         setup_seconds: f64,
@@ -2118,6 +2148,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             weights,
             values,
             config,
+            recurrence_tolerance,
             completed_pilot_iterations,
             pilot_contraction,
             setup_seconds,
@@ -2148,6 +2179,7 @@ fn absorb_two_fe_pcg_reusing(
     weights: ValidatedWeights<'_>,
     mut values: DenseMatrix,
     config: MapConfig,
+    recurrence_tolerance: f64,
     completed_pilot_iterations: usize,
     pilot_contraction: f64,
     setup_seconds: f64,
@@ -2336,9 +2368,10 @@ fn absorb_two_fe_pcg_reusing(
             certificate_workspace,
             rhs,
             stride,
-            config.tolerance,
+            recurrence_tolerance,
             scale_components,
         )? {
+            trace_two_fe_pcg_stop(rhs, iterations, "proxy_target", recurrence_tolerance);
             residual_square[rhs] = 0.0;
             for level in 0..right_levels {
                 let index = level * stride + rhs;
@@ -2487,10 +2520,11 @@ fn absorb_two_fe_pcg_reusing(
                     certificate_workspace,
                     rhs,
                     stride,
-                    config.tolerance,
+                    recurrence_tolerance,
                     scale_components,
                 )?
             {
+                trace_two_fe_pcg_stop(rhs, iterations, "proxy_target", recurrence_tolerance);
                 active_rhs_state[rhs] = 0.0;
                 next_residual_square[rhs] = 0.0;
                 active_rhs -= 1;
@@ -2594,6 +2628,20 @@ fn absorb_two_fe_pcg_reusing(
         }
     }
 
+    if crate::diagnostics::solver_trace_enabled() {
+        let reason = if breakdown {
+            "breakdown"
+        } else if iterations == pcg_iteration_limit {
+            "recurrence_budget"
+        } else {
+            "checkpoint_progress"
+        };
+        for (rhs, &active) in active_rhs_state.iter().enumerate() {
+            if active != 0.0 {
+                trace_two_fe_pcg_stop(rhs, iterations, reason, recurrence_tolerance);
+            }
+        }
+    }
     if iteration_cap.is_some() && (active_rhs > 0 || breakdown) {
         return Ok(SchurAttempt::Continue {
             iterations,
@@ -2963,12 +3011,20 @@ impl TwoFePcgWorkspace {
     }
 }
 
+fn trace_two_fe_pcg_stop(rhs: usize, iterations: usize, reason: &str, target: f64) {
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=two_fe_pcg_rhs_stop|rhs={rhs}|iterations={iterations}|reason={reason}|recurrence_tolerance={target:.17e}"
+        ));
+    }
+}
+
 fn two_fe_pcg_rhs_ready(
     graph: &TwoFePcgWorkspace,
     certificate_workspace: &BorrowedMapWorkspace,
     rhs: usize,
     stride: usize,
-    tolerance: f64,
+    recurrence_tolerance: f64,
     scale_components: bool,
 ) -> Result<bool> {
     for level in 0..graph.right_weights.len() {
@@ -2992,7 +3048,7 @@ fn two_fe_pcg_rhs_ready(
             // stop early for large groups and trigger expensive MAP polishing.
             (mean.abs() / reference) * denominator.sqrt().max(1.0)
         };
-        if !relative.is_finite() || relative > 0.5 * tolerance {
+        if !relative.is_finite() || relative > recurrence_tolerance {
             return Ok(false);
         }
     }
@@ -3496,6 +3552,7 @@ pub(crate) fn project_borrowed_intercept_structural(
     budget: Option<FeSolverMemoryBudget>,
     structural_constant: bool,
     retain: bool,
+    final_residual: bool,
 ) -> Result<CertifiedBorrowedMap> {
     validate_config(map)?;
     if values.nrows() != design.nobs() || values.nrows() == 0 || values.ncols() == 0 {
@@ -3578,7 +3635,7 @@ pub(crate) fn project_borrowed_intercept_structural(
                 rayon::current_num_threads(),
             )?;
             graph.retain_coefficients = retain;
-            let mut result = graph.absorb(weights, values, map)?;
+            let mut result = graph.absorb_ols(weights, values, map, final_residual)?;
             result.report.requested_solver = FeSolverKind::Auto;
             result.report.solver_workspace_peak = result
                 .report

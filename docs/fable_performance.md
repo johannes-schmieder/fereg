@@ -1332,6 +1332,65 @@ native time rises by more than ten percent on any campaign cell, report to
 Johannes before integrating rather than weakening the rule. Bounded to two
 working days.
 
+H8 implementation declaration (2026-10-12, baseline `e725a515`): compute the
+ordinary automatic OLS proxy target through `auto::direct_lsmr_tolerance`.
+Pass the actual target to both PCG readiness checks; do not apply the old
+half-tolerance multiplier again. Carry the OLS/final-residual context through
+both the retained categorical owner and the stateless structural fallback.
+Other callers, including PPML, keep their existing half-request proxy target;
+the 1e-14 final projection therefore keeps its existing 5e-15 proxy. The
+requested certificate, iteration budget, MAP reserve, initial certificate,
+checkpoint continuation and LSMR fallback rules stay unchanged. At requests
+below the helper's floor, its existing cap at the request remains authoritative
+for ordinary OLS, as approved; the final-residual path remains separate.
+
+A certificate-passing result continues to publish `Certified`. Changing that
+code to `MaximumIterations` would make `SolveReport::certified()` reject the
+result and is prohibited. Trace-only per-RHS diagnostics will identify proxy
+completion, budget exhaustion or breakdown separately from final acceptance.
+Inner iteration counts and numerical diagnostics are affected work/results;
+final acceptance, solver/fallback identities, warnings and all model/discrete
+decisions remain protected. The previously named numerical scope includes
+projected columns, FE coefficients, coefficients, covariance, fit statistics
+and their downstream saved numerical outputs. No certificate is tightened or
+weakened, and a missed proxy target does not become an acceptance gate.
+
+Before editing production, bind the Mac replay scope to the three ordinary
+two-FE Auto inputs (`ols-09`, `ols-24`, `ols-27`), listing permitted numerical
+leaves and inner-work counters; all other replay fields/cases remain exact.
+Use the existing independent replay and two-FE projection oracles, plus the
+retained F1 barbell/weak cases (seed 739391, 32,768 rows, 128/128 levels,
+16 controls, analytic weights, robust VCE). Regenerated F1 request hashes must
+equal `4024d3bd...`/`1c0cdf17...`. Recompute the full-dummy QR witness and
+80-digit Wald/mixed-covariance algebra on exact binary64 inputs. The historical
+strong-F failures remain visible; this is a tolerance-consistency change, not
+an asserted repair of the weak-graph certificate. F1 is capped at six native
+captures, 120 seconds per capture and 600 seconds total, without retries.
+
+The cost panel uses frozen campaign two-FE OLS inputs: AKM 1M, dense 1M/4M
+and sparse 1M, each at 1/4/16 workers, two alternating pairs per cell (48 fits),
+120 seconds per process and 2,400 seconds total, without retries. Record native
+time and iteration counts, preserving both pairs and any failures. Report any
+cell exceeding a ten-percent native-time increase to Johannes before
+integration; do not weaken the approved rule. Quiet standard Mac timing stays
+at the H boundary. The two-working-day item cap and ten-repair/one-day blocker
+stop rules remain in force.
+
+H8 decision (2026-10-12): implement the approved consistency rule without
+changing the requested certificate or any rejection/fallback gate. Mac full
+suite, 73 exact parent replay cases, 292 worker checks, fourteen licensed OLS
+fixtures and Linux build/focused checks pass. The 48-fit campaign completes
+without retries. Sparse 1M native costs rise 13.31%/12.17%/10.95% at 1/4/16
+workers, reported to Johannes before integration; main/final iterations change
+92/11 → 120/0. AKM changes 14/0 → 18/0; dense remains 1/0. Keep these costs;
+do not weaken the target or repeat the panel. All campaign paired science,
+protected decisions and within-arm fixed-worker repeats pass. F1 QR ordinary
+bounds pass, but the unchanged strong-F witness remains failed (barbell 2.480x,
+weak 1.076x its bound). This is not a stronger weak-graph certificate.
+See [results](VALIDATION.md#h8-recurrence-consistency-with-measured-sparse-cost-2026-10-12)
+and [compact evidence](../bench/results/h-20261013-h8.json). Quiet standard Mac
+timing stays at the whole H boundary. Proceed to the approved H2 prototype.
+
 ### Evidence and stop rules for H
 
 `./scripts/run_tests.sh` and `scripts/run_plugin_replay.sh` on every runtime

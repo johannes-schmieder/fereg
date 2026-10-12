@@ -14,6 +14,97 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H8 recurrence consistency with measured sparse cost, 2026-10-12
+
+The approved ordinary automatic two-FE OLS change uses the existing automatic
+LSMR target: a hundredth of the request, floored at 1e-14 and capped at the
+request. Both PCG readiness checks receive that target directly. Explicit
+requests, PPML's scheduled projection, the final-residual target, certificate
+at the request, iteration budget, MAP reserve and acceptance/fallback rules
+are unchanged. A passing certificate still publishes `Certified` after proxy
+budget exhaustion; trace-only RHS reasons report the recurrence stop.
+
+The result-changing scope names projected columns, FE coefficients, coefficients,
+covariance, fit statistics, downstream saved numerical outputs, numerical
+diagnostics and inner work counts. Sample, rank, omission, separation,
+acceptance/stop codes, fallback and warnings remain exact. See the
+[predeclared input-bound Mac scope](../tests/replay/scopes/2026-10-12-h8-two-fe-recurrence-macos.json)
+and [compact evidence](../bench/results/h-20261013-h8.json).
+
+All 48 SCC fits completed without retries: two alternating pairs for each
+frozen AKM 1M, dense 1M/4M and sparse 1M cell at 1/4/16 workers. The table
+shows native mean seconds and the paired geometric-mean percentage change.
+All 24 coefficient/VCE and discrete comparisons pass; all 24 within-arm
+fixed-worker repeats are exact after removing clocks. Maximum coefficient
+and covariance changes are 3.20e-14 and 3.71e-16. Both arms use the same mask.
+
+| Input | Workers | Parent native s | H8 native s | Paired change |
+| --- | ---: | ---: | ---: | ---: |
+| akm-1m | 1 | 2.060 | 2.177 | +5.71% |
+| akm-1m | 4 | 0.973 | 1.063 | +9.26% |
+| akm-1m | 16 | 0.523 | 0.547 | +4.68% |
+| dense-1m | 1 | 1.439 | 1.417 | -1.48% |
+| dense-1m | 4 | 0.597 | 0.615 | +2.88% |
+| dense-1m | 16 | 0.355 | 0.373 | +5.06% |
+| dense-4m | 1 | 6.548 | 6.470 | -1.20% |
+| dense-4m | 4 | 2.884 | 2.564 | -11.08% |
+| dense-4m | 16 | 1.463 | 1.529 | +4.54% |
+| sparse-1m | 1 | 4.603 | 5.216 | +13.31% |
+| sparse-1m | 4 | 2.025 | 2.272 | +12.17% |
+| sparse-1m | 16 | 0.890 | 0.986 | +10.95% |
+
+Sparse exceeds the ten-percent reporting threshold at all three worker counts;
+these costs were reported to Johannes before integration. The approved rule
+is retained unchanged. Main/residual iterations are 14/0 → 18/0 for AKM,
+1/0 → 1/0 for both dense sizes, and 92/11 → 120/0 for sparse, identically
+in both pairs and at every worker count. A zero final projection reflects the
+unchanged initial certificate accepting the more accurate main result. These
+two-pair, trace-enabled observations are descriptive, not confidence-qualified
+release claims; the twenty frozen quiet Mac workloads remain at the H boundary.
+
+The four retained F1 captures reproduce the exact barbell/weak request hashes.
+Full-dummy QR coefficient, covariance, fitted/residual, within-TSS and null-LL
+checks pass, and protected decisions are exact. The 80-digit Wald and
+mixed-covariance algebra uses exact binary64 inputs. The strong-F bound remains
+rtol=1e-12/atol=1e-14 and still fails: barbell is 2.465 → 2.480 times its bound;
+weak is 595.049 → 1.076. Weak F error relative to the QR witness falls from
+1.440e-5 to -2.603e-8. No stronger certificate or repair of this historical
+failure is claimed. Four captures use 1.525 seconds of the 600-second native
+budget, without retries; two unused captures are not spent.
+
+Validation: `scripts/run_tests.sh` passes (1,679 Rust test executions across
+62 invocations, tooling/oracle/audit checks). Universal Mac and both Linux
+native builds pass their audits, loader and boundary guards. All 73 actual
+plugin replay cases pass with **zero exact differences from the parent** on
+this small corpus, including the three declared cases; all 292 checks at
+2/4/8/16 workers pass science, repeat and discrete checks. Fourteen licensed
+OLS fixtures pass, including transactions, saved outputs, memory modes,
+weights, clusters and independent CMG controls. The focused Linux suite passes
+74 tests. A derived three-vertex Schur fixture proves acceptance at the request
+after one exhausted recurrence step, with no available MAP step. Exact-boundary,
+helper-floor and PPML/final-residual comparisons pass. Independent Astra source
+review found no production blocker. The complexity ratchet records 62 additional
+production lines and no added dispatch candidates.
+
+Failures remain recorded: a new boundary-test fixture rounded above its nominal
+threshold and was replaced by exact power-of-two scaling; categorical test calls
+were migrated after the API split; the task-only SCC driver had an indentation
+error caught before transfer; and the licensed runner rejected a noncanonical
+plugin basename before launching Stata. The corrected basename has identical
+plugin bytes. The initial trace summary counted stderr and trace-file copies
+twice; their event sequences were checked equal and the final summary counts
+each once. Raw captures and the initial summary remain intact. No scientific
+fit was retried.
+
+Linux setup job `8035308` on `scc-gr4` has failed=0/exit=0, 406 seconds and
+4.625G maxvmem. Panel job `8035310` on `scc-yk4`, 28 physical cores, has
+failed=0/exit=0, 321 seconds and 4.153G maxvmem; the timed panel uses 299.584
+seconds of its 2,400-second cap. Raw inputs, source archives, plugins, scripts,
+logs, observations and Mac validation archive remain under
+`/projectnb/welfgr/fereg/runs/h-20261013-h8`; their identities are in the compact
+record. Mac plugin parent/candidate hashes are `a9818592...` / `15824d5b...`.
+No new Windows qualification claim is made.
+
 ## H3 ordered parallel assembly, 2026-10-12
 
 The canonical two-FE Schur builder now partitions packed matrix rows across

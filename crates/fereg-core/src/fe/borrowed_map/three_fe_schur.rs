@@ -400,7 +400,11 @@ mod tests {
                                 ..MapConfig::default()
                             };
                             let fit = owner
-                                .absorb(BorrowedMapWeights::Provided(&weights), raw.clone(), config)
+                                .absorb_ppml(
+                                    BorrowedMapWeights::Provided(&weights),
+                                    raw.clone(),
+                                    config,
+                                )
                                 .unwrap();
                             assert_eq!(fit.report().used_solver, FeSolverKind::Lsmr);
                             assert_eq!(fit.report().checkpoint_retries, 0);
@@ -420,7 +424,7 @@ mod tests {
                             for _ in 0..2 {
                                 owner.inject_checkpoint_lsmr_certificate_failure();
                                 let fallback = owner
-                                    .absorb(
+                                    .absorb_ppml(
                                         BorrowedMapWeights::Provided(&weights),
                                         raw.clone(),
                                         config,
@@ -444,7 +448,7 @@ mod tests {
                                 owner.inject_checkpoint_lsmr_fatal_failure(code);
                                 assert_eq!(
                                     owner
-                                        .absorb(
+                                        .absorb_ppml(
                                             BorrowedMapWeights::Provided(&weights),
                                             raw.clone(),
                                             config

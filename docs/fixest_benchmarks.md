@@ -236,6 +236,21 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+Workstream H8 makes ordinary two-FE OLS aim at the shared hundredth-request
+recurrence target while preserving the requested certificate, PPML and final
+projection policies. The frozen 48-fit SCC panel reports the accuracy cost:
+sparse 1M native time rises 13.31%/12.17%/10.95% at 1/4/16 workers, with main
+iterations 92 → 120 and final iterations 11 → 0. AKM main iterations rise
+14 → 18; its costs rise 5.71%/9.26%/4.68%. Dense iterations remain one; its
+observations range from -11.08% to +5.06%, without a confidence-qualified gain
+claim. All paired science/discrete checks and fixed-worker repeats pass.
+The over-ten-percent sparse costs were reported before integration, and the
+approved rule is kept unchanged. Retained F1 QR checks pass, while the unchanged
+strong-F witness still fails (barbell 2.480x, weak 1.076x the bound); the weak
+F error improves from 1.440e-5 to -2.603e-8. H8 does not answer the stronger
+certificate question. See [validation](VALIDATION.md#h8-recurrence-consistency-with-measured-sparse-cost-2026-10-12)
+and [all bounded observations](../bench/results/h-20261013-h8.json).
+
 Workstream H3's preserving row-owned assembly reduces dense two-FE PPML
 native time from 24.615 to 19.401 seconds at 4M/four workers and from 19.540
 to 11.636 at 4M/sixteen workers. At 1M the corresponding changes are

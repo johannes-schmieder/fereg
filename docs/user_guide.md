@@ -171,6 +171,9 @@ dimension. Cluster interactions use `#`, not `##`.
 Explicit MAP, Irons--Tuck, SQUAREM, and CMG requests therefore use
 `preconditioner(off)`.
 
+Automatic routes can differ at roughly the 1e-5 level in derived statistics
+on weakly connected graphs, despite passing their requested FE-moment certificate.
+
 Explicit `solver(cg)` is disabled with error 198: its residual certificate
 does not establish projection accuracy. Use `solver(lsmr)` or `solver(cmg)`.
 

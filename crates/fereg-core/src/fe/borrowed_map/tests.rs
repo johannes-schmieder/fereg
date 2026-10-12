@@ -643,7 +643,7 @@ fn check_checkpoint_schur_width(width: usize) {
                         },
                     )
                     .unwrap();
-                    let solved = reusable.absorb(raw, values.clone(), config).unwrap();
+                    let solved = reusable.absorb_ppml(raw, values.clone(), config).unwrap();
                     assert_eq!(solved.report.used_solver, FeSolverKind::Map);
                     assert_eq!(solved.report.requested_solver, FeSolverKind::Lsmr);
                     assert_eq!(solved.report.pilot_iterations, 0);
@@ -663,14 +663,14 @@ fn check_checkpoint_schur_width(width: usize) {
                         ReusableCategoricalMapAbsorber::new(design(), 65, threads).unwrap();
                     baseline.two_fe_pcg = None; // Independent LSMR witness, without the graph attempt.
                     baseline.enable_checkpoint_lsmr(true);
-                    let original_lsmr = baseline.absorb(raw, values.clone(), config).unwrap();
+                    let original_lsmr = baseline.absorb_ppml(raw, values.clone(), config).unwrap();
                     for reject_certificate in [false, true] {
                         if reject_certificate {
                             reusable.checkpoint_schur_certificate_failure = true;
                         } else {
                             reusable.checkpoint_schur_iteration_cap = Some(1);
                         }
-                        let fallback = reusable.absorb(raw, values.clone(), config).unwrap();
+                        let fallback = reusable.absorb_ppml(raw, values.clone(), config).unwrap();
                         assert_eq!(fallback.report.used_solver, FeSolverKind::Lsmr);
                         assert_eq!(fallback.residualized(), original_lsmr.residualized());
                         assert_eq!(
@@ -687,7 +687,7 @@ fn check_checkpoint_schur_width(width: usize) {
                     if threads == 4 && raw == BorrowedMapWeights::Provided(&supplied) {
                         reusable.checkpoint_schur_iteration_cap = Some(1);
                         reusable.inject_checkpoint_lsmr_certificate_failure();
-                        let final_map = reusable.absorb(raw, values.clone(), config).unwrap();
+                        let final_map = reusable.absorb_ppml(raw, values.clone(), config).unwrap();
                         assert_eq!(final_map.report.used_solver, FeSolverKind::Map);
                         assert!(final_map.report.fallback_used);
                         assert_eq!(final_map.report.checkpoint_retries, 2);
@@ -714,13 +714,13 @@ fn check_checkpoint_schur_width(width: usize) {
                     reusable.inject_checkpoint_lsmr_fatal_failure(code);
                     assert_eq!(
                         reusable
-                            .absorb(BorrowedMapWeights::Unit, values.clone(), config)
+                            .absorb_ppml(BorrowedMapWeights::Unit, values.clone(), config)
                             .unwrap_err()
                             .code,
                         code
                     );
                     assert!(reusable
-                        .absorb(BorrowedMapWeights::Unit, values.clone(), config)
+                        .absorb_ppml(BorrowedMapWeights::Unit, values.clone(), config)
                         .unwrap()
                         .report
                         .certified());
@@ -911,6 +911,16 @@ fn ols_parallel_certificate_matches_canonical_moments_and_errors() {
 
 #[test]
 fn ols_schur_readiness_includes_group_weight_certificate_scale() {
+    for (request, target) in [
+        (1e-8, 1e-10),
+        (1e-12, 1e-14),
+        (1e-13, 1e-14),
+        (1e-14, 1e-14),
+        (1e-15, 1e-15),
+    ] {
+        assert_eq!(direct_lsmr_tolerance(request), target);
+        assert!(target <= request);
+    }
     let codes = [0_u32; 100];
     let index = LevelIndex::from_codes(&codes, 1).unwrap();
     let source = ValidatedBorrowedInterceptSource::new(&codes, 1, &index).unwrap();
@@ -923,9 +933,69 @@ fn ols_schur_readiness_includes_group_weight_certificate_scale() {
     graph.residual[0] = 2e-7;
     workspace.reference_norms[0] = 1.0;
     // The mean-only rule would accept 2e-9 at tolerance 1e-8.
-    assert!(!two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-8, false).unwrap());
+    assert!(!two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 5e-9, false).unwrap());
     graph.residual[0] = 2e-8;
-    assert!(two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-8, false).unwrap());
+    assert!(two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 5e-9, false).unwrap());
+    assert!(
+        !two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, direct_lsmr_tolerance(1e-8), false,)
+            .unwrap()
+    );
+    // Powers of two keep this boundary exactly representable in the proxy.
+    graph.right_weights[0] = 64.0;
+    graph.residual[0] = 8e-10;
+    assert!(two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-10, false).unwrap());
+}
+
+#[test]
+fn ols_schur_accepts_a_passing_certificate_after_recurrence_budget() {
+    let left_codes = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2];
+    let right_codes = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
+    let left_index = LevelIndex::from_codes(&left_codes, 3).unwrap();
+    let right_index = LevelIndex::from_codes(&right_codes, 3).unwrap();
+    let left = ValidatedBorrowedInterceptSource::new(&left_codes, 3, &left_index).unwrap();
+    let right = ValidatedBorrowedInterceptSource::new(&right_codes, 3, &right_index).unwrap();
+    let design = BorrowedInterceptFeDesign::new(10, vec![left.effect(), right.effect()]).unwrap();
+    let mut owner = ReusableCategoricalMapAbsorber::new(design, 1, 1).unwrap();
+    let values = DenseMatrix::from_columns(&[vec![
+        11.0, -9.0, 10.0, -10.0, 10.0, -10.0, 10.0, -10.0, 10.0, -10.0,
+    ]])
+    .unwrap();
+    let result = owner
+        .absorb_ols(
+            BorrowedMapWeights::Unit,
+            values.clone(),
+            MapConfig {
+                tolerance: 1e-2,
+                max_iterations: 1,
+                ..config()
+            },
+            false,
+        )
+        .unwrap();
+    assert_eq!(result.report().iterations, 1);
+    assert!(owner.cg_initial_residual_square[0] != 0.0);
+    assert!(result.report().certified());
+    assert_eq!(result.report().stop_reason, SolveStopReason::Certified);
+    assert_eq!(result.report().used_solver, FeSolverKind::Map);
+    assert!(!result.report().fallback_used);
+    assert!(!two_fe_pcg_rhs_ready(
+        owner.two_fe_pcg.as_ref().unwrap(),
+        &owner.workspace,
+        0,
+        1,
+        direct_lsmr_tolerance(1e-2),
+        false,
+    )
+    .unwrap());
+    // The Schur matrix is the three-vertex path Laplacian. With masses
+    // [2,4,4], one PCG step has alpha=1.2 and solution [0.6,-0.3,0].
+    // The duplicated-edge +/-10 component has zero moments in both effects.
+    for (row, fitted) in [0.95, 0.95, 0.05, 0.05, -0.15, -0.15, 0.15, 0.15, 0.0, 0.0]
+        .into_iter()
+        .enumerate()
+    {
+        assert!((values[(row, 0)] - result.residualized()[(row, 0)] - fitted).abs() < 1e-14);
+    }
 }
 
 #[test]
@@ -1532,6 +1602,7 @@ fn retained_lsmr_reuses_preparation_and_preserves_each_batch() {
                                 None,
                                 false,
                                 true,
+                                false,
                             )
                         } else {
                             absorb_borrowed_intercept_lsmr(
@@ -1635,7 +1706,7 @@ fn reusable_one_fe_matches_weighted_group_means_and_reuses_warm_residual() {
                     .collect();
                 let raw = DenseMatrix::from_columns(&columns).unwrap();
                 let actual = projector
-                    .absorb(BorrowedMapWeights::Provided(&weights), raw, config())
+                    .absorb_ppml(BorrowedMapWeights::Provided(&weights), raw, config())
                     .unwrap();
                 assert!(actual.report().certified());
                 assert_eq!(actual.report().iterations, 1);
@@ -1662,7 +1733,7 @@ fn reusable_one_fe_matches_weighted_group_means_and_reuses_warm_residual() {
                 }
                 let within = actual.residualized().clone();
                 let warm = projector
-                    .absorb(
+                    .absorb_ppml(
                         BorrowedMapWeights::Provided(&weights),
                         within.clone(),
                         config(),
@@ -1998,7 +2069,7 @@ fn pilot_group_scratch_matches_weighted_ring_oracle_and_restores_on_failure() {
             .collect();
         let solve = |owner: &mut ReusableCategoricalMapAbsorber<'_>| {
             owner
-                .absorb(
+                .absorb_ppml(
                     BorrowedMapWeights::Provided(&weights),
                     input.clone(),
                     config,
@@ -2132,7 +2203,7 @@ fn check_direct_two_fe_weighted_contrasts(checkpoint: bool) {
                         }
                     }
                     if frame == 0 && !checkpoint {
-                        let attempt = owner.absorb(
+                        let attempt = owner.absorb_ppml(
                             BorrowedMapWeights::Provided(&weights),
                             input.clone(),
                             MapConfig {
@@ -2145,7 +2216,7 @@ fn check_direct_two_fe_weighted_contrasts(checkpoint: bool) {
                         assert_eq!(owner.capacities(), capacities);
                     }
                     let result = owner
-                        .absorb(
+                        .absorb_ppml(
                             BorrowedMapWeights::Provided(&weights),
                             input,
                             MapConfig {
@@ -2214,7 +2285,7 @@ fn reusable_categorical_map_matches_one_shot_across_weight_frames_and_rhs_widths
         .expect("reusable map");
     let initial_capacities = reusable.capacities();
     let actual = reusable
-        .absorb(
+        .absorb_ppml(
             BorrowedMapWeights::Provided(&first_weights),
             DenseMatrix::from_columns(&columns).expect("actual matrix"),
             config(),
@@ -2246,7 +2317,7 @@ fn reusable_categorical_map_matches_one_shot_across_weight_frames_and_rhs_widths
     )
     .expect("second one-shot map");
     let actual = reusable
-        .absorb(
+        .absorb_ppml(
             BorrowedMapWeights::Provided(&second_weights),
             DenseMatrix::from_columns(&narrower).expect("second actual matrix"),
             config(),
@@ -2328,7 +2399,7 @@ fn component_checkpoint_rechecks_small_drift_before_accepting_warm_residuals() {
                                 })
                                 .collect();
                             let fit = projector
-                                .absorb(
+                                .absorb_ppml(
                                     BorrowedMapWeights::Provided(&weights),
                                     DenseMatrix::from_columns(&[response, vec![0.; 16]]).unwrap(),
                                     config(),
@@ -2427,7 +2498,7 @@ fn ppml_component_checkpoint_preserves_exact_projection_across_weight_frames() {
                             projector.inject_checkpoint_lsmr_certificate_failure();
                         }
                         let fit = projector
-                            .absorb(
+                            .absorb_ppml(
                                 BorrowedMapWeights::Provided(&weights),
                                 DenseMatrix::from_columns(&[response.clone(), vec![0.; rows]])
                                     .unwrap(),
@@ -2644,7 +2715,7 @@ fn checkpoint_lsmr_recertifies_and_numerical_failure_falls_back_transactionally(
 
     reusable.inject_checkpoint_lsmr_certificate_failure();
     let fallback = reusable
-        .absorb(
+        .absorb_ppml(
             BorrowedMapWeights::Provided(&weights),
             DenseMatrix::from_columns(&columns).expect("fallback values"),
             config(),
@@ -2657,7 +2728,7 @@ fn checkpoint_lsmr_recertifies_and_numerical_failure_falls_back_transactionally(
     assert!(fallback.report().certified());
 
     let accelerated = reusable
-        .absorb(
+        .absorb_ppml(
             BorrowedMapWeights::Provided(&weights),
             DenseMatrix::from_columns(&columns).expect("accelerated values"),
             config(),
@@ -2681,7 +2752,7 @@ fn checkpoint_lsmr_recertifies_and_numerical_failure_falls_back_transactionally(
         reusable.inject_checkpoint_lsmr_certificate_failure();
         reusable.checkpoint_lsmr_retry_error = Some(code);
         let error = reusable
-            .absorb(
+            .absorb_ppml(
                 BorrowedMapWeights::Provided(&weights),
                 DenseMatrix::from_columns(&columns).expect("failure inputs"),
                 config(),
@@ -2689,7 +2760,7 @@ fn checkpoint_lsmr_recertifies_and_numerical_failure_falls_back_transactionally(
             .expect_err("retry failures remain fatal");
         assert_eq!(error.code, code);
         let recovered = reusable
-            .absorb(
+            .absorb_ppml(
                 BorrowedMapWeights::Provided(&weights),
                 DenseMatrix::from_columns(&columns).expect("recovery inputs"),
                 config(),
@@ -2752,7 +2823,7 @@ fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
     assert!(reusable.two_fe_pcg.is_some());
     let capacities = reusable.capacities();
     let actual = reusable
-        .absorb(
+        .absorb_ppml(
             BorrowedMapWeights::Provided(&weights),
             DenseMatrix::from_columns(&columns).expect("sparse reusable values"),
             config(),
@@ -2767,6 +2838,66 @@ fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
         .zip(oracle.residualized().as_slice())
     {
         assert!((left - right).abs() <= 5e-11, "{left} != {right}");
+    }
+    for tolerance in [1e-8, 1e-14] {
+        let map = MapConfig {
+            tolerance,
+            ..config()
+        };
+        let legacy = reusable
+            .absorb_ppml(
+                BorrowedMapWeights::Provided(&weights),
+                DenseMatrix::from_columns(&columns).unwrap(),
+                map,
+            )
+            .unwrap();
+        let final_residual = reusable
+            .absorb_ols(
+                BorrowedMapWeights::Provided(&weights),
+                DenseMatrix::from_columns(&columns).unwrap(),
+                map,
+                true,
+            )
+            .unwrap();
+        assert_eq!(legacy.residualized(), final_residual.residualized());
+        assert_eq!(
+            legacy.report().iterations,
+            final_residual.report().iterations
+        );
+        let ordinary = reusable
+            .absorb_ols(
+                BorrowedMapWeights::Provided(&weights),
+                DenseMatrix::from_columns(&columns).unwrap(),
+                map,
+                false,
+            )
+            .unwrap();
+        assert!(ordinary.report().certified());
+        let structural = project_borrowed_intercept_structural(
+            &oracle_design,
+            BorrowedMapWeights::Provided(&weights),
+            DenseMatrix::from_columns(&columns).unwrap(),
+            map,
+            LsmrConfig::default(),
+            None,
+            false,
+            false,
+            false,
+        )
+        .unwrap();
+        assert_eq!(ordinary.residualized(), structural.residualized());
+        assert_eq!(ordinary.report().iterations, structural.report().iterations);
+        for (&left, &right) in ordinary
+            .residualized()
+            .as_slice()
+            .iter()
+            .zip(oracle.residualized().as_slice())
+        {
+            assert!((left - right).abs() <= 5e-9, "{left} != {right}");
+        }
+        if tolerance == 1e-8 {
+            assert!(ordinary.report().iterations > legacy.report().iterations);
+        }
     }
 }
 
@@ -2886,7 +3017,7 @@ fn weighted_graph_operator_and_projection_match_independent_paths() {
                 .install(|| {
                     ReusableCategoricalMapAbsorber::new(design(), values.ncols(), threads)
                         .unwrap()
-                        .absorb(
+                        .absorb_ppml(
                             weights,
                             values.clone(),
                             MapConfig {
@@ -2973,7 +3104,7 @@ fn unit_graph_projection_matches_independent_map() {
                     .install(|| {
                         ReusableCategoricalMapAbsorber::new(design(), values.ncols(), threads)
                             .unwrap()
-                            .absorb(
+                            .absorb_ppml(
                                 BorrowedMapWeights::Unit,
                                 values.clone(),
                                 MapConfig {
@@ -3230,7 +3361,7 @@ fn large_two_fe_pcg_recurrence_is_bit_stable_across_threads() {
                         .expect("reusable map");
                 assert!(reusable.two_fe_pcg.is_some());
                 reusable
-                    .absorb(
+                    .absorb_ppml(
                         BorrowedMapWeights::Provided(&weights),
                         DenseMatrix::from_columns(&columns).expect("matrix"),
                         config(),
@@ -3293,7 +3424,7 @@ fn active_two_fe_pcg_recurrence_is_bit_stable_across_budget_boundaries() {
                         .expect("reusable map");
                 assert!(reusable.two_fe_pcg.is_some());
                 reusable
-                    .absorb(
+                    .absorb_ppml(
                         BorrowedMapWeights::Provided(&weights),
                         DenseMatrix::from_columns(&columns).expect("matrix"),
                         config(),
@@ -4929,6 +5060,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         None,
         false,
         false,
+        false,
     )
     .expect("direct auto");
     assert_eq!(direct.report().requested_solver, FeSolverKind::Auto);
@@ -4951,6 +5083,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         config(),
         LsmrConfig::default(),
         None,
+        false,
         false,
         false,
     )
@@ -4979,6 +5112,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         },
         LsmrConfig::default(),
         None,
+        false,
         false,
         false,
     )
@@ -5020,6 +5154,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
         None,
         false,
         true,
+        false,
     )
     .expect("routed auto");
     assert_eq!(result.report().requested_solver, FeSolverKind::Auto);
@@ -5034,6 +5169,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
         config(),
         LsmrConfig::default(),
         None,
+        false,
         false,
         false,
     )
@@ -5163,6 +5299,7 @@ fn uncertified_lsmr_candidate_is_polished_and_fully_accounted() {
         None,
         false,
         true,
+        false,
     )
     .expect("polished auto result");
     let report = result.report();
@@ -5225,6 +5362,7 @@ fn constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fit
                 execution_bytes: 0,
                 usable_bytes,
             }),
+            false,
             false,
             false,
         )

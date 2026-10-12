@@ -96,6 +96,9 @@ projection used for saved outputs. Unlike automatic LSMR (floor 1e-14, with a
 MAP fallback), explicit LSMR has no fallback, so it keeps that margin. Explicit
 PPML LSMR keeps its scheduled certificate and one tighter continuation.
 
+Automatic routes can differ at roughly the 1e-5 level in derived statistics
+on weakly connected graphs, despite passing their requested FE-moment certificate.
+
 Tests: `tests/model_wire_{roundtrip,adversarial}.rs`, `parser/`,
 `parity_ppmlhdfe/feppml_command_contract.do`,
 `development/ols_cmg_raw_residual_oracle.do`, `tests/prepared_fit_oracle.rs`.

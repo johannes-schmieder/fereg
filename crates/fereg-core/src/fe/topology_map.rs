@@ -52,6 +52,7 @@ fn absorb_finalized_categorical_topology_map_with_reservation<R: TopologyMapRese
             ..AbsorbConfig::default()
         },
         false,
+        false,
     )
 }
 pub fn absorb_finalized_categorical_topology_map_certified(

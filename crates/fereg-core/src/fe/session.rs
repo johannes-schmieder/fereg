@@ -129,7 +129,7 @@ impl<'a> FeSession<'a> {
         generation: MapGeometryGeneration,
     ) -> Result<CertifiedBorrowedMap> {
         if let Some(p) = self.categorical.as_mut() {
-            return p.absorb(raw_weights, values, config);
+            return p.absorb_ppml(raw_weights, values, config);
         }
         let p = self.general.as_mut().ok_or_else(|| {
             FeregError::new(
@@ -605,7 +605,7 @@ impl<'a> FeSession<'a> {
                 config,
             )
         } else if let Some(p) = self.categorical.as_mut() {
-            p.absorb(weights, values, config.map)
+            p.absorb_ols(weights, values, config.map, final_residual)
         } else if let Some(p) = self.general.as_mut() {
             let generation = MapGeometryGeneration {
                 sample: 0,
@@ -624,7 +624,14 @@ impl<'a> FeSession<'a> {
                 )
             }
         } else if let Some(design) = self.binding.as_ref() {
-            project_intercepts(design, weights, values, config, self.structural_constant)
+            project_intercepts(
+                design,
+                weights,
+                values,
+                config,
+                self.structural_constant,
+                final_residual,
+            )
         } else {
             let mut values = values;
             let mut report = super::absorb_fixed_effects(
@@ -678,6 +685,7 @@ pub(crate) fn project_intercepts(
     values: DenseMatrix,
     config: super::AbsorbConfig,
     structural_constant: bool,
+    final_residual: bool,
 ) -> Result<CertifiedBorrowedMap> {
     use super::FeSolverKind as S;
     match config.solver {
@@ -690,6 +698,7 @@ pub(crate) fn project_intercepts(
             config.solver_memory_budget,
             structural_constant,
             config.retain_coefficients,
+            final_residual,
         ),
         S::Lsmr if !design.effects().is_empty() => super::absorb_borrowed_intercept_lsmr(
             design,
