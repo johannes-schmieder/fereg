@@ -146,6 +146,11 @@ the paired-median bootstrap upper bound against max(5%, 1 ms) per workload.
 Run only on a quiet host (no builds, agents or Stata). The former three-FE LSMR
 timing inputs are not reproducible from a tracked recipe and are not frozen.
 
+The [C2 qualification follow-up](results/c2-20261012-qualification.json) retains
+the fixed fifteen-pair Mac panel and separate SCC diagnostics, including all
+failed/inconclusive bounds. The frozen candidate remains unmerged; see
+[the interpretation and limits](../docs/VALIDATION.md#c2-qualification-follow-up-stopped-without-adoption-2026-10-12).
+
 ## Stata-free native A/B observations
 
 `replay_large` creates numeric replay cases from the existing oracle designs;

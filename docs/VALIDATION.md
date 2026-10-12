@@ -14,6 +14,107 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## C2 qualification follow-up stopped without adoption, 2026-10-12
+
+The [retained qualification evidence](../bench/results/c2-20261012-qualification.json)
+checks the frozen arithmetic-preserving candidate
+[`3a3c5d1b`](https://github.com/johannes-schmieder/fereg/commit/3a3c5d1b63f0ca9c751e38b9baa7dd5bde1979f2)
+against `d9865e57`. C2 remains on its separate branch; production main does not
+include it. The candidate parallelizes bounded integer/membership validation and
+uses optional, stable counting/scatter scratch after existing memory admission.
+The [earlier evidence](https://github.com/johannes-schmieder/fereg/blob/3a3c5d1b63f0ca9c751e38b9baa7dd5bde1979f2/bench/results/c2-20261011-performance.json)
+retains its large-row gains, rejected policies and original inconclusive results.
+
+This follow-up made no production edits. Original task binaries had been deleted
+under the cleanup policy. Rebuilt Linux plugins have different hashes, although
+the runtime source, artifact inputs, frozen case bytes and harness hashes match.
+Old and fresh timing batches are therefore kept separate. No additional samples
+were taken after the fixed panel, and no allowance or confidence rule was relaxed.
+
+Mac correctness passes: `run_tests.sh`, universal binary audit and actual-plugin
+ABI/load, 73 exact replay cases, 219 additional worker checks at 2/4/16 workers,
+eight mapped licensed fixtures, and both OLS and public-scope PPML Break tests.
+The checks cover the existing independent scientific witnesses, repeatability,
+discrete decisions, memory admission and transaction/rollback boundaries.
+Mac baseline/candidate plugin hashes are `b5d1f650` / `cf4769b4`; full hashes are
+in the retained record. There is no new Windows qualification.
+
+The Mac panel used all twenty hash-verified standard inputs, one excluded warmup
+and fifteen alternating pairs per cell. All 640 calls preserve exact science and
+solver signatures. Nineteen cells clear the existing paired-bootstrap upper
+bound against max(5%, 1 ms). K=129/four workers remains inconclusive:
+
+| Fresh batch and case | Median paired candidate/baseline ratio | Ordinary 95% bootstrap interval | Outcome |
+| --- | ---: | ---: | --- |
+| Mac, wide OLS K=129, four workers | 1.02620 | [0.96849, 1.05702] | Nonregression not established |
+| SCC, no-FE OLS K=5, four workers | 0.97783 | [0.95123, 0.99317] | Ordinary bound clears |
+| SCC, three-FE OLS K=5, one worker | 0.99658 | [0.97447, 1.01189] | Ordinary bound clears |
+| SCC, probability-weighted two-FE OLS K=5, four workers | 0.96019 | [0.92581, 0.96910] | Ordinary bound clears |
+| SCC, AKM OLS 1M/K=16, four workers, RRUNTIME total | 1.02393 | [0.97922, 1.16442] | Nonregression not established |
+
+The Mac boundary cell's separate time medians are 0.370598 and 0.373725 seconds
+(+0.84%); that different statistic cannot replace the predeclared paired result.
+Other Mac observations include paired reductions of 3.6% for weighted two-FE/four
+workers, 1.7% and 2.0% for K=20 at four/sixteen workers, and 1.3% for PPML/four
+workers. Single-worker point estimates stay within 1%. These are bounded
+observations, not uniform gains or a completed release-performance claim.
+
+Johannes made the Mac available. No competing qualification builds, tests,
+transfers or agent tool workloads ran during timing; monitoring only read the
+existing process output. The 24-core Mac's bookend snapshots still show desktop
+activity: Activity Monitor at 59.6%/35.1% of one core and sysmond at 21.3%/9.9%.
+These observations neither establish continuous idleness nor identify the cause
+of the inconclusive cell. Every pair remains in the analysis.
+
+SCC job `8033696` reserved all 28 cores of `scc-wo4`, the original timing host,
+with affinity permitting all 28 CPUs and library thread pools capped at one.
+The three previously unresolved standard configurations received one warmup plus
+fifteen pairs (96 exact calls). Their ordinary intervals clear, but the
+predeclared conservative selection/repeated-look sensitivity uses an exact
+order-statistic upper bound at tail `0.025/(28*2)`. The corresponding bounds are
+1.04324, 1.05981 and 1.05030: only the no-FE cell clears that sensitivity.
+The new targeted observations do not retroactively pass the original SCC panel.
+Ordinary per-cell intervals do not constitute a familywise confidence claim.
+
+The separate SCC AKM follow-up used the same 1M-row input and four workers,
+with one excluded warmup followed by fifteen pairs. All 32 calls remain exact.
+Total-time medians are 2.052897 and 2.363395 seconds, a ratio of 1.15125 (+15.1%).
+The median of within-pair ratios is instead 1.02393, as reported above; the wide
+interval and this difference expose substantial variability, not a reliably
+established slowdown magnitude. Native-only time has paired ratio 1.02327 and
+interval [0.97515, 1.20610]. Loading has paired ratio 1.00513.
+
+Four separate traced pairs consistently reduce the recorded OLS preparation
+phase from about 138 ms to 103 ms (25%). Later fitting, score certification and
+covariance times vary in both arms and can more than offset that saving.
+These diagnostic clocks are nested, and separate phase medians are not an
+additive explanation of the untraced total. Four separate ABBA `perf stat` runs
+have nearly equal whole-process instruction counts, but include substantial
+loader/input/output work outside native timing. They cannot establish unchanged
+native instruction cost or prove a frequency, cache, scheduling or NUMA cause.
+User-only software-event zero counts do not establish absent migrations.
+
+The first setup job `8033663` passed both Linux builds/load/numeric guards, then
+failed because the input generator rejected an unsupported option (accounting
+0/2). Focused job `8033677` reused those builds, corrected the invocation and
+verified the original input/harness hashes (0/0). Timing job `8033696` completed
+with accounting 0/0, 1,081 scheduler seconds and 1.029 GB maximum virtual memory.
+The retained record also names two Mac launcher failures before their affected
+checks: a required plugin-basename guard and SIGPIPE in the pre-timing process
+snapshot. No timing observations were discarded or replaced for these repairs.
+
+Independent design and evidence review support keeping C2 unmerged under the
+current gate. The next proposed diagnosis, requiring a new decision, compares
+broad affinity with four fixed physical cores sharing a NUMA node/LLC, using
+unchanged binaries and a consistent memory-placement policy. It would test a
+placement hypothesis, not select favorable timings to waive qualification.
+No such experiment has run. The current bounded experiment stops here.
+
+Tier: retained evidence and prose only; production/artifact inputs on main are
+unchanged. Existing runtime evidence is reused; production-identity, retained
+record consistency, relative links and whitespace are checked. Temporary local
+and SCC captures are deleted after the record and hashes are committed.
+
 ## SCC optimized campaign rerun, 2026-10-12
 
 The [benchmark comparison](fixest_benchmarks.md#optimized-rerun-october-12)
