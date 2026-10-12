@@ -16,6 +16,67 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Performance-plan qualification
 
+### A2 retained-guess prototype stopped at discovery, 2026-10-11
+
+The [prototype record](../bench/results/a2-20261011-prototype.json) preserves
+all twenty-four results, twelve baseline-bound scopes and recomputed comparisons,
+phase rows, ordered traces, artifact identities and failed attempts. Every
+scientific comparison passes, including exact sample, rank, omission, separation,
+solver/fallback decisions and outer counts across workers. Six canonical calls
+accept a guess. Total cost fails the predeclared benefit condition:
+
+| Frozen PPML case | Workers | Baseline native s | Candidate native s |
+| --- | ---: | ---: | ---: |
+| AKM 1M | 1 | 9.604 | 9.483 |
+| AKM 1M | 4 | 4.822 | 4.996 |
+| AKM 1M | 16 | 3.832 | 3.757 |
+| Dense 1M | 1 | 9.333 | 8.973 |
+| Dense 1M | 4 | 5.082 | 5.058 |
+| Dense 1M | 16 | 3.831 | 3.811 |
+| Dense 4M | 1 | 38.958 | 38.843 |
+| Dense 4M | 4 | 23.319 | 23.254 |
+| Dense 4M | 16 | 18.999 | 19.025 |
+| Sparse 1M | 1 | 35.673 | 35.215 |
+| Sparse 1M | 4 | 17.458 | 21.671 |
+| Sparse 1M | 16 | 20.116 | 20.537 |
+
+Native totals are 191.026 versus 194.623 seconds, a 1.883% increase; RRUNTIME
+totals are 191.013 versus 194.610 seconds. These are single traced, baseline-first
+pairs on shared SCC host `scc-gd4`, not repeatable quiet-Mac performance evidence.
+Candidate tracing and all setup, conversion, initial residual products, retries
+and certification are included. The result stops discovery; it does not isolate
+the cause of the observed difference. The plan separately explains why the
+iteration counter alone does not establish saved operator work.
+
+The [disposable reproducer](../bench/results/a2-20261011-prototype.patch)
+binds base `e975bf3d`, eight runtime/test files and portable research tooling.
+All twenty-one resulting file hashes match an exact-base application using
+`git apply --unidiff-zero --whitespace=error`. The failed near-roundoff variant
+is preserved as encoded patch bytes with a checked decoder. Two substantive repairs address a
+nonimproving initial residual and retained-bank cleanup on early errors.
+Sixteen focused runtime witnesses and thirty-four driver guards pass; all
+seventeen test invocations and their failures/costs are retained (379.524 seconds).
+
+Build 8028183 on `scc-ei3` passes Linux binary/ABI/load and numeric guards,
+with accounting 0/0, 113 scheduler seconds and 4.230 GB maximum virtual memory.
+Initial panel 8028199 rejects valid output metadata before fitting: zero fits,
+10.680 application seconds, accounting 0/1. The narrow header-decoder correction
+preserves this failure and the frozen runtime/input bytes. Corrected panel
+8028338 completes twenty-four fits in 598.391 application seconds, accounting
+0/1, 611 scheduler seconds and 6.226 GB maximum virtual memory. Exit 1 preserves
+the failed cost gate; every terminal identity check passes. The discovery book,
+including four eligibility fits, totals twenty-eight fits and 736.220 seconds.
+
+Tier: decision and retained research evidence, unchanged production artifact.
+The prototype has a declared numerical and inner-work scope but is not integrated.
+No dependent full integration suite, mapped strict/dummy/covariance qualification
+or quiet-Mac timing was run after the failed discovery prerequisite. Production
+remains qualified E1, with no tolerance, sample/rank/omission/separation, route,
+certificate, fresh strict PPML, memory-control or SPI change. Existing full-suite
+evidence for identical production inputs is reused; retained-data integrity,
+reproducer hashes, local links, production identity and whitespace are checked
+at this documentation boundary.
+
 ### F2 geometry pricing and the missing total-cost model, 2026-10-11
 
 All six frozen Auto fits retain exact public science with the task-only

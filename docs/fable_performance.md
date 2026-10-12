@@ -499,10 +499,10 @@ of opportunity alone does not authorize broadening their implementation scope.
 | Item | Question | Decision / recommendation |
 | --- | --- | --- |
 | A1 | May the final accepted iteration's fresh canonical solve serve as the strict candidate? | B qualified; the bounded A1 experiment saved no solve and is deferred by Johannes's follow-up on 2026-10-11. Preserve its evidence; do not broaden eligibility |
-| A2 | May the strict canonical solve warm-start its PCG? | Bounded discovery authorized; continue through qualification only if compatible guesses reduce net total cost and preserve the declared safeguards |
-| A3 | Explicit/implicit geometry costing for dense PPML | Bounded research and supported prototype/qualification authorized after freezing the rule, scope and protocol |
-| F1 | Progress-based two-FE handoff | Bounded diagnosis authorized; failed comparisons alone authorize no handoff threshold or routing implementation |
-| F2 | Dense three-FE choice | Bounded conditional geometry research and supported prototype/qualification authorized; sparse timeouts prohibit an unconditional MAP switch |
+| A2 | May the strict canonical solve warm-start its PCG? | Discovery stopped: all twelve scientific comparisons pass, but total native cost rises 1.883%; retain the prototype without integration or dependent qualification |
+| A3 | Explicit/implicit geometry costing for dense PPML | Calibration stopped at the sparse work limit without a fitted rule or holdout; further calibration needs the bounded decision described below |
+| F1 | Progress-based two-FE handoff | Diagnosis complete; retained robust-F comparison failures authorize no handoff threshold or routing implementation |
+| F2 | Dense three-FE choice | Geometry feature priced with exact science; total-cost model remains unidentified, so the controlled calibration described below needs a new bounded decision |
 | E | Accept one-time norm/certificate bit changes for thread-independent reductions | Yes, as one declared scope |
 
 ### A2 authorized discovery: retain per-RHS projection guesses
@@ -600,6 +600,43 @@ this test budget adds no native campaign fits. Bind the existing named numerical
 replay leaves to each baseline before the corresponding candidate call, and
 retain exact protected decisions. Independent strict/dummy/covariance witnesses
 remain required before qualification.
+
+#### A2 discovery outcome (2026-10-11)
+
+The [retained prototype record](../bench/results/a2-20261011-prototype.json)
+and [disposable reproducer](../bench/results/a2-20261011-prototype.patch)
+close this experiment at its lower-total-cost gate. All twelve comparisons
+across four frozen cases and 1/4/16 workers pass the declared numerical bounds
+and exact protected decisions. Six calls accept compatible guesses, on AKM
+and dense 4M. Native time nevertheless rises from 191.026 to 194.623 seconds
+(1.883%); RRUNTIME total rises from 191.013 to 194.610 seconds. Sparse four-worker
+native time rises from 17.458 to 21.671 seconds. These are single traced SCC
+pairs, with baseline first, so they neither attribute the difference to a
+particular phase nor establish a quiet-Mac regression. They fail the frozen
+discovery benefit condition without a retry or a new routing fence.
+
+Both allowed substantive runtime repairs were used: reject an explicitly
+nonimproving initial residual before spending iterations, then clear retained
+banks on early error boundaries. Sixteen focused runtime witnesses and thirty-four
+driver checks pass. The first panel attempt rejected valid output metadata
+before any native fit; its 10.680-second failure remains charged and retained.
+The corrected panel completes all twenty-four fits in 598.391 application
+seconds. Including the four eligibility fits and failed preflight, the discovery
+book totals twenty-eight fits and 736.220 seconds; unused allowance does not
+authorize continuing after this stop.
+
+AKM's strict candidate reports 430 recurrence iterations. Its initial residual
+operator products are outside that counter. The baseline maximum of 26 gives
+at most 442 recurrence applications across seventeen RHSs. If all seventeen
+guesses reach residual construction, the candidate performs 447 applications,
+despite fewer recurrence iterations. The repeated `used` trace flag is call-wide,
+so this is a conditional work diagnostic, not a measured per-RHS operator count
+or timing attribution. The measured total-cost failure is sufficient to stop.
+
+The production runtime remains qualified E1. No full prototype integration
+suite, mapped strict/dummy/covariance qualification or quiet-Mac timing follows
+this failed prerequisite. All tolerances, model semantics, certificates, fresh
+strict solving, memory controls and SPI ownership remain unchanged in production.
 
 ### A3 authorized research: costing before route changes
 
