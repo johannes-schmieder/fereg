@@ -140,7 +140,11 @@ impl PreparedPpmlModelGeneration {
     }
 
     pub(crate) fn original_rows(&self) -> &[usize] {
-        self.prepared.sample().retained_rows()
+        self.prepared
+            .sample()
+            .retained_rows()
+            .selected()
+            .expect("PPML preparation owns explicit rows")
     }
 
     pub(crate) fn outcome(&self) -> &[f64] {
@@ -325,16 +329,14 @@ impl PreparedPpmlModelOwner {
         let adjustment_report = numeric.adjustment();
         let sample = numeric.into_sample();
         validate_loaded_numeric_pair(&loaded, &sample, weight_report)?;
-        let base_probability_weights = capture_raw_probability_weights(
-            &loaded,
-            &sample.original_row_by_active,
-            weight_report.kind,
-        )?;
+        let rows = sample.original_row_by_active.into_vec()?;
+        let base_probability_weights =
+            capture_raw_probability_weights(&loaded, &rows, weight_report.kind)?;
         Self::from_parts(
             request,
             clusters,
             loaded,
-            sample.original_row_by_active,
+            rows,
             sample.drop_reasons,
             sample.n_candidate,
             sample.adjustment,
@@ -743,14 +745,15 @@ fn validate_loaded_numeric_pair(
             .any(|source| source.len() != sample.n_active())
         || sample
             .original_row_by_active
-            .windows(2)
-            .any(|rows| rows[0] >= rows[1])
+            .iter()
+            .zip(sample.original_row_by_active.iter().skip(1))
+            .any(|(left, right)| left >= right)
     {
         return Err(invalid_argument(
             "prepared PPML numeric data is not aligned with its loaded source owner",
         ));
     }
-    for (active_row, &original_row) in sample.original_row_by_active.iter().enumerate() {
+    for (active_row, original_row) in sample.original_row_by_active.iter().enumerate() {
         if !loaded.candidate[original_row]
             || sample.drop_reasons[original_row] != DropReason::Retained
             || loaded.outcome.missing[original_row]
@@ -881,7 +884,10 @@ fn validate_prepared_generation(
     retained_original_rows: &[usize],
 ) -> Result<()> {
     let sample = prepared.sample();
-    if sample.retained_rows() != retained_original_rows
+    if !sample
+        .retained_rows()
+        .iter()
+        .eq(retained_original_rows.iter().copied())
         || sample.n_active() != retained_original_rows.len()
         || prepared.singletons()
             != (PreparedOlsSingletons {
@@ -1100,6 +1106,80 @@ mod tests {
         fn into_owner(self, numeric: PreparedPpmlNumericData) -> PreparedPpmlModelOwner {
             PreparedPpmlModelOwner::new(self.request, self.clusters, self.loaded, numeric)
                 .expect("prepared owner")
+        }
+    }
+
+    #[test]
+    fn axis_ppml_complete_and_selected_generation_seams_own_explicit_rows() {
+        for absorbed in [false, true] {
+            for clustered in [false, true] {
+                for excluded in [false, true] {
+                    let mut fixture = categorical_clustered_fixture();
+                    fixture.request.keep_singletons = true;
+                    if !absorbed {
+                        fixture.request.absorbed_terms.clear();
+                    }
+                    fixture.loaded.candidate.fill(true);
+                    if excluded {
+                        fixture.loaded.candidate[7] = false;
+                    }
+                    fixture.loaded.probability_weight = None;
+                    // Use the second source for both optional grammars so source
+                    // IDs stay contiguous even when the absorbed term is absent.
+                    fixture.clusters[0].sources = vec![SourceId::new(2).unwrap()];
+                    let used = |id| id == 1 || (id == 2 && (absorbed || clustered));
+                    fixture
+                        .request
+                        .model
+                        .sources
+                        .retain(|source| used(source.id.get()));
+                    fixture
+                        .loaded
+                        .numeric_sources
+                        .retain(|(source, _)| used(source.get()));
+                    fixture.request.bindings.retain(|binding| {
+                        !matches!(binding.role, OlsInputRole::NumericSource(source) if !used(source.get()))
+                    });
+                    fixture
+                        .request
+                        .bindings
+                        .retain(|binding| binding.role != OlsInputRole::ProbabilityWeight);
+                    let prepared = if clustered {
+                        prepare_ppml_categorical_ols_clustered_data(
+                            &OlsClusteredRequestV1 {
+                                ols: fixture.request,
+                                clusters: fixture.clusters,
+                            },
+                            &fixture.loaded,
+                            None,
+                            0,
+                        )
+                    } else {
+                        prepare_ppml_categorical_ols_data_with_load_hint(
+                            &fixture.request,
+                            &fixture.loaded,
+                            &[],
+                            None,
+                            0,
+                        )
+                    }
+                    .unwrap();
+                    let rows = prepared
+                        .sample()
+                        .retained_rows()
+                        .selected()
+                        .expect("PPML owns row vector even for identity");
+                    assert!(rows.iter().copied().eq(0..if excluded { 7 } else { 8 }));
+                    assert!(
+                        prepared
+                            .sample()
+                            .original_row_by_active
+                            .owned_buffer_bytes()
+                            >= std::mem::size_of_val(rows) as u128
+                    );
+                    assert_eq!(prepared.singletons().num_singletons, 0);
+                }
+            }
         }
     }
 

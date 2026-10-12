@@ -236,6 +236,16 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H6 item 5a removes the complete OLS sample's 8N-byte identity map and the
+publication membership rescan by borrowing the sealed prepared owner. Explicit
+selected maps retain their buffers, and PPML retains its required explicit
+row ownership. All 73 exact plugin cases, 292 worker checks and seventeen
+licensed fixtures pass with unchanged science and solver signatures; raw
+sample validation and transaction checks remain. Core grows 36 production
+lines and plugin shrinks 27. No timing gain is asserted before the H boundary.
+See [validation](VALIDATION.md#h6-identity-row-axis-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-axis.json).
+
 H6 item 6a parallelizes membership-bank initialization with the existing
 installed-team policy and reserved storage. All 73 exact replay cases,
 292 worker checks and seventeen licensed fixtures pass; scatter order and

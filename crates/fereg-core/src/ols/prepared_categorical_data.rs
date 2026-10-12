@@ -873,12 +873,15 @@ pub(crate) fn prepare_ppml_categorical_ols_data_with_load_hint(
     hint: Option<super::PreparedOlsLoadHint>,
     membership_scratch: u128,
 ) -> Result<PreparedOlsData> {
-    let (model, sample) = if request.absorbed_terms.is_empty() {
+    let (model, mut sample) = if request.absorbed_terms.is_empty() {
         prepare_ols_numeric_sample(request, loaded, cluster_sources)?
     } else {
         let _plan = plan_categorical_absorbed_request(request)?;
         prepare_categorical_numeric_sample(request, loaded, cluster_sources)?
     };
+    // PPML generations expose an owned row slice to separation and ledgers.
+    // Keep that boundary explicit and fallible; selected buffers move intact.
+    sample.original_row_by_active = sample.original_row_by_active.into_vec()?.into();
     finish_prepared_model_with_hint(
         request,
         cluster_sources,
@@ -1555,11 +1558,13 @@ fn validate_numeric_sample(sample: &PreparedNumericSample) -> Result<()> {
     if retained != nrows
         || sample
             .original_row_by_active
-            .windows(2)
-            .any(|rows| rows[0] >= rows[1])
-        || sample.original_row_by_active.iter().any(|row| {
-            *row >= sample.n_original || sample.drop_reasons[*row] != DropReason::Retained
-        })
+            .iter()
+            .zip(sample.original_row_by_active.iter().skip(1))
+            .any(|(left, right)| left >= right)
+        || sample
+            .original_row_by_active
+            .iter()
+            .any(|row| row >= sample.n_original || sample.drop_reasons[row] != DropReason::Retained)
     {
         return Err(invalid(
             "prepared categorical OLS retained-row map is inconsistent",
@@ -1588,10 +1593,10 @@ fn valid_complete_sample(sample: &PreparedNumericSample) -> bool {
             && sample.drop_reasons[range.clone()]
                 .iter()
                 .all(|reason| *reason == DropReason::Retained)
-            && sample.original_row_by_active[range.clone()]
-                .iter()
-                .copied()
-                .eq(range)
+            && sample
+                .original_row_by_active
+                .selected()
+                .is_none_or(|rows| rows[range.clone()].iter().copied().eq(range))
     })
 }
 
@@ -1635,13 +1640,83 @@ mod tests {
         PreparedNumericSample {
             n_original: 4,
             n_candidate: 4,
-            original_row_by_active: vec![0, 1, 2, 3],
+            original_row_by_active: vec![0, 1, 2, 3].into(),
             outcome: vec![0.0, -0.0, 2.0, 3.0],
             regressors: vec![vec![1.0, 2.0, 3.0, 4.0]],
             weights: PreparedWeights::None,
             adjustment: crate::data::PreparedAdjustment::None,
             drop_reasons: vec![DropReason::Retained; 4],
         }
+    }
+
+    #[test]
+    fn axis_raw_identity_validation_preserves_errors_and_compaction() {
+        use crate::data::FinalizedAxis;
+        let make_identity = || {
+            let mut sample = numeric_sample();
+            sample.original_row_by_active = FinalizedAxis::Identity { len: 4 };
+            sample
+        };
+        let explicit = numeric_sample();
+        let identity = make_identity();
+        assert_eq!(explicit, identity);
+        assert_eq!(
+            explicit.owned_buffer_bytes() - identity.owned_buffer_bytes(),
+            4 * std::mem::size_of::<usize>() as u128
+        );
+        for mutate in [
+            (|_: &mut PreparedNumericSample| {}) as fn(&mut PreparedNumericSample),
+            |s| s.n_candidate = 5,
+            |s| {
+                s.drop_reasons.pop();
+            },
+            |s| s.drop_reasons[2] = DropReason::MissingOutcome,
+            |s| s.outcome[1] = f64::NAN,
+            |s| {
+                s.weights = PreparedWeights::Provided {
+                    kind: WeightKind::Analytic,
+                    values: vec![0.0; 4],
+                };
+            },
+            |s| {
+                s.weights = PreparedWeights::Provided {
+                    kind: WeightKind::Analytic,
+                    values: vec![0.0; 3],
+                };
+                s.outcome[1] = f64::NAN;
+            },
+        ] {
+            let mut explicit = numeric_sample();
+            let mut identity = make_identity();
+            mutate(&mut explicit);
+            mutate(&mut identity);
+            assert_eq!(
+                validate_numeric_sample(&explicit),
+                validate_numeric_sample(&identity)
+            );
+        }
+        for len in [0, 3, 5] {
+            let mut malformed = make_identity();
+            malformed.original_row_by_active = FinalizedAxis::Identity { len };
+            assert!(validated_sample::ValidatedSample::new(malformed).is_err());
+        }
+        let unchanged = make_identity()
+            .compact_active_rows(&[true; 4], DropReason::Singleton)
+            .unwrap();
+        assert!(matches!(
+            unchanged.retained_rows(),
+            FinalizedAxis::Identity { len: 4 }
+        ));
+        let compact = make_identity()
+            .compact_active_rows(&[true, false, true, false], DropReason::Singleton)
+            .unwrap();
+        assert_eq!(compact.retained_rows().selected(), Some([0, 2].as_slice()));
+        assert_eq!(
+            compact,
+            numeric_sample()
+                .compact_active_rows(&[true, false, true, false], DropReason::Singleton)
+                .unwrap()
+        );
     }
 
     #[test]
@@ -1653,7 +1728,7 @@ mod tests {
         let sample = || PreparedNumericSample {
             n_original: rows,
             n_candidate: rows,
-            original_row_by_active: (0..rows).collect(),
+            original_row_by_active: (0..rows).collect::<Vec<_>>().into(),
             outcome: vec![-0.0; rows],
             regressors: vec![vec![1.0; rows]],
             weights: PreparedWeights::None,
@@ -1669,7 +1744,11 @@ mod tests {
                     for row in [0, rows / 4, rows / 2, rows - 1] {
                         let mut invalid = sample();
                         invalid.regressors[0][row] = f64::INFINITY;
-                        invalid.original_row_by_active[rows - 1] = rows;
+                        if let crate::data::FinalizedAxis::Selected(indices) =
+                            &mut invalid.original_row_by_active
+                        {
+                            indices[rows - 1] = rows;
+                        }
                         assert!(!valid_complete_sample(&invalid));
                         let error = validate_numeric_sample(&invalid).unwrap_err();
                         assert_eq!(error.code, ErrorCode::InvalidData);
@@ -1751,7 +1830,7 @@ mod tests {
         let pointers = (
             sample.outcome.as_ptr(),
             sample.regressors[0].as_ptr(),
-            sample.original_row_by_active.as_ptr(),
+            sample.original_row_by_active.selected().unwrap().as_ptr(),
             sample.drop_reasons.as_ptr(),
         );
         let bytes = sample.owned_buffer_bytes();
@@ -1761,7 +1840,7 @@ mod tests {
             (
                 owned.outcome.as_ptr(),
                 owned.regressors[0].as_ptr(),
-                owned.original_row_by_active.as_ptr(),
+                owned.original_row_by_active.selected().unwrap().as_ptr(),
                 owned.drop_reasons.as_ptr()
             )
         );
@@ -1785,10 +1864,25 @@ mod tests {
             },
             |s| s.outcome[2] = f64::NAN,
             |s| s.regressors[0][2] = f64::INFINITY,
-            |s| s.original_row_by_active.swap(0, 1),
-            |s| s.original_row_by_active[3] = 4,
+            |s| {
+                if let crate::data::FinalizedAxis::Selected(indices) = &mut s.original_row_by_active
+                {
+                    indices.swap(0, 1);
+                }
+            },
+            |s| {
+                if let crate::data::FinalizedAxis::Selected(indices) = &mut s.original_row_by_active
+                {
+                    indices[3] = 4;
+                }
+            },
             |s| s.drop_reasons[3] = DropReason::MissingOutcome,
-            |s| s.original_row_by_active[3] = 2,
+            |s| {
+                if let crate::data::FinalizedAxis::Selected(indices) = &mut s.original_row_by_active
+                {
+                    indices[3] = 2;
+                }
+            },
         ];
         for corrupt in corruptions {
             let mut sample = numeric_sample();

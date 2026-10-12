@@ -1577,6 +1577,42 @@ repair or timing gain is claimed. See
 [validation](VALIDATION.md#h6-membership-initialization-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-initialization.json).
 
+Item 5a declaration (parent `a3d37699`): reuse the existing `FinalizedAxis`
+representation for the authoritative sample row map. Complete unweighted
+preparation constructs an identity axis after its existing complete-sample
+checks; classification and singleton compaction retain explicit selected rows.
+Migrate consumers to logical by-value access without materializing identity
+merely for validation, equality, hashing or publication. Consumers that truly
+require an owned vector, including PPML's existing ownership boundary, convert
+fallibly and consume selected storage without copying. Count actual capacities;
+the implicit row axis owns no 8N-byte bank. Raw samples still undergo counts,
+dimensions, bounds/order, values, weights and row/drop consistency validation.
+Publication borrows the sealed prepared OLS owner rather than independent row
+and drop slices, retaining dimensions, finite residuals, receipt/output checks
+and atomic rollback while removing repeated membership validation. Arithmetic,
+solver signatures and sample/rank/omission/separation decisions stay exact.
+Witnesses compare implicit/explicit identities and malformed raw axes, excluded
+rows, weights and singleton cascades; PPML separation and original-row errors;
+publication failures and transactions; full runtime checks and exact plugin
+replay. Eliminated allocations remove their own allocation failures; remaining
+materialization stays fallible and admitted. Drop reasons and candidate markers
+remain explicit in this slice. Timing remains at the complete H boundary.
+
+Item 5a result: complete OLS preparation uses an implicit row identity,
+removing its 8N-byte heap map on this host. Selected axes transfer without
+copying; PPML explicitly retains its required row vector. Publication borrows
+the sealed prepared owner and checks the independently produced residuals,
+shapes and receipts. All 54 focused/mapped executions, Clippy, the full suite
+(1,692 Rust executions), universal Mac checks, 73 exact replay cases,
+292 worker checks and seventeen licensed fixtures pass. Independent review
+approves the proof boundaries. Core grows 36 production lines and plugin
+shrinks 27; size, dispatch and chunk counts are unchanged. Two migration
+compile errors, two invalid PPML test fixtures, a test lint, an initial Python
+version error and a stale inventory position are retained. No scientific
+policy or signature changes; drop/candidate masks remain separate. See
+[validation](VALIDATION.md#h6-identity-row-axis-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-axis.json).
+
 ### H7. Small-input fixed cost (check only)
 
 The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio

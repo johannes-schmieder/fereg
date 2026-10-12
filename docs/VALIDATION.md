@@ -14,6 +14,61 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H6 identity row axis, 2026-10-12
+
+H6 item 5a moves the existing logical identity/selected axis to the data module
+and uses it for authoritative sample row maps. Complete owned and borrowed
+unweighted preparation creates Identity after existing checks; classification
+and singleton compaction retain Selected. OLS publication borrows immutable
+sealed PreparedOlsData, retaining residual shape/finiteness, output dimensions,
+receipts and transactions without rescanning membership. Public raw samples
+still undergo dimensions, values, weights, counts, order/bounds and row/drop
+consistency validation. Owned-load-hint provenance is unchanged. All arithmetic,
+solver signatures, tolerances, certificates and sample/rank/omission/separation
+decisions remain exact.
+
+There are 54 passing focused/mapped executions: fourteen axis-filter tests,
+twelve PPML model tests, thirteen numeric-sample oracle tests, fourteen
+categorical sample/cluster oracles and one coefficient-shadow witness. The PPML
+axis witness occurs in two filters. These cover malformed Identity inputs,
+logical equality, empty and oversized maps, selected pointer/capacity transfer,
+signed zero, no-drop/deleting compaction, complete/no-FE/clustered/excluded PPML
+generations, rebase/pweight rollback and publication failure paths. Workspace
+compilation, Clippy and independent high-effort architecture review pass.
+The full suite passes 1,692 Rust executions in 62 invocations and 200 Python
+tests with 13 optional dependency skips. Universal Mac ABI/load/guard checks,
+73 exact plugin replay cases, 292 worker checks and seventeen licensed
+preparation/FE/weight/memory/output/transaction fixtures pass. The expected
+Mac Linux-ELF skip remains; there is no new Linux or Windows qualification.
+
+Complete OLS identity axes own no heap bank, removing 8N bytes on a 64-bit
+host. Selected buffers retain their actual capacities. PPML materializes an
+identity fallibly only at its existing explicit-row ownership boundary; Selected
+moves intact. Eliminated allocations remove their own failure points; invalid
+raw-data ordering and remaining fallibility are preserved. Core production
+grows 36 lines and plugin shrinks 27; size, dispatch and chunk counts stay
+unchanged. Drop-reason and candidate masks remain explicit in this slice.
+Timing remains at the whole-H Mac boundary.
+
+Retained attempts include two incomplete API-migration compile failures, two
+PPML fixture metadata errors (unused source, then noncontiguous IDs), a test
+slice-size lint and an initial Python without tomllib. Repeated publication
+access briefly exceeded the function-size limit; a local sample binding and
+removal of a redundant debug membership assertion restored the limit. The first
+full suite passed its runtime tests but stopped at stale inventory method
+positions after a documentation line moved; refreshed positions and the final
+full driver pass are retained. No numerical failure or tolerance change occurred.
+
+Candidate plugin SHA-256:
+`0c5495fce859f761d934fe65b24bd7c23bf12b05c41ebca5e017bf1b2ce06482`;
+parent plugin: `65ce7a7925bc16f9a7c82e6211a35d92914e148d92196b451ca3a38326c0b6ab`.
+Raw source, plugins, review and checks remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-h6/axis-validation.tar.gz`
+(25,590,918 bytes, SHA-256
+`d69729d308a0c5915898a867f742a05cc8886fbfca4846fdeca664cda106516e`).
+The [compact record](../bench/results/h-20261013-h6-axis.json) binds source
+identities and validation, including the removed axis module.
+
 ## H6 membership initialization, 2026-10-12
 
 H6 item 6a initializes the membership observation bank through the existing

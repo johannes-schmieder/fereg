@@ -639,7 +639,7 @@ impl EstimateAction {
                     ols_projection_parent(
                         self.prepared_owner_bytes,
                         self.metadata_owner_bytes,
-                        shadow.retained_rows.len(),
+                        shadow.prepared.sample().retained_rows().len(),
                         self.generated_columns,
                         self.fit.execution.poolsize,
                         true,
@@ -669,7 +669,7 @@ impl EstimateAction {
                 Ok::<_, FeregError>(Forecast {
                     native_peak,
                     stata_growth: Forecast::publication_growth(
-                        shadow.drop_reasons.len(),
+                        shadow.prepared.sample().drop_reasons.len(),
                         matrix_cells,
                         crate::memory_forecast::has_factor_stripes(&self.request.model),
                         self.memory_baseline.before_allocated,
@@ -2417,7 +2417,7 @@ fn validate_derived_against_outputs(
     shadow: &OlsShadowResult<'_>,
     derived: &DerivedObservationOutputs,
 ) -> Result<()> {
-    let n = shadow.retained_rows.len();
+    let n = shadow.prepared.sample().retained_rows().len();
     for (position, values) in [
         (action.outputs.xb, derived.xb.as_deref()),
         (action.outputs.xbd, derived.xbd.as_deref()),
@@ -2490,8 +2490,8 @@ fn validate_shadow_against_outputs(
         || shadow.subsets.len() != shadow.subset_rows * SUBSET_COLUMNS
         || shadow.certificates.len() != CERTIFICATE_ROWS * 2
         || shadow.receipt.len() != RECEIPT_COLUMNS
-        || shadow.drop_reasons.len() != shadow.receipt[6] as usize
-        || shadow.retained_rows.len() != shadow.residuals.len()
+        || shadow.prepared.sample().drop_reasons.len() != shadow.receipt[6] as usize
+        || shadow.prepared.sample().retained_rows().len() != shadow.residuals.len()
         || shadow.covariance_dimension > shadow.coefficient_count
         || shadow.coefficient_count > shadow.coefficient_capacity
         || action.matrices.b.rows() != 1
@@ -2511,8 +2511,7 @@ fn validate_shadow_against_outputs(
     }
     if invalid_shadow_observations(
         shadow.residuals,
-        shadow.retained_rows,
-        shadow.drop_reasons,
+        shadow.prepared,
         action.fit.execution.threads,
     )? {
         return Err(invalid(
@@ -2536,57 +2535,29 @@ fn validate_shadow_against_outputs(
 
 fn invalid_shadow_observations(
     residuals: &[f64],
-    retained_rows: &[usize],
-    drop_reasons: &[fereg_core::DropReason],
+    prepared: &PreparedOlsData,
     threads: ThreadConfig,
 ) -> Result<bool> {
-    if retained_rows.len() == drop_reasons.len()
-        && residuals.len() == retained_rows.len()
-        && fereg_core::parallel::StagePlan::new(
-            retained_rows.len() as u128 * 3,
-            retained_rows.len(),
-            threads.resolved(),
-        )
-        .lanes
-            > 1
-    {
-        // A bounded, strictly increasing map of N rows into N positions must
-        // be the identity. The original count/mapping checks then require every
-        // reason to be Retained. Check all three invariants together, without
-        // weakening the final publication barrier or using SPI on workers.
+    // Membership and drop reasons belong to the immutable validated sample.
+    // Publication still verifies the independently produced residual vector.
+    if residuals.len() != prepared.sample().n_active() {
+        return Ok(true);
+    }
+    let plan = fereg_core::parallel::StagePlan::new(
+        residuals.len() as u128,
+        residuals.len(),
+        threads.resolved(),
+    );
+    if plan.lanes > 1 {
         use rayon::prelude::*;
         return ThreadTeam::new(threads).install(|| {
             residuals
                 .par_iter()
-                .zip(retained_rows.par_iter())
-                .zip(drop_reasons.par_iter())
-                .enumerate()
-                .with_min_len(
-                    fereg_core::parallel::StagePlan::new(
-                        retained_rows.len() as u128 * 3,
-                        retained_rows.len(),
-                        threads.resolved(),
-                    )
-                    .chunk(retained_rows.len()),
-                )
-                .any(|(row, ((value, original), reason))| {
-                    !value.is_finite()
-                        || *original != row
-                        || *reason != fereg_core::DropReason::Retained
-                })
+                .with_min_len(plan.chunk(residuals.len()))
+                .any(|value| !value.is_finite())
         });
     }
-    Ok(residuals.iter().any(|value| !value.is_finite())
-        || retained_rows.iter().enumerate().any(|(index, row)| {
-            *row >= drop_reasons.len() || (index > 0 && retained_rows[index - 1] >= *row)
-        })
-        || !drop_reasons
-            .iter()
-            .enumerate()
-            .filter_map(|(row, reason)| {
-                (*reason == fereg_core::DropReason::Retained).then_some(row)
-            })
-            .eq(retained_rows.iter().copied()))
+    Ok(residuals.iter().any(|value| !value.is_finite()))
 }
 
 fn validate_shadow_receipt(action: &EstimateAction, shadow: &OlsShadowResult<'_>) -> Result<()> {
@@ -2602,9 +2573,9 @@ fn validate_shadow_receipt(action: &EstimateAction, shadow: &OlsShadowResult<'_>
         action.vce.code(),
         shadow.coefficient_count as f64,
         shadow.covariance_dimension as f64,
-        shadow.drop_reasons.len() as f64,
+        shadow.prepared.sample().drop_reasons.len() as f64,
         shadow.dof[5],
-        shadow.retained_rows.len() as f64,
+        shadow.prepared.sample().retained_rows().len() as f64,
         logical_clusters as f64,
         shadow.fixed_effect_rows as f64,
         logical_subsets as f64,
@@ -2619,7 +2590,9 @@ fn validate_shadow_receipt(action: &EstimateAction, shadow: &OlsShadowResult<'_>
         ));
     }
     let candidate = exact_usize(shadow.receipt[7], "OLS candidate count")?;
-    if candidate > shadow.drop_reasons.len() || shadow.retained_rows.len() > candidate {
+    if candidate > shadow.prepared.sample().drop_reasons.len()
+        || shadow.prepared.sample().retained_rows().len() > candidate
+    {
         return Err(invalid("OLS shadow receipt sample counts are out of range"));
     }
     Ok(())
@@ -2867,12 +2840,13 @@ fn store_shadow(
     memory_report: &MemoryReport,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
-    // Final preflight already proved exact agreement between the retained map
+    let sample = shadow.prepared.sample();
+    // The sealed prepared owner proves agreement between the retained map
     // and drop reasons. A full sample keeps its initialized private marker;
     // without requested observation products there is no row store to perform.
     let batched = try_store_full_observation_outputs(action, shadow, derived, spi)?;
     let observation_rows = if batched
-        || (shadow.retained_rows.len() == shadow.drop_reasons.len()
+        || (sample.retained_rows().len() == sample.drop_reasons.len()
             && action.outputs.residual.is_none()
             && action.outputs.drop_reason.is_none()
             && action.outputs.xb.is_none()
@@ -2882,10 +2856,10 @@ fn store_shadow(
     {
         0
     } else {
-        shadow.drop_reasons.len()
+        sample.drop_reasons.len()
     };
     let mut retained_cursor = 0_usize;
-    for (zero_based, reason) in shadow
+    for (zero_based, reason) in sample
         .drop_reasons
         .iter()
         .copied()
@@ -2898,7 +2872,6 @@ fn store_shadow(
             spi.store_numeric(action.outputs.sample, observation, 0.0)?;
         }
         if retained {
-            debug_assert_eq!(shadow.retained_rows[retained_cursor], zero_based);
             if let Some(position) = action.outputs.residual {
                 spi.store_numeric(position, observation, shadow.residuals[retained_cursor])?;
             }
@@ -3015,10 +2988,10 @@ fn try_store_full_observation_outputs(
     derived: &DerivedObservationOutputs,
     spi: &mut dyn SpiApi,
 ) -> Result<bool> {
-    // Complete preflight proved an identity row map. Preserve the scalar store
+    // The sealed prepared owner proves an identity row map for a full sample. Preserve the scalar store
     // order using borrowed columns; partial samples keep their marker updates.
-    if shadow.retained_rows.len() != shadow.drop_reasons.len()
-        || shadow.retained_rows.len() < 4096
+    if shadow.prepared.sample().retained_rows().len() != shadow.prepared.sample().drop_reasons.len()
+        || shadow.prepared.sample().retained_rows().len() < 4096
         || action.outputs.drop_reason.is_some()
     {
         return Ok(false);

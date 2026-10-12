@@ -12,8 +12,8 @@ use crate::error::{
 };
 use crate::memory::push_reserved;
 
-use super::topology_axis::FinalizedAxis;
 use super::{CategoricalCodeView, CategoricalTopologyRegistry};
+use crate::data::FinalizedAxis;
 use crate::memory::SystemVecReservation as SystemTopologyFinalizeReservation;
 use crate::memory::VecReservation as TopologyFinalizeReservation;
 

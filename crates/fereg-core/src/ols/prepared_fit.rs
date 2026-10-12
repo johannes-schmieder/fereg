@@ -2456,7 +2456,7 @@ fn validate_config<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     config: PreparedOlsFitConfig,
 ) -> Result<()> {
-    if prepared.fit_sample().n_active() == 0 {
+    if prepared.fit_sample().retained_rows().is_empty() {
         return Err(insufficient_observations(
             "prepared OLS coefficient fitting requires a nonempty final sample",
         ));

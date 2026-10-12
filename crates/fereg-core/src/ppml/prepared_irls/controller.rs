@@ -350,7 +350,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
         let row = worst_row;
         crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=strict_worst_row|iteration={iteration}|seconds={:.6}|original_row={}|failing_rows={failing_rows}|tolerance={tolerance:.17e}|accepted_eta={:.17e}|candidate_eta={:.17e}|working_response={:.17e}|residual={:.17e}|finite_predictor={:.17e}|absorbed_predictor={:.17e}|outcome={:.17e}|mean={:.17e}|hessian_weight={:.17e}|deviance_change={:.17e}|ll_change={:.17e}",
-            clock.elapsed().as_secs_f64(), self.prepared.fit_sample().retained_rows()[row] + 1,
+            clock.elapsed().as_secs_f64(), self.prepared.fit_sample().retained_rows().get(row).unwrap() + 1,
             self.workspace.eta()[row], self.workspace.candidate_eta()[row], strict.response()[row],
             strict.frame().residuals()[row], strict.finite_predictor()[row], strict.absorbed_predictor()[row],
             self.outcome[row], self.workspace.mean()[row], self.workspace.hessian_weights()[row],

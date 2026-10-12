@@ -29,7 +29,6 @@ pub(crate) use session::FeSession;
 mod singleton;
 pub(crate) mod slope_coefficients;
 mod topology_adapter;
-mod topology_axis;
 mod topology_finalize;
 mod topology_map;
 mod topology_registry;

@@ -71,7 +71,13 @@ fn missing_cluster_is_reason_six_before_singleton_pruning() {
     );
     assert_eq!(prepared.ols().sample().n_active(), case.outcome.len() - 1);
     assert_eq!(prepared.ols().singletons().num_singletons, 0);
-    assert!(!prepared.ols().sample().retained_rows().contains(&0));
+    assert!(!prepared
+        .ols()
+        .sample()
+        .retained_rows()
+        .iter()
+        .collect::<Vec<_>>()
+        .contains(&0));
     assert_eq!(
         prepared
             .cluster_codes(0)
@@ -146,7 +152,12 @@ fn categorical_cluster_interaction_matches_independent_tuple_partition() {
     let expected = independent_tuple_codes(
         &case.cluster_a,
         &case.cluster_b,
-        prepared.ols().sample().retained_rows(),
+        &prepared
+            .ols()
+            .sample()
+            .retained_rows()
+            .iter()
+            .collect::<Vec<_>>(),
     );
     assert_eq!(dimension.groups(), expected.1);
     assert_eq!(

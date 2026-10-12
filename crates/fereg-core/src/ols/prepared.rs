@@ -175,11 +175,7 @@ impl PreparedOlsLoadHint {
         let matches =
             sample.n_original == self.rows
                 && sample.n_active() == self.rows
-                && sample
-                    .original_row_by_active
-                    .iter()
-                    .copied()
-                    .eq(0..self.rows)
+                && sample.original_row_by_active.iter().eq(0..self.rows)
                 && Self::categorical_ids(request).eq(self.sources.iter().map(|s| s.source))
                 && self.sources.iter().all(|source| {
                     sample
@@ -784,11 +780,7 @@ fn prepare_full_retained_unweighted_sample(
     }
 
     let n = loaded.candidate.len();
-    let mut original_row_by_active = Vec::new();
-    original_row_by_active
-        .try_reserve_exact(n)
-        .map_err(|_| allocation("unable to reserve complete-sample observation map"))?;
-    original_row_by_active.extend(0..n);
+    let original_row_by_active = crate::data::FinalizedAxis::Identity { len: n };
 
     let mut outcome = Vec::new();
     outcome
@@ -860,11 +852,7 @@ fn is_full_retained_unweighted_sample(loaded: &LoadedOlsInput) -> bool {
 
 fn take_full_retained_unweighted_sample(loaded: LoadedOlsInput) -> Result<PreparedNumericSample> {
     let n = loaded.candidate.len();
-    let mut original_row_by_active = Vec::new();
-    original_row_by_active
-        .try_reserve_exact(n)
-        .map_err(|_| allocation("unable to reserve complete-sample observation map"))?;
-    original_row_by_active.extend(0..n);
+    let original_row_by_active = crate::data::FinalizedAxis::Identity { len: n };
 
     let mut regressors = Vec::new();
     regressors
@@ -1021,7 +1009,7 @@ fn take_classified_sample(
     Ok(PreparedNumericSample {
         n_original,
         n_candidate,
-        original_row_by_active,
+        original_row_by_active: original_row_by_active.into(),
         outcome: loaded.outcome.values,
         regressors,
         weights: weight.map_or(PreparedWeights::None, |(kind, column)| {
@@ -1087,7 +1075,7 @@ fn validate_available_categorical_domain(
                     ErrorCode::InvalidFactor,
                     format!(
                         "ordinary factor source {} at observation {} must be a finite nonnegative integer",
-                        source.get(), sample.original_row_by_active[row] + 1,
+                        source.get(), sample.original_row_by_active.get(row).unwrap() + 1,
                     ),
                 ));
             }
@@ -1756,6 +1744,42 @@ mod tests {
     }
 
     #[test]
+    fn axis_complete_transfer_matches_classification_without_row_storage() {
+        use crate::data::FinalizedAxis;
+        let request = request(1, true);
+        for n in [0, 1, 9] {
+            let loaded = LoadedOlsInput {
+                candidate: vec![true; n],
+                outcome: column(&vec![-0.0; n], &vec![false; n]),
+                numeric_sources: vec![(
+                    SourceId::new(1).unwrap(),
+                    column(&vec![2.0; n], &vec![false; n]),
+                )],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            };
+            let owned = take_full_retained_unweighted_sample(loaded.clone()).unwrap();
+            let borrowed = prepare_full_retained_unweighted_sample(&loaded)
+                .unwrap()
+                .unwrap();
+            let classified = take_classified_sample(&request, loaded, &[]).unwrap();
+            assert!(matches!(owned.retained_rows(), FinalizedAxis::Identity { len } if *len == n));
+            assert!(matches!(
+                classified.retained_rows(),
+                FinalizedAxis::Selected(_)
+            ));
+            assert_eq!(owned, borrowed);
+            assert_eq!(owned, classified);
+            assert_eq!(owned.original_row_by_active.owned_buffer_bytes(), 0);
+            assert!(owned
+                .outcome
+                .iter()
+                .all(|value| value.to_bits() == (-0.0_f64).to_bits()));
+        }
+    }
+
+    #[test]
     fn exact_row_map_drop_precedence_bits_and_intercept_are_preserved() {
         let request = request(2, true);
         let negative_zero = -0.0_f64;
@@ -1787,7 +1811,10 @@ mod tests {
             probability_weight: None,
         };
         let prepared = prepare_model(&request, &[], &loaded, false).expect("prepare");
-        assert_eq!(prepared.sample.retained_rows(), &[1, 5]);
+        assert_eq!(
+            prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[1, 5]
+        );
         assert_eq!(
             prepared.sample.drop_reasons,
             vec![
@@ -2104,7 +2131,10 @@ mod tests {
         };
         let prepared = prepare_model(&request, &[], &loaded, false).expect("factor preparation");
 
-        assert_eq!(prepared.sample.retained_rows(), &[1, 2, 5]);
+        assert_eq!(
+            prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[1, 2, 5]
+        );
         assert_eq!(
             prepared.sample.drop_reasons,
             vec![
@@ -2199,7 +2229,10 @@ mod tests {
                     prepare_model(&request, &[], &candidate_invalid, false)
                 }
                 .expect("unavailable invalid factor is excluded");
-                assert_eq!(prepared.sample.retained_rows(), &[1]);
+                assert_eq!(
+                    prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+                    &[1]
+                );
             }
         }
     }
@@ -2234,7 +2267,10 @@ mod tests {
         let prepared =
             prepare_model(&request, &[], &loaded, false).expect("interaction preparation");
 
-        assert_eq!(prepared.sample.retained_rows(), &[0, 1, 2]);
+        assert_eq!(
+            prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[0, 1, 2]
+        );
         assert_eq!(prepared.categorical_sources().len(), 3);
         assert_eq!(prepared.model.coefficients.len(), 7);
         assert_eq!(
@@ -2480,7 +2516,10 @@ mod tests {
         };
         let prepared =
             prepare_model(&request, &[], &loaded, false).expect("analytic-weight prepare");
-        assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
+        assert_eq!(
+            prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[1, 2]
+        );
         assert_eq!(
             prepared.sample.drop_reasons,
             vec![
@@ -2518,7 +2557,10 @@ mod tests {
         };
         let prepared =
             prepare_model(&request, &[], &off_candidate, false).expect("off-candidate weight");
-        assert_eq!(prepared.sample.retained_rows(), &[1]);
+        assert_eq!(
+            prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[1]
+        );
 
         let mut candidate_negative = off_candidate;
         candidate_negative.candidate = vec![true, true];
@@ -2585,7 +2627,10 @@ mod tests {
         };
         let prepared =
             prepare_model(&request, &[], &loaded, false).expect("frequency-weight prepare");
-        assert_eq!(prepared.sample.retained_rows(), &[0, 1, 2]);
+        assert_eq!(
+            prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[0, 1, 2]
+        );
         assert_eq!(
             prepared.sample.drop_reasons,
             vec![
@@ -2715,7 +2760,10 @@ mod tests {
         };
         let prepared =
             prepare_model(&request, &[], &loaded, false).expect("probability-weight prepare");
-        assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
+        assert_eq!(
+            prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[1, 2]
+        );
         assert_eq!(
             prepared.sample.drop_reasons,
             vec![
@@ -2886,7 +2934,10 @@ mod tests {
                 crate::DropReason::Retained,
             ]
         );
-        assert_eq!(prepared.sample.retained_rows(), &[4, 5]);
+        assert_eq!(
+            prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[4, 5]
+        );
         assert_eq!(prepared.categorical_sources().len(), 2);
         assert_eq!(prepared.fe_effects().len(), 3);
         assert_eq!(prepared.fe_topology().registry().sources().len(), 2);
@@ -2992,7 +3043,10 @@ mod tests {
             ]
             .concat()
         );
-        assert_eq!(prepared.sample.retained_rows(), &[5, 6, 7, 8]);
+        assert_eq!(
+            prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[5, 6, 7, 8]
+        );
         assert_eq!(prepared.sample.outcome, vec![4.0, 4.5, 5.0, 5.6]);
         assert_eq!(prepared.sample.regressors[0], vec![-0.8, -0.2, 0.3, 0.9]);
         assert_eq!(prepared.sample.regressors[1], vec![4.0, 4.0, 5.0, 5.0]);
@@ -3150,7 +3204,10 @@ mod tests {
         ));
         let weighted =
             prepare_model(&request, &[], &loaded, false).expect("weighted singleton preparation");
-        assert_eq!(weighted.sample.retained_rows(), &[5, 6, 7, 8]);
+        assert_eq!(
+            weighted.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[5, 6, 7, 8]
+        );
         assert_eq!(weighted.singletons.num_singletons, 5);
         assert_eq!(
             weighted.fe_singleton_policy(),
@@ -3173,7 +3230,14 @@ mod tests {
         probability_input.probability_weight = Some(column(&[0.5; 9], &[false; 9]));
         let probability = prepare_model(&probability_request, &[], &probability_input, false)
             .expect("probability-weighted singleton preparation");
-        assert_eq!(probability.sample.retained_rows(), &[5, 6, 7, 8]);
+        assert_eq!(
+            probability
+                .sample
+                .retained_rows()
+                .iter()
+                .collect::<Vec<_>>(),
+            &[5, 6, 7, 8]
+        );
         assert_eq!(probability.singletons.num_singletons, 5);
         assert_eq!(
             probability.fe_singleton_policy(),
@@ -3809,7 +3873,7 @@ mod tests {
                 })
                 .unwrap();
             for row in 0..prepared.sample().n_active() {
-                let original = prepared.sample().retained_rows()[row];
+                let original = prepared.sample().retained_rows().get(row).unwrap();
                 assert_eq!(
                     prepared.column_value(0, row).unwrap(),
                     (original % 3) as f64
@@ -4079,7 +4143,10 @@ mod tests {
             weighted,
             prepare_model_owned(&request, &[], loaded.clone(), false).unwrap()
         );
-        assert_eq!(weighted.sample.retained_rows(), &[0]);
+        assert_eq!(
+            weighted.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[0]
+        );
         assert_eq!(
             weighted.sample.drop_reasons,
             vec![crate::DropReason::Retained, crate::DropReason::Singleton]
@@ -4134,7 +4201,10 @@ mod tests {
         };
         let prepared = prepare_model(&request, &[], &loaded, false).expect("shared factor and FE");
 
-        assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
+        assert_eq!(
+            prepared.sample.retained_rows().iter().collect::<Vec<_>>(),
+            &[1, 2]
+        );
         assert_eq!(prepared.categorical_sources()[0].level_values(), vec![2.0]);
         assert_eq!(
             prepared.categorical_sources()[0]
@@ -4441,7 +4511,13 @@ mod tests {
             match fault {
                 0 => prepared.effect_specs[0].intercept = false,
                 1 => {
-                    prepared.sample.original_row_by_active.pop();
+                    prepared.sample.original_row_by_active = prepared
+                        .sample
+                        .original_row_by_active
+                        .iter()
+                        .take(prepared.sample.n_active().saturating_sub(1))
+                        .collect::<Vec<_>>()
+                        .into();
                 }
                 2 => prepared.effect_specs[0].sources[0] = SourceId::new(999).unwrap(),
                 _ => {

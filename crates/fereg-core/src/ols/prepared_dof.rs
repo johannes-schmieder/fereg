@@ -416,7 +416,13 @@ mod tests {
             let mut prepared = prepared_case(&[("g", &g)], TestWeights::Unit);
             match corruption {
                 0 => {
-                    prepared.sample.original_row_by_active.pop();
+                    prepared.sample.original_row_by_active = prepared
+                        .sample
+                        .original_row_by_active
+                        .iter()
+                        .take(prepared.sample.n_active().saturating_sub(1))
+                        .collect::<Vec<_>>()
+                        .into();
                 }
                 1 => {
                     prepared.sample.regressors[0].pop();

@@ -1000,11 +1000,11 @@ fn ppml_slope_availability_preserves_classification_and_final_design() {
                             b.fit_owned_fe_design().unwrap()
                         );
                         if case == 1 {
-                            assert!(!b.sample().original_row_by_active.contains(&3));
+                            assert!(!b.sample().original_row_by_active.iter().any(|row| row == 3));
                             assert_eq!(b.sample().n_active(), n - 1);
                         }
                         if case == 4 {
-                            assert!(!b.sample().original_row_by_active.contains(&3));
+                            assert!(!b.sample().original_row_by_active.iter().any(|row| row == 3));
                         }
                     }
                     (Err(a), Err(b)) => assert_eq!(a, b),

@@ -1002,7 +1002,11 @@ mod tests {
             (Ok(reference), Ok((selected, adjustment, report))) => {
                 assert_eq!(
                     selected.original_row_by_active,
-                    reference.sample().original_row_by_active
+                    reference
+                        .sample()
+                        .original_row_by_active
+                        .iter()
+                        .collect::<Vec<_>>()
                 );
                 assert_eq!(selected.drop_reasons, reference.sample().drop_reasons);
                 assert_eq!(selected.weights, reference.weights());
@@ -1156,7 +1160,11 @@ mod tests {
                     let actual = select_ppml_numeric_data(classified).unwrap();
                     assert_eq!(
                         actual.original_row_by_active,
-                        expected.sample().original_row_by_active
+                        expected
+                            .sample()
+                            .original_row_by_active
+                            .iter()
+                            .collect::<Vec<_>>()
                     );
                     assert_eq!(actual.drop_reasons, expected.sample().drop_reasons);
                     assert_eq!(actual.weights, expected.weights());
@@ -1213,7 +1221,10 @@ mod tests {
         assert_eq!(classification.n_original, prepared.sample().n_original);
         assert_eq!(classification.n_candidate, prepared.sample().n_candidate);
         assert_eq!(classification.n_active, prepared.sample().n_active());
-        assert_eq!(prepared.sample().retained_rows(), &[0, 4]);
+        assert_eq!(
+            prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+            &[0, 4]
+        );
 
         // Historical preparation validates unmasked outcome/adjustment
         // domains before deferred unmasked nonfinite-weight diagnostics. The
@@ -1263,7 +1274,10 @@ mod tests {
         let prepared = prepare_and_check_selection(&unweighted_input(&candidate, &outcome))
             .expect("fractional PPML sample");
         assert_eq!(prepared.sample().outcome, outcome);
-        assert_eq!(prepared.sample().retained_rows(), &[0, 1, 2]);
+        assert_eq!(
+            prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+            &[0, 1, 2]
+        );
         assert_eq!(
             prepared.weights(),
             PreparedPpmlWeightReport {
@@ -1307,7 +1321,10 @@ mod tests {
         let prepared =
             prepare_and_check_selection(&unweighted_input(&restricted, &off_candidate_negative))
                 .expect("off-candidate negative outcome");
-        assert_eq!(prepared.sample().retained_rows(), &[1]);
+        assert_eq!(
+            prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+            &[1]
+        );
     }
 
     #[test]
@@ -1324,7 +1341,10 @@ mod tests {
             let mut input = unweighted_input(&candidate, &outcome);
             input.outcome = NumericColumnView::with_missing(&outcome, &missing);
             let prepared = prepare_and_check_selection(&input).expect("masked outcome is missing");
-            assert_eq!(prepared.sample().retained_rows(), &[1]);
+            assert_eq!(
+                prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+                &[1]
+            );
             assert_eq!(
                 prepared.sample().drop_reasons,
                 [DropReason::MissingOutcome, DropReason::Retained]
@@ -1333,7 +1353,10 @@ mod tests {
             let restricted = [false, true];
             let prepared = prepare_and_check_selection(&unweighted_input(&restricted, &outcome))
                 .expect("off-candidate nonfinite outcome is ignored");
-            assert_eq!(prepared.sample().retained_rows(), &[1]);
+            assert_eq!(
+                prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+                &[1]
+            );
         }
     }
 
@@ -1634,7 +1657,10 @@ mod tests {
             column: NumericColumnView::with_missing(&values, &missing),
         };
         let prepared = prepare_and_check_selection(&input).expect("missing pweight drops");
-        assert_eq!(prepared.sample().retained_rows(), &[0]);
+        assert_eq!(
+            prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+            &[0]
+        );
         assert_eq!(
             prepared.sample().drop_reasons,
             [DropReason::Retained, DropReason::InvalidOrMissingWeight]
@@ -1686,7 +1712,10 @@ mod tests {
         input.offset = Some(NumericColumnView::with_missing(&offset, &missing));
         let prepared = prepare_and_check_selection(&input).expect("offset prepare");
         assert_eq!(prepared.offset(), Some(&[-2.0, 0.5][..]));
-        assert_eq!(prepared.sample().retained_rows(), &[0, 2]);
+        assert_eq!(
+            prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+            &[0, 2]
+        );
         assert_eq!(
             prepared.sample().drop_reasons,
             [
@@ -1766,7 +1795,10 @@ mod tests {
                 }
                 let prepared =
                     prepare_and_check_selection(&input).expect("masked adjustment is missing");
-                assert_eq!(prepared.sample().retained_rows(), &[1]);
+                assert_eq!(
+                    prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+                    &[1]
+                );
                 assert_eq!(
                     prepared.sample().drop_reasons,
                     [DropReason::MissingOffsetOrExposure, DropReason::Retained]
@@ -1789,7 +1821,10 @@ mod tests {
             }
             let prepared = prepare_and_check_selection(&input)
                 .expect("off-candidate nonfinite adjustment is ignored");
-            assert_eq!(prepared.sample().retained_rows(), &[1]);
+            assert_eq!(
+                prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+                &[1]
+            );
         }
     }
 
@@ -1863,7 +1898,10 @@ mod tests {
         let prepared = prepare_and_check_selection(&input).expect("precedence fixture");
         assert_eq!(prepared.sample().n_original, n);
         assert_eq!(prepared.sample().n_candidate, 7);
-        assert_eq!(prepared.sample().retained_rows(), &[7]);
+        assert_eq!(
+            prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+            &[7]
+        );
         assert_eq!(
             prepared.sample().drop_reasons,
             [

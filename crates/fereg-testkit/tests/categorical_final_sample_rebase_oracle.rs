@@ -29,7 +29,10 @@ fn single_level_and_omitted_only_recipes_preserve_science_and_original_slots() {
             loaded.numeric_sources[1].1.values.fill(1.0);
             let prepared = prepare_model(&request, &[], &loaded, true)
                 .expect("original single-level or syntax-omitted graph");
-            assert_eq!(prepared.sample().retained_rows(), &[1, 2, 3, 4, 5, 6, 7, 8]);
+            assert_eq!(
+                prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+                &[1, 2, 3, 4, 5, 6, 7, 8]
+            );
             assert_eq!(prepared.model().coefficients.len(), 3);
             assert_eq!(prepared.model().coefficients[1].coefficient_slot.get(), 2);
             assert_eq!(
@@ -154,7 +157,10 @@ fn singleton_deleted_base_preserves_original_axis_and_identified_contrasts() {
     let (request, loaded, y, x, factor) = singleton_fixture();
     let prepared =
         prepare_model(&request, &[], &loaded, true).expect("final-sample categorical preparation");
-    assert_eq!(prepared.sample().retained_rows(), &[1, 2, 3, 4, 5, 6, 7, 8]);
+    assert_eq!(
+        prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+        &[1, 2, 3, 4, 5, 6, 7, 8]
+    );
     assert_eq!(prepared.singletons().num_singletons, 2);
     assert_eq!(prepared.report_plan().original_coefficient_count(), 5);
     assert_eq!(

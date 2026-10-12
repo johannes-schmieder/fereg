@@ -45,7 +45,7 @@ fn unified_source_roles_lock_regressor_weight_and_fixed_effect_precedence() {
             DropReason::Retained,
         ]
     );
-    assert_eq!(prepared.retained_rows(), &[4, 5]);
+    assert_eq!(prepared.retained_rows().iter().collect::<Vec<_>>(), &[4, 5]);
     assert_eq!(prepared.regressors[1], vec![2.5, -3.25]);
 
     let no_weight = NumericPreparationInput {
@@ -148,7 +148,7 @@ fn literal_oracle_locks_precedence_masks_and_policy_order() {
     assert_eq!(prepared.n_original, 9);
     assert_eq!(prepared.n_candidate, 8);
     assert_eq!(prepared.n_active(), 1);
-    assert_eq!(prepared.retained_rows(), &[8]);
+    assert_eq!(prepared.retained_rows().iter().collect::<Vec<_>>(), &[8]);
     assert_eq!(
         prepared.drop_reasons,
         [
@@ -683,12 +683,16 @@ fn deterministic_permutations_preserve_original_order_and_literal_oracle() {
             };
             expected_reasons.push(reason);
         }
-        assert_eq!(prepared.retained_rows(), expected_rows);
+        assert_eq!(
+            prepared.retained_rows().iter().collect::<Vec<_>>(),
+            expected_rows
+        );
         assert_eq!(prepared.drop_reasons, expected_reasons);
         assert!(prepared
             .retained_rows()
-            .windows(2)
-            .all(|rows| rows[0] < rows[1]));
+            .iter()
+            .zip(prepared.retained_rows().iter().skip(1))
+            .all(|(left, right)| left < right));
     }
 }
 

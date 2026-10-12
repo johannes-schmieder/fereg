@@ -341,7 +341,7 @@ fn zero_matrix(rows: usize, columns: usize) -> Vec<Vec<f64>> {
     vec![vec![0.0; columns]; rows]
 }
 
-fn coefficient_shadow() -> OlsShadowResult<'static> {
+fn coefficient_shadow(prepared: &PreparedOlsData) -> OlsShadowResult<'_> {
     OlsShadowResult {
         solver_workspace_peak: None,
         solver_expected_heap_peak: None,
@@ -364,8 +364,7 @@ fn coefficient_shadow() -> OlsShadowResult<'static> {
         fixed_effect_rows: 0,
         cluster_rows: 0,
         subset_rows: 0,
-        drop_reasons: &[],
-        retained_rows: &[],
+        prepared,
         residuals: &[],
         execution: fereg_core::PreparedOlsExecutionReport {
             mode: PreparedOlsExecutionMode::Fast,
@@ -2428,51 +2427,72 @@ fn complete_candidate_universe_skips_candidate_spi_reads() {
     assert_eq!(spi.receipt_complete(), 1.0);
 }
 
+fn axis_prepared_sample(rows: usize, exclude: bool) -> PreparedOlsData {
+    let request = OlsRequestV1 {
+        model: CompiledTermGraph {
+            sources: Vec::new(),
+            terms: Vec::new(),
+        },
+        bindings: vec![
+            OlsInputBinding {
+                stata_var_position: 1,
+                role: OlsInputRole::Candidate,
+            },
+            OlsInputBinding {
+                stata_var_position: 2,
+                role: OlsInputRole::Outcome,
+            },
+        ],
+        absorbed_terms: Vec::new(),
+        include_intercept: true,
+        keep_singletons: true,
+    };
+    let mut candidate = vec![true; rows];
+    if exclude {
+        candidate[rows / 2] = false;
+    }
+    let loaded = LoadedOlsInput {
+        candidate,
+        outcome: LoadedNumericColumn {
+            values: vec![1.0; rows],
+            missing: vec![false; rows],
+        },
+        numeric_sources: Vec::new(),
+        analytic_weight: None,
+        frequency_weight: None,
+        probability_weight: None,
+    };
+    fereg_core::prepare_model(&request, &[], &loaded, false).unwrap()
+}
+
 #[test]
-fn parallel_shadow_preflight_matches_serial_on_full_and_partial_samples() {
+fn axis_shadow_preflight_checks_residuals_on_sealed_full_and_partial_samples() {
     for n in [16383, 16384, 16387] {
-        let mut residuals = vec![0.5; n];
-        let mut retained: Vec<_> = (0..n).collect();
-        let mut reasons = vec![fereg_core::DropReason::Retained; n];
-        let compare =
-            |residuals: &[f64], retained: &[usize], reasons: &[fereg_core::DropReason]| {
-                let serial = invalid_shadow_observations(
-                    residuals,
-                    retained,
-                    reasons,
-                    ThreadConfig::from_requested(1, false).unwrap(),
-                );
-                for t in [8, 16] {
+        for exclude in [false, true] {
+            let prepared = axis_prepared_sample(n, exclude);
+            let mut residuals = vec![0.5; prepared.sample().n_active()];
+            let compare = |residuals: &[f64], expected| {
+                for t in [1, 8, 16] {
                     assert_eq!(
-                        serial,
                         invalid_shadow_observations(
                             residuals,
-                            retained,
-                            reasons,
+                            &prepared,
                             ThreadConfig::from_requested(t, false).unwrap()
                         )
+                        .unwrap(),
+                        expected
                     );
                 }
             };
-        compare(&residuals, &retained, &reasons);
-        for row in [0, n / 2, n - 1] {
-            retained[row] = n;
-            compare(&residuals, &retained, &reasons);
-            retained[row] = row;
-            reasons[row] = fereg_core::DropReason::MissingOutcome;
-            compare(&residuals, &retained, &reasons);
-            reasons[row] = fereg_core::DropReason::Retained;
-            residuals[row] = f64::NAN;
-            compare(&residuals, &retained, &reasons);
-            residuals[row] = 0.5;
+            compare(&residuals, false);
+            for row in [0, residuals.len() / 2, residuals.len() - 1] {
+                residuals[row] = f64::NAN;
+                compare(&residuals, true);
+                residuals[row] = 0.5;
+            }
+            residuals.pop();
+            compare(&residuals, true);
         }
-        retained.swap(0, n - 1);
-        compare(&residuals, &retained, &reasons);
-        retained.swap(0, n - 1);
-        retained.remove(n / 2);
-        residuals.remove(n / 2);
-        reasons[n / 2] = fereg_core::DropReason::MissingOutcome;
-        compare(&residuals, &retained, &reasons);
     }
 }
 
@@ -3608,25 +3628,26 @@ fn malformed_cluster_arity_cannot_reserve_outside_wire_admission() {
 
 #[test]
 fn native_coefficient_shadow_certification_rejects_every_scatter_family() {
-    validate_shadow_coefficients(&coefficient_shadow()).expect("valid native shadow");
+    let prepared = axis_prepared_sample(4, false);
+    validate_shadow_coefficients(&coefficient_shadow(&prepared)).expect("valid native shadow");
 
-    let mut duplicate = coefficient_shadow();
+    let mut duplicate = coefficient_shadow(&prepared);
     duplicate.coefficient_status[7] = 1.0;
     assert!(validate_shadow_coefficients(&duplicate).is_err());
 
-    let mut asymmetric = coefficient_shadow();
+    let mut asymmetric = coefficient_shadow(&prepared);
     asymmetric.covariance[1] += 1.0;
     assert!(validate_shadow_coefficients(&asymmetric).is_err());
 
-    let mut negative_diagonal = coefficient_shadow();
+    let mut negative_diagonal = coefficient_shadow(&prepared);
     negative_diagonal.covariance[0] = -1.0;
     assert!(validate_shadow_coefficients(&negative_diagonal).is_err());
 
-    let mut marker = coefficient_shadow();
+    let mut marker = coefficient_shadow(&prepared);
     marker.omission_v_marker[1] = 1.0;
     assert!(validate_shadow_coefficients(&marker).is_err());
 
-    let mut omitted = coefficient_shadow();
+    let mut omitted = coefficient_shadow(&prepared);
     omitted.coefficient_status[1] = 2.0;
     omitted.coefficient_status[3] = 0.0;
     omitted.b[0] = 0.0;

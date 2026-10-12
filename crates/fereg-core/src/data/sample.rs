@@ -1,5 +1,7 @@
 use std::mem::size_of;
 
+use super::FinalizedAxis;
+
 use rayon::prelude::*;
 
 use crate::data::weights::WeightKind;
@@ -179,7 +181,7 @@ pub enum PreparedAdjustment {
 pub struct PreparedNumericSample {
     pub n_original: usize,
     pub n_candidate: usize,
-    pub original_row_by_active: Vec<usize>,
+    pub original_row_by_active: FinalizedAxis<usize>,
     pub outcome: Vec<f64>,
     pub regressors: Vec<Vec<f64>>,
     pub weights: PreparedWeights,
@@ -190,7 +192,7 @@ pub struct PreparedNumericSample {
 impl PreparedNumericSample {
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
         use crate::memory::vec_capacity_bytes as bytes;
-        bytes(&self.original_row_by_active)
+        self.original_row_by_active.owned_buffer_bytes()
             + bytes(&self.outcome)
             + bytes(&self.regressors)
             + self.regressors.iter().map(bytes).sum::<u128>()
@@ -224,7 +226,7 @@ impl PreparedNumericSample {
 
     /// Zero-based original row numbers, in strictly increasing order.
     #[must_use]
-    pub fn retained_rows(&self) -> &[usize] {
+    pub fn retained_rows(&self) -> &FinalizedAxis<usize> {
         &self.original_row_by_active
     }
 
@@ -276,9 +278,10 @@ impl PreparedNumericSample {
                 .iter()
                 .enumerate()
                 .any(|(index, original_row)| {
-                    *original_row >= self.n_original
-                        || self.drop_reasons[*original_row] != DropReason::Retained
-                        || (index > 0 && self.original_row_by_active[index - 1] >= *original_row)
+                    original_row >= self.n_original
+                        || self.drop_reasons[original_row] != DropReason::Retained
+                        || (index > 0
+                            && self.original_row_by_active.get(index - 1).unwrap() >= original_row)
                 })
         {
             return Err(FeregError::new(
@@ -349,7 +352,7 @@ impl PreparedNumericSample {
         let mut drop_reasons = self.drop_reasons;
 
         for (active_row, retain) in keep.iter().copied().enumerate() {
-            let original_row = self.original_row_by_active[active_row];
+            let original_row = self.original_row_by_active.get(active_row).unwrap();
             if !retain {
                 drop_reasons[original_row] = dropped_reason;
                 continue;
@@ -382,7 +385,7 @@ impl PreparedNumericSample {
         Ok(Self {
             n_original: self.n_original,
             n_candidate: self.n_candidate,
-            original_row_by_active,
+            original_row_by_active: original_row_by_active.into(),
             outcome,
             regressors,
             weights,
@@ -696,7 +699,7 @@ fn prepare_numeric_sample_with_plan<P: NumericDomainPolicy, R: Reserve>(
     Ok(PreparedNumericSample {
         n_original,
         n_candidate,
-        original_row_by_active,
+        original_row_by_active: original_row_by_active.into(),
         outcome,
         regressors,
         weights,
@@ -1131,7 +1134,10 @@ mod allocation_tests {
         let prepared = prepare_numeric_sample_with_reserve(&input, &Retain, &mut reserve).unwrap();
         assert_eq!(reserve.calls, expected);
         assert_eq!(prepared.n_active(), 2);
-        assert!(prepared.original_row_by_active.capacity() >= prepared.n_candidate);
+        let FinalizedAxis::Selected(rows) = &prepared.original_row_by_active else {
+            panic!("classification must retain its explicit selected allocation");
+        };
+        assert!(rows.capacity() >= prepared.n_candidate);
         assert!(prepared.outcome.capacity() >= prepared.n_candidate);
         assert!(prepared.regressors.capacity() >= regressors.len());
         assert!(prepared
@@ -1230,7 +1236,10 @@ mod allocation_tests {
             .expect("compact");
         assert_eq!(compacted.n_original, 3);
         assert_eq!(compacted.n_candidate, 3);
-        assert_eq!(compacted.original_row_by_active, vec![0, 2]);
+        assert_eq!(
+            compacted.original_row_by_active.iter().collect::<Vec<_>>(),
+            vec![0, 2]
+        );
         assert_eq!(compacted.outcome, vec![1.0, 3.0]);
         assert_eq!(compacted.regressors, vec![vec![10.0, 30.0]]);
         assert_eq!(

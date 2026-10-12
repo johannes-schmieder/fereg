@@ -1,9 +1,11 @@
 //! Native data preparation and finite model-matrix construction.
 
+mod axis;
 mod model_matrix;
 mod sample;
 mod weights;
 
+pub use axis::FinalizedAxis;
 pub use model_matrix::DenseMatrix;
 pub(crate) use sample::{
     classify_numeric_sample_into_mask, classify_numeric_sample_with_source_uses,

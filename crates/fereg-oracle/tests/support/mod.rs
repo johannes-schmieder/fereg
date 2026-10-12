@@ -13,11 +13,17 @@ pub fn native_fit(
     if design.effects.is_empty() {
         let prepared = prepare_model(&request, &[], &loaded, false)?;
         let fit = fit_prepared_model_coefficients(&prepared, config)?;
-        Ok((fit, prepared.sample().original_row_by_active.clone()))
+        Ok((
+            fit,
+            prepared.sample().original_row_by_active.iter().collect(),
+        ))
     } else {
         let prepared = prepare_model(&request, &[], &loaded, true)?;
         let fit = fit_prepared_model_coefficients(&prepared, config)?;
-        Ok((fit, prepared.sample().original_row_by_active.clone()))
+        Ok((
+            fit,
+            prepared.sample().original_row_by_active.iter().collect(),
+        ))
     }
 }
 

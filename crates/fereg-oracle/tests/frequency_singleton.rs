@@ -18,7 +18,10 @@ fn frequency_retained_singleton_factor_is_absorbed_by_its_group_slope() {
     let case = fixture::case(66);
     let oracle = dense::independent(&case);
     let prepared = prepare_model(&case.request, &[], &case.loaded, true).unwrap();
-    assert_eq!(prepared.sample().retained_rows(), oracle.rows);
+    assert_eq!(
+        prepared.sample().retained_rows().iter().collect::<Vec<_>>(),
+        oracle.rows
+    );
     assert!(oracle.rows.contains(&(case.loaded.candidate.len() - 1)));
     for mode in [
         PreparedOlsExecutionMode::Fast,
