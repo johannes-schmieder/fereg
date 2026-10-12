@@ -44,7 +44,7 @@ fn absorb_finalized_categorical_topology_map_with_reservation<R: TopologyMapRese
     super::session::project_intercepts(
         &design,
         weights,
-        values,
+        values.into(),
         AbsorbConfig {
             solver: FeSolverKind::Map,
             map,

@@ -241,7 +241,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
         &self,
         response: &[f64],
         rows: Option<Vec<f64>>,
-    ) -> Result<(DenseMatrix, bool)> {
+    ) -> Result<(super::OlsProjectionInput, bool)> {
         fit_build_rhs_with_loaded_rows_generic(self, response, rows)
     }
 
@@ -545,12 +545,12 @@ impl PreparedOlsFitView for PreparedOlsData {
         &self,
         response: &[f64],
         rows: Option<Vec<f64>>,
-    ) -> Result<(DenseMatrix, bool)> {
+    ) -> Result<(super::OlsProjectionInput, bool)> {
         if !self.uses_categorical_preparation() {
             let (rhs, reused) = crate::ols::build_prepared_ols_rhs_with_loaded_rows_and_reuse(
                 self, response, rows,
             )?;
-            return Ok((rhs.into_values(), reused));
+            return Ok((super::OlsProjectionInput::Prepared(rhs), reused));
         }
         fit_build_rhs_with_loaded_rows_generic(self, response, rows)
     }
@@ -844,7 +844,7 @@ fn fit_build_rhs_with_loaded_rows_generic<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     response: &[f64],
     rows: Option<Vec<f64>>,
-) -> Result<(DenseMatrix, bool)> {
+) -> Result<(super::OlsProjectionInput, bool)> {
     if let Some(rows) = rows {
         if let Some(columns) = crate::ols::NumericOlsColumns::bind_loaded_rhs(
             prepared.fit_model(),
@@ -856,7 +856,8 @@ fn fit_build_rhs_with_loaded_rows_generic<P: PreparedOlsFitView + ?Sized>(
                         response.len(),
                         prepared.fit_model().columns.len() + 1,
                         rows,
-                    )?,
+                    )?
+                    .into(),
                     true,
                 ));
             }
@@ -864,7 +865,7 @@ fn fit_build_rhs_with_loaded_rows_generic<P: PreparedOlsFitView + ?Sized>(
     }
     prepared
         .fit_build_rhs_with_response(response)
-        .map(|matrix| (matrix, false))
+        .map(|matrix| (matrix.into(), false))
 }
 
 #[cfg(test)]

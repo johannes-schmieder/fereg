@@ -1487,6 +1487,34 @@ The initial size-ratchet and stale-import failures are retained. See
 [validation](VALIDATION.md#h6-membership-validation-reuse-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-membership.json).
 
+Item 4 declaration (parent `bebc850d`): carry the existing checked
+`PreparedOlsRhs` owner through ordinary dense initial OLS projection. Only the
+structural automatic and reusable categorical entry checks may consume that
+proof to skip a repeated finite scan; generic matrices, categorical generic
+builders, final residuals, PPML and other backends keep their checks. Preserve
+configuration/dimension/value/weight error order and all arithmetic, solver
+signatures, requested tolerances, certificates and discrete model decisions.
+No mutable RHS access, detached receipt, new allocation or sample-size fence is
+introduced. Witnesses compare checked and raw projection for zero through three
+effects, weights and loaded-row reuse, malformed axes/values, unchanged final
+and PPML projections, full runtime checks, exact replay and mapped licensed
+fixtures. Wall timing remains at the complete H boundary.
+
+Item 4 result: the immutable RHS owner now survives initial ordinary OLS
+projection, avoiding the repeated finite predicate in structural automatic and
+reusable categorical entrypoints. Raw, generic, final-residual and PPML paths
+retain their checks. Twelve focused RHS tests include 32 checked/raw projection
+comparisons with exact residuals, norms, coefficients and clock-normalized
+reports. The full suite passes 1,682 Rust executions; universal Mac checks,
+73 exact replay cases, 292 worker checks and seventeen licensed fixtures pass.
+Independent review approves the ownership and unchanged error ordering. Core
+production grows 52 lines, with unchanged dispatch and size-violation counts;
+there is no new allocation or numerical change. Two compile corrections and
+a Python-version inventory failure remain recorded. No timing gain is claimed
+before the H boundary. See
+[validation](VALIDATION.md#h6-checked-initial-rhs-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-finite-inputs.json).
+
 ### H7. Small-input fixed cost (check only)
 
 The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio

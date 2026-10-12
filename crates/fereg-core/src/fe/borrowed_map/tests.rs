@@ -963,7 +963,7 @@ fn ols_schur_accepts_a_passing_certificate_after_recurrence_budget() {
     let result = owner
         .absorb_ols(
             BorrowedMapWeights::Unit,
-            values.clone(),
+            values.clone().into(),
             MapConfig {
                 tolerance: 1e-2,
                 max_iterations: 1,
@@ -1596,7 +1596,7 @@ fn retained_lsmr_reuses_preparation_and_preserves_each_batch() {
                             project_borrowed_intercept_structural(
                                 &make_design(),
                                 weights,
-                                rhs.clone(),
+                                rhs.clone().into(),
                                 config.map,
                                 config.lsmr,
                                 None,
@@ -2854,7 +2854,7 @@ fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
         let final_residual = reusable
             .absorb_ols(
                 BorrowedMapWeights::Provided(&weights),
-                DenseMatrix::from_columns(&columns).unwrap(),
+                DenseMatrix::from_columns(&columns).unwrap().into(),
                 map,
                 true,
             )
@@ -2867,7 +2867,7 @@ fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
         let ordinary = reusable
             .absorb_ols(
                 BorrowedMapWeights::Provided(&weights),
-                DenseMatrix::from_columns(&columns).unwrap(),
+                DenseMatrix::from_columns(&columns).unwrap().into(),
                 map,
                 false,
             )
@@ -2876,7 +2876,7 @@ fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
         let structural = project_borrowed_intercept_structural(
             &oracle_design,
             BorrowedMapWeights::Provided(&weights),
-            DenseMatrix::from_columns(&columns).unwrap(),
+            DenseMatrix::from_columns(&columns).unwrap().into(),
             map,
             LsmrConfig::default(),
             None,
@@ -5054,7 +5054,9 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
     let direct = project_borrowed_intercept_structural(
         &one_design,
         BorrowedMapWeights::Unit,
-        DenseMatrix::from_columns(&[vec![1.0, 3.0, 4.0, 10.0]]).expect("one matrix"),
+        DenseMatrix::from_columns(&[vec![1.0, 3.0, 4.0, 10.0]])
+            .expect("one matrix")
+            .into(),
         config(),
         LsmrConfig::default(),
         None,
@@ -5079,7 +5081,9 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
     let early = project_borrowed_intercept_structural(
         &orthogonal,
         BorrowedMapWeights::Unit,
-        DenseMatrix::from_columns(&[vec![1.0, 2.0, 4.0, 8.0]]).expect("early matrix"),
+        DenseMatrix::from_columns(&[vec![1.0, 2.0, 4.0, 8.0]])
+            .expect("early matrix")
+            .into(),
         config(),
         LsmrConfig::default(),
         None,
@@ -5105,7 +5109,8 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         &hard,
         BorrowedMapWeights::Provided(&[1.0, 2.0, 1.5, 4.0, 0.5, 3.0, 2.5, 1.25]),
         DenseMatrix::from_columns(&[vec![1.0, 7.0, 2.0, 9.0, 4.0, 3.0, 8.0, -2.0]])
-            .expect("CG matrix"),
+            .expect("CG matrix")
+            .into(),
         MapConfig {
             tolerance: 1e-14,
             ..config()
@@ -5148,7 +5153,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
     let result = project_borrowed_intercept_structural(
         &design,
         BorrowedMapWeights::Unit,
-        input.clone(),
+        input.clone().into(),
         config(),
         LsmrConfig::default(),
         None,
@@ -5165,7 +5170,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
     let direct = project_borrowed_intercept_structural(
         &design,
         BorrowedMapWeights::Unit,
-        input.clone(),
+        input.clone().into(),
         config(),
         LsmrConfig::default(),
         None,
@@ -5288,7 +5293,7 @@ fn uncertified_lsmr_candidate_is_polished_and_fully_accounted() {
     let result = project_borrowed_intercept_structural(
         &design,
         BorrowedMapWeights::Unit,
-        input.clone(),
+        input.clone().into(),
         strict,
         LsmrConfig {
             tolerance: 1e-14,
@@ -5355,7 +5360,9 @@ fn constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fit
         project_borrowed_intercept_structural(
             &design,
             BorrowedMapWeights::Provided(&weights),
-            DenseMatrix::from_columns(std::slice::from_ref(&outcome)).expect("matrix"),
+            DenseMatrix::from_columns(std::slice::from_ref(&outcome))
+                .expect("matrix")
+                .into(),
             config(),
             lsmr,
             Some(FeSolverMemoryBudget {

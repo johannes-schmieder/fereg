@@ -2,7 +2,7 @@
 use super::*;
 
 struct DenseRaw {
-    values: DenseMatrix,
+    values: crate::ols::OlsProjectionInput,
     moments: Option<RawMomentCache>,
     reference_norms: Vec<f64>,
     reference_mean_scales: Vec<f64>,
@@ -182,15 +182,13 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         max_fast_score_cache_bytes,
         loaded_rows,
     )?;
-    let mut absorbed = cmg.project_ols(
+    let mut absorbed = cmg.project_initial_ols(
         weights.borrowed(),
         std::mem::replace(
             &mut raw.values,
-            DenseMatrix::from_row_major(0, 0, Vec::new())?,
+            DenseMatrix::from_row_major(0, 0, Vec::new())?.into(),
         ),
         config.absorb,
-        false,
-        false,
     )?;
     if !absorbed.report().certified() {
         return Err(invalid_data(

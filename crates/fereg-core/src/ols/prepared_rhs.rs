@@ -37,6 +37,48 @@ impl PreparedOlsRhs {
     }
 }
 
+/// Retain the builder's finite-value proof while initial projection owns the
+/// exact RHS. Raw callers retain solver-entry validation and its error order.
+pub(crate) enum OlsProjectionInput {
+    Prepared(PreparedOlsRhs),
+    Raw(DenseMatrix),
+}
+
+impl std::ops::Deref for OlsProjectionInput {
+    type Target = DenseMatrix;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Prepared(rhs) => rhs.values(),
+            Self::Raw(values) => values,
+        }
+    }
+}
+
+impl From<DenseMatrix> for OlsProjectionInput {
+    fn from(values: DenseMatrix) -> Self {
+        Self::Raw(values)
+    }
+}
+
+impl OlsProjectionInput {
+    pub(crate) fn into_values(self) -> DenseMatrix {
+        match self {
+            Self::Prepared(rhs) => rhs.into_values(),
+            Self::Raw(values) => values,
+        }
+    }
+
+    pub(crate) fn validate_finite(&self, message: &'static str) -> Result<()> {
+        if let Self::Raw(values) = self {
+            if values.as_slice().iter().any(|v| !v.is_finite()) {
+                return Err(invalid_data(message));
+            }
+        }
+        Ok(())
+    }
+}
+
 trait RhsReservation {
     fn reserve_f64(&mut self, target: &mut Vec<f64>, elements: usize) -> Result<()>;
 }
@@ -1616,6 +1658,184 @@ mod tests {
     }
 
     #[test]
+    fn checked_initial_projection_preserves_raw_bits_and_solver_reports() {
+        use crate::fe::FeSession;
+        use crate::ols::PreparedOlsFitConfig;
+        use crate::{ThreadConfig, ThreadTeam};
+        let rows = 210;
+        for workers in [1, 4] {
+            let threads = ThreadConfig::from_requested(workers, true).unwrap();
+            ThreadTeam::new(threads)
+                .install(|| {
+                    for effects in 0..=3 {
+                        let mut request = request(false, true);
+                        let mut sources = vec![(
+                            SourceId::new(1).unwrap(),
+                            loaded((0..rows).map(|r| (r * 13 % 97) as f64 / 97.).collect()),
+                        )];
+                        let mut stride = 1;
+                        for (i, levels) in [3, 5, 7].into_iter().take(effects).enumerate() {
+                            let id = SourceId::new(i as u32 + 2).unwrap();
+                            request
+                                .model
+                                .sources
+                                .push(source(id.get(), &format!("g{i}")));
+                            request.bindings.push(OlsInputBinding {
+                                stata_var_position: i as u32 + 4,
+                                role: OlsInputRole::NumericSource(id),
+                            });
+                            request.absorbed_terms.push(AbsorbedTerm {
+                                id: AbsorbTermId::new(i as u32 + 1).unwrap(),
+                                intercept: true,
+                                categorical_sources: vec![id],
+                                slope_sources: Vec::new(),
+                                label: format!("g{i}"),
+                                saved_name: String::new(),
+                            });
+                            sources.push((
+                                id,
+                                loaded((0..rows).map(|r| (r / stride % levels) as f64).collect()),
+                            ));
+                            stride *= levels;
+                        }
+                        let prepared = prepare_model(
+                            &request,
+                            &[],
+                            &LoadedOlsInput {
+                                candidate: vec![true; rows],
+                                outcome: loaded(
+                                    (0..rows).map(|r| ((r + 1) as f64 * 0.11).sin()).collect(),
+                                ),
+                                numeric_sources: sources,
+                                analytic_weight: None,
+                                frequency_weight: None,
+                                probability_weight: None,
+                            },
+                            false,
+                        )
+                        .unwrap();
+                        let supplied: Vec<_> = (0..rows).map(|r| 1. + (r % 7) as f64).collect();
+                        for weights in [
+                            BorrowedMapWeights::Unit,
+                            BorrowedMapWeights::Provided(&supplied),
+                        ] {
+                            for reuse in [false, true] {
+                                let raw = build_prepared_ols_rhs(&prepared).unwrap().into_values();
+                                let (rhs, reused) =
+                                    build_prepared_ols_rhs_with_loaded_rows_and_reuse(
+                                        &prepared,
+                                        &prepared.sample.outcome,
+                                        reuse.then(|| raw.as_slice().to_vec()),
+                                    )
+                                    .unwrap();
+                                assert_eq!(reused, reuse);
+                                let mut config = PreparedOlsFitConfig::default();
+                                config.execution.threads = threads;
+                                config.absorb.solver = crate::fe::FeSolverKind::Auto;
+                                config.absorb.retain_coefficients = true;
+                                let mut checked = FeSession::for_ols(&prepared, weights, config)
+                                    .unwrap()
+                                    .project_initial_ols(
+                                        weights,
+                                        OlsProjectionInput::Prepared(rhs),
+                                        config.absorb,
+                                    )
+                                    .unwrap();
+                                let mut ordinary = FeSession::for_ols(&prepared, weights, config)
+                                    .unwrap()
+                                    .project_ols(weights, raw, config.absorb, false, false)
+                                    .unwrap();
+                                assert_eq!(
+                                    checked
+                                        .take_residual_norms()
+                                        .iter()
+                                        .map(|v| v.to_bits())
+                                        .collect::<Vec<_>>(),
+                                    ordinary
+                                        .take_residual_norms()
+                                        .iter()
+                                        .map(|v| v.to_bits())
+                                        .collect::<Vec<_>>()
+                                );
+                                let (left, mut left_report, left_coefficients) =
+                                    checked.into_full_parts();
+                                let (right, mut right_report, right_coefficients) =
+                                    ordinary.into_full_parts();
+                                assert_eq!(
+                                    left.as_slice()
+                                        .iter()
+                                        .map(|v| v.to_bits())
+                                        .collect::<Vec<_>>(),
+                                    right
+                                        .as_slice()
+                                        .iter()
+                                        .map(|v| v.to_bits())
+                                        .collect::<Vec<_>>()
+                                );
+                                for report in [&mut left_report, &mut right_report] {
+                                    report.setup_seconds = 0.;
+                                    report.solve_seconds = 0.;
+                                    report.certification_seconds = 0.;
+                                }
+                                assert_eq!(left_report, right_report);
+                                assert_eq!(left_coefficients, right_coefficients);
+                                if let (Some(a), Some(b)) = (left_coefficients, right_coefficients)
+                                {
+                                    for rhs in 0..left.ncols() {
+                                        assert_eq!(
+                                            a.rhs(rhs)
+                                                .unwrap()
+                                                .iter()
+                                                .map(|v| v.to_bits())
+                                                .collect::<Vec<_>>(),
+                                            b.rhs(rhs)
+                                                .unwrap()
+                                                .iter()
+                                                .map(|v| v.to_bits())
+                                                .collect::<Vec<_>>()
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn checked_projection_retains_dimensions_and_raw_finite_error_order() {
+        let prepared = prepared(false, true);
+        let wrong_axis = crate::fe::BorrowedInterceptFeDesign::new(3, Vec::new()).unwrap();
+        let config = crate::fe::AbsorbConfig::default();
+        let error = crate::fe::session::project_intercepts(
+            &wrong_axis,
+            BorrowedMapWeights::Unit,
+            OlsProjectionInput::Prepared(build_prepared_ols_rhs(&prepared).unwrap()),
+            config,
+            true,
+            false,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+        let design = prepared.borrowed_intercept_fe_design().unwrap();
+        let mut values = build_prepared_ols_rhs(&prepared).unwrap().into_values();
+        values[(0, 0)] = f64::NAN;
+        let error = crate::fe::session::project_intercepts(
+            &design,
+            BorrowedMapWeights::Provided(&[0.; 4]),
+            values.into(),
+            config,
+            true,
+            false,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert!(error.message.contains("values must be finite"));
+    }
+
+    #[test]
     fn empty_rhs_is_valid_but_map_requires_nonempty_rows() {
         let request = request(false, false);
         let prepared = prepare_model(
@@ -1634,6 +1854,20 @@ mod tests {
         .expect("empty prepared");
         let rhs = build_prepared_ols_rhs(&prepared).expect("empty RHS");
         assert_eq!((rhs.values().nrows(), rhs.values().ncols()), (0, 2));
+        let design = prepared.borrowed_intercept_fe_design().unwrap();
+        assert_eq!(
+            crate::fe::session::project_intercepts(
+                &design,
+                BorrowedMapWeights::Unit,
+                OlsProjectionInput::Prepared(rhs),
+                crate::fe::AbsorbConfig::default(),
+                true,
+                false,
+            )
+            .unwrap_err()
+            .code,
+            ErrorCode::InvalidArgument
+        );
         assert_eq!(
             absorb_prepared_ols_rhs_map(&prepared, MapConfig::default())
                 .expect_err("empty MAP")

@@ -574,6 +574,26 @@ impl<'a> FeSession<'a> {
         &mut self,
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
+        config: super::AbsorbConfig,
+        final_residual: bool,
+        raw_final: bool,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.project_ols_input(weights, values.into(), config, final_residual, raw_final)
+    }
+
+    pub(crate) fn project_initial_ols(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: crate::ols::OlsProjectionInput,
+        config: super::AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.project_ols_input(weights, values, config, false, false)
+    }
+
+    fn project_ols_input(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: crate::ols::OlsProjectionInput,
         mut config: super::AbsorbConfig,
         final_residual: bool,
         raw_final: bool,
@@ -583,6 +603,7 @@ impl<'a> FeSession<'a> {
             config.solver_memory_budget = stored.solver_memory_budget;
         }
         let mut result = if let Some(p) = self.cmg.as_mut() {
+            let values = values.into_values();
             if final_residual {
                 let p = self.cmg.take().expect("CMG binding");
                 if raw_final {
@@ -596,7 +617,7 @@ impl<'a> FeSession<'a> {
         } else if let Some(p) = self.lsmr.as_mut() {
             p.absorb(
                 weights,
-                values,
+                values.into_values(),
                 MapGeometryGeneration {
                     sample: 0,
                     topology: 0,
@@ -607,6 +628,7 @@ impl<'a> FeSession<'a> {
         } else if let Some(p) = self.categorical.as_mut() {
             p.absorb_ols(weights, values, config.map, final_residual)
         } else if let Some(p) = self.general.as_mut() {
+            let values = values.into_values();
             let generation = MapGeometryGeneration {
                 sample: 0,
                 topology: 0,
@@ -633,7 +655,7 @@ impl<'a> FeSession<'a> {
                 final_residual,
             )
         } else {
-            let mut values = values;
+            let mut values = values.into_values();
             let mut report = super::absorb_fixed_effects(
                 self.owned.as_ref().expect("owned FE binding"),
                 &self.normalized,
@@ -682,7 +704,7 @@ impl<'a> FeSession<'a> {
 pub(crate) fn project_intercepts(
     design: &super::BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
+    values: crate::ols::OlsProjectionInput,
     config: super::AbsorbConfig,
     structural_constant: bool,
     final_residual: bool,
@@ -703,7 +725,7 @@ pub(crate) fn project_intercepts(
         S::Lsmr if !design.effects().is_empty() => super::absorb_borrowed_intercept_lsmr(
             design,
             weights,
-            values,
+            values.into_values(),
             config.lsmr,
             config.retain_coefficients,
         ),
@@ -721,8 +743,13 @@ pub(crate) fn project_intercepts(
                 retain_coefficients: config.retain_coefficients && !design.effects().is_empty(),
                 ..super::BorrowedCgOptions::default()
             };
-            let mut r =
-                super::absorb_borrowed_intercept_cg(design, weights, values, config.map, options)?;
+            let mut r = super::absorb_borrowed_intercept_cg(
+                design,
+                weights,
+                values.into_values(),
+                config.map,
+                options,
+            )?;
             r.set_solver_workspace_peak(peak);
             Ok(r)
         }
@@ -730,7 +757,7 @@ pub(crate) fn project_intercepts(
             super::absorb_borrowed_intercept_irons_tuck_certified(
                 design,
                 weights,
-                values,
+                values.into_values(),
                 config.map,
                 config.retain_coefficients,
             )
@@ -746,7 +773,7 @@ pub(crate) fn project_intercepts(
             super::absorb_borrowed_intercept_map(
                 design,
                 weights,
-                values,
+                values.into_values(),
                 config.map,
                 structural_constant,
                 retain,

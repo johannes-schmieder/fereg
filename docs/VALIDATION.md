@@ -14,6 +14,45 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H6 checked initial RHS, 2026-10-12
+
+H6 item 4 keeps the immutable `PreparedOlsRhs` owner through initial ordinary
+OLS projection. Structural automatic and reusable categorical entrypoints
+consume its finite-value proof; raw matrices, generic categorical builders,
+PPML, final residuals and other backends retain their checks. Configuration,
+dimensions, values and weights keep their existing failure order. Arithmetic,
+solver signatures, certificates and sample/rank/omission/separation decisions
+are unchanged, with no new heap allocation or RHS lifetime overlap.
+
+Twelve focused RHS tests pass. They include 32 checked/raw comparisons across
+zero to three effects, unit/provided weights, fresh/reused RHS construction and
+one/four workers, checking exact residuals, norms, FE coefficients and complete
+reports after removing clocks. Malformed axes, empty inputs, nonfinite values
+and competing weight errors retain their diagnostics. The full suite passes
+1,682 Rust executions in 62 invocations, plus 200 Python tests with 13 optional
+dependency skips. Universal Mac ABI/load/guard checks, all 73 exact replay
+cases, 292 worker checks and seventeen licensed preparation, FE, weight,
+memory, saved-output and transaction fixtures pass. Independent high-effort
+review finds no blocker. The expected Mac skip of the Linux ELF audit remains;
+no new Linux or Windows qualification is claimed.
+
+The first compile missed a raw conversion in the internal graph fallback,
+and the added witness initially used the wrong `ThreadTeam::new` return type.
+Both were corrected before validation. An inventory-update command used system
+Python without `tomllib`; rerunning it with Python 3.13 repaired the tooling
+failure. Core production grows from 95,189 to 95,241 lines; dispatch and size
+counts are unchanged. The whole-H Mac timing panel remains outstanding.
+
+Candidate plugin SHA-256:
+`00a9daac0366fdb9f308406fda618cff96cdf026984a69f9a39d5afa7c33020c`;
+parent plugin: `752d759d991524e667f68bc0053fb3b7f458a702c4e34b2efa62147f8ad889e4`.
+Raw source, plugins, captures and checks remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-h6/finite-validation.tar.gz`
+(25,411,290 bytes, SHA-256
+`704fc219dafeb4404e30d389f776b1622d856ecc6ef24cbd8707474f5f06209e`).
+The [compact record](../bench/results/h-20261013-h6-finite-inputs.json) retains
+source identities, passing checks, failed attempts and review limitations.
+
 ## H6 membership validation reuse, 2026-10-12
 
 H6 item 3 seals the exact codes/membership buffers checked during single-source

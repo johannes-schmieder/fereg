@@ -236,6 +236,16 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H6 item 4 removes a repeated initial-OLS finite scan by preserving the exact
+RHS builder's immutable owner. Raw, final-residual and PPML checks remain.
+All 73 exact plugin cases, 292 worker checks and seventeen licensed fixtures
+pass with unchanged science and solver signatures; focused witnesses also
+compare checked/raw projection and diagnostic ordering. The change adds 52
+production lines but no allocation. Its effect on the fixest gap is unmeasured
+until the full H Mac panel. See
+[validation](VALIDATION.md#h6-checked-initial-rhs-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-finite-inputs.json).
+
 H6 item 3 removes repeated membership validation after checked single-source
 transfer and during absorbed DoF. Immutable ownership preserves raw-adapter
 checks and foreign-owner rejection; rebuilt interaction validation keeps its

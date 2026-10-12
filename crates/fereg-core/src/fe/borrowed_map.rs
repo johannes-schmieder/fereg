@@ -1676,7 +1676,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values, config, 0.5 * config.tolerance)
+        self.absorb(weights, values.into(), config, 0.5 * config.tolerance)
     }
 
     /// Ordinary OLS shares the automatic LSMR recurrence target. The final
@@ -1684,7 +1684,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
     pub(crate) fn absorb_ols(
         &mut self,
         weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
+        values: crate::ols::OlsProjectionInput,
         config: MapConfig,
         final_residual: bool,
     ) -> Result<CertifiedBorrowedMap> {
@@ -1699,7 +1699,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
     fn absorb(
         &mut self,
         weights: BorrowedMapWeights<'_>,
-        mut values: DenseMatrix,
+        values: crate::ols::OlsProjectionInput,
         config: MapConfig,
         recurrence_tolerance: f64,
     ) -> Result<CertifiedBorrowedMap> {
@@ -1714,11 +1714,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 "reusable categorical MAP inputs exceed their fixed session dimensions",
             ));
         }
-        if values.as_slice().iter().any(|value| !value.is_finite()) {
-            return Err(invalid_data(
-                "reusable categorical MAP values must be finite",
-            ));
-        }
+        values.validate_finite("reusable categorical MAP values must be finite")?;
+        let mut values = values.into_values();
         let weights = validate_weights(weights, values.nrows())?;
         self.workspace.set_rhs_count(rhs_count)?;
 
@@ -3546,7 +3543,7 @@ pub(crate) fn certify_borrowed_intercept_candidate_with_workspace(
 pub(crate) fn project_borrowed_intercept_structural(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
+    values: crate::ols::OlsProjectionInput,
     map: MapConfig,
     lsmr: LsmrConfig,
     budget: Option<FeSolverMemoryBudget>,
@@ -3560,11 +3557,8 @@ pub(crate) fn project_borrowed_intercept_structural(
             "structural FE projection dimensions are inconsistent",
         ));
     }
-    if values.as_slice().iter().any(|v| !v.is_finite()) {
-        return Err(invalid_data(
-            "structural FE projection values must be finite",
-        ));
-    }
+    values.validate_finite("structural FE projection values must be finite")?;
+    let values = values.into_values();
     validate_weights(weights, values.nrows())?;
     if design.effects().len() <= 1 {
         let bytes = BorrowedMapWorkspace::planned_payload_bytes(
@@ -3635,7 +3629,7 @@ pub(crate) fn project_borrowed_intercept_structural(
                 rayon::current_num_threads(),
             )?;
             graph.retain_coefficients = retain;
-            let mut result = graph.absorb_ols(weights, values, map, final_residual)?;
+            let mut result = graph.absorb_ols(weights, values.into(), map, final_residual)?;
             result.report.requested_solver = FeSolverKind::Auto;
             result.report.solver_workspace_peak = result
                 .report

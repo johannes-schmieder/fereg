@@ -91,7 +91,7 @@ pub use prepared_rhs::{
 pub(crate) use prepared_rhs::{
     build_prepared_ols_rhs_with_loaded_rows_and_reuse, build_prepared_ols_rhs_with_response,
     numeric_sources_are_finite, validate_prepared_model_metadata, NumericOlsColumns,
-    MAX_BOUND_NUMERIC_COLUMNS,
+    OlsProjectionInput, MAX_BOUND_NUMERIC_COLUMNS,
 };
 pub use prepared_robust::{
     fit_prepared_model_robust_with_loaded_moments, CertifiedPreparedOlsRobust,
