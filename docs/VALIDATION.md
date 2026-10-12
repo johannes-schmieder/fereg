@@ -14,6 +14,61 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H6 uniform drop reasons, 2026-10-12
+
+H6 item 5b replaces the complete unweighted OLS sample's allocated Retained
+mask with a logical repeated scalar. Classified builders keep their original
+reserved mutable vectors and wrap them after classification. Logical reference
+access and equality allocate nothing; empty sequences ignore the stored scalar.
+Explicit storage moves without copying. Raw repeated values are not receipts:
+dimensions, counts, numeric/weight checks and original row/drop consistency
+still govern acceptance and diagnostic order. Arithmetic, solver signatures,
+tolerances, certificates and sample/rank/omission/separation decisions stay exact.
+
+No-drop compaction returns the implicit owner. Actual deletion materializes
+fallibly after replacement value/map/weight/adjustment reservations and before
+mutation. The unchanged OLS worst-case forecast includes the full original-axis
+reason bank alongside both numeric banks and keep mask. PPML generation and
+replacement budgets remain unchanged; production initial/final mutable ledgers
+remain explicit. The legacy owner's consuming conversion is test-only; production
+from_selection already supplies a Vec. Sealed publication reads logical reasons
+and retains its dimensions, residual, receipt and transaction checks.
+
+All 39 focused/mapped executions pass, including five new witnesses: logical
+sequence access and empty equality, impossible materialization failure, explicit
+pointer/capacity transfer, sixty malformed repeated/explicit raw-mask comparisons,
+no-drop/deleting compaction and exact/one-byte-short admission. Mapped complete
+transfer, numeric sample, PPML ownership/rebase, allocation, singleton, sealed
+owner and publication checks pass. Workspace compilation, Clippy, formatting
+and independent high-effort architecture review pass. The full suite passes
+1,698 Rust executions in 62 invocations and 200 Python tests with 13 optional
+dependency skips. Universal Mac ABI/load/guard checks, 73 exact plugin replay
+cases, 292 worker checks and seventeen licensed preparation, FE, weight, memory,
+output and transaction fixtures pass. The expected Linux-ELF skip remains on
+Mac; no new Linux or Windows qualification follows.
+
+The saving is one N-byte heap mask for complete OLS preparation. Actual deletion
+still allocates that mask under the existing admission; classified and mutable
+PPML ledgers keep actual-capacity accounting. Eliminated allocations remove
+their own failure points. Core adds 82 production lines and one structural
+logical-equality condition; plugin, chunk and size-violation counts are unchanged.
+An initial lead inventory helper failed to import rust_source before writing;
+correcting its Python import path restored the ratchet update. The first
+collector missed an interleaved nested-test summary header; matching complete
+passed/failed suffixes recovered all 62 successes without a test rerun. All
+runtime checks pass without production or numerical repair. Timing remains at the H
+boundary; candidate storage, norm handoff and FE-column release are separate.
+
+Candidate plugin SHA-256:
+`80f89d6ae8057be42e533492d1f1bb06c0ea6e72de88daf93333eb1656a1265b`;
+parent plugin: `0c5495fce859f761d934fe65b24bd7c23bf12b05c41ebca5e017bf1b2ce06482`.
+Raw source, plugins, review and checks remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-h6/drop-validation.tar.gz`
+(25,464,434 bytes, SHA-256
+`e9b5701555fdb1f022ae12499c9538132f83e2839d308b5c8554b226403dc704`).
+The [compact record](../bench/results/h-20261013-h6-drop-mask.json) binds all
+source identities and evidence.
+
 ## H6 identity row axis, 2026-10-12
 
 H6 item 5a moves the existing logical identity/selected axis to the data module

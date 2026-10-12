@@ -236,6 +236,16 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H6 item 5b removes the complete OLS sample's N-byte drop-reason bank with
+logical uniform storage. Actual row deletion materializes it under unchanged
+compaction admission; classified masks and PPML mutable ledgers retain explicit
+ownership. All 73 plugin cases are exact, 292 worker checks and seventeen
+licensed fixtures pass, and scientific decisions and solver signatures remain
+unchanged. Core adds 82 production lines and one logical-equality condition.
+No timing gain is claimed before the H boundary. See
+[validation](VALIDATION.md#h6-uniform-drop-reasons-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-drop-mask.json).
+
 H6 item 5a removes the complete OLS sample's 8N-byte identity map and the
 publication membership rescan by borrowing the sealed prepared owner. Explicit
 selected maps retain their buffers, and PPML retains its required explicit

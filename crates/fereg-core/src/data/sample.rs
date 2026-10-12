@@ -1,6 +1,6 @@
 use std::mem::size_of;
 
-use super::FinalizedAxis;
+use super::{FinalizedAxis, UniformValues};
 
 use rayon::prelude::*;
 
@@ -186,7 +186,7 @@ pub struct PreparedNumericSample {
     pub regressors: Vec<Vec<f64>>,
     pub weights: PreparedWeights,
     pub adjustment: PreparedAdjustment,
-    pub drop_reasons: Vec<DropReason>,
+    pub drop_reasons: UniformValues<DropReason>,
 }
 
 impl PreparedNumericSample {
@@ -206,7 +206,7 @@ impl PreparedNumericSample {
                     bytes(values)
                 }
             }
-            + bytes(&self.drop_reasons)
+            + self.drop_reasons.owned_buffer_bytes()
     }
 
     #[must_use]
@@ -349,7 +349,10 @@ impl PreparedNumericSample {
                 "compacted exposure column",
             )?),
         };
-        let mut drop_reasons = self.drop_reasons;
+        // The preparation peak retains an original-axis reason bank beside
+        // both aligned value banks and the keep mask. No-drop compaction
+        // returned above, so only actual deletion materializes this bank.
+        let mut drop_reasons = self.drop_reasons.into_vec()?;
 
         for (active_row, retain) in keep.iter().copied().enumerate() {
             let original_row = self.original_row_by_active.get(active_row).unwrap();
@@ -390,7 +393,7 @@ impl PreparedNumericSample {
             regressors,
             weights,
             adjustment,
-            drop_reasons,
+            drop_reasons: drop_reasons.into(),
         })
     }
 }
@@ -704,7 +707,7 @@ fn prepare_numeric_sample_with_plan<P: NumericDomainPolicy, R: Reserve>(
         regressors,
         weights,
         adjustment,
-        drop_reasons,
+        drop_reasons: drop_reasons.into(),
     })
 }
 
@@ -1254,7 +1257,7 @@ mod allocation_tests {
             PreparedAdjustment::Exposure(vec![4.0, 6.0])
         );
         assert_eq!(
-            compacted.drop_reasons,
+            compacted.drop_reasons.iter().copied().collect::<Vec<_>>(),
             vec![
                 DropReason::Retained,
                 DropReason::Singleton,

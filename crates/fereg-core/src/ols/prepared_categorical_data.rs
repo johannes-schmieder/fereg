@@ -1590,9 +1590,14 @@ fn valid_complete_sample(sample: &PreparedNumericSample) -> bool {
                 .regressors
                 .iter()
                 .all(|source| source[range.clone()].iter().all(|v| v.is_finite()))
-            && sample.drop_reasons[range.clone()]
-                .iter()
-                .all(|reason| *reason == DropReason::Retained)
+            && match &sample.drop_reasons {
+                crate::data::UniformValues::Repeated { len, value } => {
+                    *len == 0 || *value == DropReason::Retained
+                }
+                crate::data::UniformValues::Explicit(reasons) => reasons[range.clone()]
+                    .iter()
+                    .all(|reason| *reason == DropReason::Retained),
+            }
             && sample
                 .original_row_by_active
                 .selected()
@@ -1636,6 +1641,13 @@ mod tests {
     use super::*;
     use crate::fe::finalize_categorical_topology;
 
+    fn explicit_reasons_mut(sample: &mut PreparedNumericSample) -> &mut Vec<DropReason> {
+        let crate::data::UniformValues::Explicit(reasons) = &mut sample.drop_reasons else {
+            panic!("fixture owns explicit reasons");
+        };
+        reasons
+    }
+
     fn numeric_sample() -> PreparedNumericSample {
         PreparedNumericSample {
             n_original: 4,
@@ -1645,7 +1657,117 @@ mod tests {
             regressors: vec![vec![1.0, 2.0, 3.0, 4.0]],
             weights: PreparedWeights::None,
             adjustment: crate::data::PreparedAdjustment::None,
-            drop_reasons: vec![DropReason::Retained; 4],
+            drop_reasons: vec![DropReason::Retained; 4].into(),
+        }
+    }
+
+    #[test]
+    fn drop_uniform_raw_validation_matches_explicit_error_precedence() {
+        use crate::data::UniformValues;
+        for len in [0, 3, 4, 5] {
+            for value in [
+                DropReason::Retained,
+                DropReason::MissingOutcome,
+                DropReason::ExcludedByIfIn,
+            ] {
+                for fault in 0..5 {
+                    let make = |uniform| {
+                        let mut sample = numeric_sample();
+                        sample.drop_reasons = if uniform {
+                            UniformValues::Repeated { len, value }
+                        } else {
+                            vec![value; len].into()
+                        };
+                        match fault {
+                            1 => sample.n_candidate = 5,
+                            2 => sample.outcome[1] = f64::NAN,
+                            3 => {
+                                sample.weights = PreparedWeights::Provided {
+                                    kind: WeightKind::Analytic,
+                                    values: vec![0.0; 4],
+                                }
+                            }
+                            4 => {
+                                sample.weights = PreparedWeights::Provided {
+                                    kind: WeightKind::Frequency,
+                                    values: vec![1.5; 4],
+                                }
+                            }
+                            _ => {}
+                        }
+                        sample
+                    };
+                    assert_eq!(
+                        validate_numeric_sample(&make(true)),
+                        validate_numeric_sample(&make(false))
+                    );
+                }
+            }
+        }
+        let mut sample = numeric_sample();
+        sample.drop_reasons = UniformValues::Repeated {
+            len: 4,
+            value: DropReason::Retained,
+        };
+        let owner = validated_sample::ValidatedSample::new(sample).unwrap();
+        assert_eq!(owner.drop_reasons.owned_buffer_bytes(), 0);
+    }
+
+    #[test]
+    fn drop_uniform_compaction_materializes_only_for_actual_deletion() {
+        use crate::data::UniformValues;
+        for repeated in [false, true] {
+            for deleting in [false, true] {
+                let mut sample = numeric_sample();
+                let mut reasons = Vec::with_capacity(17);
+                reasons.resize(4, DropReason::Retained);
+                let (pointer, capacity) = (reasons.as_ptr(), reasons.capacity());
+                sample.drop_reasons = if repeated {
+                    UniformValues::Repeated {
+                        len: 4,
+                        value: DropReason::Retained,
+                    }
+                } else {
+                    reasons.into()
+                };
+                let keep = if deleting {
+                    [true, false, true, false]
+                } else {
+                    [true; 4]
+                };
+                let result = sample
+                    .compact_active_rows(&keep, DropReason::Singleton)
+                    .unwrap();
+                if repeated && !deleting {
+                    assert_eq!(result.drop_reasons.owned_buffer_bytes(), 0);
+                    assert!(matches!(
+                        result.drop_reasons,
+                        UniformValues::Repeated { .. }
+                    ));
+                } else {
+                    let UniformValues::Explicit(values) = &result.drop_reasons else {
+                        panic!("mutation owns explicit reasons")
+                    };
+                    if !repeated {
+                        assert_eq!((values.as_ptr(), values.capacity()), (pointer, capacity));
+                    }
+                    assert_eq!(
+                        result.drop_reasons.owned_buffer_bytes(),
+                        values.capacity() as u128
+                    );
+                }
+                assert!(result
+                    .drop_reasons
+                    .iter()
+                    .enumerate()
+                    .all(|(row, reason)| *reason
+                        == if keep[row] {
+                            DropReason::Retained
+                        } else {
+                            DropReason::Singleton
+                        }));
+                validate_numeric_sample(&result).unwrap();
+            }
         }
     }
 
@@ -1668,9 +1790,9 @@ mod tests {
             (|_: &mut PreparedNumericSample| {}) as fn(&mut PreparedNumericSample),
             |s| s.n_candidate = 5,
             |s| {
-                s.drop_reasons.pop();
+                explicit_reasons_mut(s).pop();
             },
-            |s| s.drop_reasons[2] = DropReason::MissingOutcome,
+            |s| explicit_reasons_mut(s)[2] = DropReason::MissingOutcome,
             |s| s.outcome[1] = f64::NAN,
             |s| {
                 s.weights = PreparedWeights::Provided {
@@ -1733,7 +1855,7 @@ mod tests {
             regressors: vec![vec![1.0; rows]],
             weights: PreparedWeights::None,
             adjustment: crate::data::PreparedAdjustment::None,
-            drop_reasons: vec![DropReason::Retained; rows],
+            drop_reasons: vec![DropReason::Retained; rows].into(),
         };
         for threads in [1, 4, 8] {
             ThreadTeam::new(ThreadConfig::from_requested(threads, true).unwrap())
@@ -1831,7 +1953,7 @@ mod tests {
             sample.outcome.as_ptr(),
             sample.regressors[0].as_ptr(),
             sample.original_row_by_active.selected().unwrap().as_ptr(),
-            sample.drop_reasons.as_ptr(),
+            sample.drop_reasons.get(0).unwrap() as *const DropReason,
         );
         let bytes = sample.owned_buffer_bytes();
         let owned = validated_sample::ValidatedSample::new(sample).unwrap();
@@ -1841,7 +1963,7 @@ mod tests {
                 owned.outcome.as_ptr(),
                 owned.regressors[0].as_ptr(),
                 owned.original_row_by_active.selected().unwrap().as_ptr(),
-                owned.drop_reasons.as_ptr()
+                owned.drop_reasons.get(0).unwrap() as *const DropReason
             )
         );
         assert_eq!(owned.owned_buffer_bytes(), bytes);
@@ -1854,7 +1976,7 @@ mod tests {
         let corruptions: &[fn(&mut PreparedNumericSample)] = &[
             |s| s.n_candidate = 5,
             |s| {
-                s.drop_reasons.pop();
+                explicit_reasons_mut(s).pop();
             },
             |s| {
                 s.outcome.pop();
@@ -1876,7 +1998,7 @@ mod tests {
                     indices[3] = 4;
                 }
             },
-            |s| s.drop_reasons[3] = DropReason::MissingOutcome,
+            |s| explicit_reasons_mut(s)[3] = DropReason::MissingOutcome,
             |s| {
                 if let crate::data::FinalizedAxis::Selected(indices) = &mut s.original_row_by_active
                 {

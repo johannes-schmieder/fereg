@@ -35,7 +35,7 @@ fn unified_source_roles_lock_regressor_weight_and_fixed_effect_precedence() {
     let prepared =
         prepare_numeric_sample_with_source_uses(&input, &uses, &LiteralPolicy::default()).unwrap();
     assert_eq!(
-        prepared.drop_reasons,
+        prepared.drop_reasons.iter().copied().collect::<Vec<_>>(),
         vec![
             DropReason::ExcludedByIfIn,
             DropReason::MissingOutcome,
@@ -150,7 +150,7 @@ fn literal_oracle_locks_precedence_masks_and_policy_order() {
     assert_eq!(prepared.n_active(), 1);
     assert_eq!(prepared.retained_rows().iter().collect::<Vec<_>>(), &[8]);
     assert_eq!(
-        prepared.drop_reasons,
+        prepared.drop_reasons.iter().copied().collect::<Vec<_>>(),
         [
             DropReason::ExcludedByIfIn,
             DropReason::MissingOutcome,
@@ -215,7 +215,7 @@ fn every_nonfinite_value_is_unavailable_before_its_policy_hook() {
     let policy = LiteralPolicy::default();
     let prepared = prepare_numeric_sample(&input, &policy).unwrap();
     assert_eq!(
-        prepared.drop_reasons,
+        prepared.drop_reasons.iter().copied().collect::<Vec<_>>(),
         [
             DropReason::MissingOutcome,
             DropReason::MissingOutcome,
@@ -265,7 +265,7 @@ fn finite_missing_masks_are_authoritative_for_regressors_and_adjustments() {
     let policy = LiteralPolicy::default();
     let prepared = prepare_numeric_sample(&input, &policy).unwrap();
     assert_eq!(
-        prepared.drop_reasons,
+        prepared.drop_reasons.iter().copied().collect::<Vec<_>>(),
         [
             DropReason::MissingRegressor,
             DropReason::MissingOffsetOrExposure
@@ -293,7 +293,10 @@ fn candidate_exclusion_never_invokes_a_fatal_policy() {
         ..LiteralPolicy::default()
     };
     let prepared = prepare_numeric_sample(&input, &policy).unwrap();
-    assert_eq!(prepared.drop_reasons, [DropReason::ExcludedByIfIn]);
+    assert_eq!(
+        prepared.drop_reasons.iter().copied().collect::<Vec<_>>(),
+        [DropReason::ExcludedByIfIn]
+    );
     assert!(policy.calls.borrow().is_empty());
 
     let candidate = [true];
@@ -325,7 +328,7 @@ fn a_missing_later_regressor_drops_the_row_without_losing_column_count() {
     };
     let prepared = prepare_numeric_sample(&input, &LiteralPolicy::default()).unwrap();
     assert_eq!(
-        prepared.drop_reasons,
+        prepared.drop_reasons.iter().copied().collect::<Vec<_>>(),
         [DropReason::Retained, DropReason::MissingRegressor]
     );
     assert_eq!(prepared.regressors, [vec![10.0], vec![30.0]]);
@@ -439,7 +442,7 @@ fn exposure_drop_and_error_are_distinct_from_availability() {
     };
     let prepared = prepare_numeric_sample(&input, &drop_policy).unwrap();
     assert_eq!(
-        prepared.drop_reasons,
+        prepared.drop_reasons.iter().copied().collect::<Vec<_>>(),
         [DropReason::MissingOffsetOrExposure, DropReason::Retained]
     );
 
@@ -530,7 +533,10 @@ fn zero_sized_zero_candidate_and_all_dropped_inputs_are_valid() {
     let prepared = prepare_numeric_sample(&all_dropped, &LiteralPolicy::default()).unwrap();
     assert_eq!(prepared.n_candidate, 2);
     assert_eq!(prepared.n_active(), 0);
-    assert_eq!(prepared.drop_reasons, [DropReason::MissingOutcome; 2]);
+    assert_eq!(
+        prepared.drop_reasons.iter().copied().collect::<Vec<_>>(),
+        [DropReason::MissingOutcome; 2]
+    );
     assert_eq!(prepared.regressors, [Vec::<f64>::new()]);
     assert_eq!(
         prepared.weights,
@@ -687,7 +693,10 @@ fn deterministic_permutations_preserve_original_order_and_literal_oracle() {
             prepared.retained_rows().iter().collect::<Vec<_>>(),
             expected_rows
         );
-        assert_eq!(prepared.drop_reasons, expected_reasons);
+        assert_eq!(
+            prepared.drop_reasons.iter().copied().collect::<Vec<_>>(),
+            expected_reasons
+        );
         assert!(prepared
             .retained_rows()
             .iter()

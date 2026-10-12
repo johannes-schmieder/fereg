@@ -265,6 +265,21 @@ mod tests {
     use fereg_core::error::ErrorCode;
 
     #[test]
+    fn drop_uniform_compaction_admission_keeps_the_full_mutable_reason_bank() {
+        // Two numeric columns have two live value banks (32N), two row
+        // maps (16N), a keep mask (N), and the materialized reason mask (N).
+        // Saving the initial uniform bank cannot shrink this later peak.
+        let memory = OlsPreparationMemory::estimate(10_000, 2, false, 0, 0).unwrap();
+        memory.admit_numeric_arrays(Some(500_000)).unwrap();
+        for short in [499_999, 490_000] {
+            assert_eq!(
+                memory.admit_numeric_arrays(Some(short)).unwrap_err().code,
+                ErrorCode::Allocation
+            );
+        }
+    }
+
+    #[test]
     fn loading_masks_have_exact_and_one_byte_short_boundaries() {
         // Outcome plus 100 sources, one weight and a separate candidate mask.
         let memory = OlsPreparationMemory::estimate(10_000, 101, true, 0, 0).unwrap();

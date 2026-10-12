@@ -337,7 +337,7 @@ impl PreparedPpmlModelOwner {
             clusters,
             loaded,
             rows,
-            sample.drop_reasons,
+            sample.drop_reasons.into_vec()?,
             sample.n_candidate,
             sample.adjustment,
             base_probability_weights,

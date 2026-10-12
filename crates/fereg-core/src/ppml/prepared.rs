@@ -1008,7 +1008,15 @@ mod tests {
                         .iter()
                         .collect::<Vec<_>>()
                 );
-                assert_eq!(selected.drop_reasons, reference.sample().drop_reasons);
+                assert_eq!(
+                    selected.drop_reasons,
+                    reference
+                        .sample()
+                        .drop_reasons
+                        .iter()
+                        .copied()
+                        .collect::<Vec<_>>()
+                );
                 assert_eq!(selected.weights, reference.weights());
                 assert_eq!(adjustment, reference.sample().adjustment);
                 assert_eq!(report, reference.adjustment());
@@ -1166,7 +1174,15 @@ mod tests {
                             .iter()
                             .collect::<Vec<_>>()
                     );
-                    assert_eq!(actual.drop_reasons, expected.sample().drop_reasons);
+                    assert_eq!(
+                        actual.drop_reasons,
+                        expected
+                            .sample()
+                            .drop_reasons
+                            .iter()
+                            .copied()
+                            .collect::<Vec<_>>()
+                    );
                     assert_eq!(actual.weights, expected.weights());
                     assert!(actual.original_row_by_active.capacity() <= shape.n_candidate);
                     assert!(actual.drop_reasons.capacity() <= n);
@@ -1346,7 +1362,12 @@ mod tests {
                 &[1]
             );
             assert_eq!(
-                prepared.sample().drop_reasons,
+                prepared
+                    .sample()
+                    .drop_reasons
+                    .iter()
+                    .copied()
+                    .collect::<Vec<_>>(),
                 [DropReason::MissingOutcome, DropReason::Retained]
             );
 
@@ -1662,7 +1683,12 @@ mod tests {
             &[0]
         );
         assert_eq!(
-            prepared.sample().drop_reasons,
+            prepared
+                .sample()
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             [DropReason::Retained, DropReason::InvalidOrMissingWeight]
         );
 
@@ -1717,7 +1743,12 @@ mod tests {
             &[0, 2]
         );
         assert_eq!(
-            prepared.sample().drop_reasons,
+            prepared
+                .sample()
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             [
                 DropReason::Retained,
                 DropReason::MissingOffsetOrExposure,
@@ -1800,7 +1831,12 @@ mod tests {
                     &[1]
                 );
                 assert_eq!(
-                    prepared.sample().drop_reasons,
+                    prepared
+                        .sample()
+                        .drop_reasons
+                        .iter()
+                        .copied()
+                        .collect::<Vec<_>>(),
                     [DropReason::MissingOffsetOrExposure, DropReason::Retained]
                 );
             }
@@ -1903,7 +1939,12 @@ mod tests {
             &[7]
         );
         assert_eq!(
-            prepared.sample().drop_reasons,
+            prepared
+                .sample()
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             [
                 DropReason::ExcludedByIfIn,
                 DropReason::MissingOutcome,
@@ -1950,7 +1991,12 @@ mod tests {
         };
         let prepared = prepare_and_check_selection(&input).expect("regressor precedes weight");
         assert_eq!(
-            prepared.sample().drop_reasons,
+            prepared
+                .sample()
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             [DropReason::MissingRegressor, DropReason::Retained]
         );
 
@@ -1974,7 +2020,12 @@ mod tests {
         };
         let prepared = prepare_and_check_selection(&input).expect("cluster precedes exposure");
         assert_eq!(
-            prepared.sample().drop_reasons,
+            prepared
+                .sample()
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             [DropReason::MissingCluster, DropReason::Retained]
         );
     }

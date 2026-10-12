@@ -3,6 +3,7 @@
 mod axis;
 mod model_matrix;
 mod sample;
+mod uniform_values;
 mod weights;
 
 pub use axis::FinalizedAxis;
@@ -16,4 +17,5 @@ pub use sample::{
     DomainDecision, DropReason, NumericColumnView, NumericDomainPolicy, NumericPreparationInput,
     NumericSourceUse, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightInput,
 };
+pub use uniform_values::UniformValues;
 pub use weights::WeightKind;

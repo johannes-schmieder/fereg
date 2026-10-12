@@ -801,11 +801,10 @@ fn prepare_full_retained_unweighted_sample(
         regressors.push(destination);
     }
 
-    let mut drop_reasons = Vec::new();
-    drop_reasons
-        .try_reserve_exact(n)
-        .map_err(|_| allocation("unable to reserve complete-sample drop-reason mask"))?;
-    drop_reasons.resize(n, crate::data::DropReason::Retained);
+    let drop_reasons = crate::data::UniformValues::Repeated {
+        len: n,
+        value: DropReason::Retained,
+    };
 
     Ok(Some(PreparedNumericSample {
         n_original: n,
@@ -865,11 +864,10 @@ fn take_full_retained_unweighted_sample(loaded: LoadedOlsInput) -> Result<Prepar
             .map(|(_, column)| column.values),
     );
 
-    let mut drop_reasons = Vec::new();
-    drop_reasons
-        .try_reserve_exact(n)
-        .map_err(|_| allocation("unable to reserve complete-sample drop-reason mask"))?;
-    drop_reasons.resize(n, crate::data::DropReason::Retained);
+    let drop_reasons = crate::data::UniformValues::Repeated {
+        len: n,
+        value: DropReason::Retained,
+    };
 
     Ok(PreparedNumericSample {
         n_original: n,
@@ -1019,7 +1017,7 @@ fn take_classified_sample(
             }
         }),
         adjustment: crate::data::PreparedAdjustment::None,
-        drop_reasons,
+        drop_reasons: drop_reasons.into(),
     })
 }
 
@@ -1772,6 +1770,14 @@ mod tests {
             assert_eq!(owned, borrowed);
             assert_eq!(owned, classified);
             assert_eq!(owned.original_row_by_active.owned_buffer_bytes(), 0);
+            assert!(
+                matches!(owned.drop_reasons, crate::data::UniformValues::Repeated { len, value: DropReason::Retained } if len == n)
+            );
+            assert!(matches!(
+                classified.drop_reasons,
+                crate::data::UniformValues::Explicit(_)
+            ));
+            assert_eq!(owned.drop_reasons.owned_buffer_bytes(), 0);
             assert!(owned
                 .outcome
                 .iter()
@@ -1816,7 +1822,12 @@ mod tests {
             &[1, 5]
         );
         assert_eq!(
-            prepared.sample.drop_reasons,
+            prepared
+                .sample
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             vec![
                 crate::DropReason::ExcludedByIfIn,
                 crate::DropReason::Retained,
@@ -2136,7 +2147,12 @@ mod tests {
             &[1, 2, 5]
         );
         assert_eq!(
-            prepared.sample.drop_reasons,
+            prepared
+                .sample
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             vec![
                 crate::DropReason::ExcludedByIfIn,
                 crate::DropReason::Retained,
@@ -2521,7 +2537,12 @@ mod tests {
             &[1, 2]
         );
         assert_eq!(
-            prepared.sample.drop_reasons,
+            prepared
+                .sample
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             vec![
                 crate::DropReason::ExcludedByIfIn,
                 crate::DropReason::Retained,
@@ -2632,7 +2653,12 @@ mod tests {
             &[0, 1, 2]
         );
         assert_eq!(
-            prepared.sample.drop_reasons,
+            prepared
+                .sample
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             vec![
                 crate::DropReason::Retained,
                 crate::DropReason::Retained,
@@ -2765,7 +2791,12 @@ mod tests {
             &[1, 2]
         );
         assert_eq!(
-            prepared.sample.drop_reasons,
+            prepared
+                .sample
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             vec![
                 crate::DropReason::ExcludedByIfIn,
                 crate::DropReason::Retained,
@@ -2924,7 +2955,12 @@ mod tests {
             prepare_model_owned(&request, &[], loaded, false).expect("owned FE preparation")
         );
         assert_eq!(
-            prepared.sample.drop_reasons,
+            prepared
+                .sample
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             vec![
                 crate::DropReason::ExcludedByIfIn,
                 crate::DropReason::MissingOutcome,
@@ -3036,7 +3072,12 @@ mod tests {
         assert_eq!(prepared.singletons.cascade_events, 5);
         assert!(!prepared.singletons.kept_by_request);
         assert_eq!(
-            prepared.sample.drop_reasons,
+            prepared
+                .sample
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             [
                 vec![crate::DropReason::Singleton; 5],
                 vec![crate::DropReason::Retained; 4],
@@ -4148,7 +4189,12 @@ mod tests {
             &[0]
         );
         assert_eq!(
-            weighted.sample.drop_reasons,
+            weighted
+                .sample
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             vec![crate::DropReason::Retained, crate::DropReason::Singleton]
         );
         assert_eq!(weighted.categorical_sources()[0].level_values(), vec![10.0]);
@@ -4168,7 +4214,12 @@ mod tests {
         precedence.outcome.values[1] = f64::NAN;
         let prepared = prepare_model(&request, &[], &precedence, false).expect("reason precedence");
         assert_eq!(
-            prepared.sample.drop_reasons,
+            prepared
+                .sample
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             vec![
                 crate::DropReason::Retained,
                 crate::DropReason::MissingOutcome
@@ -4288,7 +4339,12 @@ mod tests {
         assert_eq!(prepared.sample.n_active(), 0);
         assert_eq!(prepared.singletons.num_singletons, 2);
         assert_eq!(
-            prepared.sample.drop_reasons,
+            prepared
+                .sample
+                .drop_reasons
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             vec![crate::DropReason::Singleton; 2]
         );
         assert!(prepared.categorical_sources()[0].level_values().is_empty());

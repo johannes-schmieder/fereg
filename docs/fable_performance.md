@@ -1613,6 +1613,43 @@ policy or signature changes; drop/candidate masks remain separate. See
 [validation](VALIDATION.md#h6-identity-row-axis-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-axis.json).
 
+Item 5b declaration (parent `b2cf4d50`): represent a complete sample's uniform
+Retained drop reasons without an N-byte heap bank. Introduce a logical repeated
+or explicit value owner with reference access and exact sequence equality;
+classified builders retain their existing reserved mutable vectors and wrap
+them only after classification. Public repeated values are data, not proof:
+raw shape, counts, numeric/weight checks and row/drop consistency remain
+authoritative. No-drop compaction keeps the implicit owner; actual deletion
+materializes it fallibly before mutation, with its full live capacity covered
+by compaction admission. Preserve selected buffer ownership and existing
+worst-case preparation/compaction forecasts. Keep PPML's mutable result/owner
+ledgers explicit through consuming fallible conversion where needed; read-only
+generation samples and sealed OLS publication use logical access. Do not add
+allocating indexing or implicit slice conversions. All arithmetic, solver
+signatures, requested tolerances, certificates and sample/rank/omission/
+separation decisions remain exact. Witnesses cover repeated/explicit equality,
+malformed raw masks, allocation/capacity and no-drop/deleting compaction,
+missing/weight/singleton precedence, PPML rebase/rollback and publication,
+full runtime checks and exact plugin replay. Candidate markers remain unchanged
+in this commit; timing stays at the complete H boundary.
+
+Item 5b result: complete OLS samples now keep Retained reasons as a repeated
+scalar, removing the N-byte mask. Classified masks retain their vectors;
+no-drop compaction remains implicit and actual deletion materializes under the
+unchanged full compaction allowance. Production PPML initial/final ledgers
+remain explicit. All 39 focused executions, Clippy, the full suite (1,698 Rust
+executions), universal Mac checks, 73 exact plugin cases, 292 worker checks and
+seventeen licensed fixtures pass. Independent review approves the ownership
+and admission boundaries. Core adds 82 production lines and one logical-equality
+condition; plugin, chunk and size-violation counts are unchanged. The lead's
+inventory helper initially missed a Python import path; fixed before the
+ratchet check. The collector also needed to handle interleaved nested-test
+stdout; all successful invocations were recovered without rerunning tests.
+No scientific or solver-signature
+change and no timing claim. See
+[validation](VALIDATION.md#h6-uniform-drop-reasons-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h6-drop-mask.json).
+
 ### H7. Small-input fixed cost (check only)
 
 The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio
