@@ -78,6 +78,66 @@ Raw source, plugins, review, failed attempts and checks remain in
 The [compact record](../bench/results/h-20261013-h6-fe-columns.json) binds all
 qualification identities.
 
+## H7 small-input fixed-cost check, 2026-10-12
+
+One isolated SCC node compared final H6 source `53337e65d625`
+with the retained October 10 `e29164e6` plugin through the Stata campaign
+entrypoint, sharing the current frontend, frozen 100k AKM inputs and four
+socket-local physical CPUs with matching memory binding. The panel used one
+excluded warm-up pair and seven alternating measured pairs per OLS/PPML
+model. All 28 measured fits, four warm-up fits and four 1,200-row smoke fits
+completed; the existing process initialization adds 36 small fits, for 72
+estimator invocations total. The declared 120-second process and 900-second
+panel limits were unchanged, with no retry, continuation or tuning.
+
+| Cell | October 10 seconds | Current seconds | Paired ratio [95% interval] | Verdict |
+| --- | ---: | ---: | --- | --- |
+| OLS command | 0.169399 | 0.167542 | 0.9937 [0.8375, 1.0917] | inconclusive |
+| OLS runtime total | 0.151418 | 0.149957 | 0.9990 [0.8194, 1.1022] | inconclusive |
+| PPML command | 0.594051 | 0.501664 | 0.8453 [0.8321, 0.8506] | nonregression |
+| PPML runtime total | 0.557795 | 0.466115 | 0.8357 [0.8195, 0.8439] | nonregression |
+
+The paired median bootstrap used 10,000 draws, seed 739391 and the declared
+95% interval and max(5%, 1 ms) allowance. Individual observations, all phase
+clocks, solver signatures and differences remain in the compact record. The
+comparison includes all intervening changes, including H8; it cannot isolate
+C1/C2/E1 or independently establish the historical host-noise cause. An
+inconclusive interval is not a nonregression pass.
+
+The existing independent smoke oracle passes all four fits. All sixteen
+paired scientific comparisons, including warm-ups, pass unchanged campaign
+tolerances, with exact sample/rank/omission/singleton/separation/DoF metadata.
+Both plugins repeat their scientific results and clock-stripped solver
+signatures exactly at fixed workers. OLS recurrence iterations increase from
+13 to 16 under H8; its diagnostic residuals decrease. PPML solver signatures
+are unchanged. These diagnostics do not isolate H8's timing contribution. Native Linux audits, the campaign harness
+checks, runtime/input hash checks and output completeness checks pass. The harness suite ran 42 checks with one Rscript/fixest availability skip
+in this Stata-only setup. The
+draft harness received independent static review; its four-slot smoke CPU
+selection and complete runtime hashing were corrected before launch. This is
+a Linux diagnostic, not Mac performance or Windows qualification.
+
+The original postprocessor stopped on Stata's missing optional
+`time_separation_mu` clock in both PPML arms. Its retained replacement keeps
+all seven values per arm explicitly unavailable; primary clocks stay mandatory
+and the comparison/bootstrap function is unchanged. Ten focused analysis
+checks and independent hash-bound review pass. No captured fit was repeated.
+A premature accounting-log read and initial scheduler-accounting delay are
+retained as collection failures; both final accounting records are complete.
+
+Setup job `8039240` on `scc-tb4.scc.bu.edu` used four
+slots for 181 seconds, maximum virtual memory
+3.469G. Panel job `8039241` on
+`scc-wc4.scc.bu.edu` used 28 slots for 40
+seconds, maximum virtual memory 1.498G. Both have
+`failed=0`, `exit_status=0`; complete placement, THP and accounting are retained.
+Current plugin SHA-256: `78b9bb70ab8438597f1c9414d367cbbc828e6362ec86e952f7022b3f071fd893`;
+October 10 plugin: `57cc9789efd6ecc810d6dd82c55822dac3bd537bd7be32bb7a4bcd82e2a574a1`.
+Raw inputs, sources, captures, observations and accounting remain under
+`/projectnb/welfgr/fereg/runs/h-20261013-h7`; the
+[compact record](../bench/results/h-20261013-h7.json) binds their hashes.
+No production code or scientific rule was changed by H7.
+
 ## H6 dual-order LSMR norm handoff, 2026-10-12
 
 H6 item 7 shares each weighted residual read between the original fixed

@@ -1854,6 +1854,29 @@ exact, as do each plugin's fixed-worker repeats. Report clock-stripped solver
 signatures and H8 iteration changes. This two-arm comparison cannot isolate
 all intervening changes or by itself prove the historical host-noise cause.
 
+H7 result: the single declared paired comparison is complete. Four smoke
+witnesses, all sixteen old/current science comparisons (including warm-ups)
+and exact repeats for both plugins pass. The current/October-10 timings are:
+
+| Cell | October 10 seconds | Current seconds | Paired ratio [95% interval] | Verdict |
+| --- | ---: | ---: | --- | --- |
+| OLS command | 0.169399 | 0.167542 | 0.9937 [0.8375, 1.0917] | inconclusive |
+| OLS runtime total | 0.151418 | 0.149957 | 0.9990 [0.8194, 1.1022] | inconclusive |
+| PPML command | 0.594051 | 0.501664 | 0.8453 [0.8321, 0.8506] | nonregression |
+| PPML runtime total | 0.557795 | 0.466115 | 0.8357 [0.8195, 0.8439] | nonregression |
+
+The PPML paired command ratio is 0.8453 (about 15.5% lower). OLS is
+inconclusive: its 0.9937 point ratio and wide interval establish neither
+added per-call cost nor historical host noise. H8 raises OLS recurrence
+iterations from 13 to 16; PPML solver signatures are unchanged.
+The record includes OLS preflight/load/native clocks, PPML phase clocks and
+clock-stripped solver diagnostics. This comparison includes all intervening
+runtime changes, including H8, so it cannot identify C1/C2/E1 independently or
+prove the historical host-noise explanation. Costs and inconclusive cells are
+retained. No tuning, retry or continuation was performed. See
+[validation](VALIDATION.md#h7-small-input-fixed-cost-check-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h7.json).
+
 ### H8. Consistent recurrence tolerances across automatic routes (approved 2026-10-12)
 
 Facts. Explicit `solver(lsmr)` iterates to a hundredth of the requested

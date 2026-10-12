@@ -236,6 +236,30 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H7 compared the final H6 plugin against the retained October 10 plugin on
+one SCC node using the same frozen 100k AKM OLS/PPML inputs, current frontend
+and four socket-local cores. Seven measured alternating pairs per model give:
+
+| Cell | October 10 seconds | Current seconds | Paired ratio [95% interval] | Verdict |
+| --- | ---: | ---: | --- | --- |
+| OLS command | 0.169399 | 0.167542 | 0.9937 [0.8375, 1.0917] | inconclusive |
+| OLS runtime total | 0.151418 | 0.149957 | 0.9990 [0.8194, 1.1022] | inconclusive |
+| PPML command | 0.594051 | 0.501664 | 0.8453 [0.8321, 0.8506] | nonregression |
+| PPML runtime total | 0.557795 | 0.466115 | 0.8357 [0.8195, 0.8439] | nonregression |
+
+OLS remains inconclusive, so this panel does not establish either added cost
+or historical host noise. PPML command time is about 15.5% lower. OLS
+recurrence iterations change from 13 to 16 under H8; PPML solver signatures
+are unchanged. The optional PPML mu-separation clock is unavailable in both
+arms and is preserved as missing.
+All sixteen science comparisons (including warm-ups), fixed-worker repeats
+and four independent smoke witnesses pass. Phase timings and solver iteration
+differences are retained. This comparison cannot isolate every intervening
+change or prove the historical host-noise explanation. There was no tuning,
+retry or continuation. See
+[validation](VALIDATION.md#h7-small-input-fixed-cost-check-2026-10-12) and
+[compact evidence](../bench/results/h-20261013-h7.json).
+
 FE numeric-column release result: owned OLS preparation can now drop
 privately validated FE-exclusive f64 columns after final factorization. Source
 indices remain intact, shared/omitted ordinary, slope, interaction and cluster
