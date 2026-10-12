@@ -1,10 +1,103 @@
 # SCC evidence for optimization against fixest
 
-The largest validated gaps are four-million-row dense two-FE PPML and dense
-three-FE OLS. Start with FE projection and PPML's strict final solve. Increasing
-the worker budget alone leaves substantial gaps. This report preserves the
-completed October 10 campaign and the later completed phase probe; it does not
-claim a new implementation or a universal speed advantage.
+The October 12 rerun has not closed the largest gaps: four-million-row dense
+two-FE PPML takes 26.767 seconds against fixest's 15.068, and dense three-FE OLS
+takes 8.253 against 4.224. The PPML relative gap is smaller than in the October
+10 campaign; the OLS gap is slightly larger. Every corresponding configuration
+ran on a different host between campaigns, so these observations do not isolate
+the optimizations' effect from hardware. This report retains both campaigns
+and the intervening diagnostics, without claiming a universal speed advantage.
+
+## Optimized rerun, October 12
+
+Campaign `20261012T020354Z-optimized-d9865e57` froze source
+`d9865e57e07905750b47d1f12c573e4b4e11ae13`, containing qualified B, C/D and E1;
+the stopped A1/A2/A3/F2 experiments were not integrated. The Linux plugin is
+SHA-256 `75faa55005e95787d8b1a711af738340c36bcf97205c6c8bde1d977aaa41ae23`.
+Fixest remains 0.14.2. All 36 production datasets reuse the October 10 bytes,
+with matching decoded numeric-column hashes and topology. The same 56 model
+configurations, three repetitions, worker budgets, timing boundary, scientific
+tolerances and per-fit limits apply. The added strict OLS profile expands the
+panel from 492 to 579 planned fit positions; default and strict results remain
+separate.
+
+Among eligible default-fixest comparisons, fereg is faster in **15/18 OLS and
+11/17 PPML** configurations: **26/35 overall**, unchanged from October 10's
+16/18 and 10/17. The other 21 default comparisons remain scientifically
+ineligible or unavailable. Strict fixest gives 19/22 OLS and 4/4 PPML native
+wins among eligible comparisons. These counts describe this panel, including
+repeated workload variants; they are not general probabilities of winning.
+
+The table revisits all nine previous losses. Times are current separate
+three-fit command medians. The ratio is the median **paired fixest/fereg**
+time, so a value above one favors fereg; it need not equal the ratio of the
+separate medians. Both arms run on the same node within each campaign.
+
+| Model / design | Rows | Workers | Current fereg s | Current fixest s | Previous paired ratio | Current paired ratio |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| PPML, two dense FEs | 4,000,000 | 4 | 26.767 | 15.068 | 0.502 | 0.563 |
+| OLS, three dense FEs | 4,000,000 | 4 | 8.253 | 4.224 | 0.530 | 0.510 |
+| PPML, two dense FEs | 1,000,000 | 16 | 4.724 | 3.260 | 0.625 | 0.692 |
+| PPML, two dense FEs | 1,000,000 | 4 | 6.073 | 4.398 | 0.645 | 0.724 |
+| OLS, three dense FEs | 1,000,000 | 4 | 2.875 | 2.048 | 0.745 | 0.710 |
+| PPML, three dense FEs | 4,000,000 | 4 | 23.230 | 21.166 | 0.836 | 0.910 |
+| PPML, three dense FEs | 1,000,000 | 4 | 5.769 | 5.149 | 0.845 | 0.893 |
+| PPML, one FE | 4,000,000 | 4 | 22.952 | 25.060 | 0.943 | 1.092 |
+| PPML, AKM | 1,000,000 | 16 | 4.670 | 4.403 | 0.958 | 0.954 |
+
+One of those nine losses becomes a native win; eight remain. A new small
+observed loss is million-row one-FE OLS at four workers: 1.476 versus 1.409
+seconds, paired ratio 0.955. Its native range is 1.314–1.783 seconds, overlapping
+fixest's 1.406–1.411; three repetitions do not establish a reliable small gap.
+The two largest gaps remain well separated: dense PPML 26.269–26.852 versus
+15.028–15.440 seconds, and dense OLS 8.217–8.322 versus 4.190–4.257. Matching
+these separate medians would require approximately 43.7% and 48.8% reductions
+in native command time, respectively. Strict OLS fixest also wins the latter
+case, at 5.272 seconds with paired ratio 0.639.
+
+The new phase observations still point to substantive solver work. Four-million
+row dense PPML reports median FE projection of 10.309 seconds and strict final
+solve of 7.000 seconds. Dense three-FE OLS reports input preparation of 1.071
+seconds and native work of 7.025 seconds. Phase clocks may nest and must not
+be summed. Their differing hosts and instrumentation prevent a direct causal
+comparison with the earlier phase probe.
+
+All **168 native fits pass**, including three completions of four-million-row
+sparse three-FE PPML, which previously timed out. Its native median is 278.480
+seconds, range 186.330–282.094; fixest and ppmlhdfe time out, so there is no
+eligible speed ratio. Native exact repeatability passes in all 56 configurations,
+and cross-worker scientific and discrete checks pass. All 165 completed
+historical native counterparts agree on sample/discrete fields and pass the
+coefficient, covariance and objective tolerances. That historical check does
+not compare row-level saved fitted arrays; each campaign's own requested-output
+checks remain in force.
+
+Setup `8028839`, smoke `8028840` and array `8028841` tasks 1–4 all have
+`failed=0`, `exit_status=0`, complete accounting and application sentinels.
+Production tasks used 28 slots on 28-core nodes `scc-wo4`, `scc-yj3`, `scc-wk3`
+and `scc-wj1`, with sequential affinity-bound fits. They took 76–115 minutes;
+whole-job maximum virtual memory was 7.168G–10.695G in SGE accounting. Build/ABI/load/numeric
+guards, 42 benchmark tooling tests and all 11 independent native smoke oracles
+pass. Reference smoke oracle results remain explicit: default fixest 2/11,
+strict fixest 10/11, reghdfe 1/6 and ppmlhdfe 1/5. Strict fixest's remaining
+smoke failure is clustered OLS covariance. Production eligibility does not
+assert that every comparator passes every independent oracle.
+
+There are 193 arm cells: 154 eligible, 32 with descriptive but ineligible
+timings and seven without a completed timing. No failed or skipped observation
+was dropped and no scientific gate was relaxed. This is descriptive Linux
+evidence, not quiet-Mac release performance qualification.
+
+| Retained rerun evidence | Contents |
+| --- | --- |
+| [Configuration summary](../bench/results/scc-20261012-summary.csv) | All 193 arm cells, medians, ranges, scientific eligibility, paired ratios, hosts and sampled memory. |
+| [Observations](../bench/results/scc-20261012-observations.csv) | All 579 planned positions, failures/skips, command/process times and available native phase clocks. |
+| [Historical comparison](../bench/results/scc-20261012-comparison.csv) | All 56 default-fixest configurations, both campaigns' hosts and times, eligibility and paired ratios. |
+| [Inputs, identity and checks](../bench/results/scc-20261012-inputs.json) | Dataset identities, source/plugin/launcher hashes, six scheduler records, smoke and production comparisons, repeat/worker verdicts, all 165 historical science checks and capture hashes. |
+
+The raw captures, compact collection and retained summaries remain on SCC under
+`/projectnb/welfgr/fereg/runs/20261012T020354Z-optimized-d9865e57/`.
+All October 10 evidence below remains unchanged.
 
 ## Retained results and provenance
 
@@ -55,7 +148,7 @@ and phase-probe files above remain unchanged.
 The existing [validation report](VALIDATION.md#packed-scc-campaign-after-the-ols-repair)
 records the preceding repair and cross-campaign input audit.
 
-## Where fixest remains faster
+## October 10: where fixest remained faster
 
 Among eligible default-fixest comparisons, fereg is faster in 16/18 OLS and
 10/17 PPML configurations. The other 21 default-fixest configurations have

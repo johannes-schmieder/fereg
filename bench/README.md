@@ -27,9 +27,10 @@ Historical campaigns and the legacy comparator are available only in Git history
 
 ## Packed SCC comparison
 
-The [retained October 10 results and optimization analysis](../docs/fixest_benchmarks.md)
+The [retained October 10 results and October 12 optimized rerun](../docs/fixest_benchmarks.md)
 include all configuration summaries, individual timing observations, frozen input
-identities and the subsequent phase probe. Scientific failures and unavailable
+identities and subsequent diagnostics. The rerun reuses the same dataset bytes;
+its added strict OLS arm remains separate. Scientific failures and unavailable
 cells remain explicit.
 
 `campaign.json` and `campaign.py` define the current bounded SCC comparison:

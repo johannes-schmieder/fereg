@@ -14,6 +14,45 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## SCC optimized campaign rerun, 2026-10-12
+
+The [benchmark comparison](fixest_benchmarks.md#optimized-rerun-october-12)
+retains the completed rerun of source `d9865e57` (qualified B, C/D and E1),
+using the exact 36 October 10 datasets. All 56 configurations and 579 planned
+fit positions are represented; default and newly added strict OLS fixest arms
+remain separate. Linux plugin SHA-256 is
+`75faa55005e95787d8b1a711af738340c36bcf97205c6c8bde1d977aaa41ae23`.
+
+Build `8028839`, independent smoke `8028840` and production array `8028841`
+tasks 1–4 have complete successful accounting and application sentinels.
+Frozen runtime and decoded dataset identities pass, as do Linux build/ABI/load
+and numeric guards, 42 benchmark tooling tests and all 11 native smoke oracles.
+All 168 native fits complete; exact repeatability passes on 56 configurations,
+and cross-worker checks pass. The 165 completed historical native counterparts
+have unchanged sample/discrete fields and agree within the coefficient,
+covariance and objective tolerances. Historical saved fitted arrays were not
+compared; each campaign's own output checks remain binding.
+
+The largest fixest gaps persist. Four-million-row dense two-FE PPML is 26.767
+versus 15.068 seconds; dense three-FE OLS is 8.253 versus 4.224. Fereg wins
+26/35 eligible default comparisons, with one former loss becoming a win and
+one small new observed loss. Reference failures, skipped fits and timeouts
+remain explicit: 154 eligible arm cells, 32 descriptive-discrepancy cells and
+seven with no completed timing. All corresponding configurations changed hosts
+between campaigns; paired within-node ratios describe relative performance,
+but their changes do not isolate the optimizations' causal effect. These are
+bounded Linux observations, not release performance qualification.
+
+Tier: retained benchmark evidence and documentation; no runtime, frontend,
+scientific tolerance or artifact input changed. The original scheduler entrypoints
+were wrapped only to copy and verify frozen datasets and require successful
+predecessor accounting. Local copy/decoded-identity/tamper guards and shell syntax
+passed before submission; their launcher hashes are retained. A login-Python
+submission syntax error was corrected before any job was launched. No scientific
+retry occurred. Evidence identities, CSV reconstruction, local links and
+whitespace are checked at this documentation boundary; existing qualified
+runtime evidence is reused. Raw captures remain at the report's SCC location.
+
 ## Performance-plan qualification
 
 ### A2 retained-guess prototype stopped at discovery, 2026-10-11
