@@ -14,6 +14,62 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H5 socket and NUMA placement, 2026-10-12
+
+Campaign tooling now groups allowed physical cores by socket, starting with
+the largest allowed socket so partial affinity restrictions cannot force a
+small fit across sockets unnecessarily. SMT siblings are deduplicated.
+`numactl` applies the same physical mask and memory-node binding to native and
+reference arms; missing topology or binding failure has no unbound fallback.
+Every raw observation contains the mask, socket/node IDs, `lscpu` and THP.
+Runtime tokens and all 58 artifact inputs remain identical to `67cb34ce`.
+
+The fixed 48-fit panel uses frozen AKM 1M inputs, OLS/iid and PPML/robust,
+three alternating pairs at 1/4/8/16 workers, current accepted H8 runtime and
+fixest 0.14.2. All 24 comparisons are scientifically eligible; all sixteen
+three-repeat groups have exact captured science, and both tools pass the
+cross-worker comparisons at unchanged campaign tolerances. The table gives
+median command seconds, with speedups relative to each tool's one-worker cell.
+
+| Model | Workers | fereg s | fereg speedup | fixest s | fixest speedup |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| OLS | 1 | 2.291639 | 1.000 | 4.096 | 1.000 |
+| OLS | 4 | 1.100400 | 2.083 | 2.115 | 1.937 |
+| OLS | 8 | 0.803931 | 2.851 | 1.688 | 2.427 |
+| OLS | 16 | 0.750220 | 3.055 | 1.483 | 2.762 |
+| PPML | 1 | 10.851459 | 1.000 | 19.397 | 1.000 |
+| PPML | 4 | 5.283432 | 2.054 | 8.147 | 2.381 |
+| PPML | 8 | 4.248238 | 2.554 | 5.945 | 3.263 |
+| PPML | 16 | 4.445408 | 2.441 | 4.944 | 3.923 |
+
+Native PPML is 4.64% slower at sixteen than eight workers despite placement
+control. This cost is retained; three pairs on one SCC node do not establish
+a universal gain or a controlled old/new placement effect. No extra fits or
+timing retries were used.
+
+Four pre-panel 1,200-row single-FE native/reference smoke fits pass the existing
+independent OLS/Poisson oracle, including covariance, predictions, sample and
+PPML rank. The actual child confirms the requested affinity and `bind` policy
+in `/proc/self/numa_maps`. Four placement tests cover interleaved sockets,
+partial masks, SMT siblings, missing topology and identical arm commands;
+all 42 SCC campaign harness tests pass. Mac `run_tests.sh` passes (1,679 Rust
+executions in 62 invocations, 200 Python tests with 13 optional-dependency
+skips, portable checks and native guards). The expected Mac skip of the Linux
+mock-plugin audit remains explicit; the unchanged H4 Linux plugin's successful
+build/audit/load evidence is reused. Five analysis checks include signed zero,
+one-ulp exactness, tolerance rejection and exact sample counts. The reused
+130-file comparator/clock environment matches its original frozen manifest.
+
+Job `8035870` on `scc-tj3` passes failed=0/exit=0, 479 seconds, 3.886G maxvmem.
+Its two fourteen-core Xeon E5-2680 v4 sockets use THP `[always] madvise never`;
+the measured panel consumes 452.634 of 1,800 seconds.
+Raw source, scripts, plugins by retained H4 identity, datasets by frozen links,
+captures, checks and accounting remain under
+`/projectnb/welfgr/fereg/runs/h-20261013-h5`; the
+[compact record](../bench/results/h-20261013-h5.json) retains every fit and full
+hashes. The full H boundary still requires the twenty quiet Mac workloads.
+No new Windows qualification is claimed.
+
 ## H4 overlap check: no load inflation, 2026-10-12
 
 Five alternating overlap-on/off pairs on frozen 1M AKM OLS at 1/4/16 workers

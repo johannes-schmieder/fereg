@@ -21,6 +21,7 @@ from scipy.special import gammaln
 
 from generate import generate, sha256
 from run import read_metadata, write_configuration
+from placement import socket_ordered_cpus, placement_metadata, bound_command
 
 HERE = Path(__file__).resolve().parent
 POLICY = json.loads((HERE/'campaign.json').read_text())
@@ -158,23 +159,18 @@ def make_dataset(cell, path):
 
 def physical_cpus():
     allowed=set(psutil.Process().cpu_affinity())
-    seen=set(); cpus=[]
-    for block in Path('/proc/cpuinfo').read_text().split('\n\n'):
-        values=dict(line.split(':',1) for line in block.splitlines() if ':' in line)
-        values={k.strip():v.strip() for k,v in values.items()}
-        if 'processor' not in values: continue
-        cpu=int(values['processor']); key=(values.get('physical id'),values.get('core id',str(cpu)))
-        if cpu in allowed and key not in seen: cpus.append(cpu);seen.add(key)
+    cpus=socket_ordered_cpus(Path('/proc/cpuinfo').read_text(),allowed)
     if len(cpus)<28: raise RuntimeError('whole-node physical-core allocation is smaller than 28')
     return cpus
 
 
 def execute(command, directory, cpus, timeout):
+    placement=placement_metadata(cpus)
     env=dict(os.environ,OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',NUMEXPR_NUM_THREADS='1',
              OMP_NUM_THREADS=str(len(cpus)))
     start=time.monotonic();peak=0;sweeps=0;monitor_started=None
     with (directory/'process.log').open('w') as log:
-        process=subprocess.Popen(['taskset','-c',','.join(map(str,cpus)),*command],cwd=directory,
+        process=subprocess.Popen(bound_command(command,placement),cwd=directory,
                                  stdout=log,stderr=subprocess.STDOUT,env=env,start_new_session=True)
         status='ok'
         while process.poll() is None:
@@ -199,7 +195,7 @@ def execute(command, directory, cpus, timeout):
         rc=process.wait()
     if status=='ok' and rc!=0:status='error'
     return dict(status=status,process_rc=rc,wall_seconds=time.monotonic()-start,
-                estimator_tree_rss_bytes=peak,memory_sweeps=sweeps)
+                estimator_tree_rss_bytes=peak,memory_sweeps=sweeps,placement=placement)
 
 
 def absorbed_rank(metadata, cell, frame):

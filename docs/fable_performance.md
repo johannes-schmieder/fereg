@@ -1336,6 +1336,43 @@ record `lscpu`, the mask and the THP setting in the observations. Rerun only
 the AKM OLS and PPML scaling cells at 1/4/8/16 workers on one node and report
 the new speedups for both tools. No runtime change.
 
+H5 execution declaration (2026-10-12, parent `67cb34ce`, before fits): group
+allowed physical cores by socket, largest allowed socket first (socket-ID tie
+break), so every prefix that fits in any socket uses one socket. Exclude SMT
+duplicates, retain the existing whole-node requirement, and use `numactl` for
+both physical affinity and memory binding to the selected NUMA node(s). Both
+tools get the same mask/node policy. Missing topology or failed binding is a
+tooling error with no unbound fallback. Observations include mask, sockets,
+memory nodes, `lscpu` and THP settings; no scientific inputs or policies change.
+
+Use the frozen October 12 AKM 1M OLS/iid and PPML/robust datasets, the accepted
+H8 runtime (production identity through H4) and pinned fixest 0.14.2. On one
+28-physical-core SCC node, run three alternating pairs at 1/4/8/16 workers:
+48 fits, 120 seconds per process and 1,800 seconds total, no timing retries.
+Before timing, run placement/tooling checks and one 1,200-row single-FE
+native/reference pair for each model with the existing explicit-design oracle;
+smoke failures block the panel. Reuse the validated unchanged Linux plugin.
+Retain every outcome, scientific eligibility, fixed-worker repeatability,
+cross-worker agreement and both tools' speedups relative to their one-worker
+medians. These are descriptive observations, not a new Mac release claim.
+
+H5 result (2026-10-12): integrated the socket-grouped physical-core selection
+and explicit CPU/NUMA binding. All forty-eight fits complete without retries;
+all twenty-four paired comparisons are eligible, all sixteen three-repeat
+groups are exact, and both tools agree scientifically across workers. On
+`scc-tj3`, fourteen cores per socket, 1/4/8 workers use socket/node 0 and
+sixteen uses fourteen cores there plus two on socket/node 1. Relative to one
+worker, OLS speedups at 4/8/16 are 2.083/2.851/3.055 for fereg and
+1.937/2.427/2.762 for fixest; PPML gives 2.054/2.554/2.441 and
+2.381/3.263/3.923. Native PPML is 4.64% slower at sixteen than eight workers;
+that residual scaling cost remains visible. This is a same-node descriptive
+scaling panel, not a controlled old/new placement comparison. The four
+independent small smoke fits, actual child affinity/memory-policy check,
+42 SCC harness tests, four placement tests and full Mac repository suite pass.
+Production tokens and artifact inputs equal `67cb34ce`; no estimator behavior
+changes. See [validation](VALIDATION.md#h5-socket-and-numa-placement-2026-10-12)
+and [compact results](../bench/results/h-20261013-h5.json). Proceed to H6.
+
 ### H6. Data preparation and Stata-side passes
 
 An inventory of every O(N) pass on the default OLS Fast path (three

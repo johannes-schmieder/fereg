@@ -236,6 +236,19 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H5's socket/NUMA-controlled AKM 1M panel uses the same mask and memory nodes
+for fereg and fixest on one node. OLS speedups at 4/8/16 workers relative to
+one worker are 2.083/2.851/3.055 for fereg and 1.937/2.427/2.762 for fixest;
+PPML gives 2.054/2.554/2.441 and 2.381/3.263/3.923. Native PPML still slows
+4.64% from eight to sixteen workers, from 4.248 to 4.445 seconds. All 48 fits,
+24 scientific comparisons, sixteen fixed-worker repeat groups and both tools'
+cross-worker checks pass without retries. The tooling now groups allowed
+physical cores by socket and binds memory explicitly; estimator inputs,
+tolerances and production artifacts are unchanged. These are descriptive
+same-node speedups, not a controlled old/new placement comparison. See
+[all command times and checks](VALIDATION.md#h5-socket-and-numa-placement-2026-10-12)
+and [compact evidence](../bench/results/h-20261013-h5.json).
+
 H4's bounded overlap check does not reproduce load inflation: in all five
 four-worker pairs, overlap-on load is lower, averaging 299.695 versus
 311.857 ms (paired-median reduction 15.219 ms). Sixteen-worker load similarly

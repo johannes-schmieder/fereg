@@ -54,6 +54,13 @@ the exact 28-core filter and 28-slot request provide full-node isolation. Do not
 add the unconfigured `exclusive` consumable: an explicit request matches no
 queue and prevents dispatch.
 
+Allowed physical cores are grouped by socket, with the largest allowed socket
+first, so a fit stays on one socket whenever its worker count fits. Both arms
+use the same prefix and `numactl` binds memory to the selected CPUs' NUMA node
+(or nodes when the fit spans nodes). Every observation records the actual mask,
+socket/node IDs, `lscpu` and transparent-hugepage setting. Missing topology or
+failed memory binding stops the invocation rather than silently changing placement.
+
 The stopwatch covers estimation, inference and requested individual FE recovery.
 For fixest this includes lazy extraction and observation-level materialization.
 Numeric FE IDs are matched by value to fixest's named effects, avoiding R's
