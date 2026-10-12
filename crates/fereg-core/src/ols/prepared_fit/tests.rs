@@ -822,7 +822,8 @@ fn direct_prepared_cg_checks_joint_budget_with_retained_coefficients() {
 #[test]
 fn ppml_slope_availability_preserves_classification_and_final_design() {
     use crate::ols::prepared_categorical_data::{
-        prepare_categorical_ols_data_with_cluster_sources, prepare_ppml_categorical_ols_data,
+        prepare_categorical_ols_data_with_cluster_sources,
+        prepare_ppml_categorical_ols_data_with_load_hint,
     };
     for swapped in [false, true] {
         for kind in 0..3 {
@@ -984,7 +985,9 @@ fn ppml_slope_availability_preserves_classification_and_final_design() {
                 let clusters = if case == 6 { vec![z.id] } else { Vec::new() };
                 let expected =
                     prepare_categorical_ols_data_with_cluster_sources(&request, &input, &clusters);
-                let actual = prepare_ppml_categorical_ols_data(&request, &input, &clusters);
+                let actual = prepare_ppml_categorical_ols_data_with_load_hint(
+                    &request, &input, &clusters, None, 0,
+                );
                 match (expected, actual) {
                     (Ok(a), Ok(b)) => {
                         assert_eq!(a.sample(), b.sample());
@@ -6164,17 +6167,22 @@ fn empty_categorical_topology_preserves_finite_intercept_across_session_routes()
         frequency_weight: None,
         probability_weight: None,
     };
-    let prepared = crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data(
-        &request,
-        &loaded_with(&y, &weights),
-        &[],
-    )
-    .expect("empty categorical topology");
+    let prepared =
+        crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data_with_load_hint(
+            &request,
+            &loaded_with(&y, &weights),
+            &[],
+            None,
+            0,
+        )
+        .expect("empty categorical topology");
     let refreshed_prepared =
-        crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+        crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data_with_load_hint(
             &request,
             &loaded_with(&refreshed_y, &refreshed_weights),
             &[],
+            None,
+            0,
         )
         .expect("refreshed empty categorical topology");
     assert!(!prepared.has_absorbed_intercept());
@@ -6346,12 +6354,15 @@ fn ppml_slope_only_topology_preserves_structural_constant() {
         probability_weight: None,
     };
 
-    let prepared = crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data(
-        &request,
-        &loaded_input,
-        &[],
-    )
-    .expect("PPML slope-only topology");
+    let prepared =
+        crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data_with_load_hint(
+            &request,
+            &loaded_input,
+            &[],
+            None,
+            0,
+        )
+        .expect("PPML slope-only topology");
     assert!(prepared.has_absorbed_slope());
     assert!(!prepared.has_absorbed_intercept());
     assert!(prepared.structural_intercept());

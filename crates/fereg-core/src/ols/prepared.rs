@@ -590,6 +590,7 @@ pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
         cluster_sources,
         false,
         None,
+        0,
     )
 }
 
@@ -3368,6 +3369,7 @@ mod tests {
                     loaded,
                     categorical,
                     Some(make_hint()),
+                    0,
                 );
                 assert_eq!(actual, expected, "case={case}, categorical={categorical}");
                 if case == 7 {

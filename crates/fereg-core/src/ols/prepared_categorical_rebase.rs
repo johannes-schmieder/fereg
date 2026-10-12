@@ -662,11 +662,10 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+        let prepared = crate::ols::prepared_categorical_data::prepare_ppml_categorical_ols_data_with_load_hint(
             &request,
             &loaded,
-            &[],
-        )
+            &[], None, 0)
         .unwrap();
         let model = request.validate_and_compile().unwrap();
         let bank = match &model.columns[0].kind {

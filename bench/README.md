@@ -148,8 +148,30 @@ timing inputs are not reproducible from a tracked recipe and are not frozen.
 
 The [C2 qualification follow-up](results/c2-20261012-qualification.json) retains
 the fixed fifteen-pair Mac panel and separate SCC diagnostics, including all
-failed/inconclusive bounds. The frozen candidate remains unmerged; see
-[the interpretation and limits](../docs/VALIDATION.md#c2-qualification-follow-up-stopped-without-adoption-2026-10-12).
+failed/inconclusive bounds. Johannes accepted the frozen candidate with the
+remaining timing uncertainty; see
+[the adoption decision and limits](../docs/VALIDATION.md#c2-adoption-with-unresolved-timing-2026-10-12).
+
+### Categorical preparation probes
+
+The oracle examples `preparation_probe` and `membership_probe` isolate costs
+before a complete native timing panel. Build them with the `profiling` profile
+and put the Cargo target directory under the task's `target/tmp/` directory.
+`preparation_probe ROWS WORKERS REPEATS akm|dense unit|aw|missing [fast]`
+times owned preparation, with generation, cloning and exact repeat checks
+outside timing. Its optional `fast` argument admits the bounded membership
+scratch; the default uses no optional scratch. Set `FEREG_PHASE_TIMING=1` for
+the categorical stage clocks. Compare frozen binaries on the same host and
+check complete-result fingerprints and retained bytes before comparing times.
+
+`membership_probe ROWS WORKERS LEVELS uniform|skew` compares the production
+serial and optional parallel constructors in alternating order, including one
+warmup and four measured pairs. Every result must equal the serial reference,
+including observation order. Both probes cap inputs at 16 million rows and
+32 workers; preparation caps measured repetitions at seven. These diagnostic
+observations do not replace the full scientific gate, native replay or quiet
+qualification-host timing. The [C2 evidence](results/c2-20261011-performance.json)
+retains the bounded exploration and the final candidate separately.
 
 ## Stata-free native A/B observations
 

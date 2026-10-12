@@ -79,6 +79,118 @@ fn plan_with_diagnostic_capacity(capacity: usize) -> PpmlMemoryPlan {
 }
 
 #[test]
+fn membership_scratch_preserves_required_routes_and_later_workspace_admission() {
+    let mut shape = dimensions();
+    // Force preparation to determine the required peak. This makes any
+    // accidental addition before route selection fail at the exact boundary.
+    // Replacement-generation construction also charges transient metadata;
+    // exclude that separate lifetime from this preparation-boundary fixture.
+    shape.separation_rebase_enabled = false;
+    shape.metadata.preparation_transient_bytes = 2_u128 << 30;
+    let required = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+    assert_eq!(
+        required.fast.peak_bytes,
+        required.fast.preparation_peak_bytes
+    );
+    let cap = (shape.observations as u128 * 8).min(128 * 1024 * 1024);
+    for requested in [MemoryMode::Auto, MemoryMode::Fast] {
+        for headroom in [0, cap / 2, cap + 4096] {
+            let usable = required.fast.peak_bytes + headroom;
+            let available = usable + MINIMUM_HEADROOM_BYTES.max((usable - 1) / 4);
+            let plan = plan_ppml_memory(
+                shape,
+                PpmlMemoryConfig {
+                    requested,
+                    available_bytes: Some(available),
+                    ..PpmlMemoryConfig::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(plan.usable_bytes, Some(usable));
+            assert_eq!(plan.selected, PpmlMemoryRoute::Fast);
+            assert_eq!(plan.required_peak_bytes, required.fast.peak_bytes);
+            let admitted = cap.min(headroom);
+            let mut expected = required.fast;
+            expected.preparation_membership_scratch_bytes = admitted;
+            expected.preparation_peak_bytes += admitted;
+            expected.peak_bytes = expected.peak_bytes.max(expected.preparation_peak_bytes);
+            assert_eq!(plan.estimate.fast, expected);
+            assert_eq!(plan.estimate.low, required.low);
+            assert!(plan.selected_bytes() <= usable);
+
+            // Generation-zero scratch has died before these later buffers.
+            // Neither mandatory solver storage nor optional reusable storage
+            // loses the original remaining capacity to the earlier scratch.
+            let later = plan.with_solver_workspace(headroom).unwrap();
+            assert_eq!(later.selected_bytes(), usable);
+            assert!(plan.with_solver_workspace(headroom + 1).is_err());
+            let mut reusable = plan;
+            assert!(reusable.admit_reusable_projection(headroom));
+            assert_eq!(reusable.selected_bytes(), usable);
+            assert_eq!(
+                reusable.modeled_phase_peak_bytes(PpmlPhase::Preparation),
+                required.fast.preparation_peak_bytes + headroom,
+            );
+            assert!(!reusable.admit_reusable_projection(headroom + 1));
+            let mut detector = plan;
+            assert!(detector.admit_separation_projection(headroom));
+            assert_eq!(detector.selected_bytes(), usable);
+            assert!(!detector.admit_separation_projection(headroom + 1));
+        }
+    }
+    let low = plan_ppml_memory(
+        shape,
+        PpmlMemoryConfig {
+            requested: MemoryMode::Low,
+            ..PpmlMemoryConfig::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(low.estimate, required);
+    assert_eq!(
+        low.selected_inventory()
+            .preparation_membership_scratch_bytes,
+        0,
+    );
+    shape.threads = 1;
+    let serial = plan_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+    assert_eq!(
+        serial
+            .selected_inventory()
+            .preparation_membership_scratch_bytes,
+        0,
+    );
+}
+
+#[test]
+fn membership_scratch_survives_final_dimensions_and_is_reconstructed() {
+    let shape = dimensions();
+    let plan = plan_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+    assert_eq!(plan.selected, PpmlMemoryRoute::Fast);
+    assert_eq!(
+        plan.selected_inventory()
+            .preparation_membership_scratch_bytes,
+        (shape.observations as u128 * 8).min(128 * 1024 * 1024),
+    );
+    let mut final_shape = shape;
+    final_shape.observations /= 2;
+    final_shape.separation_generation_capacity = final_shape.observations;
+    let rebased = plan.with_final_dimensions(final_shape).unwrap();
+    assert_eq!(rebased.estimate, plan.estimate);
+    assert_eq!(rebased.required_peak_bytes, plan.required_peak_bytes);
+    let mut telemetry = PpmlMemoryTelemetry::new(rebased, shape.threads, shape.threads).unwrap();
+    telemetry.observe_linear_route(FeSolverKind::Map);
+    telemetry.observe_scratch(0);
+    telemetry.validate().unwrap();
+    telemetry
+        .plan
+        .estimate
+        .fast
+        .preparation_membership_scratch_bytes += 1;
+    assert!(telemetry.validate().is_err());
+}
+
+#[test]
 fn objective_partial_bank_is_charged_beside_all_iteration_vectors() {
     for threads in [1, 4, 8] {
         let shape = PpmlMemoryDimensions {
@@ -1589,8 +1701,21 @@ fn optional_reusable_certificate_accounts_for_projection_and_phase_lifetime() {
     assert!(plan.with_solver_workspace(1025).is_err());
     assert!(!plan.admit_reusable_projection(2049));
     assert!(!plan.admit_reusable_certificate(u128::MAX));
+    // Generation-zero membership scratch is released before reusable IRLS
+    // banks are allocated. Preparation reports the larger lifetime, not their
+    // sum; the 100,000-row fixture admits an independent 800,000-byte envelope.
+    let required = estimate_ppml_memory(dimensions(), PpmlMemoryConfig::default()).unwrap();
+    assert_eq!(
+        plan.selected_inventory()
+            .preparation_membership_scratch_bytes,
+        800_000
+    );
+    assert_eq!(
+        plan.modeled_phase_peak_bytes(PpmlPhase::Preparation),
+        (required.fast.preparation_peak_bytes + 800_000)
+            .max(required.fast.preparation_peak_bytes + 2048 + 4096)
+    );
     for phase in [
-        PpmlPhase::Preparation,
         PpmlPhase::WeightResponseRefresh,
         PpmlPhase::FeProjection,
         PpmlPhase::FiniteSolve,
@@ -1649,8 +1774,21 @@ fn optional_reusable_slope_accounts_for_geometry_and_phase_lifetime() {
     assert!(plan.with_solver_workspace(1025).is_err());
     assert!(!plan.admit_reusable_projection(1025));
     assert!(!plan.admit_reusable_slope(u128::MAX));
+    // Generation-zero membership scratch is released before reusable IRLS
+    // banks are allocated. Preparation reports the larger lifetime, not their
+    // sum; the 100,000-row fixture admits an independent 800,000-byte envelope.
+    let required = estimate_ppml_memory(dimensions(), PpmlMemoryConfig::default()).unwrap();
+    assert_eq!(
+        plan.selected_inventory()
+            .preparation_membership_scratch_bytes,
+        800_000
+    );
+    assert_eq!(
+        plan.modeled_phase_peak_bytes(PpmlPhase::Preparation),
+        (required.fast.preparation_peak_bytes + 800_000)
+            .max(required.fast.preparation_peak_bytes + 1024 + 1024 + 4096)
+    );
     for phase in [
-        PpmlPhase::Preparation,
         PpmlPhase::WeightResponseRefresh,
         PpmlPhase::FeProjection,
         PpmlPhase::FiniteSolve,
@@ -1701,8 +1839,21 @@ fn optional_reusable_projection_respects_exact_budget_and_phase_lifetime() {
     assert!(plan.admit_reusable_projection(4096));
     assert_eq!(plan.selected_bytes(), base.selected_bytes() + 4096);
     assert!(plan.with_solver_workspace(1025).is_err());
+    // Generation-zero membership scratch is released before reusable IRLS
+    // banks are allocated. Preparation reports the larger lifetime, not their
+    // sum; the 100,000-row fixture admits an independent 800,000-byte envelope.
+    let required = estimate_ppml_memory(dimensions(), PpmlMemoryConfig::default()).unwrap();
+    assert_eq!(
+        plan.selected_inventory()
+            .preparation_membership_scratch_bytes,
+        800_000
+    );
+    assert_eq!(
+        plan.modeled_phase_peak_bytes(PpmlPhase::Preparation),
+        (required.fast.preparation_peak_bytes + 800_000)
+            .max(required.fast.preparation_peak_bytes + 4096)
+    );
     for phase in [
-        PpmlPhase::Preparation,
         PpmlPhase::WeightResponseRefresh,
         PpmlPhase::FeProjection,
         PpmlPhase::FiniteSolve,

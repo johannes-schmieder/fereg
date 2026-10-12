@@ -201,6 +201,22 @@ impl OlsPreparationMemory {
         )
     }
 
+    /// Optional scratch coexists only with preparation. Admit it after the
+    /// required route and existing caches, without changing later admission.
+    pub(crate) fn admit_membership_scratch(
+        &mut self,
+        requested: u128,
+        usable: Option<u128>,
+        parent: u128,
+    ) -> Result<u128> {
+        let baseline = self.preparation_peak_bytes(parent)?;
+        let admitted = usable.map_or(requested, |limit| {
+            requested.min(limit.saturating_sub(baseline))
+        });
+        self.construction_bytes = add(baseline - parent, admitted)?;
+        Ok(admitted)
+    }
+
     pub(crate) fn with_prepared_owner(
         self,
         base: MemoryEstimate,
@@ -284,6 +300,27 @@ mod tests {
         let narrow = OlsPreparationMemory::estimate(10_000, 2, false, 0, 0).unwrap();
         assert_eq!(narrow.numeric_preparation_array_bytes, 500_000);
         assert!(OlsPreparationMemory::estimate(usize::MAX, usize::MAX, true, 0, 0).is_err());
+    }
+
+    #[test]
+    fn optional_membership_scratch_uses_only_remaining_preparation_headroom() {
+        let original = OlsPreparationMemory::estimate(100, 3, false, 2, 1).unwrap();
+        let peak = original.preparation_peak_bytes(137).unwrap();
+        let base = fereg_core::estimate_phase2_memory(100, 3, 8, 2, 1, 3).unwrap();
+        for (usable, expected) in [(Some(peak), 0), (Some(peak + 47), 47), (None, 800)] {
+            let mut memory = original;
+            assert_eq!(
+                memory.admit_membership_scratch(800, usable, 137).unwrap(),
+                expected
+            );
+            memory
+                .admit_numeric_arrays_with_parent(usable, 137)
+                .unwrap();
+            assert_eq!(
+                memory.with_prepared_owner(base, 6_201).unwrap(),
+                original.with_prepared_owner(base, 6_201).unwrap()
+            );
+        }
     }
 
     #[test]

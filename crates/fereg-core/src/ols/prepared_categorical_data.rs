@@ -827,7 +827,7 @@ pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedOlsData> {
-    prepare_owned_with_load_hint(request, loaded, cluster_sources, true, None)
+    prepare_owned_with_load_hint(request, loaded, cluster_sources, true, None, 0)
 }
 
 pub(crate) fn prepare_owned_with_load_hint(
@@ -836,6 +836,7 @@ pub(crate) fn prepare_owned_with_load_hint(
     cluster_sources: &[SourceId],
     categorical: bool,
     hint: Option<super::PreparedOlsLoadHint>,
+    membership_scratch: u128,
 ) -> Result<PreparedOlsData> {
     if categorical {
         let _plan = plan_categorical_absorbed_request(request)?;
@@ -854,6 +855,7 @@ pub(crate) fn prepare_owned_with_load_hint(
         false,
         true,
         hint,
+        membership_scratch,
     )
 }
 
@@ -864,19 +866,12 @@ pub(crate) fn prepare_owned_with_load_hint(
 /// ordinary generated intercept column produced by categorical rebasing; it
 /// never synthesizes an absorbed constant or reclassifies the coefficient
 /// after fitting.
-pub(crate) fn prepare_ppml_categorical_ols_data(
-    request: &OlsRequestV1,
-    loaded: &LoadedOlsInput,
-    cluster_sources: &[SourceId],
-) -> Result<PreparedOlsData> {
-    prepare_ppml_categorical_ols_data_with_load_hint(request, loaded, cluster_sources, None)
-}
-
 pub(crate) fn prepare_ppml_categorical_ols_data_with_load_hint(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
     cluster_sources: &[SourceId],
     hint: Option<super::PreparedOlsLoadHint>,
+    membership_scratch: u128,
 ) -> Result<PreparedOlsData> {
     let (model, sample) = if request.absorbed_terms.is_empty() {
         prepare_ols_numeric_sample(request, loaded, cluster_sources)?
@@ -893,6 +888,7 @@ pub(crate) fn prepare_ppml_categorical_ols_data_with_load_hint(
         true,
         true,
         hint,
+        membership_scratch,
     )
 }
 
@@ -946,7 +942,23 @@ pub(crate) fn finish_prepared_model(
         ppml_constant,
         reuse_membership,
         None,
+        0,
     )
+}
+
+// Keep opt-in diagnostic timing separate from the preparation transaction.
+fn preparation_phase_timer(rows: usize) -> impl FnMut(&str) {
+    let mut mark = crate::diagnostics::phase_timing_enabled().then(std::time::Instant::now);
+    move |name: &str| {
+        if let Some(previous) = mark.as_mut() {
+            let now = std::time::Instant::now();
+            eprintln!(
+                "FEREG_PHASE|categorical_prepare|stage={name}|seconds={:.9}|rows={rows}",
+                now.duration_since(*previous).as_secs_f64()
+            );
+            *previous = std::time::Instant::now();
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -959,16 +971,26 @@ fn finish_prepared_model_with_hint(
     ppml_constant: bool,
     reuse_membership: bool,
     hint: Option<super::PreparedOlsLoadHint>,
+    membership_scratch: u128,
 ) -> Result<PreparedOlsData> {
+    let mut phase = preparation_phase_timer(sample.n_active());
     let candidate_sources = if hint.is_some() {
         super::prepared::factorize_preparation_sources_with_hint(request, &sample, hint)?
     } else {
         factorize_preparation_sources(request, &sample)?
     };
+    phase("factorization");
     let recipes = crate::fe::bind_categorical_effect_recipes(request, &candidate_sources)?;
     let recipe_views: Vec<_> = recipes.iter().map(Vec::as_slice).collect();
-    let mut membership =
-        preparation_memberships(&candidate_sources, &recipe_views, &sample, reuse_membership)?;
+    phase("recipes");
+    let mut membership = preparation_memberships(
+        &candidate_sources,
+        &recipe_views,
+        &sample,
+        reuse_membership,
+        membership_scratch,
+    )?;
+    phase("membership");
     let fixed_point = recipe_views.is_empty()
         || (!membership.is_empty()
             && (request.keep_singletons
@@ -1005,6 +1027,7 @@ fn finish_prepared_model_with_hint(
         .into_parts()
         .0
     };
+    phase("singletons");
     let unchanged = fixed_point || singleton.active.iter().all(|&active| active);
     let num_singletons = singleton.dropped_observations.len();
     let cascade_events = singleton.cascade_events;
@@ -1018,6 +1041,7 @@ fn finish_prepared_model_with_hint(
         &mut membership,
     )?;
     drop(membership);
+    phase("topology");
     let mut required = ordinary_categorical_sources(&model)?;
     if !categorical {
         required
@@ -1038,6 +1062,7 @@ fn finish_prepared_model_with_hint(
         reencode_model_sources(&mut categorical_sources, &sample)?;
     }
     append_cluster_sources(&mut categorical_sources, cluster_sources, &sample)?;
+    phase("retention");
     let structural_intercept = if categorical && request.absorbed_terms.is_empty() {
         request.include_intercept
     } else {
@@ -1054,7 +1079,8 @@ fn finish_prepared_model_with_hint(
         report_intercept,
         categorical,
     )?;
-    PreparedOlsData::finish(
+    phase("rebase");
+    let prepared = PreparedOlsData::finish(
         rebased,
         sample,
         categorical_sources,
@@ -1072,7 +1098,9 @@ fn finish_prepared_model_with_hint(
         } else {
             PreparationGrammar::Ordinary
         },
-    )
+    );
+    phase("validation");
+    prepared
 }
 
 fn preparation_memberships(
@@ -1080,6 +1108,7 @@ fn preparation_memberships(
     recipes: &[&[usize]],
     sample: &PreparedNumericSample,
     reuse: bool,
+    membership_scratch: u128,
 ) -> Result<Vec<(usize, crate::fe::LevelIndex)>> {
     let mut output = Vec::new();
     if !reuse
@@ -1103,9 +1132,11 @@ fn preparation_memberships(
             source.encoded.n_levels(),
         )? {
             Some(index) => index,
-            None => {
-                crate::fe::LevelIndex::from_codes(&source.encoded.codes, source.encoded.n_levels())?
-            }
+            None => crate::fe::LevelIndex::from_codes_with_scratch(
+                &source.encoded.codes,
+                source.encoded.n_levels(),
+                membership_scratch,
+            )?,
         };
         output.push((index, membership));
     }

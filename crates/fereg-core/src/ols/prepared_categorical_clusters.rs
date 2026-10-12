@@ -8,9 +8,15 @@ pub(crate) fn prepare_ppml_categorical_ols_clustered_data(
     request: &OlsClusteredRequestV1,
     loaded: &LoadedOlsInput,
     hint: Option<super::PreparedOlsLoadHint>,
+    membership_scratch: u128,
 ) -> Result<PreparedOlsData> {
     let sources = validate_request(request)?;
-    let prepared =
-        prepare_ppml_categorical_ols_data_with_load_hint(&request.ols, loaded, &sources, hint)?;
+    let prepared = prepare_ppml_categorical_ols_data_with_load_hint(
+        &request.ols,
+        loaded,
+        &sources,
+        hint,
+        membership_scratch,
+    )?;
     finish_prepare_ols_clusters(request, prepared)
 }

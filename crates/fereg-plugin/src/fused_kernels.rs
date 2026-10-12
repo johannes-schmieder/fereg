@@ -1295,14 +1295,11 @@ mod x86_64 {
                             &mut expected_direction,
                         );
                         assert_eq!(bits(&direction), bits(&expected_direction));
-                        for level in 0..levels {
-                            for column in 0..stride {
+                        for (level, row) in direction.chunks_exact(stride).enumerate() {
+                            for (column, &value) in row.iter().enumerate() {
                                 let index = level * stride + column;
                                 if column >= rhs {
-                                    assert_eq!(
-                                        direction[index].to_bits(),
-                                        initial_direction[index].to_bits()
-                                    );
+                                    assert_eq!(value.to_bits(), initial_direction[index].to_bits());
                                     assert_eq!(
                                         solution[index].to_bits(),
                                         initial_solution[index].to_bits()
@@ -1312,10 +1309,7 @@ mod x86_64 {
                                         initial_residual[index].to_bits()
                                     );
                                 } else if active[column] == 0.0 {
-                                    assert_eq!(
-                                        direction[index].to_bits(),
-                                        before_direction[index].to_bits()
-                                    );
+                                    assert_eq!(value.to_bits(), before_direction[index].to_bits());
                                 }
                             }
                         }

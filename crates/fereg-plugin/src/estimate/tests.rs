@@ -1744,6 +1744,165 @@ fn output_parent_admission_adds_live_owners_and_rejects_before_stores() {
 }
 
 #[test]
+fn optional_membership_scratch_preserves_ols_modes_and_moment_cache_at_budget_boundary() {
+    let (args, mut spi) = saved_output_fixture();
+    spi.nobs = 16_387;
+    spi.numeric_rows_enabled = true;
+    spi.data.clear();
+    for row in 1..=spi.nobs {
+        let x = (row as f64).sin();
+        for (variable, value) in [
+            (1, 1.0),
+            (2, 2.0 + 3.0 * x + (row % 97) as f64),
+            (3, x),
+            (4, (row % 97) as f64),
+            (5, 1.0),
+        ] {
+            spi.data.insert((variable, row), (value, false));
+        }
+    }
+    let mut spec = EstimateActionSpec::parse(&args).unwrap();
+    spec.threads = 4;
+    spec.candidate_all = true;
+    let mut unrestricted = spec
+        .decode_with_memory_limit(&mut spi, || Ok(None))
+        .unwrap();
+    let mut rhs = None;
+    let mut loading = loading_memory(&unrestricted.request, spi.nobs, 0, 0, None).unwrap();
+    let loaded = load_ols_input_with_team(
+        &unrestricted.request,
+        true,
+        false,
+        &mut loading,
+        &mut spi,
+        Some(ThreadTeam::new(unrestricted.fit.execution.threads)),
+        &mut rhs,
+        usize::MAX,
+        unrestricted.loaded_rhs_layout,
+        false,
+        None,
+    )
+    .unwrap();
+    let rhs = rhs.expect("fixture admits the existing packed RHS cache");
+    let rhs_bytes = rhs.capacity() as u128 * 8;
+    let moment_bytes = LoadedOlsRows::moment_workspace_bytes(
+        spi.nobs,
+        unrestricted.generated_columns + 1,
+    )
+    .unwrap() as u128;
+    let original_preparation = unrestricted
+        .preparation_memory
+        .preparation_peak_bytes(unrestricted.metadata_owner_bytes)
+        .unwrap();
+    let reference = prepare_model_owned(&unrestricted.request, &[], loaded.clone(), true).unwrap();
+    unrestricted
+        .admit_prepared_parent(reference.owned_buffer_bytes())
+        .unwrap();
+    let moment_boundary = original_preparation + rhs_bytes + moment_bytes;
+    assert!(
+        moment_boundary
+            > unrestricted.execution_parent_bytes + unrestricted.publication_memory.peak_bytes()
+    );
+    let cap = (spi.nobs as u128 * 8).min(128 * 1024 * 1024);
+
+    for requested in [MemoryMode::Fast, MemoryMode::Auto, MemoryMode::Low] {
+        spec.memory = requested;
+        let boundaries = if requested == MemoryMode::Low {
+            // This narrow fixture's Low pool costs more than Fast. Its own
+            // required envelope, rather than Fast's cache threshold, is the
+            // valid Low boundary to preserve.
+            let mut low = spec
+                .decode_with_memory_limit(&mut spi, || Ok(None))
+                .unwrap();
+            let initial = low.memory_plan.selected_bytes() + low.publication_memory.peak_bytes();
+            low.admit_prepared_parent(reference.owned_buffer_bytes())
+                .unwrap();
+            let required = initial
+                .max(low.execution_parent_bytes + low.publication_memory.peak_bytes())
+                .max(original_preparation);
+            vec![(required, false)]
+        } else {
+            vec![
+                (moment_boundary - 1, false),
+                (moment_boundary, true),
+                (moment_boundary + cap, true),
+            ]
+        };
+        for (usable, expect_moments) in boundaries {
+            let available = 512 * 1024 * 1024 + usable;
+            let mut action = spec
+                .decode_with_memory_limit(&mut spi, || Ok(Some(available)))
+                .unwrap();
+            let mut baseline = spec
+                .decode_with_memory_limit(&mut spi, || Ok(Some(available)))
+                .unwrap();
+            let expected_mode = if requested == MemoryMode::Low {
+                MemoryMode::Low
+            } else {
+                MemoryMode::Fast
+            };
+            assert_eq!(action.memory_plan.selected, expected_mode);
+            assert_eq!(action.memory_plan.usable_bytes, Some(usable));
+            let fast = expected_mode == MemoryMode::Fast;
+            assert_eq!(action.loaded_rhs_budget() >= rhs_bytes as usize, fast);
+            action.loaded_fit_workspace_bytes = if fast { rhs_bytes } else { 0 };
+            let original_peak = action.preparation_memory.preparation_peak_bytes(0).unwrap();
+            let (prepared, rows) = prepare_ols_pipeline(
+                loaded.clone(),
+                fast.then(|| rhs.clone()),
+                None,
+                &mut action,
+                true,
+            )
+            .unwrap();
+            assert_eq!(prepared, reference);
+            assert_eq!(rows.is_some(), fast);
+            let cache_bytes = if fast && expect_moments {
+                moment_bytes
+            } else {
+                0
+            };
+            assert_eq!(
+                action.loaded_fit_workspace_bytes,
+                if fast { rhs_bytes + cache_bytes } else { 0 },
+                "membership scratch must not displace the original moment-cache decision"
+            );
+            let expected_scratch = if fast {
+                cap.min(usable - original_preparation - rhs_bytes - cache_bytes)
+            } else {
+                0
+            };
+            assert_eq!(
+                action.preparation_memory.preparation_peak_bytes(0).unwrap(),
+                original_peak + expected_scratch
+            );
+            action
+                .preparation_memory
+                .admit_numeric_arrays_with_parent(
+                    Some(usable),
+                    action.metadata_owner_bytes + action.loaded_fit_workspace_bytes,
+                )
+                .unwrap();
+            // Final ownership reconciliation must make the same later mode
+            // and solver-budget decision as the unmodified preparation plan.
+            baseline
+                .admit_prepared_parent(reference.owned_buffer_bytes())
+                .unwrap();
+            action
+                .admit_prepared_parent(prepared.owned_buffer_bytes())
+                .unwrap();
+            assert_eq!(action.memory_plan, baseline.memory_plan);
+            assert_eq!(action.fit.execution.mode, baseline.fit.execution.mode);
+            assert_eq!(
+                action.fit.absorb.solver_memory_budget,
+                baseline.fit.absorb.solver_memory_budget
+            );
+        }
+    }
+    assert_eq!(spi.store_calls, 0);
+}
+
+#[test]
 fn prepared_parent_exact_budget_reaches_solver_and_preserves_public_base() {
     let (args, mut spi) = saved_output_fixture();
     let mut spec = EstimateActionSpec::parse(&args).unwrap();
@@ -2561,6 +2720,7 @@ fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
                 loaded,
                 false,
                 load_hint,
+                0,
             )
             .unwrap();
             let prepared = prepared_clustered.ols();
@@ -2780,6 +2940,7 @@ fn slope_loaded_rhs_preserves_classification_and_inference() {
                 loaded,
                 true,
                 load_hint,
+                0,
             )
             .unwrap();
             assert_eq!(
@@ -2990,6 +3151,7 @@ fn weighted_loaded_rhs_preserves_sample_domains_and_inference() {
                     loaded,
                     true,
                     load_hint,
+                    0,
                 );
                 match (expected, actual) {
                     (Err(expected), Err(actual)) => assert_eq!(actual, expected),

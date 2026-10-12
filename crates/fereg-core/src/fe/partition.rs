@@ -250,11 +250,7 @@ fn validate_source(source: CategoricalCodeView<'_>, label: &str) -> Result<()> {
     if source.n_levels() > u32::MAX as usize {
         return Err(invalid(format!("{label} level count exceeds u32::MAX")));
     }
-    if source
-        .codes()
-        .iter()
-        .any(|code| *code as usize >= source.n_levels())
-    {
+    if !super::design::codes_in_range(source.codes(), source.n_levels()) {
         return Err(invalid_data(format!(
             "{label} contains a code outside its declared level range"
         )));

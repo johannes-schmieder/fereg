@@ -372,6 +372,11 @@ pub fn fit_prepared_ppml_interruptible(
         loaded.adjustment,
     )?
     .with_load_hint(load_hint)
+    .with_membership_scratch(
+        preliminary_plan
+            .selected_inventory()
+            .preparation_membership_scratch_bytes,
+    )
     .with_generation_memory_bound(
         preliminary_plan
             .selected_inventory()
