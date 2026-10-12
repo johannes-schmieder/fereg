@@ -236,6 +236,29 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+FE numeric-column release result: owned OLS preparation can now drop
+privately validated FE-exclusive f64 columns after final factorization. Source
+indices remain intact, shared/omitted ordinary, slope, interaction and cluster
+sources stay raw, and PPML retains every numeric column. Original owner bytes
+still govern execution, output and recovery admission; observed physical bytes
+reflect the release. This saves approximately 24N bytes for three exclusive FEs,
+less source-descriptor expansion, at the cost of one parallel correspondence
+pass per eligible column and a temporary descriptor bank. It does not create
+a new route, refusal or acceptance rule.
+
+Independent architecture review, 37 focused executions, the full suite
+(1,726 Rust executions), universal Mac native checks, 73 exact replay cases,
+292 worker checks and 25 licensed fixtures pass. All scientific results and
+solver signatures remain exact. Seven unsuccessful migration/fixture attempts
+are retained; one exposed a missed topology consumer that still required a raw
+vector, now migrated to the sealed encoded-source receipt. Two early checks
+did not validate the isolated candidate and are excluded from passing evidence.
+Core adds 371 production lines and three dispatch sites; plugin adds 27
+lines, with no new size violations. The whole-H quiet Mac panel remains pending.
+
+See [validation](VALIDATION.md#h6-finalized-fe-numeric-column-release-2026-10-12)
+and [compact evidence](../bench/results/h-20261013-h6-fe-columns.json).
+
 H6 item 7 fuses the LSMR certificate and Fast OLS norm data read while
 retaining their different original recurrence orders. It reuses the existing
 certificate bank after its original admissions; all 73 plugin replay cases,

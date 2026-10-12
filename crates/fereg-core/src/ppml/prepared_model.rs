@@ -18,9 +18,7 @@ use super::prepared::{
     canonicalize_probability_weights, checked_frequency_effective_observations,
     PpmlNumericSelection, PreparedPpmlAdjustmentReport, PreparedPpmlWeightReport,
 };
-use crate::data::{
-    DropReason, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightKind,
-};
+use crate::data::{DropReason, PreparedAdjustment, PreparedWeights, WeightKind};
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::ols::prepared_categorical_data::{
     prepare_ppml_categorical_ols_data_with_load_hint, PreparedOlsData,
@@ -713,7 +711,7 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
 #[cfg(test)]
 fn validate_loaded_numeric_pair(
     loaded: &LoadedOlsInput,
-    sample: &PreparedNumericSample,
+    sample: &crate::data::PreparedNumericSample,
     weight_report: PreparedPpmlWeightReport,
 ) -> Result<()> {
     let original = loaded.candidate.len();
@@ -910,7 +908,7 @@ fn validate_prepared_generation(
 
 fn generation_weight_report(
     _base: PreparedPpmlWeightReport,
-    sample: &PreparedNumericSample,
+    sample: &crate::ols::FinalizedNumericSample,
     probability_scale: Option<ProbabilityGenerationScale>,
 ) -> Result<PreparedPpmlWeightReport> {
     let physical = sample.n_active();
@@ -1262,6 +1260,14 @@ mod tests {
         for generation in 1..=3 {
             let replacement = owner.rebuild_generation(&rows, generation).unwrap();
             assert_eq!(replacement.owned_buffer_bytes(), exact);
+            let sample = replacement.prepared().sample();
+            assert!(
+                (0..sample.regressors.len()).all(|index| sample.regressors.get(index).is_some())
+            );
+            assert_eq!(
+                replacement.prepared().execution_admission_bytes(),
+                replacement.prepared().owned_buffer_bytes()
+            );
             assert_eq!(replacement.outcome(), initial.outcome());
         }
         let mut spare = initial;

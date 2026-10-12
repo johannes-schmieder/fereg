@@ -178,24 +178,23 @@ pub enum PreparedAdjustment {
 
 /// Compact native numeric data after availability and policy validation.
 #[derive(Debug, PartialEq)]
-pub struct PreparedNumericSample {
+pub struct PreparedNumericSample<Bank = Vec<Vec<f64>>> {
     pub n_original: usize,
     pub n_candidate: usize,
     pub original_row_by_active: FinalizedAxis<usize>,
     pub outcome: Vec<f64>,
-    pub regressors: Vec<Vec<f64>>,
+    pub regressors: Bank,
     pub weights: PreparedWeights,
     pub adjustment: PreparedAdjustment,
     pub drop_reasons: UniformValues<DropReason>,
 }
 
-impl PreparedNumericSample {
+impl<Bank: super::NumericSourceBank> PreparedNumericSample<Bank> {
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
         use crate::memory::vec_capacity_bytes as bytes;
         self.original_row_by_active.owned_buffer_bytes()
             + bytes(&self.outcome)
-            + bytes(&self.regressors)
-            + self.regressors.iter().map(bytes).sum::<u128>()
+            + self.regressors.owned_buffer_bytes()
             + match &self.weights {
                 PreparedWeights::None => 0,
                 PreparedWeights::Provided { values, .. } => bytes(values),
@@ -207,6 +206,24 @@ impl PreparedNumericSample {
                 }
             }
             + self.drop_reasons.owned_buffer_bytes()
+    }
+}
+
+impl<Bank> PreparedNumericSample<Bank> {
+    pub(crate) fn map_sources<Other>(
+        self,
+        transform: impl FnOnce(Bank) -> Other,
+    ) -> PreparedNumericSample<Other> {
+        PreparedNumericSample {
+            n_original: self.n_original,
+            n_candidate: self.n_candidate,
+            original_row_by_active: self.original_row_by_active,
+            outcome: self.outcome,
+            regressors: transform(self.regressors),
+            weights: self.weights,
+            adjustment: self.adjustment,
+            drop_reasons: self.drop_reasons,
+        }
     }
 
     #[must_use]
@@ -229,7 +246,9 @@ impl PreparedNumericSample {
     pub fn retained_rows(&self) -> &FinalizedAxis<usize> {
         &self.original_row_by_active
     }
+}
 
+impl PreparedNumericSample {
     /// Consume this sample and retain the selected rows on its compact axis.
     ///
     /// Every aligned observation-scale vector is rebuilt before a replacement

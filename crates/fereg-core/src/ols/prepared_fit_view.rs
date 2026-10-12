@@ -6,7 +6,7 @@
 //! This trait exposes the common immutable model/sample surface and one
 //! topology-specific certified absorption operation.
 
-use crate::data::{DenseMatrix, PreparedNumericSample};
+use crate::data::DenseMatrix;
 use crate::error::{allocation, ErrorCode, FeregError, Result};
 use crate::fe::{
     borrow_categorical_topology_design, AbsorbConfig, BorrowedInterceptFeDesign,
@@ -200,7 +200,7 @@ pub(crate) fn add_generated_predictor<P: PreparedOlsFitView + ?Sized>(
 pub(crate) trait PreparedOlsFitView: Sync {
     fn fit_model(&self) -> &PreparedOlsModel;
 
-    fn fit_sample(&self) -> &PreparedNumericSample;
+    fn fit_sample(&self) -> &super::FinalizedNumericSample;
 
     fn fit_structural_intercept(&self) -> bool;
 
@@ -600,7 +600,7 @@ impl PreparedOlsFitView for PreparedOlsData {
         self.model()
     }
 
-    fn fit_sample(&self) -> &PreparedNumericSample {
+    fn fit_sample(&self) -> &super::FinalizedNumericSample {
         self.sample()
     }
 

@@ -19,3 +19,7 @@ pub use sample::{
 };
 pub use uniform_values::{UniformValues, UniformValuesRef};
 pub use weights::WeightKind;
+
+mod numeric_sources;
+pub use numeric_sources::NumericSourceBank;
+pub(crate) use numeric_sources::SealedNumericSources;

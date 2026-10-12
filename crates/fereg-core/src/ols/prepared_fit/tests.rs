@@ -9472,3 +9472,49 @@ fn norm_handoff_initial_ols_provenance_preserves_complete_fit_bits() {
         }
     }
 }
+
+#[test]
+fn fe_release_fit_bits_and_solver_signatures_are_exact() {
+    use crate::ols::prepared_sources::tests::{fixture, prepare};
+    for weighted in [false, true] {
+        let (mut request, mut loaded) = fixture(513);
+        if weighted {
+            request.bindings.push(crate::ols::OlsInputBinding {
+                stata_var_position: 6,
+                role: crate::ols::OlsInputRole::AnalyticWeight,
+            });
+            loaded.analytic_weight = Some(crate::ols::LoadedNumericColumn {
+                values: (0..513).map(|row| [0.25, 1.0, 7.0][row % 3]).collect(),
+                missing: vec![false; 513],
+            });
+        }
+        let baseline = prepare(&request, loaded.clone(), None);
+        let released = prepare(&request, loaded, Some(u128::MAX));
+        for workers in [1, 4] {
+            for mode in [
+                PreparedOlsExecutionMode::Fast,
+                PreparedOlsExecutionMode::Low,
+            ] {
+                let mut config = PreparedOlsFitConfig::default();
+                config.execution.mode = mode;
+                config.execution.threads =
+                    crate::ThreadConfig::from_requested(workers, true).unwrap();
+                let normalize = |mut fit: CertifiedPreparedOlsFit| {
+                    for report in [
+                        &mut fit.absorption_report,
+                        &mut fit.residual_absorption_report,
+                    ] {
+                        report.setup_seconds = 0.0;
+                        report.solve_seconds = 0.0;
+                        report.certification_seconds = 0.0;
+                    }
+                    fit
+                };
+                assert_eq!(
+                    normalize(fit_prepared_model_coefficients(&released, config).unwrap()),
+                    normalize(fit_prepared_model_coefficients(&baseline, config).unwrap())
+                );
+            }
+        }
+    }
+}

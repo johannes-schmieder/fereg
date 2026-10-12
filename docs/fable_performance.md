@@ -1794,6 +1794,29 @@ roles, clustered and saved-FE recovery, PPML retention, Fast/Low, finite-budget
 routing and output admission. Full runtime, exact replay and mapped licensed
 checks precede integration; whole-H timing remains the single final Mac panel.
 
+FE numeric-column release result: owned OLS preparation can now drop
+privately validated FE-exclusive f64 columns after final factorization. Source
+indices remain intact, shared/omitted ordinary, slope, interaction and cluster
+sources stay raw, and PPML retains every numeric column. Original owner bytes
+still govern execution, output and recovery admission; observed physical bytes
+reflect the release. This saves approximately 24N bytes for three exclusive FEs,
+less source-descriptor expansion, at the cost of one parallel correspondence
+pass per eligible column and a temporary descriptor bank. It does not create
+a new route, refusal or acceptance rule.
+
+Independent architecture review, 37 focused executions, the full suite
+(1,726 Rust executions), universal Mac native checks, 73 exact replay cases,
+292 worker checks and 25 licensed fixtures pass. All scientific results and
+solver signatures remain exact. Seven unsuccessful migration/fixture attempts
+are retained; one exposed a missed topology consumer that still required a raw
+vector, now migrated to the sealed encoded-source receipt. Two early checks
+did not validate the isolated candidate and are excluded from passing evidence.
+Core adds 371 production lines and three dispatch sites; plugin adds 27
+lines, with no new size violations. The whole-H quiet Mac panel remains pending.
+
+See [validation](VALIDATION.md#h6-finalized-fe-numeric-column-release-2026-10-12)
+and [compact evidence](../bench/results/h-20261013-h6-fe-columns.json).
+
 ### H7. Small-input fixed cost (check only)
 
 The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio
@@ -1946,6 +1969,24 @@ weak 1.076x its bound). This is not a stronger weak-graph certificate.
 See [results](VALIDATION.md#h8-recurrence-consistency-with-measured-sparse-cost-2026-10-12)
 and [compact evidence](../bench/results/h-20261013-h8.json). Quiet standard Mac
 timing stays at the whole H boundary. Proceed to the approved H2 prototype.
+
+Final H boundary declaration: after all production edits and focused
+qualification, compare the final H6 universal Mac plugin with the retained
+pre-H3 baseline (SHA-256
+`9ced317e7cb995510995490e76dd492b491ee7a830a7147884ac5b76c73e38c8`).
+Regenerate and hash-check the twenty frozen standard workloads. First run
+the 73-case plugin replay at 2/4/8/16 workers under the existing H8 affected
+scope; H1 produced no runtime change and H2 was not integrated. Then run one
+quiet Mac panel with seven alternating measured pairs after one excluded
+warm-up pair per workload, 320 native calls total, 90 seconds per process and
+1,800 seconds total. No continuation or retry is declared. Retain every
+observation and the existing paired-median 95% bootstrap upper-bound rule
+against max(5%, 1 ms). Each plugin must repeat its scientific results and
+solver signature exactly; cross-plugin agreement uses the scoped replay.
+Freeze plugins, harness and input hashes before timing and check them again
+afterward. Pause measured-host agent/build/test work and coordinate unrelated
+applications before the quiet window. Report failed or inconclusive cells
+without tuning or replacing their observations.
 
 ### Evidence and stop rules for H
 

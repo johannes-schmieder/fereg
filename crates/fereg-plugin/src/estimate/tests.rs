@@ -1650,7 +1650,7 @@ fn action_ledger_covers_every_ols_stage_without_reporting_allocations() {
     let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
     let prepared = prepare_model_owned(&action.request, &[], loaded, true).unwrap();
     action
-        .admit_prepared_parent(prepared.owned_buffer_bytes())
+        .admit_prepared_parent(prepared.owned_buffer_bytes(), prepared.owned_buffer_bytes())
         .unwrap();
     let inference = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
@@ -1662,7 +1662,10 @@ fn action_ledger_covers_every_ols_stage_without_reporting_allocations() {
     )
     .unwrap();
     action
-        .admit_output_parent(inference.owned_buffer_bytes())
+        .admit_output_parent(
+            prepared.execution_admission_bytes(),
+            inference.owned_buffer_bytes(),
+        )
         .unwrap();
     let solver = inference.fit().solver_workspace_peak();
     let before = crate::ffi::allocation_usage();
@@ -1699,7 +1702,10 @@ fn output_parent_admission_adds_live_owners_and_rejects_before_stores() {
         usable_bytes: peak - 1,
     });
     assert_eq!(
-        action.admit_output_parent(2000).unwrap_err().code,
+        action
+            .admit_output_parent(action.prepared_owner_bytes, 2000)
+            .unwrap_err()
+            .code,
         ErrorCode::Allocation
     );
     assert_eq!(
@@ -1718,7 +1724,9 @@ fn output_parent_admission_adds_live_owners_and_rejects_before_stores() {
         .as_mut()
         .unwrap()
         .usable_bytes = peak;
-    action.admit_output_parent(2000).unwrap();
+    action
+        .admit_output_parent(action.prepared_owner_bytes, 2000)
+        .unwrap();
     assert_eq!(
         action
             .fit
@@ -1728,7 +1736,9 @@ fn output_parent_admission_adds_live_owners_and_rejects_before_stores() {
             .execution_bytes,
         parent
     );
-    action.admit_output_parent(2000).unwrap();
+    action
+        .admit_output_parent(action.prepared_owner_bytes, 2000)
+        .unwrap();
     assert_eq!(
         action
             .fit
@@ -1795,7 +1805,10 @@ fn optional_membership_scratch_preserves_ols_modes_and_moment_cache_at_budget_bo
         .unwrap();
     let reference = prepare_model_owned(&unrestricted.request, &[], loaded.clone(), true).unwrap();
     unrestricted
-        .admit_prepared_parent(reference.owned_buffer_bytes())
+        .admit_prepared_parent(
+            reference.owned_buffer_bytes(),
+            reference.owned_buffer_bytes(),
+        )
         .unwrap();
     let moment_boundary = original_preparation + rhs_bytes + moment_bytes;
     assert!(
@@ -1814,8 +1827,11 @@ fn optional_membership_scratch_preserves_ols_modes_and_moment_cache_at_budget_bo
                 .decode_with_memory_limit(&mut spi, || Ok(None))
                 .unwrap();
             let initial = low.memory_plan.selected_bytes() + low.publication_memory.peak_bytes();
-            low.admit_prepared_parent(reference.owned_buffer_bytes())
-                .unwrap();
+            low.admit_prepared_parent(
+                reference.owned_buffer_bytes(),
+                reference.owned_buffer_bytes(),
+            )
+            .unwrap();
             let required = initial
                 .max(low.execution_parent_bytes + low.publication_memory.peak_bytes())
                 .max(original_preparation);
@@ -1904,10 +1920,13 @@ fn optional_membership_scratch_preserves_ols_modes_and_moment_cache_at_budget_bo
             // Final ownership reconciliation must make the same later mode
             // and solver-budget decision as the unmodified preparation plan.
             baseline
-                .admit_prepared_parent(reference.owned_buffer_bytes())
+                .admit_prepared_parent(
+                    reference.owned_buffer_bytes(),
+                    reference.owned_buffer_bytes(),
+                )
                 .unwrap();
             action
-                .admit_prepared_parent(prepared.owned_buffer_bytes())
+                .admit_prepared_parent(prepared.owned_buffer_bytes(), prepared.owned_buffer_bytes())
                 .unwrap();
             assert_eq!(action.memory_plan, baseline.memory_plan);
             assert_eq!(action.fit.execution.mode, baseline.fit.execution.mode);
@@ -2046,7 +2065,9 @@ fn prepared_parent_exact_budget_reaches_solver_and_preserves_public_base() {
         let mut exact = spec
             .decode_with_memory_limit(&mut spi, || Ok(Some(available)))
             .unwrap();
-        exact.admit_prepared_parent(owned_bytes).unwrap();
+        exact
+            .admit_prepared_parent(owned_bytes, owned_bytes)
+            .unwrap();
         assert_eq!(exact.memory_plan.estimate, public_base);
         assert_eq!(
             exact.fit.absorb.solver_memory_budget.unwrap(),
@@ -2059,7 +2080,10 @@ fn prepared_parent_exact_budget_reaches_solver_and_preserves_public_base() {
             .decode_with_memory_limit(&mut spi, || Ok(Some(available - 1)))
             .unwrap();
         assert_eq!(
-            short.admit_prepared_parent(owned_bytes).unwrap_err().code,
+            short
+                .admit_prepared_parent(owned_bytes, owned_bytes)
+                .unwrap_err()
+                .code,
             ErrorCode::Allocation
         );
         assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
@@ -4169,4 +4193,136 @@ fn option_spellings_parse_case_insensitively_like_vce_and_dof() {
     );
     assert_eq!(parse_vce("ROBUST").unwrap(), OlsVceKind::Robust);
     assert_eq!(parse_solver("gauss").unwrap_err().code, ErrorCode::Syntax);
+}
+
+#[test]
+fn fe_release_historical_admission_preserves_mode_output_and_recovery_budgets() {
+    let (args, mut spi) = saved_output_fixture();
+    let mut spec = EstimateActionSpec::parse(&args).unwrap();
+    for mode in [MemoryMode::Fast, MemoryMode::Low, MemoryMode::Auto] {
+        spec.memory = mode;
+        let probe = spec
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
+        let historical = probe
+            .memory_plan
+            .estimate
+            .fast_bytes
+            .max(probe.memory_plan.estimate.low_bytes)
+            + 4096;
+        for available in [None, Some(512 * 1024 * 1024 + 128 * 1024 * 1024)] {
+            let mut baseline = spec
+                .decode_with_memory_limit(&mut spi, || Ok(available))
+                .unwrap();
+            let mut released = spec
+                .decode_with_memory_limit(&mut spi, || Ok(available))
+                .unwrap();
+            assert_eq!(
+                baseline.admit_prepared_parent(historical, historical),
+                released.admit_prepared_parent(historical, historical / 2)
+            );
+            assert_eq!(baseline.memory_plan, released.memory_plan);
+            assert_eq!(baseline.fit.execution.mode, released.fit.execution.mode);
+            assert_eq!(
+                baseline.fit.absorb.retain_coefficients,
+                released.fit.absorb.retain_coefficients
+            );
+            assert_eq!(
+                baseline.fit.absorb.solver_memory_budget,
+                released.fit.absorb.solver_memory_budget
+            );
+            assert_eq!(released.prepared_owner_bytes, historical / 2);
+            for output in [4096, 256 * 1024 * 1024] {
+                assert_eq!(
+                    baseline.admit_output_parent(historical, output),
+                    released.admit_output_parent(historical, output)
+                );
+                assert_eq!(baseline.output_parent_bytes, released.output_parent_bytes);
+                assert_eq!(
+                    baseline.fit.absorb.solver_memory_budget,
+                    released.fit.absorb.solver_memory_budget
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn fe_release_ceiling_covers_concurrent_moments_and_exact_loaded_rhs_capacity() {
+    let (args, mut spi) = saved_output_fixture();
+    spi.nobs = 16_387;
+    spi.numeric_rows_enabled = true;
+    spi.data.clear();
+    for row in 1..=spi.nobs {
+        for (variable, value) in [
+            (1, 1.0),
+            (2, 2.0 + (row as f64).sin()),
+            (3, (row as f64).cos()),
+            (4, (row % 97) as f64),
+            (5, 1.0),
+        ] {
+            spi.data.insert((variable, row), (value, false));
+        }
+    }
+    let mut spec = EstimateActionSpec::parse(&args).unwrap();
+    spec.threads = 4;
+    spec.candidate_all = true;
+    for packed in [false, true] {
+        let mut action = spec
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
+        let loaded = load_ols_input(&action.request, true, false, &mut spi).unwrap();
+        let baseline = prepare_model_owned(&action.request, &[], loaded.clone(), false).unwrap();
+        let dense = baseline
+            .build_rhs()
+            .unwrap()
+            .into_values()
+            .as_slice()
+            .to_vec();
+        let mut rhs = packed.then_some(dense);
+        if let Some(rows) = &mut rhs {
+            rows.reserve(41);
+        }
+        let rhs_bytes = rhs.as_ref().map_or(0, |rows| rows.capacity() as u128 * 8);
+        action.loaded_fit_workspace_bytes = rhs_bytes;
+        let metadata = action.metadata_owner_bytes;
+        let moments = if packed {
+            LoadedOlsRows::moment_workspace_bytes(spi.nobs, action.generated_columns + 1).unwrap()
+                as u128
+        } else {
+            0
+        };
+        let ((prepared, ceiling), rows) = prepare_loaded_ols_with_moments(
+            loaded,
+            rhs,
+            &mut action,
+            |request, loaded, scratch, ceiling| {
+                let prepared = fereg_core::ols::prepare_model_owned_with_load_columns_and_release(
+                    request,
+                    &[],
+                    loaded,
+                    false,
+                    None,
+                    scratch,
+                    ceiling,
+                )?;
+                Ok((prepared, ceiling.unwrap()))
+            },
+        )
+        .unwrap();
+        assert_eq!(rows.is_some(), packed);
+        assert_eq!(action.loaded_fit_workspace_bytes, rhs_bytes + moments);
+        let recorded = action.preparation_memory.preparation_peak_bytes(0).unwrap();
+        assert_eq!(ceiling, recorded);
+        assert!(prepared.owned_buffer_bytes() <= prepared.execution_admission_bytes());
+        assert!(prepared.sample().regressors.get(1).is_none());
+        assert!(prepared.execution_admission_bytes() < ceiling);
+        assert_eq!(
+            action
+                .preparation_memory
+                .preparation_peak_bytes(metadata + rhs_bytes + moments)
+                .unwrap(),
+            ceiling + metadata + rhs_bytes + moments
+        );
+    }
 }

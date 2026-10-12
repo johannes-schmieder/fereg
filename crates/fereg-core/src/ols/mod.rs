@@ -20,7 +20,9 @@ mod prepared_fit;
 pub(crate) mod prepared_fit_view;
 mod prepared_inference_view;
 mod prepared_rhs;
+mod prepared_sources;
 pub(crate) use prepared_rhs::retained_rhs_stride;
+pub use prepared_sources::{FinalizedNumericSample, PreparedSourceBank};
 mod prepared_products;
 pub use prepared_products::{CertifiedPreparedOlsInference, PreparedOlsInferenceBuffers};
 mod prepared_robust;
@@ -71,8 +73,9 @@ pub use prepared_clustered::{
 };
 pub use prepared_clusters::{
     compile_prepared_model, prepare_model, prepare_model_owned,
-    prepare_model_owned_with_load_columns, prepare_model_owned_with_load_hint, OlsClusterTermV1,
-    OlsClusteredRequestV1, PreparedOlsClusterDesign, PreparedOlsClusterDimension,
+    prepare_model_owned_with_load_columns, prepare_model_owned_with_load_columns_and_release,
+    prepare_model_owned_with_load_hint, OlsClusterTermV1, OlsClusteredRequestV1,
+    PreparedOlsClusterDesign, PreparedOlsClusterDimension,
 };
 pub use prepared_dof::{
     compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect,

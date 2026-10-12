@@ -309,11 +309,17 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 numerical_action,
                 categorical,
             )?;
-            numerical_action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
+            numerical_action.admit_prepared_parent(
+                prepared.execution_admission_bytes(),
+                prepared.owned_buffer_bytes(),
+            )?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
             let inference = infer_ols(&prepared, numerical_action, loaded_rows)?;
-            numerical_action.admit_output_parent(inference.view().owned_buffer_bytes())?;
+            numerical_action.admit_output_parent(
+                prepared.execution_admission_bytes(),
+                inference.view().owned_buffer_bytes(),
+            )?;
             let inference_seconds = inference_started.elapsed().as_secs_f64();
             let outputs_started = Instant::now();
             let derived =
@@ -403,7 +409,7 @@ fn prepare_loaded_ols_with_moments<T: Send>(
     loaded: LoadedOlsInput,
     loaded_rhs: Option<Vec<f64>>,
     action: &mut EstimateAction,
-    prepare: impl FnOnce(&OlsRequestV1, LoadedOlsInput, u128) -> Result<T> + Send,
+    prepare: impl FnOnce(&OlsRequestV1, LoadedOlsInput, u128, Option<u128>) -> Result<T> + Send,
 ) -> Result<(T, Option<LoadedOlsRows>)> {
     let started = Instant::now();
     let nrows = loaded.candidate.len();
@@ -452,12 +458,25 @@ fn prepare_loaded_ols_with_moments<T: Send>(
     } else {
         0
     };
+    let external = action
+        .metadata_owner_bytes
+        .checked_add(action.loaded_fit_workspace_bytes)
+        .and_then(|bytes| bytes.checked_add(moment_bytes.unwrap_or(0) as u128));
+    let release_ceiling = external.and_then(|external| {
+        let ceiling = action.preparation_memory.preparation_peak_bytes(0).ok()?;
+        Some(
+            action
+                .memory_plan
+                .usable_bytes
+                .map_or(ceiling, |limit| ceiling.min(limit.saturating_sub(external))),
+        )
+    });
     let result = if let Some(bytes) = moment_bytes {
         action.loaded_fit_workspace_bytes += bytes as u128;
         let request = &action.request;
         ThreadTeam::new(action.fit.execution.threads).install(|| {
             let (prepared, rows) = rayon::join(
-                || prepare(request, loaded, membership_scratch),
+                || prepare(request, loaded, membership_scratch, release_ceiling),
                 || {
                     loaded_rhs.map(|rows| {
                         LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)
@@ -468,7 +487,7 @@ fn prepare_loaded_ols_with_moments<T: Send>(
         })?
     } else {
         let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
-            prepare(&action.request, loaded, membership_scratch)
+            prepare(&action.request, loaded, membership_scratch, release_ceiling)
         })?;
         Ok((prepared, loaded_rhs.map(LoadedOlsRows::from)))
     };
@@ -696,7 +715,7 @@ impl EstimateAction {
 
     /// Reconcile the surviving preparation owner before fit/inference allocates
     /// its frames. Public base estimates retain their historical meaning.
-    fn admit_prepared_parent(&mut self, owned_bytes: u128) -> Result<()> {
+    fn admit_prepared_parent(&mut self, owned_bytes: u128, actual_owned_bytes: u128) -> Result<()> {
         let public_base = self.memory_plan.estimate;
         let reconciled = self
             .preparation_memory
@@ -734,14 +753,17 @@ impl EstimateAction {
                 && plan.selected == MemoryMode::Fast;
         plan.estimate = public_base;
         self.memory_plan = plan;
-        self.prepared_owner_bytes = owned_bytes;
+        self.prepared_owner_bytes = actual_owned_bytes;
         self.execution_parent_bytes = execution_bytes;
         Ok(())
     }
 
-    fn admit_output_parent(&mut self, inference_bytes: u128) -> Result<()> {
-        let owned = self
-            .prepared_owner_bytes
+    fn admit_output_parent(
+        &mut self,
+        prepared_admission_bytes: u128,
+        inference_bytes: u128,
+    ) -> Result<()> {
+        let owned = prepared_admission_bytes
             .checked_add(inference_bytes)
             .and_then(|bytes| bytes.checked_add(self.metadata_owner_bytes))
             .ok_or_else(|| allocation("OLS output parent size overflows"))?;
@@ -1173,7 +1195,7 @@ impl EstimateActionSpec {
             action.memory_plan.usable_bytes,
             action.metadata_owner_bytes,
         )?;
-        action.admit_prepared_parent(0)?;
+        action.admit_prepared_parent(0, 0)?;
         Ok(action)
     }
 }

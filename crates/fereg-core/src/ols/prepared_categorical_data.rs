@@ -8,7 +8,9 @@
 //! singleton fixed point exactly once and constructs the final deduplicated FE
 //! topology. This boundary is shared by public estimation and developer gates.
 
-use crate::data::{DenseMatrix, DropReason, PreparedNumericSample, PreparedWeights, WeightKind};
+use crate::data::{
+    DenseMatrix, DropReason, NumericSourceBank, PreparedNumericSample, PreparedWeights, WeightKind,
+};
 use crate::error::{allocation, invalid_argument as invalid, invalid_data, Result};
 use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{
@@ -46,16 +48,25 @@ pub(crate) mod validated_sample {
     use super::{validate_numeric_sample, PreparedNumericSample, Result};
 
     #[derive(Debug, PartialEq)]
-    pub(crate) struct ValidatedSample(PreparedNumericSample);
+    pub(crate) struct ValidatedSample(super::super::FinalizedNumericSample);
 
     impl ValidatedSample {
         pub(crate) fn new(sample: PreparedNumericSample) -> Result<Self> {
             validate_numeric_sample(&sample)?;
-            Ok(Self(sample))
+            Ok(Self(
+                sample.map_sources(super::super::PreparedSourceBank::raw),
+            ))
         }
 
-        pub(crate) const fn get(&self) -> &PreparedNumericSample {
+        pub(crate) const fn get(&self) -> &super::super::FinalizedNumericSample {
             &self.0
+        }
+
+        pub(in crate::ols) fn release(
+            &mut self,
+            plan: super::super::prepared_sources::ReleasePlan,
+        ) {
+            self.0.regressors.release(plan);
         }
     }
 
@@ -69,7 +80,7 @@ pub(crate) mod validated_sample {
     }
 
     impl std::ops::Deref for ValidatedSample {
-        type Target = PreparedNumericSample;
+        type Target = super::super::FinalizedNumericSample;
 
         fn deref(&self) -> &Self::Target {
             self.get()
@@ -93,6 +104,7 @@ pub struct PreparedOlsData {
     pub(crate) grammar: PreparationGrammar,
     pub(crate) singleton_policy: crate::ols::PreparedOlsFeSingletonPolicy,
     pub(crate) clusters: Option<crate::ols::PreparedOlsClusterDesign>,
+    pub(super) execution_admission_bytes: Option<u128>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -132,6 +144,7 @@ impl PreparedOlsData {
                 crate::ols::PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
             },
             clusters: None,
+            execution_admission_bytes: None,
         };
         if prepared.uses_categorical_preparation() {
             prepared.validate_after_topology()?;
@@ -200,7 +213,7 @@ impl PreparedOlsData {
     }
 
     #[must_use]
-    pub const fn sample(&self) -> &PreparedNumericSample {
+    pub const fn sample(&self) -> &super::FinalizedNumericSample {
         self.sample.get()
     }
 
@@ -1507,12 +1520,12 @@ fn validate_report_plan(
     Ok(())
 }
 
-fn validate_numeric_sample(sample: &PreparedNumericSample) -> Result<()> {
+fn validate_numeric_sample(sample: &PreparedNumericSample<impl NumericSourceBank>) -> Result<()> {
     let nrows = sample.n_active();
     if sample.n_candidate > sample.n_original
         || sample.drop_reasons.len() != sample.n_original
         || sample.outcome.len() != nrows
-        || sample.regressors.iter().any(|source| source.len() != nrows)
+        || !sample.regressors.aligned(nrows)
         || !matches!(sample.adjustment, crate::data::PreparedAdjustment::None)
     {
         return Err(invalid(
@@ -1575,7 +1588,7 @@ fn validate_numeric_sample(sample: &PreparedNumericSample) -> Result<()> {
 
 // Dimensions and adjustment policy were checked by the caller. This is only
 // a proof of an already valid sample; a decline retains every ordered error.
-fn valid_complete_sample(sample: &PreparedNumericSample) -> bool {
+fn valid_complete_sample(sample: &PreparedNumericSample<impl NumericSourceBank>) -> bool {
     let rows = sample.n_active();
     if sample.n_original != rows
         || sample.n_candidate != rows
@@ -1588,7 +1601,7 @@ fn valid_complete_sample(sample: &PreparedNumericSample) -> bool {
         sample.outcome[range.clone()].iter().all(|v| v.is_finite())
             && sample
                 .regressors
-                .iter()
+                .raw_columns()
                 .all(|source| source[range.clone()].iter().all(|v| v.is_finite()))
             && match &sample.drop_reasons {
                 crate::data::UniformValues::Repeated { len, value } => {
@@ -1969,7 +1982,7 @@ mod tests {
         assert_eq!(owned.owned_buffer_bytes(), bytes);
         assert_eq!(
             std::mem::size_of_val(&owned),
-            std::mem::size_of::<PreparedNumericSample>()
+            std::mem::size_of::<crate::ols::FinalizedNumericSample>()
         );
         assert_eq!(owned.outcome[1].to_bits(), (-0.0_f64).to_bits());
 

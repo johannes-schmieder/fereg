@@ -588,7 +588,7 @@ pub fn prepare_model_owned_with_load_hint(
     hint: Option<super::PreparedOlsLoadHint>,
     membership_scratch: u128,
 ) -> Result<PreparedOlsData> {
-    prepare_model_with(request, clusters, |sources| {
+    prepare_model_with(request, clusters, None, |sources| {
         if hint.is_some() || membership_scratch > 0 {
             crate::ols::prepared_categorical_data::prepare_owned_with_load_hint(
                 request,
@@ -616,7 +616,30 @@ pub fn prepare_model_owned_with_load_columns(
     columns: Option<super::PreparedOlsLoadColumns>,
     membership_scratch: u128,
 ) -> Result<PreparedOlsData> {
-    prepare_model_with(request, clusters, |sources| {
+    prepare_model_owned_with_load_columns_and_release(
+        request,
+        clusters,
+        loaded,
+        categorical,
+        columns,
+        membership_scratch,
+        None,
+    )
+}
+
+/// The optional ceiling covers the complete finalized Raw owner plus conversion
+/// descriptors. Refusal leaves storage and all mandatory diagnostics unchanged.
+#[allow(clippy::too_many_arguments)]
+pub fn prepare_model_owned_with_load_columns_and_release(
+    request: &super::OlsRequestV1,
+    clusters: &[OlsClusterTermV1],
+    loaded: LoadedOlsInput,
+    categorical: bool,
+    columns: Option<super::PreparedOlsLoadColumns>,
+    membership_scratch: u128,
+    release_owner_ceiling: Option<u128>,
+) -> Result<PreparedOlsData> {
+    prepare_model_with(request, clusters, release_owner_ceiling, |sources| {
         crate::ols::prepared::prepare_owned_with_load_columns(
             request,
             loaded,
@@ -637,7 +660,7 @@ pub fn prepare_model(
     loaded: &LoadedOlsInput,
     categorical: bool,
 ) -> Result<PreparedOlsData> {
-    prepare_model_with(request, clusters, |sources| {
+    prepare_model_with(request, clusters, None, |sources| {
         if categorical {
             crate::ols::prepared_categorical_data::prepare_categorical_ols_data_with_cluster_sources(
                 request, loaded, sources,
@@ -651,6 +674,7 @@ pub fn prepare_model(
 fn prepare_model_with(
     request: &super::OlsRequestV1,
     clusters: &[OlsClusterTermV1],
+    release_owner_ceiling: Option<u128>,
     prepare: impl FnOnce(&[SourceId]) -> Result<PreparedOlsData>,
 ) -> Result<PreparedOlsData> {
     let cluster_request = ClusterRequest {
@@ -670,6 +694,10 @@ fn prepare_model_with(
             &mut SystemClusterReservation,
         )?);
         certify_prepared_clusters(&prepared)?;
+    }
+    drop(sources);
+    if let Some(ceiling) = release_owner_ceiling {
+        prepared.release_fe_columns(request, ceiling);
     }
     Ok(prepared)
 }

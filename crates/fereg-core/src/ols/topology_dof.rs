@@ -110,7 +110,7 @@ pub(crate) fn compute_categorical_topology_absorbed_dof_with_slopes(
     structural_intercept: bool,
     policy: CategoricalTopologyDofPolicy,
     cluster_dimensions: &[&[u32]],
-    slope_values_by_source: &[Vec<f64>],
+    slope_values_by_source: &(impl crate::data::NumericSourceBank + ?Sized),
     validated_owner: Option<&crate::fe::ValidatedFinalizedTopology>,
 ) -> Result<CategoricalTopologyDofReport> {
     let mut reservation = SystemTopologyDofReservation;
@@ -176,7 +176,7 @@ pub(crate) fn compute_with_reservation<R: TopologyDofReservation>(
     structural_intercept: bool,
     policy: CategoricalTopologyDofPolicy,
     cluster_dimensions: &[&[u32]],
-    slope_values_by_source: &[Vec<f64>],
+    slope_values_by_source: &(impl crate::data::NumericSourceBank + ?Sized),
     validated_owner: Option<&crate::fe::ValidatedFinalizedTopology>,
     reservation: &mut R,
 ) -> Result<CategoricalTopologyDofReport> {
@@ -392,7 +392,7 @@ fn build_report<R: TopologyDofReservation>(
     exact: &[bool],
     nested: &[bool],
     nested_categories: usize,
-    slope_values_by_source: &[Vec<f64>],
+    slope_values_by_source: &(impl crate::data::NumericSourceBank + ?Sized),
     reservation: &mut R,
 ) -> Result<CategoricalTopologyDofReport> {
     let nobs = topology.nobs();
@@ -574,7 +574,7 @@ fn continuous_slope_redundancy<R: TopologyDofReservation>(
     effect_index: usize,
     slope_source: SourceId,
     has_intercept: bool,
-    slope_values_by_source: &[Vec<f64>],
+    slope_values_by_source: &(impl crate::data::NumericSourceBank + ?Sized),
     reservation: &mut R,
 ) -> Result<usize> {
     const ZERO_TOLERANCE: f64 = 1e-6;
@@ -982,7 +982,7 @@ mod tests {
                                     true,
                                     policy,
                                     &clusters,
-                                    values,
+                                    &values.to_vec(),
                                     receipt,
                                 )
                             };

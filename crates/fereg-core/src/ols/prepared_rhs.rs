@@ -1,3 +1,4 @@
+use crate::data::NumericSourceBank;
 #[cfg(test)]
 use crate::data::WeightKind;
 use crate::data::{DenseMatrix, PreparedWeights};
@@ -279,7 +280,9 @@ fn fill_rhs_single_thread(
 
 /// The caller has checked source dimensions. Partition by rows so narrow
 /// models can use their installed team, without a reduction or global pool.
-pub(crate) fn numeric_sources_are_finite(sample: &crate::data::PreparedNumericSample) -> bool {
+pub(crate) fn numeric_sources_are_finite(
+    sample: &crate::data::PreparedNumericSample<impl NumericSourceBank>,
+) -> bool {
     let rows = sample.n_active();
     crate::parallel::all_row_chunks(
         rows,
@@ -287,7 +290,7 @@ pub(crate) fn numeric_sources_are_finite(sample: &crate::data::PreparedNumericSa
         |range| {
             sample
                 .regressors
-                .iter()
+                .raw_columns()
                 .all(|source| source[range.clone()].iter().all(|value| value.is_finite()))
         },
     )
@@ -301,7 +304,7 @@ pub(crate) const MAX_BOUND_NUMERIC_COLUMNS: usize = 64;
 /// This shares the solver's numeric binding with final output construction.
 pub fn add_numeric_ols_predictor(
     model: &super::PreparedOlsModel,
-    sample: &crate::data::PreparedNumericSample,
+    sample: &crate::data::PreparedNumericSample<impl NumericSourceBank>,
     selected: &[(usize, f64)],
     output: &mut [f64],
 ) -> Result<bool> {
@@ -325,7 +328,7 @@ pub(crate) struct NumericOlsColumns<'a> {
 impl<'a> NumericOlsColumns<'a> {
     pub(crate) fn bind_score_means(
         model: &super::PreparedOlsModel,
-        sample: &'a crate::data::PreparedNumericSample,
+        sample: &'a crate::data::PreparedNumericSample<impl NumericSourceBank>,
     ) -> Result<Option<Self>> {
         Self::bind_with_minimum(model, sample, 1, 4096)
     }
@@ -337,14 +340,14 @@ impl<'a> NumericOlsColumns<'a> {
 
     pub(crate) fn bind(
         model: &super::PreparedOlsModel,
-        sample: &'a crate::data::PreparedNumericSample,
+        sample: &'a crate::data::PreparedNumericSample<impl NumericSourceBank>,
     ) -> Result<Option<Self>> {
         Self::bind_with_minimum(model, sample, 8, 4096)
     }
 
     pub(crate) fn bind_loaded_rhs(
         model: &super::PreparedOlsModel,
-        sample: &'a crate::data::PreparedNumericSample,
+        sample: &'a crate::data::PreparedNumericSample<impl NumericSourceBank>,
     ) -> Result<Option<Self>> {
         // Ownership reuse needs structural alignment and exact values;
         // worker budget controls only the validation scan.
@@ -353,14 +356,14 @@ impl<'a> NumericOlsColumns<'a> {
 
     pub(crate) fn bind_residual_mean(
         model: &super::PreparedOlsModel,
-        sample: &'a crate::data::PreparedNumericSample,
+        sample: &'a crate::data::PreparedNumericSample<impl NumericSourceBank>,
     ) -> Result<Option<Self>> {
         Self::bind_with_minimum(model, sample, 2, 4096)
     }
 
     fn bind_with_minimum(
         model: &super::PreparedOlsModel,
-        sample: &'a crate::data::PreparedNumericSample,
+        sample: &'a crate::data::PreparedNumericSample<impl NumericSourceBank>,
         minimum: usize,
         minimum_rows: usize,
     ) -> Result<Option<Self>> {
@@ -683,12 +686,21 @@ fn validate_categorical_sources(prepared: &PreparedOlsData) -> Result<()> {
                 "prepared categorical source identity is inconsistent",
             ));
         }
+        let encoded = prepared.sample.regressors.encoded_matches(
+            categorical.prepared_source_index(),
+            index,
+            nrows,
+        );
         let raw = prepared
             .sample
             .regressors
-            .get(categorical.prepared_source_index())
-            .ok_or_else(|| invalid_argument("prepared categorical source is out of range"))?;
-        if raw.len() != nrows || codes.len() != nrows {
+            .get(categorical.prepared_source_index());
+        if raw.is_none() && !encoded {
+            return Err(invalid_argument(
+                "prepared categorical source is out of range",
+            ));
+        }
+        if raw.is_some_and(|raw| raw.len() != nrows) || codes.len() != nrows {
             return Err(invalid_argument(
                 "prepared categorical source is not aligned with the observation axis",
             ));
@@ -717,7 +729,8 @@ fn validate_categorical_sources(prepared: &PreparedOlsData) -> Result<()> {
                 ));
             }
             let level = categorical.level_value(prepared.fe_topology(), code)?;
-            if level.to_bits() != canonical_factor_value(raw[row]).to_bits() {
+            if raw.is_some_and(|raw| level.to_bits() != canonical_factor_value(raw[row]).to_bits())
+            {
                 return Err(invalid_argument(
                     "prepared categorical codes do not represent their numeric source",
                 ));

@@ -14,6 +14,70 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H6 finalized FE numeric-column release, 2026-10-12
+
+After final owned-OLS singleton processing, reencoding, rebasing and cluster
+certification, redundant FE f64 columns can be released. A sealed source-indexed
+bank holds raw vectors or privately proved encoded slots. No numeric values are
+reconstructed and no empty slice impersonates a released source. Original
+request roles and finalized bindings retain ordinary sources (including omitted
+terms), slopes, interactions and clusters. The dependent outcome has its own
+owner and remains intact. Raw public samples and PPML retain their contracts.
+
+The optional conversion proves exact canonical raw/code correspondence. Failure
+keeps the raw owner and original later diagnostic. Both requested and actual
+slot capacity must fit while the full old owner remains live, under a ceiling
+that includes metadata, loaded RHS and the full concurrent moment workspace.
+The physical result must not exceed original ownership. A separate immutable
+original-owner byte scalar preserves execution, output and recovery admissions,
+including Fast/Low choice, FE retention and solver budgets. No scientific bits,
+solver signatures, tolerance, certificate, sample, rank, omission, separation,
+mandatory diagnostic, estimate acceptance or publication behavior changes.
+
+All 37 focused executions pass: eight core release witnesses, two plugin
+admission/overlap witnesses, thirteen PPML generation tests, twelve RHS tests
+the moment-budget boundary and the finalized owner layout witness. They cover pointer/capacity identity, exact
+savings, signed zero, malformed correspondence and diagnostic order,
+exact/short/overcapacity conversion admission, singleton reencoding, protected
+source roles, outcome ownership, Fast/Low, workers and finite budgets.
+Independent high-effort static review approves all 18 transferred file hashes.
+It assessed the concurrent finite ceiling statically; packed/unpacked overlap,
+historical finite budgets and descriptor limits have separate focused witnesses.
+
+The full suite passes 1,726 Rust executions in 62 invocations and 200 Python
+tests with 13 optional dependency skips. Universal Mac native ABI/load/guard
+checks, 73 exact plugin replay cases, 292 worker checks and 25 licensed
+preparation, precedence, singleton, cluster, FE recovery, weight, memory and
+transaction fixtures pass. Linux ELF checks are appropriately skipped on Mac;
+H7 will build and load this source on Linux. No new Windows claim is made.
+
+Seven unsuccessful attempts are preserved: empty-array access and existing sample
+adapters, a private fit-field fixture, the missed raw-vector topology consumer,
+a plugin fixture's core-private matrix method, an incorrect small-sample
+refusal expectation, and a raw-versus-finalized struct-size assertion. The final small-sample witness uses actual byte savings
+without a row-count fence. Two early checks (wrong working directory and a
+shared Cargo fingerprint) do not validate the isolated edits; transferred sources
+were explicitly touched before full qualification. A Python 3.9 extraction
+failure occurred before writing files and was repaired with the pinned modern
+interpreter. No failed observation was discarded or tolerance weakened.
+
+Three exclusive FEs remove approximately 24N bytes of numeric capacity, less
+descriptor expansion. Costs are the exact correspondence scans and temporary
+slot descriptors; historical admission charges intentionally remain unchanged.
+Core adds 371 production lines and three dispatch sites; plugin adds 27
+lines. No new file/function size or chunk violations. Whole-fit timing is deferred
+to the single final H panel, so no wall-time improvement is asserted here.
+
+Candidate plugin SHA-256:
+`a97f0c28ec913a6b26b4f1a2388eb95688a60479f402d1bcb57d4cdcfc80d1ce`;
+parent plugin: `d5e240f6da750a6b104571e4fdcb13efb429613117dbd7391d852d7e1a20ae75`.
+Raw source, plugins, review, failed attempts and checks remain in
+`/projectnb/welfgr/fereg/runs/h-20261013-h6/release-validation.tar.gz`
+(45,457,009 bytes, SHA-256
+`7ab82792cab15597d7de1fb7f3440e08e108a04f8967330429df7fac4687a680`).
+The [compact record](../bench/results/h-20261013-h6-fe-columns.json) binds all
+qualification identities.
+
 ## H6 dual-order LSMR norm handoff, 2026-10-12
 
 H6 item 7 shares each weighted residual read between the original fixed

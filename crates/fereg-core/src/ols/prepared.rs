@@ -1424,7 +1424,7 @@ fn invalid_frequency_weight(message: impl Into<String>) -> FeregError {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::metadata::{
         AbsorbTermId, AbsorbedTerm, ComponentOrder, ExpandedTerm, SourceEntry, TermComponent,
@@ -1462,7 +1462,7 @@ mod tests {
         }
     }
 
-    fn request(source_count: usize, include_intercept: bool) -> OlsRequestV1 {
+    pub(crate) fn request(source_count: usize, include_intercept: bool) -> OlsRequestV1 {
         let sources = (0..source_count)
             .map(|index| SourceEntry {
                 id: SourceId::new(u32::try_from(index + 1).expect("small fixture")).expect("id"),
@@ -1524,7 +1524,7 @@ mod tests {
         }
     }
 
-    fn column(values: &[f64], missing: &[bool]) -> LoadedNumericColumn {
+    pub(crate) fn column(values: &[f64], missing: &[bool]) -> LoadedNumericColumn {
         LoadedNumericColumn {
             values: values.to_vec(),
             missing: missing.to_vec(),
@@ -1966,7 +1966,9 @@ mod tests {
             };
             let prepared_expected = prepare_model(&request, &[], &loaded, false).unwrap();
             let expected = prepared_expected.sample();
-            let actual = take_classified_sample(&request, loaded, &[]).unwrap();
+            let actual = take_classified_sample(&request, loaded, &[])
+                .unwrap()
+                .map_sources(crate::ols::PreparedSourceBank::raw);
             assert_eq!(&actual, expected);
             for (a, b) in actual
                 .outcome
@@ -3018,7 +3020,7 @@ mod tests {
         );
     }
 
-    fn two_way_singleton_request(keep_singletons: bool) -> OlsRequestV1 {
+    pub(crate) fn two_way_singleton_request(keep_singletons: bool) -> OlsRequestV1 {
         let mut request = request(3, true);
         request.absorbed_terms = [(1, 2, "worker"), (2, 3, "firm")]
             .into_iter()
@@ -3035,7 +3037,7 @@ mod tests {
         request
     }
 
-    fn two_way_singleton_input() -> LoadedOlsInput {
+    pub(crate) fn two_way_singleton_input() -> LoadedOlsInput {
         LoadedOlsInput {
             candidate: vec![true; 9].into(),
             outcome: column(&[1.2, 1.8, 2.4, 3.1, 3.7, 4.0, 4.5, 5.0, 5.6], &[false; 9]),
@@ -3900,7 +3902,10 @@ mod tests {
             assert!(!model.columns.is_empty());
             let prepared = crate::ols::prepared_categorical_data::prepare_categorical_ols_data_with_cluster_sources(
                 &request, &input, &clusters).unwrap();
-            assert_eq!(prepared.sample(), &available_sample);
+            assert_eq!(
+                prepared.sample(),
+                &available_sample.map_sources(crate::ols::PreparedSourceBank::raw)
+            );
             let interaction = prepared
                 .model()
                 .columns
@@ -4501,7 +4506,11 @@ mod tests {
                     .compact_active_rows(&expected.active, DropReason::Singleton)
                     .unwrap();
                 let prepared = prepare_model(&request, &[], &loaded, false).unwrap();
-                assert_eq!(prepared.sample(), &expected_sample, "{order:?}/{frequency}");
+                assert_eq!(
+                    prepared.sample(),
+                    &expected_sample.map_sources(crate::ols::PreparedSourceBank::raw),
+                    "{order:?}/{frequency}"
+                );
                 assert_eq!(prepared.singletons.num_singletons, dropped);
                 assert_eq!(prepared.singletons.cascade_events, cascade);
             }
@@ -4601,7 +4610,9 @@ mod tests {
         let request = two_way_singleton_request(true);
         let metadata = |reservation: &mut InjectedFeTopologyReservation| {
             let prepared = prepare_model(&request, &[], &two_way_singleton_input(), false).unwrap();
-            let sources = factorize_preparation_sources(&request, prepared.sample()).unwrap();
+            let (_, raw_sample) =
+                prepare_ols_numeric_sample(&request, &two_way_singleton_input(), &[]).unwrap();
+            let sources = factorize_preparation_sources(&request, &raw_sample).unwrap();
             let required: Vec<_> = sources.iter().map(|source| source.source).collect();
             crate::ols::prepared_categorical_data::retain_model_sources_with_reservation(
                 sources,

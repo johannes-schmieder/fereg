@@ -28,10 +28,11 @@ impl PreparedOlsData {
             let candidate = topology.compacted_sources()
                 [registry.partition().categorical_source_indices()[0]]
                 .candidate_source_index();
-            let source = self
+            let (categorical_index, source) = self
                 .categorical_sources
                 .iter()
-                .find(|source| source.source() == effect.sources[0])
+                .enumerate()
+                .find(|(_, source)| source.source() == effect.sources[0])
                 .ok_or_else(|| invalid("borrowed FE design categorical source is out of range"))?;
             if !source.references_topology_candidate(candidate)
                 || source.codes(topology)?.len() != nobs
@@ -39,7 +40,16 @@ impl PreparedOlsData {
                     .sample
                     .regressors
                     .get(source.prepared_source_index())
-                    .is_none_or(|values| values.len() != nobs)
+                    .map_or_else(
+                        || {
+                            !self.sample.regressors.encoded_matches(
+                                source.prepared_source_index(),
+                                categorical_index,
+                                nobs,
+                            )
+                        },
+                        |values| values.len() != nobs,
+                    )
             {
                 return Err(invalid(
                     "borrowed FE design source identities are inconsistent",

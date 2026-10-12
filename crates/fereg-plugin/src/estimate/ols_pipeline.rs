@@ -9,17 +9,22 @@ pub(super) fn prepare_ols_pipeline(
     categorical: bool,
 ) -> Result<(PreparedOlsData, Option<LoadedOlsRows>)> {
     let clusters = std::mem::take(&mut action.clusters);
-    let result =
-        prepare_loaded_ols_with_moments(loaded, loaded_rhs, action, |request, input, scratch| {
-            prepare_model_owned_with_load_columns(
+    let result = prepare_loaded_ols_with_moments(
+        loaded,
+        loaded_rhs,
+        action,
+        |request, input, scratch, release_ceiling| {
+            prepare_model_owned_with_load_columns_and_release(
                 request,
                 &clusters,
                 input,
                 categorical,
                 load_columns,
                 scratch,
+                release_ceiling,
             )
-        });
+        },
+    );
     action.clusters = clusters;
     result
 }
