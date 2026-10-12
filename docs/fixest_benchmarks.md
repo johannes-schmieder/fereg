@@ -236,6 +236,19 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+H4's bounded overlap check does not reproduce load inflation: in all five
+four-worker pairs, overlap-on load is lower, averaging 299.695 versus
+311.857 ms (paired-median reduction 15.219 ms). Sixteen-worker load similarly
+averages 273.927 versus 287.376 ms; the one-worker negative control is mixed
+within noise. Native on/off means at four/sixteen workers are
+0.906805/0.900010 and 0.464803/0.463340 s, so the small native costs remain
+visible. All fifteen comparisons and six fixed-worker repeat groups retain
+exact captured science and solver signatures. The declared inflation rule
+fails; the earlier C1 clock pattern is attributed to host variability for
+this check, and production is unchanged. See the
+[RRUNTIME table](VALIDATION.md#h4-overlap-check-no-load-inflation-2026-10-12)
+and [all thirty observations](../bench/results/h-20261013-h4.json).
+
 H2's approved dense three-FE MAP prototype passes its independent science,
 replay and transaction checks, but fails the sparse-cost requirement: all six
 sparse geometry observations are 29.8–30.9 ms against the declared 21 ms cap.

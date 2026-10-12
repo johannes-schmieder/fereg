@@ -1285,6 +1285,48 @@ gate the overlap on spare cores in the resolved affinity mask. General
 resource rule, arithmetic-preserving. If load does not inflate, record that
 the clock pattern was host noise and stop. One day cap.
 
+H4 execution declaration (2026-10-12, parent `42c8248c`, before fits):
+use one 28-core SCC allocation and the frozen campaign `ols-akm-baseline`
+1M input. Five alternating on/off pairs at each of 1/4/16 workers give thirty
+measured Stata fits; each process is capped at 120 seconds, the complete panel
+at 900 seconds, with no timing retries. Both arms get the identical physical
+core mask in each pair. Preserve all RRUNTIME rows 18–21, command time,
+solver signatures, coefficients, covariance, sample and model decisions.
+The diagnostic off artifact changes only `cancellable::while_loading` to
+finish loading before starting the same cancellable factor preparation on the
+same action team. It still builds/consumes the same hint; no default routing
+flag or new numerical implementation is added. Both plugins pass native load
+and boundary guards; the existing prepared-input numerical test runs on both.
+Tracing is disabled for the thirty fits.
+
+The four-worker load clock is the primary oversubscription check; one worker
+is a negative control because overlap is already inapplicable, and sixteen
+workers is the scaling control. Treat inflation as demonstrated for this bounded
+check only if all five four-worker on-minus-off load differences are positive
+and the paired-median increase exceeds max(5%, 1 ms). This is an experimental
+decision rule, not an estimator routing fence or a release-performance claim.
+If it holds, use the approved general spare-core/worker-budget policy and verify
+its exact replay; otherwise retain the observations and stop this item without
+a runtime change. Mixed evidence is reported as inconclusive/host variability,
+without extra pairs. The one-day and substantive-repair caps remain in force.
+
+H4 result (2026-10-12): all thirty fits completed without retries and all
+fifteen on/off comparisons plus six fixed-worker repeat groups retain exact
+captured science and solver signatures. Four-worker overlap-on load is lower
+in all five pairs: means 299.695 versus 311.857 ms, paired-median difference
+−15.219 ms (ratio 0.95107). The inflation rule fails; sixteen-worker load
+also favors overlap, while the one-worker negative control is unchanged
+within noise. Native on/off means at 1/4/16 workers are 2.257310/2.257538,
+0.906805/0.900010 and 0.464803/0.463340 seconds; these small costs remain
+visible. The earlier load-clock pattern is not reproduced and is attributed
+to host variability for this bounded check. Keep production unchanged and
+proceed to H5. Both diagnostic plugins pass native guards and the existing
+prepared-input numerical/fallback test. Jobs 8035773/8035774 pass accounting;
+the panel took 112.251 of 900 seconds. See
+[validation](VALIDATION.md#h4-overlap-check-no-load-inflation-2026-10-12) and
+[all observations](../bench/results/h-20261013-h4.json). Raw artifacts remain
+on SCC under `/projectnb/welfgr/fereg/runs/h-20261013-h4`.
+
 ### H5. Campaign placement (tooling)
 
 Group `physical_cpus()` by `physical id` so a fit's cores come from one

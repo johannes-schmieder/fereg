@@ -14,6 +14,50 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H4 overlap check: no load inflation, 2026-10-12
+
+Five alternating overlap-on/off pairs on frozen 1M AKM OLS at 1/4/16 workers
+complete all thirty planned fits on `scc-wf2`, with identical physical masks
+within each pair and tracing disabled. The diagnostic off artifact changes
+only `cancellable::while_loading` to load before running the same preparation
+closure on the same team; production remains unchanged. All fifteen paired
+science comparisons and six five-repeat groups are exact, including solver
+signatures except clocks. No fit was retried.
+
+RRUNTIME rows 18–21 below are mean seconds (on / off); command time is also
+retained in the [compact record](../bench/results/h-20261013-h4.json).
+
+| Workers | 18: preflight | 19: input | 20: native | 21: total |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 0.000359 / 0.000358 | 0.305581 / 0.305297 | 2.257310 / 2.257538 | 2.563250 / 2.563193 |
+| 4 | 0.000360 / 0.000350 | 0.299695 / 0.311857 | 0.906805 / 0.900010 | 1.206859 / 1.212218 |
+| 16 | 0.000354 / 0.000350 | 0.273927 / 0.287376 | 0.464803 / 0.463340 | 0.739083 / 0.751066 |
+
+The declared primary four-worker load-inflation rule fails: all five paired
+on-minus-off differences are negative, with median −15.219 ms and ratio
+0.95107. Sixteen-worker load also favors overlap (median −13.482 ms), while
+one worker gives −0.049 ms and mixed signs. Mean command times on/off are
+2.672148/2.671837, 1.275795/1.279567 and 0.805579/0.815720 seconds.
+Small native costs at four/sixteen workers remain visible. The earlier C1
+load pattern is not reproduced; this bounded check attributes it to host
+variability and stops without a runtime change. These five-pair SCC
+observations do not establish a confidence-qualified release performance claim.
+
+Source comparison covers 760 files and finds only the intended diagnostic
+coordinator difference. Both Linux builds, native ABI/load/guard checks and
+the existing prepared-input numeric test pass, including worker counts
+2/4/16, optional allocation fallback, interrupt and SPI panic handling. The
+analysis is checked against synthetic inflation, mixed timings and a one-ulp
+scientific mismatch. Scheduler setup `8035773` passes (failed=0/exit=0,
+396 s, 3.469G); panel `8035774` passes (117 s, 2.622G). The timed panel uses
+112.251 of 900 seconds. Raw archives, plugins, patch, scripts and captures
+remain under `/projectnb/welfgr/fereg/runs/h-20261013-h4`.
+
+Production identity equals `42c8248c` (171 modules and 58 artifact inputs).
+This prose/evidence closure reuses valid H8 Mac runtime evidence; the twenty
+quiet Mac workloads remain due once at the full H boundary. No new Windows
+qualification is claimed.
+
 ## H2 dense three-FE prototype: sparse-cost gate failed, 2026-10-12
 
 The approved prototype completed its fixed 36-fit panel and all scientific
