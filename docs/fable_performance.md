@@ -504,6 +504,9 @@ of opportunity alone does not authorize broadening their implementation scope.
 | F1 | Progress-based two-FE handoff | Diagnosis complete; retained robust-F comparison failures authorize no handoff threshold or routing implementation |
 | F2 | Dense three-FE choice | Geometry feature priced with exact science; total-cost model remains unidentified, so the controlled calibration described below needs a new bounded decision |
 | E | Accept one-time norm/certificate bit changes for thread-independent reductions | Yes, as one declared scope |
+| H1c | Skip the `within` locality sort when it cannot change the scatter kernel (declared ulp scope) | Approved by Johannes on 2026-10-12; see section 6 |
+| H2 | Dense three-FE MAP prototype gated by the certified contraction bound, LSMR fallback | Prototype approved by Johannes on 2026-10-12; freeze rule, fields, witnesses and budget first; see section 6 |
+| H3 | Parallel neighbour-pair assembly in canonical products | Arithmetic-preserving variant needs no decision; the private-accumulator variant is a separate ulp-scope declaration |
 
 ### A2 authorized discovery: retain per-RHS projection guesses
 
@@ -928,9 +931,273 @@ default change.
 4. C and D as one preserving workstream with a single wall-time
    nonregression at its end.
 5. E as one declared scope; F as separate route decisions.
+6. Workstream H (section 6) after C2: H1 and H3 first, H2 under its approval,
+   H4/H5 as bounded checks and tooling, H6 by removed pass, H7 check only.
 
 Each commit states its tier, its witnesses and what it did not change.
 Report costs as well as gains, keep failed attempts visible, and delete
 `target/tmp/<task>/` after the hashes and summaries are in the commit or in
 `docs/VALIDATION.md`. Never loosen a tolerance, change sample, rank, omission
 or separation semantics, or add a benchmark-specific fence to win a cell.
+
+## 6. Workstream H (2026-10-12): data-order cost, serial assembly and placement
+
+Johannes reviewed the October 12 rerun and the C2 adoption on 2026-10-12 and
+authorized this workstream. He approved the dense three-FE route prototype
+(H2) and the declared ulp-scope change in H1 step c. Everything else below is
+arithmetic-preserving or tooling. The order is by expected general gain per
+unit of risk; H1 and H3 come first because each removes a serial cost that
+grows with the data rather than with the worker count.
+
+### Facts added on 2026-10-12
+
+The October 12 rerun (`fixest_benchmarks.md`, "Optimized rerun") moved every
+cell to a slower host, so only paired fixest/fereg ratios are comparable.
+Dense two-FE PPML improved from 0.502 to 0.563 at 4M rows; dense three-FE OLS
+did not move (0.530 to 0.510 at 4M, 0.745 to 0.710 at 1M) and is now the
+largest relative gap. It runs the same three-FE LSMR route as the 16M-row
+fixed64 holdout (fereg 20.441 s against fixest 7.427 s at four workers).
+In that holdout the projection phase grows 36.4x for 16x rows while the LSMR
+iteration count falls from four to three; every other phase grows linearly.
+
+Reading the pinned `within` revision `297f32d9` explains the signature.
+`Design::build` (`crates/within/src/domain.rs`) picks the term with the most
+coefficients as dominant (`max_by_key`, so ties go to the last term) and, when
+its codes are not sorted in caller order, locality-sorts the whole frame
+through the serial `ObservationFrame::gather`. `Solver::solve_rhs` then runs
+`permute_obs_in` on every right-hand side and `permute_obs_out` on every
+demeaned result, both serial indexed loops over N. The sort exists to enable
+the `SortedCoalesced` scatter kernel, but `ScatterStrategy::pick`
+(`operator/design/scatter.rs`) uses that kernel only when a term has at least
+`SCATTER_LOCAL_THRESHOLD = 100,000` coefficients; smaller terms use the
+thread-local `Fold` kernel whether sorted or not. For the fixed64 holdout
+(three 64-level effects with irregular group sizes) the sort therefore buys
+nothing and costs a near-random 128 MB permutation per column plus two
+serial random passes per right-hand side per solve. With `deterministic` off,
+fereg's explicit route (`fe/lsmr_batch.rs::solve_batch`) also rebuilds the
+`Solver`, and so the sort, on every call; the prepared Fast route retains it.
+AKM inputs are sorted by the dominant worker factor and skip the sort, and the
+dense campaign design's dominant factor changes level only every 10,000 rows,
+so its permutation is block-wise and cheap. That is why the dense three-FE gap
+needs H2 rather than H1.
+
+Other serial passes per right-hand side in `within::Solver::solve_rhs`:
+the finite check, `weighted_rhs`, the demeaned subtraction, `vec_norm`
+(twice per solve), the `true_residual` subtraction and the batch
+concatenation `demeaned.extend_from_slice`. The LSMR kernels themselves
+(`schwarz-precond/src/lsmr/bidiag.rs`) are chunked and fix their association,
+so they are not the problem.
+
+For dense two-FE PPML the A3 panel already found the cost: forced implicit
+geometry saved 7.9 s of 18.4 s at 4M/16 workers and 1.08 s at 1M because the
+explicit canonical geometry's neighbour-pair assembly
+(`ols/canonical_products.rs::build`, the `for g in 0..p` loop over `touched`
+pairs) is serial. No cost model is needed to remove a serial loop.
+
+Two measurement defects also surfaced. The RRUNTIME load clock for the same
+1M AKM input on one node reads 0.443/0.621/0.605/0.486 s at 1/4/8/16 workers;
+a serial SPI transfer should not depend on the worker count, which points at
+C1's overlapped factorization oversubscribing the affinity mask by one thread.
+And `bench/campaign.py::physical_cpus` takes one CPU per physical core in
+`/proc/cpuinfo` order without grouping by socket, so a four-worker fit on a
+two-socket node can straddle sockets; one-to-four-worker speedups collapsed
+for both tools on the October 12 host (fereg 1.19x, fixest 1.48x).
+
+### H1. within locality sort and per-solve permutation (first)
+
+Confirm, then fix, in this order. Steps a, b, d, e and f are
+arithmetic-preserving; step c is the approved ulp-scope change.
+
+1. Confirm (half a day, at most twelve fits). On the frozen 16M fixed64 input
+   at 4 and 28 workers, run as-is and pre-sorted by the dominant factor
+   (report which factor `within` selects and whether it is sorted). Sorting
+   rows permutes the sample: coefficients must agree within replay tolerance
+   and discrete decisions must be identical. Capture `time_setup`/`time_solve`
+   and add trace-only clocks around `permute_obs_in`, `permute_obs_out` and
+   `ObservationFrame::gather` in a diagnostic build. Count `Solver`
+   constructions per fit (`BorrowedLsmrPrepared` already counts `builds` and
+   `batches`). Controls: 1M fixed64 as-is and sorted, and 4M three-dense.
+   A gap under 20% at 16M refutes the hypothesis: record it and skip to H2.
+2. a. Parallelize `permute_obs_in`, `permute_obs_out` and the frame gather
+   with chunked parallel iterators. Pure data movement, no reduction.
+3. b. Parallelize the other serial per-RHS passes listed above that carry no
+   reduction (finite check, `weighted_rhs`, subtractions, concatenation).
+   `vec_norm` is a reduction: leave it serial or move it under the H1c
+   declaration with fixed leaves.
+4. c. Skip the locality sort when it cannot change the scatter kernel: sort
+   only when the dominant term has at least `SCATTER_LOCAL_THRESHOLD`
+   coefficients. The reproducible (`StableAdjoint`) path builds its own
+   per-level row index and saves that index for sorted terms, so weigh the
+   permutation cost against that saving with the same threshold rather than a
+   separate rule. The row order seen by the `Fold` kernel changes, so
+   per-level summation order changes:
+   declared ulp scope on the projected columns, FE coefficients and
+   everything downstream, with the existing independent certificates and
+   replay witnesses, all discrete decisions exact. Express the rule in
+   coefficients, never in row counts. Johannes approved this change on
+   2026-10-12.
+5. d. Build the `Solver` once per fit on fereg's non-deterministic narrow
+   path (`fe/lsmr_batch.rs::solve_batch` and the explicit `absorb_lsmr`
+   route), as the prepared path already does; charge the retained bytes to
+   the existing admission.
+6. e. PPML three-FE (`ppml/categorical_lsmr.rs`) rebuilds `Solver::new` from
+   effects whenever weights change, which re-sorts and re-permutes the frame.
+   Add a `within` entry point that takes a prebuilt `Design` (or borrows one)
+   so only the weight-dependent preconditioner is rebuilt.
+7. f. The explicit route passes `Some(weights)` even for unit weights, so
+   `within` multiplies by `sqrt(1.0)` on every operator application and runs
+   `weighted_rhs` per RHS. Pass `None` when every weight is exactly 1.0, as
+   the prepared route's `BorrowedMapWeights::Unit` already does. Exact.
+
+`within` is a separate repository; follow its tests and conventions, then
+integrate through a pinned revision bump in `crates/fereg-core/Cargo.toml`.
+Measure on the 16M input at 4 and 28 workers, the 1M fixed64 and AKM controls,
+and the twenty frozen standard workloads at the workstream boundary.
+
+### H2. Dense three-FE route prototype (approved 2026-10-12)
+
+Johannes approved a bounded prototype: an alternating-projection (MAP) attempt
+for designs whose centred pair-incidence Frobenius contraction bound (the F2
+geometry diagnostic, 21 ms, bounds 1.9e-16 and 1.8e-17 on the frozen dense
+cases, vacuous on sparse) certifies fast convergence, with LSMR fallback under
+the unchanged shared work budget and the existing final-residual certificate.
+Before code: freeze the rule (bound threshold expressed as a predicted sweep
+count, not a case list), the affected numerical fields (projected columns, FE
+coefficients, coefficients, covariance, fit statistics; sample, rank,
+omission and separation exact), the independent witnesses (explicit
+projection oracle on synthetic designs, fereg-oracle dense comparisons, the
+retained F panel inputs) and the budget (dense 1M/4M and sparse 1M at 1/4/16
+workers, two pairs each, 120 s per fit, 2,400 s total, no retry). Sparse must
+stay on LSMR and must not pay more than the geometry's 21 ms. Expected gain
+from the F panel: dense 4M at one worker 16.803 to 12.919 s, at sixteen
+4.814 to 3.519 s. That alone does not reach fixest's 4.224 s at four
+workers; report what remains after the prototype so the next decision is
+informed.
+
+### H3. Parallel neighbour-pair assembly for canonical products
+
+In `ols/canonical_products.rs::build`, the explicit geometry accumulates each
+unordered right-level pair `(h, j)` of every left level `g` into four cells of
+a symmetric component matrix, serially, in `g` order. Parallelize while
+preserving each cell's summation order:
+
+1. Partition target rows `h` across lanes. Each lane runs the same `g` loop
+   and the same `touched`/`totals` scan (O(N) integer work per lane) but only
+   emits the pairs whose owning cell lies in its range. Off-diagonal cells
+   `(h, j)` with `h < j` belong to `h`'s lane; diagonal cells `(h, h)` are
+   accumulated by `h`'s lane by visiting pairs `(i, h)` for `i < h` and then
+   `(h, j)` for `j > h`, in the serial loop's order. Each pair is evaluated at
+   most three times; per-cell order and bits are unchanged. Mirror the lower
+   triangle after assembly as the serial code does.
+2. If the redundant evaluation costs more than it saves at low worker counts,
+   the alternative is per-lane private accumulators reduced in fixed leaf
+   order. That reassociates and is a separate declared ulp-scope item.
+
+The union-find and weight/mass loops in the same function are serial O(N)
+and secondary. This applies to every canonical call in a PPML fit, ordinary
+frames and strict, and to OLS canonical products. Expected from the A3 panel:
+dense two-FE PPML 4M at sixteen workers from 18.4 s toward the forced-implicit
+10.9 s, and about 1 s at 1M. The stopped A3 cost-model calibration stays
+stopped; this item needs no selector.
+
+### H4. C1 overlap oversubscription (Stata-side A/B)
+
+On one SCC node with the frozen 1M AKM OLS input, alternate overlap on and off
+at 1, 4 and 16 workers through `bench/campaign_stata.do`, five pairs per
+cell, same affinity mask for both arms; report RRUNTIME rows 18 to 21. If
+load inflates with overlap at low worker counts, run the overlapped
+factorization on `workers - 1` lanes so Stata's main thread keeps a core, or
+gate the overlap on spare cores in the resolved affinity mask. General
+resource rule, arithmetic-preserving. If load does not inflate, record that
+the clock pattern was host noise and stop. One day cap.
+
+### H5. Campaign placement (tooling)
+
+Group `physical_cpus()` by `physical id` so a fit's cores come from one
+socket whenever `threads` fits in a socket, bind memory to that node
+(`numactl --membind` or equivalent), apply the same mask to both arms, and
+record `lscpu`, the mask and the THP setting in the observations. Rerun only
+the AKM OLS and PPML scaling cells at 1/4/8/16 workers on one node and report
+the new speedups for both tools. No runtime change.
+
+### H6. Data preparation and Stata-side passes
+
+An inventory of every O(N) pass on the default OLS Fast path (three
+intercept effects, four controls, no outputs) was taken on 2026-10-12 by
+reading `stata/`, `plugin/stata_bridge.c`, `crates/fereg-plugin/src/estimate.rs`,
+`numeric_pipeline.rs` and the `fereg-core` preparation and fit modules. The
+Stata side runs one `marksample` pass and one `e(sample)` record compaction;
+the ado is not where the Stata-side seconds go. The serial cost at load is
+the per-element transfer: `fereg_spi_vdata_rows` issues one `_stata_->vdata`
+call per element on Stata's main thread (8N calls here), with one worker
+transposing tiles and the preparation team running factorization alongside
+(C1). That transfer cannot be parallelized, which is why H4 matters.
+
+Redundant or serial passes after loading, each a pure predicate or copy and
+therefore arithmetic-preserving to remove or chunk:
+
+1. `PreparedOlsLoadHint::into_matching_sources` (`ols/prepared.rs`)
+   re-validates the codes the hint itself produced in the same call: a serial
+   identity scan of the row map plus one serial pass per FE comparing codes
+   with canonical values. Skip when the hint is consumed by its producer.
+2. `validate_numeric_sample` (`prepared_categorical_data.rs`) runs about
+   five serial passes (outcome finiteness, regressor finiteness, drop-reason
+   count, row-map monotonicity and bounds) that duplicate the parallel
+   `is_full_retained_unweighted_sample` scan on an identity sample.
+   `numeric_sources_are_finite` (`prepared_rhs.rs`) is serial below eight
+   regressors; partition by rows instead of by column.
+3. The same immutable codes and membership are validated three times by
+   `ValidatedBorrowedInterceptSource::new`: at topology transfer, at
+   `ValidatedFinalizedTopology::new`, and again in `topology_dof.rs` for the
+   absorbed DoF. Validate once and carry a receipt.
+4. `project_intercepts` (`fe/borrowed_map.rs`) rescans the N x K bank for
+   finiteness serially at solver entry, after the parallel preparation scan
+   and the bitwise RHS comparison already covered it.
+5. `take_full_retained_unweighted_sample` materializes an identity row map
+   (8N bytes) and a zeroed drop-reason vector serially although an identity
+   axis type exists; `invalid_shadow_observations` then re-checks the
+   identity in parallel at publication.
+6. Serial zero-fills that the next parallel pass overwrites: the membership
+   `observations.resize(N, 0)` in `parallel_level_index`, and the candidate
+   marker fill whose only consumer is one `.all()`.
+7. The three-FE LSMR result carries no residual norms (`attach_ols_norms` in
+   `fe/session.rs` serves only general and categorical bindings), so
+   `dense_finite_inputs` recomputes six within norms, one serial N pass per
+   column. Attach norms from the solve or certificate pass with the same
+   kernel so the bits are unchanged.
+
+Serial compensated reductions remain in the post-solve path: the normalized
+intercept mean, the intercept score certificate, TSS and RSS (about six serial
+N passes), and three serial union-finds for the pairwise mobility DoF. Chunking
+the reductions reassociates and belongs to a ulp-scope declaration; the
+union-finds are integer work and exact under any order but need a parallel
+structure, so they are deferred unless the 16M profile shows them.
+
+Memory: `y` and the controls are held twice (column bank and row-major RHS),
+and the FE f64 columns stay allocated after factorization alongside their u32
+codes and usize membership. Freeing the FE f64 columns once validated saves
+24N bytes at no arithmetic cost. At 16M rows a serial sequential pass costs
+roughly 20 to 40 ms, so items 1 to 7 together are on the order of half a
+second to a second, general and cheap rather than decisive. Take them after
+H1 and H3, each as a small preserving commit with exact replay.
+
+### H7. Small-input fixed cost (check only)
+
+The 100k cells lost ground in the October 12 rerun (AKM OLS paired ratio
+1.954 to 1.270, AKM PPML 2.003 to 1.553) while fixest's times barely moved.
+One bounded Stata-side A/B of the current plugin against the October 10
+plugin on one host at 100k rows decides whether this is host noise or added
+per-call cost from C1/C2/E1 at small N. Report; do not tune.
+
+### Evidence and stop rules for H
+
+`./scripts/run_tests.sh` and `scripts/run_plugin_replay.sh` on every runtime
+change; zero exact replay differences and unchanged solver signatures for
+preserving steps; declared fields with independent witnesses for H1c and H2;
+`scripts/check_complexity.py --compare-production REV`. Wall-time
+nonregression on the twenty frozen Mac workloads once at the workstream
+boundary. Results to `bench/results/h-20261013-*.json` under 300 KB each,
+prose to `VALIDATION.md` and `fixest_benchmarks.md`, decisions here. Task
+outputs under `target/tmp/h-<item>/`, deleted before reporting. Phase caps
+are hard; after ten substantive unsuccessful repairs or one working day on
+one blocker, record the reproducer and ask Johannes.
