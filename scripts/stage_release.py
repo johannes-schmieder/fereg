@@ -383,7 +383,8 @@ def selected_plugins(review_platforms: Optional[tuple[str, ...]]) -> tuple[str, 
 def filter_package(staging: Path, plugin_names: tuple[str, ...]) -> None:
     omitted = set(EXPECTED_PLUGINS) - set(plugin_names)
     package = staging / "fereg.pkg"
-    excluded = {f"f {name}{suffix}" for name in omitted for suffix in ("", ".sha256")}
+    excluded = {f"{directive} {name}{suffix}" for name in omitted
+                for suffix in ("", ".sha256") for directive in ("f", "F")}
     lines = package.read_text(encoding="utf-8").splitlines(keepends=True)
     package.write_text("".join(line for line in lines if line.strip() not in excluded),
                        encoding="utf-8")

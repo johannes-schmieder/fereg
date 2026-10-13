@@ -13,7 +13,7 @@ f feppml.ado
 f _fereg_ppml.ado
 f _fereg_estimate_ppml.ado
 f _fereg_ppml_result_mata.ado
-f _fereg_ppml_result_mata.json
+F _fereg_ppml_result_mata.json
 f _fereg_ppml_validation_error.mo
 f _fereg_ppml_validate_result.mo
 f _fereg_ppml_post_scalars.mo
@@ -25,12 +25,12 @@ f fereg.sthlp
 f feppml.sthlp
 f fereg_parse.sthlp
 f fereg_postestimation.sthlp
-f fereg-LICENSE.txt
-f fereg-THIRD-PARTY-NOTICES.txt
-f fereg-SOURCE.txt
+F fereg-LICENSE.txt
+F fereg-THIRD-PARTY-NOTICES.txt
+F fereg-SOURCE.txt
 f fereg_windows.plugin
-f fereg_windows.plugin.sha256
+F fereg_windows.plugin.sha256
 f fereg_linux.plugin
-f fereg_linux.plugin.sha256
+F fereg_linux.plugin.sha256
 f fereg_macos.plugin
-f fereg_macos.plugin.sha256
+F fereg_macos.plugin.sha256

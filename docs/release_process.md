@@ -10,6 +10,12 @@ Build the platform plugin with `scripts/build_macos.sh`, `build_linux.sh` or
 checksum. Run scientific, transaction and installed-package checks for the actual
 artifact before distributing a development package. Retain explicit platform gaps.
 
+Use uppercase `F` package directives for the license texts, source link, JSON
+binding and SHA-256 files. Stata otherwise treats those suffixes as ancillary
+files and omits them from `net install`; see the
+[Stata net manual](https://www.stata.com/manuals/rnet.pdf). Installation checks
+must verify their presence and bytes in the isolated PLUS directory too.
+
 `scripts/stage_release.py` stages a deterministic archive with one plugin per
 included platform, production Stata files, checksums, source identity, dependency
 audit (receipt written by `scripts/run_dependency_audit.py`), SBOM and licenses.

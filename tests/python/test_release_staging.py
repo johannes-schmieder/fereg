@@ -240,10 +240,16 @@ class ReleaseStagingTests(unittest.TestCase):
                 package = archive.read(prefix + "fereg.pkg").decode()
                 sbom = json.loads(archive.read(prefix + "SBOM.spdx.json"))
                 for line in package.splitlines():
-                    if line.startswith("f "):
+                    if line.startswith(("f ", "F ")):
                         self.assertIn(prefix + line[2:], archive.namelist())
+                for name in ("fereg-LICENSE.txt", "fereg-THIRD-PARTY-NOTICES.txt",
+                             "fereg-SOURCE.txt", "_fereg_ppml_result_mata.json",
+                             "fereg_macos.plugin.sha256"):
+                    self.assertIn(f"F {name}", package.splitlines())
                 self.assertNotIn("f fereg_linux.plugin", package)
                 self.assertNotIn("f fereg_windows.plugin", package)
+                self.assertNotIn("F fereg_linux.plugin.sha256", package)
+                self.assertNotIn("F fereg_windows.plugin.sha256", package)
                 self.assertEqual(manifest["included_platforms"], ["macos"])
                 self.assertEqual(manifest["missing_platforms"], ["linux", "windows"])
                 self.assertNotIn("review_only", manifest)
@@ -258,7 +264,7 @@ class ReleaseStagingTests(unittest.TestCase):
             output = root / "local"
             stage_local_install.stage(ROOT, plugins, output, "macos")
             for line in (output / "fereg.pkg").read_text().splitlines():
-                if line.startswith("f "):
+                if line.startswith(("f ", "F ")):
                     self.assertTrue((output / line[2:]).is_file(), line)
             self.assertFalse((output / "fereg_linux.plugin").exists())
             with self.assertRaisesRegex(RuntimeError, "already exists"):
