@@ -134,7 +134,20 @@ worker-firm rows are collapsed. A fixed CMG cycle receives component-centered
 firm residuals and zero auxiliary loads. Restriction and firm-component centering
 produce the outer preconditioned residual, used in every PCG energy/direction
 update. The operator bank is reused for this residual after its Schur product
-is consumed. An explicit request has no MAP fallback, does not reuse historical
+is consumed. The session validates the explicit request eagerly but builds the
+hierarchy only after an initial requested-tolerance certificate fails. It admits
+the construction alongside the retained owner and any earlier norm handoff,
+then reuses that hierarchy across projection blocks. Active columns are packed
+into bounded vertex-major tiles for fixed-cycle matrix and transfer traversals;
+converged columns do not consume cycles. A projection with one original RHS uses
+an admitted scalar workspace, including when it follows a wider projection in
+the same session. This choice stays fixed throughout the projection; compacting
+a multi-RHS projection to one active column does not switch its cycle path.
+Component summation is fused with
+gathering, and output centering with scattering. Direction updates use the
+ordinary parallel stage policy. A half-tolerance proposal is certified first;
+one stricter residual correction is allowed within the same iteration budget.
+An explicit request has no MAP fallback, does not reuse historical
 PPML weights and never changes the automatic route. The current support envelope
 and numerical scope are in [SPEC](SPEC.md#solver-support-and-dispatch).
 

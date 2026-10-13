@@ -5983,6 +5983,15 @@ fn adaptive_ols_schur_preserves_weighted_contrasts_across_frames_and_widths() {
 
 #[test]
 fn adaptive_ols_schur_correction_preserves_scales_coefficients_and_budget() {
+    check_adaptive_schur_correction(false);
+}
+
+#[test]
+fn cmg_schur_correction_preserves_scales_coefficients_and_budget() {
+    check_adaptive_schur_correction(true);
+}
+
+fn check_adaptive_schur_correction(cmg_schur: bool) {
     let left_codes = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2];
     let right_codes = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
     let left_index = LevelIndex::from_codes(&left_codes, 3).unwrap();
@@ -6006,6 +6015,9 @@ fn adaptive_ols_schur_correction_preserves_scales_coefficients_and_budget() {
                     let mut owner =
                         ReusableCategoricalMapAbsorber::new(design, 3, workers).unwrap();
                     owner.retain_coefficients = true;
+                    if cmg_schur {
+                        owner.request_cmg_schur(4, workers, None, 0).unwrap();
+                    }
                     let capacities = owner.capacities();
                     let mut repeated = None;
                     for _ in 0..2 {
@@ -6029,7 +6041,11 @@ fn adaptive_ols_schur_correction_preserves_scales_coefficients_and_budget() {
                         assert_eq!(TWO_FE_CERTIFICATE_FAILURES.get(), 0);
                         let (residual, report, coefficients) = fit.into_full_parts();
                         assert!(report.certified());
-                        assert_eq!(report.iterations, 3);
+                        if cmg_schur {
+                            assert!(report.iterations > 0 && report.iterations <= 4);
+                        } else {
+                            assert_eq!(report.iterations, 3);
+                        }
                         assert!(!report.fallback_used);
                         assert_eq!(owner.capacities(), capacities);
                         let coefficients = coefficients.unwrap();
@@ -6103,7 +6119,7 @@ fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
     let input =
         DenseMatrix::from_columns(&[vec![11., -9., 10., -10., 10., -10., 10., -10., 10., -10.]])
             .unwrap();
-    // caller: 0 ordinary OLS, 1 final residual, 2 PPML.
+    // caller: 0 ordinary OLS, 1 final residual, 2 PPML, 3/4 CMG ordinary/final.
     for (caller, tolerance, cap, failures, breakdown, corrections, succeeds) in [
         (0, 1e-2, 4, 0, false, 0, true),
         (0, 1e-2, 4, 2, false, 1, true),
@@ -6113,11 +6129,22 @@ fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
         (0, 1e-15, 20, 1, false, 0, true),
         (1, 1e-2, 4, 1, false, 0, true),
         (2, 1e-2, 4, 1, false, 0, true),
+        (3, 1e-2, 4, 0, false, 0, true),
+        (3, 1e-2, 4, 1, false, 1, true),
+        (3, 1e-2, 4, 2, false, 1, false),
+        (3, 1e-2, 1, 1, false, 0, false),
+        (3, 1e-2, 4, 0, true, 0, false),
+        (3, 1e-15, 20, 1, false, 0, false),
+        (4, 1e-2, 4, 1, false, 1, true),
+        (4, 1e-2, 4, 2, false, 1, false),
     ] {
         let design =
             BorrowedInterceptFeDesign::new(10, sources.iter().map(|s| s.effect()).collect())
                 .unwrap();
         let mut owner = ReusableCategoricalMapAbsorber::new(design, 1, 1).unwrap();
+        if caller >= 3 {
+            owner.request_cmg_schur(4, 1, None, 0).unwrap();
+        }
         let map = MapConfig {
             tolerance,
             max_iterations: cap,
@@ -6133,7 +6160,7 @@ fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
                 BorrowedMapWeights::Unit,
                 input.clone().into(),
                 map,
-                caller == 1,
+                caller == 1 || caller == 4,
             )
         };
         TWO_FE_CERTIFICATE_FAILURES.set(0);
@@ -6146,6 +6173,183 @@ fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
         assert_eq!(TWO_FE_CORRECTIONS.get(), corrections);
         if let Ok(result) = result {
             assert!(result.report().iterations <= cap);
+            assert!(!result.report().fallback_used);
+        } else if caller >= 3 {
+            assert_eq!(result.unwrap_err().code, ErrorCode::NonConvergence);
         }
+    }
+}
+
+#[test]
+fn cmg_schur_direction_parallel_update_matches_separate_scalar_operations() {
+    for workers in [1, 4] {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+            .install(|| {
+                for (levels, stride, rhs_count) in [(17, 5, 3), (65_537, 9, 7)] {
+                    let ratio: Vec<_> = (0..rhs_count).map(|r| (r + 1) as f64 / 7.0).collect();
+                    let active: Vec<_> = (0..rhs_count)
+                        .map(|r| if r % 3 == 0 { 0.0 } else { -1.0 })
+                        .collect();
+                    let direction: Vec<_> = (0..levels * stride)
+                        .map(|i| (i as f64 * 0.27).sin())
+                        .collect();
+                    let preconditioned: Vec<_> = (0..levels * stride)
+                        .map(|i| (i as f64 * 0.49).cos())
+                        .collect();
+                    let mut expected = direction.clone();
+                    for level in 0..levels {
+                        for rhs in 0..rhs_count {
+                            let i = level * stride + rhs;
+                            expected[i] = if active[rhs] == 0.0 {
+                                0.0
+                            } else {
+                                let product = ratio[rhs] * direction[i];
+                                preconditioned[i] + product
+                            };
+                        }
+                    }
+                    let plan = crate::parallel::StagePlan::current(
+                        levels as u128 * rhs_count as u128,
+                        levels,
+                    );
+                    assert_eq!(plan.lanes > 1, workers > 1 && levels > 17);
+                    for _ in 0..2 {
+                        let mut actual = direction.clone();
+                        cmg_pcg_direction(
+                            stride,
+                            &ratio,
+                            &active,
+                            &preconditioned,
+                            &mut actual,
+                            plan,
+                        )
+                        .unwrap();
+                        assert_eq!(
+                            actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                            expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+                        );
+                    }
+                }
+            })
+            .unwrap();
+    }
+}
+
+#[test]
+fn cmg_schur_hierarchy_is_lazy_admitted_and_reused() {
+    let first = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2];
+    let second = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
+    let indices = [
+        LevelIndex::from_codes(&first, 3).unwrap(),
+        LevelIndex::from_codes(&second, 3).unwrap(),
+    ];
+    let sources = [
+        ValidatedBorrowedInterceptSource::new(&first, 3, &indices[0]).unwrap(),
+        ValidatedBorrowedInterceptSource::new(&second, 3, &indices[1]).unwrap(),
+    ];
+    let design = || {
+        BorrowedInterceptFeDesign::new(10, sources.iter().map(|s| s.effect()).collect()).unwrap()
+    };
+    // Opposite values within every duplicated worker/firm cell give exact
+    // zero FE moments while keeping both RHS norms positive.
+    let orthogonal = DenseMatrix::from_columns(&[
+        vec![1., -1., 2., -2., 3., -3., 4., -4., 5., -5.],
+        vec![4., -4., 3., -3., 2., -2., 1., -1., 6., -6.],
+    ])
+    .unwrap();
+    let mut nonorthogonal = orthogonal.clone();
+    nonorthogonal[(0, 0)] += 1.0;
+    nonorthogonal[(0, 1)] -= 2.0;
+    let mut refused = ReusableCategoricalMapAbsorber::new(design(), 2, 1).unwrap();
+    refused
+        .request_cmg_schur(
+            4,
+            1,
+            Some(FeSolverMemoryBudget {
+                execution_bytes: 0,
+                usable_bytes: 0,
+            }),
+            0,
+        )
+        .unwrap();
+    let certified = refused
+        .absorb_ols(
+            BorrowedMapWeights::Unit,
+            orthogonal.clone().into(),
+            config(),
+            false,
+        )
+        .unwrap();
+    assert_eq!(certified.residualized(), &orthogonal);
+    assert_eq!(certified.report().iterations, 0);
+    assert!(certified.report().certified());
+    assert_eq!(refused.cmg_schur_bytes().unwrap(), 0);
+    assert_eq!(refused.cmg_schur_peak().unwrap(), None);
+    let error = refused
+        .absorb_ols(
+            BorrowedMapWeights::Unit,
+            nonorthogonal.clone().into(),
+            config(),
+            false,
+        )
+        .unwrap_err();
+    assert_eq!(error.code, ErrorCode::Allocation);
+    assert_eq!(refused.cmg_schur_bytes().unwrap(), 0);
+    assert_eq!(refused.cmg_schur_peak().unwrap(), None);
+
+    let mut admitted = ReusableCategoricalMapAbsorber::new(design(), 2, 1).unwrap();
+    admitted
+        .request_cmg_schur(
+            4,
+            1,
+            Some(FeSolverMemoryBudget {
+                execution_bytes: 0,
+                usable_bytes: 1 << 30,
+            }),
+            0,
+        )
+        .unwrap();
+    let first = admitted
+        .absorb_ols(
+            BorrowedMapWeights::Unit,
+            nonorthogonal.clone().into(),
+            config(),
+            false,
+        )
+        .unwrap();
+    assert!(first.report().certified());
+    let bytes = admitted.cmg_schur_bytes().unwrap();
+    let peak = admitted.cmg_schur_peak().unwrap();
+    assert!(bytes > 0 && peak.is_some());
+    let hierarchy = std::ptr::from_ref(
+        admitted
+            .two_fe_pcg
+            .as_ref()
+            .unwrap()
+            .cmg_schur
+            .as_ref()
+            .unwrap()
+            .as_ref(),
+    );
+    for input in [orthogonal, nonorthogonal] {
+        let repeated = admitted
+            .absorb_ols(BorrowedMapWeights::Unit, input.into(), config(), false)
+            .unwrap();
+        assert!(repeated.report().certified());
+        assert_eq!(admitted.cmg_schur_bytes().unwrap(), bytes);
+        assert_eq!(admitted.cmg_schur_peak().unwrap(), peak);
+        assert_eq!(
+            std::ptr::from_ref(
+                admitted
+                    .two_fe_pcg
+                    .as_ref()
+                    .unwrap()
+                    .cmg_schur
+                    .as_ref()
+                    .unwrap()
+                    .as_ref(),
+            ),
+            hierarchy,
+        );
     }
 }

@@ -192,7 +192,8 @@ plugin, harness, case and benchmark-script hashes, plus Git HEAD and the dirty
 flag when available. Archives may supply `.fereg-source.json`; its hash and JSON
 declaration are retained without treating them as a verified clean checkout.
 Generation defaults to tolerance `1e-8`; every timed arm preserves that same
-input tolerance. One single-worker LSMR reference at `1e-12` precedes each input.
+input tolerance. A single-worker LSMR reference at `1e-12` precedes each input
+for each supplied plugin; the references must agree scientifically.
 The small prerequisite also checks that reference and every tested arm against
 independent dense dummy OLS and HC1 covariance, including the stronger CMG
 absolute residual/fitted-value bound. Larger cases compare with strict LSMR;
@@ -214,6 +215,46 @@ peak process RSS, and paired summaries. Phase clocks may overlap; do not add
 them as an elapsed-time decomposition. Run on a quiet host after builds, tests
 and other agent workloads finish. SCC observations do not qualify Mac speed.
 
+For an optimization against a frozen parent, `--baseline-plugin` adds
+`baseline-cmgschur4`, `baseline-cmgschur5` and `baseline-cmgschur6` to the existing
+candidate arms. Both artifacts are hash-bound at start/end and in each record.
+`candidate_over_baseline` compares matching cutoffs; values below one favor the
+candidate. Each artifact must repeat exactly at a fixed worker count, while
+cross-artifact numerical differences use the existing scientific envelopes and
+exact discrete decisions. Every selected arm uses the same frozen input bytes.
+Orders rotate and reverse in pairs, including a two-arm-only comparison.
+
+Optional `--extra-cases wide orthogonal` leaves the original four generated
+case files unchanged and adds a 100,000-row case with 16 controls containing
+different worker/firm FE components, plus a 600-row dense-oracle `nocons` case
+whose outcome and four controls are already exactly FE-orthogonal. Omitting
+the reported constant keeps its projection RHS batch entirely orthogonal;
+the independent oracle retains the nuisance constant through full worker dummies.
+Four wide-case
+controls are also exactly orthogonal, so batch RHSs have different work needs.
+
+```sh
+python3 bench/cmgschur_cases.py --extra-cases wide orthogonal \
+  --output target/tmp/cmgschur-opt/cases
+python3 bench/cmgschur.py --plugin CANDIDATE.plugin --baseline-plugin PARENT.plugin \
+  --oracle target/tmp/cmgschur-opt/cases/oracle.case \
+  --cases target/tmp/cmgschur-opt/cases/short.case \
+          target/tmp/cmgschur-opt/cases/long.case \
+          target/tmp/cmgschur-opt/cases/weak.case \
+          target/tmp/cmgschur-opt/cases/wide.case \
+          target/tmp/cmgschur-opt/cases/orthogonal.case \
+  --threads 1 4 --timeout 90 --budget 1800 \
+  --output target/tmp/cmgschur-opt/local-panel
+```
+
+Declare any smaller arm set before running with `--arms`; for example,
+`--arms baseline-cmgschur4 cmgschur4` retains seven paired repetitions for a
+bounded Veneto parent comparison. Baseline labels require `--baseline-plugin`.
+The default still includes candidate `auto`/`cmg` comparisons. Removing those
+arms deliberately means the run makes no new comparison against them. Keep
+all outcomes when a budget expires; do not choose another panel after seeing
+its timings and combine it as though it were the originally declared panel.
+
 For a longer existing panel, run conversion and fitting on the host holding
 the data. Supply explicit numeric CSV column roles; `--regressors` is optional:
 
@@ -233,7 +274,8 @@ cap; keep the seven repetitions and all five arms. Conversion preserves supplied
 rows and outcomes without filtering or adjustment, rejects missing/nonfinite
 values, and records the source SHA256. Keep proprietary inputs, generated replay
 files and row outputs on their original local/SCC host. Collect only compact
-aggregate summaries and hashes. All outputs belong under `target/tmp/cmgschur/`;
+aggregate summaries and hashes. Outputs belong under `target/tmp/cmgschur/` or,
+for the optimization workstream, `target/tmp/cmgschur-opt/`;
 delete them after retaining reviewed aggregates and identities in committed
 evidence. Follow the cluster workflow when submitting SCC compute work.
 

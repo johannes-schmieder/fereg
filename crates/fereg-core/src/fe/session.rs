@@ -306,7 +306,7 @@ impl<'a> FeSession<'a> {
                     )?;
                     p.retain_coefficients = config.absorb.retain_coefficients;
                     if cmg_schur {
-                        owner.prepare_cmg_schur(&mut p, weights, bytes, config)?;
+                        owner.prepare_cmg_schur(&mut p, bytes, config)?;
                     }
                     owner.categorical = Some(p);
                 }
@@ -347,11 +347,14 @@ impl<'a> FeSession<'a> {
     fn prepare_cmg_schur(
         &mut self,
         p: &mut super::ReusableCategoricalMapAbsorber<'a>,
-        weights: BorrowedMapWeights<'_>,
         bytes: u128,
         config: crate::ols::PreparedOlsFitConfig,
     ) -> Result<()> {
-        let started = std::time::Instant::now();
+        // A prior certified block can have returned a norm handoff before the
+        // first hierarchy is needed. Cover that copy during lazy construction.
+        let parents = bytes
+            .checked_add(p.max_rhs() as u128 * 8)
+            .ok_or_else(|| allocation("cmgschur lazy parent admission overflows"))?;
         let budget = config
             .absorb
             .solver_memory_budget
@@ -359,27 +362,18 @@ impl<'a> FeSession<'a> {
                 Ok(crate::memory::FeSolverMemoryBudget {
                     execution_bytes: b
                         .execution_bytes
-                        .checked_add(bytes)
+                        .checked_add(parents)
                         .ok_or_else(|| allocation("cmgschur parent admission overflows"))?,
                     usable_bytes: b.usable_bytes,
                 })
             })
             .transpose()?;
-        let peak = p.enable_cmg_schur(
-            weights,
+        p.request_cmg_schur(
             config.absorb.cmg_schur_degree,
             config.execution.threads.resolved(),
             budget,
-        )?;
-        self.peak = self.peak.max(peak.with_retained(bytes)?);
-        self.admit(
-            bytes
-                .checked_add(p.cmg_schur_bytes()?)
-                .ok_or_else(|| allocation("cmgschur retained admission overflows"))?,
-            config.absorb,
-        )?;
-        self.setup_seconds += started.elapsed().as_secs_f64();
-        Ok(())
+            parents,
+        )
     }
 
     fn admit(&mut self, bytes: u128, config: super::AbsorbConfig) -> Result<()> {
@@ -765,6 +759,19 @@ impl<'a> FeSession<'a> {
                 .max(self.peak);
             CertifiedBorrowedMap::from_certified_parts(values, report)
         }?;
+        if let Some(peak) = self
+            .categorical
+            .as_ref()
+            .map(|p| p.cmg_schur_peak())
+            .transpose()?
+            .flatten()
+        {
+            let prior = self.peak;
+            self.peak = self.peak.max(peak);
+            if self.peak != prior {
+                self.norm_handoff_peak = None;
+            }
+        }
         if !final_residual {
             result = self.attach_ols_norms(result, admission)?;
         }

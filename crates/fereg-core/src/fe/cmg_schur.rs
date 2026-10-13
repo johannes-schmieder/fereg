@@ -7,9 +7,9 @@
 use std::time::Instant;
 
 use cmg::{
-    CmgOptions, CmgPreconditioner, CmgStorage, CmgStorageReport, CmgWorkspace,
+    CmgBatchWorkspace, CmgOptions, CmgPreconditioner, CmgStorage, CmgStorageReport, CmgWorkspace,
     ComponentBuildOptions, Laplacian, ParallelCmgPlan, ParallelExecutor, ParallelOptions,
-    ParallelRuntimeAllowance, PcgWorkspace,
+    ParallelRuntimeAllowance,
 };
 
 use crate::error::{allocation, invalid_argument, invalid_data, FeregError, Result};
@@ -19,14 +19,18 @@ use crate::memory::{vec_capacity_bytes, FeSolverMemoryBudget, SolverWorkspacePea
 use super::cmg::cmg_error;
 use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, LevelIndex};
 
+const MAX_BATCH_COLUMNS: usize = 4;
+
 pub(super) struct CmgSchurPreconditioner {
     preconditioner: CmgPreconditioner,
     plan: ParallelCmgPlan,
     executor: ParallelExecutor,
-    workspace: CmgWorkspace,
+    workspace: CmgBatchWorkspace,
+    scalar_workspace: Option<CmgWorkspace>,
     rhs: Vec<f64>,
     solution: Vec<f64>,
     components: FirmComponents,
+    batch_columns: usize,
     construction: SolverWorkspacePeak,
 }
 
@@ -36,6 +40,7 @@ impl CmgSchurPreconditioner {
         weights: BorrowedMapWeights<'_>,
         left_effect: usize,
         degree: usize,
+        rhs_capacity: usize,
         threads: usize,
         budget: Option<FeSolverMemoryBudget>,
     ) -> Result<Self> {
@@ -44,6 +49,7 @@ impl CmgSchurPreconditioner {
             weights,
             left_effect,
             degree,
+            rhs_capacity,
             threads,
             budget,
             CmgOptions::default(),
@@ -56,11 +62,16 @@ impl CmgSchurPreconditioner {
         weights: BorrowedMapWeights<'_>,
         left_effect: usize,
         degree: usize,
+        rhs_capacity: usize,
         threads: usize,
         budget: Option<FeSolverMemoryBudget>,
         options: CmgOptions,
     ) -> Result<Self> {
-        if design.effects().len() != 2 || left_effect > 1 || !(4..=6).contains(&degree) {
+        if design.effects().len() != 2
+            || left_effect > 1
+            || !(4..=6).contains(&degree)
+            || rhs_capacity == 0
+        {
             return Err(invalid_argument(
                 "CMG Schur requires two intercept effects and degree 4, 5 or 6",
             ));
@@ -72,6 +83,7 @@ impl CmgSchurPreconditioner {
         }
         crate::interrupt::checkpoint()?;
         let started = Instant::now();
+        let batch_columns = rhs_capacity.min(MAX_BATCH_COLUMNS);
         let parallel = ParallelOptions {
             threads,
             ..ParallelOptions::default()
@@ -98,6 +110,7 @@ impl CmgSchurPreconditioner {
             weights,
             left_effect,
             degree,
+            batch_columns,
             &executor,
             runtime_extra,
             &mut memory,
@@ -141,33 +154,25 @@ impl CmgSchurPreconditioner {
         let plan = ParallelCmgPlan::build_with_budget(&preconditioner, &executor, admitted)
             .map_err(cmg_error)?;
 
-        // The public PCG allocation bound includes the complete CMG workspace
-        // and additional vectors we do not need. Use its conservative coverage
-        // rather than the older, explicitly incomplete principal-array estimate.
-        let bound = PcgWorkspace::allocation_bytes(&preconditioner)
-            .map_err(cmg_error)?
-            .checked_add(bytes::<[f64; 2]>(graph.vertex_count())?)
-            .ok_or_else(|| allocation("CMG Schur apply workspace overflows"))?;
-        let parents = storage(&[&graph, &executor, &preconditioner, &plan])? + components.bytes();
-        memory.admit(parents + runtime_extra, bound)?;
-        let workspace = preconditioner.try_workspace().map_err(cmg_error)?;
-        let rhs = filled(graph.vertex_count(), 0.0)?;
-        let solution = filled(graph.vertex_count(), 0.0)?;
-        let actual = storage(&[&workspace, &rhs, &solution])?;
-        if actual > bound as u128 {
-            return Err(allocation("CMG Schur apply storage exceeds admission"));
-        }
-        // The caller retains this relatively large owner behind a Box. Admit
-        // that final allocation as well as the heap banks reachable from it.
-        memory.admit(
-            parents + actual + runtime_extra,
-            std::mem::size_of::<Self>(),
+        let ApplyWorkspace {
+            workspace,
+            scalar_workspace,
+            rhs,
+            solution,
+        } = build_apply_workspace(
+            &graph,
+            &preconditioner,
+            &executor,
+            &plan,
+            &components,
+            batch_columns,
+            runtime_extra,
+            &mut memory,
         )?;
-        memory.forecast(parents + actual + std::mem::size_of::<Self>() as u128)?;
         if crate::diagnostics::solver_trace_enabled() {
             let report = preconditioner.hierarchy().report();
             crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=cmgschur_setup|degree={degree}|workers={}|retained_workers={retained_workers}|firms={}|vertices={}|input_edges={input_edges}|edges={}|components={}|threads={}|parallel_operators={}|levels={}|hierarchy_vertices={:?}|hierarchy_nonzeros={:?}|repeats={:?}|graph_seconds={graph_seconds:.9}|hierarchy_seconds={hierarchy_seconds:.9}|setup_seconds={:.9}",
+                "FEREG_SOLVER_TRACE|phase=cmgschur_setup|degree={degree}|workers={}|retained_workers={retained_workers}|firms={}|vertices={}|input_edges={input_edges}|edges={}|components={}|threads={}|parallel_operators={}|batch_columns={batch_columns}|levels={}|hierarchy_vertices={:?}|hierarchy_nonzeros={:?}|repeats={:?}|graph_seconds={graph_seconds:.9}|hierarchy_seconds={hierarchy_seconds:.9}|setup_seconds={:.9}",
                 design.effects()[left_effect].n_levels(), components.labels.len(),
                 graph.vertex_count(), graph.edge_count(), components.sizes.len(),
                 executor.thread_count(), plan.operator_count(), report.vertex_counts().len(),
@@ -180,9 +185,11 @@ impl CmgSchurPreconditioner {
             plan,
             executor,
             workspace,
+            scalar_workspace,
             rhs,
             solution,
             components,
+            batch_columns,
             construction: memory.peak,
         })
     }
@@ -193,6 +200,7 @@ impl CmgSchurPreconditioner {
             &self.plan,
             &self.executor,
             &self.workspace,
+            &self.scalar_workspace,
             &self.rhs,
             &self.solution,
         ])? + self.components.bytes()
@@ -213,6 +221,7 @@ impl CmgSchurPreconditioner {
         stride: usize,
         rhs_count: usize,
         component_scales: Option<&[f64]>,
+        active: Option<&[f64]>,
     ) -> Result<()> {
         let firms = self.components.labels.len();
         let elements = firms
@@ -222,41 +231,178 @@ impl CmgSchurPreconditioner {
             || residual.len() != elements
             || output.len() != elements
             || component_scales.is_some_and(|scales| scales.len() != firms)
+            || active.is_some_and(|states| states.len() != rhs_count)
         {
             return Err(invalid_argument(
                 "CMG Schur batch dimensions are inconsistent",
             ));
         }
-        for rhs in 0..rhs_count {
-            crate::interrupt::checkpoint()?;
-            for firm in 0..firms {
-                let scale = component_scales.map_or(1.0, |scales| scales[firm]);
-                if !scale.is_finite() || scale <= 0.0 {
-                    return Err(invalid_data("CMG Schur component scale is invalid"));
-                }
-                self.rhs[firm] = residual[firm * stride + rhs] * scale;
-                if !self.rhs[firm].is_finite() {
-                    return Err(invalid_data("CMG Schur scaled residual is nonfinite"));
+        if active.is_some_and(|states| states.iter().any(|value| !value.is_finite())) {
+            return Err(invalid_data("CMG Schur activity state is nonfinite"));
+        }
+        // Negative activity is an underflow sentinel and remains active. Zero
+        // alone marks completion; stale operator values must not survive there.
+        if let Some(states) = active.filter(|states| states.contains(&0.0)) {
+            for (firm, row) in output.chunks_exact_mut(stride).enumerate() {
+                crate::interrupt::row_checkpoint(firm)?;
+                for (value, &state) in row.iter_mut().zip(states) {
+                    if state == 0.0 {
+                        *value = 0.0;
+                    }
                 }
             }
-            self.components.center(&mut self.rhs[..firms])?;
-            self.rhs[firms..].fill(0.0);
-            self.plan
-                .apply_compatible_into(
+        }
+        let vertices = self.rhs.len() / self.batch_columns;
+        let mut next_rhs = 0;
+        while next_rhs < rhs_count {
+            crate::interrupt::checkpoint()?;
+            let mut lanes = [0; MAX_BATCH_COLUMNS];
+            let mut columns = 0;
+            while next_rhs < rhs_count && columns < self.batch_columns {
+                if active.is_none_or(|states| states[next_rhs] != 0.0) {
+                    lanes[columns] = next_rhs;
+                    columns += 1;
+                }
+                next_rhs += 1;
+            }
+            if columns == 0 {
+                break;
+            }
+            let nonzero = self.components.gather(
+                residual,
+                stride,
+                &lanes[..columns],
+                component_scales,
+                &mut self.rhs[..firms * columns],
+            )?;
+            // A zero (including component-constant) submitted residual has an
+            // exactly zero projected image. Remove it before traversing CMG.
+            let live_columns = nonzero[..columns].iter().filter(|value| **value).count();
+            if live_columns < columns {
+                for firm in 0..firms {
+                    crate::interrupt::row_checkpoint(firm)?;
+                    let mut live = 0;
+                    for lane in 0..columns {
+                        if nonzero[lane] {
+                            self.rhs[firm * live_columns + live] = self.rhs[firm * columns + lane];
+                            live += 1;
+                        } else {
+                            output[firm * stride + lanes[lane]] = 0.0;
+                        }
+                    }
+                }
+                let mut live = 0;
+                for lane in 0..columns {
+                    if nonzero[lane] {
+                        lanes[live] = lanes[lane];
+                        live += 1;
+                    }
+                }
+                columns = live_columns;
+            }
+            if columns == 0 {
+                continue;
+            }
+            self.rhs[firms * columns..vertices * columns].fill(0.0);
+            if let Some(workspace) = self.scalar_workspace.as_mut().filter(|_| rhs_count == 1) {
+                self.plan.apply_compatible_into(
                     &self.preconditioner,
-                    &self.rhs,
-                    &mut self.solution,
+                    &self.rhs[..vertices],
+                    &mut self.solution[..vertices],
+                    workspace,
+                    &self.executor,
+                )
+            } else {
+                // The projection's original width fixes its arithmetic path.
+                // A compacted final active lane or one-column tile remainder
+                // of a multi-RHS projection still uses the batched cycle.
+                self.plan.apply_compatible_batch_into(
+                    &self.preconditioner,
+                    &self.rhs[..vertices * columns],
+                    &mut self.solution[..vertices * columns],
+                    columns,
                     &mut self.workspace,
                     &self.executor,
                 )
-                .map_err(cmg_error)?;
-            self.components.center(&mut self.solution[..firms])?;
-            for firm in 0..firms {
-                output[firm * stride + rhs] = self.solution[firm];
             }
+            .map_err(cmg_error)?;
+            self.components.scatter(
+                &self.solution[..firms * columns],
+                output,
+                stride,
+                &lanes[..columns],
+            )?;
         }
         Ok(())
     }
+}
+
+struct ApplyWorkspace {
+    workspace: CmgBatchWorkspace,
+    scalar_workspace: Option<CmgWorkspace>,
+    rhs: Vec<f64>,
+    solution: Vec<f64>,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_apply_workspace(
+    graph: &Laplacian,
+    preconditioner: &CmgPreconditioner,
+    executor: &ParallelExecutor,
+    plan: &ParallelCmgPlan,
+    components: &FirmComponents,
+    batch_columns: usize,
+    runtime_extra: u128,
+    memory: &mut Admission,
+) -> Result<ApplyWorkspace> {
+    let workspace_bound =
+        CmgBatchWorkspace::allocation_bytes(preconditioner, batch_columns).map_err(cmg_error)?;
+    // Capacity one already embeds the unchanged scalar workspace upstream.
+    // Wider sessions also retain one scalar workspace for projections whose
+    // original RHS count is one, independent of later lane compaction.
+    let scalar_bound = if batch_columns > 1 {
+        CmgBatchWorkspace::allocation_bytes(preconditioner, 1).map_err(cmg_error)?
+    } else {
+        0
+    };
+    let elements = graph
+        .vertex_count()
+        .checked_mul(batch_columns)
+        .ok_or_else(|| allocation("CMG Schur batch dimensions overflow"))?;
+    let bank_bytes = bytes::<[f64; 2]>(elements)?;
+    let bound = workspace_bound
+        .checked_add(scalar_bound)
+        .and_then(|bytes| bytes.checked_add(bank_bytes))
+        .ok_or_else(|| allocation("CMG Schur apply workspace overflows"))?;
+    let parents = storage(&[graph, executor, preconditioner, plan])? + components.bytes();
+    memory.admit(parents + runtime_extra, bound)?;
+    let workspace = CmgBatchWorkspace::try_new(preconditioner, batch_columns, workspace_bound)
+        .map_err(cmg_error)?;
+    crate::interrupt::checkpoint()?;
+    let scalar_workspace = if batch_columns > 1 {
+        Some(preconditioner.try_workspace().map_err(cmg_error)?)
+    } else {
+        None
+    };
+    let rhs = filled(elements, 0.0)?;
+    let solution = filled(elements, 0.0)?;
+    let actual = storage(&[&workspace, &scalar_workspace, &rhs, &solution])?;
+    if actual > bound as u128 {
+        return Err(allocation("CMG Schur apply storage exceeds admission"));
+    }
+    // The caller retains this relatively large owner behind a Box. Admit
+    // that final allocation as well as the heap banks reachable from it.
+    memory.admit(
+        parents + actual + runtime_extra,
+        std::mem::size_of::<CmgSchurPreconditioner>(),
+    )?;
+    memory.forecast(parents + actual + std::mem::size_of::<CmgSchurPreconditioner>() as u128)?;
+    Ok(ApplyWorkspace {
+        workspace,
+        scalar_workspace,
+        rhs,
+        solution,
+    })
 }
 
 struct Admission {
@@ -341,23 +487,100 @@ impl FirmComponents {
             + vec_capacity_bytes(&self.corrections)
     }
 
-    fn center(&mut self, values: &mut [f64]) -> Result<()> {
-        self.sums.fill(0.0);
-        self.corrections.fill(0.0);
-        for (&label, &value) in self.labels.iter().zip(values.iter()) {
-            neumaier_add(value, &mut self.sums[label], &mut self.corrections[label]);
-        }
-        for component in 0..self.sizes.len() {
-            self.sums[component] =
-                (self.sums[component] + self.corrections[component]) / self.sizes[component] as f64;
-            if !self.sums[component].is_finite() {
-                return Err(invalid_data("CMG Schur component mean is nonfinite"));
+    fn clear(&mut self, columns: usize) {
+        let elements = self.sizes.len() * columns;
+        self.sums[..elements].fill(0.0);
+        self.corrections[..elements].fill(0.0);
+    }
+
+    fn means(&mut self, columns: usize) -> Result<()> {
+        for (component, &size) in self.sizes.iter().enumerate() {
+            for lane in 0..columns {
+                let index = component * columns + lane;
+                self.sums[index] = (self.sums[index] + self.corrections[index]) / size as f64;
+                if !self.sums[index].is_finite() {
+                    return Err(invalid_data("CMG Schur component mean is nonfinite"));
+                }
             }
         }
-        for (&label, value) in self.labels.iter().zip(values.iter_mut()) {
-            *value -= self.sums[label];
-            if !value.is_finite() {
-                return Err(invalid_data("CMG Schur centered value is nonfinite"));
+        Ok(())
+    }
+
+    /// Gather and the first centering pass share one traversal. Each column's
+    /// Neumaier additions retain the original ascending-firm order.
+    fn gather(
+        &mut self,
+        residual: &[f64],
+        stride: usize,
+        lanes: &[usize],
+        scales: Option<&[f64]>,
+        target: &mut [f64],
+    ) -> Result<[bool; MAX_BATCH_COLUMNS]> {
+        let columns = lanes.len();
+        self.clear(columns);
+        for (firm, &label) in self.labels.iter().enumerate() {
+            crate::interrupt::row_checkpoint(firm)?;
+            let scale = scales.map_or(1.0, |scales| scales[firm]);
+            if !scale.is_finite() || scale <= 0.0 {
+                return Err(invalid_data("CMG Schur component scale is invalid"));
+            }
+            for (lane, &source) in lanes.iter().enumerate() {
+                let value = residual[firm * stride + source] * scale;
+                if !value.is_finite() {
+                    return Err(invalid_data("CMG Schur scaled residual is nonfinite"));
+                }
+                target[firm * columns + lane] = value;
+                let index = label * columns + lane;
+                neumaier_add(value, &mut self.sums[index], &mut self.corrections[index]);
+            }
+        }
+        self.means(columns)?;
+        let mut nonzero = [false; MAX_BATCH_COLUMNS];
+        for (firm, &label) in self.labels.iter().enumerate() {
+            crate::interrupt::row_checkpoint(firm)?;
+            for lane in 0..columns {
+                let value = &mut target[firm * columns + lane];
+                *value -= self.sums[label * columns + lane];
+                if !value.is_finite() {
+                    return Err(invalid_data("CMG Schur centered value is nonfinite"));
+                }
+                nonzero[lane] |= *value != 0.0;
+            }
+        }
+        Ok(nonzero)
+    }
+
+    /// Restriction, mean subtraction and scatter share the final traversal;
+    /// the intermediate hybrid output never needs an in-place centering pass.
+    fn scatter(
+        &mut self,
+        source: &[f64],
+        output: &mut [f64],
+        stride: usize,
+        lanes: &[usize],
+    ) -> Result<()> {
+        let columns = lanes.len();
+        self.clear(columns);
+        for (firm, &label) in self.labels.iter().enumerate() {
+            crate::interrupt::row_checkpoint(firm)?;
+            for lane in 0..columns {
+                let index = label * columns + lane;
+                neumaier_add(
+                    source[firm * columns + lane],
+                    &mut self.sums[index],
+                    &mut self.corrections[index],
+                );
+            }
+        }
+        self.means(columns)?;
+        for (firm, &label) in self.labels.iter().enumerate() {
+            crate::interrupt::row_checkpoint(firm)?;
+            for (lane, &target) in lanes.iter().enumerate() {
+                let value = source[firm * columns + lane] - self.sums[label * columns + lane];
+                if !value.is_finite() {
+                    return Err(invalid_data("CMG Schur centered value is nonfinite"));
+                }
+                output[firm * stride + target] = value;
             }
         }
         Ok(())
@@ -502,6 +725,7 @@ fn build_hybrid_graph(
     weights: BorrowedMapWeights<'_>,
     left_effect: usize,
     cutoff: usize,
+    batch_columns: usize,
     executor: &ParallelExecutor,
     runtime_extra: u128,
     memory: &mut Admission,
@@ -630,14 +854,17 @@ fn build_hybrid_graph(
     crate::interrupt::checkpoint()?;
     let parents =
         storage(&[&graph, executor])? + vec_capacity_bytes(&labels) + vec_capacity_bytes(&sizes);
-    let bound = bytes::<[f64; 2]>(component_count)?;
+    let component_elements = component_count
+        .checked_mul(batch_columns)
+        .ok_or_else(|| allocation("CMG Schur component batch dimensions overflow"))?;
+    let bound = bytes::<[f64; 2]>(component_elements)?;
     memory.admit(parents + runtime_extra, bound)?;
     memory.forecast(parents + bound as u128)?;
     let components = FirmComponents {
         labels,
         sizes,
-        sums: filled(component_count, 0.0)?,
-        corrections: filled(component_count, 0.0)?,
+        sums: filled(component_elements, 0.0)?,
+        corrections: filled(component_elements, 0.0)?,
     };
     Ok((graph, components, retained_workers, input_edges))
 }
@@ -713,6 +940,25 @@ mod tests {
             }
             Self::new(workers, firms, weights)
         }
+
+        fn torus(width: usize) -> Self {
+            let mut workers = Vec::new();
+            let mut firms = Vec::new();
+            for row in 0..width {
+                for column in 0..width {
+                    let left = row * width + column;
+                    for right in [
+                        row * width + (column + 1) % width,
+                        ((row + 1) % width) * width + column,
+                    ] {
+                        let worker = (workers.len() / 2) as u32;
+                        workers.extend([worker, worker]);
+                        firms.extend([left as u32, right as u32]);
+                    }
+                }
+            }
+            Self::new(workers, firms, Vec::new())
+        }
     }
 
     #[test]
@@ -725,6 +971,7 @@ mod tests {
                 BorrowedMapWeights::Provided(&fixture.weights),
                 0,
                 cutoff,
+                3,
                 1,
                 None,
             )
@@ -758,7 +1005,7 @@ mod tests {
             }
             let mut output = vec![0.0; residual.len()];
             solver
-                .apply_batch(&residual, &mut output, 3, 2, Some(&scales))
+                .apply_batch(&residual, &mut output, 3, 2, Some(&scales), None)
                 .unwrap();
             for (actual, expected) in output.iter().zip(&expected) {
                 assert!(
@@ -768,7 +1015,7 @@ mod tests {
             }
             let first_output = output.clone();
             solver
-                .apply_batch(&residual, &mut output, 3, 2, Some(&scales))
+                .apply_batch(&residual, &mut output, 3, 2, Some(&scales), None)
                 .unwrap();
             assert_eq!(output, first_output);
             assert!(
@@ -786,12 +1033,13 @@ mod tests {
                     BorrowedMapWeights::Provided(&rescaled),
                     0,
                     cutoff,
+                    3,
                     1,
                     None,
                 )
                 .unwrap();
                 scaled_solver
-                    .apply_batch(&residual, &mut output, 3, 2, Some(&scales))
+                    .apply_batch(&residual, &mut output, 3, 2, Some(&scales), None)
                     .unwrap();
                 for (actual, reference) in output.iter().zip(&first_output) {
                     assert!((actual - reference).abs() < 2e-11);
@@ -802,23 +1050,8 @@ mod tests {
 
     #[test]
     fn fixed_multilevel_cycle_is_linear_symmetric_positive_and_repeatable() {
-        let mut workers = Vec::new();
-        let mut firms = Vec::new();
         let width = 20;
-        for row in 0..width {
-            for column in 0..width {
-                let left = row * width + column;
-                for right in [
-                    row * width + (column + 1) % width,
-                    ((row + 1) % width) * width + column,
-                ] {
-                    let worker = (workers.len() / 2) as u32;
-                    workers.extend([worker, worker]);
-                    firms.extend([left as u32, right as u32]);
-                }
-            }
-        }
-        let fixture = Fixture::new(workers, firms, Vec::new());
+        let fixture = Fixture::torus(width);
         let design = fixture.design();
         let options = CmgOptions {
             direct_threshold: 8,
@@ -831,6 +1064,7 @@ mod tests {
                 BorrowedMapWeights::Unit,
                 0,
                 4,
+                3,
                 threads,
                 None,
                 options,
@@ -848,7 +1082,7 @@ mod tests {
             }
             let mut output = vec![0.0; residual.len()];
             solver
-                .apply_batch(&residual, &mut output, 3, 3, None)
+                .apply_batch(&residual, &mut output, 3, 3, None, None)
                 .unwrap();
             let mut xby = 0.0;
             let mut ybx = 0.0;
@@ -868,7 +1102,7 @@ mod tests {
             assert!(xbx > 0.0);
             let repeated = output.clone();
             solver
-                .apply_batch(&residual, &mut output, 3, 3, None)
+                .apply_batch(&residual, &mut output, 3, 3, None, None)
                 .unwrap();
             assert_eq!(output, repeated);
             if let Some(reference) = &reference {
@@ -882,43 +1116,283 @@ mod tests {
     }
 
     #[test]
+    fn original_single_rhs_reuses_exact_scalar_cycle_in_a_wide_session() {
+        let fixture = Fixture::torus(65);
+        let design = fixture.design();
+        let firms = fixture.firm_index.n_levels();
+        let columns = 5;
+        let residual: Vec<f64> = (0..firms * columns)
+            .map(|index| (index as f64 * 0.17).sin())
+            .collect();
+        let options = CmgOptions {
+            direct_threshold: 16,
+            ..CmgOptions::default()
+        };
+        for threads in [1, 4] {
+            let mut solver = CmgSchurPreconditioner::build_with_options(
+                &design,
+                BorrowedMapWeights::Unit,
+                0,
+                4,
+                columns,
+                threads,
+                None,
+                options,
+            )
+            .unwrap();
+            assert!(solver.scalar_workspace.is_some());
+            assert!(solver.preconditioner.hierarchy().levels().len() > 1);
+            if threads > 1 {
+                assert!(solver.plan.operator_count() > 0);
+            }
+            let vertices = solver.rhs.len() / solver.batch_columns;
+            let mut scalar_rhs = vec![0.0; vertices];
+            let mut scalar_solution = vec![0.0; vertices];
+            let mut scalar_workspace = solver.preconditioner.try_workspace().unwrap();
+            let mut expected = vec![0.0; residual.len()];
+            solver
+                .components
+                .gather(&residual, columns, &[0], None, &mut scalar_rhs[..firms])
+                .unwrap();
+            solver
+                .plan
+                .apply_compatible_into(
+                    &solver.preconditioner,
+                    &scalar_rhs,
+                    &mut scalar_solution,
+                    &mut scalar_workspace,
+                    &solver.executor,
+                )
+                .unwrap();
+            solver
+                .components
+                .scatter(&scalar_solution[..firms], &mut expected, columns, &[0])
+                .unwrap();
+            let mut output = vec![0.0; residual.len()];
+            solver
+                .apply_batch(&residual, &mut output, columns, 1, None, None)
+                .unwrap();
+            assert_eq!(output, expected);
+
+            // Preserve the original multi-RHS path for both a one-column tile
+            // remainder and a mask leaving only one active lane. A deliberately
+            // incompatible scalar workspace would fail if either took it.
+            solver
+                .apply_batch(&residual, &mut output, columns, columns, None, None)
+                .unwrap();
+            let batch_expected = output.clone();
+            let tiny_graph = Laplacian::from_edges(2, [(0, 1, 1.0)]).unwrap();
+            let tiny_cmg = CmgPreconditioner::build(&tiny_graph, CmgOptions::default()).unwrap();
+            let retained_scalar = solver
+                .scalar_workspace
+                .replace(tiny_cmg.try_workspace().unwrap());
+            solver
+                .apply_batch(&residual, &mut output, columns, columns, None, None)
+                .unwrap();
+            assert_eq!(output, batch_expected);
+            solver
+                .apply_batch(
+                    &residual,
+                    &mut output,
+                    columns,
+                    columns,
+                    None,
+                    Some(&[0.0, 0.0, -1.0, 0.0, 0.0]),
+                )
+                .unwrap();
+            for firm in 0..firms {
+                for rhs in 0..columns {
+                    let reference = if rhs == 2 {
+                        batch_expected[firm * columns + rhs]
+                    } else {
+                        0.0
+                    };
+                    assert_eq!(output[firm * columns + rhs], reference);
+                }
+            }
+            solver.scalar_workspace = retained_scalar;
+            output.fill(0.0);
+            solver
+                .apply_batch(&residual, &mut output, columns, 1, None, None)
+                .unwrap();
+            assert_eq!(output, expected);
+            assert!(
+                solver.retained_bytes().unwrap()
+                    <= solver.construction_peak().bytes().unwrap() as u128
+            );
+        }
+    }
+
+    #[test]
+    fn compact_batches_match_scalar_cycles_across_masks_zeroes_and_reused_tails() {
+        let fixture = Fixture::weighted_stars();
+        let design = fixture.design();
+        let columns = 7;
+        let firms = fixture.firm_index.n_levels();
+        for cutoff in 4..=6 {
+            let mut solver = CmgSchurPreconditioner::build(
+                &design,
+                BorrowedMapWeights::Provided(&fixture.weights),
+                0,
+                cutoff,
+                columns,
+                2,
+                None,
+            )
+            .unwrap();
+            assert_eq!(solver.batch_columns, MAX_BATCH_COLUMNS);
+            let vertices = solver.rhs.len() / solver.batch_columns;
+            let mut scalar_workspace = solver.preconditioner.try_workspace().unwrap();
+            let mut scalar_rhs = vec![0.0; vertices];
+            let mut scalar_solution = vec![0.0; vertices];
+            let mut residual = vec![0.0; firms * columns];
+            let mut output = vec![123.0; residual.len()];
+            let mut expected = output.clone();
+            let mut scales = vec![0.0; firms];
+            for (firm, scale) in scales.iter_mut().enumerate() {
+                *scale = (solver.components.labels[firm] + 1) as f64;
+            }
+            for submitted in [7, 7, 3, 1, 7] {
+                for firm in 0..firms {
+                    for rhs in 0..columns {
+                        residual[firm * columns + rhs] = ((firm * 3 + rhs) as f64 * 0.17).sin();
+                    }
+                }
+                let mut states = vec![1.0; submitted];
+                if submitted > 3 {
+                    states[2] = 0.0;
+                    states[3] = -1.0;
+                    for firm in 0..firms {
+                        residual[firm * columns] = 0.0;
+                        residual[firm * columns + 2] = f64::NAN;
+                        residual[firm * columns + 4] = 0.0;
+                    }
+                }
+                for (rhs, &state) in states.iter().enumerate() {
+                    if state == 0.0 {
+                        for firm in 0..firms {
+                            expected[firm * columns + rhs] = 0.0;
+                        }
+                        continue;
+                    }
+                    solver
+                        .components
+                        .gather(
+                            &residual,
+                            columns,
+                            &[rhs],
+                            Some(&scales),
+                            &mut scalar_rhs[..firms],
+                        )
+                        .unwrap();
+                    scalar_rhs[firms..].fill(0.0);
+                    solver
+                        .plan
+                        .apply_compatible_into(
+                            &solver.preconditioner,
+                            &scalar_rhs,
+                            &mut scalar_solution,
+                            &mut scalar_workspace,
+                            &solver.executor,
+                        )
+                        .unwrap();
+                    solver
+                        .components
+                        .scatter(&scalar_solution[..firms], &mut expected, columns, &[rhs])
+                        .unwrap();
+                }
+                solver
+                    .apply_batch(
+                        &residual,
+                        &mut output,
+                        columns,
+                        submitted,
+                        Some(&scales),
+                        Some(&states),
+                    )
+                    .unwrap();
+                for (actual, reference) in output.iter().zip(&expected) {
+                    assert!((actual - reference).abs() < 2e-12);
+                }
+                let repeated = output.clone();
+                solver
+                    .apply_batch(
+                        &residual,
+                        &mut output,
+                        columns,
+                        submitted,
+                        Some(&scales),
+                        Some(&states),
+                    )
+                    .unwrap();
+                assert_eq!(output, repeated);
+            }
+            residual.fill(f64::NAN);
+            solver
+                .apply_batch(
+                    &residual,
+                    &mut output,
+                    columns,
+                    columns,
+                    None,
+                    Some(&[0.0; 7]),
+                )
+                .unwrap();
+            assert!(output.iter().all(|value| *value == 0.0));
+        }
+    }
+
+    #[test]
     fn memory_admission_and_invalid_requests_fail_closed() {
         let fixture = Fixture::weighted_stars();
         let design = fixture.design();
-        let build = |budget| {
-            CmgSchurPreconditioner::build(&design, BorrowedMapWeights::Unit, 0, 5, 1, budget)
-        };
-        let baseline = build(None).unwrap();
-        let admitted = baseline.construction_peak().bytes().unwrap() as u128;
-        drop(baseline);
-        assert!(build(Some(FeSolverMemoryBudget {
-            execution_bytes: 123,
-            usable_bytes: admitted + 123
-        }))
-        .is_ok());
-        assert!(matches!(
-            build(Some(FeSolverMemoryBudget {
+        for rhs_capacity in [1, 4] {
+            let build = |budget| {
+                CmgSchurPreconditioner::build(
+                    &design,
+                    BorrowedMapWeights::Unit,
+                    0,
+                    5,
+                    rhs_capacity,
+                    1,
+                    budget,
+                )
+            };
+            let baseline = build(None).unwrap();
+            assert_eq!(baseline.scalar_workspace.is_some(), rhs_capacity > 1);
+            let admitted = baseline.construction_peak().bytes().unwrap() as u128;
+            drop(baseline);
+            assert!(build(Some(FeSolverMemoryBudget {
                 execution_bytes: 123,
-                usable_bytes: admitted + 122
-            })),
-            Err(FeregError {
-                code: ErrorCode::Allocation,
-                ..
-            })
-        ));
-        assert!(matches!(
-            CmgSchurPreconditioner::build(&design, BorrowedMapWeights::Unit, 0, 7, 1, None),
-            Err(FeregError {
-                code: ErrorCode::InvalidArgument,
-                ..
-            })
-        ));
-        let mut solver = build(None).unwrap();
-        assert!(solver.apply_batch(&[0.0], &mut [0.0], 1, 1, None).is_err());
-        let mut residual = vec![0.0; 28];
-        residual[1] = f64::NAN;
-        assert!(solver
-            .apply_batch(&residual, &mut vec![0.0; 28], 1, 1, None)
-            .is_err());
+                usable_bytes: admitted + 123
+            }))
+            .is_ok());
+            assert!(matches!(
+                build(Some(FeSolverMemoryBudget {
+                    execution_bytes: 123,
+                    usable_bytes: admitted + 122
+                })),
+                Err(FeregError {
+                    code: ErrorCode::Allocation,
+                    ..
+                })
+            ));
+            assert!(matches!(
+                CmgSchurPreconditioner::build(&design, BorrowedMapWeights::Unit, 0, 7, 1, 1, None),
+                Err(FeregError {
+                    code: ErrorCode::InvalidArgument,
+                    ..
+                })
+            ));
+            let mut solver = build(None).unwrap();
+            assert!(solver
+                .apply_batch(&[0.0], &mut [0.0], 1, 1, None, None)
+                .is_err());
+            let mut residual = vec![0.0; 28];
+            residual[1] = f64::NAN;
+            assert!(solver
+                .apply_batch(&residual, &mut vec![0.0; 28], 1, 1, None, None)
+                .is_err());
+        }
     }
 }

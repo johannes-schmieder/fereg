@@ -29,12 +29,12 @@ use = "Runtime LSMR runtime and oracle dependency: current-parent port, fixed ar
 [[reference]]
 name = "cmg"
 repository = "https://github.com/johannes-schmieder/CMG"
-commit = "1d39c113f0c397f29653d92672090e5a42f80921"
+commit = "f45c3b8b2895a9fdcf32db3b768717230ed594b9"
 version = "0.1.0"
 license = "GPL-3.0-only"
 relevant_source_paths = ["src/", "Cargo.toml"]
 relevant_test_paths = ["tests/", "src/**/tests/"]
-use = "Exact runtime dependency for solver(cmg), including optional cooperative PCG iteration polls, prepared fixed-topology assembly, caller-buffer PCG, capacity-union reporting, admitted construction and fixed workspaces, and joined worker retirement with explicitly estimated runtime allowances; parallel and experimental-components are compiled, with ordinary defaults unchanged."
+use = "Exact runtime dependency for solver(cmg) and solver(cmgschur), including admitted fixed-cycle multivector batches, optional cooperative PCG iteration polls, prepared fixed-topology assembly, caller-buffer PCG, capacity-union reporting, admitted construction and fixed workspaces, and joined worker retirement with explicitly estimated runtime allowances; parallel and experimental-components are compiled, with ordinary defaults unchanged."
 
 [[reference]]
 name = "reghdfe"

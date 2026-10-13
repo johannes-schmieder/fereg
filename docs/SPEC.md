@@ -83,9 +83,12 @@ vertices. Repeated observations form weighted cells before degree counting.
 A fixed symmetric CMG cycle receives component-centered firm residuals padded
 with zero auxiliary loads; its firm output is restricted and centered again.
 The outer PCG recurrence uses this preconditioned residual in every energy and
-direction update. It targets a hundredth of the requested FE tolerance, floored
-at 1e-15 and never looser than the request, and reconstructs and independently
-certifies observation residuals at the requested tolerance. Failure is explicit;
+direction update. It first targets half the requested FE tolerance, reconstructs
+and independently certifies observation residuals at the requested tolerance.
+Only a certificate miss can trigger one residual correction, targeting a
+hundredth of the request, floored at 1e-15 and never looser than the request;
+the correction runs only if that target is stricter than the first target.
+Both attempts share the original iteration budget. Failure is explicit;
 it does not silently switch solvers. The existing auto, CMG and other routes
 retain their algorithms and exact scientific results.
 
@@ -95,6 +98,15 @@ rank, omission and other discrete decisions do not change. Independent witnesses
 cover dense weighted dummy OLS, sealed weak graphs, repeated cells, disconnected
 components, Schur/hybrid equivalence and a multilevel cycle's linearity, symmetry
 and positive energy. No default-route or PPML algorithm change is authorized.
+
+CMG-Schur optimizations retain this numerical scope for
+certify-then-refine stopping and batched fixed-cycle application. Independent
+dense weighted OLS and sealed projection witnesses remain authoritative;
+fixed-thread runs must repeat exactly, and sample, rank, omissions and other
+discrete decisions stay unchanged. Lazy hierarchy construction, inactive-column
+skipping and parallel recurrence updates preserve the explicit failure contract,
+memory admission, Break handling and final requested-tolerance certificate.
+Other solver routes retain exact scientific results and solver signatures.
 
 The OLS CMG adapter also handles zero/one categorical effects by exact
 no-work/direct projection; preserve this degenerate support and identify that

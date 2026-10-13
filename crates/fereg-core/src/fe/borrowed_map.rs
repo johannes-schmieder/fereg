@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
@@ -1079,6 +1079,7 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     design: BorrowedInterceptFeDesign<'a>,
     workspace: BorrowedMapWorkspace,
     two_fe_pcg: Option<TwoFePcgWorkspace>,
+    cmg_schur_request: Option<CmgSchurRequest>,
     cg_residual_square: Vec<f64>,
     cg_initial_residual_square: Vec<f64>,
     cg_next_residual_square: Vec<f64>,
@@ -1098,6 +1099,14 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     checkpoint_lsmr_retry_error: Option<ErrorCode>,
     checkpoint_schur_iteration_cap: Option<usize>,
     checkpoint_schur_certificate_failure: bool,
+}
+
+#[derive(Clone, Copy)]
+struct CmgSchurRequest {
+    degree: usize,
+    threads: usize,
+    budget: Option<FeSolverMemoryBudget>,
+    parents: u128,
 }
 
 // Multiplying every weight in one disconnected FE component by the same
@@ -1349,31 +1358,66 @@ impl Drop for PcgPilotGroupScratch<'_> {
 }
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
-    /// Attach a fixed-weight OLS preconditioner after admission of the base owner.
-    pub(crate) fn enable_cmg_schur(
+    /// Validate and retain the request; an already certified RHS needs no hierarchy.
+    pub(crate) fn request_cmg_schur(
         &mut self,
-        weights: BorrowedMapWeights<'_>,
         degree: usize,
         threads: usize,
         budget: Option<FeSolverMemoryBudget>,
-    ) -> Result<crate::memory::SolverWorkspacePeak> {
+        parents: u128,
+    ) -> Result<()> {
+        if self.two_fe_pcg.is_none() || !(4..=6).contains(&degree) || threads == 0 {
+            return Err(invalid_argument(
+                "cmgschur requires two effects, degree 4..6 and workers",
+            ));
+        }
+        self.cmg_schur_request = Some(CmgSchurRequest {
+            degree,
+            threads,
+            budget,
+            parents,
+        });
+        Ok(())
+    }
+
+    fn ensure_cmg_schur(&mut self, weights: BorrowedMapWeights<'_>) -> Result<Duration> {
+        let Some(request) = self.cmg_schur_request else {
+            return Ok(Duration::ZERO);
+        };
         let graph = self.two_fe_pcg.as_mut().ok_or_else(|| {
             FeregError::new(
                 ErrorCode::Unsupported,
                 "cmgschur requires exactly two intercept effects",
             )
         })?;
+        if graph.cmg_schur.is_some() {
+            return Ok(Duration::ZERO);
+        }
+        let started = Instant::now();
         let preconditioner = super::cmg_schur::CmgSchurPreconditioner::build(
             &self.design,
             weights,
             graph.left_effect,
-            degree,
-            threads,
-            budget,
+            request.degree,
+            self.max_rhs,
+            request.threads,
+            request.budget,
         )?;
-        let peak = preconditioner.construction_peak();
         graph.cmg_schur = Some(Box::new(preconditioner));
-        Ok(peak)
+        Ok(started.elapsed())
+    }
+
+    pub(crate) fn cmg_schur_peak(&self) -> Result<Option<SolverWorkspacePeak>> {
+        match (
+            &self.cmg_schur_request,
+            self.two_fe_pcg.as_ref().and_then(|g| g.cmg_schur.as_ref()),
+        ) {
+            (Some(request), Some(p)) => p
+                .construction_peak()
+                .with_retained(request.parents)
+                .map(Some),
+            _ => Ok(None),
+        }
     }
 
     pub(crate) fn cmg_schur_bytes(&self) -> Result<u128> {
@@ -1487,6 +1531,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             design,
             workspace,
             two_fe_pcg,
+            cmg_schur_request: None,
             cg_residual_square: reserved_zeros(
                 cg_scalar_rhs,
                 &mut reservation,
@@ -1751,13 +1796,14 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         }
         values.validate_finite("reusable categorical MAP values must be finite")?;
         let mut values = values.into_values();
+        let raw_weights = weights;
         let weights = validate_weights(weights, values.nrows())?;
         self.workspace.set_rhs_count(rhs_count)?;
 
         let setup_started = Instant::now();
         update_workspace_norms(&values, weights, &mut self.workspace, true)?;
-        let setup_seconds = setup_started.elapsed().as_secs_f64();
-        let solve_started = Instant::now();
+        let mut setup_seconds = setup_started.elapsed().as_secs_f64();
+        let mut solve_started = Instant::now();
         let initial_certification_started = Instant::now();
         let initial = self.with_pilot_group_scratch(rhs_count, |design, workspace| {
             if initial_group_rejects(design, weights, &values, config.tolerance, workspace)? {
@@ -1812,6 +1858,10 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 solve_started.elapsed().as_secs_f64(),
             );
         }
+
+        let construction = self.ensure_cmg_schur(raw_weights)?;
+        setup_seconds += construction.as_secs_f64();
+        solve_started += construction;
 
         if self.checkpoint_lsmr_enabled && matches!(self.design.effects().len(), 2 | 3) {
             if let Some(error) = self.take_checkpoint_lsmr_fatal_failure() {
@@ -2181,11 +2231,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             weights,
             values,
             config,
-            if cmg_schur {
-                (config.tolerance * 0.01).max(1e-15).min(config.tolerance)
-            } else {
-                0.5 * config.tolerance
-            },
+            0.5 * config.tolerance,
             completed_pilot_iterations,
             pilot_contraction,
             setup_seconds,
@@ -2251,8 +2297,12 @@ fn absorb_two_fe_pcg_reusing(
         SchurWorkLimit::Checkpoint(cap) => (Some(cap), true, false),
         SchurWorkLimit::CmgSchur => (None, false, false),
     };
-    let mut correction_tolerance =
-        refine.then(|| super::auto::direct_lsmr_tolerance(config.tolerance));
+    let cmg_schur = matches!(work_limit, SchurWorkLimit::CmgSchur);
+    let mut correction_tolerance = if cmg_schur {
+        Some((config.tolerance * 0.01).max(1e-15).min(config.tolerance))
+    } else {
+        refine.then(|| super::auto::direct_lsmr_tolerance(config.tolerance))
+    };
     // Component banks belong only to the PPML constructor. A numerical work
     // cap must not turn off their current-weight scaling.
     let scale_components = !graph.component_roots.is_empty();
@@ -2280,7 +2330,6 @@ fn absorb_two_fe_pcg_reusing(
     let remaining_iterations = config
         .max_iterations
         .saturating_sub(completed_pilot_iterations);
-    let cmg_schur = matches!(work_limit, SchurWorkLimit::CmgSchur);
     let map_fallback_reserve = if cmg_schur {
         0
     } else {
@@ -2405,6 +2454,7 @@ fn absorb_two_fe_pcg_reusing(
                     stride,
                     rhs_count,
                     scale_components.then_some(graph.component_scales.as_slice()),
+                    None,
                 )?;
                 crate::kernels::dispatch!(
                     hardware,
@@ -2597,6 +2647,21 @@ fn absorb_two_fe_pcg_reusing(
                     )
                 );
             }
+            iterations += 1;
+            if cmg_schur {
+                // The proxy uses r alone. Retire converged lanes before B r,
+                // avoiding their final cycle as well as all later cycles.
+                active_rhs -= finish_ready_two_fe_pcg_rhs(
+                    graph,
+                    certificate_workspace,
+                    active_rhs_state,
+                    next_residual_square,
+                    stride,
+                    recurrence_tolerance,
+                    scale_components,
+                    iterations,
+                )?;
+            }
             if let Some(preconditioner) = graph.cmg_schur.as_mut() {
                 preconditioner.apply_batch(
                     &graph.residual,
@@ -2604,6 +2669,7 @@ fn absorb_two_fe_pcg_reusing(
                     stride,
                     rhs_count,
                     scale_components.then_some(graph.component_scales.as_slice()),
+                    Some(active_rhs_state),
                 )?;
                 crate::kernels::dispatch!(
                     hardware,
@@ -2615,7 +2681,6 @@ fn absorb_two_fe_pcg_reusing(
                     )
                 );
             }
-            iterations += 1;
             if next_residual_square
                 .iter()
                 .any(|value| !value.is_finite() || *value < 0.0)
@@ -2623,27 +2688,17 @@ fn absorb_two_fe_pcg_reusing(
                 breakdown = true;
                 break;
             }
-            for rhs in 0..rhs_count {
-                if active_rhs_state[rhs] != 0.0
-                    && two_fe_pcg_rhs_ready(
-                        graph,
-                        certificate_workspace,
-                        rhs,
-                        stride,
-                        recurrence_tolerance,
-                        scale_components,
-                    )?
-                {
-                    trace_two_fe_pcg_stop(rhs, iterations, "proxy_target", recurrence_tolerance);
-                    active_rhs_state[rhs] = 0.0;
-                    next_residual_square[rhs] = 0.0;
-                    active_rhs -= 1;
-                    for level in 0..right_levels {
-                        let index = level * stride + rhs;
-                        graph.residual[index] = 0.0;
-                        graph.direction[index] = 0.0;
-                    }
-                }
+            if !cmg_schur {
+                active_rhs -= finish_ready_two_fe_pcg_rhs(
+                    graph,
+                    certificate_workspace,
+                    active_rhs_state,
+                    next_residual_square,
+                    stride,
+                    recurrence_tolerance,
+                    scale_components,
+                    iterations,
+                )?;
             }
             reconstruct = active_rhs == 0 || iterations == pcg_iteration_limit;
             if reconstruct {
@@ -2672,19 +2727,14 @@ fn absorb_two_fe_pcg_reusing(
             if cmg_schur {
                 // The operator bank now holds z = B r; the prior S p has
                 // already been consumed by the solution/residual update.
-                for (direction, preconditioned) in graph
-                    .direction
-                    .chunks_mut(stride)
-                    .zip(graph.operator.chunks(stride))
-                {
-                    for rhs in 0..rhs_count {
-                        direction[rhs] = if active_rhs_state[rhs] == 0.0 {
-                            0.0
-                        } else {
-                            preconditioned[rhs] + ratio[rhs] * direction[rhs]
-                        };
-                    }
-                }
+                cmg_pcg_direction(
+                    stride,
+                    ratio,
+                    active_rhs_state,
+                    &graph.operator,
+                    &mut graph.direction,
+                    recurrence_plan,
+                )?;
             } else if parallel_recurrence {
                 let level_chunk = recurrence_plan.chunk(right_levels);
                 let cell_chunk = level_chunk
@@ -2844,7 +2894,8 @@ fn absorb_two_fe_pcg_reusing(
         // Correct the reconstructed residual, retaining its already removed FE
         // contribution and the original RHS reference norms. This is a fresh
         // residual restart: converged PCG lanes were deliberately zeroed above.
-        // Both attempts share the original PCG limit and MAP reserve.
+        // Both attempts share the original PCG limit; auto also preserves its
+        // MAP reserve. CMG Schur has at most one correction and no fallback.
         if !breakdown && iterations < pcg_iteration_limit {
             if let Some(tighter) = correction_tolerance
                 .take()
@@ -3179,6 +3230,75 @@ fn trace_two_fe_pcg_stop(rhs: usize, iterations: usize, reason: &str, target: f6
             "FEREG_SOLVER_TRACE|phase=two_fe_pcg_rhs_stop|rhs={rhs}|iterations={iterations}|reason={reason}|recurrence_tolerance={target:.17e}"
         ));
     }
+}
+
+// No reductions occur here: level tasks keep the same separately rounded
+// multiply and add as the serial update, including exact zero inactive lanes.
+fn cmg_pcg_direction(
+    stride: usize,
+    ratio: &[f64],
+    active: &[f64],
+    preconditioned: &[f64],
+    direction: &mut [f64],
+    plan: crate::parallel::StagePlan,
+) -> Result<()> {
+    let update = |direction: &mut [f64], preconditioned: &[f64]| {
+        for (direction, preconditioned) in direction
+            .chunks_mut(stride)
+            .zip(preconditioned.chunks(stride))
+        {
+            for rhs in 0..ratio.len() {
+                direction[rhs] = if active[rhs] == 0.0 {
+                    0.0
+                } else {
+                    preconditioned[rhs] + ratio[rhs] * direction[rhs]
+                };
+            }
+        }
+    };
+    if plan.lanes > 1 {
+        let chunk = plan
+            .chunk(direction.len() / stride)
+            .checked_mul(stride)
+            .ok_or_else(|| allocation("CMG Schur direction chunk dimensions overflow"))?;
+        direction
+            .par_chunks_mut(chunk)
+            .zip(preconditioned.par_chunks(chunk))
+            .for_each(|(direction, preconditioned)| update(direction, preconditioned));
+    } else {
+        update(direction, preconditioned);
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_ready_two_fe_pcg_rhs(
+    graph: &mut TwoFePcgWorkspace,
+    workspace: &BorrowedMapWorkspace,
+    active: &mut [f64],
+    energy: &mut [f64],
+    stride: usize,
+    tolerance: f64,
+    scale_components: bool,
+    iterations: usize,
+) -> Result<usize> {
+    let mut completed = 0;
+    for rhs in 0..active.len() {
+        if active[rhs] != 0.0
+            && two_fe_pcg_rhs_ready(graph, workspace, rhs, stride, tolerance, scale_components)?
+        {
+            trace_two_fe_pcg_stop(rhs, iterations, "proxy_target", tolerance);
+            active[rhs] = 0.0;
+            energy[rhs] = 0.0;
+            completed += 1;
+            for level in 0..graph.right_weights.len() {
+                let index = level * stride + rhs;
+                graph.residual[index] = 0.0;
+                graph.direction[index] = 0.0;
+            }
+        }
+    }
+    Ok(completed)
 }
 
 fn two_fe_pcg_rhs_ready(

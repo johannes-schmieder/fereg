@@ -14,6 +14,153 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## CMG-Schur optimizations, 2026-10-13
+
+The explicit `cmgschur` route now batches fixed CMG cycles across right-hand
+sides, skips inactive and exactly zero projected columns, fuses component
+summation with gather and centering with scatter, and parallelizes independent
+search-direction updates. It constructs the hierarchy only after the initial
+requested-tolerance certificate fails, then reuses it. The recurrence initially
+targets half the requested tolerance; a failed full certificate permits one
+strict correction within the original iteration allowance. Successful results
+still require the existing requested-tolerance certificate. Sample, rank,
+omission, separation and automatic routing policies are unchanged.
+
+The additive CMG batch API is pinned at
+`f45c3b8b2895a9fdcf32db3b768717230ed594b9`. A separately admitted scalar workspace
+serves projections whose original width is one. Multi-RHS projections retain
+the batch cycle even when only one active column remains, keeping the selected
+preconditioner fixed throughout each solve. These algorithm and reduction-order
+changes have the explicit `cmgschur` scope declared in [SPEC](SPEC.md); existing
+auto, CMG, LSMR and PPML scientific outputs and solver signatures remain exact
+in the parent/candidate replay.
+
+The [retained aggregate evidence](../bench/results/cmgschur-opt-20261013.json),
+[final observations](../bench/results/cmgschur-opt-20261013-observations.csv),
+[initial candidate observations](../bench/results/cmgschur-opt-20261013-initial-observations.csv)
+and [standard timing observations](../bench/results/cmgschur-opt-20261013-nonregression.csv)
+preserve both candidates, input/artifact identities and the predeclared protocol.
+The parent is `17b4e884d9ef03e81478f660b70ab1b733d5d5da`. The final universal Mac
+plugin SHA-256 is
+`654d867aec07e62e7e656d928cd47b90259201a5eaa29fe941ac07bf33ac585e`;
+the final Linux plugin is
+`fe877392b315aae65f1e195fbee1b2ccd2d048cb8a9e12d7766a6af40457048d`.
+Source token and artifact-input digests bind the measured candidate to the
+committed implementation; later evidence-only edits do not alter those inputs.
+Maintained reproduction tools are described in [bench](../bench/README.md#cmg-schur-prototype-comparison).
+
+The final Mac panel uses the same M2 Ultra, one warmup and seven repetitions,
+rotating paired arm order, 1/4 threads, tolerance 1e-8 and identical requested
+outputs. Five inputs cover short and weakly connected panels (100,000 rows),
+a long panel (one million rows), a 16-control panel (100,000 rows), and a small
+wholly FE-orthogonal case. Each input/artifact has a strict single-worker LSMR
+reference at 1e-12; a separate dense OLS/HC1 prerequisite gates every arm and
+thread count. The fixed budget is 2,400 seconds with 120 seconds per process.
+All 668 invocations pass science checks and fixed-thread repeatability; the
+largest output difference from the strict reference is 2.77e-11. Quiet Mac
+timing excludes competing builds, tests and agent tool workloads.
+
+The primary clock surrounds the complete native call, including loading,
+projection and reconstruction, but excluding external input parsing and output
+export. The table reports median seconds for cutoff four; all cutoffs and
+paired bootstrap intervals are retained in the evidence.
+
+| Mac input | Threads | Parent cmgschur 4 | Optimized cmgschur 4 | Time change | auto | cmg |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Short | 1 | 0.04916 | 0.04792 | -2.5% | 0.04590 | 0.17926 |
+| Short | 4 | 0.03465 | 0.03420 | -1.3% | 0.02569 | 0.07620 |
+| Long | 1 | 0.61986 | 0.49557 | -20.1% | 0.45260 | 1.09796 |
+| Long | 4 | 0.31565 | 0.30058 | -4.8% | 0.21619 | 0.46199 |
+| Weakly connected | 1 | 0.04607 | 0.04259 | -7.5% | 0.09152 | 0.34717 |
+| Weakly connected | 4 | 0.02657 | 0.02689 | +1.2% | 0.03736 | 0.11830 |
+| Sixteen controls | 1 | 0.13782 | 0.12106 | -12.2% | 0.10532 | 0.23582 |
+| Sixteen controls | 4 | 0.08424 | 0.08379 | -0.5% | 0.05609 | 0.12033 |
+
+The clearest gains are at one thread. The long-panel four-thread paired ratio
+is 0.9543 with a 95% bootstrap interval [0.9310, 0.9769]; weak and wide
+four-thread cells are effectively unchanged. Auto remains faster on ordinary
+synthetic short, long and wide inputs, while CMG-Schur wins on the weak graph.
+The 600-row orthogonal case avoids hierarchy construction and saves only
+0.17/0.26 ms at 1/4 threads, despite larger percentage changes. Its fixture
+explicitly excludes an intercept; a preliminary diagnostic with an implicit
+intercept was corrected before either timing panel and is labeled separately.
+These are combined-optimization measurements, not individual ablations or
+evidence for changing the default solver or choosing a universal degree cutoff.
+
+The initial candidate was about 6% slower on the long four-thread input. Traces
+identified the final single-RHS projection using a capacity-four batch workspace;
+its median solve interval rose from 37.05 to 76.39 ms. One predeclared production
+follow-up added the scalar workspace described above. A fresh complete panel
+on the final artifact gives 34.96 versus 37.49 ms for that interval, and improves
+the full call by 4.8%. Timings from different artifacts are never pooled. Long
+main/final iteration counts change from 9/6 to 7/7. Whole-process RSS, including
+the replay host, rises from 237.5 to 238.8 MiB at one thread and 255.1 to 257.1 MiB
+at four threads for cutoff four.
+
+The matched real-data follow-up uses the same selected Veneto 1996-2001 panel:
+5,163,428 rows, 1,106,419 workers and 86,647 firms, with the existing adjusted
+outcome, no additional controls, unit weights and robust covariance. Source
+selection and transformation are unchanged; row-level data stayed on SCC.
+The run reserves all 28 physical cores of an Intel Xeon Gold 6132 node, with
+1/4-thread fits sharing CPU mask 0,2,4,6 and NUMA node zero. It uses GCC 12.2.0,
+Python 3.12.4, NumPy 1.26.4 and Rust 1.85.1. The fixed design has one warmup,
+seven paired repetitions, a 2,400-second budget and 300-second process cap.
+All 40 invocations pass, including strict references, dense prerequisites,
+fixed-thread repeatability and discrete decisions; terminal job accounting
+also passes. The final Linux build separately passes 20 smoke invocations.
+The final output difference from the strict reference is at most 2.74e-12;
+main/final iterations change from 17/18 to 13/19 at both thread counts.
+These SCC seconds are not directly comparable with Mac seconds.
+
+| Veneto cutoff four | Parent (s) | Optimized (s) | Time change | Paired ratio, 95% bootstrap interval |
+| --- | ---: | ---: | ---: | --- |
+| 1 thread | 6.20014 | 5.82412 | -6.1% | 0.9408 [0.9333, 0.9447] |
+| 4 threads | 4.06824 | 3.78044 | -7.1% | 0.9289 [0.9126, 0.9405] |
+
+This final real-data panel compares only parent and optimized CMG-Schur at
+cutoff four. The earlier prototype's auto/CMG/cutoff comparisons below remain
+separate evidence. The initial optimization candidate's Veneto observations
+are also retained separately and are not pooled with the final candidate.
+
+
+Validation on the final artifact passes:
+
+- `./scripts/run_tests.sh`: 1,783 passing Rust test executions, formatting,
+  clippy, bridge/guard checks and the complexity ratchet; universal Mac build,
+  ABI checks and self-test also pass.
+- Actual-plugin parent replay: 73 cases, zero exact scientific or solver-signature
+  differences. Seven mapped licensed Stata fixtures and native/postplugin Break
+  checks pass, including rollback, memory and eclass transaction coverage.
+- Independent witnesses: the original 48 dense configurations plus 144 mixed-RHS
+  and 16 wholly FE-orthogonal configurations; 72 sealed projection configurations
+  remain covered. Dense QR checks coefficients, residuals, HC1 and saved-FE sums.
+- All 20 standard timing cells pass the existing `max(5%, 1 ms)` allowance, with
+  exact outputs across all 380 final-artifact records. The first final pass had
+  18/20 conclusive cells. The predeclared single continuation added 14 pairs only
+  to the two inconclusive four-thread cases (64 and 129 regressors), pooling all
+  21 pairs per case. Their final 98.75th-percentile paired-median bootstrap upper
+  bounds are 1.02923 and 1.04761, below 1.05 (100,000 draws, seed 739391; nominal
+  coverage is approximate). Initial-candidate evidence, including its 19/20
+  conclusive standard cells, is retained separately. There were no further looks.
+- Fourteen benchmark-tool tests pass. Bounded Astra design assistance and
+  independent high-effort architecture review cover the fixed-cycle API,
+  recurrence, lazy admission and scalar correction. An initial diagnostic
+  setup/solve double count was corrected before timing.
+
+The upstream CMG full suites still have two pre-existing `hierarchy_admission`
+live-allocation equality failures, independently reproduced on the clean parent:
+`prepared_numeric_generations_share_parents_but_admit_new_builds` and
+`serial_hierarchy_bounds_preserve_all_stopping_and_component_policies`.
+Default and all-feature release runs report 101/177 passing tests respectively
+and those same two failures. All new batch tests pass across default,
+parallel-only and all-feature configurations; formatting, clippy and rustdoc
+also pass. This is not a claim that every upstream test passes.
+
+Core production lines increase by 324 and dispatch candidates by seven; long
+file/function counts remain unchanged. The scoped increase is recorded in the
+complexity ratchet. No benchmark-specific routing or default cutoff change was
+introduced.
+
 ## CMG-Schur prototype, 2026-10-13
 
 `solver(cmgschur) cmgdegree(4|5|6)` is an opt-in OLS prototype for exactly two

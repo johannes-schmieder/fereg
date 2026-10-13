@@ -2,7 +2,7 @@
 """Build reproducible two-FE prototype cases, or convert a local numeric CSV.
 
 Requires NumPy and the existing fereg-oracle replay_large executable. Outputs
-are private scratch inputs under target/tmp/cmgschur; only aggregate metadata
+are private scratch inputs under target/tmp/cmgschur or cmgschur-opt; only aggregate metadata
 belongs in retained evidence. CSV rows/outcomes are preserved without selection
 or transformation. A small synthetic case includes an independent dense oracle.
 """
@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 from array import array
 import csv
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -22,8 +23,9 @@ from native_io import ROOT, case_header, digest
 
 def scratch(path):
     path = path.resolve()
-    if not path.is_relative_to((ROOT / 'target/tmp/cmgschur').resolve()):
-        raise ValueError('output must be under target/tmp/cmgschur')
+    if not any(path.is_relative_to((ROOT / 'target/tmp' / task).resolve())
+               for task in ['cmgschur', 'cmgschur-opt']):
+        raise ValueError('output must be under target/tmp/cmgschur or target/tmp/cmgschur-opt')
     return path
 
 
@@ -67,6 +69,37 @@ def synthetic(kind, workers, firms, periods, seed=20261013):
     return [y, *x, worker.astype(float), employer.astype(float)]
 
 
+def additional_case(kind, workers=5000, firms=500, periods=20, seed=20261013):
+    """Batching fixtures with paired observations and distinct FE content."""
+    if kind not in {'wide', 'orthogonal'} or periods % 2:
+        raise ValueError('additional cases require wide/orthogonal and an even period count')
+    base = synthetic('long', workers, firms, periods, seed)
+    worker = base[-2]
+    # Consecutive duplicate links permit exactly cancelling within-link columns.
+    firm = np.repeat(base[-1].reshape(workers, periods)[:, :periods//2], 2, axis=1).ravel()
+    rng = np.random.default_rng(seed + 1)
+    n = len(worker)
+    def paired():
+        values = rng.integers(-16, 17, n//2).astype(float) / 8
+        return np.column_stack([values, -values]).ravel()
+    if kind == 'orthogonal':
+        x = np.array([paired() for _ in range(4)])
+        y = .5*x[0] - .25*x[1] + .75*x[2] - .125*x[3] + paired()/64
+    else:
+        x = rng.standard_normal((16, n))
+        for j in range(16):
+            if j % 4 == 0:
+                x[j] = paired()
+            if j % 4 in {1, 3}:
+                x[j] += (1 + j/8) * np.sin(worker * (.017 + j*.003))
+            if j % 4 in {2, 3}:
+                x[j] += (1 + j/16) * np.cos(firm * (.031 + j*.005))
+        coefficients = np.array([(-1.)**j / (j + 1) for j in range(16)])
+        y = (coefficients @ x + np.sin(worker*.071) + .6*np.cos(firm*.13)
+             + .3*rng.standard_normal(n))
+    return [y, *x, worker, firm]
+
+
 def csv_columns(path, outcome, worker, firm, regressors):
     names = [outcome, *regressors, worker, firm]
     if len(set(names)) != len(names):
@@ -100,15 +133,21 @@ def graph_summary(columns):
             'degree_histogram': {str(d): int(n) for d, n in zip(values, counts)}}
 
 
-def dense_oracle(columns):
+def dense_oracle(columns, include_intercept=True):
     """Dense dummy OLS and HC1 covariance; no fereg solver is used."""
     y, *rest = columns
     xs, worker, firm = rest[:-2], rest[-2], rest[-1]
     worker_levels, wi = np.unique(worker, return_inverse=True)
     firm_levels, fi = np.unique(firm, return_inverse=True)
-    design = np.column_stack([np.ones(len(y)), *xs,
-                              np.eye(len(worker_levels))[wi, 1:],
-                              np.eye(len(firm_levels))[fi, 1:]])
+    if include_intercept:
+        design = np.column_stack([np.ones(len(y)), *xs,
+                                  np.eye(len(worker_levels))[wi, 1:],
+                                  np.eye(len(firm_levels))[fi, 1:]])
+    else:
+        # Full worker dummies retain the nuisance constant without a structural
+        # constant column entering the production projection's RHS batch.
+        design = np.column_stack([*xs, np.eye(len(worker_levels))[wi],
+                                  np.eye(len(firm_levels))[fi, 1:]])
     inverse = np.linalg.pinv(design, rcond=1e-13)
     beta = inverse @ y
     fitted = design @ beta
@@ -117,13 +156,45 @@ def dense_oracle(columns):
     if rank != design.shape[1] or rank >= len(y):
         raise ValueError('dense fixture must be connected and have full design rank')
     covariance = (inverse * residual) @ (inverse * residual).T * len(y) / (len(y) - rank)
-    return {'method': 'NumPy dense dummy SVD and HC1, one firm and worker base',
-            'rank': rank, 'regressors': len(xs), 'beta': beta[1:1+len(xs)].tolist(),
-            'covariance': covariance[1:1+len(xs), 1:1+len(xs)].tolist(),
+    start = int(include_intercept)
+    return {'method': ('NumPy dense dummy SVD and HC1, one firm and worker base' if include_intercept
+                       else 'NumPy dense dummy SVD and HC1, full worker dummies and one firm base, no structural constant'),
+            'rank': rank, 'regressors': len(xs), 'beta': beta[start:start+len(xs)].tolist(),
+            'covariance': covariance[start:start+len(xs), start:start+len(xs)].tolist(),
             'fitted': fitted.tolist(), 'residual': residual.tolist()}
 
 
-def write_case(generator, path, columns, tolerance=1e-8):
+def noconstant_template(arguments, metadata, regressors, matrix_count):
+    """Remove the reported constant and resize its five output buffers."""
+    if regressors < 1 or arguments.count(b'include_intercept=1') != 1:
+        raise ValueError('nocons fixture requires regressors and one canonical intercept option')
+    arguments = [b'include_intercept=0' if a == b'include_intercept=1' else a for a in arguments]
+    shapes = {'RB': (1, regressors), 'RV': (regressors, regressors),
+              'RSTATUS': (regressors, 4), 'RMARKB': (1, regressors),
+              'RMARKV': (regressors, regressors)}
+    stream, output, found = io.BytesIO(metadata), io.BytesIO(), set()
+    for _ in range(matrix_count):
+        length = int(stream.readline())
+        name = stream.read(length)
+        if stream.read(1) != b'\n':
+            raise ValueError('invalid canonical matrix name frame')
+        rows, cols = map(int, stream.readline().split())
+        values = [stream.readline() for _ in range(rows * cols)]
+        key = name.decode()
+        if key in shapes:
+            if any(value != b'0000000000000000\n' for value in values):
+                raise ValueError('canonical coefficient output buffers must start at zero')
+            rows, cols = shapes[key]
+            values = [b'0000000000000000\n'] * (rows * cols)
+            found.add(key)
+        output.write(str(length).encode() + b'\n' + name + b'\n')
+        output.write(f'{rows} {cols}\n'.encode() + b''.join(values))
+    if stream.read() or found != set(shapes):
+        raise ValueError('unexpected canonical nocons metadata layout')
+    return arguments, output.getvalue()
+
+
+def write_case(generator, path, columns, tolerance=1e-8, include_intercept=True):
     """Use the canonical Rust serializer for metadata, replace only numeric data."""
     template = path.with_suffix('.template.case')
     regressors = len(columns) - 3
@@ -141,6 +212,8 @@ def write_case(generator, path, columns, tolerance=1e-8):
                 for _ in range(shape[0]):
                     stream.readline()
             metadata = stream.read()
+        if not include_intercept:
+            arguments, metadata = noconstant_template(arguments, metadata, regressors, shape[3])
         fields = dict(a.decode().split('=', 1) for a in arguments[1:])
         n = len(columns[0])
         data = [np.ones(n), *columns]
@@ -179,16 +252,23 @@ def main():
     parser.add_argument('--firm')
     parser.add_argument('--regressors', nargs='*', default=[])
     parser.add_argument('--tolerance', type=float, default=1e-8)
+    parser.add_argument('--extra-cases', nargs='+', choices=['wide', 'orthogonal'], default=[],
+                        help='append optional batching fixtures; original cases are unchanged')
     args = parser.parse_args()
     if not 0 < args.tolerance < 1 or (args.csv and not all([args.outcome, args.worker, args.firm])):
         parser.error('require valid tolerance and all three CSV role names')
+    if len(set(args.extra_cases)) != len(args.extra_cases) or (args.csv and args.extra_cases):
+        parser.error('extra cases must be unique and cannot accompany CSV conversion')
     output = scratch(args.output)
     output.mkdir(parents=True, exist_ok=False)
     source_hash = digest(args.csv) if args.csv else None
-    names = ['csv'] if args.csv else ['oracle', 'short', 'long', 'weak']
+    names = ['csv'] if args.csv else ['oracle', 'short', 'long', 'weak', *args.extra_cases]
     for name in names:
         if args.csv:
             columns = csv_columns(args.csv, args.outcome, args.worker, args.firm, args.regressors)
+        elif name in {'wide', 'orthogonal'}:
+            size = (50, 20, 12) if name == 'orthogonal' else (5000, 500, 20)
+            columns = additional_case(name, *size)
         else:
             sizes = {'oracle': (50, 20, 12), 'short': (50000, 500, 2),
                      'long': (50000, 3000, 20), 'weak': (5000, 500, 20)}
@@ -200,9 +280,15 @@ def main():
                      'degree_scope': 'input graph before estimator pruning',
                      'generator_sha256': digest(args.generator.resolve()), 'numpy_version': np.__version__,
                      'tolerance': args.tolerance, 'vce': 'robust'})
-        if name == 'oracle':
-            meta['oracle'] = dense_oracle(columns)
-        meta['outputs'] = write_case(args.generator.resolve(), path, columns, args.tolerance)
+        if name in {'oracle', 'orthogonal'}:
+            meta['oracle'] = dense_oracle(columns, include_intercept=name != 'orthogonal')
+        if name in {'wide', 'orthogonal'}:
+            meta['fixture'] = ('16 controls: four exactly FE-orthogonal, others with worker/firm/both FE content'
+                               if name == 'wide' else 'nocons: all four controls and outcome exactly FE-orthogonal by paired cancellation')
+        if name == 'orthogonal':
+            meta['include_intercept'] = False
+        meta['outputs'] = write_case(args.generator.resolve(), path, columns, args.tolerance,
+                                     include_intercept=name != 'orthogonal')
         meta['case_sha256'] = digest(path)
         path.with_suffix('.json').write_text(json.dumps(meta, indent=2) + '\n')
         print(json.dumps({key: value for key, value in meta.items() if key != 'oracle'}), flush=True)

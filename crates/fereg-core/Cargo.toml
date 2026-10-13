@@ -11,7 +11,7 @@ build = "build.rs"
 path = "src/lib.rs"
 
 [dependencies]
-cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "1d39c113f0c397f29653d92672090e5a42f80921", features = ["parallel", "experimental-components"] }
+cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "f45c3b8b2895a9fdcf32db3b768717230ed594b9", features = ["parallel", "experimental-components"] }
 rayon = { version = "=1.12.0" }
 schwarz-precond = { git = "https://github.com/johannes-schmieder/within", rev = "297f32d9c4f83cc7d814ea778cd28c1f976e68d0", package = "schwarz-precond" }
 within = { git = "https://github.com/johannes-schmieder/within", rev = "297f32d9c4f83cc7d814ea778cd28c1f976e68d0", package = "within" }
