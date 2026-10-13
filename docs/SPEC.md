@@ -490,9 +490,14 @@ Apparent convergence triggers fresh strict WLS at
 `min(1e-12,0.1×outer_tolerance)`. If beta, eta, basis/rank or objective moves
 beyond the registered publication envelope, resume bounded IRLS. Publish
 only after exact accepted-h=qmu Hessian/bread, basis, projection, score,
-objective replay and eta reconstruction checks. Refresh/invalidate numerical
-backend state whenever weights change; sample mutation invalidates all reuse.
-Warm starts are guesses, never certificates. Final inference and correction
+objective replay and eta reconstruction checks. Refresh/invalidate all
+current-weight operators, products and proofs whenever weights change.
+Separately typed historical preconditioner state may survive solely as solve
+acceleration, with its build identity retained and compatibility, memory and
+work limits checked. It carries no current-weight, certificate, canonical-rank
+or Hessian authority; the operator, RHS, stopping target and independent
+certification still use the current problem. Sample mutation invalidates all
+reuse. Warm starts are guesses, never certificates. Final inference and correction
 use this same accepted state. Output tolerance (§5) does not remove the
 strict PPML/final-Hessian requirements.
 

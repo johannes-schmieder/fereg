@@ -508,7 +508,7 @@ of opportunity alone does not authorize broadening their implementation scope.
 | H2 | Dense three-FE MAP prototype gated by the certified contraction bound, LSMR fallback | Prototype approved by Johannes on 2026-10-12; freeze rule, fields, witnesses and budget first; see section 6 |
 | H3 | Parallel neighbour-pair assembly in canonical products | Arithmetic-preserving variant needs no decision; the private-accumulator variant is a separate ulp-scope declaration |
 | H8 | Consistent recurrence targets across automatic routes, certificate unchanged | Approved by Johannes on 2026-10-12: a hundredth of the request with the 1e-14 floor, acceptance only by the certificate at the request, no new rejection or re-route; see section 6 |
-| H9 | Reuse a prior canonical preconditioner with an exact current-weight operator | Proposed implementation plan in section 7; first resolve SPEC's backend-invalidation wording and prove/cost the inverse action; strict checkpoint before ordinary frames |
+| H9 | Reuse a prior canonical preconditioner with an exact current-weight operator | Approved by Johannes on 2026-10-13, including the narrow SPEC clarification; inventory and inverse-action gates precede the strict-checkpoint prototype and any ordinary-frame extension |
 
 ### A2 authorized discovery: retain per-RHS projection guesses
 
@@ -936,7 +936,7 @@ default change.
 6. Workstream H (section 6) after C2: H1 and H3 first, then H8 so H2 is
    judged against consistent tolerances, H2 under its approval, H4/H5 as
    bounded checks and tooling, H6 by removed pass, H7 check only.
-7. H9 (section 7) is the proposed follow-up to the measured H3 implementation:
+7. H9 (section 7) is the approved follow-up to the measured H3 implementation:
    inventory actual reusable geometry, prove its preconditioner action, test
    strict-checkpoint reuse, then consider ordinary frames. Certificate pass
    fusion is a separate preserving change; A2 reconsideration follows only
@@ -2250,14 +2250,29 @@ outputs under `target/tmp/h-<item>/`, deleted before reporting. Phase caps
 are hard; after ten substantive unsuccessful repairs or one working day on
 one blocker, record the reproducer and ask Johannes.
 
-## 7. H9 proposal: reuse preconditioners at exact current weights
+## 7. H9: reuse preconditioners at exact current weights
 
-Johannes requested this action plan on 2026-10-12. This section proposes
-implementation and experiments; it records no runtime approval or performance
-result. Start from integrated source `b4b4f6d3` (or identify its successor before
-work), which includes H3, H8, H6 and the accepted H2 follow-up. H3's measurement
+Johannes requested this action plan on 2026-10-12 and approved it, including
+the narrow SPEC clarification, on 2026-10-13. The execution baseline is
+`3d06d0466587001a732efc2e3c4c175c89e4c485`, which includes H3, H6, the accepted
+H2 follow-up and the completed H8 adaptive continuation. H3's measurement
 prerequisite is complete. Keep the earlier H boundary's inconclusive cell and
-the subsequent H2 incremental qualification distinct; neither qualifies H9.
+subsequent incremental qualifications distinct; none qualifies H9. Each
+stage below remains conditional on its preceding evidence gates; approval
+does not convert a failed inventory or discovery into implementation authority.
+
+Inventory declaration (2026-10-13, before fits): use a task-only diagnostic
+copy of that baseline, with unchanged scientific arithmetic and routes.
+Stream normalized weights, exact coordinate/source-code arrays and acceptance
+events to establish producer-to-strict compatibility; record capture time
+separately. Diagnostic native times include this overhead and are not release
+timings. Reuse the four hash-bound October 12 PPML datasets on SCC at 1/4/16
+workers: twelve fits, 120 seconds per fit and 900 seconds total. Before that
+panel, permit two 1,200-row baseline/diagnostic launcher checks at one worker,
+30 seconds per fit and 60 seconds total, requiring exact scientific outputs.
+Freeze tool/plugin/input hashes and require successful build/load, focused
+canonical checks, scheduler accounting and application sentinels. No fit retry
+or new solver is part of this inventory.
 
 The objective is to avoid repeated neighbour-pair assembly while solving the
 actual current weighted problem. First target the strict checkpoint, then
@@ -2293,13 +2308,12 @@ exact accepted `h=q*mu`. No tolerance or model-semantic change is proposed.
 
 ### H9a. Freeze the contract, operator and preconditioner
 
-**SPEC prerequisite.** Section 13 says to refresh/invalidate numerical backend
-state whenever weights change. Obtain Johannes's decision on a narrow
-clarification before runtime implementation: all current-weight operators,
+**SPEC prerequisite satisfied (2026-10-13).** Johannes approved the narrow
+clarification now recorded in section 13: all current-weight operators,
 products and proofs are refreshed/invalidated; separately typed historical
 preconditioner state may survive solely as solve acceleration. It carries no
 certificate, current-weight identity, canonical-rank or Hessian authority.
-Do not silently reinterpret that sentence or edit the strict tolerance.
+The strict tolerance and publication checks are unchanged.
 
 Use two categorical FE partitions and the existing canonical eligibility.
 OLS, explicit LSMR/CMG, three-FE routes and unsupported canonical shapes keep
@@ -2345,7 +2359,7 @@ change: a mismatch discards the cache. Do not freeze yesterday's anchors.
 
 Measure drift against normalized **cache-build** weights, including the
 solver divisor: `rho=max_i(max(w_t[i]/w_0[i], w_0[i]/w_t[i]))`. An invalid,
-underflowed or overflowing ratio declines reuse. Propose the fixed initial
+underflowed or overflowing ratio declines reuse. Use the approved fixed initial
 threshold `rho <= 2`, without fitting it to campaign cases. Positive-weight
 quadratic forms obey `rho^-1 S_0 <= S_t <= rho S_0` on identical grounded
 coordinates: eliminate the left coordinates by minimizing the same weighted
@@ -2433,7 +2447,7 @@ Independent witnesses, before full-fit discovery:
 ### H9d. Execute bounded stages and stop on failed prerequisites
 
 Freeze source/plugin/input identities, rules, tracing and all limits before
-each stage. Proposed budgets are maxima, not obligations to exhaust them.
+each stage. Approved budgets are maxima, not obligations to exhaust them.
 Every attempted fit and failed attempt counts; no measurement retry or
 outcome-driven threshold change is included.
 
@@ -2447,7 +2461,7 @@ outcome-driven threshold change is included.
 Freeze the holdouts before ordinary-frame edits: uneven degrees, weak bridges,
 disconnected components and wider RHS banks. Bind exact generator parameters,
 seeds and hashes then; these are evaluation inputs, never runtime selectors.
-The proposed drift rule is unchanged. Refresh on incompatibility or excessive
+The approved drift rule is unchanged. Refresh on incompatibility or excessive
 drift, and otherwise reuse only admitted state. If additional cost gating is
 necessary, stop and declare a general costing proposal before implementing it.
 Do not identify eligibility by dataset name, size bands or a dense-case flag.
