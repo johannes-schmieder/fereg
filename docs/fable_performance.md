@@ -936,8 +936,9 @@ default change.
 6. Workstream H (section 6) after C2: H1 and H3 first, then H8 so H2 is
    judged against consistent tolerances, H2 under its approval, H4/H5 as
    bounded checks and tooling, H6 by removed pass, H7 check only.
-7. H9 (section 7) is the approved follow-up to the measured H3 implementation:
-   inventory actual reusable geometry, prove its preconditioner action, test
+7. H9 (section 7) stopped at its approved inventory gate: actual producer-to-
+   strict drift exceeds the fixed bound in all twelve cells. Its conditional
+   design would prove the preconditioner action and test
    strict-checkpoint reuse, then consider ordinary frames. Certificate pass
    fusion is a separate preserving change; A2 reconsideration follows only
    demonstrated H9 savings.
@@ -2270,9 +2271,29 @@ timings. Reuse the four hash-bound October 12 PPML datasets on SCC at 1/4/16
 workers: twelve fits, 120 seconds per fit and 900 seconds total. Before that
 panel, permit two 1,200-row baseline/diagnostic launcher checks at one worker,
 30 seconds per fit and 60 seconds total, requiring exact scientific outputs.
+Each launcher also runs one small initialization estimation: fourteen
+initialization calls plus fourteen target calls, twenty-eight native calls
+in total, all within those process/phase caps. Bind the initialization and
+smoke datasets and command-clock plugin as well as the four panel inputs.
 Freeze tool/plugin/input hashes and require successful build/load, focused
 canonical checks, scheduler accounting and application sentinels. No fit retry
 or new solver is part of this inventory.
+
+**Inventory closed: prerequisite failed (2026-10-13).** All twelve fits
+completed, but no strict canonical attempt can reuse an admitted producer
+under this design. Dense 1M and 4M geometry was built at weight generation 1;
+their strict calls occur at generation 5, with normalized cache-build ratios
+22.06557 and 36.84239 against the approved bound of 2. Coordinates, anchors
+and basis identities match. AKM and sparse producers are already implicit
+and also exceed the drift bound. The sparse canonical declines create no new
+producer; their enclosing strict fallback frames still succeed.
+
+The runtime prototype, strict/ordinary discovery and A2 follow-up therefore
+remain unexecuted. Raising the bound or deliberately constructing a later
+producer needs a revised, separately bounded decision. This inventory does
+not measure the old preconditioner's convergence quality. The approved
+SPEC clarification remains valid and no runtime or tolerance changed.
+See the [inventory evidence](VALIDATION.md#h9-preconditioner-inventory-stopped-at-drift-gate-2026-10-13).
 
 The objective is to avoid repeated neighbour-pair assembly while solving the
 actual current weighted problem. First target the strict checkpoint, then

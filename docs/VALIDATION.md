@@ -14,6 +14,89 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H9 preconditioner inventory: stopped at drift gate, 2026-10-13
+
+Johannes approved the [H9 design](fable_performance.md#7-h9-reuse-preconditioners-at-exact-current-weights)
+and narrow SPEC section 13 exception for historical preconditioners. The first
+evidence gate fails: all twelve frozen PPML cells exceed the fixed cache-build
+weight-ratio bound of 2. No runtime prototype or subsequent fit discovery was
+started. Production identity remains exact against execution baseline
+`3d06d0466587001a732efc2e3c4c175c89e4c485` across 179 runtime modules and 58
+artifact inputs; scientific tolerances are unchanged.
+
+The actual accepted canonical producer is from generation 1, rather than the
+last ordinary IRLS frame. Intermediate ordinary frames update weights without
+rebuilding canonical geometry. The table shows the first strict attempt;
+ratios are rounded across the 1/4/16-worker observations.
+
+| Frozen PPML input | Producer representation | Producer → strict weight generation | Normalized cache-build ratio |
+| --- | --- | --- | ---: |
+| AKM 1M | Implicit | 1 → 5 | 14.84236 |
+| Dense 1M | Direct Cholesky | 1 → 5 | 22.06557 |
+| Dense 4M | Explicit iterative matrix | 1 → 5 | 36.84239 |
+| Sparse 1M | Implicit | 1 → 8 | 239.75427 |
+
+All compared source codes, generated columns, components, anchors, free
+coordinates, sample/topology generations and basis identities match exactly.
+The drift failure alone blocks the dense consumers; implicit producers are
+also excluded by this design. Sparse canonical construction declines at
+generations 8 and 11, while the enclosing strict fallback frames commit
+successfully. The first decline clears simulated optional cache state, leaving
+no accepted producer for the second strict canonical attempt. There is no
+observed strict rollback. Overall, none of the fifteen target strict canonical
+attempts is eligible before memory admission. Cache payload lower bounds are
+retained, but complete overlap admission, inverse-action quality and PCG
+convergence remain unmeasured.
+
+SCC build job `8050148` and inventory job `8050149` both have `failed=0` and
+`exit_status=0` (488 and 239 scheduler seconds). Both Linux plugins pass native
+ABI/load and input/output guard checks; all 21 focused canonical tests pass.
+Two 1,200-row baseline/diagnostic checks agree exactly in coefficients,
+covariance, sample hash and selected scalar metadata. Twelve target fits finish
+in 228.416 seconds within the declared 900-second budget and 120-second per-fit
+cap. Including two smoke and fourteen launcher initialization fits, all 28
+native calls complete without retry. Frozen source, plugins, all seven input/
+clock artifacts and capture hashes are verified. The panel used `scc-zj4`,
+28 allocated physical cores, with the declared 1/4/16-worker masks.
+
+Diagnostic clocks include snapshot overhead and establish no speed claim.
+For context, dense 4M's sixteen-worker strict phase is 2.295 seconds, including
+0.492 seconds of reduced assembly and 0.007 seconds of matrix packing; the
+snapshot itself takes 0.150 seconds. Total native time is 11.606 seconds.
+These single instrumented observations cannot be pooled with the older A3 or
+H3 panels or used as clean qualification timings.
+
+Independent Astra review found and repaired analyzer generation, invalidation
+and snapshot-integrity gaps before analysis. The repaired reader passes 24
+synthetic witnesses and verifies every captured file's manifest membership,
+size, SHA-256 and binary layout. The held SCC analysis job `8050157` remained
+queued after release and was canceled without execution; the same reviewed
+analyzer completed on Mac in 0.764 seconds after collection. Two earlier local
+diagnostic compilation setup failures (missing Cargo on PATH, then an incorrect
+generation accessor) were repaired before deployment. The smoke launcher's
+two deletion-count keys were absent from its metadata schema; a retained
+post-capture audit verifies all 26 actual non-timing fields exactly, including
+`num_singletons` and `separated`, without rerunning a fit. No failed fit is omitted.
+Final independent review confirms the stop decision and the successful sparse
+fallback interpretation.
+
+The [compact evidence](../bench/results/h9-20261013-inventory.json) retains every
+observation, scientific table, normalized H9 event, comparison, snapshot hash,
+artifact identity and analysis program. The [diagnostic patch](../bench/results/h9-20261013-inventory.patch)
+reproduces the observation hooks against the frozen baseline; it is not a
+production change. Local references, patch applicability and `git diff --check`
+pass. Existing baseline runtime evidence is reused under the documentation-only
+rule; no new full Mac runtime suite, Mac timing qualification or Windows check
+is claimed. Task captures and build copies are removed at closure.
+
+The inventory stops this bounded design. Preconditioner quality at the observed
+larger drift, a paid later producer refresh, or another general admission rule
+would need a revised proposal and budget. Ordinary-frame reuse and A2 cannot
+advance on the failed strict prerequisite. Certificate fusion remains separate:
+the canonical certificate is already fused, while general FE projection sums
+depend on prior norm scales and some group means require a scaled fallback.
+No certificate implementation changed in this inventory.
+
 ## Adaptive two-FE OLS: accepted tradeoff and Mac qualification, 2026-10-13
 
 Johannes accepted the adaptive version after reviewing the accuracy and work
