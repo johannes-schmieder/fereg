@@ -508,6 +508,7 @@ of opportunity alone does not authorize broadening their implementation scope.
 | H2 | Dense three-FE MAP prototype gated by the certified contraction bound, LSMR fallback | Prototype approved by Johannes on 2026-10-12; freeze rule, fields, witnesses and budget first; see section 6 |
 | H3 | Parallel neighbour-pair assembly in canonical products | Arithmetic-preserving variant needs no decision; the private-accumulator variant is a separate ulp-scope declaration |
 | H8 | Consistent recurrence targets across automatic routes, certificate unchanged | Approved by Johannes on 2026-10-12: a hundredth of the request with the 1e-14 floor, acceptance only by the certificate at the request, no new rejection or re-route; see section 6 |
+| H9 | Reuse a prior canonical preconditioner with an exact current-weight operator | Proposed implementation plan in section 7; first resolve SPEC's backend-invalidation wording and prove/cost the inverse action; strict checkpoint before ordinary frames |
 
 ### A2 authorized discovery: retain per-RHS projection guesses
 
@@ -935,6 +936,11 @@ default change.
 6. Workstream H (section 6) after C2: H1 and H3 first, then H8 so H2 is
    judged against consistent tolerances, H2 under its approval, H4/H5 as
    bounded checks and tooling, H6 by removed pass, H7 check only.
+7. H9 (section 7) is the proposed follow-up to the measured H3 implementation:
+   inventory actual reusable geometry, prove its preconditioner action, test
+   strict-checkpoint reuse, then consider ordinary frames. Certificate pass
+   fusion is a separate preserving change; A2 reconsideration follows only
+   demonstrated H9 savings.
 
 Each commit states its tier, its witnesses and what it did not change.
 Report costs as well as gains, keep failed attempts visible, and delete
@@ -2187,3 +2193,261 @@ prose to `VALIDATION.md` and `fixest_benchmarks.md`, decisions here. Task
 outputs under `target/tmp/h-<item>/`, deleted before reporting. Phase caps
 are hard; after ten substantive unsuccessful repairs or one working day on
 one blocker, record the reproducer and ask Johannes.
+
+## 7. H9 proposal: reuse preconditioners at exact current weights
+
+Johannes requested this action plan on 2026-10-12. This section proposes
+implementation and experiments; it records no runtime approval or performance
+result. Start from integrated source `b4b4f6d3` (or identify its successor before
+work), which includes H3, H8, H6 and the accepted H2 follow-up. H3's measurement
+prerequisite is complete. Keep the earlier H boundary's inconclusive cell and
+the subsequent H2 incremental qualification distinct; neither qualifies H9.
+
+The objective is to avoid repeated neighbour-pair assembly while solving the
+actual current weighted problem. First target the strict checkpoint, then
+ordinary canonical frames if the first stage saves total cost. The strict
+solve remains fresh, with SPEC's `min(1e-12, 0.1*outer_tolerance)` target,
+the existing tighter reduced recurrence target and original-RHS stopping
+reference. Final Hessian/bread, inference and both bias modes still use the
+exact accepted `h=q*mu`. No tolerance or model-semantic change is proposed.
+
+### Correct the premise before estimating savings
+
+- H3 already reduced dense 4M PPML native time from 19.540 to 11.636 seconds
+  at sixteen workers in its SCC panel. The earlier A3 forced-implicit result
+  was 10.896 seconds on a different source/host/harness. These are separate
+  observations, not a remaining 7.9-second saving or a new paired comparison.
+  Use the [H3 evidence](VALIDATION.md#h3-ordered-parallel-assembly-2026-10-12)
+  and [A3 discovery](VALIDATION.md#a2a3f2-first-diagnostic-panels-2026-10-11)
+  to choose measurements, not to promise that H9 flips the dense cell.
+- `ols/canonical_products.rs` currently drops weighted geometry before
+  returning `Products`. Its reduced recurrence is diagonally scaled CG;
+  there is no retained PCG preconditioner interface. Direct calls have a
+  Cholesky factor; explicit iterative calls have a normalized matrix.
+  Reusing the latter requires a specified approximate inverse action.
+- Ordinary frames do not necessarily build canonical geometry. The latest
+  successful producer can precede the last ordinary frame by several weight
+  updates. The reported near-final drift of about `1e-6` must be verified
+  against that producer's weights. `fe/cmg.rs` has a weight-ratio diagnostic
+  for seed admission, not a canonical preconditioner cache.
+- The canonical certificate already reconstructs residuals from original
+  inputs and accumulates both FE score families and the weighted Gram in
+  one traversal. H6 also shares selected LSMR/OLS norm reads. Inventory the
+  remaining certificate passes before proposing another fusion.
+
+### H9a. Freeze the contract, operator and preconditioner
+
+**SPEC prerequisite.** Section 13 says to refresh/invalidate numerical backend
+state whenever weights change. Obtain Johannes's decision on a narrow
+clarification before runtime implementation: all current-weight operators,
+products and proofs are refreshed/invalidated; separately typed historical
+preconditioner state may survive solely as solve acceleration. It carries no
+certificate, current-weight identity, canonical-rank or Hessian authority.
+Do not silently reinterpret that sentence or edit the strict tolerance.
+
+Use two categorical FE partitions and the existing canonical eligibility.
+OLS, explicit LSMR/CMG, three-FE routes and unsupported canonical shapes keep
+their existing paths. For the first prototype, saved-FE requests use the cold
+path; enabling them later requires a named reconstruction witness. Keep
+accepted-mean final-product reuse and refresh decisions unchanged.
+Strict-only discovery enables the cache consumer in `strict_candidate` only;
+any separately required accepted-mean solve keeps its cold path at this stage.
+
+For eliminated-side masses `M_a`, retained-side masses `M_b` and aggregated
+weighted incidence `C`, the grounded Schur operator is
+`S_t = M_b,t - C_t' M_a,t^-1 C_t`. Rebuild current normalized weights, masses,
+incidence values, RHS, roots and anchor decisions on every call. Adapt the
+existing `apply_incidence_schur` implementation; skip only the pair assembly
+and the setup explicitly replaced by the cache. An implicit operator still
+costs setup and work per application. It is exact in its weight/design inputs,
+not promised bitwise identical to explicit matrix multiplication.
+
+Freeze one inverse-action design per existing geometry representation:
+
+| Producer | Cached payload | Inverse action for the first prototype |
+| --- | --- | --- |
+| Explicit direct | Existing admitted Cholesky factor of normalized `A_0` | Forward/backward triangular solves |
+| Explicit iterative | Existing normalized matrix `A_0=D+L+L'` | One symmetric Gauss-Seidel action: `(D+L')^-1 D (D+L)^-1 r` |
+| Implicit or declined canonical producer | None | Existing cold route |
+
+The second action is a fixed linear SPD preconditioner when its diagonal is
+positive and finite; it is not `A_0^-1`. Its quality must be measured. Charge
+both triangular sweeps, diagonal storage and setup. Do not add an unpriced
+Cholesky factorization, residual-dependent inner CG, or a second solver family
+to rescue a failed prototype. Ordinary PCG requires an appropriate symmetric
+positive-definite preconditioner; nonlinear inner solves require a different
+method ([PETSc CG](https://petsc.org/release/manualpages/KSP/KSPCG/),
+[flexible CG](https://petsc.org/release/manualpages/KSP/KSPFCG/)).
+
+Current and cached coordinates must match. With roots `R_t`,
+`A_t=R_t^-1 S_t R_t^-1`; transport cached inverse action `B_0` by
+`B_t=T B_0 T`, `T=R_t R_0^-1`. Check finite, positive scale conversions.
+Require matching sample/generation, original-row axis, FE source/coding,
+eliminated side, components, anchors, free-coordinate order and generated
+column/basis identities. Current anchors use largest weighted mass and can
+change: a mismatch discards the cache. Do not freeze yesterday's anchors.
+
+Measure drift against normalized **cache-build** weights, including the
+solver divisor: `rho=max_i(max(w_t[i]/w_0[i], w_0[i]/w_t[i]))`. An invalid,
+underflowed or overflowing ratio declines reuse. Propose the fixed initial
+threshold `rho <= 2`, without fitting it to campaign cases. Positive-weight
+quadratic forms obey `rho^-1 S_0 <= S_t <= rho S_0` on identical grounded
+coordinates: eliminate the left coordinates by minimizing the same weighted
+quadratic form to derive the bound. Thus transported preconditioning bounds
+the condition number by `rho^2` times its build-state condition number. It
+does not prove unchanged iteration counts, especially for Gauss-Seidel.
+No adjacent-frame reset of the drift baseline is permitted without a rebuild.
+
+### H9b. Own, admit and retire the cache safely
+
+Implement an optional preconditioner owner in `CertifiedLinearSession` and
+separate operator/preconditioner application in `canonical_products.rs`.
+Install a producer only after its certificate and enclosing frame acceptance;
+its build identity stays immutable. Strict trials borrow accepted cache state.
+On rejection, error, Break or rollback, discard speculative replacements and
+clear optional cache state without allocating. Clear it on sample/topology/
+basis incompatibility and inference handoff. Restore accepted fit authority
+through the existing transaction regardless of cache availability.
+
+Budget actual capacities before retention. The payload includes approximately
+`8*N + 8*sum(d_c^2)` bytes for build weights and factor/matrix, plus roots,
+diagonal, identities and component/index storage. Charge new PCG scratch,
+fresh implicit incidence and weights, reconstruction storage and any old/new
+overlap as well. Today's weight bank becomes the response buffer, so retaining
+it can require another N-vector; moving a factor does not make its longer
+lifetime free. Prefer releasing an obsolete cache before replacement over
+keeping two matrices. Allocation/admission misses retain the already selected
+Fast/Low route and public memory allowance, without making a formerly feasible
+cold solve fail. Include actual peak reporting and optional-allocation faults.
+
+Retain existing cold admission on misses. `Plan::new` currently rejects some
+calls on pair-assembly work before representation selection; specify a reuse
+plan that charges the operations it executes, rather than bypassing that guard
+globally or restarting A3's stopped selector calibration.
+
+For each component/RHS, preserve zero-RHS behavior and the original target;
+let `M=min(max_iterations, component_dimension)`. Initially allow speculative
+PCG at most `floor(M/2)` iterations (decline when zero), then at most one cold
+rebuild using the remaining budget. Count all failed iterations and operator/
+preconditioner applications, including explicit residual checks. A late
+certificate failure consumes the same ledger; no retry resets the cap.
+Keep the existing unpreconditioned Euclidean residual norm and original-RHS
+reference for stopping. PCG's `r' B_t r` supplies recurrence coefficients,
+not a replacement stopping norm. Require finite positive preconditioner energy
+for a nonzero residual and retain current-operator curvature guards; breakdown
+uses the same bounded fallback. The present CG helper uses one square norm
+for both jobs, so separate these quantities explicitly and test them.
+Fatal errors propagate through the existing transaction. This bounds work
+but cannot guarantee identical behavior at every finite budget: changed
+success/fallback or protected decisions in the validation panel stop the
+prototype, rather than justify a special-case fence or tolerance change.
+
+### H9c. Prove correctness before measuring fits
+
+Declare H9 as result-changing work. Name affected projected response/controls,
+coefficients, eta/mu, subsequent working responses and weights, objectives,
+continuous score/certificate diagnostics, Hessian/bread, covariance and derived
+statistics, plus reduced iteration/preconditioner work. Bind exact replay fields
+to the frozen baseline before candidate calls. Sample, rank, omission,
+separation, missingness, success/error, certificate pass/fail, outer counts,
+strict accept/resume decisions and existing fallback decisions stay exact;
+new internal preconditioner-use diagnostics are explicitly scoped. Unaffected
+routes remain exact. Require fixed-worker repeatability and cross-worker
+scientific agreement with stable discrete decisions.
+
+Independent witnesses, before full-fit discovery:
+
+1. In `fereg-oracle`/`fereg-testkit`, explicitly assemble the grounded dummy
+   design and current Schur system; compare operator products, solutions and
+   orthogonality. Check both inverse actions for linearity, symmetry, positive
+   energy and coordinate transport against an independently formed matrix.
+2. Exercise uniform/nonuniform drift, cumulative small changes crossing the
+   threshold, normalization changes, anchor swaps/ties, disconnected and weak
+   graphs, extreme weights, zero/tiny RHSs and multiple RHSs. Preserve the
+   existing tolerance and accuracy bounds; no new relaxed witness threshold.
+3. Run strict-movement, accepted-Hessian, explicit-dummy PPML, coefficient/
+   covariance and strong-statistic witnesses, saved-output cold fallback and
+   both mean-bias modes. Recompute certificates from original inputs/current
+   weights, never the PCG recurrence or retained matrix.
+4. Test memory boundaries and actual capacities, optional allocation failure,
+   exhausted work, late certificate failure, Break, rejected strict trials,
+   separation generation changes and atomic rollback. Review the architecture
+   independently with bounded high-effort Astra assistance before integration.
+
+### H9d. Execute bounded stages and stop on failed prerequisites
+
+Freeze source/plugin/input identities, rules, tracing and all limits before
+each stage. Proposed budgets are maxima, not obligations to exhaust them.
+Every attempted fit and failed attempt counts; no measurement retry or
+outcome-driven threshold change is included.
+
+| Stage | Work and cap | Gate to the next stage |
+| --- | --- | --- |
+| Inventory | Four frozen PPML inputs (AKM 1M, dense 1M/4M, sparse 1M), 1/4/16 workers: 12 baseline fits; 120 s/fit, 900 s total | Identify actual producer/consumer calls, representation, cache age/drift, compatible anchors and admitted bytes; demonstrate a plausible total-cost saving on post-H3 code |
+| Operator/cache prototype | One design above, at most two substantive repairs and one working day; focused witnesses before campaign fits | SPEC clarification recorded; inverse actions, current operator, scientific scope, memory and rollback checks pass |
+| Strict-only discovery | Same four inputs/workers; two alternating baseline/candidate pairs per cell, 48 fits; 120 s/fit, 2,400 s total | Reuse occurs; declared science passes; dense 4M total native time improves by at least 5% in both pairs at 4 and 16 workers; each cell's median paired cost increase is within max(5%, 1 ms) |
+| Ordinary-frame extension | Only after strict success: one pair per original cell plus one pair for four frozen held-out graph shapes at 1/4/16 workers, 48 fits total; 120 s/fit, 2,400 s total | Same scientific/protected decisions; geometric mean of paired total-native-time ratios below one against strict-only; no cell exceeds the allowance; all holdouts judged without retuning |
+
+Freeze the holdouts before ordinary-frame edits: uneven degrees, weak bridges,
+disconnected components and wider RHS banks. Bind exact generator parameters,
+seeds and hashes then; these are evaluation inputs, never runtime selectors.
+The proposed drift rule is unchanged. Refresh on incompatibility or excessive
+drift, and otherwise reuse only admitted state. If additional cost gating is
+necessary, stop and declare a general costing proposal before implementing it.
+Do not identify eligibility by dataset name, size bands or a dense-case flag.
+
+Trace each canonical call's phase (ordinary, strict candidate or accepted-mean
+refresh), assembly/factorization and current-operator setup, inverse-action
+cost, per-RHS applications, residual reconstruction/certification, cache
+hits/misses/rebuilds, ratio and total native/command time. Include the cost of
+creating and retaining the cache in the earlier frame. Report peak memory and
+discarded work. A shorter strict phase alone does not pass discovery.
+These small panels screen hypotheses; they establish no release speed claim.
+
+On a stable passing candidate, complete `./scripts/run_tests.sh`, scoped
+`scripts/run_plugin_replay.sh` including 2/4/8/16-worker repeats, mapped licensed
+PPML scientific/transaction checks, universal Mac build/load/ABI checks and
+the complexity ratchet. Then qualify once on a quiet Mac: twenty frozen
+standard workloads, seven alternating measured pairs after one excluded
+warm-up pair per cell (320 calls, 90 s/call, 2,400 s total), under the existing
+paired-median 95% bootstrap upper-bound allowance of max(5%, 1 ms).
+Also measure the frozen dense 4M target at 4/16 workers with the same rule
+(32 calls, 120 s/call, 1,800 s total) if absent from the standard panel.
+Require a 95% upper bound below 0.95 for the claimed material target gain.
+No continuation is included. Finish edits, targeted profiles, reviews and
+science first; run no competing work on the measured host. Failed or
+inconclusive qualification remains a failed prerequisite to a performance claim.
+
+Preserve compact hashes, all observations and decisions in the existing
+`bench/results/`, `VALIDATION.md` and this brief; remove task outputs from
+`target/tmp/h9/` at closure. No GitHub testing or new platform claim follows
+from this proposal. Keep each implementation boundary coherent and reviewable.
+
+### Follow-ups: certificate passes, then a separate A2 decision
+
+Certificate fusion is an independent arithmetic-preserving slice. First map
+the remaining passes in `fe/certificate.rs`, `fe/borrowed_map.rs` and their
+callers, excluding the already-fused canonical path and H6 norm handoff.
+For an eligible path, fuse effect accumulations only if every cell keeps its
+observation order, compensation/FMA recurrence, scale and final reduction
+order. Preserve original-RHS reference norms and the residual norm; they are
+different quantities. Some scale-dependent recurrences may need a prior norm
+pass. One residual read is an optimization target, not a blanket exactness
+proof or a universal lower bound on this implementation's pass count.
+
+Keep independent evaluation from declared design/current weights and returned
+residuals. D1 remains reject-only; no recurrence-derived certificate, row
+sampling or sketch replaces the full check. Admit all-effect accumulators
+within the existing allowance, retain the existing path on a memory miss,
+and preserve parallelism where a serial scatter would lose more than it saves.
+Require bitwise certificate/norm/output equality and unchanged signatures,
+including failure paths, plus a measured removed pass/instruction reduction.
+Bound this slice to one design, two repairs and one working day; qualify its
+own stable boundary without mixing its gains into H9 discovery.
+
+Only after H9's measured setup savings, propose a separately budgeted A2
+retest against H9 without guesses. Retain A2's failed result: its 1.883%
+total-cost increase was not a proven setup attribution. Count guess conversion,
+initial exact-operator application, all PCG/preconditioner work and retention
+memory. No automatic reopening of A1/A3, warm-start integration or relaxation
+of the strict `1e-12` cap follows from this plan.
