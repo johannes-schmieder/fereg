@@ -5,14 +5,54 @@ acceptance, not a performance pass: the final timing campaign closed incomplete
 and historical timing was mixed. The Mac is the qualification host. Linux and
 Windows evidence comes from bounded build, load and mapped-fixture checks, which
 do not establish full platform scientific or performance qualification. GitHub
-testing is paused. Native distribution still needs the
-[licensing decision](licensing.md).
+testing is paused. Native distribution permissions were confirmed on 2026-10-13;
+the [licensing decision](licensing.md) records the distribution terms.
 
 This page keeps accepted evidence, open failures and standing caveats. The full
 narrative ledger, with every run identifier, archive and receipt digest,
 campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
+
+## Public beta packaging and local installation, 2026-10-13
+
+Source `7ecb7974f4fbde099a07f74b3cc7ce02738886e7` changes packaging,
+licensing metadata and installation documentation without changing the estimator
+or scientific tolerances. The current runtime's preceding scientific evidence
+remains applicable; these checks qualify the new package and its installation.
+
+| Check | Result |
+| --- | --- |
+| Python tooling | 203 tests pass with 13 existing optional skips; the 12 focused packaging tests pass. |
+| Dependency/source closure | Rust 1.85.1 and cargo-audit 0.22.1 report zero vulnerabilities for the exact source and lockfile. The source archive contains 53 vendored dependencies, the local Rayon fork, dependency/Rust notices and a relocatable offline Cargo configuration. All 3,077 source inventory entries match their hashes and sizes. |
+| Native build | Universal x86-64/arm64 build from the extracted corresponding-source archive succeeds with an empty Cargo home and `CARGO_NET_OFFLINE=true`. Both slice audits and the host's actual-plugin ABI/selftest harness pass. The corrected packaging rebuild reuses the native build cache from the initial empty-cache build. |
+| Extracted release fixtures | Stata/MP 19 on Apple Silicon passes `installation_smoke`, `feppml_installation_smoke`, `staged_plugin_binary` and `single_runtime`, including native-file failure rollback and repeated OLS/PPML use. All fixture and process return codes are zero. |
+| Actual local installation | A fresh `net install` into isolated PLUS/PERSONAL/SITE/OLDPLACE directories installs all 30 declared files byte-for-byte. Native selftest reports the exact source revision. OLS agrees with `regress` within 1e-8; an absorbed PPML fit and saved-mean prediction pass; a two-group PPML witness agrees with log group means within 1e-9. |
+
+The first actual installation exposed Stata's omission of `.txt`, `.json` and
+`.sha256` files declared with lowercase `f`. Commit `7ecb7974` uses uppercase
+`F` so standard installation includes licenses, the source link and metadata;
+the final checks above include those files. An initial test driver requested
+PPML prediction after absorption without saved effects/means and received the
+documented `r(498)`; correcting the test to request `mu()` passed without an
+estimator change. An earlier tooling launch placed temporary outputs inside
+the source tree, which correctly failed the external-output guard; the normal
+external-temporary-directory run passed.
+
+Artifact SHA-256 values:
+
+- Binary ZIP: `65f1bd220595316afc7510546e9952c10fce1ab1b3cda90198ab76cc05f96cbc`.
+- Corresponding-source ZIP: `8b843a144b6b52db9d0e6f7fc3bb83a9d90e8b7ed0bcd9e9c9f88415c746ec4d`.
+- Universal plugin: `16ac21f1184ba12e7ebc47949adce8ae75133ae63bd1afeab052145aa6133aee`.
+- Release manifest: `f2d95f71ff7208636690e611954023d6bc73f33f8e381d9117455c63edcb3726`.
+
+Independent review found no remaining packaging blocker after the installation
+fix. These are local build/installation results; public HTTP installation has
+not yet been tested. GitHub refused the attempted private-repository transfer
+to the existing `fe-tools` organization because the authenticated account cannot
+create private repositories there. Publication awaits resolution of the intended
+GitHub destination. GitHub Actions remain disabled. No Linux, Windows, native
+Intel-host Stata qualification or new performance claim follows from these checks.
 
 ## Mac OLS: CMG request versus auto on sparse AKM, 2026-10-13
 
