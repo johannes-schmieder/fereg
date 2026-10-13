@@ -14,6 +14,93 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H9 stale-preconditioner quality: promising absorption savings, 2026-10-13
+
+Johannes authorized the [bounded quality test](fable_performance.md#h9e-authorized-quality-test-beyond-the-inventory-drift-bound)
+after the inventory below. The actual generation-1 preconditioners work on
+generation-5 strict systems despite normalized weight ratios of 22.07 and
+36.84. All six cells pass, and every measured pair is faster with reuse.
+These are canonical absorption observations, not complete-fit or Mac release
+performance claims. Production remains identical to `3d06d0466587` across
+179 runtime modules and 58 artifact inputs.
+
+| Frozen input | Workers | Cold median s | Reuse median s | Median paired time reduction |
+| --- | ---: | ---: | ---: | ---: |
+| Dense 1M | 1 | 1.662 | 1.184 | 28.8% |
+| Dense 1M | 4 | 0.567 | 0.362 | 34.8% |
+| Dense 1M | 16 | 0.269 | 0.213 | 20.7% |
+| Dense 4M | 1 | 8.567 | 5.084 | 40.7% |
+| Dense 4M | 4 | 3.060 | 1.687 | 45.0% |
+| Dense 4M | 16 | 1.090 | 0.844 | 23.2% |
+
+Each cell has one excluded warm-up pair and three alternating measured pairs.
+The percentage is one minus the median paired ratio, which can differ from
+the ratio of separately reported arm medians. Dense 1M at sixteen workers is
+the noisiest cell: its three ratios are 0.823, 0.659 and 0.793. These small
+panels are descriptive; no confidence-bound qualification is claimed.
+
+Both captures and replays ran on isolated `scc-zj4` allocations of 28 physical
+cores, using the frozen 1/4/16-worker masks. The cold one-worker replay matches
+each captured geometry, representation and reconstructed-output signature
+exactly. Higher-worker candidates are compared with their own cold arm, and
+every repeated same-arm signature is exact at fixed worker count. All 24
+candidate comparisons pass: maximum column error is `7.50e-15` relative to
+`max(1, cold reconstructed column norm)`, and maximum normalized Gram entry error is
+`4.45e-16`. Native and additional original-input certificates pass at the
+unchanged `1e-12` request; no recurrence or historical matrix certifies a result.
+
+Dense 1M uses the old direct factor and takes four PCG iterations per RHS.
+Dense 4M uses one fixed symmetric Gauss–Seidel inverse action and takes eight,
+versus six cold explicit-CG iterations. Across 17 RHSs, the candidates perform
+68/136 preconditioner actions and 85/153 current-operator applications,
+including one diagnostic true-residual application per RHS. Maximum true
+relative residuals are `2.30e-15` and `3.72e-15`, below the unchanged inner
+target of `1e-14`. Avoiding assembly therefore outweighs the added solve work
+in these observations; a reduction in iteration count is not the explanation.
+
+Timing includes retention copying, current geometry, solving, the native
+certificate and complete `write_dense` reconstruction. Extra independent
+screening and comparisons are outside arm timings but inside the panel's
+220.540-second deadline usage. Capture-only hashing and file output are disabled
+in replay. Modeled solver workspace rises from 12.1/48.5 MB to 42.7/169.3 MB,
+including retained caches of 18.0/72.0 MB, within the captured 160/640 MB
+allowances. These are decimal MB and include small diagnostic report storage.
+The replay harness's scheduler `maxvmem=4.317G` includes fixtures and preparation;
+it is not an estimator memory claim. Full estimator lifetimes, rollback and
+memory-limited fallback still require integration checks.
+
+All eight native estimation calls finish: two smoke fits, two target captures
+and four launcher initializations. Smoke coefficient/covariance tables, sample
+hashes and all 26 non-timing metadata fields match. Provenance verifies accepted
+producer and committed strict consumer, sample/topology/basis identities,
+coordinates and hashes. All 48 absorption calls finish without decline,
+timeout, retry or retuning. Rust 1.85.1 builds and 26 focused canonical tests
+pass on Mac and SCC; 26 provenance-reader witnesses, native Linux ABI/load and
+input/output guard checks pass. Independent Astra reviews clear the design and
+the final observations.
+
+SCC jobs `8050485`, `8050486` and `8050487` have `failed=0`, `exit_status=0`,
+with 785/80/228 scheduler seconds. Initial build `8050478` exits 101 before
+compilation because its wrapper used the wrong working directory; held
+dependents `8050479`/`8050480` were canceled without execution. The narrow
+directory repair changes no solver source or fit budget. All failed evidence
+is retained by hash and summary.
+
+The [compact evidence](../bench/results/h9-20261013-quality.json) retains every
+pair, RHS work count, scientific observation, capture/artifact hash, frozen
+plan and analysis programs. The [task-only patch](../bench/results/h9-20261013-quality.patch)
+reproduces the experiment against the baseline. Patch applicability, local
+references and `git diff --check` pass. Existing production runtime evidence
+is reused; no new full runtime suite or platform qualification is claimed.
+Large captures and task build copies are deleted at closure.
+
+This result supports a strict-only complete-fit prototype with a newly frozen
+validation and cost budget. It does not supply a new weight-ratio cutoff or
+pass the earlier full-fit 5% discovery gate. At sixteen workers the observed
+dense 4M absorption saving is about 0.25 seconds; it must not be presented as
+a 23% whole-fit gain. Ordinary-frame reuse, A2 and production integration
+remain outside this completed diagnostic.
+
 ## H9 preconditioner inventory: stopped at drift gate, 2026-10-13
 
 Johannes approved the [H9 design](fable_performance.md#7-h9-reuse-preconditioners-at-exact-current-weights)

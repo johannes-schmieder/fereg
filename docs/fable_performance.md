@@ -936,12 +936,12 @@ default change.
 6. Workstream H (section 6) after C2: H1 and H3 first, then H8 so H2 is
    judged against consistent tolerances, H2 under its approval, H4/H5 as
    bounded checks and tooling, H6 by removed pass, H7 check only.
-7. H9 (section 7) stopped at its approved inventory gate: actual producer-to-
-   strict drift exceeds the fixed bound in all twelve cells. Its conditional
-   design would prove the preconditioner action and test
-   strict-checkpoint reuse, then consider ordinary frames. Certificate pass
-   fusion is a separate preserving change; A2 reconsideration follows only
-   demonstrated H9 savings.
+7. H9 (section 7) stopped at its original inventory drift gate. The separately
+   authorized quality replay in H9e subsequently passes with measured
+   absorption savings. Freeze a strict-only complete-fit prototype and its
+   validation/cost budget before advancing; ordinary-frame reuse remains
+   conditional. Certificate pass fusion is separate, and A2 needs its own
+   decision after demonstrated savings.
 
 Each commit states its tier, its witnesses and what it did not change.
 Report costs as well as gains, keep failed attempts visible, and delete
@@ -2513,6 +2513,72 @@ Preserve compact hashes, all observations and decisions in the existing
 `bench/results/`, `VALIDATION.md` and this brief; remove task outputs from
 `target/tmp/h9/` at closure. No GitHub testing or new platform claim follows
 from this proposal. Keep each implementation boundary coherent and reviewable.
+
+### H9e. Authorized quality test beyond the inventory drift bound
+
+On 2026-10-13 Johannes authorized a bounded test of the actual stale
+preconditioners after the inventory stopped at `rho <= 2`. That bound was a
+conservative reuse policy, not a measured failure of either inverse action.
+This diagnostic waives only that bound, without choosing a replacement.
+Production remains unchanged. The original discovery and ordinary-frame
+stages above remain blocked; this test does not silently reopen their gates.
+
+Capture the frozen dense 1M/4M systems from source `3d06d0466587`, one worker:
+two target fits, 120 seconds each, plus two 1,200-row baseline/diagnostic
+smokes at 30 seconds each. Each launcher also initializes with one warm fit:
+eight native estimation calls total, 360 seconds including launchers, no
+fit retries. Verify unchanged published smoke results, accepted producer and
+strict-consumer provenance, sample/basis/coordinate identities and file hashes.
+
+Replay native canonical construction and output materialization outside the
+estimator. Dense 1M uses the old direct factor's triangular inverse; dense 4M
+uses one fixed symmetric Gauss–Seidel inverse action on the old normalized
+matrix. Transport both into the current root normalization. Apply the existing
+implicit operator at the exact captured current weights. Keep the original
+unpreconditioned residual reference, strict inner tolerance, full original-input
+FE certificate and positive finite curvature/energy checks. Cap each original
+RHS at half its existing component iteration budget; declines and failed
+certificates are screening failures, without rescue or budget resets.
+
+Before measurement, require closed-form inverse-action and grounded-dummy
+operator witnesses, explicit finite positive weight/root validation and an
+independent architecture review. The first one-worker cold replay must exactly
+reproduce captured geometry, route and output signatures. Bind numeric column
+kinds, full solver configuration, work admission, obsolete capacity and actual
+output mode. Time construction through `write_dense`, including retention
+copies; charge actual cache capacities and overlapping lifetimes. Separately
+report immutable fixture preparation and harness memory. The native certificate
+is timed; extra independent screening and comparisons are outside arm timings
+but inside the whole-panel deadline. A projection replay
+does not establish unchanged downstream rank, omissions or IRLS decisions.
+
+Use one warm-up pair and three alternating measured cold/candidate pairs for
+each input at 1/4/16 workers: 48 canonical absorption calls, 120 seconds per
+call and 1,200 seconds total. Continue remaining diagnostic cells after a
+failed candidate within those limits, while blocking advancement. Require
+full reconstructed column differences bounded by `1e-10 * max(1, norm)` and
+normalized Gram entry differences by `1e-11`, matching existing canonical
+witness bounds, plus unchanged native certificate tolerances. Repeated
+same-arm outputs must be exact at fixed worker count. Retain all work counts,
+failures and paired observations; do not retune or sample until passing.
+
+This is one design, at most two substantive repair rounds and one working day.
+Whole-node SCC observations screen total absorption cost, not a Mac release
+performance claim. A promising result needs a separately frozen complete-fit
+validation and performance budget, including producer retention and downstream
+scientific decisions. An unsuccessful result closes this design; it does not
+prove every possible preconditioner-reuse design useless.
+
+The [completed diagnostic](VALIDATION.md#h9-stale-preconditioner-quality-promising-absorption-savings-2026-10-13)
+passes all six cells and 48 absorption calls. Median paired absorption time
+falls by 20.7–34.8% on dense 1M and 23.2–45.0% on dense 4M, including retention
+copying and reconstruction. The old preconditioners converge in four/eight
+iterations per RHS at unchanged tolerances. This reopens the scientific and
+cost rationale for strict-only reuse; it does not choose a replacement drift
+threshold or establish a whole-fit gain. In particular, the dense 4M
+sixteen-worker absolute absorption saving is about 0.25 seconds, so the
+original 5% full-fit gate must not be assumed passed. Any subsequent proposal
+must state its complete-fit target and memory/fallback obligations in advance.
 
 ### Follow-ups: certificate passes, then a separate A2 decision
 
