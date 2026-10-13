@@ -937,11 +937,11 @@ default change.
    judged against consistent tolerances, H2 under its approval, H4/H5 as
    bounded checks and tooling, H6 by removed pass, H7 check only.
 7. H9 (section 7) stopped at its original inventory drift gate. The separately
-   authorized quality replay in H9e subsequently passes with measured
-   absorption savings. Freeze a strict-only complete-fit prototype and its
-   validation/cost budget before advancing; ordinary-frame reuse remains
-   conditional. Certificate pass fusion is separate, and A2 needs its own
-   decision after demonstrated savings.
+   authorized quality replay in H9e passes with absorption savings. The H9f
+   strict-only complete-fit test passes science but misses the 5% dense-4M
+   gate at sixteen workers (3.41% observed improvement). Keep the prototype
+   experimental; ordinary-frame reuse and A2 do not advance. Certificate
+   pass fusion remains separate.
 
 Each commit states its tier, its witnesses and what it did not change.
 Report costs as well as gains, keep failed attempts visible, and delete
@@ -2579,6 +2579,98 @@ threshold or establish a whole-fit gain. In particular, the dense 4M
 sixteen-worker absolute absorption saving is about 0.25 seconds, so the
 original 5% full-fit gate must not be assumed passed. Any subsequent proposal
 must state its complete-fit target and memory/fallback obligations in advance.
+
+### H9f. Authorized strict-only complete-fit prototype
+
+Johannes authorized continuing after the quality result on 2026-10-13. This
+stage uses a task-only copy of `86eaf5ef` (production-identical to `3d06d0466587`)
+and explicitly extends the diagnostic waiver of `rho <= 2` to complete fits.
+Require positive finite cache-build weight ratios and exact coordinate/basis
+compatibility, but impose no replacement drift cutoff. This is one bounded
+experiment, not a new production policy or ordinary-frame authorization.
+
+Use the unchanged direct-factor and fixed symmetric Gauss–Seidel actions,
+transported to the exact current implicit operator. Enable consumption through
+an explicit strict-checkpoint entrypoint: other `strict_candidate` callers,
+including accepted-mean Hessian refresh, remain cold. Retain only independently
+certified producers after enclosing-frame acceptance. Preserve strict and
+inner tolerances, original-RHS stopping references and native certification.
+Charge speculative iterations per component and original RHS across the whole
+bank; a late certificate failure cannot reset work. Permit at most half the
+existing cap speculatively and one cold fallback with each RHS's remainder.
+Fatal errors and Break propagate through the existing transaction.
+
+Cache admission is optional and uses only the existing persistently admitted
+Fast canonical-products allowance; do not increase `execution_bytes` or change
+any cold solver's budget. Charge actual retained capacities, producer copying,
+ordinary-frame lifetime, PCG/current-operator scratch and strict rollback
+overlap within that reservation. Retention must fit alongside the cold
+builder's existing phase peak without changing its representation. Evict
+before a new cold canonical admission. Allocation pressure must preserve a
+previously feasible cold solve. Clear state on incompatible generations,
+rejected speculative frames and inference handoff. Low mode has no separately
+reserved lifetime envelope and stays cold in this prototype, as do saved-FE
+requests, unsupported/explicit solver routes and implicit producers.
+
+Before any full-fit discovery, require independent inverse/operator witnesses,
+cache acceptance/invalidation and memory-boundary tests, per-RHS exhaustion
+and late-certificate-failure tests, Interrupt/rollback checks, and existing
+strict-movement, accepted-Hessian, explicit-dummy coefficient/covariance,
+strong-statistic and both mean-bias witnesses. Review the architecture
+independently. Permit two substantive repair rounds and one working day for
+this single design; a failed scientific prerequisite blocks the fit panel.
+
+The declared changing scope is the eligible checkpoint's projection and solve
+work plus downstream continuous coefficients, predictors, weights, objectives,
+certificates, Hessian/bread, covariance and derived statistics. Protect sample,
+rank, omission, separation, missingness, success/error, certificate decisions,
+outer counts, strict accept/resume and existing fallback decisions exactly.
+Unaffected routes and same-arm fixed-worker repeats remain exact. Apply SPEC
+section 20 bounds to affected coefficients, covariance and fitted values,
+retain stronger named witnesses, and require cross-worker scientific agreement.
+Bind exact output fields and input/artifact hashes before candidate fits.
+
+Reuse the original four hash-bound SCC inputs at 1/4/16 workers, two alternating
+baseline/candidate pairs per cell: 48 target fits and 48 launcher initialization
+fits. Cap each launcher at 120 seconds and the panel at 2,400 seconds, including
+initialization and export. Precede this with two 1,200-row launcher checks and
+their two initializations, at 30 seconds per launcher and 60 seconds total.
+No fit retry, continuation, alternative preconditioner or outcome-driven policy
+change is included. All attempted/failed fits count. Stop dependent stages on
+scientific failure; retain every timing observation.
+
+Time complete native fits, including producer retention and all discarded work;
+report command time, phase costs and observed process memory separately. Use
+the existing isolated 28-core SCC protocol with identical 1/4/16-worker masks.
+The original discovery gate is unchanged: dense 4M must improve total native
+time by at least 5% in both pairs at both 4 and 16 workers; each cell's median
+paired increase must be within max(5%, 1 ms). These are diagnostic observations,
+not Mac release qualification. A failed or inconclusive gate ends this stage
+without production integration, ordinary-frame reuse or an A2 extension.
+
+The completed experiment passes science, repeatability, provenance, actual
+reuse and every nonregression cell, but fails the required complete-fit gain
+at sixteen workers. Dense 4M paired-median reductions at 1/4/16 workers are
+8.33%/9.26%/3.41%; sixteen-worker ratios are 0.970733 and 0.961038, both above
+0.95. Dense 1M reductions are 4.31%/5.41%/0.90%. All 48 target fits and their
+48 initializations complete, plus the four smoke calls. No fit is retried.
+The first smoke wrapper stops on an incomplete auxiliary trace; a reviewed
+reader repair reuses the original successful fits and complete process logs
+before executing the untouched target panel. Scientific and timing gates,
+solver artifacts and budgets stay fixed.
+
+All twelve dense candidates reuse generation-1 geometry at generation 5;
+AKM/sparse comparisons stay exact. Coefficients match exactly and maximum
+absolute covariance change is `8.47e-22`. The dense 4M strict phase falls from
+5.109 to 3.189 seconds at four workers but only 2.497 to 2.118 seconds at
+sixteen, explaining why strict-only reuse does not clear the whole-fit gate
+there. Source/operator/memory/rollback checks and independent review pass.
+The 958.773-second isolated SCC panel supplies diagnostic observations, not
+Mac qualification. See [validation and limits](VALIDATION.md#h9-strict-only-fits-partial-performance-gain-2026-10-13),
+[lossless evidence](../bench/results/h9-20261013-strict.json) and the
+[reproducible task-only patch](../bench/results/h9-20261013-strict.patch).
+Production remains unchanged. This result ends H9f without ordinary-frame
+reuse, A2, a fitted drift rule or further timing attempts.
 
 ### Follow-ups: certificate passes, then a separate A2 decision
 

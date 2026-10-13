@@ -14,6 +14,88 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H9 strict-only fits: partial performance gain, 2026-10-13
+
+The authorized [strict-only complete-fit test](fable_performance.md#h9f-authorized-strict-only-complete-fit-prototype)
+finds useful savings but fails its predeclared discovery gate. Dense 4M total
+native time falls by 9.26% at four workers and 3.41% at sixteen workers; both
+sixteen-worker pairs miss the required 5% improvement. All scientific,
+repeatability, provenance, reuse and nonregression gates pass. Production
+remains unchanged; ordinary-frame reuse and A2 do not advance on this result.
+
+| Frozen input | Workers | Baseline median s | Candidate median s | Median paired reduction |
+| --- | ---: | ---: | ---: | ---: |
+| Dense 1M | 1 | 9.890 | 9.464 | 4.31% |
+| Dense 1M | 4 | 4.569 | 4.321 | 5.41% |
+| Dense 1M | 16 | 3.046 | 3.019 | 0.90% |
+| Dense 4M | 1 | 46.387 | 42.522 | 8.33% |
+| Dense 4M | 4 | 20.924 | 18.987 | 9.26% |
+| Dense 4M | 16 | 13.046 | 12.600 | 3.41% |
+
+These are complete native fits, including producer retention and discarded
+work. Each cell has two alternating baseline/candidate pairs. Dense 4M's
+four-worker ratios are 0.907086/0.907753 and its sixteen-worker ratios are
+0.970733/0.961038. Percentages use the median paired ratio, not the ratio of
+arm medians. All twelve cells meet the max(5%, 1 ms) nonregression allowance;
+the largest median increase is 2.76% for AKM at sixteen workers. The small
+SCC panel is descriptive and does not establish a Mac release speed claim.
+
+The strict phase explains the gain: dense 4M median strict time falls from
+5.109 to 3.189 seconds at four workers, and from 2.497 to 2.118 seconds at
+sixteen. Corresponding complete command medians fall from 22.525 to 20.589
+and 14.651 to 14.223 seconds. Earlier cache-retention costs remain inside
+whole-fit timing. A successful strict solve alone would not pass this gate.
+
+All 48 target fits and 48 initialization fits finish, as do the two smoke fits
+and their two initializations: 100 native calls, with no fit retries. All 24
+paired scientific comparisons, fixed-worker same-arm repeats and cross-worker
+checks pass. Published coefficients match exactly; the largest absolute
+covariance difference is `8.47e-22`. Sample, rank/omission, separation,
+missingness, outer/strict decisions and existing fallback routes remain exact.
+AKM and sparse comparisons are exact on the unaffected scope. Native
+certificates pass at unchanged tolerances. The benchmark request adds no
+saved-FE or fitted-mean export; known-optimum, accepted-Hessian and independent
+oracle checks supply separate witnesses for those mathematical obligations.
+
+All twelve dense candidate fits consume accepted generation-1 geometry at the
+generation-5 checkpoint. Normalized weight ratios remain 22.07/36.84, with
+four/eight PCG iterations per RHS and 68/136 total inverse actions. Maximum
+true current relative residual is `3.72e-15`, below the unchanged `1e-14` inner
+target. Retained caches are 18.0/72.0 MB, and inclusive current workspace is
+42.7/169.3 MB within the existing 160/640 MB reservations (decimal MB). No
+memory budget or Fast/Low selection changes. Dense 4M observed estimator
+process RSS rises by about 121–123 MB; this observation is distinct from
+modeled solver workspace and scheduler virtual-memory accounting. The small
+smoke exercises a bounded cold retry and still publishes identical results.
+
+Rust 1.85.1 checks pass on Mac and SCC: 29 canonical tests, the isolated full-fit
+reuse witness, 435 PPML tests, 19 session tests and ten independent oracle tests.
+The PPML/session groups each retain one pre-existing ignored test. Linux native
+build/load/ABI and input/output guards pass. Independent Astra review approves
+the repaired prototype and harness, then independently reproduces the final
+failed-gate decision. The task-only patch reproduces all eight tested source
+hashes exactly; it is not integrated into the runtime.
+
+Build jobs `8051255`/`8051343` have `failed=0`, `exit_status=0`. Smoke wrapper
+`8051353` exits 1 after successful fits because the first reader used the
+incomplete auxiliary trace file. Complete stderr traces already existed in
+`process.log`; hash-bound reanalysis passes unchanged comparisons. A reviewed
+reader repair preserves those fits and runs only the original unrun targets.
+No numerical rule, solver artifact, timing gate or fit budget changes. There
+are 47 passing analyzer tests after the repair. Target job `8051451` runs on
+isolated `scc-wc4` with 28 physical cores, `failed=0`, `exit_status=0`, 971
+scheduler seconds and `maxvmem=6.771G`. Its panel uses 958.773 of 2,400 allowed
+seconds; the longest launcher uses 56.74 of 120 seconds.
+
+The [compact evidence](../bench/results/h9-20261013-strict.json) retains every
+record losslessly, all paired observations, hashes, schemas, executable harness
+sources, accounting summaries and the failed attempt. Its embedded decoder
+reconstructs the complete records and reproduces the frozen analysis. The
+[task-only patch](../bench/results/h9-20261013-strict.patch) is against `86eaf5ef`.
+Production identity still matches that revision and `3d06d0466587` across 179
+runtime modules and 58 artifact inputs. No production integration, ordinary
+extension, resampling or retuning follows from this failed discovery gate.
+
 ## H9 stale-preconditioner quality: promising absorption savings, 2026-10-13
 
 Johannes authorized the [bounded quality test](fable_performance.md#h9e-authorized-quality-test-beyond-the-inventory-drift-bound)
