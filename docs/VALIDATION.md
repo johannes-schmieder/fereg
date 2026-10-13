@@ -14,6 +14,91 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Mac OLS: CMG request versus auto on sparse AKM, 2026-10-13
+
+Johannes requested a simple four-worker comparison on 16 million rows. The
+frozen current Mac plugin at source `863318969195360ff06b668983fbdfafb63a3550`
+ran in Stata/MP 19 on Apple M2 Ultra (24 physical cores, 192 GiB RAM), with
+four requested and effective native workers, Stata processors set to four,
+`memory(fast)`, `deterministic`, `tolerance(1e-8)`, default iteration budget,
+unweighted OLS and unadjusted covariance. The command was
+`fereg y x1-x16, absorb(g1 g2) solver(auto|cmg)` with those common options.
+No saved FE or prediction outputs were requested.
+
+The input uses the [campaign sparse AKM topology](../bench/campaign.py) and
+[maintained outcome/control generator](../bench/generate.py): 3.2 million
+workers, five periods each, 160,000 firms, initial firm `worker_index % firms`,
+and 2% independent random destination mobility at each transition. The seed
+is 739391; NumPy 2.3.5 and pandas 2.2.3 generated 16 double controls and the
+OLS outcome without the campaign's unused auxiliary columns. Actual firm
+changes number 256,355 (2.0027734375% of transitions). The DTA round trip is
+exact. Both options retain all 16 million rows, rank 16, absorbed DoF
+3,353,066 and residual DoF 12,646,918, with no singleton removals.
+
+The fixed panel used one full-size warm-up per option and three measured
+pairs in alternating order, with a 1,800-second total process limit and no
+continuation. It completed in 633.82 seconds. One Stata process held the same
+data throughout. The independent native command clock includes frontend,
+native loading, estimation, inference and publication; data generation, DTA
+loading, result export and checks are outside timing. A separate 10,000-row
+preflight passed before the full panel.
+
+| Observation | Auto seconds | CMG request seconds | Order |
+| --- | ---: | ---: | --- |
+| Warm-up (excluded) | 15.953673458 | 145.567799458 | auto, cmg |
+| Pair 1 | 15.745327708 | 140.126737708 | auto, cmg |
+| Pair 2 | 15.520258583 | 140.647376667 | cmg, auto |
+| Pair 3 | 15.765887875 | 142.607612458 | auto, cmg |
+| Median | 15.745327708 | 140.647376667 | |
+
+The median CMG-request time is 8.93264 times auto's, an additional
+124.90205 seconds. The paired ratios are 8.89958, 9.06218 and 9.04533. Auto
+reports the MAP-owned family (code 2), 115 main iterations and 14 final
+residual iterations, without fallback. **Every CMG request reports main
+solver code 4 (CG), fallback=true and one warning**, with 117 main iterations;
+the final residual is already certified (CMG code 7, zero iterations).
+This measures the public CMG request including fallback, not a successful
+CMG-only solve. The diagnostic does not retain the warning text, so it does
+not establish the underlying fallback cause. Median native-only time is
+13.92084 seconds for auto and 138.82115 seconds for the CMG request; median
+input-loading time is 1.21052 and 1.21755 seconds, respectively.
+
+All eight calls pass the native rank, score, bread, covariance and overall
+certificates. Auto/CMG maximum coefficient difference is `2.78961e-13`,
+maximum covariance-entry difference `2.17615e-20`, and relative RSS difference
+`1.02143e-12`, passing the existing campaign comparison tolerances. Within
+each option all four calls have exactly equal coefficients, covariance,
+fit scalars and certificate matrices. This is agreement and repeatability
+evidence, not a new independent large-design oracle.
+
+No competing builds or tests were launched by this benchmark. Desktop
+activity remained, including Spotlight indexing at launch. These are
+descriptive observations with three measured pairs, not quiet-host release
+qualification or evidence for changing automatic routing. No production
+code, artifact inputs or scientific rules changed for this comparison.
+
+SHA-256 identities (raw data, logs and task copies removed after recording):
+
+| Item | SHA-256 |
+| --- | --- |
+| Frozen plugin | `85dbf448ab1974122a47684ac9b9f17964b451109b267df409963200cdfbe9cb` |
+| Numeric DTA input | `c0950ef8151bc8966cc0cb377fb4394b0c269b6cc7f25738836319c20ccb4835` |
+| Frontend manifest | `370ced2082667158c5f3700e1c430e8592e1b55806d820b9e8cad109f57c6048` |
+| Command-clock plugin | `31dabb8cb6e6081eb268fc48a4a0c12d9b4d64d815504e062c2b1a30cb0077bf` |
+| Input-generation wrapper | `c312876aac556fe107839617a765c0eb7dd199da1f0263aa4d01575d29e70054` |
+| Stata comparison do-file | `eb6840c16e6f204377868465923cf7246e939daf6d389d549f13085f8fba9533` |
+| Bounded process launcher | `9fd3f01bd8c1f48c5892fd34c33655b6e34f7cda1f56f4fc4ecf9e9aed5dbb6f` |
+| Result-analysis script | `a8372e26cd0d477a6eae7b21358e2fd5088b9eb6e1da51f70e454efa27ecda50` |
+| Full Stata log | `d9a8c4731abedc96a0193c4485c193a4291f1040545e9c96a69f4efadee8a8ae` |
+| All run matrices/scalars/times | `e71841a99f85b3f26ec8e0fe3061ea91537fdce7d1767da4f65bf3270216a440` |
+
+The frontend manifest hashes sorted records of each file's SHA-256 and
+path relative to the frozen `stata` directory. The retained current source,
+generator recipe, individual observations and hashes identify the comparison;
+ignored captures are not retained evidence. The documentation-only change
+passes local reference checks and `git diff --check`, reusing the existing
+plugin validation without rebuilding or rerunning the runtime suite.
+
 ## H9 adopted: science passes, Mac timing inconclusive, 2026-10-13
 
 Johannes authorized adoption of the H9f strict-only design despite its failed
