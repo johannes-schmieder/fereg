@@ -6,8 +6,9 @@ requested outputs. A single native call constructs the final sample, absorbs
 the fixed effects, estimates the finite coefficients and covariance matrix,
 checks the result, and writes the requested outputs.
 
-This guide describes the public OLS and PPML commands in the unreleased 0.5.0
-beta. `feppml` is active through the same guarded Rust-backed transaction and
+Install both commands using the [installation guide](installation.md).
+
+This guide describes the public OLS and PPML commands in the 0.5.0 beta. `feppml` is active through the same guarded Rust-backed transaction and
 shared certified-linear engine as `fereg`. Windows licensed-Stata testing and
 formal cross-platform qualification are deferred; public availability permits
 full user testing but is not a qualified release claim.

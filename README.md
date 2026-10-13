@@ -10,8 +10,29 @@ the numerical and covariance checks pass.
 `fereg` and `feppml` share one maintained native runtime. The former next engine
 is now the only engine; there is no engine selector or fallback. Scientific
 requirements live in [SPEC](docs/SPEC.md), with current validation scope in
-[VALIDATION](docs/VALIDATION.md). Public native distribution remains subject to
-the [licensing decision](docs/licensing.md).
+[VALIDATION](docs/VALIDATION.md). The source is licensed under GPL-3.0-only, with third-party terms preserved in
+[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
+
+## Install in Stata
+
+The current **macOS beta** requires Stata 18 or newer. It includes a universal
+Apple Silicon/Intel plugin; installation is tested on Apple Silicon. In a fresh
+Stata session, run:
+
+```stata
+net install fereg, from("https://github.com/fe-tools/fereg/releases/download/v0.5.0-beta.1") replace
+fereg, selftest
+```
+
+This installs both `fereg` and `feppml`. No Rust, Python or extra Stata packages
+are needed to use the binary package. Restart Stata before updating an existing
+installation so it unloads the old plugin.
+
+Linux and Windows binaries are not included in this beta. See the
+[installation guide](docs/installation.md) for local source builds on those
+platforms, a macOS source build, an offline install, and troubleshooting. The
+[release](https://github.com/fe-tools/fereg/releases/tag/v0.5.0-beta.1) also
+provides the matching source archive, dependency sources, licenses and checksums.
 
 ## Quick start
 
@@ -104,38 +125,15 @@ After estimation, `predict` supports `xb`. If the model was fit with
 [`stata/fereg_postestimation.sthlp`](stata/fereg_postestimation.sthlp) for the
 exact postestimation contract.
 
-## Installation and diagnostics
+## Diagnostics and development
 
-The package requires Stata 18 or newer and one platform plugin:
-`fereg_macos.plugin`, `fereg_linux.plugin`, or `fereg_windows.plugin`.
-A missing plugin fails with `r(601)`. The removed `engine()` option fails with
-`r(198)`; the old `FEREG_ENGINE` global has no effect.
+`fereg, selftest` reports versions, checks ado/plugin compatibility and runs
+bounded installation checks. Use `fereg, selftest verbose` for build, host and
+individual check details. A missing plugin fails with `r(601)`; incompatible ado
+and plugin versions fail with `r(499)`. See the
+[installation guide](docs/installation.md) for fixes.
 
-Use an internally qualified development package. Native release assets are not
-published. Current qualification is Mac-only; Windows/Linux build support does
-not imply fresh licensed-platform qualification.
-
-After installation, run:
-
-```stata
-fereg, selftest
-```
-
-This reports versions, checks ado/plugin compatibility and runs bounded installation
-checks. Add `verbose` for build, host and individual check details:
-
-```stata
-fereg, selftest verbose
-```
-
-After installing or updating fereg in a Stata session that has already used
-it, restart Stata: the previously loaded plugin can stay in memory until Stata
-exits (on Windows it always does). On Windows, restart before updating, because
-a loaded plugin file cannot be overwritten. A plugin that does not match the
-installed ado files fails with `r(499)` and asks for a restart.
-
-The source tree uses the pinned Rust toolchain and these main development
-checks:
+The source tree uses the pinned Rust toolchain and these development checks:
 
 ```bash
 ./scripts/run_tests.sh
@@ -143,13 +141,13 @@ checks:
 ./ci/run_stata_ci.sh quick
 ```
 
-Stronger licensed profiles include `differential` and `full`. Their exact-SHA
-acceptance and runner requirements are documented in
-[`docs/development_workflow.md`](docs/development_workflow.md) and
-[`ci/README.md`](ci/README.md).
+Licensed profiles and platform limitations are documented in
+[development workflow](docs/development_workflow.md), [CI](ci/README.md), and
+[validation](docs/VALIDATION.md). GitHub testing remains paused.
 
 ## Documentation
 
+- [`docs/installation.md`](docs/installation.md) — installation and source builds.
 - [`docs/user_guide.md`](docs/user_guide.md) — user-facing syntax, semantics,
   output, and benchmark guidance.
 - [`stata/fereg.sthlp`](stata/fereg.sthlp) — installed Stata help and

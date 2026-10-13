@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 VERSION = "0.5.0"
+RELEASE_TAG = "v0.5.0-beta.1"
 PACKAGE_NAME = f"fereg-{VERSION}"
 FIXED_TIME = (2026, 8, 24, 0, 0, 0)
 FIXED_UTC = "2026-08-24T00:00:00Z"
@@ -62,10 +63,9 @@ ROOT_FILES = (
     "references.lock.toml",
 )
 SUPPORT_CAVEATS = (
-    "Licensed Windows Stata qualification is deferred; Windows x64 is "
-    "qualified by hosted MSVC build, binary audit, and mock SPI only.",
-    "Native Intel-host macOS Stata qualification is deferred; the x86_64 "
-    "slice is exercised under Rosetta on Apple Silicon.",
+    "Only platforms named in included_platforms are supplied by this package.",
+    "Licensed installation testing is on Apple Silicon macOS; this does not "
+    "establish Linux, Windows or native Intel-host Stata qualification.",
 )
 
 
@@ -200,8 +200,8 @@ def write_sbom(source: Path, output: Path, source_sha: str) -> None:
             "versionInfo": VERSION,
             "downloadLocation": "NOASSERTION",
             "filesAnalyzed": False,
-            "licenseConcluded": "MIT",
-            "licenseDeclared": "MIT",
+            "licenseConcluded": "GPL-3.0-only",
+            "licenseDeclared": "GPL-3.0-only",
             "supplier": "Organization: fereg contributors",
             "checksums": [
                 {"algorithm": "SHA1", "checksumValue": source_sha}
@@ -242,7 +242,7 @@ def write_sbom(source: Path, output: Path, source_sha: str) -> None:
         "SPDXID": "SPDXRef-DOCUMENT",
         "name": f"{PACKAGE_NAME}-sbom",
         "documentNamespace": (
-            f"https://github.com/johannes-schmieder/fereg/spdx/{VERSION}/{source_sha}"
+            f"https://github.com/fe-tools/fereg/spdx/{VERSION}/{source_sha}"
         ),
         "creationInfo": {
             "created": FIXED_UTC,
@@ -287,6 +287,16 @@ def copy_release_files(
         if not path.is_file():
             raise RuntimeError(f"missing release file: {path}")
         shutil.copy2(path, staging / name)
+    shutil.copy2(source / "LICENSE", staging / "fereg-LICENSE.txt")
+    shutil.copy2(source / "THIRD_PARTY_NOTICES.md", staging / "fereg-THIRD-PARTY-NOTICES.txt")
+    (staging / "fereg-SOURCE.txt").write_text(
+        "The corresponding source for this beta, including pinned dependency sources,\n"
+        "licenses, and build instructions, is available alongside the binary package:\n"
+        f"https://github.com/fe-tools/fereg/releases/download/{RELEASE_TAG}/"
+        f"{PACKAGE_NAME}-source.zip\n\n"
+        "For a modified local build, its source is the checkout used to build it.\n",
+        encoding="utf-8",
+    )
 
 
 def file_records(staging: Path, excluded: set[str]) -> list[dict[str, object]]:
@@ -303,8 +313,9 @@ def file_records(staging: Path, excluded: set[str]) -> list[dict[str, object]]:
 def write_manifest(
     staging: Path, source_sha: str, source_dirty: bool,
     *, review_platforms: Optional[tuple[str, ...]] = None,
+    platforms: Optional[tuple[str, ...]] = None,
 ) -> None:
-    plugin_names = selected_plugins(review_platforms)
+    plugin_names = selected_plugins(review_platforms if review_platforms is not None else platforms)
     records = file_records(
         staging, {"MANIFEST.sha256", "RELEASE_MANIFEST.json"}
     )
@@ -335,6 +346,8 @@ def write_manifest(
             for plugin in plugin_names
         ],
         "support_caveats": list(SUPPORT_CAVEATS),
+        "included_platforms": [p for p, name in PLATFORM_PLUGINS.items() if name in plugin_names],
+        "missing_platforms": [p for p, name in PLATFORM_PLUGINS.items() if name not in plugin_names],
         "files": records,
     }
     if review_platforms is not None:
@@ -367,6 +380,15 @@ def selected_plugins(review_platforms: Optional[tuple[str, ...]]) -> tuple[str, 
                  if platform in review_platforms)
 
 
+def filter_package(staging: Path, plugin_names: tuple[str, ...]) -> None:
+    omitted = set(EXPECTED_PLUGINS) - set(plugin_names)
+    package = staging / "fereg.pkg"
+    excluded = {f"f {name}{suffix}" for name in omitted for suffix in ("", ".sha256")}
+    lines = package.read_text(encoding="utf-8").splitlines(keepends=True)
+    package.write_text("".join(line for line in lines if line.strip() not in excluded),
+                       encoding="utf-8")
+
+
 def write_zip(staging: Path, output: Path, package_name: str = PACKAGE_NAME) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(
@@ -391,28 +413,33 @@ def create(
     *,
     allow_dirty: bool = False,
     review_platforms: Optional[tuple[str, ...]] = None,
+    platforms: Optional[tuple[str, ...]] = None,
+    third_party_licenses: Optional[Path] = None,
 ) -> None:
+    if platforms is not None and review_platforms is not None:
+        raise RuntimeError("select release platforms or review platforms, not both")
     require_external_output(source, output)
     source_sha, source_dirty = source_identity(source)
     if source_dirty and not allow_dirty:
         raise RuntimeError("tracked source is dirty; commit before staging a release")
-    plugins = verify_plugins(plugin_directory, selected_plugins(review_platforms))
+    plugin_names = selected_plugins(review_platforms if review_platforms is not None else platforms)
+    plugins = verify_plugins(plugin_directory, plugin_names)
     validate_dependency_audit(source, audit_path, source_sha)
     with tempfile.TemporaryDirectory(prefix="fereg-release-") as temporary:
         package_name = PACKAGE_NAME if review_platforms is None else f"{PACKAGE_NAME}-review"
         staging = Path(temporary) / package_name
         staging.mkdir()
         copy_release_files(source, staging, plugins)
-        if review_platforms is not None:
-            omitted = set(EXPECTED_PLUGINS) - set(selected_plugins(review_platforms))
-            package = staging / "fereg.pkg"
-            lines = package.read_text(encoding="utf-8").splitlines(keepends=True)
-            package.write_text("".join(line for line in lines
-                                      if line.strip() not in {f"f {name}{suffix}" for name in omitted for suffix in ("", ".sha256")}),
-                               encoding="utf-8")
+        if third_party_licenses is not None:
+            notices = staging / "fereg-THIRD-PARTY-NOTICES.txt"
+            with notices.open("a", encoding="utf-8") as handle:
+                handle.write("\n\n# Dependency license texts\n\n")
+                handle.write(third_party_licenses.read_text(encoding="utf-8"))
+        filter_package(staging, plugin_names)
         shutil.copy2(audit_path, staging / "DEPENDENCY_AUDIT.json")
         write_sbom(source, staging / "SBOM.spdx.json", source_sha)
-        write_manifest(staging, source_sha, source_dirty, review_platforms=review_platforms)
+        write_manifest(staging, source_sha, source_dirty, review_platforms=review_platforms,
+                       platforms=platforms)
         write_zip(staging, output, package_name)
     print(f"created {output}")
     print(f"sha256 {digest(output)}")
@@ -424,7 +451,12 @@ def main() -> None:
     parser.add_argument("--plugins", type=Path, required=True)
     parser.add_argument("--dependency-audit", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--review-platforms", nargs="+", choices=tuple(PLATFORM_PLUGINS),
+    parser.add_argument("--third-party-licenses", type=Path,
+                        help="license texts collected from the exact vendored dependencies")
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--platforms", nargs="+", choices=tuple(PLATFORM_PLUGINS),
+                           help="include only these explicitly supported beta platforms")
+    selection.add_argument("--review-platforms", nargs="+", choices=tuple(PLATFORM_PLUGINS),
                         help="create a visibly review-only subset; never a release package")
     args = parser.parse_args()
     create(
@@ -433,6 +465,8 @@ def main() -> None:
         args.dependency_audit.resolve(),
         args.output.resolve(),
         review_platforms=None if args.review_platforms is None else tuple(args.review_platforms),
+        platforms=None if args.platforms is None else tuple(args.platforms),
+        third_party_licenses=args.third_party_licenses,
     )
 
 

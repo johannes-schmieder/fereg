@@ -10,7 +10,7 @@ They are not relicensed by fereg.
 ## Pinned numerical dependencies
 
 The MIT-licensed `within` and `schwarz-precond` runtime dependencies are pinned to
-`803a4feacef526f55e1520f22be4409779b7d8ff`. The native LSMR adapters map fereg FE
+`297f32d9c4f83cc7d814ea778cd28c1f976e68d0`. The native LSMR adapters map fereg FE
 views to upstream operations; fereg independently recomputes the final weighted
 FE certificate. Preserve the upstream MIT notices with source distributions.
 `fe/lsmr.rs` maps each native FE term to a `within` effect and copies back only
@@ -23,11 +23,48 @@ statically linked for graph-Laplacian/SDDM preconditioning and PCG. Preserve its
 original license and notices. Exact runtime pins also appear in Cargo.lock and
 references.lock.toml.
 
-Johannes approved GPLv3 as the distribution direction. Project license metadata
-and corresponding-source packaging must be migrated together before publication.
-The [licensing decision](docs/licensing.md) retains the unresolved Stata/SPI
-native-linking gate. A change to fereg's license cannot grant exceptions for
-third-party code; native release needs the necessary rights-holder permissions.
+fereg is distributed under GPL-3.0-only. On 2026-10-13 Johannes confirmed
+that the required native-distribution permissions had been obtained; see the
+[licensing decision](docs/licensing.md). Third-party sources retain their own
+copyrights and licenses. The matching source archive includes the pinned Cargo
+dependency sources, their license files, and an offline Cargo configuration.
+
+## Rayon
+
+The local `vendor/rayon-core` fork and the upstream Rayon dependencies are
+available under MIT OR Apache-2.0. Preserve both license files in source
+packages; the local fork's notices are in `vendor/rayon-core/LICENSE-MIT` and
+`vendor/rayon-core/LICENSE-APACHE`.
+
+## Earlier fereg source notice
+
+The following notice is retained for fereg code previously offered under MIT.
+The current project distribution uses GPL-3.0-only; this does not revoke the
+license grants made by earlier revisions.
+
+```text
+MIT License
+
+Copyright (c) 2026 fereg contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ## Frozen behavioral references and provenance
 

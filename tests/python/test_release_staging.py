@@ -9,7 +9,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-from scripts import package_release, stage_release  # noqa: E402
+from scripts import package_release, stage_release, stage_local_install  # noqa: E402
 
 
 class ReleaseStagingTests(unittest.TestCase):
@@ -223,6 +223,81 @@ class ReleaseStagingTests(unittest.TestCase):
         for selection in ((), ('macos', 'macos'), ('plan9',)):
             with self.assertRaises(RuntimeError):
                 stage_release.selected_plugins(selection)
+
+    def test_explicit_macos_beta_has_only_its_installable_files_and_gpl_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            plugins = root / "plugins"
+            plugins.mkdir()
+            self.make_plugins(plugins)
+            audit = self.make_audit(root)
+            output = root / "macos.zip"
+            stage_release.create(ROOT, plugins, audit, output, allow_dirty=True,
+                                 platforms=("macos",))
+            with zipfile.ZipFile(output) as archive:
+                prefix = stage_release.PACKAGE_NAME + "/"
+                manifest = json.loads(archive.read(prefix + "RELEASE_MANIFEST.json"))
+                package = archive.read(prefix + "fereg.pkg").decode()
+                sbom = json.loads(archive.read(prefix + "SBOM.spdx.json"))
+                for line in package.splitlines():
+                    if line.startswith("f "):
+                        self.assertIn(prefix + line[2:], archive.namelist())
+                self.assertNotIn("f fereg_linux.plugin", package)
+                self.assertNotIn("f fereg_windows.plugin", package)
+                self.assertEqual(manifest["included_platforms"], ["macos"])
+                self.assertEqual(manifest["missing_platforms"], ["linux", "windows"])
+                self.assertNotIn("review_only", manifest)
+                self.assertEqual(sbom["packages"][0]["licenseDeclared"], "GPL-3.0-only")
+
+    def test_local_install_is_complete_and_rejects_reuse_or_bad_checksum(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            plugins = root / "plugins"
+            plugins.mkdir()
+            self.make_plugins(plugins)
+            output = root / "local"
+            stage_local_install.stage(ROOT, plugins, output, "macos")
+            for line in (output / "fereg.pkg").read_text().splitlines():
+                if line.startswith("f "):
+                    self.assertTrue((output / line[2:]).is_file(), line)
+            self.assertFalse((output / "fereg_linux.plugin").exists())
+            with self.assertRaisesRegex(RuntimeError, "already exists"):
+                stage_local_install.stage(ROOT, plugins, output, "macos")
+            (plugins / "fereg_macos.plugin").write_bytes(b"tampered")
+            with self.assertRaisesRegex(RuntimeError, "checksum mismatch"):
+                stage_local_install.stage(ROOT, plugins, root / "rejected", "macos")
+            self.assertFalse((root / "rejected").exists())
+
+    def test_dependency_sources_preserve_licenses_and_relocate_config(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            vendor = root / "dependencies"
+            crate = vendor / "sample-1.0.0"
+            crate.mkdir(parents=True)
+            (crate / "Cargo.toml").write_text('[package]\nname="sample"\nversion="1.0.0"\n')
+            (crate / ".cargo-checksum.json").write_text('{}\n')
+            # r-efi records its license grant in AUTHORS rather than LICENSE.
+            (crate / "AUTHORS").write_text("retained dependency license\n")
+            configuration = root / "config.toml"
+            configuration.write_text('[source.crates-io]\nreplace-with="vendored-sources"\n'
+                                     '[source.vendored-sources]\ndirectory='
+                                     + json.dumps(str(vendor)) + '\n')
+            staging = root / "source"
+            staging.mkdir()
+            rayon = staging / "vendor/rayon-core"
+            rayon.mkdir(parents=True)
+            (rayon / "LICENSE-MIT").write_text("local fork notice\n")
+            package_release.copy_dependency_sources(staging, vendor, configuration)
+            self.assertEqual((staging / "vendor/dependencies/sample-1.0.0/AUTHORS").read_text(),
+                             "retained dependency license\n")
+            config = (staging / ".cargo/config.toml").read_text()
+            self.assertIn('directory="vendor/dependencies"', config)
+            self.assertNotIn(str(root), config)
+            notices = (staging / "THIRD_PARTY_LICENSES.txt").read_text()
+            self.assertIn("retained dependency license", notices)
+            self.assertIn("local fork notice", notices)
+            with self.assertRaisesRegex(RuntimeError, "does not match"):
+                package_release.copy_dependency_sources(staging, root, configuration)
 
     def test_dependency_audit_must_match_source(self):
         with tempfile.TemporaryDirectory() as temporary:

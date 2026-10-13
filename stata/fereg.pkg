@@ -25,6 +25,9 @@ f fereg.sthlp
 f feppml.sthlp
 f fereg_parse.sthlp
 f fereg_postestimation.sthlp
+f fereg-LICENSE.txt
+f fereg-THIRD-PARTY-NOTICES.txt
+f fereg-SOURCE.txt
 f fereg_windows.plugin
 f fereg_windows.plugin.sha256
 f fereg_linux.plugin
