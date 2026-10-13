@@ -58,8 +58,9 @@ residual iterations, without fallback. **Every CMG request reports main
 solver code 4 (CG), fallback=true and one warning**, with 117 main iterations;
 the final residual is already certified (CMG code 7, zero iterations).
 This measures the public CMG request including fallback, not a successful
-CMG-only solve. The diagnostic does not retain the warning text, so it does
-not establish the underlying fallback cause. Median native-only time is
+CMG-only solve. The original diagnostic retained only the warning count;
+the identical-input follow-up below identifies the setup rejection. Median
+native-only time is
 13.92084 seconds for auto and 138.82115 seconds for the CMG request; median
 input-loading time is 1.21052 and 1.21755 seconds, respectively.
 
@@ -98,6 +99,54 @@ generator recipe, individual observations and hashes identify the comparison;
 ignored captures are not retained evidence. The documentation-only change
 passes local reference checks and `git diff --check`, reusing the existing
 plugin validation without rebuilding or rerunning the runtime suite.
+
+### Follow-up: CMG memory preflight rejected setup
+
+A single diagnostic reproduction regenerated the exact DTA hash above and
+used source `863318969195360ff06b668983fbdfafb63a3550`, with only two added
+trace statements at CMG setup/solve error branches. Solver mathematics,
+tolerances and memory policy were unchanged. The temporary ARM64 build was
+combined with the original plugin's unchanged Intel slice for the universal
+binary audit; audit and licensed Stata native selftest passed. No installed
+plugin was replaced. The 600-second bounded reproduction completed in
+144.23 seconds including process startup and DTA loading; this is diagnostic
+work, not an additional observation in the timing panel.
+
+The captured setup error is:
+
+> allocation: CMG requires 130776528928 incremental bytes and does not fit the joint execution/solver memory plan
+
+The conservative CMG requirement was 121.79513 GiB. The shared usable-memory
+budget was 86,094,276,199 bytes (80.18154 GiB), with 9,909,770,714 bytes
+(9.22919 GiB) already reserved for execution, leaving 70.95235 GiB for the
+solver. `FEREG_MEMORY_LIMIT_BYTES` was unset. These budget values are from
+the reproduction; the original panel did not retain its error text. The
+shared policy uses current available memory minus 20% headroom (at least
+512 MiB), rather than installed RAM. `memory(fast)` does not bypass it.
+
+The [CMG preflight](../crates/fereg-core/src/fe/cmg.rs) uses the conservative
+upstream hierarchy-build estimate, 3,360,000 graph vertices, 16 million
+input edges and the same 16-million upper bound on distinct edges, plus
+workspace for 18 right-hand sides and the parallel runtime. Repeated
+worker-firm matches make the distinct-edge upper bound conservative, but
+this experiment does not establish how much memory actual CMG would need.
+The [joint budget check](../crates/fereg-core/src/memory.rs) rejected setup
+before graph construction. This was not a CMG iteration or convergence
+failure: the long command time belongs to the subsequent CG fallback.
+The reproduction again reports main requested/used codes 7/4, fallback=true,
+117 iterations, all 16 million rows and a successful certified result.
+The memory policy and automatic routing remain unchanged.
+
+Diagnostic SHA-256 identities, with temporary sources, plugin, data and logs
+removed after recording:
+
+| Item | SHA-256 |
+| --- | --- |
+| Temporary diagnostic plugin | `a86af9c896be33cf49831a999a2a8bfb0d40c0f4e0158dc55dec7f97191027d5` |
+| Instrumented CMG source | `ee83e5bae0f21a61425ca20a71b2ef744d7e8042f0b227c7e4bf6177833ab14b` |
+| Captured failure/config/profile | `43570076f430a1b8c404f1d5147d6ea14cff3872f5184b2b2024253a8e2086a3` |
+| Stata diagnostic do-file | `fb0098b68694a883c87f9c1de484ca102329d57880a218fe8aab2e1a77ac4438` |
+| Completed Stata diagnostic log | `3fb13db670c48bb53c71ffb99f809a5388946709610c6789baf5b95ff023a4ad` |
 
 ## H9 adopted: science passes, Mac timing inconclusive, 2026-10-13
 
