@@ -14,6 +14,101 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Worker elimination degree census, 2026-10-13
+
+A read-only census at source `414b5f6a` examines whether an experimental CMG
+graph should eliminate workers through degree four, five or six. Degree counts
+distinct observed employers within the specified sample, after collapsing
+repeated worker-employer observations. These are graph construction statistics,
+not solver timings, a selected default or a change to the estimator.
+
+The German source is the annual June 30 main-job extract for West German male
+full-time workers with nonmissing outcome and identifiers. Its employer key is
+an establishment ID. The nine-year subset adds only year >= 2001. The BW subset
+adds years 2008-2009 and workplace state 8, matching the current benchmark do-file
+without its optional worker-ID smoke cap. No new component, singleton, mover or
+weight filtering was applied: these are input graphs, not verified estimation
+samples. The Veneto six-year source is the existing 1996-2001 pooled adjusted
+sample, already subjected to dominant annual-job cleaning, component selection,
+KSS leave-worker-out pruning and retention of workers with at least two rows.
+The samples therefore describe different selection rules and observation windows.
+
+| Input window | Rows | Workers | Employers | Distinct worker-employer links |
+| --- | ---: | ---: | ---: | ---: |
+| West Germany 1979-2009 | 332,461,473 | 26,915,209 | 3,362,020 | 63,635,971 |
+| West Germany 2001-2009 | 91,045,290 | 15,487,374 | 1,737,931 | 24,216,740 |
+| BW 2008-2009 | 3,566,502 | 2,006,360 | 168,875 | 2,111,088 |
+| Veneto 1996-2001, selected | 5,163,428 | 1,106,419 | 86,647 | 1,700,466 |
+| Veneto public two-year example | 71,614 | 35,807 | 5,301 | 44,050 |
+
+| Worker degree | West 1979-2009 | West 2001-2009 | BW 2008-2009 | Veneto 1996-2001 | Veneto two-year example |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 11,591,732 | 9,647,077 | 1,901,632 | 666,090 | 27,564 |
+| 2 | 6,162,213 | 3,773,995 | 104,728 | 318,508 | 8,243 |
+| 3 | 3,767,380 | 1,435,996 | 0 | 94,888 | 0 |
+| 4 | 2,302,057 | 473,980 | 0 | 22,437 | 0 |
+| 5 | 1,362,748 | 125,514 | 0 | 4,028 | 0 |
+| 6 | 780,545 | 26,036 | 0 | 468 | 0 |
+| Above 6 | 948,534 | 4,776 | 0 | 0 | 0 |
+
+For cutoff k, retain H workers whose degree exceeds k. The hybrid has J+H
+vertices. Each eliminated degree-d worker contributes d(d-1)/2 weighted firm
+pairs; equal pairs are merged by summing weights. Each retained worker contributes
+d star edges to its own auxiliary vertex. The following counts enumerate and
+deduplicate the actual firm pairs; they do not assume that every clique
+contribution creates a new stored edge. All counts are undirected.
+
+| Input window | Cutoff | Retained workers H | Vertices J+H | Raw edge contributions | Merged edges |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| West 1979-2009 | 4 | 3,091,827 | 6,453,847 | 50,486,140 | 40,657,594 |
+| West 1979-2009 | 5 | 1,729,079 | 5,091,099 | 57,299,880 | 43,602,492 |
+| West 1979-2009 | 6 | 948,534 | 4,310,554 | 64,324,785 | 47,496,683 |
+| West 2001-2009 | 4 | 156,326 | 1,894,257 | 11,743,628 | 8,004,338 |
+| West 2001-2009 | 5 | 30,812 | 1,768,743 | 12,371,198 | 8,291,326 |
+| West 2001-2009 | 6 | 4,776 | 1,742,707 | 12,605,522 | 8,432,441 |
+| Veneto 1996-2001 | 4 | 4,496 | 91,143 | 760,742 | 562,732 |
+| Veneto 1996-2001 | 5 | 468 | 87,115 | 780,882 | 576,575 |
+| Veneto 1996-2001 | 6 | 0 | 86,647 | 785,094 | 579,790 |
+
+Vertices include all source employer IDs. Employers isolated after degree-one
+elimination may be omitted or pinned separately; these are not guaranteed active
+CMG dimensions. The two-year examples have maximum degree two and cannot
+distinguish cutoffs four, five and six: BW gives 168,875 vertices and 66,190 merged
+edges, while the public Veneto example gives 5,301 and 5,921.
+
+Raising four to five reduces vertices by 21.12% in the long German panel, 6.63%
+in the nine-year panel and 4.42% in Veneto, while increasing merged edges by
+7.24%, 3.59% and 2.46%, respectively. Raising five to six reduces vertices by
+15.33%, 1.47% and 0.54%, while increasing edges by 8.93%, 1.70% and 0.56%.
+These observations support testing five against a four baseline and retaining
+six as an experimental comparison, especially for long observation windows.
+They do not identify the fastest cutoff: assembly memory, hierarchy fill,
+preconditioner application and iteration counts remain unmeasured. An eventual
+general policy could consider incremental merged fill rather than degree alone.
+
+German counts use a column-only PyArrow/NumPy scan, exact deduplication of packed
+worker-establishment keys, and exact enumeration/deduplication of firm pairs.
+Metadata verify nonmissing IDs and years, IDs within the packing range, and
+single-year row groups. Histogram totals and weighted degree sums match workers
+and distinct links. Independent DuckDB queries reproduce the BW histogram and
+merged pair count. The fresh SCC Veneto scan reproduces the existing six-year
+degree histogram and computes the merged counts above. Its one-slot job 8061464
+completed on `scc-gd4` with accounting failed=0 and exit_status=0 (18 seconds,
+557,932 KiB peak RSS); this analysis duration is not a solver timing. No source data changed,
+no row-level data were exported, and no model was fitted. Only aggregate evidence
+is retained here; temporary analysis artifacts are deleted after recording hashes.
+
+Source SHA-256 identities:
+
+- German Parquet: `bcada1475fefa468d351422c3399ed8698f15b2c09a54bcc33b0b100d454f7e8`.
+- Veneto six-year CSV: `e4a1928d98c1dbe7185634e14470b9361b58f8d5b33cceacc8d168ccdad4634e`.
+- Veneto public two-year CSV: `93e57a413a8cfccdcb043c5d793105a67b2dc9ebd27d5d3a4f1800abf89a2241`.
+
+Analysis-script and aggregate-output hashes are recorded in this documentation
+commit. Runtime production files and artifact inputs are unchanged; the checks
+for this evidence-only addition are aggregate arithmetic, source/method review
+and `git diff --check`.
+
 ## Public beta packaging and local installation, 2026-10-13
 
 Source `7ecb7974f4fbde099a07f74b3cc7ce02738886e7` changes packaging,
