@@ -1,4 +1,4 @@
-action=doctor
+action=selftest
 ado=0.5.0
 protocol_major=1
 protocol_minor=6

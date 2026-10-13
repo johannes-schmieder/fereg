@@ -1,15 +1,10 @@
 use crate::output::OutputSink;
-use fereg_core::diagnostics::{BuildInfo, DoctorInput, DoctorReport};
+use fereg_core::diagnostics::BuildInfo;
 use fereg_core::error::{ErrorCode, FeregError, Result};
 use fereg_core::options::ThreadConfig;
-use fereg_core::protocol::{
-    parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
-    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION, PPML_REQUEST_WIRE_VERSION, PPML_RESULT_WIRE_VERSION,
-};
+use fereg_core::protocol::{parse_key_values, Handshake};
 use fereg_core::selftest::run_native_selftest;
 
-pub const ACTION_VERSION: &str = "version";
-pub const ACTION_DOCTOR: &str = "doctor";
 pub const ACTION_SELFTEST: &str = "selftest";
 const ACTION_PANIC_TEST: &str = "panic-test";
 
@@ -17,12 +12,10 @@ pub fn dispatch_args(args: &[String], output: &dyn OutputSink) -> Result<()> {
     let (action, tail) = args.split_first().ok_or_else(|| {
         FeregError::new(
             ErrorCode::Syntax,
-            "missing plugin action; expected version, doctor, or selftest",
+            "missing plugin action; expected selftest",
         )
     })?;
     match action.to_ascii_lowercase().as_str() {
-        ACTION_VERSION => version(tail, output),
-        ACTION_DOCTOR => doctor(tail, output),
         ACTION_SELFTEST => selftest(tail, output),
         ACTION_PANIC_TEST => panic_test(tail),
         crate::input::ACTION_PREPARE_OLS_TEST => Err(FeregError::new(
@@ -44,86 +37,36 @@ pub fn dispatch_args(args: &[String], output: &dyn OutputSink) -> Result<()> {
     }
 }
 
-fn version(args: &[String], output: &dyn OutputSink) -> Result<()> {
-    if !args.is_empty() {
-        return Err(FeregError::new(
-            ErrorCode::Syntax,
-            "version action does not accept arguments",
-        ));
-    }
-    let build = BuildInfo::current();
-    output.display(&format!(
-        concat!(
-            "fereg.plugin_version={}\n",
-            "fereg.ado_contract={}\n",
-            "fereg.action_protocol={}.{}\n",
-            "fereg.model_wire={}.{}\n",
-            "fereg.ols_result_wire={}.{}\n",
-            "fereg.ppml_request_wire={}.{}\n",
-            "fereg.ppml_result_wire={}.{}\n",
-            "fereg.plugin_abi={}.{}\n",
-            "fereg.git_commit={}\n",
-            "fereg.build_date={}\n"
-        ),
-        PLUGIN_VERSION,
-        ADO_VERSION,
-        ACTION_PROTOCOL_VERSION.major,
-        ACTION_PROTOCOL_VERSION.minor,
-        MODEL_WIRE_VERSION.major,
-        MODEL_WIRE_VERSION.minor,
-        OLS_RESULT_WIRE_VERSION.major,
-        OLS_RESULT_WIRE_VERSION.minor,
-        PPML_REQUEST_WIRE_VERSION.major,
-        PPML_REQUEST_WIRE_VERSION.minor,
-        PPML_RESULT_WIRE_VERSION.major,
-        PPML_RESULT_WIRE_VERSION.minor,
-        build.plugin_abi_major,
-        build.plugin_abi_minor,
-        build.git_commit,
-        build.build_date,
-    ));
-    Ok(())
-}
-
-fn doctor(args: &[String], output: &dyn OutputSink) -> Result<()> {
-    let values = parse_key_values(args)?;
-    let handshake = Handshake::from_key_values(&values)?;
-    handshake.validate()?;
-    let configured_threads = requested_threads(&values)?;
-    let report = run_native_selftest(configured_threads);
-    report.require_pass()?;
-    let doctor = DoctorReport {
-        build: BuildInfo::current(),
-        input: DoctorInput {
-            stata_version: values
-                .get("stata")
-                .cloned()
-                .unwrap_or_else(|| "unknown".to_owned()),
-            plugin_filename: values
-                .get("plugin_file")
-                .cloned()
-                .unwrap_or_else(|| "unknown".to_owned()),
-            configured_threads,
-            ado_plugin_compatible: true,
-            native_selftest_passed: report.passed(),
-            dependency_audit_status: values
-                .get("dependency_audit")
-                .cloned()
-                .unwrap_or_else(|| "build-time-required".to_owned()),
-        },
-    };
-    output.display(&doctor.render());
-    Ok(())
-}
-
 fn selftest(args: &[String], output: &dyn OutputSink) -> Result<()> {
     let values = parse_key_values(args)?;
-    if values.contains_key("ado") {
-        Handshake::from_key_values(&values)?.validate()?;
+    let verbose = match values.get("verbose").map(String::as_str) {
+        None | Some("0") => false,
+        Some("1") => true,
+        _ => return Err(FeregError::new(ErrorCode::Syntax, "verbose must be 0 or 1")),
+    };
+    output.display(&BuildInfo::current().render(verbose));
+    if verbose {
+        for (label, key) in [
+            ("stata_version", "stata"),
+            ("plugin_filename", "plugin_file"),
+        ] {
+            if let Some(value) = values.get(key) {
+                output.display(&format!("fereg.{label}={value}\n"));
+            }
+        }
     }
+    let compatibility =
+        Handshake::from_key_values(&values).and_then(|handshake| handshake.validate());
+    output.display(if compatibility.is_ok() {
+        "fereg.ado_plugin_compatible=yes\n"
+    } else {
+        "fereg.ado_plugin_compatible=no\n"
+    });
+    compatibility?;
     let threads = requested_threads(&values)?;
+    output.display(&format!("fereg.configured_threads={threads}\n"));
     let report = run_native_selftest(threads);
-    output.display(&report.render());
+    output.display(&report.render(verbose));
     report.require_pass()
 }
 
@@ -159,16 +102,90 @@ mod tests {
     use super::*;
     use crate::output::BufferSink;
 
+    fn diagnostic_args(extra: &[&str]) -> Vec<String> {
+        [
+            "selftest",
+            "ado=0.5.0",
+            "protocol_major=1",
+            "protocol_minor=6",
+            "stata=18.0",
+            "threads=2",
+        ]
+        .into_iter()
+        .chain(extra.iter().copied())
+        .map(str::to_owned)
+        .collect()
+    }
+
     #[test]
-    fn version_is_machine_readable() {
+    fn selftest_combines_identity_compatibility_and_checks() {
         let sink = BufferSink::default();
-        dispatch_args(&["version".to_owned()], &sink).expect("version");
-        assert!(sink.displayed().contains("fereg.action_protocol=1.6"));
-        assert!(sink.displayed().contains("fereg.model_wire=2.1"));
-        assert!(sink.displayed().contains("fereg.ols_result_wire=1.5"));
-        assert!(sink.displayed().contains("fereg.ppml_request_wire=1.8"));
-        assert!(sink.displayed().contains("fereg.ppml_result_wire=1.5"));
-        assert!(!sink.displayed().contains("fereg.model_protocol="));
+        dispatch_args(&diagnostic_args(&[]), &sink).expect("selftest");
+        let output = sink.displayed();
+        assert!(output.contains("fereg.plugin_version=0.5.0"));
+        assert!(output.contains("fereg.ado_plugin_compatible=yes"));
+        assert!(output.contains("fereg.configured_threads=2"));
+        assert!(output.contains("fereg.selftest.overall=pass"));
+        assert!(!output.contains("fereg.selftest.threads="));
+        assert!(!output.contains("fereg.git_commit="));
+    }
+
+    #[test]
+    fn verbose_selftest_retains_build_and_individual_check_details() {
+        let sink = BufferSink::default();
+        dispatch_args(
+            &diagnostic_args(&["verbose=1", "plugin_file=mock.plugin"]),
+            &sink,
+        )
+        .expect("selftest");
+        for field in [
+            "action_protocol=1.6",
+            "model_wire=2.1",
+            "ols_result_wire=1.5",
+            "ppml_request_wire=1.8",
+            "ppml_result_wire=1.5",
+            "plugin_filename=mock.plugin",
+            "stata_version=18.0",
+            "selftest.threads=pass",
+            "git_commit=",
+            "cpu_dispatch=",
+        ] {
+            assert!(
+                sink.displayed().contains(&format!("fereg.{field}")),
+                "missing {field}"
+            );
+        }
+    }
+
+    #[test]
+    fn retired_actions_and_invalid_verbosity_fail() {
+        for action in ["version", "doctor"] {
+            let sink = BufferSink::default();
+            assert_eq!(
+                dispatch_args(&[action.to_owned()], &sink).unwrap_err().code,
+                ErrorCode::Syntax
+            );
+            assert!(sink.displayed().is_empty());
+        }
+        assert_eq!(
+            dispatch_args(&diagnostic_args(&["verbose=2"]), &BufferSink::default())
+                .unwrap_err()
+                .code,
+            ErrorCode::Syntax
+        );
+    }
+
+    #[test]
+    fn selftest_requires_a_complete_handshake() {
+        let sink = BufferSink::default();
+        assert_eq!(
+            dispatch_args(&["selftest".to_owned()], &sink)
+                .unwrap_err()
+                .code,
+            ErrorCode::Syntax
+        );
+        assert!(sink.displayed().contains("fereg.plugin_version="));
+        assert!(!sink.displayed().contains("fereg.selftest.overall="));
     }
 
     #[test]
@@ -192,10 +209,10 @@ mod tests {
     }
 
     #[test]
-    fn doctor_rejects_protocol_mismatch() {
+    fn selftest_reports_identity_before_rejecting_protocol_mismatch() {
         let sink = BufferSink::default();
         let args = [
-            "doctor".to_owned(),
+            "selftest".to_owned(),
             "ado=0.5.0".to_owned(),
             "protocol_major=99".to_owned(),
             "protocol_minor=0".to_owned(),
@@ -205,5 +222,8 @@ mod tests {
             dispatch_args(&args, &sink).expect_err("must reject").code,
             ErrorCode::ProtocolMismatch
         );
+        assert!(sink.displayed().contains("fereg.plugin_version=0.5.0"));
+        assert!(sink.displayed().contains("fereg.ado_plugin_compatible=no"));
+        assert!(!sink.displayed().contains("fereg.selftest.overall="));
     }
 }

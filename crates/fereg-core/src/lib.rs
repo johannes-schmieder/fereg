@@ -26,7 +26,7 @@ pub use data::{
     DomainDecision, DropReason, NumericColumnView, NumericDomainPolicy, NumericPreparationInput,
     NumericSourceUse, PreparedAdjustment, PreparedWeights, WeightInput, WeightKind,
 };
-pub use diagnostics::{BuildInfo, DoctorInput, DoctorReport};
+pub use diagnostics::BuildInfo;
 pub use error::{ErrorCode, FeregError, Result};
 pub use factorize::factorize_f64;
 pub use fe::{

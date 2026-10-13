@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     pginit_function initialize;
     stata_call_function call;
     ST_plugin plugin;
-    char *arguments[] = {"doctor", "threads=32"};
+    char *arguments[] = {"selftest", "threads=32"};
 
     if (argc != 2) {
         fprintf(stderr, "usage: plugin_loader_test PATH\n");
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
         dlclose(library);
         return 6;
     }
-    if (strcmp(display_buffer, "loaded:doctor,threads=32\n") != 0 || error_buffer[0] != '\0') {
+    if (strcmp(display_buffer, "loaded:selftest,threads=32\n") != 0 || error_buffer[0] != '\0') {
         fprintf(stderr, "unexpected plugin output: %s / %s\n", display_buffer, error_buffer);
         dlclose(library);
         return 7;

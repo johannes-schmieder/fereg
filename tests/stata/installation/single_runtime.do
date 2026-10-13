@@ -28,10 +28,16 @@ forvalues repeat = 1/3 {
     quietly feppml y c.x, absorb(g) threads(1) deterministic
     assert mreldif(e(b), ppml_b)==0 & mreldif(e(V), ppml_v)==0
     assert e(sample)==ppml_sample
-    foreach action in version doctor selftest {
-        quietly fereg, `action' threads(1)
-        assert strpos("`r(plugin_name)'", "fereg_")==1
-        assert strpos("`r(plugin_name)'", "legacy")==0
+    quietly fereg, selftest threads(1)
+    assert strpos("`r(plugin_name)'", "fereg_")==1
+    assert strpos("`r(plugin_name)'", "legacy")==0
+    assert mreldif(e(b), ppml_b)==0 & mreldif(e(V), ppml_v)==0
+    assert e(sample)==ppml_sample
+    foreach retired in version doctor {
+        capture noisily fereg, `retired'
+        assert _rc==198
+        assert mreldif(e(b), ppml_b)==0 & mreldif(e(V), ppml_v)==0
+        assert e(sample)==ppml_sample
     }
 }
 * Retired options fail before publication and preserve the prior transaction.
@@ -41,7 +47,7 @@ foreach command in fereg feppml {
         assert _rc==198
         assert mreldif(e(b), ppml_b)==0 & mreldif(e(V), ppml_v)==0
         assert e(sample)==ppml_sample
-        capture noisily fereg, version engine(`removed')
+        capture noisily fereg, selftest engine(`removed')
         assert _rc==198
     }
 }

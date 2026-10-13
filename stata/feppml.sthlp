@@ -36,8 +36,8 @@ transaction. An error or Break posts no partial result.
 {title:Native runtime}
 
 {pstd}
-Both estimators use the installed fereg native plugin. Use {cmd:fereg, version},
-{cmd:fereg, doctor}, or {cmd:fereg, selftest} to inspect it. A missing binary
+Both estimators use the installed fereg native plugin. Use {cmd:fereg, selftest}
+to inspect and check it. A missing binary
 returns {cmd:r(601)}. The former {cmd:engine()} option has been removed.
 
 {marker syntax}

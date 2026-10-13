@@ -35,26 +35,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn version_action_is_available_without_stata() {
-        let capture = run_action(&["version"]);
+    fn selftest_action_is_available_without_live_spi() {
+        let capture = run_action(&[
+            "selftest",
+            "ado=0.5.0",
+            "protocol_major=1",
+            "protocol_minor=6",
+            "stata=18.0",
+            "threads=1",
+        ]);
         assert_eq!(capture.return_code, 0);
         assert!(capture.display.contains("fereg.plugin_version="));
     }
 
     #[test]
-    fn doctor_runs_with_32_requested_threads() {
+    fn selftest_runs_with_32_requested_threads() {
         let capture = run_action(&[
-            "doctor",
+            "selftest",
             "ado=0.5.0",
             "protocol_major=1",
             "protocol_minor=0",
             "stata=18.0",
             "threads=32",
             "plugin_file=mock.plugin",
-            "dependency_audit=mock-pass",
         ]);
         assert_eq!(capture.return_code, 0, "{}", capture.error);
-        assert!(capture.display.contains("fereg.native_selftest=pass"));
+        assert!(capture.display.contains("fereg.selftest.overall=pass"));
     }
 
     #[test]

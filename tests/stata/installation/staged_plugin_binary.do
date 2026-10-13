@@ -12,7 +12,7 @@ matrix before = e(b)
 
 * Mutate only this extracted test package, restoring each file before asserting.
 * Loading the handle first also checks that cached handles cannot hide deletion.
-quietly fereg, version
+quietly fereg, selftest
 copy `"`package'/`native'"' `"`package'/`native'.saved"', replace
 erase `"`package'/`native'"'
 local failures = 0
@@ -21,10 +21,9 @@ foreach command in fereg feppml {
     if _rc != 601 local ++failures
     if mreldif(e(b), before) != 0 local ++failures
 }
-foreach action in version doctor selftest {
-    capture noisily fereg, `action'
-    if _rc != 601 local ++failures
-}
+capture noisily fereg, selftest
+if _rc != 601 local ++failures
+if mreldif(e(b), before) != 0 local ++failures
 copy `"`package'/`native'.saved"' `"`package'/`native'"', replace
 erase `"`package'/`native'.saved"'
 assert `failures' == 0

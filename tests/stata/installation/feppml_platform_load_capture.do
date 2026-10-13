@@ -1,7 +1,7 @@
 version 18.0
 
 * This fixture proves only that one exact native artifact can be loaded and
-* execute the non-scientific version action in licensed Stata.  The calling
+* execute the installation selftest in licensed Stata.  The calling
 * platform driver computes and rechecks every SHA-256 value; this program
 * publishes the Stata-owned version/flavor and terminal completion record.
 args plugin_path platform artifact_sha256 artifact_size_bytes ///
@@ -63,7 +63,9 @@ if !_rc {
 
 capture program drop __feppml_platform_load_probe
 program define __feppml_platform_load_probe, plugin using(`"`plugin_path'"')
-capture noisily plugin call __feppml_platform_load_probe, version
+capture noisily plugin call __feppml_platform_load_probe, selftest ///
+    "ado=0.5.0" "protocol_major=1" "protocol_minor=6" ///
+    "stata=`c(stata_version)'" "threads=1" "verbose=1"
 local plugin_load_rc = _rc
 if `plugin_load_rc' {
     exit `plugin_load_rc'

@@ -17,9 +17,7 @@ full user testing but is not a qualified release claim.
 ```stata
 fereg depvar [indepvars] [if] [in] [weight], [options]
 
-fereg, version
-fereg, doctor [threads(#) verbose]
-fereg, selftest [threads(#)]
+fereg, selftest [threads(#) verbose]
 
 feppml depvar [indepvars] [if] [in] [fweight|pweight], [options]
 ```

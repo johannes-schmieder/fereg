@@ -18,7 +18,7 @@ request/result layouts are independently versioned:
 | PPML result wire | 1.5 |
 
 Estimation requires the exact action and estimator-specific request/result
-versions. Diagnostic `doctor` and `selftest` callers retain the action
+versions. Diagnostic `selftest` callers retain the action
 protocol's same-major, not-newer-minor compatibility rule. ADO identity must be
 exactly 0.5.0. Model wire 2.0 remains readable only for the bounded older
 no-absorbed-metadata case; model wire v1, unknown majors, and newer minors are
@@ -26,11 +26,14 @@ rejected. The additive PPML wires do not alter or alias the OLS result wire.
 
 ## Actions
 
-- `version` reports plugin/ADO versions, all wire versions, ABI, source
-  commit, and build date.
-- `doctor` validates the handshake and runs the native diagnostic suite.
-- `selftest` runs bounded native tests; compatible diagnostic handshakes are
-  accepted.
+- `selftest` reports plugin identity, requires and validates the diagnostic
+  handshake, and runs the bounded installation checks. `verbose=1` adds all
+  wire versions, ABI, source commit, build date, host/worker details and individual
+  check results; omitted `verbose` or `verbose=0` selects the short summary.
+  Identity is printed before handshake validation. Failed checks always print
+  their details and return a nonzero code. The public ado reports its own version
+  before loading the plugin, including when the binary is missing.
+  The former `version` and `doctor` actions are removed.
 - `panic-test` is confirmation-guarded and exists only for ABI containment.
 - `estimate-ols` is the one live-SPI public estimation action used by
   `fereg`.
@@ -84,7 +87,7 @@ pins its own module on the first action: a later `FreeLibrary`, by Stata or a
 test harness, leaves the code mapped until the process exits, so an idle worker
 never executes unmapped pages. A rebuilt or reinstalled Windows plugin takes
 effect after Stata restarts. The Windows actual-plugin loader test releases the
-library after the doctor action and asserts that the module is still mapped.
+library after the selftest action and asserts that the module is still mapped.
 Every `protocol_mismatch` error (ado files and loaded plugin from different
 versions) is followed by a line asking the user to restart Stata, and to
 reinstall fereg if the error persists.

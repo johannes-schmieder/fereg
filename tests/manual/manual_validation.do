@@ -71,11 +71,11 @@ display as text "  scale:       `scale'"
 display as text "  repetitions: `repetitions'"
 display as text `"  fereg:       `fereg_path'"'
 which fereg
-capture noisily fereg, doctor threads(`threads')
-local doctor_rc = _rc
-if `doctor_rc' {
-    display as error "fereg doctor failed with r(`doctor_rc')"
-    exit `doctor_rc'
+capture noisily fereg, selftest threads(`threads')
+local selftest_rc = _rc
+if `selftest_rc' {
+    display as error "fereg selftest failed with r(`selftest_rc')"
+    exit `selftest_rc'
 }
 local fereg_plugin_path `"`r(plugin_file)'"'
 display as text `"  native plugin: `fereg_plugin_path'"'

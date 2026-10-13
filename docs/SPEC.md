@@ -16,9 +16,14 @@ Native test names below are relative to `crates/fereg-core` or
 
 Both commands accept `depvar [indepvars] [if] [in] [weight], [options]`.
 The dependent variable is plain numeric; the finite list can be empty.
-Stata 18 is the minimum host. Installed diagnostic calls remain
-`fereg, version`, `fereg, doctor [threads(#) verbose]`, and
-`fereg, selftest [threads(#)]`; developer actions are not public commands.
+Stata 18 is the minimum host. The installed diagnostic is
+`fereg, selftest [threads(#) verbose]`; developer actions are not public commands.
+It reports installed versions, validates ado/plugin compatibility and runs bounded
+installation checks. `verbose` adds build, host and per-check details; failed
+checks always include their details and return a nonzero code. Available version
+information is printed before compatibility or check failures. These checks cover
+protocols, factor encoding, metadata and worker execution, not estimator qualification.
+The former `version` and `doctor` options are removed and return r(198).
 
 | Option | OLS (`fereg`) | PPML (`feppml`) |
 |---|---|---|

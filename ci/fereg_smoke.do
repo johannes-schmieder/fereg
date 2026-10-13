@@ -11,7 +11,7 @@ assert _rc == 111
 capture which `legacy_prefix'fixest
 assert _rc == 111
 
-capture noisily fereg, version
+capture noisily fereg, selftest threads(4) verbose
 assert _rc == 0
 local plugin_name "`r(plugin_name)'"
 if c(os) == "MacOSX" | (c(os) == "Unix" & strmatch(c(machine_type), "Mac*")) {
@@ -27,8 +27,6 @@ else {
     exit 9
 }
 
-capture noisily fereg, selftest threads(4)
-assert _rc == 0
 
 sysuse auto, clear
 local before_n = _N

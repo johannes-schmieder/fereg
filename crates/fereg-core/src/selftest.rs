@@ -27,9 +27,12 @@ impl SelfTestReport {
     }
 
     #[must_use]
-    pub fn render(&self) -> String {
+    pub fn render(&self, verbose: bool) -> String {
         let mut output = String::new();
         for case in &self.cases {
+            if !verbose && case.passed {
+                continue;
+            }
             writeln!(
                 output,
                 "fereg.selftest.{}={} {}",
@@ -211,7 +214,39 @@ mod tests {
     fn native_selftest_passes_single_and_many_threads() {
         for threads in [1, 2, 8, 32] {
             let report = run_native_selftest(threads);
-            assert!(report.passed(), "{}", report.render());
+            assert!(report.passed(), "{}", report.render(true));
         }
+    }
+}
+
+#[cfg(test)]
+mod report_tests {
+    use super::*;
+
+    #[test]
+    fn compact_failures_retain_details_and_a_nonzero_result() {
+        let report = SelfTestReport {
+            cases: vec![
+                SelfTestCase {
+                    name: "healthy",
+                    passed: true,
+                    detail: "ok".into(),
+                },
+                SelfTestCase {
+                    name: "broken",
+                    passed: false,
+                    detail: "witness differs".into(),
+                },
+            ],
+        };
+        let output = report.render(false);
+        assert!(!output.contains("healthy"));
+        assert!(output.contains("fereg.selftest.broken=fail witness differs"));
+        assert!(output.contains("fereg.selftest.overall=fail"));
+        assert!(report.render(true).contains("fereg.selftest.healthy=pass"));
+        assert_eq!(
+            report.require_pass().unwrap_err().code,
+            ErrorCode::SelfTestFailed
+        );
     }
 }

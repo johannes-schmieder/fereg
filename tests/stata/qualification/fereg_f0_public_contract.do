@@ -9,27 +9,24 @@ local suffix "/stata/fereg.ado"
 assert substr(`"`ado_path'"', -strlen(`"`suffix'"'), .) == `"`suffix'"'
 local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix'"'))
 
-* Every public utility mode remains available with the frozen wire identities.
-display as text "FEREG_F0_OUTPUT_BEGIN|version"
-capture noisily fereg, version
+* One installation diagnostic retains the frozen wire identities.
+display as text "FEREG_F0_OUTPUT_BEGIN|selftest"
+capture noisily fereg, selftest
 assert _rc == 0
 assert `"`r(ado_version)'"' == "0.5.0"
 assert `"`r(action_protocol)'"' == "1.6"
 assert `"`r(model_wire)'"' == "2.1"
 assert r(requested_threads) == 0
-display as text "FEREG_F0_OUTPUT_END|version"
-
-display as text "FEREG_F0_OUTPUT_BEGIN|doctor"
-capture noisily fereg, doctor threads(1)
-assert _rc == 0
-assert r(requested_threads) == 1
-display as text "FEREG_F0_OUTPUT_END|doctor"
-
-display as text "FEREG_F0_OUTPUT_BEGIN|selftest"
-capture noisily fereg, selftest threads(1)
+capture noisily fereg, selftest threads(1) verbose
 assert _rc == 0
 assert r(requested_threads) == 1
 display as text "FEREG_F0_OUTPUT_END|selftest"
+foreach retired in version doctor {
+    capture noisily fereg, `retired'
+    assert _rc == 198
+}
+capture noisily fereg, selftest threads(-1)
+assert _rc == 198
 
 import delimited using `"`root'/tests/fixtures/ols/ols_core.csv"', clear
 

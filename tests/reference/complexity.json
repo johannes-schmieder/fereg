@@ -1,25 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "after": 96683,
-      "before": 96648,
-      "metric": "fereg-core/production_lines",
-      "reason": "Adaptive ordinary two-FE OLS: explicit caller context, one certificate-triggered correction within the original work budget and normalization, plus compiled-out fault plans. No dispatch families or allocation banks added."
-    },
-    {
-      "after": 7223,
-      "before": 7188,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Adaptive ordinary two-FE OLS: explicit caller context, one certificate-triggered correction within the original work budget and normalization, plus compiled-out fault plans. No dispatch families or allocation banks added."
-    },
-    {
-      "after": 621,
-      "before": 581,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb_two_fe_pcg_reusing#1",
-      "reason": "Adaptive ordinary two-FE OLS: explicit caller context, one certificate-triggered correction within the original work budget and normalization, plus compiled-out fault plans. No dispatch families or allocation banks added."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -515,31 +496,27 @@
         "dispatch_candidates": [],
         "functions": {
           "current#1": {
-            "line": 55,
+            "line": 56,
             "lines": 20
           },
           "emit_solver_trace#1": {
-            "line": 23,
+            "line": 24,
             "lines": 9
           },
           "phase_timing_enabled#1": {
-            "line": 17,
+            "line": 18,
             "lines": 3
           },
           "render#1": {
-            "line": 95,
-            "lines": 50
+            "line": 79,
+            "lines": 45
           },
           "solver_trace_enabled#1": {
-            "line": 11,
+            "line": 12,
             "lines": 3
-          },
-          "yes_no#1": {
-            "line": 147,
-            "lines": 7
           }
         },
-        "production_lines": 140
+        "production_lines": 113
       },
       "crates/fereg-core/src/error.rs": {
         "chunk_candidates": [],
@@ -18223,7 +18200,7 @@
         "dispatch_candidates": [],
         "functions": {
           "chunk_checksum#1": {
-            "line": 153,
+            "line": 156,
             "lines": 26
           },
           "passed#1": {
@@ -18232,26 +18209,26 @@
           },
           "render#1": {
             "line": 30,
-            "lines": 20
+            "lines": 23
           },
           "require#1": {
-            "line": 198,
+            "line": 201,
             "lines": 7
           },
           "require_pass#1": {
-            "line": 51,
+            "line": 54,
             "lines": 17
           },
           "run_case#1": {
-            "line": 180,
+            "line": 183,
             "lines": 17
           },
           "run_native_selftest#1": {
-            "line": 71,
+            "line": 74,
             "lines": 77
           }
         },
-        "production_lines": 190
+        "production_lines": 193
       },
       "crates/fereg-plugin/src/action_memory.rs": {
         "chunk_candidates": [],
@@ -18389,31 +18366,23 @@
         "dispatch_candidates": [],
         "functions": {
           "dispatch_args#1": {
-            "line": 16,
-            "lines": 30
-          },
-          "doctor#1": {
-            "line": 88,
-            "lines": 30
+            "line": 11,
+            "lines": 28
           },
           "panic_test#1": {
-            "line": 146,
+            "line": 89,
             "lines": 10
           },
           "requested_threads#1": {
-            "line": 130,
+            "line": 73,
             "lines": 15
           },
           "selftest#1": {
-            "line": 119,
-            "lines": 10
-          },
-          "version#1": {
-            "line": 47,
-            "lines": 40
+            "line": 40,
+            "lines": 32
           }
         },
-        "production_lines": 148
+        "production_lines": 93
       },
       "crates/fereg-plugin/src/estimate.rs": {
         "chunk_candidates": [],
@@ -21232,14 +21201,14 @@
         "dispatch_candidates": 1264,
         "files_over_1500": 15,
         "functions_over_150": 61,
-        "production_lines": 96683
+        "production_lines": 96659
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
         "dispatch_candidates": 139,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 15123
+        "production_lines": 15068
       }
     },
     "schema": 1

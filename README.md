@@ -118,9 +118,14 @@ not imply fresh licensed-platform qualification.
 After installation, run:
 
 ```stata
-fereg, version
-fereg, doctor verbose
 fereg, selftest
+```
+
+This reports versions, checks ado/plugin compatibility and runs bounded installation
+checks. Add `verbose` for build, host and individual check details:
+
+```stata
+fereg, selftest verbose
 ```
 
 After installing or updating fereg in a Stata session that has already used

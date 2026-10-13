@@ -169,7 +169,7 @@ static void run_worker_checks(struct worker_results *results)
 {
     ST_double value = 0.0;
     ST_int missing = 0;
-    char *arguments[] = {"version"};
+    char *arguments[] = {"selftest"};
     results->is_main_thread = fereg_spi_is_main_thread();
     results->display_rc = fereg_spi_display("worker must not reach SPI\n");
     results->nobs = fereg_spi_nobs();
@@ -319,7 +319,7 @@ static int check_string_round_trips(void)
 int main(void)
 {
     ST_plugin plugin;
-    char *arguments[] = {"version", "threads=32"};
+    char *arguments[] = {"selftest", "threads=32"};
     int rc;
     ST_int scalar_missing = 0;
     memset(&plugin, 0, sizeof(plugin));
@@ -412,7 +412,7 @@ int main(void)
         fprintf(stderr, "display/error wrappers failed\n");
         return 30;
     }
-    if (strcmp(display_buffer, "dispatch:version,threads=32\nhello\n") != 0) {
+    if (strcmp(display_buffer, "dispatch:selftest,threads=32\nhello\n") != 0) {
         fprintf(stderr, "unexpected display buffer: %s\n", display_buffer);
         return 32;
     }

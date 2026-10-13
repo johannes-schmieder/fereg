@@ -32,13 +32,8 @@ observations are removed to a fixed point.
 {marker syntax}
 {title:Syntax}
 
-{p 8 16 2}{cmd:fereg,} {cmd:version}
-
-{p 8 16 2}{cmd:fereg,} {cmd:doctor}
-[{cmd:threads(}{it:#}{cmd:)} {cmd:verbose}]
-
 {p 8 16 2}{cmd:fereg,} {cmd:selftest}
-[{cmd:threads(}{it:#}{cmd:)}]
+[{cmd:threads(}{it:#}{cmd:)} {cmd:verbose}]
 
 {p 8 16 2}
 {cmd:fereg} {it:depvar} [{it:indepvars}] {ifin} {weight},
@@ -80,8 +75,8 @@ recognizes {cmd:iweight} only to return the pinned {cmd:r(101)} rejection.
 {title:Native runtime}
 
 {pstd}
-Both estimators use the installed fereg native plugin. Use {cmd:fereg, version},
-{cmd:fereg, doctor}, or {cmd:fereg, selftest} to inspect it. A missing binary
+Both estimators use the installed fereg native plugin. Use {cmd:fereg, selftest}
+to inspect and check it. A missing binary
 returns {cmd:r(601)}. The former {cmd:engine()} option has been removed.
 
 {marker description}
@@ -303,17 +298,23 @@ Unsupported requests return an explicit error.
 {title:Installation diagnostics}
 
 {pstd}
-The following calls do not estimate a model:
+The following calls check the installation without estimating a model or changing
+the current data and estimation results:
 
-{phang2}{cmd:. fereg, version}{p_end}
-{phang2}{cmd:. fereg, doctor verbose}{p_end}
 {phang2}{cmd:. fereg, selftest}{p_end}
+{phang2}{cmd:. fereg, selftest verbose}{p_end}
+{phang2}{cmd:. fereg, selftest threads(4)}{p_end}
 
 {pstd}
-{cmd:version} checks the ado/plugin handshake. {cmd:doctor} reports the loaded
-artifact and, with {cmd:verbose}, the Stata host and processor information.
-{cmd:selftest} runs the native diagnostic calculation. {cmd:threads(#)} may be
-supplied to {cmd:doctor} or {cmd:selftest}; zero selects the native default.
+{cmd:selftest} reports the ado and plugin versions, checks their compatibility,
+and runs bounded checks of protocol handling, factor encoding, metadata and
+worker execution. It does not provide comprehensive OLS or PPML qualification.
+{cmd:verbose} adds build identity, protocol versions, plugin path, Stata host and
+processor information, and individual check results. Failed checks always show
+their details and return a nonzero code. Available version information is shown
+before compatibility or check failures. {cmd:threads(#)} selects the worker count;
+zero selects the native default. The former {cmd:version} and {cmd:doctor}
+options are no longer supported.
 
 {pstd}
 After installing or updating fereg in a Stata session that has already used

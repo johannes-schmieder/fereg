@@ -107,7 +107,10 @@ class StataRunnerSentinelTests(unittest.TestCase):
             self.assertIsNone(result.error)
             self.assertIn(str(plugin.resolve()), observed_wrapper)
             self.assertNotIn(str((root / "dist").resolve()), observed_wrapper)
-            self.assertIn("__fereg_runner_provenance", observed_wrapper)
+            self.assertIn("plugin call __fereg_runner_provenance, selftest", observed_wrapper)
+            self.assertIn('"ado=0.5.0" "protocol_major=1" "protocol_minor=6"', observed_wrapper)
+            self.assertIn('"threads=1" "verbose=1"', observed_wrapper)
+            self.assertNotIn("__fereg_runner_provenance, version", observed_wrapper)
 
     def test_missing_or_wrong_candidate_binding_fails_before_stata(self):
         root = Path(__file__).resolve().parents[2]

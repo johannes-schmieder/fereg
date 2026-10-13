@@ -46,11 +46,14 @@ static int load_symbol(HMODULE library, const char *name, void *target, size_t t
     return 0;
 }
 
-static int check_version(stata_call_function call)
+static int check_selftest_verbose(stata_call_function call)
 {
-    char *arguments[] = {"version"};
+    char *arguments[] = {
+        "selftest", "ado=0.5.0", "protocol_major=1", "protocol_minor=6",
+        "stata=18.0", "threads=2", "verbose=1"
+    };
     clear_output();
-    if (call(1, arguments) != 0) return 1;
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
     if (strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
         strstr(display_buffer, "fereg.action_protocol=1.6") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
@@ -61,16 +64,16 @@ static int check_version(stata_call_function call)
     return 0;
 }
 
-static int check_doctor(stata_call_function call)
+static int check_selftest(stata_call_function call)
 {
     char *arguments[] = {
-        "doctor", "ado=0.5.0", "protocol_major=1",
+        "selftest", "ado=0.5.0", "protocol_major=1",
         "protocol_minor=0", "stata=18.0", "threads=32",
-        "plugin_file=validation.plugin", "dependency_audit=target-native-pass"
+        "plugin_file=validation.plugin"
     };
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "fereg.native_selftest=pass") == NULL ||
+    if (strstr(display_buffer, "fereg.selftest.overall=pass") == NULL ||
         strstr(display_buffer, "fereg.ado_plugin_compatible=yes") == NULL ||
         error_buffer[0] != '\0') return 2;
     return 0;
@@ -79,13 +82,16 @@ static int check_doctor(stata_call_function call)
 static int check_protocol_mismatch(stata_call_function call)
 {
     char *arguments[] = {
-        "doctor", "ado=0.5.0", "protocol_major=99",
+        "selftest", "ado=0.5.0", "protocol_major=99",
         "protocol_minor=0", "stata=18.0"
     };
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 499) return 1;
     if (strstr(error_buffer, "protocol_mismatch") == NULL ||
-        strstr(error_buffer, "restart Stata") == NULL) return 2;
+        strstr(error_buffer, "restart Stata") == NULL ||
+        strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
+        strstr(display_buffer, "fereg.ado_plugin_compatible=no") == NULL ||
+        strstr(display_buffer, "fereg.selftest.overall=") != NULL) return 2;
     return 0;
 }
 
@@ -113,7 +119,7 @@ static int check_estimator_action_routing(
 }
 
 /*
- * The doctor check leaves the plugin's cached worker team alive, and idle
+ * The selftest check leaves the plugin's cached worker team alive, and idle
  * workers keep running plugin code. The plugin pins its module, so releasing
  * the only loader reference must leave the code mapped; otherwise a worker
  * could fault on unmapped pages after FreeLibrary.
@@ -170,9 +176,9 @@ int main(int argc, char *argv[])
         return 6;
     }
 
-    result = check_version(call);
+    result = check_selftest_verbose(call);
     if (result != 0) goto failure;
-    result = check_doctor(call);
+    result = check_selftest(call);
     if (result != 0) { result += 10; goto failure; }
     result = check_protocol_mismatch(call);
     if (result != 0) { result += 20; goto failure; }

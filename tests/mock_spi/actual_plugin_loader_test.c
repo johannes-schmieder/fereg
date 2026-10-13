@@ -362,11 +362,14 @@ static int load_symbol(void *library, const char *name, void *target, size_t tar
     return 0;
 }
 
-static int check_version(stata_call_function call)
+static int check_selftest_verbose(stata_call_function call)
 {
-    char *arguments[] = {"version"};
+    char *arguments[] = {
+        "selftest", "ado=0.5.0", "protocol_major=1", "protocol_minor=6",
+        "stata=18.0", "threads=2", "verbose=1"
+    };
     clear_output();
-    if (call(1, arguments) != 0) return 1;
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
     if (strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
         strstr(display_buffer, "fereg.action_protocol=1.6") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
@@ -379,21 +382,20 @@ static int check_version(stata_call_function call)
     return 0;
 }
 
-static int check_doctor(stata_call_function call)
+static int check_selftest(stata_call_function call)
 {
     char *arguments[] = {
-        "doctor",
+        "selftest",
         "ado=0.5.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
         "threads=32",
-        "plugin_file=validation.plugin",
-        "dependency_audit=target-native-pass"
+        "plugin_file=validation.plugin"
     };
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "fereg.native_selftest=pass") == NULL ||
+    if (strstr(display_buffer, "fereg.selftest.overall=pass") == NULL ||
         strstr(display_buffer, "fereg.ado_plugin_compatible=yes") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
@@ -404,7 +406,7 @@ static int check_doctor(stata_call_function call)
 static int check_protocol_mismatch(stata_call_function call)
 {
     char *arguments[] = {
-        "doctor",
+        "selftest",
         "ado=0.5.0",
         "protocol_major=99",
         "protocol_minor=0",
@@ -413,7 +415,10 @@ static int check_protocol_mismatch(stata_call_function call)
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 499) return 1;
     if (strstr(error_buffer, "protocol_mismatch") == NULL ||
-        strstr(error_buffer, "restart Stata") == NULL) return 2;
+        strstr(error_buffer, "restart Stata") == NULL ||
+        strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
+        strstr(display_buffer, "fereg.ado_plugin_compatible=no") == NULL ||
+        strstr(display_buffer, "fereg.selftest.overall=") != NULL) return 2;
     return 0;
 }
 
@@ -1199,15 +1204,15 @@ int main(int argc, char *argv[])
         return 6;
     }
 
-    result = check_version(call);
+    result = check_selftest_verbose(call);
     if (result != 0) {
-        fprintf(stderr, "version path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
+        fprintf(stderr, "verbose selftest path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);
         return 10 + result;
     }
-    result = check_doctor(call);
+    result = check_selftest(call);
     if (result != 0) {
-        fprintf(stderr, "doctor path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
+        fprintf(stderr, "selftest path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);
         return 20 + result;
     }

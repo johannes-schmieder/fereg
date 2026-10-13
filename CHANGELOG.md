@@ -15,9 +15,11 @@ Qualification scope and open caveats are in
   one call over the guarded PPML transaction.
 - Postestimation: `predict`, `test` and `estat summarize`, as documented in
   `help fereg_postestimation` and `help feppml`.
-- Diagnostics: `fereg, version`, `fereg, doctor [verbose]` and
-  `fereg, selftest`. `doctor` reports the active arithmetic path
-  (`x86_64-fma`, `x86_64-portable` or `aarch64-fma`).
+- Installation diagnostics: `fereg, selftest [threads(#) verbose]` combines
+  version information, ado/plugin compatibility and bounded native checks.
+  `verbose` includes build/host details, individual checks and the active
+  arithmetic path (`x86_64-fma`, `x86_64-portable` or `aarch64-fma`).
+  The former `version` and `doctor` options have been removed.
 
 ### Models and inference
 

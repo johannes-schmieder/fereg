@@ -158,7 +158,9 @@ def main() -> None:
                 "local provenance_load_rc = _rc",
                 "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 "
                 "exit `provenance_load_rc'",
-                "plugin call __fereg_break_provenance, version",
+                'plugin call __fereg_break_provenance, selftest "ado=0.5.0" '
+                '"protocol_major=1" "protocol_minor=6" '
+                '"stata=`c(stata_version)\'" "threads=1" "verbose=1"',
                 f"do {stata_quote(fixture)}" + (" public" if args.public_scope else ""),
                 "",
             ]

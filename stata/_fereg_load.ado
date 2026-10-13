@@ -1,7 +1,7 @@
 *! fereg plugin loader 0.5.0 24aug2026
 program define _fereg_load, rclass
     version 18.0
-    syntax , ACTION(string) [THREADS(integer 0)]
+    syntax , ACTION(string) [THREADS(integer 0) VERBOSE]
 
     if c(stata_version) < 18 {
         di as error "fereg requires Stata 18 or newer"
@@ -46,26 +46,16 @@ program define _fereg_load, rclass
     if `"`action'"' == "loadonly" {
         /* Developer/internal callers perform their own single substantive call. */
     }
-    else if `"`action'"' == "version" {
-        plugin call `handle', version
-    }
-    else if `"`action'"' == "doctor" {
-        plugin call `handle', doctor ///
-            `"ado=0.5.0"' ///
-            `"protocol_major=1"' ///
-            `"protocol_minor=0"' ///
-            `"stata=`c(stata_version)'"' ///
-            `"threads=`threads'"' ///
-            `"plugin_file=`plugin_file'"' ///
-            `"dependency_audit=build-time-required"'
-    }
     else if `"`action'"' == "selftest" {
+        local native_verbose = (`"`verbose'"' != "")
         plugin call `handle', selftest ///
             `"ado=0.5.0"' ///
             `"protocol_major=1"' ///
-            `"protocol_minor=0"' ///
+            `"protocol_minor=6"' ///
             `"stata=`c(stata_version)'"' ///
-            `"threads=`threads'"'
+            `"threads=`threads'"' ///
+            `"plugin_file=`plugin_file'"' ///
+            `"verbose=`native_verbose'"'
     }
     else {
         di as error "unknown fereg plugin action: `action'"

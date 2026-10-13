@@ -13,11 +13,11 @@ assert _rc == 111
 capture which fereg_run
 assert _rc == 0
 
-capture noisily fereg, version
-local version_rc = _rc
+capture noisily fereg, selftest threads(32) verbose
+local selftest_rc = _rc
 local plugin_name "`r(plugin_name)'"
-if `version_rc' != 0 {
-    exit `version_rc'
+if `selftest_rc' != 0 {
+    exit `selftest_rc'
 }
 if c(os) == "MacOSX" | (c(os) == "Unix" & strmatch(c(machine_type), "Mac*")) {
     if "`plugin_name'" != "fereg_macos.plugin" {
@@ -36,16 +36,6 @@ else if c(os) == "Unix" {
         di as error "wrong plugin selected for Linux: `plugin_name'"
         exit 9
     }
-}
-capture noisily fereg, doctor threads(32) verbose
-local doctor_rc = _rc
-if `doctor_rc' != 0 {
-    exit `doctor_rc'
-}
-capture noisily fereg, selftest threads(32)
-local selftest_rc = _rc
-if `selftest_rc' != 0 {
-    exit `selftest_rc'
 }
 
 sysuse auto, clear

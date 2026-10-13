@@ -1,7 +1,8 @@
 use crate::options::ThreadConfig;
 use crate::protocol::{
     ACTION_PROTOCOL_VERSION, ADO_VERSION, MINIMUM_STATA_MAJOR, MODEL_WIRE_VERSION,
-    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION, SPI_MAJOR, SPI_MINOR,
+    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION, PPML_REQUEST_WIRE_VERSION, PPML_RESULT_WIRE_VERSION,
+    SPI_MAJOR, SPI_MINOR,
 };
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -72,108 +73,52 @@ impl BuildInfo {
             available_threads: ThreadConfig::available(),
         }
     }
-}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DoctorInput {
-    pub stata_version: String,
-    pub plugin_filename: String,
-    pub configured_threads: usize,
-    pub ado_plugin_compatible: bool,
-    pub native_selftest_passed: bool,
-    pub dependency_audit_status: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DoctorReport {
-    pub build: BuildInfo,
-    pub input: DoctorInput,
-}
-
-impl DoctorReport {
+    /// Plugin identity is available even when a subsequent installation check fails.
     #[must_use]
-    pub fn render(&self) -> String {
-        let build = &self.build;
-        let input = &self.input;
-        let mut rendered = [
-            format!("fereg.ado_version={}", build.ado_version),
-            format!("fereg.plugin_version={}", build.plugin_version),
-            format!(
-                "fereg.action_protocol={}.{}",
-                build.action_protocol_major, build.action_protocol_minor
-            ),
-            format!(
-                "fereg.model_wire={}.{}",
-                build.model_wire_major, build.model_wire_minor
-            ),
-            format!(
-                "fereg.ols_result_wire={}.{}",
-                build.ols_result_wire_major, build.ols_result_wire_minor
-            ),
-            format!("fereg.git_commit={}", build.git_commit),
-            format!("fereg.build_date={}", build.build_date),
-            format!("fereg.os={}", build.operating_system),
-            format!("fereg.arch={}", build.architecture),
-            format!("fereg.stata_version={}", input.stata_version),
-            format!(
-                "fereg.plugin_abi={}.{}",
-                build.plugin_abi_major, build.plugin_abi_minor
-            ),
-            format!("fereg.cpu_dispatch={}", build.cpu_dispatch_path),
-            format!("fereg.available_threads={}", build.available_threads),
-            format!("fereg.configured_threads={}", input.configured_threads),
-            format!("fereg.plugin_filename={}", input.plugin_filename),
-            format!(
-                "fereg.ado_plugin_compatible={}",
-                yes_no(input.ado_plugin_compatible)
-            ),
-            format!(
-                "fereg.native_selftest={}",
-                if input.native_selftest_passed {
-                    "pass"
-                } else {
-                    "fail"
-                }
-            ),
-            format!("fereg.dependency_audit={}", input.dependency_audit_status),
-            format!("fereg.minimum_stata={MINIMUM_STATA_MAJOR}"),
-        ]
-        .join("\n");
-        rendered.push('\n');
-        rendered
-    }
-}
-
-const fn yes_no(value: bool) -> &'static str {
-    if value {
-        "yes"
-    } else {
-        "no"
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn report_contains_machine_readable_fields() {
-        let report = DoctorReport {
-            build: BuildInfo::current(),
-            input: DoctorInput {
-                stata_version: "18.0".to_owned(),
-                plugin_filename: "fereg_linux.plugin".to_owned(),
-                configured_threads: 8,
-                ado_plugin_compatible: true,
-                native_selftest_passed: true,
-                dependency_audit_status: "not-run".to_owned(),
-            },
+    pub fn render(&self, verbose: bool) -> String {
+        let mut output = format!("fereg.plugin_version={}\n", self.plugin_version);
+        if verbose {
+            output.push_str(&format!(
+                concat!(
+                    "fereg.ado_contract={}\n",
+                    "fereg.action_protocol={}.{}\n",
+                    "fereg.model_wire={}.{}\n",
+                    "fereg.ols_result_wire={}.{}\n",
+                    "fereg.ppml_request_wire={}.{}\n",
+                    "fereg.ppml_result_wire={}.{}\n",
+                    "fereg.plugin_abi={}.{}\n",
+                    "fereg.git_commit={}\n",
+                    "fereg.build_date={}\n",
+                    "fereg.os={}\n",
+                    "fereg.arch={}\n",
+                    "fereg.cpu_dispatch={}\n",
+                    "fereg.available_threads={}\n",
+                    "fereg.minimum_stata={}\n",
+                    "fereg.dependency_audit=build-time-required\n"
+                ),
+                self.ado_version,
+                self.action_protocol_major,
+                self.action_protocol_minor,
+                self.model_wire_major,
+                self.model_wire_minor,
+                self.ols_result_wire_major,
+                self.ols_result_wire_minor,
+                PPML_REQUEST_WIRE_VERSION.major,
+                PPML_REQUEST_WIRE_VERSION.minor,
+                PPML_RESULT_WIRE_VERSION.major,
+                PPML_RESULT_WIRE_VERSION.minor,
+                self.plugin_abi_major,
+                self.plugin_abi_minor,
+                self.git_commit,
+                self.build_date,
+                self.operating_system,
+                self.architecture,
+                self.cpu_dispatch_path,
+                self.available_threads,
+                MINIMUM_STATA_MAJOR,
+            ));
         }
-        .render();
-        assert!(report.contains("fereg.action_protocol=1.6"));
-        assert!(report.contains("fereg.model_wire=2.1"));
-        assert!(report.contains("fereg.ols_result_wire=1.5"));
-        assert!(!report.contains("fereg.model_protocol="));
-        assert!(report.contains("fereg.native_selftest=pass"));
+        output
     }
 }

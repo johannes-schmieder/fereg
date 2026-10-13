@@ -6,24 +6,14 @@ if c(os) != "Windows" {
     exit 9
 }
 
-capture noisily fereg, version
-local version_rc = _rc
-local plugin_name `"`r(plugin_name)'"'
-if `version_rc' {
-    exit `version_rc'
-}
-assert `"`plugin_name'"' == "fereg_windows.plugin"
-
-capture noisily fereg, doctor threads(2)
-local doctor_rc = _rc
-if `doctor_rc' {
-    exit `doctor_rc'
-}
-capture noisily fereg, selftest threads(2)
+capture noisily fereg, selftest threads(2) verbose
 local selftest_rc = _rc
+local plugin_name `"`r(plugin_name)'"'
 if `selftest_rc' {
     exit `selftest_rc'
 }
+assert `"`plugin_name'"' == "fereg_windows.plugin"
+
 
 set obs 48
 generate long obs_id = _n
