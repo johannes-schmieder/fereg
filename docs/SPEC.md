@@ -96,6 +96,14 @@ projection used for saved outputs. Unlike automatic LSMR (floor 1e-14, with a
 MAP fallback), explicit LSMR has no fallback, so it keeps that margin. Explicit
 PPML LSMR keeps its scheduled certificate and one tighter continuation.
 
+Ordinary automatic two-FE OLS first targets half of `tolerance()` in its
+recurrence and certifies at `tolerance()`. Only a failed certificate permits
+one tighter correction solve on the reconstructed residual, using the automatic
+LSMR target when strictly tighter. Both attempts retain the original RHS
+normalization and share the original PCG budget and MAP reserve. A passing
+certificate is accepted even at recurrence exhaustion. This scoped adaptive
+policy does not change explicit solvers, PPML or final-residual projection.
+
 Automatic routes can differ at roughly the 1e-5 level in derived statistics
 on weakly connected graphs, despite passing their requested FE-moment certificate.
 

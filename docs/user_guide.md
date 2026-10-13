@@ -171,6 +171,10 @@ dimension. Cluster interactions use `#`, not `##`.
 Explicit MAP, Irons--Tuck, SQUAREM, and CMG requests therefore use
 `preconditioner(off)`.
 
+Automatic two-FE OLS checks an initial solution at the requested tolerance
+and spends additional iterations on a tighter correction only if that check
+fails. The correction shares the original iteration budget.
+
 Automatic routes can differ at roughly the 1e-5 level in derived statistics
 on weakly connected graphs, despite passing their requested FE-moment certificate.
 

@@ -236,6 +236,21 @@ improvements over the full campaign. It contains no candidate implementation.
 
 ## Generalization follow-up
 
+The October 13 adaptive two-FE OLS follow-up supersedes H8's blanket tighter
+recurrence target after Johannes accepted the disclosed accuracy tradeoff.
+On the exact retained H8 Manu input bytes, two alternating Mac pairs at each
+of 1/4/16 workers show sparse native reductions of 10.86%/11.12%/10.43% and
+AKM reductions of 6.27%/8.38%/6.50%; dense iteration counts stay unchanged.
+All paired science, protected decisions, worker comparisons and fixed-worker
+repeats pass. These are descriptive two-pair observations. The separate stable
+candidate passes all twenty quiet Mac incremental nonregression cells, with
+seven pairs after one warmup and no continuation. The accepted default
+projection witness changes from 5e-9 to 1e-8; strict-request checks and the
+requested FE certificate are unchanged, and historical strong-F failures remain
+visible. This establishes no new fixest ratio, Linux speed claim or retrospective
+pass for the whole-H boundary below. See [validation](VALIDATION.md#adaptive-two-fe-ols-accepted-tradeoff-and-mac-qualification-2026-10-13)
+and [compact observations](../bench/results/h8-adaptive-20261012.json).
+
 Final H boundary result: the single declared quiet Mac panel completed
 all twenty workloads and 320 native calls in 643.298 seconds.
 Nineteen workloads pass nonregression; one remains inconclusive. No cell
@@ -488,7 +503,7 @@ Linux performance claim, a new fixest ratio or a retrospective pass for H-wide.
 See [qualification and limitations](VALIDATION.md#h2-follow-up-certified-dense-three-fe-gains-2026-10-12)
 and [all observations](../bench/results/h2-followup-20261012-second.json).
 
-Workstream H8 makes ordinary two-FE OLS aim at the shared hundredth-request
+The original H8 implementation made ordinary two-FE OLS aim at the shared hundredth-request
 recurrence target while preserving the requested certificate, PPML and final
 projection policies. The frozen 48-fit SCC panel reports the accuracy cost:
 sparse 1M native time rises 13.31%/12.17%/10.95% at 1/4/16 workers, with main
@@ -497,7 +512,7 @@ iterations 92 → 120 and final iterations 11 → 0. AKM main iterations rise
 observations range from -11.08% to +5.06%, without a confidence-qualified gain
 claim. All paired science/discrete checks and fixed-worker repeats pass.
 The over-ten-percent sparse costs were reported before integration, and the
-approved rule is kept unchanged. Retained F1 QR checks pass, while the unchanged
+rule was retained until the October 13 adaptive decision above. Retained F1 QR checks pass, while the unchanged
 strong-F witness still fails (barbell 2.480x, weak 1.076x the bound); the weak
 F error improves from 1.440e-5 to -2.603e-8. H8 does not answer the stronger
 certificate question. See [validation](VALIDATION.md#h8-recurrence-consistency-with-measured-sparse-cost-2026-10-12)

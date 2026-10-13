@@ -965,7 +965,7 @@ fn ols_schur_accepts_a_passing_certificate_after_recurrence_budget() {
             BorrowedMapWeights::Unit,
             values.clone().into(),
             MapConfig {
-                tolerance: 1e-2,
+                tolerance: 7e-3,
                 max_iterations: 1,
                 ..config()
             },
@@ -983,7 +983,7 @@ fn ols_schur_accepts_a_passing_certificate_after_recurrence_budget() {
         &owner.workspace,
         0,
         1,
-        direct_lsmr_tolerance(1e-2),
+        direct_lsmr_tolerance(7e-3),
         false,
     )
     .unwrap());
@@ -2116,15 +2116,15 @@ fn pilot_group_scratch_matches_weighted_ring_oracle_and_restores_on_failure() {
 
 #[test]
 fn direct_two_fe_schur_matches_weighted_contrasts_across_frames_and_widths() {
-    check_direct_two_fe_weighted_contrasts(false);
+    check_direct_two_fe_weighted_contrasts(false, false);
 }
 
 #[test]
 fn checkpoint_schur_preserves_component_contrasts_across_frames_and_widths() {
-    check_direct_two_fe_weighted_contrasts(true);
+    check_direct_two_fe_weighted_contrasts(true, false);
 }
 
-fn check_direct_two_fe_weighted_contrasts(checkpoint: bool) {
+fn check_direct_two_fe_weighted_contrasts(checkpoint: bool, ols: bool) {
     // Paired rows share both FE labels and have reciprocal weighted
     // contrasts. The exact WLS residual is known without either solver.
     let mut cells = Vec::new();
@@ -2230,16 +2230,21 @@ fn check_direct_two_fe_weighted_contrasts(checkpoint: bool) {
                         assert_eq!(attempt.unwrap_err().code, ErrorCode::InvalidData);
                         assert_eq!(owner.capacities(), capacities);
                     }
-                    let result = owner
-                        .absorb_ppml(
+                    let map = MapConfig {
+                        tolerance: 1e-12,
+                        ..config()
+                    };
+                    let result = if ols {
+                        owner.absorb_ols(
                             BorrowedMapWeights::Provided(&weights),
-                            input,
-                            MapConfig {
-                                tolerance: 1e-12,
-                                ..config()
-                            },
+                            input.into(),
+                            map,
+                            false,
                         )
-                        .unwrap();
+                    } else {
+                        owner.absorb_ppml(BorrowedMapWeights::Provided(&weights), input, map)
+                    }
+                    .unwrap();
                     assert!(result.report().certified());
                     if checkpoint {
                         assert_eq!(result.report().used_solver, FeSolverKind::Map);
@@ -2904,16 +2909,34 @@ fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
         .unwrap();
         assert_eq!(ordinary.residualized(), structural.residualized());
         assert_eq!(ordinary.report().iterations, structural.report().iterations);
+        eprintln!(
+            "adaptive sparse witness: tolerance={tolerance} maximum_absolute_error={:.17e}",
+            ordinary
+                .residualized()
+                .as_slice()
+                .iter()
+                .zip(oracle.residualized().as_slice())
+                .map(|(a, b)| (a - b).abs())
+                .fold(0.0_f64, f64::max)
+        );
+        // Johannes accepted the adaptive default's projection tradeoff on
+        // 2026-10-13. Retain a quantitative default witness and the original
+        // H8 bound at the strict request; the publication certificate is unchanged.
+        let projection_bound = if tolerance == 1e-8 { 1e-8 } else { 5e-9 };
         for (&left, &right) in ordinary
             .residualized()
             .as_slice()
             .iter()
             .zip(oracle.residualized().as_slice())
         {
-            assert!((left - right).abs() <= 5e-9, "{left} != {right}");
+            assert!(
+                (left - right).abs() <= projection_bound,
+                "{left} != {right}"
+            );
         }
         if tolerance == 1e-8 {
-            assert!(ordinary.report().iterations > legacy.report().iterations);
+            assert_eq!(ordinary.residualized(), legacy.residualized());
+            assert_eq!(ordinary.report().iterations, legacy.report().iterations);
         }
     }
 }
@@ -5951,4 +5974,178 @@ fn norm_handoff_failed_lsmr_certificate_and_auto_continuation_discard_cache() {
         actual.report().solver_workspace_peak,
         expected.report().solver_workspace_peak
     );
+}
+
+#[test]
+fn adaptive_ols_schur_preserves_weighted_contrasts_across_frames_and_widths() {
+    check_direct_two_fe_weighted_contrasts(false, true);
+}
+
+#[test]
+fn adaptive_ols_schur_correction_preserves_scales_coefficients_and_budget() {
+    let left_codes = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2];
+    let right_codes = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
+    let left_index = LevelIndex::from_codes(&left_codes, 3).unwrap();
+    let right_index = LevelIndex::from_codes(&right_codes, 3).unwrap();
+    let left = ValidatedBorrowedInterceptSource::new(&left_codes, 3, &left_index).unwrap();
+    let right = ValidatedBorrowedInterceptSource::new(&right_codes, 3, &right_index).unwrap();
+    let input = DenseMatrix::from_columns(&[
+        vec![11., -9., 10., -10., 10., -10., 10., -10., 10., -10.],
+        vec![0.; 10],
+        vec![10., -10., 10., -10., 10., -10., 10., -10., 10., -10.],
+    ])
+    .unwrap();
+    let mut reference = None;
+    for workers in [1, 4, 16] {
+        let result =
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    let design =
+                        BorrowedInterceptFeDesign::new(10, vec![left.effect(), right.effect()])
+                            .unwrap();
+                    let mut owner =
+                        ReusableCategoricalMapAbsorber::new(design, 3, workers).unwrap();
+                    owner.retain_coefficients = true;
+                    let capacities = owner.capacities();
+                    let mut repeated = None;
+                    for _ in 0..2 {
+                        // Simulate a recurrence/certificate discrepancy without weakening
+                        // the actual independent certificate on the correction result.
+                        TWO_FE_CERTIFICATE_FAILURES.set(1);
+                        TWO_FE_CORRECTIONS.set(0);
+                        let fit = owner
+                            .absorb_ols(
+                                BorrowedMapWeights::Unit,
+                                input.clone().into(),
+                                MapConfig {
+                                    tolerance: 1e-2,
+                                    max_iterations: 4,
+                                    ..config()
+                                },
+                                false,
+                            )
+                            .unwrap();
+                        assert_eq!(TWO_FE_CORRECTIONS.get(), 1);
+                        assert_eq!(TWO_FE_CERTIFICATE_FAILURES.get(), 0);
+                        let (residual, report, coefficients) = fit.into_full_parts();
+                        assert!(report.certified());
+                        assert_eq!(report.iterations, 3);
+                        assert!(!report.fallback_used);
+                        assert_eq!(owner.capacities(), capacities);
+                        let coefficients = coefficients.unwrap();
+                        // The exact projection on this duplicated-edge tree averages
+                        // each row pair. Its first pair is [10, -10], all others likewise.
+                        for row in 0..10 {
+                            for rhs in 0..3 {
+                                let expected = if rhs == 1 {
+                                    0.
+                                } else if row % 2 == 0 {
+                                    10.
+                                } else {
+                                    -10.
+                                };
+                                assert!((residual[(row, rhs)] - expected).abs() < 1e-13);
+                                let base = rhs * coefficients.coefficients_per_rhs;
+                                let fitted = coefficients.values[base
+                                    + coefficients.effect_offsets[0]
+                                    + left_codes[row] as usize]
+                                    + coefficients.values[base
+                                        + coefficients.effect_offsets[1]
+                                        + right_codes[row] as usize];
+                                assert!(
+                                    (input[(row, rhs)] - residual[(row, rhs)] - fitted).abs()
+                                        < 1e-13
+                                );
+                            }
+                        }
+                        let normalized = validate_weights(BorrowedMapWeights::Unit, 10).unwrap();
+                        let mut workspace = BorrowedMapWorkspace::new(
+                            &owner.design,
+                            10,
+                            3,
+                            &mut SystemWorkspaceReservation,
+                        )
+                        .unwrap();
+                        update_workspace_norms(&input, normalized, &mut workspace, true).unwrap();
+                        assert_eq!(owner.workspace.reference_norms, workspace.reference_norms);
+                        assert!(
+                            certify(&owner.design, normalized, &residual, 1e-2, &mut workspace)
+                                .unwrap()
+                                .passed
+                        );
+                        let snapshot = (residual.as_slice().to_vec(), coefficients);
+                        if let Some(previous) = repeated.as_ref() {
+                            assert_eq!(&snapshot, previous);
+                        }
+                        repeated = Some(snapshot);
+                    }
+                    repeated.unwrap()
+                });
+        if let Some(previous) = reference.as_ref() {
+            assert_eq!(&result, previous);
+        }
+        reference = Some(result);
+    }
+}
+
+#[test]
+fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
+    let first = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2];
+    let second = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
+    let indices = [
+        LevelIndex::from_codes(&first, 3).unwrap(),
+        LevelIndex::from_codes(&second, 3).unwrap(),
+    ];
+    let sources = [
+        ValidatedBorrowedInterceptSource::new(&first, 3, &indices[0]).unwrap(),
+        ValidatedBorrowedInterceptSource::new(&second, 3, &indices[1]).unwrap(),
+    ];
+    let input =
+        DenseMatrix::from_columns(&[vec![11., -9., 10., -10., 10., -10., 10., -10., 10., -10.]])
+            .unwrap();
+    // caller: 0 ordinary OLS, 1 final residual, 2 PPML.
+    for (caller, tolerance, cap, failures, breakdown, corrections, succeeds) in [
+        (0, 1e-2, 4, 0, false, 0, true),
+        (0, 1e-2, 4, 2, false, 1, true),
+        (0, 1e-2, 1, 1, false, 0, false),
+        (0, 1e-2, 4, 0, true, 0, true),
+        (0, 1.5e-14, 20, 1, false, 0, true),
+        (0, 1e-15, 20, 1, false, 0, true),
+        (1, 1e-2, 4, 1, false, 0, true),
+        (2, 1e-2, 4, 1, false, 0, true),
+    ] {
+        let design =
+            BorrowedInterceptFeDesign::new(10, sources.iter().map(|s| s.effect()).collect())
+                .unwrap();
+        let mut owner = ReusableCategoricalMapAbsorber::new(design, 1, 1).unwrap();
+        let map = MapConfig {
+            tolerance,
+            max_iterations: cap,
+            ..config()
+        };
+        TWO_FE_CERTIFICATE_FAILURES.set(failures);
+        TWO_FE_CORRECTIONS.set(0);
+        TWO_FE_BREAKDOWN.set(breakdown);
+        let result = if caller == 2 {
+            owner.absorb_ppml(BorrowedMapWeights::Unit, input.clone(), map)
+        } else {
+            owner.absorb_ols(
+                BorrowedMapWeights::Unit,
+                input.clone().into(),
+                map,
+                caller == 1,
+            )
+        };
+        TWO_FE_CERTIFICATE_FAILURES.set(0);
+        TWO_FE_BREAKDOWN.set(false);
+        assert_eq!(
+            result.is_ok(),
+            succeeds,
+            "caller={caller} tol={tolerance} cap={cap}"
+        );
+        assert_eq!(TWO_FE_CORRECTIONS.get(), corrections);
+        if let Ok(result) = result {
+            assert!(result.report().iterations <= cap);
+        }
+    }
 }

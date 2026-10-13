@@ -14,6 +14,69 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Adaptive two-FE OLS: accepted tradeoff and Mac qualification, 2026-10-13
+
+Johannes accepted the adaptive version after reviewing the accuracy and work
+tradeoffs. Ordinary automatic two-FE OLS now targets half the requested tolerance
+first and attempts one tighter residual correction only after a failed requested
+certificate. Original RHS normalization, cumulative PCG/MAP limits and retained
+FE reconstruction are preserved. Explicit solvers, PPML and final-residual targets
+are unchanged. Independent Astra review found no implementation blocker.
+
+The initial candidate failed the retained H8 default projection witness:
+9.843576231904905e-9 maximum absolute error against 5e-9, despite passing the FE
+certificate. The first focused run passed 92/93 tests; the first full suite stopped
+at that same failure after 1,235 passing core tests. Johannes explicitly accepted
+this disclosed tradeoff on October 13. The default witness now permits 1e-8 and
+also requires exact agreement with the passing half-request route. The strict
+1e-14 request retains its 5e-9 bound (observed error 3.615219235086897e-11); the
+separate 5e-11 projection witness and all other scientific bounds are unchanged.
+
+Final validation passes: all 93 focused tests and `./scripts/run_tests.sh`
+(1,749 Rust test executions across 64 invocations, tooling, allocation audits,
+portable and bridge checks). The unchanged candidate artifact reuses its passing
+universal Mac build/load evidence, 128 independent oracle tests, 73-case parent
+replay with zero exact or scoped differences, all 292 worker checks and all 17
+mapped licensed OLS/PPML fixtures. Linux-only ELF checks are skipped on Mac; no
+new Linux or Windows qualification follows. Baseline runtime is `b4b4f6d3`,
+with subsequent prose-only parent `dd6329d6`; artifact hashes and individual
+observations are in the [compact evidence](../bench/results/h8-adaptive-20261012.json).
+
+All four Manu input files match the retained H8 SHA-256 values. The bounded Mac
+panel completes 48 licensed fits: two alternating pairs per input at 1/4/16
+workers, robust VCE and 16 controls. All 24 paired numerical/discrete checks,
+24 fixed-worker repeat checks and 16 cross-worker comparisons pass. Native changes
+below are paired geometric-mean percentages; tracing is enabled and two pairs
+are descriptive, not confidence-qualified speedup claims.
+
+| Frozen input | 1 worker | 4 workers | 16 workers | Main/final iterations, H8 → adaptive |
+| --- | ---: | ---: | ---: | --- |
+| AKM 1M | -6.27% | -8.38% | -6.50% | 18/0 → 14/0 |
+| Dense 1M | +0.14% | +3.40% | -1.66% | 1/0 → 1/0 |
+| Dense 4M | +0.05% | +3.10% | -0.58% | 1/0 → 1/0 |
+| Sparse 1M | -10.86% | -11.12% | -10.43% | 120/0 → 92/11 |
+
+The stable candidate then passes all twenty frozen quiet Mac timing workloads:
+one warmup and seven alternating pairs, 320 native calls, 629.483 seconds, no
+retry or continuation. Every paired-median bootstrap upper bound lies within
+max(5%, 1 ms); the largest ratio upper bound is 1.028886. Every plugin repeats
+its scientific results and solver signatures exactly. Cross-plugin protected
+matrix fields are exact and coefficient/covariance agreement passes; affected
+row-output witnesses come from scoped replay and Manu/F1 checks. Unaffected
+no-FE, three-FE and PPML timing results are exactly identical across plugins.
+There are no competing builds, tests or agent compute during either panel;
+Activity Monitor is temporarily paused with a recovery guard and restored.
+This is incremental qualification, not a retrospective pass for the older
+whole-H boundary. Workspace-capacity and allocator tests pass; no new row-by-RHS
+bank is introduced, and no new observed-RSS claim is made.
+
+The retained F1 inputs still pass ordinary full-dummy QR and protected-decision
+checks; their 80-digit strict F witness remains failed. Weak changes from H8's
+1.076 times the unchanged bound to 595.049 times (absolute F error about 1.44e-5);
+barbell changes from 2.480 to 2.465 times. Weak main/final iterations change
+140/20 to 138/137. These diagnostics, disclosed before approval, show why early
+acceptance is neither a stronger accuracy certificate nor a universal saving.
+
 ## H2 follow-up: certified dense three-FE gains, 2026-10-12
 
 The second reopened H2 candidate passes incremental Mac qualification against

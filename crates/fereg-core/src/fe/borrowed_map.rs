@@ -1678,11 +1678,11 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values.into(), config, 0.5 * config.tolerance)
+        self.absorb(weights, values.into(), config, false)
     }
 
-    /// Ordinary OLS shares the automatic LSMR recurrence target. The final
-    /// residual keeps its existing target, independently of the request floor.
+    /// Ordinary OLS certifies a half-request proposal before spending work on
+    /// one tighter correction. Final residuals retain their existing solve.
     pub(crate) fn absorb_ols(
         &mut self,
         weights: BorrowedMapWeights<'_>,
@@ -1690,12 +1690,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
         final_residual: bool,
     ) -> Result<CertifiedBorrowedMap> {
-        let target = if final_residual {
-            0.5 * config.tolerance
-        } else {
-            super::auto::direct_lsmr_tolerance(config.tolerance)
-        };
-        self.absorb(weights, values, config, target)
+        self.absorb(weights, values, config, !final_residual)
     }
 
     fn absorb(
@@ -1703,7 +1698,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         weights: BorrowedMapWeights<'_>,
         values: crate::ols::OlsProjectionInput,
         config: MapConfig,
-        recurrence_tolerance: f64,
+        refine_ols: bool,
     ) -> Result<CertifiedBorrowedMap> {
         validate_config(config)?;
         let rhs_count = values.ncols();
@@ -1974,7 +1969,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 weights,
                 values,
                 config,
-                recurrence_tolerance,
+                refine_ols,
                 0,
                 1.0,
                 setup_seconds,
@@ -2132,7 +2127,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         weights: ValidatedWeights<'_>,
         values: DenseMatrix,
         config: MapConfig,
-        recurrence_tolerance: f64,
+        refine_ols: bool,
         completed_pilot_iterations: usize,
         pilot_contraction: f64,
         setup_seconds: f64,
@@ -2147,7 +2142,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             weights,
             values,
             config,
-            recurrence_tolerance,
+            0.5 * config.tolerance,
             completed_pilot_iterations,
             pilot_contraction,
             setup_seconds,
@@ -2160,7 +2155,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             &mut self.cg_next_residual_square,
             &mut self.cg_direction_projection,
             &mut self.cg_ratio,
-            SchurWorkLimit::Map,
+            SchurWorkLimit::Map { refine: refine_ols },
             self.retain_coefficients,
         );
         match result? {
@@ -2172,13 +2167,19 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
     }
 }
 
+crate::fault::fault_plan! {
+    static TWO_FE_CERTIFICATE_FAILURES: usize = 0;
+    static TWO_FE_CORRECTIONS: usize = 0;
+    static TWO_FE_BREAKDOWN: bool = false;
+}
+
 #[allow(clippy::too_many_arguments)]
 fn absorb_two_fe_pcg_reusing(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
     mut values: DenseMatrix,
     config: MapConfig,
-    recurrence_tolerance: f64,
+    mut recurrence_tolerance: f64,
     completed_pilot_iterations: usize,
     pilot_contraction: f64,
     setup_seconds: f64,
@@ -2195,14 +2196,15 @@ fn absorb_two_fe_pcg_reusing(
     retain_coefficients: bool,
 ) -> Result<SchurAttempt> {
     let trace = crate::diagnostics::phase_timing_enabled();
-    let phase_start = Instant::now();
     let mut operator_seconds = 0.0;
     let mut recurrence_seconds = 0.0;
     let rhs_count = values.ncols();
-    let (iteration_cap, checkpoint_progress) = match work_limit {
-        SchurWorkLimit::Map => (None, false),
-        SchurWorkLimit::Checkpoint(cap) => (Some(cap), true),
+    let (iteration_cap, checkpoint_progress, refine) = match work_limit {
+        SchurWorkLimit::Map { refine } => (None, false, refine),
+        SchurWorkLimit::Checkpoint(cap) => (Some(cap), true, false),
     };
+    let mut correction_tolerance =
+        refine.then(|| super::auto::direct_lsmr_tolerance(config.tolerance));
     // Component banks belong only to the PPML constructor. A numerical work
     // cap must not turn off their current-weight scaling.
     let scale_components = !graph.component_roots.is_empty();
@@ -2225,125 +2227,6 @@ fn absorb_two_fe_pcg_reusing(
             "two-FE categorical MAP PCG workspace dimensions are inconsistent",
         ));
     }
-    for scalars in [
-        &mut *residual_square,
-        &mut *active_rhs_state,
-        &mut *next_residual_square,
-        &mut *direction_projection,
-        &mut *ratio,
-    ] {
-        if rhs_count > scalars.capacity() {
-            return Err(invalid_argument(
-                "two-FE categorical MAP PCG scalar workspace exceeds fixed capacity",
-            ));
-        }
-        scalars.resize(rhs_count, 0.0);
-        // A capped attempt can leave nonzero energy in a reused bank before
-        // the original-input MAP continuation reaches this same recurrence.
-        scalars.fill(0.0);
-    }
-
-    {
-        let left_codes = left.codes();
-        graph
-            .solution
-            .par_chunks_mut(32768)
-            .for_each(|part| part.fill(0.0));
-        fill_two_fe_group_rhs(
-            left,
-            weights,
-            &values,
-            stride,
-            (&mut graph.left_rhs, &mut graph.left_weights),
-            0..rhs_count,
-            stride,
-            |_, _, _| {},
-        )?;
-        fill_two_fe_group_rhs(
-            right,
-            weights,
-            &values,
-            stride,
-            (&mut graph.residual, &mut graph.right_weights),
-            0..rhs_count,
-            stride,
-            |_, _, _| {},
-        )?;
-        if graph
-            .left_weights
-            .iter()
-            .chain(&graph.right_weights)
-            .any(|weight| !weight.is_finite() || *weight <= 0.0)
-            || graph
-                .left_rhs
-                .iter()
-                .chain(&graph.residual)
-                .any(|value| !value.is_finite())
-        {
-            return Err(invalid_data(
-                "two-FE categorical MAP PCG group state is invalid",
-            ));
-        }
-        graph
-            .left_rhs
-            .par_chunks_mut(stride)
-            .zip(&graph.left_weights)
-            .for_each(|(sum, &denominator)| {
-                for value in &mut sum[..rhs_count] {
-                    *value /= denominator;
-                }
-            });
-        let left_rhs = &graph.left_rhs;
-        graph
-            .residual
-            .par_chunks_mut(stride)
-            .enumerate()
-            .try_for_each(|(level, sum)| -> Result<()> {
-                subtract_two_fe_left_projection(
-                    right.level_index().checked_members(level)?,
-                    left_codes,
-                    weights,
-                    stride,
-                    left_rhs,
-                    &mut sum[..rhs_count],
-                );
-                Ok(())
-            })?;
-        if scale_components {
-            // A positive scalar per disconnected block leaves the projected
-            // solution unchanged, while keeping low-mass blocks visible to CG.
-            // Only the recurrence is scaled; all acceptance uses original weights.
-            graph.refresh_component_scales();
-            for (row, &scale) in graph
-                .residual
-                .chunks_mut(stride)
-                .zip(&graph.component_scales)
-            {
-                for value in &mut row[..rhs_count] {
-                    *value /= scale;
-                }
-            }
-        }
-        crate::kernels::dispatch!(
-            crate::kernels::installed(),
-            pcg_initialize(
-                &graph.right_weights,
-                scale_components.then_some(graph.component_scales.as_slice()),
-                stride,
-                &graph.residual,
-                &mut graph.direction,
-                residual_square
-            )
-        );
-    }
-    if residual_square
-        .iter()
-        .any(|value| !value.is_finite() || *value < 0.0)
-    {
-        return Err(invalid_data(
-            "two-FE categorical MAP PCG initial residual is invalid",
-        ));
-    }
     let hardware = crate::kernels::installed();
     let mut progress_contraction = None;
     let remaining_iterations = config
@@ -2355,358 +2238,516 @@ fn absorb_two_fe_pcg_reusing(
         |cap| cap.min(config.max_iterations),
     );
     let mut iterations = completed_pilot_iterations;
-    let mut active_rhs = 0_usize;
-    let recurrence_plan =
-        crate::parallel::StagePlan::current(right_levels as u128 * rhs_count as u128, right_levels);
-    let parallel_recurrence = recurrence_plan.lanes > 1;
-    recurrence_plan.trace("two_fe_recurrence", right_levels);
-    active_rhs_state.fill(0.0);
-    for rhs in 0..rhs_count {
-        if two_fe_pcg_rhs_ready(
-            graph,
-            certificate_workspace,
-            rhs,
-            stride,
-            recurrence_tolerance,
-            scale_components,
-        )? {
-            trace_two_fe_pcg_stop(rhs, iterations, "proxy_target", recurrence_tolerance);
-            residual_square[rhs] = 0.0;
-            for level in 0..right_levels {
-                let index = level * stride + rhs;
-                graph.residual[index] = 0.0;
-                graph.direction[index] = 0.0;
-            }
-        } else {
-            // Keep initial energy in the already admitted activity bank.
-            // Zero marks a completed RHS; a negative sentinel represents an
-            // active recurrence whose initial energy underflowed to zero.
-            active_rhs_state[rhs] = if residual_square[rhs] > 0.0 {
-                residual_square[rhs]
-            } else {
-                -1.0
-            };
-            active_rhs += 1;
-        }
-    }
-    let mut reconstruct = active_rhs == 0;
-    let mut breakdown = false;
-    let initialization_seconds = phase_start.elapsed().as_secs_f64();
-    while !reconstruct && iterations < pcg_iteration_limit {
-        crate::interrupt::checkpoint()?;
-        let op_start = Instant::now();
-        graph.apply_schur(design, weights, rhs_count, stride)?;
-        // Count actual operator lanes, including converged zeros. Only the
-        // PPML owner exposes this scalar as a later-call routing hint.
-        graph.ppml_operator_rhs_count = graph
-            .ppml_operator_rhs_count
-            .saturating_add(rhs_count as u128);
-        if scale_components {
-            for (row, &scale) in graph
-                .operator
-                .chunks_mut(stride)
-                .zip(&graph.component_scales)
-            {
-                for value in &mut row[..rhs_count] {
-                    *value /= scale;
-                }
-            }
-        }
-        operator_seconds += op_start.elapsed().as_secs_f64();
-        let rec_start = Instant::now();
-        direction_projection.fill(0.0);
-        crate::kernels::dispatch!(
-            hardware,
-            column_products(
-                &graph.direction[..right_levels * stride],
-                &graph.operator,
-                stride,
-                direction_projection
-            )
-        );
-        for rhs in 0..rhs_count {
-            if active_rhs_state[rhs] == 0.0 {
-                ratio[rhs] = 0.0;
-                continue;
-            }
-            let numerator = residual_square[rhs];
-            let denominator = direction_projection[rhs];
-            if numerator == 0.0 {
-                ratio[rhs] = 0.0;
-            } else if numerator.is_finite()
-                && numerator > 0.0
-                && denominator.is_finite()
-                && denominator > 0.0
-            {
-                ratio[rhs] = numerator / denominator;
-            } else {
-                breakdown = true;
-                break;
-            }
-        }
-        if breakdown {
-            break;
-        }
-        next_residual_square.fill(0.0);
-        if parallel_recurrence {
-            let level_chunk = recurrence_plan.chunk(right_levels);
-            let cell_chunk = level_chunk
-                .checked_mul(stride)
-                .ok_or_else(|| allocation("two-FE PCG recurrence chunk dimensions overflow"))?;
-            let direction = &graph.direction;
-            let operator = &graph.operator;
-            graph
-                .solution
-                .par_chunks_mut(cell_chunk)
-                .zip(graph.residual.par_chunks_mut(cell_chunk))
-                .enumerate()
-                .for_each(|(chunk, (solution, residual))| {
-                    let start = chunk * cell_chunk;
-                    let end = start + solution.len();
-                    crate::kernels::dispatch!(
-                        hardware,
-                        pcg_step(
-                            stride,
-                            ratio,
-                            &direction[start..end],
-                            &operator[start..end],
-                            solution,
-                            residual
-                        )
-                    );
-                });
-            // The state update is level-disjoint. Keep this scalar reduction
-            // serial in canonical level/RHS order so thread count cannot alter
-            // the recurrence or its stopping decision.
-            crate::kernels::dispatch!(
-                hardware,
-                pcg_energy(
-                    &graph.right_weights,
-                    scale_components.then_some(graph.component_scales.as_slice()),
-                    stride,
-                    &graph.residual,
-                    next_residual_square
-                )
-            );
-        } else {
-            crate::kernels::dispatch!(
-                hardware,
-                pcg_step_energy(
-                    &graph.right_weights,
-                    scale_components.then_some(graph.component_scales.as_slice()),
-                    stride,
-                    ratio,
-                    &graph.direction,
-                    &graph.operator,
-                    &mut graph.solution,
-                    &mut graph.residual,
-                    next_residual_square
-                )
-            );
-        }
-        iterations += 1;
-        if next_residual_square
-            .iter()
-            .any(|value| !value.is_finite() || *value < 0.0)
-        {
-            breakdown = true;
-            break;
-        }
-        for rhs in 0..rhs_count {
-            if active_rhs_state[rhs] != 0.0
-                && two_fe_pcg_rhs_ready(
-                    graph,
-                    certificate_workspace,
-                    rhs,
-                    stride,
-                    recurrence_tolerance,
-                    scale_components,
-                )?
-            {
-                trace_two_fe_pcg_stop(rhs, iterations, "proxy_target", recurrence_tolerance);
-                active_rhs_state[rhs] = 0.0;
-                next_residual_square[rhs] = 0.0;
-                active_rhs -= 1;
-                for level in 0..right_levels {
-                    let index = level * stride + rhs;
-                    graph.residual[index] = 0.0;
-                    graph.direction[index] = 0.0;
-                }
-            }
-        }
-        reconstruct = active_rhs == 0 || iterations == pcg_iteration_limit;
-        if reconstruct {
-            residual_square.copy_from_slice(next_residual_square);
-            recurrence_seconds += rec_start.elapsed().as_secs_f64();
-            break;
-        }
-        for rhs in 0..rhs_count {
-            if active_rhs_state[rhs] == 0.0 {
-                ratio[rhs] = 0.0;
-                continue;
-            }
-            ratio[rhs] = if residual_square[rhs] == 0.0 {
-                0.0
-            } else {
-                next_residual_square[rhs] / residual_square[rhs]
-            };
-            if !ratio[rhs].is_finite() || ratio[rhs] < 0.0 {
-                breakdown = true;
-                break;
-            }
-        }
-        if breakdown {
-            break;
-        }
-        if parallel_recurrence {
-            let level_chunk = recurrence_plan.chunk(right_levels);
-            let cell_chunk = level_chunk
-                .checked_mul(stride)
-                .ok_or_else(|| allocation("two-FE PCG direction chunk dimensions overflow"))?;
-            let right_weights = &graph.right_weights;
-            let component_scales = &graph.component_scales;
-            let residual = &graph.residual;
-            graph
-                .direction
-                .par_chunks_mut(cell_chunk)
-                .enumerate()
-                .for_each(|(chunk, direction)| {
-                    let first_level = chunk * level_chunk;
-                    let end_level = first_level + direction.len() / stride;
-                    let first = chunk * cell_chunk;
-                    let end = first + direction.len();
-                    crate::kernels::dispatch!(
-                        hardware,
-                        pcg_direction(
-                            &right_weights[first_level..end_level],
-                            scale_components.then(|| &component_scales[first_level..end_level]),
-                            stride,
-                            ratio,
-                            active_rhs_state,
-                            &residual[first..end],
-                            direction
-                        )
-                    );
-                });
-        } else {
-            crate::kernels::dispatch!(
-                hardware,
-                pcg_direction(
-                    &graph.right_weights,
-                    scale_components.then_some(graph.component_scales.as_slice()),
-                    stride,
-                    ratio,
-                    active_rhs_state,
-                    &graph.residual,
-                    &mut graph.direction
-                )
-            );
-        }
-        residual_square.copy_from_slice(next_residual_square);
-        recurrence_seconds += rec_start.elapsed().as_secs_f64();
-        if checkpoint_progress && iterations == GRAPH_PROGRESS_CHECK_ITERATIONS && !reconstruct {
-            let contraction = (0..rhs_count)
-                .map(|rhs| {
-                    if active_rhs_state[rhs] <= 0.0 {
-                        0.0
-                    } else {
-                        (residual_square[rhs] / active_rhs_state[rhs]).sqrt()
-                    }
-                })
-                .fold(0.0_f64, f64::max);
-            progress_contraction = Some(contraction);
-            if crate::diagnostics::solver_trace_enabled() {
-                crate::diagnostics::emit_solver_trace(&format!(
-                    "FEREG_SOLVER_TRACE|phase=checkpoint_schur_progress|iterations={iterations}|rhs={rhs_count}|contraction={contraction:.17e}|admitted={}",
-                    u8::from(contraction <= GRAPH_MAX_PROGRESS_CONTRACTION),
-                ));
-            }
-            if contraction > GRAPH_MAX_PROGRESS_CONTRACTION {
-                break;
-            }
-        }
-    }
-
-    if crate::diagnostics::solver_trace_enabled() {
-        let reason = if breakdown {
-            "breakdown"
-        } else if iterations == pcg_iteration_limit {
-            "recurrence_budget"
-        } else {
-            "checkpoint_progress"
-        };
-        for (rhs, &active) in active_rhs_state.iter().enumerate() {
-            if active != 0.0 {
-                trace_two_fe_pcg_stop(rhs, iterations, reason, recurrence_tolerance);
-            }
-        }
-    }
-    if iteration_cap.is_some() && (active_rhs > 0 || breakdown) {
-        return Ok(SchurAttempt::Continue {
-            iterations,
-            candidate: false,
-            progress_contraction,
-        });
-    }
     let mut coefficients = if retain_coefficients {
         Some(MapCoefficientAccumulator::zeros(design, rhs_count)?)
     } else {
         None
     };
-    if reconstruct || iterations > completed_pilot_iterations {
-        let reconstruct_start = Instant::now();
-        reconstruct_two_fe_pcg_candidate(design, weights, graph, &mut values, rhs_count, stride)?;
-        if let Some(c) = coefficients.as_mut() {
-            for (effect, bank) in [
-                (graph.left_effect, &graph.left_work),
-                (graph.right_effect, &graph.solution),
-            ] {
-                for level in 0..design.effects()[effect].n_levels() {
-                    c.add_intercept_level(
-                        effect,
-                        level,
-                        &bank[level * stride..level * stride + rhs_count],
-                    )?;
+    let mut breakdown = false;
+    loop {
+        let phase_start = Instant::now();
+        for scalars in [
+            &mut *residual_square,
+            &mut *active_rhs_state,
+            &mut *next_residual_square,
+            &mut *direction_projection,
+            &mut *ratio,
+        ] {
+            if rhs_count > scalars.capacity() {
+                return Err(invalid_argument(
+                    "two-FE categorical MAP PCG scalar workspace exceeds fixed capacity",
+                ));
+            }
+            scalars.resize(rhs_count, 0.0);
+            // A capped attempt can leave nonzero energy in a reused bank before
+            // the original-input MAP continuation reaches this same recurrence.
+            scalars.fill(0.0);
+        }
+
+        {
+            let left_codes = left.codes();
+            graph
+                .solution
+                .par_chunks_mut(32768)
+                .for_each(|part| part.fill(0.0));
+            fill_two_fe_group_rhs(
+                left,
+                weights,
+                &values,
+                stride,
+                (&mut graph.left_rhs, &mut graph.left_weights),
+                0..rhs_count,
+                stride,
+                |_, _, _| {},
+            )?;
+            fill_two_fe_group_rhs(
+                right,
+                weights,
+                &values,
+                stride,
+                (&mut graph.residual, &mut graph.right_weights),
+                0..rhs_count,
+                stride,
+                |_, _, _| {},
+            )?;
+            if graph
+                .left_weights
+                .iter()
+                .chain(&graph.right_weights)
+                .any(|weight| !weight.is_finite() || *weight <= 0.0)
+                || graph
+                    .left_rhs
+                    .iter()
+                    .chain(&graph.residual)
+                    .any(|value| !value.is_finite())
+            {
+                return Err(invalid_data(
+                    "two-FE categorical MAP PCG group state is invalid",
+                ));
+            }
+            graph
+                .left_rhs
+                .par_chunks_mut(stride)
+                .zip(&graph.left_weights)
+                .for_each(|(sum, &denominator)| {
+                    for value in &mut sum[..rhs_count] {
+                        *value /= denominator;
+                    }
+                });
+            let left_rhs = &graph.left_rhs;
+            graph
+                .residual
+                .par_chunks_mut(stride)
+                .enumerate()
+                .try_for_each(|(level, sum)| -> Result<()> {
+                    subtract_two_fe_left_projection(
+                        right.level_index().checked_members(level)?,
+                        left_codes,
+                        weights,
+                        stride,
+                        left_rhs,
+                        &mut sum[..rhs_count],
+                    );
+                    Ok(())
+                })?;
+            if scale_components {
+                // A positive scalar per disconnected block leaves the projected
+                // solution unchanged, while keeping low-mass blocks visible to CG.
+                // Only the recurrence is scaled; all acceptance uses original weights.
+                graph.refresh_component_scales();
+                for (row, &scale) in graph
+                    .residual
+                    .chunks_mut(stride)
+                    .zip(&graph.component_scales)
+                {
+                    for value in &mut row[..rhs_count] {
+                        *value /= scale;
+                    }
+                }
+            }
+            crate::kernels::dispatch!(
+                crate::kernels::installed(),
+                pcg_initialize(
+                    &graph.right_weights,
+                    scale_components.then_some(graph.component_scales.as_slice()),
+                    stride,
+                    &graph.residual,
+                    &mut graph.direction,
+                    residual_square
+                )
+            );
+        }
+        if residual_square
+            .iter()
+            .any(|value| !value.is_finite() || *value < 0.0)
+        {
+            return Err(invalid_data(
+                "two-FE categorical MAP PCG initial residual is invalid",
+            ));
+        }
+        let mut active_rhs = 0_usize;
+        let recurrence_plan = crate::parallel::StagePlan::current(
+            right_levels as u128 * rhs_count as u128,
+            right_levels,
+        );
+        let parallel_recurrence = recurrence_plan.lanes > 1;
+        recurrence_plan.trace("two_fe_recurrence", right_levels);
+        active_rhs_state.fill(0.0);
+        for rhs in 0..rhs_count {
+            if two_fe_pcg_rhs_ready(
+                graph,
+                certificate_workspace,
+                rhs,
+                stride,
+                recurrence_tolerance,
+                scale_components,
+            )? {
+                trace_two_fe_pcg_stop(rhs, iterations, "proxy_target", recurrence_tolerance);
+                residual_square[rhs] = 0.0;
+                for level in 0..right_levels {
+                    let index = level * stride + rhs;
+                    graph.residual[index] = 0.0;
+                    graph.direction[index] = 0.0;
+                }
+            } else {
+                // Keep initial energy in the already admitted activity bank.
+                // Zero marks a completed RHS; a negative sentinel represents an
+                // active recurrence whose initial energy underflowed to zero.
+                active_rhs_state[rhs] = if residual_square[rhs] > 0.0 {
+                    residual_square[rhs]
+                } else {
+                    -1.0
+                };
+                active_rhs += 1;
+            }
+        }
+        let mut reconstruct = active_rhs == 0;
+        let initialization_seconds = phase_start.elapsed().as_secs_f64();
+        while !reconstruct && iterations < pcg_iteration_limit {
+            crate::interrupt::checkpoint()?;
+            let op_start = Instant::now();
+            graph.apply_schur(design, weights, rhs_count, stride)?;
+            // Count actual operator lanes, including converged zeros. Only the
+            // PPML owner exposes this scalar as a later-call routing hint.
+            graph.ppml_operator_rhs_count = graph
+                .ppml_operator_rhs_count
+                .saturating_add(rhs_count as u128);
+            if scale_components {
+                for (row, &scale) in graph
+                    .operator
+                    .chunks_mut(stride)
+                    .zip(&graph.component_scales)
+                {
+                    for value in &mut row[..rhs_count] {
+                        *value /= scale;
+                    }
+                }
+            }
+            operator_seconds += op_start.elapsed().as_secs_f64();
+            let rec_start = Instant::now();
+            direction_projection.fill(0.0);
+            crate::kernels::dispatch!(
+                hardware,
+                column_products(
+                    &graph.direction[..right_levels * stride],
+                    &graph.operator,
+                    stride,
+                    direction_projection
+                )
+            );
+            for rhs in 0..rhs_count {
+                if active_rhs_state[rhs] == 0.0 {
+                    ratio[rhs] = 0.0;
+                    continue;
+                }
+                let numerator = residual_square[rhs];
+                let denominator = direction_projection[rhs];
+                if numerator == 0.0 {
+                    ratio[rhs] = 0.0;
+                } else if numerator.is_finite()
+                    && numerator > 0.0
+                    && denominator.is_finite()
+                    && denominator > 0.0
+                {
+                    ratio[rhs] = numerator / denominator;
+                } else {
+                    breakdown = true;
+                    break;
+                }
+            }
+            breakdown |= TWO_FE_BREAKDOWN.replace(false);
+            if breakdown {
+                break;
+            }
+            next_residual_square.fill(0.0);
+            if parallel_recurrence {
+                let level_chunk = recurrence_plan.chunk(right_levels);
+                let cell_chunk = level_chunk
+                    .checked_mul(stride)
+                    .ok_or_else(|| allocation("two-FE PCG recurrence chunk dimensions overflow"))?;
+                let direction = &graph.direction;
+                let operator = &graph.operator;
+                graph
+                    .solution
+                    .par_chunks_mut(cell_chunk)
+                    .zip(graph.residual.par_chunks_mut(cell_chunk))
+                    .enumerate()
+                    .for_each(|(chunk, (solution, residual))| {
+                        let start = chunk * cell_chunk;
+                        let end = start + solution.len();
+                        crate::kernels::dispatch!(
+                            hardware,
+                            pcg_step(
+                                stride,
+                                ratio,
+                                &direction[start..end],
+                                &operator[start..end],
+                                solution,
+                                residual
+                            )
+                        );
+                    });
+                // The state update is level-disjoint. Keep this scalar reduction
+                // serial in canonical level/RHS order so thread count cannot alter
+                // the recurrence or its stopping decision.
+                crate::kernels::dispatch!(
+                    hardware,
+                    pcg_energy(
+                        &graph.right_weights,
+                        scale_components.then_some(graph.component_scales.as_slice()),
+                        stride,
+                        &graph.residual,
+                        next_residual_square
+                    )
+                );
+            } else {
+                crate::kernels::dispatch!(
+                    hardware,
+                    pcg_step_energy(
+                        &graph.right_weights,
+                        scale_components.then_some(graph.component_scales.as_slice()),
+                        stride,
+                        ratio,
+                        &graph.direction,
+                        &graph.operator,
+                        &mut graph.solution,
+                        &mut graph.residual,
+                        next_residual_square
+                    )
+                );
+            }
+            iterations += 1;
+            if next_residual_square
+                .iter()
+                .any(|value| !value.is_finite() || *value < 0.0)
+            {
+                breakdown = true;
+                break;
+            }
+            for rhs in 0..rhs_count {
+                if active_rhs_state[rhs] != 0.0
+                    && two_fe_pcg_rhs_ready(
+                        graph,
+                        certificate_workspace,
+                        rhs,
+                        stride,
+                        recurrence_tolerance,
+                        scale_components,
+                    )?
+                {
+                    trace_two_fe_pcg_stop(rhs, iterations, "proxy_target", recurrence_tolerance);
+                    active_rhs_state[rhs] = 0.0;
+                    next_residual_square[rhs] = 0.0;
+                    active_rhs -= 1;
+                    for level in 0..right_levels {
+                        let index = level * stride + rhs;
+                        graph.residual[index] = 0.0;
+                        graph.direction[index] = 0.0;
+                    }
+                }
+            }
+            reconstruct = active_rhs == 0 || iterations == pcg_iteration_limit;
+            if reconstruct {
+                residual_square.copy_from_slice(next_residual_square);
+                recurrence_seconds += rec_start.elapsed().as_secs_f64();
+                break;
+            }
+            for rhs in 0..rhs_count {
+                if active_rhs_state[rhs] == 0.0 {
+                    ratio[rhs] = 0.0;
+                    continue;
+                }
+                ratio[rhs] = if residual_square[rhs] == 0.0 {
+                    0.0
+                } else {
+                    next_residual_square[rhs] / residual_square[rhs]
+                };
+                if !ratio[rhs].is_finite() || ratio[rhs] < 0.0 {
+                    breakdown = true;
+                    break;
+                }
+            }
+            if breakdown {
+                break;
+            }
+            if parallel_recurrence {
+                let level_chunk = recurrence_plan.chunk(right_levels);
+                let cell_chunk = level_chunk
+                    .checked_mul(stride)
+                    .ok_or_else(|| allocation("two-FE PCG direction chunk dimensions overflow"))?;
+                let right_weights = &graph.right_weights;
+                let component_scales = &graph.component_scales;
+                let residual = &graph.residual;
+                graph
+                    .direction
+                    .par_chunks_mut(cell_chunk)
+                    .enumerate()
+                    .for_each(|(chunk, direction)| {
+                        let first_level = chunk * level_chunk;
+                        let end_level = first_level + direction.len() / stride;
+                        let first = chunk * cell_chunk;
+                        let end = first + direction.len();
+                        crate::kernels::dispatch!(
+                            hardware,
+                            pcg_direction(
+                                &right_weights[first_level..end_level],
+                                scale_components.then(|| &component_scales[first_level..end_level]),
+                                stride,
+                                ratio,
+                                active_rhs_state,
+                                &residual[first..end],
+                                direction
+                            )
+                        );
+                    });
+            } else {
+                crate::kernels::dispatch!(
+                    hardware,
+                    pcg_direction(
+                        &graph.right_weights,
+                        scale_components.then_some(graph.component_scales.as_slice()),
+                        stride,
+                        ratio,
+                        active_rhs_state,
+                        &graph.residual,
+                        &mut graph.direction
+                    )
+                );
+            }
+            residual_square.copy_from_slice(next_residual_square);
+            recurrence_seconds += rec_start.elapsed().as_secs_f64();
+            if checkpoint_progress && iterations == GRAPH_PROGRESS_CHECK_ITERATIONS && !reconstruct
+            {
+                let contraction = (0..rhs_count)
+                    .map(|rhs| {
+                        if active_rhs_state[rhs] <= 0.0 {
+                            0.0
+                        } else {
+                            (residual_square[rhs] / active_rhs_state[rhs]).sqrt()
+                        }
+                    })
+                    .fold(0.0_f64, f64::max);
+                progress_contraction = Some(contraction);
+                if crate::diagnostics::solver_trace_enabled() {
+                    crate::diagnostics::emit_solver_trace(&format!(
+                        "FEREG_SOLVER_TRACE|phase=checkpoint_schur_progress|iterations={iterations}|rhs={rhs_count}|contraction={contraction:.17e}|admitted={}",
+                        u8::from(contraction <= GRAPH_MAX_PROGRESS_CONTRACTION),
+                    ));
+                }
+                if contraction > GRAPH_MAX_PROGRESS_CONTRACTION {
+                    break;
                 }
             }
         }
-        let reconstruct_seconds = reconstruct_start.elapsed().as_secs_f64();
-        let cert_start = Instant::now();
-        let certificate = certify(
-            design,
-            weights,
-            &values,
-            config.tolerance,
-            certificate_workspace,
-        )?;
-        if trace {
-            eprintln!("FEREG_PHASE|schur|init={initialization_seconds:.9}|operator={operator_seconds:.9}|recurrence={recurrence_seconds:.9}|reconstruct={reconstruct_seconds:.9}|certificate={:.9}|iterations={iterations}|passed={}",cert_start.elapsed().as_secs_f64(),certificate.passed);
+
+        if crate::diagnostics::solver_trace_enabled() {
+            let reason = if breakdown {
+                "breakdown"
+            } else if iterations == pcg_iteration_limit {
+                "recurrence_budget"
+            } else {
+                "checkpoint_progress"
+            };
+            for (rhs, &active) in active_rhs_state.iter().enumerate() {
+                if active != 0.0 {
+                    trace_two_fe_pcg_stop(rhs, iterations, reason, recurrence_tolerance);
+                }
+            }
         }
-        if certificate.passed {
-            let mut result = certified_result(
-                values,
-                SolveStopReason::Certified,
+        if iteration_cap.is_some() && (active_rhs > 0 || breakdown) {
+            return Ok(SchurAttempt::Continue {
                 iterations,
-                certificate,
-                setup_seconds,
-                solve_started.elapsed().as_secs_f64(),
-            )?;
-            result.report.pilot_iterations = completed_pilot_iterations;
-            result.report.pilot_contraction = progress_contraction.unwrap_or(pilot_contraction);
-            return Ok(SchurAttempt::Certified(attach_optional_map_coefficients(
-                result,
-                coefficients,
-            )?));
+                candidate: false,
+                progress_contraction,
+            });
         }
+        if reconstruct || iterations > completed_pilot_iterations {
+            let reconstruct_start = Instant::now();
+            reconstruct_two_fe_pcg_candidate(
+                design,
+                weights,
+                graph,
+                &mut values,
+                rhs_count,
+                stride,
+            )?;
+            if let Some(c) = coefficients.as_mut() {
+                for (effect, bank) in [
+                    (graph.left_effect, &graph.left_work),
+                    (graph.right_effect, &graph.solution),
+                ] {
+                    for level in 0..design.effects()[effect].n_levels() {
+                        c.add_intercept_level(
+                            effect,
+                            level,
+                            &bank[level * stride..level * stride + rhs_count],
+                        )?;
+                    }
+                }
+            }
+            let reconstruct_seconds = reconstruct_start.elapsed().as_secs_f64();
+            let cert_start = Instant::now();
+            let mut certificate = certify(
+                design,
+                weights,
+                &values,
+                config.tolerance,
+                certificate_workspace,
+            )?;
+            if TWO_FE_CERTIFICATE_FAILURES.get() > 0 {
+                TWO_FE_CERTIFICATE_FAILURES.set(TWO_FE_CERTIFICATE_FAILURES.get() - 1);
+                certificate.passed = false;
+            }
+            if trace {
+                eprintln!("FEREG_PHASE|schur|init={initialization_seconds:.9}|operator={operator_seconds:.9}|recurrence={recurrence_seconds:.9}|reconstruct={reconstruct_seconds:.9}|certificate={:.9}|iterations={iterations}|passed={}",cert_start.elapsed().as_secs_f64(),certificate.passed);
+            }
+            if certificate.passed {
+                let mut result = certified_result(
+                    values,
+                    SolveStopReason::Certified,
+                    iterations,
+                    certificate,
+                    setup_seconds,
+                    solve_started.elapsed().as_secs_f64(),
+                )?;
+                result.report.pilot_iterations = completed_pilot_iterations;
+                result.report.pilot_contraction = progress_contraction.unwrap_or(pilot_contraction);
+                return Ok(SchurAttempt::Certified(attach_optional_map_coefficients(
+                    result,
+                    coefficients,
+                )?));
+            }
+        }
+
+        if iteration_cap.is_some() {
+            return Ok(SchurAttempt::Continue {
+                iterations,
+                candidate: true,
+                progress_contraction,
+            });
+        }
+        // Correct the reconstructed residual, retaining its already removed FE
+        // contribution and the original RHS reference norms. This is a fresh
+        // residual restart: converged PCG lanes were deliberately zeroed above.
+        // Both attempts share the original PCG limit and MAP reserve.
+        if !breakdown && iterations < pcg_iteration_limit {
+            if let Some(tighter) = correction_tolerance
+                .take()
+                .filter(|t| *t < recurrence_tolerance)
+            {
+                if crate::diagnostics::solver_trace_enabled() {
+                    crate::diagnostics::emit_solver_trace(&format!(
+                        "FEREG_SOLVER_TRACE|phase=two_fe_pcg_correction|iterations={iterations}|recurrence_tolerance={tighter:.17e}"
+                    ));
+                }
+                TWO_FE_CORRECTIONS.set(TWO_FE_CORRECTIONS.get() + 1);
+                recurrence_tolerance = tighter;
+                continue;
+            }
+        }
+        break;
     }
 
-    if iteration_cap.is_some() {
-        return Ok(SchurAttempt::Continue {
-            iterations,
-            candidate: true,
-            progress_contraction,
-        });
-    }
     // PCG is an acceleration only. A finite breakdown or a full-certificate
     // miss continues with ordinary symmetric MAP from the reconstructed
     // observation-space candidate. One quarter of the original iteration
@@ -7702,7 +7743,7 @@ fn checkpoint_schur_copy(
 
 #[derive(Clone, Copy)]
 enum SchurWorkLimit {
-    Map,
+    Map { refine: bool },
     Checkpoint(usize),
 }
 

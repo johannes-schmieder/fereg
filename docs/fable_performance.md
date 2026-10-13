@@ -2181,6 +2181,62 @@ unaffected fields and discrete decisions remain exact. See
 [validation](VALIDATION.md#h-complete-workstream-mac-boundary-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-boundary.json).
 
+### H8 adaptive certificate continuation (authorized 2026-10-12)
+
+Johannes authorized replacing the ordinary automatic two-FE OLS blanket
+hundredth-request target with an initial half-request target and one tighter
+correction solve only after the fresh requested-tolerance certificate fails.
+This supersedes H8's recurrence-consistency rule for this route. It accepts
+the existing FE-moment contract, including the documented weak-graph accuracy
+limitation; the historical strong-F failures remain visible and unchanged.
+Explicit solvers, PPML, three-FE routes and final-residual targets are unchanged.
+
+Implementation declaration, baseline `b4b4f6d3`: reuse the reconstructed residual
+as the correction RHS and the admitted graph/workspace, retain original input
+reference norms and accumulate FE contributions. Compute the PCG limit and MAP
+reserve once, charge both attempts to that limit, permit at most one correction
+at the shared automatic LSMR target (only when strictly tighter), and retain
+existing certificate-only acceptance and breakdown/fallback rules. No extra
+row-by-RHS bank, model change, routing fence or tighter publication gate.
+
+Affected fields: ordinary two-FE Auto projected columns, FE coefficients,
+coefficients, covariance, fit statistics, downstream saved numerical outputs,
+numerical diagnostics and inner work counts. All other science and protected
+sample/rank/omission/separation decisions stay exact. Bind the replay scope to
+the same three Mac input hashes as H8 before production editing. Witnesses:
+independent dense-dummy replay and two-FE projection mathematics, correction
+reconstruction/budget/normalization tests, fixed-worker repeats and worker
+agreement, retained F1 QR/80-digit barbell and weak controls. Do not relax any
+scientific tolerance or relabel the historical strong-F failures as passes.
+
+Bounded evaluation: finish production edits and focused checks first; run the
+full suite, native build/ABI checks, 73-case parent replay and worker checks,
+and mapped licensed OLS/PPML transaction/solver fixtures. Compare baseline H8,
+adaptive and the previous half-request rule on AKM/dense/sparse and F1 controls;
+the historical half-request record is reference evidence, not a production
+runtime. Use at most two diagnostic pairs per workload/worker cell, no retries,
+120 seconds per fit and 2,400 seconds total. Then qualify the stable candidate
+on the twenty frozen quiet Mac workloads: one warmup and seven alternating
+pairs, 90 seconds per process and 1,800 seconds total, max(5%, 1 ms) allowance
+and the existing paired bootstrap confidence standard. No timing continuation
+is preauthorized; failed/inconclusive cells remain visible. Store compact
+results in `bench/results/h8-adaptive-20261012.json` and results in VALIDATION.
+
+Johannes approved the adaptive version on 2026-10-13 after reviewing the sparse
+projection error (9.84e-9 versus H8's 5e-9 bound), the weak F discrepancy and
+the possibility of extra final-residual work. The default-request witness now
+allows 1e-8 absolute projection error; the strict-request 5e-9 bound, requested
+FE certificate, other scientific tolerances and historical strict-F failures
+remain unchanged. The failed initial checks remain recorded. Runtime artifacts
+are unchanged from the reviewed candidate, so build/replay/licensed and
+independent-oracle evidence is reused. The final full suite passes 1,749 Rust
+test executions across 64 invocations. All 48 Manu fits pass science/repeat/worker
+checks; sparse native costs fall 10.43–11.12% and AKM 6.27–8.38% in the bounded
+two-pair diagnostics. All twenty quiet Mac standard cells pass incremental
+nonregression after one warmup and seven pairs (320 calls, 629.483 seconds),
+without retries or continuation. No historical whole-H result is reclassified.
+See [validation](VALIDATION.md#adaptive-two-fe-ols-accepted-tradeoff-and-mac-qualification-2026-10-13).
+
 ### Evidence and stop rules for H
 
 `./scripts/run_tests.sh` and `scripts/run_plugin_replay.sh` on every runtime
