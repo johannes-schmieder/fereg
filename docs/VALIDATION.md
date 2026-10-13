@@ -14,6 +14,143 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## CMG-Schur prototype, 2026-10-13
+
+`solver(cmgschur) cmgdegree(4|5|6)` is an opt-in OLS prototype for exactly two
+categorical intercept FEs; the experimental default cutoff is five. It uses the
+existing implicit all-worker Schur operator with a fixed CMG cycle built on a
+hybrid graph. Workers above the cutoff remain auxiliary vertices only in that
+preconditioner. Weights, controls, saved effects, disconnected components and
+both memory modes are covered. Automatic routing and PPML are unchanged.
+
+The [retained aggregate results](../bench/results/cmgschur-20261013.json),
+[individual solver observations](../bench/results/cmgschur-20261013-observations.csv)
+and [standard timing observations](../bench/results/cmgschur-20261013-nonregression.csv)
+contain the numerical checks, input/artifact hashes, timings and diagnostics.
+The maintained generator and runner are documented in [bench](../bench/README.md#cmg-schur-prototype-comparison).
+No row-level data or raw logs are retained in Git.
+
+The synthetic panel ran on an Apple M2 Ultra Mac with 24 cores, with no competing
+builds, tests or agent workloads. All arms use FE tolerance 1e-8 and the same
+inputs, controls, robust covariance and requested residual/xb/xbd/absorbed-sum
+outputs. A strict single-worker LSMR fit at 1e-12 precedes each input; a separate
+600-row dense dummy OLS/HC1 oracle gates every arm and thread count. Each cell has
+one warmup and seven sequential repetitions with rotating paired arm order,
+a 30-minute total budget and a 90-second process cap. All 254 invocations passed
+scientific checks, including exact fixed-thread repeats and discrete decisions.
+
+The primary clock surrounds one complete native plugin call; input parsing and
+result export are excluded. Internal `RRUNTIME` native/total intervals and solver
+setup/solve intervals are separate diagnostics, not the primary clock and not an
+exhaustive decomposition. These timings include reconstruction work as requested
+by the harness. In particular, the existing CMG arm uses its CG route for the
+final projection; this comparison does not isolate hierarchy quality alone.
+
+| Mac synthetic input | Threads | auto (s) | cmg (s) | cmgschur 4 (s) | cmgschur 5 (s) | cmgschur 6 (s) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Short, 100,000 rows | 1 | 0.0458 | 0.1699 | 0.0468 | 0.0484 | 0.0474 |
+| Short, 100,000 rows | 4 | 0.0285 | 0.0807 | 0.0371 | 0.0378 | 0.0367 |
+| Long, 1,000,000 rows | 1 | 0.4688 | 1.1463 | 0.6398 | 0.6693 | 0.6980 |
+| Long, 1,000,000 rows | 4 | 0.2199 | 0.4776 | 0.3246 | 0.3378 | 0.3531 |
+| Weakly connected, 100,000 rows | 1 | 0.0936 | 0.3525 | 0.0473 | 0.0464 | 0.0468 |
+| Weakly connected, 100,000 rows | 4 | 0.0388 | 0.1253 | 0.0267 | 0.0268 | 0.0266 |
+
+Values are medians of seven full-call observations. The hybrid beats full CMG
+in every synthetic cell, but beats auto only on the weakly connected input:
+roughly 50% lower time at one thread and 31% lower at four. On the long input,
+cutoff four is fastest among the hybrids. Raising the cutoff from four to six
+reduces vertices from 12,589 to 6,788 but increases merged edges from 123,073 to
+160,489. All three take nine main-solve iterations; the extra fill costs more
+than the small final-projection iteration saving. The weak-graph cutoff
+differences are small, and all short-panel workers have degree at most two, so
+its three cutoffs construct the same graph. No universal cutoff or automatic
+routing change follows from these observations. Median whole-process RSS on the
+long one-thread input is 224 MiB for auto, 256 MiB for CMG and 238/241/242 MiB for
+hybrid cutoffs four/five/six; this includes the replay host's observation bank.
+
+The real-data follow-up uses the existing selected Veneto 1996-2001 adjusted
+outcome panel described in the census below: 5,163,428 input rows, 1,106,419
+workers and 86,647 firms. No new outcome transformation or input selection was
+applied. This is a pure worker/firm AKM fit with no additional controls, unit
+weights and robust covariance, with the same requested output types as above.
+The private input and row-level intermediates stayed on SCC.
+
+The run reserves all 28 physical cores of an Intel Xeon Gold 6132 node for
+isolation; one- and four-thread fits share CPU mask 0,2,4,6 and NUMA node zero.
+It uses GCC 12.2.0, Python 3.12.4, NumPy 1.26.4 and Rust 1.85.1. The same fixed
+seven-repetition design has a predeclared 5,400-second total budget and
+300-second process cap. All 92 invocations pass, including the strict reference,
+dense prerequisite and exact repeats. The maximum observed output difference
+from the strict reference is 1.34e-11 across all arms and at most 4.30e-13 for
+CMG-Schur. These SCC seconds must not be compared directly with Mac seconds.
+
+| Veneto 1996-2001 | auto (s) | cmg (s) | cmgschur 4 (s) | cmgschur 5 (s) | cmgschur 6 (s) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 thread | 15.4161 | 79.8875 | 6.2524 | 6.3068 | 6.4541 |
+| 4 threads | 9.5920 | 30.1074 | 4.0475 | 4.0943 | 4.1704 |
+
+Cutoff four lowers full-call time relative to auto by about 59% at one thread
+and 58% at four, and relative to CMG by about 92% and 87%. Its main/final
+projection iteration counts are 17/18, versus auto's 71/132 and the CMG arm's
+41/95. Cutoffs five and six use 18/17 and 18/19, respectively. Those counts are
+stable across both thread counts. Cutoff four is the conservative starting
+point on these inputs; the sub-5% differences between Veneto cutoffs remain
+small performance observations, not a universal optimality claim. Increasing
+the cutoff has not produced a speed gain here. The explicit prototype remains
+configurable, and auto stays the package default.
+
+At four threads, median whole-process RSS is 839 MiB for auto, 1,289 MiB for
+CMG and 840/842/842 MiB for the three hybrids. Linux setup/smoke job 8062967
+finishes with failed=0 and exit_status=0 in 254 seconds (four slots, maxvmem
+2.790G). The isolated benchmark job 8066089 finishes with the same clean
+accounting in 2,196 seconds (28 slots, maxvmem 2.206G). These job durations include
+preparation and verification and are not solver timings. Linux build/native-load,
+independent Rust oracle and synthetic smoke checks pass; this bounded evidence
+does not establish general Linux or Windows qualification.
+
+Scientific and transaction qualification:
+
+- `./scripts/run_tests.sh` passes, including 203 Python tests, Rust/FFI tests,
+  allocator audits, complexity/static checks and mock bridge guards. The new
+  benchmark tooling has ten additional passing tests.
+- Independent dense weighted OLS witnesses cover 48 configurations; sealed
+  hundred-digit projection witnesses cover 72. Hybrid/Schur algebra, duplicate
+  cells, weight rescaling, disconnected components, multilevel cycle symmetry,
+  linearity, positive energy and admission failures have dedicated witnesses.
+- Universal Mac build/load checks pass. All 73 native replay cases have zero
+  exact scientific differences from the preserved parent plugin.
+- Licensed Stata tests pass for weighted estimates, saved effects, all cutoffs,
+  both storage modes, invalid-request rollback and real iteration exhaustion.
+  Native and postplugin Control-C tests pass. Four mapped existing oracle,
+  solver-report and memory fixtures pass.
+- The extra legacy `estimate_ols_auto_cmg_route.do` fixture fails its obsolete
+  first assertion expecting auto to report CMG code seven. The identical failure
+  occurs on the preserved parent plugin; it is not a prototype regression.
+- A pre-existing Low-mode finite-score failure for exactly zero residuals was
+  reproduced for auto, CMG, LSMR and CMG-Schur. Low-mode sealed witnesses add
+  exactly FE-orthogonal paired noise, preserving the known fitted values and
+  giving analytically known residuals/objectives. Fast retains the original
+  witness inputs. No scientific tolerance or production behavior was relaxed.
+
+All 20 frozen standard workloads satisfy the timing nonregression criterion
+against the parent plugin, with exact science. Nineteen passed the original
+seven-pair panel. One had median ratio 1.00063 but upper bound 1.05508 against
+1.05. A predeclared, single bounded continuation added 14 pairs on unchanged
+artifacts, retaining all original observations. The pooled 21-pair median ratio
+is 1.00033 and the stricter 98.75th-percentile bootstrap upper bound is 1.00886.
+This passes the nominal criterion with an allowance unchanged at 5%; percentile
+bootstrap coverage is approximate. The retained record includes the initial
+inconclusive result, the continuation rule and all pairs. No further sampling
+was performed. An independent architecture review found no actionable defects.
+
+Artifact SHA-256 identities:
+
+- Preserved Mac parent: `85dbf448ab1974122a47684ac9b9f17964b451109b267df409963200cdfbe9cb`.
+- Qualified Mac prototype: `6a71297777eaddfa07b02dcc80aa0a2a138c990fdea0bf2e390f9572662f9cd4`.
+- SCC Linux prototype: `3df6922745509cbe6eba9370b9859f36f34601e5c5215d25ae3c64f56a5c53a4`.
+- Frozen source archive based on `9ee03a688882c835725d2d7c40056465df41e2d7` plus
+  this prototype: `3a7c34145af1bfade340533e0e81cabf09b5bcb9505c0d40cb6174ed1e701289`.
+
 ## Worker elimination degree census, 2026-10-13
 
 A read-only census at source `414b5f6a` examines whether an experimental CMG

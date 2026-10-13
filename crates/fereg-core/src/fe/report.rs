@@ -11,6 +11,8 @@ pub enum FeSolverKind {
     Lsmr,
     /// Combinatorial-multigrid-preconditioned graph PCG for sparse AKM designs.
     Cmg,
+    /// Experimental implicit two-FE Schur PCG with a hybrid CMG preconditioner.
+    CmgSchur,
     /// Conjugate gradients: explicit symmetric MAP, or guarded automatic two-FE Schur.
     Cg,
     /// Irons--Tuck vector extrapolation of symmetric MAP.

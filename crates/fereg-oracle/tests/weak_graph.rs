@@ -1,6 +1,9 @@
 #![deny(clippy::too_many_lines)]
 //! Parser harvested from the legacy weak-graph test; fixture bytes are unchanged.
+mod support;
+use fereg_core::{FeSolverKind, PreparedOlsExecutionMode, PreparedOlsFitConfig, ThreadConfig};
 use fereg_oracle::compare::PREDICTION;
+use fereg_oracle::designs::{Design, WeightKind};
 use fereg_oracle::explicit_dummy::{
     design::ExplicitFeDesign as FeDesign, fe_remaining_projection_with_reference,
 };
@@ -183,4 +186,104 @@ fn independent_projection_audit_detects_remaining_fe_content() {
     PREDICTION
         .check(audit.maximum_relative_two_norm, 1.0)
         .unwrap();
+}
+
+/// Duplicate rows have identical designs and weights. Opposite additive noise
+/// within each pair is exactly orthogonal to the FE span, preserving the sealed
+/// fitted values. Low mode uses this nonsaturated extension because a zero
+/// within-outcome norm can fail the existing finite-score certificate for all
+/// solvers, independently of the projection's accuracy.
+fn native_projection_problem(
+    fixture: &OracleFixture,
+    rhs: usize,
+    orthogonal_noise: bool,
+) -> (Design, Vec<f64>, f64) {
+    let effects = design(fixture)
+        .effects()
+        .iter()
+        .map(|effect| {
+            EffectTerm::new(effect.codes().repeat(2), effect.n_levels(), true, vec![]).unwrap()
+        })
+        .collect();
+    let mut outcome = fixture.inputs[rhs].repeat(2);
+    let mut residuals = fixture.residuals[rhs].repeat(2);
+    let mut objective = 2. * fixture.objectives[rhs];
+    if orthogonal_noise {
+        for row in 0..outcome.len() {
+            let noise = if row < fixture.weights.len() { 1. } else { -1. };
+            outcome[row] += noise;
+            residuals[row] += noise;
+        }
+        objective += 2. * fixture.weights.iter().sum::<f64>();
+    }
+    let design = Design {
+        outcome,
+        regressors: vec![],
+        effects,
+        weights: fixture.weights.repeat(2),
+        weight_kind: WeightKind::Analytic,
+        missing: vec![false; 2 * fixture.weights.len()],
+        clusters: vec![],
+    };
+    (design, residuals, objective)
+}
+
+#[test]
+fn cmgschur_matches_the_sealed_hundred_digit_two_intercept_projections() {
+    let fixtures = parse_fixtures();
+    let supported: Vec<_> = fixtures
+        .iter()
+        .filter(|fixture| {
+            fixture.effect_intercepts == [true, true]
+                && fixture.effect_slopes.iter().all(Vec::is_empty)
+        })
+        .collect();
+    assert_eq!(supported.len(), 5);
+    for fixture in supported {
+        for rhs in 0..fixture.inputs.len() {
+            for mode in [
+                PreparedOlsExecutionMode::Fast,
+                PreparedOlsExecutionMode::Low,
+            ] {
+                let (design, residuals, objective) =
+                    native_projection_problem(fixture, rhs, mode == PreparedOlsExecutionMode::Low);
+                for cutoff in [4, 5, 6] {
+                    for workers in [1, 4] {
+                        let threads = ThreadConfig::from_requested(workers, true).unwrap();
+                        let mut config = PreparedOlsFitConfig::default();
+                        config.execution.mode = mode;
+                        config.execution.threads = threads;
+                        config.absorb.lsmr.threads = threads;
+                        config.absorb.solver = FeSolverKind::CmgSchur;
+                        config.absorb.cmg_schur_degree = cutoff;
+                        let (fit, rows) = support::native_fit(&design, config, false)
+                            .unwrap_or_else(|e| panic!("{} RHS {rhs}, cutoff {cutoff}, {mode:?}, threads {workers}: {e}", fixture.id));
+                        assert_eq!(rows, (0..design.outcome.len()).collect::<Vec<_>>());
+                        assert_eq!(fit.absorption_report().used_solver, FeSolverKind::CmgSchur);
+                        PREDICTION
+                            .check_slice(fit.residuals(), &residuals)
+                            .unwrap_or_else(|e| panic!("{} RHS {rhs} residuals: {e}", fixture.id));
+                        let fitted: Vec<_> = design
+                            .outcome
+                            .iter()
+                            .zip(fit.residuals())
+                            .map(|(y, r)| y - r)
+                            .collect();
+                        PREDICTION
+                            .check_slice(&fitted, &fixture.fitted[rhs].repeat(2))
+                            .unwrap_or_else(|e| panic!("{} RHS {rhs} fitted: {e}", fixture.id));
+                        let actual_objective: f64 = fit
+                            .residuals()
+                            .iter()
+                            .zip(&design.weights)
+                            .map(|(r, w)| r * r * w)
+                            .sum();
+                        PREDICTION.check(actual_objective, objective).unwrap();
+                        assert!(fit.absorption_report().certified());
+                        assert!(fit.residual_absorption_report().certified());
+                    }
+                }
+            }
+        }
+    }
 }

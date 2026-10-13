@@ -7,6 +7,7 @@ pub(crate) use borrowed_map::three_fe_schur;
 mod categorical_request;
 mod certificate;
 mod cmg;
+mod cmg_schur;
 mod components;
 mod design;
 mod interaction;

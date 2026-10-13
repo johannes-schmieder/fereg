@@ -111,6 +111,17 @@ unchanged. See [SPEC](SPEC.md).
 
 ## Public OLS transaction
 
+The experimental OLS `solver=cmgschur` request accepts an optional
+`cmgdegree=4|5|6` field (default 5). That field is rejected for every other
+solver and by PPML. The public adapter emits it only for the new route;
+existing requests retain their original fields and bytes. The existing OLS
+transport cap admits the new field and hidden Break keys. Solver diagnostic code 8
+identifies CMG-Schur; existing codes and result dimensions are unchanged.
+This additive prototype does not change action or result versions. Older
+plugins reject the unknown solver or field before reading observations.
+CMG-Schur requires exactly two categorical intercept fixed effects; unsupported
+topology is rejected before observation reads in the plugin adapter.
+
 Before any observation read, Rust validates the complete request, exact
 action/model/result versions, source and output bindings, dimensions,
 nonaliasing, memory/thread options, and initially incomplete receipt. Rust then

@@ -2016,6 +2016,7 @@ const fn linear_route_code(route: FeSolverKind) -> f64 {
         FeSolverKind::IronsTuck => 5.0,
         FeSolverKind::Squarem => 6.0,
         FeSolverKind::Cmg => 7.0,
+        FeSolverKind::CmgSchur => 8.0,
     }
 }
 

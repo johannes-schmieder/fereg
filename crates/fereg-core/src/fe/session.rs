@@ -218,12 +218,25 @@ impl<'a> FeSession<'a> {
             owner.prepare_owned(prepared, weights, rhs, config)?;
             return Ok(owner);
         }
-        let borrowed = if config.absorb.solver == super::FeSolverKind::Cmg {
+        let cmg_schur = config.absorb.solver == super::FeSolverKind::CmgSchur;
+        let borrowed = if matches!(
+            config.absorb.solver,
+            super::FeSolverKind::Cmg | super::FeSolverKind::CmgSchur
+        ) {
             Some(prepared.fit_borrowed_cmg_design()?)
         } else {
             prepared.fit_borrowed_intercept_map_design()?
         };
         if let Some(design) = borrowed {
+            if cmg_schur
+                && (design.effects().len() != 2
+                    || !(4..=6).contains(&config.absorb.cmg_schur_degree))
+            {
+                return Err(FeregError::new(
+                    ErrorCode::Unsupported,
+                    "cmgschur requires exactly two intercept effects and cmgdegree 4, 5, or 6",
+                ));
+            }
             match config.absorb.solver {
                 super::FeSolverKind::Cmg => {
                     owner.cmg = Some(super::CmgAbsorber::build(
@@ -248,7 +261,9 @@ impl<'a> FeSession<'a> {
                         config.absorb,
                     )?);
                 }
-                super::FeSolverKind::Auto if design.effects().len() == 2 => {
+                super::FeSolverKind::Auto | super::FeSolverKind::CmgSchur
+                    if design.effects().len() == 2 =>
+                {
                     // A common structural binding, independent of output, VCE,
                     // worker budget or public storage choice.
                     let mut bytes = super::ReusableCategoricalMapAbsorber::owner_bytes(
@@ -274,10 +289,11 @@ impl<'a> FeSession<'a> {
                                 })?)
                                 .ok_or_else(|| allocation("FE graph capture overlap overflows"))?;
                     }
-                    if config
-                        .absorb
-                        .solver_memory_budget
-                        .is_some_and(|b| !b.fits(bytes))
+                    if !cmg_schur
+                        && config
+                            .absorb
+                            .solver_memory_budget
+                            .is_some_and(|b| !b.fits(bytes))
                     {
                         owner.binding = Some(design);
                         return Ok(owner);
@@ -289,6 +305,9 @@ impl<'a> FeSession<'a> {
                         config.execution.threads.resolved(),
                     )?;
                     p.retain_coefficients = config.absorb.retain_coefficients;
+                    if cmg_schur {
+                        owner.prepare_cmg_schur(&mut p, weights, bytes, config)?;
+                    }
                     owner.categorical = Some(p);
                 }
                 _ => {
@@ -323,6 +342,44 @@ impl<'a> FeSession<'a> {
             owner.prepare_owned(prepared, weights, rhs, config)?;
         }
         Ok(owner)
+    }
+
+    fn prepare_cmg_schur(
+        &mut self,
+        p: &mut super::ReusableCategoricalMapAbsorber<'a>,
+        weights: BorrowedMapWeights<'_>,
+        bytes: u128,
+        config: crate::ols::PreparedOlsFitConfig,
+    ) -> Result<()> {
+        let started = std::time::Instant::now();
+        let budget = config
+            .absorb
+            .solver_memory_budget
+            .map(|b| -> Result<_> {
+                Ok(crate::memory::FeSolverMemoryBudget {
+                    execution_bytes: b
+                        .execution_bytes
+                        .checked_add(bytes)
+                        .ok_or_else(|| allocation("cmgschur parent admission overflows"))?,
+                    usable_bytes: b.usable_bytes,
+                })
+            })
+            .transpose()?;
+        let peak = p.enable_cmg_schur(
+            weights,
+            config.absorb.cmg_schur_degree,
+            config.execution.threads.resolved(),
+            budget,
+        )?;
+        self.peak = self.peak.max(peak.with_retained(bytes)?);
+        self.admit(
+            bytes
+                .checked_add(p.cmg_schur_bytes()?)
+                .ok_or_else(|| allocation("cmgschur retained admission overflows"))?,
+            config.absorb,
+        )?;
+        self.setup_seconds += started.elapsed().as_secs_f64();
+        Ok(())
     }
 
     fn admit(&mut self, bytes: u128, config: super::AbsorbConfig) -> Result<()> {
@@ -714,6 +771,9 @@ impl<'a> FeSession<'a> {
         let norms = result.take_residual_norms();
         let (values, mut report, coefficients) = result.into_full_parts();
         report.requested_solver = config.solver;
+        if config.solver == super::FeSolverKind::CmgSchur {
+            report.used_solver = super::FeSolverKind::CmgSchur;
+        }
         // Reusable operations allocate their banks at construction; the session
         // owns the complete bank admission, unlike the standalone MAP API.
         report.solver_workspace_peak = if self.general.is_some() {
@@ -807,7 +867,7 @@ pub(crate) fn project_intercepts(
                 config.retain_coefficients,
             )
         }
-        S::Cmg | S::Squarem => Err(FeregError::new(
+        S::Cmg | S::CmgSchur | S::Squarem => Err(FeregError::new(
             ErrorCode::Unsupported,
             "explicit FE backend requires its prepared adapter",
         )),

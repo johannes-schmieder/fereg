@@ -3,7 +3,7 @@
 
 use super::*;
 
-pub(super) fn hierarchy_peak(
+pub(crate) fn hierarchy_peak(
     graph: &Laplacian,
     executor: &ParallelExecutor,
     preconditioner: &CmgPreconditioner,

@@ -54,7 +54,8 @@ observations are removed to a fixed point.
     {cmd:dof(continuous|none)}{col 38}slope-only or no redundancy adjustment
 
   {ul:Solver and execution}
-    {cmd:solver(auto|map|it|squarem|lsmr|cmg)}{col 38}fixed-effect solver
+    {cmd:solver(auto|map|it|squarem|lsmr|cmg|cmgschur)}{col 53}fixed-effect solver
+    {cmd:cmgdegree(4|5|6)}{col 38}experimental CMG-Schur cutoff; default 5
     {cmd:preconditioner(auto|off|diagonal|schwarz)}{col 38}LSMR preconditioner
     {cmd:threads(}{it:#}{cmd:)}{col 38}native threads; default 0 (automatic)
     {cmd:memory(auto|fast|low)}{col 38}memory plan; default auto
@@ -204,6 +205,21 @@ Explicit {cmd:lsmr} iterates to one hundredth of {cmd:tolerance()} (at least
 explicit methods fail closed on a failed independent fixed-effect certificate.
 
 {pstd}
+{cmd:solver(cmgschur)} is an experimental OLS solver for exactly two
+categorical intercept fixed effects. It uses an implicit worker-eliminated
+Schur operator and a CMG preconditioner built from a hybrid graph.
+{cmd:cmgdegree(4|5|6)} controls the largest distinct-employer degree whose
+workers are eliminated from the preconditioner graph; higher-degree workers
+remain as auxiliary vertices. The default is 5. The cutoff changes only the
+preconditioner construction, not the fitted model or sample. Weights,
+regressors, saved fixed effects, and both memory modes are supported.
+It is unavailable for PPML, absorbed slopes, or other numbers of fixed effects.
+{cmd:cmgdegree()} is accepted only with {cmd:solver(cmgschur)}.
+The solver matrix uses code 8 for this route; {cmd:e(fereg_cmg_degree)}
+records its requested cutoff. This prototype requires a matching development
+plugin; older binaries reject the new request.
+
+{pstd}
 Explicit {cmd:solver(cg)} returns error 198 because its residual certificate
 does not establish projection accuracy. Use {cmd:solver(lsmr)} or
 {cmd:solver(cmg)}. Low-memory CMG projects raw residuals through the full graph
@@ -219,7 +235,8 @@ route; a failed CMG solve uses certified CG for the remaining fit work.
 {cmd:preconditioner()} is valid only with {cmd:solver(auto)} or
 {cmd:solver(lsmr)}. Its choices are {cmd:auto}, {cmd:off}, {cmd:diagonal}, and
 {cmd:schwarz}; {cmd:none} aliases {cmd:off}, and {cmd:additive} aliases
-{cmd:schwarz}. Use {cmd:preconditioner(off)} with {cmd:solver(cmg)}.
+{cmd:schwarz}. Use {cmd:preconditioner(off)} with {cmd:solver(cmg)} or
+{cmd:solver(cmgschur)}.
 
 {pstd}
 {cmd:memory(auto)} preflights fast and low-memory plans. {cmd:memory(fast)}

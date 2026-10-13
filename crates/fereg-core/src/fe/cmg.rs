@@ -32,7 +32,7 @@ use super::{
 #[path = "cmg_admission.rs"]
 mod admission;
 #[path = "cmg_forecast.rs"]
-mod forecast;
+pub(super) mod forecast;
 
 pub(crate) const MAX_NUISANCE_COLUMNS: usize = 64;
 // CMG's graph solve feeds the OLS normal equations, whose score certificate is
@@ -3282,7 +3282,7 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
     }
 }
 
-fn cmg_error(error: cmg::CmgError) -> FeregError {
+pub(super) fn cmg_error(error: cmg::CmgError) -> FeregError {
     FeregError::new(cmg_error_code(&error), format!("CMG: {error}"))
 }
 

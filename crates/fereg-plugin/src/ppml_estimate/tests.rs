@@ -1376,6 +1376,22 @@ fn unknown_and_retired_solver_spellings_fail_closed() {
         .contains("unknown estimate-ppml field fe_solver"));
 }
 
+#[test]
+fn ols_cmgschur_options_fail_before_ppml_reads_and_stores() {
+    for cutoff_only in [false, true] {
+        let (mut args, mut spi) = fixture();
+        if cutoff_only {
+            args.push("cmgdegree=5".to_owned());
+        } else {
+            replace_argument(&mut args, "solver", "solver=cmgschur".to_owned());
+        }
+        let error = estimate_ppml(&args, &mut spi).unwrap_err();
+        assert_eq!(error.code, ErrorCode::Syntax);
+        assert_eq!((spi.reads, spi.store_calls), (0, 0));
+        assert_eq!(spi.receipt_complete(), 0.0);
+    }
+}
+
 fn with_certified_fixture(
     fixture: (Vec<String>, FakeSpi),
     assertion: impl FnOnce(EstimatePpmlAction, fereg_core::ppml::CertifiedPpmlResult, FakeSpi),

@@ -57,6 +57,7 @@ const OLS_FIELDS: &[&str] = &[
     "dof",
     "account_cluster_nesting",
     "preconditioner",
+    "cmgdegree",
     "output_xbd",
     "output_marker_b_matrix",
     "output_marker_v_matrix",
@@ -192,6 +193,7 @@ struct EstimateActionSpec {
     account_cluster_nesting: bool,
     memory: MemoryMode,
     solver: FeSolverKind,
+    cmg_schur_degree: usize,
     preconditioner: LsmrPreconditioner,
     poolsize: usize,
     threads: usize,
@@ -882,6 +884,20 @@ impl EstimateActionSpec {
         let output_xbd = parse_nonnegative_u32(&values, "output_xbd")?;
         let output_absorbed = parse_nonnegative_u32(&values, "output_absorbed")?;
         let output_saved_count = parse_usize(&values, "output_saved_count")?;
+        let solver = parse_solver(required(&values, "solver")?)?;
+        let cmg_schur_degree = match values.get("cmgdegree") {
+            Some(_) if solver != FeSolverKind::CmgSchur => {
+                return Err(syntax("cmgdegree() is valid only with solver(cmgschur)"));
+            }
+            Some(_) => {
+                let degree = parse_usize(&values, "cmgdegree")?;
+                if !(4..=6).contains(&degree) {
+                    return Err(syntax("cmgdegree() must be 4, 5, or 6"));
+                }
+                degree
+            }
+            None => 5,
+        };
         let specification = Self {
             memory_baseline: Baseline::parse(&values)?,
             transport_parent_bytes: crate::metadata_memory::argument_parent_bytes(args)?,
@@ -910,7 +926,8 @@ impl EstimateActionSpec {
             absorbed_dof: parse_dof(required(&values, "dof")?)?,
             account_cluster_nesting: parse_bool(&values, "account_cluster_nesting")?,
             memory: MemoryMode::parse(required(&values, "memory")?)?,
-            solver: parse_solver(required(&values, "solver")?)?,
+            solver,
+            cmg_schur_degree,
             preconditioner: parse_preconditioner(required(&values, "preconditioner")?)?,
             poolsize: parse_positive_usize(&values, "poolsize")?,
             threads: parse_usize(&values, "threads")?,
@@ -996,6 +1013,18 @@ impl EstimateActionSpec {
             include_intercept: self.include_intercept,
             keep_singletons: self.keep_singletons,
         };
+        if self.solver == FeSolverKind::CmgSchur
+            && (request.absorbed_terms.len() != 2
+                || request.absorbed_terms.iter().any(|term| {
+                    !term.intercept
+                        || term.categorical_sources.is_empty()
+                        || !term.slope_sources.is_empty()
+                }))
+        {
+            return Err(unsupported(
+                "solver(cmgschur) requires exactly two categorical intercept fixed effects",
+            ));
+        }
         let clusters = read_cluster_terms(spi, self.cluster_tables(), &request, None)?;
         validate_vce(self.vce, &clusters, self.account_cluster_nesting)?;
         let categorical = request.absorbed_terms.iter().any(|term| {
@@ -1083,6 +1112,7 @@ impl EstimateActionSpec {
             .then_some(1e-14),
             absorb: AbsorbConfig {
                 solver: self.solver,
+                cmg_schur_degree: self.cmg_schur_degree,
                 map: MapConfig {
                     tolerance: self.tolerance,
                     max_iterations: self.iterate,
@@ -2760,8 +2790,8 @@ fn validate_shadow_diagnostics(
     }
     for row in shadow.solver.chunks_exact(SOLVER_COLUMNS) {
         if row.iter().any(|value| !value.is_finite())
-            || !matches!(row[0], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0 | 7.0)
-            || !matches!(row[1], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0 | 7.0)
+            || !matches!(row[0], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0 | 7.0 | 8.0)
+            || !matches!(row[1], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0 | 7.0 | 8.0)
             || exact_usize(row[2], "OLS solver iteration count").is_err()
             || !matches!(row[3], 1.0 | 2.0 | 3.0 | 4.0)
             || !matches!(row[10], 0.0 | 1.0)
@@ -3376,11 +3406,12 @@ fn parse_solver(value: &str) -> Result<FeSolverKind> {
         "map" => Ok(FeSolverKind::Map),
         "lsmr" => Ok(FeSolverKind::Lsmr),
         "cmg" => Ok(FeSolverKind::Cmg),
+        "cmgschur" => Ok(FeSolverKind::CmgSchur),
         "cg" => Ok(FeSolverKind::Cg),
         "it" | "irons-tuck" => Ok(FeSolverKind::IronsTuck),
         "squarem" => Ok(FeSolverKind::Squarem),
         _ => Err(syntax(
-            "solver must be auto, map, lsmr, cmg, cg, it, or squarem",
+            "solver must be auto, map, lsmr, cmg, cmgschur, cg, it, or squarem",
         )),
     }
 }

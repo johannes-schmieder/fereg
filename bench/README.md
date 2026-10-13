@@ -159,6 +159,84 @@ failed/inconclusive bounds. Johannes accepted the frozen candidate with the
 remaining timing uncertainty; see
 [the adoption decision and limits](../docs/VALIDATION.md#c2-adoption-with-unresolved-timing-2026-10-12).
 
+### CMG-Schur prototype comparison
+
+[`cmgschur_cases.py`](cmgschur_cases.py) and [`cmgschur.py`](cmgschur.py) compare
+OLS `auto`, `cmg` and `cmgschur` with degree cutoffs 4, 5 and 6, using exactly two
+categorical intercept effects, unit weights and robust covariance. This is a
+prototype experiment, not release qualification. NumPy, a built native plugin
+and the `fereg-oracle` `replay_large` example are required; Stata is not required.
+
+The fixed synthetic panel contains a 600-row dense-oracle fixture, a 100,000-row
+two-period AKM panel, a 1,000,000-row long panel with degrees through ten, and a
+100,000-row graph with weak links between ten communities. Repeated worker-firm
+observations are retained. Reported degree counts describe the input graph
+before estimator pruning. The two-period case cannot distinguish the cutoffs.
+
+```sh
+cargo build --locked -p fereg-oracle --profile ci --example replay_large
+python3 bench/cmgschur_cases.py --output target/tmp/cmgschur/cases
+python3 bench/cmgschur.py --plugin dist/fereg_macos.plugin \
+  --oracle target/tmp/cmgschur/cases/oracle.case \
+  --cases target/tmp/cmgschur/cases/short.case \
+          target/tmp/cmgschur/cases/long.case \
+          target/tmp/cmgschur/cases/weak.case \
+  --threads 1 4 --timeout 90 --budget 1800 \
+  --output target/tmp/cmgschur/local-panel
+python3 -m unittest discover -s bench/tests -p 'test_cmgschur.py'
+```
+
+Freeze the plugin, inputs, source revision and any uncommitted patch before
+starting; retain those identities with the aggregate findings. The runner binds
+plugin, harness, case and benchmark-script hashes, plus Git HEAD and the dirty
+flag when available. Archives may supply `.fereg-source.json`; its hash and JSON
+declaration are retained without treating them as a verified clean checkout.
+Generation defaults to tolerance `1e-8`; every timed arm preserves that same
+input tolerance. One single-worker LSMR reference at `1e-12` precedes each input.
+The small prerequisite also checks that reference and every tested arm against
+independent dense dummy OLS and HC1 covariance, including the stronger CMG
+absolute residual/fitted-value bound. Larger cases compare with strict LSMR;
+that comparison is a numerical witness, not an independent dense oracle.
+
+The stopping rule is fixed before execution: one warmup and seven rotating,
+paired repetitions per arm at one and four workers, 90 seconds per process,
+and a total 1,800-second budget including references. There is no automatic
+resampling or continuation. Science checks enforce SPEC numerical envelopes,
+exact sample/status/DoF decisions and exact repeats at fixed worker count.
+A failed reference blocks its dependent work. A failed `cmgschur` cell stops
+dependent timing; a failed original `auto` or `cmg` cell stays explicitly failed
+and is excluded from ratios while other arms and cells may continue. A failed,
+timed-out or incomplete comparison cannot establish a speed gain.
+
+Native timing surrounds one complete plugin call, excluding replay file I/O.
+`summary.json` retains individual observations, solver setup/solve diagnostics,
+peak process RSS, and paired summaries. Phase clocks may overlap; do not add
+them as an elapsed-time decomposition. Run on a quiet host after builds, tests
+and other agent workloads finish. SCC observations do not qualify Mac speed.
+
+For a longer existing panel, run conversion and fitting on the host holding
+the data. Supply explicit numeric CSV column roles; `--regressors` is optional:
+
+```sh
+python3 bench/cmgschur_cases.py --csv INPUT.csv \
+  --outcome y_adjusted --worker worker_id --firm firm_id \
+  --output target/tmp/cmgschur/veneto-cases
+python3 bench/cmgschur.py --plugin dist/fereg_linux.plugin \
+  --oracle target/tmp/cmgschur/cases/oracle.case \
+  --cases target/tmp/cmgschur/veneto-cases/csv.case \
+  --threads 1 4 --timeout 600 --budget 3600 \
+  --output target/tmp/cmgschur/veneto-panel
+```
+
+The CSV example predeclares a separate one-hour panel with a ten-minute process
+cap; keep the seven repetitions and all five arms. Conversion preserves supplied
+rows and outcomes without filtering or adjustment, rejects missing/nonfinite
+values, and records the source SHA256. Keep proprietary inputs, generated replay
+files and row outputs on their original local/SCC host. Collect only compact
+aggregate summaries and hashes. All outputs belong under `target/tmp/cmgschur/`;
+delete them after retaining reviewed aggregates and identities in committed
+evidence. Follow the cluster workflow when submitting SCC compute work.
+
 ### Categorical preparation probes
 
 The oracle examples `preparation_probe` and `membership_probe` isolate costs

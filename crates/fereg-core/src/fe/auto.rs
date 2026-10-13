@@ -43,6 +43,8 @@ pub(crate) fn explicit_lsmr_recurrence(config: LsmrConfig) -> LsmrConfig {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AbsorbConfig {
     pub solver: FeSolverKind,
+    /// Maximum distinct-neighbor degree eliminated in the experimental CMG graph.
+    pub cmg_schur_degree: usize,
     pub map: MapConfig,
     pub lsmr: LsmrConfig,
     /// Whether `Auto` may retry the other certified solver after a failed certificate.
@@ -59,6 +61,7 @@ impl Default for AbsorbConfig {
     fn default() -> Self {
         Self {
             solver: FeSolverKind::Auto,
+            cmg_schur_degree: 5,
             map: MapConfig::default(),
             lsmr: LsmrConfig::default(),
             certified_fallback: true,
@@ -132,9 +135,9 @@ pub fn absorb_fixed_effects(
             report.solver_workspace_peak = peak;
             Ok(report)
         }
-        FeSolverKind::Cmg => Err(FeregError::new(
+        FeSolverKind::Cmg | FeSolverKind::CmgSchur => Err(FeregError::new(
             ErrorCode::Unsupported,
-            "solver(cmg) requires a prepared intercept-only categorical topology",
+            "CMG solvers require a prepared intercept-only categorical topology",
         )),
         FeSolverKind::Auto => absorb_auto(design, weights, values, config),
     }

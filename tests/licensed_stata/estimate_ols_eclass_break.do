@@ -1,6 +1,9 @@
 version 18.0
 clear all
 set more off
+args solver
+if `"`solver'"' == "" local solver "auto"
+assert inlist(`"`solver'"', "auto", "cmgschur")
 
 quietly findfile fereg.ado
 local ado_path = subinstr(`"`r(fn)'"', "\", "/", .)
@@ -24,7 +27,7 @@ local prior_rss : display %21x e(rss)
 * thread observes Break, cancels the work and the transaction rolls back.
 capture noisily _fereg_estimate_ols_test y c.x1, ///
     absorb(worker firm) cluster(cluster_a cluster_b) ///
-    residual(__frg_native_resid) inject(breaknative)
+    solver(`solver') residual(__frg_native_resid) inject(breaknative)
 local native_rc = _rc
 assert `native_rc' == 1
 confirm new variable __frg_native_resid
@@ -41,7 +44,7 @@ assert e(sample) == __frg_prior_sample
 * hidden action has completed its sole plugin call and printed its armed line.
 capture noisily _fereg_estimate_ols_test y c.x1, ///
     absorb(worker firm) cluster(cluster_a cluster_b) ///
-    residual(__frg_break_resid) inject(breakpostplugin)
+    solver(`solver') residual(__frg_break_resid) inject(breakpostplugin)
 local break_rc = _rc
 assert `break_rc' == 1
 confirm new variable __frg_break_resid

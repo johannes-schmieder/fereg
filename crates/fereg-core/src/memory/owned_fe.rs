@@ -139,7 +139,7 @@ pub(crate) fn generic_fe_solver_bytes(
         FeSolverKind::Cg => 3,
         FeSolverKind::IronsTuck | FeSolverKind::Squarem => 4,
         FeSolverKind::Lsmr => return generic_lsmr_bytes(design, rhs, config, certificate),
-        FeSolverKind::Cmg => {
+        FeSolverKind::Cmg | FeSolverKind::CmgSchur => {
             return Err(FeregError::new(
                 ErrorCode::Unsupported,
                 "generic owned FE memory planning does not support CMG",

@@ -125,6 +125,19 @@ arithmetic leaves and ordered merges. One-FE, two-FE and general-FE algorithms
 remain distinct where mathematics warrants them; benchmark-specific route fences
 are prohibited. Explicit LSMR/CMG and both bias-correction modes remain supported.
 
+Experimental OLS `cmgschur` reuses the two-FE implicit Schur operator and its
+observation-space reconstruction/certificate. `fe/cmg_schur.rs` owns the hybrid
+graph, fixed-weight CMG hierarchy and application workspace. Low-degree levels
+of the larger FE are eliminated into weighted pairs on the smaller FE; higher
+degrees remain auxiliary graph vertices. Degree is counted after repeated
+worker-firm rows are collapsed. A fixed CMG cycle receives component-centered
+firm residuals and zero auxiliary loads. Restriction and firm-component centering
+produce the outer preconditioned residual, used in every PCG energy/direction
+update. The operator bank is reused for this residual after its Schur product
+is consumed. An explicit request has no MAP fallback, does not reuse historical
+PPML weights and never changes the automatic route. The current support envelope
+and numerical scope are in [SPEC](SPEC.md#solver-support-and-dispatch).
+
 ### Fixed-leaf norms and outer scores
 
 Reusable MAP norms use 512-row leaves and merge their scaled sum-of-squares

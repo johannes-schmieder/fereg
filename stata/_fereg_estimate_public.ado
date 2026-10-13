@@ -4,7 +4,8 @@ program define _fereg_estimate_public, eclass
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
         [ABSorb(string asis) VCE(string asis) DOF(string asis) ///
          KEEPsingletons RESIDuals(name) SAVEFEs(string asis) ///
-         SOLVer(string) PREConditioner(string) THREADS(integer 0) ///
+         SOLVer(string) CMGDEGree(numlist integer min=1 max=1) ///
+         PREConditioner(string) THREADS(integer 0) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) DETERMINISTIC TIMEIT VERBose(integer 0) ///
          NOCONStant]
@@ -27,9 +28,22 @@ program define _fereg_estimate_public, eclass
         di as error "solver(cg) is disabled because its residual certificate does not ensure projection accuracy; use solver(lsmr) or solver(cmg)"
         exit 198
     }
-    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cmg", "it", "squarem") {
-        di as error "solver() must be auto, map, lsmr, cmg, it, or squarem"
+    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cmg", "cmgschur", "it", "squarem") {
+        di as error "solver() must be auto, map, lsmr, cmg, cmgschur, it, or squarem"
         exit 198
+    }
+    local cmgdegree_option
+    if `"`cmgdegree'"' != "" & `"`solver_mode'"' != "cmgschur" {
+        di as error "cmgdegree() is valid only with solver(cmgschur)"
+        exit 198
+    }
+    if `"`solver_mode'"' == "cmgschur" {
+        if `"`cmgdegree'"' == "" local cmgdegree 5
+        if !inlist(`cmgdegree', 4, 5, 6) {
+            di as error "cmgdegree() must be 4, 5, or 6"
+            exit 198
+        }
+        local cmgdegree_option "cmgdegree(`cmgdegree')"
     }
     local preconditioner_mode = lower(strtrim(`"`preconditioner'"'))
     if `"`preconditioner_mode'"' == "" {
@@ -114,7 +128,7 @@ program define _fereg_estimate_public, eclass
         `absorb_option' `vce_option' `cluster_option' `dof_option' `singleton_option' ///
         `residual_option' `constant_option' `memory_option' ///
         `weight_option' `public_wexp_option' ///
-        solver(`solver_mode') preconditioner(`preconditioner_mode') ///
+        solver(`solver_mode') `cmgdegree_option' preconditioner(`preconditioner_mode') ///
         poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
         iterate(`iterate') `deterministic'
 
@@ -139,6 +153,7 @@ program define _fereg_estimate_public, eclass
     ereturn local fereg_memory_requested "`memory_mode'"
     ereturn local fereg_memory_selected "`selected_memory'"
     ereturn local fereg_solver_requested "`solver_mode'"
+    if `"`solver_mode'"' == "cmgschur" ereturn scalar fereg_cmg_degree = `cmgdegree'
     ereturn local fereg_preconditioner "`preconditioner_mode'"
     ereturn scalar fereg_requested_threads = el(e(fereg_runtime), 28, 2)
     ereturn scalar fereg_threads = el(e(fereg_runtime), 29, 2)

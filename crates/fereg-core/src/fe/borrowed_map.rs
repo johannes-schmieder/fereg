@@ -1149,6 +1149,7 @@ fn component_scaled_checkpoint_weights(
 /// reconstructed in observation space and must pass the ordinary MAP FE
 /// certificate before it can leave the solver.
 struct TwoFePcgWorkspace {
+    cmg_schur: Option<Box<super::cmg_schur::CmgSchurPreconditioner>>,
     left_effect: usize,
     right_effect: usize,
     component_roots: Vec<usize>,
@@ -1185,6 +1186,7 @@ impl TwoFePcgWorkspace {
         let right_cells = usize::try_from(plan.right)
             .map_err(|_| allocation("two-FE PCG right workspace dimensions overflow"))?;
         Ok(Self {
+            cmg_schur: None,
             left_effect,
             right_effect,
             component_roots: Vec::new(),
@@ -1347,6 +1349,40 @@ impl Drop for PcgPilotGroupScratch<'_> {
 }
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
+    /// Attach a fixed-weight OLS preconditioner after admission of the base owner.
+    pub(crate) fn enable_cmg_schur(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        degree: usize,
+        threads: usize,
+        budget: Option<FeSolverMemoryBudget>,
+    ) -> Result<crate::memory::SolverWorkspacePeak> {
+        let graph = self.two_fe_pcg.as_mut().ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Unsupported,
+                "cmgschur requires exactly two intercept effects",
+            )
+        })?;
+        let preconditioner = super::cmg_schur::CmgSchurPreconditioner::build(
+            &self.design,
+            weights,
+            graph.left_effect,
+            degree,
+            threads,
+            budget,
+        )?;
+        let peak = preconditioner.construction_peak();
+        graph.cmg_schur = Some(Box::new(preconditioner));
+        Ok(peak)
+    }
+
+    pub(crate) fn cmg_schur_bytes(&self) -> Result<u128> {
+        self.two_fe_pcg
+            .as_ref()
+            .and_then(|g| g.cmg_schur.as_ref())
+            .map_or(Ok(0), |p| p.retained_bytes())
+    }
+
     /// Completed two-pass Schur products, in observation/RHS multiply-adds.
     /// This is a routing observation, never weighted numerical authority.
     pub(crate) fn ppml_operator_work(&self) -> Option<u128> {
@@ -1561,10 +1597,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             n.checked_add(capacity as u128)
                 .ok_or_else(|| allocation("FE actual capacities overflow"))
         })?;
+        let cmg_bytes = self.cmg_schur_bytes()?;
         banks
             .checked_mul(8)
             .and_then(|n| n.checked_add(std::mem::size_of::<Self>() as u128))
             .and_then(|n| n.checked_add(self.design.descriptor_bytes()))
+            .and_then(|n| n.checked_add(cmg_bytes))
             .ok_or_else(|| allocation("FE actual owner footprint overflows"))
     }
     pub(crate) fn capacities(&self) -> ReusableMapCapacities {
@@ -2137,12 +2175,17 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             .two_fe_pcg
             .as_mut()
             .ok_or_else(|| invalid_data("two-FE categorical MAP PCG workspace is unavailable"))?;
+        let cmg_schur = graph.cmg_schur.is_some();
         let result = absorb_two_fe_pcg_reusing(
             &self.design,
             weights,
             values,
             config,
-            0.5 * config.tolerance,
+            if cmg_schur {
+                (config.tolerance * 0.01).max(1e-15).min(config.tolerance)
+            } else {
+                0.5 * config.tolerance
+            },
             completed_pilot_iterations,
             pilot_contraction,
             setup_seconds,
@@ -2155,7 +2198,11 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             &mut self.cg_next_residual_square,
             &mut self.cg_direction_projection,
             &mut self.cg_ratio,
-            SchurWorkLimit::Map { refine: refine_ols },
+            if cmg_schur {
+                SchurWorkLimit::CmgSchur
+            } else {
+                SchurWorkLimit::Map { refine: refine_ols }
+            },
             self.retain_coefficients,
         );
         match result? {
@@ -2202,6 +2249,7 @@ fn absorb_two_fe_pcg_reusing(
     let (iteration_cap, checkpoint_progress, refine) = match work_limit {
         SchurWorkLimit::Map { refine } => (None, false, refine),
         SchurWorkLimit::Checkpoint(cap) => (Some(cap), true, false),
+        SchurWorkLimit::CmgSchur => (None, false, false),
     };
     let mut correction_tolerance =
         refine.then(|| super::auto::direct_lsmr_tolerance(config.tolerance));
@@ -2232,7 +2280,12 @@ fn absorb_two_fe_pcg_reusing(
     let remaining_iterations = config
         .max_iterations
         .saturating_sub(completed_pilot_iterations);
-    let map_fallback_reserve = remaining_iterations / 4;
+    let cmg_schur = matches!(work_limit, SchurWorkLimit::CmgSchur);
+    let map_fallback_reserve = if cmg_schur {
+        0
+    } else {
+        remaining_iterations / 4
+    };
     let pcg_iteration_limit = iteration_cap.map_or_else(
         || config.max_iterations.saturating_sub(map_fallback_reserve),
         |cap| cap.min(config.max_iterations),
@@ -2345,17 +2398,31 @@ fn absorb_two_fe_pcg_reusing(
                     }
                 }
             }
-            crate::kernels::dispatch!(
-                crate::kernels::installed(),
-                pcg_initialize(
-                    &graph.right_weights,
-                    scale_components.then_some(graph.component_scales.as_slice()),
-                    stride,
+            if let Some(preconditioner) = graph.cmg_schur.as_mut() {
+                preconditioner.apply_batch(
                     &graph.residual,
                     &mut graph.direction,
-                    residual_square
-                )
-            );
+                    stride,
+                    rhs_count,
+                    scale_components.then_some(graph.component_scales.as_slice()),
+                )?;
+                crate::kernels::dispatch!(
+                    hardware,
+                    column_products(&graph.residual, &graph.direction, stride, residual_square)
+                );
+            } else {
+                crate::kernels::dispatch!(
+                    crate::kernels::installed(),
+                    pcg_initialize(
+                        &graph.right_weights,
+                        scale_components.then_some(graph.component_scales.as_slice()),
+                        stride,
+                        &graph.residual,
+                        &mut graph.direction,
+                        residual_square
+                    )
+                );
+            }
         }
         if residual_square
             .iter()
@@ -2490,14 +2557,28 @@ fn absorb_two_fe_pcg_reusing(
                 // The state update is level-disjoint. Keep this scalar reduction
                 // serial in canonical level/RHS order so thread count cannot alter
                 // the recurrence or its stopping decision.
+                if !cmg_schur {
+                    crate::kernels::dispatch!(
+                        hardware,
+                        pcg_energy(
+                            &graph.right_weights,
+                            scale_components.then_some(graph.component_scales.as_slice()),
+                            stride,
+                            &graph.residual,
+                            next_residual_square
+                        )
+                    );
+                }
+            } else if cmg_schur {
                 crate::kernels::dispatch!(
                     hardware,
-                    pcg_energy(
-                        &graph.right_weights,
-                        scale_components.then_some(graph.component_scales.as_slice()),
+                    pcg_step(
                         stride,
-                        &graph.residual,
-                        next_residual_square
+                        ratio,
+                        &graph.direction,
+                        &graph.operator,
+                        &mut graph.solution,
+                        &mut graph.residual
                     )
                 );
             } else {
@@ -2512,6 +2593,24 @@ fn absorb_two_fe_pcg_reusing(
                         &graph.operator,
                         &mut graph.solution,
                         &mut graph.residual,
+                        next_residual_square
+                    )
+                );
+            }
+            if let Some(preconditioner) = graph.cmg_schur.as_mut() {
+                preconditioner.apply_batch(
+                    &graph.residual,
+                    &mut graph.operator,
+                    stride,
+                    rhs_count,
+                    scale_components.then_some(graph.component_scales.as_slice()),
+                )?;
+                crate::kernels::dispatch!(
+                    hardware,
+                    column_products(
+                        &graph.residual,
+                        &graph.operator,
+                        stride,
                         next_residual_square
                     )
                 );
@@ -2570,7 +2669,23 @@ fn absorb_two_fe_pcg_reusing(
             if breakdown {
                 break;
             }
-            if parallel_recurrence {
+            if cmg_schur {
+                // The operator bank now holds z = B r; the prior S p has
+                // already been consumed by the solution/residual update.
+                for (direction, preconditioned) in graph
+                    .direction
+                    .chunks_mut(stride)
+                    .zip(graph.operator.chunks(stride))
+                {
+                    for rhs in 0..rhs_count {
+                        direction[rhs] = if active_rhs_state[rhs] == 0.0 {
+                            0.0
+                        } else {
+                            preconditioned[rhs] + ratio[rhs] * direction[rhs]
+                        };
+                    }
+                }
+            } else if parallel_recurrence {
                 let level_chunk = recurrence_plan.chunk(right_levels);
                 let cell_chunk = level_chunk
                     .checked_mul(stride)
@@ -2746,6 +2861,13 @@ fn absorb_two_fe_pcg_reusing(
             }
         }
         break;
+    }
+
+    if cmg_schur {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "cmgschur did not certify within its iteration budget",
+        ));
     }
 
     // PCG is an acceleration only. A finite breakdown or a full-certificate
@@ -7745,6 +7867,7 @@ fn checkpoint_schur_copy(
 enum SchurWorkLimit {
     Map { refine: bool },
     Checkpoint(usize),
+    CmgSchur,
 }
 
 // Values remain authoritative input until reconstruction. A failed final

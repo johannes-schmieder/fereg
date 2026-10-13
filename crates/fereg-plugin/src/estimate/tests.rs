@@ -2147,7 +2147,7 @@ fn publication_admission_uses_reported_axis_before_reading_rows() {
 }
 
 #[test]
-fn saved_publication_checks_observed_capacities_before_any_store() {
+fn saved_publication_validates_solver_codes_and_capacities_before_any_store() {
     let _guard = instrumentation::lock_action_observation();
     for mode in [MemoryMode::Fast, MemoryMode::Low] {
         let (args, mut spi) = saved_output_fixture();
@@ -2194,6 +2194,19 @@ fn saved_publication_checks_observed_capacities_before_any_store() {
             action.outputs.residual.is_some(),
         )
         .unwrap();
+        // Requested and used codes in both diagnostic rows admit the new
+        // route, while unknown and fractional codes still fail before stores.
+        for cell in [0, 1, SOLVER_COLUMNS, SOLVER_COLUMNS + 1] {
+            let original = shadow.solver[cell];
+            shadow.solver[cell] = 8.0;
+            validate_shadow_diagnostics(&action, &shadow).unwrap();
+            for invalid_code in [0.0, 7.5, 9.0] {
+                shadow.solver[cell] = invalid_code;
+                assert!(validate_shadow_diagnostics(&action, &shadow).is_err());
+            }
+            shadow.solver[cell] = original;
+        }
+        assert_eq!((spi.store_calls, spi.receipt_complete()), (0, 0.0));
         let runtime = build_runtime_shadow(&action, &shadow, &observation).unwrap();
         let bytes = shadow.capacity_bytes()
             + derived.capacity_bytes()
@@ -4186,6 +4199,7 @@ fn shadow_fe_identity_rejects_malformed_combinations() {
 #[test]
 fn option_spellings_parse_case_insensitively_like_vce_and_dof() {
     assert_eq!(parse_solver("LSMR").unwrap(), FeSolverKind::Lsmr);
+    assert_eq!(parse_solver("CMGSchur").unwrap(), FeSolverKind::CmgSchur);
     assert_eq!(parse_solver("Irons-Tuck").unwrap(), FeSolverKind::IronsTuck);
     assert_eq!(
         parse_preconditioner("Schwarz").unwrap(),
@@ -4193,6 +4207,53 @@ fn option_spellings_parse_case_insensitively_like_vce_and_dof() {
     );
     assert_eq!(parse_vce("ROBUST").unwrap(), OlsVceKind::Robust);
     assert_eq!(parse_solver("gauss").unwrap_err().code, ErrorCode::Syntax);
+}
+
+#[test]
+fn cmgschur_cutoff_defaults_and_explicit_values_survive_framed_requests() {
+    for degree in [None, Some(4), Some(5), Some(6)] {
+        let (mut args, _) = fixture(OlsVceKind::Iid);
+        replace_argument(&mut args, "solver", "solver=cmgschur".to_owned());
+        replace_argument(&mut args, "preconditioner", "preconditioner=off".to_owned());
+        if let Some(degree) = degree {
+            args.push(format!("cmgdegree={degree}"));
+        }
+        for request in [&args, &bundled(&args)] {
+            let specification = EstimateActionSpec::parse(request).unwrap();
+            assert_eq!(specification.solver, FeSolverKind::CmgSchur);
+            assert_eq!(specification.cmg_schur_degree, degree.unwrap_or(5));
+        }
+    }
+}
+
+#[test]
+fn invalid_cmgschur_requests_fail_before_observation_reads_and_stores() {
+    for (solver, degree) in [
+        ("auto", "5"),
+        ("cmg", "5"),
+        ("cmgschur", "3"),
+        ("cmgschur", "7"),
+        ("cmgschur", "5.5"),
+        ("cmgschur", "-1"),
+    ] {
+        let (mut args, mut spi) = fixture(OlsVceKind::Iid);
+        replace_argument(&mut args, "solver", format!("solver={solver}"));
+        args.push(format!("cmgdegree={degree}"));
+        let error = estimate_ols(&bundled(&args), &mut spi).unwrap_err();
+        assert_eq!(error.code, ErrorCode::Syntax, "{solver}, {degree}");
+        assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+        assert_eq!(spi.receipt_complete(), 0.0);
+    }
+    // The no-FE and one-FE models are rejected before reading any observations.
+    for (mut args, mut spi) in [fixture(OlsVceKind::Iid), saved_output_fixture()] {
+        replace_argument(&mut args, "solver", "solver=cmgschur".to_owned());
+        replace_argument(&mut args, "preconditioner", "preconditioner=off".to_owned());
+        let error = estimate_ols(&args, &mut spi).unwrap_err();
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(error.message.contains("exactly two categorical intercept"));
+        assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+        assert_eq!(spi.receipt_complete(), 0.0);
+    }
 }
 
 #[test]

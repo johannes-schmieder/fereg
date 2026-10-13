@@ -34,7 +34,8 @@ The former `version` and `doctor` options are removed and return r(198).
 | `dof()` | pairwise (default), firstpair, continuous, none | No public DoF-policy override |
 | `noconstant` | Suppress reported constant | Unsupported; structural constant required |
 | `residuals(newvar)` | Response residual | Formula selected by `residualtype()` |
-| `solver()` | auto (default), map, lsmr, cmg, it, squarem | auto (default), map, lsmr, cmg |
+| `solver()` | auto (default), map, lsmr, cmg, cmgschur (experimental), it, squarem | auto (default), map, lsmr, cmg |
+| `cmgdegree(#)` | Experimental cmgschur only; 4, 5 (default), or 6 | Unsupported |
 | `threads(#)` | Nonnegative integer; 0 resolves native default | Same |
 | `tolerance(#)` | Finite 0 < t < 1; default 1e-8 | Same, outer convergence tolerance |
 | `iterate(#)` | Positive integer; default 16,000 | Positive integer; default 10,000 outer iterations |
@@ -73,6 +74,27 @@ unsupported requests fail clearly.
 | auto | No FE, one/multiple intercept or slope-bearing FEs, disconnected designs | Same model grammar with changing positive IRLS weights |
 | lsmr | General supported FE grammar, including slopes and multiple RHSs | At least two categorical intercept FEs, including more than three; no absorbed slopes |
 | cmg | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; no slopes | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; no slopes |
+| cmgschur (experimental) | Exactly two categorical intercept effects; positive observation weights, finite controls, disconnected components and saved effects | Unsupported |
+
+The experimental `cmgschur` route eliminates the larger FE implicitly in the
+outer Schur operator. Its CMG preconditioner explicitly eliminates levels with
+at most `cmgdegree()` distinct neighbors and retains the others as auxiliary
+vertices. Repeated observations form weighted cells before degree counting.
+A fixed symmetric CMG cycle receives component-centered firm residuals padded
+with zero auxiliary loads; its firm output is restricted and centered again.
+The outer PCG recurrence uses this preconditioned residual in every energy and
+direction update. It targets a hundredth of the requested FE tolerance, floored
+at 1e-15 and never looser than the request, and reconstructs and independently
+certifies observation residuals at the requested tolerance. Failure is explicit;
+it does not silently switch solvers. The existing auto, CMG and other routes
+retain their algorithms and exact scientific results.
+
+Declared prototype scope: new-route coefficients, covariance, fit statistics,
+residuals and FE coordinates may differ within section 20 tolerances; sample,
+rank, omission and other discrete decisions do not change. Independent witnesses
+cover dense weighted dummy OLS, sealed weak graphs, repeated cells, disconnected
+components, Schur/hybrid equivalence and a multilevel cycle's linearity, symmetry
+and positive energy. No default-route or PPML algorithm change is authorized.
 
 The OLS CMG adapter also handles zero/one categorical effects by exact
 no-work/direct projection; preserve this degenerate support and identify that

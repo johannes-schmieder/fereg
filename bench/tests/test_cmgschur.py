@@ -1,0 +1,213 @@
+"""CMG-Schur benchmark witnesses: topology, transport and scientific guards."""
+import copy
+import hashlib
+import json
+from pathlib import Path
+import struct
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import cmgschur
+import cmgschur_cases
+from native_io import case_header
+
+
+def bits(value):
+    return struct.pack('>d', value).hex()
+
+
+def result(arm='auto'):
+    shapes = {'RB': (1, 1), 'RV': (1, 1), 'RSTATUS': (1, 4), 'RFIT': (12, 2),
+              'RDOF': (20, 2), 'RCERT': (32, 2), 'RSOLVER': (2, 16), 'RRUNTIME': (30, 2),
+              'RFE': (2, 8), 'RCLUSTER': (1, 4), 'RSUBSET': (1, 4), 'RMARKB': (1, 1),
+              'RMARKV': (1, 1), 'RREC': (1, 16), 'RMEMORY': (11, 2)}
+    tables = {name: {'rows': r, 'columns': c, 'bits': [bits(1.)] * (r*c)}
+              for name, (r, c) in shapes.items()}
+    solver = tables['RSOLVER']['bits']
+    for row in range(2):
+        solver[row*16] = bits(cmgschur.EXPECTED_SOLVER[arm])
+        solver[row*16+1] = bits(4 if arm == 'auto' else cmgschur.EXPECTED_SOLVER[arm])
+    return {'schema': 1, 'return_code': 0, 'matrices': tables, 'error': ''}
+
+
+def case_bytes():
+    arguments = [b'estimate-ols', b'threads=1', b'solver=auto', b'preconditioner=auto']
+    return b'FEREG_REPLAY_V1\n2 6 4 1 0\n' + b''.join(
+        str(len(a)).encode() + b'\n' + a + b'\n' for a in arguments) + b'body\n9\nthreads=1\n'
+
+
+class CmgSchurBenchmark(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.meta = {'rows': 2, 'columns': 6,
+                     'outputs': dict(zip(['sample', 'residual', 'drop_reason', 'xb', 'xbd', 'absorbed'], range(6)))}
+        self.data = np.array([[1., 1.], [.2, -.2], [0., 0.], [.3, .4], [.5, .2], [.2, -.2]])
+        self.left, self.right = self.root / 'left', self.root / 'right'
+        self.data.tofile(self.left)
+        self.data.tofile(self.right)
+
+    def test_long_and_weak_have_cutoff_discrimination_and_duplicate_links(self):
+        for kind in ['long', 'weak']:
+            columns = cmgschur_cases.synthetic(kind, 150, 100, 20)
+            summary = cmgschur_cases.graph_summary(columns)
+            for degree in ['4', '5', '6', '7', '10']:
+                self.assertGreater(summary['degree_histogram'][degree], 0)
+            self.assertLess(summary['distinct_links'], summary['rows'])
+            self.assertEqual(summary['workers'], 150)
+            self.assertEqual(summary['firms'], 100)
+        short = cmgschur_cases.graph_summary(cmgschur_cases.synthetic('short', 50, 20, 2))
+        self.assertEqual(set(short['degree_histogram']), {'1', '2'})
+
+    def test_source_identity_records_git_head_and_actual_dirty_flag(self):
+        for dirty in ['', ' M source.rs\n']:
+            replies = [str(self.root), 'a' * 40, dirty]
+            with patch.object(cmgschur.subprocess, 'run', side_effect=[
+                    subprocess.CompletedProcess([], 0, stdout=value) for value in replies]):
+                identity = cmgschur.source_identity(self.root)
+            self.assertEqual(identity['git'], {'available': True, 'head': 'a' * 40, 'dirty': bool(dirty)})
+            self.assertEqual(set(identity['tool_sha256']), {'cmgschur.py', 'cmgschur_cases.py'})
+            self.assertTrue(all(len(value) == 64 for value in identity['tool_sha256'].values()))
+
+    def test_archived_source_declaration_does_not_claim_verified_clean_git(self):
+        declaration = {'revision': 'a' * 40, 'dirty': False, 'source_tar_sha256': 'b' * 64}
+        (self.root / '.fereg-source.json').write_text(json.dumps(declaration))
+        with patch.object(cmgschur.subprocess, 'run', side_effect=FileNotFoundError('git')):
+            identity = cmgschur.source_identity(self.root)
+        self.assertEqual(identity['git'], {'available': False, 'head': None, 'dirty': None})
+        self.assertEqual(identity['archive_manifest']['declaration'], declaration)
+        self.assertFalse(identity['archive_manifest']['verified_against_checkout'])
+        with patch.object(cmgschur.subprocess, 'run', return_value=subprocess.CompletedProcess(
+                [], 0, stdout=str(self.root.parent))):
+            nested = cmgschur.source_identity(self.root)
+        self.assertEqual(nested, identity)
+
+    def test_unavailable_git_without_manifest_leaves_identity_unknown(self):
+        with patch.object(cmgschur.subprocess, 'run', side_effect=subprocess.TimeoutExpired('git', 5)):
+            identity = cmgschur.source_identity(self.root)
+        self.assertEqual(identity['git'], {'available': False, 'head': None, 'dirty': None})
+        self.assertNotIn('archive_manifest', identity)
+
+    def test_dense_dummy_oracle_is_independent_and_stationary(self):
+        columns = cmgschur_cases.synthetic('long', 50, 20, 12)
+        target = cmgschur_cases.dense_oracle(columns)
+        residual = np.array(target['residual'])
+        self.assertEqual(target['rank'], 71)
+        self.assertLess(abs(residual.sum()), 1e-9)
+        for column in columns[1:3]:
+            self.assertLess(abs(residual @ column), 1e-9)
+        for ids in columns[-2:]:
+            for code in np.unique(ids):
+                self.assertLess(abs(residual[ids == code].sum()), 1e-9)
+        self.assertGreater(np.linalg.eigvalsh(target['covariance']).min(), 0)
+
+    def test_csv_preserves_rows_and_rejects_missing_or_inexact_ids(self):
+        path = self.root / 'source.csv'
+        path.write_text('y,i,j,x\n2,1,3,0.5\n4,1,3,-0.5\n')
+        columns = cmgschur_cases.csv_columns(path, 'y', 'i', 'j', ['x'])
+        self.assertEqual([list(c) for c in columns], [[2., 4.], [.5, -.5], [1., 1.], [3., 3.]])
+        for bad in ['nan', '', '9007199254740994', '1.5']:
+            path.write_text(f'y,i,j\n2,{bad},3\n')
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                cmgschur_cases.csv_columns(path, 'y', 'i', 'j', [])
+
+    def test_framed_variant_only_changes_options(self):
+        source, target = self.root / 'source.case', self.root / 'target.case'
+        source.write_bytes(case_bytes())
+        cmgschur.prepare(source, target, 'cmgschur5', 4)
+        with target.open('rb') as stream:
+            shape, args = case_header(stream)
+            self.assertEqual(shape[2], 5)
+            self.assertIn(b'solver=cmgschur', args)
+            self.assertIn(b'cmgdegree=5', args)
+            self.assertIn(b'threads=4', args)
+            self.assertIn(b'preconditioner=off', args)
+            self.assertEqual(stream.read(), b'body\n9\nthreads=1\n')
+        strict = self.root / 'strict.case'
+        cmgschur.prepare(source, strict, 'lsmr-reference', 1)
+        with strict.open('rb') as stream:
+            _, args = case_header(stream)
+            self.assertIn(b'solver=lsmr', args)
+            self.assertIn(b'tolerance=1e-12', args)
+            self.assertIn(b'preconditioner=auto', args)
+
+    def test_all_arms_once_in_each_rotating_repetition(self):
+        self.assertEqual(cmgschur.order(-1), cmgschur.ARMS)
+        for repetition in range(7):
+            self.assertEqual(set(cmgschur.order(repetition)), set(cmgschur.ARMS))
+            self.assertEqual(len(cmgschur.order(repetition)), 5)
+        self.assertGreater(len({tuple(cmgschur.order(i)) for i in range(7)}), 4)
+
+    def test_science_guards_accept_roundoff_but_reject_wrong_science(self):
+        base = result()
+        altered = copy.deepcopy(base)
+        altered['matrices']['RB']['bits'][0] = bits(1. + 1e-9)
+        cmgschur.scientific_comparison(base, altered, self.left, self.right, self.meta)
+        for name in ['RB', 'RV', 'RSTATUS', 'RDOF']:
+            altered = copy.deepcopy(base)
+            altered['matrices'][name]['bits'][1 if name == 'RDOF' else 0] = bits(2.)
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                cmgschur.scientific_comparison(base, altered, self.left, self.right, self.meta)
+        for column, value in [(0, 0.), (1, 1.), (2, 1.), (4, float.fromhex('0x1p+1023'))]:
+            data = self.data.copy()
+            data[column, 0] = value
+            data.tofile(self.right)
+            with self.subTest(column=column), self.assertRaises(ValueError):
+                cmgschur.scientific_comparison(base, base, self.left, self.right, self.meta)
+
+    def test_original_failure_is_retained_and_new_solver_failure_stops(self):
+        for failed in ['cmg', 'cmgschur5']:
+            with self.subTest(failed=failed):
+                root = self.root / failed
+                root.mkdir()
+                oracle, case = root / 'oracle.case', root / 'timing.case'
+                for path in [oracle, case]:
+                    path.write_bytes(case_bytes())
+                    meta = {**self.meta, 'case_sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+                    if path == oracle:
+                        meta['oracle'] = {}
+                    path.with_suffix('.json').write_text(json.dumps(meta))
+                plugin = root / 'plugin'
+                plugin.write_bytes(b'plugin')
+                def build(path, *unused):
+                    path.write_bytes(b'harness')
+                    return ['mock-build']
+                def run(command, log, timeout):
+                    stem = Path(command[-2]).stem
+                    arm = 'lsmr-reference' if stem == 'reference' else stem.removeprefix('current-')
+                    if arm == failed:
+                        raise RuntimeError('intentional failed cell')
+                    value = {**result(arm), 'columns': []}
+                    path = Path(command[-1])
+                    path.write_text(json.dumps(value))
+                    self.data.tofile(path.with_suffix('.json.columns'))
+                    log.write_text('NATIVE_SECONDS=0.1\n')
+                    return {'wall_s': .1, 'maxrss_bytes': 10}
+                output = root / 'output'
+                argv = ['cmgschur', '--plugin', str(plugin), '--oracle', str(oracle),
+                        '--cases', str(case), '--output', str(output), '--threads', '1']
+                with patch.object(sys, 'argv', argv), patch.object(cmgschur, 'scratch', side_effect=lambda p: p), \
+                        patch.object(cmgschur, 'build_harness', side_effect=build), \
+                        patch.object(cmgschur, 'run_process', side_effect=run), \
+                        patch.object(cmgschur, 'oracle_check'), patch('builtins.print'):
+                    self.assertEqual(cmgschur.main(), 1)
+                summary = json.loads((output / 'summary.json').read_text())
+                self.assertTrue(any(r['status'] == 'failed' and r['arm'] == failed for r in summary['records']))
+                if failed == 'cmg':
+                    self.assertEqual(summary['status'], 'complete_with_failed_cells')
+                    self.assertEqual(len(summary['summary']), 1)
+                    self.assertNotIn('cmg', summary['summary'][0]['medians'])
+                else:
+                    self.assertEqual(summary['status'], 'failed')
+                    self.assertEqual(summary['summary'], [])
+
+
+if __name__ == '__main__':
+    unittest.main()

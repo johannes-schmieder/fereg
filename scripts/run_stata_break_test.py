@@ -99,11 +99,15 @@ def main() -> None:
     parser.add_argument("--plugin-sha256", required=True)
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--fixture-kind", choices=sorted(BREAK_FIXTURES), default="ols")
+    parser.add_argument("--ols-solver", choices=("auto", "cmgschur"), default="auto",
+                        help="OLS route exercised by both native and publication Break checks")
     parser.add_argument("--public-scope", action="store_true",
                         help="exercise feppml's outer scope with the private injection adapter")
     args = parser.parse_args()
     if args.public_scope and args.fixture_kind != "ppml":
         parser.error("--public-scope requires --fixture-kind ppml")
+    if args.ols_solver != "auto" and args.fixture_kind != "ols":
+        parser.error("--ols-solver requires --fixture-kind ols")
     if not args.stata:
         raise SystemExit("set STATA_BIN or pass --stata")
 
@@ -161,7 +165,10 @@ def main() -> None:
                 'plugin call __fereg_break_provenance, selftest "ado=0.5.0" '
                 '"protocol_major=1" "protocol_minor=6" '
                 '"stata=`c(stata_version)\'" "threads=1" "verbose=1"',
-                f"do {stata_quote(fixture)}" + (" public" if args.public_scope else ""),
+                f"do {stata_quote(fixture)}" + (
+                    f" {args.ols_solver}" if args.fixture_kind == "ols"
+                    else " public" if args.public_scope else ""
+                ),
                 "",
             ]
         )
@@ -194,6 +201,8 @@ def main() -> None:
             if "FEPPML_PUBLIC_SCOPE_VERIFIED" not in transcript:
                 raise RuntimeError("public-scope Break fixture did not verify its boundary")
             print("BOUNDARY: feppml public scope")
+        if args.fixture_kind == "ols":
+            print(f"BOUNDARY: OLS solver({args.ols_solver})")
         print(f"PASS: {expected}")
     finally:
         native_marker_path.unlink(missing_ok=True)
