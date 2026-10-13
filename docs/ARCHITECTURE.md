@@ -71,6 +71,20 @@ without allocation. PPML outputs have one requested-product constructor, one xb
 representation and one immutable final-row ledger shared with the sample.
 Topology, weight, response and basis identities remain explicit dependencies.
 
+Automatic two-FE PPML may retain separately owned historical canonical geometry
+inside its existing persistent Fast-products reservation. Only strict checkpoints
+consume it as a fixed preconditioner for the exact current-weight implicit
+operator; ordinary frames and accepted-mean Hessian refresh retain their normal
+solves. `ols/canonical_products/historical_preconditioner.rs` owns compatibility,
+transported inverse actions, capacity charges and the per-component/original-RHS
+work ledger. The session publishes producers only after enclosing-frame
+acceptance and retires them on incompatibility, rejection or inference handoff.
+Speculation uses at most half the original iteration cap, with one cold retry
+using each RHS's remainder. Independent current-problem certification and all
+strict tolerances stay unchanged. Optional allocation misses remain cold; fatal
+errors and Break use the existing rollback. Low memory, saved-FE and explicit
+solver requests do not retain this cache.
+
 ## Host and execution
 
 `model_metadata.rs` owns shared model decoding and wire construction.

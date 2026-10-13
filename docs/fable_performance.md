@@ -508,7 +508,7 @@ of opportunity alone does not authorize broadening their implementation scope.
 | H2 | Dense three-FE MAP prototype gated by the certified contraction bound, LSMR fallback | Prototype approved by Johannes on 2026-10-12; freeze rule, fields, witnesses and budget first; see section 6 |
 | H3 | Parallel neighbour-pair assembly in canonical products | Arithmetic-preserving variant needs no decision; the private-accumulator variant is a separate ulp-scope declaration |
 | H8 | Consistent recurrence targets across automatic routes, certificate unchanged | Approved by Johannes on 2026-10-12: a hundredth of the request with the 1e-14 floor, acceptance only by the certificate at the request, no new rejection or re-route; see section 6 |
-| H9 | Reuse a prior canonical preconditioner with an exact current-weight operator | Approved by Johannes on 2026-10-13, including the narrow SPEC clarification; inventory and inverse-action gates precede the strict-checkpoint prototype and any ordinary-frame extension |
+| H9 | Reuse a prior canonical preconditioner with an exact current-weight operator | Strict-only design adopted on 2026-10-13 after scientific checks and review; H9f improvement failure and H9g inconclusive Mac timing remain recorded, without a release-speed claim |
 
 ### A2 authorized discovery: retain per-RHS projection guesses
 
@@ -939,8 +939,9 @@ default change.
 7. H9 (section 7) stopped at its original inventory drift gate. The separately
    authorized quality replay in H9e passes with absorption savings. The H9f
    strict-only complete-fit test passes science but misses the 5% dense-4M
-   gate at sixteen workers (3.41% observed improvement). Keep the prototype
-   experimental; ordinary-frame reuse and A2 do not advance. Certificate
+   gate at sixteen workers (3.41% observed improvement). Johannes subsequently
+   adopted strict-only integration under H9g after reviewing its inconclusive
+   Mac timing result. Ordinary-frame reuse and A2 do not advance. Certificate
    pass fusion remains separate.
 
 Each commit states its tier, its witnesses and what it did not change.
@@ -2669,8 +2670,59 @@ The 958.773-second isolated SCC panel supplies diagnostic observations, not
 Mac qualification. See [validation and limits](VALIDATION.md#h9-strict-only-fits-partial-performance-gain-2026-10-13),
 [lossless evidence](../bench/results/h9-20261013-strict.json) and the
 [reproducible task-only patch](../bench/results/h9-20261013-strict.patch).
-Production remains unchanged. This result ends H9f without ordinary-frame
-reuse, A2, a fitted drift rule or further timing attempts.
+That experiment left production unchanged and ended H9f without ordinary-frame
+reuse, A2, a fitted drift rule or further discovery timing attempts.
+
+### H9g. Authorized production integration
+
+On 2026-10-13 Johannes instructed: “Adopt this change and integrate it.” This
+authorizes the strict-only design tested in H9f despite its failed 5% discovery
+improvement gate. The failed sixteen-worker result remains evidence; adoption
+does not establish a 5% gain, authorize ordinary-frame reuse or reopen A2.
+
+Integrate only automatic two-FE PPML strict checkpoints with an already admitted
+persistent Fast canonical-products reservation and no saved-FE channels.
+Retain the positive finite drift compatibility check without a fitted cutoff,
+the exact accepted-weight operator, original RHS normalization, independent
+certificate, current-mean Hessian and existing tolerances. Keep the accepted
+producer identity, capacity-based memory charge, deterministic per-RHS consumed
+work, half-cap speculative limit, single budgeted cold retry and fatal-error
+rollback. Low memory, explicit solvers and other strict-candidate callers stay
+on their existing routes. Rename the prototype state descriptively and avoid
+allocating disabled trace messages.
+
+The affected numerical scope remains H9f's eligible checkpoint and downstream
+continuous values and inner work counts. Sample, rank, omission, separation,
+missingness, success/error, certificate decisions, outer/strict decisions and
+existing fallback decisions remain exact. Bind replay exceptions to eligible
+case input hashes before candidate calls. Use native replay with fixed-worker
+repeats at 2/4/8/16 workers, independent known-optimum and dummy-design witnesses,
+accepted-mean Hessian and both mean-bias checks, plus memory, budget, allocation,
+Break and transaction tests. Require the full runtime suite, native universal
+Mac build/load/ABI checks and independent architectural review.
+
+Freeze production edits and complete focused checks before quiet Mac timing.
+Use all twenty hash-bound standard workloads, one excluded warm-up followed by
+seven alternating pairs, 90 seconds per process and 2,400 seconds total. The
+95% paired-median bootstrap upper bound must stay within max(5%, 1 ms).
+Retain all attempted observations; no continuation or sampling until a pass.
+Time complete native calls including retention and discarded work. Exact
+same-arm repeatability and separate scoped cross-arm scientific checks apply.
+The prior SCC dense-design evidence remains diagnostic and is not converted
+into a Mac release-performance claim. Any additional target timing requires a
+separate predeclared bounded panel, without reviving the waived improvement gate.
+
+Result and adoption decision (2026-10-13): all scientific, transaction, native
+build and independent-review checks pass. The declared Mac panel completes all
+320 calls; nineteen cells pass and OLS K=20 at sixteen workers is inconclusive
+(paired ratio 1.020701, 95% interval [1.014167, 1.079446]). Background syncing,
+indexing and backup activity resumed; no quiet Mac qualification follows.
+After reviewing those timings and the SCC results, Johannes instructed
+“OK, let's adopt it,” accepting production integration with this limitation.
+No timing continuation was run and neither failed performance result becomes
+a pass. The combined diagnostic/H9 source and native artifact pass their
+separate composition checks; see the
+[adoption evidence](VALIDATION.md#h9-adopted-science-passes-mac-timing-inconclusive-2026-10-13).
 
 ### Follow-ups: certificate passes, then a separate A2 decision
 

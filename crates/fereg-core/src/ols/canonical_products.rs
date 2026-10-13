@@ -1,6 +1,6 @@
 //! Current-call two-partition projection and finite products for canonical PPML.
-//! All weighted state dies with this call; only certified rows and one-use
-//! moments cross into the canonical rank owner.
+//! Certified rows and one-use moments cross into the canonical rank owner.
+//! Eligible strict checkpoints may retain a separately charged fixed inverse.
 use super::prepared_scratch::PreparedOlsScratch;
 use super::PreparedOlsColumnKind;
 use crate::data::DenseMatrix;
@@ -19,6 +19,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 mod assembly;
+pub(super) mod historical_preconditioner;
 mod three;
 pub(crate) fn canonical_three_workspace_bytes(
     n: usize,
@@ -81,6 +82,9 @@ impl Budget {
     }
 
     fn reserve_empty<T>(&mut self, n: usize) -> Result<Vec<T>> {
+        self.reserve_empty_policy(n, false)
+    }
+    fn reserve_empty_policy<T>(&mut self, n: usize, optional: bool) -> Result<Vec<T>> {
         let mut result = Vec::new();
         let bytes = (n as u128)
             .checked_mul(size_of::<T>() as u128)
@@ -88,7 +92,9 @@ impl Budget {
         if bytes > self.remaining {
             return Err(allocation());
         }
-        result.try_reserve_exact(n).map_err(|_| allocation())?;
+        result
+            .try_reserve_exact(n)
+            .map_err(|_| if optional { declined() } else { allocation() })?;
         self.remaining = self
             .remaining
             .checked_sub(result.capacity() as u128 * size_of::<T>() as u128)
@@ -100,6 +106,11 @@ impl Budget {
         Ok(result)
     }
 
+    fn reserve_consumer<T: Clone>(&mut self, n: usize, value: T, optional: bool) -> Result<Vec<T>> {
+        let mut result = self.reserve_empty_policy(n, optional)?;
+        result.resize(n, value);
+        Ok(result)
+    }
     fn reserve<T: Clone>(&mut self, n: usize, value: T) -> Result<Vec<T>> {
         let mut result = self.reserve_empty(n)?;
         result.resize(n, value);
@@ -135,6 +146,16 @@ impl Plan {
         threads: usize,
         prior_operator_work: u128,
     ) -> Option<Self> {
+        Self::for_call(design, width, left, threads, prior_operator_work, false)
+    }
+    fn for_call(
+        design: &BorrowedInterceptFeDesign<'_>,
+        width: usize,
+        left: usize,
+        threads: usize,
+        prior_operator_work: u128,
+        reuse: bool,
+    ) -> Option<Self> {
         let n = design.nobs();
         let p = design.effects()[left].n_levels();
         let q = design.effects()[1 - left].n_levels();
@@ -161,7 +182,7 @@ impl Plan {
             .checked_mul(width as u128 + 1)?
             / 2;
         let work_allowance = gram_work.checked_add(prior_operator_work)?;
-        if work > work_allowance {
+        if work > work_allowance && !reuse {
             return None;
         }
         let mut plan = Self {
@@ -172,7 +193,7 @@ impl Plan {
             workers,
             stride,
             bytes: 0,
-            factor_work_budget: work_allowance - work,
+            factor_work_budget: work_allowance.saturating_sub(work),
         };
         plan.bytes = plan.minimum_storage_bytes(0, 0)?;
         Some(plan)
@@ -585,6 +606,108 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     prior_operator_work: u128,
     obsolete_projection: &mut Vec<f64>,
 ) -> Result<Option<Products<'a, P>>> {
+    try_build_once(
+        prepared,
+        generated,
+        response,
+        weights,
+        divisor,
+        config,
+        allowance,
+        prior_operator_work,
+        obsolete_projection,
+        &mut historical_preconditioner::Call::new(None, 0, 0),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn try_build_with_preconditioner<'a, P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &'a P,
+    generated: &[usize],
+    response: &'a [f64],
+    weights: BorrowedMapWeights<'_>,
+    divisor: f64,
+    config: MapConfig,
+    allowance: u128,
+    prior_operator_work: u128,
+    obsolete_projection: &mut Vec<f64>,
+    call: &mut historical_preconditioner::Call,
+) -> Result<Option<Products<'a, P>>> {
+    if call.envelope == 0 && !call.reuse() {
+        return try_build(
+            prepared,
+            generated,
+            response,
+            weights,
+            divisor,
+            config,
+            allowance,
+            prior_operator_work,
+            obsolete_projection,
+        );
+    }
+    if call.reuse() && call.initialize_ledger(generated.len() + 1).is_err() {
+        call.retire_for_retry();
+    }
+    let reused = call.reuse();
+    let result = try_build_once(
+        prepared,
+        generated,
+        response,
+        weights,
+        divisor,
+        config,
+        allowance,
+        prior_operator_work,
+        obsolete_projection,
+        call,
+    )?;
+    if result.is_some() {
+        return Ok(result);
+    }
+    call.clear_pending();
+    if !reused {
+        return if call.retry && call.spent() {
+            Err(declined())
+        } else {
+            Ok(None)
+        };
+    }
+    call.retire_for_retry();
+    let result = try_build_once(
+        prepared,
+        generated,
+        response,
+        weights,
+        divisor,
+        config,
+        allowance,
+        prior_operator_work,
+        obsolete_projection,
+        call,
+    )?;
+    if result.is_none() {
+        call.clear_pending();
+        if call.spent() {
+            return Err(declined());
+        }
+    }
+    Ok(result)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn try_build_once<'a, P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &'a P,
+    generated: &[usize],
+    response: &'a [f64],
+    weights: BorrowedMapWeights<'_>,
+    divisor: f64,
+    config: MapConfig,
+    allowance: u128,
+    prior_operator_work: u128,
+    obsolete_projection: &mut Vec<f64>,
+    call: &mut historical_preconditioner::Call,
+) -> Result<Option<Products<'a, P>>> {
     if config.max_iterations == 0
         || config.check_every == 0
         || !config.tolerance.is_finite()
@@ -615,13 +738,28 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         return Ok(None);
     }
     let left = usize::from(design.effects()[1].n_levels() > design.effects()[0].n_levels());
-    let Some(plan) = Plan::new(
-        &design,
-        generated.len() + 1,
-        left,
-        rayon::current_num_threads(),
-        prior_operator_work,
-    ) else {
+    let plan = if call.reuse() {
+        Plan::for_call(
+            &design,
+            generated.len() + 1,
+            left,
+            rayon::current_num_threads(),
+            prior_operator_work,
+            true,
+        )
+    } else {
+        Plan::new(
+            &design,
+            generated.len() + 1,
+            left,
+            rayon::current_num_threads(),
+            prior_operator_work,
+        )
+    };
+    let Some(plan) = plan else {
+        return Ok(None);
+    };
+    let Some(allowance) = allowance.checked_sub(call.live_bytes()) else {
         return Ok(None);
     };
     let available = allowance.saturating_sub(obsolete_projection.capacity() as u128 * 8);
@@ -644,6 +782,7 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         plan,
         allowance,
         obsolete_projection,
+        call,
     ) {
         Ok(result) => Ok(Some(result)),
         Err(error) if error.code == ErrorCode::NonConvergence => Ok(None),
@@ -664,6 +803,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     plan: Plan,
     allowance: u128,
     obsolete_projection: &mut Vec<f64>,
+    call: &mut historical_preconditioner::Call,
 ) -> Result<Products<'a, P>> {
     let started = Instant::now();
     let Plan {
@@ -795,13 +935,15 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     // retains its arithmetic. Implicit geometry admits the full certified
     // product pipeline where dense storage would otherwise force repeated
     // observation-space construction, not merely a different dense matvec.
-    let implicit = plan
-        .minimum_storage_bytes(matrix_cells, dense_charge)
-        .is_none_or(|bytes| bytes > allowance);
+    let scratch_vectors = if call.reuse() { 6 } else { 3 };
+    let implicit = call.reuse()
+        || plan
+            .minimum_storage_bytes(matrix_cells, dense_charge)
+            .is_none_or(|bytes| bytes > allowance);
     let iterative = implicit || dense_iterative;
     let krylov_cells = if iterative {
         d.checked_mul(width)
-            .and_then(|x| x.checked_mul(3))
+            .and_then(|x| x.checked_mul(scratch_vectors))
             .ok_or_else(declined)?
     } else {
         0
@@ -937,10 +1079,14 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             free[h] = block.start + local[h] - usize::from(local[h] > local[anchors[r]]);
         }
     }
-    let mut factor = budget.reserve(factor_cells, 0.)?;
-    let mut incidence_ids = budget.reserve(if implicit { n } else { 0 }, 0_usize)?;
-    let mut incidence_rows =
-        budget.reserve(if implicit { p } else { 0 }, IncidenceRow::default())?;
+    let mut factor = budget.reserve_consumer(factor_cells, 0., call.reuse())?;
+    let mut incidence_ids =
+        budget.reserve_consumer(if implicit { n } else { 0 }, 0_usize, call.reuse())?;
+    let mut incidence_rows = budget.reserve_consumer(
+        if implicit { p } else { 0 },
+        IncidenceRow::default(),
+        call.reuse(),
+    )?;
     if implicit {
         let mut edge = 0;
         for g in 0..p {
@@ -1032,6 +1178,45 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             }
         }
     }
+    if let Some(cache) = &call.cache {
+        call.rho = cache.validate(
+            &w,
+            &roots,
+            &free,
+            &parent,
+            &anchors,
+            a.codes(),
+            b.codes(),
+            generated,
+            left_effect,
+        )?;
+    }
+    if call.reuse() || call.retry {
+        call.prepare_ledger(&components, width)?;
+    }
+    let obsolete_bytes = obsolete_projection.capacity() as u128 * 8;
+    call.retain(
+        bytes + obsolete_bytes,
+        &w,
+        &roots,
+        &free,
+        &parent,
+        &anchors,
+        a.codes(),
+        b.codes(),
+        generated,
+        &components,
+        &factor,
+        iterative,
+        implicit,
+        left_effect,
+    );
+    historical_preconditioner::trace(format_args!(
+        "geometry|reuse={}|retry={}|workspace={bytes}|historical={}|allowance={allowance}",
+        call.reuse(),
+        call.retry,
+        call.live_bytes()
+    ));
     budget.release(matrix)?;
     budget.release(totals)?;
     budget.release(parent)?;
@@ -1146,7 +1331,11 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             Ok(())
         })?;
     let mut solved = budget.reserve(d * width, 0.)?;
-    let mut krylov = budget.reserve(krylov_cells, 0.)?;
+    if call.reuse() {
+        historical_preconditioner::consumer_setup_check()?;
+    }
+    let mut krylov = budget.reserve_consumer(krylov_cells, 0., call.reuse())?;
+    let numerical_refusal = std::sync::atomic::AtomicBool::new(false);
     let iterations = AtomicUsize::new(1);
     if d > 0 {
         let solve_column = |j: usize, values: &mut [f64], scratch: &mut [f64]| -> Result<()> {
@@ -1164,6 +1353,55 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                     let end = incidence_rows.partition_point(|row| row.component <= root);
                     let rows = &incidence_rows[start..end];
                     let diagonal = &factor[n + block.start..n + block.start + size];
+                    let apply = |direction: &[f64], product: &mut [f64]| {
+                        apply_incidence_schur(
+                            &factor[..n],
+                            diagonal,
+                            &incidence_ids,
+                            rows,
+                            direction,
+                            product,
+                        )
+                    };
+                    if call.reuse() {
+                        let Some(count) = historical_preconditioner::finish_numerical(
+                            call.solve(
+                                j,
+                                block,
+                                &roots,
+                                values,
+                                &mut scratch[..6 * size],
+                                config.max_iterations,
+                                config.tolerance * 0.01,
+                                apply,
+                            ),
+                            &numerical_refusal,
+                        )?
+                        else {
+                            continue;
+                        };
+                        iterations.fetch_max(count, Ordering::Relaxed);
+                        continue;
+                    }
+                    if call.retry {
+                        let Some(count) = historical_preconditioner::finish_numerical(
+                            call.cold_solve(
+                                j,
+                                block,
+                                values,
+                                &mut scratch[..3 * size],
+                                config.max_iterations,
+                                config.tolerance * 0.01,
+                                apply,
+                            ),
+                            &numerical_refusal,
+                        )?
+                        else {
+                            continue;
+                        };
+                        iterations.fetch_max(count, Ordering::Relaxed);
+                        continue;
+                    }
                     let count = solve_reduced_cg_with_product(
                         values,
                         &mut scratch[..3 * size],
@@ -1185,6 +1423,29 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 }
                 let factor = &factor[block.offset..block.offset + size * size];
                 if iterative {
+                    if call.retry {
+                        let Some(count) = historical_preconditioner::finish_numerical(
+                            call.cold_solve(
+                                j,
+                                block,
+                                values,
+                                &mut scratch[..3 * size],
+                                config.max_iterations,
+                                config.tolerance * 0.01,
+                                |direction, product| {
+                                    for (row, out) in factor.chunks(size).zip(product.iter_mut()) {
+                                        *out = reduced_matrix_product(row, direction);
+                                    }
+                                },
+                            ),
+                            &numerical_refusal,
+                        )?
+                        else {
+                            continue;
+                        };
+                        iterations.fetch_max(count, Ordering::Relaxed);
+                        continue;
+                    }
                     let count = solve_reduced_cg(
                         factor,
                         values,
@@ -1216,15 +1477,26 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         if iterative {
             solved
                 .par_chunks_mut(d)
-                .zip(krylov.par_chunks_mut(3 * d))
+                .zip(krylov.par_chunks_mut(scratch_vectors * d))
                 .enumerate()
-                .try_for_each(|(j, (values, scratch))| solve_column(j, values, scratch))?;
+                .try_for_each(|(j, (values, scratch))| {
+                    let result = solve_column(j, values, scratch);
+                    if call.reuse() || call.retry {
+                        historical_preconditioner::finish_numerical(result, &numerical_refusal)
+                            .map(|_| ())
+                    } else {
+                        result
+                    }
+                })?;
         } else {
             solved
                 .par_chunks_mut(d)
                 .enumerate()
                 .try_for_each(|(j, values)| solve_column(j, values, &mut []))?;
         }
+    }
+    if numerical_refusal.load(Ordering::Relaxed) {
+        return Err(declined());
     }
     budget.release(krylov)?;
     budget.release(incidence_ids)?;
@@ -1378,6 +1650,9 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     {
         return Err(declined());
     }
+    if call.reuse() {
+        historical_preconditioner::late_check()?;
+    }
     budget.release(partials)?;
     // Replay the certified pure coefficient calculation with unchanged inputs.
     // Full reconstruction releases weights now; tiled reconstruction retains
@@ -1470,9 +1745,11 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     let report = SolveReport {
         requested_solver: FeSolverKind::Map,
         used_solver: FeSolverKind::Map,
-        iterations: iterations.load(Ordering::Relaxed),
+        iterations: iterations
+            .load(Ordering::Relaxed)
+            .max(call.maximum_consumed()),
         checkpoint_retries: 0,
-        solver_workspace_peak: SolverWorkspacePeak::from_bytes(bytes)?,
+        solver_workspace_peak: SolverWorkspacePeak::from_bytes(bytes + call.charged_bytes())?,
         stop_reason: SolveStopReason::Certified,
         certificate: FeCertificate {
             absolute_infinity_norm: absolute,

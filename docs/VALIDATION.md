@@ -14,14 +14,101 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## H9 adopted: science passes, Mac timing inconclusive, 2026-10-13
+
+Johannes authorized adoption of the H9f strict-only design despite its failed
+5% discovery-improvement gate. After reviewing the Mac and SCC timings, he
+confirmed “OK, let's adopt it” on 2026-10-13, accepting integration with the
+Mac timing limitation recorded below. This does not establish quiet Mac timing
+qualification or a release-speed claim. The runtime now retains accepted
+canonical geometry only for automatic two-FE PPML strict checkpoints within an
+existing Fast reservation, with no saved-FE channels. The operator, RHS,
+certification and final accepted-mean Hessian remain current; all tolerances,
+memory allowances and protected model decisions remain unchanged. Ordinary
+frames, explicit solver requests, Low mode and Hessian refresh keep their
+existing solves. Independent source review clears the acceptance/rollback,
+identity, memory and deterministic per-RHS cold-retry safeguards.
+
+The parent is `2a7328f9f47910c51114ed8f527cc144571902cc`. Fresh universal Mac
+baseline/candidate plugins have SHA-256 `cc1d1ba5c8cb7394` / `d0053c508a61984d`;
+the [retained evidence](../bench/results/h9-20261013-integration.json) contains
+full identities, all structured checks, task harness sources and every timing
+observation. The [case-specific numerical scope](../tests/replay/scopes/2026-10-13-h9-strict-macos.json)
+was frozen from input identities and baseline presence before candidate replay.
+
+The independent diagnostic consolidation subsequently entered main as
+`25015664d506f31e23960dbdf1ae0b74b53ed6b8`. All eight H9 source hashes, its staged
+changes apart from the coordinated inventory, and its measured plugins remain
+unchanged. The combined complexity inventory and full runtime suite pass
+against that new parent: 1,765 Rust test invocations in 64 groups and 207 Python
+tests, with the same 13 optional Python skips and Mac GNU ELF audit skip. The
+measurements here retain their original artifact identities; they do not
+establish timing of the combined diagnostic/H9 artifact.
+
+The combined universal Mac plugin, SHA-256 `85dbf448ab1974122`, passes binary
+audit and native ARM64 load/ABI/selftest checks. Its 73-case replay (219 calls)
+is scientifically exact against the earlier H9 candidate and across repeats,
+with all independent references passing. Six further actual-reuse witness calls
+at one and sixteen workers also match that candidate exactly and pass the
+known-optimum/dummy-covariance checks. Four Stata/MP 19 fixtures pass for
+installation, the single runtime, public PPML scope and hidden PPML transactions.
+These composition checks have independent review and separate artifact bindings
+in the retained evidence. They do not resolve the Mac timing limitation below.
+
+| Check | Result |
+| --- | --- |
+| Full runtime suite | Pass: 1,759 Rust test invocations; 207 Python tests (200 in the main suite), 13 existing skips; formatting, Clippy, allocation audits, portable/static, complexity, mock-SPI and numerical guards. Mac skips the GNU ELF audit. |
+| Native Mac build | Both universal builds pass binary audit and native ARM64 load/ABI checks. No new Linux or Windows qualification claim. |
+| Native replay | All 73 cases pass, including independent references, fixed-worker repeats and scientific/protected-decision checks at 2/4/8/16 workers: 803 calls. |
+| Licensed Stata | All 17 PPML science, transaction, allocation and validator fixtures, plus private/public PPML Break rollback checks, pass. |
+| Actual reuse | Isolated full-fit Rust witness and 15 native calls at 1/2/4/8/16 workers pass; all ten candidate/repeat fits consume certified accepted geometry. |
+| Timing science | All 20 standard baseline/candidate pairs are exact, including binary output columns. All 320 later timing calls reproduce those fingerprints. |
+| Mac nonregression | 19/20 cells meet the confidence bound. OLS K=20 at 16 workers is inconclusive; background syncing, indexing and backups resumed. No clean Mac qualification or release-speed claim. |
+
+The native paired-score witness has analytically known coefficients and means,
+plus independent explicit-dummy covariance. Maximum coefficient error is
+`1.53e-16`, maximum scaled mean error `1.36e-15`; baseline/candidate coefficients
+are exact and the largest absolute covariance difference is `8.47e-21`.
+Protected sample, missingness, rank/omission, separation, outer/strict, fallback
+and acceptance decisions remain exact. Fixed-worker scientific repeats are
+exact; cross-worker science and protected decisions agree. Reuse consumes
+generation-1 geometry at generation 5 with 27 iterations, 36 operator actions
+and 27 inverse actions. The 132,120-byte cache and 232-byte ledger fit within
+338,752 bytes of reported workspace and the existing 1,048,576-byte reservation.
+Neither standard PPML timing case attempts reuse; the separate witness and
+earlier SCC experiment establish actual reuse coverage.
+
+The frozen timing panel uses one warm-up plus seven alternating pairs per cell,
+finishing all 320 calls in 650.64 of 2,400 seconds. The inconclusive cell has
+baseline/candidate medians 0.392249/0.401017 seconds and paired-median ratio
+1.020701. Its 95% bootstrap interval is [1.014167, 1.079446], exceeding the 1.05
+upper allowance. Retain every observation; no continuation was run. Host
+sampling records renewed FileProvider/Spotlight activity and later backups.
+The earlier SCC improvement failure remains unchanged and is not converted
+into a performance pass by the adoption instruction.
+
+Setup failures remain recorded: a parent build invoked from the wrong working
+directory was discarded before fits; the licensed driver rejected a filename
+before Stata ran; a bounded input reader and redundant `separation(none)` wire
+helper were corrected, with one baseline request rejected before estimation.
+After six valid native witness calls, an overly strict trace reader rejected
+only the order of concurrent RHS diagnostics. Independent review confirmed all
+fields and science exact. The repaired reader sorts only contiguous RHS blocks,
+preserving attempt boundaries and multiplicity; it verifies the six preserved
+outputs/events and runs only the nine originally unrun calls. No estimator,
+input, tolerance or fit budget changed in that repair.
+
 ## H9 strict-only fits: partial performance gain, 2026-10-13
 
 The authorized [strict-only complete-fit test](fable_performance.md#h9f-authorized-strict-only-complete-fit-prototype)
 finds useful savings but fails its predeclared discovery gate. Dense 4M total
 native time falls by 9.26% at four workers and 3.41% at sixteen workers; both
 sixteen-worker pairs miss the required 5% improvement. All scientific,
-repeatability, provenance, reuse and nonregression gates pass. Production
-remains unchanged; ordinary-frame reuse and A2 do not advance on this result.
+repeatability, provenance, reuse and nonregression gates pass. This experiment
+left production unchanged. Johannes later explicitly authorized the
+[strict-only integration](fable_performance.md#h9g-authorized-production-integration)
+despite the failed improvement gate; ordinary-frame reuse and A2 remain outside
+that authorization.
 
 | Frozen input | Workers | Baseline median s | Candidate median s | Median paired reduction |
 | --- | ---: | ---: | ---: | ---: |
@@ -74,7 +161,7 @@ The PPML/session groups each retain one pre-existing ignored test. Linux native
 build/load/ABI and input/output guards pass. Independent Astra review approves
 the repaired prototype and harness, then independently reproduces the final
 failed-gate decision. The task-only patch reproduces all eight tested source
-hashes exactly; it is not integrated into the runtime.
+hashes exactly; the experiment itself did not integrate it into the runtime.
 
 Build jobs `8051255`/`8051343` have `failed=0`, `exit_status=0`. Smoke wrapper
 `8051353` exits 1 after successful fits because the first reader used the
@@ -92,9 +179,10 @@ record losslessly, all paired observations, hashes, schemas, executable harness
 sources, accounting summaries and the failed attempt. Its embedded decoder
 reconstructs the complete records and reproduces the frozen analysis. The
 [task-only patch](../bench/results/h9-20261013-strict.patch) is against `86eaf5ef`.
-Production identity still matches that revision and `3d06d0466587` across 179
-runtime modules and 58 artifact inputs. No production integration, ordinary
-extension, resampling or retuning follows from this failed discovery gate.
+At the end of this experiment production identity matched that revision and
+`3d06d0466587` across 179 runtime modules and 58 artifact inputs. Production
+integration follows Johannes's later explicit instruction, not a pass of the
+failed discovery gate. No ordinary extension, resampling or retuning follows.
 
 ## H9 stale-preconditioner quality: promising absorption savings, 2026-10-13
 

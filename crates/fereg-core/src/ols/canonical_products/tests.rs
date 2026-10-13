@@ -5,7 +5,7 @@ use crate::ols::{
     OlsRequestV1, PreparedOlsData,
 };
 
-fn prepared(y: &[f64], x: &[Vec<f64>], g: &[f64], h: &[f64]) -> PreparedOlsData {
+pub(super) fn prepared(y: &[f64], x: &[Vec<f64>], g: &[f64], h: &[f64]) -> PreparedOlsData {
     prepared_effects(y, x, &[g, h])
 }
 

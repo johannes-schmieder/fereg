@@ -669,7 +669,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictCycle<'_, '_, P> {
             return Ok(StrictCycleOutcome::JointAccepted);
         }
         let (attempt_tolerance, engine) = self.prepare_attempt()?;
-        let transaction = self.session.strict_candidate()?;
+        let transaction = self.session.strict_checkpoint_candidate()?;
         let facts = self.candidate.inspect(
             &transaction,
             engine,

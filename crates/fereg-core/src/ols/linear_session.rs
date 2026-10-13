@@ -6,7 +6,7 @@
 //! PPML inference. Canonical fresh/strict and frozen operations borrow
 //! the stateless finite service and its physical moment/factor kernels. Reuse is reported per route and never inferred.
 
-use super::canonical_products::CanonicalMoments;
+use super::canonical_products::{historical_preconditioner, CanonicalMoments};
 use super::implicit_centered::ImplicitCenteredDesign;
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
@@ -479,6 +479,11 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictLinearCandidateTransaction<'_,
     }
 
     pub(crate) fn commit(mut self) {
+        if self.basis_unchanged {
+            self.session.accept_pending_preconditioner();
+        } else {
+            self.session.retire_preconditioner();
+        }
         self.rollback = None;
     }
 
@@ -1514,7 +1519,26 @@ impl CertifiedLinearSessionProducts {
 
 /// Stateful owner for repeated solves on one immutable prepared sample and FE
 /// topology.  Sample or topology changes require a new session by design.
+#[cfg(test)]
+static PRECONDITIONER_TEST_HITS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+// Only a certified producer accepted by the outer PPML transaction reaches
+// this owner. Weight-only frames may retain it; basis/sample/topology changes
+// or a new cold/inference admission retire it.
+struct AcceptedPreconditioner {
+    cache: historical_preconditioner::Cache,
+    basis: FrozenLinearBasis,
+    sample: u64,
+    topology: u64,
+    basis_generation: u64,
+}
+
 pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Sized> {
+    preconditioner_reuse_enabled: bool,
+    #[cfg(test)]
+    preconditioner_last_work: usize,
+    accepted_preconditioner: Option<AcceptedPreconditioner>,
+    pending_preconditioner: Option<historical_preconditioner::Cache>,
     prepared: &'a P,
     group_centered_source: Option<SharedPreparedOlsData>,
     centered_projection: Option<ImplicitCenteredDesign>,
@@ -1743,6 +1767,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             Vec::new()
         };
         Ok(Self {
+            preconditioner_reuse_enabled: false,
+            accepted_preconditioner: None,
+            pending_preconditioner: None,
+            #[cfg(test)]
+            preconditioner_last_work: 0,
             prepared,
             group_centered_source: None,
             centered_projection: None,
@@ -1813,6 +1842,87 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     /// PPML admits this complete optional bank beside the existing fast plan;
     /// the direct builder may still decline work or current-weight geometry.
+    #[cfg(test)]
+    pub(crate) fn preconditioner_test_hits() -> usize {
+        PRECONDITIONER_TEST_HITS.load(std::sync::atomic::Ordering::Relaxed)
+    }
+    #[cfg(test)]
+    pub(crate) fn preconditioner_state_for_test(&self) -> (Option<u64>, bool, usize) {
+        (
+            self.accepted_preconditioner
+                .as_ref()
+                .map(|a| a.cache.build_weight_generation),
+            self.pending_preconditioner.is_some(),
+            self.preconditioner_last_work,
+        )
+    }
+    pub(crate) fn enable_fast_preconditioner_reuse(&mut self) {
+        self.preconditioner_reuse_enabled = self.fast_canonical_products_allowance > 0
+            && self.config.execution.mode == PreparedOlsExecutionMode::Fast;
+    }
+    fn retire_preconditioner(&mut self) {
+        if self.accepted_preconditioner.is_some() || self.pending_preconditioner.is_some() {
+            historical_preconditioner::trace(format_args!("retired"));
+        }
+        self.accepted_preconditioner = None;
+        self.pending_preconditioner = None;
+    }
+    // Pre-admit the later frozen-basis copy while retaining the factor. The
+    // actual capacities are checked again when the caller accepts the producer.
+    fn preconditioner_identity_reserve(&self) -> u128 {
+        (self.prepared.fit_model().coefficients.len() + self.prepared.fit_model().columns.len() + 1)
+            as u128
+            * 64
+            + 512
+    }
+    pub(crate) fn accept_pending_preconditioner(&mut self) {
+        let Some(cache) = self.pending_preconditioner.take() else {
+            return;
+        };
+        let Some(basis) = self.frozen_basis.as_ref() else {
+            return;
+        };
+        let copy = || -> Result<FrozenLinearBasis> {
+            Ok(FrozenLinearBasis {
+                slots: fallible_copy(
+                    &basis.slots,
+                    "optional historical preconditioner basis slots",
+                )?,
+                kept_generated_columns: fallible_copy(
+                    &basis.kept_generated_columns,
+                    "optional historical preconditioner kept basis",
+                )?,
+                dropped_generated_columns: fallible_copy(
+                    &basis.dropped_generated_columns,
+                    "optional historical preconditioner dropped basis",
+                )?,
+            })
+        };
+        let Ok(basis) = copy() else {
+            historical_preconditioner::trace(format_args!(
+                "retention_miss|reason=basis_allocation"
+            ));
+            return;
+        };
+        let basis_bytes = (basis.slots.capacity() * std::mem::size_of::<FrozenLinearBasisSlot>()
+            + (basis.kept_generated_columns.capacity()
+                + basis.dropped_generated_columns.capacity())
+                * std::mem::size_of::<usize>()
+            + std::mem::size_of::<AcceptedPreconditioner>()) as u128;
+        if basis_bytes > self.preconditioner_identity_reserve()
+            || cache.bytes() + basis_bytes > self.fast_canonical_products_allowance
+        {
+            return;
+        }
+        historical_preconditioner::trace(format_args!("producer_accepted|build_weights={}|current_weights={}|sample={}|topology={}|basis={}|cache_bytes={}|identity_bytes={basis_bytes}|envelope={}",cache.build_weight_generation,self.generations.weights,self.generations.sample,self.generations.topology,self.generations.basis,cache.bytes(),self.fast_canonical_products_allowance));
+        self.accepted_preconditioner = Some(AcceptedPreconditioner {
+            cache,
+            basis,
+            sample: self.generations.sample,
+            topology: self.generations.topology,
+            basis_generation: self.generations.basis,
+        });
+    }
     pub(crate) fn enable_fast_canonical_products(&mut self, allowance: u128) -> Result<()> {
         if self.within.is_some()
             || self.config.execution.mode != PreparedOlsExecutionMode::Fast
@@ -2038,6 +2148,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     pub(crate) fn solve_fresh(&mut self) -> Result<CertifiedLinearSessionOutput<'_>> {
         if FROZEN_FAILURE_INJECTION.get() == 5 {
             FROZEN_FAILURE_INJECTION.set(0);
+            self.retire_preconditioner();
             return Err(allocation("injected canonical fallback allocation failure"));
         }
         self.solve(LinearSessionSolveKind::Fresh)
@@ -2618,6 +2729,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// frozen basis.  A subsequent `solve_fresh` must independently rebuild
     /// and certify the current frame.
     pub(crate) fn discard_invalid_frozen_state(&mut self) {
+        self.retire_preconditioner();
         self.recycle_frame();
         self.reconstruction = None;
         self.reuse = None;
@@ -2744,49 +2856,101 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     pub(crate) fn strict_candidate(
         &mut self,
     ) -> Result<StrictLinearCandidateTransaction<'_, 'a, P>> {
-        if self.within.as_ref().is_none_or(|within| {
-            within.generations.sample != self.generations.sample
-                || within.generations.topology != self.generations.topology
-        }) {
-            return Err(invalid_argument(
-                "strict weighted-linear candidate requires an aligned retained design",
-            ));
+        self.strict_candidate_with_preconditioner(false)
+    }
+    pub(crate) fn strict_checkpoint_candidate(
+        &mut self,
+    ) -> Result<StrictLinearCandidateTransaction<'_, 'a, P>> {
+        self.strict_candidate_with_preconditioner(true)
+    }
+    fn strict_candidate_with_preconditioner(
+        &mut self,
+        reuse_preconditioner: bool,
+    ) -> Result<StrictLinearCandidateTransaction<'_, 'a, P>> {
+        if !reuse_preconditioner {
+            self.retire_preconditioner();
         }
-        let basis_generation = self.generations.basis;
-        self.frozen_basis.as_ref().ok_or_else(|| {
-            invalid_argument("strict weighted-linear candidate requires a frozen canonical basis")
-        })?;
-        let candidate_basis_generation = basis_generation.checked_add(1).ok_or_else(|| {
-            FeregError::new(
-                ErrorCode::Internal,
-                "weighted-linear basis generation overflowed",
-            )
-        })?;
-        require_newer(self.generations.basis, candidate_basis_generation, "basis")?;
-        // Pool acquisition is the last fallible external-resource action
-        // before accepted state moves into the transaction.
-        let installed_team = ThreadTeam::new(self.config.execution.threads).acquire()?;
-        let previous_within = self.within.as_ref().ok_or_else(|| {
-            invalid_argument("strict weighted-linear candidate requires a retained within design")
-        })?;
-        let active_positions = fallible_copy(
-            &previous_within.active_positions,
-            "unable to reserve strict weighted-linear rollback positions",
-        )?;
+        #[cfg(test)]
+        {
+            self.preconditioner_last_work = 0;
+        }
+        let preflight = (|| -> Result<_> {
+            if self.within.as_ref().is_none_or(|within| {
+                within.generations.sample != self.generations.sample
+                    || within.generations.topology != self.generations.topology
+            }) {
+                return Err(invalid_argument(
+                    "strict weighted-linear candidate requires an aligned retained design",
+                ));
+            }
+            let basis_generation = self.generations.basis;
+            self.frozen_basis.as_ref().ok_or_else(|| {
+                invalid_argument(
+                    "strict weighted-linear candidate requires a frozen canonical basis",
+                )
+            })?;
+            let candidate_basis_generation = basis_generation.checked_add(1).ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Internal,
+                    "weighted-linear basis generation overflowed",
+                )
+            })?;
+            require_newer(self.generations.basis, candidate_basis_generation, "basis")?;
+            // Pool acquisition is the last fallible external-resource action
+            // before accepted state moves into the transaction.
+            let installed_team = ThreadTeam::new(self.config.execution.threads).acquire()?;
+            let previous_within = self.within.as_ref().ok_or_else(|| {
+                invalid_argument(
+                    "strict weighted-linear candidate requires a retained within design",
+                )
+            })?;
+            let active_positions = fallible_copy(
+                &previous_within.active_positions,
+                "unable to reserve strict weighted-linear rollback positions",
+            )?;
+            Ok((
+                basis_generation,
+                candidate_basis_generation,
+                installed_team,
+                active_positions,
+            ))
+        })();
+        let (basis_generation, candidate_basis_generation, installed_team, active_positions) =
+            match preflight {
+                Ok(values) => values,
+                Err(error) => {
+                    self.retire_preconditioner();
+                    return Err(error);
+                }
+            };
         // Re-project and completely solve the strict candidate while the
         // accepted fit, basis, predictors, and reconstruction remain
         // authoritative.  In particular, the rank solve independently
         // certifies the accepted active positions under the *current*
         // projection before any of that authority moves into the RAII guard.
-        let stage = installed_team.install(|| {
-            self.prepare_retained_solve(LinearSessionSolveKind::Strict, Some(&active_positions))
-        })?;
+        let stage = match installed_team.install(|| {
+            self.prepare_retained_solve(
+                LinearSessionSolveKind::Strict,
+                Some(&active_positions),
+                reuse_preconditioner,
+            )
+        }) {
+            Ok(stage) => stage,
+            Err(error) => {
+                self.retire_preconditioner();
+                return Err(error);
+            }
+        };
         #[cfg(test)]
         let fused_projection = stage.response_fused_with_design;
-        let prior_certificate = stage.candidate.prior_basis_certificate.ok_or_else(|| {
-            invalid_data("strict weighted-linear prior basis could not be recertified")
-        })?;
+        let Some(prior_certificate) = stage.candidate.prior_basis_certificate else {
+            self.retire_preconditioner();
+            return Err(invalid_data(
+                "strict weighted-linear prior basis could not be recertified",
+            ));
+        };
         if !prior_certificate.passed {
+            self.retire_preconditioner();
             return Err(invalid_data(
                 "strict weighted-linear prior basis certificate did not pass",
             ));
@@ -2846,6 +3010,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     fn restore_strict_rollback(&mut self, rollback: StrictLinearRollbackState) {
+        self.retire_preconditioner();
         // The speculative frame is discarded; recycling it would retain a second
         // bank beside the restored authority and grow every rollback footprint.
         self.frame = None;
@@ -3027,6 +3192,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         mut self,
         interrupt: &mut dyn FnMut() -> Result<()>,
     ) -> Result<CertifiedLinearSessionProducts> {
+        self.retire_preconditioner();
         self.output()?;
         if let Some(constant) = &mut self.constant {
             constant.certify(
@@ -3112,6 +3278,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.ensure_bound()?;
         LinearSolveFrame::from_parts(&self.response, weights, bread_weight_scale)?
             .validate_for(self.prepared)?;
+        self.pending_preconditioner = None;
         self.pending_weight_buffer_reused = self.weights.replace(weights)?;
         self.bread_weight_scale = bread_weight_scale;
         self.generations.weights = weight_generation;
@@ -3203,6 +3370,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// whose dimensions or coordinate identities depend on that decision.
     #[cfg(test)]
     pub(crate) fn refresh_basis(&mut self, basis_generation: u64) -> Result<()> {
+        self.retire_preconditioner();
         require_newer(self.generations.basis, basis_generation, "basis")?;
         self.generations.basis = basis_generation;
         self.frozen_basis = None;
@@ -3235,6 +3403,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     #[cfg(test)]
     fn invalidate_prepared_alignment(&mut self) {
+        self.retire_preconditioner();
         self.prepared_alignment_valid = false;
         self.canonical_projection_work_hint = 0;
         self.frozen_basis = None;
@@ -3267,9 +3436,20 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     fn solve(&mut self, kind: LinearSessionSolveKind) -> Result<CertifiedLinearSessionOutput<'_>> {
+        self.retire_preconditioner();
+        #[cfg(test)]
+        {
+            self.preconditioner_last_work = 0;
+        }
         self.ensure_bound()?;
         let team = ThreadTeam::new(self.config.execution.threads);
-        team.install(|| self.solve_retained_internal(kind, None).map(|_| ()))??;
+        if let Err(error) = team
+            .install(|| self.solve_retained_internal(kind, None).map(|_| ()))
+            .and_then(|r| r)
+        {
+            self.retire_preconditioner();
+            return Err(error);
+        }
         self.output()
     }
 
@@ -3279,7 +3459,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         prior_active_positions: Option<&[usize]>,
     ) -> Result<Option<LinearWithinDesignCertificate>> {
         self.recycle_frame();
-        let stage = self.prepare_retained_solve(kind, prior_active_positions)?;
+        let stage = self.prepare_retained_solve(kind, prior_active_positions, false)?;
         self.install_retained_stage(stage)
     }
 
@@ -3288,9 +3468,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.canonical_projection_work_hint
     }
 
-    fn try_canonical_products(
-        &mut self,
-    ) -> Result<Option<(Vec<f64>, SolveReport, CanonicalMoments)>> {
+    /// Resolve the current canonical design and its unchanged workspace
+    /// reservation before borrowing or consuming historical solver state.
+    fn canonical_products_inputs(&self) -> Result<Option<(Vec<usize>, u128)>> {
         if (self.config.execution.mode != PreparedOlsExecutionMode::Low
             && self.fast_canonical_products_allowance == 0)
             || self.config.absorb.solver != FeSolverKind::Map
@@ -3346,7 +3526,43 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 .and_then(|x| x.checked_mul(16))
                 .ok_or_else(|| allocation("canonical product allowance overflows"))?
         };
-        let Some(mut products) = super::canonical_products::try_build(
+        Ok(Some((generated, allowance)))
+    }
+
+    fn try_canonical_products(
+        &mut self,
+        reuse_preconditioner: bool,
+    ) -> Result<Option<(Vec<f64>, SolveReport, CanonicalMoments)>> {
+        self.pending_preconditioner = None;
+        if !reuse_preconditioner {
+            self.accepted_preconditioner = None;
+        }
+        let Some((generated, allowance)) = self.canonical_products_inputs()? else {
+            return Ok(None);
+        };
+        let accepted = self.accepted_preconditioner.take();
+        let cache = accepted.and_then(|owner| {
+            if reuse_preconditioner
+                && owner.sample == self.generations.sample
+                && owner.topology == self.generations.topology
+                && owner.basis_generation == self.generations.basis
+                && self.frozen_basis.as_ref() == Some(&owner.basis)
+            {
+                Some(owner.cache)
+            } else {
+                historical_preconditioner::trace(format_args!("retired|reason=session_identity"));
+                None
+            }
+        });
+        let enabled = self.preconditioner_reuse_enabled
+            && self.config.execution.mode == PreparedOlsExecutionMode::Fast;
+        let mut preconditioner_attempt = historical_preconditioner::Call::new(
+            if enabled { cache } else { None },
+            if enabled { allowance } else { 0 },
+            self.preconditioner_identity_reserve(),
+        );
+        historical_preconditioner::trace(format_args!("attempt|checkpoint={reuse_preconditioner}|enabled={enabled}|weights={}|basis={}|envelope={allowance}",self.generations.weights,self.generations.basis));
+        let result = super::canonical_products::try_build_with_preconditioner(
             self.prepared,
             &generated,
             &self.response,
@@ -3356,9 +3572,26 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             allowance,
             self.canonical_projection_work_hint,
             &mut self.projection_block,
-        )?
-        else {
-            return Ok(None);
+            &mut preconditioner_attempt,
+        );
+        let mut products = match result {
+            Ok(Some(products)) => products,
+            Ok(None) => {
+                preconditioner_attempt.failed(
+                    reuse_preconditioner,
+                    self.generations.weights,
+                    "admission_or_numerical",
+                );
+                return Ok(None);
+            }
+            Err(error) => {
+                preconditioner_attempt.failed(
+                    reuse_preconditioner,
+                    self.generations.weights,
+                    "fatal_or_spent_retry",
+                );
+                return Err(error);
+            }
         };
         if let Some(within) = self.within.as_mut() {
             within.certificate.passed = false;
@@ -3414,6 +3647,28 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
             self.previous_response.copy_from_slice(&self.response);
         }
+        preconditioner_attempt.terminal(
+            reuse_preconditioner,
+            self.generations.weights,
+            products
+                .report
+                .solver_workspace_peak
+                .bytes()
+                .unwrap_or(u64::MAX) as u128,
+        );
+        #[cfg(test)]
+        {
+            self.preconditioner_last_work = preconditioner_attempt.total_consumed();
+            if preconditioner_attempt.reuse() {
+                PRECONDITIONER_TEST_HITS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            }
+        }
+        self.pending_preconditioner = preconditioner_attempt.take_retained();
+        if let Some(cache) = &mut self.pending_preconditioner {
+            if cache.build_weight_generation == 0 {
+                cache.build_weight_generation = self.generations.weights;
+            }
+        }
         Ok(Some((products.response, products.report, products.moments)))
     }
 
@@ -3421,6 +3676,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         &mut self,
         kind: LinearSessionSolveKind,
         prior_active_positions: Option<&[usize]>,
+        reuse_preconditioner: bool,
     ) -> Result<RetainedSolveStage> {
         self.ensure_bound()?;
         let mut report = LinearSessionReuseReport::new(kind);
@@ -3441,7 +3697,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .fe_projector
             .as_ref()
             .and_then(FeSession::ppml_operator_work);
-        let product_attempt = self.try_canonical_products()?;
+        let product_attempt = self.try_canonical_products(reuse_preconditioner)?;
         let mut canonical_moments = None;
         let (within_response, absorption_report) =
             if let Some((response, projection, moments)) = product_attempt {

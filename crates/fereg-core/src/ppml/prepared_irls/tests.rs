@@ -4643,3 +4643,256 @@ fn owned_intercept_fe_design_peak_covers_the_allocated_topology() {
         assert!(bound >= design.storage_capacities().resident_bytes);
     }
 }
+
+fn preconditioner_prepared_many(
+    y: &[f64],
+    xs: &[Vec<f64>],
+    g: &[f64],
+    h: &[f64],
+) -> PreparedOlsData {
+    let sources: Vec<_> = (0..xs.len() + 2)
+        .map(|j| source(j as u32 + 1, &format!("x{j}")))
+        .collect();
+    let mut bindings = vec![
+        OlsInputBinding {
+            stata_var_position: 1,
+            role: OlsInputRole::Candidate,
+        },
+        OlsInputBinding {
+            stata_var_position: 2,
+            role: OlsInputRole::Outcome,
+        },
+    ];
+    bindings.extend(sources.iter().enumerate().map(|(j, s)| OlsInputBinding {
+        stata_var_position: j as u32 + 3,
+        role: OlsInputRole::NumericSource(s.id),
+    }));
+    let numeric_sources = sources
+        .iter()
+        .zip(xs.iter().map(Vec::as_slice).chain([g, h]))
+        .map(|(s, v)| (s.id, loaded(v)))
+        .collect();
+    let absorbed_terms = (0..2)
+        .map(|j| AbsorbedTerm {
+            id: AbsorbTermId::new(j as u32 + 1).unwrap(),
+            intercept: true,
+            categorical_sources: vec![sources[xs.len() + j].id],
+            slope_sources: vec![],
+            label: format!("g{j}"),
+            saved_name: String::new(),
+        })
+        .collect();
+    let terms = sources[..xs.len()]
+        .iter()
+        .enumerate()
+        .map(|(j, s)| continuous_term(j as u32 + 1, s.id))
+        .collect();
+    prepare_model(
+        &OlsRequestV1 {
+            model: CompiledTermGraph { sources, terms },
+            absorbed_terms,
+            bindings,
+            include_intercept: true,
+            keep_singletons: true,
+        },
+        &[],
+        &LoadedOlsInput {
+            candidate: vec![true; y.len()].into(),
+            outcome: loaded(y),
+            numeric_sources,
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        },
+        false,
+    )
+    .unwrap()
+}
+
+#[test]
+fn historical_preconditioner_session_acceptance_weight_frames_checkpoint_and_rollback() {
+    let n = 4096;
+    let g: Vec<_> = (0..n).map(|i| (i % 8) as f64).collect();
+    let h: Vec<_> = (0..n).map(|i| (i / 8 % 8) as f64).collect();
+    let xs: Vec<Vec<_>> = (0..8)
+        .map(|j| {
+            (0..n)
+                .map(|i| ((i * (2 * j + 17) % 997) as f64 / 19.).sin())
+                .collect()
+        })
+        .collect();
+    let y: Vec<_> = (0..n)
+        .map(|i| 0.7 * xs[0][i] + g[i] * 0.2 - h[i] * 0.3 + ((i * 11 % 97) as f64).cos())
+        .collect();
+    let prepared = preconditioner_prepared_many(&y, &xs, &g, &h);
+    let w = vec![1.; n];
+    let mut config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-12).unwrap();
+    config.execution.mode = PreparedOlsExecutionMode::Fast;
+    config.execution.poolsize = 8;
+    config.execution.threads = crate::options::ThreadConfig::from_requested(1, true).unwrap();
+    let frame = LinearSolveFrame::from_parts(
+        &y,
+        BorrowedMapWeights::Provided(&w),
+        ppml_bread_weight_scale(&w).unwrap(),
+    )
+    .unwrap();
+    let mut session = CertifiedLinearSession::new_with_fe_design(
+        &prepared,
+        frame,
+        config,
+        LinearSessionGenerations::new(1, 1, 1, 1, 1),
+        prepared.fit_owned_fe_design().unwrap(),
+    )
+    .unwrap();
+    session
+        .enable_fast_canonical_products(16 * n as u128 * 8)
+        .unwrap();
+    session.enable_fast_preconditioner_reuse();
+    assert!(session.solve_fresh().unwrap().certified());
+    assert_eq!(session.preconditioner_state_for_test(), (None, true, 0));
+    // Provisional producers are discarded when the caller does not accept.
+    session
+        .refresh_weights(
+            BorrowedMapWeights::Provided(&w),
+            ppml_bread_weight_scale(&w).unwrap(),
+            2,
+        )
+        .unwrap();
+    assert_eq!(session.preconditioner_state_for_test(), (None, false, 0));
+    assert!(session.solve_fresh().unwrap().certified());
+    session.accept_pending_preconditioner();
+    assert_eq!(session.preconditioner_state_for_test().0, Some(2));
+    for generation in 3..6 {
+        session
+            .refresh_weights(
+                BorrowedMapWeights::Provided(&w),
+                ppml_bread_weight_scale(&w).unwrap(),
+                generation,
+            )
+            .unwrap();
+    }
+    let transaction = session.strict_checkpoint_candidate().unwrap();
+    assert!(transaction.candidate().certified());
+    transaction.commit();
+    assert!(session.preconditioner_state_for_test().2 > 0);
+    assert_eq!(session.preconditioner_state_for_test().0, Some(2));
+    let transaction = session.strict_checkpoint_candidate().unwrap();
+    transaction.rollback();
+    assert_eq!(session.preconditioner_state_for_test().0, None);
+    assert!(!session.preconditioner_state_for_test().1);
+    assert!(session.solve_fresh().unwrap().certified());
+    session.accept_pending_preconditioner();
+    let transaction = session.strict_candidate().unwrap();
+    transaction.commit();
+    assert_eq!(
+        session.preconditioner_state_for_test().2,
+        0,
+        "accepted-Hessian/default strict stays cold"
+    );
+    for invalidation in 0..3 {
+        let frame = LinearSolveFrame::from_parts(
+            &y,
+            BorrowedMapWeights::Provided(&w),
+            ppml_bread_weight_scale(&w).unwrap(),
+        )
+        .unwrap();
+        let mut next = CertifiedLinearSession::new_with_fe_design(
+            &prepared,
+            frame,
+            config,
+            LinearSessionGenerations::new(1, 1, 1, 1, 1),
+            prepared.fit_owned_fe_design().unwrap(),
+        )
+        .unwrap();
+        next.enable_fast_canonical_products(16 * n as u128 * 8)
+            .unwrap();
+        next.enable_fast_preconditioner_reuse();
+        next.solve_fresh().unwrap();
+        next.accept_pending_preconditioner();
+        assert_eq!(next.preconditioner_state_for_test().0, Some(1));
+        match invalidation {
+            0 => next.invalidate_sample(2).unwrap(),
+            1 => next.invalidate_topology(2).unwrap(),
+            _ => next.refresh_basis(2).unwrap(),
+        };
+        assert_eq!(next.preconditioner_state_for_test().0, None);
+        assert!(!next.preconditioner_state_for_test().1);
+        assert!(next.strict_checkpoint_candidate().is_err());
+    }
+}
+
+#[test]
+fn historical_preconditioner_complete_ppml_known_optimum_hits_and_matches_cold() {
+    let n = 8192;
+    // Every pair has identical design and opposite Poisson disturbances.
+    let g: Vec<_> = (0..n).map(|i| (i / 2 % 8) as f64).collect();
+    let h: Vec<_> = (0..n).map(|i| (i / 16 % 8) as f64).collect();
+    let xs: Vec<Vec<_>> = (0..8)
+        .map(|j| {
+            (0..n)
+                .map(|i| ((i / 2 * (2 * j + 17) % 997) as f64 / 19.).sin())
+                .collect()
+        })
+        .collect();
+    let truth: Vec<_> = (0..n)
+        .map(|i| {
+            (0.2 + g[i] * 0.08 - h[i] * 0.03
+                + (0..8)
+                    .map(|j| 0.07 / (j + 1) as f64 * xs[j][i])
+                    .sum::<f64>())
+            .exp()
+        })
+        .collect();
+    let y: Vec<_> = truth
+        .iter()
+        .enumerate()
+        .map(|(i, m)| m * if i % 2 == 0 { 0.8 } else { 1.2 })
+        .collect();
+    let prepared = preconditioner_prepared_many(&y, &xs, &g, &h);
+    let mut config = PreparedPpmlIrlsConfig::default();
+    config.linear.execution.mode = PreparedOlsExecutionMode::Fast;
+    config.linear.execution.poolsize = 8;
+    config.memory.requested = crate::options::MemoryMode::Fast;
+    config.memory.poolsize = 8;
+    config.linear.execution.threads =
+        crate::options::ThreadConfig::from_requested(1, true).unwrap();
+    let before = CertifiedLinearSession::<PreparedOlsData>::preconditioner_test_hits();
+    let fit = fit_prepared_ppml_irls(
+        &prepared,
+        &y,
+        &vec![1.; n],
+        &vec![0.; n],
+        config,
+        plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+        None,
+    )
+    .unwrap();
+    assert!(
+        CertifiedLinearSession::<PreparedOlsData>::preconditioner_test_hits() > before,
+        "full fit must consume accepted producer"
+    );
+    assert!(fit.diagnostics().converged && fit.diagnostics().final_score.passed);
+    assert!(relative_infinity_difference(fit.mean(), &truth) < 1e-10);
+    for j in 0..8 {
+        assert!((fit.coefficients()[j].value.unwrap() - 0.07 / (j + 1) as f64).abs() < 1e-10);
+    }
+    validate_final_hessian_frame(fit.linear().weights(), &vec![1.; n], fit.mean()).unwrap();
+    config.solver_plan.requested = crate::PpmlSolverFamily::Map;
+    let cold = fit_prepared_ppml_irls(
+        &prepared,
+        &y,
+        &vec![1.; n],
+        &vec![0.; n],
+        config,
+        plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+        None,
+    )
+    .unwrap();
+    assert!(relative_infinity_difference(fit.mean(), cold.mean()) < 1e-10);
+    assert!(
+        relative_infinity_difference(
+            fit.linear().identified_bread(),
+            cold.linear().identified_bread()
+        ) < 1e-10
+    );
+}

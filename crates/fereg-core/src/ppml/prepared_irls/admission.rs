@@ -38,6 +38,7 @@ enum ProjectionInstallation {
     },
 }
 pub(super) struct LinearInstallation {
+    preconditioner_reuse_enabled: bool,
     profiles: AdmittedProfiles,
     centered: Option<u128>,
     fast_products: Option<u128>,
@@ -442,7 +443,14 @@ impl LinearAdmission {
         let centered = self.admit_centered(&inputs, one_fe.is_some())?;
         let fast_products = self.admit_fast_products(&inputs)?;
         let projection = self.admit_projection(&inputs)?;
+        // Historical storage shares the already persistent Fast-products
+        // reservation. It never expands the ordinary solver execution budget.
+        let preconditioner_reuse_enabled = fast_products.is_some()
+            && self.plan.dimensions.requested_saved_fe_channels == 0
+            && inputs.config.solver_plan.requested == crate::ppml::PpmlSolverFamily::Auto
+            && inputs.fe_design.effects().len() == 2;
         Ok(LinearInstallation {
+            preconditioner_reuse_enabled,
             profiles: AdmittedProfiles { one_fe, curve },
             centered,
             fast_products,
@@ -526,6 +534,9 @@ impl LinearInstallation {
         }
         if let Some(allowance) = self.fast_products {
             session.enable_fast_canonical_products(allowance)?;
+        }
+        if self.preconditioner_reuse_enabled {
+            session.enable_fast_preconditioner_reuse();
         }
         let low_checkpoint = match self.projection {
             ProjectionInstallation::Generic { parallel, geometry } => {

@@ -1468,6 +1468,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 joint.accept_step(accepted.step);
             }
         }
+        session.accept_pending_preconditioner();
         accepted_iterations = accepted_iterations.saturating_add(1);
         let increase = (accepted.objective.deviance - previous_objective.deviance).max(0.0)
             / previous_objective.deviance.abs().max(1.0);
