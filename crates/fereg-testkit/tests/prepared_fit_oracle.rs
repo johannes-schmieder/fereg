@@ -120,10 +120,29 @@ fn structural_auto_graph_and_explicit_solvers_match_dummies_in_both_storage_mode
             assert_eq!(fit.absorption_report().requested_solver, solver);
             assert_eq!(fit.absorption_report().used_solver, expected);
             assert_eq!(fit.absorption_report().pilot_iterations, 0);
+            let cmg_final_verification =
+                mode == PreparedOlsExecutionMode::Fast && solver == FeSolverKind::Cmg;
+            let expected_final = if cmg_final_verification {
+                FeSolverKind::Cg
+            } else {
+                expected
+            };
             assert!(fit.residual_absorption_report().certified());
             assert_eq!(fit.residual_absorption_report().requested_solver, solver);
-            assert_eq!(fit.residual_absorption_report().used_solver, expected);
-            assert!(!fit.residual_absorption_report().fallback_used);
+            assert_eq!(fit.residual_absorption_report().used_solver, expected_final);
+            assert_eq!(
+                fit.residual_absorption_report().fallback_used,
+                cmg_final_verification
+            );
+            if cmg_final_verification {
+                assert!(fit
+                    .residual_absorption_report()
+                    .warnings
+                    .iter()
+                    .any(|warning| {
+                        warning == "final CMG residual used certified CG verification/correction"
+                    }));
+            }
             assert_eq!(fit.residual_absorption_report().pilot_iterations, 0);
             assert_slice_close(fit.residuals(), &oracle.residuals, RESIDUAL_TOLERANCE);
             assert_close(

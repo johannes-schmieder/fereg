@@ -100,6 +100,7 @@ enum PpmlDeveloperInjection {
     Panic,
     BreakNative,
     Allocation,
+    Topology,
 }
 
 #[cfg(test)]
@@ -564,6 +565,7 @@ fn prepared_ppml_request(
         solver: action.solver,
         inject_fe_recovery_allocation_failure: action.injection
             == PpmlDeveloperInjection::Allocation,
+        inject_topology_sharing: action.injection == PpmlDeveloperInjection::Topology,
     })
 }
 
@@ -888,6 +890,7 @@ impl EstimatePpmlSpec {
                 "panic" => PpmlDeveloperInjection::Panic,
                 "breaknative" => PpmlDeveloperInjection::BreakNative,
                 "allocation" => PpmlDeveloperInjection::Allocation,
+                "ppml_topology" => PpmlDeveloperInjection::Topology,
                 other => {
                     return Err(syntax(format!(
                         "unknown hidden PPML injection stage {other:?}",
@@ -1236,7 +1239,7 @@ fn ppml_stage_frame(
         Stage::Recovery => phase(PpmlPhase::FeRecovery),
         Stage::Publication => phase(PpmlPhase::Publication),
         Stage::Metadata | Stage::Loading => {
-            return Err(internal("PPML core stage requires a phase"))
+            return Err(internal("PPML core stage requires a phase"));
         }
     };
     let parents = plan.selected_inventory().embedding_resident_bytes;
@@ -1629,7 +1632,7 @@ fn validate_bounded_evidence(
         _ => {
             return Err(internal(
                 "PPML inference evidence has an invalid effective VCE",
-            ))
+            ));
         }
     };
     if correction_authority < 2 {

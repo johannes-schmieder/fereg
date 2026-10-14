@@ -43,6 +43,10 @@ pub(crate) fn explicit_lsmr_recurrence(config: LsmrConfig) -> LsmrConfig {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AbsorbConfig {
     pub solver: FeSolverKind,
+    /// Sanctioned developer-only routing qualification arm; None is incumbent.
+    pub routing: Option<super::RoutingPreset>,
+    /// Developer-only coefficient-metric IT experiment; false retains incumbent IT.
+    pub it_coefficients: bool,
     /// Maximum distinct-neighbor degree eliminated in the experimental CMG graph.
     pub cmg_schur_degree: usize,
     /// Sampled clique trees per high-degree worker; zero retains exact stars.
@@ -65,6 +69,8 @@ impl Default for AbsorbConfig {
     fn default() -> Self {
         Self {
             solver: FeSolverKind::Auto,
+            routing: None,
+            it_coefficients: false,
             cmg_schur_degree: 5,
             cmg_schur_samples: 0,
             cmg_schur_seed: 0,
@@ -79,6 +85,12 @@ impl Default for AbsorbConfig {
 
 impl AbsorbConfig {
     pub(crate) fn validate_cmg_schur_options(self) -> Result<()> {
+        if self.routing.is_some() && self.solver != FeSolverKind::Auto {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "routing qualification requires automatic solver selection",
+            ));
+        }
         if self.solver != FeSolverKind::CmgSchur
             && (self.cmg_schur_samples != 0 || self.cmg_schur_seed != 0)
         {

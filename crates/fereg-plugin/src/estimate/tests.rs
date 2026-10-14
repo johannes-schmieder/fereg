@@ -4210,6 +4210,187 @@ fn option_spellings_parse_case_insensitively_like_vce_and_dof() {
 }
 
 #[test]
+fn hidden_routing_presets_survive_framed_requests_and_reach_absorb_config() {
+    let presets = [4, 8, 16, 32]
+        .into_iter()
+        .flat_map(|checkpoint| {
+            [0, 1, 2]
+                .into_iter()
+                .map(move |samples| RoutingPreset::new(checkpoint, samples).unwrap())
+        })
+        .chain(
+            ["diagonal", "cells", "direct"]
+                .into_iter()
+                .map(|name| RoutingPreset::ablation(name).unwrap()),
+        )
+        .chain([8, 16, 32].into_iter().flat_map(|checkpoint| {
+            [0, 1, 2]
+                .into_iter()
+                .map(move |samples| RoutingPreset::overlap(checkpoint, samples).unwrap())
+        }))
+        .chain(
+            [
+                fereg_core::fe::CategoricalPrefix::None,
+                fereg_core::fe::CategoricalPrefix::Map4,
+                fereg_core::fe::CategoricalPrefix::CompactIt4,
+            ]
+            .into_iter()
+            .map(RoutingPreset::prefix),
+        );
+    for preset in presets {
+        let (mut args, mut spi) = fixture(OlsVceKind::Iid);
+        args.push(format!("inject={preset}"));
+        for request in [&args, &bundled(&args)] {
+            let specification = EstimateActionSpec::parse(request).unwrap();
+            let expected = Some(preset);
+            assert_eq!(specification.routing, expected);
+            assert!(specification.native_break_token.is_none());
+            let action = specification
+                .decode_with_memory_limit(&mut spi, || Ok(None))
+                .unwrap();
+            assert_eq!(action.fit.absorb.routing, expected);
+            assert_eq!(action.fit.absorb.solver, FeSolverKind::Auto);
+        }
+    }
+}
+
+#[test]
+fn hidden_routing_preserves_baseline_and_native_break_request() {
+    let (args, _) = fixture(OlsVceKind::Iid);
+    for stage in [None, Some("breaknative")] {
+        let mut args = args.clone();
+        if let Some(stage) = stage {
+            args.push(format!("inject={stage}"));
+        }
+        let token = "0123456789abcdef0123456789abcdef";
+        if stage == Some("breaknative") {
+            args.push(format!("break_marker_token={token}"));
+        }
+        for request in [&args, &bundled(&args)] {
+            let specification = EstimateActionSpec::parse(request).unwrap();
+            assert_eq!(specification.routing, None);
+            assert!(!specification.it_coefficients);
+            assert_eq!(
+                specification.native_break_token.as_deref(),
+                (stage == Some("breaknative")).then_some(token)
+            );
+        }
+    }
+}
+
+#[test]
+fn hidden_coefficient_it_is_explicit_and_survives_framed_requests() {
+    for injected in [false, true] {
+        let (mut args, mut spi) = fixture(OlsVceKind::Iid);
+        replace_argument(&mut args, "solver", "solver=it".to_owned());
+        replace_argument(&mut args, "preconditioner", "preconditioner=off".to_owned());
+        if injected {
+            args.push("inject=it_coefficients".to_owned());
+        }
+        for request in [&args, &bundled(&args)] {
+            let specification = EstimateActionSpec::parse(request).unwrap();
+            assert_eq!(specification.it_coefficients, injected);
+            assert_eq!(specification.routing, None);
+            assert!(specification.native_break_token.is_none());
+            let action = specification
+                .decode_with_memory_limit(&mut spi, || Ok(None))
+                .unwrap();
+            assert_eq!(action.fit.absorb.it_coefficients, injected);
+            assert_eq!(action.fit.absorb.solver, FeSolverKind::IronsTuck);
+        }
+    }
+}
+
+#[test]
+fn hidden_builder_break_requires_marker_and_multiple_workers() {
+    let (mut args, _) = fixture(OlsVceKind::Iid);
+    replace_argument(&mut args, "threads", "threads=2".to_owned());
+    args.extend([
+        "inject=routing_overlap_break".to_owned(),
+        "break_marker_token=0123456789abcdef0123456789abcdef".to_owned(),
+    ]);
+    for request in [&args, &bundled(&args)] {
+        let spec = EstimateActionSpec::parse(request).unwrap();
+        assert_eq!(spec.routing, Some(RoutingPreset::overlap_break()));
+        assert!(spec.native_break_token.is_some());
+    }
+    replace_argument(&mut args, "threads", "threads=1".to_owned());
+    for request in [&args, &bundled(&args)] {
+        assert_eq!(
+            EstimateActionSpec::parse(request).unwrap_err().code,
+            ErrorCode::Syntax
+        );
+    }
+}
+
+#[test]
+fn invalid_hidden_routing_requests_fail_before_reads_or_publication() {
+    let token = "break_marker_token=0123456789abcdef0123456789abcdef";
+    let mut requests = Vec::new();
+    for solver in ["map", "lsmr", "cmg", "cmgschur", "it", "squarem"] {
+        requests.push((solver, vec!["inject=routing_h8_k1"]));
+        requests.push((solver, vec!["inject=routing_direct"]));
+        requests.push((solver, vec!["inject=routing_cells"]));
+        requests.push((solver, vec!["inject=routing_diagonal"]));
+        requests.push((solver, vec!["inject=routing_prefix_none"]));
+        requests.push((solver, vec!["inject=routing_prefix_map4"]));
+        requests.push((solver, vec!["inject=routing_prefix_it4"]));
+        requests.push((solver, vec!["inject=routing_overlap_h8_k1"]));
+        requests.push((solver, vec!["inject=routing_overlap_break", token]));
+    }
+    for solver in ["auto", "map", "lsmr", "cmg", "cmgschur", "squarem"] {
+        requests.push((solver, vec!["inject=it_coefficients"]));
+    }
+    requests.push(("it", vec!["inject=it_coefficients", token]));
+    for fields in [
+        vec!["inject="],
+        vec!["inject=routing_h8_k1", token],
+        vec!["inject=routing_overlap_h8_k1", token],
+        vec!["inject=routing_overlap_break"],
+        vec!["inject=routing_overlap_break", "break_marker_token=invalid"],
+        vec!["inject=routing_prefix_map4", token],
+        vec!["inject=routing_overlap_h4_k1"],
+        vec!["inject=routing_overlap_h08_k1"],
+        vec!["inject=routing_overlap_h16_k3"],
+        vec!["inject=routing_prefix_map8"],
+        vec!["inject=routing_prefix_it4_h8_k1"],
+        vec!["inject=routing_h0_k1"],
+        vec!["inject=routing_h5_k1"],
+        vec!["inject=routing_h64_k1"],
+        vec!["inject=routing_hinfinity_k1"],
+        vec!["inject=routing_h08_k1"],
+        vec!["inject=routing_h8_k01"],
+        vec!["inject=routing_h8_k3"],
+        vec!["inject=routing_h8_k-1"],
+        vec!["inject=routing_h8_k1.0"],
+        vec!["inject=routing_h8_k1_extra"],
+        vec!["inject=routing_h8"],
+        vec!["inject=ROUTING_H8_K1"],
+        vec!["inject=breaknative"],
+        vec!["inject=breaknative", "break_marker_token=invalid"],
+        vec![token],
+    ] {
+        requests.push(("auto", fields));
+    }
+    for (solver, fields) in requests {
+        for framed in [false, true] {
+            let (mut args, mut spi) = fixture(OlsVceKind::Iid);
+            replace_argument(&mut args, "solver", format!("solver={solver}"));
+            args.extend(fields.iter().map(|field| (*field).to_owned()));
+            let before_data = spi.data.clone();
+            let before_matrices = spi.matrices.clone();
+            let request = if framed { bundled(&args) } else { args };
+            let error = estimate_ols(&request, &mut spi).unwrap_err();
+            assert_eq!(error.code, ErrorCode::Syntax, "{solver}, {fields:?}");
+            assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+            assert_eq!(spi.data, before_data);
+            assert_eq!(spi.matrices, before_matrices);
+            assert_eq!(spi.receipt_complete(), 0.0);
+        }
+    }
+}
+
+#[test]
 fn cmgschur_cutoff_defaults_and_explicit_values_survive_framed_requests() {
     for degree in [None, Some(4), Some(5), Some(6)] {
         let (mut args, _) = fixture(OlsVceKind::Iid);

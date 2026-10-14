@@ -139,6 +139,9 @@ pub struct PreparedPpmlRequestV1 {
     /// allocator state and therefore cannot leak into a later action.
     #[doc(hidden)]
     pub inject_fe_recovery_allocation_failure: bool,
+    /// Hidden structural-sharing qualification arm; ordinary PPML leaves it off.
+    #[doc(hidden)]
+    pub inject_topology_sharing: bool,
 }
 
 /// Owned raw inputs for PPML preparation.
@@ -403,6 +406,7 @@ pub fn fit_prepared_ppml_interruptible(
     let allocation_audit_enabled = allocation_snapshot_probe.is_some();
     let phase_allocation_probe = request.phase_allocation_probe;
     let linear_phase_allocation_probe = request.linear_phase_allocation_probe;
+    let topology_sharing = request.inject_topology_sharing;
     let saved_channel_count = requested_saved_channels
         .iter()
         .filter(|requested| **requested)
@@ -440,6 +444,7 @@ pub fn fit_prepared_ppml_interruptible(
                     phase_allocation_probe,
                     linear_phase_allocation_probe,
                     solver_plan,
+                    topology_sharing,
                 },
                 final_plan,
                 None,
@@ -492,6 +497,7 @@ pub fn fit_prepared_ppml_interruptible(
                     phase_allocation_probe,
                     linear_phase_allocation_probe,
                     solver_plan,
+                    topology_sharing,
                 },
                 final_plan,
                 None,

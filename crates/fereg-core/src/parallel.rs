@@ -1,7 +1,8 @@
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::options::ThreadConfig;
 use rayon::prelude::*;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::cell::RefCell;
+use std::sync::{Arc, Mutex, OnceLock, Weak};
 
 /// Scheduling grain in scalar operations, independent of estimator and model.
 /// Arithmetic leaves and their ordered merges remain owned by each kernel.
@@ -281,6 +282,150 @@ struct CachedThreadPool {
 struct OwnedThreadPool {
     pool: Option<rayon::ThreadPool>,
     workers: JoinedWorkers,
+    context: Arc<WorkerContext>,
+}
+
+#[derive(Debug, Default)]
+struct ActionAdmission {
+    shared: usize,
+    exclusive: usize,
+    overlap: bool,
+}
+
+/// Installed on every worker, so stolen tasks see the authority of the actual
+/// registry. Action admission covers synchronous/scoped work, as do the native
+/// transaction boundaries; detached user Rayon jobs are outside that contract.
+#[derive(Debug, Default)]
+struct WorkerContext {
+    owner: OnceLock<Weak<OwnedThreadPool>>,
+    admission: Mutex<ActionAdmission>,
+}
+
+thread_local! {
+    static WORKER_CONTEXT: RefCell<Option<Arc<WorkerContext>>> = const { RefCell::new(None) };
+}
+
+fn current_worker_context() -> Option<Arc<WorkerContext>> {
+    WORKER_CONTEXT.with(|current| current.borrow().clone())
+}
+
+impl WorkerContext {
+    fn state(&self) -> std::sync::MutexGuard<'_, ActionAdmission> {
+        // No user work runs under this lock. Cleanup remains infallible even
+        // after an unrelated panic propagates through an installed action.
+        self.admission
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+    }
+}
+
+#[derive(Debug)]
+struct ActionLease {
+    context: Arc<WorkerContext>,
+    exclusive: bool,
+}
+
+impl ActionLease {
+    fn acquire(context: &Arc<WorkerContext>, exclusive: bool, nested: bool) -> Result<Self> {
+        let mut state = context.state();
+        let reserved = state.exclusive != 0 || state.overlap;
+        let unavailable = if exclusive {
+            reserved || state.shared != 0
+        } else {
+            reserved && !nested
+        };
+        if unavailable {
+            return Err(FeregError::new(
+                ErrorCode::Unsupported,
+                "exclusive solver overlap requires an idle fereg worker team",
+            ));
+        }
+        if exclusive {
+            state.exclusive = 1;
+        } else {
+            state.shared = state.shared.checked_add(1).ok_or_else(|| {
+                FeregError::new(ErrorCode::Internal, "worker-team action count overflows")
+            })?;
+        }
+        Ok(Self {
+            context: Arc::clone(context),
+            exclusive,
+        })
+    }
+}
+
+impl Clone for ActionLease {
+    fn clone(&self) -> Self {
+        // Each lease owns a context Arc. Its reference-count limit bounds the
+        // live lease counts before either counter can overflow. Cloning the
+        // value guard allocates nothing, including in warmed PPML iterations.
+        let context = Arc::clone(&self.context);
+        {
+            let mut state = context.state();
+            if self.exclusive {
+                state.exclusive += 1;
+            } else {
+                state.shared += 1;
+            }
+        }
+        Self {
+            context,
+            exclusive: self.exclusive,
+        }
+    }
+}
+
+impl Drop for ActionLease {
+    fn drop(&mut self) {
+        let mut state = self.context.state();
+        if self.exclusive {
+            state.exclusive -= 1;
+        } else {
+            state.shared -= 1;
+        }
+    }
+}
+
+/// Whether this worker belongs to an action admitted before any work entered
+/// its pool. This is registry authority, not task-local controller state.
+#[doc(hidden)]
+pub fn exclusive_overlap_authorized() -> bool {
+    current_worker_context().is_some_and(|context| context.state().exclusive != 0)
+}
+
+/// One serial preparation may occupy a spare worker of an exclusive action.
+/// The preparation owner retains this permit until its worker has been joined.
+pub(crate) struct OverlapPermit(Arc<OwnedThreadPool>);
+
+pub(crate) fn claim_exclusive_overlap() -> Result<OverlapPermit> {
+    let context = current_worker_context().ok_or_else(|| {
+        FeregError::new(
+            ErrorCode::Unsupported,
+            "solver overlap requires an exclusive installed team",
+        )
+    })?;
+    let pool = context.owner.get().and_then(Weak::upgrade).ok_or_else(|| {
+        FeregError::new(
+            ErrorCode::Internal,
+            "installed worker team has no live owner",
+        )
+    })?;
+    let mut state = context.state();
+    if state.exclusive == 0 || state.overlap || rayon::current_num_threads() < 2 {
+        return Err(FeregError::new(
+            ErrorCode::Unsupported,
+            "solver overlap requires an exclusive team with an unclaimed spare worker",
+        ));
+    }
+    state.overlap = true;
+    drop(state);
+    Ok(OverlapPermit(pool))
+}
+
+impl Drop for OverlapPermit {
+    fn drop(&mut self) {
+        self.0.context.state().overlap = false;
+    }
 }
 
 #[derive(Debug)]
@@ -301,7 +446,7 @@ impl Drop for JoinedWorkers {
 }
 
 impl OwnedThreadPool {
-    fn new(threads: usize) -> Result<Self> {
+    fn new(threads: usize) -> Result<Arc<Self>> {
         let mut handles = Vec::new();
         handles.try_reserve_exact(threads).map_err(|_| {
             FeregError::new(
@@ -310,9 +455,11 @@ impl OwnedThreadPool {
             )
         })?;
         let mut workers = JoinedWorkers(handles);
+        let context = Arc::new(WorkerContext::default());
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
             .spawn_handler(|thread| {
+                let context = Arc::clone(&context);
                 let mut builder = std::thread::Builder::new();
                 if let Some(name) = thread.name() {
                     builder = builder.name(name.to_owned());
@@ -320,7 +467,11 @@ impl OwnedThreadPool {
                 if let Some(size) = thread.stack_size() {
                     builder = builder.stack_size(size);
                 }
-                workers.0.push(builder.spawn(|| thread.run())?);
+                workers.0.push(builder.spawn(move || {
+                    WORKER_CONTEXT.with(|current| *current.borrow_mut() = Some(context));
+                    thread.run();
+                    WORKER_CONTEXT.with(|current| *current.borrow_mut() = None);
+                })?);
                 Ok(())
             })
             .build()
@@ -330,10 +481,17 @@ impl OwnedThreadPool {
                     format!("unable to construct fereg worker team: {error}"),
                 )
             })?;
-        Ok(Self {
+        let owner = Arc::new(Self {
             pool: Some(pool),
             workers,
-        })
+            context,
+        });
+        owner
+            .context
+            .owner
+            .set(Arc::downgrade(&owner))
+            .expect("new team owner");
+        Ok(owner)
     }
 
     fn install<T: Send>(&self, function: impl FnOnce() -> T + Send) -> T {
@@ -341,6 +499,14 @@ impl OwnedThreadPool {
             .as_ref()
             .expect("live worker team")
             .install(function)
+    }
+
+    fn acquire(self: &Arc<Self>, exclusive: bool, nested: bool) -> Result<InstalledThreadTeam> {
+        let lease = ActionLease::acquire(&self.context, exclusive, nested)?;
+        Ok(InstalledThreadTeam {
+            pool: Arc::clone(self),
+            _lease: lease,
+        })
     }
 }
 
@@ -369,13 +535,16 @@ static THREAD_POOL: OnceLock<Mutex<Option<CachedThreadPool>>> = OnceLock::new();
 pub struct ThreadTeam {
     threads: usize,
     deterministic: bool,
+    exclusive_overlap: bool,
 }
 
-/// A successfully acquired cached Rayon team. Acquisition owns every
-/// fallible lock/build step; installing work afterward is infallible.
+/// A successfully acquired cached Rayon team. Acquisition owns every fallible
+/// lock/build/admission step; installing work afterward is infallible. Clones
+/// retain the admission lease, including across accepted-state transactions.
 #[derive(Debug, Clone)]
 pub(crate) struct InstalledThreadTeam {
     pool: Arc<OwnedThreadPool>,
+    _lease: ActionLease,
 }
 
 impl InstalledThreadTeam {
@@ -394,6 +563,14 @@ impl InstalledThreadTeam {
     {
         self.pool.install(function)
     }
+
+    fn in_place_scope<'scope, T>(&self, function: impl FnOnce(&rayon::Scope<'scope>) -> T) -> T {
+        self.pool
+            .pool
+            .as_ref()
+            .expect("live worker team")
+            .in_place_scope(function)
+    }
 }
 
 impl ThreadTeam {
@@ -402,6 +579,7 @@ impl ThreadTeam {
         Self {
             threads: config.resolved(),
             deterministic: config.deterministic,
+            exclusive_overlap: false,
         }
     }
 
@@ -413,6 +591,15 @@ impl ThreadTeam {
     #[must_use]
     pub const fn deterministic(self) -> bool {
         self.deterministic
+    }
+
+    /// Admit an experimental overlap before entering the numerical action.
+    /// Nested explicit admission fails; ordinary nested work reuses the team.
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn with_exclusive_overlap(mut self) -> Self {
+        self.exclusive_overlap = true;
+        self
     }
 
     /// Run one native action with the resolved public thread count. Actions
@@ -435,17 +622,42 @@ impl ThreadTeam {
         function: impl FnOnce(&rayon::Scope<'scope>) -> T,
     ) -> Result<T> {
         let team = self.acquire()?;
-        Ok(team
-            .pool
-            .pool
-            .as_ref()
-            .expect("live worker team")
-            .in_place_scope(function))
+        Ok(team.in_place_scope(function))
     }
 
     /// Resolve/cache the requested pool before entering a transaction that
     /// cannot tolerate another fallible exit.
     pub(crate) fn acquire(self) -> Result<InstalledThreadTeam> {
+        let current = current_worker_context();
+        if self.exclusive_overlap && rayon::current_thread_index().is_some() {
+            return Err(FeregError::new(
+                ErrorCode::Unsupported,
+                "exclusive solver overlap must be admitted outside an installed worker team",
+            ));
+        }
+        if let Some(context) = current {
+            let pool = context.owner.get().and_then(Weak::upgrade).ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Internal,
+                    "installed worker team has no live owner",
+                )
+            })?;
+            if pool
+                .pool
+                .as_ref()
+                .expect("live worker team")
+                .current_num_threads()
+                == self.threads
+            {
+                return pool.acquire(false, true);
+            }
+            if context.state().exclusive != 0 {
+                return Err(FeregError::new(
+                    ErrorCode::Unsupported,
+                    "exclusive solver overlap cannot change worker teams inside its action",
+                ));
+            }
+        }
         let cache = THREAD_POOL.get_or_init(|| Mutex::new(None));
         let mut retired = None;
         let pool = {
@@ -462,7 +674,7 @@ impl ThreadTeam {
                 let pool = OwnedThreadPool::new(self.threads)?;
                 retired = guard.replace(CachedThreadPool {
                     threads: self.threads,
-                    pool: Arc::new(pool),
+                    pool,
                 });
             }
             Arc::clone(
@@ -473,7 +685,7 @@ impl ThreadTeam {
             )
         };
         drop(retired);
-        Ok(InstalledThreadTeam { pool })
+        pool.acquire(self.exclusive_overlap, false)
     }
 }
 
@@ -680,7 +892,7 @@ mod tests {
     #[test]
     fn owned_pool_joins_on_calling_thread_and_handles_nested_teams() {
         for threads in [1, 4, 1] {
-            let mut pool = OwnedThreadPool::new(threads).unwrap();
+            let mut pool = Arc::try_unwrap(OwnedThreadPool::new(threads).unwrap()).unwrap();
             assert_eq!(pool.install(rayon::current_num_threads), threads);
             assert_eq!(pool.workers.0.len(), threads);
             drop(pool.pool.take());
@@ -700,7 +912,7 @@ mod tests {
 
     #[test]
     fn last_owner_on_own_worker_does_not_join_itself() {
-        let pool = Arc::new(OwnedThreadPool::new(2).unwrap());
+        let pool = OwnedThreadPool::new(2).unwrap();
         let owner = Arc::clone(&pool);
         let (ready_tx, ready_rx) = std::sync::mpsc::channel();
         let (go_tx, go_rx) = std::sync::mpsc::channel();
@@ -741,5 +953,194 @@ mod tests {
                 threads,
             );
         }
+    }
+
+    #[test]
+    fn admission_leases_cover_idle_handles_clones_and_nested_survivors() {
+        let pool = OwnedThreadPool::new(2).unwrap();
+        let shared = pool.acquire(false, false).unwrap();
+        let clone = shared.clone();
+        drop(shared);
+        assert_eq!(
+            pool.acquire(true, false).unwrap_err().code,
+            ErrorCode::Unsupported
+        );
+        drop(clone);
+        let exclusive = pool.acquire(true, false).unwrap();
+        let exclusive_clone = exclusive.clone();
+        drop(exclusive);
+        assert!(exclusive_clone.install(exclusive_overlap_authorized));
+        assert_eq!(pool.context.state().exclusive, 1);
+        assert_eq!(
+            pool.acquire(false, false).unwrap_err().code,
+            ErrorCode::Unsupported
+        );
+        assert_eq!(
+            pool.acquire(true, false).unwrap_err().code,
+            ErrorCode::Unsupported
+        );
+        let exclusive = exclusive_clone;
+        let survivor = exclusive.install(|| {
+            assert!(exclusive_overlap_authorized());
+            ThreadTeam::new(ThreadConfig::from_requested(2, true).unwrap())
+                .acquire()
+                .unwrap()
+        });
+        drop(exclusive);
+        assert_eq!(pool.context.state().exclusive, 0);
+        assert_eq!(
+            pool.acquire(true, false).unwrap_err().code,
+            ErrorCode::Unsupported
+        );
+        assert!(!survivor.install(exclusive_overlap_authorized));
+        drop(survivor);
+        assert!(pool.acquire(true, false).is_ok());
+    }
+
+    #[test]
+    fn exclusive_admission_rejects_concurrent_roots_before_work_enters() {
+        let pool = OwnedThreadPool::new(2).unwrap();
+        let exclusive = pool.acquire(true, false).unwrap();
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            exclusive.install(move || {
+                entered_tx.send(()).unwrap();
+                release_rx
+                    .recv_timeout(std::time::Duration::from_secs(5))
+                    .unwrap();
+            });
+        });
+        entered_rx
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .unwrap();
+        assert_eq!(
+            pool.acquire(false, false).unwrap_err().code,
+            ErrorCode::Unsupported
+        );
+        assert_eq!(
+            pool.acquire(true, false).unwrap_err().code,
+            ErrorCode::Unsupported
+        );
+        release_tx.send(()).unwrap();
+        worker.join().unwrap();
+        assert!(pool.acquire(true, false).is_ok());
+    }
+
+    #[test]
+    fn exclusive_authority_follows_workers_and_rejects_nested_admission() {
+        let pool = OwnedThreadPool::new(2).unwrap();
+        let exclusive = pool.acquire(true, false).unwrap();
+        // Change the cached registry while retaining this pool. Nested normal
+        // work must continue to reuse its installed registry, not that cache.
+        let other = ThreadTeam::new(ThreadConfig::from_requested(3, true).unwrap())
+            .acquire()
+            .unwrap();
+        exclusive.install(|| {
+            assert!(rayon::broadcast(|_| exclusive_overlap_authorized())
+                .into_iter()
+                .all(|x| x));
+            let config = ThreadConfig::from_requested(2, true).unwrap();
+            let nested = ThreadTeam::new(config).acquire().unwrap();
+            assert!(Arc::ptr_eq(&nested.pool, &pool));
+            assert!(nested.install(exclusive_overlap_authorized));
+            assert_eq!(
+                ThreadTeam::new(config)
+                    .with_exclusive_overlap()
+                    .acquire()
+                    .unwrap_err()
+                    .code,
+                ErrorCode::Unsupported
+            );
+            assert_eq!(
+                ThreadTeam::new(ThreadConfig::from_requested(3, true).unwrap())
+                    .acquire()
+                    .unwrap_err()
+                    .code,
+                ErrorCode::Unsupported
+            );
+            let permit = claim_exclusive_overlap().unwrap();
+            assert!(claim_exclusive_overlap().is_err());
+            drop(permit);
+            assert!(claim_exclusive_overlap().is_ok());
+        });
+        assert!(!other.install(exclusive_overlap_authorized));
+        drop(exclusive);
+        assert!(pool.acquire(true, false).is_ok());
+    }
+
+    #[test]
+    fn exclusive_admission_and_preparation_permit_unwind_cleanly() {
+        let pool = OwnedThreadPool::new(2).unwrap();
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let exclusive = pool.acquire(true, false).unwrap();
+            exclusive.install(|| {
+                let _permit = claim_exclusive_overlap().unwrap();
+                panic!("injected exclusive action panic");
+            });
+        }))
+        .is_err());
+        let exclusive = pool.acquire(true, false).unwrap();
+        exclusive.install(|| assert!(claim_exclusive_overlap().is_ok()));
+    }
+
+    #[test]
+    fn preparation_permit_requires_spare_worker_and_retains_pool_admission() {
+        assert!(claim_exclusive_overlap().is_err());
+        let single = OwnedThreadPool::new(1).unwrap();
+        single.acquire(true, false).unwrap().install(|| {
+            assert!(exclusive_overlap_authorized());
+            assert!(claim_exclusive_overlap().is_err());
+        });
+        let pool = OwnedThreadPool::new(2).unwrap();
+        assert!(pool
+            .acquire(false, false)
+            .unwrap()
+            .install(claim_exclusive_overlap)
+            .is_err());
+        let exclusive = pool.acquire(true, false).unwrap();
+        let permit = exclusive.install(claim_exclusive_overlap).unwrap();
+        drop(exclusive);
+        // The service normally joins inside its action. Even an escaped permit
+        // retains the actual team and prevents a new action from entering it.
+        assert_eq!(
+            pool.acquire(false, false).unwrap_err().code,
+            ErrorCode::Unsupported
+        );
+        assert_eq!(
+            pool.acquire(true, false).unwrap_err().code,
+            ErrorCode::Unsupported
+        );
+        drop(permit);
+        assert!(pool.acquire(true, false).is_ok());
+    }
+
+    #[test]
+    fn exclusive_scope_retains_admission_until_spawned_work_finishes() {
+        let pool = OwnedThreadPool::new(2).unwrap();
+        let exclusive = pool.acquire(true, false).unwrap();
+        let (body_tx, body_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            exclusive.in_place_scope(|scope| {
+                scope.spawn(move |_| {
+                    assert!(exclusive_overlap_authorized());
+                    release_rx
+                        .recv_timeout(std::time::Duration::from_secs(5))
+                        .unwrap();
+                });
+                body_tx.send(()).unwrap();
+            });
+        });
+        body_rx
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .unwrap();
+        assert_eq!(
+            pool.acquire(false, false).unwrap_err().code,
+            ErrorCode::Unsupported
+        );
+        release_tx.send(()).unwrap();
+        worker.join().unwrap();
+        assert!(pool.acquire(true, false).is_ok());
     }
 }

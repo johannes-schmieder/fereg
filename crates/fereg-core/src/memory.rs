@@ -303,64 +303,8 @@ fn estimate_fe_solver_memory_for_channels(
             })
         })?;
     let maximum_levels = effect_level_counts.iter().copied().max().unwrap_or(0) as u128;
-    let matrix_bytes = checked_mul(
-        checked_mul(n, rhs, "FE solver observation-RHS axis")?,
-        8,
-        "FE solver observation-RHS bytes",
-    )?;
-    let rhs_copy_bytes = matrix_bytes;
-    let cg_matrix_bytes = checked_mul(matrix_bytes, 3, "CG residual/direction/projection bytes")?;
-    let group_workspace_bytes = checked_mul(
-        checked_mul(maximum_levels, rhs, "CG group workspace")?,
-        16,
-        "CG group sums and corrections",
-    )?;
-    let dot_chunks = observations.div_ceil(32_768) as u128;
-    let thread_reduction_bytes = checked_mul(
-        checked_mul(
-            dot_chunks.max(threads as u128),
-            rhs,
-            "solver thread reductions",
-        )?,
-        8,
-        "solver thread-reduction bytes",
-    )?;
-    let scalar_rhs_bytes = checked_mul(rhs, 8 * 16, "CG scalar RHS workspace")?;
-    let coefficient_batch_bytes = checked_sum(&[
-        checked_mul(
-            checked_mul(levels, rhs, "FE retained coefficient axis")?,
-            8,
-            "FE retained coefficient bytes",
-        )?,
-        checked_mul(
-            checked_sum(&[checked_mul(effects, 3, "FE coefficient layouts")?, 1])?,
-            std::mem::size_of::<usize>() as u128,
-            "FE coefficient layout bytes",
-        )?,
-    ])?;
-    let cg_bytes = checked_sum(&[
-        cg_matrix_bytes,
-        group_workspace_bytes,
-        thread_reduction_bytes,
-        scalar_rhs_bytes,
-    ])?;
-
-    let mut estimate = FeSolverMemoryEstimate {
-        cg_bytes,
-        coefficient_batch_bytes,
-        lsmr_off_bytes: 0,
-        lsmr_diagonal_bytes: 0,
-        lsmr_schwarz_bytes: 0,
-        lsmr_off_retained_bytes: 0,
-        lsmr_diagonal_retained_bytes: 0,
-        lsmr_schwarz_retained_bytes: 0,
-        lsmr_result_metadata_bytes: 0,
-        rhs_copy_bytes,
-        krylov_bytes: 0,
-        topology_bytes: 0,
-        thread_reduction_bytes,
-        borrowed_code_copy_avoided_bytes: 0,
-    };
+    let (mut estimate, group_workspace_bytes, scalar_rhs_bytes) =
+        estimate_cg_memory_dimensions(n, rhs, effects, levels, maximum_levels, threads)?;
     populate_lsmr_memory(
         FeSolverDimensions {
             observations,
@@ -394,6 +338,128 @@ fn estimate_fe_solver_memory_for_channels(
         )?,
     ])?;
     Ok(estimate)
+}
+
+/// Allocation-free CG and coefficient-bank admission for a borrowed topology.
+/// This uses the same checked scalar formula as the complete solver estimator.
+pub(crate) fn estimate_cg_solver_memory(
+    observations: usize,
+    rhs_columns: usize,
+    effect_level_counts: impl IntoIterator<Item = usize>,
+    threads: usize,
+) -> Result<(u128, u128)> {
+    if observations == 0 || rhs_columns == 0 {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "FE solver memory estimate requires nonempty observation and RHS axes",
+        ));
+    }
+    let mut effects = 0_u128;
+    let mut levels = 0_u128;
+    let mut maximum_levels = 0;
+    for count in effect_level_counts {
+        if count == 0 {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "FE solver memory estimate requires positive effect level counts",
+            ));
+        }
+        effects = checked_sum(&[effects, 1])?;
+        levels = levels.checked_add(count as u128).ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "FE solver level count overflows")
+        })?;
+        maximum_levels = maximum_levels.max(count);
+    }
+    if effects == 0 {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "FE solver memory estimate requires positive effect level counts",
+        ));
+    }
+    if threads == 0 {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "FE solver memory estimate has an invalid thread or reorthogonalization count",
+        ));
+    }
+    let (estimate, _, _) = estimate_cg_memory_dimensions(
+        observations as u128,
+        rhs_columns as u128,
+        effects,
+        levels,
+        maximum_levels as u128,
+        threads,
+    )?;
+    Ok((estimate.cg_bytes, estimate.coefficient_batch_bytes))
+}
+
+fn estimate_cg_memory_dimensions(
+    n: u128,
+    rhs: u128,
+    effects: u128,
+    levels: u128,
+    maximum_levels: u128,
+    threads: usize,
+) -> Result<(FeSolverMemoryEstimate, u128, u128)> {
+    let matrix_bytes = checked_mul(
+        checked_mul(n, rhs, "FE solver observation-RHS axis")?,
+        8,
+        "FE solver observation-RHS bytes",
+    )?;
+    let rhs_copy_bytes = matrix_bytes;
+    let cg_matrix_bytes = checked_mul(matrix_bytes, 3, "CG residual/direction/projection bytes")?;
+    let group_workspace_bytes = checked_mul(
+        checked_mul(maximum_levels, rhs, "CG group workspace")?,
+        16,
+        "CG group sums and corrections",
+    )?;
+    let dot_chunks = n.div_ceil(32_768);
+    let thread_reduction_bytes = checked_mul(
+        checked_mul(
+            dot_chunks.max(threads as u128),
+            rhs,
+            "solver thread reductions",
+        )?,
+        8,
+        "solver thread-reduction bytes",
+    )?;
+    let scalar_rhs_bytes = checked_mul(rhs, 8 * 16, "CG scalar RHS workspace")?;
+    let coefficient_batch_bytes = checked_sum(&[
+        checked_mul(
+            checked_mul(levels, rhs, "FE retained coefficient axis")?,
+            8,
+            "FE retained coefficient bytes",
+        )?,
+        checked_mul(
+            checked_sum(&[checked_mul(effects, 3, "FE coefficient layouts")?, 1])?,
+            std::mem::size_of::<usize>() as u128,
+            "FE coefficient layout bytes",
+        )?,
+    ])?;
+    let cg_bytes = checked_sum(&[
+        cg_matrix_bytes,
+        group_workspace_bytes,
+        thread_reduction_bytes,
+        scalar_rhs_bytes,
+    ])?;
+
+    let estimate = FeSolverMemoryEstimate {
+        cg_bytes,
+        coefficient_batch_bytes,
+        lsmr_off_bytes: 0,
+        lsmr_diagonal_bytes: 0,
+        lsmr_schwarz_bytes: 0,
+        lsmr_off_retained_bytes: 0,
+        lsmr_diagonal_retained_bytes: 0,
+        lsmr_schwarz_retained_bytes: 0,
+        lsmr_result_metadata_bytes: 0,
+        rhs_copy_bytes,
+        krylov_bytes: 0,
+        topology_bytes: 0,
+        thread_reduction_bytes,
+        borrowed_code_copy_avoided_bytes: 0,
+    };
+    Ok((estimate, group_workspace_bytes, scalar_rhs_bytes))
 }
 
 /// Checked topology dimensions shared by recurrence and retained-operator peaks.
@@ -830,6 +896,40 @@ fn checked_sum(values: &[u128]) -> Result<u128> {
 mod tests {
     const LOW_MODE_TRANSPOSE_BUFFER_BYTES: u128 = 1024 * 1024;
     use super::*;
+
+    #[test]
+    fn borrowed_cg_memory_summary_matches_full_estimate_and_checked_boundaries() {
+        for counts in [vec![3, 5], vec![17], vec![1; 1_000]] {
+            for (rows, rhs, threads) in [(7, 2, 1), (32_769, 5, 4), (64, 65, 2)] {
+                let complete =
+                    estimate_fe_solver_memory(rows, rhs, &counts, threads, None).unwrap();
+                assert_eq!(
+                    estimate_cg_solver_memory(rows, rhs, counts.iter().copied(), threads).unwrap(),
+                    (complete.cg_bytes, complete.coefficient_batch_bytes),
+                );
+            }
+        }
+        // Three 7x2 matrices, group sums/corrections, one reduction chunk,
+        // sixteen scalar slots per RHS; one bank has eight levels and layouts.
+        assert_eq!(
+            estimate_cg_solver_memory(7, 2, [3, 5], 1).unwrap(),
+            (768, 128 + 7 * std::mem::size_of::<usize>() as u128)
+        );
+        for (rows, rhs, counts, threads) in [
+            (0, 1, vec![1], 1),
+            (1, 0, vec![1], 1),
+            (1, 1, vec![], 1),
+            (1, 1, vec![1, 0], 1),
+            (1, 1, vec![1], 0),
+            (usize::MAX, usize::MAX, vec![usize::MAX], 1),
+        ] {
+            let expected =
+                estimate_fe_solver_memory(rows, rhs, &counts, threads, None).unwrap_err();
+            let actual = estimate_cg_solver_memory(rows, rhs, counts, threads).unwrap_err();
+            assert_eq!(actual.code, expected.code);
+            assert_eq!(actual.message, expected.message);
+        }
+    }
 
     #[test]
     fn schwarz_corrections_charge_dense_sparse_and_concurrent_pairs() {

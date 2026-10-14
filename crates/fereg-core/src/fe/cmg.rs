@@ -20,7 +20,7 @@ use cmg::{
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::linalg::neumaier_add;
-use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget, SolverWorkspacePeak};
+use crate::memory::{estimate_cg_solver_memory, FeSolverMemoryBudget, SolverWorkspacePeak};
 use crate::options::ThreadConfig;
 
 use super::{
@@ -1278,12 +1278,28 @@ impl<'a> CmgAbsorber<'a> {
                 let graph_retained = self.retained_workspace_peak()?;
                 let bulk_peak = self.memory.projection.with_retained(coefficient_bytes)?;
                 metrics.include_from(setup_metrics);
+                let polish_retained = u128::from(graph_retained.bytes().ok_or_else(|| {
+                    allocation("CMG polishing requires a modeled retained graph")
+                })?)
+                .checked_add(norm_bytes)
+                .and_then(|bytes| bytes.checked_add(coefficient_bytes))
+                .ok_or_else(|| allocation("CMG polishing retained memory overflows"))?;
+                admit_cmg_polish(
+                    &self.design,
+                    candidate.ncols(),
+                    self.config,
+                    polish_retained,
+                    coefficients.is_some(),
+                )?;
                 let polished = absorb_borrowed_intercept_cg(
                     &self.design,
                     self.weights,
                     candidate,
                     self.config.map,
-                    BorrowedCgOptions::polish(&reference_norms),
+                    BorrowedCgOptions {
+                        retain_coefficients: coefficients.is_some(),
+                        ..BorrowedCgOptions::polish(&reference_norms)
+                    },
                 )?;
                 let (residualized, mut report, correction) = polished.into_full_parts();
                 if trace {
@@ -1311,7 +1327,7 @@ impl<'a> CmgAbsorber<'a> {
                 report.solve_seconds += bulk_seconds;
                 if polish_iterations > 0 {
                     report.warnings.push(format!(
-                        "CMG bulk projection required {polish_iterations} certified CG polishing iterations"
+                        "CMG bulk projection used {polish_iterations} certified CG verification/correction iterations"
                     ));
                 }
                 if polish_iterations == 0 || correction.is_some() {
@@ -1383,9 +1399,10 @@ impl<'a> CmgAbsorber<'a> {
     /// Final OLS residuals have already been formed from certified within
     /// coordinates and are normally FE-orthogonal. Running graph PCG on that
     /// near-zero right-hand side can exhaust its relative iteration budget.
-    /// Certify first and perform a CG correction only when one is actually
-    /// required. Release the hierarchy before reserving the admitted
-    /// correction workspace; final certification remains independent.
+    /// Verify nonzero candidates with the strict CG polishing recurrence,
+    /// since small FE moments alone need not resolve weak graph modes. Release
+    /// the hierarchy before reserving the admitted correction workspace;
+    /// final certification remains independent.
     pub(crate) fn absorb_final_residual(
         self,
         values: DenseMatrix,
@@ -1407,17 +1424,30 @@ impl<'a> CmgAbsorber<'a> {
                 config.map,
             )?;
         let certificate_peak = certificate_workspace.with_retained_peak(retained)?;
-        if !certificate.passed {
+        if !certificate.passed
+            || (!self.design.effects().is_empty()
+                && values.as_slice().iter().any(|&value| value != 0.0))
+        {
             drop(self.route);
             ensure_cg_fallback_fits(&self.design, values.ncols(), config)?;
             let (reference_norms, norm_peak) =
                 weighted_column_norms(&values, self.weights, self.weight_scale)?;
+            admit_cmg_polish(
+                &self.design,
+                values.ncols(),
+                config,
+                reference_norms.capacity() as u128 * 8,
+                config.retain_coefficients,
+            )?;
             let corrected = absorb_borrowed_intercept_cg(
                 &self.design,
                 self.weights,
                 values,
                 config.map,
-                BorrowedCgOptions::polish(&reference_norms),
+                BorrowedCgOptions {
+                    retain_coefficients: config.retain_coefficients,
+                    ..BorrowedCgOptions::polish(&reference_norms)
+                },
             )?;
             let (residualized, mut report, mut coefficients) = corrected.into_full_parts();
             if !config.retain_coefficients {
@@ -1438,7 +1468,7 @@ impl<'a> CmgAbsorber<'a> {
             report.setup_seconds += self.pending_setup_seconds;
             report
                 .warnings
-                .push("final CMG residual required a certified CG correction".to_owned());
+                .push("final CMG residual used certified CG verification/correction".to_owned());
             return if let Some(coefficients) = coefficients {
                 CertifiedBorrowedMap::from_certified_parts_with_coefficients(
                     residualized,
@@ -2518,26 +2548,57 @@ fn ensure_cg_fallback_fits(
     let Some(budget) = config.solver_memory_budget else {
         return Ok(());
     };
-    let levels = design
-        .effects()
-        .iter()
-        .map(super::BorrowedInterceptEffect::n_levels)
-        .collect::<Vec<_>>();
-    let estimate = estimate_fe_solver_memory(
+    let (cg_bytes, _) = estimate_cg_solver_memory(
         design.nobs(),
         right_hand_sides,
-        &levels,
+        design.effects().iter().map(|effect| effect.n_levels()),
         config.threads.resolved(),
-        None,
     )?;
-    if budget.fits(estimate.cg_bytes) {
+    if budget.fits(cg_bytes) {
         Ok(())
     } else {
         Err(allocation(format!(
             "certified CG fallback requires {} incremental bytes and does not fit the joint execution/solver memory plan",
-            estimate.cg_bytes
+            cg_bytes
         )))
     }
+}
+
+fn admit_cmg_polish(
+    design: &BorrowedInterceptFeDesign<'_>,
+    right_hand_sides: usize,
+    config: CmgConfig,
+    retained_bytes: u128,
+    retain_coefficients: bool,
+) -> Result<u128> {
+    let (cg_bytes, coefficient_batch_bytes) = estimate_cg_solver_memory(
+        design.nobs(),
+        right_hand_sides,
+        design.effects().iter().map(|effect| effect.n_levels()),
+        config.threads.resolved(),
+    )?;
+    // The solution, residual, direction and projection coefficient banks
+    // coexist with the original bulk product and graph supplied by the caller.
+    let coefficient_bytes = if retain_coefficients {
+        coefficient_batch_bytes
+            .checked_mul(4)
+            .ok_or_else(|| allocation("CMG polishing coefficient memory overflows"))?
+    } else {
+        0
+    };
+    let required = retained_bytes
+        .checked_add(cg_bytes)
+        .and_then(|bytes| bytes.checked_add(coefficient_bytes))
+        .ok_or_else(|| allocation("CMG polishing memory overflows"))?;
+    if config
+        .solver_memory_budget
+        .is_some_and(|budget| !budget.fits(required))
+    {
+        return Err(allocation(format!(
+            "certified CMG polishing requires {required} incremental bytes and does not fit the joint execution/solver memory plan"
+        )));
+    }
+    Ok(required)
 }
 
 fn ensure_cmg_exact_retained_memory_fits(

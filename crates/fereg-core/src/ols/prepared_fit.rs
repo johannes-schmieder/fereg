@@ -1155,6 +1155,21 @@ struct FitPerturbations {
     one_fe_final_recovery_disabled: bool,
 }
 
+fn fit_thread_team(config: PreparedOlsFitConfig) -> ThreadTeam {
+    let team = ThreadTeam::new(config.execution.threads);
+    if team.threads() > 1
+        && config
+            .absorb
+            .routing
+            .is_some_and(|preset| preset.overlaps())
+        && !crate::parallel::exclusive_overlap_authorized()
+    {
+        team.with_exclusive_overlap()
+    } else {
+        team
+    }
+}
+
 /// Fit the finite coefficients of a prepared model, without inference,
 /// through the owner's declared ordinary or categorical projection semantics:
 /// the strict borrowed-intercept MAP path and a certified scaled finite solve.
@@ -1176,7 +1191,7 @@ pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows<
         drop(rows);
         return fit_prepared_ols_coefficients_view_map(prepared, config);
     }
-    ThreadTeam::new(config.execution.threads).install(|| {
+    fit_thread_team(config).install(|| {
         validate_config(prepared, config)?;
         let frame = LinearSolveFrame::from_prepared_ols(prepared)?;
         fit_with_controls_internal_mode_with_frame(
@@ -1198,7 +1213,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + Syn
     prepared: &P,
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedOlsFit> {
-    let team = ThreadTeam::new(config.execution.threads);
+    let team = fit_thread_team(config);
     team.install(|| {
         let mut reservation = SystemFitReservation;
         match config.execution.mode {
@@ -1458,7 +1473,7 @@ pub(crate) fn fit_prepared_weighted_linear_projection_once<
     frame: LinearSolveFrame<'a>,
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedLinearProjection> {
-    let team = ThreadTeam::new(config.execution.threads);
+    let team = fit_thread_team(config);
     team.install(|| {
         validate_config(prepared, config)?;
         frame.validate_for(prepared)?;
@@ -1693,7 +1708,7 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
     retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
     rows: Option<LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsFit> {
-    let team = ThreadTeam::new(config.execution.threads);
+    let team = fit_thread_team(config);
     // Inference needs the projected columns again. Prefer a packed cache when
     // its caller's bound admits it; larger fits retain immutable projected
     // rows through a selected-column view. Rank-selected QR and Cholesky solves both retain
@@ -2274,7 +2289,9 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
                 report.requested_preconditioner,
                 report.used_preconditioner,
             ) {
-                (FeSolverKind::Map | FeSolverKind::Cg, None, None) => true,
+                (FeSolverKind::Map | FeSolverKind::Cg | FeSolverKind::IronsTuck, None, None) => {
+                    true
+                }
                 (FeSolverKind::Lsmr, Some(_), Some(_)) => true,
                 (FeSolverKind::Cg | FeSolverKind::Map, Some(_), Some(_)) => report.fallback_used,
                 _ => false,
@@ -2311,12 +2328,14 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
     }
     if auto_mix {
         // A certified continuation remains authoritative over its LSMR
-        // attempt. Otherwise LSMR metadata takes precedence over direct CG.
+        // attempt. Otherwise LSMR metadata takes precedence over direct CG,
+        // coefficient IT and MAP prefixes, without inventing preconditioner data.
         let priority = |report: &SolveReport| match report.used_solver {
-            FeSolverKind::Map if report.fallback_used => 4,
-            FeSolverKind::Cg if report.fallback_used => 3,
-            FeSolverKind::Lsmr => 2,
-            FeSolverKind::Cg => 1,
+            FeSolverKind::Map if report.fallback_used => 5,
+            FeSolverKind::Cg if report.fallback_used => 4,
+            FeSolverKind::Lsmr => 3,
+            FeSolverKind::Cg => 2,
+            FeSolverKind::IronsTuck => 1,
             _ => 0,
         };
         if priority(&source) > priority(target) {

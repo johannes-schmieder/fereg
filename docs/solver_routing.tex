@@ -1,0 +1,755 @@
+% Standalone editable source. No external figures or custom font files required.
+% Build twice with: pdflatex -interaction=nonstopmode -halt-on-error solver_routing.tex
+% Original specification and vector TikZ diagrams authored by GPT Pro.
+% Subsequent implementation verification and policy amendments are authored by Codex.
+% The direct-cost amendment follows an actual GPT Pro review on 14 October 2026.
+% The allocation amendment uses a generic Pro methodology review, not project approval.
+\documentclass[11pt,letterpaper]{article}
+\usepackage[margin=0.67in,top=0.72in,bottom=0.67in,headheight=14pt,headsep=14pt]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype}
+\usepackage{amsmath,amssymb,array,tabularx,booktabs}
+\usepackage[table]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric,fit,backgrounds}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem,fancyhdr,lastpage,ragged2e}
+\usepackage{hyperref}
+\definecolor{Ink}{HTML}{203149}
+\definecolor{Teal}{HTML}{096D73}
+\definecolor{Muted}{HTML}{536478}
+\definecolor{Pale}{HTML}{EDF5F5}
+\definecolor{Light}{HTML}{F3F5F8}
+\definecolor{Rule}{HTML}{CAD5DE}
+\definecolor{Amber}{HTML}{86570C}
+\definecolor{Warm}{HTML}{FAF4E8}
+\hypersetup{colorlinks=true,linkcolor=Teal,urlcolor=Teal,pdftitle={Efficient FE solver routing},pdfauthor={GPT Pro; subsequent amendments and verification by Codex},pdfsubject={Integrated experiments and explicit OLS CMG repair pass mapped native checks; performance pending},pdfkeywords={fixed effects, solver routing, CMG, within, deterministic controller}}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\sffamily\fontsize{8.5}{10}\selectfont\color{Muted}FEREG / ENGINEERING SPECIFICATION}
+\fancyhead[R]{\sffamily\fontsize{8.5}{10}\selectfont\color{Muted}REVISED 14 OCTOBER 2026}
+\fancyfoot[L]{\sffamily\fontsize{8}{10}\selectfont\color{Muted}Mapped native checks passed / performance qualification pending}
+\fancyfoot[R]{\sffamily\fontsize{8.5}{10}\selectfont\color{Ink}\thepage\ / \pageref*{LastPage}}
+\renewcommand{\headrulewidth}{0.3pt}
+\renewcommand{\footrulewidth}{0pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4.0pt}
+\setlength{\tabcolsep}{5.5pt}
+\renewcommand{\arraystretch}{1.16}
+\setlist[itemize]{leftmargin=13pt,itemsep=2pt,topsep=3pt,parsep=0pt}
+\setlist[enumerate]{leftmargin=17pt,itemsep=2pt,topsep=3pt,parsep=0pt}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+\newcolumntype{P}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+\newcommand{\body}{\fontsize{10.5}{13.45}\selectfont\color{Ink}\RaggedRight}
+\newcommand{\smallbody}{\fontsize{9.4}{11.65}\selectfont\color{Ink}\RaggedRight}
+\newcommand{\tinybody}{\fontsize{8.6}{10.6}\selectfont\color{Ink}\RaggedRight}
+\newenvironment{compactleaf}{\setlength{\parskip}{2.5pt}\renewcommand{\arraystretch}{1.06}\renewcommand{\smallbody}{\fontsize{9.2}{11.1}\selectfont\color{Ink}\RaggedRight}\renewcommand{\sub}[1]{\par\vspace{2pt}{\sffamily\bfseries\fontsize{11.5}{14}\selectfont\color{Teal}##1\par}}\renewcommand{\tagline}[1]{{\sffamily\fontsize{9.5}{12}\selectfont\color{Muted}##1\par}\vspace{3pt}}}{}
+\newcounter{specsection}
+\newcommand{\sect}[2]{\stepcounter{specsection}\pdfbookmark[0]{#2}{spec.\arabic{specsection}}\vspace*{1pt}{\sffamily\bfseries\color{Teal}\fontsize{9}{11}\selectfont #1\par}\vspace{4pt}{\sffamily\bfseries\color{Ink}\fontsize{21}{24}\selectfont #2\par}\vspace{8pt}}
+\newcommand{\sub}[1]{\par\vspace{4pt}{\sffamily\bfseries\fontsize{11.5}{14}\selectfont\color{Teal}#1\par}\vspace{1pt}}
+\newcommand{\tagline}[1]{{\sffamily\fontsize{9.5}{12}\selectfont\color{Muted}#1\par}\vspace{5pt}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\anchor}[1]{\par\vspace{2pt}{\fontsize{8.6}{10.7}\selectfont\color{Muted}\textbf{Source anchor:} #1\par}}
+\newtcolorbox{note}[1][]{colback=Pale,colframe=Teal,boxrule=0pt,leftrule=2.5pt,arc=0pt,left=9pt,right=9pt,top=6pt,bottom=6pt,before skip=7pt,after skip=7pt,#1}
+\newtcolorbox{binding}[1][]{colback=Warm,colframe=Amber,boxrule=0pt,leftrule=2.5pt,arc=0pt,left=9pt,right=9pt,top=6pt,bottom=6pt,before skip=7pt,after skip=7pt,#1}
+\newcommand{\rowhead}{\rowcolor{Ink}\color{white}\bfseries}
+\newcommand{\newleaf}{\newpage\body}
+\newcommand{\algline}[2]{\textcolor{Muted}{\makebox[17pt][r]{\scriptsize #1}}\hspace{6pt}#2\par}
+\begin{document}
+\body
+
+% PAGE 1 ----------------------------------------------------------------------
+\thispagestyle{fancy}\pdfbookmark[0]{Overview}{overview}
+{\sffamily\bfseries\fontsize{10}{12}\selectfont\color{Teal}IMPLEMENTATION SPECIFICATION\par}
+\vspace{8pt}
+{\sffamily\bfseries\fontsize{32}{35}\selectfont Efficient FE\par solver routing\par}
+\vspace{6pt}
+{\sffamily\fontsize{13}{17}\selectfont\color{Muted}Integrated experimental contract;\par mapped native checks passed; performance qualification pending\par}
+\vspace{3pt}
+{\sffamily\fontsize{10.5}{14}\selectfont 13 October 2026 / amended 14 October 2026\par}
+\vspace{6pt}
+\begin{note}
+\textbf{Design in one sentence.} Keep \code{auto} as a small deterministic router: exact structural shortcuts, inexpensive incumbent iterations, and at most one bounded optional upgrade, followed by an independent original-problem certificate.
+\end{note}
+\sub{Purpose and implementation boundary}
+Serial routing, overlap, prefix arms and PPML topology sharing are implemented. The narrow explicit-CMG polishing repair passes its full suite and fresh native checks (page 16). Repaired ablation and policy A prerequisites are complete (page 15). Page 17 declares a prospective deployment transition before timing. Ordinary \code{auto} and explicit IT remain unchanged; no performance winner or default promotion is established.
+\sub{Scientific and runtime invariants}
+Preserve explicit solver contracts, unsafe-CG rejection, supported OLS/PPML requests and both bias modes. Existing authorities decide sample membership, rank, omissions and separation; preserve original factor slots and base flags. Routing, factor pivots and numerical preconditioners must not redefine those decisions.
+
+Use one native call. SPI stays on the main thread; workers own Rust-managed state. Break checks, deterministic error arbitration, joining and atomic rollback apply before publication. No uncertified best-so-far output may be published. Exact operators mean the original mathematical problem, not an absence of floating-point error.
+\sub{Reading map}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.49\linewidth}Y}
+\toprule
+\textbf{Architecture and execution} & \textbf{Integration and release}\\
+\midrule
+2 Frontier and frozen policy constants & 8 Controlled builder and worker ownership\\
+3 Routing flowchart & 9 Parallel grant timeline and terminal handling\\
+4 Types, sessions and native iteration limits & 10 Staged delivery, prefixes and PPML\\
+5 Deterministic work and memory admission & 11 Statistical performance qualification\\
+6 Executable serial controller & 12 Verification, bindings and source anchors\\
+7 Exact two-FE and within-CMG contracts & 13 Current implementation bindings (Codex)\\
+ & 14 Reviewed direct-cost amendment (Codex)\\
+ & 15 Evidence and experimental boundaries (Codex)\\
+ & 16 CMG repair; 17 deployment transition (Codex)\\
+\bottomrule
+\end{tabularx}}
+\vfill
+{\fontsize{9}{11.8}\selectfont\color{Muted}\textbf{Authorship.} GPT Pro authored the original specification and diagrams. Codex authored later bindings and amendments. Exact-case Pro review informed the direct-cost correction (page 14); generic Pro review informed allocation (page 8). The explicit-CMG repair (page 16) is a Codex amendment, not GPT Pro code approval.\par
+Document rendering and layout validation do not constitute solver implementation or scientific/performance qualification.}
+
+% PAGE 2 ----------------------------------------------------------------------
+\newleaf
+\sect{01 / PERFORMANCE FRONTIER}{Methods, roles and frozen constants}
+\tagline{Qualitative engineering tradeoffs, not measured winners or performance guarantees.}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.205\linewidth}P{0.25\linewidth}Y}
+\toprule
+\textbf{Method} & \textbf{Plausible favorable regime} & \textbf{Cost, limitation and automatic role}\\
+\midrule
+Existing exact projection & Zero or one categorical FE & Other call costs dominate. Preserve the shortcut before new profiling.\\
+\addlinespace[3pt]
+Direct component Schur & Small retained dimension, such as firm-year & Clique construction, factorization and storage can dominate. Separate qualification and complete admission.\\
+\addlinespace[3pt]
+Diagonal Schur PCG & Easy, dense, well-connected two-FE graphs & Weak modes can slow convergence. Incumbent uses $D_f$, not the true diagonal of $S$.\\
+\addlinespace[3pt]
+Retained-star CMG & Difficult two-FE systems & Hierarchy setup/application overhead. Initial optional preset: $k=0$, cutoff 5, seed 0.\\
+\addlinespace[3pt]
+Sampled CMG & Some difficult high-degree graphs & Unbiasedness and connectivity do not promise spectral quality. Sampling witnesses and separate finite qualification first.\\
+\addlinespace[3pt]
+Within-LSMR, existing Schwarz & General categorical FE systems & All pair-block construction and applications cost work. Preserve as incumbent.\\
+\addlinespace[3pt]
+Within-LSMR, one CMG pair & A difficult large pair embedded in three/many FEs & Keeps the full design and other pair blocks. Multiway slow modes can remain. First new many-FE candidate.\\
+\addlinespace[3pt]
+Coefficient-space IT & Easy systems & Irregular convergence. Implement efficiently as an independent challenger; no automatic stacking of prefixes.\\
+\addlinespace[3pt]
+Accurate nuisance Schur correction & Tiny nuisance dimension with substantial reuse & $q$ accurate core solves, storage and cancellation risk. Comparator, not the new automatic small-remainder route.\\
+\bottomrule
+\end{tabularx}}
+\sub{Policy constants and their status}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.28\linewidth}Y}
+\toprule
+\textbf{Setting} & \textbf{Approved value or qualification rule}\\
+\midrule
+Escalation checkpoint & One global $h\in\{4,8,16,32\}$ selected in development; unchanged baseline is separate.\\
+Initial CMG representation & Retained stars $k=0$, degree cutoff 5, seed 0. Later $k=1,2$ only after sampling qualification.\\
+Optional setup / direct cap & $32W_0$ for optional setup. Direct-specific work $A\le4W_{\rm ref}$; complete attempt, including the shared certificate, also fits remaining setup and protected-reserve limits (pages 5, 14).\\
+Overlap / builder quantum & Serial first. Later overlap only for $P\ge2$ and $4<h<\infty$; chunks at most 1024 tariff units.\\
+Performance margins & Current-auto gate: max(5\%, 1 ms). Internal frontier: max(20\%, 1 ms), against every eligible declared arm.\\
+\bottomrule
+\end{tabularx}}
+\begin{note}\smallbody
+No finish-time forecast, residual-slope escalation, degree-only classifier, seed search, progressive preset ladder, 20-year performance fence or automatic $q$-core construction. Constants above are empirical resource/selection policies, not competitive-runtime theorems.
+\end{note}
+
+% PAGE 3 ----------------------------------------------------------------------
+\newleaf
+\sect{02 / ROUTING FLOW}{Select one arm; keep operators fixed}
+\tagline{Current executable arms are separate experiments, not a composed automatic policy.}
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex,
+ box/.style={draw=Rule,fill=Light,rounded corners=2pt,align=center,font=\sffamily\fontsize{9}{11}\selectfont,inner sep=4pt,execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
+ focus/.style={box,draw=Teal,fill=Pale},
+ dec/.style={diamond,draw=Teal,fill=white,aspect=3.8,align=center,font=\sffamily\fontsize{8.5}{10.5}\selectfont,inner sep=2pt,execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
+ arr/.style={->,line width=0.75pt,draw=Muted},
+ lab/.style={font=\sffamily\fontsize{8}{9.5}\selectfont,fill=white,inner sep=1.5pt,text=Muted}]
+\node[focus,text width=6.5cm] (start) at (8.4,0) {Bind authority, session and action\\Original inputs, scales and allowance};
+\node[dec,text width=2.5cm] (explicit) at (8.4,-1.5) {Auto routing arm?};
+\node[box,text width=4.0cm] (exroute) at (2.4,-1.5) {Existing auto / explicit engine\\Unchanged public contract};
+\node[dec,text width=2.55cm] (zero) at (8.4,-3.0) {Pure categorical\\0/1 FE?};
+\node[box,text width=4.0cm] (exact) at (2.4,-3.0) {Existing exact shortcut\\Before new profiling};
+\node[dec,text width=2.75cm] (slope) at (8.4,-4.65) {Slopes / mixed?};
+\node[box,text width=4.0cm] (slroute) at (2.4,-4.65) {Existing prepared path\\Separate challenger gate};
+\node[dec,text width=3.0cm] (arm) at (8.4,-6.05) {Select declared arm};
+\node[box,text width=4.8cm] (ablation) at (2.8,-7.5) {Two-FE ablation: direct / diagonal / cells\\Checkpoint MAX; no CMG};
+\node[box,text width=4.8cm] (prefix) at (14.0,-7.5) {3+ FE prefix: none / MAP4 / IT4\\Checkpoint MAX; no CMG};
+\node[box,text width=4.8cm] (akernel) at (2.8,-8.9) {Selected kernel, or incumbent on refusal\\Direct: $A\le4W_{\rm ref}$ + full budget*};
+\node[box,text width=4.8cm] (pkernel) at (14.0,-8.9) {Original-RHS Schwarz-LSMR seed\\Replace existing prefix; no stacking};
+\node[focus,text width=5.1cm] (hk) at (8.4,-8.9) {Finite $(h,k)$ arm\\Incumbent kernels and existing\\three-FE shortcut only};
+\node[focus,text width=9.3cm] (inc) at (8.1,-10.3) {Logical checkpoint or recurrence-ready: defer new grant\\Outer original-design certificate before acceptance};
+\node[dec,text width=3.95cm] (admit) at (8.1,-11.85) {Finite $(h,k)$ at $h$:\\unused and admitted?};
+\node[box,text width=4.8cm] (keep) at (2.8,-13.5) {Continue incumbent\\Recurrence unchanged\\No second optional attempt};
+\node[focus,text width=6.0cm] (build) at (12.55,-13.5) {One capped CMG build\\Two-FE or nominated within pair\\All components or none};
+\node[focus,text width=6.0cm] (restart) at (12.55,-15.2) {Exact residual; discard recurrence\\Restart fixed preconditioner\\Original scales, gauge and limits};
+\node[box,text width=4.8cm] (fallback) at (2.8,-15.2) {Existing fallback if uncertified\\Remaining action allowance};
+\node[focus,text width=12.8cm] (terminal) at (8.1,-17.0) {Certified: drain issued work; fixed arbitration; join before publication\\Stronger final action has its own certificate. Break/fatal: rollback.};
+\draw[arr] (start.south)--(explicit.north);
+\draw[arr] (explicit)--node[lab,above]{no}(exroute);
+\draw[arr] (explicit.south)--node[lab,right]{yes}(zero.north);
+\draw[arr] (zero)--node[lab,above]{yes}(exact);
+\draw[arr] (zero.south)--node[lab,right]{no}(slope.north);
+\draw[arr] (slope)--node[lab,above]{yes}(slroute);
+\draw[arr] (slope.south)--node[lab,right]{no}(arm.north);
+\draw[arr] (arm.west)-|node[lab,near start,above]{ablation}(ablation.north);
+\draw[arr] (arm.east)-|node[lab,near start,above]{prefix}(prefix.north);
+\draw[arr] (arm.south)--node[lab,right]{finite $(h,k)$}(hk.north);
+\draw[arr] (ablation)--(akernel);
+\draw[arr] (prefix)--(pkernel);
+\draw[arr] (hk)--(inc);
+\draw[arr] (akernel.west)--(0.05,-8.9)--(0.05,-17.0)--(terminal.west);
+\draw[arr] (pkernel.east)--(16.75,-8.9)--(16.75,-17.0)--(terminal.east);
+\draw[arr] (inc.west)--node[lab,above]{certified}(0.05,-10.3)--(0.05,-17.0)--(terminal.west);
+\draw[arr] (inc)--node[lab,right]{uncertified}(admit);
+\draw[arr] (admit.west)-|node[lab,near start,above]{no}(keep.north);
+\draw[arr] (admit.east)-|node[lab,near start,above]{yes}(build.north);
+\draw[arr] (build)--node[lab,right]{success}(restart);
+\draw[arr] (build.west)--node[lab,above]{refusal}(keep.east);
+\draw[arr] (keep)--(fallback);
+\draw[arr] (restart.west)--node[lab,above]{uncertified end}(fallback.east);
+\draw[arr] (restart.south)--++(0,-0.33)-|(terminal.north);
+\draw[arr] (fallback.south)--++(0,-0.54)-|(terminal.north);
+\end{tikzpicture}
+\end{center}
+\vspace{-5pt}
+{\smallbody\textbf{Arm guard.} Ablation/prefix arms use \code{checkpoint=MAX}; only finite $(h,k)$ arms reach CMG preparation. Side branches use their own certificate and remaining-allowance fallback. \textbf{*Direct} fully funds certification and may cost more than four iterations on rejection. The intended frontier permits later combinations, but each needs a newly declared complete artifact and qualification; no Cartesian stacking or default promotion is implemented.}
+
+
+% PAGE 4 ----------------------------------------------------------------------
+\newleaf
+\sect{03 / INTERNAL CONTRACTS}{Identity, continuation and action limits}
+\tagline{Shared by prepared and generic entrypoints; no public report or solver-option redesign.}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.225\linewidth}Y}
+\toprule
+\textbf{Internal record} & \textbf{Required contents and invariant}\\
+\midrule
+\code{RoutePlan} & Requested route; supported shape; action accuracy; authoritative factor slots/base flags; global $h$/preset; direct/pair eligibility; nominated pair; worker/memory mode; fixed generation key; optional-attempt state; work reservations. No elapsed-time input.\\
+\addlinespace[4pt]
+\code{SolveContinuation} & Sample/topology identity, weight generation, coefficient layout, normalization/gauge, RHS identities and order, original RHS scales, current iterate and consumed native iterations. Full recurrence only when explicitly retained and valid.\\
+\addlinespace[4pt]
+Session preparation state & Immutable session key; frozen $W_0$ and setup cap; spent/issued work; allocation ownership; selected pair/preset; builder cursor; complete reusable hierarchy or parked private preparation. No quota reset on handoff/failure.\\
+\addlinespace[4pt]
+Action state & Native limit and consumption, selected incumbent's segment counter, active RHSs, original inputs, certificate contract, current recurrence, reserved fallback/output capacity and terminal status.\\
+\bottomrule
+\end{tabularx}}
+\sub{Session identity and reuse}
+A projection session fixes sample, weights, basis, accuracy contract and the committed RHS set. Weight identity is a generation, not a pointer. A continuation also binds topology, layout, normalization and RHS order. Reject incompatible reuse before application; unexpected mutation of an immutable in-flight key is an invariant failure.
+
+Completed hierarchies may be reused by a later call with a matching compatible generation key. Partial construction receives no credit for hypothetical future calls. Compatible Low-memory chunks retain session preparation and its single budget, not new build allowances. Do not hide observation-by-RHS copies in a supposedly Low-memory route.
+\sub{Native iterations are per action, not a session-wide pool}
+\begin{note}
+Each OLS action owns its existing native iteration limit. Pilots, restarts, corrections and fallback \emph{within that action} share its remaining allowance. Low-memory chunks retain their existing individual limits and maximum-iteration report aggregation. Never sum all chunks into a new global iteration limit.
+\end{note}
+The final residual action has its own limit and stronger accuracy contract. PPML \code{iterate()} remains outer IRLS, not a new inner-CMG limit. Work-token accounting is independent of these native counters and may charge all RHS activity even when public iteration reporting uses a maximum.
+
+For two-FE, $h$ counts Diagonal Schur PCG native iterations. For many-FE, it counts the incumbent Schwarz-LSMR segment, not diagonal iterations; any existing qualified MAP prefix still consumes the action allowance. An exhausted action does not gain permission to reach $h$ or to restart.
+\sub{Publication and diagnostics}
+Preserve public report shapes, requested/used solver semantics and \code{solveroptions}. Mixed Low chunks report the solvers actually used. Do not reinterpret the LSMR-only \code{preconditioner()} option. Add only bounded routing diagnostics: transitions, refusal, representation, preset, reuse, native consumption, work and peak memory. No unbounded event ledger.
+\anchor{\code{fe/session.rs} for session reuse; \code{docs/SPEC.md} for public contracts and authoritative semantics.}
+
+% PAGE 5 ----------------------------------------------------------------------
+\newleaf
+\sect{04 / RESOURCE ADMISSION}{Deterministic work, separate memory}
+\sub{Tariffs and the setup envelope}
+Use a versioned deterministic tariff for arithmetic, data/record visits, comparisons and moves. Kernels expose checked bounds and bounded precharge. Debit work by bounded chunks, not per-operation atomics; unused reservations may be released only at prescribed boundaries, never to create a timing-dependent route.
+
+Bind $W_0$ to the checked tariff of a \textbf{complete physical incumbent iteration over the initial session batch}, including actual storage work and, for general FE, the Schwarz application. Freeze this deterministic bound once; later deflation or Low chunks do not resize it. It is available before direct preflight and is not elapsed-time measurement. An unavailable or overflowing bound refuses optional work.
+\begin{equation*}
+ C_{\rm setup}=32W_0,\qquad
+ W_{\rm profile}+W_{\rm build}+W_{\rm app\,prep}
+ +W_{\rm restart}+W_{\rm cleanup}\le C_{\rm setup}.
+\end{equation*}
+Profiling, graph aggregation, optional sampling, sorting, hierarchy construction, terminal factors and application preparation are included. Reserve restart and cleanup before any builder grant. Existing Schwarz setup and failed optional work remain charged; this is a late-solve upgrade, not a claim to eliminate incumbent construction cost.
+\sub{Admission predicate and application accounting}
+Admit only with a valid immutable plan, unused optional opportunity, checked setup capacity, independent peak-memory capacity, remaining native allowance, protected existing fallback/certificate/output reservations, and capacity for at least one candidate update plus certification. Mandatory reserves cannot finance speculative preparation.
+
+Let $B$ be the admitted construction allowance after spent setup work and restart/cleanup reserves. Before chunk $j$, require $\widehat W_j\le B-W_{\rm build,spent}$ and fit within the currently issued grant. Do not start an oversized chunk or overspend before declining. Record and charge later preconditioner applications separately; the setup cap is not permission for unbounded solve work. Native iteration limits remain unchanged. Explicit solvers retain their existing budget semantics.
+\sub{Direct admission: comparative work and full funding}
+{\smallbody
+\textit{Amended after the 14 October GPT Pro review; see page 14.} Price both orientations. Let $A$ include complete candidate-specific work: sunk profiling, assembly, factors, committed solves, reconstruction and any direct-only certificate preparation. Exclude only the structurally shared original-design certificate obligation $C_K$. Define $W_{\rm ref}$ from the incumbent orientation and current committed RHSs at packed width (stride = active width), separately from physical session $W_0$.
+\begin{equation*}
+ A\le4W_{\rm ref},\qquad
+ D_{\rm rem}\le\min(32W_0-S_{\rm opt},U),\qquad M_{\rm peak}\le M_{\rm allowed}.
+\end{equation*}
+Here $D_{\rm rem}$ funds all remaining work, including $C_K$; $S_{\rm opt}$ is charged optional work and $U$ is spendable work after protected reserves. Every noncertificate prefix obeys the $A$ cap. Never turn certificate allowance into profiling/factor credit or subtract independently computed bounds. Precharge work without double charging sunk profiling. Keep the fallback certificate funded until success.
+
+Choose least work among admitted orientations; tie only by original factor index. No future-RHS or factor-cache credit. A launched finite rejection closes optional routing and preserves the incumbent; fatal errors roll back. Rejected total work can exceed four iterations. This screen makes no runtime claim.
+\sub{Peak-memory and reserve implementation}
+Include simultaneous incumbent/new states, original inputs, hierarchy/factors, scratch/certificate buffers, stacks, allocator overhead and cleanup. Preallocate fixed service/control/input state before overlap. Later variable numerical payloads are checked, fallible, admitted and gated; small shared-owner controls are admitted/gated but retain Rust's infallible allocation (page 8). Accounting credits are not physical reservations. Hidden unchecked payload growth is ineligible.
+}
+
+
+% PAGE 6 ----------------------------------------------------------------------
+\newleaf
+\sect{05 / SERIAL CONTROLLER}{Executable transitions and terminal outcomes}
+\tagline{Serial is the first implementation to qualify. All guards precede optional work.}
+{\smallbody
+\begin{tcolorbox}[colback=Light,colframe=Rule,boxrule=0.4pt,arc=0pt,left=5pt,right=8pt,top=7pt,bottom=7pt]
+\algline{01}{\textbf{ENTER:} validate authority/support; bind action, session, original inputs/scales/gauge.}
+\algline{02}{Explicit/uninjected request: unchanged dispatch. Auto 0/1 categorical FE: exact route.}
+\algline{03}{Slopes/mixed: existing path. Otherwise \textbf{SELECT EXACTLY ONE} hidden arm.}
+\algline{04}{Ablation: diagonal, cells or direct; \code{checkpoint=MAX}, CMG preparation disabled.}
+\algline{05}{Direct alone: test $A$/full funding; solve/certify or retain incumbent; never try CMG.}
+\algline{06}{Prefix alone: none/MAP4/IT4 then seeded LSMR; MAX checkpoint, no prefix stacking.}
+\algline{07}{Ablation/prefix arms use existing certificate/fallback $\to$ TERMINAL; skip PREPARE.}
+\algline{08}{Finite $(h,k)$ only: incumbent $D_f$-PCG, or existing three-FE shortcut/Schwarz-LSMR.}
+\algline{09}{\textbf{INCUMBENT:} run existing checkpoints under remaining allowance.}
+\algline{10}{Retain the pre-bound physical $W_0$ and all consumed work across chunks.}
+\algline{11}{Recurrence-ready: defer grants; require the outer original-design certificate.}
+\algline{12}{Finite $(h,k)$ at counter $h$: certify as required before considering a build.}
+\algline{13}{No eligible opportunity or failed admission $\to$ INCUMBENT, optional closed.}
+\algline{14}{Compatible completed hierarchy $\to$ INSTALL without another build.}
+\algline{15}{\textbf{PREPARE:} otherwise mark the session attempt issued; reserve resources.}
+\algline{16}{Construct the fixed preset, all nominated replacements or none, under the cap.}
+\algline{17}{Refusal $\to$ INCUMBENT, optional closed; retain its untouched recurrence.}
+\algline{18}{Fatal: drain/join as prescribed, then atomic rollback. Never retry a preset/pair.}
+\algline{19}{\textbf{INSTALL:} validate generation and wrapped-action contract before publication.}
+\algline{20}{Recompute original-operator residual; discard incumbent Krylov recurrence.}
+\algline{21}{Restart correction with current coefficients and original scales/gauge/recovery.}
+\algline{22}{Debit all new updates, certificates and corrections to the same action.}
+\algline{23}{Outer-certified: finish. Segment failure: existing fallback, no new candidate.}
+\algline{24}{\textbf{FALLBACK:} use remaining action allowance and original input unless a proven}
+\algline{}{coefficient-continuation adapter exists. No new quota or native-limit reset.}
+\algline{25}{\textbf{TERMINAL:} independent original-problem certificate and joined tasks precede}
+\algline{}{commit. Exhaustion without certification returns existing nonconvergence.}
+\end{tcolorbox}}
+\sub{State machine requirements}
+The arm is immutable: ablation/prefix use MAX; finite $(h,k)$ retains incumbents. No direct-to-CMG or new-prefix-to-pair-CMG stack executes. A combination needs a declared complete artifact and qualification. Refusal closes optional selection: no second pair, preset or quota. Retaining an iterate is a \emph{restart}; preserve the incumbent recurrence so refusal resumes it unchanged.
+
+At successful installation the correction interface must implement $r_h=b-Ax_h$, $A\delta=r_h$, $x=x_h+\delta$, with original scales, layout and gauge; for the full design, use its existing weighted least-squares interpretation. A changed preconditioner cannot inherit old LSMR or PCG recurrence scalars. The within branch requires a tested coefficient correction/recovery adapter before it can be enabled.
+\sub{Typed results, not a catch-all failure}
+Result variants are \code{Certified}, \code{OptionalRefusal}, \code{Nonconverged}, \code{Break} and \code{Fatal}. Optional allocation/quota or declared finite factor/certificate rejection can abstain; panic, invariant breach, invalid input or invalid numerical state are fatal. Do not convert NaNs or corrupted state into a performance fallback.
+
+Use existing fallback support and stronger final-output contracts. A certificate is required for every output action; it does not itself prove forward accuracy, unchanged discrete decisions or inference under near-confounding. Those remain independent verification obligations.
+
+% PAGE 7 ----------------------------------------------------------------------
+\newleaf
+\sect{06 / NUMERICAL BACKENDS}{Exact two-FE operator; one within-CMG pair}
+{\smallbody
+\sub{Two-FE Schur path}
+With aggregated cell weights $c_{wf}>0$, worker masses $d_w$, firm masses $D_f$, and cross-factor matrix $C$, preserve $S=D_f-C'D_w^{-1}C$, the initial certificate, existing iterative orientation and the exact unsampled outer operator. \textbf{Diagonal Schur PCG uses $D_f$.} True Jacobi and cell-aggregated products are separate numerical/performance qualifications. The stable diagonal identity is
+\[
+ S_{ff}=\sum_w c_{wf}\,\frac{\sum_{g\ne f}c_{wg}}{d_w}.
+\]
+Accumulate complementary positive sums after cell aggregation; do not subtract nearly equal masses or use a tiny-value threshold as a new rank rule. Initial CMG uses the existing cutoff-5 predicate: exact low-degree cliques and retained high-degree stars ($k=0$), seed 0. Later sampled trees, if qualified, are fixed with their hierarchy across RHSs/corrections. Connectivity and unbiasedness alone do not establish spectral quality.
+\sub{Within nomination and transactional integration}
+Add a local backend variant to the existing concrete Schwarz machinery at pinned \code{within} revision \code{297f32d}. Preserve every pair, two-sided partition weights, coordinate wrappers, component grounding/mean projections, elimination/fold/unfold, reductions and small direct components. No slope block is replaced.
+
+For categorical pair $(a,b)$, compute active-size score
+\[
+ s_{ab}=\max_{c\in\mathrm{components}(a,b)}\min(L_{a,c},L_{b,c}).
+\]
+Eligibility requires a component above the existing dense threshold. Maximize score; tie by descending sum of retained component dimensions, then ascending original factor indices (bound in the subsequent verification on page 13). These are active sizes, not estimated ranks. Replace all eligible large components of the nominated pair transactionally, or install none, under one allowance. Both large-small blocks remain in a worker-firm-year system. No year-count fence or automatic $q$-core construction is introduced.
+\sub{The contract is the fully wrapped local action}
+For a sign-transformed local pair, positive active $D$ and fixed symmetric PSD reduced inverse action $B$,
+\[
+ L=\begin{bmatrix}D&-C\\-C'&E\end{bmatrix},\quad S=E-C'D^{-1}C,\quad
+ G=\begin{bmatrix}D^{-1}+D^{-1}CBC'D^{-1}&D^{-1}CB\\BC'D^{-1}&B\end{bmatrix}.
+\]
+With $T=\left[\begin{smallmatrix}I&D^{-1}C\\0&I\end{smallmatrix}\right]$,
+$G=T\,\operatorname{diag}(D^{-1},B)T'$. This gives PSD when $B$ is PSD, but
+$\ker G=\{0\}\mathbin{\times}\ker B$, \textbf{not generally the pair-Laplacian kernel}.
+
+Require the fully wrapped inverse action $H_i$ to be fixed, linear, symmetric PSD, exactly preserve the incumbent local kernel, and be positive on the admissible space. Orthogonal projections allow $QGQ$; weighted projections require the correct adjoints/metric, not unexamined repetition of the same wrapper. For unchanged restrictions and two-sided self-adjoint weights,
+\[
+ P=\sum_i R_i'\Omega_i H_i\Omega_iR_i,\qquad
+ \ker P=\bigcap_i\{x:\Omega_iR_ix\in\ker H_i\}.
+\]
+The identity follows from nonnegative local quadratic forms. It preserves the assembled kernel, not global Gram nonsingularity. Match the modified-LSMR inner product and retain its one assembled inverse-Gram action per iteration.
+
+Prove cycle positivity from smoothing, adjoint transfers and the coarse solver; numerical linearity/symmetry/positivity/nullspace witnesses supplement that proof. Fixed symmetric cycles from zero may qualify. Tolerance-stopped inner CG and fixed-count ordinary CG are not fixed linear preconditioners. A retained-star full-pair cycle needs a correctly dimensioned backend with adjoint embedding/restriction, never a fictitious reduced dimension.
+}
+\anchor{\code{cmg\_schur.rs}, \code{cmg\_schur/sampling.rs}; reviewed \code{within 297f32d} pair/block-elimination baseline.}
+
+% PAGE 8 ----------------------------------------------------------------------
+\newleaf
+\sect{07 / UPSTREAM CONCURRENCY}{A controlled builder, not racing cancellation}
+\tagline{Current-artifact mapped concurrency witnesses pass; performance qualification remains pending.}
+{\smallbody
+\sub{Required CMG construction interface}
+The serial builder exposes \code{grant}, \code{park}, \code{drain\_issued\_prefix}, \code{abandon\_unissued\_suffix} and \code{fatal}. Stable control sites cover assembly, sorting, hierarchy, terminal factors and application preparation. Primitive chunks cost at most 1024 tariff units; allocations and faults have separate gates. Split or park before a chunk that does not fit: a chunk bound never permits grant overshoot. The unlimited controller preserves explicit construction and budget semantics.
+\sub{Eligibility and worker ownership}
+Promotion requires serial qualification first. Overlap requires $P\ge2$, $4<h<\infty$, bounded kernels and joint memory admission. After four \emph{incumbent} iterations, exclusively lease one existing executor worker; cap foreground work at $P-1$ with a fixed partition and reductions. The coordinator must not consume an additional blocked slot or help-run the parked builder. No nested pool, capacity-dependent nested waits or barriers including nonparticipants.
+
+The session owns service state, input copies and lease across compatible Low chunks; value leases allocate nothing. A parked builder never borrows reused chunk scratch. Refresh authoritative parent memory/budget for each wider RHS block before further allocation; initial $W_0$, $B$ and $G$ never reset. Early completion does not release the worker. Drain/join before inputs or publication escape; parking is not joining. SPI stays on the main thread.
+\sub{Allocation amendment and its limits}
+Establish fixed service, synchronization, input and cleanup state before launch. Fixed input copies are checked/fallible under aggregate admission; no per-copy injected gate is required. Full eventual hierarchy preallocation is not required. Later variable numerical payloads are checked, fallible, admitted and gated at stable sites with deterministic sizes/order/lifetimes. Small shared-owner headers are admitted and gated, but stable Rust \code{Arc::new} remains infallible. Protect solve, certificate and shutdown capacity; prohibit hidden unchecked payload growth and track partial initialization.
+
+Optional refusal is transactional. Cleanup transport is nonallocating; existing error \code{String} construction and diagnostics can allocate. Credits are not physical reservations. Successful runs assume the same allocation outcomes; fixed logical-site injections must repeat routes, status and accounting under scheduling changes. Exogenous allocation failure can change outcomes; allocator abort and process death are outside the survival guarantee. Repeatability is conditional, and logical work bounds do not guarantee allocator or cancellation wall time.
+\sub{Grant and ownership protocol}
+One owner grants prepaid deterministic prefixes: each eligible four-iteration epoch adds $W_0$, capped by admitted $B$ after restart/cleanup reserves. Grants and spending persist across Low chunks. Recurrence-ready or batch-end defers grants until the outer original-design certificate decides. Failure at iteration 4 or $h$ services that same frozen optional checkpoint before correction advances; allowance never renews. At uncertified $h$, grant remaining $B$ and join. Install only at the declared exact-residual restart.
+\sub{Failure ordering and deterministic termination}
+Drain to the issued frontier or intrinsic completion/refusal/fatal event. Precedence is \textbf{Break; fatal errors in fixed kind/task order; independently certified success; optional refusal}. Task 0 is foreground, task 1 preparation; logical failure sites are stable. Except for Break, local failure cannot truncate prescribed peer work by arrival time. Abandon only unissued work; join before publication/rollback and release capacity only at the declared boundary. A stronger final action needs its own certificate.
+\anchor{Codex amendment informed by an actual generic GPT Pro review, 14 October 2026, 5m48s, in the \href{https://chatgpt.com/c/6aceddfe-edec-83ea-a216-6d1fbf408136?temporary-chat=true}{retained review conversation}. No project code or results were submitted for that review; it is not exact-project approval.}
+}
+
+% PAGE 9 ----------------------------------------------------------------------
+\newleaf
+\sect{08 / PARALLEL GRANT TIMELINE}{Fixed checkpoints, cumulative issued work}
+\tagline{Illustration: $h=16$, $B=10W_0$. Values illustrate the protocol, not an additional policy constant.}
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex,
+ lab/.style={font=\sffamily\fontsize{8.5}{10.5}\selectfont,align=center,text=Ink},
+ tile/.style={draw=Rule,fill=Light,rounded corners=1pt,align=center,font=\sffamily\fontsize{8.5}{10.5}\selectfont,inner sep=5pt},
+ line/.style={draw=Muted,line width=0.8pt}]
+\node[lab,anchor=east] at (2.5,0.05) {Incumbent counter};
+\foreach \x/\t in {3.0/0,5.65/4,8.05/8,10.45/12,12.85/16} {
+ \draw[draw=Rule,densely dashed] (\x,-0.25)--(\x,-5.2);
+ \node[lab] at (\x,0.15) {$\t$};
+}
+\node[lab,anchor=east] at (2.5,-1.05) {Foreground};
+\node[tile,minimum width=2.45cm,minimum height=0.85cm] at (4.325,-1.05) {$P$ workers\\initial prefix};
+\node[tile,fill=Pale,draw=Teal,minimum width=7.0cm,minimum height=0.85cm] at (9.25,-1.05) {$P-1$ workers; fixed partition and reductions\\Ready: outer certificate before any new grant};
+\node[lab,anchor=east] at (2.5,-2.25) {Builder lease};
+\node[tile,minimum width=2.45cm,minimum height=0.7cm] at (4.325,-2.25) {Not launched};
+\node[tile,fill=Pale,draw=Teal,minimum width=7.0cm,minimum height=0.7cm] at (9.25,-2.25) {One worker: execute issued prefix, then park};
+\node[lab,anchor=east] at (2.5,-3.4) {Cumulative grant};
+\foreach \x/\t in {5.65/{W_0},8.05/{2W_0},10.45/{3W_0},12.85/{B}} {
+ \draw[-{Latex},line] (\x,-2.78)--(\x,-3.13);
+ \node[lab,fill=white,inner sep=2pt] at (\x,-3.45) {$\t$};
+}
+\draw[-{Latex},draw=Teal,line width=1pt] (12.85,-3.8)--(12.85,-4.3);
+\node[tile,fill=Pale,draw=Teal,text width=9.55cm] at (8.0,-4.8) {At uncertified $h$: issue remaining $7W_0$, join, validate generation.\\Success: exact-residual restart. Refusal: unchanged incumbent.};
+\node[lab,anchor=west,text=Muted] at (0.15,-5.65) {Logical checkpoint order only. Segment lengths do not represent elapsed time.};
+\end{tikzpicture}
+\end{center}
+\vspace{-4pt}
+\sub{Executable grant rule}
+{\smallbody
+\begin{tcolorbox}[colback=Light,colframe=Rule,boxrule=0.4pt,arc=0pt,left=8pt,right=8pt,top=6pt,bottom=6pt]
+Initialize $G=0$ once per compatible session, not on Low-chunk handoff.\\
+At each eligible four-iteration epoch before $h$:\quad $G\leftarrow\min(B,G+W_0)$.\\
+At $h$, provided the action is not already certified:\quad $G\leftarrow B$.\\
+Builder executes only a deterministic prefix authorized by $G$, then parks.\\
+Recurrence-ready: defer grant; require the outer original-design certificate.\\
+Rejection at 4 or $h$: service the frozen checkpoint before correction advances.\\
+$G$ and setup spending persist across compatible Low-memory chunks; no refill.
+\end{tcolorbox}}
+\sub{Terminal examples and Low-memory handling}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.29\linewidth}Y}
+\toprule
+\textbf{Foreground event} & \textbf{Required builder and controller behavior}\\
+\midrule
+Ready at iteration 10 & Grant stays $2W_0$ until the outer certificate decides. On success, drain that prefix and arbitrate before accepting. Failure follows the declared continuation.\\
+\addlinespace[3pt]
+Early or late builder & An early result cannot switch the solver or return its worker. A late builder is joined at the same frozen checkpoint; no readiness-based routing.\\
+\addlinespace[3pt]
+Compatible Low chunk finishes & Outer-certify and drain issued work. The session service retains private preparation, exclusive lease and ledger for compatible chunks. No quota reset or merged native limit.\\
+\addlinespace[3pt]
+Committed RHS set finishes & Drain/arbitrate, abandon only unissued work, terminate and join before publication. A stronger final action retains its own certificate obligation.\\
+\addlinespace[3pt]
+Break, fatal, refusal & Break cancels; fatal outranks success; optional refusal does not. A failure's arrival time cannot decide how much prescribed peer work executes.\\
+\bottomrule
+\end{tabularx}}
+\vfill
+{\smallbody\textbf{Boundary rule.} Recurrence readiness is not certification. Process the original-design certificate before a coincident grant, including at $h$. Parking retains ownership; only the declared boundary returns capacity. Fresh current-artifact overlap witnesses pass; performance qualification remains pending.}
+
+% PAGE 10 ---------------------------------------------------------------------
+\newleaf
+\sect{09 / DELIVERY PROGRAM}{Independent stages, unchanged model semantics}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.075\linewidth}P{0.285\linewidth}Y}
+\toprule
+\textbf{Stage} & \textbf{Implementation deliverable} & \textbf{Required boundary before promotion}\\
+\midrule
+0 & Shared controller, accounting, continuation and capped serial CMG & Prepared/generic entrypoints agree. Unlimited builder matches current construction. Lock immutable starting baseline and stage incumbent.\\
+\addlinespace[3pt]
+1 & Serial two-FE routing & Initial retained-star preset, four finite $h$ candidates, exact residual restart, independent science and resource tests.\\
+\addlinespace[3pt]
+2 & True diagonal, cell products and direct components & Qualify each independently; no assumption that a mathematically exact identity is bitwise or performance equivalent.\\
+\addlinespace[3pt]
+3 & Within-CMG backend, correction adapter and prefix experiments & Prove wrapped-action contract. Retain other pair blocks. Qualify coefficient IT and prefix policy separately, without a Cartesian search.\\
+\addlinespace[3pt]
+4 & Sampling, then binary overlap & Sampling witnesses precede $k=1,2$ comparisons. Freeze $h$/preset before serial-versus-overlap gate. Serial wins by default on failure.\\
+\addlinespace[3pt]
+5 & PPML integration & Separate accepted/speculative lifecycle, weight-generation and outer-iteration qualification. OLS success authorizes no PPML promotion.\\
+\bottomrule
+\end{tabularx}}
+\sub{General categorical prefix and prepared slopes}
+Ordinary auto retains its existing at-most-four-MAP-sweep three-FE shortcut. Three hidden arms implement no prefix, at most four MAP sweeps, or four compact IT cycles (at most eight native sweeps). They replace, never stack with, the existing shortcut. Uncertified coefficients warm-start LSMR from untouched original RHSs through a fresh original-design residual. Outer prefix certification uses the requested model tolerance. Every sweep consumes the action allowance; admission includes seed/handoff memory. No prefix is promoted.
+
+Prepared slopes and mixed systems keep their current supported path until an independently qualified LSMR/IT challenger exists. Do not describe that path as uniformly LSMR. Include efficient coefficient IT and standalone diagonal-versus-Schwarz arms in eligible comparisons, not in an uncontrolled automatic solver tournament.
+\sub{PPML: structural sharing first, numerical ownership unchanged}
+The off-by-default PPML source stage shares component topology/indexing only. Preserve canonical outer engines, accepted/pending frame ownership, strict checkpoints, support handling, Low-memory restrictions and outer-iterate semantics. Current weighted masses, trees, factors and hierarchies are rebuilt for each applicable numerical generation. Support changes invalidate affected topology and numerical keys.
+
+Commit pending component indices only when their generation is accepted; rejection discards pending state without replacing accepted topology. Numerical data always belong to current weights. Old factors are not current inverses. No OLS result qualifies PPML, and this structural stage does not authorize new per-IRLS solver selection.
+
+Qualify weight/support transitions, separation, both bias modes, final outputs and outer iteration behavior independently. Saved effects, coefficient/gauge recovery, inference and all protected discrete decisions must remain consistent with existing authority.
+\sub{Repository and release governance}
+Pin upstream revisions and record the precise patches for CMG control hooks and the within local backend. Existing repository rules need no change. A concrete exception that violates the max(5\%, 1 ms) current-auto gate or scientific semantics requires a user decision, not a new local fence or relaxed rule.
+
+
+% PAGE 11 ---------------------------------------------------------------------
+\newleaf
+\sect{10 / PERFORMANCE QUALIFICATION}{Finite selection, paired uncertainty, one holdout}
+\sub{Arm manifest and timing scope}
+Predeclare eligible internal arms by support and output/accuracy contract, benchmark cells, data/solver seeds, worker counts, failures/timeouts, pairing order and the current paired-median bootstrap implementation. Measure complete end-to-end calls, including construction, required outputs and actual compatible reuse. Do not count hypothetical future calls.
+
+Initially compare four finite $h$ policies with retained stars plus unchanged baseline. After sampling qualification, allow at most $4\times3=12$ $(h,k)$ policies plus baseline. These implemented policies retain incumbent kernels and the existing three-FE shortcut; ablation and prefix arms are separate. A future combination needs a newly declared complete artifact and qualification. No Cartesian search across kernels, prefixes, presets and overlap; retain baseline measurements throughout.
+\sub{Development A, development B, untouched C}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.16\linewidth}P{0.19\linewidth}Y}
+\toprule
+\textbf{Partition} & \textbf{Run design} & \textbf{Selection or decision rule}\\
+\midrule
+A: screening & 1 warmup; 3 rotating paired repetitions & Shortlist at most four by baseline violations, then worst normalized regret, then geometric-mean baseline ratio, with conservative ties.\\
+\addlinespace[4pt]
+B: confirmation & 1 warmup; 7 paired repetitions & Every required comparison passes its upper-bound gate. Minimize worst internal bound among passers. Ties: baseline, retained stars, larger $h$, fewer trees.\\
+\addlinespace[4pt]
+C: holdout & Frozen public Auto candidate; one untouched holdout (page 17) & No promotion on failure or inconclusive evidence. No runner-up selection using C, no retuning, and no recycling C for development.\\
+\bottomrule
+\end{tabularx}}
+\sub{Acceptance margins and statistical interpretation}
+For each prespecified benchmark cell, preserve the existing paired-median bootstrap upper-bound gate. Current-auto nonregression allows \textbf{max(5\%, 1 ms)}. Internal frontier comparisons allow \textbf{max(20\%, 1 ms)} against \emph{every} prespecified eligible backend. Preserve the one-millisecond absolute branch of each gate, not a blanket percentage limit or a noisy fastest-observed-arm comparison.
+
+Pin the harness's statistic, resampling/pairing unit, nominal coverage and upper-bound implementation; these details are not replaced by this specification. Report nominal \emph{per-comparison} coverage, not a universal or simultaneous 95\% guarantee. Repeated measurements and a held-out suite do not establish distribution-free tail dominance.
+
+Retain failures and timeouts as failures; do not drop them or resample until passing. Report family/cell tails, worst regret and uncertainty alongside geometric means. An inconclusive upper-bound gate does not pass. Baseline retention neither proves the internal target nor establishes universal performance safety.
+\sub{External comparisons and release measurements}
+Compare fixest, reghdfe and ppmlhdfe only on eligible accuracy-matched, complete end-to-end tasks including required outputs. Keep default and matched-strict comparisons separate. Do not infer a win from differing tolerances, missing saved effects or omitted final inference work.
+
+Use quiet Mac release timing after stable edits and profiling, with no competing local work. Freeze repetitions and failure policy before running C; do not extend a run opportunistically after seeing the result. Protect both baselines and record the policy/seed/revision manifest. Later stages need fresh untouched validation.
+
+
+% PAGE 12 ---------------------------------------------------------------------
+\newleaf
+\sect{11 / VERIFICATION AND RELEASE}{Evidence required before an automatic route ships}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.22\linewidth}Y}
+\toprule
+\textbf{Verification area} & \textbf{Minimum evidence and adversarial cases}\\
+\midrule
+Numerical kernels & Independent dense/high-precision witnesses; exact-operator adjoints; local linearity, symmetry, positivity and nullspace; stable Schur diagonal; retained-star dimensions and adjoint wrappers. Numerical witnesses supplement proofs.\\
+\addlinespace[3pt]
+Scientific outputs & 0/1/2/3/4/8/many FE; tiny retained/dense/weak/real AKM; repeated cells, skewed weights, disconnected and near-confounded third FE; slopes, multi-RHS/inactive RHS, Low, saved-FE gauge, strict final residuals, coefficients and inference.\\
+\addlinespace[3pt]
+Controller and resources & Exact-residual/original-scale restart; unchanged incumbent on refusal; per-action limits and Low maximum aggregation; shared setup cap; no second candidate; peak-memory and checked-bound exhaustion; full mapped/replay transaction checks.\\
+\addlinespace[3pt]
+Parallel ownership & Two workers and larger budgets; early/late/parked builders; certificates around $h$; grants, allocation faults, deterministic fault ordering, Break, panic and rollback. Fixed-mode/$P$/seed bitwise output and route repeats under schedule perturbation; cross-worker science/discrete agreement.\\
+\addlinespace[3pt]
+PPML separately & Accepted/speculative cache publication, rejection rollback, weight/support transitions, separation, both bias modes, strict checkpoints, final outputs and outer-iteration semantics.\\
+\bottomrule
+\end{tabularx}}
+\sub{Explicit implementation bindings, not hidden policy changes}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.105\linewidth}Y}
+\toprule
+\textbf{Binding} & \textbf{Freeze before enabling the affected stage}\\
+\midrule
+B1 & Versioned tariff, primitive bounds, reserve computation, native-counter debit mapping and exact checkpoint mapping. Preserve established action/Low semantics.\\
+B2 & Preserve the pair's primary score; secondary tie is descending total retained component dimension, then ascending original factor indices.\\
+B3 & Fixed fatal kind/task ordering, logical fault locations and resumable Low epoch mapping. Cumulative grants must never reset or depend on readiness.\\
+B4 & Existing paired-median statistic, confidence level, resampling protocol, normalized-regret definition and C repetition manifest. No new statistical estimand.\\
+\bottomrule
+\end{tabularx}}\par\vspace{5pt}
+This checklist records specification bindings. Page 13 identifies source bindings; page 15 separates integrated checks from pending performance qualification. Record bindings in code/tests and the qualification manifest, not a data-dependent classifier. Implementation and native checks alone do not promote an optional branch.
+\sub{Readiness record and source anchors}
+Before promotion, require implementation/revision pins; numerical-contract proof and witnesses; action/resource/rollback tests; supported-output compatibility; passing A/B selection; a frozen complete policy; and passing untouched C. Otherwise the optional feature remains off. This document records a plan, not those completed results.
+
+{\tinybody
+\textbf{Repository authority:} \code{docs/SPEC.md}.\quad
+\textbf{Two-FE workspace:} \code{crates/fereg-core/src/fe/borrowed\_map.rs}.\par
+\textbf{Exact operator / sampling:} \code{cmg\_schur.rs} and \code{cmg\_schur/sampling.rs} within the FE module.\par
+\textbf{Reuse:} \code{fe/session.rs}.\quad
+\textbf{Direct mathematics:} \code{ols/canonical\_products.rs}; reuse kernels, not estimator lifecycle or rank authority.\par
+\textbf{Upstream baseline:} pinned \code{within 297f32d}, as reviewed in the approved plan; retain pair coverage, partition weights and block-elimination wrappers. These are implementation anchors, not a claim of fresh repository inspection.}
+\vfill
+{\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}RELEASE STATUS: REVIEWED SPECIFICATION. PERFORMANCE QUALIFICATION PENDING.}
+
+% PAGE 13 ---------------------------------------------------------------------
+% Subsequent verification authored by Codex, not by GPT Pro.
+\newleaf
+\begin{compactleaf}
+\sect{12 / SUBSEQUENT CODE VERIFICATION}{Integrated experiments; promotion pending}
+\tagline{Implementation note authored by Codex after the original GPT Pro specification.}
+\begin{note}\smallbody
+The explicit OLS CMG repair artifact \code{72ff85} passes focused checks, independent source reviews, the full suite and universal build, plus 1,139 fresh native calls, eight Stata fixtures and five Break checks. The dynamic-weight prerequisite passes unchanged. Repaired ablation and policy A prerequisites are complete (page 15). Performance remains unqualified; ordinary \code{auto} and explicit IT stay unchanged.
+\end{note}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.075\linewidth}Y}
+\toprule
+\textbf{Binding} & \textbf{Current implementation and remaining boundary}\\
+\midrule
+B1 & Checked tariffs, accounting and checkpoints are bound in the controller sources below: $h\in\{4,8,16,32\}$, $32W_0$ setup and $4W_0$ restart reserve. General-FE work includes incumbent Schwarz and checked replacement startup. Per-action iteration limits, Low-chunk maximum reporting and the separate final action remain distinct from setup accounting.\\
+\addlinespace[4pt]
+B2 & Preserve primary score $\max_c\min(L_{a,c},L_{b,c})$. Tie by \emph{descending sum of retained component dimensions}, then ascending original factor indices. Total local dimension is not used. This binds the reviewed keys.\\
+\addlinespace[4pt]
+B3 & Experimental overlap uses an exclusive existing-worker lease and session service across compatible Low chunks. Grants, deferred certification, fixed fatal ordering and gated allocation follow pages 8--9. Fresh current-artifact native/Break checks pass; performance remains separate.\\
+\addlinespace[4pt]
+B4 & \code{bench/routing.py} binds disjoint hashed A/B/C inputs, one warmup each and 3/7/7 paired repetitions. It reuses the paired-median bootstrap: 10,000 draws, seed 739391, nominal 95\% per-comparison interval. A uses the median ratio; B/C use the interval's upper endpoint. Frozen selection precedes C; no runner-up or automatic continuation.\\
+\bottomrule
+\end{tabularx}}
+\sub{Kernel distinctions preserved in the candidate}
+{\smallbody
+The \code{cells} arm changes the Schur product representation while retaining the incumbent $D_f$ preconditioner. The \code{diagonal} arm tests the true Schur diagonal separately. These are distinct experiments, not an implicit combined substitution.
+
+Direct follows pages 5 and 14: $A\le4W_{\rm ref}$ at packed width, full funding and peak-memory admission. No factor-reuse cache exists. Rejection closes optional routing and can exceed four iterations total. Core, dense-QR and four fresh current-artifact native cases pass; these scientific checks establish no performance claim.
+
+Ordinary explicit IT retains observation-space acceleration. Hidden \code{inject=it\_coefficients} tests the coefficient-space Euclidean metric, selected by complete simultaneous-memory comparison (ties favor coefficient space). Its trajectory changes; original-weight certification, rejection safeguards and factor-slot recovery remain required. Page 15 records the failed qualification and separate prefix arms.
+}
+\sub{Bound statistic and source anchors}
+{\smallbody
+For ratio statistic $q$, normalized excess regret is
+\[
+ g=\frac{q-1}{\max\!\left(\epsilon,\,0.001/\operatorname{median}(t_{\rm reference})\right)},
+ \qquad \epsilon=0.05\ \text{for protection},\quad 0.20\ \text{for internal arms}.
+\]
+The gate is $g\le1$. It preserves the one-millisecond allowance and the existing estimand. No timing result is asserted here.
+}
+\anchor{FE paths below \code{crates/fereg-core/src/}.\par
+Controller: \code{fe/routing.rs}, \code{fe/borrowed\_map.rs}, \code{fe/borrowed\_map/routing\_lsmr.rs}.\par
+Kernels: \code{fe/routing\_direct.rs}, \code{fe/routing\_overlap.rs}, \code{fe/borrowed\_map/irons\_tuck.rs}.\par
+Selection: \code{bench/routing.py}; bootstrap: \code{bench/time\_exact.py}.}
+{\tinybody Published main pins: \href{https://github.com/johannes-schmieder/within/commit/efe35ee386ad989b043a5076d01d879ca410ff19}{\code{within/schwarz efe35ee}}; \href{https://github.com/johannes-schmieder/CMG/commit/b989eddfc3bf7ad130c76df8d0cceaf9801e1d72}{\code{CMG b989edd}}. No pending upstream branch decision. Prior serial evidence uses earlier pins (page 15).}
+\vfill
+{\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}DEFAULT AUTO UNCHANGED. FINITE PERFORMANCE QUALIFICATION PENDING.}
+\end{compactleaf}
+
+% PAGE 14 ---------------------------------------------------------------------
+% Codex policy amendment informed by actual GPT Pro review, not new Pro authorship.
+\newleaf
+\sect{13 / REVIEWED ACCOUNTING AMENDMENT}{Compare like work; fund the whole attempt}
+\tagline{Codex amendment, adopted after an actual GPT Pro review on 14 October 2026.}
+\begin{note}\smallbody
+\textbf{Review provenance.} GPT Pro reviewed the exact tariff flaw and proposed correction in the retained \href{https://chatgpt.com/c/6aceddfe-edec-83ea-a216-6d1fbf408136?temporary-chat=true}{routing review conversation}. Its conclusion was: ``Approve symbolic exclusion of a common certificate obligation---not numerical credit from an adjustable certificate bound.'' This page is Codex's implementation-facing amendment, not newly Pro-authored text.
+\end{note}
+\sub{Why the original gate was rejected}
+{\smallbody
+The original $A+C\le4W_0$ compared a complete direct action against iterations that excluded the same final certificate. For the reviewed bounds, write $n\ge p\ge q\ge1$ for rows and incumbent eliminated/retained levels, $r\ge1$ for active RHSs, and $b=\lceil n/512\rceil$. With full-width storage, GPT Pro verified
+\[
+\begin{aligned}
+C-4W_0={}&(112r+72)(n-p)+(220r+40)(p-q)\\
+&+(80r-8)(q-1)+64r(b-1)+16(r-1)+8\ge8.
+\end{aligned}
+\]
+Thus the old gate cannot admit any positive direct construction cost. An inactive-stride witness does not repair that defect. No empirical multiplier increase is authorized.
+}
+\sub{Exact replacement and nonfungible certificate reservation}
+{\smallbody
+$W_{\rm ref}$ is the packed current-action reference in the incumbent orientation. It uses only committed RHSs and their fixed partition. Physical storage operations remain fully charged; later Low chunks never reset physical session $W_0$ or its $32W_0$ envelope.
+
+Define $A$ by disjoint operations outside a verified shared certificate kernel $K$. Include both-orientation profiling and all direct-only work. In the candidate, $K$ uses the original design, validated original weights, retained reference norms, tolerance and common \code{certify} kernel. Its bound includes fresh candidate residual norms, the shifted compensated pass and scaled fallback. Direct-only coefficient validation and scratch/layout preparation, $2(p+q)r+128$ units, stay in $A$. Equal tolerances alone do not establish commonality; disputed work stays candidate-side.
+\[
+\boxed{A\le4W_{\rm ref}}\qquad
+\boxed{D_{\rm rem}\le\min(32W_0-S_{\rm opt},U)}
+\]
+The full attempt includes $C_K$ and simultaneous-memory admission. Every profiling/census/assembly prefix obeys the first cap; the complete remaining bound obeys the second. Increasing $C_K$ can only tighten resource admission. It cannot enlarge the first cap. Charge before execution, retain spent work on rejection, and never double charge sunk work.
+
+Keep incumbent recovery and its certificate independently funded until direct succeeds: rejection can require two certificates. A stronger final action is a separate obligation unless actually discharged. Respect the certificate's final outcome, including any scaled fallback. Finite refusal returns to the untouched incumbent with no second optional candidate. Break, panic and invalid numerical state retain fatal rollback.
+}
+\sub{Verification boundary}
+{\smallbody
+Admission needs an independent phase-by-phase envelope checked against executed kernels and full-width production. Required witnesses include unequal weights, repeated cells, refusal, boundaries, overflow, certificate branches, padding invariance, Low persistence, fallback and rollback; numerical oracles cover projections, coefficients, saved gauge, inference and protected decisions.
+
+\textbf{Source, core and fresh integrated native witnesses pass.} Core tests, dense-QR checks and four current-artifact native cases cover unit/unequal weights, Fast/Low, workers 1/4, saved gauge and inference. Fast admission certifies 65 active RHSs. Source review confirms prefix/full gates, packed reference, rejection charge and the shared certificate. Performance qualification remains pending.
+
+Different residuals can take different certificate branches. This policy proves neither equal actual costs nor four-iteration competitiveness; rejected total work may exceed four iterations. No speedup, tournament pass, default promotion or completed PPML qualification is asserted.
+}
+% PAGE 15 ---------------------------------------------------------------------
+% Current evidence and implementation boundaries authored by Codex.
+\newleaf
+\begin{compactleaf}
+\renewcommand{\smallbody}{\fontsize{9.2}{10.5}\selectfont\color{Ink}\RaggedRight}
+\sect{14 / EVIDENCE AND EXPERIMENTAL BOUNDARIES}{Implemented scope and evidence}
+\tagline{Codex verification note. All results remain bound to their tested artifacts and declared scope.}
+\sub{Current mapped verification; performance remains open}
+{\smallbody
+Repaired plugin \code{72ff85} passes 239 Python tests (13 skips), 1,331 core tests (three declared exclusions), 195 plugin tests and ten isolated allocator audits, oracles, strict Clippy, fuzz, ABI and universal Mac build. Its 1,139 fresh native calls pass: 68 ordinary cases retain exact parent comparisons; five typed OLS CMG cases pass independent science, exact fixed-worker repeats and 2/4/8/16-worker science/discrete checks. Supplemental routing/IT, direct, overlap and PPML topology panels pass, as do eight Stata fixtures and five Break checks. Builder checks at 2/4 workers each repeat twice after actual work, with rollback/reset.
+
+The wider-Low-block envelope repair passed independent review. The first Low-install expectation failed correctly: sort/load work exceeded the cap. Separate refusal and two genuine Low-install witnesses pass. The first builder fixture failed with long-macro r(198); indexed locals repaired the harness. Both failures remain recorded; witness fixes changed no runtime.
+
+New wide-129/one-worker profiles preserve science: dense-meat samples 119/116, finite moments 84/83, Schur 26/24 (candidate/baseline). They prove no speedup or nonregression. The optional CMG CPU sampler's sandbox attach failed (255); preserve it without retry or cost claim. Candidate science passed.
+
+Repaired ablation completes 26 wrappers: 320 initial passes and 320 passing repeats. Policy A completes 42: 846 initial passes and 846 passing repeats. Each retains 18 optional MAP/IT/compact-IT unavailabilities on weak/high-degree-weak/dynamic-weight cells at workers 1/4; zero science blocks remain. Original policy A's 844 passes and two IT slope-warning checker blocks stay recorded. The reviewed, source-derived warning correction passes 58 focused tests and six fresh baseline/IT control/repeat calls at workers 1/4, exactly matching old failed-call outputs. Provenance is published; runtime, numerical scope and tolerances are unchanged. No timing has started.
+}
+\sub{Explicit compact IT: failed qualification is preserved}
+{\smallbody
+The original 38-cell all-success protocol on prior serial artifact \code{a00a78f1} failed after 16 passing comparisons: old IT exhausted its iteration limit on a one-worker weak graph before candidate dispatch. A separate bounded, untimed completion obtained all 38 cells, reusing the 16 verified comparisons and retaining that failure.
+
+Both versions pass 32 cells with independent truth, two exact repeats, scoped compatibility and cross-worker checks. The same six cells are unsuccessful, but failure modes are not identical:\par
+\begin{tabularx}{\linewidth}{P{0.225\linewidth}Y Y}
+\toprule
+\textbf{Family} & \textbf{One worker: old / candidate} & \textbf{Four workers: old / candidate}\\
+\midrule
+Weak & iteration exhaustion / exhaustion & iteration exhaustion / exhaustion\\
+High-degree weak & 120 s timeout / timeout & 120 s timeout / timeout\\
+Dynamic weights & iteration exhaustion / 120 s timeout & iteration exhaustion / exhaustion\\
+\bottomrule
+\end{tabularx}
+The completion is not a replacement qualification pass, performance result or candidate-wide scientific acceptance. Ordinary explicit IT therefore retains its incumbent implementation. Compact IT remains the hidden \code{inject=it\_coefficients} challenger; no weak family or unsuccessful observation is removed.
+}
+\sub{New source stages remain experimental}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.20\linewidth}Y}
+\toprule
+\textbf{Stage} & \textbf{Implemented scope; qualification boundary}\\
+\midrule
+Parallel CMG & Existing-worker lease, cumulative grants and Low session ownership; outer certificate before grants; fixed arbitration. Fresh install/refusal/Break witnesses pass; performance gate pending.\\
+Categorical prefixes & Hidden none / four MAP / four compact IT cycles (at most eight sweeps), replacing one shortcut. Original-RHS warm start, model-tolerance certificate and full handoff accounting. No promotion.\\
+PPML topology & Off-by-default component-index sharing, accepted/pending generations and current-weight rebuild. Fresh native topology checks pass; repair preserves PPML arithmetic. No promotion.\\
+\bottomrule
+\end{tabularx}
+}
+\anchor{Current plugin SHA-256:\par \code{72ff85cc33e088ec85c9e30feddc589a3f2aa1068bca1d812e74fba498c3207e}.\par Native transcript: \code{3eb756e3}; full identities and preserved failures: \code{docs/VALIDATION.md}.\par Contracts: \code{fe/routing\_overlap.rs}, \code{fe/borrowed\_map/categorical\_prefix.rs}, \code{fe/session.rs}.}
+\vfill
+{\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}NO DEFAULT PROMOTION. NO PERFORMANCE CLAIM. FINITE QUALIFICATION PENDING.}
+\end{compactleaf}
+
+% PAGE 16 ---------------------------------------------------------------------
+% Codex numerical-correction amendment; not GPT Pro code approval.
+\newleaf
+\begin{compactleaf}
+\sect{15 / EXPLICIT OLS CMG CORRECTION}{Resolve the remaining FE component accurately}
+\tagline{Codex amendment. This numerical repair is not GPT Pro code approval or a new routing winner.}
+\sub{Why a correction became necessary}
+{\smallbody
+The wider untimed ablation prerequisite screen found two explicit-CMG scientific failures on one dynamic-weight design at one and four workers. A bounded diagnostic reproduced the failure in both the earlier baseline and integrated candidate: maximum residual error was $3.856\times10^{-8}$, above the unchanged comparison and independent guard. LSMR passed. Eighteen other blocks were a distinct, overly strict diagnostic mapping of the existing CMG-to-CG final correction; correcting that checker does not resolve the numerical failure or relabel old observations.
+
+Small FE moments alone do not establish that a weakly identified FE component has been removed accurately. Four bounded repair attempts remained unqualified. Analytic and exact-input high-precision witnesses localized error to premature polishing acceptance and cancellation in the computed projection action. Pointwise subtraction and product rounding lost information before compensated reduction. A tiny recursive residual did not imply an accurate fresh action; imposing a fresh relative threshold below roundoff was not a justified remedy.
+}
+\sub{Fifth candidate: restricted arithmetic and convergence changes}
+{\smallbody
+\begin{tabularx}{\linewidth}{P{0.205\linewidth}Y}
+\toprule
+\textbf{Obligation} & \textbf{Explicit OLS CMG polishing contract}\\
+\midrule
+Accurate action & Preserve general TwoDiff high/low subtraction parts and FMA product-error terms in compensated group reductions, with binary value scaling. Apply this only to the CMG polishing action.\\
+Convergence & Use the actual Hestenes decrement and require relative recurrence convergence at requested tolerance, followed by the original-design certificate. A certificate alone cannot accept a nonzero initial action or skip final nonzero-residual verification.\\
+Zero / underflow & An entrywise-zero computed projection may exit after accounting for workspace/action. Zero residual energy with nonzero entries is an explicit failure; it is not an underflowed successful norm.\\
+Coefficients / memory & Retain and add polishing coefficients whenever bulk FE coefficients are retained. Joint admission includes live graph, norms, bulk coefficients and all correction banks at actual RHS width. Release the graph before final-correction workspace admission.\\
+Reporting & Requested CMG stays explicit. Fast final CG verification reports used CG and its verification/correction warning, including an accounted zero-update verification.\\
+\bottomrule
+\end{tabularx}
+}
+\sub{Scope and current qualification boundary}
+{\smallbody
+Ordinary Auto/CG/LSMR, saved-model recovery and PPML retain their arithmetic. Scientific tolerances, iteration limits, sample, rank, omission and separation decisions are unchanged. The prospective exact-input replay scope covers only OLS cases 08, 11, 14, 26 and 29; the other 68 ordinary cases, including PPML, retain exact parent comparisons. Independent 70-digit exact-binary-input dummy-design witnesses cover residuals, coefficients, covariance and each saved-FE gauge.
+
+Candidate \code{72ff85} passes focused CMG/polishing checks, independent arithmetic/memory review, the full suite and universal build. The actual-width witness checks five RHSs with batch two at the exact memory boundary and one byte below. Preserve the first suite failure at a stale final-used-solver assertion; its test-only correction changed no artifact or numerical requirement.
+
+All 1,139 fresh native calls, eight Stata fixtures and five Break checks pass (page 15). The eight-call dynamic oracle passes: maximum CMG residual error is $6.5111\times10^{-11}$, versus old $3.8558\times10^{-8}$; LSMR is $6.3639\times10^{-11}$. Fixed-worker repeats and cross-worker science/discrete checks pass at unchanged tolerances. \textbf{Repaired ablation and policy A prerequisites are complete. Performance remains unqualified.} Earlier failures stay failed; no default promotion follows.
+}
+\anchor{Scientific contract: \code{docs/SPEC.md}, explicit OLS CMG polishing. Repair history and identities: \code{docs/VALIDATION.md}. Prospective scope: \code{tests/replay/scopes/}\par \code{2026-10-14-explicit-cmg-polish-macos.json}. Independent witness: \code{replay\_cmg\_reference.py}.}
+\vfill
+{\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}MAPPED REPAIR CHECKS PASS. DEFAULT UNCHANGED. PERFORMANCE QUALIFICATION PENDING.}
+\end{compactleaf}
+% PAGE 17 ---------------------------------------------------------------------
+% Prospective public-invocation deployment amendment authored by Codex.
+\newleaf
+\begin{compactleaf}\smallbody
+\sect{16 / PROSPECTIVE DEPLOYMENT AMENDMENT}{Qualify the public Auto call}
+\tagline{Codex amendment after local benchmark review; no new GPT Pro authorship or code approval.}
+\begin{note}
+This transition is declared and frozen \textbf{before any timing}. A hidden-injection result does not qualify a changed public invocation. One passing nonbaseline B policy may become a public OLS Auto candidate, with fresh non-C checks and a new frozen artifact before C access. Current Auto remains unchanged; no activation or performance pass is asserted here.
+\end{note}
+\sub{One permitted transition after B}
+\begin{enumerate}
+\item \textbf{Reproduce selection.} Recompute the original sealed A/B decisions from their complete original records. B must select one existing nonbaseline serial $(h,k)$ policy. This does not compose ablation, prefix or overlap experiments, or select a new policy after seeing C.
+\item \textbf{Change invocation wiring only.} In \code{crates/fereg-plugin/src/estimate.rs}, activate that unchanged policy for uninjected public OLS Auto. Independent review checks the actual diff and old/new production inventories bound to their sources. Build/dependency artifact-input hashes remain unchanged; mathematical kernels, parameters and support contracts do not change.
+\item \textbf{Obtain fresh non-C evidence.} Bind the new source/plugin to a passing full suite, build/ABI, independent science, transactions/Break and unchanged explicit-solver/PPML checks. Earlier artifact receipts alone cannot discharge these obligations.
+\item \textbf{Prove invocation equivalence.} On every original A and B cell, including its exact input and worker identity, run two fresh hidden calls and two fresh uninjected public Auto calls. All four must have identical scientific and solver-signature fingerprints, the same independent witness, and passing certificates plus iteration/memory/setup-cap checks. Do not inspect C bodies for this work.
+\item \textbf{Freeze before C.} Freeze the new public artifact and its complete evidence packet before any C access. Derive one public-candidate C manifest from the original manifest and reproduced decisions. The execution hook must validate that exact derivation; a schema or command-line flag alone does not establish chronology.
+\end{enumerate}
+\sub{The holdout and its protection gates stay fixed}
+Preserve C's exact input bodies, cells, worker counts, original baseline/comparator arms, failure policy and resource budgets; retain one warmup and seven paired repetitions. Add the selected hidden artifact as a required protected incumbent. An existing incumbent may be replaced only when its artifact and policy are identical to the original baseline; otherwise the gate rejects the transition.
+
+Keep max(5\%, 1 ms) protection for both the original baseline and selected hidden incumbent, and max(20\%, 1 ms) for internal comparisons. Preserve the paired-median statistic, 10,000 bootstrap draws, seed 739391 and nominal 95\% per-comparison coverage. Preserve the original selector/statistic sources and comparator eligibility; no new threshold or estimand is introduced.
+\sub{Terminal decision}
+Only the exact frozen public artifact can be promoted after a passing C result. No post-C production edit, retry, runner-up or continuation is permitted. No nonbaseline B winner, a failed prerequisite, or failed/inconclusive C leaves the old public default in place. Later scientific or production changes require a newly declared qualification with fresh untouched validation.
+\anchor{Prospective validation schema: \code{bench/routing\_deployment.py}; original selection/statistic: \code{bench/routing.py}, \code{bench/time\_exact.py}. Independent Astra protocol review cleared the declaration; eight synthetic gate tests pass. This does not approve activation or C execution; the schema does not itself execute activation, correctness checks or C.}
+\vfill
+{\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}PROSPECTIVE DEPLOYMENT RULE. CURRENT DEFAULT UNCHANGED. NO TIMING RESULT.}
+\end{compactleaf}
+\end{document}

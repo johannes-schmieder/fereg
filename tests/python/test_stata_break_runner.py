@@ -5,7 +5,7 @@ import io
 from pathlib import Path
 import unittest
 
-from scripts.run_stata_break_test import fixture_command, parse_arguments, stata_quote
+from scripts.run_stata_break_test import builder_trace_events, fixture_command, parse_arguments, stata_quote
 
 
 class StataBreakOptionsTests(unittest.TestCase):
@@ -56,6 +56,24 @@ class StataBreakOptionsTests(unittest.TestCase):
                 with self.assertRaises(SystemExit) as raised:
                     self.arguments(*extra)
                 self.assertEqual(raised.exception.code, 2)
+
+    def test_actual_builder_fixture_and_positive_work_guard(self):
+        fixture = Path("tests/licensed_stata/estimate_ols_builder_break.do")
+        for workers in (2, 4):
+            args = self.arguments("--fixture-kind", "ols-builder", "--builder-workers", str(workers))
+            self.assertEqual(fixture_command(fixture, args), f"do {stata_quote(fixture)} {workers}")
+        event = ("FEREG_SOLVER_TRACE|phase=routing_overlap|event=builder_break_ready|"
+                 "task=0|issued=1024|charged=32|ordinal=2")
+        self.assertEqual(builder_trace_events(event + "\n" + event), [event, event])
+        for bad in ("", event, event.replace("charged=32", "charged=0"),
+                    event.replace("charged=32", "charged=2048"), event.replace("ordinal=2", "ordinal=0")):
+            with self.assertRaises(RuntimeError):
+                builder_trace_events(bad)
+        for extra in (["--builder-workers", "2"],
+                      ["--fixture-kind", "ols-builder", "--ols-solver", "cmgschur"],
+                      ["--fixture-kind", "ols-builder", "--builder-workers", "1"]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.arguments(*extra)
 
 
 if __name__ == "__main__":

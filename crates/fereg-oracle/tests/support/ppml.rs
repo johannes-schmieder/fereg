@@ -73,6 +73,7 @@ pub fn request(
         },
         solver: PpmlSolverFamily::Auto,
         inject_fe_recovery_allocation_failure: false,
+        inject_topology_sharing: false,
     };
     let loaded = LoadedPpmlInput {
         bias_units: None,

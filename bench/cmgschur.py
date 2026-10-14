@@ -36,7 +36,7 @@ BASELINE_ARMS = ['baseline-' + arm for arm in ARMS if arm.startswith('cmgschur')
 SAMPLED_ARMS = {f'cmgschur4-sample{count}': count for count in [1, 2, 4]}
 SUPPORTED_ARMS = ARMS + BASELINE_ARMS + list(SAMPLED_ARMS)
 EXPECTED_SOLVER = {'auto': 1, 'cmg': 7, 'cmgschur4': 8, 'cmgschur5': 8, 'cmgschur6': 8,
-                   'lsmr-reference': 3, **dict.fromkeys(SAMPLED_ARMS, 8)}
+                   'lsmr-reference': 3, 'lsmr': 3, 'map': 2, 'it': 5, **dict.fromkeys(SAMPLED_ARMS, 8)}
 
 
 def source_identity(root=ROOT):
@@ -112,8 +112,10 @@ def order(repetition, selected=None):
     return list(reversed(arms)) if repetition % 2 else arms
 
 
-def prepare(source, destination, arm, threads):
+def prepare(source, destination, arm, threads, *, samples=None):
     """Change length-framed options only; preserve the entire data/model body."""
+    if samples is not None and (not solver_arm(arm).startswith('cmgschur') or type(samples) is not int or samples not in [0, 1, 2]):
+        raise ValueError('routing comparator samples must be 0/1/2 with CMG-Schur')
     if artifact_for(arm) == 'baseline' and solver_arm(arm) in SAMPLED_ARMS:
         raise ValueError('sampled parent arms are unsupported')
     arm = solver_arm(arm)
@@ -122,11 +124,14 @@ def prepare(source, destination, arm, threads):
         if arguments[0] != b'estimate-ols':
             raise ValueError('prototype benchmark supports OLS only')
         updates = {'solver': 'cmgschur' if arm.startswith('cmgschur') else 'lsmr' if arm == 'lsmr-reference' else arm,
-                   'threads': str(threads), 'preconditioner': 'auto' if arm in {'auto', 'lsmr-reference'} else 'off'}
+                   'threads': str(threads), 'preconditioner': 'auto' if arm in {'auto', 'lsmr', 'lsmr-reference'} else 'off'}
         if arm.startswith('cmgschur'):
             updates['cmgdegree'] = arm.split('-sample', 1)[0][-1]
         if arm in SAMPLED_ARMS:
             updates['cmgsamples'] = str(SAMPLED_ARMS[arm])
+            updates['cmgseed'] = '0'
+        if samples is not None and samples > 0:
+            updates['cmgsamples'] = str(samples)
             updates['cmgseed'] = '0'
         if arm == 'lsmr-reference':
             updates['tolerance'] = '1e-12'
@@ -168,6 +173,7 @@ def scientific_comparison(reference, candidate, reference_columns, columns, meta
     close(numbers(right['RFIT']), numbers(left['RFIT']), 'fit', 1e-7, 1e-9)
     output = meta['outputs']
     numeric = {output[name] for name in ['residual', 'xb', 'xbd', 'absorbed']}
+    numeric.update(meta.get('saved', []))
     a = np.memmap(reference_columns, dtype=np.float64, mode='r', shape=(meta['columns'], meta['rows']))
     b = np.memmap(columns, dtype=np.float64, mode='r', shape=a.shape)
     maximum = 0.0

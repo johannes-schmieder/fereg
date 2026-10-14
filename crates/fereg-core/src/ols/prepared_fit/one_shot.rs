@@ -685,7 +685,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         phase_observation.as_deref_mut(),
         LinearSessionAllocationPhase::Projection,
     );
-    let mut inputs = if dense {
+    let projection = if dense {
         project_dense(
             prepared,
             frame,
@@ -697,7 +697,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             loaded_rows,
             retained_fe_parent,
             reuse_absorption_norms,
-        )?
+        )
     } else {
         project_scratch(
             prepared,
@@ -706,8 +706,10 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             reservation,
             &mut cmg,
             reuse_absorption_norms,
-        )?
+        )
     };
+    let preparation = cmg.finish_routing_preparation();
+    let mut inputs = crate::fe::routing_overlap::arbitrate(projection, preparation)?;
     drop(projection_phase);
     let projection_seconds = trace.lap();
     let finite_phase = LinearSessionPhaseAllocationGuard::new(

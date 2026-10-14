@@ -85,6 +85,104 @@ impl SampledTrees {
         })
     }
 
+    pub(super) fn new_bounded(
+        sampling: Sampling,
+        max_rows: usize,
+        work: &mut super::bounded::Work,
+    ) -> super::bounded::Attempt<Self> {
+        work.charge(64)?;
+        sampling.validate()?;
+        let length = max_rows
+            .checked_add(1)
+            .ok_or_else(|| allocation("CMG sampler suffix length overflows"))?;
+        Ok(Self {
+            sampling,
+            suffix: work.filled(length, 0.0)?,
+            worker: 0,
+            tree: 0,
+            vertex: 0,
+            random: SplitMix64(0),
+        })
+    }
+
+    pub(super) fn prepare_bounded(
+        &mut self,
+        cells: &mut [(u32, f64)],
+        worker: usize,
+        work: &mut super::bounded::Work,
+    ) -> super::bounded::Attempt<()> {
+        work.charge(64)?;
+        if cells.len() < 2 || cells.len() >= self.suffix.len() {
+            return Err(invalid_argument("CMG sampled worker exceeds its admitted scratch").into());
+        }
+        work.sort(cells, |left, right| {
+            left.1.total_cmp(&right.1).then(left.0.cmp(&right.0))
+        })?;
+        self.suffix[cells.len()] = 0.0;
+        let mut sum = 0.0;
+        let mut correction = 0.0;
+        for (index, &(_, weight)) in cells.iter().enumerate().rev() {
+            work.charge(64)?;
+            if !weight.is_finite() || weight <= 0.0 {
+                return Err(invalid_data("CMG sampled worker weight is invalid").into());
+            }
+            neumaier_add(weight, &mut sum, &mut correction);
+            self.suffix[index] = sum + correction;
+            if !self.suffix[index].is_finite() || self.suffix[index] <= 0.0 {
+                return Err(invalid_data("CMG sampled suffix mass is invalid").into());
+            }
+        }
+        work.charge(64)?;
+        self.worker = u64::try_from(worker)
+            .map_err(|_| allocation("CMG sampled worker identifier overflows"))?;
+        self.tree = 0;
+        self.vertex = 0;
+        self.random = SplitMix64::stream(self.sampling.seed, self.worker, 0);
+        Ok(())
+    }
+
+    pub(super) fn next_bounded(
+        &mut self,
+        cells: &[(u32, f64)],
+        work: &mut super::bounded::Work,
+    ) -> super::bounded::Attempt<Option<(usize, usize, f64)>> {
+        work.charge(128)?;
+        if self.tree == self.sampling.samples {
+            return Ok(None);
+        }
+        let tail = self.suffix[self.vertex + 1];
+        let target = (self.random.uniform() * tail).min(f64::from_bits(tail.to_bits() - 1));
+        let mut lower = self.vertex + 1;
+        let mut upper = cells.len() - 1;
+        while lower < upper {
+            work.charge(32)?;
+            let middle = lower + (upper - lower) / 2;
+            if target < self.suffix[middle + 1] {
+                lower = middle + 1;
+            } else {
+                upper = middle;
+            }
+        }
+        work.charge(128)?;
+        let weight =
+            cells[self.vertex].1 * (tail / self.suffix[0]) / f64::from(self.sampling.samples);
+        if !weight.is_finite() || weight <= 0.0 {
+            return Err(invalid_data("CMG sampled edge weight is nonpositive or nonfinite").into());
+        }
+        let edge = (
+            cells[self.vertex].0 as usize,
+            cells[lower].0 as usize,
+            weight,
+        );
+        self.vertex += 1;
+        if self.vertex + 1 == cells.len() {
+            self.vertex = 0;
+            self.tree += 1;
+            self.random = SplitMix64::stream(self.sampling.seed, self.worker, self.tree);
+        }
+        Ok(Some(edge))
+    }
+
     pub(super) fn bytes(&self) -> u128 {
         vec_capacity_bytes(&self.suffix)
     }

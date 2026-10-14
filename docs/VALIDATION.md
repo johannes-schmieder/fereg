@@ -14,6 +14,479 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Integrated experimental routing, 2026-10-14
+
+The integrated implementation adds serial checkpointed Schur and general-LSMR
+pair replacement, deterministic CMG preparation on one existing worker,
+categorical None/MAP4/compact-IT4 prefixes, separate diagonal/cell/direct arms,
+and topology-only PPML reuse. All remain sanctioned hidden experiments.
+Ordinary Auto and public explicit IT retain their incumbent behavior.
+[SPEC](SPEC.md#solver-support-and-dispatch), the
+[protocol](plugin_protocol.md#developer-injections-hidden-adapters-only) and
+[editable routing explanation](solver_routing.tex) define the contracts.
+Implementation and scientific validation do not select a new default:
+whole-policy performance qualification remains pending.
+
+The explicit-CMG polishing repair has a prospective, exact-input-bound scope
+in [`2026-10-14-explicit-cmg-polish-macos.json`](../tests/replay/scopes/2026-10-14-explicit-cmg-polish-macos.json).
+It covers only OLS cases 08, 11, 14, 26 and 29; the other 68 ordinary cases,
+including PPML, retain exact parent comparisons. This declaration is not a
+native qualification result for the repaired artifact.
+
+The independent [`replay_cmg_reference.py`](../crates/fereg-oracle/python/replay_cmg_reference.py)
+uses 70-digit arithmetic on exact binary64 inputs and an identified full dummy
+design. If `G = Z'WZ`, its reporting transform keeps the two finite coefficients
+and maps the dummy coefficients to their weighted mean, the reported constant.
+Applying that transform to `G^-1` and to iid, HC1 or cluster score covariance
+independently determines every reported covariance entry. Frequency-weight HC1
+uses one weight per replicated observation; analytic/probability scores use
+squared weights. Each saved FE channel is centered at its own weighted mean.
+The frozen fixtures are connected and full rank after one anchor per later FE.
+Analytic Walsh witnesses, explicit frequency replication, common-weight scaling,
+hand-summed cluster scores, and deliberately corrupted constants/cross covariance/
+gauges/certificates test these calculations. The original pinned finite-block,
+residual and fitted-value targets remain a second independent cross-check.
+
+The declared numeric fields are coefficients, full covariance, residual/fitted/
+finite-xb/absorbed/saved outputs, the twelve fit statistics, mathematically
+affected FE and inference diagnostics, and inner iteration work. Independent
+point targets cover fit statistics, the two-column rank condition proxy,
+reported bread minimum, covariance determinant and applicable covariance minima.
+Roundoff residual diagnostics must be finite, nonnegative and no larger than
+the frozen requested tolerance `1e-10`; the robust normalized PSD pivot must lie
+in `[0, 1 + 1e-10]`. The checker separately recomputes weighted residual moments
+against every finite regressor and every FE indicator from the original input.
+FE absolute diagnostics have an input-derived bound; relative diagnostics retain
+the requested bound. These checks supplement the unchanged SPEC coefficient,
+covariance and observation-output tolerances. Presence flags, acceptance,
+requested tolerances, sample, rank, omissions, VCE and all other nonscoped fields
+remain exact.
+
+The typed diagnostic exception is applied only to a validated parent comparison:
+primary CMG must remain CMG; Fast final verification may report certified CG
+with exactly one verification/correction warning; Low final remains CMG.
+Preconditioners and pilots remain absent. Warning bounds use the actual memory
+mode, pool size and declared coefficient capacity, never an observed fit to
+results. Every candidate, repeat and worker result is validated before the
+exception is considered. Fixed-worker repeats retain full exact signatures;
+cross-worker comparisons retain the concrete engine, fallback and warning
+counts. Source, artifact, frozen input, independent reference and scope hashes
+must match before every native dispatch. The prospective wrapper additionally
+binds the successful full suite/build, limits calls and time, requires the frozen
+100,000-row dynamic oracle first, and preserves every failed qualification.
+
+| Frozen integrated identity | SHA-256 |
+| --- | --- |
+| Universal Mac plugin | `b0e53fa3f305f1288673204e047a6d331b2632a94e29464a397fe002fc7ef1f9` |
+| Production tokens | `29e1764eba5d93c2dc63baf546791a5ea93e549911037d47600fddad242d8b3d` |
+| Artifact inputs | `1cb7d506617ac2f77e35d8b7d2dc08409b14cf4f9eef348a12bf697a726609eb` |
+| Source/test identity record | `bc242b414c46d4b35a5844eae61b4be921e037b8d08c3464054dafeb65f03046` |
+| Full repository suite | `268bdfa6f8566144fa7c8038db6286b7e2435eb543a27e0d29a1ec8924faaf64` |
+| Universal build, binary audit and ABI/load/self-test | `b79c5d6eceaa5a10c9addfde24f859ef9802260445f387c635822f7e6929bb4c` |
+| Complete native qualification transcript | `32825bc4fb9b94438a0948fe07962a190f76207bddab5aee6dc914caf37916e0` |
+
+This uses published CMG `b989eddfc3bf7ad130c76df8d0cceaf9801e1d72` and
+within/schwarz-precond `efe35ee386ad989b043a5076d01d879ca410ff19`.
+The comparison artifact remains
+`3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a`.
+The full suite passed: Python 220 (13 platform/dependency skips), core 1,324
+(three declared allocator-test exclusions), plugin 195 plus the separate
+process-global allocator audits, scientific oracles, strict Clippy, fuzz,
+complexity and bridge guards. Linux's GNU ELF audit correctly skipped on Mac.
+The subsequent narrow Python trace-guard repair passed all 13 focused checks
+(`26e4fc70ea6b6384bf46375bf00ad2ce38024aabcad5482770bd95e72ba6bbc6`); runtime tokens, artifact inputs and
+plugin bytes are unchanged. These checks establish no new Linux or Windows claim.
+
+The bounded native run completed **1,131 calls**, with no missing panel:
+
+| Native panel | Outcome | Summary SHA-256 |
+| --- | --- | --- |
+| Ordinary integration | 73 cases; zero exact differences, fixed-worker repeatability and 2/4/8/16-worker scientific/discrete agreement | `96ca88cf0422865b8032a9322d89d8469257f98fe86e2c7f65010d917f5165c2` |
+| Supplemental routing/IT | 23 cases, declared numerical scope, exact unaffected fields and repeats | `00768fe950faafd540ef584ce3b0ed690b536a9d01022069d441855739ec8bbb` |
+| Direct Schur | Four unit/weighted Fast/Low cases, including 65 active RHSs | `bd147e70b86eaac022a6e980ffe40d00301c2d04148f5c5b3cf00eedea55f739` |
+| Parallel preparation | Six cases and 72 calls at 1/2/4 workers; exact serial fallback at one worker, positive executed builder work, matched joins, fixed-worker trace/results and independent science | `d51417e13181b82b39e5f2a9c7ede2096cd50a6a19eaa7d5cc517b788ac47c9c` |
+| PPML topology reuse | 19 cases and 114 calls; accepted/pending lifecycle and current-weight science/signatures preserved | `b1706a4d9ade108f2977595741fe06265bf993fa993fadc3c195df81b337f3a9` |
+
+All eight mapped Stata fixtures passed. All five licensed Break runs passed:
+Auto, sampled CMG-Schur, public PPML, and concurrent preparation at two and four
+workers. Each builder test interrupted twice after an actually executed
+64-unit build operation, then verified the complete prior e() state and sample,
+absence of partial output variables, exact ordinary reset and a successful new
+overlap action. Builder-test transcript hashes are
+`735d7324d7641f522d5e73ac688a2c3835f3a577ec72dc12c1c8becc7cbcc51d` and
+`27df82b461a6133c04c602ffc23e141c5b9550357f883d017358cc22304cb812`. The complete native
+transcript above binds all mapped-fixture and other Break hashes.
+
+Integration review found and repaired two resource defects before this artifact:
+executor admission introduced a per-acquire allocation, breaking existing warm
+PPML allocation guarantees; value leases now preserve those guarantees. A
+parked general-LSMR builder also retained a smaller foreground-memory estimate
+across Low chunks. Admission now refreshes the shared parent/budget before
+resuming, and every later allocation reads it. Tight regressions cover wider
+RHS blocks, same-width parent growth, budget tightening and already-held storage.
+Work caps/grants remain unchanged. Independent source review and a fresh bounded
+Astra recheck cleared the repairs. Two-FE sessions already reserve their maximum
+Low batch storage before the outcome projection.
+
+Two failed native witness attempts remain failures. The first overlap panel
+incorrectly required installation for every Low case; its summary hash is
+`ac83361b3520799fc99691d91b5bee13ed7623de1c31f26d5ffa0cbae023043b` and stopped-run hash is
+`48a3dc2b737398db7ee65bb6ffcad4e723c88b070a6b774d25cfeceb70ff1476`. The original Low fixtures have one initial
+RHS: W0=185,152, total allowance 5,924,864 and builder allowance 5,184,256 after
+protecting four iterations for restart. Their two required load/sort passes
+alone cost over 7.52 million tariff units, so refusal is correct. The new panel
+separately requires that exact bounded refusal, while preserving the old failed
+expectation. Two additional Low fixtures use three genuine independent Walsh
+regressors and a cell-centered outcome. They must certify the outcome before
+setup, then install at the **first** h8/k1 handoff with the three-RHS allowance
+11,958,272. Independent dense QR verifies finite rank 3, absorbed rank 126,
+residual DoF 8,831, coefficients, HC1 and saved-effect gauges. No padding,
+routing threshold, scientific tolerance or work allowance was changed.
+
+The first builder-Break fixture failed before reaching an interruption because
+an e() name produced an overlong Stata local name (r(198)); failed transcript
+`6d85a8bd3016deefd29a91afc4b77f2f8f5d49433279f2cc8a5fcc4372272dc1`. Numeric indexed snapshot names
+fixed that harness error without changing rollback requirements or the runtime.
+Both failed attempts are explicitly bound as prior failures in subsequent
+resource/sampling evidence, not silently replaced with passing outcomes.
+
+A predeclared two-process CPU sample on the frozen wide-129, one-worker design
+produced symbolized native stacks and identical scientific fingerprints. Dense
+robust meat and finite moments were material observed costs; Schur application
+was smaller. Candidate/baseline top samples were 115/108 for dense meat, 82/83
+for finite-moment production and 25/23 for Schur application. These are single
+statistical captures, including loader/I/O and blocked coordinator stacks;
+they establish neither speedup nor absence of overhead. The reviewed capture
+summary is `d4a838fe79165382f32c2dad3c145edf9e39ffc2d8f50a5d6b8c7f42c421d563`.
+
+The final resource and sampling wrappers bind actual passing checks plus the
+preserved failures: `8e495c6f6bc546da5ad39740b2f6889db71de99808a4e5465876e04f7ac27571` and
+`54d09761d0a614ac5341a80d895e38d470f5fd0c1fdf40127f8334b59c28f975`. The finite policy inputs
+are prospectively sealed; performance screening, independent confirmation and
+holdout remain unqualified. No real-world firm-worker dataset or external
+fixest/reghdfe performance comparison is supplied by these synthetic witnesses.
+The first untimed ablation prerequisites completed all 26 cells: 338 initial
+calls and 300 planned successful repeats, with 300 passing arms, 18 bounded
+solver exhaustions/timeouts and 20 blocked arms. Records hash
+`b6a8499463a23c0f5548aeb14f845af9be39973169b48215d959767c957a3359` retains every outcome.
+Eighteen blocks came from an overly strict explicit-CMG diagnostic mapping:
+the existing certified final CG correction reports requested CMG, used CG,
+fallback one and exactly one correction warning. A separately reviewed narrow
+checker repair must assert that complete tuple before admitting its two extra
+diagnostic fields; the old blocked observations do not become passes.
+
+The other two blocks are scientific failures of explicit CMG on the same
+dynamic-weight design at one and four workers. A prospectively bounded
+four-call diagnostic (plan hash
+`9ba37d1b5e76c5a16ff6d4d56345b9927145c59f8af2cad2fcdbdc3be61ec9e2`)
+reproduced identical science and full output columns in two current-CMG calls
+and the baseline artifact's explicit CMG call. Maximum residual error was
+`3.855834879e-8`: eight rows failed the existing relative/absolute residual
+comparison and ten exceeded the separate `2e-8` guard. The current LSMR call
+passed with maximum error `6.364e-11`. Analysis hash
+`917e9569fd7bc9548849ff6ff231e9cd8abff24d3dd06d2dd68032b691ad2041` binds the retained
+arrays and row diagnostics. This is a pre-existing explicit-CMG accuracy
+failure, not evidence of a candidate regression or permission to relax the
+oracle. Investigation is scoped to CMG polishing/correction convergence;
+unaffected routes must remain exact. No timing or default selection follows
+from this blocked screen.
+
+Three bounded polishing attempts have not qualified a repair. Removing the
+absolute Hestenes decrement floor alone still left an analytic weighted-cycle
+error of `8.135e-8`. Adding relative recurrence convergence passed that witness,
+but a smaller FE perturbation exposed certificate-only initial acceptance.
+Removing that shortcut reduced the smaller witness's error to `1.1992e-10`,
+still above its unchanged `1e-10` bound, and exposed missing retained coefficient
+corrections. A 100-digit closed-form cycle projection on the exact binary input
+localized the remaining error to the FE component: input rounding changes the
+ideal paired contrast by only `1.18e-16`. The initial computed projection action
+has weighted error `2.762e-16` against an exact action norm `5.686e-14`.
+At termination the recursively updated residual norm is approximately
+`1.14e-30`, while a fresh action is approximately `1.29e-15`.
+Arbitrary value scaling before compensated summation can introduce cancellation
+error that a weak graph amplifies. Requiring a fresh relative residual below
+roundoff is not a justified repair.
+The first and second attempt summaries are
+`bc3413db24ee11a405609ae766d9dda71eb98e75142165905bc16d93ae71a14b` and
+`50784fa8d48c3af711622aa03f1da828d37128b3882ddb513d90185381c30bbb`;
+the third attempt's independent cycle analysis is
+`fd5ab23103bc70044e1bcc6f6768bc1493356b13c2afa7bc32131650225e9bd4`.
+
+The fourth bounded attempt added binary value scaling and zero-energy
+underflow rejection; its smaller analytic witness still failed at
+`1.1992e-10`. Its summary is
+`5388640f7b4c2f834b71c82a1d1eb27e8557d8afb41129f0738de00028e5f69b`.
+Two subsequent offline comparisons localized the remaining action error to
+rounding the pointwise difference and weighted products before reduction.
+Retaining the general TwoDiff high/low subtraction parts and FMA product-error
+terms reduced relative action error on the captured initial/final vectors to
+`1.18e-16` and `4.85e-17`. These are small mathematical prototypes, not native
+qualification or timing. Their summaries are
+`e4f9dae090fba2213e8a7a9219b43d3a32a49ded55b6e8a8191876e1740eaaca` and
+`3eef52f89c7cfa2bf0da47e1dc5d087eb5b67a2d0f0a8f274d868d59ea9ea483`.
+
+The fifth declared candidate changes only explicit OLS CMG polishing: those
+compensated operations with binary scaling, strict convergence with zero-energy
+underflow rejection, and admitted coefficient corrections when bulk
+coefficients are retained. It
+preserves ordinary Auto/CG/LSMR, recovery and PPML arithmetic, scientific
+tolerances, iteration limits and all sample/rank/omission/separation decisions.
+Both analytic amplitudes, extreme scaling, retained products and joint memory
+admission must pass before a new native artifact is qualified. Earlier failed
+observations remain failures; no performance inference uses them.
+The fifth candidate passes its focused checks: 37 CMG tests, six polishing
+tests, ordinary CG and memory checks, strict Clippy and formatting. The actual
+RHS width can exceed the configured CMG batch: a five-RHS/batch-two witness
+verifies reconstruction at the exact admitted memory boundary and rejection
+one byte below it. Fresh independent arithmetic and memory reviews found no
+blocking issue. Summary
+`c3f2a6d3199a0b91138400dcec3fbade8f51e20d90980524269a5cd92496305a`
+binds the source and preserved earlier failures. These focused results do not
+replace the pending full-suite and native qualification.
+
+The repaired universal Mac artifact is
+`72ff85cc33e088ec85c9e30feddc589a3f2aa1068bca1d812e74fba498c3207e`;
+its build, slice audits and actual-plugin ABI/self-test passed (transcript
+`4f7c678aa2526ce42d849170bd35e34773dd6dfdc3f73cf389a20536a0568b72`).
+The first full-suite attempt passed 239 Python tests (13 existing skips),
+strict Clippy and 1,331 core tests (three declared exclusions), then stopped at
+an outdated testkit assertion requiring Fast final CMG instead of the declared
+CG verification. The failed transcript remains
+`661969ee53af54272377e59b18a9fc38b05a518a230acbae07c7845857a3284d`.
+Updating that diagnostic assertion does not relax any numerical witness or
+change the frozen production artifact. Its focused eleven-test oracle suite
+and the subsequent full repository suite passed. The completed full-suite
+transcript is `c7934a89fbc0034311bda55fe8449594bdf6601339dd6a6272a2c31665297ad8`:
+239 Python tests (13 existing skips), 1,331 core tests (three declared allocator
+exclusions), 195 plugin tests plus ten isolated allocator audits, scientific
+oracles, strict Clippy, fuzz, complexity and bridge guards. The Mac-only run
+does not qualify Linux's skipped ELF audit. Production-token identity is
+`a9dd2fec088347492570a17d8d8d2d4761570e8444d6e74412ee5fed444899be`;
+artifact-input identity remains `1cb7d506617ac2f77e35d8b7d2dc08409b14cf4f9eef348a12bf697a726609eb`.
+The source/suite/build record is `5cc5e697c406c8e350d53cfe02848eca04b3b49de596801673699b24165ed5ae`.
+Fresh native qualification is separately required; its prospective identity is
+`34ae3fce63ddda06a859eea8bde3b87025bf061c44bb77f74916e61691ab81b4`.
+Its first eight calls passed the frozen dynamic-weight oracle, fixed-worker
+repeats, cross-worker discrete/scientific checks and CMG-versus-LSMR comparison.
+CMG's maximum residual errors were `6.51098e-11` and `6.51108e-11` at one and
+four workers; LSMR's was `6.36394e-11` at both counts. The eight-call summary is
+`4ecb5db2db6330a091725b11fff23c85337fca59f9f8411489f41af346060680`.
+This clears the weighted numerical prerequisite without changing its oracle
+or tolerances; it is not timing evidence.
+
+The complete fresh native run passed all 1,139 replay calls, eight mapped Stata
+fixtures and five Break checks. Terminal transcript:
+`3eb756e3177e3e206cef688b78628e083e2f49b6a7ed037c9d5159fe5a1fd180`.
+The 73-case ordinary panel has 68 exact parent comparisons and five independently
+witnessed, typed OLS CMG scopes; all fixed-worker repeats and 2/4/8/16-worker
+scientific/discrete checks pass. Its summary is
+`da8ba68125da19d5d178ba6ef9cb059a7dd63879ac36f1bd5cd4f6ad88e84ff4`;
+the manifest binding all 55 raw typed results is
+`5639f28a355d8cbfd150e35b85580f1cace38a69d59509f5975bfe531745cbc4`.
+Supplemental routing/IT, direct Schur, overlap and PPML topology panels also pass:
+respectively `d48af7601831f7aa31956e301261560ae149666b2a4270a2b13aeb4940f3089a`,
+`5f8b5621bb3a9bc9247126d038d550bd7cc85acb608d9291f76317509ed7f859`,
+`9999f8c23363106a442947dd8d3627695cb630f6167c19bb299e0db15e0c9605` and
+`a7d8abc715a3ad847981481c9533e61ff92d914d8b286212ae646c5621c1deb1`.
+Fresh resource and sampling wrappers are
+`846748f1ebfac51b0bc42f99e5aa8c75aee428bd0dff83df4bdc081fb5993d40` and
+`21962f7286eb3d6646e450ab92ee45e82dbb49ffbabfaf7544a1acc7af427e54`;
+they retain the earlier failures and bind the repaired artifact's checks.
+
+Two new wide-129/t1 CPU samples have identical scientific fingerprints. Their
+candidate/baseline top-of-stack counts are dense robust meat 119/116, finite
+moment production 84/83, and Schur application 26/24. Review summary
+`8786408a4836561ff3cd859bf76200eb8c692fb1c7c7847a511d83eb7a489239`
+binds both captures. These statistical samples include loading/I/O and blocked
+coordinator stacks; they do not establish speedup or nonregression. A separate
+two-call CMG sample could not attach inside the sandbox (sampler exit 255 for
+both processes); both native calls returned zero, the repaired result passed
+the frozen oracle, and the baseline reproduced its known residual failure.
+The failed diagnostic is preserved without retry or a CPU-cost claim.
+Its summary hash is
+`bf32b39e69ee347ee11091be18441b54579c94eabc0ac0603922af0470161690`.
+The new prospective ablation and policy protocols are
+`c5e58629f83b19d65588515c6c910bbaf078125c6de850aa494e75cb44cc3afc` and
+`e6a17d75eeb6dff193b2c7a2277063be8450771fa4092000e91682de46d6b416`.
+They change only artifact/evidence bindings and the separately reviewed
+availability/checker contract; original input bodies, finite grid, repetitions,
+statistical margins and stage gates remain fixed. These are prospective
+protocols, not passing timing results.
+
+The repaired untimed ablation screen completed all 26 cells: 338 initial calls,
+320 passing arms and 320 passing repeats. The other 18 arms were the frozen
+MAP/IT/compact-IT comparators on weak, high-degree weak and dynamic-weight
+designs at one and four workers, with iteration exhaustion or the 120-second
+limit. There were no scientific/resource blocks. All 26 checked wrappers are
+complete; records hash
+`7eef4b409ecae7fdde593239f7886130547392f769f814410f50e5f41ffa9af7`.
+These successful checks do not relabel the earlier failed screen and are not
+timing observations.
+
+The subsequent policy A correctness screen exposed two checker blocks for
+explicit IT on slope models, at one and four workers. The native calls passed
+their independent numerical witness, then differed from Auto only in solver
+warning-count leaves 9 and 23. Current and parent generic accelerated IT emit
+one informational notice per projection, including zero-iteration certification;
+Low combines the response and regressor-block notices. The observed primary/
+final counts were `2/1`, against Auto's `0/0`. A separately reviewed checker
+correction permits only these source-bounded counts for the typed generic-IT
+tuple and parsed slope/mixed metadata. It changes no solver behavior or numerical
+tolerance. The original blocked observations remain failures; fresh bounded
+checks and explicit source-provenance validation are required before their
+replacement evidence can qualify timing. Unaffected valid checks are retained.
+
+That original policy screen completed all 42 cells and 864 initial slots:
+844 initial/repeat passes, 18 optional exhaustions/timeouts, and the two IT
+diagnostic blocks (their repeats were not run). Original records hash:
+`1667a286b187dd58c230a2dcb9d24e228614780fd596092d2a18ba6a80e66017`.
+The narrow checker patch passed independent source review and 58 focused
+producer/deployment tests. Under a prospectively frozen six-call correction,
+both workers' fresh baseline control, traced IT call and exact IT repeat passed.
+Baseline fingerprints match the originals; the new IT tables and full columns
+exactly match the retained blocked observations, and independent science,
+resources and protected cross-worker diagnostic tuples pass. The correction
+plan is `d26445ab5cbcc9b54e36ccba764165153bf96eca740a2bf3796f7581bf67788c`;
+new observations are `6d42559fe2641c78825c272bbe89798141962ae080dc82f7222a229e06b79104`.
+
+The reviewed provenance bridge binds original terminal records, old checker
+bytes, the exact patch, unchanged other tools, oracle/input identities and
+explicit dependency relocation. It retains all original failures and does not
+retry unavailable solvers. New validation evidence passes all 42 policy and
+26 ablation wrappers: policy has 846 initial and repeat passes with 18 optional
+unavailabilities, ablation retains 320 initial and repeat passes with 18 optional
+unavailabilities. New policy/ablation records are
+`ad99e628051c0044ccab162ff2eea17a4fafe01bcd18bdcaa08763337328dca4` and
+`252ca33bcf9e167d5cd5b77d50e2d9f806abbcce9af306df7e65c97d0c07645e`.
+Checker source is `e3c1cd5c05436376f1ed228494e98891092aa415a279799abd18fae91e41e31e`;
+reviewed bridge is `2240ccb47d2466258facd1426299a7d872a449e1204cd2fd5d554acc9c014561`.
+All of these are correctness/provenance checks; no timing result follows.
+
+Before any timing, an independent architectural review identified that the
+original C stage could qualify only a hidden injection, not an activated public
+default. The prospective, wiring-only deployment amendment was reviewed and
+sealed under the [SPEC contract](SPEC.md#solver-support-and-dispatch).
+One passing nonbaseline B policy may receive fresh non-C qualification and be
+frozen as an uninjected public OLS Auto candidate before C access. C retains its
+original data, statistical rules and comparators and additionally protects the
+selected hidden artifact. Failure, inconclusive evidence or no B winner leaves
+the incumbent default. Eight focused synthetic tests pass; independent Astra
+review found no remaining blocking source issue. Declaration hash:
+`9b5a467ad680739862f29369c9d0912f7d772b94270d1bc55c4d5399c5434446`;
+validator source: `f21bcdd3423468d06921b8b22708dd32e4826d24aca9019c06ddbdcf45489de1`.
+The tool validates bindings and reviewed evidence; chronology and one-attempt
+enforcement remain operational controls. Public execution hooks remain deferred
+until a B winner exists. No production default has changed and no timing has
+started.
+
+Raw captures are disposable; these compact outcomes, identities and maintained
+independent witnesses are the retained record.
+
+## Serial routing development candidate, 2026-10-14
+
+This serial development artifact implements opt-in routing through sanctioned hidden OLS
+injections: checkpointed CMG-Schur, one fixed categorical-pair replacement within
+LSMR, and separate diagonal/cell/direct experiments. Ordinary `solver(auto)` is
+unchanged. The coefficient-space explicit categorical IT path is also a
+**development candidate, not qualified for promotion**. [SPEC](SPEC.md#solver-support-and-dispatch)
+records the scientific scope, certificates, shared budgets and refusal contract;
+[the protocol](plugin_protocol.md#developer-injections-hidden-adapters-only)
+records injection validation. This entry establishes no performance, default
+promotion, release-candidate or whole-plan-completion claim. This artifact does
+not include concurrent CMG preparation or PPML routing changes; subsequent
+implementations require their own evidence.
+
+These SHA-256 identities bind the results to the tested universal Mac artifact:
+
+| Identity | SHA-256 |
+| --- | --- |
+| Universal Mac plugin | `a00a78f1e158ebc5d4ef1273182c45a7b1430b880c1e02205bd6c646b3837d5a` |
+| Production tokens | `6fc8a81e94b022b2ce14a8a571cac34f399eabf3047d10f1b6bc63f0ed6aee57` |
+| Artifact inputs | `14ab925f5124c01c22e5020ff2f7c07712e7755fff17016a2a7feaf70477fe6c` |
+| Source-identity record | `d7c53be9fbd3e0058c2791d3e3f2260e26a87802fab33ae7db4dc5e235c77911` |
+
+This tested artifact used CMG
+`c6ecb0a56bb16c9e2b9e28180123b29d6ee8109d` and within/schwarz-precond
+`0a828c5038552eede16a12b057aeb7b6be261923`. Subsequent development uses the
+published [dependency revisions](../crates/fereg-core/Cargo.toml)
+CMG `b989eddfc3bf7ad130c76df8d0cceaf9801e1d72` and
+within `efe35ee386ad989b043a5076d01d879ca410ff19`; the latter preserves the
+genuine merge of the prior pin with upstream main and adds allocation gates. Both were normally pushed with CI skip
+markers, with zero push workflow runs reported. The serial evidence below
+does not substitute for verification of that later implementation.
+The comparison plugin is
+`3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a`.
+
+Completed checks on the candidate:
+
+| Check | Result | Capture/summary SHA-256 |
+| --- | --- | --- |
+| Full `scripts/run_tests.sh` | Pass, including scientific oracles, both strict Clippy modes, Rust tests, allocator audits and complexity ratchet; GNU ELF audit correctly skipped on Mac | `f7167b5d7b75ade65b52b1f0c89985c39a68a1574770b977e34e4d5d70130cac` |
+| Universal Mac build and ABI/load/self-test | Pass | `8d26c3d20d9976b7cbbbbd6058e166414b2bc835da7ebc569443f5304cd1372a` |
+| Ordinary native integration replay | 73 cases pass with zero exact differences; 2/4/8/16-worker science, discrete-decision and fixed-worker repeat checks pass | `f56a5fcecd52ead8122aa3922ae4fda2e73e6f6ecd3576b2ff0af3672eb6533e` |
+| Supplemental native routing/IT replay | 23 cases pass at 1/4 workers with declared numerical scope, exact unaffected fields and repeatability | `6ef2916e85788bf73d8bd386a1bcda6a3de63ac9a087625d9028bf97223d7a98` |
+| Corrected direct native panel | Four unit/weighted Fast/Low cases pass at 1/4 workers, including certified Fast admission of all 65 active RHSs | `b06c90f1e2111e50e55a13da804782a123105db64f8e44adb14a519f7aac3f01` |
+| Mapped licensed Stata | Eight fixtures pass with successful process and Stata return codes, including explicit solver, reuse, OLS transaction and unchanged PPML boundaries | `1e95f07f361f7927ec122b1555b5f13fdea9489a6fc7c1eb570197e42e19dc54` |
+
+Three final licensed Break checks pass: OLS Auto
+(`333a6ad1b7a72ef326613576c7b3dfe0a347ea3cf31b866fcd50605b6b672cf6`), sampled CMG-Schur
+(`a1f32c86df4aa95171e2882a50b6274b0731c50d611841d211d95caf97747002`), and PPML
+(`f5aada3ea8df93ebc394b615bb07031d17c06bbe03831bcbf2f1ade2b1a2f3fb`). The sampled check covers the native wait
+checkpoint and postplugin publication interruption; it does not establish
+parallel-build cancellation.
+
+Seven focused [direct-admission tests](../crates/fereg-core/src/fe/routing_direct.rs)
+pass, as does the independent [full-batch dense-QR witness](../crates/fereg-oracle/tests/routing_direct.rs)
+covering 65 packed RHSs, Fast/Low, unit/unequal weights, 1/4 workers, HC1 and saved
+FE reconstruction. Their capture hashes are
+`c6c759a6b9ffb1232ba018eb70efcda1f75ff872dd4b6cd68ec51f5f840a21e2` and
+`185bc2705d61e7435e35d929ad35dc7c89ef66e19906077ff29906421e491bf0`. The first native direct panel incorrectly
+expected width 64: the actual batch has 63 finite controls, the reported
+intercept and the outcome, hence 65 RHSs (64 reported coefficients). Correcting
+only that assertion produced the passing panel above, without a production
+edit. The original failed summary remains identified by
+`f83d6fba2b82b1e986393115ad068267278438ccd50414571ef8b28023d3eab0`; its failure was the admission
+assertion, with no scientific or discrete-decision errors.
+
+Explicit IT qualification remains failed. The frozen 38-cell old/new panel
+(protocol SHA-256 `bd0cb11e0374410156cd16d0452bb8ce0afa8c217f5ba0db05ab216a1b47f6b3`) passed its first 16 scientific
+comparisons, then stopped when **old IT** on `weak-t1` returned r(459), iteration
+exhaustion, before dispatching the candidate on that cell. The failed attempt
+is retained by SHA-256
+`fb1c97522ee8888ea4092eb4abf408c58aaf0b4a620e0df3ffa70150a9e45dbe`.
+A separate untimed completion reused only those 16 individually verified cells
+and the observed old-IT failure, then obtained terminal observations for every
+remaining arm under the same 120-second process cap, without retries. Both
+versions pass 32 of 38 cells: 16 reused and 16 newly completed, with independent
+truth, two exact repeats, scoped compatibility and cross-worker checks.
+
+| Remaining family | One worker, old / candidate IT | Four workers, old / candidate IT |
+| --- | --- | --- |
+| Weak graph | r(459) / r(459), iteration exhaustion | r(459) / r(459), iteration exhaustion |
+| High-degree weak graph | 120-second timeout / timeout | 120-second timeout / timeout |
+| Dynamic weights | r(459) / 120-second timeout | r(459) / r(459), iteration exhaustion |
+
+Thus the two versions share the six unsuccessful cells, but their failure modes
+differ on one-worker dynamic weights. The completion summary SHA-256 is
+`d7d1deeafabc553a2ad16fd40b62d8df0252eb1ad86e63ead45b40204af750bc`;
+its protocol file SHA-256 is
+`ebbbf0601ec830776da92231df5f1d50e561b9a84417b7b36a92ca0b6f209d19`
+(canonical protocol identity
+`5f2b4afaa526718e1c4fc018c1c4e5f1859245dbed470d594f708d76c08ecac0`).
+The completion uses the candidate and comparison plugin identities above and
+retains `qualification=false` and `performance_claim=false`. All observations
+are terminal; candidate-wide scientific acceptance and the original all-success
+qualification remain false. No timing qualification was run. The passing
+[dense-QR IT witnesses](../crates/fereg-oracle/tests/irons_tuck.rs) and supplemental
+replay do not override these failures.
+
+Still missing are clean whole-policy performance qualification, the routing
+selection/holdout campaign, real-world firm-worker routing evidence, new Linux
+or Windows qualification, concurrent-build qualification and PPML routing
+qualification. Existing historical timings and platform results below do not
+supply those missing checks. Raw task captures are disposable; the identities,
+compact outcomes and maintained source witnesses above are the retained record.
+
 ## Sampled CMG-Schur extension, 2026-10-13
 
 The opt-in `cmgsamples(k)` extension replaces above-cutoff worker stars with

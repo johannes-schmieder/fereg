@@ -173,8 +173,15 @@ pub(super) fn solve_batch(
     // Keep the upstream construction/transport lifetime for narrow batches.
     // Only a windowed batch needs to retain its solver across several calls.
     if !deterministic && rhs.len() <= lsmr_rhs_window(rhs.len(), rayon::current_num_threads()) {
-        return within::solve_batch(effects, rhs, weights, options, preconditioner)
-            .map_err(BatchError::Upstream);
+        return within::solve_batch_with_screening(
+            effects,
+            rhs,
+            weights,
+            options,
+            preconditioner,
+            within::SlopeScreening::Disabled,
+        )
+        .map_err(BatchError::Upstream);
     }
     let started = Instant::now();
     let weights = weights
@@ -185,8 +192,13 @@ pub(super) fn solve_batch(
             Ok(copy)
         })
         .transpose()?;
-    let solver = Solver::new(effects, weights, preconditioner)
-        .map_err(|error| BatchError::Upstream(error.into()))?;
+    let solver = Solver::new_with_screening(
+        effects,
+        weights,
+        preconditioner,
+        within::SlopeScreening::Disabled,
+    )
+    .map_err(|error| BatchError::Upstream(error.into()))?;
     let solver = if deterministic {
         solver
             .with_reproducible()

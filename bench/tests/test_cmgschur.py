@@ -289,6 +289,21 @@ class CmgSchurBenchmark(unittest.TestCase):
         with self.assertRaises(ValueError):
             cmgschur.prepare(source, self.root / 'invalid.case', 'baseline-cmgschur4-sample1', 1)
 
+    def test_routing_comparators_use_cutoff_five_and_legal_seed_options(self):
+        source = self.root / 'route-source.case'
+        source.write_bytes(case_bytes())
+        for samples in [0, 1, 2]:
+            target = self.root / f'samples-{samples}.case'
+            cmgschur.prepare(source, target, 'cmgschur5', 4, samples=samples)
+            with target.open('rb') as stream:
+                _, args = case_header(stream)
+            fields = dict(a.decode().split('=', 1) for a in args[1:])
+            self.assertEqual(fields['cmgdegree'], '5')
+            self.assertEqual(fields.get('cmgsamples'), str(samples) if samples else None)
+            self.assertEqual(fields.get('cmgseed'), '0' if samples else None)
+        with self.assertRaises(ValueError):
+            cmgschur.prepare(source, self.root / 'bad.case', 'lsmr', 1, samples=1)
+
     def test_all_arms_once_in_each_rotating_repetition(self):
         self.assertEqual(cmgschur.order(-1), cmgschur.ARMS)
         for repetition in range(7):

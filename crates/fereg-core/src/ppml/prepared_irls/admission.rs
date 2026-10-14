@@ -38,6 +38,7 @@ enum ProjectionInstallation {
     },
 }
 pub(super) struct LinearInstallation {
+    topology_sharing: Option<u128>,
     preconditioner_reuse_enabled: bool,
     profiles: AdmittedProfiles,
     centered: Option<u128>,
@@ -443,6 +444,26 @@ impl LinearAdmission {
         let centered = self.admit_centered(&inputs, one_fe.is_some())?;
         let fast_products = self.admit_fast_products(&inputs)?;
         let projection = self.admit_projection(&inputs)?;
+        // Retained indexing now overlaps every later phase. Its temporary
+        // construction is already inside the admitted component checkpoint;
+        // reserve the retained owner separately before enabling the experiment.
+        let topology_sharing = if config.topology_sharing
+            && matches!(
+                projection,
+                ProjectionInstallation::Coefficient {
+                    component_checkpoint: Some(_),
+                    ..
+                }
+            ) {
+            let bytes = crate::fe::ppml_topology::retained_bytes(
+                fe_design.effects().iter().map(|effect| effect.n_levels()),
+                fe_design.effects().len(),
+            )?;
+            self.try_solver_increment(Some(bytes), "PPML topology retention overflows")?
+                .then_some(bytes)
+        } else {
+            None
+        };
         // Historical storage shares the already persistent Fast-products
         // reservation. It never expands the ordinary solver execution budget.
         let preconditioner_reuse_enabled = fast_products.is_some()
@@ -450,6 +471,7 @@ impl LinearAdmission {
             && inputs.config.solver_plan.requested == crate::ppml::PpmlSolverFamily::Auto
             && inputs.fe_design.effects().len() == 2;
         Ok(LinearInstallation {
+            topology_sharing,
             preconditioner_reuse_enabled,
             profiles: AdmittedProfiles { one_fe, curve },
             centered,
@@ -592,6 +614,9 @@ impl LinearInstallation {
             if let Some(allowance) = low_checkpoint {
                 session.enable_component_checkpoint_scaling(allowance, effective_threads)?;
             }
+        }
+        if let Some(allowance) = self.topology_sharing {
+            session.enable_ppml_topology(allowance)?;
         }
         Ok((session, self.profiles, initial_checkpoint))
     }

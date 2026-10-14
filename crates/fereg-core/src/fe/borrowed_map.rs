@@ -13,7 +13,11 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 
 use super::map::ReusableMapCapacities;
 
+mod categorical_prefix;
+mod irons_tuck;
 mod lsmr_norms;
+pub(crate) use irons_tuck::absorb_borrowed_intercept_irons_tuck_certified;
+pub(crate) mod routing_lsmr;
 pub(crate) mod three_fe_map;
 pub(crate) mod three_fe_schur;
 
@@ -415,32 +419,6 @@ impl FeCoefficientBatch {
             && self.rhs_count == other.rhs_count
     }
 
-    fn extrapolate_irons_tuck(x0: &Self, x1: &Self, x2: &Self, alpha: f64) -> Result<Self> {
-        if !x0.same_layout(x1) || !x0.same_layout(x2) {
-            return Err(invalid_argument(
-                "Irons-Tuck FE coefficient layouts are inconsistent",
-            ));
-        }
-        if !alpha.is_finite() {
-            return Err(invalid_data("Irons-Tuck FE coefficient scale is nonfinite"));
-        }
-        let mut candidate = x0.try_clone()?;
-        for index in 0..candidate.values.len() {
-            let a = x0.values[index];
-            let b = x1.values[index];
-            let c = x2.values[index];
-            let d1 = b - a;
-            let d2 = c - 2.0 * b + a;
-            candidate.values[index] = alpha.mul_add(2.0 * d1, a).mul_add(1.0, alpha * alpha * d2);
-            if !candidate.values[index].is_finite() {
-                return Err(invalid_data(
-                    "Irons-Tuck FE coefficient extrapolation is nonfinite",
-                ));
-            }
-        }
-        Ok(candidate)
-    }
-
     pub(crate) fn effect_channels(&self) -> &[usize] {
         &self.effect_channels
     }
@@ -820,7 +798,15 @@ struct CgContinuation<'a> {
     refinement: CgRefinementPolicy,
     retain_coefficients: bool,
     stable_projection: bool,
+    strict_polish: bool,
     reconstruction_tolerance: Option<f64>,
+}
+
+#[derive(Clone, Copy)]
+enum CgProjectionMode {
+    Ordinary,
+    Stable,
+    StrictPolish,
 }
 
 impl CgContinuation<'_> {
@@ -829,6 +815,7 @@ impl CgContinuation<'_> {
         refinement: CgRefinementPolicy::ORDINARY,
         retain_coefficients: false,
         stable_projection: false,
+        strict_polish: false,
         reconstruction_tolerance: None,
     };
 }
@@ -1080,6 +1067,8 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     workspace: BorrowedMapWorkspace,
     two_fe_pcg: Option<TwoFePcgWorkspace>,
     cmg_schur_request: Option<CmgSchurRequest>,
+    auto_route: Option<AutoSchurRoute>,
+    ppml_topology: Option<super::ppml_topology::PpmlTopology>,
     cg_residual_square: Vec<f64>,
     cg_initial_residual_square: Vec<f64>,
     cg_next_residual_square: Vec<f64>,
@@ -1110,23 +1099,275 @@ struct CmgSchurRequest {
     parents: u128,
 }
 
+struct AutoSchurRoute {
+    preset: super::RoutingPreset,
+    request: CmgSchurRequest,
+    setup: super::routing::SetupLedger,
+    peak: SolverWorkspacePeak,
+    preparation: Option<super::routing_overlap::Preparation<super::cmg_schur::BoundedCmgBuild>>,
+    preparation_charged: u64,
+    preparation_bytes: u128,
+    preparation_memory: Option<std::sync::Arc<std::sync::atomic::AtomicU64>>,
+}
+
+impl AutoSchurRoute {
+    #[allow(clippy::too_many_arguments)]
+    fn checkpoint(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: ValidatedWeights<'_>,
+        left: usize,
+        rhs_count: usize,
+        stride: usize,
+        iterations: usize,
+        iteration_limit: usize,
+        setup_seconds: &mut f64,
+        solve_started: &mut Instant,
+    ) -> Result<Option<super::cmg_schur::CmgSchurPreconditioner>> {
+        if self.setup.attempted {
+            return Ok(None);
+        }
+        if self.preset.overlaps()
+            && rayon::current_num_threads() >= 2
+            && iterations >= 4
+            && iterations % 4 == 0
+            && iterations < self.preset.checkpoint()
+            && self.preset.checkpoint() < iteration_limit
+        {
+            TWO_FE_ROUTING_LAUNCH_AT.set(iterations);
+            if let Some(preparation) = self.preparation.as_mut() {
+                preparation.grant_epoch()?;
+            } else {
+                self.start_preparation(design, weights, left)?;
+            }
+        }
+        if self.setup.attempted
+            || iterations < self.preset.checkpoint()
+            || iterations >= iteration_limit
+        {
+            return Ok(None);
+        }
+        self.setup.attempted = true;
+        TWO_FE_ROUTING_BUILD_AT.set(iterations);
+        let started = Instant::now();
+        let mut built = if let Some(built) = self.finish_preparation(true)? {
+            built
+        } else {
+            let built = super::cmg_schur::CmgSchurPreconditioner::try_build_bounded(
+                design,
+                weights
+                    .values
+                    .map_or(BorrowedMapWeights::Unit, BorrowedMapWeights::Provided),
+                left,
+                self.request.degree,
+                self.request.sampling,
+                stride,
+                self.request.budget,
+                self.setup.builder_allowance(),
+            )?;
+            self.setup.charge(built.work_used)?;
+            built
+        };
+        self.peak = self.peak.max(built.peak);
+        let restart_work = built
+            .preconditioner
+            .as_ref()
+            .and_then(|p| p.startup_work(rhs_count))
+            .and_then(|work| work.checked_add(self.setup.restart_reserve));
+        if built.preconditioner.is_some() {
+            if let Some(work) = restart_work
+                .filter(|&work| work <= self.setup.limit.saturating_sub(self.setup.used))
+            {
+                self.setup.charge(work)?;
+            } else {
+                built.preconditioner = None;
+                built.refusal = Some(super::cmg_schur::BuildRefusal::WorkBudget);
+            }
+        }
+        let elapsed = started.elapsed();
+        *setup_seconds += elapsed.as_secs_f64();
+        *solve_started += elapsed;
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint={}|samples={}|iterations={iterations}|setup_work={}|setup_limit={}|installed={}|refusal={:?}",
+                self.preset.checkpoint(), self.preset.samples(), self.setup.used, self.setup.limit,
+                u8::from(built.preconditioner.is_some()), built.refusal));
+        }
+        Ok(built.preconditioner)
+    }
+
+    fn begin(&mut self, tolerance: f64, final_residual: bool, work: Option<u64>) -> Result<()> {
+        if !self.setup.matches_accuracy(tolerance, final_residual) {
+            self.finish_preparation(false)?;
+        }
+        self.setup.begin(tolerance, final_residual, work);
+        Ok(())
+    }
+
+    fn charge_preparation(&mut self, charged: u64) -> Result<()> {
+        let additional = charged
+            .checked_sub(self.preparation_charged)
+            .ok_or_else(|| invalid_data("optional preparation work moved backwards"))?;
+        self.setup.charge(additional)?;
+        self.preparation_charged = charged;
+        Ok(())
+    }
+
+    fn drain_preparation(&mut self) -> Result<()> {
+        if let Some(preparation) = self.preparation.as_mut() {
+            let result = preparation.drain();
+            let charged = preparation.charged();
+            self.charge_preparation(charged)?;
+            if let Some(memory) = &self.preparation_memory {
+                self.peak = self.peak.max(SolverWorkspacePeak::from_bytes(
+                    self.preparation_bytes
+                        + u128::from(memory.load(std::sync::atomic::Ordering::Acquire)),
+                )?);
+            }
+            result?;
+        }
+        Ok(())
+    }
+
+    fn finish_preparation(
+        &mut self,
+        checkpoint: bool,
+    ) -> Result<Option<super::cmg_schur::BoundedCmgBuild>> {
+        let Some(preparation) = self.preparation.take() else {
+            return Ok(None);
+        };
+        let (built, charged) = preparation.finish_accounted(checkpoint);
+        self.charge_preparation(charged)?;
+        if let Some(memory) = self.preparation_memory.take() {
+            self.peak = self.peak.max(SolverWorkspacePeak::from_bytes(
+                self.preparation_bytes
+                    + u128::from(memory.load(std::sync::atomic::Ordering::Acquire)),
+            )?);
+        }
+        let mut built = built?;
+        built.peak = built.peak.with_retained(self.preparation_bytes)?;
+        self.peak = self.peak.max(built.peak);
+        Ok(Some(built))
+    }
+
+    fn start_preparation(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: ValidatedWeights<'_>,
+        left: usize,
+    ) -> Result<()> {
+        let effect = &design.effects()[left];
+        let other = &design.effects()[1 - left];
+        let index_bytes = effect.level_index().owned_buffer_bytes();
+        let copy_bytes = index_bytes
+            .checked_add(design.nobs() as u128 * (4 + if weights.values.is_some() { 8 } else { 0 }))
+            .ok_or_else(|| allocation("optional CMG input copy overflows"))?;
+        // Fixed transport, synchronization and Rayon job metadata. Existing
+        // worker stacks are already part of the execution-memory admission.
+        let bytes = copy_bytes
+            .checked_add(4096)
+            .ok_or_else(|| allocation("optional CMG service memory overflows"))?;
+        let work = u64::try_from(copy_bytes)
+            .ok()
+            .and_then(|n| n.checked_add(256));
+        let Some(work) = work.filter(|&n| n <= self.setup.builder_allowance()) else {
+            self.setup.attempted = true;
+            return Ok(());
+        };
+        if self
+            .request
+            .budget
+            .is_some_and(|budget| !budget.fits(bytes))
+        {
+            self.setup.attempted = true;
+            return Ok(());
+        }
+        self.setup.charge(work)?;
+        fn copy<T: Copy>(source: &[T]) -> Result<Vec<T>> {
+            let mut result = Vec::new();
+            result
+                .try_reserve_exact(source.len())
+                .map_err(|_| allocation("unable to reserve optional CMG owned input"))?;
+            for chunk in source.chunks(128) {
+                crate::interrupt::checkpoint()?;
+                result.extend_from_slice(chunk);
+            }
+            Ok(result)
+        }
+        let membership = effect.level_index().try_clone()?;
+        let firms = copy(other.codes())?;
+        let weights = weights.values.map(copy).transpose()?;
+        let retained = other.n_levels();
+        let request = self.request;
+        let budget = request.budget.map(|budget| FeSolverMemoryBudget {
+            execution_bytes: budget.execution_bytes + bytes,
+            usable_bytes: budget.usable_bytes,
+        });
+        let allowance = self.setup.builder_allowance();
+        self.preparation_charged = 0;
+        self.preparation_bytes = bytes;
+        self.peak = self.peak.max(SolverWorkspacePeak::from_bytes(bytes)?);
+        let memory = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+        self.preparation_memory = Some(memory.clone());
+        self.preparation = Some(super::routing_overlap::Preparation::launch_with_break(
+            allowance,
+            self.setup.limit / 32,
+            0,
+            self.preset.breaks_builder(),
+            move |control| {
+                let mut allocated = 0_u64;
+                let mut gate = |boundary: cmg::BuildBoundary| {
+                    let decision = control.checkpoint(boundary);
+                    if decision != cmg::BuildDecision::Continue {
+                        return decision;
+                    }
+                    if let cmg::BuildOperation::Allocation { bytes } = boundary.operation {
+                        let Some(total) = allocated.checked_add(bytes as u64) else {
+                            return cmg::BuildDecision::StopUnused;
+                        };
+                        if budget.is_some_and(|budget| !budget.fits(total as u128)) {
+                            return cmg::BuildDecision::StopUnused;
+                        }
+                        allocated = total;
+                        memory.store(total, std::sync::atomic::Ordering::Release);
+                    }
+                    cmg::BuildDecision::Continue
+                };
+                super::cmg_schur::CmgSchurPreconditioner::try_build_observations_bounded_controlled(
+                    &membership,
+                    &firms,
+                    retained,
+                    weights
+                        .as_deref()
+                        .map_or(BorrowedMapWeights::Unit, BorrowedMapWeights::Provided),
+                    request.degree,
+                    request.sampling,
+                    budget,
+                    allowance,
+                    &mut gate,
+                )
+            },
+        )?);
+        Ok(())
+    }
+}
+
 // Multiplying every weight in one disconnected FE component by the same
 // positive scalar leaves its projection unchanged. This keeps low-mass
 // components visible to the Krylov recurrence; final acceptance uses raw weights.
 fn component_scaled_checkpoint_weights(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
+    prepared: Option<&super::ComponentInfo>,
 ) -> Result<Option<Vec<f64>>> {
-    let mut codes = [&[][..]; 3];
-    let mut levels = [0; 3];
-    for (i, effect) in design.effects().iter().enumerate() {
-        codes[i] = effect.codes();
-        levels[i] = effect.n_levels();
-    }
-    let components = super::connected_components_all(
-        &codes[..design.effects().len()],
-        &levels[..design.effects().len()],
-    )?;
+    let built;
+    let components = match prepared {
+        Some(components) => components,
+        None => {
+            built = super::ppml_topology::components(design)?;
+            &built
+        }
+    };
     if components.n_components <= 1 {
         return Ok(None);
     }
@@ -1136,7 +1377,8 @@ fn component_scaled_checkpoint_weights(
         &mut reservation,
         "unable to reserve component weight scales",
     )?;
-    let component = |row: usize| components.component_by_effect_level[0][codes[0][row] as usize];
+    let codes = design.effects()[0].codes();
+    let component = |row: usize| components.component_by_effect_level[0][codes[row] as usize];
     for row in 0..design.nobs() {
         maxima[component(row)] = maxima[component(row)].max(weights.values.map_or(1., |w| w[row]));
     }
@@ -1160,6 +1402,8 @@ fn component_scaled_checkpoint_weights(
 /// certificate before it can leave the solver.
 struct TwoFePcgWorkspace {
     cmg_schur: Option<Box<super::cmg_schur::CmgSchurPreconditioner>>,
+    kernel: Option<super::routing_kernel::CellSchur>,
+    use_cell_operator: bool,
     left_effect: usize,
     right_effect: usize,
     component_roots: Vec<usize>,
@@ -1197,6 +1441,8 @@ impl TwoFePcgWorkspace {
             .map_err(|_| allocation("two-FE PCG right workspace dimensions overflow"))?;
         Ok(Self {
             cmg_schur: None,
+            kernel: None,
+            use_cell_operator: false,
             left_effect,
             right_effect,
             component_roots: Vec::new(),
@@ -1359,6 +1605,50 @@ impl Drop for PcgPilotGroupScratch<'_> {
 }
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
+    pub(crate) fn drain_routing_preparation(&mut self) -> Result<()> {
+        if let Some(route) = &mut self.auto_route {
+            route.drain_preparation()?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn finish_routing_preparation(&mut self) -> Result<()> {
+        if let Some(route) = &mut self.auto_route {
+            if route.preparation.is_some() {
+                route.setup.attempted = true;
+                route.finish_preparation(false)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub(super) fn request_auto_routing(
+        &mut self,
+        preset: super::RoutingPreset,
+        budget: Option<FeSolverMemoryBudget>,
+        parents: u128,
+    ) {
+        self.auto_route = Some(AutoSchurRoute {
+            preset,
+            request: CmgSchurRequest {
+                degree: 5,
+                sampling: super::cmg_schur::Sampling {
+                    samples: preset.samples(),
+                    seed: 0,
+                },
+                threads: 1,
+                budget,
+                parents,
+            },
+            setup: super::routing::SetupLedger::new(),
+            peak: SolverWorkspacePeak::ZERO,
+            preparation: None,
+            preparation_charged: 0,
+            preparation_bytes: 0,
+            preparation_memory: None,
+        });
+    }
+
     /// Validate and retain the request; an already certified RHS needs no hierarchy.
     pub(super) fn request_cmg_schur(
         &mut self,
@@ -1413,6 +1703,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
     }
 
     pub(crate) fn cmg_schur_peak(&self) -> Result<Option<SolverWorkspacePeak>> {
+        if let Some(route) = &self.auto_route {
+            return route.peak.with_retained(route.request.parents).map(Some);
+        }
         match (
             &self.cmg_schur_request,
             self.two_fe_pcg.as_ref().and_then(|g| g.cmg_schur.as_ref()),
@@ -1430,6 +1723,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             .as_ref()
             .and_then(|g| g.cmg_schur.as_ref())
             .map_or(Ok(0), |p| p.retained_bytes())
+    }
+
+    pub(crate) fn routing_work(&self) -> (u64, u64) {
+        self.auto_route
+            .as_ref()
+            .map_or((0, 0), |route| (route.setup.used, route.setup.limit))
     }
 
     /// Completed two-pass Schur products, in observation/RHS multiply-adds.
@@ -1537,6 +1836,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             workspace,
             two_fe_pcg,
             cmg_schur_request: None,
+            auto_route: None,
+            ppml_topology: None,
             cg_residual_square: reserved_zeros(
                 cg_scalar_rhs,
                 &mut reservation,
@@ -1586,6 +1887,49 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
 
     pub(crate) fn enable_component_checkpoint_scaling(&mut self) {
         self.checkpoint_component_scaling = true;
+    }
+
+    pub(crate) fn enable_ppml_topology(
+        &mut self,
+        generation: super::MapGeometryGeneration,
+        allowance: u128,
+    ) -> Result<()> {
+        let required = super::ppml_topology::retained_bytes(
+            self.design.effects().iter().map(|effect| effect.n_levels()),
+            self.design.effects().len(),
+        )?;
+        crate::memory::require_admitted_capacity(required, allowance)?;
+        self.ppml_topology = Some(super::ppml_topology::PpmlTopology::new(
+            generation, allowance,
+        ));
+        Ok(())
+    }
+
+    pub(crate) fn begin_ppml_frame(
+        &mut self,
+        generation: super::MapGeometryGeneration,
+    ) -> Result<()> {
+        if let Some(topology) = &mut self.ppml_topology {
+            topology.begin(generation)?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn accept_ppml_topology(&mut self, generation: super::MapGeometryGeneration) {
+        if let Some(topology) = &mut self.ppml_topology {
+            topology.accept(generation);
+        }
+    }
+
+    pub(crate) fn reject_ppml_topology(&mut self) {
+        if let Some(topology) = &mut self.ppml_topology {
+            topology.reject();
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn ppml_topology_state(&self) -> Option<(bool, bool)> {
+        self.ppml_topology.as_ref().map(|topology| topology.state())
     }
 
     #[cfg(test)]
@@ -1647,12 +1991,21 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             n.checked_add(capacity as u128)
                 .ok_or_else(|| allocation("FE actual capacities overflow"))
         })?;
-        let cmg_bytes = self.cmg_schur_bytes()?;
+        let cmg_bytes = self
+            .cmg_schur_bytes()?
+            .checked_add(
+                self.two_fe_pcg
+                    .as_ref()
+                    .and_then(|g| g.kernel.as_ref())
+                    .map_or(0, |k| k.retained_bytes()),
+            )
+            .ok_or_else(|| allocation("optional Schur owner footprint overflows"))?;
         banks
             .checked_mul(8)
             .and_then(|n| n.checked_add(std::mem::size_of::<Self>() as u128))
             .and_then(|n| n.checked_add(self.design.descriptor_bytes()))
             .and_then(|n| n.checked_add(cmg_bytes))
+            .and_then(|n| n.checked_add(self.ppml_topology.as_ref().map_or(0, |p| p.bytes())))
             .ok_or_else(|| allocation("FE actual owner footprint overflows"))
     }
     pub(crate) fn capacities(&self) -> ReusableMapCapacities {
@@ -1689,7 +2042,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             topology_slope_values: 0,
             topology_level_offsets: 0,
             topology_level_observations: 0,
-            topology_resident_bytes: 0,
+            topology_resident_bytes: self.ppml_topology.as_ref().map_or(0, |p| p.bytes()),
         }
     }
 
@@ -1766,7 +2119,11 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values.into(), config, false)
+        let result = self.absorb(weights, values.into(), config, false);
+        if !result.as_ref().is_ok_and(|fit| fit.report().certified()) {
+            self.reject_ppml_topology();
+        }
+        result
     }
 
     /// Ordinary OLS certifies a half-request proposal before spending work on
@@ -1825,7 +2182,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             && self.checkpoint_component_scaling
             && matches!(self.design.effects().len(), 2 | 3)
         {
-            component_scaled_checkpoint_weights(&self.design, weights)?
+            let prepared = self
+                .ppml_topology
+                .as_mut()
+                .map(|topology| topology.prepare(&self.design))
+                .transpose()?;
+            component_scaled_checkpoint_weights(&self.design, weights, prepared)?
         } else {
             None
         };
@@ -1862,6 +2224,174 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 setup_seconds,
                 solve_started.elapsed().as_secs_f64(),
             );
+        }
+
+        if let (Some(route), Some(graph)) = (self.auto_route.as_mut(), self.two_fe_pcg.as_ref()) {
+            route.begin(
+                config.tolerance,
+                !refine_ols,
+                super::routing::schur_iteration_work(
+                    self.design.nobs(),
+                    graph.left_weights.len(),
+                    graph.right_weights.len(),
+                    rhs_count,
+                    self.max_rhs,
+                ),
+            )?;
+        }
+        let direct = self.auto_route.as_ref().is_some_and(|route| {
+            route.preset.kernel() == Some(super::routing::RoutingAblation::Direct)
+                && !route.setup.attempted
+        });
+        if direct {
+            let started = Instant::now();
+            let graph = self.two_fe_pcg.as_ref().expect("direct two-FE geometry");
+            // Selection compares the packed current action, independently of
+            // inactive bank capacity and the session's physical setup quota.
+            let reference_iteration_work = super::routing::schur_iteration_work(
+                self.design.nobs(),
+                graph.left_weights.len(),
+                graph.right_weights.len(),
+                rhs_count,
+                rhs_count,
+            );
+            let route = self.auto_route.as_mut().expect("direct routing owner");
+            route.setup.attempted = true;
+            let certificate_work = super::routing_direct::original_certificate_work(
+                self.design.nobs(),
+                self.design.total_term_slots(),
+                2,
+                rhs_count,
+            );
+            if let (Some(certificate_work), Some(reference_iteration_work)) =
+                (certificate_work, reference_iteration_work)
+            {
+                let attempt = super::routing_direct::attempt_with_census(
+                    &self.design,
+                    raw_weights,
+                    &values,
+                    super::routing_direct::DirectLimits {
+                        reference_iteration_work,
+                        remaining_setup_work: route.setup.limit.saturating_sub(route.setup.used),
+                        component_census_work: 0,
+                        certificate_work,
+                        certificate_bytes: 0,
+                        retained_live_bytes: 0,
+                        memory: route.request.budget,
+                    },
+                )?;
+                route.setup.charge(attempt.work_used)?;
+                route.peak = route
+                    .peak
+                    .max(SolverWorkspacePeak::from_bytes(attempt.peak_bytes)?);
+                if crate::diagnostics::solver_trace_enabled() {
+                    crate::diagnostics::emit_solver_trace(&format!(
+                        "FEREG_SOLVER_TRACE|phase=auto_direct_route|work={}|limit={}|decline={:?}|profiles={:?}|orientation={:?}",
+                        attempt.work_used,
+                        route.setup.limit,
+                        attempt.decline,
+                        attempt.profiles,
+                        attempt.candidate.as_ref().map(|c| c.eliminated_effect)
+                    ));
+                }
+                if let Some(candidate) = attempt.candidate {
+                    let (direct_work, direct_limit) = (route.setup.used, route.setup.limit);
+                    let certificate =
+                        self.with_pilot_group_scratch(rhs_count, |design, workspace| {
+                            certify(
+                                design,
+                                weights,
+                                &candidate.residualized,
+                                config.tolerance,
+                                workspace,
+                            )
+                        })?;
+                    if certificate.passed {
+                        if crate::diagnostics::solver_trace_enabled() {
+                            crate::diagnostics::emit_solver_trace(&format!(
+                                "FEREG_SOLVER_TRACE|phase=auto_direct_certified|rows={}|rhs={rhs_count}|iterations=0|work={}|limit={}",
+                                self.design.nobs(),
+                                direct_work,
+                                direct_limit
+                            ));
+                        }
+                        let elapsed = started.elapsed();
+                        setup_seconds += elapsed.as_secs_f64();
+                        solve_started += elapsed;
+                        let coefficients = if self.retain_coefficients {
+                            Some(FeCoefficientBatch::from_values(
+                                vec![1; 2],
+                                self.design.effects().iter().map(|e| e.n_levels()).collect(),
+                                rhs_count,
+                                candidate.coefficients,
+                            )?)
+                        } else {
+                            None
+                        };
+                        return attach_optional_coefficients(
+                            certified_result(
+                                candidate.residualized,
+                                SolveStopReason::Certified,
+                                0,
+                                certificate,
+                                setup_seconds,
+                                solve_started.elapsed().as_secs_f64(),
+                            )?,
+                            coefficients,
+                        );
+                    }
+                    // A failed actual factor/certificate receives the untouched
+                    // incumbent with no second optional experiment this session.
+                }
+            }
+            let elapsed = started.elapsed();
+            setup_seconds += elapsed.as_secs_f64();
+            solve_started += elapsed;
+        }
+
+        if let (Some(route), Some(graph)) = (self.auto_route.as_mut(), self.two_fe_pcg.as_mut()) {
+            if !route.setup.attempted
+                && graph.kernel.is_none()
+                && matches!(
+                    route.preset.kernel(),
+                    Some(
+                        super::routing::RoutingAblation::Diagonal
+                            | super::routing::RoutingAblation::Cells
+                    )
+                )
+            {
+                route.setup.attempted = true;
+                let started = Instant::now();
+                let built = super::routing_kernel::build(
+                    &self.design,
+                    graph.left_effect,
+                    raw_weights,
+                    weights.raw_scale,
+                    super::routing_kernel::KernelLimits {
+                        work_budget: route.setup.limit.saturating_sub(route.setup.used),
+                        retained_live_bytes: 0,
+                        memory: route.request.budget,
+                    },
+                )?;
+                route.setup.charge(built.work_used)?;
+                route.peak = route.peak.max(built.peak);
+                if crate::diagnostics::solver_trace_enabled() {
+                    crate::diagnostics::emit_solver_trace(&format!(
+                        "FEREG_SOLVER_TRACE|phase=auto_kernel_route|preset={}|work={}|limit={}|installed={}|refusal={:?}",
+                        route.preset,
+                        built.work_used,
+                        route.setup.limit,
+                        u8::from(built.kernel.is_some()),
+                        built.refusal
+                    ));
+                }
+                graph.kernel = built.kernel;
+                graph.use_cell_operator =
+                    route.preset.kernel() == Some(super::routing::RoutingAblation::Cells);
+                let elapsed = started.elapsed();
+                setup_seconds += elapsed.as_secs_f64();
+                solve_started += elapsed;
+            }
         }
 
         let construction = self.ensure_cmg_schur(raw_weights)?;
@@ -1950,12 +2480,22 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 if crate::diagnostics::solver_trace_enabled() {
                     crate::diagnostics::emit_solver_trace(&format!(
                         "FEREG_SOLVER_TRACE|phase=checkpoint_lsmr_attempt|retry={}|recurrence_tolerance={:.17e}|canonical_tolerance={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|certificate_seconds={:.17e}|canonical_relinf={:.17e}|canonical_passed={}|rhs={}|batch_window={}|threads={}|rows={}",
-                        u8::from(accumulated.is_some()), recurrence_tolerance, config.tolerance,
-                        report.iterations, report.setup_seconds, report.solve_seconds,
-                        report.certification_seconds, canonical_certificate.relative_infinity_norm,
-                        u8::from(canonical_certificate.passed), values.ncols(),
-                        crate::memory::lsmr_rhs_window(values.ncols(), rayon::current_num_threads()),
-                        rayon::current_num_threads(), self.design.nobs(),
+                        u8::from(accumulated.is_some()),
+                        recurrence_tolerance,
+                        config.tolerance,
+                        report.iterations,
+                        report.setup_seconds,
+                        report.solve_seconds,
+                        report.certification_seconds,
+                        canonical_certificate.relative_infinity_norm,
+                        u8::from(canonical_certificate.passed),
+                        values.ncols(),
+                        crate::memory::lsmr_rhs_window(
+                            values.ncols(),
+                            rayon::current_num_threads()
+                        ),
+                        rayon::current_num_threads(),
+                        self.design.nobs(),
                     ));
                 }
                 if let Some(prior) = accumulated.take() {
@@ -2171,6 +2711,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             &mut self.cg_ratio,
             SchurWorkLimit::Checkpoint(cap),
             self.retain_coefficients,
+            None,
         )?;
         cost.solve_seconds = solve_started.elapsed().as_secs_f64();
         match attempt {
@@ -2230,7 +2771,20 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             .two_fe_pcg
             .as_mut()
             .ok_or_else(|| invalid_data("two-FE categorical MAP PCG workspace is unavailable"))?;
-        let cmg_schur = graph.cmg_schur.is_some();
+        let explicit_cmg_schur = self.cmg_schur_request.is_some();
+        if let Some(route) = self.auto_route.as_mut() {
+            route.begin(
+                config.tolerance,
+                !refine_ols,
+                super::routing::schur_iteration_work(
+                    self.design.nobs(),
+                    graph.left_weights.len(),
+                    graph.right_weights.len(),
+                    values.ncols(),
+                    self.max_rhs,
+                ),
+            )?;
+        }
         let result = absorb_two_fe_pcg_reusing(
             &self.design,
             weights,
@@ -2249,12 +2803,13 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             &mut self.cg_next_residual_square,
             &mut self.cg_direction_projection,
             &mut self.cg_ratio,
-            if cmg_schur {
+            if explicit_cmg_schur {
                 SchurWorkLimit::CmgSchur
             } else {
                 SchurWorkLimit::Map { refine: refine_ols }
             },
             self.retain_coefficients,
+            self.auto_route.as_mut(),
         );
         match result? {
             SchurAttempt::Certified(result) => Ok(result),
@@ -2269,6 +2824,10 @@ crate::fault::fault_plan! {
     static TWO_FE_CERTIFICATE_FAILURES: usize = 0;
     static TWO_FE_CORRECTIONS: usize = 0;
     static TWO_FE_BREAKDOWN: bool = false;
+    static TWO_FE_CERTIFICATE_AT: usize = 0;
+    static TWO_FE_CERTIFICATE_REJECTED_AT: usize = 0;
+    static TWO_FE_ROUTING_LAUNCH_AT: usize = 0;
+    static TWO_FE_ROUTING_BUILD_AT: usize = 0;
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2280,8 +2839,8 @@ fn absorb_two_fe_pcg_reusing(
     mut recurrence_tolerance: f64,
     completed_pilot_iterations: usize,
     pilot_contraction: f64,
-    setup_seconds: f64,
-    solve_started: Instant,
+    mut setup_seconds: f64,
+    mut solve_started: Instant,
     stride: usize,
     graph: &mut TwoFePcgWorkspace,
     certificate_workspace: &mut BorrowedMapWorkspace,
@@ -2292,6 +2851,7 @@ fn absorb_two_fe_pcg_reusing(
     ratio: &mut Vec<f64>,
     work_limit: SchurWorkLimit,
     retain_coefficients: bool,
+    mut auto_route: Option<&mut AutoSchurRoute>,
 ) -> Result<SchurAttempt> {
     let trace = crate::diagnostics::phase_timing_enabled();
     let mut operator_seconds = 0.0;
@@ -2302,8 +2862,9 @@ fn absorb_two_fe_pcg_reusing(
         SchurWorkLimit::Checkpoint(cap) => (Some(cap), true, false),
         SchurWorkLimit::CmgSchur => (None, false, false),
     };
-    let cmg_schur = matches!(work_limit, SchurWorkLimit::CmgSchur);
-    let mut correction_tolerance = if cmg_schur {
+    let explicit_cmg_schur = matches!(work_limit, SchurWorkLimit::CmgSchur);
+    let mut cmg_schur = graph.cmg_schur.is_some();
+    let mut correction_tolerance = if explicit_cmg_schur {
         Some((config.tolerance * 0.01).max(1e-15).min(config.tolerance))
     } else {
         refine.then(|| super::auto::direct_lsmr_tolerance(config.tolerance))
@@ -2335,7 +2896,7 @@ fn absorb_two_fe_pcg_reusing(
     let remaining_iterations = config
         .max_iterations
         .saturating_sub(completed_pilot_iterations);
-    let map_fallback_reserve = if cmg_schur {
+    let map_fallback_reserve = if explicit_cmg_schur {
         0
     } else {
         remaining_iterations / 4
@@ -2469,7 +3030,11 @@ fn absorb_two_fe_pcg_reusing(
                 crate::kernels::dispatch!(
                     crate::kernels::installed(),
                     pcg_initialize(
-                        &graph.right_weights,
+                        schur_diagonal(
+                            &graph.right_weights,
+                            graph.kernel.as_ref(),
+                            graph.use_cell_operator
+                        ),
                         scale_components.then_some(graph.component_scales.as_slice()),
                         stride,
                         &graph.residual,
@@ -2524,6 +3089,7 @@ fn absorb_two_fe_pcg_reusing(
             }
         }
         let mut reconstruct = active_rhs == 0;
+        let mut route_restart = false;
         let initialization_seconds = phase_start.elapsed().as_secs_f64();
         while !reconstruct && iterations < pcg_iteration_limit {
             crate::interrupt::checkpoint()?;
@@ -2616,7 +3182,11 @@ fn absorb_two_fe_pcg_reusing(
                     crate::kernels::dispatch!(
                         hardware,
                         pcg_energy(
-                            &graph.right_weights,
+                            schur_diagonal(
+                                &graph.right_weights,
+                                graph.kernel.as_ref(),
+                                graph.use_cell_operator
+                            ),
                             scale_components.then_some(graph.component_scales.as_slice()),
                             stride,
                             &graph.residual,
@@ -2640,7 +3210,11 @@ fn absorb_two_fe_pcg_reusing(
                 crate::kernels::dispatch!(
                     hardware,
                     pcg_step_energy(
-                        &graph.right_weights,
+                        schur_diagonal(
+                            &graph.right_weights,
+                            graph.kernel.as_ref(),
+                            graph.use_cell_operator
+                        ),
                         scale_components.then_some(graph.component_scales.as_slice()),
                         stride,
                         ratio,
@@ -2706,6 +3280,10 @@ fn absorb_two_fe_pcg_reusing(
                 )?;
             }
             reconstruct = active_rhs == 0 || iterations == pcg_iteration_limit;
+            if TWO_FE_CERTIFICATE_AT.get() == iterations {
+                TWO_FE_CERTIFICATE_AT.set(0);
+                reconstruct = true;
+            }
             if reconstruct {
                 residual_square.copy_from_slice(next_residual_square);
                 recurrence_seconds += rec_start.elapsed().as_secs_f64();
@@ -2745,7 +3323,11 @@ fn absorb_two_fe_pcg_reusing(
                 let cell_chunk = level_chunk
                     .checked_mul(stride)
                     .ok_or_else(|| allocation("two-FE PCG direction chunk dimensions overflow"))?;
-                let right_weights = &graph.right_weights;
+                let right_weights = schur_diagonal(
+                    &graph.right_weights,
+                    graph.kernel.as_ref(),
+                    graph.use_cell_operator,
+                );
                 let component_scales = &graph.component_scales;
                 let residual = &graph.residual;
                 graph
@@ -2774,7 +3356,11 @@ fn absorb_two_fe_pcg_reusing(
                 crate::kernels::dispatch!(
                     hardware,
                     pcg_direction(
-                        &graph.right_weights,
+                        schur_diagonal(
+                            &graph.right_weights,
+                            graph.kernel.as_ref(),
+                            graph.use_cell_operator
+                        ),
                         scale_components.then_some(graph.component_scales.as_slice()),
                         stride,
                         ratio,
@@ -2786,6 +3372,27 @@ fn absorb_two_fe_pcg_reusing(
             }
             residual_square.copy_from_slice(next_residual_square);
             recurrence_seconds += rec_start.elapsed().as_secs_f64();
+            if let Some(route) = auto_route.as_deref_mut().filter(|_| !cmg_schur) {
+                // A ready recurrence leaves this loop for its original-design
+                // certificate before reaching the grant decision.
+                if let Some(preconditioner) = route.checkpoint(
+                    design,
+                    weights,
+                    graph.left_effect,
+                    rhs_count,
+                    stride,
+                    iterations,
+                    pcg_iteration_limit,
+                    &mut setup_seconds,
+                    &mut solve_started,
+                )? {
+                    graph.cmg_schur = Some(Box::new(preconditioner));
+                    cmg_schur = true;
+                    route_restart = true;
+                    reconstruct = true;
+                    break;
+                }
+            }
             if checkpoint_progress && iterations == GRAPH_PROGRESS_CHECK_ITERATIONS && !reconstruct
             {
                 let contraction = (0..rhs_count)
@@ -2856,6 +3463,13 @@ fn absorb_two_fe_pcg_reusing(
                 }
             }
             let reconstruct_seconds = reconstruct_start.elapsed().as_secs_f64();
+            if route_restart {
+                // A handoff is not a publication point. Reinitialize from the
+                // reconstructed residual without another intermediate full
+                // certificate; every returned result still passes the unchanged
+                // original-design certificate after the new recurrence stops.
+                continue;
+            }
             let cert_start = Instant::now();
             let mut certificate = certify(
                 design,
@@ -2869,7 +3483,11 @@ fn absorb_two_fe_pcg_reusing(
                 certificate.passed = false;
             }
             if trace {
-                eprintln!("FEREG_PHASE|schur|init={initialization_seconds:.9}|operator={operator_seconds:.9}|recurrence={recurrence_seconds:.9}|reconstruct={reconstruct_seconds:.9}|certificate={:.9}|iterations={iterations}|passed={}",cert_start.elapsed().as_secs_f64(),certificate.passed);
+                eprintln!(
+                    "FEREG_PHASE|schur|init={initialization_seconds:.9}|operator={operator_seconds:.9}|recurrence={recurrence_seconds:.9}|reconstruct={reconstruct_seconds:.9}|certificate={:.9}|iterations={iterations}|passed={}",
+                    cert_start.elapsed().as_secs_f64(),
+                    certificate.passed
+                );
             }
             if certificate.passed {
                 let mut result = certified_result(
@@ -2887,6 +3505,7 @@ fn absorb_two_fe_pcg_reusing(
                     coefficients,
                 )?));
             }
+            TWO_FE_CERTIFICATE_REJECTED_AT.set(iterations);
         }
 
         if iteration_cap.is_some() {
@@ -2913,13 +3532,33 @@ fn absorb_two_fe_pcg_reusing(
                 }
                 TWO_FE_CORRECTIONS.set(TWO_FE_CORRECTIONS.get() + 1);
                 recurrence_tolerance = tighter;
+                // Certification rejected this frozen iterate. Honor the same
+                // logical epoch before spending another native iteration. The
+                // residual is already reconstructed; initialize its correction
+                // with the accepted fixed inverse, or the unchanged incumbent.
+                if let Some(route) = auto_route.as_deref_mut().filter(|_| !cmg_schur) {
+                    if let Some(preconditioner) = route.checkpoint(
+                        design,
+                        weights,
+                        graph.left_effect,
+                        rhs_count,
+                        stride,
+                        iterations,
+                        pcg_iteration_limit,
+                        &mut setup_seconds,
+                        &mut solve_started,
+                    )? {
+                        graph.cmg_schur = Some(Box::new(preconditioner));
+                        cmg_schur = true;
+                    }
+                }
                 continue;
             }
         }
         break;
     }
 
-    if cmg_schur {
+    if explicit_cmg_schur {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
             "cmgschur did not certify within its iteration budget",
@@ -3070,6 +3709,17 @@ impl TwoFePcgWorkspace {
         rhs_count: usize,
         stride: usize,
     ) -> Result<()> {
+        if self.use_cell_operator {
+            if let Some(kernel) = &self.kernel {
+                return kernel.apply(
+                    &self.direction,
+                    &mut self.operator,
+                    &mut self.left_work,
+                    rhs_count,
+                    stride,
+                );
+            }
+        }
         if crate::parallel::StagePlan::current(
             design.nobs() as u128 * rhs_count as u128,
             design
@@ -3226,6 +3876,18 @@ impl TwoFePcgWorkspace {
         } else {
             Ok(())
         }
+    }
+}
+
+fn schur_diagonal<'a>(
+    weights: &'a [f64],
+    kernel: Option<&'a super::routing_kernel::CellSchur>,
+    cells: bool,
+) -> &'a [f64] {
+    if cells {
+        weights
+    } else {
+        kernel.map_or(weights, |k| k.diagonal())
     }
 }
 
@@ -3470,6 +4132,10 @@ pub(crate) struct BorrowedCgOptions<'a> {
     /// Certify against these original right-hand-side norms instead of the
     /// input's own.
     pub(crate) reference_norms: Option<&'a [f64]>,
+    /// Require the actual Hestenes decrease and relative recurrence convergence
+    /// for CMG's small remaining FE component. Ordinary CG retains its
+    /// comparator-compatible absolute decrease floor and stopping rule.
+    pub(crate) strict_polish: bool,
 }
 
 impl<'a> BorrowedCgOptions<'a> {
@@ -3481,6 +4147,7 @@ impl<'a> BorrowedCgOptions<'a> {
         Self {
             stable_projection: true,
             reference_norms: Some(reference_norms),
+            strict_polish: true,
             ..Self::default()
         }
     }
@@ -3507,6 +4174,7 @@ pub(crate) fn absorb_borrowed_intercept_cg(
             reference_norms: options.reference_norms,
             retain_coefficients: options.retain_coefficients,
             stable_projection: options.stable_projection,
+            strict_polish: options.strict_polish,
             ..CgContinuation::ORDINARY
         },
         &mut reservation,
@@ -3592,199 +4260,6 @@ fn relative_reconstruction_infinity_norm(
     }
 }
 
-/// Residualize with safeguarded Irons-Tuck extrapolation while optionally
-/// carrying the same linear combinations through compact FE coefficient
-/// space. This avoids a second recovery solve for explicit `solver(it)`.
-pub(crate) fn absorb_borrowed_intercept_irons_tuck_certified(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    mut values: DenseMatrix,
-    config: MapConfig,
-    retain_coefficients: bool,
-) -> Result<CertifiedBorrowedMap> {
-    validate_config(config)?;
-    if design.nobs() != values.nrows()
-        || values.nrows() == 0
-        || values.ncols() == 0
-        || design.effects().is_empty()
-    {
-        return Err(invalid_argument(
-            "borrowed Irons-Tuck inputs are empty or dimensionally inconsistent",
-        ));
-    }
-    if values.as_slice().iter().any(|value| !value.is_finite()) {
-        return Err(invalid_data("borrowed Irons-Tuck values must be finite"));
-    }
-    let weights = validate_weights(weights, values.nrows())?;
-    let setup_started = Instant::now();
-    let mut reservation = SystemWorkspaceReservation;
-    let mut workspace =
-        BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), &mut reservation)?;
-    update_workspace_norms(&values, weights, &mut workspace, true)?;
-    let setup_seconds = setup_started.elapsed().as_secs_f64();
-    let solve_started = Instant::now();
-    let initial_certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
-    let mut coefficients = retain_coefficients
-        .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
-        .transpose()?;
-    // A passing certificate earns one confirming sweep when the budget
-    // allows; the solve finishes only if the confirmed certificate passes.
-    let confirm = |values: &mut DenseMatrix,
-                   workspace: &mut BorrowedMapWorkspace,
-                   coefficients: Option<&mut FeCoefficientBatch>,
-                   iterations: &mut usize,
-                   certificate: FeCertificate|
-     -> Result<FeCertificate> {
-        if *iterations >= config.max_iterations {
-            return Ok(certificate);
-        }
-        borrowed_residual_sweep_recording(
-            design,
-            weights,
-            values,
-            workspace,
-            coefficients,
-            config.symmetric,
-        )?;
-        *iterations += 1;
-        certify(design, weights, values, config.tolerance, workspace)
-    };
-    let finish = |values: DenseMatrix,
-                  coefficients: Option<FeCoefficientBatch>,
-                  iterations: usize,
-                  certificate: FeCertificate|
-     -> Result<CertifiedBorrowedMap> {
-        let normal_equation_residual = certificate.relative_two_norm;
-        let result = certified_solver_result(
-            values,
-            FeSolverKind::IronsTuck,
-            SolveStopReason::Certified,
-            iterations,
-            certificate,
-            normal_equation_residual,
-            setup_seconds,
-            solve_started.elapsed().as_secs_f64(),
-        )?;
-        attach_optional_coefficients(result, coefficients)
-    };
-    if initial_certificate.passed {
-        let result = certified_solver_result(
-            values,
-            FeSolverKind::IronsTuck,
-            SolveStopReason::Certified,
-            0,
-            initial_certificate,
-            0.0,
-            setup_seconds,
-            solve_started.elapsed().as_secs_f64(),
-        )?;
-        return attach_optional_coefficients(result, coefficients);
-    }
-
-    let mut iterations = 0_usize;
-    while iterations < config.max_iterations {
-        crate::interrupt::checkpoint()?;
-        let x0 = fallible_matrix_copy(&values, "unable to reserve Irons-Tuck x0")?;
-        let c0 = coefficients
-            .as_ref()
-            .map(FeCoefficientBatch::try_clone)
-            .transpose()?;
-        borrowed_residual_sweep_recording(
-            design,
-            weights,
-            &mut values,
-            &mut workspace,
-            coefficients.as_mut(),
-            config.symmetric,
-        )?;
-        iterations += 1;
-        let mut certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
-        if certificate.passed {
-            certificate = confirm(
-                &mut values,
-                &mut workspace,
-                coefficients.as_mut(),
-                &mut iterations,
-                certificate,
-            )?;
-            if !certificate.passed {
-                continue;
-            }
-            return finish(values, coefficients, iterations, certificate);
-        }
-        if iterations == config.max_iterations {
-            break;
-        }
-
-        let x1 = fallible_matrix_copy(&values, "unable to reserve Irons-Tuck x1")?;
-        let c1 = coefficients
-            .as_ref()
-            .map(FeCoefficientBatch::try_clone)
-            .transpose()?;
-        borrowed_residual_sweep_recording(
-            design,
-            weights,
-            &mut values,
-            &mut workspace,
-            coefficients.as_mut(),
-            config.symmetric,
-        )?;
-        iterations += 1;
-        let mut baseline = certify(design, weights, &values, config.tolerance, &mut workspace)?;
-        if baseline.passed {
-            baseline = confirm(
-                &mut values,
-                &mut workspace,
-                coefficients.as_mut(),
-                &mut iterations,
-                baseline,
-            )?;
-            if !baseline.passed {
-                continue;
-            }
-            return finish(values, coefficients, iterations, baseline);
-        }
-
-        if let Some((candidate, alpha)) = borrowed_irons_tuck_candidate(&x0, &x1, &values)? {
-            let mut candidate_certificate = certify(
-                design,
-                weights,
-                &candidate,
-                config.tolerance,
-                &mut workspace,
-            )?;
-            if candidate_certificate.relative_two_norm < baseline.relative_two_norm {
-                let candidate_coefficients = match (c0.as_ref(), c1.as_ref(), coefficients.as_ref())
-                {
-                    (Some(c0), Some(c1), Some(c2)) => Some(
-                        FeCoefficientBatch::extrapolate_irons_tuck(c0, c1, c2, alpha)?,
-                    ),
-                    _ => None,
-                };
-                values = candidate;
-                coefficients = candidate_coefficients;
-                if candidate_certificate.passed {
-                    candidate_certificate = confirm(
-                        &mut values,
-                        &mut workspace,
-                        coefficients.as_mut(),
-                        &mut iterations,
-                        candidate_certificate,
-                    )?;
-                    if !candidate_certificate.passed {
-                        continue;
-                    }
-                    return finish(values, coefficients, iterations, candidate_certificate);
-                }
-            }
-        }
-    }
-
-    Err(invalid_data(
-        "borrowed Irons-Tuck exhausted its iteration budget without certification",
-    ))
-}
-
 /// Check an unchanged candidate against the same independent borrowed FE
 /// certificate used at solver entry. This performs no projection or solver
 /// iteration and is used when a caller expects a residual to already lie in
@@ -3830,8 +4305,8 @@ pub(crate) fn certify_borrowed_intercept_candidate_with_workspace(
 /// Shared structural automatic policy. Descriptor copies contain only borrowed
 /// memberships/codes; every current-weight certificate remains independent.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn project_borrowed_intercept_structural(
-    design: &BorrowedInterceptFeDesign<'_>,
+pub(crate) fn project_borrowed_intercept_structural<'a>(
+    design: &BorrowedInterceptFeDesign<'a>,
     weights: BorrowedMapWeights<'_>,
     values: crate::ols::OlsProjectionInput,
     map: MapConfig,
@@ -3842,6 +4317,7 @@ pub(crate) fn project_borrowed_intercept_structural(
     final_residual: bool,
     dense_norms: bool,
     three_fe_geometry: Option<three_fe_map::Geometry>,
+    general_routing: Option<&mut routing_lsmr::GeneralRoutingState<'a>>,
 ) -> Result<CertifiedBorrowedMap> {
     validate_config(map)?;
     if values.nrows() != design.nobs() || values.nrows() == 0 || values.ncols() == 0 {
@@ -3853,30 +4329,13 @@ pub(crate) fn project_borrowed_intercept_structural(
     let values = values.into_values();
     validate_weights(weights, values.nrows())?;
     if design.effects().len() <= 1 {
-        let bytes = BorrowedMapWorkspace::planned_payload_bytes(
+        return project_direct_categorical(
             design,
-            values.nrows(),
-            values.ncols(),
-            rayon::current_num_threads(),
-        )?;
-        if budget.is_some_and(|b| !b.fits(bytes)) {
-            return Err(allocation(
-                "direct FE projection exceeds admitted workspace",
-            ));
-        }
-        return mark_auto(
-            absorb_borrowed_intercept_map(
-                design,
-                weights,
-                values,
-                map,
-                structural_constant,
-                false,
-            )?,
-            0,
-            0.,
-            0.,
-            0.,
+            weights,
+            values,
+            map,
+            budget,
+            structural_constant,
         );
     }
     let levels = design
@@ -3962,7 +4421,14 @@ pub(crate) fn project_borrowed_intercept_structural(
             return Ok(result);
         }
     }
-    let map_first = three_fe_geometry.and_then(|g| g.map_checkpoint(weights, map, final_residual));
+    let map_first = if general_routing
+        .as_ref()
+        .is_some_and(|state| state.has_prepared())
+    {
+        None
+    } else {
+        three_fe_geometry.and_then(|g| g.map_checkpoint(weights, map, final_residual))
+    };
     project_general_categorical(
         design,
         weights,
@@ -3974,12 +4440,42 @@ pub(crate) fn project_borrowed_intercept_structural(
         estimate,
         dense_norms,
         map_first,
+        general_routing,
+        final_residual,
+    )
+}
+
+fn project_direct_categorical(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    map: MapConfig,
+    budget: Option<FeSolverMemoryBudget>,
+    structural_constant: bool,
+) -> Result<CertifiedBorrowedMap> {
+    let bytes = BorrowedMapWorkspace::planned_payload_bytes(
+        design,
+        values.nrows(),
+        values.ncols(),
+        rayon::current_num_threads(),
+    )?;
+    if budget.is_some_and(|b| !b.fits(bytes)) {
+        return Err(allocation(
+            "direct FE projection exceeds admitted workspace",
+        ));
+    }
+    mark_auto(
+        absorb_borrowed_intercept_map(design, weights, values, map, structural_constant, false)?,
+        0,
+        0.,
+        0.,
+        0.,
     )
 }
 
 #[allow(clippy::too_many_arguments)]
-fn project_general_categorical(
-    design: &BorrowedInterceptFeDesign<'_>,
+fn project_general_categorical<'a>(
+    design: &BorrowedInterceptFeDesign<'a>,
     weights: BorrowedMapWeights<'_>,
     values: DenseMatrix,
     map: MapConfig,
@@ -3989,10 +4485,39 @@ fn project_general_categorical(
     estimate: crate::memory::FeSolverMemoryEstimate,
     dense_norms: bool,
     map_first: Option<usize>,
+    mut general_routing: Option<&mut routing_lsmr::GeneralRoutingState<'a>>,
+    final_residual: bool,
 ) -> Result<CertifiedBorrowedMap> {
     lsmr.tolerance = super::auto::direct_lsmr_tolerance(map.tolerance);
     lsmr.max_iterations = lsmr.max_iterations.min((map.max_iterations / 2).max(1));
-    let mut pilot = if let Some(checkpoint) =
+    let prefix_arm = general_routing
+        .as_ref()
+        .and_then(|state| state.categorical_prefix());
+    // Prefix completion and its correction share the requested certificate;
+    // the stricter private recurrence target does not change that contract.
+    let certificate_tolerance = prefix_arm.map_or(lsmr.tolerance, |_| map.tolerance);
+    let preconditioner = resolve_borrowed_lsmr_preconditioner(
+        design.effects().len(),
+        design.total_term_slots(),
+        lsmr.preconditioner,
+    );
+    let bytes = estimate.lsmr_bytes(preconditioner);
+    let mut prefix = categorical_prefix_attempt(
+        design,
+        weights,
+        &values,
+        map,
+        prefix_arm,
+        budget,
+        estimate.coefficient_batch_bytes,
+        bytes,
+        lsmr,
+        retain,
+        general_routing.as_deref(),
+    )?;
+    let mut pilot = if prefix_arm.is_some() {
+        std::mem::take(&mut prefix.report)
+    } else if let Some(checkpoint) =
         map_first.filter(|_| lsmr.max_iterations > three_fe_map::SWEEPS)
     {
         three_fe_map::attempt(
@@ -4014,22 +4539,25 @@ fn project_general_categorical(
     }
     lsmr.max_iterations -= pilot.iterations;
     let validated = validate_weights(weights, values.nrows())?;
-    let preconditioner = resolve_borrowed_lsmr_preconditioner(
-        design.effects().len(),
-        design.total_term_slots(),
-        lsmr.preconditioner,
-    );
-    let bytes = estimate.lsmr_bytes(preconditioner);
     let mut attempted_peak = pilot.peak;
     let mut attempted = None;
     if budget.is_none_or(|b| b.fits(bytes)) {
         let mut memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, budget, 0)?;
         let mut norms = Vec::new();
+        if let Some(state) = general_routing.as_deref_mut() {
+            state.begin(
+                map.tolerance,
+                final_residual,
+                design,
+                values.ncols(),
+                lsmr.local_size,
+            )?;
+        }
         let (candidate, mut report, _, coefficients) = run_borrowed_lsmr_with_prepared(
             design,
             validated,
             &values,
-            lsmr.tolerance,
+            certificate_tolerance,
             lsmr.max_iterations,
             lsmr,
             None,
@@ -4037,11 +4565,13 @@ fn project_general_categorical(
             None,
             &mut memory,
             dense_norms.then_some(&mut norms),
+            general_routing.as_deref_mut(),
+            prefix.seed.as_ref(),
         )?;
         attempted_peak = attempted_peak.max(report.solver_workspace_peak);
         report.requested_solver = FeSolverKind::Auto;
         if report.certified() {
-            pilot.record(&mut report);
+            record_general_pilot(&pilot, &mut report, prefix_arm.is_some());
             let result = if let Some(c) = coefficients {
                 CertifiedBorrowedMap::from_certified_parts_with_coefficients(candidate, report, c)
             } else {
@@ -4057,6 +4587,41 @@ fn project_general_categorical(
         // A report survives the failed certificate; input remains unchanged.
         attempted = Some(report);
     }
+    // The fallback restarts original inputs; release the seed before its admission.
+    drop(prefix.seed);
+    if let Some(state) = general_routing {
+        state.finish_preparation()?;
+        state.release_backend();
+    }
+    finish_general_map(
+        design,
+        weights,
+        values,
+        map,
+        budget,
+        retain,
+        estimate,
+        attempted,
+        pilot,
+        attempted_peak,
+        prefix_arm.is_some(),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_general_map(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    map: MapConfig,
+    budget: Option<FeSolverMemoryBudget>,
+    retain: bool,
+    estimate: crate::memory::FeSolverMemoryEstimate,
+    attempted: Option<SolveReport>,
+    pilot: three_fe_map::Attempt,
+    attempted_peak: SolverWorkspacePeak,
+    experimental_prefix: bool,
+) -> Result<CertifiedBorrowedMap> {
     let consumed = pilot.iterations + attempted.as_ref().map_or(0, |r| r.iterations);
     let remaining = map
         .max_iterations
@@ -4101,8 +4666,75 @@ fn project_general_categorical(
         result.report.fallback_used = true;
         result.report.warnings.push("general FE solve did not certify; MAP used original inputs within the remaining budget".to_owned());
     }
-    pilot.record(&mut result.report);
+    record_general_pilot(&pilot, &mut result.report, experimental_prefix);
     Ok(result)
+}
+
+fn record_general_pilot(
+    pilot: &three_fe_map::Attempt,
+    report: &mut SolveReport,
+    experimental_prefix: bool,
+) {
+    let fallback = report.fallback_used;
+    pilot.record(report);
+    // An intentional warm start is not a failed solver. Preserve real fallback
+    // metadata from the subsequent LSMR or original-input MAP continuation.
+    if experimental_prefix {
+        report.fallback_used = fallback;
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn categorical_prefix_attempt(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: &DenseMatrix,
+    map: MapConfig,
+    arm: Option<super::routing::CategoricalPrefix>,
+    budget: Option<FeSolverMemoryBudget>,
+    coefficient_bytes: u128,
+    lsmr_bytes: u128,
+    lsmr: LsmrConfig,
+    retain: bool,
+    state: Option<&routing_lsmr::GeneralRoutingState<'_>>,
+) -> Result<categorical_prefix::Attempt> {
+    let Some(arm) = arm.filter(|arm| *arm != super::routing::CategoricalPrefix::None) else {
+        return Ok(categorical_prefix::Attempt::default());
+    };
+    let preconditioner = resolve_borrowed_lsmr_preconditioner(
+        design.effects().len(),
+        design.total_term_slots(),
+        lsmr.preconditioner,
+    );
+    let Ok(extra) = seeded_lsmr_extra_bytes(
+        values.nrows(),
+        design.total_term_slots(),
+        values.ncols(),
+        lsmr.local_size,
+        preconditioner,
+    ) else {
+        return Ok(categorical_prefix::Attempt::default());
+    };
+    let retained = state.map_or(0, |state| state.retained_bytes());
+    let handoff = lsmr_bytes
+        .checked_add(coefficient_bytes)
+        .and_then(|b| b.checked_add(extra))
+        .and_then(|b| b.checked_add(retained));
+    if !handoff.is_some_and(|b| budget.is_none_or(|limit| limit.fits(b))) {
+        return Ok(categorical_prefix::Attempt::default());
+    }
+    categorical_prefix::attempt(
+        design,
+        weights,
+        values,
+        map,
+        arm,
+        budget,
+        coefficient_bytes,
+        retained,
+        lsmr.max_iterations,
+        retain,
+    )
 }
 
 fn borrowed_weights(weights: ValidatedWeights<'_>) -> BorrowedMapWeights<'_> {
@@ -4295,6 +4927,7 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             self.config.preconditioner,
             borrowed_within_preconditioner(resolved),
             self.config.threads.deterministic,
+            None,
         )?;
         if let Some(slot) = self.attempted_rhs.get_mut(self.attempt_count) {
             *slot = rhs.len();
@@ -4303,8 +4936,11 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
         if crate::diagnostics::solver_trace_enabled() {
             crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=checkpoint_batch|rhs={}|full_rhs={}|selective={}|builds={}|batches={}",
-                rhs.len(), self.values.ncols(), u8::from(selected.is_some()),
-                self.prepared.builds, self.prepared.batches,
+                rhs.len(),
+                self.values.ncols(),
+                u8::from(selected.is_some()),
+                self.prepared.builds,
+                self.prepared.batches,
             ));
             for rhs in 0..solved.iterations.len() {
                 let position = selected.as_ref().map_or(rhs, |positions| positions[rhs]);
@@ -4480,6 +5116,8 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
             Some(&mut self.prepared),
             &mut memory,
             dense_norms.then_some(&mut norms),
+            None,
+            None,
         )?;
         let result = if let Some(coefficients) = coefficients {
             CertifiedBorrowedMap::from_certified_parts_with_coefficients(
@@ -4568,6 +5206,7 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         requested: LsmrPreconditioner,
         preconditioner: PreconditionerConfig,
         deterministic: bool,
+        initial_coefficients: Option<&FeCoefficientBatch>,
     ) -> Result<(within::BatchSolveResult, bool)> {
         let levels = design
             .effects()
@@ -4617,14 +5256,15 @@ impl<'a> BorrowedLsmrPrepared<'a> {
             self.builds += 1;
             setup_seconds += setup.elapsed().as_secs_f64();
         }
-        let initial = super::lsmr_batch::solve_prepared_batch(
+        let initial = routing_lsmr::solve_prepared_input(
             self.solver.as_ref().expect("LSMR preparation exists"),
             rhs,
             options,
+            initial_coefficients,
         );
         let mut solved = match initial {
             Ok(solved) => solved,
-            Err(error)
+            Err((error, spent))
                 if requested == LsmrPreconditioner::Auto
                     && !self.preconditioner_fallback
                     && error.preconditioner_breakdown() =>
@@ -4643,19 +5283,35 @@ impl<'a> BorrowedLsmrPrepared<'a> {
                 self.builds += 1;
                 self.preconditioner_fallback = true;
                 setup_seconds += setup.elapsed().as_secs_f64();
-                super::lsmr_batch::solve_prepared_batch(
+                let remaining = options
+                    .maxiter
+                    .checked_sub(spent)
+                    .filter(|n| *n > 0)
+                    .ok_or_else(|| {
+                        invalid_data("seeded LSMR fallback exhausted its native allowance")
+                    })?;
+                let fallback_options = LsmrOptions {
+                    maxiter: remaining,
+                    ..options.clone()
+                };
+                let mut result = routing_lsmr::solve_prepared_input(
                     self.solver
                         .as_ref()
                         .expect("fallback LSMR preparation exists"),
                     rhs,
-                    options,
+                    &fallback_options,
+                    initial_coefficients,
                 )
-                .map_err(|error| {
+                .map_err(|(error, _)| {
                     error
                         .into_fereg("borrowed modified LSMR failed after unpreconditioned fallback")
-                })?
+                })?;
+                for iterations in &mut result.iterations {
+                    *iterations += spent;
+                }
+                result
             }
-            Err(error) => return Err(error.into_fereg("borrowed modified LSMR failed")),
+            Err((error, _)) => return Err(error.into_fereg("borrowed modified LSMR failed")),
         };
         self.batches += 1;
         solved.time_setup += setup_seconds;
@@ -4663,7 +5319,9 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         if crate::diagnostics::solver_trace_enabled() {
             crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=lsmr_session|builds={}|batches={}|rhs={}|setup={setup_seconds:.9}",
-                self.builds, self.batches, rhs.len(),
+                self.builds,
+                self.batches,
+                rhs.len(),
             ));
         }
         Ok((solved, self.preconditioner_fallback))
@@ -4701,7 +5359,13 @@ fn build_retained_borrowed_lsmr<'a>(
             Ok(copy)
         })
         .transpose()?;
-    let solver = within::Solver::new(effects, weights, preconditioner).and_then(|solver| {
+    let solver = within::Solver::new_with_screening(
+        effects,
+        weights,
+        preconditioner,
+        within::SlopeScreening::Disabled,
+    )
+    .and_then(|solver| {
         if deterministic {
             solver.with_reproducible()
         } else {
@@ -4764,11 +5428,35 @@ fn run_borrowed_lsmr(
         None,
         &mut memory,
         None,
+        None,
+        None,
     )
 }
 
 // The recurrence stops at `lsmr_config.tolerance`; the independent FE
 // certificate passes at `certificate_tolerance`.
+fn seeded_lsmr_extra_bytes(
+    rows: usize,
+    dofs: usize,
+    rhs: usize,
+    local_size: Option<usize>,
+    preconditioner: LsmrPreconditioner,
+) -> Result<u128> {
+    let window = crate::memory::lsmr_rhs_window(rhs, rayon::current_num_threads()) as u128;
+    let history = local_size.unwrap_or(0).min(rows).min(dofs) as u128;
+    let coefficient_lanes = if preconditioner == LsmrPreconditioner::Off {
+        7 + history
+    } else {
+        6
+    };
+    (rows as u128)
+        .checked_mul(2)
+        .and_then(|cells| cells.checked_add((dofs as u128).checked_mul(coefficient_lanes)?))
+        .and_then(|cells| cells.checked_mul(window)?.checked_mul(8))
+        .and_then(|bytes| bytes.checked_add(window.checked_mul(1024)?))
+        .ok_or_else(|| allocation("categorical LSMR session overlap overflows"))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn run_borrowed_lsmr_with_prepared<'a>(
     design: &BorrowedInterceptFeDesign<'a>,
@@ -4782,6 +5470,8 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     prepared: Option<&mut BorrowedLsmrPrepared<'a>>,
     memory: &mut BorrowedLsmrCallMemory,
     dense_norms: Option<&mut Vec<f64>>,
+    mut general_routing: Option<&mut routing_lsmr::GeneralRoutingState<'a>>,
+    initial_coefficients: Option<&FeCoefficientBatch>,
 ) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
     crate::interrupt::checkpoint()?;
     let total_started = Instant::now();
@@ -4803,6 +5493,45 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             "borrowed LSMR local reorthogonalization size must be positive",
         ));
     }
+    if initial_coefficients.is_some_and(|seed| {
+        seed.rhs_count() != values.ncols()
+            || seed.coefficients_per_rhs() != design.total_term_slots()
+            || seed.effect_channels.iter().any(|&channels| channels != 1)
+            || seed
+                .level_counts
+                .iter()
+                .copied()
+                .ne(design.effects().iter().map(|e| e.n_levels()))
+    }) {
+        return Err(invalid_argument(
+            "categorical LSMR seed has an incompatible factor layout",
+        ));
+    }
+    if let Some(seed) = initial_coefficients {
+        let admitted = memory
+            .peak
+            .bytes()
+            .map_or(0, u128::from)
+            .saturating_sub(memory.parent_bytes);
+        let resolved = resolve_borrowed_lsmr_preconditioner(
+            design.effects().len(),
+            design.total_term_slots(),
+            lsmr_config.preconditioner,
+        );
+        let session_bytes = seeded_lsmr_extra_bytes(
+            values.nrows(),
+            design.total_term_slots(),
+            values.ncols(),
+            lsmr_config.local_size,
+            resolved,
+        )?;
+        memory.parent_bytes = memory
+            .parent_bytes
+            .checked_add(seed.retained_bytes())
+            .and_then(|bytes| bytes.checked_add(session_bytes))
+            .ok_or_else(|| allocation("categorical LSMR seed overlap overflows"))?;
+        memory.include(admitted)?;
+    }
     let lsmr_setup_started = Instant::now();
     let rhs = super::lsmr_batch::rhs_columns(values)?;
     let rhs_views = rhs.iter().map(Vec::as_slice).collect::<Vec<_>>();
@@ -4819,8 +5548,26 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     );
     let preconditioner = borrowed_within_preconditioner(resolved_preconditioner);
     let owned_setup_seconds = lsmr_setup_started.elapsed().as_secs_f64();
+    let mut owned_prepared = BorrowedLsmrPrepared::default();
     let mut prepared = prepared.filter(|p| !p.disabled);
-    let (mut solved, preconditioner_fallback) = if let Some(prepared) = prepared.as_deref_mut() {
+    if initial_coefficients.is_some() && prepared.is_none() && general_routing.is_none() {
+        prepared = Some(&mut owned_prepared);
+    }
+    let (mut solved, preconditioner_fallback) = if let Some(routing) =
+        general_routing.as_deref_mut()
+    {
+        routing.solve(
+            design,
+            weights,
+            &rhs_views,
+            &options,
+            lsmr_config.preconditioner,
+            preconditioner,
+            lsmr_config.threads.deterministic,
+            memory,
+            initial_coefficients,
+        )?
+    } else if let Some(prepared) = prepared.as_deref_mut() {
         prepared.solve(
             design,
             weights,
@@ -4829,6 +5576,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             lsmr_config.preconditioner,
             preconditioner,
             lsmr_config.threads.deterministic,
+            initial_coefficients,
         )?
     } else {
         let effects = borrowed_lsmr_effects(design)?;
@@ -4865,171 +5613,192 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             }
         }
     };
-    // The candidate is wholly overwritten by the returned residuals. Allocate
-    // it after Krylov work, once the RHS transport can be released; preserve
-    // the caller's values for independent reference norms and any continuation.
-    let retained = prepared.as_ref().map_or(0, |p| p.retained_bytes);
     drop(rhs_views);
     drop(rhs);
-    let result_cells = (values.nrows() as u128) * (values.ncols() as u128);
-    memory.include_payload(
-        retained,
-        (result_cells + solved.demeaned.capacity() as u128 + solved.x.capacity() as u128) * 8,
-    )?;
-    let mut lsmr_values = DenseMatrix::zeros(values.nrows(), values.ncols())?;
-    memory.include_payload(
-        retained,
-        (lsmr_values.storage_capacity() as u128
-            + solved.demeaned.capacity() as u128
-            + solved.x.capacity() as u128)
-            * 8,
-    )?;
-    super::lsmr_batch::copy_demeaned(&solved.demeaned, &mut lsmr_values);
-    drop(std::mem::take(&mut solved.demeaned));
-    if !retain_coefficients {
-        drop(std::mem::take(&mut solved.x));
-    }
-    memory.include_payload(
-        retained,
-        (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
-            + BorrowedMapWorkspace::planned_payload_bytes(
-                design,
-                values.nrows(),
-                values.ncols(),
-                rayon::current_num_threads(),
-            )?,
-    )?;
-    let mut reservation = SystemWorkspaceReservation;
-    let mut certificate_workspace = BorrowedMapWorkspace::new(
-        design,
-        lsmr_values.nrows(),
-        lsmr_values.ncols(),
-        &mut reservation,
-    )?;
-    let certificate_bytes = modeled_bytes(certificate_workspace.payload_peak()?)?;
-    memory.include_payload(
-        retained,
-        (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
-            + certificate_bytes,
-    )?;
-    update_workspace_norms(values, weights, &mut certificate_workspace, true)?;
-    if let Some(reference_norms) = certificate_reference_norms {
-        if reference_norms.len() != values.ncols()
-            || reference_norms
-                .iter()
-                .any(|norm| !norm.is_finite() || *norm < 0.0)
-        {
-            return Err(invalid_argument(
-                "borrowed LSMR continuation reference norms are invalid",
-            ));
+    let result = (|| {
+        // The candidate is wholly overwritten by the returned residuals. Allocate
+        // it after Krylov work, once the RHS transport can be released; preserve
+        // the caller's values for independent reference norms and any continuation.
+        let retained = general_routing.as_ref().map_or_else(
+            || prepared.as_ref().map_or(0, |p| p.retained_bytes),
+            |state| state.retained_bytes(),
+        );
+        let result_cells = (values.nrows() as u128) * (values.ncols() as u128);
+        memory.include_payload(
+            retained,
+            (result_cells + solved.demeaned.capacity() as u128 + solved.x.capacity() as u128) * 8,
+        )?;
+        let mut lsmr_values = DenseMatrix::zeros(values.nrows(), values.ncols())?;
+        memory.include_payload(
+            retained,
+            (lsmr_values.storage_capacity() as u128
+                + solved.demeaned.capacity() as u128
+                + solved.x.capacity() as u128)
+                * 8,
+        )?;
+        super::lsmr_batch::copy_demeaned(&solved.demeaned, &mut lsmr_values);
+        drop(std::mem::take(&mut solved.demeaned));
+        if !retain_coefficients {
+            drop(std::mem::take(&mut solved.x));
         }
-        certificate_workspace
-            .reference_norms
-            .copy_from_slice(reference_norms);
-    }
-    let certification_started = Instant::now();
-    let (certificate, dense_valid) = lsmr_norms::certify(
-        design,
-        weights,
-        &lsmr_values,
-        certificate_tolerance,
-        &mut certificate_workspace,
-        dense_norms.is_some(),
-    )?;
-    let certification_seconds = certification_started.elapsed().as_secs_f64();
-    if crate::diagnostics::solver_trace_enabled() {
-        for rhs in 0..lsmr_values.ncols() {
-            crate::diagnostics::emit_solver_trace(&format!(
+        memory.include_payload(
+            retained,
+            (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
+                + BorrowedMapWorkspace::planned_payload_bytes(
+                    design,
+                    values.nrows(),
+                    values.ncols(),
+                    rayon::current_num_threads(),
+                )?,
+        )?;
+        let mut reservation = SystemWorkspaceReservation;
+        let mut certificate_workspace = BorrowedMapWorkspace::new(
+            design,
+            lsmr_values.nrows(),
+            lsmr_values.ncols(),
+            &mut reservation,
+        )?;
+        let certificate_bytes = modeled_bytes(certificate_workspace.payload_peak()?)?;
+        memory.include_payload(
+            retained,
+            (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
+                + certificate_bytes,
+        )?;
+        update_workspace_norms(values, weights, &mut certificate_workspace, true)?;
+        if let Some(reference_norms) = certificate_reference_norms {
+            if reference_norms.len() != values.ncols()
+                || reference_norms
+                    .iter()
+                    .any(|norm| !norm.is_finite() || *norm < 0.0)
+            {
+                return Err(invalid_argument(
+                    "borrowed LSMR continuation reference norms are invalid",
+                ));
+            }
+            certificate_workspace
+                .reference_norms
+                .copy_from_slice(reference_norms);
+        }
+        let certification_started = Instant::now();
+        let certificate_result = lsmr_norms::certify(
+            design,
+            weights,
+            &lsmr_values,
+            certificate_tolerance,
+            &mut certificate_workspace,
+            dense_norms.is_some(),
+        );
+        let (certificate, dense_valid) = if let Some(state) = general_routing.as_deref_mut() {
+            state.certificate_boundary(certificate_result)?
+        } else {
+            certificate_result?
+        };
+        if !certificate.passed {
+            if let Some(state) = general_routing.as_deref_mut() {
+                state.finish_preparation()?;
+            }
+        }
+        let certification_seconds = certification_started.elapsed().as_secs_f64();
+        if crate::diagnostics::solver_trace_enabled() {
+            for rhs in 0..lsmr_values.ncols() {
+                crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=lsmr_rhs|rhs={rhs}|converged={}|iterations={}|within_normal={:.17e}|fereg_relinf={:.17e}",
                 solved.converged[rhs],
                 solved.iterations[rhs],
                 solved.residual[rhs],
                 certificate_workspace.rhs_relative_infinity_norms[rhs],
             ));
+            }
         }
-    }
-    let recurrence_converged = solved.converged.iter().copied().all(|value| value);
-    let stop_reason = if certificate.passed {
-        SolveStopReason::Certified
-    } else if recurrence_converged {
-        SolveStopReason::Uncertified
-    } else {
-        SolveStopReason::MaximumIterations
-    };
-    let mut warnings = solved
-        .warnings
-        .iter()
-        .map(|warning| format!("within preconditioner: {warning:?}"))
-        .collect::<Vec<_>>();
-    if preconditioner_fallback {
-        warnings.insert(
+        let recurrence_converged = solved.converged.iter().copied().all(|value| value);
+        let stop_reason = if certificate.passed {
+            SolveStopReason::Certified
+        } else if recurrence_converged {
+            SolveStopReason::Uncertified
+        } else {
+            SolveStopReason::MaximumIterations
+        };
+        let mut warnings = solved
+            .warnings
+            .iter()
+            .map(|warning| format!("within preconditioner: {warning:?}"))
+            .collect::<Vec<_>>();
+        if preconditioner_fallback {
+            warnings.insert(
             0,
             "automatic borrowed LSMR preconditioner failed its positive-definiteness guard; retried unpreconditioned and certified the returned residuals".to_owned(),
         );
-    }
-    if recurrence_converged && !certificate.passed {
-        warnings.push(
+        }
+        if recurrence_converged && !certificate.passed {
+            warnings.push(
             "borrowed LSMR recurrence claimed convergence but the recomputed FE certificate failed"
                 .to_owned(),
         );
-    }
-    let accounted_seconds = owned_setup_seconds + solved.time_total + certification_seconds;
-    let postprocess_seconds = (total_started.elapsed().as_secs_f64() - accounted_seconds).max(0.0);
-    let mut report = SolveReport {
-        iterations: solved.iterations.iter().copied().max().unwrap_or(0),
-        normal_equation_residual: solved.residual.iter().copied().fold(0.0_f64, f64::max),
-        setup_seconds: solved.time_setup + postprocess_seconds,
-        solve_seconds: (solved.time_total - solved.time_setup).max(0.0),
-        certification_seconds,
-        fallback_used: preconditioner_fallback,
-        requested_preconditioner: Some(lsmr_config.preconditioner),
-        used_preconditioner: Some(if preconditioner_fallback {
-            LsmrPreconditioner::Off
+        }
+        let accounted_seconds = owned_setup_seconds + solved.time_total + certification_seconds;
+        let postprocess_seconds =
+            (total_started.elapsed().as_secs_f64() - accounted_seconds).max(0.0);
+        let mut report = SolveReport {
+            iterations: solved.iterations.iter().copied().max().unwrap_or(0),
+            normal_equation_residual: solved.residual.iter().copied().fold(0.0_f64, f64::max),
+            setup_seconds: solved.time_setup + postprocess_seconds,
+            solve_seconds: (solved.time_total - solved.time_setup).max(0.0),
+            certification_seconds,
+            fallback_used: preconditioner_fallback,
+            requested_preconditioner: Some(lsmr_config.preconditioner),
+            used_preconditioner: Some(if preconditioner_fallback {
+                LsmrPreconditioner::Off
+            } else {
+                resolved_preconditioner
+            }),
+            warnings,
+            ..SolveReport::single_route(FeSolverKind::Lsmr, stop_reason, certificate)
+        };
+        let layout_bytes =
+            (design.effects().len() as u128 * 3 + 1) * std::mem::size_of::<usize>() as u128;
+        if retain_coefficients {
+            memory.include_payload(
+                retained,
+                (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
+                    + certificate_bytes
+                    + layout_bytes,
+            )?;
+        }
+        let coefficients = if retain_coefficients {
+            Some(FeCoefficientBatch::from_values(
+                vec![1; design.effects().len()],
+                design
+                    .effects()
+                    .iter()
+                    .map(crate::fe::BorrowedInterceptEffect::n_levels)
+                    .collect(),
+                lsmr_values.ncols(),
+                solved.x,
+            )?)
         } else {
-            resolved_preconditioner
-        }),
-        warnings,
-        ..SolveReport::single_route(FeSolverKind::Lsmr, stop_reason, certificate)
-    };
-    let layout_bytes =
-        (design.effects().len() as u128 * 3 + 1) * std::mem::size_of::<usize>() as u128;
-    if retain_coefficients {
+            None
+        };
         memory.include_payload(
             retained,
-            (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
+            lsmr_values.storage_capacity() as u128 * 8
                 + certificate_bytes
-                + layout_bytes,
+                + coefficients
+                    .as_ref()
+                    .map_or(0, FeCoefficientBatch::retained_bytes),
         )?;
-    }
-    let coefficients = if retain_coefficients {
-        Some(FeCoefficientBatch::from_values(
-            vec![1; design.effects().len()],
-            design
-                .effects()
-                .iter()
-                .map(crate::fe::BorrowedInterceptEffect::n_levels)
-                .collect(),
-            lsmr_values.ncols(),
-            solved.x,
-        )?)
-    } else {
-        None
-    };
-    memory.include_payload(
-        retained,
-        lsmr_values.storage_capacity() as u128 * 8
-            + certificate_bytes
-            + coefficients
-                .as_ref()
-                .map_or(0, FeCoefficientBatch::retained_bytes),
-    )?;
-    if report.certified() && dense_valid {
-        if let Some(norms) = dense_norms {
-            *norms = std::mem::take(&mut certificate_workspace.reference_norms);
+        if report.certified() && dense_valid {
+            if let Some(norms) = dense_norms {
+                *norms = std::mem::take(&mut certificate_workspace.reference_norms);
+            }
         }
+        report.solver_workspace_peak = memory.peak;
+        Ok((lsmr_values, report, owned_setup_seconds, coefficients))
+    })();
+    if let Some(state) = general_routing {
+        state.certificate_boundary(result)
+    } else {
+        result
     }
-    report.solver_workspace_peak = memory.peak;
-    Ok((lsmr_values, report, owned_setup_seconds, coefficients))
 }
 
 fn resolve_borrowed_lsmr_preconditioner(
@@ -5121,8 +5890,16 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         refinement,
         retain_coefficients,
         stable_projection,
+        strict_polish,
         reconstruction_tolerance,
     } = continuation;
+    let projection_mode = if strict_polish {
+        CgProjectionMode::StrictPolish
+    } else if stable_projection {
+        CgProjectionMode::Stable
+    } else {
+        CgProjectionMode::Ordinary
+    };
     validate_config(config)?;
     if refinement.minimum_iterations > config.max_iterations {
         return Err(invalid_argument(
@@ -5279,6 +6056,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     if initial_certificate.passed
         && initial_reconstruction_passed
         && refinement.minimum_iterations == 0
+        && (!strict_polish || values.as_slice().iter().all(|&value| value == 0.0))
     {
         let mut result = certified_solver_result(
             values,
@@ -5332,7 +6110,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         &mut residual,
         &mut workspace,
         residual_coefficients.as_mut(),
-        stable_projection,
+        projection_mode,
     )?;
     let mut direction =
         fallible_matrix_copy(&residual, "unable to reserve borrowed CG direction matrix")?;
@@ -5372,6 +6150,30 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         &mut workspace.parallel_dot_sums,
     )?;
     initial_residual_square.copy_from_slice(&residual_square);
+    if strict_polish {
+        check_cg_energy_resolution(&residual, &residual_square)?;
+    }
+    // The moment certificate alone cannot skip polishing on a weak graph.
+    // A computed exactly-zero stable projection is a verified no-op, however;
+    // inspect its entries rather than squared norms, which can underflow.
+    if strict_polish
+        && initial_certificate.passed
+        && refinement.minimum_iterations == 0
+        && residual.as_slice().iter().all(|&value| value == 0.0)
+    {
+        let mut result = certified_solver_result(
+            values,
+            FeSolverKind::Cg,
+            SolveStopReason::Certified,
+            0,
+            initial_certificate,
+            0.0,
+            setup_seconds,
+            solve_started.elapsed().as_secs_f64(),
+        )?;
+        result.set_solver_workspace_peak(workspace_peak);
+        return attach_optional_coefficients(result, solution_coefficients);
+    }
     let mut recurrence_residual = 1.0_f64;
     let mut hestenes_error = 1.0_f64;
     let mut reconstruction_check_active = false;
@@ -5388,7 +6190,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             &mut projection,
             &mut workspace,
             projection_coefficients.as_mut(),
-            stable_projection,
+            projection_mode,
         )?;
         weighted_dot_columns_into(
             &direction,
@@ -5425,6 +6227,9 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             if certificate.passed
                 && reconstruction_passed
                 && iteration.saturating_sub(1) >= refinement.minimum_iterations
+                && (!strict_polish
+                    || (hestenes_error <= config.tolerance
+                        && recurrence_residual <= config.tolerance))
             {
                 let mut result = certified_solver_result(
                     values,
@@ -5455,6 +6260,15 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                     }
                     alpha[rhs] = ratio;
                 } else if denominator.is_finite() {
+                    if strict_polish
+                        && (hestenes_error > config.tolerance
+                            || cg_largest_relative_residual(
+                                &residual_square[rhs..=rhs],
+                                &initial_residual_square[rhs..=rhs],
+                            )? > config.tolerance)
+                    {
+                        return Err(error);
+                    }
                     if workspace.rhs_relative_infinity_norms[rhs] > config.tolerance {
                         // Finite nonpositive curvature for this PSD operator is
                         // a roundoff loss of conjugacy. Setting p=0 with
@@ -5498,6 +6312,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             &values,
             &direction,
             weights,
+            strict_polish,
         )?;
         cg_update_solution_and_residual(
             &mut values,
@@ -5528,15 +6343,19 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             &mut dot_corrections,
             &mut workspace.parallel_dot_sums,
         )?;
+        if strict_polish {
+            check_cg_energy_resolution(&residual, &next_residual_square)?;
+        }
         recurrence_residual =
             cg_largest_relative_residual(&next_residual_square, &initial_residual_square)?;
 
-        // Match reghdfe's Hestenes stopping rule, then require the independent
-        // FE-moment certificate as a second condition before publication.
-        // This avoids accepting a weak-graph iterate merely because its FE
-        // moments are small while keeping certification out of the hot loop.
-        let ordinary_ready =
-            hestenes_error <= config.tolerance && iteration >= refinement.minimum_iterations;
+        // Ordinary CG keeps its comparator-compatible Hestenes rule. CMG
+        // polishing also requires relative recurrence convergence: a tiny
+        // individual decrease need not resolve a remaining weak graph mode.
+        // Both paths require the independent final FE-moment certificate.
+        let ordinary_ready = hestenes_error <= config.tolerance
+            && iteration >= refinement.minimum_iterations
+            && (!strict_polish || recurrence_residual <= config.tolerance);
         reconstruction_check_active |= reconstruction_tolerance.is_some() && ordinary_ready;
         let reconstruction_relative = if reconstruction_check_active
             || (reconstruction_tolerance.is_some() && iteration == config.max_iterations)
@@ -6410,7 +7229,8 @@ fn fill_parallel_group_statistics(
                             weights,
                             values.nrows(),
                             output,
-                            |row, rhs| data[row * columns + start + rhs],
+                            false,
+                            |row, rhs| Ok((data[row * columns + start + rhs], 0.0)),
                         )?;
                     }
                 }
@@ -6473,7 +7293,8 @@ fn fused_group_means_by_value(
     weights: ValidatedWeights<'_>,
     nrows: usize,
     means: &mut [f64],
-    value: impl Fn(usize, usize) -> f64,
+    binary_scaling: bool,
+    value: impl Fn(usize, usize) -> Result<(f64, f64)>,
 ) -> Result<f64> {
     let members = effect.level_index().checked_members(level)?;
     if members.is_empty() || means.len() > PARALLEL_GROUP_MAX_RHS {
@@ -6503,7 +7324,11 @@ fn fused_group_means_by_value(
             );
         }
         for (rhs, scale) in scales.iter_mut().enumerate() {
-            *scale = scale.max(value(observation, rhs).abs());
+            let (high, low) = value(observation, rhs)?;
+            *scale = scale.max(high.abs());
+            if binary_scaling {
+                *scale = scale.max(low.abs());
+            }
         }
     }
     compensated_finite(weight_sum, weight_correction)?;
@@ -6517,13 +7342,25 @@ fn fused_group_means_by_value(
             "borrowed MAP group weight sum is not finite and positive",
         ));
     }
-    if let Some(weight_values) = weights.values {
+    if binary_scaling {
+        // Powers of two avoid rounding the near-cancelling observations on
+        // division. Subnormals scale upward; MAX scales to a finite 2^1023.
+        for scale in scales.iter_mut() {
+            if *scale != 0.0 {
+                *scale =
+                    f64::from_bits(scale.to_bits() & 0x7ff0_0000_0000_0000).max(f64::MIN_POSITIVE);
+            }
+        }
+    }
+    if binary_scaling {
+        accumulate_cg_polish_means(members, weights, scales, sums, corrections, &value)?;
+    } else if let Some(weight_values) = weights.values {
         for &observation in members {
             let weight = weight_values[observation] / weights.raw_scale;
             for rhs in 0..means.len() {
                 if scales[rhs] != 0.0 {
                     neumaier_add(
-                        weight * (value(observation, rhs) / scales[rhs]),
+                        weight * (value(observation, rhs)?.0 / scales[rhs]),
                         &mut sums[rhs],
                         &mut corrections[rhs],
                     );
@@ -6535,7 +7372,7 @@ fn fused_group_means_by_value(
             for rhs in 0..means.len() {
                 if scales[rhs] != 0.0 {
                     neumaier_add(
-                        value(observation, rhs) / scales[rhs],
+                        value(observation, rhs)?.0 / scales[rhs],
                         &mut sums[rhs],
                         &mut corrections[rhs],
                     );
@@ -6558,6 +7395,38 @@ fn fused_group_means_by_value(
         means[rhs] = mean;
     }
     Ok(total_weight)
+}
+
+fn accumulate_cg_polish_means(
+    members: &[usize],
+    weights: ValidatedWeights<'_>,
+    scales: &[f64],
+    sums: &mut [f64],
+    corrections: &mut [f64],
+    value: &impl Fn(usize, usize) -> Result<(f64, f64)>,
+) -> Result<()> {
+    for &observation in members {
+        let weight = weights.normalized(observation);
+        for rhs in 0..scales.len() {
+            if scales[rhs] == 0.0 {
+                continue;
+            }
+            let (high, low) = value(observation, rhs)?;
+            for part in [high, low] {
+                let scaled = part / scales[rhs];
+                if scaled == 0.0 && part != 0.0 {
+                    return Err(invalid_data(
+                        "CMG polishing difference lost range during scaling",
+                    ));
+                }
+                let product = weight * scaled;
+                let error = weight.mul_add(scaled, -product);
+                neumaier_add(product, &mut sums[rhs], &mut corrections[rhs]);
+                neumaier_add(error, &mut sums[rhs], &mut corrections[rhs]);
+            }
+        }
+    }
+    Ok(())
 }
 
 fn record_parallel_group_means<R: InterceptCoefficientRecorder>(
@@ -6849,7 +7718,8 @@ fn initial_group_rejects(
                 weights,
                 values.nrows(),
                 means,
-                |row, rhs| values[(row, start + rhs)],
+                false,
+                |row, rhs| Ok((values[(row, start + rhs)], 0.0)),
             )?;
         }
     } else {
@@ -6874,7 +7744,10 @@ fn initial_group_rejects(
     if rejected && crate::diagnostics::solver_trace_enabled() {
         eprintln!(
             "FEREG_SOLVER_TRACE|phase=initial_certificate_screen|rejected=1|weighted={}|rows={}|rhs={}|parallel={}|wide={}",
-            usize::from(!unit), values.nrows(), values.ncols(), usize::from(parallel),
+            usize::from(!unit),
+            values.nrows(),
+            values.ncols(),
+            usize::from(parallel),
             usize::from(parallel && values.ncols() > PARALLEL_GROUP_MAX_RHS),
         );
     }
@@ -7101,6 +7974,7 @@ fn borrowed_symmetric_projection_from_group_means_recording(
     projection: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
     mut coefficients: Option<&mut FeCoefficientBatch>,
+    binary_scaling: bool,
 ) -> Result<()> {
     let columns = input.ncols();
     if projection.nrows() != input.nrows()
@@ -7139,6 +8013,7 @@ fn borrowed_symmetric_projection_from_group_means_recording(
                             means,
                             input,
                             projection,
+                            binary_scaling,
                         )?;
                     }
                     Ok(())
@@ -7176,6 +8051,7 @@ fn borrowed_symmetric_projection_from_group_means_recording(
                     means,
                     input,
                     projection,
+                    binary_scaling,
                 )?;
                 if let Some(batch) = coefficients.as_mut() {
                     batch.add_intercept_level(effect_index, level, means)?;
@@ -7194,6 +8070,7 @@ fn borrowed_symmetric_projection_from_group_means_recording(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn projection_group_means(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     level: usize,
@@ -7202,14 +8079,48 @@ fn projection_group_means(
     means: &mut [f64],
     input: &DenseMatrix,
     projection: &DenseMatrix,
+    binary_scaling: bool,
 ) -> Result<()> {
     for (tile, output) in means.chunks_mut(PARALLEL_GROUP_MAX_RHS).enumerate() {
         let start = tile * PARALLEL_GROUP_MAX_RHS;
-        fused_group_means_by_value(effect, level, weights, nrows, output, |row, rhs| {
-            input[(row, start + rhs)] - projection[(row, start + rhs)]
-        })?;
+        fused_group_means_by_value(
+            effect,
+            level,
+            weights,
+            nrows,
+            output,
+            binary_scaling,
+            |row, rhs| {
+                let input = input[(row, start + rhs)];
+                let projection = projection[(row, start + rhs)];
+                if binary_scaling {
+                    cg_polish_difference(input, projection)
+                } else {
+                    Ok((input - projection, 0.0))
+                }
+            },
+        )?;
     }
     Ok(())
+}
+
+fn cg_polish_difference(input: f64, projection: f64) -> Result<(f64, f64)> {
+    // General TwoDiff; FastTwoDiff's magnitude ordering is not guaranteed.
+    let high = input - projection;
+    if !high.is_finite() {
+        return Err(invalid_data("CMG polishing difference is nonfinite"));
+    }
+    let projection_virtual = input - high;
+    let input_virtual = high + projection_virtual;
+    let projection_roundoff = projection_virtual - projection;
+    let input_roundoff = input - input_virtual;
+    let low = input_roundoff + projection_roundoff;
+    if !low.is_finite() {
+        return Err(invalid_data(
+            "CMG polishing difference roundoff is nonfinite",
+        ));
+    }
+    Ok((high, low))
 }
 
 fn cg_projection_action(
@@ -7219,9 +8130,9 @@ fn cg_projection_action(
     projection: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
     coefficients: Option<&mut FeCoefficientBatch>,
-    stable: bool,
+    mode: CgProjectionMode,
 ) -> Result<()> {
-    if stable {
+    if !matches!(mode, CgProjectionMode::Ordinary) {
         borrowed_symmetric_projection_from_group_means_recording(
             design,
             weights,
@@ -7229,6 +8140,7 @@ fn cg_projection_action(
             projection,
             workspace,
             coefficients,
+            matches!(mode, CgProjectionMode::StrictPolish),
         )
     } else {
         borrowed_symmetric_projection_into_recording(
@@ -7339,55 +8251,6 @@ fn borrowed_residual_sweep_recording<R: InterceptCoefficientRecorder>(
         }
     }
     Ok(())
-}
-
-fn borrowed_irons_tuck_candidate(
-    x0: &DenseMatrix,
-    x1: &DenseMatrix,
-    x2: &DenseMatrix,
-) -> Result<Option<(DenseMatrix, f64)>> {
-    if x0.nrows() != x1.nrows()
-        || x0.ncols() != x1.ncols()
-        || x0.nrows() != x2.nrows()
-        || x0.ncols() != x2.ncols()
-    {
-        return Err(invalid_argument(
-            "borrowed Irons-Tuck states have inconsistent dimensions",
-        ));
-    }
-    let mut d1d1 = 0.0_f64;
-    let mut d1d2 = 0.0_f64;
-    let mut d2d2 = 0.0_f64;
-    for ((a, b), c) in x0.as_slice().iter().zip(x1.as_slice()).zip(x2.as_slice()) {
-        let d1 = b - a;
-        let d2 = c - 2.0 * b + a;
-        d1d1 = d1.mul_add(d1, d1d1);
-        d1d2 = d1.mul_add(d2, d1d2);
-        d2d2 = d2.mul_add(d2, d2d2);
-    }
-    if !d2d2.is_finite() || d2d2 <= f64::EPSILON * d1d1.max(1.0) {
-        return Ok(None);
-    }
-    let alpha = (-d1d2 / d2d2).clamp(-8.0, 8.0);
-    if !alpha.is_finite() {
-        return Ok(None);
-    }
-    let mut candidate = fallible_matrix_copy(x0, "unable to reserve Irons-Tuck candidate")?;
-    for (((output, a), b), c) in candidate
-        .as_mut_slice()
-        .iter_mut()
-        .zip(x0.as_slice())
-        .zip(x1.as_slice())
-        .zip(x2.as_slice())
-    {
-        let d1 = b - a;
-        let d2 = c - 2.0 * b + a;
-        *output = a + 2.0 * alpha * d1 + alpha * alpha * d2;
-        if !output.is_finite() {
-            return Ok(None);
-        }
-    }
-    Ok(Some((candidate, alpha)))
 }
 
 fn weighted_dot_columns_into(
@@ -7542,6 +8405,7 @@ fn cg_hestenes_error_and_update(
     values: &DenseMatrix,
     direction: &DenseMatrix,
     weights: ValidatedWeights<'_>,
+    strict_polish: bool,
 ) -> Result<f64> {
     if alpha.len() != residual_square.len()
         || alpha.len() != improvement_potential.len()
@@ -7570,7 +8434,13 @@ fn cg_hestenes_error_and_update(
             )?;
         }
         improvement_potential[rhs] = remaining.max(f64::EPSILON);
-        let numerator = if decrease < 1e-15 { 0.0 } else { decrease };
+        // A polishing step can carry a meaningful weak-graph correction even
+        // when its weighted energy is below the ordinary absolute floor.
+        let numerator = if !strict_polish && decrease < 1e-15 {
+            0.0
+        } else {
+            decrease
+        };
         let error = (numerator / improvement_potential[rhs]).sqrt();
         if !error.is_finite() {
             return Err(invalid_data(
@@ -7642,7 +8512,9 @@ fn cg_audit_remaining_energy(
         ));
     }
     if crate::diagnostics::phase_timing_enabled() {
-        eprintln!("FEREG_PHASE|cg_energy_audit|rhs={rhs}|previous={previous:.17e}|decrease={decrease:.17e}|before={before:.17e}|after={after:.17e}");
+        eprintln!(
+            "FEREG_PHASE|cg_energy_audit|rhs={rhs}|previous={previous:.17e}|decrease={decrease:.17e}|before={before:.17e}|after={after:.17e}"
+        );
     }
     Ok(after)
 }
@@ -7770,6 +8642,20 @@ pub(super) fn cg_largest_relative_residual(current: &[f64], initial: &[f64]) -> 
         largest = largest.max(relative);
     }
     Ok(largest)
+}
+
+fn check_cg_energy_resolution(residual: &DenseMatrix, squares: &[f64]) -> Result<()> {
+    if squares.len() != residual.ncols() {
+        return Err(invalid_argument("CMG polishing residual dimensions differ"));
+    }
+    for (rhs, &square) in squares.iter().enumerate() {
+        if square == 0.0 && (0..residual.nrows()).any(|row| residual[(row, rhs)] != 0.0) {
+            return Err(invalid_data(
+                "CMG polishing residual energy underflowed for a nonzero column",
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Bytes of a workspace peak that must carry a complete model.
@@ -7967,8 +8853,12 @@ impl CheckpointSchurCost {
         if crate::diagnostics::solver_trace_enabled() {
             crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=checkpoint_schur_attempt|outcome={outcome}|rows={}|rhs={}|probe_budget=0|contraction={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}",
-                values.nrows(), values.ncols(), self.contraction,
-                self.iterations, self.setup_seconds, self.solve_seconds,
+                values.nrows(),
+                values.ncols(),
+                self.contraction,
+                self.iterations,
+                self.setup_seconds,
+                self.solve_seconds,
             ));
         }
     }
@@ -8039,5 +8929,9 @@ fn update_workspace_norms(
     )
 }
 
+#[cfg(test)]
+mod ppml_topology_tests;
+#[cfg(test)]
+mod routing_tests;
 #[cfg(test)]
 mod tests;

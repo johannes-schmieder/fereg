@@ -14,6 +14,7 @@ import subprocess
 import sys
 from replay_psd import eigensystem
 from replay_bias_reference import enrich_expected
+import replay_cmg_polish
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'crates/fereg-oracle/python'))
@@ -168,6 +169,15 @@ def scientific_errors(result: dict, expected: dict) -> list[str]:
                      for channel in expected['saved']) for i in expected['rows']]
         absorbed = [number(result['columns'][outputs['absorbed']][i]) for i in expected['rows']]
         close(total, absorbed, 'identified saved FE sum', 1e-7, 1e-9)
+    for channel, target in expected.get('column_reference', {}).items():
+        close([number(result['columns'][int(channel)][i]) for i in expected['rows']],
+              target, 'independent derived output/' + str(channel), 1e-7, 1e-9)
+    if 'cmg_diagnostics' in expected:
+        from replay_cmg_reference import diagnostic_errors
+        errors.extend(diagnostic_errors(result, expected))
+    for channel, target in expected.get('saved_reference', {}).items():
+        close([number(result['columns'][int(channel)][i]) for i in expected['rows']],
+              target, 'independent saved FE gauge/' + str(channel), 1e-7, 1e-9)
     return errors
 
 
@@ -258,7 +268,7 @@ def discrete_view(result: dict, expected: dict) -> dict:
                for key in ['sample', 'drop_reason']}}
 
 
-def check_threads(args, case: Path, expected: dict, one_thread: dict) -> list[dict]:
+def check_threads(args, case: Path, expected: dict, one_thread: dict, contract=None, verify_bindings=None) -> list[dict]:
     records = []
     contents = case.read_text()
     needle = '9\nthreads=1\n'
@@ -269,9 +279,17 @@ def check_threads(args, case: Path, expected: dict, one_thread: dict) -> list[di
         modified = args.output / f'{case.stem}-threads-{threads}.case'
         modified.write_text(contents.replace(needle, f'{len(argument)}\n{argument}\n'))
         output = args.output / f'{case.stem}-threads-{threads}.json'
+        if verify_bindings is not None:
+            verify_bindings()
         candidate = run_case(args.harness, args.plugin.resolve(), modified, output)
+        if contract is not None:
+            replay_cmg_polish.validate_rows(candidate, *contract)
+        if verify_bindings is not None:
+            verify_bindings()
         repeated = run_case(args.harness, args.plugin.resolve(), modified,
                             args.output / f'{case.stem}-threads-{threads}-repeat.json')
+        if contract is not None:
+            replay_cmg_polish.validate_rows(repeated, *contract)
         science = scientific_errors(candidate, expected)
         repeat = differences(exact_view(candidate, expected['poisson']),
                              exact_view(repeated, expected['poisson']))
@@ -376,14 +394,24 @@ def main() -> int:
     parser.add_argument('--baseline-fixes', default=None, help='comma-separated accepted fixes in an older parent; defaults to current fixes')
     parser.add_argument('--policy', type=Path, default=ROOT / 'tests/replay/intentional_changes.json')
     parser.add_argument('--affected-scope', type=Path, help='predeclared input-bound numerical scope; science/discrete/repeats remain mandatory')
+    parser.add_argument('--scope-bindings', type=Path, help='required source/artifact/reference bindings for a typed diagnostic transition')
     parser.add_argument('--thread-counts', type=int, nargs='*', default=[],
                         help='additional native thread counts: dense science, discrete stability and fixed-thread repeats')
     args = parser.parse_args()
     if len(set(args.thread_counts)) != len(args.thread_counts) or any(t < 2 or t > 1024 for t in args.thread_counts):
         parser.error('thread counts must be unique integers from 2 through 1024')
     scope = json.loads(args.affected_scope.read_text()) if args.affected_scope else {}
+    bindings = json.loads(args.scope_bindings.read_text()) if args.scope_bindings else None
+    binding_identity = digest(args.scope_bindings) if args.scope_bindings else None
     if args.affected_scope and not args.baseline:
         parser.error('affected-scope replay requires a baseline for exact unaffected-field checks')
+    def verify_scope_bindings():
+        if args.scope_bindings and digest(args.scope_bindings) != binding_identity:
+            raise RuntimeError('typed diagnostic binding file changed during replay')
+        replay_cmg_polish.validate_bindings(scope, bindings, args.affected_scope,
+                                          args.plugin, args.baseline, args.harness,
+                                          args.cases, ROOT)
+    verify_scope_bindings()
     policy = json.loads(args.policy.read_text())
     candidate_fixes = set(policy['active'])
     baseline_fixes = candidate_fixes if args.baseline_fixes is None else set(filter(None, args.baseline_fixes.split(',')))
@@ -403,12 +431,22 @@ def main() -> int:
     for case in cases:
         expected = enrich_ols_expected(case, enrich_expected(case, json.loads(case.with_suffix('.json').read_text())))
         scoped = affected_prefixes(scope, case, expected)
+        typed = scope.get('cases', {}).get(case.stem, {}).get('diagnostic_contract')
+        contract = replay_cmg_polish.case_contract(case) if typed else None
+        verify_scope_bindings()
         candidate = run_case(args.harness, args.plugin.resolve(), case, args.output / (case.stem + '-plugin.json'))
+        if contract is not None:
+            replay_cmg_polish.validate_rows(candidate, *contract)
+        verify_scope_bindings()
         baseline = run_case(args.harness, args.baseline.resolve(), case, args.output / (case.stem + '-baseline.json')) if args.baseline else None
+        diagnostic_paths = replay_cmg_polish.validate_pair(case, baseline, candidate) if typed else []
         if scoped:
             validate_scope_targets(scoped, baseline, expected['poisson'])
             validate_scope_targets(scoped, candidate, expected['poisson'])
+        verify_scope_bindings()
         repeated = run_case(args.harness, args.plugin.resolve(), case, args.output / (case.stem + '-repeat.json'))
+        if contract is not None:
+            replay_cmg_polish.validate_rows(repeated, *contract)
         repeat_changes = differences(exact_view(candidate, expected['poisson']), exact_view(repeated, expected['poisson']))
         changed = differences(exact_view(candidate, expected['poisson']), exact_view(baseline, expected['poisson'])) if baseline is not None else []
         if repeat_changes:
@@ -416,16 +454,24 @@ def main() -> int:
         prefixes = [path for fix in transitions
                     if policy['repairs'][fix]['case'] == case.stem
                     for path in policy['repairs'][fix]['allowed_paths']]
-        prefixes += scoped
+        prefixes += scoped + diagnostic_paths
         intentional = [path for path in changed if allowed_difference(path, prefixes)]
         changed = [path for path in changed if not allowed_difference(path, prefixes)]
         candidate_expected = expected_for_fixes(expected, candidate_fixes)
         science = scientific_errors(candidate, candidate_expected)
         baseline_science = scientific_errors(baseline, expected_for_fixes(expected, baseline_fixes)) if baseline is not None else []
-        discrete = differences(discrete_view(candidate, candidate_expected), discrete_view(baseline, expected_for_fixes(expected, baseline_fixes))) if scoped and baseline is not None else []
+        discrete = []
+        if (scoped or typed) and baseline is not None:
+            current_view = discrete_view(candidate, candidate_expected)
+            parent_view = discrete_view(baseline, expected_for_fixes(expected, baseline_fixes))
+            if contract is not None:
+                current_view = replay_cmg_polish.parent_discrete_view(current_view, contract[0])
+                parent_view = replay_cmg_polish.parent_discrete_view(parent_view, contract[0])
+            discrete = differences(current_view, parent_view)
         record = {'case': case.stem, 'input_sha256': digest(case), 'exact_differences': changed,
-                  'science_errors': science, 'known_defect': candidate_expected.get('known_defect'), 'repaired_defect': candidate_expected.get('repaired_defect'), 'intentional_differences': intentional, 'baseline_science_errors': baseline_science, 'discrete_differences': discrete, 'affected_scope': bool(scoped), 'return_code': candidate['return_code']}
-        record['thread_checks'] = check_threads(args, case, candidate_expected, candidate) if args.thread_counts else []
+                  'science_errors': science, 'known_defect': candidate_expected.get('known_defect'), 'repaired_defect': candidate_expected.get('repaired_defect'), 'intentional_differences': intentional, 'baseline_science_errors': baseline_science, 'discrete_differences': discrete, 'affected_scope': bool(scoped), 'diagnostic_contract': typed, 'return_code': candidate['return_code']}
+        record['thread_checks'] = check_threads(args, case, candidate_expected, candidate, contract, verify_scope_bindings) if args.thread_counts else []
+        verify_scope_bindings()
         records.append(record)
         print(f"{case.stem}: rc={candidate['return_code']} exact={len(changed)} science={science} repair={candidate_expected.get('repaired_defect')} intentional={len(intentional)} baseline_science={baseline_science}")
         if changed:
@@ -433,7 +479,7 @@ def main() -> int:
     summary = {'schema': 1, 'plugin_sha256': digest(args.plugin), 'baseline_sha256': digest(args.baseline) if args.baseline else None,
                'known_defect_cases': sum(bool(r['known_defect']) for r in records),
                'scientific_pass_cases': sum(not r['known_defect'] and not r['science_errors'] for r in records),
-               'candidate_fixes': sorted(candidate_fixes), 'baseline_fixes': sorted(baseline_fixes), 'policy_sha256': digest(args.policy), 'affected_scope_sha256': digest(args.affected_scope) if args.affected_scope else None, 'cases': records, 'passed': all(not r['exact_differences'] and not r['science_errors'] and not r['baseline_science_errors'] and not r['discrete_differences'] and all(not t['science_errors'] and not t['repeat_differences'] and not t['discrete_differences'] for t in r['thread_checks']) for r in records)}
+               'candidate_fixes': sorted(candidate_fixes), 'baseline_fixes': sorted(baseline_fixes), 'policy_sha256': digest(args.policy), 'affected_scope_sha256': digest(args.affected_scope) if args.affected_scope else None, 'scope_bindings_sha256': digest(args.scope_bindings) if args.scope_bindings else None, 'cases': records, 'passed': all(not r['exact_differences'] and not r['science_errors'] and not r['baseline_science_errors'] and not r['discrete_differences'] and all(not t['science_errors'] and not t['repeat_differences'] and not t['discrete_differences'] for t in r['thread_checks']) for r in records)}
     if {str(p): digest(p) for p in artifacts} != identities:
         raise RuntimeError('replay native artifact changed during execution')
     (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')

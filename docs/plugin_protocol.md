@@ -49,15 +49,62 @@ rejected. The additive PPML wires do not alter or alias the OLS result wire.
 
 ## Developer injections (hidden adapters only)
 
-Licensed qualification fixtures exercise the shipped binary's failure paths
+Licensed qualification fixtures exercise the shipped binary's failure and routing paths
 through request keys that public `fereg`/`feppml` syntax cannot produce; the
-public wrappers reject `inject()`. Injections never change arithmetic.
+public wrappers reject `inject()`. Failure injections do not change arithmetic;
+the routing injections below select experimental algorithms for qualification.
 
 | Key | Estimator | Effect |
 |---|---|---|
 | `inject=breaknative` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | Arms native Break: displays `FEREG_NATIVE_BREAK_ARMED` (OLS) or `FEPPML_NATIVE_BREAK_ARMED` (PPML), creates `<tmp>/<fereg\|feppml>-native-break-<token>.marker`, and waits for Stata Break inside the native call |
 | `inject=panic` | PPML | Panics after validation to prove ABI panic containment (OLS uses the `panic-test` action) |
 | `inject=allocation` | PPML | Fails the FE-recovery reservation to prove atomic allocation failure |
+| `inject=routing_h{4\|8\|16\|32}_k{0\|1\|2}` | OLS | Selects one of 12 automatic-routing arms: the incumbent reaches iteration `h` before a bounded optional CMG build; `k` is the high-degree worker tree sample count (zero retains the hybrid graph) |
+| `inject=routing_diagonal` | OLS | Tests the current-weight Schur diagonal on eligible two-FE systems, retaining the observation operator |
+| `inject=routing_cells` | OLS | Tests an operator over aggregated worker/firm cells, retaining the incumbent diagonal preconditioner |
+| `inject=routing_direct` | OLS | Tests a bounded componentwise direct Schur factorization on eligible two-FE systems |
+| `inject=it_coefficients` | OLS | Tests compact coefficient-space acceleration on eligible categorical systems; requires `solver=it` |
+| `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |
+| `inject=routing_overlap_h{8\|16\|32}_k{0\|1\|2}` | OLS | Tests deterministic preparation on one worker of the existing team, with fixed grants and handoff checkpoint; one-worker requests retain serial preparation |
+| `inject=routing_overlap_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the h8/k1 overlap arm and waits for Break only after a charged builder operation has executed; requires at least two workers |
+| `inject=ppml_topology` | PPML | Shares admitted categorical checkpoint component indexing after acceptance; weighted numerical data is recomputed in every frame |
+
+Each routing name is a complete literal token, for example
+`routing_h8_k1`. OLS routing injections require `solver=auto`, reject
+`break_marker_token` except for the builder-Break arm, and are rejected by PPML. Invalid names and explicit
+solver conflicts fail before observation reads or publication. Omitted or empty
+`inject` retains the qualified automatic policy; these arms do not enable a new
+public default or change request/result versions or result dimensions.
+
+The separate coefficient-IT injection requires explicit `solver=it` and rejects
+`break_marker_token`. Ordinary explicit IT keeps its incumbent observation-space
+implementation. The compact challenger has not passed promotion qualification;
+its availability failures are retained in [validation](VALIDATION.md).
+
+The checkpoint arms apply to eligible categorical two-FE and general categorical
+LSMR routes. Zero/one-FE and slope routes retain their existing behavior; the
+three kernel experiments affect only eligible two-FE systems. Explicit
+`preconditioner()` choices remain authoritative: general LSMR pair replacement
+is considered only with `preconditioner=auto`. Optional construction is admitted
+against work and memory bounds, with refusal continuing the incumbent. Accepted
+results retain the original-design certificate, requested tolerance, per-action
+iteration budget, and atomic publication contract. These qualification arms
+build at a numerical checkpoint. Only the separate overlap arms launch a
+concurrent CMG builder. Prefix and overlap experiments are independently
+qualified; their tokens cannot be combined into a Cartesian policy search.
+
+Overlap acquires exclusive admission to the existing team before the native
+worker starts. It leases one existing worker after four incumbent iterations,
+keeps that worker while parked or complete, and joins before publication or
+rollback. Cumulative logical grants, not readiness or elapsed time, control
+preparation. A convergence-ready result defers grants until the original-design
+certificate decides. The builder-Break marker is emitted by Stata's polling
+thread only after the worker publishes the charged-operation handshake.
+
+`ppml_topology` is independent of OLS routing and does not enable a new PPML
+solver policy. Its pending structural cache publishes only on acceptance;
+rejected trials and support changes cannot reuse stale state. The default has
+no such cache. These experiments do not constitute performance qualification.
 
 The hidden adapters read the token from `FEREG_BREAK_MARKER_TOKEN` (OLS) or
 `FEREG_PPML_BREAK_MARKER_TOKEN` (PPML); `scripts/run_stata_break_test.py`
@@ -110,6 +157,13 @@ a receipt; scientific request/result versions and the one-call transaction are
 unchanged. See [SPEC](SPEC.md).
 
 ## Public OLS transaction
+
+Explicit solver requests retain their support checks and never silently become
+automatic requests. In particular, the routing experiments do not alter
+explicit LSMR or CMG behavior, permit unsafe CG, or make CMG-Schur available
+outside its supported topology. Public `solver(auto)` retains the current
+qualified routing policy unless a hidden qualification adapter supplies one of
+the routing injections above.
 
 The experimental OLS `solver=cmgschur` request accepts an optional
 `cmgdegree=4|5|6` field (default 5). That field is rejected for every other

@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import platform
 import random
 import re
@@ -45,12 +46,19 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def compare(base: list[float], candidate: list[float]) -> dict:
+def compare(base: list[float], candidate: list[float], *,
+            relative_allowance: float = RELATIVE_ALLOWANCE,
+            absolute_allowance_s: float = ABSOLUTE_ALLOWANCE_S) -> dict:
+    if (not base or len(base) != len(candidate)
+            or any(not math.isfinite(t) or t <= 0 for t in [*base, *candidate])
+            or not 0 <= relative_allowance < float('inf')
+            or not 0 <= absolute_allowance_s < float('inf')):
+        raise ValueError('paired comparison requires equal nonempty positive finite times and finite allowances')
     ratios = [c / b for c, b in zip(candidate, base)]
     rng = random.Random(BOOTSTRAP_SEED)
     draws = sorted(statistics.median(rng.choices(ratios, k=len(ratios)))
                    for _ in range(BOOTSTRAP_DRAWS))
-    allowance = 1 + max(RELATIVE_ALLOWANCE, ABSOLUTE_ALLOWANCE_S / statistics.median(base))
+    allowance = 1 + max(relative_allowance, absolute_allowance_s / statistics.median(base))
     lower, upper = draws[int(0.025 * BOOTSTRAP_DRAWS) - 1], draws[int(0.975 * BOOTSTRAP_DRAWS) - 1]
     return {'median_ratio': statistics.median(ratios), 'bootstrap95': [lower, upper],
             'upper_allowance': allowance, 'nonregression_pass': upper <= allowance}

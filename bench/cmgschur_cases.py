@@ -29,8 +29,8 @@ HIGH_DEGREE_SIZES = {'sampled-oracle': (60, 40, 50),
 def scratch(path):
     path = path.resolve()
     if not any(path.is_relative_to((ROOT / 'target/tmp' / task).resolve())
-               for task in ['cmgschur', 'cmgschur-opt', 'cmgschur-sampled']):
-        raise ValueError('output must be under target/tmp/cmgschur, cmgschur-opt or cmgschur-sampled')
+               for task in ['cmgschur', 'cmgschur-opt', 'cmgschur-sampled', 'solver-routing']):
+        raise ValueError('output must be under target/tmp/{cmgschur,cmgschur-opt,cmgschur-sampled,solver-routing}')
     return path
 
 
@@ -235,13 +235,16 @@ def noconstant_template(arguments, metadata, regressors, matrix_count):
     return arguments, output.getvalue()
 
 
-def write_case(generator, path, columns, tolerance=1e-8, include_intercept=True):
+def write_case(generator, path, columns, tolerance=1e-8, include_intercept=True, *, effect_count=2, weights=None):
     """Use the canonical Rust serializer for metadata, replace only numeric data."""
     template = path.with_suffix('.template.case')
-    regressors = len(columns) - 3
+    if not 2 <= effect_count <= 16:
+        raise ValueError('native template requires 2..16 categorical effects')
+    regressors = len(columns) - effect_count - 1
+    template_levels = ','.join(map(str, [20, 10] + [5] * (effect_count - 2)))
     subprocess.run([str(generator), '--output', str(template), '--rows', '80',
-                    '--levels', '20,10', '--regressors', str(regressors),
-                    '--weights', 'unit', '--vce', 'robust', '--graph', 'random-mobility',
+                    '--levels', template_levels, '--regressors', str(regressors),
+                    '--weights', 'unit' if weights is None else 'pw', '--vce', 'robust', '--graph', 'random-mobility',
                     '--solver', 'auto', '--seed', '20261013', '--tolerance', str(tolerance)],
                    check=True, stdout=subprocess.DEVNULL, timeout=60)
     try:
@@ -257,7 +260,10 @@ def write_case(generator, path, columns, tolerance=1e-8, include_intercept=True)
             arguments, metadata = noconstant_template(arguments, metadata, regressors, shape[3])
         fields = dict(a.decode().split('=', 1) for a in arguments[1:])
         n = len(columns[0])
-        data = [np.ones(n), *columns]
+        if any(len(column) != n for column in columns) or (weights is not None and (len(weights) != n
+                or not np.all(np.isfinite(weights)) or np.any(np.asarray(weights) <= 0))):
+            raise ValueError('fixture columns and positive finite weights must have equal lengths')
+        data = [np.ones(n), *columns, *([] if weights is None else [weights])]
         if len(data) != int(fields['output_sample']) - 1:
             raise ValueError('canonical template input layout changed')
         for name in ['sample', 'residual', 'drop_reason', 'xb', 'xbd', 'absorbed']:

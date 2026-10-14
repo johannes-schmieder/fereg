@@ -2477,6 +2477,7 @@ fn fixture(
         },
         solver: PpmlSolverFamily::Map,
         inject_fe_recovery_allocation_failure: false,
+        inject_topology_sharing: false,
     };
     let outcome = if separated {
         column(&[0.0, 0.0, 2.0, 4.0, 3.0, 5.0, 4.0, 7.0, 5.0, 8.0, 6.0, 9.0])
@@ -2980,6 +2981,7 @@ fn factor_rebase_fixture() -> (PreparedPpmlRequestV1, LoadedPpmlInput) {
             },
             solver: PpmlSolverFamily::Auto,
             inject_fe_recovery_allocation_failure: false,
+            inject_topology_sharing: false,
         },
         loaded,
     )

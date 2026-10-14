@@ -9518,3 +9518,74 @@ fn fe_release_fit_bits_and_solver_signatures_are_exact() {
         }
     }
 }
+
+#[test]
+fn low_prefix_report_merge_preserves_concrete_routes_and_real_fallback_in_any_order() {
+    let lsmr = automatic_lsmr_report_for_merge();
+    let mut map = lsmr.clone();
+    map.used_solver = FeSolverKind::Map;
+    map.requested_preconditioner = None;
+    map.used_preconditioner = None;
+    map.iterations = 4;
+    map.pilot_iterations = 4;
+    let mut it = map.clone();
+    it.used_solver = FeSolverKind::IronsTuck;
+    it.iterations = 8;
+    it.pilot_iterations = 8;
+    for fallback in [false, true] {
+        let mut terminal = lsmr.clone();
+        if fallback {
+            terminal.used_solver = FeSolverKind::Map;
+            terminal.fallback_used = true;
+        }
+        let reports = [map.clone(), it.clone(), terminal];
+        for order in [
+            [0, 1, 2],
+            [0, 2, 1],
+            [1, 0, 2],
+            [1, 2, 0],
+            [2, 0, 1],
+            [2, 1, 0],
+        ] {
+            let mut combined = reports[order[0]].clone();
+            merge_solve_report(&mut combined, reports[order[1]].clone()).unwrap();
+            // Also exercise the aggregate as a source, not just as a target.
+            let mut reverse = reports[order[2]].clone();
+            merge_solve_report(&mut reverse, combined.clone()).unwrap();
+            merge_solve_report(&mut combined, reports[order[2]].clone()).unwrap();
+            assert_eq!(combined, reverse);
+            assert_eq!(combined.requested_solver, FeSolverKind::Auto);
+            assert_eq!(
+                combined.used_solver,
+                if fallback {
+                    FeSolverKind::Map
+                } else {
+                    FeSolverKind::Lsmr
+                }
+            );
+            assert_eq!(combined.fallback_used, fallback);
+            assert_eq!(
+                combined.requested_preconditioner,
+                lsmr.requested_preconditioner
+            );
+            assert_eq!(combined.used_preconditioner, lsmr.used_preconditioner);
+            assert_eq!(combined.pilot_iterations, 8);
+            assert_eq!(combined.iterations, 12);
+        }
+    }
+    for (mut target, source) in [(map.clone(), it.clone()), (it.clone(), map)] {
+        merge_solve_report(&mut target, source).unwrap();
+        assert_eq!(target.used_solver, FeSolverKind::IronsTuck);
+        assert_eq!(target.requested_preconditioner, None);
+        assert_eq!(target.used_preconditioner, None);
+        assert!(!target.fallback_used);
+    }
+    let mut conflicting = lsmr.clone();
+    conflicting.used_preconditioner = Some(crate::fe::LsmrPreconditioner::Off);
+    let mut aggregate = it.clone();
+    merge_solve_report(&mut aggregate, lsmr.clone()).unwrap();
+    assert!(merge_solve_report(&mut aggregate, conflicting).is_err());
+    let mut explicit = it;
+    explicit.requested_solver = FeSolverKind::IronsTuck;
+    assert!(merge_solve_report(&mut explicit, lsmr).is_err());
+}

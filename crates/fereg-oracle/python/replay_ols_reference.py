@@ -148,6 +148,9 @@ def derive_ols(path: Path):
 
 
 def enrich_expected(path: Path, expected: dict) -> dict:
+    if path.stem in {'ols-08', 'ols-11', 'ols-14', 'ols-26', 'ols-29'}:
+        from replay_cmg_reference import enrich_expected as enrich_cmg_expected
+        return enrich_cmg_expected(path, expected)
     if path.stem not in NAMES:
         return expected
     rows, targets = derive_ols(path)

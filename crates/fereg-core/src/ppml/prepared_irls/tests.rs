@@ -3021,8 +3021,11 @@ fn canonical_final_preserves_strict_disconnected_slope_truth() {
                             && fit.diagnostics().two_consecutive_convergence
                     );
                     assert!(fit.diagnostics().final_score.passed);
-                    assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10,
-                        "disparity={disparity} mode={mode} storage={execution:?} threads={threads} eta_error={:.17e}", relative_infinity_difference(fit.eta(), &eta));
+                    assert!(
+                        relative_infinity_difference(fit.eta(), &eta) < 1e-10,
+                        "disparity={disparity} mode={mode} storage={execution:?} threads={threads} eta_error={:.17e}",
+                        relative_infinity_difference(fit.eta(), &eta)
+                    );
                     assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
                     validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean())
                         .unwrap();
@@ -4602,6 +4605,210 @@ fn strict_caller_error_and_unwind_restore_a_usable_prior_session() {
             .solve_frozen()
             .expect("unwind rollback supports the next frozen solve")
             .certified());
+    }
+}
+
+#[test]
+fn ppml_topology_publication_follows_strict_commit_and_preserves_accepted_on_rollback() {
+    let (prepared, outcome) = prepared_three_fe([0, 1, 2], false, None);
+    let n = outcome.len();
+    let weights = vec![1.; n];
+    let mut config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-12).unwrap();
+    config.execution.threads = crate::ThreadConfig::from_requested(1, true).unwrap();
+    let frame = LinearSolveFrame::from_parts(
+        &outcome,
+        BorrowedMapWeights::Provided(&weights),
+        ppml_bread_weight_scale(&weights).unwrap(),
+    )
+    .unwrap();
+    let mut session = CertifiedLinearSession::new_with_fe_design(
+        &prepared,
+        frame,
+        config,
+        LinearSessionGenerations::new(1, 1, 1, 1, 1),
+        prepared.fit_owned_fe_design().unwrap(),
+    )
+    .unwrap();
+    session.enable_ppml_certificate_geometry(u128::MAX).unwrap();
+    session
+        .enable_ppml_coefficient_solver(1, u128::MAX, Some(u128::MAX), Some(u128::MAX))
+        .unwrap();
+    session.enable_checkpoint_lsmr(true);
+    session
+        .enable_component_checkpoint_scaling(u128::MAX, 1)
+        .unwrap();
+    session.enable_ppml_topology(u128::MAX).unwrap();
+    assert!(session.solve_fresh().unwrap().certified());
+    assert_eq!(session.ppml_topology_state_for_test(), Some((false, true)));
+    // A new Hessian frame discards the unaccepted producer before validation.
+    let mut invalid = weights.clone();
+    invalid[0] = 0.;
+    assert!(session
+        .refresh_weights(
+            BorrowedMapWeights::Provided(&invalid),
+            ppml_bread_weight_scale(&weights).unwrap(),
+            2
+        )
+        .is_err());
+    assert_eq!(session.ppml_topology_state_for_test(), Some((false, false)));
+    // Enter a fresh weighted strict projection without an accepted topology.
+    // Its candidate owns pending labels; unwinding must drop them silently.
+    session.refresh_response(&outcome, 2).unwrap();
+    session
+        .refresh_weights(
+            BorrowedMapWeights::Provided(&weights),
+            ppml_bread_weight_scale(&weights).unwrap(),
+            2,
+        )
+        .unwrap();
+    let mut reached_pending = false;
+    let pending_unwind = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let transaction = session.strict_candidate().unwrap();
+        assert!(transaction.candidate().certified());
+        assert_eq!(
+            transaction.ppml_topology_state_for_test(),
+            Some((false, true))
+        );
+        reached_pending = true;
+        panic!("pending topology caller unwind");
+    }));
+    assert!(pending_unwind.is_err());
+    assert!(reached_pending);
+    assert_eq!(session.ppml_topology_state_for_test(), Some((false, false)));
+    assert!(session.solve_fresh().unwrap().certified());
+    session.accept_pending_preconditioner();
+    assert_eq!(session.ppml_topology_state_for_test(), Some((true, false)));
+    for (generation, rollback) in [(3, true), (4, false)] {
+        let current: Vec<_> = (0..n)
+            .map(|row| 0.5 + ((row * 13 + generation) % 31) as f64 / 7.)
+            .collect();
+        session
+            .refresh_response(&outcome, generation as u64)
+            .unwrap();
+        session
+            .refresh_weights(
+                BorrowedMapWeights::Provided(&current),
+                ppml_bread_weight_scale(&current).unwrap(),
+                generation as u64,
+            )
+            .unwrap();
+        let transaction = session.strict_candidate().unwrap();
+        assert!(transaction.candidate().certified());
+        if rollback {
+            transaction.rollback();
+        } else {
+            transaction.commit();
+        }
+        assert_eq!(session.ppml_topology_state_for_test(), Some((true, false)));
+    }
+    let unwind = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let transaction = session.strict_candidate().unwrap();
+        assert!(transaction.candidate().certified());
+        panic!("speculative topology caller unwind");
+    }));
+    assert!(unwind.is_err());
+    assert_eq!(session.ppml_topology_state_for_test(), Some((true, false)));
+    session.invalidate_sample(2).unwrap();
+    assert_eq!(session.ppml_topology_state_for_test(), Some((false, false)));
+    assert!(session.solve_fresh().is_err());
+}
+
+#[test]
+fn ppml_topology_complete_irls_preserves_science_outer_iterations_and_solver_signatures() {
+    let (prepared, outcome) = prepared_three_fe([0, 1, 2], false, None);
+    let rows = outcome.len();
+    let weights: Vec<_> = (0..rows).map(|row| 0.5 + (row % 11) as f64 / 7.).collect();
+    for memory in [
+        crate::options::MemoryMode::Fast,
+        crate::options::MemoryMode::Low,
+    ] {
+        let run = |topology_sharing| {
+            let mut config = PreparedPpmlIrlsConfig {
+                topology_sharing,
+                ..PreparedPpmlIrlsConfig::default()
+            };
+            config.memory.requested = memory;
+            config.memory.poolsize = 1;
+            config.linear.execution.threads = crate::ThreadConfig::from_requested(1, true).unwrap();
+            fit_prepared_ppml_irls(
+                &prepared,
+                &outcome,
+                &weights,
+                &vec![0.; rows],
+                config,
+                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                None,
+            )
+            .unwrap()
+        };
+        let baseline = run(false);
+        let shared = run(true);
+        assert_eq!(shared.coefficients(), baseline.coefficients());
+        for (actual, expected) in [
+            (shared.eta(), baseline.eta()),
+            (shared.mean(), baseline.mean()),
+            (shared.score_residuals(), baseline.score_residuals()),
+            (
+                shared.linear().identified_bread(),
+                baseline.linear().identified_bread(),
+            ),
+        ] {
+            assert_eq!(
+                actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+            );
+        }
+        assert_eq!(shared.objective(), baseline.objective());
+        assert_eq!(shared.linear().basis(), baseline.linear().basis());
+        assert_eq!(
+            shared.linear().generations(),
+            baseline.linear().generations()
+        );
+        assert_eq!(shared.linear().weights(), baseline.linear().weights());
+        let (a, b) = (shared.diagnostics(), baseline.diagnostics());
+        assert_eq!(
+            (
+                a.iterations,
+                a.total_inner_iterations,
+                a.total_step_halvings,
+                a.strict_profile_rejections
+            ),
+            (
+                b.iterations,
+                b.total_inner_iterations,
+                b.total_step_halvings,
+                b.strict_profile_rejections
+            )
+        );
+        assert_eq!(a.final_score, b.final_score);
+        assert_eq!(
+            (
+                a.solver.requested,
+                a.solver.selected,
+                a.solver.effective,
+                a.solver.effective_engine,
+                a.solver.fallback_reason
+            ),
+            (
+                b.solver.requested,
+                b.solver.selected,
+                b.solver.effective,
+                b.solver.effective_engine,
+                b.solver.fallback_reason
+            )
+        );
+        for (actual, expected) in a.solver.engines().iter().zip(b.solver.engines()) {
+            let mut actual = *actual;
+            let mut expected = *expected;
+            for engine in [&mut actual, &mut expected] {
+                engine.setup_seconds = 0.;
+                engine.solve_seconds = 0.;
+                engine.certification_seconds = 0.;
+            }
+            assert_eq!(actual, expected);
+        }
+        assert!(a.memory.plan.solver_workspace_bytes > b.memory.plan.solver_workspace_bytes);
+        validate_final_hessian_frame(shared.linear().weights(), &weights, shared.mean()).unwrap();
     }
 }
 

@@ -413,3 +413,458 @@ remain for inspection. Cachegrind on a Mac requires a Linux arm64 container or
 VM and Linux plugins. Instrumented runtime measurements are not native wall-time
 qualification, and instruction counts from such a guest are not Mac performance
 claims. The CLI currently supports macOS/Linux harnesses, not Windows.
+
+## Finite routing policy qualification
+
+[`routing.py`](routing.py) supplies the policy manifest, sanctioned developer
+injection mapping and A/B/C selector. It reuses `time_exact.compare`: paired
+median ratios, 10,000 fixed-seed bootstrap draws and a nominal 95% interval **per
+comparison**, with no claim of simultaneous coverage. It does not launch timing
+jobs or replace independent scientific checks. No routing policy is qualified by
+adding the tooling, preparing inputs or passing its unit tests.
+
+The initial candidates are `baseline` and `h4-k0`, `h8-k0`, `h16-k0`, `h32-k0`.
+Candidate labels map to `inject=routing_h4_k0`, etc.; all request `solver=auto`.
+The baseline uses its immutable historical artifact without injection. The
+candidate artifact must be identical across policies. Degree cutoff 5 and seed 0
+are fixed. Add all four checkpoint variants of `k1` or `k2` only after binding the
+corresponding independent scientific qualification hash in the manifest. Sampled
+candidates additionally require high-degree mixed, weak and stress coverage in
+every panel; `routing_cases.py --sampled` appends these three existing fixtures.
+
+Prepare framed arm inputs without changing the numeric/model body:
+
+```sh
+python3 bench/routing.py prepare --source INPUT.case --arm h16-k0 --threads 4 \
+  --output target/tmp/solver-routing/prepared-h16-k0.case
+```
+
+Existing developer-injected inputs are rejected. Forced policy support belongs
+to the runtime's sanctioned injection surface; unknown injections must fail,
+never silently act as auto. This preparation command is not evidence that a
+runtime implements or exercised an arm.
+
+[`routing_cases.py`](routing_cases.py) prepares twelve sparse families: no FE,
+one FE, slopes, dense two-FE, small retained dimension, a 20-level third FE, four
+and eight FEs, probability weights, weak connectivity, repeated cells and 16
+regressors. The latter three reuse the CMG-Schur generators; the categorical
+cases reuse `replay_large`. The generator's inability to create zero/one FE and
+slopes is explicit: supply separate inputs, and their canonical absorbed-term
+tables are checked. There is no Cartesian product of every feature.
+
+```sh
+python3 bench/routing_cases.py --panel A \
+  --source no-fe=NO_FE_A.case --source one-fe=ONE_FE_A.case --source slopes=SLOPES_A.case \
+  --output target/tmp/solver-routing/cases-a
+```
+
+Repeat preparation for B/C with their own imported cases. Each panel has a
+separate fixed seed. `panel.json` gives cells and eligible explicit comparators;
+those declarations still require scientific verification. The selector rejects
+case or numeric/model-body hashes shared across A/B/C, including imported inputs.
+Changing only a worker count or solver option cannot create a new holdout.
+Later experiments may predeclare distinct unsigned 64-bit `--seed` values;
+the original panel defaults remain unchanged. They also need distinct imported
+inputs. A different seed is only a construction choice: the full manifest's body
+hash checks still establish disjointness.
+`--extended --low-saved SAVED_EFFECTS.case` adds sixteen FEs, disconnected
+components, a nearly confounded third FE, probability weights spanning
+`exp(-8)` to `exp(8)`, exactly inactive columns and an imported saved-effect case
+with `memory=low`. Imported replay oracle JSON sidecars are copied and hash-bound
+for later verification; preparation does not run them. PPML, real graphs and
+large slope-heavy problems still require separately declared inputs and
+scientific qualification before those scopes are promoted.
+
+The unsealed tournament specification is a JSON object with:
+
+- `schema: 2`, `experiment_kind: "routing"` (the default), `warmups: 1`, `repetitions: {"A": 3, "B": 7, "C": 7}`.
+- `failure_policy` exactly equals `routing.FAILURE_POLICY`: availability protocol version 1,
+  120 seconds per call, four hours per panel, no retries and an all-success
+  reliability gate. These bounds are frozen before the panel.
+- `harness_sha256`, and `arms` mapping names to `{sha256, policy, role}`.
+  Roles are `required_reference` for protections, `candidate` for other policy
+  arms and `optional_comparator` for every explicit comparator. For candidate
+  route arms, `policy` is exactly `routing.policy(name)`; baseline's policy is
+  `null`. Explicit comparator arms have `sha256` and may name `solver` when the
+  arm name differs from the solver. CMG-Schur comparators may declare
+  `cmgsamples: 0`, `1` or `2`.
+- `candidates`, containing the complete permitted grid and `baseline`;
+  `protections: ["baseline"]`, or `["baseline", "incumbent"]` to also protect a
+  frozen stage incumbent. An incumbent may declare an exact `policy` object to
+  retain its forced preset; null/absent means its artifact's uninjected auto.
+  `sampled_qualification` maps qualified counts `"1"`
+  and/or `"2"` to evidence hashes; omit it for retained stars only.
+- `panels`, mapping A/B/C to cell arrays. Each cell has `id`, `case_sha256`, `body_sha256`,
+  `family`, `coverage` tags, `threads` and `comparators`. The initial required
+  coverage tags are the twelve families above; every panel must include them.
+  A case may recur at different worker counts within its panel. Optional positive
+  `memory_limit_bytes` declares the native memory cap; inherited memory-cap
+  environment settings are cleared.
+
+Freeze before measuring A. The output seal is a canonical-content SHA-256, not a
+signature or a substitute for access control. Every output is created
+exclusively; the CLI refuses overwrites.
+
+```sh
+python3 bench/routing.py freeze --spec SPEC.json \
+  --output target/tmp/solver-routing/frozen.json
+python3 bench/routing.py select --manifest target/tmp/solver-routing/frozen.json \
+  --stage A --records RECORDS_A.json --output target/tmp/solver-routing/selected-a.json
+python3 bench/routing.py select --manifest target/tmp/solver-routing/frozen.json \
+  --stage B --records RECORDS_B.json --previous target/tmp/solver-routing/selected-a.json \
+  --output target/tmp/solver-routing/selected-b.json
+python3 bench/routing.py select --manifest target/tmp/solver-routing/frozen.json \
+  --stage C --records RECORDS_C.json --previous target/tmp/solver-routing/selected-b.json \
+  --output target/tmp/solver-routing/qualified-c.json
+```
+
+Measurements must bind the frozen `manifest_sha256`, `stage`,
+`selection_sha256` (null for A; the preceding decision's seal hash for B/C),
+`harness_sha256`, `artifacts` mapping every required arm to its hash, and `cases`
+mapping every cell ID to its input hash. The `records` array contains one row
+per required cell/arm/repetition, including warmup `-1`, then `0..2` for A or
+`0..6` for B/C. Each passing row includes positive finite `seconds`, exact-repeat
+`science_sha256`, independent-check `witness_sha256`, `certificate_pass: true`,
+`science_pass: true`, and `resource_checks` with passed `iteration_caps`,
+`memory_caps` and `setup_caps`. Legacy/explicit arms may mark setup caps
+`not_applicable`. Optional `action_resources` retain per-action used/limit integer
+pairs for `iterations`, `setup_work` and `memory_bytes`; any overrun invalidates
+the row. Scientific hashes may differ between artifacts but must repeat exactly
+within every cell/arm, including warmup. Witness hashes must remain fixed.
+
+Do not synthesize passing flags from convergence alone. Native diagnostics,
+independent witnesses, scoped replay and fixed-artifact repeats must substantiate
+the record. Native timing must use the existing quiet-host harness and rotating
+paired order. Every planned call remains recorded. A terminal call can have
+`status: "unavailable"` only when actual native return code 459 and a predeclared
+solver-specific exhaustion diagnostic establish iteration exhaustion, or when a
+dispatched call reaches the full prespecified timeout. Availability policy v2 also
+recognizes only the explicit CMG-Schur tuple `430`, label `nonconvergence`, and
+message `cmgschur did not certify within its iteration budget`. Its distinct
+`certification_nonconvergence` reason preserves the source semantics: this bounded
+solver can return it after exhausting its budget, PCG recurrence breakdown
+(including nonfinite recurrence values), or final
+certificate rejection after its bounded correction. It is no successful scientific
+result and does not assert that every native iteration was consumed. The exact
+tuple is scoped to the optional `cmgschur` family; other 430 errors still block.
+Its log/result hashes,
+observed resource fields and any available resource trace remain attached.
+Subsequent calls for that arm are `not_run` and bind the original failure row by
+hash; the producer never retries a failed arm. Infrastructure or identity errors,
+short aggregate-budget timeouts, unknown native errors, wrong answers, missing
+truth, failed resources and nonexact repeats are `blocked`, not availability.
+Missing rows or unbound skipped rows also block; no case is dropped.
+
+Required baseline/incumbent failures block the panel's nonregression claim.
+Candidate failures exclude that candidate. An optional comparator's established
+unavailability does not invalidate a successful candidate's independently checked
+science, but leaves their runtime comparison undefined. All prerequisite,
+warmup and measured calls must succeed to identify a cell/arm runtime. A failure
+after some successful repetitions therefore invalidates that arm's entire runtime
+sample; its successful repetitions are retained, never filtered into an estimate.
+An optional comparator's blocked or unresolved evidence blocks the whole panel.
+
+Numeric frontier scores use only complete joint-success comparisons. Every
+omitted runtime comparison remains visible as availability dominance with
+`runtime_identified: false`, no ratio, confidence interval or normalized regret,
+and mandatory per-policy frontier coverage. If no internal runtime comparison is
+identified, the internal score is null, not zero; its ranking key ties with other
+undefined scores and the existing conservative tie rules apply. All performance
+claims are conditional on the explicitly listed finite comparison set. Schema-1
+manifests or observations cannot be reinterpreted under this prospective policy.
+Unknown arms, duplicated observations and changed identities reject the input.
+
+Normalization uses excess regret `(ratio - 1) / max(relative allowance,
+1 ms / reference median)`, with negative values retained for speedups. A
+shortlists up to four complete policies by baseline violations, worst normalized internal median
+regret, geometric-mean baseline ratio, then conservative ties. B requires every
+baseline comparison's bootstrap upper bound to fit max(5%, 1 ms), and every
+joint-success explicit comparator to fit max(20%, 1 ms). Among passing candidates it
+minimizes the worst normalized internal upper bound; ties prefer baseline,
+retained stars, larger checkpoint, then fewer trees. C measures only the policy
+frozen by B, protection arms and explicit comparators. It accepts or rejects
+that policy, never picks a runner-up. No command automatically continues or
+resamples an inconclusive holdout. A failure is not qualification of the retained
+baseline against the internal frontier.
+
+[`routing_run.py`](routing_run.py) is the maintained producer for these records.
+It reuses the CMG-Schur native process, result reader, dense-oracle check,
+full-output scientific comparison and rotating arm order. Provide an already
+built timing harness whose hash matches the frozen manifest; it never builds
+while measuring. Arm-to-artifact and cell-to-case bindings must exactly cover the
+selected stage. `--previous` is required for B/C and binds the preceding selection
+before any native calls.
+
+```sh
+python3 bench/routing_run.py --manifest target/tmp/solver-routing/frozen.json \
+  --stage A --harness TIMING_HARNESS \
+  --plugin baseline=BASELINE_PLUGIN --plugin h4-k0=CANDIDATE_PLUGIN \
+  --plugin h8-k0=CANDIDATE_PLUGIN --plugin h16-k0=CANDIDATE_PLUGIN \
+  --plugin h32-k0=CANDIDATE_PLUGIN --plugin lsmr=CANDIDATE_PLUGIN \
+  --case CELL=INPUT.case --witness CELL=EVIDENCE.json \
+  --output target/tmp/solver-routing/measured-a
+```
+
+Repeat `--case`/`--witness` for every declared cell and add each explicit comparator
+needed by any cell. The distinct `it-coefficients` arm uses `solver: "it"`
+and exactly `injection: "it_coefficients"`; `it` continues to request uninjected
+public IT. No other comparator injection is accepted. Compact IT requires
+declared `categorical_intercepts: true` and positive `absorbed_terms`, which the
+producer verifies against the canonical model table. `routing_cases.py --compact-it` prospectively adds this comparator on eligible cells, including
+one FE, and retains public IT wherever it was already declared. It never
+rewrites a frozen panel or reinterprets the historical IT experiments.
+
+Supported comparator solver values are `map`, `it`, `lsmr`,
+`cmg`, `cmgschur`, `diagonal`, `cells` and `direct`; aliases declare an arm's
+`solver` field. CMG-Schur comparators use cutoff 5, the declared sample count
+(default 0) and seed 0 when sampling. Their eligibility and scientific evidence
+must be established for each cell. Candidate arms use their injected auto policy;
+the baseline uses uninjected auto, while an incumbent preserves its declared policy. Stage A allows three
+measured repetitions without changing `time_exact.py`'s existing timing CLI.
+
+An evidence JSON file must have `schema: 2`, `status: "checked"`, the frozen
+`stage` and `selection_sha256`, per-arm `arm_outcomes`, the cell's
+`case_sha256` and `body_sha256`, `manifest_sha256`, `cell_id`, `threads`,
+and `arms` mapping every required arm to exactly its manifest configuration
+(including its artifact hash and policy, where present). Each of `independent_witness`, `scoped_replay` and
+`resource_contract` is `{ "path": "relative-or-absolute-proof-file",
+"sha256": "..." }`. These must be actual passing evidence from the preceding
+scientific and resource checks, not placeholders; all files and hashes are
+verified and frozen for the panel. The sealed prerequisite proof is revalidated arm by arm against the same
+availability rules. Every native success also requires an executable independent
+case target; a generic external proof cannot substitute for it. Small case sidecars containing the existing dense
+oracle additionally receive that oracle check on every native result. Copied
+independent replay references receive the existing `scientific_errors` check on
+every result, including saved-effect channels when requested. These imported
+checks are bounded to one million input cells. Every result also receives the
+existing full scientific comparison with the baseline prerequisite. That
+cross-artifact comparison is not presented as an independent mathematical oracle.
+
+Before warmup, the producer makes one **untimed traced prerequisite** per
+cell/arm. Candidate `routing_action` traces must report certified actions and
+actual used/limit counts for native iterations, optional setup work and admitted
+memory. The trace's `preset` must equal the requested injection, and any Schur
+handoff's checkpoint/sample values must agree with it. Any missing, malformed or over-limit candidate action blocks dependent
+timings. A zero-FE case may bypass projection actions entirely; accepting that
+absence requires its canonical absorbed-term count to be zero **and** another
+bound `no_fe_exact_path` proof in the evidence JSON. Legacy comparators lacking
+new counters use the declared resource-contract evidence; they never fabricate
+candidate setup counters.
+
+Both prerequisites and timings clear inherited diagnostic/route toggles
+(`FEREG_PHASE_TIMING`, `FEREG_CMG_ORDINARY`, memory-audit/tracing controls and
+`FEREG_MEMORY_LIMIT_BYTES`); only a manifest-declared memory cap is re-enabled.
+Measured native calls explicitly disable tracing, avoiding additional candidate
+logging in the timed region. Every warmup and measured run must exactly match
+its traced prerequisite's science and solver signature and pass the full
+scientific comparison. Records retain the actual prerequisite counters,
+diagnostic digest, input variant hash and paired-order position. A failed
+prerequisite blocks only dependent calls and leaves explicit failed/skipped rows;
+a failed immutable identity check invalidates the whole run. The selector rejects
+`running`/`failed` producer files even if some timing rows are present. A total
+budget expiration retains unrun cells; it never reduces the denominator or
+starts another panel. The frozen bounds are 120 seconds per call and four hours for
+the declared panel; CLI values must match the manifest.
+
+For independent kernel experiments, add explicit comparator arms with solver
+values `diagonal`, `cells` or `direct` and use `routing_run.py --ablation-only` on
+panel A. This prepares `routing_diagonal`, `routing_cells` and `routing_direct`
+injections, collecting only baseline/protection/comparator arms. All science,
+resource and repeat guards still apply. The output retains every arm, including
+failed and unresolved calls, and reports runtime comparisons only for
+complete joint-success cells against the baseline.
+Its purpose is `ablation_only`; the selector refuses it for policy promotion.
+The finite h/k candidate grid is unchanged. This is the pre-tournament route for
+independently qualifying one kernel change at a time.
+
+A smaller manifest may set `purpose: "ablation_only"`, contain only panel A,
+and use `candidates: ["baseline"]` with the needed protection/comparator arms.
+It retains the same fixed repetition declaration and all identity/science/resource
+requirements, but does not require the full tournament's family coverage or h/k
+grid. Collect it with `--ablation-only`; neither its manifest nor its observations
+can be passed to the tournament selector.
+
+Separate prefix and overlap experiments use the same producer, availability
+rules, paired statistic and fixed A/B/C repetition counts. They do not expand
+the h/k grid. Each later manifest includes `prior_manifests`, an array of sealed
+preceding manifests, including any reserved earlier panels. All current body
+hashes must be disjoint from that complete preceding chain and from one another
+across A/B/C. This validates metadata only; it does not open earlier datasets.
+Fresh scientific witnesses are required when each stage becomes eligible.
+The protocol owner must include the complete preceding manifest history; a seal
+checks integrity, not authorship or whether a prior experiment was omitted.
+Every experiment keeps the baseline artifact uninjected.
+
+For `experiment_kind: "prefix"`, candidates are exactly `baseline`,
+`prefix-none`, `prefix-map4` and `prefix-it4`; protections are `baseline` and
+`incumbent`, both uninjected. The three challengers use one artifact and their exact
+`routing.policy(name)` descriptors. They replace the old three-FE shortcut:
+none runs no pilot, MAP4 runs four sweeps, and IT4 runs four accelerated steps
+priced as eight sweeps. No prefix is stacked. The optional CMG handoff is disabled
+for this isolated experiment; the remaining general router is identical across
+the three arms. Eligible cells have at least three categorical-intercept terms,
+verified from the model; all five declared many-FE coverage families must appear.
+Conservative ties prefer baseline, none, MAP4, then IT4. A result qualifies this
+fixed prefix experiment only; a later composition with h/k needs its own frozen
+artifact, manifest and complete qualification.
+
+For `experiment_kind: "overlap"`, selectable arms are exactly `serial` and
+`overlap`; protections are `baseline` and `serial`. The serial arm's policy is
+one already qualified finite h/k policy; overlap uses
+`routing.policy("overlap-hH-kK")` for the same H and K. Both must use exactly the
+qualified serial artifact, while baseline retains its immutable artifact.
+H=4 is ineligible. `serial_qualification` contains the preceding sealed routing
+`manifest` and complete sealed C `decision`, with its record and B-selection
+hashes. A B winner or an incomplete/failed C result is insufficient. The serial
+manifest must also be in the freshness chain, and its sampling evidence remains
+bound. Every panel includes a multiple-worker cell; one-worker fallback cells
+can remain in the declared global coverage. Serial wins ties. C tests only the
+frozen B choice; failure retains the previously qualified serial policy without
+running a runner-up or claiming that the failed overlap experiment qualified.
+No kernel, prefix or overlap Cartesian product is accepted. PPML performance
+qualification remains separate and is not supported by this OLS producer.
+
+Before timing, the same producer collects scientific prerequisites for the frozen stage:
+
+```sh
+python3 bench/routing_run.py --manifest FROZEN.json --stage A --prerequisites-only \
+  --harness HARNESS --plugin ARM=PLUGIN --case CELL=INPUT.case \
+  --witness CELL=PREREQUISITE_INPUT.json --output target/tmp/solver-routing/science-a
+```
+
+Repeat the bindings for every required arm/cell. This mode makes one traced
+native call and one untraced exact repeat per eligible cell/arm. It produces
+scientific proofs and evidence wrappers, with no timing summaries, policy
+selection. B prerequisites require the frozen A shortlist, and C prerequisites
+require the passing frozen B selection; both use `--previous`. Missing selection
+is rejected before reading those inputs. This never grants early holdout access.
+Missing independent truth or resource evidence leaves explicit blocked cells.
+A wrapper records every declared arm's outcome, including excluded candidates
+and established optional unavailability. It is consumable only when required
+references pass and no optional comparator has blocking evidence. Successful
+arms retain their full science/resource checks. Any frozen identity failure
+invalidates the run and removes all generated wrappers.
+
+The prerequisite input has `schema: 2`, `status: "ready"` and the same
+case/manifest/worker/arm identity fields as an ordinary evidence wrapper. It requires a hash-bound `resource_contract`
+for legacy arms. It also requires a case-specific `independent_witness`, unless
+the case carries a checked dense/imported replay oracle. `scoped_replay` need
+not be supplied: this mode computes it from the actual native outputs. Passing
+the repository test suite or agreeing with the historical binary does not
+establish independent truth for a new large case. The maintained
+`inactive-columns` construction has an additional witness: actual input/model
+bytes must establish exact pairwise cancellation within each worker/firm cell;
+independent small-column OLS, HC1 and bipartite graph rank then give its targets.
+
+Ready wrappers may additionally freeze `frozen_dependencies`, a list of exact
+`path`/`sha256` bindings for checker sources, nested evidence, case sidecars and
+local oracle files. The producer checks these before collection and includes
+them in its existing identity guard throughout the run. Generated checked proofs
+and wrappers retain the same list, which is revalidated before timing. This
+prevents preparation from silently accepting changed local truth or tooling when
+native collection later starts. Relative dependency paths resolve against the
+ready wrapper and become absolute in the generated proof and checked wrapper.
+
+[`routing_oracle.py`](routing_oracle.py) builds separate bounded categorical
+references for frozen A inputs using an independently formed Schur complement
+and direct SciPy factorization. It validates canonical model bindings and uses
+graph gauges with a separated positive grounded spectrum for sufficient rank
+admission under an explicit floating error model, including Schur formation
+and projection perturbation guards. This is not an exact or interval proof;
+extra aliases or ambiguous conditioning are refused. Its JSON/NPZ
+reference binds the original case/body and producer hashes. When an evidence
+wrapper's `independent_witness` points to this reference, the producer loads and
+hash-binds both files and checks coefficients, covariance, sample/drop
+decisions, fitted/residual outputs and supported rank/DoF targets on every native
+call. This module supports a bounded subset of categorical models; unsupported
+inputs still require their own independent witness. It never rewrites inputs or
+opens the holdout.
+
+Scoped compatibility reuses `replay_plugins.numerical_scope_indices` and
+`work_scope_indices` for individual numerical/work leaves, plus each RB/RV
+scalar and numerical observation output. Default-route engine IDs, requested
+tolerances, certified/presence flags, DoF and all other discrete fields remain
+exact. An explicit comparator additionally permits its independently
+asserted requested/used solver IDs and preconditioner mapping in each solver
+row. No runtime-signature field is relaxed for OLS. Science-checker source files
+and their direct dependencies are hash-bound along with native artifacts.
+
+For explicit CMG only, a successful graph projection independently requires
+requested/used `7/7`, certified stop `2`, fallback `0`, and zero preconditioner
+and pilot fields. Its warning count must be a finite nonnegative integer;
+positive warnings require positive iterations. Fast primary absorption permits
+at most one polishing warning; Low primary absorption permits at most
+`1 + ceil(C / P)`, where `P` is the effective pool size and `C` is the full
+`RSTATUS` row capacity. Model construction creates at most one generated column
+per coefficient, and publication bounds coefficient count by that capacity.
+Thus this is a conservative bound on Low's response-plus-regressor-block
+projection calls, including omitted and aliased slots. It does not use retained
+rank. Low final absorption permits at most one polishing warning; Fast final
+`7/7` permits none. Only these independently asserted counts may differ from
+baseline Auto at timing-stripped `RSOLVER` indices 9 and 23. Effective mode and
+pool size remain protected `RRUNTIME` fields.
+
+The Fast final-residual CG correction is a separate contract: requested/used
+`7/4`, certified stop `2`, fallback `1`, warning count `1`, and zero
+preconditioner and pilot fields. Only that tuple permits final fallback/warning
+leaves 22 and 23. Its verification can complete with zero CG updates; the
+positive-iteration requirement belongs only to graph-polishing warnings.
+Primary CG and Low final CG remain outside this comparator contract.
+
+Generic explicit IT on parsed slope/mixed models has a separate informational
+warning contract. Both solver rows must report requested/used `5/5`, certified
+stop `2`, fallback `0`, and zero preconditioner/pilot fields. Generic IT emits
+one notice per projection, including initial certification at zero iterations.
+Fast therefore requires primary/final counts `1/1`; Low permits primary counts
+from `1` through `1 + ceil(C / P)` and requires final count `1`, using the same
+validated full coefficient capacity and effective pool-size bound. Only warning
+leaves 9 and 23 may differ from Auto. Categorical IT, other solver tuples and all
+scientific tolerances and model decisions retain their existing checks. Raw
+warning counts remain exact across repeats and comparable worker requests.
+
+Exact repetitions retain warning counts and all solver diagnostics. Before
+publishing any checked wrappers, the producer also compares asserted CMG
+diagnostic tuples across complete successful worker-count pairs. Requests are
+grouped by effective prepared input with only `threads` removed, arm/artifact,
+and the explicit memory-limit environment. Different modes, pools, tolerances
+and injections cannot become accidental peers. A mismatch blocks both cells,
+retains their observations and prevents either wrapper from qualifying;
+incomplete or single-worker groups explicitly make no cross-worker claim.
+Failed calls retain their existing binary row columns along with metadata and
+logs, with all retained artifacts hash-bound.
+
+
+### Public-default deployment after serial B selection
+
+[`routing_deployment.py`](routing_deployment.py) supplies a separate, prospective
+schema for one narrow transition from a hidden serial `(h,k)` arm to public OLS
+Auto. Declare and retain the amendment before any timing:
+
+```sh
+python3 bench/routing_deployment.py declare --before-any-timing \
+  --manifest FROZEN.json --output target/tmp/solver-routing/deployment.json
+```
+
+The declaration binds the original selector, statistic, candidate source and
+complete A/B input identities. After B, it recomputes A and B from their records
+and accepts only one passing nonbaseline serial winner. Only OLS invocation
+wiring in `crates/fereg-plugin/src/estimate.rs` may change; build inputs and the
+selected algorithm remain fixed. Reviewers must verify the source diff and
+fresh non-C qualification, including two calls per artifact on every A/B cell
+with exact science and solver signatures. Explicit requests and PPML remain
+unchanged. Evidence packets are hash-bound reviewed attestations, not automatic
+proof that their prose claims are true.
+
+The derived C schema preserves all original C input identities, repetitions,
+failure rules, budgets, baseline and explicit comparators. It protects the
+selected hidden artifact as incumbent, replacing an original incumbent only
+when that incumbent is byte-for-byte the baseline configuration. The public
+candidate uses uninjected `solver(auto)`. Freeze it before C access, run C once,
+and retain the old default on failure or inconclusive evidence. No runner-up,
+retuning, continuation or post-C production change is allowed. Chronology and
+one-attempt enforcement require operational coordination; an exclusive output
+path alone does not establish them.
+
+This schema is deliberately rejected by the existing producer. Public C
+execution hooks require separate implementation and verification after an
+eligible B winner exists; declaring the schema does not activate the solver.

@@ -1616,6 +1616,7 @@ fn retained_lsmr_reuses_preparation_and_preserves_each_batch() {
                                 false,
                                 false,
                                 None,
+                                None,
                             )
                         } else {
                             absorb_borrowed_intercept_lsmr(
@@ -2905,6 +2906,7 @@ fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
             false,
             false,
             None,
+            None,
         )
         .unwrap();
         assert_eq!(ordinary.residualized(), structural.residualized());
@@ -4062,6 +4064,7 @@ fn ppml_cg_action_preserves_fe_space_under_cancellation() {
                         &mut action,
                         &mut workspace,
                         None,
+                        false,
                     )
                     .unwrap();
                     // Identical FE tuples must receive identical contributions,
@@ -4648,6 +4651,214 @@ fn nonrepresentable_weighted_norm_fails_closed() {
 }
 
 #[test]
+fn cmg_polish_accurate_means_preserve_extremes_and_reject_lost_range() {
+    let tiny = f64::from_bits(1);
+    for (input, projection, raw, expected) in [
+        (
+            vec![f64::MAX; 3],
+            vec![0.0; 3],
+            vec![0.1, 0.2, 0.7],
+            f64::MAX,
+        ),
+        (vec![f64::MAX, -f64::MAX], vec![0.0; 2], vec![1.0; 2], 0.0),
+        (
+            vec![f64::MAX; 2],
+            vec![f64::MAX / 2.0; 2],
+            vec![1.0; 2],
+            f64::MAX / 2.0,
+        ),
+        (
+            vec![4.0 * tiny, 8.0 * tiny],
+            vec![tiny; 2],
+            vec![1.0; 2],
+            5.0 * tiny,
+        ),
+        (
+            vec![4.0 * tiny, -2.0 * tiny],
+            vec![tiny; 2],
+            vec![1.0; 2],
+            0.0,
+        ),
+        (vec![1.0, -1.0], vec![-2.0; 2], vec![1.0; 2], 2.0),
+    ] {
+        let codes = vec![0_u32; input.len()];
+        let index = LevelIndex::from_codes(&codes, 1).unwrap();
+        let source = ValidatedBorrowedInterceptSource::new(&codes, 1, &index).unwrap();
+        let mut means = [0.0];
+        fused_group_means_by_value(
+            &source.effect(),
+            0,
+            validate_weights(BorrowedMapWeights::Provided(&raw), input.len()).unwrap(),
+            input.len(),
+            &mut means,
+            true,
+            |row, _| cg_polish_difference(input[row], projection[row]),
+        )
+        .unwrap();
+        assert_eq!(means[0], expected);
+    }
+    assert!(cg_polish_difference(f64::MAX, -f64::MAX).is_err());
+    let codes = [0_u32, 0];
+    let index = LevelIndex::from_codes(&codes, 1).unwrap();
+    let source = ValidatedBorrowedInterceptSource::new(&codes, 1, &index).unwrap();
+    let error = fused_group_means_by_value(
+        &source.effect(),
+        0,
+        validate_weights(BorrowedMapWeights::Unit, 2).unwrap(),
+        2,
+        &mut [0.0],
+        true,
+        |_, _| cg_polish_difference(f64::MAX, tiny),
+    )
+    .unwrap_err();
+    assert!(error.message.contains("lost range"));
+    // General TwoDiff must also preserve a low part without |a| >= |b|.
+    assert_eq!(
+        cg_polish_difference(2.0_f64.powi(-54), 1.0).unwrap(),
+        (-1.0, 2.0_f64.powi(-54))
+    );
+}
+
+#[test]
+fn cmg_polish_mixed_columns_reject_energy_underflow_without_deactivating_live_rhs() {
+    let codes = [0_u32, 0];
+    let index = LevelIndex::from_codes(&codes, 1).unwrap();
+    let source = ValidatedBorrowedInterceptSource::new(&codes, 1, &index).unwrap();
+    let design = BorrowedInterceptFeDesign::new(2, vec![source.effect()]).unwrap();
+    let input = DenseMatrix::from_columns(&[vec![0.0; 2], vec![1.0, 3.0]]).unwrap();
+    let result = absorb_borrowed_intercept_cg(
+        &design,
+        BorrowedMapWeights::Unit,
+        input,
+        config(),
+        BorrowedCgOptions::polish(&[0.0, 10.0_f64.sqrt()]),
+    )
+    .unwrap();
+    assert_eq!(result.residualized().as_slice(), &[0.0, -1.0, 0.0, 1.0]);
+    let input = DenseMatrix::from_columns(&[vec![0.0; 2], vec![1e-170; 2]]).unwrap();
+    let error = absorb_borrowed_intercept_cg(
+        &design,
+        BorrowedMapWeights::Unit,
+        input.clone(),
+        config(),
+        BorrowedCgOptions::polish(&[0.0, 2.0_f64.sqrt() * 1e-170]),
+    )
+    .unwrap_err();
+    assert!(error.message.contains("energy underflowed"));
+    // The same guard used after each update checks columns independently.
+    check_cg_energy_resolution(&DenseMatrix::zeros(2, 2).unwrap(), &[0.0, 0.0]).unwrap();
+    assert!(check_cg_energy_resolution(&input, &[0.0, 0.0]).is_err());
+}
+
+#[test]
+fn cmg_polish_resolves_small_fe_components_on_weighted_cycles() {
+    let failures = weighted_cycle_polish_failures(1e-6);
+    assert!(
+        failures.is_empty(),
+        "analytic weighted-cycle projection failures: {failures:?}"
+    );
+}
+
+#[test]
+fn cmg_polish_initial_certificate_handles_smaller_fe_components() {
+    let failures = weighted_cycle_polish_failures(1e-8);
+    assert!(
+        failures.is_empty(),
+        "smaller FE component projection failures: {failures:?}"
+    );
+}
+
+fn weighted_cycle_polish_failures(amplitude: f64) -> Vec<(usize, f64, f64, usize, f64)> {
+    // Every graph edge has two equal-weight observations with opposite
+    // contrasts. Their exact projection is therefore +/-1, independently of
+    // the graph's spectrum. The added worker/firm potential cancels on heavy
+    // edges and leaves a small, slow component on light edges.
+    let levels = 32;
+    let rows = 4 * levels;
+    let worker: Vec<_> = (0..rows).map(|row| (row / 4) as u32).collect();
+    let firm: Vec<_> = (0..rows)
+        .map(|row| ((row / 4 + (row / 2) % 2) % levels) as u32)
+        .collect();
+    let worker_index = LevelIndex::from_codes(&worker, levels).unwrap();
+    let firm_index = LevelIndex::from_codes(&firm, levels).unwrap();
+    let worker_source =
+        ValidatedBorrowedInterceptSource::new(&worker, levels, &worker_index).unwrap();
+    let firm_source = ValidatedBorrowedInterceptSource::new(&firm, levels, &firm_index).unwrap();
+    let design =
+        BorrowedInterceptFeDesign::new(rows, vec![worker_source.effect(), firm_source.effect()])
+            .unwrap();
+    let potential: Vec<_> = (0..levels)
+        .map(|level| amplitude * ((0.73 * level as f64).sin() + (0.31 * level as f64).cos()))
+        .collect();
+    let truth: Vec<_> = (0..rows)
+        .map(|row| if row % 2 == 0 { 1.0 } else { -1.0 })
+        .collect();
+    let input = DenseMatrix::from_columns(&[truth
+        .iter()
+        .enumerate()
+        .map(|(row, value)| value + potential[firm[row] as usize] - potential[worker[row] as usize])
+        .collect()])
+    .unwrap();
+    let mut failures = Vec::new();
+    for threads in [1, 4] {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap()
+            .install(|| {
+                for weakness in [1e-3, 1e-6] {
+                    for scale in [1e-100, 1.0, 1e100] {
+                        let raw: Vec<_> = (0..rows)
+                            .map(|row| scale * if (row / 2) % 2 == 0 { 1.0 } else { weakness })
+                            .collect();
+                        let weights = BorrowedMapWeights::Provided(&raw);
+                        let mut norms = [0.0];
+                        weighted_column_norms(
+                            &input,
+                            validate_weights(weights, rows).unwrap(),
+                            &mut norms,
+                            &mut [0.0],
+                            &mut [0.0],
+                            &mut [],
+                        )
+                        .unwrap();
+                        let result = absorb_borrowed_intercept_cg(
+                            &design,
+                            weights,
+                            input.clone(),
+                            MapConfig {
+                                tolerance: 1e-14,
+                                max_iterations: 256,
+                                ..config()
+                            },
+                            BorrowedCgOptions::polish(&norms),
+                        )
+                        .unwrap();
+                        assert!(result.report().certified());
+                        let error = truth
+                            .iter()
+                            .enumerate()
+                            .map(|(row, expected)| {
+                                (result.residualized()[(row, 0)] - expected).abs()
+                            })
+                            .fold(0.0_f64, f64::max);
+                        if error > 1e-10 {
+                            failures.push((
+                                threads,
+                                weakness,
+                                scale,
+                                result.report().iterations,
+                                error,
+                            ));
+                        }
+                    }
+                }
+            });
+    }
+    failures
+}
+
+#[test]
 fn stable_cg_polish_preserves_near_within_hadamard_products_at_every_width() {
     let rows = 48;
     let left: Vec<_> = (0..rows).map(|row| (row % 4) as u32).collect();
@@ -4764,6 +4975,7 @@ fn hestenes_energy_audit_recomputes_remaining_energy_and_rejects_invalid_steps()
             values,
             direction,
             unit,
+            false,
         )?;
         Ok::<_, FeregError>((potential[0], error))
     };
@@ -4991,6 +5203,7 @@ fn borrowed_cg_breakdown_and_exhaustion_fail_closed() {
             values: None,
             raw_scale: 1.0,
         },
+        false,
     )
     .expect("Hestenes update");
     assert!((error - 0.5).abs() <= f64::EPSILON);
@@ -5005,7 +5218,8 @@ fn borrowed_cg_breakdown_and_exhaustion_fail_closed() {
             ValidatedWeights {
                 values: None,
                 raw_scale: 1.0
-            }
+            },
+            false,
         )
         .expect_err("negative improvement potential")
         .code,
@@ -5066,6 +5280,8 @@ fn borrowed_irons_tuck_retains_a_reconstructing_coefficient_product() {
         input.clone(),
         config(),
         true,
+        None,
+        false,
     )
     .expect("retaining Irons-Tuck");
     let (residualized, report, coefficients) = result.into_full_parts();
@@ -5105,6 +5321,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         false,
         false,
         None,
+        None,
     )
     .expect("direct auto");
     assert_eq!(direct.report().requested_solver, FeSolverKind::Auto);
@@ -5133,6 +5350,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         false,
         false,
         false,
+        None,
         None,
     )
     .expect("early MAP");
@@ -5165,6 +5383,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         false,
         false,
         false,
+        None,
         None,
     )
     .expect("CG auto");
@@ -5208,6 +5427,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
         false,
         false,
         None,
+        None,
     )
     .expect("routed auto");
     assert_eq!(result.report().requested_solver, FeSolverKind::Auto);
@@ -5226,6 +5446,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
         false,
         false,
         false,
+        None,
         None,
     )
     .expect("direct LSMR auto");
@@ -5357,6 +5578,7 @@ fn uncertified_lsmr_candidate_is_polished_and_fully_accounted() {
         false,
         false,
         None,
+        None,
     )
     .expect("polished auto result");
     let report = result.report();
@@ -5425,6 +5647,7 @@ fn constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fit
             false,
             false,
             false,
+            None,
             None,
         )
     };
@@ -5582,6 +5805,7 @@ fn qualification_matrix_exercises_direct_tolerances_preconditioners_and_forced_c
                 refinement: CgRefinementPolicy::forced(forced_iterations),
                 retain_coefficients: false,
                 stable_projection: false,
+                strict_polish: false,
                 reconstruction_tolerance: None,
             },
             &mut reservation,
@@ -5768,6 +5992,7 @@ fn norm_handoff_lsmr_routes_preserve_certificates_coefficients_and_memory() {
                                     false,
                                     cache,
                                     None,
+                                    None,
                                 );
                             }
                             let mut session = BorrowedLsmrAbsorber::new(design(), weights, config)?;
@@ -5943,6 +6168,8 @@ fn norm_handoff_failed_lsmr_certificate_and_auto_continuation_discard_cache() {
         None,
         &mut memory,
         Some(&mut norms),
+        None,
+        None,
     )
     .unwrap();
     assert!(!report.certified());
@@ -5959,6 +6186,7 @@ fn norm_handoff_failed_lsmr_certificate_and_auto_continuation_discard_cache() {
             false,
             false,
             cache,
+            None,
             None,
         )
         .unwrap()

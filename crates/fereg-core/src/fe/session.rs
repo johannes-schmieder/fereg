@@ -25,6 +25,7 @@ pub(crate) struct FeSession<'a> {
     norm_handoff_peak: Option<u128>,
     ols_chunked_norms: bool,
     three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
+    general_routing: Option<super::borrowed_map::routing_lsmr::GeneralRoutingState<'a>>,
     pub(crate) structural_constant: bool,
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
 }
@@ -87,6 +88,7 @@ impl<'a> FeSession<'a> {
                     + b.projection_rhs
                     + b.certificate_columns
                     + b.accelerator_state;
+                c.topology_resident_bytes += b.topology_resident_bytes;
             }
         }
         c
@@ -104,6 +106,22 @@ impl<'a> FeSession<'a> {
     pub(crate) fn enable_checkpoint_lsmr(&mut self, deterministic: bool) {
         if let Some(p) = self.categorical.as_mut() {
             p.enable_checkpoint_lsmr(deterministic);
+        }
+    }
+    pub(crate) fn begin_ppml_frame(&mut self, generation: MapGeometryGeneration) -> Result<()> {
+        if let Some(projector) = &mut self.categorical {
+            projector.begin_ppml_frame(generation)?;
+        }
+        Ok(())
+    }
+    pub(crate) fn accept_ppml_topology(&mut self, generation: MapGeometryGeneration) {
+        if let Some(projector) = &mut self.categorical {
+            projector.accept_ppml_topology(generation);
+        }
+    }
+    pub(crate) fn reject_ppml_topology(&mut self) {
+        if let Some(projector) = &mut self.categorical {
+            projector.reject_ppml_topology();
         }
     }
     #[cfg(test)]
@@ -130,6 +148,7 @@ impl<'a> FeSession<'a> {
         generation: MapGeometryGeneration,
     ) -> Result<CertifiedBorrowedMap> {
         if let Some(p) = self.categorical.as_mut() {
+            p.begin_ppml_frame(generation)?;
             return p.absorb_ppml(raw_weights, values, config);
         }
         let p = self.general.as_mut().ok_or_else(|| {
@@ -174,6 +193,7 @@ impl Default for FeSession<'_> {
             norm_handoff_peak: None,
             ols_chunked_norms: false,
             three_fe_geometry: None,
+            general_routing: None,
             structural_constant: false,
             absorb_config: None,
         }
@@ -265,53 +285,18 @@ impl<'a> FeSession<'a> {
                 super::FeSolverKind::Auto | super::FeSolverKind::CmgSchur
                     if design.effects().len() == 2 =>
                 {
-                    // A common structural binding, independent of output, VCE,
-                    // worker budget or public storage choice.
-                    let mut bytes = super::ReusableCategoricalMapAbsorber::owner_bytes(
-                        &design,
-                        rhs,
-                        config.execution.threads.resolved(),
-                    )?;
-                    if config.absorb.retain_coefficients {
-                        let levels: Vec<_> =
-                            design.effects().iter().map(|e| e.n_levels()).collect();
-                        let product = crate::memory::estimate_fe_solver_memory(
-                            design.nobs(),
-                            rhs,
-                            &levels,
-                            config.execution.threads.resolved(),
-                            config.absorb.lsmr.local_size,
-                        )?
-                        .coefficient_batch_bytes;
-                        bytes =
-                            bytes
-                                .checked_add(product.checked_mul(3).ok_or_else(|| {
-                                    allocation("FE coefficient capture overflows")
-                                })?)
-                                .ok_or_else(|| allocation("FE graph capture overlap overflows"))?;
-                    }
-                    if !cmg_schur
-                        && config
-                            .absorb
-                            .solver_memory_budget
-                            .is_some_and(|b| !b.fits(bytes))
-                    {
-                        owner.binding = Some(design);
-                        return Ok(owner);
-                    }
-                    owner.admit(bytes, config.absorb)?;
-                    let mut p = super::ReusableCategoricalMapAbsorber::new(
-                        design,
-                        rhs,
-                        config.execution.threads.resolved(),
-                    )?;
-                    p.retain_coefficients = config.absorb.retain_coefficients;
-                    if cmg_schur {
-                        owner.prepare_cmg_schur(&mut p, bytes, config)?;
-                    }
-                    owner.categorical = Some(p);
+                    owner.prepare_categorical(design, rhs, config, cmg_schur)?;
                 }
                 _ => {
+                    if config.absorb.solver == super::FeSolverKind::Auto
+                        && design.effects().len() >= 3
+                    {
+                        owner.general_routing = config
+                            .absorb
+                            .routing
+                            .filter(|preset| preset.kernel().is_none())
+                            .map(super::borrowed_map::routing_lsmr::GeneralRoutingState::new);
+                    }
                     if config.absorb.solver == super::FeSolverKind::Auto
                         && design.effects().len() == 3
                         && matches!(weights, BorrowedMapWeights::Unit)
@@ -343,6 +328,79 @@ impl<'a> FeSession<'a> {
             owner.prepare_owned(prepared, weights, rhs, config)?;
         }
         Ok(owner)
+    }
+
+    fn prepare_categorical(
+        &mut self,
+        design: super::BorrowedInterceptFeDesign<'a>,
+        rhs: usize,
+        config: crate::ols::PreparedOlsFitConfig,
+        cmg_schur: bool,
+    ) -> Result<()> {
+        // A common structural binding, independent of output, VCE,
+        // worker budget or public storage choice.
+        let mut bytes = super::ReusableCategoricalMapAbsorber::owner_bytes(
+            &design,
+            rhs,
+            config.execution.threads.resolved(),
+        )?;
+        if config.absorb.retain_coefficients {
+            let levels: Vec<_> = design.effects().iter().map(|e| e.n_levels()).collect();
+            let product = crate::memory::estimate_fe_solver_memory(
+                design.nobs(),
+                rhs,
+                &levels,
+                config.execution.threads.resolved(),
+                config.absorb.lsmr.local_size,
+            )?
+            .coefficient_batch_bytes;
+            bytes = bytes
+                .checked_add(
+                    product
+                        .checked_mul(3)
+                        .ok_or_else(|| allocation("FE coefficient capture overflows"))?,
+                )
+                .ok_or_else(|| allocation("FE graph capture overlap overflows"))?;
+        }
+        if !cmg_schur
+            && config
+                .absorb
+                .solver_memory_budget
+                .is_some_and(|b| !b.fits(bytes))
+        {
+            self.binding = Some(design);
+            return Ok(());
+        }
+        self.admit(bytes, config.absorb)?;
+        let mut p = super::ReusableCategoricalMapAbsorber::new(
+            design,
+            rhs,
+            config.execution.threads.resolved(),
+        )?;
+        p.retain_coefficients = config.absorb.retain_coefficients;
+        if cmg_schur {
+            self.prepare_cmg_schur(&mut p, bytes, config)?;
+        } else if let Some(preset) = config.absorb.routing {
+            let parents = bytes
+                .checked_add(p.max_rhs() as u128 * 8)
+                .ok_or_else(|| allocation("routing parent admission overflows"))?;
+            let budget = config
+                .absorb
+                .solver_memory_budget
+                .map(|b| -> Result<_> {
+                    Ok(crate::memory::FeSolverMemoryBudget {
+                        execution_bytes: b
+                            .execution_bytes
+                            .checked_add(parents)
+                            .ok_or_else(|| allocation("routing parent admission overflows"))?,
+                        usable_bytes: b.usable_bytes,
+                    })
+                })
+                .transpose()?;
+            p.request_auto_routing(preset, budget, parents);
+        }
+        self.categorical = Some(p);
+        Ok(())
     }
 
     fn prepare_cmg_schur(
@@ -672,6 +730,32 @@ impl<'a> FeSession<'a> {
         )
     }
 
+    /// Close the complete committed RHS set before finite solving/publication.
+    /// Individual Low chunks only drain, retaining their single preparation.
+    pub(crate) fn finish_routing_preparation(&mut self) -> Result<()> {
+        let categorical = self
+            .categorical
+            .as_mut()
+            .map_or(Ok(()), |p| p.finish_routing_preparation());
+        let general = self
+            .general_routing
+            .as_mut()
+            .map_or(Ok(()), |p| p.finish_preparation());
+        super::routing_overlap::arbitrate(categorical, general)
+    }
+
+    fn drain_routing_preparation(&mut self) -> Result<()> {
+        let categorical = self
+            .categorical
+            .as_mut()
+            .map_or(Ok(()), |p| p.drain_routing_preparation());
+        let general = self
+            .general_routing
+            .as_mut()
+            .map_or(Ok(()), |p| p.drain_preparation());
+        super::routing_overlap::arbitrate(categorical, general)
+    }
+
     pub(crate) fn project_initial_ols(
         &mut self,
         weights: BorrowedMapWeights<'_>,
@@ -682,21 +766,16 @@ impl<'a> FeSession<'a> {
         self.project_ols_input(weights, values, config, false, false, dense_norms)
     }
 
-    fn project_ols_input(
+    fn project_ols_binding(
         &mut self,
         weights: BorrowedMapWeights<'_>,
         values: crate::ols::OlsProjectionInput,
-        mut config: super::AbsorbConfig,
+        config: super::AbsorbConfig,
         final_residual: bool,
         raw_final: bool,
         dense_norms: bool,
     ) -> Result<CertifiedBorrowedMap> {
-        config.validate_cmg_schur_options()?;
-        let admission = config;
-        if let Some(stored) = self.absorb_config {
-            config.solver_memory_budget = stored.solver_memory_budget;
-        }
-        let mut result = if let Some(p) = self.cmg.as_mut() {
+        if let Some(p) = self.cmg.as_mut() {
             let values = values.into_values();
             if final_residual {
                 let p = self.cmg.take().expect("CMG binding");
@@ -750,6 +829,7 @@ impl<'a> FeSession<'a> {
                 final_residual,
                 dense_norms,
                 self.three_fe_geometry,
+                self.general_routing.as_mut(),
             )
         } else {
             let mut values = values.into_values();
@@ -764,7 +844,40 @@ impl<'a> FeSession<'a> {
                 .with_retained(self.resident_bytes)?
                 .max(self.peak);
             CertifiedBorrowedMap::from_certified_parts(values, report)
-        }?;
+        }
+    }
+
+    fn project_ols_input(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: crate::ols::OlsProjectionInput,
+        mut config: super::AbsorbConfig,
+        final_residual: bool,
+        raw_final: bool,
+        dense_norms: bool,
+    ) -> Result<CertifiedBorrowedMap> {
+        config.validate_cmg_schur_options()?;
+        let admission = config;
+        if let Some(stored) = self.absorb_config {
+            config.solver_memory_budget = stored.solver_memory_budget;
+        }
+        if final_residual {
+            self.finish_routing_preparation()?;
+        }
+        let result = self.project_ols_binding(
+            weights,
+            values,
+            config,
+            final_residual,
+            raw_final,
+            dense_norms,
+        );
+        let preparation = if result.is_err() || final_residual || !self.ols_chunked_norms {
+            self.finish_routing_preparation()
+        } else {
+            self.drain_routing_preparation()
+        };
+        let mut result = super::routing_overlap::arbitrate(result, preparation)?;
         if let Some(peak) = self
             .categorical
             .as_ref()
@@ -798,6 +911,30 @@ impl<'a> FeSession<'a> {
             report.solver_workspace_peak.max(self.peak)
         };
         report.setup_seconds += std::mem::take(&mut self.setup_seconds);
+        if config.routing.is_some() && crate::diagnostics::solver_trace_enabled() {
+            let (setup_work, setup_limit) = self.categorical.as_ref().map_or_else(
+                || {
+                    self.general_routing
+                        .as_ref()
+                        .map_or((0, 0), |state| state.work())
+                },
+                |p| p.routing_work(),
+            );
+            let memory_bytes = (report.solver_workspace_peak.bytes().unwrap_or(0) as u128)
+                .checked_add(config.solver_memory_budget.map_or(0, |b| b.execution_bytes))
+                .ok_or_else(|| allocation("routing diagnostic memory total overflows"))?;
+            let memory_limit = config
+                .solver_memory_budget
+                .map_or(u128::MAX, |b| b.usable_bytes);
+            crate::diagnostics::emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=routing_action|preset={}|iterations={}|native_limit={}|setup_work={setup_work}|setup_limit={setup_limit}|memory_bytes={memory_bytes}|memory_limit={memory_limit}|final={}|certified={}",
+                config.routing.expect("traced routing preset"),
+                report.iterations,
+                config.map.max_iterations,
+                u8::from(final_residual),
+                u8::from(report.certified())
+            ));
+        }
         let result = match coefficients {
             Some(coefficients) => CertifiedBorrowedMap::from_certified_parts_with_coefficients(
                 values,
@@ -815,8 +952,8 @@ impl<'a> FeSession<'a> {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn project_intercepts(
-    design: &super::BorrowedInterceptFeDesign<'_>,
+pub(crate) fn project_intercepts<'a>(
+    design: &super::BorrowedInterceptFeDesign<'a>,
     weights: BorrowedMapWeights<'_>,
     values: crate::ols::OlsProjectionInput,
     config: super::AbsorbConfig,
@@ -824,6 +961,7 @@ pub(crate) fn project_intercepts(
     final_residual: bool,
     dense_norms: bool,
     three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
+    general_routing: Option<&mut super::borrowed_map::routing_lsmr::GeneralRoutingState<'a>>,
 ) -> Result<CertifiedBorrowedMap> {
     use super::FeSolverKind as S;
     match config.solver {
@@ -839,6 +977,7 @@ pub(crate) fn project_intercepts(
             final_residual,
             dense_norms,
             three_fe_geometry,
+            general_routing,
         ),
         S::Lsmr if !design.effects().is_empty() => super::absorb_borrowed_intercept_lsmr(
             design,
@@ -878,6 +1017,8 @@ pub(crate) fn project_intercepts(
                 values.into_values(),
                 config.map,
                 config.retain_coefficients,
+                config.solver_memory_budget,
+                config.it_coefficients,
             )
         }
         S::Cmg | S::CmgSchur | S::Squarem => Err(FeregError::new(

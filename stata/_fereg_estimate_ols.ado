@@ -105,11 +105,21 @@ program define _fereg_estimate_ols, eclass
     }
 
     local inject = lower(strtrim(`"`inject'"'))
-    if `"`inject'"' != "" & !inlist(`"`inject'"', ///
+    local routing_injection = regexm(`"`inject'"', "^routing_(h(4|8|16|32)_k(0|1|2)|overlap_h(8|16|32)_k(0|1|2)|overlap_break|prefix_(none|map4|it4)|diagonal|cells|direct)$")
+    local it_injection = `"`inject'"' == "it_coefficients"
+    if `"`inject'"' != "" & !`routing_injection' & !`it_injection' & !inlist(`"`inject'"', ///
         "posthold", "postplugin", "poststripe", "postereturn", ///
         "postscalars", "postdiagnostics", "precommit", ///
         "breakpostplugin", "breaknative") {
         di as error "unknown developer transaction injection stage: `inject'"
+        exit 198
+    }
+    if `routing_injection' & `"`solver_mode'"' != "auto" {
+        di as error "hidden routing injection requires solver(auto)"
+        exit 198
+    }
+    if `it_injection' & `"`solver_mode'"' != "it" {
+        di as error "hidden coefficient IT injection requires solver(it)"
         exit 198
     }
 
@@ -553,14 +563,17 @@ program define _fereg_estimate_ols, eclass
         if `cmgseed_explicit' local request_arguments ///
             `"`request_arguments'cmgseed=`cmgseed';"'
     }
-    if `"`inject'"' == "breaknative" {
+    if inlist(`"`inject'"', "breaknative", "routing_overlap_break") {
         local break_marker_token : environment FEREG_BREAK_MARKER_TOKEN
         if strtrim(`"`break_marker_token'"') == "" {
             di as error "hidden OLS breaknative requires FEREG_BREAK_MARKER_TOKEN"
             exit 198
         }
         local request_arguments ///
-            `"`request_arguments'inject=breaknative;break_marker_token=`break_marker_token';"'
+            `"`request_arguments'inject=`inject';break_marker_token=`break_marker_token';"'
+    }
+    else if `routing_injection' | `it_injection' {
+        local request_arguments `"`request_arguments'inject=`inject';"'
     }
     // Frame bounded parser metadata in one vectorized pass. No observations or
     // generated design columns enter Mata; field lengths remain UTF-8 bytes.

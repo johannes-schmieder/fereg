@@ -21,6 +21,7 @@ except ImportError:
 
 BREAK_FIXTURES = {
     "ols": ("estimate_ols_eclass_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_BREAK_ARMED")),
+    "ols-builder": ("estimate_ols_builder_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_NATIVE_BREAK_ARMED")),
     "ppml": (
         "estimate_ppml_eclass_break.do",
         (
@@ -110,6 +111,8 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--fixture-kind", choices=sorted(BREAK_FIXTURES), default="ols")
     parser.add_argument("--ols-solver", choices=("auto", "cmgschur"), default="auto",
                         help="OLS route exercised by both native and publication Break checks")
+    parser.add_argument("--builder-workers", type=int, choices=(2, 4),
+                        help="worker count for the actual optional-builder Break fixture (default 4)")
     parser.add_argument("--cmg-samples", type=lambda value: bounded_integer(value, 2**32 - 1),
                         help="optional CMG-Schur tree count; positive counts use a degree-30 fixture")
     parser.add_argument("--cmg-seed", type=lambda value: bounded_integer(value, 2**53 - 1),
@@ -119,6 +122,8 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.public_scope and args.fixture_kind != "ppml":
         parser.error("--public-scope requires --fixture-kind ppml")
+    if args.builder_workers is not None and args.fixture_kind != "ols-builder":
+        parser.error("--builder-workers requires --fixture-kind ols-builder")
     if args.ols_solver != "auto" and args.fixture_kind != "ols":
         parser.error("--ols-solver requires --fixture-kind ols")
     if args.cmg_samples is not None or args.cmg_seed is not None:
@@ -133,7 +138,9 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
 
 def fixture_command(fixture: Path, args: argparse.Namespace) -> str:
     arguments: list[str] = []
-    if args.fixture_kind == "ols":
+    if args.fixture_kind == "ols-builder":
+        arguments.append(str(args.builder_workers or 4))
+    elif args.fixture_kind == "ols":
         arguments.append(args.ols_solver)
         if args.cmg_samples is not None:
             arguments.append(str(args.cmg_samples))
@@ -143,6 +150,24 @@ def fixture_command(fixture: Path, args: argparse.Namespace) -> str:
         arguments.append("public")
     suffix = " " + " ".join(arguments) if arguments else ""
     return f"do {stata_quote(fixture)}{suffix}"
+
+
+def builder_trace_events(trace: str) -> list[str]:
+    events = []
+    for line in trace.splitlines():
+        if not line.startswith("FEREG_SOLVER_TRACE|phase=routing_overlap|event=builder_break_ready|"):
+            continue
+        try:
+            fields = dict(part.split("=", 1) for part in line.split("|")[1:])
+            if not (0 < int(fields["charged"]) <= int(fields["issued"])
+                    and int(fields["ordinal"]) > 0 and int(fields["task"]) >= 0):
+                raise ValueError("unadmitted builder work")
+        except (ValueError, KeyError) as error:
+            raise RuntimeError("invalid positive-work builder Break trace") from error
+        events.append(line)
+    if len(events) != 2:
+        raise RuntimeError("expected two actual positive-work builder Break checkpoints")
+    return events
 
 
 def main() -> None:
@@ -170,6 +195,10 @@ def main() -> None:
     process_environment["TMPDIR"] = str(run_dir)
     process_environment["FEREG_PPML_BREAK_MARKER_TOKEN"] = native_marker_token
     process_environment["FEREG_BREAK_MARKER_TOKEN"] = native_marker_token
+    trace_path = run_dir / "builder.trace"
+    if args.fixture_kind == "ols-builder":
+        process_environment["FEREG_SOLVER_TRACE"] = "1"
+        process_environment["FEREG_SOLVER_TRACE_FILE"] = str(trace_path)
     process = subprocess.Popen(
         [args.stata],
         cwd=run_dir,
@@ -235,6 +264,13 @@ def main() -> None:
             if "FEPPML_PUBLIC_SCOPE_VERIFIED" not in transcript:
                 raise RuntimeError("public-scope Break fixture did not verify its boundary")
             print("BOUNDARY: feppml public scope")
+        if args.fixture_kind == "ols-builder":
+            if "FEREG_BUILDER_BREAK_RESET_VERIFIED" not in transcript:
+                raise RuntimeError("builder Break fixture did not verify rollback/reset")
+            for event in builder_trace_events(trace_path.read_text() if trace_path.exists() else ""):
+                print("BUILDER: " + event)
+            print("TRACE_SHA256: " + sha256_file(trace_path))
+            print(f"BOUNDARY: actual optional builder, workers={args.builder_workers or 4}, two cancellations and follow-up fits")
         if args.fixture_kind == "ols":
             print(f"BOUNDARY: OLS solver({args.ols_solver})")
             if args.cmg_samples:

@@ -145,13 +145,231 @@ the 64-column bound is an explicit adapter support limit, not an auto-routing
 threshold. Retain all saved-output and bias-correction capabilities on supported
 solver/model combinations. Tests force each supported backend independently.
 
-The copied engine retains its existing automatic solver policy, iteration
-budgets, support checks and numerical fallbacks. The abandoned direct/Schur
-candidate and fixed two-attempt policy are not adopted. Future route changes
-need a scoped decision and comparative evidence; no new N/width/thread/weight/
-memory fences may be introduced to rescue individual performance cells.
+Explicit OLS CMG polishing must resolve small remaining FE components even when
+their moment certificate already passes. Its observation-space CG uses the
+actual Hestenes decrement and requires relative recurrence convergence at the
+requested tolerance, followed by the independent original-design certificate.
+Nonzero final residual candidates undergo the same verification. An entrywise
+zero computed projection may return without a CG update after its workspace
+and action have been accounted; a certificate alone cannot justify that exit.
+A zero residual energy with nonzero entries fails explicitly rather than
+certifying an underflowed norm. The original iteration limit remains binding.
+
+Only this CMG polishing action preserves the high/low parts of each subtraction
+and the FMA product errors in compensated group reductions, with binary value
+scaling. Ordinary CG, saved-model recovery and PPML retain their established
+arithmetic. Successful bulk projections that retain FE coefficients also retain
+and add the polishing coefficients. Joint admission includes the live graph,
+norms, bulk coefficients and all CG correction banks at the actual RHS width;
+final correction releases the graph before admitting its workspace. Requested
+CMG remains explicit: a Fast final CG verification reports used CG and its
+verification/correction warning, including when the verified action needs zero
+CG updates. Sample, rank, omission and separation semantics are unchanged.
+
+Ordinary `solver(auto)` retains its qualified automatic policy, iteration
+budgets, support checks and numerical fallbacks. The optional serial routing
+experiments below require sanctioned developer injections; they are not a
+promoted default or new public syntax. Future default changes need comparative
+evidence; no new N/width/thread/weight/memory fences may be introduced to rescue
+individual performance cells.
 Preserve requested/used solver, work accounting and existing reason diagnostics;
 unsupported explicit requests must not silently become auto.
+
+The prospective deployment amendment permits one narrow public-default
+transition after the finite A/B experiment selects one nonbaseline serial
+`(h,k)` policy. It must be declared before any timing. Only the OLS Auto
+invocation wiring may change; kernels, prefixes, overlap, sampling policy and
+thresholds remain fixed. Explicit solver/preconditioner requests, PPML and
+unsupported routes retain their existing behavior. Fresh non-holdout science,
+transaction checks and exact scientific/signature equivalence to the selected
+hidden policy must qualify the new artifact before any C input is opened.
+The derived C manifest preserves the original inputs, comparisons, statistical
+rules and budgets, and protects the selected hidden artifact as its incumbent.
+C tests the frozen, uninjected public invocation once. Failure or inconclusive
+evidence retains the old default, with no runner-up or retuning; success permits
+that already-tested artifact without further production changes. This
+amendment does not itself activate routing or establish a performance result.
+
+Hidden OLS `inject=routing_h{4|8|16|32}_k{0|1|2}` selects a fixed iteration
+checkpoint and high-degree CMG sample count. Eligible two-FE problems start the
+existing diagonal-preconditioned Schur recurrence and consider one optional
+CMG build if work remains at the checkpoint. General categorical problems retain
+the existing three-FE geometry shortcut, then start incumbent LSMR in its bounded
+RHS windows. If any active RHS still needs iterations at the checkpoint, the
+additive preconditioner may replace one eligible categorical pair's large
+component solvers with fixed reduced CMG inverses. Pair nomination maximizes
+the largest component's smaller FE dimension, then the sum of component retained
+widths, both descending, with ascending original factor indices breaking ties.
+Components within the existing dense
+threshold and all other local solvers remain unchanged; replacement of the
+eligible components commits together or not at all. Explicit
+`preconditioner(off|diagonal|schwarz)` remains authoritative; general pair
+replacement requires `preconditioner(auto)`.
+
+Construction runs serially at the numerical checkpoint, without elapsed-time or
+background-completion decisions. Refusal leaves the live recurrence unchanged;
+acceptance restarts from the current iterate with a fresh correction residual
+and original RHS normalization. Checkpoints use recurrence readiness; final
+acceptance still requires the original-design certificate at the requested
+tolerance. Pilots, restarts, corrections and fallbacks share the existing
+per-projection-action native cap, not an estimation-wide cap across Low chunks.
+
+Optional setup has a separate checked cap of `32 W0`, where `W0` conservatively
+prices one incumbent iteration over the first active batch (the first bounded
+window for general LSMR). Later chunks cannot enlarge that allowance. General
+LSMR first admits a bounded metadata scan against `32` times its known
+design/vector cost, then incorporates the incumbent's actual local-factor work
+bound without forgetting the scan cost; an incomplete scan declines routing.
+Construction reserves `4 W0` for handoff, and acceptance additionally admits the
+required candidate startup applications and correction work. Setup and a built
+inverse are shared by the immutable sample/topology/weight binding; a new
+accuracy/final-residual phase receives its own setup allowance and may reuse the
+inverse. Incurred optional work remains charged after refusal. Joint memory
+admission covers resident hierarchies, live recurrences, restart buffers and
+application scratch. Optional budget refusal resumes the incumbent; Break and
+fatal errors preserve atomic failure. Existing preconditioner-breakdown fallback
+uses only the remaining native budget. These optional caps do not constrain an
+explicit CMG request.
+
+Three separate hidden two-FE experiments isolate structural choices:
+`routing_diagonal` uses the current-weight Schur diagonal with the observation
+operator; `routing_cells` retains the incumbent `D_f` preconditioner and applies
+the operator through deterministic aggregated weighted cells;
+`routing_direct` considers componentwise grounded
+Schur factorization in either orientation. Its structural noncertificate work
+`A` must satisfy `A <= 4 W_ref`: `A` includes sunk census/profiling work for both
+orientations, assembly, factorization, solves for the currently committed RHSs,
+reconstruction and direct-specific checks. `W_ref` prices one incumbent iteration
+in the incumbent orientation with the current active RHSs packed, without credit
+for inactive capacity. The complete attempt, including the shared original-design
+certificate, must fit the remaining `32 W0` physical-work allowance and the joint
+memory budget; the protected fallback certificate/output reserve is unchanged.
+The certificate is common only when its kernel, scales and acceptance contract
+match the incumbent's; direct-only preparation remains in `A`. Census/profile
+prefixes cannot spend the certificate allowance. Checked overflow declines the
+proposal. The full admitted work reservation is charged before numerical work,
+with no refund or second candidate after factorization or certificate failure;
+the incumbent remains available. The four-iteration threshold applies only to
+structural work and carries no total-overhead or speed guarantee. Grounding and
+zero-diagonal preconditioning safeguards are not numerical-rank authorities.
+Zero/one-FE and slope routes retain their existing behavior. Separate prefix,
+concurrent-preparation and PPML topology experiments are described below. Exact hidden tokens
+and validation are specified in [the plugin protocol](plugin_protocol.md#developer-injections-hidden-adapters-only);
+implementation boundaries are [routing work accounting](../crates/fereg-core/src/fe/routing.rs),
+[general pair replacement](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs),
+[two-FE kernels](../crates/fereg-core/src/fe/routing_kernel.rs) and
+[direct proposals](../crates/fereg-core/src/fe/routing_direct.rs).
+
+Declared routing scope: only explicitly injected OLS routes may change
+coefficients, covariance, fit statistics, residuals, FE coordinates and solver
+iteration signatures within §20 tolerances. Sample, rank, omission, original
+factor slots/base flags and other discrete model decisions remain unchanged;
+uninjected routes retain exact scientific results and solver signatures.
+Independent witnesses cover weighted rectangle and dense observation-elimination
+identities, disconnected direct solves, exact recurrence continuation after
+refusal, accepted pair replacement/reuse, and original FE-moment and coefficient
+reconstruction checks. No performance or default-promotion claim follows from
+these contracts.
+
+Explicit OLS `solver(it)` retains its support envelope and incumbent
+observation-space behavior. Hidden `inject=it_coefficients` independently tests
+a categorical intercept challenger; it compares complete simultaneous memory
+plans before allocation: compact
+acceleration owns three coefficient banks and one candidate residual panel;
+observation-space acceleration owns three residual snapshots and, only when
+retaining FE coefficients, three coefficient banks. Each plan includes its
+coefficient layout metadata and the fully reserved sweep/certificate workspace;
+caller-owned input storage remains in execution memory. The smaller plan is selected, with
+ties favoring coefficient space; failure to admit it is an allocation error.
+No IT prefix is promoted into ordinary automatic routing, and generic
+slope-bearing IT retains its existing implementation.
+
+Compact IT computes its extrapolation parameter in the Euclidean coefficient
+metric, preserving the original-slot sweep gauge. It reconstructs the proposal
+in observation space and accepts it only when its independent original-weight
+certificate's relative two-norm strictly improves on the ordinary two-sweep
+baseline. An unusable or rejected proposal leaves that baseline and its
+coefficients intact. A passing iterative
+certificate receives a confirming sweep when iterations remain; all ordinary
+and confirming sweeps share the original cap; initially certified input returns
+at zero sweeps. Exhaustion without certification is explicit. The changed metric
+may change injected categorical IT coefficients, covariance, fit statistics,
+residuals, FE coordinates and iteration signatures
+within §20 tolerances; discrete decisions and unaffected solver routes remain
+unchanged. Witnesses include weighted disconnected rectangles, exact memory
+boundaries, exhaustion, and coefficient reconstruction in
+[categorical IT tests](../crates/fereg-core/src/fe/borrowed_map/irons_tuck.rs), plus
+[independent dense-QR OLS comparisons](../crates/fereg-oracle/tests/irons_tuck.rs)
+across two, three and five FEs, Fast/Low modes and worker counts, with saved effects
+and an unaffected slope-IT check.
+
+The isolated categorical prefix arms replace the existing three-FE shortcut;
+they never stack with it. `routing_prefix_none` omits that shortcut,
+`routing_prefix_map4` permits four native MAP sweeps, and
+`routing_prefix_it4` permits four compact IT cycles, priced as at most eight
+native sweeps including confirmation. A prefix starts only when its complete
+memory plan fits and its nominal sweep allowance leaves a native LSMR step.
+Every executed sweep consumes the existing action cap. An unfinished prefix
+passes original-slot coefficients to a categorical seeded LSMR session with the
+original response, weights and normalization; its result already includes the
+seed. All three hidden prefix arms certify the original problem at the requested
+MAP tolerance, both before and after LSMR correction; the stricter private LSMR
+recurrence tolerance and native iteration caps remain unchanged. The seed and enlarged warm-session banks are admitted on every solver and
+preconditioner-fallback path. Each Low chunk and final-residual action retains
+its own cap. The backend's presence does not suppress an explicitly requested
+prefix. An early certificate reports the concrete MAP or IT family. Low reports
+combine those prefixes with actual LSMR metadata when a chunk needs LSMR, while
+preserving any real fallback; an intentional prefix alone is not a fallback.
+Uninjected Auto retains its existing shortcut.
+
+`routing_overlap_h{8|16|32}_k{0|1|2}` separately tests preparation on one existing
+worker. It requires an exclusively admitted synchronous/scoped executor action
+with at least two workers; a one-worker request uses serial preparation. Shared
+or retained team handles block exclusive admission, and incompatible nested
+requests fail before launch. Arbitrary detached Rayon jobs remain outside the
+executor's scoped-lifetime contract. The foreground retains its fixed numerical
+partitions while at most `P-1` workers execute it. A startup handshake prevents
+the foreground coordinator from stealing and parking on its own builder task.
+
+At four incumbent iterations, the controller launches an owned builder with an
+initial `W0` grant; later four-iteration epochs add `W0` up to its admitted
+allowance. Compatible Low chunks retain the actual parked builder and cumulative
+spending. Before a general-LSMR builder resumes, joint admission refreshes its
+foreground-memory envelope and budget, including same-width calls with changed
+parent storage. Every subsequent allocation checks that current envelope;
+refreshing it never replenishes the initial work cap or grants. Existing builder
+storage that cannot coexist with the next foreground causes refusal and a join
+before fallback. The two-FE session instead admits its maximum Low width upfront.
+At an uncertified frozen checkpoint `h`, the remaining allowance is
+granted and the worker joined before a valid exact-residual restart. Readiness
+cannot advance the handoff or release the worker. Convergence readiness defers
+new grants and drains issued work before the existing original-design
+certificate decides. Break dominates terminal arbitration; other fatal errors
+use fixed kind/task ordering and cannot truncate the peer's prescribed work by
+arrival time. Refusal preserves the incumbent and cannot veto certified success.
+All terminal paths join before publication or rollback.
+
+Fixed service state and owned inputs are established before launch. Subsequent
+variable numerical payload allocations remain checked, fallible, memory-admitted
+and gated at stable logical operation sites. Small shared ownership controls
+are also admitted and gated; stable Rust's `Arc` allocation remains infallible.
+This replaces the original proposal to reserve every eventual
+hierarchy arena upfront. Accounting reserves do not guarantee physical memory:
+successful fixed-mode/worker/seed executions and fixed-site injected failures
+must repeat, while exogenous allocation failures have containment rather than
+schedule-independent outcome guarantees. Standard `Arc` and executor control
+bookkeeping use their allocator APIs; allocator abort and process death remain
+outside the survival guarantee. The numerical payload contract must not be
+described as universal recoverability from process-wide exhaustion.
+
+Hidden PPML `inject=ppml_topology` shares only component labels in the already
+admitted categorical checkpoint path. It retains no weighted numerical factors,
+maxima or normalized weights. Accepted and pending topology have separate
+publication ownership; acceptance and rollback transitions allocate and log
+nothing. Rejected trials preserve accepted state, while support or incompatible
+generation changes invalidate reuse. Weighted data is rebuilt for each current
+frame. The default cache is disabled, and this experiment does not change outer
+engines, strict checkpoints, separation, sample/rank decisions or bias modes.
 
 Explicit OLS `solver(lsmr)` stops its recurrence at a hundredth of
 `tolerance()`, floored at 1e-15 and never looser than `tolerance()`, and

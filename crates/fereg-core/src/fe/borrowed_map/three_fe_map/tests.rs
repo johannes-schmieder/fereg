@@ -226,6 +226,8 @@ fn pilot_debits_first_half_work_and_keeps_the_final_reserve() {
             estimate,
             false,
             Some(1),
+            None,
+            false,
         )
         .unwrap();
         assert_eq!(result.report.pilot_iterations, SWEEPS);
@@ -247,6 +249,8 @@ fn pilot_debits_first_half_work_and_keeps_the_final_reserve() {
             estimate,
             false,
             None,
+            None,
+            false,
         )
         .unwrap();
         let skipped = super::super::project_general_categorical(
@@ -260,6 +264,8 @@ fn pilot_debits_first_half_work_and_keeps_the_final_reserve() {
             estimate,
             false,
             Some(1),
+            None,
+            false,
         )
         .unwrap();
         assert_eq!(skipped.report.pilot_iterations, 0);
@@ -291,6 +297,8 @@ fn consumed_pilot_keeps_fresh_lsmr_norms_and_retained_coefficients() {
                 estimate,
                 true,
                 pilot.then_some(1),
+                None,
+                false,
             )
             .unwrap()
         };

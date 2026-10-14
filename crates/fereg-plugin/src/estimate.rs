@@ -13,7 +13,7 @@ use crate::transport::{
 };
 #[cfg(test)]
 use fereg_core::ols::OlsInputBinding;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::time::Instant;
 
 use crate::input::{PreparedMatrixStoreName, SpiApi};
@@ -28,7 +28,7 @@ use fereg_core::error::{
     allocation, invalid_argument as invalid, invalid_data, unsupported, ErrorCode, FeregError,
     Result,
 };
-use fereg_core::fe::{AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner};
+use fereg_core::fe::{AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner, RoutingPreset};
 use fereg_core::metadata::{ComponentKind, SourceId};
 #[cfg(test)]
 use fereg_core::ols::{
@@ -195,6 +195,8 @@ struct EstimateActionSpec {
     account_cluster_nesting: bool,
     memory: MemoryMode,
     solver: FeSolverKind,
+    routing: Option<RoutingPreset>,
+    it_coefficients: bool,
     cmg_schur_degree: usize,
     cmg_schur_samples: u32,
     cmg_schur_seed: u64,
@@ -295,8 +297,24 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     // saved-FE recovery) run on the action team while Stata's thread polls
     // Break; an interruption stops core loops at their next checkpoint.
     let team = ThreadTeam::new(action.fit.execution.threads);
+    let team = if team.threads() > 1
+        && action
+            .fit
+            .absorb
+            .routing
+            .is_some_and(RoutingPreset::overlaps)
+    {
+        team.with_exclusive_overlap()
+    } else {
+        team
+    };
     let mut native_break_token = action.native_break_token.take();
-    let hold_for_break = native_break_token.is_some();
+    let builder_break = action
+        .fit
+        .absorb
+        .routing
+        .is_some_and(RoutingPreset::breaks_builder);
+    let hold_for_break = native_break_token.is_some() && !builder_break;
     let numerical_action = &mut action;
     let (prepared, inference, derived, phase_seconds) = crate::cancellable::run(
         team,
@@ -338,18 +356,7 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 [prepare_seconds, inference_seconds, outputs_seconds],
             ))
         },
-        &mut || {
-            if let Some(token) = native_break_token.take() {
-                // Arm the interactive controller only after display returns.
-                spi.display(crate::developer_injection::OLS_NATIVE_BREAK_MARKER)?;
-                crate::developer_injection::create_native_break_marker(
-                    "fereg",
-                    crate::developer_injection::OLS_NATIVE_BREAK_MARKER,
-                    &token,
-                )?;
-            }
-            spi.check_interrupted_while_waiting()
-        },
+        &mut || poll_ols_wait(spi, &mut native_break_token, builder_break),
     )?;
     let view = inference.view();
     complete_ols(
@@ -370,6 +377,24 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             phase_seconds,
         }),
     )
+}
+
+fn poll_ols_wait(
+    spi: &mut dyn SpiApi,
+    native_break_token: &mut Option<String>,
+    builder_break: bool,
+) -> Result<()> {
+    let ready = !builder_break || fereg_core::fe::routing_builder_break_ready();
+    if let Some(token) = ready.then(|| native_break_token.take()).flatten() {
+        // Arm the interactive controller only after display returns.
+        spi.display(crate::developer_injection::OLS_NATIVE_BREAK_MARKER)?;
+        crate::developer_injection::create_native_break_marker(
+            "fereg",
+            crate::developer_injection::OLS_NATIVE_BREAK_MARKER,
+            &token,
+        )?;
+    }
+    spi.check_interrupted_while_waiting()
 }
 
 mod ols_pipeline;
@@ -790,6 +815,50 @@ impl EstimateAction {
     }
 }
 
+/// Validate the explicit CMG-Schur option family as one request contract.
+fn parse_cmg_schur_options(
+    values: &std::collections::BTreeMap<String, String>,
+    solver: FeSolverKind,
+) -> Result<(usize, u32, u64)> {
+    let cmg_schur_degree = match values.get("cmgdegree") {
+        Some(_) if solver != FeSolverKind::CmgSchur => {
+            return Err(syntax("cmgdegree() is valid only with solver(cmgschur)"));
+        }
+        Some(_) => {
+            let degree = parse_usize(values, "cmgdegree")?;
+            if !(4..=6).contains(&degree) {
+                return Err(syntax("cmgdegree() must be 4, 5, or 6"));
+            }
+            degree
+        }
+        None => 5,
+    };
+    for option in ["cmgsamples", "cmgseed"] {
+        if values.contains_key(option) && solver != FeSolverKind::CmgSchur {
+            return Err(syntax(format!(
+                "{option}() is valid only with solver(cmgschur)"
+            )));
+        }
+    }
+    let cmg_schur_samples = values
+        .get("cmgsamples")
+        .map(|_| parse_nonnegative_u32(values, "cmgsamples"))
+        .transpose()?
+        .unwrap_or(0);
+    let cmg_schur_seed = match values.get("cmgseed") {
+        Some(_) if cmg_schur_samples == 0 => {
+            return Err(syntax("cmgseed() requires positive cmgsamples()"));
+        }
+        Some(value) => value
+            .parse::<u64>()
+            .ok()
+            .filter(|seed| *seed < (1_u64 << 53))
+            .ok_or_else(|| syntax("cmgseed() must be an integer in 0..9007199254740991"))?,
+        None => 0,
+    };
+    Ok((cmg_schur_degree, cmg_schur_samples, cmg_schur_seed))
+}
+
 impl EstimateActionSpec {
     fn cluster_tables(&self) -> ClusterTables<'_> {
         ClusterTables {
@@ -889,42 +958,19 @@ impl EstimateActionSpec {
         let output_absorbed = parse_nonnegative_u32(&values, "output_absorbed")?;
         let output_saved_count = parse_usize(&values, "output_saved_count")?;
         let solver = parse_solver(required(&values, "solver")?)?;
-        let cmg_schur_degree = match values.get("cmgdegree") {
-            Some(_) if solver != FeSolverKind::CmgSchur => {
-                return Err(syntax("cmgdegree() is valid only with solver(cmgschur)"));
-            }
-            Some(_) => {
-                let degree = parse_usize(&values, "cmgdegree")?;
-                if !(4..=6).contains(&degree) {
-                    return Err(syntax("cmgdegree() must be 4, 5, or 6"));
-                }
-                degree
-            }
-            None => 5,
-        };
-        for option in ["cmgsamples", "cmgseed"] {
-            if values.contains_key(option) && solver != FeSolverKind::CmgSchur {
-                return Err(syntax(format!(
-                    "{option}() is valid only with solver(cmgschur)"
-                )));
-            }
+        let injection = crate::developer_injection::parse_ols(
+            values.get("inject").map_or("", String::as_str),
+            solver,
+            values.get("break_marker_token").map_or("", String::as_str),
+        )?;
+        let threads = parse_usize(&values, "threads")?;
+        if injection.routing.is_some_and(RoutingPreset::breaks_builder)
+            && ThreadConfig::from_requested(threads, false)?.resolved() < 2
+        {
+            return Err(syntax("hidden builder Break requires at least two workers"));
         }
-        let cmg_schur_samples = values
-            .get("cmgsamples")
-            .map(|_| parse_nonnegative_u32(&values, "cmgsamples"))
-            .transpose()?
-            .unwrap_or(0);
-        let cmg_schur_seed = match values.get("cmgseed") {
-            Some(_) if cmg_schur_samples == 0 => {
-                return Err(syntax("cmgseed() requires positive cmgsamples()"));
-            }
-            Some(value) => value
-                .parse::<u64>()
-                .ok()
-                .filter(|seed| *seed < (1_u64 << 53))
-                .ok_or_else(|| syntax("cmgseed() must be an integer in 0..9007199254740991"))?,
-            None => 0,
-        };
+        let (cmg_schur_degree, cmg_schur_samples, cmg_schur_seed) =
+            parse_cmg_schur_options(&values, solver)?;
         let specification = Self {
             memory_baseline: Baseline::parse(&values)?,
             transport_parent_bytes: crate::metadata_memory::argument_parent_bytes(args)?,
@@ -954,12 +1000,14 @@ impl EstimateActionSpec {
             account_cluster_nesting: parse_bool(&values, "account_cluster_nesting")?,
             memory: MemoryMode::parse(required(&values, "memory")?)?,
             solver,
+            routing: injection.routing,
+            it_coefficients: injection.it_coefficients,
             cmg_schur_degree,
             cmg_schur_samples,
             cmg_schur_seed,
             preconditioner: parse_preconditioner(required(&values, "preconditioner")?)?,
             poolsize: parse_positive_usize(&values, "poolsize")?,
-            threads: parse_usize(&values, "threads")?,
+            threads,
             deterministic: parse_bool(&values, "deterministic")?,
             tolerance: parse_positive_f64(&values, "tolerance")?,
             iterate: parse_positive_usize(&values, "iterate")?,
@@ -992,7 +1040,7 @@ impl EstimateActionSpec {
                 memory_report: required(&values, "output_memory_matrix")?.to_owned(),
                 receipt: required(&values, "output_receipt_matrix")?.to_owned(),
             },
-            native_break_token: parse_native_break(&values)?,
+            native_break_token: injection.native_break_token,
         };
         reject_unknown_fields(ACTION_ESTIMATE_OLS, &values, OLS_FIELDS)?;
         Ok(specification)
@@ -1141,6 +1189,8 @@ impl EstimateActionSpec {
             .then_some(1e-14),
             absorb: AbsorbConfig {
                 solver: self.solver,
+                routing: self.routing,
+                it_coefficients: self.it_coefficients,
                 cmg_schur_degree: self.cmg_schur_degree,
                 cmg_schur_samples: self.cmg_schur_samples,
                 cmg_schur_seed: self.cmg_schur_seed,
@@ -3474,23 +3524,6 @@ pub(crate) fn imposed_memory_limit_bytes() -> Result<Option<u128>> {
     } else {
         Ok(Some(bytes))
     }
-}
-
-/// Hidden-adapter OLS injection: only `breaknative`, which holds the numerical
-/// phase at a cancellation checkpoint until Stata reports Break.
-fn parse_native_break(values: &BTreeMap<String, String>) -> Result<Option<String>> {
-    let break_native = match values.get("inject").map(String::as_str).unwrap_or("") {
-        "" => false,
-        "breaknative" => true,
-        other => {
-            return Err(syntax(format!(
-                "unknown hidden OLS injection stage {other:?}"
-            )))
-        }
-    };
-    let token = values.get("break_marker_token").map_or("", String::as_str);
-    crate::developer_injection::validate_break_marker_token(break_native, token)?;
-    Ok(break_native.then(|| token.to_owned()))
 }
 
 fn protocol(message: impl Into<String>) -> FeregError {

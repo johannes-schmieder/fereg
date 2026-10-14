@@ -478,13 +478,19 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictLinearCandidateTransaction<'_,
         self.fused_projection
     }
 
+    #[cfg(test)]
+    pub(crate) fn ppml_topology_state_for_test(&self) -> Option<(bool, bool)> {
+        self.session.ppml_topology_state_for_test()
+    }
+
     pub(crate) fn commit(mut self) {
         if self.basis_unchanged {
-            self.session.accept_pending_preconditioner();
+            self.session.accept_pending_factor();
         } else {
             self.session.retire_preconditioner();
         }
         self.rollback = None;
+        self.session.accept_ppml_topology();
     }
 
     pub(crate) fn rollback(self) {
@@ -1861,6 +1867,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             && self.config.execution.mode == PreparedOlsExecutionMode::Fast;
     }
     fn retire_preconditioner(&mut self) {
+        if let Some(projector) = &mut self.fe_projector {
+            projector.reject_ppml_topology();
+        }
         if self.accepted_preconditioner.is_some() || self.pending_preconditioner.is_some() {
             historical_preconditioner::trace(format_args!("retired"));
         }
@@ -1876,6 +1885,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             + 512
     }
     pub(crate) fn accept_pending_preconditioner(&mut self) {
+        self.accept_pending_factor();
+        self.accept_ppml_topology();
+    }
+
+    fn accept_pending_factor(&mut self) {
         let Some(cache) = self.pending_preconditioner.take() else {
             return;
         };
@@ -1914,7 +1928,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         {
             return;
         }
-        historical_preconditioner::trace(format_args!("producer_accepted|build_weights={}|current_weights={}|sample={}|topology={}|basis={}|cache_bytes={}|identity_bytes={basis_bytes}|envelope={}",cache.build_weight_generation,self.generations.weights,self.generations.sample,self.generations.topology,self.generations.basis,cache.bytes(),self.fast_canonical_products_allowance));
+        historical_preconditioner::trace(format_args!(
+            "producer_accepted|build_weights={}|current_weights={}|sample={}|topology={}|basis={}|cache_bytes={}|identity_bytes={basis_bytes}|envelope={}",
+            cache.build_weight_generation,
+            self.generations.weights,
+            self.generations.sample,
+            self.generations.topology,
+            self.generations.basis,
+            cache.bytes(),
+            self.fast_canonical_products_allowance
+        ));
         self.accepted_preconditioner = Some(AcceptedPreconditioner {
             cache,
             basis,
@@ -2292,6 +2315,32 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
     }
 
+    pub(crate) fn enable_ppml_topology(&mut self, allowance: u128) -> Result<()> {
+        if let Some(FeSession {
+            categorical: Some(projector),
+            ..
+        }) = &mut self.fe_projector
+        {
+            projector.enable_ppml_topology(self.generations.map_geometry(), allowance)?;
+        }
+        Ok(())
+    }
+
+    fn accept_ppml_topology(&mut self) {
+        if let Some(projector) = &mut self.fe_projector {
+            projector.accept_ppml_topology(self.generations.map_geometry());
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn ppml_topology_state_for_test(&self) -> Option<(bool, bool)> {
+        self.fe_projector
+            .as_ref()?
+            .categorical
+            .as_ref()?
+            .ppml_topology_state()
+    }
+
     pub(crate) fn enable_component_checkpoint_scaling(
         &mut self,
         allowance: u128,
@@ -2391,7 +2440,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             eprintln!(
                 "FEREG_SOLVER_TRACE|phase=ordinary_linear_route|joint={}|basis_columns={}|response_generation={}|weight_generation={}|mode={:?}",
                 usize::from(eligible),
-                self.frozen_basis.as_ref().map_or(0, |basis| basis.kept_generated_columns().len()),
+                self.frozen_basis
+                    .as_ref()
+                    .map_or(0, |basis| basis.kept_generated_columns().len()),
                 self.generations.response,
                 self.generations.weights,
                 self.config.execution.mode,
@@ -3238,6 +3289,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     ) -> Result<()> {
         require_newer(self.generations.response, response_generation, "response")?;
         self.ensure_bound()?;
+        if let Some(projector) = &mut self.fe_projector {
+            projector.reject_ppml_topology();
+        }
         LinearSolveFrame::from_parts(response, self.weights.borrowed(), self.bread_weight_scale)?
             .validate_for(self.prepared)?;
         let mut reused = self.response.capacity() >= response.len();
@@ -3276,12 +3330,18 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     ) -> Result<()> {
         require_newer(self.generations.weights, weight_generation, "weight")?;
         self.ensure_bound()?;
+        if let Some(projector) = &mut self.fe_projector {
+            projector.reject_ppml_topology();
+        }
         LinearSolveFrame::from_parts(&self.response, weights, bread_weight_scale)?
             .validate_for(self.prepared)?;
         self.pending_preconditioner = None;
         self.pending_weight_buffer_reused = self.weights.replace(weights)?;
         self.bread_weight_scale = bread_weight_scale;
         self.generations.weights = weight_generation;
+        if let Some(projector) = &mut self.fe_projector {
+            projector.begin_ppml_frame(self.generations.map_geometry())?;
+        }
         self.recycle_frame();
         self.reconstruction = None;
         self.reuse = None;
@@ -3308,6 +3368,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.refresh_response(response, generation)?;
         if identical_weights {
             self.generations.weights = generation;
+            if let Some(projector) = &mut self.fe_projector {
+                projector.begin_ppml_frame(self.generations.map_geometry())?;
+            }
             if let Some(FeSession {
                 general: Some(projector),
                 coefficients: true,
@@ -3404,6 +3467,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     #[cfg(test)]
     fn invalidate_prepared_alignment(&mut self) {
         self.retire_preconditioner();
+        if let Some(projector) = &mut self.fe_projector {
+            let _ = projector.begin_ppml_frame(self.generations.map_geometry());
+        }
         self.prepared_alignment_valid = false;
         self.canonical_projection_work_hint = 0;
         self.frozen_basis = None;
@@ -3561,7 +3627,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             if enabled { allowance } else { 0 },
             self.preconditioner_identity_reserve(),
         );
-        historical_preconditioner::trace(format_args!("attempt|checkpoint={reuse_preconditioner}|enabled={enabled}|weights={}|basis={}|envelope={allowance}",self.generations.weights,self.generations.basis));
+        historical_preconditioner::trace(format_args!(
+            "attempt|checkpoint={reuse_preconditioner}|enabled={enabled}|weights={}|basis={}|envelope={allowance}",
+            self.generations.weights, self.generations.basis
+        ));
         let result = super::canonical_products::try_build_with_preconditioner(
             self.prepared,
             &generated,
@@ -5742,7 +5811,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             RetainedWithinStorage::Scratch(_) => {
                 return Err(invalid_argument(
                     "centered refresh requires its owned representation",
-                ))
+                ));
             }
         };
         retained.generations = WithinGenerations::from_session(self.generations);
@@ -5979,7 +6048,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     if self.config.absorb.solver == FeSolverKind::Map
                         && matrix.ncols() > self.reusable_map_max_rhs()?
                     {
-                        return Err(invalid_argument("weighted-linear reusable dense MAP projection exceeds its fixed workspace"));
+                        return Err(invalid_argument(
+                            "weighted-linear reusable dense MAP projection exceeds its fixed workspace",
+                        ));
                     }
                     let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map
                     {

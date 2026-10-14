@@ -19,6 +19,8 @@ use crate::memory::{vec_capacity_bytes, FeSolverMemoryBudget, SolverWorkspacePea
 use super::cmg::cmg_error;
 use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, LevelIndex};
 
+mod bounded;
+pub(super) use bounded::{BoundedCmgBuild, BuildRefusal};
 mod sampling;
 use sampling::SampledTrees;
 pub(super) use sampling::Sampling;
@@ -27,15 +29,21 @@ const MAX_BATCH_COLUMNS: usize = 4;
 
 pub(super) struct CmgSchurPreconditioner {
     preconditioner: CmgPreconditioner,
-    plan: ParallelCmgPlan,
-    executor: ParallelExecutor,
-    workspace: CmgBatchWorkspace,
+    parallel: Option<ParallelApplication>,
     scalar_workspace: Option<CmgWorkspace>,
     rhs: Vec<f64>,
     solution: Vec<f64>,
     components: FirmComponents,
     batch_columns: usize,
     construction: SolverWorkspacePeak,
+    retained_bound: Option<u128>,
+    startup_bound: Option<u64>,
+}
+
+struct ParallelApplication {
+    plan: ParallelCmgPlan,
+    executor: ParallelExecutor,
+    workspace: CmgBatchWorkspace,
 }
 
 impl CmgSchurPreconditioner {
@@ -192,29 +200,42 @@ impl CmgSchurPreconditioner {
         }
         Ok(Self {
             preconditioner,
-            plan,
-            executor,
-            workspace,
+            parallel: Some(ParallelApplication {
+                plan,
+                executor,
+                workspace,
+            }),
             scalar_workspace,
             rhs,
             solution,
             components,
             batch_columns,
             construction: memory.peak,
+            retained_bound: None,
+            startup_bound: None,
         })
     }
 
     pub(super) fn retained_bytes(&self) -> Result<u128> {
+        if let Some(bound) = self.retained_bound {
+            return Ok(bound);
+        }
         Ok(storage(&[
             &self.preconditioner,
-            &self.plan,
-            &self.executor,
-            &self.workspace,
             &self.scalar_workspace,
             &self.rhs,
             &self.solution,
-        ])? + self.components.bytes()
+        ])? + self.parallel.as_ref().map_or(Ok(0), |parallel| {
+            storage(&[&parallel.plan, &parallel.executor, &parallel.workspace])
+        })? + self.components.bytes()
             + std::mem::size_of::<Self>() as u128)
+    }
+
+    /// Checked first-application allowance cached during controlled setup.
+    /// Includes scalar CMG, firm projection and optional reduced-image scaling.
+    pub(super) fn startup_work(&self, rhs_count: usize) -> Option<u64> {
+        self.startup_bound?
+            .checked_mul(u64::try_from(rhs_count).ok()?)
     }
 
     pub(super) fn construction_peak(&self) -> SolverWorkspacePeak {
@@ -314,25 +335,37 @@ impl CmgSchurPreconditioner {
                 continue;
             }
             self.rhs[firms * columns..vertices * columns].fill(0.0);
-            if let Some(workspace) = self.scalar_workspace.as_mut().filter(|_| rhs_count == 1) {
-                self.plan.apply_compatible_into(
+            if self.parallel.is_none() {
+                self.preconditioner.apply_compatible_into(
+                    &self.rhs[..vertices],
+                    &mut self.solution[..vertices],
+                    self.scalar_workspace
+                        .as_mut()
+                        .ok_or_else(|| invalid_data("CMG Schur serial workspace is missing"))?,
+                )
+            } else if let Some(workspace) =
+                self.scalar_workspace.as_mut().filter(|_| rhs_count == 1)
+            {
+                let parallel = self.parallel.as_ref().unwrap();
+                parallel.plan.apply_compatible_into(
                     &self.preconditioner,
                     &self.rhs[..vertices],
                     &mut self.solution[..vertices],
                     workspace,
-                    &self.executor,
+                    &parallel.executor,
                 )
             } else {
                 // The projection's original width fixes its arithmetic path.
                 // A compacted final active lane or one-column tile remainder
                 // of a multi-RHS projection still uses the batched cycle.
-                self.plan.apply_compatible_batch_into(
+                let parallel = self.parallel.as_mut().unwrap();
+                parallel.plan.apply_compatible_batch_into(
                     &self.preconditioner,
                     &self.rhs[..vertices * columns],
                     &mut self.solution[..vertices * columns],
                     columns,
-                    &mut self.workspace,
-                    &self.executor,
+                    &mut parallel.workspace,
+                    &parallel.executor,
                 )
             }
             .map_err(cmg_error)?;
@@ -1061,6 +1094,227 @@ mod tests {
     }
 
     #[test]
+    fn bounded_serial_candidates_preserve_graphs_and_fixed_symmetric_cycles() {
+        let fixture = Fixture::sampled_degrees(true, 1.0);
+        let design = fixture.design();
+        for samples in [0, 1, 2] {
+            let sampling = Sampling { samples, seed: 0 };
+            let explicit = CmgSchurPreconditioner::build(
+                &design,
+                BorrowedMapWeights::Provided(&fixture.weights),
+                0,
+                5,
+                sampling,
+                2,
+                1,
+                None,
+            )
+            .unwrap();
+            let built = CmgSchurPreconditioner::try_build_bounded(
+                &design,
+                BorrowedMapWeights::Provided(&fixture.weights),
+                0,
+                5,
+                sampling,
+                2,
+                None,
+                u64::MAX,
+            )
+            .unwrap();
+            assert_eq!(built.refusal, None);
+            assert!(built.work_used > 0);
+            let used = built.work_used;
+            let mut candidate = built.preconditioner.unwrap();
+            assert!(candidate.parallel.is_none());
+            assert_eq!(edges(&candidate), edges(&explicit));
+            assert_eq!(candidate.components.labels, explicit.components.labels);
+            let n = fixture.firm_index.n_levels();
+            let residual: Vec<_> = (0..n * 2).map(|i| (i as f64 * 0.31).sin()).collect();
+            let mut output = vec![0.0; residual.len()];
+            candidate
+                .apply_batch(&residual, &mut output, 2, 2, None, None)
+                .unwrap();
+            let reference = output.clone();
+            candidate
+                .apply_batch(&residual, &mut output, 2, 2, None, None)
+                .unwrap();
+            assert_eq!(output, reference);
+            let xbx: f64 = (0..n).map(|i| residual[2 * i] * output[2 * i]).sum();
+            let xby: f64 = (0..n).map(|i| residual[2 * i] * output[2 * i + 1]).sum();
+            let ybx: f64 = (0..n).map(|i| residual[2 * i + 1] * output[2 * i]).sum();
+            assert!(xbx > 0.0);
+            assert!((xby - ybx).abs() < 1e-11 * xby.abs().max(1.0));
+            candidate
+                .apply_batch(&vec![1.0; residual.len()], &mut output, 2, 2, None, None)
+                .unwrap();
+            assert!(output.iter().all(|value| *value == 0.0));
+            assert!(candidate.retained_bytes().unwrap() <= built.peak.bytes().unwrap() as u128);
+            let exhausted = CmgSchurPreconditioner::try_build_bounded(
+                &design,
+                BorrowedMapWeights::Provided(&fixture.weights),
+                0,
+                5,
+                sampling,
+                2,
+                None,
+                used - 1,
+            )
+            .unwrap();
+            assert!(exhausted.preconditioner.is_none());
+            assert_eq!(exhausted.refusal, Some(bounded::BuildRefusal::WorkBudget));
+            assert!(exhausted.work_used < used);
+            let exact = CmgSchurPreconditioner::try_build_bounded(
+                &design,
+                BorrowedMapWeights::Provided(&fixture.weights),
+                0,
+                5,
+                sampling,
+                2,
+                None,
+                used,
+            )
+            .unwrap();
+            assert!(exact.preconditioner.is_some());
+            assert_eq!(exact.work_used, used);
+        }
+    }
+
+    #[test]
+    fn bounded_csr_inverse_matches_analytic_schur_across_weight_scales() {
+        for exponent in [-500, 0, 500] {
+            let scale = 2.0_f64.powi(exponent);
+            let weights = [2.0 * scale, 3.0 * scale, 2.0 * scale, 3.0 * scale];
+            let (built, normalization) = CmgSchurPreconditioner::try_build_reduced_bounded(
+                2,
+                2,
+                &[0, 2, 4],
+                &[0, 1, 0, 1],
+                &weights,
+                5,
+                Sampling::default(),
+                None,
+                u64::MAX,
+            )
+            .unwrap();
+            let mut candidate = built.preconditioner.unwrap();
+            assert_eq!(normalization, 3.0 * scale);
+            let mut rhs = [1.0, -1.0];
+            candidate
+                .apply_reduced_in_place(&mut rhs, &mut [0.0; 2], normalization)
+                .unwrap();
+            // Two [2,3] rows give S=2.4*[1,-1;-1,1]*scale.
+            let expected = 5.0 / 24.0 / scale;
+            assert!((rhs[0] / expected - 1.0).abs() < 2e-14);
+            assert!((rhs[1] / expected + 1.0).abs() < 2e-14);
+            let mut constant = [1.0, 1.0];
+            candidate
+                .apply_reduced_in_place(&mut constant, &mut [0.0; 2], normalization)
+                .unwrap();
+            assert_eq!(constant, [0.0; 2]);
+        }
+        // Relative weight range matters separately from a harmless global
+        // scale. Pre-dividing this residual by max(weight) would erase it.
+        let (built, normalization) = CmgSchurPreconditioner::try_build_reduced_bounded(
+            1,
+            2,
+            &[0, 2],
+            &[0, 1],
+            &[1.0, 1e300],
+            5,
+            Sampling::default(),
+            None,
+            u64::MAX,
+        )
+        .unwrap();
+        let mut candidate = built.preconditioner.unwrap();
+        let mut rhs = [1e-100, -1e-100];
+        candidate
+            .apply_reduced_in_place(&mut rhs, &mut [0.0; 2], normalization)
+            .unwrap();
+        assert!((rhs[0] / 5e-101 - 1.0).abs() < 2e-14);
+        assert!((rhs[1] / 5e-101 + 1.0).abs() < 2e-14);
+        let malformed = CmgSchurPreconditioner::try_build_reduced_bounded(
+            2,
+            2,
+            &[0, 3, 2],
+            &[0, 1],
+            &[1.0, 1.0],
+            5,
+            Sampling::default(),
+            None,
+            u64::MAX,
+        )
+        .err()
+        .unwrap();
+        assert_eq!(malformed.code, ErrorCode::InvalidData);
+        let disconnected = CmgSchurPreconditioner::try_build_reduced_bounded(
+            2,
+            2,
+            &[0, 1, 2],
+            &[0, 1],
+            &[1.0, 1.0],
+            5,
+            Sampling::default(),
+            None,
+            u64::MAX,
+        )
+        .err()
+        .unwrap();
+        assert_eq!(disconnected.code, ErrorCode::InvalidData);
+    }
+
+    #[test]
+    fn bounded_refusals_do_not_hide_invalid_inputs_or_consume_unissued_work() {
+        let fixture = Fixture::weighted_stars();
+        let design = fixture.design();
+        let zero = CmgSchurPreconditioner::try_build_bounded(
+            &design,
+            BorrowedMapWeights::Unit,
+            0,
+            5,
+            Sampling::default(),
+            1,
+            None,
+            0,
+        )
+        .unwrap();
+        assert!(zero.preconditioner.is_none());
+        assert_eq!(zero.work_used, 0);
+        assert_eq!(zero.refusal, Some(bounded::BuildRefusal::WorkBudget));
+        let memory = CmgSchurPreconditioner::try_build_bounded(
+            &design,
+            BorrowedMapWeights::Unit,
+            0,
+            5,
+            Sampling::default(),
+            1,
+            Some(FeSolverMemoryBudget {
+                usable_bytes: 0,
+                execution_bytes: 0,
+            }),
+            u64::MAX,
+        )
+        .unwrap();
+        assert!(memory.preconditioner.is_none());
+        assert_eq!(memory.refusal, Some(bounded::BuildRefusal::MemoryBudget));
+        let mut weights = fixture.weights.clone();
+        weights[0] = f64::NAN;
+        let error = CmgSchurPreconditioner::try_build_bounded(
+            &design,
+            BorrowedMapWeights::Provided(&weights),
+            0,
+            5,
+            Sampling::default(),
+            1,
+            None,
+            u64::MAX,
+        )
+        .err()
+        .unwrap();
+        assert_eq!(error.code, ErrorCode::InvalidData);
+    }
+
+    #[test]
     fn sampled_degree_30_60_graphs_preserve_components_and_fixed_positive_cycles() {
         let fixture = Fixture::sampled_degrees(true, 1.0);
         let design = fixture.design();
@@ -1473,7 +1727,7 @@ mod tests {
             assert!(solver.scalar_workspace.is_some());
             assert!(solver.preconditioner.hierarchy().levels().len() > 1);
             if threads > 1 {
-                assert!(solver.plan.operator_count() > 0);
+                assert!(solver.parallel.as_ref().unwrap().plan.operator_count() > 0);
             }
             let vertices = solver.rhs.len() / solver.batch_columns;
             let mut scalar_rhs = vec![0.0; vertices];
@@ -1485,13 +1739,16 @@ mod tests {
                 .gather(&residual, columns, &[0], None, &mut scalar_rhs[..firms])
                 .unwrap();
             solver
+                .parallel
+                .as_ref()
+                .unwrap()
                 .plan
                 .apply_compatible_into(
                     &solver.preconditioner,
                     &scalar_rhs,
                     &mut scalar_solution,
                     &mut scalar_workspace,
-                    &solver.executor,
+                    &solver.parallel.as_ref().unwrap().executor,
                 )
                 .unwrap();
             solver
@@ -1618,13 +1875,16 @@ mod tests {
                         .unwrap();
                     scalar_rhs[firms..].fill(0.0);
                     solver
+                        .parallel
+                        .as_ref()
+                        .unwrap()
                         .plan
                         .apply_compatible_into(
                             &solver.preconditioner,
                             &scalar_rhs,
                             &mut scalar_solution,
                             &mut scalar_workspace,
-                            &solver.executor,
+                            &solver.parallel.as_ref().unwrap().executor,
                         )
                         .unwrap();
                     solver

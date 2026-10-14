@@ -287,6 +287,8 @@ pub(super) fn profile_final_test_mode(mode: u8) -> usize {
 /// PPML-owned policy for calls into the shared linear engine.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PreparedPpmlIrlsConfig {
+    /// Experimental immutable component indexing; numerical frame policies stay fixed.
+    pub(crate) topology_sharing: bool,
     pub(crate) ppml: PpmlConfig,
     pub(crate) linear: PreparedOlsFitConfig,
     pub(crate) memory: PpmlMemoryConfig,
@@ -316,6 +318,7 @@ impl Default for PreparedPpmlIrlsConfig {
             ..PreparedOlsFitConfig::default()
         };
         Self {
+            topology_sharing: false,
             ppml,
             linear,
             memory: PpmlMemoryConfig::default(),
@@ -1523,7 +1526,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         if crate::diagnostics::solver_trace_enabled() {
             crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=irls_convergence|iteration={iteration}|deviance_change={relative_change:.17e}|score={:.17e}|passed={}|step={:.17e}",
-                final_score.relative_infinity_norm, u8::from(iteration_converged), accepted.step,
+                final_score.relative_infinity_norm,
+                u8::from(iteration_converged),
+                accepted.step,
             ));
         }
         strict_control.observe_accepted_iteration(iteration_converged);
@@ -1997,7 +2002,7 @@ fn checkpoint_solver_observation(report: &SolveReport) -> Result<PpmlSolverObser
         _ => {
             return Err(internal(
                 "PPML checkpoint projection used an unsupported solver engine",
-            ))
+            ));
         }
     };
     Ok(PpmlSolverObservation {
@@ -2389,8 +2394,13 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     if crate::diagnostics::solver_trace_enabled() {
         crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=joint_strict_direction|consistent={}|eta_change={:.17e}|beta_change={:.17e}",
-            u8::from(consistent), relative_infinity_difference(workspace.eta(), workspace.candidate_eta()),
-            relative_infinity_difference(workspace.coefficients(), workspace.candidate_coefficients())));
+            u8::from(consistent),
+            relative_infinity_difference(workspace.eta(), workspace.candidate_eta()),
+            relative_infinity_difference(
+                workspace.coefficients(),
+                workspace.candidate_coefficients()
+            )
+        ));
     }
     if !consistent {
         return Ok(false);

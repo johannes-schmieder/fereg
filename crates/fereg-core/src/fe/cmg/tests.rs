@@ -3,6 +3,7 @@ use super::*;
 use crate::fe::{
     absorb_borrowed_intercept_cg, BorrowedCgOptions, BorrowedInterceptEffect, LevelIndex,
 };
+use crate::memory::estimate_fe_solver_memory;
 
 #[test]
 fn hierarchy_work_counts_recursive_level_visits() {
@@ -1651,16 +1652,19 @@ fn cmg_workspace_retained_polish_and_released_final_correction_have_different_pe
     let (within, report, coefficients) = result.into_full_parts();
     let coefficients = coefficients.expect("exact crossed projection retains coefficients");
     assert_eq!(coefficients.rhs_count(), 5); // Wider than the admitted CMG batch.
-    let (norms, _) = weighted_column_norms(&within, BorrowedMapWeights::Unit, 1.0).unwrap();
+    let (norms, norm_peak) = weighted_column_norms(&within, BorrowedMapWeights::Unit, 1.0).unwrap();
     let polish = absorb_borrowed_intercept_cg(
         &design(),
         BorrowedMapWeights::Unit,
         within.clone(),
         options.map,
-        BorrowedCgOptions::polish(&norms),
+        BorrowedCgOptions {
+            retain_coefficients: true,
+            ..BorrowedCgOptions::polish(&norms)
+        },
     )
     .unwrap();
-    assert_eq!(polish.report().iterations, 0);
+    assert!(polish.report().iterations <= options.map.max_iterations);
     let retained_polish = after
         + coefficients.retained_bytes() as u64
         + 5 * 8
@@ -1704,24 +1708,57 @@ fn cmg_workspace_retained_polish_and_released_final_correction_have_different_pe
         .unwrap();
     assert_eq!(
         terminal_result.report().solver_workspace_peak.bytes(),
-        Some(terminal_retained + workspace.bytes().unwrap())
+        Some(
+            (terminal_retained + workspace.bytes().unwrap())
+                .max(
+                    polish.report().solver_workspace_peak.bytes().unwrap()
+                        + norms.capacity() as u64 * 8
+                )
+                .max(norm_peak.bytes().unwrap())
+        )
     );
-    assert_eq!(terminal_result.residualized(), &within);
-    assert_eq!(terminal_result.report().iterations, 0);
-    assert!(!terminal_result.report().fallback_used);
+    assert_eq!(terminal_result.residualized(), polish.residualized());
+    assert_eq!(
+        terminal_result.report().iterations,
+        polish.report().iterations
+    );
+    assert!(terminal_result.report().fallback_used);
+    let (terminal_values, _, terminal_coefficients) = terminal_result.into_full_parts();
+    assert_coefficients_reconstruct(
+        &within,
+        &terminal_values,
+        &[&left, &right],
+        &terminal_coefficients.expect("released-graph correction retains its own product"),
+        1e-10,
+    );
+    for row in 0..n {
+        for rhs in 0..5 {
+            assert!((terminal_values[(row, rhs)] - (rhs + 1) as f64 * noise[row]).abs() < 1e-10);
+        }
+    }
 
-    // Isolate the final phase after construction has already been reported.
-    // This test does not change the production admission decision.
-    session.memory = CmgWorkspacePlan::EMPTY;
     let input = DenseMatrix::from_columns(&[(0..n)
         .map(|row| noise[row] + if left[row] == 0 { 2e-9 } else { 0.0 })
         .collect()])
     .unwrap();
-    let mut strict = options.map;
+    assert_released_cmg_final_correction_peak(session, design(), input, &noise);
+}
+
+fn assert_released_cmg_final_correction_peak(
+    mut session: CmgAbsorber<'_>,
+    design: BorrowedInterceptFeDesign<'_>,
+    input: DenseMatrix,
+    expected_values: &[f64],
+) {
+    // Isolate the final phase after construction has already been reported.
+    // This test does not change the production admission decision.
+    session.memory = CmgWorkspacePlan::EMPTY;
+    let retained = session.retained_workspace_peak().unwrap().bytes().unwrap();
+    let mut strict = session.config.map;
     strict.tolerance = 1e-12;
     let (cert, cert_work) =
         super::super::borrowed_map::certify_borrowed_intercept_candidate_with_workspace(
-            &design(),
+            &design,
             BorrowedMapWeights::Unit,
             &input,
             strict,
@@ -1730,21 +1767,24 @@ fn cmg_workspace_retained_polish_and_released_final_correction_have_different_pe
     assert!(!cert.passed);
     let (norms, norm_work) = weighted_column_norms(&input, BorrowedMapWeights::Unit, 1.0).unwrap();
     let reference = absorb_borrowed_intercept_cg(
-        &design(),
+        &design,
         BorrowedMapWeights::Unit,
         input.clone(),
         strict,
-        BorrowedCgOptions::polish(&norms),
+        BorrowedCgOptions {
+            retain_coefficients: session.config.retain_coefficients,
+            ..BorrowedCgOptions::polish(&norms)
+        },
     )
     .unwrap();
     assert!(reference.report().iterations > 0);
     let correction =
         reference.report().solver_workspace_peak.bytes().unwrap() + norms.capacity() as u64 * 8;
-    let expected = (after + cert_work.bytes().unwrap())
+    let expected = (retained + cert_work.bytes().unwrap())
         .max(correction)
         .max(norm_work.bytes().unwrap());
     assert!(
-        expected < after + correction,
+        expected < retained + correction,
         "the released hierarchy must not be added to CG"
     );
     let result = session.absorb_final_residual(input, 1e-12).unwrap();
@@ -1753,7 +1793,7 @@ fn cmg_workspace_retained_polish_and_released_final_correction_have_different_pe
         Some(expected)
     );
     assert!(result.report().fallback_used);
-    for (residual, expected) in result.residualized().as_slice().iter().zip(noise) {
+    for (residual, expected) in result.residualized().as_slice().iter().zip(expected_values) {
         assert!((residual - expected).abs() < 1e-12);
     }
 }
@@ -1816,6 +1856,150 @@ fn near_within_cmg_hadamard_batch_preserves_forward_accuracy() {
 }
 
 #[test]
+fn terminal_cmg_polish_resolves_small_weak_cell_potentials() {
+    // Equal-weight +/- pairs make the independent within projection exact.
+    // The added FE signal cancels on heavy edges, so its nonzero moments can
+    // pass a tight certificate while its light-cell forward error remains.
+    let levels = 32;
+    let rows = 4 * levels;
+    let worker: Vec<_> = (0..rows).map(|row| (row / 4) as u32).collect();
+    let firm: Vec<_> = (0..rows)
+        .map(|row| ((row / 4 + (row / 2) % 2) % levels) as u32)
+        .collect();
+    let worker_index = LevelIndex::from_codes(&worker, levels).unwrap();
+    let firm_index = LevelIndex::from_codes(&firm, levels).unwrap();
+    let design = || {
+        BorrowedInterceptFeDesign::new(
+            rows,
+            vec![
+                effect(&worker, levels, &worker_index),
+                effect(&firm, levels, &firm_index),
+            ],
+        )
+        .unwrap()
+    };
+    let truth: Vec<_> = (0..rows)
+        .map(|row| if row % 2 == 0 { 1.0 } else { -1.0 })
+        .collect();
+    let mut options = config(1);
+    options.map.tolerance = 1e-14;
+    options.map.max_iterations = 256;
+    for amplitude in [0.0, 1e-8] {
+        let potential: Vec<_> = (0..levels)
+            .map(|level| amplitude * ((0.73 * level as f64).sin() + (0.31 * level as f64).cos()))
+            .collect();
+        let input = DenseMatrix::from_columns(&[truth
+            .iter()
+            .enumerate()
+            .map(|(row, value)| {
+                value + potential[firm[row] as usize] - potential[worker[row] as usize]
+            })
+            .collect()])
+        .unwrap();
+        let raw: Vec<_> = (0..rows)
+            .map(|row| if (row / 2) % 2 == 0 { 1.0 } else { 1e-6 })
+            .collect();
+        let weights = BorrowedMapWeights::Provided(&raw);
+        let certificate =
+            certify_borrowed_intercept_candidate(&design(), weights, &input, options.map).unwrap();
+        assert!(certificate.passed);
+        assert_eq!(certificate.absolute_infinity_norm == 0.0, amplitude == 0.0);
+        let session = CmgAbsorber::build(design(), weights, options, false).unwrap();
+        let result = session.absorb_final_residual(input, 1e-14).unwrap();
+        assert!(result.report().certified());
+        let error = truth
+            .iter()
+            .enumerate()
+            .map(|(row, expected)| (result.residualized()[(row, 0)] - expected).abs())
+            .fold(0.0_f64, f64::max);
+        assert!(
+            error <= 1e-10,
+            "amplitude={amplitude:e} error={error:e} iterations={}",
+            result.report().iterations
+        );
+        if amplitude == 0.0 {
+            assert_eq!(result.residualized().as_slice(), truth.as_slice());
+        }
+        assert!(result.report().iterations <= options.map.max_iterations);
+        assert!(result.report().fallback_used);
+        assert_eq!(result.report().used_solver, FeSolverKind::Cg);
+    }
+}
+
+#[test]
+fn retained_cmg_polish_admits_actual_rhs_width_at_the_exact_joint_boundary() {
+    let n = 4 * 3 * 4;
+    let left = (0..n).map(|row| (row % 4) as u32).collect::<Vec<_>>();
+    let right = (0..n).map(|row| ((row / 4) % 3) as u32).collect::<Vec<_>>();
+    let li = LevelIndex::from_codes(&left, 4).unwrap();
+    let ri = LevelIndex::from_codes(&right, 3).unwrap();
+    let design = || {
+        BorrowedInterceptFeDesign::new(n, vec![effect(&left, 4, &li), effect(&right, 3, &ri)])
+            .unwrap()
+    };
+    let input = DenseMatrix::from_columns(
+        &(0..5)
+            .map(|rhs| {
+                (0..n)
+                    .map(|row| {
+                        let noise = if (row / 12) % 2 == 0 { -1.0 } else { 1.0 };
+                        (rhs + 1) as f64 * (noise + left[row] as f64 + 0.5 * right[row] as f64)
+                    })
+                    .collect()
+            })
+            .collect::<Vec<_>>(),
+    )
+    .unwrap();
+    let mut options = config(2);
+    options.retain_coefficients = true;
+    for short in [true, false] {
+        let mut session =
+            CmgAbsorber::build(design(), BorrowedMapWeights::Unit, options, false).unwrap();
+        // Warm the real CMG RHS buffers, then test only the next polishing
+        // admission. Its actual five-column result exceeds the graph batch.
+        let warm = session.absorb(input.clone()).unwrap();
+        let (_, _, coefficients) = warm.into_full_parts();
+        let bulk_bytes = coefficients.unwrap().retained_bytes();
+        let graph_bytes = u128::from(session.retained_workspace_peak().unwrap().bytes().unwrap());
+        let estimate = estimate_fe_solver_memory(n, 5, &[4, 3], 1, None).unwrap();
+        let required = graph_bytes
+            + 5 * 8
+            + bulk_bytes
+            + estimate.cg_bytes
+            + 4 * estimate.coefficient_batch_bytes;
+        session.config.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 512,
+            usable_bytes: 512 + required - u128::from(short),
+        });
+        let result = session.absorb(input.clone());
+        if short {
+            let error = result.unwrap_err();
+            assert_eq!(error.code, ErrorCode::Allocation);
+            assert!(error.message.contains("certified CMG polishing requires"));
+        } else {
+            let (within, report, coefficients) = result.unwrap().into_full_parts();
+            assert!(report.certified());
+            assert_eq!(report.used_solver, FeSolverKind::Cmg);
+            let coefficients = coefficients.expect("retained CMG plus strict correction product");
+            assert_eq!(coefficients.rhs_count(), 5);
+            assert_coefficients_reconstruct(
+                &input,
+                &within,
+                &[&left, &right],
+                &coefficients,
+                1e-10,
+            );
+            for row in 0..n {
+                let noise = if (row / 12) % 2 == 0 { -1.0 } else { 1.0 };
+                for rhs in 0..5 {
+                    assert!((within[(row, rhs)] - (rhs + 1) as f64 * noise).abs() < 1e-10);
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn terminal_residual_correction_checks_its_cg_budget() {
     let n = 4 * 3 * 4;
     let left = (0..n).map(|row| (row % 4) as u32).collect::<Vec<_>>();
@@ -1833,7 +2017,8 @@ fn terminal_residual_correction_checks_its_cg_budget() {
     };
     let incremental = estimate_fe_solver_memory(n, 1, &[4, 3], 1, None)
         .unwrap()
-        .cg_bytes;
+        .cg_bytes
+        + 8;
     for short in [true, false] {
         let design =
             BorrowedInterceptFeDesign::new(n, vec![effect(&left, 4, &li), effect(&right, 3, &ri)])
@@ -1853,7 +2038,7 @@ fn terminal_residual_correction_checks_its_cg_budget() {
         if short {
             let error = result.unwrap_err();
             assert_eq!(error.code, ErrorCode::Allocation);
-            assert!(error.message.contains("certified CG fallback requires"));
+            assert!(error.message.contains("certified CMG polishing requires"));
         } else {
             let result = result.unwrap();
             assert!(result.report().certified());
