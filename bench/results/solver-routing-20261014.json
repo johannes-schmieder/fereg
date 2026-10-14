@@ -24852,5 +24852,3359 @@
     "standard_preflight_abort": "39a8b2a91c5c21aff7449014908e7e9da4e77e8fe07684d7c20db5f77d5d4903",
     "standard_terminal_log": "2e6cc29f8cb4c2658626ffd4939fcb6d16dd61639e8cc6a73b9eb675b3784c1f",
     "standard_cell_log": "7d82d44c725b4f4e366fdfc170d8bb594983b7e4b922ee812cb68ea935c5e261"
+  },
+  "recovery": {
+    "schema": 1,
+    "status": "standard_19_pass_1_inconclusive_terminal_followup_pending",
+    "previous_evidence_sha256": "00c338afbca1d2a5be599a51cfa8a5d6c018cecdf6a2d4e4fed652094f70a342",
+    "interpretation": "Existing observations are unchanged. All recorded recovery scientific fingerprints match the original. The first eight calls were excluded on host interference before timing inspection. The complete confirmation supports 19 of 20 standard cells; wide remains inconclusive. No routing policy is selected or promoted.",
+    "host_summary_scope": "Receipt statuses and sample aggregate/reason values are retained exactly. At most five unrelated process maxima per receipt are retained with executable basenames; no raw logs or full process inventories. Hashes bind original sources. ps percentages are decayed averages and screening cannot establish absence of all noise.",
+    "protocols": [
+      {
+        "schema": 1,
+        "kind": "approved_fixed_routing_recovery",
+        "rule": {
+          "new_repetitions": 14,
+          "original_repetitions": 7,
+          "warmups": 1,
+          "native_calls": 60,
+          "budget_seconds": 600,
+          "timeout_seconds": 90,
+          "bootstrap_draws": 10000,
+          "bootstrap_seed": 739391,
+          "bootstrap_indices": [
+            49,
+            9949
+          ],
+          "relative_allowance": 0.05,
+          "absolute_allowance_seconds": 0.001,
+          "decision": "only pooled21 upper99 <= fixed allowance for both cells; new-only result is descriptive",
+          "confidence": "approximate percentile bootstrap; nominal two-look upper tails .025+.005=.03 per cell, not exact or simultaneous control",
+          "retries": "none automatic; future measurement needs a frozen bounded amendment and appropriate repeated-look accounting"
+        },
+        "harness_sha256": "e50ef580caca89663d5af70a7eb471ea75a77b59568c604608bd0e8c09342d14",
+        "source_sha256": "6c9fdc3ca01775d185f8a6e15fd739e5215b1dec42124d31d1e7de10c26f5adb",
+        "value_sha256": "7dfa649366cec97ceaace8862a4fd845759986e7054066a6879e454c55a5a0c7",
+        "source": {
+          "file": "routing-recovery.py",
+          "sha256": "5db3478d8640bd63aec3bcf7a616037876816604a977bae49187cf935e782722"
+        },
+        "bindings": [
+          {
+            "file": "routing-recovery-proposal.md",
+            "sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9"
+          },
+          {
+            "file": "standard-it-warning-relocation.py",
+            "sha256": "25ae3deb1aa6e82690aee3a062c7a0c36cd2cafbc0441a68f0346087e4af132a"
+          },
+          {
+            "file": "summary.json",
+            "sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed"
+          },
+          {
+            "file": "a-policy-it-warning-timing-command.sh",
+            "sha256": "888f0a46c56d47520a53163d00afdd50392f39cdbc651b681b4d45a39bae7d40"
+          },
+          {
+            "file": "records.json",
+            "sha256": "5a48c8a08f7f5b678b711904f5d9ec7aba17276acc0a7e689e8cd7c88fb1ef57"
+          },
+          {
+            "file": "records.json",
+            "sha256": "d9f33acbccfc7f485597fbae741181fdcb0dfad2635673a180d87f30f270951a"
+          }
+        ],
+        "artifacts": {
+          "baseline": "3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a",
+          "candidate": "72ff85cc33e088ec85c9e30feddc589a3f2aa1068bca1d812e74fba498c3207e"
+        },
+        "scope": "User-approved recovery; prior outcomes retained. Future retries need bounded prospective amendments; no automatic repeated looks.",
+        "environment": {
+          "OPENBLAS_NUM_THREADS": "1",
+          "VECLIB_MAXIMUM_THREADS": "1"
+        },
+        "host_guard": {
+          "file": "quiet_host_guard.py",
+          "sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258"
+        },
+        "original_summary": {
+          "file": "summary.json",
+          "sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed"
+        },
+        "descriptors": {
+          "standard": {
+            "file": "standard-command.json",
+            "sha256": "55c8e0ad4c00f3962b36cd7546283c0acf525a39ce229afbb7a9edbf458b52ab"
+          },
+          "policy": {
+            "file": "policy-command.json",
+            "sha256": "3bf27d20b57f20edd38cdf21fca38325c8406124a28cfa2cc05964405412a575"
+          }
+        },
+        "original_cases": {
+          "ols-no-fe-k5-t1.case": "90d5e847be680a4f7bd830aba11633241ac0f649febdd428ae431787b3d4282a",
+          "ols-no-fe-k5-t4.case": "760103726f0f24c3f8b051c62229ee4c5fc672f513035c5b523161489798cc77",
+          "ols-three-unit-k5-t1.case": "ed33b8aaf6bcf0bd6dd5930bbbb33e6117aff4291b483b8af8a340eefb2c4253",
+          "ols-three-unit-k5-t4.case": "4860b0b4d8d436488e19bf1c3d278487d52f0a1672a374cb4735d7565c30a8dd",
+          "ols-two-pw-k5-t1.case": "4d767fab45300f32591e91ad47d0974e9170364c912796f235811d39458d4c00",
+          "ols-two-pw-k5-t4.case": "0de1661e0f3fbf5c66faf50d96e6f21b868d754dbd0ad6eda3fefc8ca7dfc0bc",
+          "ols-two-unit-k20-t1.case": "0cd95bc9fe662c41d5cc9590cb40bf80bd726d05a8bcc9d5283b9630fd903011",
+          "ols-two-unit-k20-t16.case": "b6994b1352d06895f3827415300028af8ee1ddf400085f123524040f183b79c0",
+          "ols-two-unit-k20-t4.case": "79ba374b45b03445f991a29ee106e0af1234ed8ca5fc54244bfad47f2a5f4293",
+          "ols-two-unit-k20-t8.case": "262797c96897d69def16535dab623b79bb38f49f07de37cfa502d7ddbd819226",
+          "ols-two-unit-k5-t1.case": "ae8298f23d77ecde95fb4bca8dd3c27e71b47425e89db4f3b74c293cbffec59a",
+          "ols-two-unit-k5-t4.case": "0bff55b4e2762a6a716ef86dc01e1b2be61d00889ea2eaccfcd5a66f661560a2",
+          "ols-wide-k129-t1.case": "59c6e6abde51d7b20fc296b2ca9f2a7fa8d8633a3b705959cdf2232117f60fd7",
+          "ols-wide-k129-t4.case": "e8c7dc3c492b6f6bda48b54748d732c60a6465575a9d70307a6c314149021bd4",
+          "ols-wide-k64-t1.case": "71cbbcf9684c8433c4653d30eee649ee9be81da1bf6fe2c8c1cf1ddd6115c304",
+          "ols-wide-k64-t4.case": "447228d9c5e937771e9820f9a58e21fed46782c3c9108f39b84e8a8a9602f9cd",
+          "ols-wide-k65-t1.case": "f44113edb1266d49bac339e0be466e1d5a72b891be7e17c48644c413057814ef",
+          "ols-wide-k65-t4.case": "23f764c49e84febb09451fa02809a8cfcd3ff6221cf81463530c2d1871905e90",
+          "ppml-two-unit-k5-t1.case": "8f0d60760796e27256be875ffa1ce239c5d5dd9c2f0079b605ad5493d191a857",
+          "ppml-two-unit-k5-t4.case": "2b61166cefcb0d1bd5be7ff6682c158f5a1d5d5e5c1b20bb50621cfeef124636"
+        },
+        "new_cases": {
+          "ols-wide-k129-t4.case": "e8c7dc3c492b6f6bda48b54748d732c60a6465575a9d70307a6c314149021bd4",
+          "ppml-two-unit-k5-t1.case": "8f0d60760796e27256be875ffa1ce239c5d5dd9c2f0079b605ad5493d191a857"
+        },
+        "native_command_identity_sha256": "52ea7abd5e2f512a4872ab40405f524920e4737303743d8082b4d41135b50968",
+        "policy_original_argv_identity_sha256": "43475cf3875bbbdd6b7ac7154da548035bb3fc70a1b52752fdaf11776429cee6",
+        "policy_replacement_argv_identity_sha256": "379ae25c93069e7a98ac3b8029a8021c9dd8eeaf32a93ffc2cd53ccbe13e7c31",
+        "policy_command_identity_sha256": "2eb954cf9788ee207093f980ed0e498efabc14a15d9e6c66965b665970bd5577"
+      },
+      {
+        "schema": 1,
+        "kind": "approved_fixed_routing_recovery",
+        "rule": {
+          "new_repetitions": 14,
+          "original_repetitions": 7,
+          "warmups": 1,
+          "native_calls": 60,
+          "budget_seconds": 600,
+          "timeout_seconds": 90,
+          "bootstrap_draws": 10000,
+          "bootstrap_seed": 739391,
+          "bootstrap_indices": [
+            49,
+            9949
+          ],
+          "relative_allowance": 0.05,
+          "absolute_allowance_seconds": 0.001,
+          "decision": "only pooled21 upper99 <= fixed allowance for both cells; new-only result is descriptive",
+          "confidence": "approximate percentile bootstrap; nominal two-look upper tails .025+.005=.03 per cell, not exact or simultaneous control",
+          "retries": "none automatic; future measurement needs a frozen bounded amendment and appropriate repeated-look accounting"
+        },
+        "harness_sha256": "e50ef580caca89663d5af70a7eb471ea75a77b59568c604608bd0e8c09342d14",
+        "source_sha256": "b43201974a388a47cd507185906dbe1beaeef27a8b43897846c043ad80a230a5",
+        "value_sha256": "e7a4ed33a41c87315cf9e207ac29e68332b4f8aaf06e98cb3800e5b998fbfa0e",
+        "source": {
+          "file": "routing-recovery-retry.py",
+          "sha256": "8dd6a955a1cf94657bd7f5f74bac3a2023e0230b43642ff3b332c3f69496c389"
+        },
+        "bindings": [
+          {
+            "file": "routing-recovery-proposal.md",
+            "sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9"
+          },
+          {
+            "file": "standard-it-warning-relocation.py",
+            "sha256": "25ae3deb1aa6e82690aee3a062c7a0c36cd2cafbc0441a68f0346087e4af132a"
+          },
+          {
+            "file": "summary.json",
+            "sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed"
+          },
+          {
+            "file": "a-policy-it-warning-timing-command.sh",
+            "sha256": "888f0a46c56d47520a53163d00afdd50392f39cdbc651b681b4d45a39bae7d40"
+          },
+          {
+            "file": "records.json",
+            "sha256": "5a48c8a08f7f5b678b711904f5d9ec7aba17276acc0a7e689e8cd7c88fb1ef57"
+          },
+          {
+            "file": "records.json",
+            "sha256": "d9f33acbccfc7f485597fbae741181fdcb0dfad2635673a180d87f30f270951a"
+          },
+          {
+            "file": "routing-recovery.py",
+            "sha256": "5db3478d8640bd63aec3bcf7a616037876816604a977bae49187cf935e782722"
+          },
+          {
+            "file": "quiet_host_guard.py",
+            "sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258"
+          },
+          {
+            "file": "protocol.json",
+            "sha256": "6c9fdc3ca01775d185f8a6e15fd739e5215b1dec42124d31d1e7de10c26f5adb"
+          },
+          {
+            "file": "receipt.json",
+            "sha256": "22f3c93b5513e078db5d079d19d1a4c6a70c3c4916120a41b8043a4d7cabc644"
+          },
+          {
+            "file": "summary.json",
+            "sha256": "b685a892d84ebe91321d0082d7186a0954e723d4c17862b97960cbe75a5447bf"
+          }
+        ],
+        "artifacts": {
+          "baseline": "3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a",
+          "candidate": "72ff85cc33e088ec85c9e30feddc589a3f2aa1068bca1d812e74fba498c3207e"
+        },
+        "scope": "User-approved recovery; prior outcomes retained. Future retries need bounded prospective amendments; no automatic repeated looks.",
+        "environment": {
+          "OPENBLAS_NUM_THREADS": "1",
+          "VECLIB_MAXIMUM_THREADS": "1"
+        },
+        "host_guard": {
+          "file": "quiet_host_guard.py",
+          "sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258"
+        },
+        "original_summary": {
+          "file": "summary.json",
+          "sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed"
+        },
+        "descriptors": {
+          "standard": {
+            "file": "standard-command.json",
+            "sha256": "7d620e805eade76bbdb29976a5d12df3835cc7bcc5cfe2323acba77da061636d"
+          },
+          "policy": {
+            "file": "policy-command.json",
+            "sha256": "3bf27d20b57f20edd38cdf21fca38325c8406124a28cfa2cc05964405412a575"
+          }
+        },
+        "original_cases": {
+          "ols-no-fe-k5-t1.case": "90d5e847be680a4f7bd830aba11633241ac0f649febdd428ae431787b3d4282a",
+          "ols-no-fe-k5-t4.case": "760103726f0f24c3f8b051c62229ee4c5fc672f513035c5b523161489798cc77",
+          "ols-three-unit-k5-t1.case": "ed33b8aaf6bcf0bd6dd5930bbbb33e6117aff4291b483b8af8a340eefb2c4253",
+          "ols-three-unit-k5-t4.case": "4860b0b4d8d436488e19bf1c3d278487d52f0a1672a374cb4735d7565c30a8dd",
+          "ols-two-pw-k5-t1.case": "4d767fab45300f32591e91ad47d0974e9170364c912796f235811d39458d4c00",
+          "ols-two-pw-k5-t4.case": "0de1661e0f3fbf5c66faf50d96e6f21b868d754dbd0ad6eda3fefc8ca7dfc0bc",
+          "ols-two-unit-k20-t1.case": "0cd95bc9fe662c41d5cc9590cb40bf80bd726d05a8bcc9d5283b9630fd903011",
+          "ols-two-unit-k20-t16.case": "b6994b1352d06895f3827415300028af8ee1ddf400085f123524040f183b79c0",
+          "ols-two-unit-k20-t4.case": "79ba374b45b03445f991a29ee106e0af1234ed8ca5fc54244bfad47f2a5f4293",
+          "ols-two-unit-k20-t8.case": "262797c96897d69def16535dab623b79bb38f49f07de37cfa502d7ddbd819226",
+          "ols-two-unit-k5-t1.case": "ae8298f23d77ecde95fb4bca8dd3c27e71b47425e89db4f3b74c293cbffec59a",
+          "ols-two-unit-k5-t4.case": "0bff55b4e2762a6a716ef86dc01e1b2be61d00889ea2eaccfcd5a66f661560a2",
+          "ols-wide-k129-t1.case": "59c6e6abde51d7b20fc296b2ca9f2a7fa8d8633a3b705959cdf2232117f60fd7",
+          "ols-wide-k129-t4.case": "e8c7dc3c492b6f6bda48b54748d732c60a6465575a9d70307a6c314149021bd4",
+          "ols-wide-k64-t1.case": "71cbbcf9684c8433c4653d30eee649ee9be81da1bf6fe2c8c1cf1ddd6115c304",
+          "ols-wide-k64-t4.case": "447228d9c5e937771e9820f9a58e21fed46782c3c9108f39b84e8a8a9602f9cd",
+          "ols-wide-k65-t1.case": "f44113edb1266d49bac339e0be466e1d5a72b891be7e17c48644c413057814ef",
+          "ols-wide-k65-t4.case": "23f764c49e84febb09451fa02809a8cfcd3ff6221cf81463530c2d1871905e90",
+          "ppml-two-unit-k5-t1.case": "8f0d60760796e27256be875ffa1ce239c5d5dd9c2f0079b605ad5493d191a857",
+          "ppml-two-unit-k5-t4.case": "2b61166cefcb0d1bd5be7ff6682c158f5a1d5d5e5c1b20bb50621cfeef124636"
+        },
+        "new_cases": {
+          "ols-wide-k129-t4.case": "e8c7dc3c492b6f6bda48b54748d732c60a6465575a9d70307a6c314149021bd4",
+          "ppml-two-unit-k5-t1.case": "8f0d60760796e27256be875ffa1ce239c5d5dd9c2f0079b605ad5493d191a857"
+        },
+        "native_command_identity_sha256": "5f35060bfc6af63ef61f6e78ecf5d39f58fb79baebe2a6ea798028afdaca4f44",
+        "policy_original_argv_identity_sha256": "43475cf3875bbbdd6b7ac7154da548035bb3fc70a1b52752fdaf11776429cee6",
+        "policy_replacement_argv_identity_sha256": "379ae25c93069e7a98ac3b8029a8021c9dd8eeaf32a93ffc2cd53ccbe13e7c31",
+        "policy_command_identity_sha256": "2aa3cdbc0313c24ef8802074d999bb52bcef8703c0d3250e2062d676dfd9e6ee",
+        "excluded_attempt": {
+          "scope": "entire first confirmation attempt, including all eight recorded calls",
+          "basis": "corespotlightd at 110% CPU triggered the frozen individual CPU rule at 20.07s; host ineligible, cleanup complete",
+          "chronology": "root inspected the host receipt and excluded the whole attempt before reading any timing values; only failed status/count/case metadata was then inspected",
+          "inference": "no extra eligible statistical look; original 7 plus exactly 14 fresh pairs remain the sole pooled 99% decision",
+          "authorization": "standing user authorization permits this one bounded retry; no automatic retry loop"
+        }
+      }
+    ],
+    "prior_guard_protocol_sha256": "85269ac8b0b55e786f852cec9899d82d5e7e03dfa054f903ae8e923774ebb33e",
+    "excluded_first_attempt": {
+      "eligible": false,
+      "host_receipt_sha256": "22f3c93b5513e078db5d079d19d1a4c6a70c3c4916120a41b8043a4d7cabc644",
+      "timing": {
+        "status": "failed",
+        "platform": "macOS-26.6.2-arm64-arm-64bit",
+        "harness_sha256": "e50ef580caca89663d5af70a7eb471ea75a77b59568c604608bd0e8c09342d14",
+        "repetitions": 14,
+        "warmups": 1,
+        "budget_s": 600.0,
+        "timeout_s": 90.0,
+        "clock": "CLOCK_MONOTONIC around the native call",
+        "allowance": "max(5%, 1 ms)",
+        "records": [
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": -1,
+            "seconds": 0.36295,
+            "process_seconds": 1.5730897079920396,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": -1,
+            "seconds": 0.359966,
+            "process_seconds": 1.5569294589804485,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 0,
+            "seconds": 0.353024,
+            "process_seconds": 1.548322708113119,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 0,
+            "seconds": 0.360127,
+            "process_seconds": 1.5552607499994338,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 1,
+            "seconds": 0.350897,
+            "process_seconds": 1.5467031250009313,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 1,
+            "seconds": 0.357468,
+            "process_seconds": 1.5560582079924643,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 2,
+            "seconds": 0.371584,
+            "process_seconds": 1.5700498750666156,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 2,
+            "seconds": 0.365308,
+            "process_seconds": 1.560788584058173,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          }
+        ],
+        "summary": [],
+        "error": "",
+        "source_sha256": "b685a892d84ebe91321d0082d7186a0954e723d4c17862b97960cbe75a5447bf",
+        "cases": {
+          "ols-wide-k129-t4.case": "e8c7dc3c492b6f6bda48b54748d732c60a6465575a9d70307a6c314149021bd4",
+          "ppml-two-unit-k5-t1.case": "8f0d60760796e27256be875ffa1ce239c5d5dd9c2f0079b605ad5493d191a857"
+        },
+        "artifacts": {
+          "baseline": "3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a",
+          "candidate": "72ff85cc33e088ec85c9e30feddc589a3f2aa1068bca1d812e74fba498c3207e"
+        }
+      }
+    },
+    "eligible_confirmation": {
+      "eligible": true,
+      "host_receipt_sha256": "440badae9e2febf3fc634e7242ecf76baf0d23774e7a70a288fe17288b5121db",
+      "measurement": {
+        "status": "complete_science_exact_pending_host_clearance",
+        "performance_decision": null,
+        "child_return_code": 1,
+        "calls": 60,
+        "source_sha256": "c93e7f3ebc333241c26dffd186494d3b0edeefa5b8335a0ba27518d0ff6a5699",
+        "protocol": {
+          "file": "protocol.json",
+          "sha256": "b43201974a388a47cd507185906dbe1beaeef27a8b43897846c043ad80a230a5"
+        },
+        "summary": {
+          "file": "summary.json",
+          "sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca"
+        },
+        "command_identity_sha256": "5f35060bfc6af63ef61f6e78ecf5d39f58fb79baebe2a6ea798028afdaca4f44"
+      },
+      "timing": {
+        "status": "complete",
+        "platform": "macOS-26.6.2-arm64-arm-64bit",
+        "harness_sha256": "e50ef580caca89663d5af70a7eb471ea75a77b59568c604608bd0e8c09342d14",
+        "repetitions": 14,
+        "warmups": 1,
+        "budget_s": 600.0,
+        "timeout_s": 90.0,
+        "clock": "CLOCK_MONOTONIC around the native call",
+        "allowance": "max(5%, 1 ms)",
+        "records": [
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": -1,
+            "seconds": 0.355157,
+            "process_seconds": 1.541577500058338,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": -1,
+            "seconds": 0.356094,
+            "process_seconds": 1.5390417920425534,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 0,
+            "seconds": 0.352922,
+            "process_seconds": 1.5417934169527143,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 0,
+            "seconds": 0.39199,
+            "process_seconds": 1.5784108750522137,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 1,
+            "seconds": 0.354887,
+            "process_seconds": 1.5398743340047076,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 1,
+            "seconds": 0.353618,
+            "process_seconds": 1.5395734159974381,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 2,
+            "seconds": 0.353135,
+            "process_seconds": 1.5393165840068832,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 2,
+            "seconds": 0.357026,
+            "process_seconds": 1.5456266249530017,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 3,
+            "seconds": 0.365344,
+            "process_seconds": 1.5589849579846486,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 3,
+            "seconds": 0.367449,
+            "process_seconds": 1.56468583305832,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 4,
+            "seconds": 0.370395,
+            "process_seconds": 1.5652939579449594,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 4,
+            "seconds": 0.371818,
+            "process_seconds": 1.5759279169142246,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 5,
+            "seconds": 0.356049,
+            "process_seconds": 1.5527103749336675,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 5,
+            "seconds": 0.360053,
+            "process_seconds": 1.5467698340071365,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 6,
+            "seconds": 0.354345,
+            "process_seconds": 1.5417366250185296,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 6,
+            "seconds": 0.362221,
+            "process_seconds": 1.5512477499432862,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 7,
+            "seconds": 0.355699,
+            "process_seconds": 1.5413465419551358,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 7,
+            "seconds": 0.354062,
+            "process_seconds": 1.555997290997766,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 8,
+            "seconds": 0.39225,
+            "process_seconds": 1.5871610830072314,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 8,
+            "seconds": 0.369052,
+            "process_seconds": 1.5601684999419376,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 9,
+            "seconds": 0.372908,
+            "process_seconds": 1.5672546670539305,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 9,
+            "seconds": 0.354312,
+            "process_seconds": 1.554372041951865,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 10,
+            "seconds": 0.356396,
+            "process_seconds": 1.5510712920222431,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 10,
+            "seconds": 0.377359,
+            "process_seconds": 1.5667255830485374,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 11,
+            "seconds": 0.355642,
+            "process_seconds": 1.5408494159346446,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 11,
+            "seconds": 0.35817,
+            "process_seconds": 1.5433378330199048,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 12,
+            "seconds": 0.351383,
+            "process_seconds": 1.5380067919613793,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 12,
+            "seconds": 0.408087,
+            "process_seconds": 1.5984794159885496,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "candidate",
+            "repetition": 13,
+            "seconds": 0.376031,
+            "process_seconds": 1.5692671670112759,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ols-wide-k129-t4.case",
+            "plugin": "baseline",
+            "repetition": 13,
+            "seconds": 0.356483,
+            "process_seconds": 1.5424119579838589,
+            "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": -1,
+            "seconds": 0.405697,
+            "process_seconds": 0.7910182080231607,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": -1,
+            "seconds": 0.405361,
+            "process_seconds": 0.7933439159533009,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 0,
+            "seconds": 0.413411,
+            "process_seconds": 0.7981910000089556,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 0,
+            "seconds": 0.406735,
+            "process_seconds": 0.7914779169950634,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 1,
+            "seconds": 0.406077,
+            "process_seconds": 0.7901477499399334,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 1,
+            "seconds": 0.404208,
+            "process_seconds": 0.7894548339536414,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 2,
+            "seconds": 0.410224,
+            "process_seconds": 0.7973600829718634,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 2,
+            "seconds": 0.405656,
+            "process_seconds": 0.7906617079861462,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 3,
+            "seconds": 0.412187,
+            "process_seconds": 0.7966059580212459,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 3,
+            "seconds": 0.407123,
+            "process_seconds": 0.7921585410367697,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 4,
+            "seconds": 0.403858,
+            "process_seconds": 0.7879710000706837,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 4,
+            "seconds": 0.405485,
+            "process_seconds": 0.7895283749094233,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 5,
+            "seconds": 0.405144,
+            "process_seconds": 0.7896368330111727,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 5,
+            "seconds": 0.405832,
+            "process_seconds": 0.7902088749688119,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 6,
+            "seconds": 0.411279,
+            "process_seconds": 0.7957950410200283,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 6,
+            "seconds": 0.407059,
+            "process_seconds": 0.7966552920406684,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 7,
+            "seconds": 0.406589,
+            "process_seconds": 0.7910649999976158,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 7,
+            "seconds": 0.405548,
+            "process_seconds": 0.7903688329970464,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 8,
+            "seconds": 0.404717,
+            "process_seconds": 0.7892851249780506,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 8,
+            "seconds": 0.404718,
+            "process_seconds": 0.7876789170550182,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 9,
+            "seconds": 0.404667,
+            "process_seconds": 0.790068208007142,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 9,
+            "seconds": 0.410814,
+            "process_seconds": 0.7956380000105128,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 10,
+            "seconds": 0.405508,
+            "process_seconds": 0.7903972920030355,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 10,
+            "seconds": 0.409297,
+            "process_seconds": 0.7945087919943035,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 11,
+            "seconds": 0.406207,
+            "process_seconds": 0.7919375830097124,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 11,
+            "seconds": 0.406069,
+            "process_seconds": 0.7899621659889817,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 12,
+            "seconds": 0.407794,
+            "process_seconds": 0.7930732920067385,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 12,
+            "seconds": 0.409868,
+            "process_seconds": 0.7940255840076134,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "candidate",
+            "repetition": 13,
+            "seconds": 0.406627,
+            "process_seconds": 0.7920774170197546,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "plugin": "baseline",
+            "repetition": 13,
+            "seconds": 0.406118,
+            "process_seconds": 0.7904100000159815,
+            "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+          }
+        ],
+        "summary": [
+          {
+            "case": "ols-wide-k129-t4.case",
+            "medians": {
+              "baseline": 0.35537050000000003,
+              "candidate": 0.367198
+            },
+            "comparisons": {
+              "candidate": {
+                "median_ratio": 1.007820966528822,
+                "bootstrap95": [
+                  0.9982652586623206,
+                  1.0548357144660474
+                ],
+                "upper_allowance": 1.05,
+                "nonregression_pass": false
+              }
+            }
+          },
+          {
+            "case": "ppml-two-unit-k5-t1.case",
+            "medians": {
+              "baseline": 0.4060935,
+              "candidate": 0.406398
+            },
+            "comparisons": {
+              "candidate": {
+                "median_ratio": 1.0007965870170028,
+                "bootstrap95": [
+                  0.9935846687639471,
+                  1.0045572724730207
+                ],
+                "upper_allowance": 1.05,
+                "nonregression_pass": true
+              }
+            }
+          }
+        ],
+        "all_exact": true,
+        "exactness": "all plugins",
+        "nonregression_pass": false,
+        "elapsed_s": 70.66818124998827,
+        "source_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+        "cases": {
+          "ols-wide-k129-t4.case": "e8c7dc3c492b6f6bda48b54748d732c60a6465575a9d70307a6c314149021bd4",
+          "ppml-two-unit-k5-t1.case": "8f0d60760796e27256be875ffa1ce239c5d5dd9c2f0079b605ad5493d191a857"
+        },
+        "artifacts": {
+          "baseline": "3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a",
+          "candidate": "72ff85cc33e088ec85c9e30feddc589a3f2aa1068bca1d812e74fba498c3207e"
+        }
+      },
+      "interpretation": "New-only 95% interval is descriptive; the retained pooled 21-pair 99% comparison decides the two cells."
+    },
+    "combined_21_pairs": {
+      "schema": 1,
+      "status": "complete",
+      "all_exact_original_and_new": true,
+      "rule": {
+        "new_repetitions": 14,
+        "original_repetitions": 7,
+        "warmups": 1,
+        "native_calls": 60,
+        "budget_seconds": 600,
+        "timeout_seconds": 90,
+        "bootstrap_draws": 10000,
+        "bootstrap_seed": 739391,
+        "bootstrap_indices": [
+          49,
+          9949
+        ],
+        "relative_allowance": 0.05,
+        "absolute_allowance_seconds": 0.001,
+        "decision": "only pooled21 upper99 <= fixed allowance for both cells; new-only result is descriptive",
+        "confidence": "approximate percentile bootstrap; nominal two-look upper tails .025+.005=.03 per cell, not exact or simultaneous control",
+        "retries": "none automatic; future measurement needs a frozen bounded amendment and appropriate repeated-look accounting"
+      },
+      "summary": [
+        {
+          "case": "ols-wide-k129-t4.case",
+          "pairs": [
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 0,
+              "baseline": 0.373374,
+              "candidate": 0.369995,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 1,
+              "baseline": 0.373219,
+              "candidate": 0.421221,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 2,
+              "baseline": 0.392369,
+              "candidate": 0.391535,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 3,
+              "baseline": 0.368834,
+              "candidate": 0.37412,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 4,
+              "baseline": 0.374187,
+              "candidate": 0.3793,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 5,
+              "baseline": 0.39144,
+              "candidate": 0.374545,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 6,
+              "baseline": 0.373277,
+              "candidate": 0.412062,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 0,
+              "baseline": 0.352922,
+              "candidate": 0.39199,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 1,
+              "baseline": 0.353618,
+              "candidate": 0.354887,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 2,
+              "baseline": 0.353135,
+              "candidate": 0.357026,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 3,
+              "baseline": 0.367449,
+              "candidate": 0.365344,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 4,
+              "baseline": 0.370395,
+              "candidate": 0.371818,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 5,
+              "baseline": 0.360053,
+              "candidate": 0.356049,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 6,
+              "baseline": 0.354345,
+              "candidate": 0.362221,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 7,
+              "baseline": 0.354062,
+              "candidate": 0.355699,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 8,
+              "baseline": 0.39225,
+              "candidate": 0.369052,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 9,
+              "baseline": 0.354312,
+              "candidate": 0.372908,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 10,
+              "baseline": 0.356396,
+              "candidate": 0.377359,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 11,
+              "baseline": 0.35817,
+              "candidate": 0.355642,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 12,
+              "baseline": 0.351383,
+              "candidate": 0.408087,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 13,
+              "baseline": 0.356483,
+              "candidate": 0.376031,
+              "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c"
+            }
+          ],
+          "science_sha256": "adc25c1e8fc1644d260c8d79490e6065b7f5c13199ae93e572595530484d677c",
+          "original_report": {
+            "case": "ols-wide-k129-t4.case",
+            "medians": {
+              "baseline": 0.373374,
+              "candidate": 0.3793
+            },
+            "comparisons": {
+              "candidate": {
+                "median_ratio": 1.013664290849228,
+                "bootstrap95": [
+                  0.9909500929363052,
+                  1.1039040712393209
+                ],
+                "upper_allowance": 1.05,
+                "nonregression_pass": false
+              }
+            }
+          },
+          "comparisons": {
+            "original": {
+              "median_ratio": 1.013664290849228,
+              "interval": [
+                0.9909500929363052,
+                1.1039040712393209
+              ],
+              "indices": [
+                249,
+                9749
+              ],
+              "upper_allowance": 1.05,
+              "nonregression_pass": false,
+              "medians": {
+                "baseline": 0.373374,
+                "candidate": 0.3793
+              }
+            },
+            "confirmation": {
+              "median_ratio": 1.007820966528822,
+              "interval": [
+                0.9982652586623206,
+                1.0548357144660474
+              ],
+              "indices": [
+                249,
+                9749
+              ],
+              "upper_allowance": 1.05,
+              "nonregression_pass": false,
+              "medians": {
+                "baseline": 0.35537050000000003,
+                "candidate": 0.367198
+              }
+            },
+            "pooled": {
+              "median_ratio": 1.0110184490350718,
+              "interval": [
+                0.994271313842193,
+                1.0548357144660474
+              ],
+              "indices": [
+                49,
+                9949
+              ],
+              "upper_allowance": 1.05,
+              "nonregression_pass": false,
+              "medians": {
+                "baseline": 0.360053,
+                "candidate": 0.372908
+              }
+            }
+          },
+          "pass": false
+        },
+        {
+          "case": "ppml-two-unit-k5-t1.case",
+          "pairs": [
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 0,
+              "baseline": 0.425972,
+              "candidate": 0.430434,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 1,
+              "baseline": 0.432597,
+              "candidate": 0.42416,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 2,
+              "baseline": 0.430127,
+              "candidate": 0.430169,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 3,
+              "baseline": 0.426972,
+              "candidate": 0.42993,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 4,
+              "baseline": 0.429588,
+              "candidate": 0.456462,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 5,
+              "baseline": 0.457998,
+              "candidate": 0.44699,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "original",
+              "session_sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed",
+              "repetition": 6,
+              "baseline": 0.414241,
+              "candidate": 0.442692,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 0,
+              "baseline": 0.413411,
+              "candidate": 0.406735,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 1,
+              "baseline": 0.404208,
+              "candidate": 0.406077,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 2,
+              "baseline": 0.410224,
+              "candidate": 0.405656,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 3,
+              "baseline": 0.407123,
+              "candidate": 0.412187,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 4,
+              "baseline": 0.403858,
+              "candidate": 0.405485,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 5,
+              "baseline": 0.405832,
+              "candidate": 0.405144,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 6,
+              "baseline": 0.411279,
+              "candidate": 0.407059,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 7,
+              "baseline": 0.405548,
+              "candidate": 0.406589,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 8,
+              "baseline": 0.404717,
+              "candidate": 0.404718,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 9,
+              "baseline": 0.410814,
+              "candidate": 0.404667,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 10,
+              "baseline": 0.405508,
+              "candidate": 0.409297,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 11,
+              "baseline": 0.406069,
+              "candidate": 0.406207,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 12,
+              "baseline": 0.407794,
+              "candidate": 0.409868,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            },
+            {
+              "session": "confirmation",
+              "session_sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca",
+              "repetition": 13,
+              "baseline": 0.406118,
+              "candidate": 0.406627,
+              "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d"
+            }
+          ],
+          "science_sha256": "2e3e6e872f95b25d2e2251a34318f9267ba13a7916aa2ce216cddac6fef6959d",
+          "original_report": {
+            "case": "ppml-two-unit-k5-t1.case",
+            "medians": {
+              "baseline": 0.429588,
+              "candidate": 0.430434
+            },
+            "comparisons": {
+              "candidate": {
+                "median_ratio": 1.0069278547539415,
+                "bootstrap95": [
+                  0.9804968596638441,
+                  1.0625576133411547
+                ],
+                "upper_allowance": 1.05,
+                "nonregression_pass": false
+              }
+            }
+          },
+          "comparisons": {
+            "original": {
+              "median_ratio": 1.0069278547539415,
+              "interval": [
+                0.9804968596638441,
+                1.0625576133411547
+              ],
+              "indices": [
+                249,
+                9749
+              ],
+              "upper_allowance": 1.05,
+              "nonregression_pass": false,
+              "medians": {
+                "baseline": 0.429588,
+                "candidate": 0.430434
+              }
+            },
+            "confirmation": {
+              "median_ratio": 1.0007965870170028,
+              "interval": [
+                0.9935846687639471,
+                1.0045572724730207
+              ],
+              "indices": [
+                249,
+                9749
+              ],
+              "upper_allowance": 1.05,
+              "nonregression_pass": true,
+              "medians": {
+                "baseline": 0.4060935,
+                "candidate": 0.406398
+              }
+            },
+            "pooled": {
+              "median_ratio": 1.0012533303128648,
+              "interval": [
+                0.9897393253728004,
+                1.0069278547539415
+              ],
+              "indices": [
+                49,
+                9949
+              ],
+              "upper_allowance": 1.05,
+              "nonregression_pass": true,
+              "medians": {
+                "baseline": 0.410224,
+                "candidate": 0.407059
+              }
+            }
+          },
+          "pass": true
+        }
+      ],
+      "standard20_nonregression_pass": false,
+      "unchanged_original_passes": [
+        "ols-no-fe-k5-t1.case",
+        "ols-no-fe-k5-t4.case",
+        "ols-three-unit-k5-t1.case",
+        "ols-three-unit-k5-t4.case",
+        "ols-two-pw-k5-t1.case",
+        "ols-two-pw-k5-t4.case",
+        "ols-two-unit-k20-t1.case",
+        "ols-two-unit-k20-t16.case",
+        "ols-two-unit-k20-t4.case",
+        "ols-two-unit-k20-t8.case",
+        "ols-two-unit-k5-t1.case",
+        "ols-two-unit-k5-t4.case",
+        "ols-wide-k129-t1.case",
+        "ols-wide-k64-t1.case",
+        "ols-wide-k64-t4.case",
+        "ols-wide-k65-t1.case",
+        "ols-wide-k65-t4.case",
+        "ppml-two-unit-k5-t4.case"
+      ],
+      "confidence_limitations": "Nominal approximate coverage only; two quiet sessions assumed comparable. No simultaneous or exact coverage claim.",
+      "source_sha256": "538c1285da28f0a0c9b14202a61eb60a820d418b79219923ea0d9555fde6230c",
+      "protocol": {
+        "file": "protocol.json",
+        "sha256": "b43201974a388a47cd507185906dbe1beaeef27a8b43897846c043ad80a230a5"
+      },
+      "original_summary": {
+        "file": "summary.json",
+        "sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed"
+      },
+      "confirmation_summary": {
+        "file": "summary.json",
+        "sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca"
+      },
+      "quiet_receipt": {
+        "file": "receipt.json",
+        "sha256": "440badae9e2febf3fc634e7242ecf76baf0d23774e7a70a288fe17288b5121db"
+      }
+    },
+    "host_observations": [
+      {
+        "schema": 1,
+        "status": "admitted",
+        "quiet_host": true,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T13:55:41.328833+00:00",
+        "completed_at": "2026-10-14T13:56:41.430645+00:00",
+        "samples": 6,
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard",
+        "observation": "admission-01",
+        "source_sha256": "90acc0135c32f6997408987d25fe3d7dbf650b784944e644f84757882bd10995",
+        "snapshots_sha256": "d5f51947987cf734daeadf06189bbd1f52e6820238fa1fa2ee406068cd9ff586",
+        "snapshot_count": 6,
+        "guard_source_sha256": "d9b741e80b062c30317f0fb5fd1ed44e1ba831a99f8103988bd7738c3485def1",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "55c8e0ad4c00f3962b36cd7546283c0acf525a39ce229afbb7a9edbf458b52ab",
+        "policy_sha256": "cad75c51acc32c029f0c0d64576d84f4b91e9a7cf209057c62e41d2966e21c5a",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T13:55:51.435194+00:00",
+            "preflight",
+            10.106435875059105,
+            10,
+            21.9,
+            []
+          ],
+          [
+            "2026-10-14T13:56:01.423805+00:00",
+            "preflight",
+            20.09512287506368,
+            20,
+            55.1,
+            []
+          ],
+          [
+            "2026-10-14T13:56:11.429491+00:00",
+            "preflight",
+            30.100859916070476,
+            30,
+            22.0,
+            []
+          ],
+          [
+            "2026-10-14T13:56:21.424715+00:00",
+            "preflight",
+            40.09613175003324,
+            40,
+            13.1,
+            []
+          ],
+          [
+            "2026-10-14T13:56:31.432132+00:00",
+            "preflight",
+            50.10360345803201,
+            50,
+            17.7,
+            []
+          ],
+          [
+            "2026-10-14T13:56:41.425960+00:00",
+            "preflight",
+            60.09748766606208,
+            60,
+            18.8,
+            []
+          ]
+        ],
+        "reasons": [],
+        "maximum_aggregate_cpu_percent": 55.1,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 404,
+            "executable": "loginwindow",
+            "classification": "ordinary_ui",
+            "cpu_percent": 16.3,
+            "observed_at": "2026-10-14T13:56:01.423805+00:00"
+          },
+          {
+            "pid": 401,
+            "executable": "WindowServer",
+            "classification": "ordinary_ui",
+            "cpu_percent": 6.7,
+            "observed_at": "2026-10-14T13:56:01.423805+00:00"
+          },
+          {
+            "pid": 522,
+            "executable": "searchpartyd",
+            "classification": "unclassified",
+            "cpu_percent": 4.4,
+            "observed_at": "2026-10-14T13:56:11.429491+00:00"
+          },
+          {
+            "pid": 1,
+            "executable": "launchd",
+            "classification": "unclassified",
+            "cpu_percent": 3.3,
+            "observed_at": "2026-10-14T13:56:31.432132+00:00"
+          },
+          {
+            "pid": 48485,
+            "executable": "Google Chrome Helper (Renderer)",
+            "classification": "ordinary_ui",
+            "cpu_percent": 3.0,
+            "observed_at": "2026-10-14T13:56:01.423805+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "rejected",
+        "quiet_host": false,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T13:57:41.690286+00:00",
+        "completed_at": "2026-10-14T13:58:41.793788+00:00",
+        "samples": 6,
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard",
+        "observation": "admission-02",
+        "source_sha256": "e40f12d1b9f9252eba77a52dd947cbaae5cb413834eddbf382e0d57fbb364af1",
+        "snapshots_sha256": "1355cfbc0702fad831dba6f7aad40fc8aad7e53a7c36a0cf7ef9af6b7970a6d5",
+        "snapshot_count": 6,
+        "guard_source_sha256": "d9b741e80b062c30317f0fb5fd1ed44e1ba831a99f8103988bd7738c3485def1",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "55c8e0ad4c00f3962b36cd7546283c0acf525a39ce229afbb7a9edbf458b52ab",
+        "policy_sha256": "cad75c51acc32c029f0c0d64576d84f4b91e9a7cf209057c62e41d2966e21c5a",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T13:57:51.784701+00:00",
+            "preflight",
+            10.094492667005397,
+            10,
+            33.9,
+            []
+          ],
+          [
+            "2026-10-14T13:58:01.791592+00:00",
+            "preflight",
+            20.10145499999635,
+            20,
+            80.39999999999999,
+            [
+              "sustained_unclassified_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T13:58:11.787363+00:00",
+            "preflight",
+            30.097277249908075,
+            30,
+            29.2,
+            [
+              "sustained_unclassified_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T13:58:21.790480+00:00",
+            "preflight",
+            40.10044716694392,
+            40,
+            25.0,
+            [
+              "sustained_unclassified_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T13:58:31.787185+00:00",
+            "preflight",
+            50.097203416982666,
+            50,
+            28.7,
+            [
+              "sustained_unclassified_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T13:58:41.788907+00:00",
+            "preflight",
+            60.09898091701325,
+            60,
+            28.8,
+            [
+              "sustained_unclassified_cpu"
+            ]
+          ]
+        ],
+        "reasons": [
+          "sustained_unclassified_cpu"
+        ],
+        "maximum_aggregate_cpu_percent": 80.39999999999999,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 908,
+            "executable": "Google Chrome",
+            "classification": "ordinary_ui",
+            "cpu_percent": 21.4,
+            "observed_at": "2026-10-14T13:58:01.791592+00:00"
+          },
+          {
+            "pid": 978,
+            "executable": "Google Chrome Helper",
+            "classification": "ordinary_ui",
+            "cpu_percent": 16.9,
+            "observed_at": "2026-10-14T13:58:01.791592+00:00"
+          },
+          {
+            "pid": 401,
+            "executable": "WindowServer",
+            "classification": "ordinary_ui",
+            "cpu_percent": 9.9,
+            "observed_at": "2026-10-14T13:58:01.791592+00:00"
+          },
+          {
+            "pid": 617,
+            "executable": "usbaudiod",
+            "classification": "unclassified",
+            "cpu_percent": 9.5,
+            "observed_at": "2026-10-14T13:58:21.790480+00:00"
+          },
+          {
+            "pid": 404,
+            "executable": "loginwindow",
+            "classification": "ordinary_ui",
+            "cpu_percent": 6.7,
+            "observed_at": "2026-10-14T13:58:01.791592+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "rejected",
+        "quiet_host": false,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T14:00:45.342820+00:00",
+        "completed_at": "2026-10-14T14:01:45.444313+00:00",
+        "samples": 6,
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard",
+        "observation": "admission-03",
+        "source_sha256": "fc45cff96db49364781736089e76da7466c8ac7a2a02d53b04b80014bf6148ef",
+        "snapshots_sha256": "0c9e5b72eaebb2e19438e5694b57a7c5f696c776a7a08ef1efb76e506858568d",
+        "snapshot_count": 6,
+        "guard_source_sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "55c8e0ad4c00f3962b36cd7546283c0acf525a39ce229afbb7a9edbf458b52ab",
+        "policy_sha256": "17ab8a63053768658a165ec4c29f4d010530024042984118c04a39dcd2ef14c1",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T14:00:55.436254+00:00",
+            "preflight",
+            10.09351420798339,
+            10,
+            27.400000000000002,
+            []
+          ],
+          [
+            "2026-10-14T14:01:05.432780+00:00",
+            "preflight",
+            20.090116292005405,
+            20,
+            37.3,
+            []
+          ],
+          [
+            "2026-10-14T14:01:15.440458+00:00",
+            "preflight",
+            30.09783637500368,
+            30,
+            22.0,
+            []
+          ],
+          [
+            "2026-10-14T14:01:25.441595+00:00",
+            "preflight",
+            40.09903054195456,
+            40,
+            34.3,
+            []
+          ],
+          [
+            "2026-10-14T14:01:35.441653+00:00",
+            "preflight",
+            50.09914229193237,
+            50,
+            71.7,
+            [
+              "compute_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:01:45.439332+00:00",
+            "preflight",
+            60.096911416971125,
+            60,
+            44.8,
+            []
+          ]
+        ],
+        "reasons": [
+          "compute_cpu"
+        ],
+        "maximum_aggregate_cpu_percent": 71.7,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 2735,
+            "executable": "mdworker_shared",
+            "classification": "compute",
+            "cpu_percent": 17.6,
+            "observed_at": "2026-10-14T14:01:35.441653+00:00"
+          },
+          {
+            "pid": 2734,
+            "executable": "mdworker_shared",
+            "classification": "compute",
+            "cpu_percent": 17.4,
+            "observed_at": "2026-10-14T14:01:35.441653+00:00"
+          },
+          {
+            "pid": 82374,
+            "executable": "Dropbox",
+            "classification": "unclassified",
+            "cpu_percent": 15.6,
+            "observed_at": "2026-10-14T14:01:45.439332+00:00"
+          },
+          {
+            "pid": 34963,
+            "executable": "Google Chrome Helper (Renderer)",
+            "classification": "ordinary_ui",
+            "cpu_percent": 10.5,
+            "observed_at": "2026-10-14T14:01:05.432780+00:00"
+          },
+          {
+            "pid": 617,
+            "executable": "usbaudiod",
+            "classification": "ordinary_ui",
+            "cpu_percent": 9.3,
+            "observed_at": "2026-10-14T14:00:55.436254+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "admitted",
+        "quiet_host": true,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T14:02:52.522275+00:00",
+        "completed_at": "2026-10-14T14:03:52.616521+00:00",
+        "samples": 6,
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard",
+        "observation": "admission-04",
+        "source_sha256": "edbb4d8d698f1cf0e0bde648a386f77b7fc547088b05e3de0bfb488df1b77d5e",
+        "snapshots_sha256": "89abddde5cf5095c486ea47f0192d5203c93ff8aa569a26f1b2fc010bfbe3850",
+        "snapshot_count": 6,
+        "guard_source_sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "55c8e0ad4c00f3962b36cd7546283c0acf525a39ce229afbb7a9edbf458b52ab",
+        "policy_sha256": "17ab8a63053768658a165ec4c29f4d010530024042984118c04a39dcd2ef14c1",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T14:03:02.624017+00:00",
+            "preflight",
+            10.10183874994982,
+            10,
+            47.0,
+            []
+          ],
+          [
+            "2026-10-14T14:03:12.620448+00:00",
+            "preflight",
+            20.098323540994897,
+            20,
+            33.9,
+            []
+          ],
+          [
+            "2026-10-14T14:03:22.620154+00:00",
+            "preflight",
+            30.098084999946877,
+            30,
+            26.599999999999998,
+            []
+          ],
+          [
+            "2026-10-14T14:03:32.617191+00:00",
+            "preflight",
+            40.09516837494448,
+            40,
+            31.6,
+            []
+          ],
+          [
+            "2026-10-14T14:03:42.620386+00:00",
+            "preflight",
+            50.098420165944844,
+            50,
+            49.4,
+            []
+          ],
+          [
+            "2026-10-14T14:03:52.611515+00:00",
+            "preflight",
+            60.08961108303629,
+            60,
+            65.7,
+            []
+          ]
+        ],
+        "reasons": [],
+        "maximum_aggregate_cpu_percent": 65.7,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 908,
+            "executable": "Google Chrome",
+            "classification": "ordinary_ui",
+            "cpu_percent": 21.2,
+            "observed_at": "2026-10-14T14:03:52.611515+00:00"
+          },
+          {
+            "pid": 978,
+            "executable": "Google Chrome Helper",
+            "classification": "ordinary_ui",
+            "cpu_percent": 21.0,
+            "observed_at": "2026-10-14T14:03:52.611515+00:00"
+          },
+          {
+            "pid": 617,
+            "executable": "usbaudiod",
+            "classification": "ordinary_ui",
+            "cpu_percent": 9.3,
+            "observed_at": "2026-10-14T14:03:32.617191+00:00"
+          },
+          {
+            "pid": 34963,
+            "executable": "Google Chrome Helper (Renderer)",
+            "classification": "ordinary_ui",
+            "cpu_percent": 8.5,
+            "observed_at": "2026-10-14T14:03:02.624017+00:00"
+          },
+          {
+            "pid": 48485,
+            "executable": "Google Chrome Helper (Renderer)",
+            "classification": "ordinary_ui",
+            "cpu_percent": 8.4,
+            "observed_at": "2026-10-14T14:03:02.624017+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "start_rejected",
+        "quiet_host": false,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T13:57:00.625610+00:00",
+        "completed_at": "2026-10-14T13:57:00.691330+00:00",
+        "launched": false,
+        "monitoring_complete": false,
+        "cleanup_complete": true,
+        "child_return_code": null,
+        "interference": [
+          "individual_cpu",
+          "compute_cpu"
+        ],
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard",
+        "observation": "guarded-run-01",
+        "source_sha256": "f92b7b7709ed650a7ce65be259910f3f0142a1f5dc3bf07d5c52170810098ffe",
+        "snapshots_sha256": "4db80bf43cea1adfb20b351aa8c89b63a35d04973cd6d64de821862d3834b043",
+        "snapshot_count": 1,
+        "guard_source_sha256": "d9b741e80b062c30317f0fb5fd1ed44e1ba831a99f8103988bd7738c3485def1",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "55c8e0ad4c00f3962b36cd7546283c0acf525a39ce229afbb7a9edbf458b52ab",
+        "admission_sha256": "90acc0135c32f6997408987d25fe3d7dbf650b784944e644f84757882bd10995",
+        "child_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "policy_sha256": "cad75c51acc32c029f0c0d64576d84f4b91e9a7cf209057c62e41d2966e21c5a",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T13:57:00.686694+00:00",
+            "preflight",
+            0.06096575001720339,
+            0,
+            213.4,
+            [
+              "individual_cpu",
+              "compute_cpu"
+            ]
+          ]
+        ],
+        "reasons": [
+          "compute_cpu",
+          "individual_cpu"
+        ],
+        "maximum_aggregate_cpu_percent": 213.4,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 1,
+            "executable": "launchd",
+            "classification": "unclassified",
+            "cpu_percent": 53.0,
+            "observed_at": "2026-10-14T13:57:00.686694+00:00"
+          },
+          {
+            "pid": 79762,
+            "executable": "Google Chrome Helper (Renderer)",
+            "classification": "ordinary_ui",
+            "cpu_percent": 29.1,
+            "observed_at": "2026-10-14T13:57:00.686694+00:00"
+          },
+          {
+            "pid": 404,
+            "executable": "loginwindow",
+            "classification": "ordinary_ui",
+            "cpu_percent": 17.9,
+            "observed_at": "2026-10-14T13:57:00.686694+00:00"
+          },
+          {
+            "pid": 908,
+            "executable": "Google Chrome",
+            "classification": "ordinary_ui",
+            "cpu_percent": 10.3,
+            "observed_at": "2026-10-14T13:57:00.686694+00:00"
+          },
+          {
+            "pid": 37148,
+            "executable": "Codex (Renderer)",
+            "classification": "unclassified",
+            "cpu_percent": 9.8,
+            "observed_at": "2026-10-14T13:57:00.686694+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "start_rejected",
+        "quiet_host": false,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T14:04:08.974627+00:00",
+        "completed_at": "2026-10-14T14:04:09.043084+00:00",
+        "launched": false,
+        "monitoring_complete": false,
+        "cleanup_complete": true,
+        "child_return_code": null,
+        "interference": [
+          "compute_cpu"
+        ],
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard",
+        "observation": "guarded-run-02",
+        "source_sha256": "488ba173057a0947a3f39b613cdc3743d0a2a5f450619ff8ecffcaab5763c63b",
+        "snapshots_sha256": "e143c8c90d0d0417a06db42f69856f8ad8b2f661e7dfa91fd1fb9b414cef485f",
+        "snapshot_count": 1,
+        "guard_source_sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "55c8e0ad4c00f3962b36cd7546283c0acf525a39ce229afbb7a9edbf458b52ab",
+        "admission_sha256": "edbb4d8d698f1cf0e0bde648a386f77b7fc547088b05e3de0bfb488df1b77d5e",
+        "child_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "policy_sha256": "17ab8a63053768658a165ec4c29f4d010530024042984118c04a39dcd2ef14c1",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T14:04:09.038513+00:00",
+            "preflight",
+            0.06375320896040648,
+            0,
+            67.89999999999999,
+            [
+              "compute_cpu"
+            ]
+          ]
+        ],
+        "reasons": [
+          "compute_cpu"
+        ],
+        "maximum_aggregate_cpu_percent": 67.89999999999999,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 37148,
+            "executable": "Codex (Renderer)",
+            "classification": "unclassified",
+            "cpu_percent": 13.2,
+            "observed_at": "2026-10-14T14:04:09.038513+00:00"
+          },
+          {
+            "pid": 617,
+            "executable": "usbaudiod",
+            "classification": "ordinary_ui",
+            "cpu_percent": 9.3,
+            "observed_at": "2026-10-14T14:04:09.038513+00:00"
+          },
+          {
+            "pid": 48485,
+            "executable": "Google Chrome Helper (Renderer)",
+            "classification": "ordinary_ui",
+            "cpu_percent": 8.7,
+            "observed_at": "2026-10-14T14:04:09.038513+00:00"
+          },
+          {
+            "pid": 34963,
+            "executable": "Google Chrome Helper (Renderer)",
+            "classification": "ordinary_ui",
+            "cpu_percent": 8.6,
+            "observed_at": "2026-10-14T14:04:09.038513+00:00"
+          },
+          {
+            "pid": 37146,
+            "executable": "codex",
+            "classification": "compute",
+            "cpu_percent": 8.1,
+            "observed_at": "2026-10-14T14:04:09.038513+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "interference",
+        "quiet_host": false,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T14:05:11.274390+00:00",
+        "launched_at": "2026-10-14T14:05:11.339369+00:00",
+        "completed_at": "2026-10-14T14:05:31.884196+00:00",
+        "launched": true,
+        "monitoring_complete": false,
+        "cleanup_complete": true,
+        "child_return_code": -2,
+        "interference": [
+          "individual_cpu"
+        ],
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard",
+        "observation": "guarded-run-03",
+        "source_sha256": "22f3c93b5513e078db5d079d19d1a4c6a70c3c4916120a41b8043a4d7cabc644",
+        "snapshots_sha256": "420f79a07bf283a576f4a5e52ff29c60ad227829772b96b75a66778f6437fb69",
+        "snapshot_count": 6,
+        "guard_source_sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "55c8e0ad4c00f3962b36cd7546283c0acf525a39ce229afbb7a9edbf458b52ab",
+        "admission_sha256": "edbb4d8d698f1cf0e0bde648a386f77b7fc547088b05e3de0bfb488df1b77d5e",
+        "child_log_sha256": "1bb8eeabeed35a32e550a9b41c2d887f2a42d3c4c859dc99ba7e90e72f5d35e6",
+        "policy_sha256": "17ab8a63053768658a165ec4c29f4d010530024042984118c04a39dcd2ef14c1",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T14:05:11.333391+00:00",
+            "preflight",
+            0.058896166970953345,
+            0,
+            16.0,
+            []
+          ],
+          [
+            "2026-10-14T14:05:11.396072+00:00",
+            "run",
+            0.056720082997344434,
+            0,
+            15.5,
+            []
+          ],
+          [
+            "2026-10-14T14:05:16.401359+00:00",
+            "run",
+            5.06204174994491,
+            5,
+            10.5,
+            []
+          ],
+          [
+            "2026-10-14T14:05:21.409255+00:00",
+            "run",
+            10.070087249972858,
+            10,
+            12.5,
+            []
+          ],
+          [
+            "2026-10-14T14:05:26.408779+00:00",
+            "run",
+            15.069619832909666,
+            15,
+            11.5,
+            []
+          ],
+          [
+            "2026-10-14T14:05:31.407713+00:00",
+            "run",
+            20.068630957975984,
+            20,
+            120.0,
+            [
+              "individual_cpu"
+            ]
+          ]
+        ],
+        "reasons": [
+          "individual_cpu"
+        ],
+        "maximum_aggregate_cpu_percent": 120.0,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 789,
+            "executable": "corespotlightd",
+            "classification": "compute",
+            "cpu_percent": 110.0,
+            "observed_at": "2026-10-14T14:05:31.407713+00:00"
+          },
+          {
+            "pid": 918,
+            "executable": "zoom.us",
+            "classification": "unclassified",
+            "cpu_percent": 4.0,
+            "observed_at": "2026-10-14T14:05:11.333391+00:00"
+          },
+          {
+            "pid": 48485,
+            "executable": "Google Chrome Helper (Renderer)",
+            "classification": "ordinary_ui",
+            "cpu_percent": 2.8,
+            "observed_at": "2026-10-14T14:05:11.333391+00:00"
+          },
+          {
+            "pid": 34963,
+            "executable": "Google Chrome Helper (Renderer)",
+            "classification": "ordinary_ui",
+            "cpu_percent": 2.7,
+            "observed_at": "2026-10-14T14:05:11.333391+00:00"
+          },
+          {
+            "pid": 401,
+            "executable": "WindowServer",
+            "classification": "ordinary_ui",
+            "cpu_percent": 1.7,
+            "observed_at": "2026-10-14T14:05:21.409255+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "rejected",
+        "quiet_host": false,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T14:09:02.217492+00:00",
+        "completed_at": "2026-10-14T14:10:02.322985+00:00",
+        "samples": 6,
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard-retry-01",
+        "observation": "admission-01",
+        "source_sha256": "1ff369a22e8039e05e8142ad8ffc4f684ef9639a1987bacc04f8d4988eb0ece8",
+        "snapshots_sha256": "11d62083d8693e1588f7e2a267888fbd7c75285f44974bf860366a8c1e940d4b",
+        "snapshot_count": 6,
+        "guard_source_sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "7d620e805eade76bbdb29976a5d12df3835cc7bcc5cfe2323acba77da061636d",
+        "policy_sha256": "17ab8a63053768658a165ec4c29f4d010530024042984118c04a39dcd2ef14c1",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T14:09:12.314924+00:00",
+            "preflight",
+            10.097508874954656,
+            10,
+            17.7,
+            []
+          ],
+          [
+            "2026-10-14T14:09:22.314708+00:00",
+            "preflight",
+            20.097360665909946,
+            20,
+            18.4,
+            []
+          ],
+          [
+            "2026-10-14T14:09:32.317687+00:00",
+            "preflight",
+            30.10039545793552,
+            30,
+            140.6,
+            [
+              "individual_cpu",
+              "compute_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:09:42.314670+00:00",
+            "preflight",
+            40.09742804092821,
+            40,
+            15.3,
+            []
+          ],
+          [
+            "2026-10-14T14:09:52.320288+00:00",
+            "preflight",
+            50.10313274990767,
+            50,
+            72.1,
+            []
+          ],
+          [
+            "2026-10-14T14:10:02.318292+00:00",
+            "preflight",
+            60.101158332894556,
+            60,
+            22.7,
+            []
+          ]
+        ],
+        "reasons": [
+          "compute_cpu",
+          "individual_cpu"
+        ],
+        "maximum_aggregate_cpu_percent": 140.6,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 974,
+            "executable": "mediaanalysisd",
+            "classification": "compute",
+            "cpu_percent": 125.6,
+            "observed_at": "2026-10-14T14:09:32.317687+00:00"
+          },
+          {
+            "pid": 404,
+            "executable": "loginwindow",
+            "classification": "ordinary_ui",
+            "cpu_percent": 9.0,
+            "observed_at": "2026-10-14T14:10:02.318292+00:00"
+          },
+          {
+            "pid": 4197,
+            "executable": "contactsd",
+            "classification": "unclassified",
+            "cpu_percent": 6.1,
+            "observed_at": "2026-10-14T14:09:52.320288+00:00"
+          },
+          {
+            "pid": 4199,
+            "executable": "contactsd",
+            "classification": "unclassified",
+            "cpu_percent": 5.9,
+            "observed_at": "2026-10-14T14:09:52.320288+00:00"
+          },
+          {
+            "pid": 4198,
+            "executable": "contactsd",
+            "classification": "unclassified",
+            "cpu_percent": 5.8,
+            "observed_at": "2026-10-14T14:09:52.320288+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "admitted",
+        "quiet_host": true,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T14:14:26.652026+00:00",
+        "completed_at": "2026-10-14T14:15:26.756252+00:00",
+        "samples": 6,
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard-retry-01",
+        "observation": "admission-02",
+        "source_sha256": "c824cebc7adde963ac254b0cfce45a56bdcbeadcbee0220212cc703656d62154",
+        "snapshots_sha256": "72bc6b3a05890d6c268156248def8b8e16f3da2cbfb768e017ea3203b8b6409f",
+        "snapshot_count": 6,
+        "guard_source_sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "7d620e805eade76bbdb29976a5d12df3835cc7bcc5cfe2323acba77da061636d",
+        "policy_sha256": "17ab8a63053768658a165ec4c29f4d010530024042984118c04a39dcd2ef14c1",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T14:14:36.754080+00:00",
+            "preflight",
+            10.10168808302842,
+            10,
+            15.1,
+            []
+          ],
+          [
+            "2026-10-14T14:14:46.750326+00:00",
+            "preflight",
+            20.097727125044912,
+            20,
+            14.0,
+            []
+          ],
+          [
+            "2026-10-14T14:14:56.734679+00:00",
+            "preflight",
+            30.081950874999166,
+            30,
+            39.6,
+            []
+          ],
+          [
+            "2026-10-14T14:15:06.760471+00:00",
+            "preflight",
+            40.1076649579918,
+            40,
+            26.2,
+            []
+          ],
+          [
+            "2026-10-14T14:15:16.751762+00:00",
+            "preflight",
+            50.0988942499971,
+            50,
+            14.4,
+            []
+          ],
+          [
+            "2026-10-14T14:15:26.751500+00:00",
+            "preflight",
+            60.098579916055314,
+            60,
+            38.1,
+            []
+          ]
+        ],
+        "reasons": [],
+        "maximum_aggregate_cpu_percent": 39.6,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 1520,
+            "executable": "com.apple.WebKit.WebContent",
+            "classification": "unclassified",
+            "cpu_percent": 12.6,
+            "observed_at": "2026-10-14T14:15:26.751500+00:00"
+          },
+          {
+            "pid": 4692,
+            "executable": "gh",
+            "classification": "unclassified",
+            "cpu_percent": 9.3,
+            "observed_at": "2026-10-14T14:14:56.734679+00:00"
+          },
+          {
+            "pid": 380,
+            "executable": "dasd",
+            "classification": "unclassified",
+            "cpu_percent": 7.9,
+            "observed_at": "2026-10-14T14:15:06.760471+00:00"
+          },
+          {
+            "pid": 918,
+            "executable": "zoom.us",
+            "classification": "unclassified",
+            "cpu_percent": 5.9,
+            "observed_at": "2026-10-14T14:15:26.751500+00:00"
+          },
+          {
+            "pid": 37146,
+            "executable": "codex",
+            "classification": "compute",
+            "cpu_percent": 4.6,
+            "observed_at": "2026-10-14T14:14:56.734679+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "completed",
+        "quiet_host": true,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T14:16:02.385450+00:00",
+        "launched_at": "2026-10-14T14:16:02.450482+00:00",
+        "completed_at": "2026-10-14T14:17:25.690293+00:00",
+        "launched": true,
+        "monitoring_complete": true,
+        "cleanup_complete": true,
+        "child_return_code": 0,
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard-retry-01",
+        "observation": "guarded-run-01",
+        "source_sha256": "440badae9e2febf3fc634e7242ecf76baf0d23774e7a70a288fe17288b5121db",
+        "snapshots_sha256": "f35e3b3b9f29eac56adfbe9422f5a558ff980e328e4a9fa8dec5ebff47244a11",
+        "snapshot_count": 19,
+        "guard_source_sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "7d620e805eade76bbdb29976a5d12df3835cc7bcc5cfe2323acba77da061636d",
+        "admission_sha256": "c824cebc7adde963ac254b0cfce45a56bdcbeadcbee0220212cc703656d62154",
+        "child_log_sha256": "a1676cdfa029fe1cba19fb18f661b3d83f414cfb458bcaa60a7021d81cb297dc",
+        "policy_sha256": "17ab8a63053768658a165ec4c29f4d010530024042984118c04a39dcd2ef14c1",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T14:16:02.444553+00:00",
+            "preflight",
+            0.0589984169928357,
+            0,
+            28.7,
+            []
+          ],
+          [
+            "2026-10-14T14:16:02.507143+00:00",
+            "run",
+            0.056674082996323705,
+            0,
+            24.6,
+            []
+          ],
+          [
+            "2026-10-14T14:16:07.512991+00:00",
+            "run",
+            5.06251258298289,
+            5,
+            17.7,
+            []
+          ],
+          [
+            "2026-10-14T14:16:12.518976+00:00",
+            "run",
+            10.068608541972935,
+            10,
+            13.1,
+            []
+          ],
+          [
+            "2026-10-14T14:16:17.517138+00:00",
+            "run",
+            15.06673287495505,
+            15,
+            10.6,
+            []
+          ],
+          [
+            "2026-10-14T14:16:22.520704+00:00",
+            "run",
+            20.0702943749493,
+            20,
+            12.700000000000001,
+            []
+          ],
+          [
+            "2026-10-14T14:16:27.513178+00:00",
+            "run",
+            25.06273720797617,
+            25,
+            11.1,
+            []
+          ],
+          [
+            "2026-10-14T14:16:32.520211+00:00",
+            "run",
+            30.069757416960783,
+            30,
+            15.0,
+            []
+          ],
+          [
+            "2026-10-14T14:16:37.520378+00:00",
+            "run",
+            35.06990954198409,
+            35,
+            7.8,
+            []
+          ],
+          [
+            "2026-10-14T14:16:42.520585+00:00",
+            "run",
+            40.07010616699699,
+            40,
+            14.0,
+            []
+          ],
+          [
+            "2026-10-14T14:16:47.522296+00:00",
+            "run",
+            45.07178920798469,
+            45,
+            10.3,
+            []
+          ],
+          [
+            "2026-10-14T14:16:52.519893+00:00",
+            "run",
+            50.06937670800835,
+            50,
+            23.400000000000002,
+            []
+          ],
+          [
+            "2026-10-14T14:16:57.521016+00:00",
+            "run",
+            55.07050349994097,
+            55,
+            15.9,
+            []
+          ],
+          [
+            "2026-10-14T14:17:02.521563+00:00",
+            "run",
+            60.07102033297997,
+            60,
+            12.8,
+            []
+          ],
+          [
+            "2026-10-14T14:17:07.517111+00:00",
+            "run",
+            65.0665358749684,
+            65,
+            50.800000000000004,
+            []
+          ],
+          [
+            "2026-10-14T14:17:12.518148+00:00",
+            "run",
+            70.06757012498565,
+            70,
+            15.4,
+            []
+          ],
+          [
+            "2026-10-14T14:17:17.517356+00:00",
+            "run",
+            75.06678274995647,
+            75,
+            9.1,
+            []
+          ],
+          [
+            "2026-10-14T14:17:22.514452+00:00",
+            "run",
+            80.06385233299807,
+            80,
+            27.8,
+            []
+          ],
+          [
+            "2026-10-14T14:17:25.577849+00:00",
+            "run",
+            83.1272179170046,
+            85,
+            14.8,
+            []
+          ]
+        ],
+        "reasons": [],
+        "maximum_aggregate_cpu_percent": 50.800000000000004,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 437,
+            "executable": "authd",
+            "classification": "unclassified",
+            "cpu_percent": 13.8,
+            "observed_at": "2026-10-14T14:17:07.517111+00:00"
+          },
+          {
+            "pid": 933,
+            "executable": "SystemUIServer",
+            "classification": "ordinary_ui",
+            "cpu_percent": 7.9,
+            "observed_at": "2026-10-14T14:17:07.517111+00:00"
+          },
+          {
+            "pid": 430,
+            "executable": "airportd",
+            "classification": "unclassified",
+            "cpu_percent": 7.8,
+            "observed_at": "2026-10-14T14:17:22.514452+00:00"
+          },
+          {
+            "pid": 918,
+            "executable": "zoom.us",
+            "classification": "unclassified",
+            "cpu_percent": 6.3,
+            "observed_at": "2026-10-14T14:16:02.444553+00:00"
+          },
+          {
+            "pid": 908,
+            "executable": "Google Chrome",
+            "classification": "ordinary_ui",
+            "cpu_percent": 5.8,
+            "observed_at": "2026-10-14T14:17:07.517111+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "rejected",
+        "quiet_host": false,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T14:25:51.744166+00:00",
+        "completed_at": "2026-10-14T14:26:51.817226+00:00",
+        "samples": 6,
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard-final",
+        "observation": "admission-01",
+        "source_sha256": "73f28b74c3e4eb30cbbab5d9ddda3455dc5f53e418f397b5db0b0951d6cc513c",
+        "snapshots_sha256": "3477e5e3ce21d2d51585b6d511e54c9eddaaf9eae5c3f3d54e06b0686910f73e",
+        "snapshot_count": 6,
+        "guard_source_sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "9da84c3dfc30bf776c04cc7e6c3a5f5b56f31eae8ab357228ff769b86ec66d8c",
+        "policy_sha256": "17ab8a63053768658a165ec4c29f4d010530024042984118c04a39dcd2ef14c1",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T14:26:01.832721+00:00",
+            "preflight",
+            10.08854554197751,
+            10,
+            104.7,
+            [
+              "individual_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:26:11.816125+00:00",
+            "preflight",
+            20.071931959013455,
+            20,
+            81.5,
+            [
+              "compute_cpu",
+              "sustained_unclassified_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:26:21.813302+00:00",
+            "preflight",
+            30.06907600001432,
+            30,
+            87.5,
+            [
+              "compute_cpu",
+              "sustained_unclassified_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:26:31.813977+00:00",
+            "preflight",
+            40.06971387495287,
+            40,
+            30.8,
+            [
+              "compute_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:26:41.814699+00:00",
+            "preflight",
+            50.0704094999237,
+            50,
+            40.8,
+            [
+              "compute_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:26:51.812618+00:00",
+            "preflight",
+            60.068294542026706,
+            60,
+            716.2,
+            [
+              "aggregate_cpu",
+              "individual_cpu",
+              "compute_cpu"
+            ]
+          ]
+        ],
+        "reasons": [
+          "aggregate_cpu",
+          "compute_cpu",
+          "individual_cpu",
+          "sustained_unclassified_cpu"
+        ],
+        "maximum_aggregate_cpu_percent": 716.2,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 9172,
+            "executable": "stata-mp",
+            "classification": "compute",
+            "cpu_percent": 646.5,
+            "observed_at": "2026-10-14T14:26:51.812618+00:00"
+          },
+          {
+            "pid": 1606,
+            "executable": "XprotectService",
+            "classification": "unclassified",
+            "cpu_percent": 63.2,
+            "observed_at": "2026-10-14T14:26:01.832721+00:00"
+          },
+          {
+            "pid": 7682,
+            "executable": "Python",
+            "classification": "compute",
+            "cpu_percent": 46.4,
+            "observed_at": "2026-10-14T14:26:51.812618+00:00"
+          },
+          {
+            "pid": 404,
+            "executable": "loginwindow",
+            "classification": "ordinary_ui",
+            "cpu_percent": 10.8,
+            "observed_at": "2026-10-14T14:26:01.832721+00:00"
+          },
+          {
+            "pid": 2027,
+            "executable": "Google Chrome Helper (Renderer)",
+            "classification": "ordinary_ui",
+            "cpu_percent": 8.6,
+            "observed_at": "2026-10-14T14:26:21.813302+00:00"
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "status": "rejected",
+        "quiet_host": false,
+        "logical_cpus": 24,
+        "started_at": "2026-10-14T14:27:47.983173+00:00",
+        "completed_at": "2026-10-14T14:28:48.060517+00:00",
+        "samples": 6,
+        "caveat": "ps CPU percentages are decayed averages, not instantaneous utilization; five-second sampling can miss bursts. Passing screens material interference, not all noise. This guard neither reads performance nor retries.",
+        "attempt": "recovery-standard-final",
+        "observation": "admission-02",
+        "source_sha256": "da6db1d8045eacfab8c371ca96677d25dbb5d2b6c0e871a87d804a780094d9d4",
+        "snapshots_sha256": "644484cc31f0036a0f4d24741384dfa8a49a7a01a704472383b45156312500d5",
+        "snapshot_count": 6,
+        "guard_source_sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258",
+        "proposal_sha256": "fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9",
+        "command_sha256": "9da84c3dfc30bf776c04cc7e6c3a5f5b56f31eae8ab357228ff769b86ec66d8c",
+        "policy_sha256": "17ab8a63053768658a165ec4c29f4d010530024042984118c04a39dcd2ef14c1",
+        "policy_limits": {
+          "preflight_seconds": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60
+          ],
+          "interval_seconds": 5,
+          "aggregate_per_logical_cpu": 10,
+          "preflight_individual_max": 50,
+          "preflight_compute_max": 5,
+          "run_individual_stop": 100,
+          "run_sustained_max": 5,
+          "consecutive_samples": 2,
+          "ps_timeout_seconds": 2,
+          "max_sample_lateness_seconds": 2,
+          "cleanup_grace_seconds": 5
+        },
+        "sample_columns": [
+          "timestamp",
+          "phase",
+          "elapsed_seconds",
+          "scheduled_seconds",
+          "aggregate_cpu_percent",
+          "reasons"
+        ],
+        "sample_observations": [
+          [
+            "2026-10-14T14:27:58.060410+00:00",
+            "preflight",
+            10.077234416967258,
+            10,
+            1004.5,
+            [
+              "aggregate_cpu",
+              "individual_cpu",
+              "compute_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:28:08.058761+00:00",
+            "preflight",
+            20.075579333934,
+            20,
+            569.4,
+            [
+              "aggregate_cpu",
+              "individual_cpu",
+              "compute_cpu",
+              "sustained_unclassified_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:28:18.058762+00:00",
+            "preflight",
+            30.075529291993007,
+            30,
+            306.7,
+            [
+              "aggregate_cpu",
+              "individual_cpu",
+              "compute_cpu",
+              "sustained_unclassified_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:28:28.057917+00:00",
+            "preflight",
+            40.07466170901898,
+            40,
+            527.7,
+            [
+              "aggregate_cpu",
+              "individual_cpu",
+              "compute_cpu",
+              "sustained_unclassified_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:28:38.055599+00:00",
+            "preflight",
+            50.07229662500322,
+            50,
+            309.8,
+            [
+              "aggregate_cpu",
+              "individual_cpu",
+              "compute_cpu",
+              "sustained_unclassified_cpu"
+            ]
+          ],
+          [
+            "2026-10-14T14:28:48.055943+00:00",
+            "preflight",
+            60.07261245895643,
+            60,
+            228.0,
+            [
+              "individual_cpu",
+              "compute_cpu",
+              "sustained_unclassified_cpu"
+            ]
+          ]
+        ],
+        "reasons": [
+          "aggregate_cpu",
+          "compute_cpu",
+          "individual_cpu",
+          "sustained_unclassified_cpu"
+        ],
+        "maximum_aggregate_cpu_percent": 1004.5,
+        "top_observed_unrelated_processes": [
+          {
+            "pid": 9219,
+            "executable": "stata-mp",
+            "classification": "compute",
+            "cpu_percent": 761.7,
+            "observed_at": "2026-10-14T14:27:58.060410+00:00"
+          },
+          {
+            "pid": 40514,
+            "executable": "Google Drive",
+            "classification": "unclassified",
+            "cpu_percent": 200.0,
+            "observed_at": "2026-10-14T14:28:28.057917+00:00"
+          },
+          {
+            "pid": 473,
+            "executable": "backupd",
+            "classification": "unclassified",
+            "cpu_percent": 127.3,
+            "observed_at": "2026-10-14T14:27:58.060410+00:00"
+          },
+          {
+            "pid": 933,
+            "executable": "SystemUIServer",
+            "classification": "ordinary_ui",
+            "cpu_percent": 91.6,
+            "observed_at": "2026-10-14T14:27:58.060410+00:00"
+          },
+          {
+            "pid": 934,
+            "executable": "Finder",
+            "classification": "ordinary_ui",
+            "cpu_percent": 9.8,
+            "observed_at": "2026-10-14T14:28:08.058761+00:00"
+          }
+        ]
+      }
+    ],
+    "terminal_followup": {
+      "status": "prepared_admission_rejected_no_native_attempt",
+      "protocol": {
+        "schema": 1,
+        "kind": "terminal_wide42_continuation",
+        "rule": {
+          "new_repetitions": 42,
+          "retained_repetitions": 21,
+          "pooled_repetitions": 63,
+          "warmups": 1,
+          "native_calls": 86,
+          "budget_seconds": 900,
+          "timeout_seconds": 90,
+          "bootstrap_draws": 10000,
+          "bootstrap_seed": 739391,
+          "bootstrap_indices": [
+            9,
+            9989
+          ],
+          "relative_allowance": 0.05,
+          "absolute_allowance_seconds": 0.001,
+          "decision": "Only pooled 63-pair upper99.8 <= fixed allowance decides the wide cell; retain the other 19 passes.",
+          "confidence": "Nominal upper-tail allocation .025+.005+.001=.031 per wide cell. Approximate percentile bootstrap, not guaranteed sequential or simultaneous error control; 42 and 99.8 chosen after previous results.",
+          "stopping": "One terminal fixed continuation. Nonpass ends this unchanged-artifact qualification for now; no automatic eligible observations or repeated looks."
+        },
+        "harness_sha256": "e50ef580caca89663d5af70a7eb471ea75a77b59568c604608bd0e8c09342d14",
+        "source_sha256": "bdcc390668899c1e56d05fa7a38944b7bc2c83797a621c4113c4a772613f47fd",
+        "value_sha256": "b6e8f8cecd44550db5a7bec84d30a8970f5696c8beeab43674e801cb77959f5b",
+        "source": {
+          "file": "routing-recovery-final.py",
+          "sha256": "6c6156928600dd7c786a62f0a6a2c7f5fda014f6739da6f786682a51fc5f5ba3"
+        },
+        "bindings": [
+          {
+            "file": "routing-recovery-retry.py",
+            "sha256": "8dd6a955a1cf94657bd7f5f74bac3a2023e0230b43642ff3b332c3f69496c389"
+          },
+          {
+            "file": "quiet_host_guard.py",
+            "sha256": "7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258"
+          },
+          {
+            "file": "protocol.json",
+            "sha256": "b43201974a388a47cd507185906dbe1beaeef27a8b43897846c043ad80a230a5"
+          },
+          {
+            "file": "combined-summary.json",
+            "sha256": "538c1285da28f0a0c9b14202a61eb60a820d418b79219923ea0d9555fde6230c"
+          },
+          {
+            "file": "summary.json",
+            "sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca"
+          },
+          {
+            "file": "receipt.json",
+            "sha256": "440badae9e2febf3fc634e7242ecf76baf0d23774e7a70a288fe17288b5121db"
+          }
+        ],
+        "artifacts": {
+          "baseline": "3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a",
+          "candidate": "72ff85cc33e088ec85c9e30feddc589a3f2aa1068bca1d812e74fba498c3207e"
+        },
+        "original_summary": {
+          "file": "summary.json",
+          "sha256": "3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed"
+        },
+        "previous_combined": {
+          "file": "combined-summary.json",
+          "sha256": "538c1285da28f0a0c9b14202a61eb60a820d418b79219923ea0d9555fde6230c"
+        },
+        "eligible_confirmation": {
+          "file": "summary.json",
+          "sha256": "f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca"
+        },
+        "descriptor": {
+          "file": "command.json",
+          "sha256": "9da84c3dfc30bf776c04cc7e6c3a5f5b56f31eae8ab357228ff769b86ec66d8c"
+        },
+        "runner": {
+          "original": {
+            "file": "time_exact.py",
+            "sha256": "f686e037d3a65c2d9ba6cb79e9cb3ad07316768bc9d5b44d928d98c6dbf6caba"
+          },
+          "adapted": {
+            "file": "time-exact-final42.py",
+            "sha256": "93cc18a4140a457513882554e31471feb171eff166d31c79b04a3019a9baf169"
+          }
+        },
+        "cases": {
+          "ols-wide-k129-t4.case": "e8c7dc3c492b6f6bda48b54748d732c60a6465575a9d70307a6c314149021bd4"
+        },
+        "command_identity_sha256": "0fd36a04159da0f750947e4114a46044b428460fe39b82bcad13f93da1406da7"
+      },
+      "observed_native_calls": 0,
+      "results": null,
+      "interpretation": "A fixed 42-pair wide-only continuation would pool 63 pairs at 99.8%. Both recorded admissions were rejected; no final native measurement has occurred. No outcome is imputed."
+    }
   }
 }

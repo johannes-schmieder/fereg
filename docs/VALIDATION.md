@@ -142,6 +142,21 @@ sessions. A remaining nonpass ends the current qualification attempt on this
 unchanged artifact; further work turns to profiling or reconsidering the artifact,
 rather than adding eligible observations until a pass.
 
+The compact evidence file now appends all eight invalidated and 60 eligible
+recovery observations, every pooled pair, twelve compact host records and the
+unrun final continuation declaration. Every value from the earlier export is
+unchanged; no full process inventory or personal path is retained. The extended
+file has SHA-256
+`429d8d6df1b576ea263e40cbabc895aacd28c2711c7f7fca0337c3ee4398f213`
+and is 739,715 bytes. The updated routing PDF is 21 pages (617,007 bytes), with
+the recovery interval plot and explanation on page 21; original results remain
+historical on pages 18--20. Compilation and changed-page visual checks pass.
+Its SHA-256 is
+`b978b696c5af7f06da1b62d55dfb66c1dcf5d4c179930d2af7bbdab80ef84318`.
+The final continuation has made no native calls: its two recorded admissions
+were rejected for competing host work. Replacement policy A, B and C remain
+unrun. Documentation and evidence edits do not change runtime artifact inputs.
+
 The following section retains the original terminal outcomes unchanged.
 
 ## Routing timing outcome, 2026-10-14
@@ -155,8 +170,9 @@ The [compact timing evidence](../bench/results/solver-routing-20261014.json)
 retains all 320 standard observations, all 1,352 ablation slots (including 72
 not-run slots), and all 232 interrupted policy observations in acquisition order,
 with original source hashes, case/artifact identities, scientific fingerprints,
-failure classifications and unchanged summaries. Its SHA-256 is
+failure classifications and unchanged summaries. The original export had SHA-256
 `00c338afbca1d2a5be599a51cfa8a5d6c018cecdf6a2d4e4fed652094f70a342`.
+The current file appends the recovery evidence described above.
 These compact observations and this explanation are retained evidence; ignored
 raw captures are not promised as permanent records.
 An independent row-by-row audit matched all retained values, order, statuses,
