@@ -338,6 +338,36 @@ summaries and sample observations, without changing its original source object:
 832,996 bytes, SHA-256
 `c22f2b2c15f6eaba9ea61a5b56144f6d1eb6b55f0f368be109c700887e6a7bb7`.
 
+Johannes subsequently requested another retry and reported the Mac idle. A fourth
+admission failed only for sustained unclassified activity: the Apple aerial
+wallpaper extension and Codex's shared computer-use helper. Unrelated aggregate
+CPU ranged from 64.8 to 80.2 percentage points across 24 logical CPUs; no native
+call started. Its admission SHA-256 is
+`9f6376f1f415e8563b7e0cef4f8aedad8a261b58cccd6112590d9c816c7094ea`.
+
+For future admissions only, the exact inspected Apple wallpaper executable joins
+the ordinary-desktop category. [Apple documents aerial wallpaper](https://support.apple.com/guide/mac-help/choose-your-desktop-picture-mchlp3013/mac)
+as a desktop and screen-saver feature. This classification follows the existing
+unknown-process inspection rule; it does not establish absence of timing noise.
+Its CPU still counts under the unchanged aggregate and individual limits.
+Codex's helper remains subject to the tool-work check. It is shared with screen
+history and other computer-use clients; no helper termination or setting change
+was made. Every past admission remains rejected under its original guard.
+
+The new guard differs only in that exact wallpaper classification, passes 25
+synthetic tests and independent source/methodology review, and has SHA-256
+`f66584ddb8b5b0f559e43c90a2c8a122a61f11b146974d57bc3413188744150a`.
+A prospective host amendment, SHA-256
+`2cd73b4d11d4300e14ba73d038a46531bd64f89fadfbb5211301e52ef5aa1e43`,
+supersedes only the frozen retry's prospective guard choice. The original native
+protocol, command, coordinator, outputs and previous guards remain unchanged.
+It permits at most two fresh admissions and one launched cohort. Terminal A
+eligibility and downstream B admission must bind this amendment and the actual
+new-guard receipt; a failed prerequisite still blocks selection and B/C access.
+Independent review verified all eleven amendment bindings. The compact export
+now retains the fourth admission and amendment as well: 839,008 bytes, SHA-256
+`986456c7d91af6cc9fed917588d8376f1f3b01225f6e9319da0b097fc0b29cf3`.
+
 The same amended guard, fresh separately inspected admission, terminal host
 clearance and fresh-record completion gate remain mandatory. Another interference
 trigger ends the attempt. All prior cohorts remain excluded under their original
