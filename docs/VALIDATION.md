@@ -242,6 +242,51 @@ changes. Only a complete eligible cohort may produce a sealed A shortlist and
 open B. No standard continuation, policy retuning or additional eligible
 statistical look is introduced by replacing a host-ineligible incomplete cohort.
 
+This retry passed admission but stopped at 25.07 seconds for two consecutive
+unclassified FSEvents-service observations at 5.1% and 5.5% of one core. Unrelated
+aggregate CPU was 30.8 and 35.2 percentage points across 24 logical CPUs. The
+guard confirmed cleanup; the entire attempt was excluded from the host record
+before performance inspection. Its 166 timing entries include 164 completed
+passes, one blocked `EPERM` infrastructure failure and one unfinished dispatch;
+all 43 traced calls completed and passed. Neither unresolved entry receives an
+imputed scientific result. The host record has SHA-256
+`5918b81ec5ff9774122be6460208a3b645a101109c6c7e35a89e9705454f7b39`,
+and original failed records have SHA-256
+`9be0bd207b8cfdb3943ff1ed0dca42d23ed90935a3d8ef73725409857af78a05`.
+
+Johannes authorized stopping Spotlight if possible. A noninteractive privilege
+check required an administrator password; no service was changed. The next
+attempt instead applies a narrow prospective classification amendment under the
+unknown-process inspection rule. Only the exact inspected Apple FSEvents daemon
+path joins the existing ordinary-OS category (named `ordinary_ui` in the guard).
+[Apple's description](https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/FSEvents_ProgGuide/TechnologyOverview/TechnologyOverview.html)
+identifies its filesystem-event notification role; this does not establish that
+the observed work was harmless or caused by the benchmark. It remains counted
+under all aggregate and individual CPU limits. Spotlight/computation rules,
+thresholds, sampling and cleanup are unchanged. The old guard and every failed
+attempt remain intact and ineligible. The future guard copy has SHA-256
+`cfb57443211d1946e174e4222894916c391a5167dd919a444bdc5e73646a6f34`;
+22 synthetic tests and independent methodology/source review pass.
+
+The infrastructure error is retained separately. Source inspection and four
+mocked tests demonstrate that the existing process cleanup can mask an interrupt
+with a signaling error; they do not establish the historical cause. One
+prospectively bounded, unmeasured diagnostic repeated the affected prepared input
+under the same artifact and harness, with a 120-second limit and no retry. It
+completed, matched the earlier science/solver fingerprint exactly and passed the
+independent replay oracle. This establishes fresh infrastructure completion,
+not historical success or performance eligibility. Its outcome has SHA-256
+`b7e10bea6592dfeb2854af70105fe30ac9aa429d3bb6a238dffa0af0ba032077`.
+The next full A attempt
+keeps the same fixed native command, panel, statistical rule and limits, using
+fresh outputs and the newly classified guard only.
+
+The [compact retry evidence](../bench/results/solver-routing-policy-a-retry01-interrupted-20261014.json)
+retains all records, absent unfinished fields, summaries, protocol and host
+identities, including the unresolved infrastructure failure. Reconstructing its
+column tables reproduces the entire original source object. It is 267,924 bytes,
+SHA-256 `84f8838c26d71b2ba608736d39e7a9bcc8b84a7ac7be6c8bfe91c8f9f26022ad`.
+
 The following section retains the original terminal outcomes unchanged.
 
 ## Routing timing outcome, 2026-10-14
