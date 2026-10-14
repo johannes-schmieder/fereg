@@ -367,6 +367,17 @@ new-guard receipt; a failed prerequisite still blocks selection and B/C access.
 Independent review verified all eleven amendment bindings. The compact export
 now retains the fourth admission and amendment as well: 839,008 bytes, SHA-256
 `986456c7d91af6cc9fed917588d8376f1f3b01225f6e9319da0b097fc0b29cf3`.
+The first admission under this amendment also failed. The shared computer-use
+helper exceeded the unclassified-work limit persistently; the last sample also
+had an individual-limit violation amid background desktop-service activity.
+No native call started. Its admission SHA-256 is
+`87314101fa8d50d91fd9bed2f60e706fb8d4f40dbaa93c4054336c237867d944`.
+The compact export retains this fifth failed admission: 841,966 bytes, SHA-256
+`575fd7489329668a1509d4e741446e0cf89364d1c47f9239fa9c75e8ffecfdb1`.
+The routing PDF's guard explanation was updated without changing the original
+results or standard chart. Its 21-page compilation and changed-page visual check
+pass; PDF SHA-256 is
+`9be7ebd4e2aa5d31a3580d090061af9abe702ed877e6a344b91424ba8ccbf070`.
 
 The same amended guard, fresh separately inspected admission, terminal host
 clearance and fresh-record completion gate remain mandatory. Another interference
