@@ -67,8 +67,42 @@ the standing retry authorization does not make a contaminated attempt eligible.
 The approved proposal has SHA-256
 `fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9`.
 Its methodology and hardware-scaled host thresholds received independent Astra
-review. Executable guards and pooled analysis require their focused checks before
-use. The following section retains the original terminal outcomes unchanged.
+review. The pooled-analysis coordinator passed 11 focused tests and independent
+review; the guard passed 20 focused tests, a bounded detached-child cleanup
+witness and independent review. The coordinator has SHA-256
+`5db3478d8640bd63aec3bcf7a616037876816604a977bae49187cf935e782722`;
+the guard used for measurement has SHA-256
+`7d20233d4a606ea51d71fc0569bf5db0944c18db1e1b5e600bb49f7f42ad1258`.
+Before any measurement, the unknown-process inspection rule classified only the
+exact Apple USB audio service executable as ordinary desktop activity. It remains
+subject to aggregate and individual CPU limits. Previous guard bytes, admissions
+and the original protocol are preserved; only the guard binding was updated.
+Two immediate launch checks rejected dispatch before any benchmark call. A fixed
+15-second idle pause before the next launch check allowed dispatch overhead to
+settle without changing the guard or its thresholds.
+
+The first launched confirmation was stopped at 20.07 seconds after Core Spotlight
+reached 110% CPU. The monitor confirms cleanup of the owned process tree. The
+whole attempt was declared ineligible from the host receipt before any timing
+values were inspected. Its failed timing summary retains eight observations;
+those are preserved but excluded from the eligible confirmation pool. The host
+receipt has SHA-256
+`22f3c93b5513e078db5d079d19d1a4c6a70c3c4916120a41b8043a4d7cabc644`;
+the interrupted summary has SHA-256
+`b685a892d84ebe91321d0082d7186a0954e723d4c17862b97960cbe75a5447bf`.
+No pooled analysis or additional eligible statistical look occurred.
+
+Under the standing retry authorization, one further attempt is declared before
+collection: identical artifacts, inputs, 14 new pairs per cell, 60-call maximum,
+90-second call limit, 600-second panel limit, guard and pooled 99% analysis.
+The original seven pairs remain included; the externally invalidated eight
+observations do not enter the pool. A new output location preserves the failed
+attempt. The nominal two-look allocation remains unchanged because no additional
+eligible performance analysis occurred. Independent Astra methodology review
+agreed with this treatment. Another interference trigger ends this attempt and
+preserves its outputs; it does not authorize automatic repeated sampling.
+
+The following section retains the original terminal outcomes unchanged.
 
 ## Routing timing outcome, 2026-10-14
 
