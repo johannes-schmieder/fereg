@@ -109,7 +109,13 @@ def selected_b(original, a_decision, a_records, b_decision, b_records):
 
 
 def activation_evidence(packet, declaration, manifest, selected):
-    require(packet.get('schema') == 1 and packet.get('kind') == KIND, 'invalid activation evidence schema')
+    return activation_evidence_for_contract(packet, declaration, manifest, selected,
+                                            kind=KIND, contract=CONTRACT)
+
+
+def activation_evidence_for_contract(packet, declaration, manifest, selected, *, kind, contract, equivalence=True):
+    """Shared nonstatistical checks; callers validate their own declaration/selection."""
+    require(packet.get('schema') == 1 and packet.get('kind') == kind, 'invalid activation evidence schema')
     hidden = manifest['arms'][selected]['sha256']
     require(packet.get('selected') == selected and packet.get('hidden_sha256') == hidden,
             'activation evidence changed the selected hidden artifact')
@@ -122,7 +128,8 @@ def activation_evidence(packet, declaration, manifest, selected):
             'new source/build/test identity is incomplete')
     require(source != manifest.get('candidate_source_identity'), 'activation reused the old source identity')
     reports = packet['reports']
-    require(set(reports) == {'source_review', 'correctness', 'equivalence'}, 'activation evidence is incomplete')
+    require(set(reports) == ({'source_review', 'correctness', 'equivalence'} if equivalence else
+                            {'source_review', 'correctness'}), 'activation evidence is incomplete')
     common = {'status': 'passed', 'selected': selected, 'hidden_sha256': hidden,
               'public_sha256': plugin['sha256'], 'source_sha256': packet['public_source']['sha256'],
               'declaration_sha256': routing.identity(declaration)}
@@ -130,14 +137,14 @@ def activation_evidence(packet, declaration, manifest, selected):
     for name, ref in reports.items():
         report = read_bound(ref, json=True)
         require(all(report.get(key) == value for key, value in common.items()), name + ': stale or failed activation report')
-        require(report.get('kind') == KIND + ':' + name, 'wrong activation report kind')
+        require(report.get('kind') == kind + ':' + name, 'wrong activation report kind')
         values[name] = report
     review = values['source_review']
-    require(review.get('activation_only') is True and review.get('public_invocation') == CONTRACT['public_invocation']
+    require(review.get('activation_only') is True and review.get('public_invocation') == contract['public_invocation']
             and review.get('effective_policy') == manifest['arms'][selected]['policy'], 'activation changed solver semantics')
     changed = review.get('changed_production_paths')
     require(isinstance(changed, list) and changed and len(changed) == len(set(changed))
-            and set(changed) <= set(CONTRACT['allowed_production_paths']), 'activation changes more than the permitted wiring')
+            and set(changed) <= set(contract['allowed_production_paths']), 'activation changes more than the permitted wiring')
     read_bound(review['independent_review'])
     # Canonical check_complexity.production_streams(root) maps, not the metrics
     # emitted by --write-inventory. A reviewer checks the actual wiring diff.
@@ -161,9 +168,11 @@ def activation_evidence(packet, declaration, manifest, selected):
     require(correctness['checks']['full_suite']['evidence']['sha256'] == source['full_tests_log_sha256']
             and correctness['checks']['build_abi'].get('build_log_sha256') == source['native_build_log_sha256'],
             'correctness receipts do not match the new source build/tests')
+    if not equivalence:
+        return plugin
     equivalent = values['equivalence']
     require(equivalent.get('invocations') == {'hidden': {'solver': 'auto', 'injection': routing.policy(selected)['injection']},
-            'public': CONTRACT['public_invocation']}, 'equivalence must compare hidden policy with uninjected public Auto')
+            'public': contract['public_invocation']}, 'equivalence must compare hidden policy with uninjected public Auto')
     expected = {(cell['stage'], cell['id']): cell for cell in declaration['non_c_cells']}
     rows = equivalent.get('cells', [])
     require(len(rows) == len(expected) and {(r['stage'], r['id']) for r in rows} == set(expected),

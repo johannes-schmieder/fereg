@@ -135,6 +135,30 @@ inputs. These checks qualify tooling, not a routing winner or performance claim.
 | 250 benchmark tests | `6a8db9a2040b1aa7c8a214bd932bc4edeb7ba70653f7f426241ceb7be945303c` |
 | Final 13 discovery tests | `b36c24775f681a23d81d6bb4e4fae8e20acb9589fb188376c8a54c50a03b2c74` |
 
+SCC accepted scientific-prerequisite job `8103651` (four slots, 12 GB,
+four-hour cap) and dependent discovery job `8103652` (28 slots on a requested
+28-processor host, 84 GB, twelve-hour cap), using tools frozen at `09f7c134`.
+The plan binds 211 files, 42 original A cells and the full baseline-plus-twelve
+policy grid. Before submission, a plan-output path correction fixed a rejected
+freeze without running any solver. The discovery job also has a user hold:
+release requires predecessor accounting with `failed=0` and `exit_status=0`
+and its complete fresh scientific proof. The collector must independently
+verify actual reservation and placement before timing. Submission establishes
+neither science nor performance qualification; the retained evidence records
+the exact plan, archive hashes and resource requests.
+
+The separate public-activation and C transition now passes independent source
+review. Its prerequisite hook collects two hidden-policy and two uninjected
+public-Auto calls on every original A/B cell, checks exact science and solver
+signatures, and retains the actual resource-evidence provenance. Only complete
+equivalence admits the original C panel, with 24 separate paired blocks per
+required edge. No actual B selection, activation or C calls have occurred.
+The final integration passes all 260 benchmark tests and the full repository
+suite, including 295 Python tests with the available scientific dependencies,
+1,331 core tests, 195 plugin FFI tests and ten isolated allocator audits. The
+Linux mock audit remains unavailable on Mac. Production identity is unchanged
+against `09f7c134`; the compact evidence retains source and check-output hashes.
+
 ## Authorized routing qualification recovery, 2026-10-14
 
 After reviewing the outcome below, Johannes approved the bounded recovery and

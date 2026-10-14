@@ -3,8 +3,8 @@
 
 This coordinator never reads a case body or dispatches native work. The initial
 stage is the original B panel, selected by reviewed SCC discovery, not a legacy
-A decision. Fresh Mac prerequisites precede timing. C is deliberately rejected
-until the separate public-activation derivation is implemented and reviewed.
+A decision. Fresh Mac prerequisites precede timing. C requires the separately
+validated public-activation derivation before its inputs can be inspected.
 Hash-bound review reports retain the actual remote validation output and raw
 evidence; their hashes establish provenance, not the truth of the review.
 """
@@ -50,11 +50,11 @@ def read(bound, *, sealed=False):
     return routing.unseal(value) if sealed else value
 
 
-def design_valid(design):
+def design_valid(design, *, attempts=12):
     require(set(design) == {'attempts', 'warmups', 'seed', 'timeout_s', 'budget_s',
                            'session_id', 'analysis_unit', 'alpha'}, 'freeze every Mac block design field')
-    require(type(design['attempts']) is int and design['attempts'] == 12,
-            'B requires twelve prospectively frozen mirrored rounds')
+    require(type(design['attempts']) is int and design['attempts'] == attempts,
+            f'require {attempts} prospectively frozen rounds')
     require(type(design['warmups']) is int and 1 <= design['warmups'] <= 5,
             'freeze 1..5 warmups per distinct arm')
     require(type(design['seed']) is int and 0 <= design['seed'] < 2**64, 'invalid schedule seed')
@@ -142,13 +142,24 @@ def declare(inputs, design):
 
 def load_context(bound):
     context = read(bound, sealed=True)
-    require(context.get('kind') == KIND and context.get('stage') == 'B',
-            'only prospective B context is executable; C needs reviewed public activation')
-    require(context == declare(context['inputs'], context['design']), 'selection context changed')
-    return context, read(context['inputs']['manifest'], sealed=True)
+    if context.get('kind') == KIND and context.get('stage') == 'B':
+        require(context == declare(context['inputs'], context['design']), 'selection context changed')
+        return context, read(context['inputs']['manifest'], sealed=True)
+    import routing_block_deployment as deployment
+    if context.get('kind') == deployment.EQUIVALENCE:
+        require(context == deployment.equivalence_context(context['inputs'], context['stage']),
+                'activation equivalence context changed')
+        return context, context['manifest']
+    if context.get('kind') == deployment.KIND:
+        require(context == deployment.derive(context['inputs']), 'public C context changed')
+        return context, context['manifest']
+    raise ValueError('only prospective B or reviewed public activation contexts are executable')
 
 
 def context_bindings(bound, context):
+    if context['kind'] != KIND:
+        import routing_block_deployment
+        return routing_block_deployment.context_bindings(bound, context)
     values = [bound, *context['inputs'].values(), reference(__file__), reference(discovery.__file__)]
     review = read(context['inputs']['discovery_review'])
     values += [review['remote_validation'], *review['raw_evidence']]
@@ -248,11 +259,14 @@ def comparison_coverage(context_bound, records_bound):
             'comparisons': comparisons, 'outcomes': outcomes}
 
 
-def timing_spec(config):
-    """Derive all B edges; callers supply prepared requests, never a chosen subset."""
+def timing_spec(config, *, paired=False):
+    """Derive complete edges; C requires a separate two-arm block per edge."""
     context, manifest, records = qualification(config['context'], config['qualification'])
+    require(context.get('status') != 'activation_equivalence', 'activation equivalence cannot collect timing')
+    require((context['stage'] == 'C') == paired, 'C requires paired blocks; B requires mirrored multi-arm blocks')
     coverage = comparison_coverage(config['context'], config['qualification'])
-    require(set(config['cells']) == {cell['id'] for cell in context['cells']}, 'complete original B cell coverage required')
+    require(set(config['cells']) == {cell['id'] for cell in context['cells']},
+            'complete original ' + context['stage'] + ' cell coverage required')
     require(config['harness']['sha256'] == manifest['harness_sha256'], 'Mac harness changed')
     checked(config['harness'])
     cells = []
@@ -283,6 +297,11 @@ def timing_spec(config):
                       'comparisons': [{'id': f'{cid}-p{index:03d}', **{key: row[key] for key in
                           ['reference', 'candidate', 'reference_role']}} for index, row in enumerate(edges)]})
     require(cells, 'no nonidentity runtime comparison is identified')
+    if paired:
+        cells = [{'id': pair['id'], 'workload': cell['workload'],
+                  'arms': {arm: cell['arms'][arm] for arm in [pair['reference'], pair['candidate']]},
+                  'validation': cell['validation'], 'comparisons': [pair]}
+                 for cell in cells for pair in cell['comparisons']]
     spec = {'schema': 2, 'harness': config['harness'], 'design': context['design'], 'cells': cells,
             'monitor': config['monitor'], 'declarations': [config['context']]}
     import time_blocks
@@ -294,6 +313,7 @@ def decide(config, timing_manifest, records, monitor_receipt):
     """Recompute one conditional B selection; never activate or inspect C."""
     import time_blocks
     context, _ = load_context(config['context'])
+    require(context['kind'] == KIND and context['stage'] == 'B', 'B selection cannot consume activation or C evidence')
     expected = timing_spec(config)
     frozen, _ = time_blocks.load_manifest(checked(timing_manifest))
     require(frozen['spec'] == expected, 'timing manifest differs from the complete prospective B design')

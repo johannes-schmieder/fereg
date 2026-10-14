@@ -249,8 +249,21 @@ context derives complete candidate/reference coverage, preserves unavailable
 optional comparisons, and refuses premature C access. Its `decide` function
 recomputes the complete comparison graph from raw observations and returns one
 conditional B finalist or no qualifying policy. Public activation and C
-need a separately reviewed versioned transition; the old deployment contract
-is not silently reinterpreted.
+use the separate reviewed [`routing_block_deployment.py`](routing_block_deployment.py)
+transition; the old deployment contract is not silently reinterpreted.
+
+Freeze its declaration before B. After an actual nonbaseline B finalist, source
+review and fresh correctness/build checks admit only original A/B equivalence
+collection through the existing prerequisite runner. Each cell has two calls
+to the selected hidden policy and two to uninjected public Auto. Exact science,
+solver signatures and independent witnesses must agree; resource evidence
+identifies the traced prerequisite rather than claiming every repeat was traced.
+Only complete checked A/B records admit C. C keeps all original cells and
+comparators, protects both the original baseline and selected hidden artifact,
+and uses 24 separate two-arm blocks per required comparison. Missing, failed or
+inconclusive evidence prevents confirmation; there is no fallback or continuation.
+The final result remains conditional and requires operational review before
+promotion. Evidence revalidation happens outside native-call timing.
 
 ### CMG-Schur prototype comparison
 

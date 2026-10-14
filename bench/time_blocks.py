@@ -397,8 +397,8 @@ class RoutingScience:
             origin = next(row for row in proof['prerequisites'] if row['arm'] == arm)
             require(execution['input']['sha256'] == origin['prepared_sha256'], 'Prepared routing request changed')
             self.expected[side] = origin['science_sha256']
-            requested = runner.input_policy(manifest, arm)
-            self.reader[side] = 'auto' if requested is not None else runner.EXPLICIT[manifest['arms'][arm].get('solver', arm)]
+            self.reader[side] = runner.reader_arm(manifest, arm)
+            runner.verify_public_request(check(execution['input']), manifest, arm)
         self.memory_limit = cell.get('memory_limit_bytes')
 
     def fingerprint(self, side):

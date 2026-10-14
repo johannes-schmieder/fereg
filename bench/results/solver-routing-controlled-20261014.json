@@ -7151,5 +7151,117 @@
       "setup-status.json": "56c52d582b75848bbc4d7110a6d51e420204a52a4700f2ffc7649f87ae6cac33"
     },
     "compact_archive_sha256": "8402f621432da7bc5cfd671efa290c0c1cbc1ccac6d1a3960ae6d3bf57b5a8e9"
+  },
+  "scc_discovery_submission": {
+    "schema": 1,
+    "tool_commit": "09f7c134f098fe715cc4f62e23051211488112aa",
+    "plan_sha256": "bab1ae3021c632d227c6ee04c12ef3bbf5e7e1c5edf1122618acc11a2859f3a0",
+    "plan_file_sha256": "0ccb3810dde38a5d7a81d0be3194060e19f000bc6c0bbe7f572e92e2822cff49",
+    "project": "welfgr",
+    "jobs": [
+      {
+        "id": "8103651",
+        "stage": "scientific_prerequisites",
+        "pe": "omp",
+        "slots": 4,
+        "mem_per_core": "3G",
+        "h_rt_seconds": 14400,
+        "maximum_native_calls": 1728,
+        "first_observed_start": {
+          "sge_time": "2026-10-14T18:20:10-04:00",
+          "queue": "econ@scc-tb4.scc.bu.edu",
+          "state": "r"
+        }
+      },
+      {
+        "id": "8103652",
+        "stage": "isolated_A_discovery",
+        "pe": "omp28",
+        "slots": 28,
+        "num_proc": 28,
+        "mem_per_core": "3G",
+        "h_rt_seconds": 43200,
+        "hold_jid": "8103651",
+        "maximum_native_calls": 12960
+      },
+      {
+        "id": "8103792",
+        "stage": "offline_isolation_validation_and_aggregation",
+        "slots": 1,
+        "mem_per_core": "4G",
+        "h_rt_seconds": 1200,
+        "hold_jid": "8103652",
+        "maximum_native_calls": 0,
+        "script_sha256": "0f8485147c607e36ef14fc94378fcf58c6fc10bdfafa723d463908dc02f160c2",
+        "submitted_sge_time": "2026-10-14T18:25:08-04:00",
+        "supersedes": {
+          "id": "8103784",
+          "status": "canceled_before_start",
+          "reason": "serial jobs may omit NSLOTS; default explicitly to one",
+          "script_sha256": "7e2be4651daf2d5110d1f438a74114b8dfa56121c45d8d273ab13bf4d473bd07"
+        },
+        "requires": [
+          "both predecessors qacct failed=0 exit_status=0",
+          "frozen complete proof and collection",
+          "verified isolation receipt before aggregate"
+        ]
+      }
+    ],
+    "accepted_utc": "2026-10-14T22:15:36Z",
+    "control_archive_sha256": "11084fc6a0b231339c82d8d8271b913c758d505419202177f707e542e4818174",
+    "status": "submitted_not_yet_qualified",
+    "raw_outputs_remote": true,
+    "collection_user_hold": {
+      "status": "applied",
+      "job_id": "8103652",
+      "reason": "SGE completion dependency does not establish successful predecessor accounting",
+      "release_requires": [
+        "prerequisite qacct failed=0 exit_status=0",
+        "complete fresh ready proof bound to frozen plan and artifact/input identities"
+      ],
+      "permission": "root explicitly approved automatic release after both checks",
+      "recorded_utc": "2026-10-14T22:18:26.193606+00:00"
+    },
+    "source_archive_sha256": "f4f33bf06b4745566503e688b32b8314006973be171ea98ddb0e65d5c602e710",
+    "input_archive_sha256": "e4f983e50bcb0b92a1d60c88d46a489489f4355f44a54d5b3db7900c4bf109d5",
+    "frozen_files": 211,
+    "source_checks": 80,
+    "A_cells": 42,
+    "policy_candidates": 13,
+    "setup_correction": "Plan output moved under the permitted task output root before submission; original failed freeze preserved, no solver or timing calls occurred.",
+    "claim": "Submitted jobs are not scientific or timing evidence. No routing policy is selected and public Auto remains unchanged."
+  },
+  "activation_tooling": {
+    "status": "source_review_and_tool_checks_passed",
+    "source_sha256": {
+      "bench/routing_block_deployment.py": "a72e19bd24f504616a81bffad92227382f022f729b2682a8b74d2d15f8c1098d",
+      "bench/routing_blocks.py": "fd5b893b5754bc58ce80a056ea633d7fb5c7c99661fbd3623c0e4f62ae396fba",
+      "bench/routing_deployment.py": "9f046ae0e0c034dddbbaf65f7c0c5265b9ee2325c3b6da8743d7c3466d1da835",
+      "bench/routing_run.py": "4a5e55aa1d3fc4839f45ffd7c20a657c06f348a08a1443867d28a8fdafb5e5c1",
+      "bench/time_blocks.py": "835a65afbe037d87d258a92180ceac300f9997341000fc40153cf3186a3f9402",
+      "bench/tests/test_routing_block_deployment.py": "b8b08b44d78574f63f4f3ef7792b9babf12b39f6c7350b2134a6ae09da5b2136",
+      "bench/tests/test_time_blocks.py": "80ed343bbbbd26f8237b7f2464ad6a52c43b66d56980172651df01370e066375"
+    },
+    "checks_sha256": {
+      "integration-tests": "1fb4893fb3acc9ae556096b5eb6cde59743b8484a6fb0b6484cf9bc566d62600",
+      "integration-bench": "ac73f35af48404bce71f00da10e1326fb1a12f9d4104efc790814e01d5040f61",
+      "production-identity": "800047c0bd1875cf824bd841d4107402383c0c0815988fb5c0305b4f8f0b7c1e"
+    },
+    "bench_tests": 260,
+    "repository_python_tests": 295,
+    "runtime_core_tests": 1331,
+    "plugin_ffi_tests": 195,
+    "isolated_allocator_audits": 10,
+    "production_identity": {
+      "against": "09f7c134",
+      "runtime_modules": 192,
+      "artifact_inputs": 58,
+      "status": "unchanged"
+    },
+    "limitations": [
+      "Source and synthetic-fixture checks only; no actual Mac B selection, public activation, A/B equivalence or C calls.",
+      "Scientific and performance qualification of a new public default remains pending.",
+      "The benchmark context fully revalidates dependencies before measurement; preparation cost is outside native-call timing."
+    ]
   }
 }

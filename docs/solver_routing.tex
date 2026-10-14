@@ -468,40 +468,41 @@ Commit pending component indices only when their generation is accepted; rejecti
 
 Qualify weight/support transitions, separation, both bias modes, final outputs and outer iteration behavior independently. Saved effects, coefficient/gauge recovery, inference and all protected discrete decisions must remain consistent with existing authority.
 \sub{Repository and release governance}
-Pin upstream revisions and record the precise patches for CMG control hooks and the within local backend. Existing repository rules need no change. A concrete exception that violates the max(5\%, 1 ms) current-auto gate or scientific semantics requires a user decision, not a new local fence or relaxed rule.
+Pin upstream revisions and record the precise CMG and within patches. Apply the user-approved controlled measurement rules on pages 11 and 22. Any exception to the max(5\%, 1 ms) current-auto gate or scientific semantics requires a user decision, not a new local fence or relaxed rule.
 
 
 % PAGE 11 ---------------------------------------------------------------------
 \newleaf
+\begin{compactleaf}\smallbody
 \sect{10 / PERFORMANCE QUALIFICATION}{Finite selection, paired uncertainty, one holdout}
 \sub{Arm manifest and timing scope}
-Predeclare eligible internal arms by support and output/accuracy contract, benchmark cells, data/solver seeds, worker counts, failures/timeouts, pairing order and the current paired-median bootstrap implementation. Measure complete end-to-end calls, including construction, required outputs and actual compatible reuse. Do not count hypothetical future calls.
+Predeclare eligible arms by support and output/accuracy contract, cells, seeds, workers, failures/timeouts, order, analysis unit and finite budgets. Measure complete calls, including construction, outputs and actual compatible reuse. The approved controlled protocol below supersedes the original bootstrap selection plan; historical observations retain their original analysis.
 
 Initially compare four finite $h$ policies with retained stars plus unchanged baseline. After sampling qualification, allow at most $4\times3=12$ $(h,k)$ policies plus baseline. These implemented policies retain incumbent kernels and the existing three-FE shortcut; ablation and prefix arms are separate. A future combination needs a newly declared complete artifact and qualification. No Cartesian search across kernels, prefixes, presets and overlap; retain baseline measurements throughout.
-\sub{Development A, development B, untouched C}
+\sub{Isolated SCC A, controlled Mac B, untouched Mac C}
 {\smallbody
 \begin{tabularx}{\linewidth}{P{0.16\linewidth}P{0.19\linewidth}Y}
 \toprule
 \textbf{Partition} & \textbf{Run design} & \textbf{Selection or decision rule}\\
 \midrule
-A: screening & 1 warmup; 3 rotating paired repetitions & Shortlist at most four by baseline violations, then worst normalized regret, then geometric-mean baseline ratio, with conservative ties.\\
+A: SCC discovery & 3 rounds $\times$ 3 measured repetitions; 1 warmup/round & Verified same-node isolation. Point estimates shortlist at most four by baseline violations, worst normalized regret, geometric-mean baseline ratio, then conservative ties. Nine slots are not asserted independent.\\
 \addlinespace[4pt]
-B: confirmation & 1 warmup; 7 paired repetitions & Every required comparison passes its upper-bound gate. Minimize worst internal bound among passers. Ties: baseline, retained stars, larger $h$, fewer trees.\\
+B: Mac selection & 12 mirrored multiarm rounds & Two calls/distinct arm: a frozen permutation and its reverse, shared across comparisons. Among gate passers minimize worst normalized internal upper bound. Ties prefer baseline, retained stars, larger $h$, fewer trees.\\
 \addlinespace[4pt]
-C: holdout & Frozen public Auto candidate; one untouched holdout (page 17) & No promotion on failure or inconclusive evidence. No runner-up selection using C, no retuning, and no recycling C for development.\\
+C: Mac holdout & 24 ordinary two-arm ABBA/BAAB blocks per required edge & One frozen public artifact; no cross-edge call reuse. Failure or uncertainty retains the incumbent. No runner-up, retuning or development use of C. Freeze this schedule before Mac B; page 17 governs activation.\\
 \bottomrule
 \end{tabularx}}
 \sub{Acceptance margins and statistical interpretation}
-For each prespecified benchmark cell, preserve the existing paired-median bootstrap upper-bound gate. Current-auto nonregression allows \textbf{max(5\%, 1 ms)}. Internal frontier comparisons allow \textbf{max(20\%, 1 ms)} against \emph{every} prespecified eligible backend. Preserve the one-millisecond absolute branch of each gate, not a blanket percentage limit or a noisy fastest-observed-arm comparison.
+For each required comparison, let $B,N$ be within-block geometric-mean reference/candidate times. Test median excess $E=N-B-\max(\epsilon B,0.001)$ seconds: $\epsilon=.05$ for original-baseline and selected-incumbent protection; $.20$ for internal frontier comparisons. Preserve every eligible declared comparison and the absolute 1 ms branch; do not select a noisy fastest observed arm.
 
-Pin the harness's statistic, resampling/pairing unit, nominal coverage and upper-bound implementation; these details are not replaced by this specification. Report nominal \emph{per-comparison} coverage, not a universal or simultaneous 95\% guarantee. Repeated measurements and a held-out suite do not establish distribution-free tail dominance.
+Use an attainable one-sided order-statistic bound, $\alpha=1/40$. For $X\sim\mathrm{Binomial}(n,.5)$, choose the smallest $k$ with $\Pr(X\ge k)\le\alpha$; set $U=E_{(k)}$. Pass if $U\le0$; no attainable rank is inconclusive. Coverage assumes independent blocks with a common median; it is not simultaneous. Preserve shared-reference correlations; report ratios separately. Page 22 states the A/A limitation.
 
 Retain failures and timeouts as failures; do not drop them or resample until passing. Report family/cell tails, worst regret and uncertainty alongside geometric means. An inconclusive upper-bound gate does not pass. Baseline retention neither proves the internal target nor establishes universal performance safety.
 \sub{External comparisons and release measurements}
 Compare fixest, reghdfe and ppmlhdfe only on eligible accuracy-matched, complete end-to-end tasks including required outputs. Keep default and matched-strict comparisons separate. Do not infer a win from differing tolerances, missing saved effects or omitted final inference work.
 
-Use quiet Mac release timing after stable edits and profiling, with no competing local work. Freeze repetitions and failure policy before running C; do not extend a run opportunistically after seeing the result. Protect both baselines and record the policy/seed/revision manifest. Later stages need fresh untouched validation.
-
+Use controlled paired Mac timing after stable edits/profiling. Record OS bursts; invalidate complete blocks for known competing compute only under frozen external-evidence rules and bounded attempts. No quiet-desktop gate applies. Freeze C before B; no opportunistic extension. Protect both baselines, bind policy/seed/revision, and require fresh untouched validation for later stages.
+\end{compactleaf}
 
 % PAGE 12 ---------------------------------------------------------------------
 \newleaf
@@ -531,12 +532,12 @@ PPML separately & Accepted/speculative cache publication, rejection rollback, we
 B1 & Versioned tariff, primitive bounds, reserve computation, native-counter debit mapping and exact checkpoint mapping. Preserve established action/Low semantics.\\
 B2 & Preserve the pair's primary score; secondary tie is descending total retained component dimension, then ascending original factor indices.\\
 B3 & Fixed fatal kind/task ordering, logical fault locations and resumable Low epoch mapping. Cumulative grants must never reset or depend on readiness.\\
-B4 & Existing paired-median statistic, confidence level, resampling protocol, normalized-regret definition and C repetition manifest. No new statistical estimand.\\
+B4 & Bind the controlled block estimand, conditional order-statistic bounds, ranking rule and frozen C schedule (pages 11 and 22). The original paired-bootstrap binding below is historical and superseded.\\
 \bottomrule
 \end{tabularx}}\par\vspace{5pt}
 This checklist records specification bindings. Page 13 identifies source bindings; page 15 separates integrated checks from pending performance qualification. Record bindings in code/tests and the qualification manifest, not a data-dependent classifier. Implementation and native checks alone do not promote an optional branch.
 \sub{Readiness record and source anchors}
-Before promotion, require implementation/revision pins; numerical-contract proof and witnesses; action/resource/rollback tests; supported-output compatibility; passing A/B selection; a frozen complete policy; and passing untouched C. Otherwise the optional feature remains off. The specification is not a promotion receipt; current outcomes are on pages 18--20.
+Before promotion, require implementation/revision pins; numerical-contract proof and witnesses; action/resource/rollback tests; supported-output compatibility; passing A/B selection; a frozen complete policy; and passing untouched C. Otherwise the optional feature remains off. The specification is not a promotion receipt; outcomes and the current method are on pages 18--22.
 
 {\tinybody
 \textbf{Repository authority:} \code{docs/SPEC.md}.\quad
@@ -568,7 +569,7 @@ B2 & Preserve primary score $\max_c\min(L_{a,c},L_{b,c})$. Tie by \emph{descendi
 \addlinespace[4pt]
 B3 & Experimental overlap uses an exclusive existing-worker lease and session service across compatible Low chunks. Grants, deferred certification, fixed fatal ordering and gated allocation follow pages 8--9. Fresh current-artifact native/Break checks pass; performance remains separate.\\
 \addlinespace[4pt]
-B4 & \code{bench/routing.py} binds disjoint hashed A/B/C inputs, one warmup each and 3/7/7 paired repetitions. It reuses the paired-median bootstrap: 10,000 draws, seed 739391, nominal 95\% per-comparison interval. A uses the median ratio; B/C use the interval's upper endpoint. Frozen selection precedes C; no runner-up or automatic continuation.\\
+B4 & \textbf{Historical binding, superseded by pages 11 and 22.} \code{bench/routing.py} used disjoint hashed A/B/C inputs, one warmup and 3/7/7 paired repetitions; paired-median bootstrap with 10,000 draws, seed 739391 and nominal 95\% intervals. A used medians; B/C used upper endpoints. Prior results keep that analysis.\\
 \bottomrule
 \end{tabularx}}
 \sub{Kernel distinctions preserved in the candidate}
@@ -579,14 +580,14 @@ Direct follows pages 5 and 14: $A\le4W_{\rm ref}$ at packed width, full funding 
 
 Ordinary explicit IT retains observation-space acceleration. Hidden \code{inject=it\_coefficients} tests the coefficient-space Euclidean metric, selected by complete simultaneous-memory comparison (ties favor coefficient space). Its trajectory changes; original-weight certification, rejection safeguards and factor-slot recovery remain required. Page 15 records the failed qualification and separate prefix arms.
 }
-\sub{Bound statistic and source anchors}
+\sub{Historical statistic and source anchors}
 {\smallbody
 For ratio statistic $q$, normalized excess regret is
 \[
  g=\frac{q-1}{\max\!\left(\epsilon,\,0.001/\operatorname{median}(t_{\rm reference})\right)},
  \qquad \epsilon=0.05\ \text{for protection},\quad 0.20\ \text{for internal arms}.
 \]
-The gate is $g\le1$. It preserves the one-millisecond allowance and the existing estimand. Timing outcomes are reported on pages 18--20.
+The historical gate was $g\le1$; it is not current acceptance. Pages 11 and 22 specify controlled excess-score bounds. Prior bootstrap outcomes on pages 18--21 remain unchanged.
 }
 \anchor{FE paths below \code{crates/fereg-core/src/}.\par
 Controller: \code{fe/routing.rs}, \code{fe/borrowed\_map.rs}, \code{fe/borrowed\_map/routing\_lsmr.rs}.\par
@@ -732,25 +733,25 @@ All 1,139 fresh native calls, eight Stata fixtures and five Break checks pass (p
 \sect{16 / PROSPECTIVE DEPLOYMENT AMENDMENT}{Qualify the public Auto call}
 \tagline{Codex amendment after local benchmark review; no new GPT Pro authorship or code approval.}
 \begin{note}
-This transition was declared and frozen \textbf{before any timing}. A hidden-injection result does not qualify a changed public invocation. One passing nonbaseline B policy may become a public OLS Auto candidate, with fresh non-C checks and a new frozen artifact before C access. Current Auto remains unchanged; the transition has not been executed.
+The invocation-only transition was originally declared before timing. The controlled schedule below supersedes its bootstrap method and is declared before Mac B. A hidden result cannot qualify a changed public invocation: require fresh non-C checks and a frozen public artifact before C. Current Auto is unchanged; actual activation and C are unexecuted. Controlled-C/equivalence source review and integration checks pass.
 \end{note}
 \sub{One permitted transition after B}
 \begin{enumerate}
-\item \textbf{Reproduce selection.} Recompute the original sealed A/B decisions from their complete original records. B must select one existing nonbaseline serial $(h,k)$ policy. This does not compose ablation, prefix or overlap experiments, or select a new policy after seeing C.
+\item \textbf{Reproduce selection.} Recompute the isolated SCC A shortlist and controlled Mac B decision from their complete bound records. B must select one existing nonbaseline serial $(h,k)$ policy. Do not compose ablation, prefix or overlap experiments, or select a new policy after seeing C.
 \item \textbf{Change invocation wiring only.} In \code{crates/fereg-plugin/src/estimate.rs}, activate that unchanged policy for uninjected public OLS Auto. Independent review checks the actual diff and old/new production inventories bound to their sources. Build/dependency artifact-input hashes remain unchanged; mathematical kernels, parameters and support contracts do not change.
 \item \textbf{Obtain fresh non-C evidence.} Bind the new source/plugin to a passing full suite, build/ABI, independent science, transactions/Break and unchanged explicit-solver/PPML checks. Earlier artifact receipts alone cannot discharge these obligations.
 \item \textbf{Prove invocation equivalence.} On every original A and B cell, including its exact input and worker identity, run two fresh hidden calls and two fresh uninjected public Auto calls. All four must have identical scientific and solver-signature fingerprints, the same independent witness, and passing certificates plus iteration/memory/setup-cap checks. Do not inspect C bodies for this work.
 \item \textbf{Freeze before C.} Freeze the new public artifact and its complete evidence packet before any C access. Derive one public-candidate C manifest from the original manifest and reproduced decisions. The execution hook must validate that exact derivation; a schema or command-line flag alone does not establish chronology.
 \end{enumerate}
 \sub{The holdout and its protection gates stay fixed}
-Preserve C's exact input bodies, cells, worker counts, original baseline/comparator arms, failure policy and resource budgets; retain one warmup and seven paired repetitions. Add the selected hidden artifact as a required protected incumbent. An existing incumbent may be replaced only when its artifact and policy are identical to the original baseline; otherwise the gate rejects the transition.
+Preserve C's input bodies, cells, workers, baseline/comparator arms, failure policy and resource budgets. Before Mac B, freeze 24 ordinary two-arm ABBA/BAAB blocks per required C edge, with no cross-edge call reuse and declared warmups. Add the selected hidden artifact as a protected incumbent. Replace an existing incumbent only when artifact and policy equal the original baseline; otherwise reject the transition.
 
-Keep max(5\%, 1 ms) protection for both the original baseline and selected hidden incumbent, and max(20\%, 1 ms) for internal comparisons. Preserve the paired-median statistic, 10,000 bootstrap draws, seed 739391 and nominal 95\% per-comparison coverage. Preserve the original selector/statistic sources and comparator eligibility; no new threshold or estimand is introduced.
+Keep max(5\%, 1 ms) protection for both original baseline and selected hidden incumbent, and max(20\%, 1 ms) for internal comparisons. Test block excess $N-B-\max(\epsilon B,.001)$ with the attainable one-sided order-statistic bound, $\alpha=1/40$, on pages 11 and 22. Preserve comparator eligibility and exact source bindings. Coverage remains conditional; this amendment changes the historical estimand, not the allowance or scientific tolerances.
 \sub{Terminal decision}
 Only the exact frozen public artifact can be promoted after a passing C result. No post-C production edit, retry, runner-up or continuation is permitted. No nonbaseline B winner, a failed prerequisite, or failed/inconclusive C leaves the old public default in place. Later scientific or production changes require a newly declared qualification with fresh untouched validation.
-\anchor{Prospective validation schema: \code{bench/routing\_deployment.py}; original selection/statistic: \code{bench/routing.py}, \code{bench/time\_exact.py}. Independent Astra protocol review cleared the declaration; eight synthetic gate tests pass. This does not approve activation or C execution; the schema does not itself execute activation, correctness checks or C.}
+\anchor{Current tools in \code{bench/}: \code{routing\_blocks.py}, \code{routing\_block\_deployment.py}, \code{time\_blocks.py}.\par The original eight-test declaration review is historical. Controlled-C/equivalence source review, focused checks and integration checks pass; actual activation and C are unexecuted. No schema alone proves activation, chronology, correctness or C execution.}
 \vfill
-{\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}DECLARED BEFORE TIMING. TRANSITION NOT EXECUTED. DEFAULT UNCHANGED.}
+{\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}DECLARED BEFORE MAC B. TRANSITION NOT EXECUTED. DEFAULT UNCHANGED.}
 \end{compactleaf}
 
 % PAGE 18 ---------------------------------------------------------------------
@@ -1728,10 +1729,12 @@ The guard classifies the inspected FSEvents/WallpaperAerialsExtension paths as o
 % Approved prospective measurement method; authored by Codex, not Pro code approval.
 \newleaf
 \begin{compactleaf}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
 \sect{21 / PROSPECTIVE MEASUREMENT}{Controlled blocks, separate decisions}
-\tagline{Approved 14 October 2026. Procedure and Linux setup checks passed; no policy selected.}
+\tagline{Integration passed; SCC science is running, discovery held. No new policy measurements.}
 \begin{note}\smallbody
-Scientific, resource and transaction gates are unchanged. This method prospectively replaces strict per-process CPU admission and whole-panel aborts. All seven failed admissions and earlier failed/excluded attempts retain their historical status; none is rescued or pooled into this campaign.
+Scientific, resource and transaction gates are unchanged. This method replaces strict CPU admission and whole-panel aborts prospectively. All seven failed admissions and earlier failed/excluded attempts remain historical and unpooled.
 \end{note}
 \begin{center}
 \begin{tikzpicture}[font=\sffamily\fontsize{9}{11}\selectfont,
@@ -1740,10 +1743,10 @@ Scientific, resource and transaction gates are unchanged. This method prospectiv
 \node[stage] (science) at (0,0) {\textbf{1. Unchanged science}\\Bind artifacts, inputs and checks};
 \node[stage] (pilot) at (5.6,0) {\textbf{2. Fixed A/A pilot}\\Test the measurement procedure};
 \node[stage] (scc) at (11.2,0) {\textbf{3. Isolated SCC discovery}\\Screen a declared finite grid};
-\node[stage] (mac) at (11.2,-1.5) {\textbf{4. Small Mac shortlist}\\Select using declared coverage};
-\node[stage] (freeze) at (5.6,-1.5) {\textbf{5. Freeze one finalist}\\Bind its public artifact and checks};
-\node[stage] (confirm) at (0,-1.5) {\textbf{6. Untouched Mac confirmation}\\No new winner after the result};
-\node[stage,fill=Pale,draw=Teal,text width=15.9cm,minimum height=.65cm] (decision) at (5.6,-2.9) {\textbf{7. Promote only if every required gate passes.}\quad Failure or uncertainty retains the incumbent.};
+\node[stage] (mac) at (11.2,-1.3) {\textbf{4. Small Mac shortlist}\\Select using declared coverage};
+\node[stage] (freeze) at (5.6,-1.3) {\textbf{5. Freeze one finalist}\\Bind its public artifact and checks};
+\node[stage] (confirm) at (0,-1.3) {\textbf{6. Untouched Mac confirmation}\\No new winner after the result};
+\node[stage,fill=Pale,draw=Teal,text width=15.9cm,minimum height=.65cm] (decision) at (5.6,-2.5) {\textbf{7. Promote only if every required gate passes.}\quad Failure or uncertainty retains the incumbent.};
 \draw[route] (science)--(pilot); \draw[route] (pilot)--(scc);
 \draw[route] (scc)--(mac); \draw[route] (mac)--(freeze);
 \draw[route] (freeze)--(confirm); \draw[route] (confirm.south)--(confirm.south |- decision.north);
@@ -1751,10 +1754,7 @@ Scientific, resource and transaction gates are unchanged. This method prospectiv
 \end{center}
 \sub{Complete solves and the tested quantity}
 {\smallbody
-Use balanced randomized ABBA/BAAB blocks, including setup; A is the reference and B the candidate \emph{order label}. For block $j$, define reference time $B_j=\sqrt{t_{A1}t_{A2}}$ and candidate time $N_j=\sqrt{t_{B1}t_{B2}}$, in seconds. The tested score is
-\[
- E_j=N_j-B_j-\max(0.05B_j,\,0.001).
-\]
+Use complete balanced randomized ABBA/BAAB solves, including setup (A: reference; B: candidate label). In seconds, $B_j=\sqrt{t_{A1}t_{A2}}$ and $N_j=\sqrt{t_{B1}t_{B2}}$; test $E_j=N_j-B_j-\max(0.05B_j,0.001)$.
 The median of $N_j/B_j$ is a separate descriptive effect size. It is not the acceptance statistic; minima cannot pass the gate. Sort scores $E_{(1)}\le\cdots\le E_{(n)}$. With $\alpha=0.025$, take the smallest attainable rank $k$ satisfying
 \[
  \Pr\{\operatorname{Binomial}(n,\tfrac12)\ge k\}\le0.025,\qquad U=E_{(k)}.
@@ -1763,19 +1763,21 @@ Pass only when $U\le0$, retaining ties. No attainable rank means $U=+\infty$ and
 }
 \sub{Freeze budgets; distinguish noise from invalidation}
 {\smallbody
-Freeze artifacts, inputs, workers, warmups, cache policy, order seed, block/attempt and wall budgets, round/session identities and the actual analysis unit before collection. Shuffle workload order across rounds; checkpoint complete blocks. A finite discovery screen may use a declared balanced rotating order. Preserve pairing and shared-reference correlations. Many correlated solves are not many independent observations.
+Before collection freeze artifacts, inputs, workers, warmups, cache policy, order seed, block/attempt/wall budgets, round/session identities and analysis unit. Shuffle workloads by round; checkpoint complete blocks. Discovery may use declared balanced rotation. Preserve pairing and shared-reference correlations; correlated solves are not independent observations.
 
 Record ordinary OS bursts as noise. Known competing compute or host faults invalidate whole affected blocks only through frozen rules and external evidence, never through unfavorable timings. Retain incomplete/excluded blocks and cap replacements prospectively. Science failures and solver timeouts keep their failure semantics; \textbf{the allowance remains $\max(5\%,1\ \mathrm{ms})$}. No fallback winner or sampling until success follows confirmation.
 }
 \sub{Host scope and current boundary}
 {\smallbody
-SCC candidate/reference pairs share the same verified isolated node, inputs, CPU placement, physical-core/SMT policy and library thread limits. Requested slots alone do not prove isolation. Linux discovery is not Mac speed evidence; Mac selection/confirmation cover relevant families and workers, including overlap routes.
+SCC pairs require the same verified isolated node, inputs, CPU placement, physical-core/SMT policy and library thread limits; slots alone do not prove isolation. Linux does not establish Mac speed. Mac panels cover relevant families/workers, including overlap.
 
-Tools are committed in \code{438e1d93}. The Mac A/A pilot completed 300 calls, 72 blocks and six workloads in 515.13 seconds: no exclusions or science failures; six conditional passes; median ratios 0.99450--1.00906. Serial correlation limits interpretation; this procedure check does not prove independence or compare routing candidates.
+The unchanged Mac A/A pilot has 300 calls, 72 blocks, six workloads and 515.13 seconds: no exclusions/science failures, six conditional passes, median ratios 0.99450--1.00906. Serial correlation limits interpretation; this does not compare candidates or prove independence. Linux setup passed 292 scientific calls (73 cases, two artifacts, two repeats), plus ABI/export audits.
 
-Linux setup passed 292 scientific calls across baseline and candidate (73 cases, two repeats each), plus ABI/export audits. SCC discovery awaits the reviewed isolated collector. The existing 20/20 standard pass remains valid for its artifact; a new public-Auto artifact needs affected checks. No policy is selected; public Auto is unchanged.
+Integration passes: 295 Python tests (no optional skips), 1,331 core, 195 plugin and ten allocator audits; all 260 benchmark tests pass in 182.152 seconds. Production identity matches \code{09f7c134}: 192 modules, 58 artifact inputs. SCC prerequisite \code{8103651} (4 slots, 12 GB, 4 h) is running on \code{scc-tb4}. Discovery \code{8103652} (28 slots/requested CPUs, 84 GB, 12 h) remains held for successful accounting and fresh proof; reservation gates are unpassed. Postprocess \code{8103792} is scheduled. No new timing claim follows.
+
+Control freezes 12 mirrored multiarm B rounds and 24 ordinary two-arm C blocks before Mac B. C/equivalence source review and integration checks pass. The existing 20/20 standard pass remains valid; a new public-Auto artifact needs affected checks. No policy is selected; public Auto is unchanged.
 }
-\anchor{Current authority: \href{development_workflow.md}{docs/development\_workflow.md}, controlled timing protocol; \href{../AGENTS.md}{AGENTS.md}, approved in \code{da8551cc}. Historical evidence: \href{VALIDATION.md}{docs/VALIDATION.md}. Codex-authored methods amendment.}
+\anchor{\href{development_workflow.md}{Approved protocol} (\code{da8551cc}); \href{../bench/results/solver-routing-controlled-20261014.json}{controlled evidence}; \href{VALIDATION.md}{validation}. Codex-authored amendment.}
 
 \end{compactleaf}
 \end{document}

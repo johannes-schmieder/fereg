@@ -422,6 +422,37 @@ class FrozenCollection(unittest.TestCase):
         cell['comparisons'][0]['reference_role'] = 'internal'
         with self.assertRaisesRegex(ValueError, 'qualified protection'): blocks.validate_reference_roles(cell, ['arm0'])
 
+    def test_routing_context_uses_shared_reader_and_checks_actual_public_request(self):
+        self.multi(2)
+        item = self.spec['cells'][0]
+        bound = blocks.reference(self.root / 'input.case')
+        item['validation'] = {'kind': 'routing_blocks', 'context': bound, 'qualification': bound,
+                              'witness': bound, 'source': bound, 'cell_id': 'cell'}
+        manifest = {'protections': ['arm0'], 'arms': {key: {'sha256': arm['plugin']['sha256']} for key, arm in item['arms'].items()}}
+        cell = {'case_sha256': bound['sha256'], 'body_sha256': 'body', 'family': 'dense'}
+        proof = {'prerequisites': [{'arm': arm, 'prepared_sha256': bound['sha256'],
+                                   'science_sha256': self.fingerprint} for arm in item['arms']]}
+        (self.root / 'proof.json').write_text(json.dumps(proof))
+        (self.root / 'independent.json').write_text('{}')
+        witness = {'independent_witness': {'path': 'independent.json'}, 'scoped_replay': {'path': 'proof.json'},
+                   'arm_outcomes': {arm: {'status': 'passed'} for arm in item['arms']}}
+        runner = types.SimpleNamespace(evidence=Mock(return_value=(witness, [])),
+                                       reader_arm=Mock(return_value='auto'), verify_public_request=Mock())
+        context = {'manifest': manifest, 'cell': cell, 'required': list(item['arms']), 'stage': 'C',
+                   'selection_sha256': 'context', 'bindings': []}
+        modules = {'routing_run': runner, 'routing_blocks': types.SimpleNamespace(science_context=Mock(return_value=context)),
+                   'routing': types.SimpleNamespace(unseal=lambda value: value), 'cmgschur': types.SimpleNamespace(),
+                   'routing_oracle': types.SimpleNamespace(KIND='independent'),
+                   'routing_cases': types.SimpleNamespace(inspect_case=lambda *args: {'body_sha256': 'body', 'oracle': {}},
+                                                         inactive_case_oracle=Mock())}
+        with patch.dict(sys.modules, modules):
+            adapter = blocks.RoutingScience(item)
+            self.assertEqual(adapter.reader, {'arm0': 'auto', 'arm1': 'auto'})
+            self.assertEqual(runner.verify_public_request.call_count, 2)
+            runner.verify_public_request.assert_any_call(self.root / 'input.case', manifest, 'arm1')
+            runner.verify_public_request.side_effect = ValueError('public request includes injection')
+            with self.assertRaisesRegex(ValueError, 'includes injection'): blocks.RoutingScience(item)
+
 
 class RoutingAndProcess(unittest.TestCase):
     def test_routing_checks_qualified_fingerprint_and_independent_oracle(self):

@@ -259,10 +259,42 @@ def native_command(harness, plugin, source, target, cell, traced):
 
 
 def input_policy(manifest, arm):
+    if 'invocation' in manifest['arms'][arm]:
+        if manifest['arms'][arm]['invocation'] != {'solver': 'auto', 'injection': None}:
+            raise ValueError('public request must be uninjected Auto')
+        return 'baseline'  # Request bytes only; effective policy is checked separately.
     if arm in manifest['candidates'] or arm in manifest['protections']:
         return routing.policy_name(manifest['arms'][arm].get('policy'))
     solver = manifest['arms'][arm].get('solver', arm)
     return solver if solver in routing.ABLATIONS else None
+
+
+def reader_arm(manifest, arm):
+    if 'invocation' in manifest['arms'][arm]:
+        if manifest['arms'][arm].get('solver') != 'auto':
+            raise ValueError('public reader must explicitly use Auto')
+        input_policy(manifest, arm)
+        return 'auto'
+    return 'auto' if input_policy(manifest, arm) is not None else EXPLICIT[manifest['arms'][arm].get('solver', arm)]
+
+
+def verify_public_request(source, manifest, arm):
+    if 'invocation' in manifest['arms'][arm]:
+        with source.open('rb') as stream:
+            _, arguments = case_header(stream)
+        if ([arg for arg in arguments if arg.startswith(b'solver=')] != [b'solver=auto']
+                or any(arg.split(b'=', 1)[0] in {b'inject', b'break_marker_token'} for arg in arguments)):
+            raise ValueError('prepared public Auto contains an injection or another solver')
+
+
+def resource_policy(manifest, arm):
+    config = manifest['arms'][arm]
+    if 'invocation' in config:
+        selected = routing.policy_name(config['effective_policy'])
+        if selected == 'baseline' or not isinstance(config.get('trace_preset'), str) or not config['trace_preset']:
+            raise ValueError('public Auto lacks its reviewed effective resource policy')
+        return selected, config['trace_preset']
+    return input_policy(manifest, arm), None
 
 
 def paths(items):
@@ -382,7 +414,7 @@ def check_oracle(raw, columns, meta):
             del data
 
 
-def resource_diagnostics(log, requested, no_fe, witness):
+def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None):
     candidate = requested not in {None, 'baseline'}
     expected = ({'injection': routing.ABLATIONS[requested]} if requested in routing.ABLATIONS else
                 routing.policy(requested) if candidate else None)
@@ -399,7 +431,7 @@ def resource_diagnostics(log, requested, no_fe, witness):
             route.append(fields)
         if fields.get('phase') != 'routing_action':
             continue
-        if expected and fields.get('preset') != expected['injection']:
+        if expected and fields.get('preset') != (expected_preset if expected_preset is not None else expected['injection']):
             raise ValueError('routing_action does not attest the requested preset')
         if fields.get('final') not in {'0', '1'}:
             raise ValueError('routing_action lacks its projection/final action classification')
@@ -429,14 +461,14 @@ def resource_diagnostics(log, requested, no_fe, witness):
 def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
         timeout=120.0, budget=14400.0, ablation_only=False, prerequisites_only=False,
         qualification_context=None):
-    routing.validate_manifest(manifest)
-    if manifest.get('purpose') == 'ablation_only' and not ablation_only:
-        raise ValueError('ablation manifest requires --ablation-only collection')
     # required_candidates enforces no A predecessor, frozen A shortlist for B,
     # and exactly the passing frozen B winner for C before reading any inputs.
     selection_sha256 = routing.identity(previous) if previous else None
     context_bindings = []
     if qualification_context is None:
+        routing.validate_manifest(manifest)
+        if manifest.get('purpose') == 'ablation_only' and not ablation_only:
+            raise ValueError('ablation manifest requires --ablation-only collection')
         candidates = routing.required_candidates(manifest, stage, previous)
     else:
         if not prerequisites_only or ablation_only:
@@ -678,26 +710,27 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                 requested = input_policy(manifest, arm)
                 if requested is not None:
                     routing.prepare(cases[cid], source, requested, cell['threads'])
-                    reader_arm = 'auto'
+                    reader = reader_arm(manifest, arm)
                 else:
                     solver = manifest['arms'][arm].get('solver', arm)
                     if solver not in EXPLICIT:
                         raise ValueError('unsupported explicit comparator in native routing producer')
-                    reader_arm = EXPLICIT[solver]
+                    reader = reader_arm(manifest, arm)
                     if arm == routing.COMPACT_IT:
                         routing.prepare(cases[cid], source, routing.COMPACT_IT, cell['threads'])
                     else:
-                        cmgschur.prepare(cases[cid], source, reader_arm, cell['threads'],
+                        cmgschur.prepare(cases[cid], source, reader, cell['threads'],
                                          samples=manifest['arms'][arm].get('cmgsamples'))
-                prepared[arm] = (source, reader_arm)
+                verify_public_request(source, manifest, arm)
+                prepared[arm] = (source, reader)
                 result['prepared_sha256'][f'{cid}/{arm}'] = digest(source)
-                if reader_arm == 'cmg':
+                if reader == 'cmg':
                     planned = next(request for request in result['cmg_worker_requests']
                                    if request['cell'] == cid and request['arm'] == arm)
                     actual = cmg_worker_identity(source, cell, arm, manifest['arms'][arm]['sha256'])
                     if actual != planned['identity']:
                         raise FrozenIdentityError('CMG effective request differs from its planned worker identity')
-                if reader_arm == 'it' and generic_it_metadata(meta):
+                if reader == 'it' and generic_it_metadata(meta):
                     planned = next(request for request in result['generic_it_worker_requests']
                                    if request['cell'] == cid and request['arm'] == arm)
                     actual = generic_it_worker_identity(source, cell, arm, manifest['arms'][arm]['sha256'])
@@ -727,7 +760,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                         failed[arm] = prerequisite
                         continue
                     try:
-                        raw, detail = cmgschur.read_run(target, log, meta, reader_arm)
+                        raw, detail = cmgschur.read_run(target, log, meta, reader)
                     except (ValueError, RuntimeError) as error:
                         failed_call(prerequisite, error, target, log, native=True)
                         failed[arm] = prerequisite
@@ -741,16 +774,19 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                             raise ValueError('native science differs from independently checked prerequisite cohort')
                     check_oracle(raw, columns, meta)
                     if reference is not None:
-                        compatibility(reference, raw, reference_columns, columns, meta, reader_arm)
-                    actual = resource_diagnostics(log.read_text(), requested,
-                                                  meta['absorbed_terms'] == 0, science[cid])
+                        compatibility(reference, raw, reference_columns, columns, meta, reader)
+                    effective, preset = resource_policy(manifest, arm)
+                    actual = resource_diagnostics(log.read_text(), effective,
+                        meta['absorbed_terms'] == 0, science[cid], expected_preset=preset)
                     fingerprints[arm] = detail['science_sha256']
                     verified[arm] = {**actual, 'diagnostic_sha256': routing.identity(actual),
                                      'witness_sha256': digest(witnesses[cid])}
+                    if manifest.get('purpose') == 'activation_equivalence':
+                        verified[arm]['solver_signature_sha256'] = routing.identity(raw['matrices']['RSOLVER'])
                     prerequisite.update(status='passed', certificate_pass=True, science_pass=True, science_sha256=fingerprints[arm], **verified[arm])
-                    if reader_arm == 'cmg':
+                    if reader == 'cmg':
                         prerequisite['cmg_worker_signature'] = cmg_diagnostic_signature(detail['solver_rows'])
-                    if reader_arm == 'it' and generic_it_metadata(meta):
+                    if reader == 'it' and generic_it_metadata(meta):
                         prerequisite['generic_it_worker_signature'] = generic_it_diagnostic_signature(detail['solver_rows'])
                     if arm == 'baseline':
                         reference = raw
@@ -775,7 +811,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                                    error=failed[arm].get('error', 'failed prerequisite'))
                         save()
                         continue
-                    source, reader_arm = prepared[arm]
+                    source, reader = prepared[arm]
                     target, log = output / 'current.json', output / 'current.log'
                     columns = target.with_suffix('.json.columns')
                     try:
@@ -785,7 +821,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                             failed[arm] = row
                             continue
                         try:
-                            raw, detail = cmgschur.read_run(target, log, meta, reader_arm)
+                            raw, detail = cmgschur.read_run(target, log, meta, reader)
                         except (ValueError, RuntimeError) as error:
                             failed_call(row, error, target, log, native=True)
                             failed[arm] = row
@@ -794,8 +830,10 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                         if detail['science_sha256'] != fingerprints[arm]:
                             raise ValueError('timed call differs from traced prerequisite science or solver signature')
                         check_oracle(raw, columns, meta)
-                        compatibility(reference, raw, reference_columns, columns, meta, reader_arm)
+                        compatibility(reference, raw, reference_columns, columns, meta, reader)
                         row.update(status='passed', certificate_pass=True, science_pass=True, **verified[arm])
+                        if manifest.get('purpose') == 'activation_equivalence':
+                            row['solver_signature_sha256'] = routing.identity(raw['matrices']['RSOLVER'])
                     except FrozenIdentityError:
                         raise
                     except (ValueError, RuntimeError, TimeoutError) as error:
