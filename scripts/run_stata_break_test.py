@@ -14,7 +14,10 @@ import termios
 import time
 from pathlib import Path
 
-from run_stata_tests import sha256_file, validate_candidate_plugin, validate_fixture_log
+try:
+    from .run_stata_tests import sha256_file, validate_candidate_plugin, validate_fixture_log
+except ImportError:
+    from run_stata_tests import sha256_file, validate_candidate_plugin, validate_fixture_log
 
 BREAK_FIXTURES = {
     "ols": ("estimate_ols_eclass_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_BREAK_ARMED")),
@@ -92,7 +95,13 @@ def read_until_marker_file(
     )
 
 
-def main() -> None:
+def bounded_integer(text: str, maximum: int) -> int:
+    if not text.isascii() or not text.isdecimal() or int(text) > maximum:
+        raise argparse.ArgumentTypeError(f"must be decimal digits in 0..{maximum}")
+    return int(text)
+
+
+def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--stata", default=os.environ.get("STATA_BIN"))
     parser.add_argument("--plugin", type=Path, required=True)
@@ -101,15 +110,43 @@ def main() -> None:
     parser.add_argument("--fixture-kind", choices=sorted(BREAK_FIXTURES), default="ols")
     parser.add_argument("--ols-solver", choices=("auto", "cmgschur"), default="auto",
                         help="OLS route exercised by both native and publication Break checks")
+    parser.add_argument("--cmg-samples", type=lambda value: bounded_integer(value, 2**32 - 1),
+                        help="optional CMG-Schur tree count; positive counts use a degree-30 fixture")
+    parser.add_argument("--cmg-seed", type=lambda value: bounded_integer(value, 2**53 - 1),
+                        help="optional CMG-Schur seed; requires positive --cmg-samples")
     parser.add_argument("--public-scope", action="store_true",
                         help="exercise feppml's outer scope with the private injection adapter")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.public_scope and args.fixture_kind != "ppml":
         parser.error("--public-scope requires --fixture-kind ppml")
     if args.ols_solver != "auto" and args.fixture_kind != "ols":
         parser.error("--ols-solver requires --fixture-kind ols")
+    if args.cmg_samples is not None or args.cmg_seed is not None:
+        if args.fixture_kind != "ols" or args.ols_solver != "cmgschur":
+            parser.error("--cmg-samples and --cmg-seed require --fixture-kind ols --ols-solver cmgschur")
+    if args.cmg_seed is not None and not args.cmg_samples:
+        parser.error("--cmg-seed requires positive --cmg-samples")
     if not args.stata:
         raise SystemExit("set STATA_BIN or pass --stata")
+    return args
+
+
+def fixture_command(fixture: Path, args: argparse.Namespace) -> str:
+    arguments: list[str] = []
+    if args.fixture_kind == "ols":
+        arguments.append(args.ols_solver)
+        if args.cmg_samples is not None:
+            arguments.append(str(args.cmg_samples))
+            if args.cmg_seed is not None:
+                arguments.append(str(args.cmg_seed))
+    elif args.public_scope:
+        arguments.append("public")
+    suffix = " " + " ".join(arguments) if arguments else ""
+    return f"do {stata_quote(fixture)}{suffix}"
+
+
+def main() -> None:
+    args = parse_arguments()
 
     root = Path(__file__).resolve().parents[1]
     fixture_name, armed_markers = BREAK_FIXTURES[args.fixture_kind]
@@ -165,10 +202,7 @@ def main() -> None:
                 'plugin call __fereg_break_provenance, selftest "ado=0.5.0" '
                 '"protocol_major=1" "protocol_minor=6" '
                 '"stata=`c(stata_version)\'" "threads=1" "verbose=1"',
-                f"do {stata_quote(fixture)}" + (
-                    f" {args.ols_solver}" if args.fixture_kind == "ols"
-                    else " public" if args.public_scope else ""
-                ),
+                fixture_command(fixture, args),
                 "",
             ]
         )
@@ -203,6 +237,12 @@ def main() -> None:
             print("BOUNDARY: feppml public scope")
         if args.fixture_kind == "ols":
             print(f"BOUNDARY: OLS solver({args.ols_solver})")
+            if args.cmg_samples:
+                if "FEREG_SAMPLED_BREAK_VERIFIED" not in transcript:
+                    raise RuntimeError("sampled Break fixture did not verify its boundary")
+                print(f"SAMPLING: count={args.cmg_samples} seed={args.cmg_seed or 0} degree=30")
+                print("NATIVE: cancellation at the pre-preparation wait checkpoint")
+                print("PUBLICATION: completed sampled solve interrupted after the plugin")
         print(f"PASS: {expected}")
     finally:
         native_marker_path.unlink(missing_ok=True)

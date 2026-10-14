@@ -1104,6 +1104,7 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
 #[derive(Clone, Copy)]
 struct CmgSchurRequest {
     degree: usize,
+    sampling: super::cmg_schur::Sampling,
     threads: usize,
     budget: Option<FeSolverMemoryBudget>,
     parents: u128,
@@ -1359,13 +1360,15 @@ impl Drop for PcgPilotGroupScratch<'_> {
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
     /// Validate and retain the request; an already certified RHS needs no hierarchy.
-    pub(crate) fn request_cmg_schur(
+    pub(super) fn request_cmg_schur(
         &mut self,
         degree: usize,
+        sampling: super::cmg_schur::Sampling,
         threads: usize,
         budget: Option<FeSolverMemoryBudget>,
         parents: u128,
     ) -> Result<()> {
+        sampling.validate()?;
         if self.two_fe_pcg.is_none() || !(4..=6).contains(&degree) || threads == 0 {
             return Err(invalid_argument(
                 "cmgschur requires two effects, degree 4..6 and workers",
@@ -1373,6 +1376,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         }
         self.cmg_schur_request = Some(CmgSchurRequest {
             degree,
+            sampling,
             threads,
             budget,
             parents,
@@ -1399,6 +1403,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             weights,
             graph.left_effect,
             request.degree,
+            request.sampling,
             self.max_rhs,
             request.threads,
             request.budget,
@@ -4403,6 +4408,7 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
         weights: BorrowedMapWeights<'_>,
         config: super::AbsorbConfig,
     ) -> Result<Self> {
+        config.validate_cmg_schur_options()?;
         if design.effects().is_empty()
             || !matches!(config.solver, FeSolverKind::Auto | FeSolverKind::Lsmr)
         {

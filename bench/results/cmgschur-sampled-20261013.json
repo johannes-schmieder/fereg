@@ -1,0 +1,4820 @@
+{
+  "schema": 1,
+  "date": "2026-10-13",
+  "purpose": "Opt-in sampled high-degree CMG-Schur implementation and bounded exploratory performance observations",
+  "base_revision": "f9bf345e50c4c853f29e0171538b68c03e0109df",
+  "identities": {
+    "production_tokens_sha256": "4c92875cb02a5ed797ede6cde5d7fe36cbbb6b9449376a95c54f2e872a4da293",
+    "artifact_inputs_sha256": "36dc1296674386040ff4eb3bab8860d010bc78115484aef037027ae8e18fee2e",
+    "plugin_sha256": "3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a",
+    "host": "Mac M2 Ultra, native Apple Silicon"
+  },
+  "protocol": {
+    "purpose": "Opt-in sampled high-degree CMG-Schur extension; exact outer operator and certificate, default routes and nonsampled cmgschur exact",
+    "base_revision": "f9bf345e50c4c853f29e0171538b68c03e0109df",
+    "baseline_macos_plugin_sha256": "654d867aec07e62e7e656d928cd47b90259201a5eaa29fe941ac07bf33ac585e",
+    "mac_panel": {
+      "cases": [
+        "d30-mixed",
+        "d30-weak",
+        "d60-stress"
+      ],
+      "dense_prerequisite": "sampled-oracle: degree30, about3000rows; independent dense dummy OLS/HC1",
+      "arms": [
+        "auto",
+        "cmg",
+        "cmgschur4",
+        "cmgschur4-sample1",
+        "cmgschur4-sample2",
+        "cmgschur4-sample4",
+        "baseline-cmgschur4"
+      ],
+      "threads": [
+        1,
+        4
+      ],
+      "seed": 0,
+      "warmups": 1,
+      "repetitions": 7,
+      "tolerance": 1e-08,
+      "strict_reference_tolerance": 1e-12,
+      "timeout_seconds": 120,
+      "total_budget_seconds": 2400,
+      "clock": "Complete native plugin call; excludes external case I/O; includes loading, projection, inference and reconstruction",
+      "guards": "Strict single-worker LSMR reference per input/artifact, dense prerequisites per arm/thread, exact discrete decisions and fixed-thread repeats. Parent/candidate nonsampled cmgschur additionally exact science and solver signatures.",
+      "stopping": "One frozen complete panel; no timing-driven retuning or resampling. Failed prerequisites block dependent fits; all failures/timeouts remain retained, and no claim follows for missing or failed cells."
+    },
+    "standard_nonregression": {
+      "cases": 20,
+      "warmups": 1,
+      "paired_repetitions": 7,
+      "allowance": "max(5%,1ms)",
+      "timeout_seconds": 90,
+      "total_budget_seconds": 1800,
+      "continuation": "At most one continuation on unchanged candidate/parent/harness/inputs, only initially inconclusive cells: 14additionalpairs and one excludedwarmup percell;900s total,90s/process. Pool all21pairs,100000bootstrapdraws seed739391,upper98.75thpercentile; approximate nominalcoverage,unchangedallowance,no furtherlooks."
+    },
+    "ordering": "Declare numerical scope; finish production edits, independent witnesses/review and targeted diagnostic profiles before frozen quiet Mac timing. No competing builds/tests/agent tools on measured host. Source and artifact hashes bound at beginning/end.",
+    "scope": "No defaults, sample/rank/omission/separation semantics, other solver algorithms or recurrence tolerances change. Averaged weighted clique trees are a fixed preconditioner only.",
+    "limits": "No degree30 real-data performance claim; this panel targets synthetic high-degree cases. Existing Veneto qualification retained separately."
+  },
+  "host_conditions": {
+    "classification": "exploratory timing; quiet-host qualification unavailable",
+    "controlled_workloads": "all builds, tests and agent workloads stopped before timing",
+    "pre_panel_wait_seconds": 90,
+    "last_pre_panel_cpu_percent": {
+      "spotlightknowledged": 98.1,
+      "sysmond": 41.8,
+      "Activity Monitor": 5.1
+    },
+    "effect": "OS background indexing persisted; timing observations do not establish clean release-performance qualification",
+    "protocol_change": "Before any timed panel: retain the original bounded repetitions, arms, science guards and allowances, but classify all timing as exploratory. Do not infer a clean timing pass from it.",
+    "between_panels_cpu_percent": {
+      "sysmond": 39.5,
+      "Activity Monitor": 27.4,
+      "Chrome renderer": 26.9,
+      "loginwindow": 25.4,
+      "launchd": 17.9
+    },
+    "between_panels_note": "Spotlight no longer in top processes, ordinary desktop activity remains; exploratory classification retained."
+  },
+  "performance_qualification": "Exploratory only: desktop background activity prevents a clean release-performance claim. No continuation was used; all observations are retained.",
+  "science": {
+    "sampled_panel_invocations": 358,
+    "sampled_dense_configurations": 32,
+    "maximum_all_arm_output_difference": 2.8238594795837457e-10,
+    "maximum_sampled_output_difference": 2.5135449277513544e-13,
+    "fixed_worker_repeats_exact": true,
+    "unsampled_parent_science_and_solver_signatures_exact": true,
+    "native_replay_cases": 73,
+    "native_replay_passed": true,
+    "native_replay_science_differences": 0,
+    "native_replay_policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+    "native_replay_scope_sha256": null
+  },
+  "validation": {
+    "full_suite": "scripts/run_tests.sh PASS",
+    "rust_test_executions_including_isolated_subprocesses": 1800,
+    "python_tests": {
+      "run": 206,
+      "skipped": 13,
+      "status": "passed"
+    },
+    "benchmark_tooling_tests": 18,
+    "universal_macos_build_abi_load": "passed",
+    "independent_architectural_review": "No actionable defects; mathematics, memory, determinism, validation and zero-sample preservation reviewed.",
+    "stata_fixture_attempts": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_cmgschur.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_cmgschur_sampled.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_cmgschur_nonconvergence.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_cmg_raw_residual_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_near_within_cmg_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": "Stata fixture returned r(9)",
+        "failure_kind": "stata_error",
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_auto_cmg_route.do",
+        "process_rc": 0,
+        "stata_rc": 9,
+        "status": "failure"
+      },
+      {
+        "failure_detail": "Stata fixture returned r(601)",
+        "failure_kind": "stata_error",
+        "fixture": "tests/licensed_stata/estimate_ols_eclass_transaction.do",
+        "process_rc": 0,
+        "stata_rc": 601,
+        "status": "failure"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/memory_baseline_contract.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "stata_break": {
+      "status": "passed",
+      "samples": 2,
+      "seed": 17,
+      "degree": 30,
+      "coverage": [
+        "native pre-preparation wait cancellation",
+        "postplugin interruption after completed sampled fit"
+      ]
+    },
+    "sampled_loop_interrupt": "isolated core witness starts emission, requests cancellation, then observes Interrupted at the 1024-edge checkpoint",
+    "earlier_checks": [
+      {
+        "result": "fixed",
+        "detail": "Clippy int_plus_one in seed upper bound rewritten as equivalent strict comparison; full suite subsequently passed."
+      },
+      {
+        "result": "rerun_passed",
+        "detail": "A deterministic source-archive check overlapped concurrent source edits. All sources were frozen before rerunning the complete suite successfully."
+      },
+      {
+        "result": "known_failure",
+        "detail": "Extra legacy auto-CMG fixture again failed its obsolete solver-code-seven assertion; this was already independently reproduced on the prior parent and documented in VALIDATION."
+      },
+      {
+        "result": "corrected_path_passed",
+        "detail": "An initial eclass transaction invocation used a nonexistent licensed_stata path (r601); the maintained installation fixture subsequently passed."
+      }
+    ],
+    "platform_scope": "Mac build and Apple Silicon execution only; no new Linux, Windows, SCC or empirical-data qualification.",
+    "staged_source_packaging_tests": 12
+  },
+  "sampled_panel": {
+    "schema": 1,
+    "status": "complete",
+    "purpose": "prototype observations, not release qualification",
+    "host": "macOS-26.6.2-arm64-arm-64bit",
+    "plugin_sha256": "3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a",
+    "threads": [
+      1,
+      4
+    ],
+    "plugins": {
+      "candidate": {
+        "sha256": "3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a"
+      },
+      "baseline": {
+        "sha256": "654d867aec07e62e7e656d928cd47b90259201a5eaa29fe941ac07bf33ac585e"
+      }
+    },
+    "source_identity": {
+      "git": {
+        "available": true,
+        "head": "f9bf345e50c4c853f29e0171538b68c03e0109df",
+        "dirty": true
+      },
+      "tool_sha256": {
+        "cmgschur.py": "c9971a15f55e761bdfc2d4538afb22cb2246cc7b88c346ae14a0732ec9294811",
+        "cmgschur_cases.py": "c462dee1364cf3e2fad91619dceae1f8b0fa58476d1bc4bbcb7e94bda39fef5c"
+      }
+    },
+    "arms": [
+      "auto",
+      "cmg",
+      "cmgschur4",
+      "cmgschur4-sample1",
+      "cmgschur4-sample2",
+      "cmgschur4-sample4",
+      "baseline-cmgschur4"
+    ],
+    "arm_artifacts": {
+      "auto": "candidate",
+      "cmg": "candidate",
+      "cmgschur4": "candidate",
+      "cmgschur4-sample1": "candidate",
+      "cmgschur4-sample2": "candidate",
+      "cmgschur4-sample4": "candidate",
+      "baseline-cmgschur4": "baseline"
+    },
+    "exact_baseline_arms": [
+      "cmgschur4"
+    ],
+    "sampled_preconditioner": {
+      "cmgschur4-sample1": {
+        "cmgdegree": 4,
+        "cmgsamples": 1,
+        "cmgseed": 0
+      },
+      "cmgschur4-sample2": {
+        "cmgdegree": 4,
+        "cmgsamples": 2,
+        "cmgseed": 0
+      },
+      "cmgschur4-sample4": {
+        "cmgdegree": 4,
+        "cmgsamples": 4,
+        "cmgseed": 0
+      }
+    },
+    "warmups": 1,
+    "repetitions": 7,
+    "budget_s": 2400.0,
+    "timeout_s": 120.0,
+    "clock": "CLOCK_MONOTONIC around one complete native call",
+    "reference": "untimed single-worker LSMR at tolerance 1e-12 per input and artifact; dense oracle on small fixtures",
+    "stopping_rule": "fixed panel, no automatic resampling; prototype failure stops dependent timing",
+    "cases": {
+      "sampled-oracle.case": {
+        "rows": 3000,
+        "workers": 60,
+        "firms": 40,
+        "distinct_links": 680,
+        "degree_histogram": {
+          "2": 40,
+          "30": 20
+        },
+        "schema": 1,
+        "case_sha256": "baec650fe6cd4c5263c7be05bf7dc9f7da409265cd7e0431a91e4bb81b57eb5c",
+        "source_sha256": null,
+        "outcome_transformation": "none",
+        "selection": "all supplied rows",
+        "degree_scope": "input graph before estimator pruning",
+        "generator_sha256": "872238504830bfe340929ec32f7c2d66d7e9f6f435696c0154a7fe1274e3c91c",
+        "numpy_version": "1.26.4",
+        "tolerance": 1e-08,
+        "vce": "robust",
+        "fixture": "sampled-oracle",
+        "graph_seed": 20261013,
+        "maximum_worker_degree": 30,
+        "outputs": {
+          "sample": 6,
+          "residual": 7,
+          "drop_reason": 8,
+          "xb": 9,
+          "xbd": 10,
+          "absorbed": 11
+        },
+        "columns": 12
+      },
+      "d30-mixed.case": {
+        "rows": 600000,
+        "workers": 10000,
+        "firms": 1000,
+        "distinct_links": 122776,
+        "degree_histogram": {
+          "1": 894,
+          "2": 1880,
+          "4": 1362,
+          "6": 1331,
+          "12": 1739,
+          "30": 2794
+        },
+        "schema": 1,
+        "case_sha256": "b6a40d1d293fed359ccec331156eac9a70b2a34d80960fa24f00a2b9d811d24a",
+        "source_sha256": null,
+        "outcome_transformation": "none",
+        "selection": "all supplied rows",
+        "degree_scope": "input graph before estimator pruning",
+        "generator_sha256": "872238504830bfe340929ec32f7c2d66d7e9f6f435696c0154a7fe1274e3c91c",
+        "numpy_version": "1.26.4",
+        "tolerance": 1e-08,
+        "vce": "robust",
+        "fixture": "d30-mixed",
+        "graph_seed": 20261013,
+        "maximum_worker_degree": 30,
+        "outputs": {
+          "sample": 6,
+          "residual": 7,
+          "drop_reason": 8,
+          "xb": 9,
+          "xbd": 10,
+          "absorbed": 11
+        },
+        "columns": 12
+      },
+      "d30-weak.case": {
+        "rows": 600000,
+        "workers": 10000,
+        "firms": 1000,
+        "distinct_links": 122630,
+        "degree_histogram": {
+          "1": 894,
+          "2": 1889,
+          "4": 1360,
+          "6": 1331,
+          "12": 1736,
+          "30": 2790
+        },
+        "schema": 1,
+        "case_sha256": "39a5888722773b5d1330a92eaf0b1284c92c9da95a47ebafafde598938a4770d",
+        "source_sha256": null,
+        "outcome_transformation": "none",
+        "selection": "all supplied rows",
+        "degree_scope": "input graph before estimator pruning",
+        "generator_sha256": "872238504830bfe340929ec32f7c2d66d7e9f6f435696c0154a7fe1274e3c91c",
+        "numpy_version": "1.26.4",
+        "tolerance": 1e-08,
+        "vce": "robust",
+        "fixture": "d30-weak",
+        "graph_seed": 20261013,
+        "maximum_worker_degree": 30,
+        "outputs": {
+          "sample": 6,
+          "residual": 7,
+          "drop_reason": 8,
+          "xb": 9,
+          "xbd": 10,
+          "absorbed": 11
+        },
+        "columns": 12
+      },
+      "d60-stress.case": {
+        "rows": 600000,
+        "workers": 5000,
+        "firms": 1000,
+        "distinct_links": 242000,
+        "degree_histogram": {
+          "2": 1000,
+          "60": 4000
+        },
+        "schema": 1,
+        "case_sha256": "3db5454997d8b73bc9496199ecdc2cf629da2921be037e86942cb7664cb4966a",
+        "source_sha256": null,
+        "outcome_transformation": "none",
+        "selection": "all supplied rows",
+        "degree_scope": "input graph before estimator pruning",
+        "generator_sha256": "872238504830bfe340929ec32f7c2d66d7e9f6f435696c0154a7fe1274e3c91c",
+        "numpy_version": "1.26.4",
+        "tolerance": 1e-08,
+        "vce": "robust",
+        "fixture": "d60-stress",
+        "graph_seed": 20261013,
+        "maximum_worker_degree": 60,
+        "outputs": {
+          "sample": 6,
+          "residual": 7,
+          "drop_reason": 8,
+          "xb": 9,
+          "xbd": 10,
+          "absorbed": 11
+        },
+        "columns": 12
+      }
+    },
+    "summary": [
+      {
+        "case": "d30-mixed.case",
+        "threads": 1,
+        "medians": {
+          "auto": 0.228284,
+          "cmg": 0.59157,
+          "cmgschur4": 0.315111,
+          "cmgschur4-sample1": 0.282335,
+          "cmgschur4-sample2": 0.304177,
+          "cmgschur4-sample4": 0.306047,
+          "baseline-cmgschur4": 0.315765
+        },
+        "failed_arms": [],
+        "comparisons_to_auto": {
+          "cmg": {
+            "median_ratio": 2.5892110734215996,
+            "bootstrap95": [
+              2.58600902361032,
+              2.5992826795164667
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4": {
+            "median_ratio": 1.380045357419084,
+            "bootstrap95": [
+              1.3791924718240507,
+              1.3827242349862343
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 1.237645783901175,
+            "bootstrap95": [
+              1.2339052312657024,
+              1.2416443996670903
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 1.3337553112269482,
+            "bootstrap95": [
+              1.3282950766662733,
+              1.3414479618100625
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 1.3437501372172775,
+            "bootstrap95": [
+              1.3392712550607286,
+              1.3513562267637549
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.3839340470641832,
+            "bootstrap95": [
+              1.3819834421131019,
+              1.3847135321895376
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          }
+        },
+        "comparisons_to_cmg": {
+          "auto": {
+            "median_ratio": 0.38621802998799803,
+            "bootstrap95": [
+              0.38472152639666946,
+              0.3866962531336811
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4": {
+            "median_ratio": 0.5326689994421623,
+            "bootstrap95": [
+              0.5320597916638447,
+              0.5345630699859852
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.4780606992400742,
+            "bootstrap95": [
+              0.4747099040013764,
+              0.47950241272363114
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.5145175049593436,
+            "bootstrap95": [
+              0.5132055727889682,
+              0.5157581814486076
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.5180940443119453,
+            "bootstrap95": [
+              0.5172507057491083,
+              0.519617869769584
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 0.533774532177088,
+            "bootstrap95": [
+              0.5327291037260825,
+              0.5349450713192365
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "comparisons_to_cmgschur4": {
+          "auto": {
+            "median_ratio": 0.7246138647719285,
+            "bootstrap95": [
+              0.723210004350546,
+              0.7250619622926525
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmg": {
+            "median_ratio": 1.8773384616849305,
+            "bootstrap95": [
+              1.8706866526081147,
+              1.8794880118131536
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.8968152946913135,
+            "bootstrap95": [
+              0.890089524009,
+              0.899537307370078
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.9645637216525685,
+            "bootstrap95": [
+              0.9625010290606735,
+              0.9662691360532129
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.9710546442364755,
+            "bootstrap95": [
+              0.9690490212841412,
+              0.9766155569558216
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.0020754591239278,
+            "bootstrap95": [
+              0.997720234815814,
+              1.0054228485230374
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "candidate_over_baseline": {
+          "cmgschur4": {
+            "median_ratio": 0.99792883948506,
+            "bootstrap95": [
+              0.9946064001519325,
+              1.0022849743892455
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.893663153230146,
+            "bootstrap95": [
+              0.8892915133315361,
+              0.8984509957431702
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.9647003192616994,
+            "bootstrap95": [
+              0.9593612509100118,
+              0.9691971225217035
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.9712632734796987,
+            "bootstrap95": [
+              0.9690434341994837,
+              0.9763558511162467
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "exact_baseline_matches": {
+          "cmgschur4": true
+        }
+      },
+      {
+        "case": "d30-mixed.case",
+        "threads": 4,
+        "medians": {
+          "auto": 0.118693,
+          "cmg": 0.264293,
+          "cmgschur4": 0.197779,
+          "cmgschur4-sample1": 0.185829,
+          "cmgschur4-sample2": 0.214598,
+          "cmgschur4-sample4": 0.21184,
+          "baseline-cmgschur4": 0.197415
+        },
+        "failed_arms": [],
+        "comparisons_to_auto": {
+          "cmg": {
+            "median_ratio": 2.217221694425061,
+            "bootstrap95": [
+              2.1915814385935257,
+              2.2378461382696884
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4": {
+            "median_ratio": 1.66541232851285,
+            "bootstrap95": [
+              1.6537258771196364,
+              1.6708934397895605
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 1.5637147936272566,
+            "bootstrap95": [
+              1.5607226244267884,
+              1.5728570344577562
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 1.8083796011559232,
+            "bootstrap95": [
+              1.8001815995897197,
+              1.8110561752248528
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 1.785749080341995,
+            "bootstrap95": [
+              1.7772462439992265,
+              1.7868711480579043
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.6654382554306482,
+            "bootstrap95": [
+              1.661666638670989,
+              1.6716655573622707
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          }
+        },
+        "comparisons_to_cmg": {
+          "auto": {
+            "median_ratio": 0.4510148906238743,
+            "bootstrap95": [
+              0.4468582459262387,
+              0.4562915082187237
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4": {
+            "median_ratio": 0.7483323432705369,
+            "bootstrap95": [
+              0.7413504590475328,
+              0.7637936487122328
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.7041327453426512,
+            "bootstrap95": [
+              0.7003640721812672,
+              0.7157694592072075
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.81120633772029,
+            "bootstrap95": [
+              0.8092853857348605,
+              0.8269979867790779
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.8015346603958485,
+            "bootstrap95": [
+              0.7972092567317914,
+              0.8149880826577601
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 0.745662038502706,
+            "bootstrap95": [
+              0.744305028767051,
+              0.7611223789436342
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "comparisons_to_cmgschur4": {
+          "auto": {
+            "median_ratio": 0.6004519018380043,
+            "bootstrap95": [
+              0.5984822108858984,
+              0.6046951395244186
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmg": {
+            "median_ratio": 1.3363046632857887,
+            "bootstrap95": [
+              1.3092541443438481,
+              1.348889702293802
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.9408812555762835,
+            "bootstrap95": [
+              0.9372148423305204,
+              0.9447138848218644
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 1.0828274877259907,
+            "bootstrap95": [
+              1.081823651651591,
+              1.0880951415362154
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 1.0710945044721634,
+            "bootstrap95": [
+              1.067026524810519,
+              1.0754876713439858
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.000136786430786,
+            "bootstrap95": [
+              0.9949539637676397,
+              1.0058348203422824
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "candidate_over_baseline": {
+          "cmgschur4": {
+            "median_ratio": 0.9998632322771825,
+            "bootstrap95": [
+              0.9941990272912834,
+              1.0050716278502498
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.9418944569067896,
+            "bootstrap95": [
+              0.9354232290905424,
+              0.9451038801161147
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 1.08730339639845,
+            "bootstrap95": [
+              1.0817831313156767,
+              1.0879008127451377
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 1.0724581045280606,
+            "bootstrap95": [
+              1.0692487967139581,
+              1.0746734867170757
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          }
+        },
+        "exact_baseline_matches": {
+          "cmgschur4": true
+        }
+      },
+      {
+        "case": "d30-weak.case",
+        "threads": 1,
+        "medians": {
+          "auto": 0.4604,
+          "cmg": 1.436908,
+          "cmgschur4": 0.397225,
+          "cmgschur4-sample1": 0.257876,
+          "cmgschur4-sample2": 0.255453,
+          "cmgschur4-sample4": 0.266034,
+          "baseline-cmgschur4": 0.397366
+        },
+        "failed_arms": [],
+        "comparisons_to_auto": {
+          "cmg": {
+            "median_ratio": 3.120644084301315,
+            "bootstrap95": [
+              3.113735551732059,
+              3.1406820156385753
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4": {
+            "median_ratio": 0.8631017716522597,
+            "bootstrap95": [
+              0.8600736169752085,
+              0.8634068660464834
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.5595361664241819,
+            "bootstrap95": [
+              0.5588093803767926,
+              0.5615725456125109
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.5547371392586481,
+            "bootstrap95": [
+              0.5535588137143154,
+              0.5559117861862698
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.5770204682239355,
+            "bootstrap95": [
+              0.5764875160897472,
+              0.5833340573414423
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 0.8632255512276554,
+            "bootstrap95": [
+              0.8621528305574255,
+              0.8642646154247422
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "comparisons_to_cmg": {
+          "auto": {
+            "median_ratio": 0.3204466683754778,
+            "bootstrap95": [
+              0.31840217985158753,
+              0.32115765240363336
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4": {
+            "median_ratio": 0.27648471542722136,
+            "bootstrap95": [
+              0.27617286562535664,
+              0.2766896961901008
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.17920215075771614,
+            "bootstrap95": [
+              0.17909750849660833,
+              0.17955736425465493
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.17761808267526952,
+            "bootstrap95": [
+              0.17708112893075237,
+              0.17801733749581894
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.185143377307385,
+            "bootstrap95": [
+              0.18469021296987662,
+              0.18573483543918615
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 0.2766177519474875,
+            "bootstrap95": [
+              0.27495042138366516,
+              0.2767181232256259
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "comparisons_to_cmgschur4": {
+          "auto": {
+            "median_ratio": 1.1586119190621893,
+            "bootstrap95": [
+              1.1582025106876586,
+              1.1626911699918183
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmg": {
+            "median_ratio": 3.6168364622066367,
+            "bootstrap95": [
+              3.6141569916392764,
+              3.6209205337230843
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.6481270940024751,
+            "bootstrap95": [
+              0.6476935038661771,
+              0.6504907443796165
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.6425703316760023,
+            "bootstrap95": [
+              0.6418156061204616,
+              0.6437259818312396
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.669463868290805,
+            "bootstrap95": [
+              0.6679942964821588,
+              0.6712748540935051
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.0003549625527095,
+            "bootstrap95": [
+              0.9986568200340071,
+              1.0013472846548055
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "candidate_over_baseline": {
+          "cmgschur4": {
+            "median_ratio": 0.9996451634009955,
+            "bootstrap95": [
+              0.9986545280788672,
+              1.0013449865249477
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.6489988162103619,
+            "bootstrap95": [
+              0.647590846424007,
+              0.6508625789512107
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.6423423242048892,
+            "bootstrap95": [
+              0.6417138803071318,
+              0.6439936646866714
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.6686900234239227,
+            "bootstrap95": [
+              0.6676432864723487,
+              0.6760841709902603
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "exact_baseline_matches": {
+          "cmgschur4": true
+        }
+      },
+      {
+        "case": "d30-weak.case",
+        "threads": 4,
+        "medians": {
+          "auto": 0.197369,
+          "cmg": 0.500284,
+          "cmgschur4": 0.247907,
+          "cmgschur4-sample1": 0.154886,
+          "cmgschur4-sample2": 0.157469,
+          "cmgschur4-sample4": 0.164531,
+          "baseline-cmgschur4": 0.249016
+        },
+        "failed_arms": [],
+        "comparisons_to_auto": {
+          "cmg": {
+            "median_ratio": 2.5346837649276233,
+            "bootstrap95": [
+              2.5100996661059924,
+              2.557576865648902
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4": {
+            "median_ratio": 1.2551869847848447,
+            "bootstrap95": [
+              1.2446865664147817,
+              1.2609489884459057
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.7842823099934086,
+            "bootstrap95": [
+              0.7777019054552757,
+              0.7866146611004459
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.797279097555542,
+            "bootstrap95": [
+              0.787623327391861,
+              0.7999512447816681
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.8332860112558942,
+            "bootstrap95": [
+              0.8281123691411643,
+              0.8340138749225503
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.2576544442136304,
+            "bootstrap95": [
+              1.2538799487861823,
+              1.2637296839242311
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          }
+        },
+        "comparisons_to_cmg": {
+          "auto": {
+            "median_ratio": 0.394526533777895,
+            "bootstrap95": [
+              0.39099509126435683,
+              0.3983905553644154
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4": {
+            "median_ratio": 0.4952045703502922,
+            "bootstrap95": [
+              0.4937925940046704,
+              0.49616217988182715
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.309192378728882,
+            "bootstrap95": [
+              0.30756247120684993,
+              0.3098957706472811
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.3137816948176123,
+            "bootstrap95": [
+              0.31277700996044416,
+              0.31536896223624133
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.3288697258269567,
+            "bootstrap95": [
+              0.32609533114108247,
+              0.32991214664629026
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 0.49709646445389777,
+            "bootstrap95": [
+              0.4933021175872531,
+              0.49957674377552574
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "comparisons_to_cmgschur4": {
+          "auto": {
+            "median_ratio": 0.7966940480755645,
+            "bootstrap95": [
+              0.7930534931730108,
+              0.8034151142808736
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmg": {
+            "median_ratio": 2.0193674692716006,
+            "bootstrap95": [
+              2.0154700228021687,
+              2.0251417541319823
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.6243066956560323,
+            "bootstrap95": [
+              0.6228576024450074,
+              0.6288130461985589
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.6341894339409537,
+            "bootstrap95": [
+              0.6327884855868139,
+              0.6368458231578097
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.6641088259632268,
+            "bootstrap95": [
+              0.6621048899775202,
+              0.6653179936909535
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.00447345173795,
+            "bootstrap95": [
+              1.0019658102407814,
+              1.0073861023485466
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "candidate_over_baseline": {
+          "cmgschur4": {
+            "median_ratio": 0.9955464709094998,
+            "bootstrap95": [
+              0.9926680521685507,
+              0.9980380465873291
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.6215263276255341,
+            "bootstrap95": [
+              0.6202363361884282,
+              0.6257189264568966
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.6340008110918823,
+            "bootstrap95": [
+              0.6281489134221496,
+              0.6346664624586378
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.6612687564997771,
+            "bootstrap95": [
+              0.6604399168698869,
+              0.6628058753857434
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "exact_baseline_matches": {
+          "cmgschur4": true
+        }
+      },
+      {
+        "case": "d60-stress.case",
+        "threads": 1,
+        "medians": {
+          "auto": 0.206217,
+          "cmg": 0.619879,
+          "cmgschur4": 0.380184,
+          "cmgschur4-sample1": 0.34946,
+          "cmgschur4-sample2": 0.384185,
+          "cmgschur4-sample4": 0.400006,
+          "baseline-cmgschur4": 0.380753
+        },
+        "failed_arms": [],
+        "comparisons_to_auto": {
+          "cmg": {
+            "median_ratio": 3.0020851821139867,
+            "bootstrap95": [
+              2.9791205832002925,
+              3.0162806204644235
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4": {
+            "median_ratio": 1.841031467427983,
+            "bootstrap95": [
+              1.8297269746016174,
+              1.849274064411878
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 1.693289108075474,
+            "bootstrap95": [
+              1.6803708298471864,
+              1.7013126706544859
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 1.8609959411687689,
+            "bootstrap95": [
+              1.846181587374859,
+              1.8698864493645935
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 1.9358539790608922,
+            "bootstrap95": [
+              1.9233817066251213,
+              1.950825584342164
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.8424849528308598,
+            "bootstrap95": [
+              1.830930581469157,
+              1.8583698697313542
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          }
+        },
+        "comparisons_to_cmg": {
+          "auto": {
+            "median_ratio": 0.33310180735638795,
+            "bootstrap95": [
+              0.33153413950126026,
+              0.3356695279939825
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4": {
+            "median_ratio": 0.61309748564679,
+            "bootstrap95": [
+              0.611695185673333,
+              0.6147409471111785
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.5640376622768265,
+            "bootstrap95": [
+              0.5615932930245137,
+              0.5651862591258828
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 0.6199011114862192,
+            "bootstrap95": [
+              0.6187239767761128,
+              0.6206180208740231
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 0.6448364592032384,
+            "bootstrap95": [
+              0.6443712532437009,
+              0.6470440198812994
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 0.6145876040714998,
+            "bootstrap95": [
+              0.6136822160589649,
+              0.6224428690092144
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "comparisons_to_cmgschur4": {
+          "auto": {
+            "median_ratio": 0.5431737684511455,
+            "bootstrap95": [
+              0.5407527306224503,
+              0.5465296264857918
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmg": {
+            "median_ratio": 1.6310619818397156,
+            "bootstrap95": [
+              1.6267014662017392,
+              1.6348011614628524
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.919496699430609,
+            "bootstrap95": [
+              0.9183724419940029,
+              0.9228263645867071
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 1.011146203447822,
+            "bootstrap95": [
+              1.0094296445931443,
+              1.011784643462391
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 1.0511850857114324,
+            "bootstrap95": [
+              1.0500336679081708,
+              1.0577883152195413
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.000979076194236,
+            "bootstrap95": [
+              0.9997505566525228,
+              1.009417765318044
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "candidate_over_baseline": {
+          "cmgschur4": {
+            "median_ratio": 0.9990218814583433,
+            "bootstrap95": [
+              0.9906701014766897,
+              1.0002495055849856
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.9183386547886527,
+            "bootstrap95": [
+              0.9022407051083111,
+              0.9191038089698068
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 1.0089558122117543,
+            "bootstrap95": [
+              1.0020535704954696,
+              1.0101337390338467
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 1.0505655897655435,
+            "bootstrap95": [
+              1.0352295533072642,
+              1.051146412287963
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          }
+        },
+        "exact_baseline_matches": {
+          "cmgschur4": true
+        }
+      },
+      {
+        "case": "d60-stress.case",
+        "threads": 4,
+        "medians": {
+          "auto": 0.111347,
+          "cmg": 0.277697,
+          "cmgschur4": 0.218561,
+          "cmgschur4-sample1": 0.259413,
+          "cmgschur4-sample2": 0.294404,
+          "cmgschur4-sample4": 0.306161,
+          "baseline-cmgschur4": 0.218976
+        },
+        "failed_arms": [],
+        "comparisons_to_auto": {
+          "cmg": {
+            "median_ratio": 2.4883850551979574,
+            "bootstrap95": [
+              2.480917734232022,
+              2.495398951659872
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4": {
+            "median_ratio": 1.9584073561576576,
+            "bootstrap95": [
+              1.9504566866841668,
+              1.9647205772669678
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 2.323822702316654,
+            "bootstrap95": [
+              2.3211684064334035,
+              2.3325370238982637
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 2.641715266482751,
+            "bootstrap95": [
+              2.6294252049639355,
+              2.6466544659197426
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 2.7499395188387616,
+            "bootstrap95": [
+              2.733812435834486,
+              2.752355352583696
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.9690028408069329,
+            "bootstrap95": [
+              1.9451393089705724,
+              1.9779600390215704
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          }
+        },
+        "comparisons_to_cmg": {
+          "auto": {
+            "median_ratio": 0.40186706551347917,
+            "bootstrap95": [
+              0.40073752508985666,
+              0.4030766462756388
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4": {
+            "median_ratio": 0.7884885859569405,
+            "bootstrap95": [
+              0.7838243050889095,
+              0.7891649226298268
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 0.9341584532782132,
+            "bootstrap95": [
+              0.9338253889117697,
+              0.9366786613889889
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 1.0601824804356452,
+            "bootstrap95": [
+              1.0537093490461367,
+              1.065827787773033
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 1.1020039569262368,
+            "bootstrap95": [
+              1.1017619923873863,
+              1.1060809687931272
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 0.7885429082777271,
+            "bootstrap95": [
+              0.7865048505274971,
+              0.7912773936227863
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "comparisons_to_cmgschur4": {
+          "auto": {
+            "median_ratio": 0.5106189970415415,
+            "bootstrap95": [
+              0.5089782290523235,
+              0.5127004392494504
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmg": {
+            "median_ratio": 1.2682491767288693,
+            "bootstrap95": [
+              1.2671622512916345,
+              1.2757961108217606
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 1.186913493258175,
+            "bootstrap95": [
+              1.1851831577026595,
+              1.1895908907698507
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 1.3456268742949902,
+            "bootstrap95": [
+              1.343022672323343,
+              1.3514320489034557
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 1.3998654837779843,
+            "bootstrap95": [
+              1.3959365640854988,
+              1.4073009235058371
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "baseline-cmgschur4": {
+            "median_ratio": 1.0018987834060056,
+            "bootstrap95": [
+              0.9974773048674787,
+              1.00950862136513
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        },
+        "candidate_over_baseline": {
+          "cmgschur4": {
+            "median_ratio": 0.9981048151395587,
+            "bootstrap95": [
+              0.9905809409014537,
+              1.0025290752182643
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          },
+          "cmgschur4-sample1": {
+            "median_ratio": 1.1844718366226816,
+            "bootstrap95": [
+              1.1788202423586052,
+              1.1881805750559093
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample2": {
+            "median_ratio": 1.344606307315846,
+            "bootstrap95": [
+              1.3350732500365339,
+              1.3469711081890567
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          },
+          "cmgschur4-sample4": {
+            "median_ratio": 1.3972523175567213,
+            "bootstrap95": [
+              1.3965743980851575,
+              1.3989708875523132
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": false
+          }
+        },
+        "exact_baseline_matches": {
+          "cmgschur4": true
+        }
+      }
+    ],
+    "harness_sha256": "35a67348e1dd6abbde33bee4a6d306a538dc8dbfce7d2396a9b1e26ae573fcf0",
+    "elapsed_s": 393.6878773330245
+  },
+  "standard_nonregression": {
+    "status": "complete",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "harness_sha256": "06d79139f0d1f89e796a750963dc18e911a563e8c7e365b47638c47c94cc83cd",
+    "repetitions": 7,
+    "warmups": 1,
+    "budget_s": 1800.0,
+    "timeout_s": 90.0,
+    "clock": "CLOCK_MONOTONIC around the native call",
+    "allowance": "max(5%, 1 ms)",
+    "summary": [
+      {
+        "case": "ols-no-fe-k5-t1.case",
+        "medians": {
+          "baseline": 0.005257,
+          "candidate": 0.005262
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.9969771396183638,
+            "bootstrap95": [
+              0.9958151036712953,
+              1.0030481996570775
+            ],
+            "upper_allowance": 1.1902225603956629,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-no-fe-k5-t4.case",
+        "medians": {
+          "baseline": 0.004789,
+          "candidate": 0.004764
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.991126135643355,
+            "bootstrap95": [
+              0.9819376026272579,
+              0.995819397993311
+            ],
+            "upper_allowance": 1.2088118605136773,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-three-unit-k5-t1.case",
+        "medians": {
+          "baseline": 0.581032,
+          "candidate": 0.578427
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.9984878225849458,
+            "bootstrap95": [
+              0.9942110193453022,
+              0.99912440212005
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-three-unit-k5-t4.case",
+        "medians": {
+          "baseline": 0.292891,
+          "candidate": 0.293721
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 1.001589329570093,
+            "bootstrap95": [
+              0.9892747477947844,
+              1.0034517960606506
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-two-pw-k5-t1.case",
+        "medians": {
+          "baseline": 0.586337,
+          "candidate": 0.586716
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 1.0019169863065098,
+            "bootstrap95": [
+              0.9964222037930429,
+              1.0039771792199244
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-two-pw-k5-t4.case",
+        "medians": {
+          "baseline": 0.325609,
+          "candidate": 0.327879
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 1.0067499311231516,
+            "bootstrap95": [
+              1.0012492615202837,
+              1.0141194009538714
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-two-unit-k20-t1.case",
+        "medians": {
+          "baseline": 1.007112,
+          "candidate": 1.00352
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.9985171504957624,
+            "bootstrap95": [
+              0.9943303984574562,
+              1.0010408681333536
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-two-unit-k20-t16.case",
+        "medians": {
+          "baseline": 0.375014,
+          "candidate": 0.372901
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.9918809670362466,
+            "bootstrap95": [
+              0.9810316060066582,
+              0.9971340740977936
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-two-unit-k20-t4.case",
+        "medians": {
+          "baseline": 0.480465,
+          "candidate": 0.481094
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 1.0048844589385808,
+            "bootstrap95": [
+              0.9932069451195951,
+              1.0156955816291204
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-two-unit-k20-t8.case",
+        "medians": {
+          "baseline": 0.407187,
+          "candidate": 0.407092
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.9940964672903676,
+            "bootstrap95": [
+              0.9819549201361104,
+              1.003949045524538
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-two-unit-k5-t1.case",
+        "medians": {
+          "baseline": 0.413325,
+          "candidate": 0.412612
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 1.0046159652399431,
+            "bootstrap95": [
+              0.9976289844553318,
+              1.0086034268949975
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-two-unit-k5-t4.case",
+        "medians": {
+          "baseline": 0.216919,
+          "candidate": 0.218073
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.9946197610730947,
+            "bootstrap95": [
+              0.9783558147685506,
+              1.0163580818366968
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-wide-k129-t1.case",
+        "medians": {
+          "baseline": 0.735215,
+          "candidate": 0.716537
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.9860296312414045,
+            "bootstrap95": [
+              0.9675649863139628,
+              0.996704365389716
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-wide-k129-t4.case",
+        "medians": {
+          "baseline": 0.372463,
+          "candidate": 0.37526
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 1.0084679489074437,
+            "bootstrap95": [
+              0.9694170964632729,
+              1.016145760044195
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-wide-k64-t1.case",
+        "medians": {
+          "baseline": 0.282335,
+          "candidate": 0.285511
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 1.01454780628036,
+            "bootstrap95": [
+              1.0014320131333014,
+              1.017133201192123
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-wide-k64-t4.case",
+        "medians": {
+          "baseline": 0.161747,
+          "candidate": 0.164954
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 1.0144119967448766,
+            "bootstrap95": [
+              0.9731053075575324,
+              1.031459866676579
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-wide-k65-t1.case",
+        "medians": {
+          "baseline": 0.304795,
+          "candidate": 0.302467
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.9998085243610759,
+            "bootstrap95": [
+              0.9921067190031482,
+              1.00663080851287
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ols-wide-k65-t4.case",
+        "medians": {
+          "baseline": 0.172377,
+          "candidate": 0.167407
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.9874270697719273,
+            "bootstrap95": [
+              0.9572029394093451,
+              1.0077794601367933
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ppml-two-unit-k5-t1.case",
+        "medians": {
+          "baseline": 0.405914,
+          "candidate": 0.407665
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 1.00468504576721,
+            "bootstrap95": [
+              1.0015919866708196,
+              1.0100648580725442
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      },
+      {
+        "case": "ppml-two-unit-k5-t4.case",
+        "medians": {
+          "baseline": 0.222824,
+          "candidate": 0.222766
+        },
+        "comparisons": {
+          "candidate": {
+            "median_ratio": 0.9977150034742637,
+            "bootstrap95": [
+              0.9963592450129707,
+              0.9985639751329111
+            ],
+            "upper_allowance": 1.05,
+            "nonregression_pass": true
+          }
+        }
+      }
+    ],
+    "all_exact": true,
+    "exactness": "all plugins",
+    "nonregression_pass": true,
+    "elapsed_s": 628.5479449579725,
+    "plugins": {
+      "baseline": {
+        "sha256": "654d867aec07e62e7e656d928cd47b90259201a5eaa29fe941ac07bf33ac585e"
+      },
+      "candidate": {
+        "sha256": "3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a"
+      }
+    },
+    "cases": {
+      "ols-no-fe-k5-t1.case": "90d5e847be680a4f7bd830aba11633241ac0f649febdd428ae431787b3d4282a",
+      "ols-no-fe-k5-t4.case": "760103726f0f24c3f8b051c62229ee4c5fc672f513035c5b523161489798cc77",
+      "ols-three-unit-k5-t1.case": "ed33b8aaf6bcf0bd6dd5930bbbb33e6117aff4291b483b8af8a340eefb2c4253",
+      "ols-three-unit-k5-t4.case": "4860b0b4d8d436488e19bf1c3d278487d52f0a1672a374cb4735d7565c30a8dd",
+      "ols-two-pw-k5-t1.case": "4d767fab45300f32591e91ad47d0974e9170364c912796f235811d39458d4c00",
+      "ols-two-pw-k5-t4.case": "0de1661e0f3fbf5c66faf50d96e6f21b868d754dbd0ad6eda3fefc8ca7dfc0bc",
+      "ols-two-unit-k20-t1.case": "0cd95bc9fe662c41d5cc9590cb40bf80bd726d05a8bcc9d5283b9630fd903011",
+      "ols-two-unit-k20-t16.case": "b6994b1352d06895f3827415300028af8ee1ddf400085f123524040f183b79c0",
+      "ols-two-unit-k20-t4.case": "79ba374b45b03445f991a29ee106e0af1234ed8ca5fc54244bfad47f2a5f4293",
+      "ols-two-unit-k20-t8.case": "262797c96897d69def16535dab623b79bb38f49f07de37cfa502d7ddbd819226",
+      "ols-two-unit-k5-t1.case": "ae8298f23d77ecde95fb4bca8dd3c27e71b47425e89db4f3b74c293cbffec59a",
+      "ols-two-unit-k5-t4.case": "0bff55b4e2762a6a716ef86dc01e1b2be61d00889ea2eaccfcd5a66f661560a2",
+      "ols-wide-k129-t1.case": "59c6e6abde51d7b20fc296b2ca9f2a7fa8d8633a3b705959cdf2232117f60fd7",
+      "ols-wide-k129-t4.case": "e8c7dc3c492b6f6bda48b54748d732c60a6465575a9d70307a6c314149021bd4",
+      "ols-wide-k64-t1.case": "71cbbcf9684c8433c4653d30eee649ee9be81da1bf6fe2c8c1cf1ddd6115c304",
+      "ols-wide-k64-t4.case": "447228d9c5e937771e9820f9a58e21fed46782c3c9108f39b84e8a8a9602f9cd",
+      "ols-wide-k65-t1.case": "f44113edb1266d49bac339e0be466e1d5a72b891be7e17c48644c413057814ef",
+      "ols-wide-k65-t4.case": "23f764c49e84febb09451fa02809a8cfcd3ff6221cf81463530c2d1871905e90",
+      "ppml-two-unit-k5-t1.case": "8f0d60760796e27256be875ffa1ce239c5d5dd9c2f0079b605ad5493d191a857",
+      "ppml-two-unit-k5-t4.case": "2b61166cefcb0d1bd5be7ff6682c158f5a1d5d5e5c1b20bb50621cfeef124636"
+    }
+  },
+  "diagnostic_profiles": {
+    "purpose": "diagnostic only; not quiet timing",
+    "plugin_sha256": "3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a",
+    "harness_sha256": "ca66fcbaade810c52d54676e1b1a5f42403fae4f001aa7bee03e3313929f4cff",
+    "records": [
+      {
+        "case": "d30-mixed",
+        "arm": "cmgschur4",
+        "threads": 1,
+        "load_s": 0.030429374999999998,
+        "native_s": 0.34498275,
+        "total_s": 0.375593209,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            5.213022275935009e-05,
+            2.0966333714545553e-09,
+            8.495521419833885e-11,
+            8.495521419833885e-11,
+            0.038994833,
+            0.111049584,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            4.818367926873179e-12,
+            7.513890245247389e-16,
+            4.645500814786377e-17,
+            4.645500814786377e-17,
+            0.002239792,
+            0.0817245,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.394734,
+        "science_sha256": "00cd0d412ff7ffa5ce21b9f38b3db3528542cc4ae05f9b158d1c35e25cd03f59",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          112986849280.0,
+          1.0,
+          22597369856.0,
+          1.0,
+          90389479424.0,
+          1.0,
+          0.0,
+          1.0,
+          3453.0,
+          1.0,
+          3453.0,
+          1.0,
+          79290662.0,
+          1.0,
+          79287209.0,
+          1.0,
+          67305472.0,
+          1.0,
+          165052416.0,
+          1.0,
+          67305472.0,
+          1.0,
+          165052416.0,
+          1.0,
+          0.000181084,
+          1.0,
+          0.030429374999999998,
+          1.0,
+          0.34498275,
+          1.0,
+          0.375593209,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.7865788925230133,
+          1.0,
+          97746944.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 0,
+            "seed": 0,
+            "workers": 10000,
+            "retained_workers": 5864,
+            "sampled_workers": 0,
+            "firms": 1000,
+            "vertices": 6864,
+            "input_edges": 122726,
+            "edges": 122623,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 6,
+            "hierarchy_vertices": [
+              6864,
+              5362,
+              5262,
+              5203,
+              5144,
+              4943
+            ],
+            "hierarchy_nonzeros": [
+              252110,
+              244636,
+              241976,
+              239319,
+              234634,
+              219081
+            ],
+            "repeats": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.017323792,
+            "hierarchy_seconds": 0.0176885,
+            "setup_seconds": 0.035198375
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d30-mixed",
+        "arm": "cmgschur4-sample1",
+        "threads": 1,
+        "load_s": 0.022102291000000003,
+        "native_s": 0.291607875,
+        "total_s": 0.31389525,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            8.0,
+            2.0,
+            7.889512315062408e-05,
+            4.9873208005011366e-09,
+            1.0462773895873887e-10,
+            1.0462773895873887e-10,
+            0.030822876000000003,
+            0.092727499,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            8.0,
+            2.0,
+            6.625533455206778e-12,
+            1.2320783865407493e-15,
+            5.118417013941218e-17,
+            5.118417013941218e-17,
+            0.002232042,
+            0.069875834,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.334466,
+        "science_sha256": "1f1a9dafc19d64a2239c03a64766fa10476030a934935f773d8000ef0a05035e",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          112243982336.0,
+          1.0,
+          22448796467.0,
+          1.0,
+          89795185869.0,
+          1.0,
+          0.0,
+          1.0,
+          3522.0,
+          1.0,
+          3522.0,
+          1.0,
+          70194087.0,
+          1.0,
+          70190565.0,
+          1.0,
+          67321856.0,
+          1.0,
+          160366592.0,
+          1.0,
+          67321856.0,
+          1.0,
+          160366592.0,
+          1.0,
+          0.000185084,
+          1.0,
+          0.022102291000000003,
+          1.0,
+          0.291607875,
+          1.0,
+          0.31389525,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.6963344728563289,
+          1.0,
+          93044736.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 1,
+            "seed": 0,
+            "workers": 10000,
+            "retained_workers": 0,
+            "sampled_workers": 5864,
+            "firms": 1000,
+            "vertices": 1000,
+            "input_edges": 116862,
+            "edges": 99568,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 4,
+            "hierarchy_vertices": [
+              1000,
+              927,
+              910,
+              906
+            ],
+            "hierarchy_nonzeros": [
+              200136,
+              193329,
+              190640,
+              189860
+            ],
+            "repeats": [
+              1,
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.019265167,
+            "hierarchy_seconds": 0.007737917,
+            "setup_seconds": 0.027072583
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d30-mixed",
+        "arm": "cmgschur4-sample2",
+        "threads": 1,
+        "load_s": 0.029434958,
+        "native_s": 0.357778084,
+        "total_s": 0.387390584,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            8.0,
+            2.0,
+            3.8134047271043414e-05,
+            1.740430982343591e-09,
+            3.364860921306255e-11,
+            3.364860921306255e-11,
+            0.039765458000000004,
+            0.131206292,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            7.826872830407616e-12,
+            1.3929820934545685e-15,
+            5.891100722149444e-17,
+            5.891100722149444e-17,
+            0.003101209,
+            0.081838792,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.405402,
+        "science_sha256": "ceff789ced0bd3878d13d316d34fd13c5a420ccfe15bf0e22f19df6fcf62f0c9",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          112251600896.0,
+          1.0,
+          22450320179.0,
+          1.0,
+          89801280717.0,
+          1.0,
+          0.0,
+          1.0,
+          3522.0,
+          1.0,
+          3522.0,
+          1.0,
+          73734427.0,
+          1.0,
+          73730905.0,
+          1.0,
+          67321856.0,
+          1.0,
+          164691968.0,
+          1.0,
+          67321856.0,
+          1.0,
+          164691968.0,
+          1.0,
+          0.000177542,
+          1.0,
+          0.029434958,
+          1.0,
+          0.357778084,
+          1.0,
+          0.387390584,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.7314568684038242,
+          1.0,
+          97370112.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 2,
+            "seed": 0,
+            "workers": 10000,
+            "retained_workers": 0,
+            "sampled_workers": 5864,
+            "firms": 1000,
+            "vertices": 1000,
+            "input_edges": 223672,
+            "edges": 159677,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 4,
+            "hierarchy_vertices": [
+              1000,
+              924,
+              908,
+              906
+            ],
+            "hierarchy_nonzeros": [
+              320354,
+              303016,
+              297400,
+              295820
+            ],
+            "repeats": [
+              1,
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.0239155,
+            "hierarchy_seconds": 0.012000417,
+            "setup_seconds": 0.035985042
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d30-mixed",
+        "arm": "cmgschur4-sample4",
+        "threads": 1,
+        "load_s": 0.015781583,
+        "native_s": 0.320132875,
+        "total_s": 0.33610825,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            9.223472327413162e-05,
+            4.094883276704185e-09,
+            7.559611945137292e-11,
+            7.559611945137292e-11,
+            0.051241041,
+            0.100254334,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            5.324296559194863e-12,
+            1.0068683020647287e-15,
+            3.1531832786498135e-17,
+            3.1531832786498135e-17,
+            0.002236709,
+            0.071645334,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.354734,
+        "science_sha256": "563831e3aef405ed44dc38ce8c29aa876611d0b9488f70c7a122c8fb76e57176",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          112072949760.0,
+          1.0,
+          22414589952.0,
+          1.0,
+          89658359808.0,
+          1.0,
+          0.0,
+          1.0,
+          3522.0,
+          1.0,
+          3522.0,
+          1.0,
+          74751843.0,
+          1.0,
+          74748321.0,
+          1.0,
+          67321856.0,
+          1.0,
+          161677312.0,
+          1.0,
+          67321856.0,
+          1.0,
+          161677312.0,
+          1.0,
+          0.000193792,
+          1.0,
+          0.015781583,
+          1.0,
+          0.320132875,
+          1.0,
+          0.33610825,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.7415502738926615,
+          1.0,
+          94355456.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 4,
+            "seed": 0,
+            "workers": 10000,
+            "retained_workers": 0,
+            "sampled_workers": 5864,
+            "firms": 1000,
+            "vertices": 1000,
+            "input_edges": 437292,
+            "edges": 241171,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 3,
+            "hierarchy_vertices": [
+              1000,
+              920,
+              904
+            ],
+            "hierarchy_nonzeros": [
+              483342,
+              443684,
+              431928
+            ],
+            "repeats": [
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.034688542,
+            "hierarchy_seconds": 0.012724333,
+            "setup_seconds": 0.04746825
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 6,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d30-weak",
+        "arm": "cmgschur4",
+        "threads": 1,
+        "load_s": 0.015312625,
+        "native_s": 0.405636833,
+        "total_s": 0.421139166,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            15.0,
+            2.0,
+            8.699552852484138e-05,
+            4.41616956265821e-09,
+            1.5904271209325127e-10,
+            1.5904271209325127e-10,
+            0.030035959,
+            0.156507666,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            16.0,
+            2.0,
+            2.6645352591003757e-12,
+            4.0894931855244925e-16,
+            2.240471840562007e-17,
+            2.240471840562007e-17,
+            0.002236125,
+            0.1268495,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.439129,
+        "science_sha256": "df1a2fb3587b145207edeae134502fb0e688bcbaac996fb5b51db66bfea36828",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          111940616192.0,
+          1.0,
+          22388123238.0,
+          1.0,
+          89552492954.0,
+          1.0,
+          0.0,
+          1.0,
+          3453.0,
+          1.0,
+          3453.0,
+          1.0,
+          71339230.0,
+          1.0,
+          71335777.0,
+          1.0,
+          67321856.0,
+          1.0,
+          156893184.0,
+          1.0,
+          67321856.0,
+          1.0,
+          156893184.0,
+          1.0,
+          0.000189708,
+          1.0,
+          0.015312625,
+          1.0,
+          0.405636833,
+          1.0,
+          0.421139166,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.7076956948999005,
+          1.0,
+          89571328.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 0,
+            "seed": 0,
+            "workers": 10000,
+            "retained_workers": 5857,
+            "sampled_workers": 0,
+            "firms": 1000,
+            "vertices": 6857,
+            "input_edges": 122567,
+            "edges": 121626,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 5,
+            "hierarchy_vertices": [
+              6857,
+              5288,
+              4505,
+              1544,
+              22
+            ],
+            "hierarchy_nonzeros": [
+              250109,
+              217968,
+              176749,
+              32934,
+              64
+            ],
+            "repeats": [
+              1,
+              1,
+              4,
+              730,
+              0
+            ],
+            "graph_seconds": 0.017675,
+            "hierarchy_seconds": 0.008437375,
+            "setup_seconds": 0.02624025
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 15,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 15,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 15,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 16,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d30-weak",
+        "arm": "cmgschur4-sample1",
+        "threads": 1,
+        "load_s": 0.016836583999999998,
+        "native_s": 0.251626166,
+        "total_s": 0.2686435,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            9.0,
+            2.0,
+            4.387084298040911e-05,
+            2.1699024261551375e-09,
+            3.9145919981860445e-11,
+            3.9145919981860445e-11,
+            0.027557875000000003,
+            0.077887042,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            8.0,
+            2.0,
+            8.884892821470203e-12,
+            1.4557159752096753e-15,
+            6.566191785297485e-17,
+            6.566191785297485e-17,
+            0.002257292,
+            0.055347583,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.286533,
+        "science_sha256": "9b8a576fc35e98acd932f8613dcbdef447ca75c9b73ea326463299f8defd5b2f",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          112114712576.0,
+          1.0,
+          22422942515.0,
+          1.0,
+          89691770061.0,
+          1.0,
+          0.0,
+          1.0,
+          3522.0,
+          1.0,
+          3522.0,
+          1.0,
+          66291615.0,
+          1.0,
+          66288093.0,
+          1.0,
+          67338240.0,
+          1.0,
+          156368896.0,
+          1.0,
+          67338240.0,
+          1.0,
+          156368896.0,
+          1.0,
+          0.00018075,
+          1.0,
+          0.016836583999999998,
+          1.0,
+          0.251626166,
+          1.0,
+          0.2686435,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.6576195005098806,
+          1.0,
+          89030656.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 1,
+            "seed": 0,
+            "workers": 10000,
+            "retained_workers": 0,
+            "sampled_workers": 5857,
+            "firms": 1000,
+            "vertices": 1000,
+            "input_edges": 116710,
+            "edges": 42058,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 3,
+            "hierarchy_vertices": [
+              1000,
+              791,
+              699
+            ],
+            "hierarchy_nonzeros": [
+              85116,
+              56835,
+              44189
+            ],
+            "repeats": [
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.019785375,
+            "hierarchy_seconds": 0.0039695,
+            "setup_seconds": 0.023812708
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 9,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 9,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d30-weak",
+        "arm": "cmgschur4-sample2",
+        "threads": 1,
+        "load_s": 0.01515475,
+        "native_s": 0.24824245900000003,
+        "total_s": 0.263571959,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            8.0,
+            2.0,
+            4.3258061203088616e-05,
+            2.1545194377203768e-09,
+            4.9969034568366657e-11,
+            4.9969034568366657e-11,
+            0.032577375,
+            0.072713334,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            1.9271251261443467e-11,
+            2.9782724425226444e-15,
+            1.2172522701908523e-16,
+            1.2172522701908523e-16,
+            0.00223525,
+            0.051823209,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.281469,
+        "science_sha256": "8cc662c154fd11b88c249253ada9bc27af5fdbac9782481b0c8c8d97f2446fc6",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          112688005120.0,
+          1.0,
+          22537601024.0,
+          1.0,
+          90150404096.0,
+          1.0,
+          0.0,
+          1.0,
+          3522.0,
+          1.0,
+          3522.0,
+          1.0,
+          66319235.0,
+          1.0,
+          66315713.0,
+          1.0,
+          67321856.0,
+          1.0,
+          153124864.0,
+          1.0,
+          67321856.0,
+          1.0,
+          153124864.0,
+          1.0,
+          0.00017475,
+          1.0,
+          0.01515475,
+          1.0,
+          0.24824245900000003,
+          1.0,
+          0.263571959,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.6578935082506687,
+          1.0,
+          85803008.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 2,
+            "seed": 0,
+            "workers": 10000,
+            "retained_workers": 0,
+            "sampled_workers": 5857,
+            "firms": 1000,
+            "vertices": 1000,
+            "input_edges": 223371,
+            "edges": 47579,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 4,
+            "hierarchy_vertices": [
+              1000,
+              801,
+              725,
+              549
+            ],
+            "hierarchy_nonzeros": [
+              96158,
+              62697,
+              51281,
+              32677
+            ],
+            "repeats": [
+              1,
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.025301458,
+            "hierarchy_seconds": 0.003430334,
+            "setup_seconds": 0.028803416
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d30-weak",
+        "arm": "cmgschur4-sample4",
+        "threads": 1,
+        "load_s": 0.014473583,
+        "native_s": 0.251600709,
+        "total_s": 0.266246875,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            8.0,
+            2.0,
+            7.66912207162962e-05,
+            3.7466749403988826e-09,
+            6.525718120510702e-11,
+            6.525718120510702e-11,
+            0.040706833,
+            0.0707885,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            5.089650922940336e-12,
+            9.386985033723732e-16,
+            2.280163932354519e-17,
+            2.280163932354519e-17,
+            0.002234292,
+            0.051683666,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.283178,
+        "science_sha256": "eb4129e48fa8febc88f3f65a6befe2bd1d0047c279f7aa3e9834fdaa4f8da530",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          113081745408.0,
+          1.0,
+          22616349081.0,
+          1.0,
+          90465396327.0,
+          1.0,
+          0.0,
+          1.0,
+          3522.0,
+          1.0,
+          3522.0,
+          1.0,
+          66456671.0,
+          1.0,
+          66453149.0,
+          1.0,
+          67305472.0,
+          1.0,
+          158597120.0,
+          1.0,
+          67305472.0,
+          1.0,
+          158597120.0,
+          1.0,
+          0.000172583,
+          1.0,
+          0.014473583,
+          1.0,
+          0.251600709,
+          1.0,
+          0.266246875,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.6592569596577272,
+          1.0,
+          91291648.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 4,
+            "seed": 0,
+            "workers": 10000,
+            "retained_workers": 0,
+            "sampled_workers": 5857,
+            "firms": 1000,
+            "vertices": 1000,
+            "input_edges": 436693,
+            "edges": 49313,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 4,
+            "hierarchy_vertices": [
+              1000,
+              808,
+              725,
+              578
+            ],
+            "hierarchy_nonzeros": [
+              99626,
+              65188,
+              52503,
+              36900
+            ],
+            "repeats": [
+              1,
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.033560791,
+            "hierarchy_seconds": 0.003513958,
+            "setup_seconds": 0.037142625
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d60-stress",
+        "arm": "cmgschur4",
+        "threads": 1,
+        "load_s": 0.013984499999999999,
+        "native_s": 0.378203875,
+        "total_s": 0.392353292,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            6.0,
+            2.0,
+            7.930769484132405e-05,
+            3.720149356122894e-09,
+            1.0921470417094514e-10,
+            1.0921470417094514e-10,
+            0.056828833,
+            0.127034791,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            2.7008395520056183e-12,
+            4.632535487002961e-16,
+            2.1892107555441618e-17,
+            2.1892107555441618e-17,
+            0.0022355,
+            0.107187625,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.409074,
+        "science_sha256": "adad50634f544304bcb09af43f238f664828049db67ef45e6dd7a911a94cd90d",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          112798613504.0,
+          1.0,
+          22559722700.0,
+          1.0,
+          90238890804.0,
+          1.0,
+          0.0,
+          1.0,
+          3453.0,
+          1.0,
+          3453.0,
+          1.0,
+          89773126.0,
+          1.0,
+          89769673.0,
+          1.0,
+          67321856.0,
+          1.0,
+          174407680.0,
+          1.0,
+          67321856.0,
+          1.0,
+          174407680.0,
+          1.0,
+          0.000164917,
+          1.0,
+          0.013984499999999999,
+          1.0,
+          0.378203875,
+          1.0,
+          0.392353292,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.8905715166552659,
+          1.0,
+          107085824.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 0,
+            "seed": 0,
+            "workers": 5000,
+            "retained_workers": 4000,
+            "sampled_workers": 0,
+            "firms": 1000,
+            "vertices": 5000,
+            "input_edges": 241000,
+            "edges": 241000,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 6,
+            "hierarchy_vertices": [
+              5000,
+              4951,
+              4930,
+              4925,
+              4919,
+              4873
+            ],
+            "hierarchy_nonzeros": [
+              487000,
+              484671,
+              479150,
+              471785,
+              466945,
+              459983
+            ],
+            "repeats": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.022198709,
+            "hierarchy_seconds": 0.030563125,
+            "setup_seconds": 0.053059417
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 6,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 6,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 6,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d60-stress",
+        "arm": "cmgschur4-sample1",
+        "threads": 1,
+        "load_s": 0.014756625,
+        "native_s": 0.35034541699999994,
+        "total_s": 0.365275125,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            8.0,
+            2.0,
+            3.732758665719871e-05,
+            1.8861715856373305e-09,
+            5.5650478604742525e-11,
+            5.5650478604742525e-11,
+            0.075224125,
+            0.113918542,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            9.739584139190072e-12,
+            1.7286048175226062e-15,
+            9.916861073079339e-17,
+            9.916861073079339e-17,
+            0.002238875,
+            0.07138625,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.382269,
+        "science_sha256": "2a59deb8a722216a7e936fad2aba04e7382c8744b96034fc1eb4084cf4e7627c",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          112865361920.0,
+          1.0,
+          22573072384.0,
+          1.0,
+          90292289536.0,
+          1.0,
+          0.0,
+          1.0,
+          3522.0,
+          1.0,
+          3522.0,
+          1.0,
+          74072235.0,
+          1.0,
+          74068713.0,
+          1.0,
+          67305472.0,
+          1.0,
+          172457984.0,
+          1.0,
+          67305472.0,
+          1.0,
+          172457984.0,
+          1.0,
+          0.000173083,
+          1.0,
+          0.014756625,
+          1.0,
+          0.35034541699999994,
+          1.0,
+          0.365275125,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.7348081358513315,
+          1.0,
+          105152512.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 1,
+            "seed": 0,
+            "workers": 5000,
+            "retained_workers": 0,
+            "sampled_workers": 4000,
+            "firms": 1000,
+            "vertices": 1000,
+            "input_edges": 237000,
+            "edges": 170404,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 4,
+            "hierarchy_vertices": [
+              1000,
+              781,
+              701,
+              671
+            ],
+            "hierarchy_nonzeros": [
+              341808,
+              276797,
+              243387,
+              228983
+            ],
+            "repeats": [
+              1,
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.027739417,
+            "hierarchy_seconds": 0.043648917,
+            "setup_seconds": 0.071478417
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 8,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d60-stress",
+        "arm": "cmgschur4-sample2",
+        "threads": 1,
+        "load_s": 0.014291667,
+        "native_s": 0.377748041,
+        "total_s": 0.392197916,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            6.65757282679591e-05,
+            3.0551930676960368e-09,
+            8.360985300108677e-11,
+            8.360985300108677e-11,
+            0.093868542,
+            0.113156458,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            1.2850609465431262e-11,
+            2.2543454322110896e-15,
+            7.030440874035154e-17,
+            7.030440874035154e-17,
+            0.002171833,
+            0.081314333,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.41022,
+        "science_sha256": "1ebfbf75437f78b09b429d660eb3b5b808f407499411934b261fbf77366f02d8",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          113586782208.0,
+          1.0,
+          22717356441.0,
+          1.0,
+          90869425767.0,
+          1.0,
+          0.0,
+          1.0,
+          3522.0,
+          1.0,
+          3522.0,
+          1.0,
+          78502343.0,
+          1.0,
+          78498821.0,
+          1.0,
+          67305472.0,
+          1.0,
+          169361408.0,
+          1.0,
+          67305472.0,
+          1.0,
+          169361408.0,
+          1.0,
+          0.000158208,
+          1.0,
+          0.014291667,
+          1.0,
+          0.377748041,
+          1.0,
+          0.392197916,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.7787575885858494,
+          1.0,
+          102055936.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 2,
+            "seed": 0,
+            "workers": 5000,
+            "retained_workers": 0,
+            "sampled_workers": 4000,
+            "firms": 1000,
+            "vertices": 1000,
+            "input_edges": 473000,
+            "edges": 269328,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 4,
+            "hierarchy_vertices": [
+              1000,
+              789,
+              712,
+              686
+            ],
+            "hierarchy_nonzeros": [
+              539656,
+              409251,
+              352902,
+              332026
+            ],
+            "repeats": [
+              1,
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.039232792,
+            "hierarchy_seconds": 0.050913792,
+            "setup_seconds": 0.0902165
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      },
+      {
+        "case": "d60-stress",
+        "arm": "cmgschur4-sample4",
+        "threads": 1,
+        "load_s": 0.015722374999999997,
+        "native_s": 0.42966687499999995,
+        "total_s": 0.445555958,
+        "timing_field": "native_s",
+        "solver_rows": [
+          [
+            8.0,
+            8.0,
+            7.0,
+            2.0,
+            4.502898696900903e-05,
+            2.2567203547916213e-09,
+            7.86822058540196e-11,
+            7.86822058540196e-11,
+            0.130696751,
+            0.1248565,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            8.0,
+            8.0,
+            6.0,
+            2.0,
+            1.727618048619206e-11,
+            3.130104467689801e-15,
+            1.8740913360875165e-16,
+            1.8740913360875165e-16,
+            0.002317792,
+            0.080573,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "seconds": 0.464431,
+        "science_sha256": "30799c07f0d9c01d22a90257b2963b751cbb8f38ae380562444023a2b7aab8c1",
+        "runtime_rows": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          1.0,
+          100800072.0,
+          1.0,
+          97048648.0,
+          1.0,
+          115130793984.0,
+          1.0,
+          23026158796.0,
+          1.0,
+          92104635188.0,
+          1.0,
+          0.0,
+          1.0,
+          3522.0,
+          1.0,
+          3522.0,
+          1.0,
+          78991935.0,
+          1.0,
+          78988413.0,
+          1.0,
+          67338240.0,
+          1.0,
+          172507136.0,
+          1.0,
+          67338240.0,
+          1.0,
+          172507136.0,
+          1.0,
+          0.000166708,
+          1.0,
+          0.015722374999999997,
+          1.0,
+          0.42966687499999995,
+          1.0,
+          0.445555958,
+          1.0,
+          1e-08,
+          1.0,
+          1e-08,
+          1.0,
+          16000.0,
+          1.0,
+          100800072.0,
+          1.0,
+          0.7836146486085843,
+          1.0,
+          105168896.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "traces": [
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "initial_certificate_screen",
+            "rejected": 1,
+            "weighted": 0,
+            "rows": 600000,
+            "rhs": 4,
+            "parallel": 0,
+            "wide": 0
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "cmgschur_setup",
+            "degree": 4,
+            "samples": 4,
+            "seed": 0,
+            "workers": 5000,
+            "retained_workers": 0,
+            "sampled_workers": 4000,
+            "firms": 1000,
+            "vertices": 1000,
+            "input_edges": 945000,
+            "edges": 378346,
+            "components": 1,
+            "threads": 1,
+            "parallel_operators": 0,
+            "batch_columns": 4,
+            "levels": 3,
+            "hierarchy_vertices": [
+              1000,
+              781,
+              699
+            ],
+            "hierarchy_nonzeros": [
+              757692,
+              515767,
+              424201
+            ],
+            "repeats": [
+              1,
+              1,
+              0
+            ],
+            "graph_seconds": 0.068031583,
+            "hierarchy_seconds": 0.058809958,
+            "setup_seconds": 0.126914583
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 3,
+            "iterations": 0,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 1,
+            "iterations": 6,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 2,
+            "iterations": 7,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-09
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "stage_plan",
+            "stage": "two_fe_recurrence",
+            "budget": 1,
+            "lane_limit": 1,
+            "independent_items": 1000
+          },
+          {
+            "channel": "FEREG_SOLVER_TRACE",
+            "phase": "two_fe_pcg_rhs_stop",
+            "rhs": 0,
+            "iterations": 6,
+            "reason": "proxy_target",
+            "recurrence_tolerance": 5e-15
+          }
+        ]
+      }
+    ]
+  },
+  "retained_observation_sha256": {
+    "cmgschur-sampled-20261013-observations.csv": "2bb5bcb0d1b0c972cdb00a35d09b7194467016110efdb7f2cd2ac3b2bf955050",
+    "cmgschur-sampled-20261013-nonregression.csv": "86d1344711fdd53ea67bb07eec259648aba56926d21f52f4d0d454fa30a48e38"
+  },
+  "harness_source_sha256": "1d4512422efee9c8b811ed9e74fb86272fa3b32fe8d6b4a4d2101355bff7eccf",
+  "diagnostic_driver_sha256": "db9844d45200d0b0b00ad6e5f6676876fb8691de8ae01865d09269464f2a1f84"
+}

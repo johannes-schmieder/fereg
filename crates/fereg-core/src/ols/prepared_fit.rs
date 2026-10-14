@@ -2463,6 +2463,7 @@ fn validate_config<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     config: PreparedOlsFitConfig,
 ) -> Result<()> {
+    config.absorb.validate_cmg_schur_options()?;
     if prepared.fit_sample().retained_rows().is_empty() {
         return Err(insufficient_observations(
             "prepared OLS coefficient fitting requires a nonempty final sample",

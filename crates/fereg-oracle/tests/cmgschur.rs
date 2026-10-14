@@ -1,5 +1,7 @@
 #![deny(clippy::too_many_lines)]
 //! Independent full-dummy witnesses for the experimental two-way Schur route.
+#[path = "support/cmgschur_sampling.rs"]
+mod sampled;
 mod support;
 
 use fereg_core::{

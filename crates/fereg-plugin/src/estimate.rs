@@ -58,6 +58,8 @@ const OLS_FIELDS: &[&str] = &[
     "account_cluster_nesting",
     "preconditioner",
     "cmgdegree",
+    "cmgsamples",
+    "cmgseed",
     "output_xbd",
     "output_marker_b_matrix",
     "output_marker_v_matrix",
@@ -194,6 +196,8 @@ struct EstimateActionSpec {
     memory: MemoryMode,
     solver: FeSolverKind,
     cmg_schur_degree: usize,
+    cmg_schur_samples: u32,
+    cmg_schur_seed: u64,
     preconditioner: LsmrPreconditioner,
     poolsize: usize,
     threads: usize,
@@ -898,6 +902,29 @@ impl EstimateActionSpec {
             }
             None => 5,
         };
+        for option in ["cmgsamples", "cmgseed"] {
+            if values.contains_key(option) && solver != FeSolverKind::CmgSchur {
+                return Err(syntax(format!(
+                    "{option}() is valid only with solver(cmgschur)"
+                )));
+            }
+        }
+        let cmg_schur_samples = values
+            .get("cmgsamples")
+            .map(|_| parse_nonnegative_u32(&values, "cmgsamples"))
+            .transpose()?
+            .unwrap_or(0);
+        let cmg_schur_seed = match values.get("cmgseed") {
+            Some(_) if cmg_schur_samples == 0 => {
+                return Err(syntax("cmgseed() requires positive cmgsamples()"));
+            }
+            Some(value) => value
+                .parse::<u64>()
+                .ok()
+                .filter(|seed| *seed < (1_u64 << 53))
+                .ok_or_else(|| syntax("cmgseed() must be an integer in 0..9007199254740991"))?,
+            None => 0,
+        };
         let specification = Self {
             memory_baseline: Baseline::parse(&values)?,
             transport_parent_bytes: crate::metadata_memory::argument_parent_bytes(args)?,
@@ -928,6 +955,8 @@ impl EstimateActionSpec {
             memory: MemoryMode::parse(required(&values, "memory")?)?,
             solver,
             cmg_schur_degree,
+            cmg_schur_samples,
+            cmg_schur_seed,
             preconditioner: parse_preconditioner(required(&values, "preconditioner")?)?,
             poolsize: parse_positive_usize(&values, "poolsize")?,
             threads: parse_usize(&values, "threads")?,
@@ -1113,6 +1142,8 @@ impl EstimateActionSpec {
             absorb: AbsorbConfig {
                 solver: self.solver,
                 cmg_schur_degree: self.cmg_schur_degree,
+                cmg_schur_samples: self.cmg_schur_samples,
+                cmg_schur_seed: self.cmg_schur_seed,
                 map: MapConfig {
                     tolerance: self.tolerance,
                     max_iterations: self.iterate,

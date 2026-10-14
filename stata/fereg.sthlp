@@ -56,6 +56,8 @@ observations are removed to a fixed point.
   {ul:Solver and execution}
     {cmd:solver(auto|map|it|squarem|lsmr|cmg|cmgschur)}{col 53}fixed-effect solver
     {cmd:cmgdegree(4|5|6)}{col 38}experimental CMG-Schur cutoff; default 5
+    {cmd:cmgsamples(}{it:#}{cmd:)}{col 38}sampled CMG-Schur trees; default 0
+    {cmd:cmgseed(}{it:#}{cmd:)}{col 38}sampled CMG-Schur seed; default 0
     {cmd:preconditioner(auto|off|diagonal|schwarz)}{col 38}LSMR preconditioner
     {cmd:threads(}{it:#}{cmd:)}{col 38}native threads; default 0 (automatic)
     {cmd:memory(auto|fast|low)}{col 38}memory plan; default auto
@@ -210,13 +212,25 @@ categorical intercept fixed effects. It uses an implicit worker-eliminated
 Schur operator and a CMG preconditioner built from a hybrid graph.
 {cmd:cmgdegree(4|5|6)} controls the largest distinct-employer degree whose
 workers are eliminated from the preconditioner graph; higher-degree workers
-remain as auxiliary vertices. The default is 5. The cutoff changes only the
-preconditioner construction, not the fitted model or sample. Weights,
+remain as auxiliary vertices by default. The default cutoff is 5.
+{cmd:cmgsamples(}{it:k}{cmd:)} optionally replaces each higher-degree worker
+with the average of {it:k} sampled weighted trees on its distinct firms.
+The count must be an integer in 0..4294967295. Its default, zero, retains
+the original hybrid graph. With a positive count, {cmd:cmgseed(}{it:s}{cmd:)}
+selects a seed in 0..9007199254740991; its default is zero. Write these
+integers as decimal digits. An explicit {cmd:cmgseed()} requires positive
+{cmd:cmgsamples()}, including when the requested seed is zero.
+The graph is sampled once and remains fixed throughout the solve.
+These options change only preconditioner construction; the Schur operator,
+fitted model, and sample are unchanged. The solve retains its independent
+final numerical certificate. Weights,
 regressors, saved fixed effects, and both memory modes are supported.
 It is unavailable for PPML, absorbed slopes, or other numbers of fixed effects.
-{cmd:cmgdegree()} is accepted only with {cmd:solver(cmgschur)}.
-The solver matrix uses code 8 for this route; {cmd:e(fereg_cmg_degree)}
-records its requested cutoff. This prototype requires a matching development
+{cmd:cmgdegree()}, {cmd:cmgsamples()}, and {cmd:cmgseed()} are accepted only
+with {cmd:solver(cmgschur)}.
+The solver matrix uses code 8 for this route. {cmd:e(fereg_cmg_degree)},
+{cmd:e(fereg_cmg_samples)}, and {cmd:e(fereg_cmg_seed)} record the requested
+cutoff, tree count, and seed. This prototype requires a matching development
 plugin; older binaries reject the new request.
 
 {pstd}

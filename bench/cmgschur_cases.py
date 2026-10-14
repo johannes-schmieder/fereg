@@ -2,7 +2,7 @@
 """Build reproducible two-FE prototype cases, or convert a local numeric CSV.
 
 Requires NumPy and the existing fereg-oracle replay_large executable. Outputs
-are private scratch inputs under target/tmp/cmgschur or cmgschur-opt; only aggregate metadata
+are private scratch inputs under the declared CMG-Schur task directory; only aggregate metadata
 belongs in retained evidence. CSV rows/outcomes are preserved without selection
 or transformation. A small synthetic case includes an independent dense oracle.
 """
@@ -20,12 +20,17 @@ import numpy as np
 
 from native_io import ROOT, case_header, digest
 
+HIGH_DEGREE_SIZES = {'sampled-oracle': (60, 40, 50),
+                     'd30-mixed': (10000, 1000, 60),
+                     'd30-weak': (10000, 1000, 60),
+                     'd60-stress': (5000, 1000, 120)}
+
 
 def scratch(path):
     path = path.resolve()
     if not any(path.is_relative_to((ROOT / 'target/tmp' / task).resolve())
-               for task in ['cmgschur', 'cmgschur-opt']):
-        raise ValueError('output must be under target/tmp/cmgschur or target/tmp/cmgschur-opt')
+               for task in ['cmgschur', 'cmgschur-opt', 'cmgschur-sampled']):
+        raise ValueError('output must be under target/tmp/cmgschur, cmgschur-opt or cmgschur-sampled')
     return path
 
 
@@ -98,6 +103,42 @@ def additional_case(kind, workers=5000, firms=500, periods=20, seed=20261013):
         y = (coefficients @ x + np.sin(worker*.071) + .6*np.cos(firm*.13)
              + .3*rng.standard_normal(n))
     return [y, *x, worker, firm]
+
+
+def high_degree_case(kind, workers, firms, periods, seed=20261013):
+    """Connected high-degree panels; degree counts distinct firms, not rows."""
+    if kind not in HIGH_DEGREE_SIZES:
+        raise ValueError('unknown high-degree fixture')
+    groups = 10 if kind == 'd30-weak' else 1
+    degree = 60 if kind == 'd60-stress' else 30
+    if workers < firms + groups + 1 or firms % groups or firms // groups < degree or periods <= degree:
+        raise ValueError('fixture requires room for connectivity, distinct employers and repeated links')
+    rng = np.random.default_rng(seed)
+    worker = np.repeat(np.arange(workers), periods)
+    employer = np.empty((workers, periods), dtype=np.int64)
+    width = firms // groups
+    degrees = rng.choice([1, 2, 4, 6, 12, degree], workers, p=[.10, .10, .15, .15, .20, .30])
+    if kind in {'sampled-oracle', 'd60-stress'}:
+        degrees[:] = degree
+    degrees[-1] = degree
+    for i in range(workers):
+        group = i % groups
+        if i < firms:
+            first = i // groups
+            visits = np.array([group * width + first, group * width + (first + 1) % width])
+        elif i < firms + groups - 1:
+            bridge = i - firms
+            visits = np.array([bridge * width, (bridge + 1) * width])
+        else:
+            visits = group * width + rng.choice(width, int(degrees[i]), replace=False)
+        employer[i] = np.resize(visits, periods)
+    employer = employer.ravel()
+    x = rng.standard_normal((2, worker.size))
+    x[0] += .4 * np.sin(worker * .07)
+    x[1] += .3 * np.cos(employer * .11)
+    y = (.7 * x[0] - .25 * x[1] + np.sin(worker * .071)
+         + .6 * np.cos(employer * .13) + .3 * rng.standard_normal(worker.size))
+    return [y, *x, worker.astype(float), employer.astype(float)]
 
 
 def csv_columns(path, outcome, worker, firm, regressors):
@@ -252,8 +293,8 @@ def main():
     parser.add_argument('--firm')
     parser.add_argument('--regressors', nargs='*', default=[])
     parser.add_argument('--tolerance', type=float, default=1e-8)
-    parser.add_argument('--extra-cases', nargs='+', choices=['wide', 'orthogonal'], default=[],
-                        help='append optional batching fixtures; original cases are unchanged')
+    parser.add_argument('--extra-cases', nargs='+', choices=['wide', 'orthogonal', *HIGH_DEGREE_SIZES], default=[],
+                        help='append optional batching/high-degree fixtures; original cases are unchanged')
     args = parser.parse_args()
     if not 0 < args.tolerance < 1 or (args.csv and not all([args.outcome, args.worker, args.firm])):
         parser.error('require valid tolerance and all three CSV role names')
@@ -269,6 +310,8 @@ def main():
         elif name in {'wide', 'orthogonal'}:
             size = (50, 20, 12) if name == 'orthogonal' else (5000, 500, 20)
             columns = additional_case(name, *size)
+        elif name in HIGH_DEGREE_SIZES:
+            columns = high_degree_case(name, *HIGH_DEGREE_SIZES[name])
         else:
             sizes = {'oracle': (50, 20, 12), 'short': (50000, 500, 2),
                      'long': (50000, 3000, 20), 'weak': (5000, 500, 20)}
@@ -280,8 +323,12 @@ def main():
                      'degree_scope': 'input graph before estimator pruning',
                      'generator_sha256': digest(args.generator.resolve()), 'numpy_version': np.__version__,
                      'tolerance': args.tolerance, 'vce': 'robust'})
-        if name in {'oracle', 'orthogonal'}:
+        if name in {'oracle', 'orthogonal', 'sampled-oracle'}:
             meta['oracle'] = dense_oracle(columns, include_intercept=name != 'orthogonal')
+        if name in HIGH_DEGREE_SIZES:
+            meta['fixture'] = name
+            meta['graph_seed'] = 20261013
+            meta['maximum_worker_degree'] = 60 if name == 'd60-stress' else 30
         if name in {'wide', 'orthogonal'}:
             meta['fixture'] = ('16 controls: four exactly FE-orthogonal, others with worker/firm/both FE content'
                                if name == 'wide' else 'nocons: all four controls and outcome exactly FE-orthogonal by paired cancellation')

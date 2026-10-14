@@ -33,8 +33,10 @@ from time_exact import compare
 
 ARMS = ['auto', 'cmg', 'cmgschur4', 'cmgschur5', 'cmgschur6']
 BASELINE_ARMS = ['baseline-' + arm for arm in ARMS if arm.startswith('cmgschur')]
+SAMPLED_ARMS = {f'cmgschur4-sample{count}': count for count in [1, 2, 4]}
+SUPPORTED_ARMS = ARMS + BASELINE_ARMS + list(SAMPLED_ARMS)
 EXPECTED_SOLVER = {'auto': 1, 'cmg': 7, 'cmgschur4': 8, 'cmgschur5': 8, 'cmgschur6': 8,
-                   'lsmr-reference': 3}
+                   'lsmr-reference': 3, **dict.fromkeys(SAMPLED_ARMS, 8)}
 
 
 def source_identity(root=ROOT):
@@ -79,11 +81,24 @@ def artifact_for(arm):
 
 def selected_arms(requested, baseline):
     arms = list(requested if requested is not None else ARMS + (BASELINE_ARMS if baseline else []))
-    if not arms or len(set(arms)) != len(arms) or any(a not in ARMS + BASELINE_ARMS for a in arms):
+    if not arms or len(set(arms)) != len(arms) or any(a not in SUPPORTED_ARMS for a in arms):
         raise ValueError('arms must be nonempty, unique supported labels')
     if not baseline and any(a in BASELINE_ARMS for a in arms):
         raise ValueError('baseline arms require --baseline-plugin')
     return arms
+
+
+def check_exact_baseline(arm, fingerprints, required):
+    """Compare full science/signature hashes once both matching arms exist."""
+    candidate = solver_arm(arm)
+    if candidate not in required:
+        return None
+    counterpart = candidate if artifact_for(arm) == 'baseline' else 'baseline-' + candidate
+    if counterpart not in fingerprints:
+        return None
+    if fingerprints[arm] != fingerprints[counterpart]:
+        raise ValueError(f'{candidate}: nonexact baseline science or solver signature')
+    return True
 
 
 def order(repetition, selected=None):
@@ -99,6 +114,8 @@ def order(repetition, selected=None):
 
 def prepare(source, destination, arm, threads):
     """Change length-framed options only; preserve the entire data/model body."""
+    if artifact_for(arm) == 'baseline' and solver_arm(arm) in SAMPLED_ARMS:
+        raise ValueError('sampled parent arms are unsupported')
     arm = solver_arm(arm)
     with source.open('rb') as stream, destination.open('xb') as out:
         shape, arguments = case_header(stream)
@@ -107,10 +124,14 @@ def prepare(source, destination, arm, threads):
         updates = {'solver': 'cmgschur' if arm.startswith('cmgschur') else 'lsmr' if arm == 'lsmr-reference' else arm,
                    'threads': str(threads), 'preconditioner': 'auto' if arm in {'auto', 'lsmr-reference'} else 'off'}
         if arm.startswith('cmgschur'):
-            updates['cmgdegree'] = arm[-1]
+            updates['cmgdegree'] = arm.split('-sample', 1)[0][-1]
+        if arm in SAMPLED_ARMS:
+            updates['cmgsamples'] = str(SAMPLED_ARMS[arm])
+            updates['cmgseed'] = '0'
         if arm == 'lsmr-reference':
             updates['tolerance'] = '1e-12'
-        arguments = [a for a in arguments if a.split(b'=', 1)[0].decode() not in {*updates, 'cmgdegree'}]
+        arguments = [a for a in arguments if a.split(b'=', 1)[0].decode()
+                     not in {*updates, 'cmgdegree', 'cmgsamples', 'cmgseed'}]
         arguments += [f'{key}={value}'.encode() for key, value in updates.items()]
         shape[2] = len(arguments)
         out.write(('FEREG_REPLAY_V1\n' + ' '.join(map(str, shape)) + '\n').encode())
@@ -235,8 +256,10 @@ def main():
     parser.add_argument('--plugin', type=Path, required=True)
     parser.add_argument('--baseline-plugin', type=Path,
                         help='optional parent artifact; adds baseline-cmgschur4/5/6')
-    parser.add_argument('--arms', nargs='+', choices=ARMS + BASELINE_ARMS,
-                        help='explicit predeclared subset; default all applicable arms')
+    parser.add_argument('--arms', nargs='+', choices=SUPPORTED_ARMS,
+                        help='explicit predeclared subset; sampled arms are never selected by default')
+    parser.add_argument('--exact-baseline-arms', nargs='+', choices=[solver_arm(a) for a in BASELINE_ARMS], default=[],
+                        help='require exact science/signature hashes for these matched parent/candidate cutoffs')
     parser.add_argument('--cases', type=Path, nargs='+', required=True)
     parser.add_argument('--oracle', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -249,6 +272,9 @@ def main():
         arms = selected_arms(args.arms, args.baseline_plugin is not None)
     except ValueError as error:
         parser.error(str(error))
+    if len(set(args.exact_baseline_arms)) != len(args.exact_baseline_arms) or any(
+            arm not in arms or 'baseline-' + arm not in arms for arm in args.exact_baseline_arms):
+        parser.error('exact baseline arms must be unique and have both candidate and baseline selected')
     if not (0 < args.timeout <= 3600 and 0 < args.budget <= 86400) or not args.threads or (
             len(set(args.threads)) != len(args.threads) or any(t < 1 or t > 1024 for t in args.threads)):
         parser.error('require unique positive workers, timeout<=3600 and budget<=86400')
@@ -267,6 +293,9 @@ def main():
                 'plugins': {label: {'sha256': digest(binary)} for label, binary in plugins.items()},
                 'source_identity': source_identity(),
                 'arms': arms, 'arm_artifacts': {arm: artifact_for(arm) for arm in arms},
+                'exact_baseline_arms': args.exact_baseline_arms,
+                'sampled_preconditioner': {arm: {'cmgdegree': 4, 'cmgsamples': SAMPLED_ARMS[arm], 'cmgseed': 0}
+                                           for arm in arms if arm in SAMPLED_ARMS},
                 'warmups': 1, 'repetitions': args.repetitions,
                 'budget_s': args.budget, 'timeout_s': args.timeout,
                 'clock': 'CLOCK_MONOTONIC around one complete native call',
@@ -370,6 +399,9 @@ def main():
                             if arm in expected and expected[arm] != fingerprint:
                                 raise ValueError('nonexact fixed-worker repeat or changed solver signature')
                             expected.setdefault(arm, fingerprint)
+                            exact_match = check_exact_baseline(arm, expected, args.exact_baseline_arms)
+                            if exact_match is not None:
+                                record['exact_baseline_match'] = exact_match
                             record['science_sha256'] = fingerprint
                             if 'oracle' in meta:
                                 oracle_check(raw, columns, meta)
@@ -398,15 +430,20 @@ def main():
                     row = {'case': path.name, 'threads': threads,
                            'medians': {a: statistics.median(v) for a, v in complete.items()},
                            'failed_arms': sorted(failed), 'comparisons_to_auto': {}, 'comparisons_to_cmg': {},
-                           'candidate_over_baseline': {}}
-                    for baseline in ['auto', 'cmg']:
+                           'comparisons_to_cmgschur4': {},
+                           'candidate_over_baseline': {},
+                           'exact_baseline_matches': {a: expected[a] == expected['baseline-' + a]
+                                                      for a in args.exact_baseline_arms
+                                                      if a in complete and 'baseline-' + a in complete}}
+                    for baseline in ['auto', 'cmg', 'cmgschur4']:
                         if baseline in complete:
                             row['comparisons_to_' + baseline] = {a: compare(complete[baseline], values)
                                 for a, values in complete.items() if a != baseline}
                     for baseline in BASELINE_ARMS:
-                        candidate = solver_arm(baseline)
-                        if baseline in complete and candidate in complete:
-                            row['candidate_over_baseline'][candidate] = compare(complete[baseline], complete[candidate])
+                        candidates = [solver_arm(baseline)] + (list(SAMPLED_ARMS) if baseline == 'baseline-cmgschur4' else [])
+                        for candidate in candidates:
+                            if baseline in complete and candidate in complete:
+                                row['candidate_over_baseline'][candidate] = compare(complete[baseline], complete[candidate])
                     manifest['summary'].append(row)
                     print(json.dumps(row), flush=True)
                     save()

@@ -255,6 +255,62 @@ arms deliberately means the run makes no new comparison against them. Keep
 all outcomes when a budget expires; do not choose another panel after seeing
 its timings and combine it as though it were the originally declared panel.
 
+For a change that must leave the exact hybrid untouched, declare
+`--exact-baseline-arms cmgschur4` and select both `cmgschur4` and
+`baseline-cmgschur4`. Their full scientific-output and solver-signature hashes
+must match exactly at each case/worker count. The runner fails as soon as both
+hashes are available, including during the dense prerequisite. This optional
+guard also supports cutoffs 5 and 6; ordinary result-changing parent comparisons
+retain the numerical envelopes unless the guard is explicitly requested.
+
+Sampled preconditioners are explicit-only arms: `cmgschur4-sample1`,
+`cmgschur4-sample2` and `cmgschur4-sample4`. They request `solver=cmgschur`,
+`cmgdegree=4`, `cmgsamples=1/2/4` and `cmgseed=0`. The default arm list is
+unchanged. Absent/zero samples retain the exact star hybrid; positive samples
+average that many independently sampled weighted GKS trees for high-degree
+workers. Preparation strips sampling options from every nonsampled arm and
+strict reference, including parent binaries, which do not support sampled arms.
+The sampling count and fixed seed are retained in `summary.json`.
+
+Use the optional high-degree fixtures to expose this tradeoff:
+
+| Extra case | Rows | Workers | Firms | Maximum worker degree | Graph |
+|---|---:|---:|---:|---:|---|
+| `sampled-oracle` | 3,000 | 60 | 40 | 30 | Dense witness; 20 workers have degree 30 |
+| `d30-mixed` | 600,000 | 10,000 | 1,000 | 30 | Mixed degrees 1/2/4/6/12/30 |
+| `d30-weak` | 600,000 | 10,000 | 1,000 | 30 | Ten communities joined by nine workers |
+| `d60-stress` | 600,000 | 5,000 | 1,000 | 60 | 4,000 workers have degree 60 |
+
+All include repeated worker-firm observations and a connected firm graph.
+Degrees count distinct firms; generation records the actual histogram and fixed
+graph seed. Original default fixtures are unchanged. The dense prerequisite
+contains unequal repeated-link counts among degree-30 workers, checks independent
+OLS/HC1 science, and runs before the larger panel. Every selected sampled arm
+also passes strict-reference comparisons and exact fixed-worker repeats.
+
+```sh
+python3 bench/cmgschur_cases.py \
+  --extra-cases sampled-oracle d30-mixed d30-weak d60-stress \
+  --output target/tmp/cmgschur-sampled/cases
+python3 bench/cmgschur.py --plugin CANDIDATE.plugin --baseline-plugin PARENT.plugin \
+  --oracle target/tmp/cmgschur-sampled/cases/sampled-oracle.case \
+  --cases target/tmp/cmgschur-sampled/cases/d30-mixed.case \
+          target/tmp/cmgschur-sampled/cases/d30-weak.case \
+          target/tmp/cmgschur-sampled/cases/d60-stress.case \
+  --arms auto cmg cmgschur4 baseline-cmgschur4 cmgschur4-sample1 cmgschur4-sample2 cmgschur4-sample4 \
+  --exact-baseline-arms cmgschur4 \
+  --threads 1 4 --timeout 90 --budget 1800 \
+  --output target/tmp/cmgschur-sampled/local-panel
+```
+
+`comparisons_to_cmgschur4` reports sampled-arm ratios against the candidate's
+exact hybrid. If `baseline-cmgschur4` is explicitly included with a parent
+plugin, `candidate_over_baseline` also compares each sampled arm with that
+parent's exact degree-four hybrid. There are no sampled parent arms. The same
+full native clock, one warmup, seven rotating paired repetitions, scientific
+failure policy and frozen stopping budget apply. This panel measures seed zero;
+it does not estimate variation across sampling seeds or search for a faster seed.
+
 For a longer existing panel, run conversion and fitting on the host holding
 the data. Supply explicit numeric CSV column roles; `--regressors` is optional:
 
@@ -274,8 +330,8 @@ cap; keep the seven repetitions and all five arms. Conversion preserves supplied
 rows and outcomes without filtering or adjustment, rejects missing/nonfinite
 values, and records the source SHA256. Keep proprietary inputs, generated replay
 files and row outputs on their original local/SCC host. Collect only compact
-aggregate summaries and hashes. Outputs belong under `target/tmp/cmgschur/` or,
-for the optimization workstream, `target/tmp/cmgschur-opt/`;
+aggregate summaries and hashes. Outputs belong under `target/tmp/cmgschur/`,
+`target/tmp/cmgschur-opt/` or `target/tmp/cmgschur-sampled/` for their respective workstreams;
 delete them after retaining reviewed aggregates and identities in committed
 evidence. Follow the cluster workflow when submitting SCC compute work.
 

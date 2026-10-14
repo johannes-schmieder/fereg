@@ -45,6 +45,10 @@ pub struct AbsorbConfig {
     pub solver: FeSolverKind,
     /// Maximum distinct-neighbor degree eliminated in the experimental CMG graph.
     pub cmg_schur_degree: usize,
+    /// Sampled clique trees per high-degree worker; zero retains exact stars.
+    pub cmg_schur_samples: u32,
+    /// Deterministic sampled-elimination seed, restricted to exact Stata integers.
+    pub cmg_schur_seed: u64,
     pub map: MapConfig,
     pub lsmr: LsmrConfig,
     /// Whether `Auto` may retry the other certified solver after a failed certificate.
@@ -62,12 +66,32 @@ impl Default for AbsorbConfig {
         Self {
             solver: FeSolverKind::Auto,
             cmg_schur_degree: 5,
+            cmg_schur_samples: 0,
+            cmg_schur_seed: 0,
             map: MapConfig::default(),
             lsmr: LsmrConfig::default(),
             certified_fallback: true,
             solver_memory_budget: None,
             retain_coefficients: false,
         }
+    }
+}
+
+impl AbsorbConfig {
+    pub(crate) fn validate_cmg_schur_options(self) -> Result<()> {
+        if self.solver != FeSolverKind::CmgSchur
+            && (self.cmg_schur_samples != 0 || self.cmg_schur_seed != 0)
+        {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "CMG sampling options require explicit solver(cmgschur)",
+            ));
+        }
+        super::cmg_schur::Sampling {
+            samples: self.cmg_schur_samples,
+            seed: self.cmg_schur_seed,
+        }
+        .validate()
     }
 }
 
@@ -78,6 +102,7 @@ pub fn absorb_fixed_effects(
     values: &mut DenseMatrix,
     config: AbsorbConfig,
 ) -> Result<SolveReport> {
+    config.validate_cmg_schur_options()?;
     match config.solver {
         FeSolverKind::Map => {
             let peak = admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
@@ -334,6 +359,51 @@ fn fallible_matrix_copy(input: &DenseMatrix, label: &'static str) -> Result<Dens
 mod tests {
     use super::*;
     use crate::fe::{EffectTerm, SolveStopReason};
+
+    #[test]
+    fn cmg_sampling_options_reject_other_routes_and_inexact_seeds_before_allocation() {
+        let design = FeDesign::new(
+            2,
+            vec![EffectTerm::new(vec![0, 0], 1, true, vec![]).unwrap()],
+        )
+        .unwrap();
+        let original = DenseMatrix::from_columns(&[vec![1.0, -1.0]]).unwrap();
+        for solver in [
+            FeSolverKind::Auto,
+            FeSolverKind::Map,
+            FeSolverKind::Lsmr,
+            FeSolverKind::Cmg,
+            FeSolverKind::CmgSchur,
+        ] {
+            for (samples, seed) in [(0, 1), (1, 1_u64 << 53), (1, 0)] {
+                if solver == FeSolverKind::CmgSchur && seed == 0 {
+                    continue;
+                }
+                let config = AbsorbConfig {
+                    solver,
+                    cmg_schur_samples: samples,
+                    cmg_schur_seed: seed,
+                    solver_memory_budget: Some(FeSolverMemoryBudget {
+                        execution_bytes: 0,
+                        usable_bytes: 0,
+                    }),
+                    ..AbsorbConfig::default()
+                };
+                let mut values = original.clone();
+                let error =
+                    absorb_fixed_effects(&design, &[1.0; 2], &mut values, config).unwrap_err();
+                assert_eq!(error.code, ErrorCode::InvalidArgument);
+                assert_eq!(values, original);
+            }
+        }
+        let boundary = AbsorbConfig {
+            solver: FeSolverKind::CmgSchur,
+            cmg_schur_samples: 1,
+            cmg_schur_seed: (1_u64 << 53) - 1,
+            ..AbsorbConfig::default()
+        };
+        boundary.validate_cmg_schur_options().unwrap();
+    }
 
     #[test]
     fn auto_slope_design_returns_a_certified_bounded_route() {

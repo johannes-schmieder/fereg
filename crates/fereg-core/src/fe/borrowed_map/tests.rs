@@ -6016,7 +6016,9 @@ fn check_adaptive_schur_correction(cmg_schur: bool) {
                         ReusableCategoricalMapAbsorber::new(design, 3, workers).unwrap();
                     owner.retain_coefficients = true;
                     if cmg_schur {
-                        owner.request_cmg_schur(4, workers, None, 0).unwrap();
+                        owner
+                            .request_cmg_schur(4, Default::default(), workers, None, 0)
+                            .unwrap();
                     }
                     let capacities = owner.capacities();
                     let mut repeated = None;
@@ -6143,7 +6145,9 @@ fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
                 .unwrap();
         let mut owner = ReusableCategoricalMapAbsorber::new(design, 1, 1).unwrap();
         if caller >= 3 {
-            owner.request_cmg_schur(4, 1, None, 0).unwrap();
+            owner
+                .request_cmg_schur(4, Default::default(), 1, None, 0)
+                .unwrap();
         }
         let map = MapConfig {
             tolerance,
@@ -6261,9 +6265,27 @@ fn cmg_schur_hierarchy_is_lazy_admitted_and_reused() {
     nonorthogonal[(0, 0)] += 1.0;
     nonorthogonal[(0, 1)] -= 2.0;
     let mut refused = ReusableCategoricalMapAbsorber::new(design(), 2, 1).unwrap();
+    for sampling in [
+        super::super::cmg_schur::Sampling {
+            samples: 0,
+            seed: 1,
+        },
+        super::super::cmg_schur::Sampling {
+            samples: 1,
+            seed: 1_u64 << 53,
+        },
+    ] {
+        let error = refused
+            .request_cmg_schur(4, sampling, 1, None, 0)
+            .unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+        assert!(refused.cmg_schur_request.is_none());
+        assert_eq!(refused.cmg_schur_bytes().unwrap(), 0);
+    }
     refused
         .request_cmg_schur(
             4,
+            Default::default(),
             1,
             Some(FeSolverMemoryBudget {
                 execution_bytes: 0,
@@ -6301,6 +6323,7 @@ fn cmg_schur_hierarchy_is_lazy_admitted_and_reused() {
     admitted
         .request_cmg_schur(
             4,
+            Default::default(),
             1,
             Some(FeSolverMemoryBudget {
                 execution_bytes: 0,
@@ -6351,5 +6374,115 @@ fn cmg_schur_hierarchy_is_lazy_admitted_and_reused() {
             ),
             hierarchy,
         );
+    }
+}
+
+#[test]
+fn sampled_cmg_schur_preserves_exact_paired_contrasts_and_reuses_seeded_hierarchy() {
+    let mut first = Vec::new();
+    let mut second = Vec::new();
+    let mut weights = Vec::new();
+    let mut columns = vec![Vec::new(), Vec::new(), Vec::new()];
+    let mut expected = vec![Vec::new(), Vec::new(), Vec::new()];
+    for worker in 0..33_u32 {
+        let firms: Vec<_> = if worker == 0 {
+            (0..16).collect()
+        } else {
+            vec![worker % 16, (worker + 1) % 16]
+        };
+        for firm in firms {
+            for sign in [1.0, -1.0] {
+                first.push(worker);
+                second.push(firm);
+                weights.push(1.0 + ((worker + firm) % 7) as f64);
+                for rhs in 0..3 {
+                    let noise = if rhs == 1 {
+                        0.0
+                    } else {
+                        sign * (rhs + 1) as f64
+                    };
+                    let fitted = if rhs == 1 {
+                        0.0
+                    } else {
+                        (rhs + 1) as f64 * (worker as f64 * 0.125 - firm as f64 * 0.25)
+                    };
+                    columns[rhs].push(fitted + noise);
+                    expected[rhs].push(noise);
+                }
+            }
+        }
+    }
+    let indexes = [
+        LevelIndex::from_codes(&first, 33).unwrap(),
+        LevelIndex::from_codes(&second, 16).unwrap(),
+    ];
+    let sources = [
+        ValidatedBorrowedInterceptSource::new(&first, 33, &indexes[0]).unwrap(),
+        ValidatedBorrowedInterceptSource::new(&second, 16, &indexes[1]).unwrap(),
+    ];
+    let input = DenseMatrix::from_columns(&columns).unwrap();
+    let expected = DenseMatrix::from_columns(&expected).unwrap();
+    for workers in [1, 4] {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+            .install(|| {
+                for seed in [0, 17, (1_u64 << 53) - 1] {
+                    let design = BorrowedInterceptFeDesign::new(
+                        first.len(),
+                        sources.iter().map(|s| s.effect()).collect(),
+                    )
+                    .unwrap();
+                    let mut owner =
+                        ReusableCategoricalMapAbsorber::new(design, 3, workers).unwrap();
+                    owner.retain_coefficients = true;
+                    owner
+                        .request_cmg_schur(
+                            4,
+                            super::super::cmg_schur::Sampling { samples: 2, seed },
+                            workers,
+                            None,
+                            0,
+                        )
+                        .unwrap();
+                    let mut previous = None;
+                    let mut peak = None;
+                    for _ in 0..2 {
+                        let fit = owner
+                            .absorb_ols(
+                                BorrowedMapWeights::Provided(&weights),
+                                input.clone().into(),
+                                config(),
+                                false,
+                            )
+                            .unwrap();
+                        assert!(fit.report().certified());
+                        assert!(!fit.report().fallback_used);
+                        let (residual, _, coefficients) = fit.into_full_parts();
+                        let coefficients = coefficients.unwrap();
+                        for row in 0..first.len() {
+                            for rhs in 0..3 {
+                                assert!((residual[(row, rhs)] - expected[(row, rhs)]).abs() < 1e-9);
+                                let base = rhs * coefficients.coefficients_per_rhs;
+                                let fitted = coefficients.values
+                                    [base + coefficients.effect_offsets[0] + first[row] as usize]
+                                    + coefficients.values[base
+                                        + coefficients.effect_offsets[1]
+                                        + second[row] as usize];
+                                assert!(
+                                    (input[(row, rhs)] - residual[(row, rhs)] - fitted).abs()
+                                        < 1e-12
+                                );
+                            }
+                        }
+                        let snapshot = (residual, coefficients);
+                        if let Some(previous) = previous.as_ref() {
+                            assert_eq!(&snapshot, previous);
+                            assert_eq!(owner.cmg_schur_peak().unwrap(), peak);
+                        }
+                        previous = Some(snapshot);
+                        peak = owner.cmg_schur_peak().unwrap();
+                    }
+                }
+            })
+            .unwrap();
     }
 }

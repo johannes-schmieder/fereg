@@ -14,6 +14,114 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Sampled CMG-Schur extension, 2026-10-13
+
+The opt-in `cmgsamples(k)` extension replaces above-cutoff worker stars with
+averaged weighted trees on their distinct firms. For example:
+
+```stata
+fereg y x, absorb(worker firm) solver(cmgschur) cmgdegree(4) cmgsamples(1) cmgseed(0)
+```
+
+The default count is zero, preserving the existing hybrid graph and scientific
+bits. Positive counts sample only the preconditioner: the implicit Schur
+operator, observation reconstruction and original-problem certificate remain
+exact. Low-degree worker cliques remain exact too. Each weighted tree connects
+every distinct firm of its worker. SplitMix64 streams are keyed by seed, worker
+and tree, and the graph stays fixed throughout PCG and residual correction.
+The implementation retains lazy construction, hierarchy reuse and batched
+fixed-cycle application. Count/seed and memory validation occur before work;
+nonfinite or underflowed edge weights fail explicitly. See [SPEC](SPEC.md) and
+[the protocol](plugin_protocol.md) for the supported range and numerical scope.
+
+The [aggregate evidence](../bench/results/cmgschur-sampled-20261013.json),
+[all sampled-panel observations](../bench/results/cmgschur-sampled-20261013-observations.csv)
+and [standard observations](../bench/results/cmgschur-sampled-20261013-nonregression.csv)
+retain the predeclared protocol, artifact/input identities, graph diagnostics,
+all repetitions and unsuccessful validation attempts. The parent is
+`f9bf345e50c4c853f29e0171538b68c03e0109df`; the candidate universal Mac plugin is
+`3539b15fb777360f1de549697319ee77ed5cd30bc08811d51c2dbad5c73c226a`.
+Production-token and artifact-input hashes bind these measurements to the
+implementation; subsequent evidence-only edits do not change those inputs.
+
+The bounded panel uses three synthetic 600,000-row graphs, two controls,
+uniform observation weights, cutoff four, seed zero, tolerance 1e-8, 1/4 threads,
+one warmup and seven rotating repetitions. A separate 3,000-row degree-30 dense
+OLS/HC1 prerequisite gates each arm/thread; every input/artifact also has a
+strict single-worker LSMR reference at 1e-12. Complete native-call time includes
+loading, estimation, inference and reconstruction, and excludes replay-file I/O.
+The 2,400-second total and 120-second process limits were unchanged; the panel
+finished in 394 seconds with no failed cells or extra repetitions.
+
+**These are exploratory timings, not clean release-performance qualification.**
+All builds, tests and agent workloads stopped before timing. Spotlight still
+used roughly one CPU core after a bounded 90-second wait, so this limitation
+was declared before the first timed panel. Spotlight later subsided, but desktop
+activity continued; both panels retain the conservative exploratory label.
+No unrelated application or service was stopped. Bootstrap intervals describe
+the observations, not a guarantee against background-load confounding.
+
+| Synthetic input | Threads | auto (s) | CMG (s) | Hybrid (s) | 1 tree (s) | 2 trees (s) | 4 trees (s) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Mixed, maximum degree 30 | 1 | 0.22828 | 0.59157 | 0.31511 | 0.28234 | 0.30418 | 0.30605 |
+| Mixed, maximum degree 30 | 4 | 0.11869 | 0.26429 | 0.19778 | 0.18583 | 0.21460 | 0.21184 |
+| Weak connections, maximum degree 30 | 1 | 0.46040 | 1.43691 | 0.39723 | 0.25788 | 0.25545 | 0.26603 |
+| Weak connections, maximum degree 30 | 4 | 0.19737 | 0.50028 | 0.24791 | 0.15489 | 0.15747 | 0.16453 |
+| Degree-60 stress | 1 | 0.20622 | 0.61988 | 0.38018 | 0.34946 | 0.38419 | 0.40001 |
+| Degree-60 stress | 4 | 0.11135 | 0.27770 | 0.21856 | 0.25941 | 0.29440 | 0.30616 |
+
+One tree's paired median ratio to the hybrid is 0.648/0.624 on the weak graph
+at 1/4 threads, but 1.187 on degree-60 at four threads. Thus high degree alone
+does not make sampling faster. Auto wins on the ordinary mixed and degree-60
+graphs. Increasing the sample count increases assembly and graph fill and does
+not reliably repay that cost. This evidence supports an explicit experimental
+option; it does not support changing the default solver or sampling count.
+There is no new real-data, Veneto, SCC, Linux or Windows claim in this extension.
+
+Graph diagnostics clarify the storage tradeoff. The weak graph's hybrid has
+6,857 vertices and 121,626 merged edges; one tree has 1,000 vertices and 42,058
+edges. For degree-60, sampling removes all 4,000 auxiliary worker vertices,
+but four trees produce 945,000 raw contributions and 378,346 merged edges,
+versus the hybrid's 241,000 edges. Fewer vertices need not mean a cheaper CMG
+hierarchy or better thread scaling.
+
+Validation completed:
+
+- The full `scripts/run_tests.sh`, universal Mac build, ABI/load audits and
+  18 benchmark-tooling tests pass. The suite includes 206 Python tests (13
+  platform/environment skips) and 1,800 successful Rust test executions,
+  including isolated subprocess and allocation audits. The GNU ELF audit is
+  correctly skipped on Mac; this is not cross-platform qualification.
+- Exact enumeration independently checks the weighted-tree distribution and
+  averages of 1–4 trees. Dense weighted dummy QR/HC1 witnesses cover 32
+  degree-30/60 configurations with repeated cells, weak links, disconnected
+  components, omissions, saved effects, both memory modes, seeds and threads.
+  Dedicated witnesses check kernel preservation, symmetry, positive energy,
+  weight scaling, pinned RNG answers, admission and edge underflow.
+- All 358 native panel fits pass the existing science thresholds and fixed-thread
+  exact-repeat guards. Maximum sampled-output difference from strict LSMR is
+  2.52e-13; the maximum across all arms is 2.83e-10. Unsampled CMG-Schur exactly
+  matches the parent, including solver signatures. The existing 73-case native
+  replay also has zero exact differences.
+- Seven mapped licensed Stata fixtures pass, including the new weighted
+  degree-30 fixture, exact maximum-seed transmission, invalid-option rollback,
+  genuine iteration exhaustion, existing CMG oracles, memory and eclass
+  transactions. Sampled native-wait and postplugin Control-C checks pass.
+  A separate isolated core witness cancels during actual sampled-edge emission
+  and observes the 1,024-edge checkpoint.
+- All 20 frozen standard workloads pass exact parent/candidate replay and their
+  numerical timing allowance, max(5%, 1 ms), with seven pairs each. All 320
+  observations are retained; no continuation was used. The background-load
+  caveat prevents promoting this to clean performance qualification.
+
+The extra legacy auto-CMG fixture again fails its obsolete code-seven assertion,
+as already documented below and reproduced on the previous parent. An initial
+transaction invocation used an incorrect path; the maintained fixture then
+passed. Clippy's seed-bound style finding was fixed, and a source-archive check
+that overlapped editing was rerun after all sources were frozen. The final full
+suite passed. No scientific tolerance, model decision or production solver
+policy was relaxed to obtain these results.
+
 ## CMG-Schur optimizations, 2026-10-13
 
 The explicit `cmgschur` route now batches fixed CMG cycles across right-hand

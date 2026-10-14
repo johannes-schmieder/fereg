@@ -29,6 +29,8 @@ foreach mode in fast low {
         assert e(fereg_solver)[1,1] == 8
         assert e(fereg_solver)[1,2] == 8
         assert e(fereg_cmg_degree) == `degree'
+        assert e(fereg_cmg_samples) == 0
+        assert e(fereg_cmg_seed) == 0
         assert e(df_r) == reference_df_r
         forvalues j = 1/2 {
             assert abs(e(b)[1,`j'] - reference_b[1,`j']) <= 1e-10
@@ -48,6 +50,8 @@ foreach mode in fast low {
 quietly fereg y x1 x2 [aw=weight], absorb(worker firm) ///
     solver(cmgschur) threads(1) tolerance(1e-10)
 assert e(fereg_cmg_degree) == 5
+assert e(fereg_cmg_samples) == 0
+assert e(fereg_cmg_seed) == 0
 assert e(fereg_solver)[1,2] == 8
 matrix saved_b = e(b)
 scalar saved_n = e(N)

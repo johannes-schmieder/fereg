@@ -38,9 +38,9 @@ def result(arm='auto'):
     return {'schema': 1, 'return_code': 0, 'matrices': tables, 'error': ''}
 
 
-def case_bytes():
-    arguments = [b'estimate-ols', b'threads=1', b'solver=auto', b'preconditioner=auto']
-    return b'FEREG_REPLAY_V1\n2 6 4 1 0\n' + b''.join(
+def case_bytes(arguments=None):
+    arguments = arguments or [b'estimate-ols', b'threads=1', b'solver=auto', b'preconditioner=auto']
+    return f'FEREG_REPLAY_V1\n2 6 {len(arguments)} 1 0\n'.encode() + b''.join(
         str(len(a)).encode() + b'\n' + a + b'\n' for a in arguments) + b'body\n9\nthreads=1\n'
 
 
@@ -132,6 +132,52 @@ class CmgSchurBenchmark(unittest.TestCase):
         for field in ['beta', 'covariance', 'fitted', 'residual']:
             np.testing.assert_allclose(nocons[field], witness[field], rtol=1e-10, atol=1e-12)
 
+    def test_high_degree_fixtures_are_connected_repeated_and_reproducible(self):
+        sizes = {'sampled-oracle': (60, 40, 50), 'd30-mixed': (80, 60, 60),
+                 'd30-weak': (330, 300, 60), 'd60-stress': (100, 80, 120)}
+        for kind, size in sizes.items():
+            with self.subTest(kind=kind):
+                columns = cmgschur_cases.high_degree_case(kind, *size)
+                repeated = cmgschur_cases.high_degree_case(kind, *size)
+                self.assertTrue(all(np.array_equal(a, b) for a, b in zip(columns, repeated)))
+                summary = cmgschur_cases.graph_summary(columns)
+                expected_degree = 60 if kind == 'd60-stress' else 30
+                self.assertEqual(max(map(int, summary['degree_histogram'])), expected_degree)
+                self.assertGreater(summary['degree_histogram'][str(expected_degree)], 0)
+                self.assertEqual(summary['rows'], size[0] * size[2])
+                self.assertLess(summary['distinct_links'], summary['rows'])
+                self.assertEqual((summary['workers'], summary['firms']), size[:2])
+                parent = list(range(size[1]))
+                def find(i):
+                    while parent[i] != i:
+                        i = parent[i]
+                    return i
+                cross_group = 0
+                for worker in range(size[0]):
+                    firms = np.unique(columns[-1][columns[-2] == worker]).astype(int)
+                    for firm in firms[1:]:
+                        parent[find(int(firm))] = find(int(firms[0]))
+                    if kind == 'd30-weak' and len(np.unique(firms // (size[1] // 10))) > 1:
+                        cross_group += 1
+                self.assertEqual(len({find(i) for i in range(size[1])}), 1)
+                if kind == 'd30-weak':
+                    self.assertEqual(cross_group, 9)
+                if kind == 'sampled-oracle':
+                    self.assertEqual(summary['degree_histogram'], {'2': 40, '30': 20})
+                    oracle = cmgschur_cases.dense_oracle(columns)
+                    self.assertEqual(oracle['rank'], 101)
+                    residual = np.array(oracle['residual'])
+                    for values in columns[1:3]:
+                        self.assertLess(abs(residual @ values), 1e-9)
+                    for ids in columns[-2:]:
+                        self.assertLess(np.abs(np.bincount(ids.astype(int), weights=residual)).max(), 1e-9)
+
+    def test_sampled_scratch_root_is_allowed_without_opening_other_task_roots(self):
+        expected = cmgschur_cases.ROOT / 'target/tmp/cmgschur-sampled/cases'
+        self.assertEqual(cmgschur_cases.scratch(expected), expected.resolve())
+        with self.assertRaises(ValueError):
+            cmgschur_cases.scratch(cmgschur_cases.ROOT / 'target/tmp/cmgschur-sampled-other/cases')
+
     def test_nocons_template_resizes_coefficient_buffers_only(self):
         shapes = {'RB': (1, 5), 'RV': (5, 5), 'RSTATUS': (5, 4),
                   'RMARKB': (1, 5), 'RMARKV': (5, 5), 'RFE': (2, 8)}
@@ -156,8 +202,8 @@ class CmgSchurBenchmark(unittest.TestCase):
         self.assertEqual(stream.read(), b'')
 
     def test_default_case_selection_is_unchanged_and_extra_inputs_are_optional(self):
-        for extras in [[], ['wide', 'orthogonal']]:
-            root = self.root / ('extra' if extras else 'default')
+        for extras in [[], ['wide', 'orthogonal'], list(cmgschur_cases.HIGH_DEGREE_SIZES)]:
+            root = self.root / ('-'.join(extras) if extras else 'default')
             generator = self.root / 'generator'
             generator.write_bytes(b'generator')
             calls = []
@@ -174,14 +220,17 @@ class CmgSchurBenchmark(unittest.TestCase):
             with patch.object(sys, 'argv', argv), patch.object(cmgschur_cases, 'scratch', side_effect=lambda p: p), \
                     patch.object(cmgschur_cases, 'synthetic', side_effect=data), \
                     patch.object(cmgschur_cases, 'additional_case', side_effect=data), \
+                    patch.object(cmgschur_cases, 'high_degree_case', side_effect=data), \
                     patch.object(cmgschur_cases, 'write_case', side_effect=write), \
                     patch.object(cmgschur_cases, 'dense_oracle', return_value={}), patch('builtins.print'):
                 cmgschur_cases.main()
             self.assertEqual(calls[:4], [('long', (50, 20, 12)), ('short', (50000, 500, 2)),
                                          ('long', (50000, 3000, 20)), ('weak', (5000, 500, 20))])
             self.assertEqual({p.stem for p in root.glob('*.case')}, {'oracle', 'short', 'long', 'weak', *extras})
-            if extras:
+            if extras == ['wide', 'orthogonal']:
                 self.assertEqual(calls[4:], [('wide', (5000, 500, 20)), ('orthogonal', (50, 20, 12))])
+            elif extras:
+                self.assertEqual(calls[4:], list(cmgschur_cases.HIGH_DEGREE_SIZES.items()))
 
     def test_csv_preserves_rows_and_rejects_missing_or_inexact_ids(self):
         path = self.root / 'source.csv'
@@ -216,6 +265,30 @@ class CmgSchurBenchmark(unittest.TestCase):
         cmgschur.prepare(source, baseline, 'baseline-cmgschur5', 4)
         self.assertEqual(baseline.read_bytes(), target.read_bytes())
 
+    def test_sampled_options_are_explicit_and_never_leak_into_other_arms(self):
+        source = self.root / 'sampled-source.case'
+        source.write_bytes(case_bytes([b'estimate-ols', b'threads=1', b'solver=cmgschur',
+                                       b'preconditioner=off', b'cmgdegree=6', b'cmgsamples=99', b'cmgseed=123']))
+        arms = cmgschur.ARMS + cmgschur.BASELINE_ARMS + ['lsmr-reference', 'baseline-lsmr-reference']
+        for arm in arms + list(cmgschur.SAMPLED_ARMS):
+            target = self.root / (arm + '.case')
+            cmgschur.prepare(source, target, arm, 4)
+            with target.open('rb') as stream:
+                _, args = case_header(stream)
+                self.assertEqual(stream.read(), b'body\n9\nthreads=1\n')
+            fields = dict(a.decode().split('=', 1) for a in args[1:])
+            self.assertEqual(len(fields), len(args) - 1)
+            if arm in cmgschur.SAMPLED_ARMS:
+                self.assertEqual(fields['solver'], 'cmgschur')
+                self.assertEqual(fields['cmgdegree'], '4')
+                self.assertEqual(fields['cmgsamples'], str(cmgschur.SAMPLED_ARMS[arm]))
+                self.assertEqual(fields['cmgseed'], '0')
+            else:
+                self.assertNotIn('cmgsamples', fields)
+                self.assertNotIn('cmgseed', fields)
+        with self.assertRaises(ValueError):
+            cmgschur.prepare(source, self.root / 'invalid.case', 'baseline-cmgschur4-sample1', 1)
+
     def test_all_arms_once_in_each_rotating_repetition(self):
         self.assertEqual(cmgschur.order(-1), cmgschur.ARMS)
         for repetition in range(7):
@@ -224,15 +297,30 @@ class CmgSchurBenchmark(unittest.TestCase):
         self.assertGreater(len({tuple(cmgschur.order(i)) for i in range(7)}), 4)
         selected = cmgschur.selected_arms(None, True)
         self.assertEqual(selected, cmgschur.ARMS + cmgschur.BASELINE_ARMS)
+        self.assertEqual(cmgschur.selected_arms(None, False), cmgschur.ARMS)
+        self.assertEqual(cmgschur.selected_arms(list(cmgschur.SAMPLED_ARMS), False), list(cmgschur.SAMPLED_ARMS))
         for repetition in range(7):
             self.assertEqual(sorted(cmgschur.order(repetition, selected)), sorted(selected))
         subset = ['baseline-cmgschur4', 'cmgschur4']
         self.assertEqual(cmgschur.selected_arms(subset, True), subset)
         self.assertEqual({tuple(cmgschur.order(i, subset)) for i in range(7)},
                          {tuple(subset), tuple(reversed(subset))})
-        for bad, baseline in [([], True), (['auto', 'auto'], False), (subset, False)]:
+        for bad, baseline in [([], True), (['auto', 'auto'], False), (subset, False),
+                              (['baseline-cmgschur4-sample1'], True)]:
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 cmgschur.selected_arms(bad, baseline)
+
+    def test_optional_exact_baseline_guard_is_order_independent_and_fail_fast(self):
+        pair = ['cmgschur4', 'baseline-cmgschur4']
+        for order in [pair, list(reversed(pair))]:
+            observed = {order[0]: 'same-science-and-signature'}
+            self.assertIsNone(cmgschur.check_exact_baseline(order[0], observed, ['cmgschur4']))
+            observed[order[1]] = observed[order[0]]
+            self.assertTrue(cmgschur.check_exact_baseline(order[1], observed, ['cmgschur4']))
+            observed[order[1]] = 'different-science-or-signature'
+            with self.assertRaisesRegex(ValueError, 'nonexact baseline science or solver signature'):
+                cmgschur.check_exact_baseline(order[1], observed, ['cmgschur4'])
+            self.assertIsNone(cmgschur.check_exact_baseline(order[1], observed, []))
 
     def test_science_guards_accept_roundoff_but_reject_wrong_science(self):
         base = result()
@@ -252,7 +340,7 @@ class CmgSchurBenchmark(unittest.TestCase):
                 cmgschur.scientific_comparison(base, base, self.left, self.right, self.meta)
 
     def test_original_failure_is_retained_and_new_solver_failure_stops(self):
-        for failed in ['cmg', 'cmgschur5']:
+        for failed in ['cmg', 'cmgschur5', 'cmgschur4-sample2']:
             with self.subTest(failed=failed):
                 root = self.root / failed
                 root.mkdir()
@@ -282,6 +370,8 @@ class CmgSchurBenchmark(unittest.TestCase):
                 output = root / 'output'
                 argv = ['cmgschur', '--plugin', str(plugin), '--oracle', str(oracle),
                         '--cases', str(case), '--output', str(output), '--threads', '1']
+                if failed in cmgschur.SAMPLED_ARMS:
+                    argv += ['--arms', *cmgschur.ARMS, failed]
                 with patch.object(sys, 'argv', argv), patch.object(cmgschur, 'scratch', side_effect=lambda p: p), \
                         patch.object(cmgschur, 'build_harness', side_effect=build), \
                         patch.object(cmgschur, 'run_process', side_effect=run), \
@@ -296,9 +386,12 @@ class CmgSchurBenchmark(unittest.TestCase):
                 else:
                     self.assertEqual(summary['status'], 'failed')
                     self.assertEqual(summary['summary'], [])
+                if failed in cmgschur.SAMPLED_ARMS:
+                    self.assertEqual(summary['sampled_preconditioner'],
+                                     {failed: {'cmgdegree': 4, 'cmgsamples': 2, 'cmgseed': 0}})
 
     def test_baseline_cli_pairs_numerical_changes_and_guards_both_artifact_hashes(self):
-        for mutation in [None, 'baseline', 'candidate']:
+        for mutation in [None, 'baseline', 'candidate', 'exact_required']:
             with self.subTest(mutation=mutation):
                 root = self.root / (mutation or 'success')
                 root.mkdir()
@@ -326,13 +419,16 @@ class CmgSchurBenchmark(unittest.TestCase):
                     path.write_text(json.dumps(value))
                     self.data.tofile(path.with_suffix('.json.columns'))
                     log.write_text('NATIVE_SECONDS=' + ('.2' if artifact == 'baseline' else '.1') + '\n')
-                    if mutation:
+                    if mutation in plugins:
                         plugins[mutation].write_bytes(b'changed artifact')
                     return {'wall_s': .3, 'maxrss_bytes': 10}
                 output = root / 'output'
+                selected = ['baseline-cmgschur4', 'cmgschur4'] + (list(cmgschur.SAMPLED_ARMS) if mutation is None else [])
                 argv = ['cmgschur', '--plugin', str(plugins['candidate']), '--baseline-plugin', str(plugins['baseline']),
-                        '--arms', 'baseline-cmgschur4', 'cmgschur4', '--oracle', str(oracle),
+                        '--arms', *selected, '--oracle', str(oracle),
                         '--cases', str(case), '--output', str(output), '--threads', '1']
+                if mutation == 'exact_required':
+                    argv += ['--exact-baseline-arms', 'cmgschur4']
                 with patch.object(sys, 'argv', argv), patch.object(cmgschur, 'scratch', side_effect=lambda p: p), \
                         patch.object(cmgschur, 'build_harness', side_effect=build), \
                         patch.object(cmgschur, 'run_process', side_effect=run), \
@@ -340,12 +436,18 @@ class CmgSchurBenchmark(unittest.TestCase):
                     code = cmgschur.main()
                 summary = json.loads((output / 'summary.json').read_text())
                 self.assertEqual(set(summary['plugins']), {'candidate', 'baseline'})
-                self.assertEqual(summary['arms'], ['baseline-cmgschur4', 'cmgschur4'])
+                self.assertEqual(summary['arms'], selected)
                 for record in summary['records']:
                     self.assertEqual(record['plugin_sha256'], summary['plugins'][record['plugin']]['sha256'])
                 references = [r for r in summary['records'] if r['phase'] == 'reference']
-                self.assertEqual(len(references), 4)
-                if mutation:
+                self.assertEqual(len(references), 2 if mutation == 'exact_required' else 4)
+                if mutation == 'exact_required':
+                    self.assertEqual(code, 1)
+                    self.assertEqual(summary['status'], 'failed')
+                    self.assertIn('nonexact baseline science or solver signature', summary['error'])
+                    self.assertEqual(summary['summary'], [])
+                    self.assertFalse(any(r['phase'] == 'timing' for r in summary['records']))
+                elif mutation:
                     self.assertEqual(code, 1)
                     self.assertEqual(summary['status'], 'failed')
                     self.assertIn('plugin or harness changed', summary['error'])
@@ -354,6 +456,11 @@ class CmgSchurBenchmark(unittest.TestCase):
                     self.assertEqual(summary['status'], 'complete')
                     row = summary['summary'][0]
                     self.assertEqual(row['candidate_over_baseline']['cmgschur4']['median_ratio'], .5)
+                    for arm, count in cmgschur.SAMPLED_ARMS.items():
+                        self.assertEqual(row['candidate_over_baseline'][arm]['median_ratio'], .5)
+                        self.assertEqual(row['comparisons_to_cmgschur4'][arm]['median_ratio'], 1.)
+                        self.assertEqual(summary['sampled_preconditioner'][arm],
+                                         {'cmgdegree': 4, 'cmgsamples': count, 'cmgseed': 0})
                     timed = [r for r in summary['records'] if r['phase'] == 'timing']
                     for arm in summary['arms']:
                         records = [r for r in timed if r['arm'] == arm]

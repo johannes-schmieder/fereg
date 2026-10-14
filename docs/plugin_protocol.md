@@ -122,6 +122,16 @@ plugins reject the unknown solver or field before reading observations.
 CMG-Schur requires exactly two categorical intercept fixed effects; unsupported
 topology is rejected before observation reads in the plugin adapter.
 
+Its optional `cmgsamples` unsigned 32-bit field defaults to zero, preserving the
+original hybrid graph. A positive value requests that many averaged weighted
+trees for each worker above `cmgdegree`. Optional `cmgseed` defaults to zero and
+accepts decimal integers through 9007199254740991; an explicit seed requires
+positive `cmgsamples`. Both fields are rejected for other solvers and PPML before
+observation reads or publication. Omitted fields preserve existing request bytes.
+Sampling changes only the fixed preconditioner; the outer operator and original
+problem certificate remain exact. The public adapter publishes the effective
+values as `e(fereg_cmg_samples)` and `e(fereg_cmg_seed)`.
+
 Before any observation read, Rust validates the complete request, exact
 action/model/result versions, source and output bindings, dimensions,
 nonaliasing, memory/thread options, and initially incomplete receipt. Rust then

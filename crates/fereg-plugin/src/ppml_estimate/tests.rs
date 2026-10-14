@@ -1378,12 +1378,19 @@ fn unknown_and_retired_solver_spellings_fail_closed() {
 
 #[test]
 fn ols_cmgschur_options_fail_before_ppml_reads_and_stores() {
-    for cutoff_only in [false, true] {
+    for field in [
+        "solver=cmgschur",
+        "cmgdegree=5",
+        "cmgsamples=0",
+        "cmgsamples=1",
+        "cmgseed=0",
+        "cmgseed=1",
+    ] {
         let (mut args, mut spi) = fixture();
-        if cutoff_only {
-            args.push("cmgdegree=5".to_owned());
+        if field.starts_with("solver=") {
+            replace_argument(&mut args, "solver", field.to_owned());
         } else {
-            replace_argument(&mut args, "solver", "solver=cmgschur".to_owned());
+            args.push(field.to_owned());
         }
         let error = estimate_ppml(&args, &mut spi).unwrap_err();
         assert_eq!(error.code, ErrorCode::Syntax);

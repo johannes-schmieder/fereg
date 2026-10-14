@@ -19,6 +19,10 @@ use crate::memory::{vec_capacity_bytes, FeSolverMemoryBudget, SolverWorkspacePea
 use super::cmg::cmg_error;
 use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, LevelIndex};
 
+mod sampling;
+use sampling::SampledTrees;
+pub(super) use sampling::Sampling;
+
 const MAX_BATCH_COLUMNS: usize = 4;
 
 pub(super) struct CmgSchurPreconditioner {
@@ -35,11 +39,13 @@ pub(super) struct CmgSchurPreconditioner {
 }
 
 impl CmgSchurPreconditioner {
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn build(
         design: &BorrowedInterceptFeDesign<'_>,
         weights: BorrowedMapWeights<'_>,
         left_effect: usize,
         degree: usize,
+        sampling: Sampling,
         rhs_capacity: usize,
         threads: usize,
         budget: Option<FeSolverMemoryBudget>,
@@ -49,6 +55,7 @@ impl CmgSchurPreconditioner {
             weights,
             left_effect,
             degree,
+            sampling,
             rhs_capacity,
             threads,
             budget,
@@ -62,11 +69,13 @@ impl CmgSchurPreconditioner {
         weights: BorrowedMapWeights<'_>,
         left_effect: usize,
         degree: usize,
+        sampling: Sampling,
         rhs_capacity: usize,
         threads: usize,
         budget: Option<FeSolverMemoryBudget>,
         options: CmgOptions,
     ) -> Result<Self> {
+        sampling.validate()?;
         if design.effects().len() != 2
             || left_effect > 1
             || !(4..=6).contains(&degree)
@@ -105,11 +114,12 @@ impl CmgSchurPreconditioner {
         let runtime_extra = runtime.runtime_heap_allowance_bytes() as u128
             + runtime.worker_stack_allowance_bytes() as u128;
         memory.forecast(storage(&[&executor])?)?;
-        let (graph, components, retained_workers, input_edges) = build_hybrid_graph(
+        let (graph, components, counts) = build_hybrid_graph(
             design,
             weights,
             left_effect,
             degree,
+            sampling,
             batch_columns,
             &executor,
             runtime_extra,
@@ -172,9 +182,9 @@ impl CmgSchurPreconditioner {
         if crate::diagnostics::solver_trace_enabled() {
             let report = preconditioner.hierarchy().report();
             crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=cmgschur_setup|degree={degree}|workers={}|retained_workers={retained_workers}|firms={}|vertices={}|input_edges={input_edges}|edges={}|components={}|threads={}|parallel_operators={}|batch_columns={batch_columns}|levels={}|hierarchy_vertices={:?}|hierarchy_nonzeros={:?}|repeats={:?}|graph_seconds={graph_seconds:.9}|hierarchy_seconds={hierarchy_seconds:.9}|setup_seconds={:.9}",
-                design.effects()[left_effect].n_levels(), components.labels.len(),
-                graph.vertex_count(), graph.edge_count(), components.sizes.len(),
+                "FEREG_SOLVER_TRACE|phase=cmgschur_setup|degree={degree}|samples={}|seed={}|workers={}|retained_workers={}|sampled_workers={}|firms={}|vertices={}|input_edges={}|edges={}|components={}|threads={}|parallel_operators={}|batch_columns={batch_columns}|levels={}|hierarchy_vertices={:?}|hierarchy_nonzeros={:?}|repeats={:?}|graph_seconds={graph_seconds:.9}|hierarchy_seconds={hierarchy_seconds:.9}|setup_seconds={:.9}",
+                sampling.samples, sampling.seed, design.effects()[left_effect].n_levels(), counts.retained_workers, counts.sampled_workers, components.labels.len(),
+                graph.vertex_count(), counts.input_edges, graph.edge_count(), components.sizes.len(),
                 executor.thread_count(), plan.operator_count(), report.vertex_counts().len(),
                 report.vertex_counts(), report.matrix_nonzeros(), preconditioner.repeat_counts(),
                 started.elapsed().as_secs_f64(),
@@ -646,6 +656,7 @@ impl WorkerCells<'_> {
 // supplies a size hint, avoiding a second observation- or edge-scale staging bank.
 struct HybridEdges<'a> {
     workers: WorkerCells<'a>,
+    sampler: Option<SampledTrees>,
     cutoff: usize,
     next_worker: usize,
     next_auxiliary: usize,
@@ -662,7 +673,19 @@ impl Iterator for HybridEdges<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let cells = &self.workers.cells;
-            if cells.len() > self.cutoff && self.first < cells.len() {
+            if let Some(sampler) = self.sampler.as_mut().filter(|_| cells.len() > self.cutoff) {
+                match sampler.next(cells) {
+                    Ok(Some(edge)) => {
+                        self.remaining -= 1;
+                        return Some(edge);
+                    }
+                    Ok(None) => (),
+                    Err(error) => {
+                        self.failure = Some(error);
+                        return None;
+                    }
+                }
+            } else if cells.len() > self.cutoff && self.first < cells.len() {
                 let (firm, weight) = cells[self.first];
                 self.first += 1;
                 self.remaining -= 1;
@@ -697,10 +720,18 @@ impl Iterator for HybridEdges<'_> {
                     return None;
                 }
             }
+            if self.workers.cells.len() > self.cutoff {
+                if let Some(sampler) = self.sampler.as_mut() {
+                    if let Err(error) = sampler.prepare(&mut self.workers.cells, self.next_worker) {
+                        self.failure = Some(error);
+                        return None;
+                    }
+                }
+            }
             self.next_worker += 1;
             self.first = 0;
             self.second = 1;
-            if self.workers.cells.len() > self.cutoff {
+            if self.workers.cells.len() > self.cutoff && self.sampler.is_none() {
                 self.next_auxiliary += 1;
             }
         }
@@ -719,17 +750,67 @@ fn root(labels: &mut [usize], mut vertex: usize) -> usize {
     vertex
 }
 
+#[derive(Default)]
+struct GraphCounts {
+    retained_workers: usize,
+    sampled_workers: usize,
+    input_edges: usize,
+}
+
+fn worker_census(
+    workers: &mut WorkerCells<'_>,
+    cutoff: usize,
+    sampling: Sampling,
+    labels: &mut [usize],
+) -> Result<GraphCounts> {
+    let mut counts = GraphCounts::default();
+    for worker in 0..workers.membership.n_levels() {
+        workers.load(worker)?;
+        let count = workers.cells.len();
+        if let Some(&(first, _)) = workers.cells.first() {
+            for &(firm, _) in workers.cells.iter().skip(1) {
+                let first = root(labels, first as usize);
+                let other = root(labels, firm as usize);
+                labels[first.max(other)] = first.min(other);
+            }
+        }
+        let edges = if count > cutoff && sampling.samples > 0 {
+            counts.sampled_workers = counts
+                .sampled_workers
+                .checked_add(1)
+                .ok_or_else(|| allocation("CMG sampled worker count overflows"))?;
+            (count - 1)
+                .checked_mul(sampling.samples as usize)
+                .ok_or_else(|| allocation("CMG sampled worker edge count overflows"))?
+        } else if count > cutoff {
+            counts.retained_workers = counts
+                .retained_workers
+                .checked_add(1)
+                .ok_or_else(|| allocation("CMG Schur auxiliary count overflows"))?;
+            count
+        } else {
+            count * count.saturating_sub(1) / 2
+        };
+        counts.input_edges = counts
+            .input_edges
+            .checked_add(edges)
+            .ok_or_else(|| allocation("CMG Schur edge count overflows"))?;
+    }
+    Ok(counts)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn build_hybrid_graph(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
     left_effect: usize,
     cutoff: usize,
+    sampling: Sampling,
     batch_columns: usize,
     executor: &ParallelExecutor,
     runtime_extra: u128,
     memory: &mut Admission,
-) -> Result<(Laplacian, FirmComponents, usize, usize)> {
+) -> Result<(Laplacian, FirmComponents, GraphCounts)> {
     let left = &design.effects()[left_effect];
     let right = &design.effects()[1 - left_effect];
     let firms = right.n_levels();
@@ -754,9 +835,15 @@ fn build_hybrid_graph(
         .max()
         .unwrap_or(0);
     let scratch_bytes = bytes::<(u32, f64)>(max_rows)?;
+    let sampler_bytes = if sampling.samples > 0 {
+        SampledTrees::allocation_bytes(max_rows)?
+    } else {
+        0
+    };
     let component_bytes = bytes::<[usize; 2]>(firms)?;
     let bound = scratch_bytes
-        .checked_add(component_bytes)
+        .checked_add(sampler_bytes)
+        .and_then(|bytes| bytes.checked_add(component_bytes))
         .ok_or_else(|| allocation("CMG Schur topology scratch overflows"))?;
     let runtime_heap = storage(&[executor])?;
     memory.admit(runtime_heap + runtime_extra, bound)?;
@@ -768,33 +855,15 @@ fn build_hybrid_graph(
         weight_scale,
         cells: capacity(max_rows)?,
     };
+    let sampler = if sampling.samples > 0 {
+        Some(SampledTrees::new(sampling, max_rows)?)
+    } else {
+        None
+    };
     let mut labels = capacity(firms)?;
     labels.extend(0..firms);
     let mut sizes = filled(firms, usize::MAX)?;
-    let mut retained_workers = 0_usize;
-    let mut input_edges = 0_usize;
-    for worker in 0..left.n_levels() {
-        workers.load(worker)?;
-        let count = workers.cells.len();
-        if let Some(&(first, _)) = workers.cells.first() {
-            for &(firm, _) in workers.cells.iter().skip(1) {
-                let first = root(&mut labels, first as usize);
-                let other = root(&mut labels, firm as usize);
-                labels[first.max(other)] = first.min(other);
-            }
-        }
-        let edges = if count > cutoff {
-            retained_workers = retained_workers
-                .checked_add(1)
-                .ok_or_else(|| allocation("CMG Schur auxiliary count overflows"))?;
-            count
-        } else {
-            count * count.saturating_sub(1) / 2
-        };
-        input_edges = input_edges
-            .checked_add(edges)
-            .ok_or_else(|| allocation("CMG Schur edge count overflows"))?;
-    }
+    let counts = worker_census(&mut workers, cutoff, sampling, &mut labels)?;
     for firm in 0..firms {
         labels[firm] = root(&mut labels, firm);
     }
@@ -812,18 +881,19 @@ fn build_hybrid_graph(
         sizes[label] += 1;
     }
     let vertices = firms
-        .checked_add(retained_workers)
+        .checked_add(counts.retained_workers)
         .filter(|vertices| *vertices > 0 && *vertices as u128 <= u32::MAX as u128 + 1)
         .ok_or_else(|| allocation("CMG Schur graph vertex count is not supported"))?;
     // Pinned Laplacian construction reserves compact Edge (16 bytes), builds
     // one diagonal, and may shrink its merged edge bank. Cover both banks
     // during shrinking plus the three graph Arc allocations and control blocks.
-    let graph_bound = bytes::<[u64; 4]>(input_edges)?
+    let graph_bound = bytes::<[u64; 4]>(counts.input_edges)?
         .checked_add(bytes::<f64>(vertices)?)
         .and_then(|value| value.checked_add(128))
         .ok_or_else(|| allocation("CMG Schur graph construction overflows"))?;
     let parents = runtime_heap
         + vec_capacity_bytes(&workers.cells)
+        + sampler.as_ref().map_or(0, SampledTrees::bytes)
         + vec_capacity_bytes(&labels)
         + vec_capacity_bytes(&sizes);
     memory.admit(parents + runtime_extra, graph_bound)?;
@@ -831,10 +901,11 @@ fn build_hybrid_graph(
     workers.cells.clear();
     let mut edges = HybridEdges {
         workers,
+        sampler,
         cutoff,
         next_worker: 0,
         next_auxiliary: firms,
-        remaining: input_edges,
+        remaining: counts.input_edges,
         first: 0,
         second: 1,
         total: 0.0,
@@ -866,7 +937,7 @@ fn build_hybrid_graph(
         sums: filled(component_elements, 0.0)?,
         corrections: filled(component_elements, 0.0)?,
     };
-    Ok((graph, components, retained_workers, input_edges))
+    Ok((graph, components, counts))
 }
 
 #[cfg(test)]
@@ -959,6 +1030,261 @@ mod tests {
             }
             Self::new(workers, firms, Vec::new())
         }
+
+        fn sampled_degrees(duplicates: bool, scale: f64) -> Self {
+            let mut workers = Vec::new();
+            let mut firms = Vec::new();
+            let mut weights = Vec::new();
+            let mut first = 0;
+            for (worker, degree) in [30, 60, 3].into_iter().enumerate() {
+                for firm in 0..degree {
+                    let copies = if duplicates && firm % 7 == 0 { 2 } else { 1 };
+                    for _ in 0..copies {
+                        workers.push(worker as u32);
+                        firms.push(first + firm);
+                        weights.push((1 + firm % 5) as f64 * scale / copies as f64);
+                    }
+                }
+                first += degree;
+            }
+            Self::new(workers, firms, weights)
+        }
+    }
+
+    fn edges(solver: &CmgSchurPreconditioner) -> Vec<(usize, usize, u64)> {
+        solver.preconditioner.hierarchy().levels()[0]
+            .graph()
+            .edges()
+            .iter()
+            .map(|edge| (edge.u(), edge.v(), edge.weight().to_bits()))
+            .collect()
+    }
+
+    #[test]
+    fn sampled_degree_30_60_graphs_preserve_components_and_fixed_positive_cycles() {
+        let fixture = Fixture::sampled_degrees(true, 1.0);
+        let design = fixture.design();
+        let exact = CmgSchurPreconditioner::build(
+            &design,
+            BorrowedMapWeights::Provided(&fixture.weights),
+            0,
+            4,
+            Sampling::default(),
+            2,
+            1,
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            exact.preconditioner.hierarchy().levels()[0]
+                .graph()
+                .vertex_count(),
+            95
+        );
+        assert_eq!(edges(&exact).len(), 93);
+        let exact_low: Vec<_> = edges(&exact)
+            .into_iter()
+            .filter(|(u, v, _)| *u >= 90 && *v < 93)
+            .collect();
+        for samples in [1, 4] {
+            let mut reference = None;
+            for threads in [1, 4] {
+                let mut solver = CmgSchurPreconditioner::build_with_options(
+                    &design,
+                    BorrowedMapWeights::Provided(&fixture.weights),
+                    0,
+                    4,
+                    Sampling { samples, seed: 19 },
+                    2,
+                    threads,
+                    None,
+                    CmgOptions {
+                        direct_threshold: 8,
+                        ..CmgOptions::default()
+                    },
+                )
+                .unwrap();
+                let graph = solver.preconditioner.hierarchy().levels()[0].graph();
+                assert_eq!(graph.vertex_count(), 93);
+                assert!(graph
+                    .edges()
+                    .iter()
+                    .all(|edge| edge.weight().is_finite() && edge.weight() > 0.0));
+                let components = cmg::Components::from_laplacian(graph);
+                assert_eq!(components.sizes(), &[30, 60, 3]);
+                if samples == 1 {
+                    assert_eq!(graph.edge_count(), 91);
+                }
+                let signature = edges(&solver);
+                assert_eq!(
+                    signature
+                        .iter()
+                        .copied()
+                        .filter(|(u, _, _)| *u >= 90)
+                        .collect::<Vec<_>>(),
+                    exact_low
+                );
+                if let Some(prior) = reference.as_ref() {
+                    assert_eq!(&signature, prior);
+                } else {
+                    reference = Some(signature);
+                }
+                let residual: Vec<_> = (0..186).map(|index| (index as f64 * 0.31).sin()).collect();
+                let mut output = vec![0.0; residual.len()];
+                solver
+                    .apply_batch(&residual, &mut output, 2, 2, None, None)
+                    .unwrap();
+                let mut xbx = 0.0;
+                let mut xby = 0.0;
+                let mut ybx = 0.0;
+                for firm in 0..93 {
+                    xbx += residual[2 * firm] * output[2 * firm];
+                    xby += residual[2 * firm] * output[2 * firm + 1];
+                    ybx += residual[2 * firm + 1] * output[2 * firm];
+                }
+                assert!(xbx > 0.0);
+                assert!((xby - ybx).abs() < 1e-11 * xby.abs().max(1.0));
+                let first = output.clone();
+                solver
+                    .apply_batch(&residual, &mut output, 2, 2, None, None)
+                    .unwrap();
+                assert_eq!(output, first);
+            }
+        }
+    }
+
+    #[test]
+    fn sampled_graphs_repeat_under_duplicates_binary_weight_scaling_and_fixed_seed() {
+        let mut reference = None;
+        for (duplicates, scale) in [
+            (false, 1.0),
+            (true, 1.0),
+            (true, 2.0_f64.powi(-100)),
+            (true, 2.0_f64.powi(100)),
+        ] {
+            let fixture = Fixture::sampled_degrees(duplicates, scale);
+            let design = fixture.design();
+            let solver = CmgSchurPreconditioner::build(
+                &design,
+                BorrowedMapWeights::Provided(&fixture.weights),
+                0,
+                5,
+                Sampling {
+                    samples: 4,
+                    seed: 0,
+                },
+                1,
+                1,
+                None,
+            )
+            .unwrap();
+            let signature = edges(&solver);
+            if let Some(prior) = reference.as_ref() {
+                assert_eq!(&signature, prior);
+            } else {
+                reference = Some(signature);
+            }
+            let changed = CmgSchurPreconditioner::build(
+                &design,
+                BorrowedMapWeights::Provided(&fixture.weights),
+                0,
+                5,
+                Sampling {
+                    samples: 4,
+                    seed: 1,
+                },
+                1,
+                1,
+                None,
+            )
+            .unwrap();
+            assert_ne!(edges(&changed), *reference.as_ref().unwrap());
+        }
+    }
+
+    #[test]
+    fn sampled_scratch_and_graph_are_admitted_and_underflow_is_explicit() {
+        let mut fixture = Fixture::sampled_degrees(false, 1.0);
+        let design = fixture.design();
+        let build = |sampling, budget| {
+            CmgSchurPreconditioner::build(
+                &design,
+                BorrowedMapWeights::Provided(&fixture.weights),
+                0,
+                4,
+                sampling,
+                2,
+                1,
+                budget,
+            )
+        };
+        let sampling = Sampling {
+            samples: 3,
+            seed: 2,
+        };
+        let solver = build(sampling, None).unwrap();
+        let peak = solver.construction_peak().bytes().unwrap() as u128;
+        assert!(solver.retained_bytes().unwrap() <= peak);
+        drop(solver);
+        assert!(build(
+            sampling,
+            Some(FeSolverMemoryBudget {
+                execution_bytes: 11,
+                usable_bytes: peak + 11
+            })
+        )
+        .is_ok());
+        assert!(matches!(
+            build(
+                sampling,
+                Some(FeSolverMemoryBudget {
+                    execution_bytes: 11,
+                    usable_bytes: peak + 10
+                })
+            ),
+            Err(FeregError {
+                code: ErrorCode::Allocation,
+                ..
+            })
+        ));
+        assert!(matches!(
+            build(
+                Sampling {
+                    samples: u32::MAX,
+                    seed: 0
+                },
+                Some(FeSolverMemoryBudget {
+                    execution_bytes: 11,
+                    usable_bytes: peak + 11
+                })
+            ),
+            Err(FeregError {
+                code: ErrorCode::Allocation,
+                ..
+            })
+        ));
+        drop(design);
+        fixture.weights.fill(1.0);
+        fixture.weights[0] = f64::from_bits(1);
+        assert!(matches!(
+            CmgSchurPreconditioner::build(
+                &fixture.design(),
+                BorrowedMapWeights::Provided(&fixture.weights),
+                0,
+                4,
+                Sampling {
+                    samples: 2,
+                    seed: 0
+                },
+                1,
+                1,
+                None,
+            ),
+            Err(FeregError {
+                code: ErrorCode::InvalidData,
+                ..
+            })
+        ));
     }
 
     #[test]
@@ -971,6 +1297,7 @@ mod tests {
                 BorrowedMapWeights::Provided(&fixture.weights),
                 0,
                 cutoff,
+                Sampling::default(),
                 3,
                 1,
                 None,
@@ -1033,6 +1360,7 @@ mod tests {
                     BorrowedMapWeights::Provided(&rescaled),
                     0,
                     cutoff,
+                    Sampling::default(),
                     3,
                     1,
                     None,
@@ -1064,6 +1392,7 @@ mod tests {
                 BorrowedMapWeights::Unit,
                 0,
                 4,
+                Sampling::default(),
                 3,
                 threads,
                 None,
@@ -1134,6 +1463,7 @@ mod tests {
                 BorrowedMapWeights::Unit,
                 0,
                 4,
+                Sampling::default(),
                 columns,
                 threads,
                 None,
@@ -1235,6 +1565,7 @@ mod tests {
                 BorrowedMapWeights::Provided(&fixture.weights),
                 0,
                 cutoff,
+                Sampling::default(),
                 columns,
                 2,
                 None,
@@ -1353,6 +1684,7 @@ mod tests {
                     BorrowedMapWeights::Unit,
                     0,
                     5,
+                    Sampling::default(),
                     rhs_capacity,
                     1,
                     budget,
@@ -1378,7 +1710,16 @@ mod tests {
                 })
             ));
             assert!(matches!(
-                CmgSchurPreconditioner::build(&design, BorrowedMapWeights::Unit, 0, 7, 1, 1, None),
+                CmgSchurPreconditioner::build(
+                    &design,
+                    BorrowedMapWeights::Unit,
+                    0,
+                    7,
+                    Sampling::default(),
+                    1,
+                    1,
+                    None
+                ),
                 Err(FeregError {
                     code: ErrorCode::InvalidArgument,
                     ..

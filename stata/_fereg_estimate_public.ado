@@ -5,6 +5,7 @@ program define _fereg_estimate_public, eclass
         [ABSorb(string asis) VCE(string asis) DOF(string asis) ///
          KEEPsingletons RESIDuals(name) SAVEFEs(string asis) ///
          SOLVer(string) CMGDEGree(numlist integer min=1 max=1) ///
+         CMGSAMples(string) CMGSEed(string) ///
          PREConditioner(string) THREADS(integer 0) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) DETERMINISTIC TIMEIT VERBose(integer 0) ///
@@ -44,6 +45,33 @@ program define _fereg_estimate_public, eclass
             exit 198
         }
         local cmgdegree_option "cmgdegree(`cmgdegree')"
+    }
+    local cmgsamples_explicit = (`"`cmgsamples'"' != "")
+    local cmgseed_explicit = (`"`cmgseed'"' != "")
+    foreach option in cmgsamples cmgseed {
+        if `"``option''"' != "" {
+            if `"`solver_mode'"' != "cmgschur" {
+                di as error "`option'() is valid only with solver(cmgschur)"
+                exit 198
+            }
+            local maximum "4294967295"
+            if "`option'" == "cmgseed" local maximum "9007199254740991"
+            if !regexm(strtrim(`"``option''"'), "^[0-9]+$") {
+                di as error "`option'() must be an integer in 0..`maximum'"
+                exit 198
+            }
+            if real(`"``option''"') > `maximum' {
+                di as error "`option'() must be an integer in 0..`maximum'"
+                exit 198
+            }
+            * Keep the exact decimal integer through the native request wire.
+            local `option' = strtrim(string(real(`"``option''"'), "%21.0f"))
+        }
+        else local `option' 0
+    }
+    if `cmgseed_explicit' & `cmgsamples' == 0 {
+        di as error "cmgseed() requires positive cmgsamples()"
+        exit 198
     }
     local preconditioner_mode = lower(strtrim(`"`preconditioner'"'))
     if `"`preconditioner_mode'"' == "" {
@@ -124,11 +152,17 @@ program define _fereg_estimate_public, eclass
         else if `"`weight'"' == "pweight" local weight_option "pweight(`weight_variable')"
     }
 
+    local cmgsampling_options
+    if `cmgsamples_explicit' local cmgsampling_options "cmgsamples(`cmgsamples')"
+    if `cmgseed_explicit' local cmgsampling_options ///
+        "`cmgsampling_options' cmgseed(`cmgseed')"
+
     _fereg_estimate_ols `varlist' `if' `in', ///
         `absorb_option' `vce_option' `cluster_option' `dof_option' `singleton_option' ///
         `residual_option' `constant_option' `memory_option' ///
         `weight_option' `public_wexp_option' ///
-        solver(`solver_mode') `cmgdegree_option' preconditioner(`preconditioner_mode') ///
+        solver(`solver_mode') `cmgdegree_option' `cmgsampling_options' ///
+        preconditioner(`preconditioner_mode') ///
         poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
         iterate(`iterate') `deterministic'
 
@@ -153,7 +187,11 @@ program define _fereg_estimate_public, eclass
     ereturn local fereg_memory_requested "`memory_mode'"
     ereturn local fereg_memory_selected "`selected_memory'"
     ereturn local fereg_solver_requested "`solver_mode'"
-    if `"`solver_mode'"' == "cmgschur" ereturn scalar fereg_cmg_degree = `cmgdegree'
+    if `"`solver_mode'"' == "cmgschur" {
+        ereturn scalar fereg_cmg_degree = `cmgdegree'
+        ereturn scalar fereg_cmg_samples = `cmgsamples'
+        ereturn scalar fereg_cmg_seed = `cmgseed'
+    }
     ereturn local fereg_preconditioner "`preconditioner_mode'"
     ereturn scalar fereg_requested_threads = el(e(fereg_runtime), 28, 2)
     ereturn scalar fereg_threads = el(e(fereg_runtime), 29, 2)

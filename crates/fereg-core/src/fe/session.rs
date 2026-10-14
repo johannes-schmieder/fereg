@@ -208,6 +208,7 @@ impl<'a> FeSession<'a> {
         config: crate::ols::PreparedOlsFitConfig,
         rhs: usize,
     ) -> Result<Self> {
+        config.absorb.validate_cmg_schur_options()?;
         let mut owner = Self {
             structural_constant: prepared.fit_has_absorbed_intercept(),
             ols_chunked_norms: config.execution.mode == crate::ols::PreparedOlsExecutionMode::Low,
@@ -370,6 +371,10 @@ impl<'a> FeSession<'a> {
             .transpose()?;
         p.request_cmg_schur(
             config.absorb.cmg_schur_degree,
+            super::cmg_schur::Sampling {
+                samples: config.absorb.cmg_schur_samples,
+                seed: config.absorb.cmg_schur_seed,
+            },
             config.execution.threads.resolved(),
             budget,
             parents,
@@ -686,6 +691,7 @@ impl<'a> FeSession<'a> {
         raw_final: bool,
         dense_norms: bool,
     ) -> Result<CertifiedBorrowedMap> {
+        config.validate_cmg_schur_options()?;
         let admission = config;
         if let Some(stored) = self.absorb_config {
             config.solver_memory_budget = stored.solver_memory_budget;

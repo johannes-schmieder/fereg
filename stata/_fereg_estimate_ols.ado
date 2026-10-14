@@ -14,7 +14,8 @@ program define _fereg_estimate_ols, eclass
          PWEIGHT(varname numeric) ABSorb(string asis) CLUster(string asis) ///
          VCE(string) DOF(string) KEEPsingletons RESIDual(name) ///
          XB(name) XBD(name) D(name) ///
-         SOLVer(string) CMGDEGree(numlist integer min=1 max=1) PREConditioner(string) ///
+         SOLVer(string) CMGDEGree(numlist integer min=1 max=1) ///
+         CMGSAMples(string) CMGSEed(string) PREConditioner(string) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC ///
          INJECT(string) PUBLICWEXP(string)]
@@ -48,6 +49,33 @@ program define _fereg_estimate_ols, eclass
             di as error "cmgdegree() must be 4, 5, or 6"
             exit 198
         }
+    }
+    local cmgsamples_explicit = (`"`cmgsamples'"' != "")
+    local cmgseed_explicit = (`"`cmgseed'"' != "")
+    foreach option in cmgsamples cmgseed {
+        if `"``option''"' != "" {
+            if `"`solver_mode'"' != "cmgschur" {
+                di as error "`option'() is valid only with solver(cmgschur)"
+                exit 198
+            }
+            local maximum "4294967295"
+            if "`option'" == "cmgseed" local maximum "9007199254740991"
+            if !regexm(strtrim(`"``option''"'), "^[0-9]+$") {
+                di as error "`option'() must be an integer in 0..`maximum'"
+                exit 198
+            }
+            if real(`"``option''"') > `maximum' {
+                di as error "`option'() must be an integer in 0..`maximum'"
+                exit 198
+            }
+            * Keep the exact decimal integer through the native request wire.
+            local `option' = strtrim(string(real(`"``option''"'), "%21.0f"))
+        }
+        else local `option' 0
+    }
+    if `cmgseed_explicit' & `cmgsamples' == 0 {
+        di as error "cmgseed() requires positive cmgsamples()"
+        exit 198
     }
     local preconditioner_mode = lower(strtrim(`"`preconditioner'"'))
     if `"`preconditioner_mode'"' == "" {
@@ -520,6 +548,10 @@ program define _fereg_estimate_ols, eclass
     local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=fereg-estimation;plugin=0.5.0;result_major=1;result_minor=5;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
     if `"`solver_mode'"' == "cmgschur" {
         local request_arguments `"`request_arguments'cmgdegree=`cmgdegree';"'
+        if `cmgsamples_explicit' local request_arguments ///
+            `"`request_arguments'cmgsamples=`cmgsamples';"'
+        if `cmgseed_explicit' local request_arguments ///
+            `"`request_arguments'cmgseed=`cmgseed';"'
     }
     if `"`inject'"' == "breaknative" {
         local break_marker_token : environment FEREG_BREAK_MARKER_TOKEN

@@ -4222,6 +4222,78 @@ fn cmgschur_cutoff_defaults_and_explicit_values_survive_framed_requests() {
             let specification = EstimateActionSpec::parse(request).unwrap();
             assert_eq!(specification.solver, FeSolverKind::CmgSchur);
             assert_eq!(specification.cmg_schur_degree, degree.unwrap_or(5));
+            assert_eq!(specification.cmg_schur_samples, 0);
+            assert_eq!(specification.cmg_schur_seed, 0);
+        }
+    }
+}
+
+#[test]
+fn sampled_cmgschur_integer_boundaries_survive_framed_requests_exactly() {
+    for (samples, seed) in [
+        (0, None),
+        (1, None),
+        (1, Some(0)),
+        (3, Some(1)),
+        (u32::MAX, Some((1_u64 << 53) - 1)),
+    ] {
+        let (mut args, _) = fixture(OlsVceKind::Iid);
+        replace_argument(&mut args, "solver", "solver=cmgschur".to_owned());
+        replace_argument(&mut args, "preconditioner", "preconditioner=off".to_owned());
+        args.push(format!("cmgsamples={samples}"));
+        if let Some(seed) = seed {
+            args.push(format!("cmgseed={seed}"));
+        }
+        for request in [&args, &bundled(&args)] {
+            let specification = EstimateActionSpec::parse(request).unwrap();
+            assert_eq!(specification.cmg_schur_samples, samples);
+            assert_eq!(specification.cmg_schur_seed, seed.unwrap_or(0));
+            assert_eq!(specification.cmg_schur_degree, 5);
+        }
+    }
+}
+
+#[test]
+fn invalid_sampling_options_fail_before_reads_or_publication() {
+    let mut requests = Vec::new();
+    for solver in ["auto", "map", "lsmr", "cmg", "it", "squarem"] {
+        for field in ["cmgsamples=0", "cmgsamples=1", "cmgseed=0", "cmgseed=1"] {
+            requests.push((solver, vec![field]));
+        }
+    }
+    for fields in [
+        vec!["cmgsamples=-1"],
+        vec!["cmgsamples=1.5"],
+        vec!["cmgsamples=4294967296"],
+        vec!["cmgsamples=NaN"],
+        vec!["cmgsamples="],
+        vec!["cmgseed=0"],
+        vec!["cmgsamples=0", "cmgseed=1"],
+        vec!["cmgsamples=1", "cmgseed=-1"],
+        vec!["cmgsamples=1", "cmgseed=1.5"],
+        vec!["cmgsamples=1", "cmgseed=9007199254740990.5"],
+        vec!["cmgsamples=1", "cmgseed=9007199254740992"],
+        vec!["cmgsamples=1", "cmgseed=18446744073709551616"],
+        vec!["cmgsamples=1", "cmgseed=NaN"],
+        vec!["cmgsamples=1", "cmgseed="],
+    ] {
+        requests.push(("cmgschur", fields));
+    }
+    for (solver, fields) in requests {
+        for framed in [false, true] {
+            let (mut args, mut spi) = fixture(OlsVceKind::Iid);
+            replace_argument(&mut args, "solver", format!("solver={solver}"));
+            replace_argument(&mut args, "preconditioner", "preconditioner=off".to_owned());
+            args.extend(fields.iter().map(|field| (*field).to_owned()));
+            let before_data = spi.data.clone();
+            let before_matrices = spi.matrices.clone();
+            let request = if framed { bundled(&args) } else { args };
+            let error = estimate_ols(&request, &mut spi).unwrap_err();
+            assert_eq!(error.code, ErrorCode::Syntax, "{solver}, {fields:?}");
+            assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+            assert_eq!(spi.data, before_data);
+            assert_eq!(spi.matrices, before_matrices);
+            assert_eq!(spi.receipt_complete(), 0.0);
         }
     }
 }

@@ -797,6 +797,32 @@ fn automatic_structural_map_uses_admitted_shared_operations() {
 }
 
 #[test]
+fn public_ppml_rejects_cmg_sampling_before_preparation_or_policy_replacement() {
+    for linear in [false, true] {
+        for (samples, seed) in [(1, 0), (0, 1), (1, 1_u64 << 53)] {
+            let (mut request, loaded) = fixture(2, false, false, false, false, false);
+            let absorb = if linear {
+                &mut request.linear.absorb
+            } else {
+                &mut request.ppml.absorb
+            };
+            absorb.solver = FeSolverKind::CmgSchur;
+            absorb.cmg_schur_samples = samples;
+            absorb.cmg_schur_seed = seed;
+            let mut probes = 0;
+            let error = fit_prepared_ppml_interruptible(request, loaded, &mut |_| {
+                probes += 1;
+                Ok(())
+            })
+            .unwrap_err();
+            assert_eq!(error.code, ErrorCode::InvalidArgument);
+            assert!(error.message.contains("sampling"));
+            assert_eq!(probes, 0);
+        }
+    }
+}
+
+#[test]
 fn public_cmg_intermediate_budget_rejection_precedes_route_observation_preparation() {
     let (mut admitted_request, admitted_loaded) = fixture(2, false, false, false, false, false);
     admitted_request.solver = PpmlSolverFamily::Cmg;

@@ -434,6 +434,7 @@
         "tests/stata/development/ols_cluster_low_memory.do",
         "tests/stata/development/ols_cmgschur.do",
         "tests/stata/development/ols_cmgschur_nonconvergence.do",
+        "tests/stata/development/ols_cmgschur_sampled.do",
         "tests/stata/development/ols_factor_name_reuse.do",
         "tests/stata/development/ols_inference_ownership.do",
         "tests/stata/development/ols_low_one_fe.do",

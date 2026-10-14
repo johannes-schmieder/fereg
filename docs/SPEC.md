@@ -36,6 +36,8 @@ The former `version` and `doctor` options are removed and return r(198).
 | `residuals(newvar)` | Response residual | Formula selected by `residualtype()` |
 | `solver()` | auto (default), map, lsmr, cmg, cmgschur (experimental), it, squarem | auto (default), map, lsmr, cmg |
 | `cmgdegree(#)` | Experimental cmgschur only; 4, 5 (default), or 6 | Unsupported |
+| `cmgsamples(#)` | Experimental cmgschur only; integer 0 (default) through 4294967295 | Unsupported |
+| `cmgseed(#)` | With positive cmgsamples only; integer 0 (default) through 9007199254740991 | Unsupported |
 | `threads(#)` | Nonnegative integer; 0 resolves native default | Same |
 | `tolerance(#)` | Finite 0 < t < 1; default 1e-8 | Same, outer convergence tolerance |
 | `iterate(#)` | Positive integer; default 16,000 | Positive integer; default 10,000 outer iterations |
@@ -77,7 +79,7 @@ unsupported requests fail clearly.
 | cmgschur (experimental) | Exactly two categorical intercept effects; positive observation weights, finite controls, disconnected components and saved effects | Unsupported |
 
 The experimental `cmgschur` route eliminates the larger FE implicitly in the
-outer Schur operator. Its CMG preconditioner explicitly eliminates levels with
+outer Schur operator. By default, its CMG preconditioner eliminates levels with
 at most `cmgdegree()` distinct neighbors and retains the others as auxiliary
 vertices. Repeated observations form weighted cells before degree counting.
 A fixed symmetric CMG cycle receives component-centered firm residuals padded
@@ -107,6 +109,32 @@ discrete decisions stay unchanged. Lazy hierarchy construction, inactive-column
 skipping and parallel recurrence updates preserve the explicit failure contract,
 memory admission, Break handling and final requested-tolerance certificate.
 Other solver routes retain exact scientific results and solver signatures.
+
+The optional sampled extension uses `cmgsamples(k)` with an unsigned 32-bit
+integer count. Zero (the default) preserves the exact retained-star hybrid.
+Positive counts replace each above-cutoff worker with the average of `k`
+independently seeded weighted clique trees; low-degree cliques remain exact.
+`cmgseed(s)` selects an integer seed in 0..2^53-1 (default zero) and may be
+explicitly supplied only when sampling is enabled. Both options require
+`solver(cmgschur)` and retain its OLS-only support envelope. Repeated observations
+are aggregated before sampling. A connected, positive tree spans each worker's
+distinct firms, preserving the firm-component kernel. The graph is sampled once
+at construction and remains fixed throughout PCG and residual correction.
+The exact implicit Schur operator, observation reconstruction and certificate
+are unchanged; neither observations nor the target model are sampled.
+
+Declared sampled-extension scope: only explicitly sampled CMG-Schur fits may
+change coefficients, covariance, fit statistics, residuals, FE coordinates and
+solver iteration signatures within the existing prototype tolerances. Sample,
+rank, omissions and other discrete decisions remain unchanged. Unrequested
+sampling, including `cmgsamples(0)`, preserves existing scientific bits and
+solver signatures. Independent witnesses cover exact enumeration of a small
+weighted tree distribution, dense worker-clique mathematics, component kernels,
+symmetry/positive energy, degree-30/60 weighted dummy OLS, fixed-seed/thread
+repeatability, memory admission and Break/rollback. Every sampler allocation
+is admitted before growth; edge-count overflow, nonfinite or underflowed edge
+weights fail explicitly without silently changing the requested sample count.
+Unbiasedness in exact arithmetic is not a spectral-quality guarantee.
 
 The OLS CMG adapter also handles zero/one categorical effects by exact
 no-work/direct projection; preserve this degenerate support and identify that

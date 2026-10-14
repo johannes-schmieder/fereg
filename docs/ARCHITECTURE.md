@@ -147,6 +147,20 @@ Component summation is fused with
 gathering, and output centering with scattering. Direction updates use the
 ordinary parallel stage policy. A half-tolerance proposal is certified first;
 one stricter residual correction is allowed within the same iteration budget.
+With `cmgsamples(k)` positive, above-cutoff stars instead become the average
+of `k` weighted trees on their distinct firm neighbors. The low-degree cliques
+remain exact and no high-degree auxiliary vertices are retained. A reusable,
+admitted sampler orders cells by positive weight and firm ID, forms compensated
+suffix sums, and draws one later neighbor for each nonterminal neighbor. Each
+tree connects all of that worker's firms. Fixed SplitMix64 streams keyed by the
+request seed, worker and tree make construction deterministic; the resulting
+graph and CMG hierarchy remain fixed throughout every projection and correction.
+Sampling affects only the preconditioner, never the exact Schur operator or
+observation-space certificate. Zero samples retains the original hybrid graph.
+The sampling count, seed, edge census and scratch are validated/admitted before
+emission; edge-weight underflow is an explicit error rather than a lost link.
+This small streaming sampler is owned here because the pinned upstream
+clique-tree API does not expose fallible, budget-admitted scratch storage.
 An explicit request has no MAP fallback, does not reuse historical
 PPML weights and never changes the automatic route. The current support envelope
 and numerical scope are in [SPEC](SPEC.md#solver-support-and-dispatch).

@@ -694,6 +694,13 @@ pub fn fit_prepared_ppml_interruptible(
 }
 
 fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -> Result<()> {
+    for absorb in [request.ppml.absorb, request.linear.absorb] {
+        if absorb.cmg_schur_samples != 0 || absorb.cmg_schur_seed != 0 {
+            return Err(invalid_argument(
+                "CMG sampling options require OLS solver(cmgschur)",
+            ));
+        }
+    }
     if request.bias.is_some() != loaded.bias_units.is_some() {
         return Err(invalid_argument(
             "bias request and independent-unit input disagree",

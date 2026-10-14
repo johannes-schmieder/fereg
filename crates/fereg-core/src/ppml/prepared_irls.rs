@@ -3256,6 +3256,8 @@ fn ppml_linear_config(
 }
 
 fn validate_solver_admission(config: PreparedPpmlIrlsConfig) -> Result<()> {
+    config.linear.absorb.validate_cmg_schur_options()?;
+    config.ppml.absorb.validate_cmg_schur_options()?;
     if config.linear.absorb.solver != FeSolverKind::Map
         || config.ppml.absorb.solver != FeSolverKind::Map
         || config.solver_plan.selected == super::PpmlSolverFamily::Auto
