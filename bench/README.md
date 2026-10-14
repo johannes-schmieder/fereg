@@ -162,6 +162,63 @@ failed/inconclusive bounds. Johannes accepted the frozen candidate with the
 remaining timing uncertainty; see
 [the adoption decision and limits](../docs/VALIDATION.md#c2-adoption-with-unresolved-timing-2026-10-12).
 
+### Controlled paired blocks
+
+[`time_blocks.py`](time_blocks.py) implements the prospective controlled protocol
+with Python 3.11 or later. It freezes complete-solve ABBA/BAAB blocks, balances
+orientations, shuffles workloads each round, and checkpoints every complete or
+failed attempt. Exact comparisons bind a prior complete scientific qualification;
+routing comparisons bind independent witnesses and each arm's qualified
+scientific fingerprint. A timeout, scientific failure or changed binding stops
+collection and cannot be excused by a noisy host. Freeze a new output directory
+and finite attempt budget; do not repeat a failed experiment into another path.
+
+[`block_host.py`](block_host.py) wraps collection and records process identities,
+CPU activity and load. It leaves ordinary desktop activity in the sample and
+never pauses unrelated processes. A frozen classifier may exclude a whole block
+for sampled known competing computation. Exclusions consume attempts. The
+validator recomputes classification from raw observations and checks source,
+policy, events, manifest and record hashes. Missing coverage is inconclusive.
+This sampled observer cannot prove that no short-lived process ran, and does
+not claim sleep or memory-pressure detection.
+
+```sh
+python3 bench/time_blocks.py seal --spec SPEC.json --output MANIFEST.json
+python3 bench/block_host.py --manifest MANIFEST.json --policy POLICY.json \
+  --events RUN/host-events.jsonl --records RUN/records.json --output HOST \
+  -- python3 bench/time_blocks.py collect --manifest MANIFEST.json --output RUN
+python3 bench/time_blocks.py analyze --manifest MANIFEST.json \
+  --records RUN/records.json --monitor-receipt HOST/host-receipt.json \
+  --output REPORT.json
+```
+
+All generated paths belong under one `target/tmp/<task>/` directory; `RUN` and
+`HOST` must be separate fresh directories. Save the exact observer `POLICY`
+object before sealing the specification. The specification binds the harness,
+each comparison's two artifacts and prepared inputs, prior science, prospective
+design declaration, monitor source and policy. Its design declares an even
+attempt count, warmups, seed, per-call and aggregate budgets, session identity,
+block analysis unit and upper-tail alpha 1/40.
+
+Acceptance tests median `N - B - max(.05 * B, .001)` using block geometric means
+and the attainable order-statistic upper bound. Ratios, means, upper tails,
+orientation contrasts and lag-one diagnostics are reported separately. Minima
+are descriptive only. Statistical coverage assumes independent block scores
+with a common median; a small A/A pilot cannot prove those assumptions. The
+report therefore separates a conditional statistical pass from release
+qualification, which also requires reviewed experimental assumptions, complete
+workload coverage and the relevant scientific/deployment gates.
+
+[`routing_discovery.py`](routing_discovery.py) is a separate Linux/SCC discovery
+screen. It freezes the twelve-policy grid and baseline on the 42 A cells,
+requires fresh Linux scientific prerequisites, then combines three fixed
+three-repetition rounds from the maintained routing producer. It reports point
+estimates and a shortlist only. Its frozen external isolation validator must
+replay scheduler, placement, process and accounting evidence; a slot request or
+asserted isolation flag is insufficient. No B/C input bodies are opened, no Mac
+unavailability outcome is imported, and the result cannot satisfy the legacy
+Mac B/C or public-default deployment gates.
+
 ### CMG-Schur prototype comparison
 
 [`cmgschur_cases.py`](cmgschur_cases.py) and [`cmgschur.py`](cmgschur.py) compare
