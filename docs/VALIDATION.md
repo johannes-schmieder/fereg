@@ -287,7 +287,46 @@ identities, including the unresolved infrastructure failure. Reconstructing its
 column tables reproduces the entire original source object. It is 267,924 bytes,
 SHA-256 `84f8838c26d71b2ba608736d39e7a9bcc8b84a7ac7be6c8bfe91c8f9f26022ad`.
 
-The following section retains the original terminal outcomes unchanged.
+The next retry passed admission and launched at 11:45:17 America/New_York. At
+60.07 seconds, Spotlight's index store reached 110.2% CPU and triggered the
+unchanged individual limit. Cleanup completed, and the entire cohort was
+excluded from the host record before timing inspection. Its host record has
+SHA-256 `57c53e616d33decb1bcec009f69bdb59dcbc31b9f923b07094c563ab853f60d9`;
+the original failed records have SHA-256
+`2e936a1a7819fc41bd25a8992009b32b4ff4e660bacd1e782426cabe3103892c`.
+All 512 timing calls and 141 completed traced calls passed their recorded science
+and certificate checks; one traced dispatch remains unfinished. Eight partial
+summaries are preserved without selection or a performance conclusion. The
+[second retry evidence](../bench/results/solver-routing-policy-a-retry02-interrupted-20261014.json)
+reconstructs the complete source object exactly: 823,401 bytes, SHA-256
+`f137944e95409cfa128a3e853784d741437aab27e688aa6e8b6251004548d9e5`.
+The completed standard gate and previous evidence remain unchanged.
+
+One further replacement is declared before collection under the standing retry
+authorization. It retains the same artifacts, inputs, native arguments except
+output location, 42 cells, finite policy grid, optional unavailabilities,
+repetitions, statistics and time limits. Only its fresh output directory gains
+the `.noindex` suffix. [Apple's developer documentation](https://developer.apple.com/documentation/xcode/locating-a-missing-debug-symbol-file)
+identifies paths containing `.noindex` as an obstacle to Spotlight lookup.
+This is a local indexing mitigation, not evidence that Spotlight has stopped
+or that earlier indexing was caused by the benchmark. The supported Settings
+folder-picker attempt did not complete; no privacy exclusion was verified and
+no privileged service change occurred. Independent Astra methodology review
+found no blocker to this prospective output-only mitigation.
+The relocation wrapper passed five focused tests and independent source review;
+its SHA-256 is
+`ed3fb34c9ef812b8476383e86982f3608e052edfe3187cc2fc2aa168e0ff761e`.
+The frozen protocol has SHA-256
+`6a886afd42f3523d59479a8114f1c0a8f66ea114a786e1472953de1a0d697109`;
+the guarded command has SHA-256
+`edf9a728036fa4c5bee3508d77a99a2cd79b57b76941836d299877a6ff8e7ad1`.
+
+The same amended guard, fresh separately inspected admission, terminal host
+clearance and fresh-record completion gate remain mandatory. Another interference
+trigger ends the attempt. All prior cohorts remain excluded under their original
+rules; no eligible statistical look, selection, B/C access or default change is
+introduced. All 20 standard cells continue to pass. The following section retains
+the original terminal outcomes unchanged.
 
 ## Routing timing outcome, 2026-10-14
 
