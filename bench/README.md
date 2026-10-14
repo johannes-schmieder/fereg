@@ -148,9 +148,12 @@ python3 bench/time_exact.py --plugin base=BASELINE.plugin --plugin cand=dist/fer
   --cases target/standard-cases/*.case --output target/tmp/timing/RUN
 ```
 
-Every run must reproduce exact science and solver signatures; the decision is
+This historical runner reproduces exact science and solver signatures and uses
 the paired-median bootstrap upper bound against max(5%, 1 ms) per workload.
-Run only on a quiet host (no builds, agents or Stata). The former three-FE LSMR
+New qualification follows the [controlled block protocol](../docs/development_workflow.md#controlled-timing-protocol-approved-2026-10-14): ordinary OS bursts are
+recorded, while competing builds, agent computation and estimation jobs remain
+excluded. Existing accepted observations are not rerun merely because the
+protocol changed. The former three-FE LSMR
 timing inputs are not reproducible from a tracked recipe and are not frozen.
 
 The [C2 qualification follow-up](results/c2-20261012-qualification.json) retains
@@ -212,7 +215,7 @@ timed-out or incomplete comparison cannot establish a speed gain.
 Native timing surrounds one complete plugin call, excluding replay file I/O.
 `summary.json` retains individual observations, solver setup/solve diagnostics,
 peak process RSS, and paired summaries. Phase clocks may overlap; do not add
-them as an elapsed-time decomposition. Run on a quiet host after builds, tests
+them as an elapsed-time decomposition. Run controlled measurements after builds, tests
 and other agent workloads finish. SCC observations do not qualify Mac speed.
 
 For an optimization against a frozen parent, `--baseline-plugin` adds
@@ -352,7 +355,7 @@ serial and optional parallel constructors in alternating order, including one
 warmup and four measured pairs. Every result must equal the serial reference,
 including observation order. Both probes cap inputs at 16 million rows and
 32 workers; preparation caps measured repetitions at seven. These diagnostic
-observations do not replace the full scientific gate, native replay or quiet
+observations do not replace the full scientific gate, native replay or controlled
 qualification-host timing. The [C2 evidence](results/c2-20261011-performance.json)
 retains the bounded exploration and the final candidate separately.
 
@@ -544,8 +547,10 @@ within every cell/arm, including warmup. Witness hashes must remain fixed.
 
 Do not synthesize passing flags from convergence alone. Native diagnostics,
 independent witnesses, scoped replay and fixed-artifact repeats must substantiate
-the record. Native timing must use the existing quiet-host harness and rotating
-paired order. Every planned call remains recorded. A terminal call can have
+the record. This legacy tournament uses its declared rotating paired order;
+new discovery/confirmation campaigns must freeze the controlled protocol and
+their analysis separately, without relabeling historical outcomes. Every planned
+call remains recorded. A terminal call can have
 `status: "unavailable"` only when actual native return code 459 and a predeclared
 solver-specific exhaustion diagnostic establish iteration exhaustion, or when a
 dispatched call reaches the full prespecified timeout. Availability policy v2 also

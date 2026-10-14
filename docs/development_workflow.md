@@ -142,7 +142,7 @@ measurement budgets and stopping rules:
   and must report uncertainty. Wall-time gains smaller than the allowance remain
   observations and do not by themselves fail an otherwise supported change.
 - Result-changing changes require declared numerical scope, independent witnesses
-  and the full quiet-timing protocol on the qualification host. Unaffected
+  and controlled paired timing on the qualification host. Unaffected
   scientific results remain exact; affected results must satisfy SPEC.
 - Unchanged artifacts: a commit that only changes tests, documentation or
   tooling passes `python3 scripts/check_complexity.py --compare-production HEAD~1`
@@ -164,11 +164,86 @@ measurement budgets and stopping rules:
   witnesses on the affected fields and instruction counts within noise. They
   reuse the prior timing evidence.
 
-The wall-time check is `bench/time_exact.py` (seven alternating pairs after one
-warm-up, paired-median bootstrap upper bound against max(5%, 1 ms)) over the
-frozen workloads regenerated and hash-verified by `bench/make_standard_cases.py`,
+`bench/time_exact.py` retains the historical seven-alternating-pair procedure
+and its paired-median bootstrap summaries. Existing accepted evidence remains
+valid. New qualification uses the controlled block protocol below; do not mix
+its new estimand with historical paired-ratio samples. The frozen standard
+workloads are regenerated and hash-verified by `bench/make_standard_cases.py`,
 using the clocked harness from `bench/build_timing_harness.sh`.
 
+### Controlled timing protocol (approved 2026-10-14)
+
+Ordinary macOS services and desktop bursts are recorded measurement noise.
+Their process CPU readings alone neither reject admission nor abort a whole
+panel. Deliberate competing builds, test suites, substantial estimation jobs
+and agent computation still do not share the measured host. Record host
+conditions with a lightweight monitor. Sleep, severe memory pressure, verified
+competing compute or other host faults may invalidate an affected complete
+measurement block only under rules frozen before collection. Retain excluded
+and incomplete blocks with reasons and supporting evidence. Never classify a
+block using its candidate/reference timing outcome. Replacement attempts, if
+allowed at all, count against a fixed declared cap. A failed scientific check,
+solver timeout or changed artifact is not an OS-noise exclusion.
+
+For a reference/candidate comparison, use balanced randomized ABBA/BAAB blocks
+of complete native estimations, including setup. Freeze inputs, artifacts,
+worker counts, warmups, cache policy, order seed, block/attempt count and wall
+budget before timing. Shuffle workload order across rounds. For a finite
+multi-arm discovery screen, a prospectively declared balanced rotating order is
+also permitted; discovery scores do not substitute for finalist confirmation.
+All arms retain the same scientific and resource checks. Checkpoint complete
+blocks so an unrelated later interruption does not erase earlier valid work.
+
+Let B and N be the geometric means of the two reference and two candidate
+complete-solve times in a block, in seconds. Acceptance tests the median of
+E = N - B - max(0.05 B, 0.001). The median block ratio N/B is a separate
+descriptive effect-size summary, not the tested quantity. Use the attainable
+one-sided order-statistic upper bound with upper-tail alpha 0.025: the smallest
+rank k for which P[Binomial(n, 0.5) >= k] <= 0.025 gives upper bound E_(k).
+If no rank is attainable, the upper bound is infinite and the result inconclusive.
+Pass only if the upper bound is at most zero; retain ties. This coverage is
+conditional on independent block scores with a common median, not an
+unconditional guarantee about a noisy host. Freeze round/session identities and
+the actual analysis unit before collection. Report ordinary
+means, upper-tail behavior and minima or low quantiles as descriptive diagnostics;
+minima cannot establish acceptance. Implement max(5%, 1 ms) consistently with
+the chosen block estimand, accounting for reference-time uncertainty rather
+than treating an estimated denominator as known. Name the estimand and exact
+analysis rule in the frozen protocol. Preserve pairing and shared-reference
+correlations in uncertainty calculations. State independence, common-distribution
+or common-median assumptions; a few sessions containing many correlated solves
+do not provide many independent observations. Approximate intervals must be
+labeled as such, not presented as exact guarantees.
+
+A small fixed A/A pilot on representative costs and worker counts can diagnose
+order effects, dependence and attainable precision before candidate timing.
+It cannot establish independence or common medians from a small sample.
+Use it to freeze a practical measurement budget, not to widen the allowance.
+Separate discovery, shortlist selection and untouched finalist confirmation.
+Choose one finalist before opening its confirmation results. Ties favor the
+predeclared simpler/incumbent policy. No fallback winner or repeated sampling
+until success is permitted after confirmation. An unresolved required comparison
+leaves promotion inconclusive; it does not silently pass or create a
+benchmark-specific routing exception.
+
+Use verified isolated SCC allocations for broad algorithm discovery, scaling
+and Linux performance evidence. Candidate and reference share the same node,
+CPU placement, physical-core/SMT policy, library thread limits and input bytes.
+Record allocation and host identity; requesting slots alone does not prove
+whole-node isolation. Mac selection and confirmation cover the relevant workload
+families and worker counts, particularly concurrent builder/solver routes.
+Linux results do not establish Mac speed or justify automatic promotion of the
+Linux winner. This protocol changes performance measurement only; scientific
+tolerances, model semantics and transaction checks are unchanged.
+
+Earlier failed/excluded timing attempts retain their original status. Do not
+retroactively apply this protocol to rescue them. Reuse valid scientific and
+performance evidence when its artifacts and affected scope remain applicable;
+a newly changed public-default artifact still requires its mapped checks.
+
+The following continuation rule applies to historical campaigns or a new
+campaign that explicitly declares such a continuation before its confirmation
+data. A fixed terminal confirmation cannot invoke it after seeing its outcome.
 For an unchanged candidate, baseline, harness and frozen inputs, an inconclusive
 cell may receive one bounded continuation without rerunning already-passing
 cells. Predeclare eligibility, additional paired repetitions, host conditions,
@@ -194,7 +269,7 @@ The already qualified B artifact and all earlier observations remain unchanged.
 Exact replay, independent scientific certificates, supported portable execution
 and the standard wall-time allowance remain required.
 
-Release performance claims require quiet Mac timing. For clean wall timings,
+Mac release performance claims require controlled paired Mac timing. For it,
 run no competing builds, tests or agent tool workloads on the measured host.
 Independent analysis on separate infrastructure may continue only if it neither
 consumes measured-host resources nor reads or changes the running artifacts.

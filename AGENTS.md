@@ -51,8 +51,10 @@ superseded implementations together. Push completed authorized work after checks
 never force-push or rewrite history. Report failed or missing checks honestly.
 Use bounded Astra assistance for difficult problems and an independent high-effort
 review of architectural changes. The lead coordinates implementation and tests;
-clean timings exclude competing builds, tests and agent tool workloads on the
-measured host. Independent analysis on separate infrastructure may continue
+controlled timings exclude competing builds, tests, estimation jobs and agent
+tool workloads on the measured host. Ordinary OS/desktop activity is recorded
+measurement noise, not an automatic reason to abort a panel. Independent
+analysis on separate infrastructure may continue
 without accessing or changing the measured artifacts or consuming host resources.
 
 Runtime changes require `./scripts/run_tests.sh` and mapped scientific/transaction
@@ -66,9 +68,12 @@ After ten substantive unsuccessful repairs or one working day on one blocker,
 record the reproducer and findings and ask Johannes for direction.
 
 GitHub testing remains paused by Johannes's 2026-10-05 instruction. Mac remains
-the default qualification host; his 2026-10-07 request additionally authorizes
-bounded Linux and Windows build/load checks without resuming GitHub workflows.
-No platform claim follows from another host's checks. See
+the qualification host for Mac behavior and performance. His 2026-10-14 decision
+authorizes isolated SCC benchmarking as primary evidence for algorithm discovery,
+scaling and Linux performance, followed by focused Mac selection/confirmation.
+Verify node isolation and compare artifacts within the same allocation; slots
+alone do not establish exclusivity. Bounded Linux and Windows build/load checks
+remain authorized. No platform claim follows from another host's checks. See
 `docs/development_workflow.md` for entrypoints.
 
 If automated SCC SSH fails authentication, first run plain `ssh scc` in an
@@ -85,10 +90,23 @@ solver signatures may use instruction counts or function-level CPU samples on
 predeclared workloads, plus no wall-time regression beyond max(5%, 1 ms) on the
 standard workloads. Report sampling uncertainty; gains below the allowance are
 observations, not failures. Result-changing work requires declared scope,
-independent witnesses and quiet qualification-host timing. Release performance
-claims require quiet Mac timing. Identify artifacts and preserve observations;
+independent witnesses and controlled qualification-host timing. Mac release
+performance claims require controlled paired Mac measurements, not a completely
+idle desktop. Identify artifacts and preserve observations;
 inconclusive evidence never passes a claim it cannot support. Experiments need
 bounded stopping rules.
+Johannes's 2026-10-14 timing decision replaces the strict per-process CPU
+admission/whole-panel abort rule prospectively. Use randomized balanced blocks
+of complete solves, fixed warmups and budgets, robust paired summaries and
+uncertainty at the actual independent measurement unit. Record ordinary OS
+bursts; verified competing compute or host faults may invalidate whole affected
+blocks only under predeclared external-evidence rules and bounded attempts.
+Never remove observations because of unfavorable timings or use minima to pass
+qualification. Scientific failures and solver timeouts retain their declared
+failure semantics. Keep max(5%, 1 ms), exact/scoped science and prior valid
+evidence; old excluded attempts remain excluded. Freeze discovery/selection and
+untouched confirmation separately; an inconclusive finalist does not replace
+the public incumbent. See `docs/development_workflow.md` for the protocol.
 Johannes's 2026-10-09 decision adds two tiers. A commit whose runtime production
 tokens and artifact inputs equal its parent's
 (`scripts/check_complexity.py --compare-production REV`) is an unchanged artifact
