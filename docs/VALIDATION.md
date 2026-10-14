@@ -464,6 +464,26 @@ The updated 21-page routing PDF also records this outcome; compilation and
 changed-page visual inspection pass. Its SHA-256 is
 `340585e44f5be00ba5215f71e090a9989e04945f00ae8179d3b64545ce307690`.
 
+On Johannes's next retry request, the competing FEVC job had finished. A new
+prospective declaration allowed exactly one additional admission and at most one
+cohort, preserving all limits and the six earlier rejections. Its SHA-256 is
+`ef9d21caba946565c99baad62cdc1a9efcf71140a7f3a6e2436eabeb19c11820`.
+The same reviewed controller paused the helper at 16:45:38 America/New_York.
+After the declared settling wait, admission seven sampled Apple `suggestd` at
+108.4% and 104.5% CPU in consecutive observations, violating both individual and
+sustained-unclassified limits. Aggregate readings ranged from 15.3 to 139.3;
+the aggregate limit was not exceeded. No native call or eligible timing look
+occurred. The helper was released and confirmed running at 16:47:45; no other
+process was stopped. The admission SHA-256 is
+`0f0e99fabb7e42099b1aa34eca825b8d6b7041721267c53671dd188cb3ff6494`;
+the restoration audit SHA-256 is
+`561a6bb65c8eabc8d59c880086ef1ec40aea6b5394882679d4f1fd9ab30405a4`.
+This single-admission retry is exhausted. All prior evidence remains exact in
+the expanded compact export: 855,345 bytes, SHA-256
+`f2a43c785ab655c03aefae6ffc94b5e68e47f2b0b6ed7fe46ea3e069ef1363b6`.
+The PDF above remains the preceding six-admission snapshot; this paragraph and
+the linked compact evidence record the subsequent retry.
+
 The same amended guard, fresh separately inspected admission, terminal host
 clearance and fresh-record completion gate remain mandatory. Another interference
 trigger ends the attempt. All prior cohorts remain excluded under their original
