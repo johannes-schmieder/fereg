@@ -72,7 +72,7 @@
 \textbf{Design in one sentence.} Keep \code{auto} as a small deterministic router: exact structural shortcuts, inexpensive incumbent iterations, and at most one bounded optional upgrade, followed by an independent original-problem certificate.
 \end{note}
 \sub{Purpose and implementation boundary}
-Serial routing, overlap, prefix arms and PPML topology sharing are implemented. The explicit-CMG repair passes its full suite and fresh native checks (page 16); untimed routing prerequisites pass (page 15). Authorized recovery now passes all 20 standard cells (page 21). Original timing outcomes remain on pages 18--20; ablation timings are exploratory and replacement policy A is interrupted/ineligible. Ordinary \code{auto} and explicit IT remain unchanged. No routing policy is selected or promoted.
+Serial routing, overlap, prefix arms and PPML topology sharing are implemented. The explicit-CMG repair passes its full suite and fresh native checks (page 16); untimed routing prerequisites pass (page 15). Authorized recovery now passes all 20 standard cells (page 21). Original timing outcomes remain on pages 18--20; ablation timings are exploratory and policy A replacements remain ineligible. Ordinary \code{auto} and explicit IT remain unchanged. No routing policy is selected or promoted.
 \sub{Scientific and runtime invariants}
 Preserve explicit solver contracts, unsafe-CG rejection, supported OLS/PPML requests and both bias modes. Existing authorities decide sample membership, rank, omissions and separation; preserve original factor slots and base flags. Routing, factor pivots and numerical preconditioners must not redefine those decisions.
 
@@ -1660,11 +1660,11 @@ B and C & Not run or inspected for selection. & No frozen B winner, public activ
 \sect{20 / AUTHORIZED RECOVERY}{All 20 standard cells now pass}
 \tagline{Codex update. Original outcomes remain on pages 18--20. This is the standard gate only.}
 \begin{note}\smallbody
-Johannes approved bounded recovery and future retries, with prospective bounds, host conditions and repeated-look accounting. Earlier failed or inconclusive runs remain unchanged. Scientific tolerances, model semantics and allowances are unchanged. \textbf{Replacement policy A is ineligible; B/C remain unopened. Public Auto and explicit IT are unchanged.}
+Johannes authorized bounded retries and Spotlight mitigation. Prospective bounds, host conditions and repeated-look accounting still apply; earlier outcomes, scientific tolerances, models and allowances are unchanged. \textbf{Replacement policy A is ineligible; B/C remain unopened. Public Auto and explicit IT are unchanged.}
 \end{note}
 \sub{Terminal wide-OLS result: 7 original + 14 confirmation + 42 new = 63 pairs}
 {\smallbody
-The clean replacement completed all 86 calls with exact science and solver signatures, 11:03:08--11:05:34 America/New\_York. Its guard recorded 32 snapshots, maximum unrelated aggregate CPU of 44.5 percentage points across 24 logical CPUs, no trigger and complete owned-process cleanup. No background service was paused. Sampled, decayed CPU readings screen material interference, not every possible source of noise.
+All 86 replacement calls retained exact science/solver signatures, 11:03:08--11:05:34 America/New\_York. The guard recorded 32 snapshots, maximum unrelated aggregate CPU 44.5 points across 24 logical CPUs, no trigger and complete cleanup. No service was paused. Sampled, decayed CPU readings cannot exclude every source of noise.
 }
 \begin{center}
 \begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily\fontsize{8.7}{10.6}\selectfont]
@@ -1705,19 +1705,21 @@ PPML / 21 pairs, 99\% & 1.001253 & [0.989739, 1.006928] & Pass\\
 Wide / final 63 pairs, 99.8\% & 1.003589 & [0.992942, 1.015636] & Pass\\
 \bottomrule
 \end{tabularx}
-Only the final pooled upper endpoint decides against 1.05. Retaining the original 18 passes and PPML's 21-pair pass yields \textbf{20/20 standard nonregression passes}. The new 42 pairs alone are descriptive: median 1.001589, nominal 95\% interval [0.992047, 1.009302]; they do not replace the pooled decision.
+The final pooled upper endpoint passes 1.05. With the original 18 and PPML passes, \textbf{20/20 standard cells pass}. The new 42 pairs alone are descriptive: median 1.001589, nominal 95\% interval [0.992047, 1.009302]; they do not replace the pooled decision.
 
-The earlier clean two-cell confirmation had 60 exact calls in 83.3 seconds, 19 snapshots and maximum unrelated aggregate CPU 50.8. Preserve both invalidated attempts outside eligible pools: eight observations stopped at Core Spotlight 110\% after 20.07 seconds, and 40 stopped at 120.6\% after 70.07 seconds. Each whole attempt was invalidated from host evidence before its timing values were read; neither added an eligible statistical look.
+The prior confirmation had 60 exact calls in 83.3 seconds, 19 snapshots and maximum unrelated aggregate CPU 50.8. Two attempts remain excluded: eight observations stopped at Core Spotlight 110\% after 20.07 seconds; 40 stopped at 120.6\% after 70.07 seconds. Both were invalidated from host evidence before timing inspection, adding no eligible look.
 }
 \sub{Frozen terminal rule and confidence limits}
 {\smallbody
-The final continuation kept artifacts, inputs, median paired-ratio statistic, $\max(5\%,1\ \mathrm{ms})$ allowance and host guard. Its limits were exactly 42 new pairs, one warmup per plugin, 86 calls, 90 seconds per call and 900 seconds total. The final analysis uses 10,000 draws, seed 739391 and nominal 99.8\% zero-based endpoints 9/9989. This is the terminal eligible look for the unchanged artifact; a nonpass would have ended the attempt, not added observations until a pass.
+The terminal continuation preserved artifacts, inputs, median paired-ratio statistic, $\max(5\%,1\ \mathrm{ms})$ allowance and guard: 42 new pairs, one warmup/plugin, 86 calls, 90 seconds/call, 900 seconds total. Analysis uses 10,000 draws, seed 739391 and nominal 99.8\% endpoints 9/9989 (zero-based). A nonpass would have ended collection for this unchanged artifact.
 
 The nominal upper-tail sum is $0.025+0.005+0.001=0.031$, \textbf{not guaranteed 3.1\% sequential error control}. Percentile-bootstrap coverage is approximate; later sample size and confidence were chosen after earlier results, and pooling assumes comparable paired-ratio distributions across sessions. No exact or simultaneous guarantee is claimed.
 
-Replacement policy A stopped at 60.06 seconds after \code{mds\_stores} reached 207.6\% CPU. Host evidence invalidated the entire cohort before timing inspection; cleanup is confirmed (return code $-2$). All 512 completed timing records and 139 completed traced calls passed science/certification; one traced call is unfinished and eight partial summaries remain. No performance conclusion or policy selection follows. B/C remain unopened. Timing awaits service-pause clarification or a changed host; the standard pass does not discharge routing/activation gates.
+Policy A: three replacement cohorts were excluded before timing inspection. The first stopped at 60.06 seconds (index store 207.6\% CPU); retry 01 on old-guard FSEvents readings 5.1/5.5\%; retry 02 at 60.07 seconds (index store 110.2\%). Retry 01 retains 164 timing passes, one EPERM block, one unfinished entry and 43 trace passes. A fresh unmeasured diagnostic passed; historical EPERM remains unresolved. Retry 02 retains 512 timing passes, 141 trace passes, one unfinished trace and eight partial summaries.
+
+The amended guard classifies the inspected FSEvents path as ordinary OS work, retaining CPU limits (22 tests and independent review). Authorized retry 03 uses fresh \code{.noindex} outputs; artifacts, cases, grid, statistics and guard remain fixed. \href{https://developer.apple.com/documentation/xcode/locating-a-missing-debug-symbol-file}{Apple documents the lookup exclusion}. This is local mitigation: privileged stopping needs a password; Settings exclusion remains unconfirmed. No policy is selected; B/C and activation gates remain pending.
 }
-\anchor{Recovery evidence and full hashes: \code{docs/VALIDATION.md}. Final pool: \code{2478806f}; clean host: \code{96dff2b9}; 86 calls: \code{51806cfc}; prior 21 pairs: \code{538c1285}. Ineligible A host: \code{4dea30ef}; records: \code{96827509}. Prior records remain preserved.}
+\anchor{Full outcomes/hashes: \href{VALIDATION.md}{docs/VALIDATION.md}. Retained \href{../bench/results/solver-routing-policy-a-retry01-interrupted-20261014.json}{retry 01} and \href{../bench/results/solver-routing-policy-a-retry02-interrupted-20261014.json}{retry 02 evidence}. Final standard pool \code{2478806f}; prior records remain preserved.}
 \vfill
 {\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}STANDARD GATE PASSED. ROUTING SELECTION PENDING. PUBLIC DEFAULT UNCHANGED.}
 \end{compactleaf}
