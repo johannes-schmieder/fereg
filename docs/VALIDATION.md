@@ -42,9 +42,16 @@ would omit required metadata.
   restricting that comparison to the estimation sample passes without changing
   the estimator or tolerances.
 
+The exact `github install johannes-schmieder/fereg` command and direct
+`net install` from the public raw `main` URL both pass in separate fresh Stata
+processes with isolated user ado directories. Each HTTP installation installs
+all 31 files byte-for-byte from commit `4e7216e3`, passes native selftest and
+passes the same independent OLS, PPML and saved-mean prediction witnesses.
+
 The [beta assets](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.1)
 retain the native and corresponding-source packages, dependency audit, source
-closure and checksums. Artifact SHA-256 values are:
+closure and checksums. All 45 published assets match their local SHA-256 and
+size bindings. Artifact SHA-256 values are:
 
 | Artifact | SHA-256 |
 | --- | --- |
