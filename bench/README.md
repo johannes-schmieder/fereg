@@ -200,14 +200,27 @@ design declaration, monitor source and policy. Its design declares an even
 attempt count, warmups, seed, per-call and aggregate budgets, session identity,
 block analysis unit and upper-tail alpha 1/40.
 
-Acceptance tests median `N - B - max(.05 * B, .001)` using block geometric means
+Schema 2 groups execution arms and the complete comparison graph by cell. A
+block executes one frozen permutation and its reverse, requiring only two calls
+per distinct arm. Counterbalanced permutations give every pair balanced
+ABBA/BAAB order across rounds. Shared calls are stored once; each pair receives
+one score per complete block. Every comparison shares the block's scientific
+success and host eligibility, including when an unrelated arm fails. Two-arm
+cells provide ordinary paired confirmation. Longer blocks change cache and
+thermal exposure; a two-arm A/A pilot does not establish their precision or
+independence.
+
+Protected acceptance tests median `N - B - max(.05 * B, .001)` using block geometric means
 and the attainable order-statistic upper bound. Ratios, means, upper tails,
 orientation contrasts and lag-one diagnostics are reported separately. Minima
 are descriptive only. Statistical coverage assumes independent block scores
 with a common median; a small A/A pilot cannot prove those assumptions. The
 report therefore separates a conditional statistical pass from release
 qualification, which also requires reviewed experimental assumptions, complete
-workload coverage and the relevant scientific/deployment gates.
+workload coverage and the relevant scientific/deployment gates. Schema 2 also
+supports the original internal-frontier allowance, `max(.20 * B, .001)`, and
+reports normalized-regret bounds. A reference declared protected by its
+scientific manifest cannot be relabeled internal to relax its allowance.
 
 [`routing_discovery.py`](routing_discovery.py) is a separate Linux/SCC discovery
 screen. It freezes the twelve-policy grid and baseline on the 42 A cells,
@@ -218,6 +231,26 @@ replay scheduler, placement, process and accounting evidence; a slot request or
 asserted isolation flag is insufficient. No B/C input bodies are opened, no Mac
 unavailability outcome is imported, and the result cannot satisfy the legacy
 Mac B/C or public-default deployment gates.
+
+[`scc_routing_host.py`](scc_routing_host.py) supplies the discovery collector and
+raw-evidence validator. It checks an exact 28-core single-host reservation,
+the global cross-queue resource quota, physical CPU placement, fixed library
+limits and the scheduler wall limit before collection. Separate process and
+scheduler samplers retain evidence throughout the run. After accounting becomes
+available, `finalize` derives an isolation receipt from those observations;
+`validate-stdin` independently replays its facts without live scheduler access.
+Failed admission or missing evidence cannot yield a discovery shortlist.
+
+[`routing_blocks.py`](routing_blocks.py) binds a reviewed SCC shortlist to the
+original Mac B panel and a new twelve-round mirrored design. Fresh Mac scientific
+prerequisites are generated through `routing_run.py --prerequisites-only
+--qualification-context CONTEXT`, without inventing a legacy A decision. The
+context derives complete candidate/reference coverage, preserves unavailable
+optional comparisons, and refuses premature C access. Its `decide` function
+recomputes the complete comparison graph from raw observations and returns one
+conditional B finalist or no qualifying policy. Public activation and C
+need a separately reviewed versioned transition; the old deployment contract
+is not silently reinterpreted.
 
 ### CMG-Schur prototype comparison
 

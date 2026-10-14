@@ -124,7 +124,8 @@ def freeze(config):
         witness = Path(config['witnesses'][cid]).resolve(strict=True)
         value, bound = routing_run.evidence(witness, cell, spec,
             list(dict.fromkeys(GRID + spec['protections'] + cell['comparators'])),
-            prerequisites_only=True, local_oracle='oracle' in meta or 'replay_reference' in meta)
+            prerequisites_only=True, local_oracle='oracle' in meta or 'replay_reference' in meta
+            or cell['family'] == 'inactive-columns')
         paths.update({str(p): h for p, h in bound.items()})
         if 'independent_witness' in value:
             source = witness.parent / value['independent_witness']['path']
@@ -325,9 +326,10 @@ def isolation(plan, collection, receipt):
             'competing compute or incomplete isolation observation blocks discovery')
     # The reviewed collector rederives facts from captured external evidence. A
     # zero exit or descriptor assertions alone do not establish reservation proof.
+    # The fixed five-minute bound applies only to pure offline evidence replay.
     result = subprocess.run([sys.executable, receipt['generator']['path'], 'validate-stdin'],
         input=json.dumps({'plan': plan, 'collection': collection, 'receipt': receipt}, allow_nan=False),
-        text=True, capture_output=True, timeout=30, check=False)
+        text=True, capture_output=True, timeout=300, check=False)
     expected = {'schema': 1, 'status': 'verified', 'plan_sha256': routing.identity(plan),
                 'collection_sha256': routing.identity(collection), 'receipt_sha256': routing.identity(receipt)}
     require(result.returncode == 0 and len(result.stdout) <= 4096,

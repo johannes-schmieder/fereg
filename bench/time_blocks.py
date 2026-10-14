@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Frozen complete-solve ABBA/BAAB blocks with retained failures and host noise.
+"""Frozen complete-solve mirrored blocks with retained failures and host noise.
 
 Seal a finite comparison manifest, collect once into a fresh task directory, then
 analyze against an independently validated host-observer receipt. Every attempted
@@ -13,6 +13,15 @@ statistic upper bound uses alpha=.025. Its finite-sample coverage is conditional
 on independent scores with a common median; randomization, multiple session
 labels and A/A observations do not establish that assumption. This tool reports
 conditional statistical results, never an unconditional release qualification.
+
+Schema 1 retains pairwise ABBA/BAAB. Schema 2 executes M arms once each in a
+permutation and its reverse (2M calls), storing each solve once. Reversed
+permutations paired across rounds balance every pair's orientation exactly.
+Every derived comparison shares the entire block's host eligibility. Protected
+references use 5%, internal references 20%, both with the 1 ms absolute margin.
+Normalized regret (N-B)/max(relative*B,.001) is reported for ranking, with a
+threshold of one. Shared-block comparisons are correlated; their individual
+bounds do not provide a simultaneous confidence statement or independence.
 """
 from __future__ import annotations
 
@@ -112,9 +121,30 @@ def module_at(path):
     return module
 
 
+def units(spec):
+    return spec['comparisons'] if spec['schema'] == 1 else spec['cells']
+
+
+def execution_arms(item):
+    return {side: item[side] for side in SIDES} if 'arms' not in item else item['arms']
+
+
+def unit_id(row):
+    return row.get('cell_id', row.get('comparison_id'))
+
+
+def arm_id(call):
+    return call.get('arm_id', call.get('side'))
+
+
+def planned_arms(row):
+    return row.get('arms', row.get('sides'))
+
+
 def validate_spec(value):
-    require(set(value) == {'schema', 'harness', 'design', 'comparisons', 'monitor', 'declarations'}, 'Unknown/missing block manifest fields')
-    require(value['schema'] == 1, 'Unsupported block manifest schema')
+    require(value.get('schema') in {1, 2}, 'Unsupported block manifest schema')
+    multi = value['schema'] == 2
+    require(set(value) == {'schema', 'harness', 'design', 'cells' if multi else 'comparisons', 'monitor', 'declarations'}, 'Unknown/missing block manifest fields')
     design = value['design']
     require(set(design) == {'attempts', 'warmups', 'seed', 'timeout_s', 'budget_s', 'session_id', 'analysis_unit', 'alpha'},
             'Freeze all block design fields')
@@ -126,23 +156,48 @@ def validate_spec(value):
             and design['alpha'] == {'numerator': 1, 'denominator': 40}, 'Freeze session, block analysis unit and alpha=1/40')
     for key, limit in [('timeout_s', 3600), ('budget_s', 86400)]:
         require(type(design[key]) in (int, float) and math.isfinite(design[key]) and 0 < design[key] <= limit, 'Invalid ' + key)
-    comparisons = value['comparisons']
+    comparisons = units(value)
     require(isinstance(comparisons, list) and 1 <= len(comparisons) <= 256, 'Require a finite 1..256 comparison list')
     require(len({item['id'] for item in comparisons}) == len(comparisons), 'Duplicate comparison')
+    pair_ids = set()
     for item in comparisons:
-        require(set(item) == {'id', 'workload', 'reference', 'candidate', 'validation'}, 'Unknown/missing comparison fields')
+        require(set(item) == ({'id', 'workload', 'arms', 'comparisons', 'validation'} if multi else
+                             {'id', 'workload', 'reference', 'candidate', 'validation'}), 'Unknown/missing comparison fields')
         require(all(isinstance(item[k], str) and re.fullmatch(r'[A-Za-z0-9_-]{1,100}', item[k]) for k in ['id', 'workload']), 'Unsafe comparison/workload identifier')
-        for side in SIDES:
-            require(set(item[side]) == {'label', 'plugin', 'input'} and isinstance(item[side]['label'], str) and item[side]['label'], 'Incomplete arm')
-        require(item['reference']['label'] != item['candidate']['label'], 'A/A uses distinct labels even for identical binaries')
+        arms = execution_arms(item)
+        require(isinstance(arms, dict) and 2 <= len(arms) <= 32, 'Require 2..32 execution arms per cell')
+        for key, arm in arms.items():
+            require(isinstance(key, str) and re.fullmatch(r'[A-Za-z0-9_-]{1,100}', key), 'Unsafe arm identifier')
+            require(set(arm) == {'label', 'plugin', 'input'} and isinstance(arm['label'], str) and arm['label'], 'Incomplete arm')
+        require(len({arm['label'] for arm in arms.values()}) == len(arms), 'A/A uses distinct labels even for identical binaries')
+        if multi:
+            pairs, roles, directed, used = item['comparisons'], {}, set(), set()
+            require(isinstance(pairs, list) and 1 <= len(pairs) <= len(arms) * (len(arms)-1), 'Require bounded declared comparisons')
+            for pair in pairs:
+                require(set(pair) == {'id', 'reference', 'candidate', 'reference_role'}, 'Unknown/missing comparison role or IDs')
+                require(isinstance(pair['id'], str) and re.fullmatch(r'[A-Za-z0-9_-]{1,100}', pair['id'])
+                        and pair['id'] not in pair_ids, 'Duplicate/unsafe derived comparison ID')
+                pair_ids.add(pair['id'])
+                reference_id, candidate_id = pair['reference'], pair['candidate']
+                require(reference_id in arms and candidate_id in arms and reference_id != candidate_id
+                        and (reference_id, candidate_id) not in directed, 'Unknown/self/duplicate arm comparison')
+                require(pair['reference_role'] in {'protected', 'internal'}, 'Freeze protected/internal reference role')
+                require(reference_id not in roles or roles[reference_id] == pair['reference_role'], 'Inconsistent role for shared reference')
+                roles[reference_id] = pair['reference_role']
+                directed.add((reference_id, candidate_id)); used.update([reference_id, candidate_id])
+            require(used == set(arms), 'Every execution arm needs a declared comparison')
         validation = item['validation']
-        require(validation.get('kind') in {'exact', 'routing'}, 'Unsupported scientific adapter')
+        require(validation.get('kind') in ({'exact', 'routing', 'routing_blocks'} if multi else {'exact', 'routing'}), 'Unsupported scientific adapter')
         if validation['kind'] == 'exact':
             require(set(validation) == {'kind', 'poisson', 'qualification'} and type(validation['poisson']) is bool,
                     'Exact adapter requires model kind and bound prerequisite evidence')
-        else:
+        elif validation['kind'] == 'routing':
             require(set(validation) == {'kind', 'manifest', 'witness', 'source', 'cell_id', 'stage', 'previous'}, 'Incomplete routing validation packet')
             require(validation['stage'] in {'A', 'B', 'C'}, 'Invalid prequalified routing stage')
+        else:
+            require(set(validation) == {'kind', 'context', 'qualification', 'witness', 'source', 'cell_id'}, 'Incomplete block-routing science context')
+    require(not multi or (len(pair_ids) <= 4096 and sum(len(execution_arms(item)) * (design['warmups'] + 2*design['attempts'])
+                for item in comparisons) <= 1_000_000), 'Declared panel exceeds finite call/comparison bound')
     require(isinstance(value['declarations'], list) and value['declarations'], 'Bind prospective design/qualification declarations')
     monitor = value['monitor']
     require(monitor is None or set(monitor) == {'validator', 'policy', 'dependencies'}, 'Invalid external monitor contract')
@@ -150,6 +205,8 @@ def validate_spec(value):
 
 def schedule(spec):
     """Exactly balanced orientations; shuffle workloads and comparisons each round."""
+    if spec['schema'] == 2:
+        return mirrored_schedule(spec)
     design = spec['design']
     rng = random.Random(design['seed'])
     groups = {}
@@ -182,6 +239,36 @@ def schedule(spec):
     return {'warmups': warmups, 'blocks': blocks}
 
 
+def mirrored_schedule(spec):
+    """Pair each first-half permutation with its reverse; never choose from timings."""
+    rng, design = random.Random(spec['design']['seed']), spec['design']
+    permutations, groups = {}, {}
+    for cell in spec['cells']:
+        values = []
+        for _ in range(design['attempts'] // 2):
+            first = list(cell['arms']); rng.shuffle(first)
+            values.extend([first, first[::-1]])
+        rng.shuffle(values)
+        permutations[cell['id']] = values
+        groups.setdefault(cell['workload'], []).append(cell)
+    def ordered():
+        workloads = list(groups); rng.shuffle(workloads)
+        for workload in workloads:
+            cells = groups[workload].copy(); rng.shuffle(cells)
+            yield from cells
+    warmups, blocks = [], []
+    for repetition in range(design['warmups']):
+        for cell in ordered():
+            arms = list(cell['arms']); rng.shuffle(arms)
+            warmups.append({'cell_id': cell['id'], 'repetition': repetition, 'arms': arms})
+    for round_id in range(design['attempts']):
+        for cell in ordered():
+            first = permutations[cell['id']][round_id]
+            blocks.append({'block_id': f'b{len(blocks):06d}', 'cell_id': cell['id'], 'round': round_id,
+                           'permutation': first, 'arms': first + first[::-1]})
+    return {'warmups': warmups, 'blocks': blocks}
+
+
 def source_bindings():
     names = ['time_blocks.py', 'time_exact.py', 'native_io.py', 'routing.py', 'routing_run.py',
              'routing_cases.py', 'routing_oracle.py', 'cmgschur.py', 'cmgschur_cases.py', 'native.py']
@@ -201,13 +288,13 @@ class ExactScience:
                 and qualified.get('exactness') == 'all plugins', 'Exact adapter requires a complete exact-science qualification')
         from native_io import case_header
         self.shapes = {}
-        for side in SIDES:
-            with check(item[side]['input']).open('rb') as stream:
+        for side, arm in execution_arms(item).items():
+            with check(arm['input']).open('rb') as stream:
                 shape, args = case_header(stream)
             require((args[0] == b'estimate-ppml') == self.poisson, 'Declared model differs from input')
             self.shapes[side] = shape
-            matches = [Path(path).name for path, sha in qualified['cases'].items() if sha == item[side]['input']['sha256']]
-            require(len(matches) == 1 and item[side]['plugin']['sha256'] in
+            matches = [Path(path).name for path, sha in qualified['cases'].items() if sha == arm['input']['sha256']]
+            require(len(matches) == 1 and arm['plugin']['sha256'] in
                     {entry['sha256'] for entry in qualified['plugins'].values()}, 'Exact input/plugin lacks prior qualification')
             rows = [row for row in qualified['records'] if row['case'] == matches[0]]
             slots = [(row['plugin'], row['repetition']) for row in rows]
@@ -250,21 +337,33 @@ class RoutingScience:
         from routing_cases import inspect_case, inactive_case_oracle
         self.item, self.runner, self.cmg = item, runner, cmgschur
         packet = item['validation']
-        manifest_path = check(packet['manifest'])
-        manifest = routing.unseal(read(manifest_path))
-        routing.validate_manifest(manifest)
-        previous = routing.unseal(read(check(packet['previous']))) if packet['previous'] else None
-        candidates = routing.required_candidates(manifest, packet['stage'], previous)
-        cell = next(c for c in manifest['panels'][packet['stage']] if c['id'] == packet['cell_id'])
-        required = list(dict.fromkeys(['baseline', *manifest['protections'], *candidates, *cell['comparators']]))
+        context_bindings = []
+        if packet['kind'] == 'routing_blocks':
+            import routing_blocks
+            context = routing_blocks.science_context(packet)
+            manifest, cell, required = context['manifest'], context['cell'], context['required']
+            stage, selection_sha256 = context['stage'], context['selection_sha256']
+            context_bindings = context['bindings']
+            for bound in context_bindings:
+                check(bound)
+        else:
+            manifest_path = check(packet['manifest'])
+            manifest = routing.unseal(read(manifest_path))
+            routing.validate_manifest(manifest)
+            previous = routing.unseal(read(check(packet['previous']))) if packet['previous'] else None
+            candidates = routing.required_candidates(manifest, packet['stage'], previous)
+            cell = next(c for c in manifest['panels'][packet['stage']] if c['id'] == packet['cell_id'])
+            required = list(dict.fromkeys(['baseline', *manifest['protections'], *candidates, *cell['comparators']]))
+            stage, selection_sha256 = packet['stage'], routing.identity(previous) if previous else None
+        validate_reference_roles(item, manifest['protections'])
         source = check(packet['source'])
         require(digest(source) == cell['case_sha256'], 'Routing source differs from frozen qualification')
         self.meta = inspect_case(source, cell['family'])
         require(self.meta['body_sha256'] == cell['body_sha256'], 'Routing numeric/model body changed')
         witness_path = check(packet['witness'])
-        witness, dependencies = runner.evidence(witness_path, cell, manifest, required, stage=packet['stage'],
-                                               selection_sha256=routing.identity(previous) if previous else None)
-        self.bindings = [reference(path) for path in dependencies]
+        witness, dependencies = runner.evidence(witness_path, cell, manifest, required, stage=stage,
+                                               selection_sha256=selection_sha256)
+        self.bindings = [*context_bindings, *[reference(path) for path in dependencies]]
         sidecar = source.with_suffix('.json')
         if sidecar.exists():
             side = read(sidecar)
@@ -291,12 +390,12 @@ class RoutingScience:
         require(any(key in self.meta for key in ['oracle', 'replay_reference', 'routing_oracle']), 'Missing executable independent truth')
         proof = routing.unseal(read((witness_path.parent / witness['scoped_replay']['path']).resolve()))
         self.expected, self.reader = {}, {}
-        for side in SIDES:
-            arm = item[side]['label']
+        for side, execution in execution_arms(item).items():
+            arm = execution['label']
             require(arm in required and witness['arm_outcomes'][arm]['status'] == 'passed', 'Arm has no successful scientific prerequisite; do not retry unavailable arms')
-            require(item[side]['plugin']['sha256'] == manifest['arms'][arm]['sha256'], 'Qualified artifact changed')
+            require(execution['plugin']['sha256'] == manifest['arms'][arm]['sha256'], 'Qualified artifact changed')
             origin = next(row for row in proof['prerequisites'] if row['arm'] == arm)
-            require(item[side]['input']['sha256'] == origin['prepared_sha256'], 'Prepared routing request changed')
+            require(execution['input']['sha256'] == origin['prepared_sha256'], 'Prepared routing request changed')
             self.expected[side] = origin['science_sha256']
             requested = runner.input_policy(manifest, arm)
             self.reader[side] = 'auto' if requested is not None else runner.EXPLICIT[manifest['arms'][arm].get('solver', arm)]
@@ -312,21 +411,31 @@ class RoutingScience:
         return {'science_sha256': detail['science_sha256'], 'certificate_pass': True, 'science_pass': True}
 
 
+def validate_reference_roles(item, protections):
+    for pair in item.get('comparisons', []):
+        label = item['arms'][pair['reference']]['label']
+        expected = 'protected' if label in protections else 'internal'
+        require(pair['reference_role'] == expected, 'Reference allowance differs from qualified protection role')
+
+
 def adapters(spec):
     return {item['id']: (ExactScience(item) if item['validation']['kind'] == 'exact' else RoutingScience(item))
-            for item in spec['comparisons']}
+            for item in units(spec)}
 
 
 def all_bindings(spec, science):
     values = [spec['harness'], *spec['declarations']]
-    for item in spec['comparisons']:
-        values += [item[side][field] for side in SIDES for field in ['plugin', 'input']]
+    for item in units(spec):
+        values += [arm[field] for arm in execution_arms(item).values() for field in ['plugin', 'input']]
         values += science[item['id']].bindings
         packet = item['validation']
         if packet['kind'] == 'routing':
             values += [packet[key] for key in ['manifest', 'witness', 'source']]
             if packet['previous']:
                 values.append(packet['previous'])
+        elif packet['kind'] == 'routing_blocks':
+            values += [packet[key] for key in ['context', 'qualification', 'witness', 'source']]
+            values.append(reference(Path(__file__).with_name('routing_blocks.py')))
     if spec['monitor']:
         values += [spec['monitor']['validator'], spec['monitor']['policy'], *spec['monitor']['dependencies']]
     values += source_bindings()
@@ -342,7 +451,7 @@ def all_bindings(spec, science):
 def freeze(spec, output):
     validate_spec(spec)
     science = adapters(spec)
-    value = {'schema': 1, 'spec': spec, 'schedule': schedule(spec), 'bindings': all_bindings(spec, science),
+    value = {'schema': spec['schema'], 'spec': spec, 'schedule': schedule(spec), 'bindings': all_bindings(spec, science),
              'clock': CLOCK, 'assumptions': ASSUMPTIONS}
     atomic_json(task_output(output), {'sha256': identity(value), 'value': value}, fresh=True)
     return value
@@ -353,6 +462,7 @@ def load_manifest(path):
     value = envelope['value']
     require(envelope['sha256'] == identity(value), 'Manifest seal changed')
     validate_spec(value['spec'])
+    require(value['schema'] == value['spec']['schema'], 'Manifest/schema version mismatch')
     require(value['schedule'] == schedule(value['spec']) and value['clock'] == CLOCK and value['assumptions'] == ASSUMPTIONS,
             'Frozen schedule or estimand changed')
     for bound in value['bindings']:
@@ -364,11 +474,14 @@ def load_manifest(path):
 
 def emit(events, result, event, block=None, call=None, **extra):
     row = {'schema': 1, 'event': event, 'run_id': result['run_id'], 'block_id': block['block_id'] if block else None,
-           'comparison_id': block['comparison_id'] if block else call.get('comparison_id') if call else None,
+           'comparison_id': block.get('comparison_id') if block else call.get('comparison_id') if call else None,
            'round': block['round'] if block else None, 'session_id': result['session_id'],
            'wall_time_ns': time.time_ns(), 'monotonic_ns': time.monotonic_ns(), 'tool_pid': os.getpid(),
            'native_pid': call.get('native_pid') if call else None, 'call_id': call['call_id'] if call else None,
            'process_token': call.get('process_token') if call else None, **extra}
+    if result['schema'] == 2:
+        row['cell_id'] = block['cell_id'] if block else call.get('cell_id') if call else extra.get('cell_id')
+        row['arm_id'] = call.get('arm_id') if call else None
     events.write(json.dumps(row, allow_nan=False) + '\n')
     events.flush()
     os.fsync(events.fileno())
@@ -400,8 +513,9 @@ def collect(manifest_path, output, *, execute=run_native):
     design = spec['design']
     output = task_output(output)
     output.mkdir(parents=True, exist_ok=False)
-    comparisons = {item['id']: item for item in spec['comparisons']}
-    result = {'schema': 1, 'status': 'running', 'run_id': str(uuid.uuid4()), 'session_id': design['session_id'],
+    comparisons = {item['id']: item for item in units(spec)}
+    multi = spec['schema'] == 2
+    result = {'schema': spec['schema'], 'status': 'running', 'run_id': str(uuid.uuid4()), 'session_id': design['session_id'],
               'manifest': reference(manifest_path), 'platform': platform.platform(), 'clock': CLOCK,
               'schedule': planned, 'warmups': [], 'blocks': [{**block, 'status': 'not_run', 'calls': [],
                   'start_monotonic_ns': None, 'end_monotonic_ns': None} for block in planned['blocks']]}
@@ -428,7 +542,8 @@ def collect(manifest_path, output, *, execute=run_native):
         def one(cid, side, block, calls):
             nonlocal serial
             item, adapter = comparisons[cid], science[cid]
-            call = {'call_id': f'c{serial:07d}', 'comparison_id': cid, 'side': side, 'status': 'running'}
+            call = {'call_id': f'c{serial:07d}', 'cell_id' if multi else 'comparison_id': cid,
+                    'arm_id' if multi else 'side': side, 'status': 'running'}
             serial += 1
             calls.append(call)
             target = output / (call['call_id'] + '.json')
@@ -443,7 +558,8 @@ def collect(manifest_path, output, *, execute=run_native):
                 command = ['env', *(part for key in CLEARED_ENV for part in ('-u', key))]
                 if getattr(adapter, 'memory_limit', None) is not None:
                     command.append('FEREG_MEMORY_LIMIT_BYTES=' + str(adapter.memory_limit))
-                command += [spec['harness']['path'], item[side]['plugin']['path'], '--replay', item[side]['input']['path'], str(target)]
+                arm = execution_arms(item)[side]
+                command += [spec['harness']['path'], arm['plugin']['path'], '--replay', arm['input']['path'], str(target)]
                 def started(pid):
                     call.update(native_pid=pid, process_token=result['run_id'] + '/' + call['call_id'])
                     emit(events, result, 'call_start', block, call)
@@ -470,22 +586,23 @@ def collect(manifest_path, output, *, execute=run_native):
             for warmup_index, warmup in enumerate(planned['warmups']):
                 row = {**warmup, 'status': 'running', 'calls': []}
                 result['warmups'].append(row)
-                emit(events, result, 'warmup_start', warmup_id=warmup_index, comparison_id=warmup['comparison_id'])
+                event_unit = {'cell_id' if multi else 'comparison_id': unit_id(warmup)}
+                emit(events, result, 'warmup_start', warmup_id=warmup_index, **event_unit)
                 try:
-                    for side in warmup['sides']:
-                        one(warmup['comparison_id'], side, None, row['calls'])
+                    for side in planned_arms(warmup):
+                        one(unit_id(warmup), side, None, row['calls'])
                     row['status'] = 'passed'
                 finally:
                     if row['status'] != 'passed': row['status'] = 'failed'
-                    emit(events, result, 'warmup_end', status=row['status'], warmup_id=warmup_index, comparison_id=warmup['comparison_id'])
+                    emit(events, result, 'warmup_end', status=row['status'], warmup_id=warmup_index, **event_unit)
                     save()
             for block in result['blocks']:
                 block['status'] = 'running'
                 block['start_monotonic_ns'] = emit(events, result, 'block_start', block)['monotonic_ns']
                 save()
                 try:
-                    for side in block['sides']:
-                        one(block['comparison_id'], side, block, block['calls'])
+                    for side in planned_arms(block):
+                        one(unit_id(block), side, block, block['calls'])
                     block['status'] = 'complete'
                 finally:
                     if block['status'] != 'complete': block['status'] = 'failed'
@@ -502,7 +619,7 @@ def collect(manifest_path, output, *, execute=run_native):
     return result
 
 
-def block_scores(block):
+def block_scores(block, relative=.05):
     require(block['status'] == 'complete' and len(block['calls']) == 4
             and [call['side'] for call in block['calls']] == block['sides'], 'Incomplete or reordered block')
     times = {}
@@ -513,9 +630,37 @@ def block_scores(block):
                 and math.isfinite(call['seconds']) and call['seconds'] > 0 for call in rows), 'Failed or nonfinite solve in block')
         times[side] = math.exp(statistics.mean(math.log(call['seconds']) for call in rows))
     b, n = times['reference'], times['candidate']
-    ratio, excess = n / b, n - b - max(.05 * b, .001)
-    require(math.isfinite(ratio) and math.isfinite(excess), 'Nonfinite block score')
-    return {**times, 'ratio': ratio, 'excess_seconds': excess}
+    allowance = max(relative * b, .001)
+    ratio, excess, regret = n / b, n - b - allowance, (n - b) / allowance
+    require(all(math.isfinite(x) for x in [ratio, excess, regret]), 'Nonfinite block score')
+    return {**times, 'ratio': ratio, 'excess_seconds': excess, 'normalized_regret': regret}
+
+
+def comparison_views(spec, result):
+    """Derived four-call views reference shared stored calls; no pairwise exclusions."""
+    if spec['schema'] == 1:
+        for item in spec['comparisons']:
+            yield item, [block for block in result['blocks'] if unit_id(block) == item['id']], None, None
+        return
+    for cell in spec['cells']:
+        blocks = [block for block in result['blocks'] if unit_id(block) == cell['id']]
+        for block in blocks:
+            if block['status'] == 'complete':
+                require(len(block['calls']) == 2*len(cell['arms']) and [arm_id(call) for call in block['calls']] == block['arms']
+                        and all(call.get('status') == 'passed' and call.get('science_pass') is True
+                                and call.get('certificate_pass') is True and type(call.get('seconds')) in (int, float)
+                                and math.isfinite(call['seconds']) and call['seconds'] > 0 for call in block['calls']),
+                        'Incomplete scientific mirrored block; no clean pairwise subset')
+        for pair in cell['comparisons']:
+            names = {pair[side]: side for side in SIDES}
+            views = []
+            for block in blocks:
+                calls = [{**call, 'side': names[arm_id(call)]} for call in block['calls'] if arm_id(call) in names]
+                sides = ['reference' if arm == pair['reference'] else 'candidate' for arm in block['arms'] if arm in names]
+                views.append({**block, 'calls': calls, 'sides': sides,
+                              'orientation': ''.join('A' if side == 'reference' else 'B' for side in sides)})
+            yield {'id': pair['id'], 'execution_ids': {side: pair[side] for side in SIDES},
+                   **{side: cell['arms'][pair[side]] for side in SIDES}}, views, pair['reference_role'], cell['id']
 
 
 def median_interval(values):
@@ -579,18 +724,19 @@ def host_classification(spec, context, receipt):
 def analyze(manifest_path, records_path, monitor_receipt=None):
     value, science = load_manifest(manifest_path)
     result = read(records_path)
-    require(result['manifest'] == reference(manifest_path) and result['schedule'] == value['schedule']
+    require(result['schema'] == value['spec']['schema'] and result['manifest'] == reference(manifest_path) and result['schedule'] == value['schedule']
             and result['session_id'] == value['spec']['design']['session_id'], 'Collection does not bind frozen design')
     require(len(result['blocks']) == len(value['schedule']['blocks']) and all(
         all(actual.get(key) == expected[key] for key in expected) for actual, expected in zip(result['blocks'], value['schedule']['blocks'])), 'Missing/reordered attempted block slots')
     all_calls = [call for row in [*result['warmups'], *result['blocks']] for call in row['calls']]
     require(len({call['call_id'] for call in all_calls}) == len(all_calls), 'Duplicated native call identity')
-    require(all(call.get('comparison_id') == row['comparison_id'] and call.get('side') in SIDES
+    arm_sets = {item['id']: set(execution_arms(item)) for item in units(value['spec'])}
+    require(all(unit_id(call) == unit_id(row) and arm_id(call) in arm_sets[unit_id(row)]
                 for row in [*result['warmups'], *result['blocks']] for call in row['calls']), 'Misassigned native call')
     for call in all_calls:
         require(re.fullmatch(r'c[0-9]{7}', call['call_id']), 'Invalid native call identity')
         if call.get('status') == 'passed':
-            require(call['science_sha256'] == science[call['comparison_id']].fingerprint(call['side']), 'Collected science differs from qualified arm')
+            require(call['science_sha256'] == science[unit_id(call)].fingerprint(arm_id(call)), 'Collected science differs from qualified arm')
             log = Path(records_path).parent / (call['call_id'] + '.log')
             require(digest(log) == call['log_sha256'], 'Native clock/scientific log changed')
             clocks = re.findall(r'^NATIVE_SECONDS=([0-9.eE+-]+)$', log.read_text(errors='replace'), re.MULTILINE)
@@ -606,13 +752,13 @@ def analyze(manifest_path, records_path, monitor_receipt=None):
     failures = [block['block_id'] for block in result['blocks'] if block['status'] != 'complete']
     warmups_ok = (len(result['warmups']) == len(value['schedule']['warmups']) and all(
         all(row.get(key) == planned[key] for key in planned) and row.get('status') == 'passed'
-        and len(row['calls']) == 2 and [call['side'] for call in row['calls']] == planned['sides']
+        and len(row['calls']) == len(planned_arms(planned)) and [arm_id(call) for call in row['calls']] == planned_arms(planned)
         and all(call.get('status') == 'passed' and call.get('science_pass') is True and call.get('certificate_pass') is True for call in row['calls'])
         for row, planned in zip(result['warmups'], value['schedule']['warmups'])))
     summaries = []
-    for item in value['spec']['comparisons']:
-        blocks = [block for block in result['blocks'] if block['comparison_id'] == item['id']]
-        complete = [(block, block_scores(block)) for block in blocks if block['status'] == 'complete']
+    for item, blocks, role, cell_id in comparison_views(value['spec'], result):
+        relative = .20 if role == 'internal' else .05
+        complete = [(block, block_scores(block, relative)) for block in blocks if block['status'] == 'complete']
         eligible = [(block, score) for block, score in complete if host is not None and host[block['block_id']]['status'] == 'eligible']
         ratios = [score['ratio'] for _, score in eligible]
         excess = [score['excess_seconds'] for _, score in eligible]
@@ -637,7 +783,16 @@ def analyze(manifest_path, records_path, monitor_receipt=None):
                 'mean': statistics.mean(times) if times else None, 'p95_nearest_rank': sorted(times)[math.ceil(.95 * len(times))-1] if times else None,
                 'maximum': max(times) if times else None} for side, times in all_times.items()},
             'is_aa': item['reference']['plugin']['sha256'] == item['candidate']['plugin']['sha256'] and item['reference']['input']['sha256'] == item['candidate']['input']['sha256']})
-    return {'schema': 1, 'manifest': reference(manifest_path), 'records': reference(records_path),
+        if role is not None:
+            regrets = [score['normalized_regret'] for _, score in eligible]
+            summaries[-1].update(cell_id=cell_id, reference_role=role,
+                reference_arm=item['execution_ids']['reference'], candidate_arm=item['execution_ids']['candidate'],
+                relative_allowance=relative, absolute_allowance_s=.001, normalized_regret_threshold=1,
+                normalized_regret_median_interval=median_interval(regrets) if regrets else None,
+                shared_block_ids=[block['block_id'] for block in blocks],
+                shared_blocks_not_independent_comparisons=True,
+                confidence_scope='Marginal comparison bound conditional on independent common-median blocks; no simultaneous or selected-winner coverage claim.')
+    return {'schema': value['spec']['schema'], 'manifest': reference(manifest_path), 'records': reference(records_path),
             'monitor_receipt': reference(monitor_receipt) if monitor_receipt else None, 'summary': summaries,
             'conditional_statistical_pass': all(row['conditional_nonregression_pass'] for row in summaries),
             'qualification_pass': False, 'qualification_requires': ['Independent/common-median analysis-unit assumption review; these diagnostics do not prove it.'],

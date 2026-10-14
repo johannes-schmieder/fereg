@@ -125,6 +125,16 @@ class FrozenCollection(unittest.TestCase):
     def freeze(self):
         blocks.freeze(self.spec, self.manifest)
 
+    def multi(self, count=3):
+        item = self.spec.pop('comparisons')[0]
+        arms = {f'arm{i}': {**copy.deepcopy(item['reference']), 'label': f'arm{i}'} for i in range(count)}
+        pairs = [{'id': f'protected{i}', 'reference': 'arm0', 'candidate': f'arm{i}',
+                  'reference_role': 'protected'} for i in range(1, count)]
+        if count > 2:
+            pairs.append({'id': 'internal', 'reference': 'arm1', 'candidate': 'arm2', 'reference_role': 'internal'})
+        self.spec.update(schema=2, cells=[{'id': 'cell', 'workload': 'cell', 'arms': arms,
+                                        'comparisons': pairs, 'validation': item['validation']}])
+
     def execute(self, command, log, timeout, started):
         self.calls += 1
         self.assertGreater(timeout, 0)
@@ -307,6 +317,110 @@ class FrozenCollection(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'not an exclusion'): blocks.host_classification(self.spec, context, 'unused')
             receipt['blocks'].pop(0)
             with self.assertRaisesRegex(ValueError, 'omitted'): blocks.host_classification(self.spec, context, 'unused')
+
+    def test_mirrored_schedule_balances_every_pair_and_reuses_arm_calls(self):
+        self.multi(5)
+        self.spec['design']['attempts'] = 12
+        blocks.validate_spec(self.spec)
+        schedule = blocks.schedule(self.spec)
+        self.assertEqual(schedule, blocks.schedule(copy.deepcopy(self.spec)))
+        self.assertEqual(len(schedule['warmups'][0]['arms']), 5)
+        self.assertEqual(sum(len(row['arms']) for row in schedule['blocks']), 120)
+        for row in schedule['blocks']:
+            self.assertEqual(row['arms'], row['permutation'] + row['permutation'][::-1])
+            self.assertEqual(len(set(row['permutation'])), 5)
+        for a in range(5):
+            for b in range(a+1, 5):
+                arms = {f'arm{a}', f'arm{b}'}
+                orders = [[arm for arm in row['arms'] if arm in arms] for row in schedule['blocks']]
+                self.assertEqual(orders.count([f'arm{a}', f'arm{b}', f'arm{b}', f'arm{a}']), 6)
+                self.assertEqual(orders.count([f'arm{b}', f'arm{a}', f'arm{a}', f'arm{b}']), 6)
+
+    def test_mirrored_collection_stores_each_solve_once_and_reports_declared_roles(self):
+        self.multi()
+        self.spec['cells'][0]['arms']['arm0']['label'] = 'baseline display label'
+        self.freeze()
+        result = blocks.collect(self.manifest, self.out, execute=self.execute)
+        self.assertEqual(self.calls, 3 + 6*6)
+        self.assertEqual(result['schema'], 2)
+        self.assertEqual(len(result['blocks'][0]['calls']), 6)
+        self.assertTrue(all('arm_id' in call and 'side' not in call for block in result['blocks'] for call in block['calls']))
+        report = self.analyze()
+        self.assertEqual(report['schema'], 2)
+        self.assertEqual(len(report['summary']), 3)
+        self.assertTrue(report['conditional_statistical_pass'])
+        rows = {row['comparison_id']: row for row in report['summary']}
+        self.assertEqual(rows['protected1']['relative_allowance'], .05)
+        self.assertEqual(rows['protected1']['reference_arm'], 'arm0')
+        self.assertEqual(rows['internal']['relative_allowance'], .20)
+        self.assertEqual(rows['internal']['normalized_regret_median_interval']['upper'], 0.)
+        self.assertEqual(rows['internal']['normalized_regret_threshold'], 1)
+        self.assertEqual(rows['internal']['shared_block_ids'], rows['protected1']['shared_block_ids'])
+        self.assertTrue(rows['internal']['shared_blocks_not_independent_comparisons'])
+        self.assertEqual(rows['internal']['order_diagnostics']['ABBA']['n'], 3)
+
+    def test_mirrored_exclusion_is_shared_for_all_derived_pairs(self):
+        self.multi(); self.freeze(); blocks.collect(self.manifest, self.out, execute=self.execute)
+        report = self.analyze(self.host(excluded=['b000000']))
+        self.assertTrue(all(row['excluded_blocks'] == ['b000000'] and row['eligible_blocks'] == 5 for row in report['summary']))
+        self.assertFalse(report['conditional_statistical_pass'])
+        self.assertEqual(self.calls, 39)  # no replacement after host classification
+
+    def test_mirrored_failed_noncomparison_arm_cannot_leave_a_clean_pair(self):
+        self.multi(); self.freeze(); blocks.collect(self.manifest, self.out, execute=self.execute)
+        result = blocks.read(self.out / 'records.json')
+        unrelated = next(call for call in result['blocks'][0]['calls'] if call['arm_id'] == 'arm2')
+        unrelated['science_pass'] = False
+        blocks.atomic_json(self.out / 'records.json', result)
+        with self.assertRaisesRegex(ValueError, 'no clean pairwise subset'): self.analyze()
+
+    def test_two_arm_schema_two_supports_internal_C_allowance_without_new_runner(self):
+        self.multi(2)
+        self.spec['cells'][0]['comparisons'][0]['reference_role'] = 'internal'
+        self.freeze(); blocks.collect(self.manifest, self.out, execute=self.execute)
+        self.assertEqual(self.calls, 26)
+        report = self.analyze()
+        self.assertEqual(report['summary'][0]['relative_allowance'], .2)
+        self.assertEqual(report['summary'][0]['order_diagnostics']['BAAB']['n'], 3)
+
+    def test_mirrored_schema_rejects_role_disagreement_self_edges_and_unbounded_arms(self):
+        self.multi()
+        changes = [lambda cell: cell['comparisons'][1].update(reference_role='internal'),
+                   lambda cell: cell['comparisons'][0].update(candidate='arm0'),
+                   lambda cell: cell['comparisons'][0].update(candidate='absent'),
+                   lambda cell: cell['comparisons'][0].update(reference_role='optional'),
+                   lambda cell: cell['comparisons'][0].update(relative=.01),
+                   lambda cell: cell['comparisons'].append(copy.deepcopy(cell['comparisons'][0])),
+                   lambda cell: cell['arms'].update({f'unused{i}': copy.deepcopy(cell['arms']['arm0']) for i in range(33)})]
+        for change in changes:
+            spec = copy.deepcopy(self.spec); change(spec['cells'][0])
+            with self.assertRaises(ValueError): blocks.validate_spec(spec)
+
+    def test_direct_excess_and_normalized_regret_have_role_specific_margin(self):
+        block = scoring_block([1., 1.], [1.1, 1.1])
+        protected = blocks.block_scores(block, .05)
+        internal = blocks.block_scores(block, .20)
+        self.assertAlmostEqual(protected['normalized_regret'], 2.)
+        self.assertAlmostEqual(internal['normalized_regret'], .5)
+        self.assertGreater(protected['excess_seconds'], 0)
+        self.assertLess(internal['excess_seconds'], 0)
+
+    def test_multiarm_source_context_requires_explicit_qualification_not_legacy_decision(self):
+        self.multi()
+        bound = blocks.reference(self.root / 'declaration')
+        packet = {'kind': 'routing_blocks', 'context': bound, 'qualification': bound, 'witness': bound,
+                  'source': bound, 'cell_id': 'cell'}
+        self.spec['cells'][0]['validation'] = packet
+        blocks.validate_spec(self.spec)
+        del packet['qualification']
+        with self.assertRaisesRegex(ValueError, 'science context'): blocks.validate_spec(self.spec)
+
+    def test_qualified_protection_cannot_be_relabelled_internal(self):
+        self.multi()
+        cell = self.spec['cells'][0]
+        blocks.validate_reference_roles(cell, ['arm0'])
+        cell['comparisons'][0]['reference_role'] = 'internal'
+        with self.assertRaisesRegex(ValueError, 'qualified protection'): blocks.validate_reference_roles(cell, ['arm0'])
 
 
 class RoutingAndProcess(unittest.TestCase):

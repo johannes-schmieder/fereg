@@ -427,13 +427,25 @@ def resource_diagnostics(log, requested, no_fe, witness):
 
 
 def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
-        timeout=120.0, budget=14400.0, ablation_only=False, prerequisites_only=False):
+        timeout=120.0, budget=14400.0, ablation_only=False, prerequisites_only=False,
+        qualification_context=None):
     routing.validate_manifest(manifest)
     if manifest.get('purpose') == 'ablation_only' and not ablation_only:
         raise ValueError('ablation manifest requires --ablation-only collection')
     # required_candidates enforces no A predecessor, frozen A shortlist for B,
     # and exactly the passing frozen B winner for C before reading any inputs.
-    candidates = routing.required_candidates(manifest, stage, previous)
+    selection_sha256 = routing.identity(previous) if previous else None
+    context_bindings = []
+    if qualification_context is None:
+        candidates = routing.required_candidates(manifest, stage, previous)
+    else:
+        if not prerequisites_only or ablation_only:
+            raise ValueError('new qualification context is scientific-prerequisites-only')
+        import routing_blocks
+        qualified = routing_blocks.prerequisite_context(manifest, stage, previous, qualification_context)
+        candidates = qualified['candidates']
+        selection_sha256 = qualified['selection_sha256']
+        context_bindings = qualified['bindings']
     if ablation_only:
         if manifest.get('experiment_kind', 'routing') != 'routing':
             raise ValueError('kernel collection cannot override a prefix or overlap experiment')
@@ -452,6 +464,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
     if any(digest(plugins[a]) != manifest['arms'][a]['sha256'] for a in arms):
         raise ValueError('arm artifact does not match its frozen identity')
     identities = {harness: manifest['harness_sha256']}
+    identities.update({Path(ref['path']): ref['sha256'] for ref in context_bindings})
     identities.update({plugins[a]: manifest['arms'][a]['sha256'] for a in arms})
     identities.update({cases[c['id']]: c['case_sha256'] for c in cells})
     metadata, science, pending = {}, {}, {}
@@ -498,7 +511,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                                  'missing case-specific independent witness and resource-contract evidence')
             science[cid], proof_hashes = evidence(witnesses[cid], cell, manifest, required[cid],
                 prerequisites_only=prerequisites_only, local_oracle=local_oracle, stage=stage,
-                selection_sha256=routing.identity(previous) if previous else None)
+                selection_sha256=selection_sha256)
             identities.update(proof_hashes)
             independent = science[cid].get('independent_witness')
             if independent:
@@ -534,7 +547,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
               'purpose': 'scientific_prerequisites' if prerequisites_only else 'ablation_only' if ablation_only else 'policy_tournament',
               'platform': platform.platform(), 'machine': platform.machine(),
               'cleared_environment': list(CLEARED_ENV), 'manifest_sha256': routing.identity(manifest),
-              'selection_sha256': routing.identity(previous) if previous else None,
+              'selection_sha256': selection_sha256,
               'harness_sha256': manifest['harness_sha256'],
               'artifacts': {a: manifest['arms'][a]['sha256'] for a in sorted(arms)},
               'cases': {c['id']: c['case_sha256'] for c in cells},
@@ -558,6 +571,8 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                   if input_policy(manifest, arm) is None and manifest['arms'][arm].get('solver', arm) == 'it'
                   and generic_it_metadata(metadata[cell['id']])],
               'generic_it_worker_checks': []}
+    if qualification_context is not None:
+        result['qualification_context'] = qualification_context
     pending_publications = []
     def save():
         (output / 'records.json').write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
@@ -801,7 +816,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                 if proof_admissible(manifest, outcomes):
                     unchanged()
                     proof = {'schema': 2, 'status': 'checked', 'arm_outcomes': outcomes, 'stage': stage,
-                             'selection_sha256': routing.identity(previous) if previous else None, 'manifest_sha256': routing.identity(manifest),
+                             'selection_sha256': selection_sha256, 'manifest_sha256': routing.identity(manifest),
                              'cell_id': cid, 'case_sha256': cell['case_sha256'], 'body_sha256': cell['body_sha256'],
                              'threads': cell['threads'], 'arms': {a: manifest['arms'][a] for a in required[cid]},
                              'replay_scope': {'numerical_scalar_indices': {k: sorted(v) for k, v in numerical_scope_indices(False).items()},
@@ -890,6 +905,8 @@ def main():
     parser.add_argument('--manifest', type=Path, required=True)
     parser.add_argument('--stage', choices=routing.REPETITIONS, required=True)
     parser.add_argument('--previous', type=Path)
+    parser.add_argument('--qualification-context', type=Path,
+                        help='new Mac block context; scientific prerequisites only, without --previous')
     parser.add_argument('--harness', type=Path, required=True)
     parser.add_argument('--plugin', action='append', required=True, help='arm=artifact')
     parser.add_argument('--case', action='append', required=True, help='cell=case')
@@ -900,10 +917,15 @@ def main():
     parser.add_argument('--ablation-only', action='store_true', help='collect baseline/comparators only; no policy promotion')
     parser.add_argument('--prerequisites-only', action='store_true', help='independent science/resource proofs for the frozen stage/selection; no timing observations or selection')
     args = parser.parse_args()
+    context = None
+    if args.qualification_context is not None:
+        import routing_blocks
+        context = routing_blocks.reference(args.qualification_context)
     result = run(routing.unseal(routing.read_json(args.manifest)), args.stage,
                  routing.unseal(routing.read_json(args.previous)) if args.previous else None,
                  args.harness.resolve(strict=True), paths(args.plugin), paths(args.case), paths(args.witness),
-                 routing.scratch(args.output), args.timeout, args.budget, args.ablation_only, args.prerequisites_only)
+                 routing.scratch(args.output), args.timeout, args.budget, args.ablation_only, args.prerequisites_only,
+                 qualification_context=context)
     return 0 if result['status'] == 'complete' else 1
 
 

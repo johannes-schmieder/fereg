@@ -118,6 +118,23 @@ were exact. This was an untimed four-slot setup job; isolated routing discovery
 still requires its reviewed scheduler/process evidence collector. No routing
 policy has been selected, and public Auto remains unchanged.
 
+The next tooling boundary adds shared mirrored multiarm blocks, the reviewed
+SCC reservation/process collector, and a separate discovery-to-Mac B context.
+Each pair shares two executions per distinct arm per complete block; B uses
+twelve frozen rounds and preserves the original protected and internal-frontier
+allowances. The coordinator recomputes selection from bound raw evidence and
+refuses C until a separate public-activation transition is reviewed. The full
+repository suite passes again, all 250 benchmark tests pass, and the final
+discovery-only guard/timeout edits pass all 13 focused tests. Production identity
+remains unchanged against `8bebd879` for 192 runtime modules and 58 artifact
+inputs. These checks qualify tooling, not a routing winner or performance claim.
+
+| Check output | SHA-256 |
+| --- | --- |
+| Full repository suite | `83472cff14c91b379086b66e6d8bf5c80c75864ac6598180d7ac61981f55db1a` |
+| 250 benchmark tests | `6a8db9a2040b1aa7c8a214bd932bc4edeb7ba70653f7f426241ceb7be945303c` |
+| Final 13 discovery tests | `b36c24775f681a23d81d6bb4e4fae8e20acb9589fb188376c8a54c50a03b2c74` |
+
 ## Authorized routing qualification recovery, 2026-10-14
 
 After reviewing the outcome below, Johannes approved the bounded recovery and

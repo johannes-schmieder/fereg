@@ -82,6 +82,7 @@ class DiscoveryTests(unittest.TestCase):
 
     def test_freeze_binds_only_A_files_and_detects_later_changes(self):
         spec = copy.deepcopy(self.spec)
+        spec['panels']['A'][0]['family'] = 'inactive-columns'
         harness = self.root / 'harness'
         harness.write_bytes(b'\x7fELFharness')
         baseline, candidate = self.root / 'baseline.so', self.root / 'candidate.so'
@@ -98,7 +99,7 @@ class DiscoveryTests(unittest.TestCase):
             case, witness = self.root / (cid + '.case'), self.root / (cid + '-ready.json')
             case.write_text(cid)
             cell['case_sha256'] = discovery.digest(case)
-            case.with_suffix('.json').write_text(json.dumps({'oracle': 'test'}))
+            case.with_suffix('.json').write_text(json.dumps({} if cell['family'] == 'inactive-columns' else {'oracle': 'test'}))
             witness.write_text('{"status":"ready"}')
             cases[cid], witnesses[cid] = str(case), str(witness)
         manifest_path = self.root / 'manifest.json'
@@ -110,6 +111,8 @@ class DiscoveryTests(unittest.TestCase):
                   'cases': cases, 'witnesses': witnesses, 'source_checks': [str(source_check)],
                   'receipt_generator': str(generator), 'output_root': str(self.root / 'campaign')}
         def evidence(path, *_args, **_kwargs):
+            if not _kwargs['local_oracle']:
+                raise ValueError('independent witness required for other families')
             return {}, {path: discovery.digest(path)}
         with patch.object(discovery.routing, 'scratch', side_effect=lambda p: p.resolve()), \
              patch.object(discovery.routing_run, 'evidence', side_effect=evidence):
@@ -117,6 +120,14 @@ class DiscoveryTests(unittest.TestCase):
         discovery.validate_plan(plan)
         self.assertEqual(set(plan['cases']), {c['id'] for c in spec['panels']['A']})
         self.assertFalse(any('B-cell' in p or 'C-cell' in p for p in plan['frozen_files']))
+        spec['panels']['A'][0]['family'] = 'other-family-without-local-oracle'
+        manifest_path.write_text(json.dumps(routing.seal(spec)))
+        with patch.object(discovery.routing, 'scratch', side_effect=lambda p: p.resolve()), \
+             patch.object(discovery.routing_run, 'evidence', side_effect=evidence):
+            with self.assertRaisesRegex(ValueError, 'independent witness required'):
+                discovery.freeze(config)
+        spec['panels']['A'][0]['family'] = 'inactive-columns'
+        manifest_path.write_text(json.dumps(routing.seal(spec), indent=2, allow_nan=False) + '\n')
         candidate.write_bytes(b'\x7fELFchanged')
         with self.assertRaisesRegex(ValueError, 'frozen file changed'):
             discovery.validate_plan(plan)
@@ -291,7 +302,7 @@ class DiscoveryTests(unittest.TestCase):
                     'collection_sha256': routing.identity(collection), 'receipt_sha256': routing.identity(receipt)}
         with patch.object(discovery.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout=json.dumps(verified))) as run:
             discovery.isolation(self.plan, collection, receipt)
-            self.assertEqual(run.call_args.kwargs['timeout'], 30)
+            self.assertEqual(run.call_args.kwargs['timeout'], 300)
             self.assertEqual(json.loads(run.call_args.kwargs['input'])['receipt'], receipt)
         for stdout, code in [('{}', 0), (json.dumps(verified), 1), ('noise\n' + json.dumps(verified), 0)]:
             with patch.object(discovery.subprocess, 'run', return_value=SimpleNamespace(returncode=code, stdout=stdout)):
