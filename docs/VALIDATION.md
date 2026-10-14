@@ -428,6 +428,42 @@ results or standard chart. Its 21-page compilation and changed-page visual check
 pass; PDF SHA-256 is
 `9be7ebd4e2aa5d31a3580d090061af9abe702ed877e6a344b91424ba8ccbf070`.
 
+Johannes then explicitly approved temporarily pausing the shared computer-use
+helper. The fixed-identity, PID-only controller passed 13 mock tests and
+independent Astra source review. Its SHA-256 is
+`612e9185124eccb256547a32bb90a6fd08510d09cd1d598b011739518962b18e`;
+the tests have SHA-256
+`d638603aa8a37768850231a6d5dde7047b0db59ceb1397c0059b29807b61cc37`.
+A detached watchdog restores the helper on controller closure or its fixed
+15,000-second lease. Identity checks precede each signal; no process-group,
+parent-app or Spotlight signal is authorized by this controller. Shared
+computer-use/history interruptions, non-atomic process identity checks and
+watchdog/host failure remain limitations. The prospective pause amendment,
+SHA-256 `519107feea44997aa8bcf5b418809be29df2527f98a67abacf43bb3481dc1aaf`,
+preserves all native/statistical bounds and the two-admission batch limit.
+
+The helper was confirmed stopped at 15:02:21 America/New_York. After the declared
+30-second settling wait, the sixth admission ran from 15:03:02 to 15:04:02.
+Every sample rejected unrelated FEVC Stata validation activity at 397.3--400.0
+CPU percentage points; unrelated aggregate CPU ranged from 408.4 to 427.6.
+No routing benchmark call started. The other validation job was inspected but
+not interrupted. The helper was released after rejection and confirmed running
+at 15:04:22; the controller exited successfully. The admission SHA-256 is
+`90ab48e6891f3c5254177425d2f913c989890c3250b279f61bfdbd3e58fdb9f5`;
+the restoration audit has SHA-256
+`8af3d8d3e8cc8ee0f569acb357fb97ef68aad8c6c64715c7c89d6645fb046c8a`.
+This exhausts the amended batch's two admissions without a launched cohort.
+There is no eligible A performance look. The compact export retains all six
+admissions, pause terms and restoration observations while preserving every
+prior source value: 848,325 bytes, SHA-256
+`67de42f6f031c23f7e06707cbc39e0c307442d0e8d5cb39ba3d48b6b61343486`.
+Production identity against `b22c54a0` still passes after the intervening
+installation commits: all 192 runtime modules and 58 artifact inputs match.
+Existing scientific and standard timing evidence therefore remains applicable.
+The updated 21-page routing PDF also records this outcome; compilation and
+changed-page visual inspection pass. Its SHA-256 is
+`340585e44f5be00ba5215f71e090a9989e04945f00ae8179d3b64545ce307690`.
+
 The same amended guard, fresh separately inspected admission, terminal host
 clearance and fresh-record completion gate remain mandatory. Another interference
 trigger ends the attempt. All prior cohorts remain excluded under their original
