@@ -3,9 +3,11 @@
 Johannes accepted the integrated runtime on 2026-10-07. That is architectural
 acceptance, not a performance pass: the final timing campaign closed incomplete
 and historical timing was mixed. The Mac is the qualification host. Linux and
-Windows evidence comes from bounded build, load and mapped-fixture checks, which
-do not establish full platform scientific or performance qualification. GitHub
-testing is paused. Native distribution permissions were confirmed on 2026-10-13;
+Windows evidence so far comes from bounded build, load and mapped-fixture checks,
+which do not establish full platform scientific or performance qualification.
+Johannes's 2026-10-14 decision additionally authorizes isolated SCC algorithm
+discovery and Linux performance measurements; those do not establish Mac speed.
+GitHub testing is paused. Native distribution permissions were confirmed on 2026-10-13;
 the [licensing decision](licensing.md) records the distribution terms.
 
 This page keeps accepted evidence, open failures and standing caveats. The full
@@ -62,6 +64,59 @@ size bindings. Artifact SHA-256 values are:
 This qualifies the documented macOS installation scope. It does not establish
 Linux, Windows, native Intel-host Stata qualification or a performance claim.
 GitHub Actions remain disabled.
+
+## Controlled routing measurements, 2026-10-14
+
+Johannes approved replacing whole-host quiet admission with the
+[controlled paired protocol](development_workflow.md#controlled-timing-protocol-approved-2026-10-14).
+Rules commit `da8551cc` retains ordinary OS activity, the 5%/1 ms allowance,
+scientific tolerances and historical outcomes. Known competing computation may
+invalidate only whole blocks under a prospectively frozen policy. The reviewed
+tools in `438e1d93` separate diagnostic measurements, isolated SCC discovery,
+Mac selection and untouched public-artifact confirmation.
+
+The first fixed Mac A/A pilot completed all 300 calls and 72 blocks in 515.13
+seconds: six workloads, twelve balanced ABBA/BAAB blocks each, one warmup per
+label, no replacement attempts, no exclusions and no scientific failures.
+Both labels used the same independently qualified candidate and input bytes.
+The observer retained 142 process snapshots; monitoring coverage passed.
+[Retained evidence](../bench/results/solver-routing-controlled-20261014.json)
+contains every timing, scientific fingerprint, frozen policy, source/capture
+hash and diagnostic summary.
+
+| Workload | Median B/A time | Upper bound on median excess, ms |
+| --- | ---: | ---: |
+| OLS, no FE, 5 columns, 1 worker | 0.99992 | -0.888 |
+| OLS, two FE, 5 columns, 4 workers | 0.99958 | -8.128 |
+| OLS, three FE, 5 columns, 4 workers | 0.99997 | -14.291 |
+| OLS, 129 columns, 4 workers | 1.00906 | -5.219 |
+| PPML, two FE, 5 columns, 1 worker | 0.99878 | -19.027 |
+| OLS, two FE, 20 columns, 16 workers | 0.99450 | -16.177 |
+
+Here excess is `N - B - max(.05 * B, .001)`, using the two geometric-mean
+solve times per block. All six upper bounds are below zero. These are conditional
+diagnostics, not solver speedups or release qualification. The twelve-block
+upper rank is 10, with binomial upper tail `79/4096 <= .025`. Serial dependence
+remains uncertain: lag-one excess correlations are about .47 for two FE, .64
+for three FE and -.53 for the wide case. The pilot does not prove independent
+observations or common medians. Independent review supports proceeding with a
+finite candidate experiment while preserving this limitation; A/A observations
+will not be pooled into selection or confirmation.
+
+The full repository suite passes, including 244 Python tests (12 optional
+skips), 1,331 core tests, 195 plugin FFI tests and ten isolated allocator audits.
+All 210 benchmark tests pass. An initial benchmark-suite invocation omitted
+the existing task dependency path and failed to import SciPy/psutil; correcting
+the environment passed without code or tolerance changes. Production identity
+is unchanged against `da8551cc` for 192 runtime modules and 58 artifact inputs.
+The previously accepted standard-20 timing evidence remains valid.
+
+The SCC setup job also passed both Linux builds, export/glibc audits, actual
+ABI/selftests and numeric guards, followed by 292 independent scientific calls
+(73 cases, baseline and candidate, two repeats each). Fixed-worker repeats
+were exact. This was an untimed four-slot setup job; isolated routing discovery
+still requires its reviewed scheduler/process evidence collector. No routing
+policy has been selected, and public Auto remains unchanged.
 
 ## Authorized routing qualification recovery, 2026-10-14
 

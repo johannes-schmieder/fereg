@@ -1724,4 +1724,58 @@ The guard classifies the inspected FSEvents/WallpaperAerialsExtension paths as o
 {\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}STANDARD GATE PASSED. ROUTING SELECTION PENDING. PUBLIC DEFAULT UNCHANGED.}
 \end{compactleaf}
 
+% PAGE 22 ---------------------------------------------------------------------
+% Approved prospective measurement method; authored by Codex, not Pro code approval.
+\newleaf
+\begin{compactleaf}
+\sect{21 / PROSPECTIVE MEASUREMENT}{Controlled blocks, separate decisions}
+\tagline{Approved 14 October 2026. Procedure and Linux setup checks passed; no policy selected.}
+\begin{note}\smallbody
+Scientific, resource and transaction gates are unchanged. This method prospectively replaces strict per-process CPU admission and whole-panel aborts. All seven failed admissions and earlier failed/excluded attempts retain their historical status; none is rescued or pooled into this campaign.
+\end{note}
+\begin{center}
+\begin{tikzpicture}[font=\sffamily\fontsize{9}{11}\selectfont,
+  stage/.style={draw=Rule,fill=Light,rounded corners=2pt,text width=4.7cm,minimum height=1.0cm,align=center,inner sep=5pt},
+  route/.style={-{Stealth[length=2mm]},draw=Teal,line width=.85pt}]
+\node[stage] (science) at (0,0) {\textbf{1. Unchanged science}\\Bind artifacts, inputs and checks};
+\node[stage] (pilot) at (5.6,0) {\textbf{2. Fixed A/A pilot}\\Test the measurement procedure};
+\node[stage] (scc) at (11.2,0) {\textbf{3. Isolated SCC discovery}\\Screen a declared finite grid};
+\node[stage] (mac) at (11.2,-1.5) {\textbf{4. Small Mac shortlist}\\Select using declared coverage};
+\node[stage] (freeze) at (5.6,-1.5) {\textbf{5. Freeze one finalist}\\Bind its public artifact and checks};
+\node[stage] (confirm) at (0,-1.5) {\textbf{6. Untouched Mac confirmation}\\No new winner after the result};
+\node[stage,fill=Pale,draw=Teal,text width=15.9cm,minimum height=.65cm] (decision) at (5.6,-2.9) {\textbf{7. Promote only if every required gate passes.}\quad Failure or uncertainty retains the incumbent.};
+\draw[route] (science)--(pilot); \draw[route] (pilot)--(scc);
+\draw[route] (scc)--(mac); \draw[route] (mac)--(freeze);
+\draw[route] (freeze)--(confirm); \draw[route] (confirm.south)--(confirm.south |- decision.north);
+\end{tikzpicture}
+\end{center}
+\sub{Complete solves and the tested quantity}
+{\smallbody
+Use balanced randomized ABBA/BAAB blocks, including setup; A is the reference and B the candidate \emph{order label}. For block $j$, define reference time $B_j=\sqrt{t_{A1}t_{A2}}$ and candidate time $N_j=\sqrt{t_{B1}t_{B2}}$, in seconds. The tested score is
+\[
+ E_j=N_j-B_j-\max(0.05B_j,\,0.001).
+\]
+The median of $N_j/B_j$ is a separate descriptive effect size. It is not the acceptance statistic; minima cannot pass the gate. Sort scores $E_{(1)}\le\cdots\le E_{(n)}$. With $\alpha=0.025$, take the smallest attainable rank $k$ satisfying
+\[
+ \Pr\{\operatorname{Binomial}(n,\tfrac12)\ge k\}\le0.025,\qquad U=E_{(k)}.
+\]
+Pass only when $U\le0$, retaining ties. No attainable rank means $U=+\infty$ and an inconclusive result. Coverage is conditional on independent block scores with a common median. A small A/A pilot can reveal order effects or dependence; it cannot prove independence or common medians.
+}
+\sub{Freeze budgets; distinguish noise from invalidation}
+{\smallbody
+Freeze artifacts, inputs, workers, warmups, cache policy, order seed, block/attempt and wall budgets, round/session identities and the actual analysis unit before collection. Shuffle workload order across rounds; checkpoint complete blocks. A finite discovery screen may use a declared balanced rotating order. Preserve pairing and shared-reference correlations. Many correlated solves are not many independent observations.
+
+Record ordinary OS bursts as noise. Known competing compute or host faults invalidate whole affected blocks only through frozen rules and external evidence, never through unfavorable timings. Retain incomplete/excluded blocks and cap replacements prospectively. Science failures and solver timeouts keep their failure semantics; \textbf{the allowance remains $\max(5\%,1\ \mathrm{ms})$}. No fallback winner or sampling until success follows confirmation.
+}
+\sub{Host scope and current boundary}
+{\smallbody
+SCC candidate/reference pairs share the same verified isolated node, inputs, CPU placement, physical-core/SMT policy and library thread limits. Requested slots alone do not prove isolation. Linux discovery is not Mac speed evidence; Mac selection/confirmation cover relevant families and workers, including overlap routes.
+
+Tools are committed in \code{438e1d93}. The Mac A/A pilot completed 300 calls, 72 blocks and six workloads in 515.13 seconds: no exclusions or science failures; six conditional passes; median ratios 0.99450--1.00906. Serial correlation limits interpretation; this procedure check does not prove independence or compare routing candidates.
+
+Linux setup passed 292 scientific calls across baseline and candidate (73 cases, two repeats each), plus ABI/export audits. SCC discovery awaits the reviewed isolated collector. The existing 20/20 standard pass remains valid for its artifact; a new public-Auto artifact needs affected checks. No policy is selected; public Auto is unchanged.
+}
+\anchor{Current authority: \href{development_workflow.md}{docs/development\_workflow.md}, controlled timing protocol; \href{../AGENTS.md}{AGENTS.md}, approved in \code{da8551cc}. Historical evidence: \href{VALIDATION.md}{docs/VALIDATION.md}. Codex-authored methods amendment.}
+
+\end{compactleaf}
 \end{document}
