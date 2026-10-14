@@ -141,8 +141,9 @@ are the one sanctioned test surface in shipped builds; other fault plans use
 No arbitrary coverage percentage is a gate.
 Do not introduce planning/status ledgers or receipt-folder proliferation.
 Never commit credentials, licenses, personal paths, raw logs, datasets or new
-files above 1 MB (existing reference bundles excepted). Paper work belongs in
-fereg-paper. Native distribution still requires the licensing decision described
+files above 1 MB (existing reference bundles and the native plugins required by
+Johannes's 2026-10-14 main-branch GitHub installation request excepted). Paper
+work belongs in fereg-paper. Native distribution still requires the licensing decision described
 in `docs/licensing.md`; development is not publication authorization.
 
 Changes to sample, rank, omission or separation semantics require Johannes's

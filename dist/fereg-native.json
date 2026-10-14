@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "version": "0.5.0",
+  "source_sha": "46aa78f67b102373675b7c72196dba1fbfb7d337",
+  "runtime_sha256": "d9a987ef19304b9e810b08e5f9da18202dc78355c0cf81fe4cfad28695965225",
+  "plugins": [
+    {
+      "path": "fereg_macos.plugin",
+      "sha256": "a75de3534e85921731ff97da1242b8fb872cc5e8782f2222da86a5f222424a7b",
+      "bytes": 18521120
+    }
+  ],
+  "included_platforms": [
+    "macos"
+  ],
+  "support_caveats": [
+    "Only platforms named in included_platforms are supplied by this package.",
+    "Licensed installation testing is on Apple Silicon macOS; this does not establish Linux, Windows or native Intel-host Stata qualification."
+  ],
+  "corresponding_source_sha256": "c2d7441cf757d2fc4bb64c529b9e0ba8560e7338b652595614e2d3b8eedaf4b8"
+}

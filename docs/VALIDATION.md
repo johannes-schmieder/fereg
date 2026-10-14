@@ -14,6 +14,48 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Main-branch GitHub installation, 2026-10-14
+
+The root package installs the maintained Stata files and a universal macOS
+plugin built from `46aa78f67b102373675b7c72196dba1fbfb7d337`. The packaging work
+changes no estimator production tokens or native artifact inputs: the production
+comparison passes for 192 runtime modules and 58 artifact inputs. The native
+identity is retained in [`dist/fereg-native.json`](../dist/fereg-native.json).
+The root package checker binds this binary to the runtime on `main` and rejects
+missing install files, changed binary hashes and ancillary-file directives that
+would omit required metadata.
+
+- `scripts/run_tests.sh` passes, including 243 Python tests with 13 existing
+  optional skips, Rust/Clippy/allocator checks, the complexity ratchet and native
+  bridge checks. The Linux mock audit remains skipped on this Mac.
+- The universal macOS build passes the binary audit and actual-plugin ABI and
+  panic-containment harness. The dependency audit reports zero vulnerabilities.
+- The corresponding-source archive builds with Rust 1.85.1, an empty Cargo home
+  and offline networking, using only the included dependency sources.
+- All four staged installation, PPML, native-file rollback and single-runtime
+  fixtures pass in Stata/MP 19 on Apple Silicon.
+- A fresh local root-package installation into isolated user ado directories
+  installs all 31 files byte-for-byte. Selftest passes, OLS agrees with Stata
+  `regress` within 1e-8, a two-group PPML witness agrees with log group means
+  within 1e-9, and absorbed PPML saved means agree with prediction on `e(sample)`.
+  The initial test driver incorrectly compared excluded observations too;
+  restricting that comparison to the estimation sample passes without changing
+  the estimator or tolerances.
+
+The [beta assets](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.1)
+retain the native and corresponding-source packages, dependency audit, source
+closure and checksums. Artifact SHA-256 values are:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Universal plugin | `a75de3534e85921731ff97da1242b8fb872cc5e8782f2222da86a5f222424a7b` |
+| Binary ZIP | `8faf8cca170268d55e71c9ae139ce7628d98e0c9014aa348d2bb48219ea25379` |
+| Corresponding-source ZIP | `c2d7441cf757d2fc4bb64c529b9e0ba8560e7338b652595614e2d3b8eedaf4b8` |
+
+This qualifies the documented macOS installation scope. It does not establish
+Linux, Windows, native Intel-host Stata qualification or a performance claim.
+GitHub Actions remain disabled.
+
 ## Authorized routing qualification recovery, 2026-10-14
 
 After reviewing the outcome below, Johannes approved the bounded recovery and

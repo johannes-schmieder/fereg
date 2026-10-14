@@ -1,10 +1,20 @@
-# Distribution output
+# Native distribution
 
-Build scripts place self-contained native artifacts here:
+The repository root `fereg.pkg` installs the current Stata files and the
+universal macOS plugin in this directory. Both `github install
+johannes-schmieder/fereg` and `net install` from the raw `main` URL use this
+manifest. Linux and Windows still require source builds.
 
-- `fereg_linux.plugin`
-- `fereg_windows.plugin`
-- `fereg_macos.plugin` (universal x86-64 + arm64)
+`fereg-native.json` binds the plugin hash to its source commit and a digest of
+runtime production tokens and artifact inputs. `scripts/check_github_install.py`
+checks that the installed binary still matches the runtime on `main`, all
+package files exist, and installation includes the licenses and metadata.
+Runtime changes require rebuilding and qualifying the binary before pushing.
+Documentation and test-only changes can retain the same native binary when
+this identity check passes. Build identity may therefore name an earlier commit
+than the current `main` head.
 
-No placeholder binary is shipped. A plugin file in this directory is valid only
-if built by the target-native script and accepted by `audit_binary.py`.
+`fereg-SOURCE.txt` links the exact corresponding-source archive, including
+pinned dependencies, licenses and the offline build configuration. The plugin
+checksum file uses a relative filename so no build-host path is distributed.
+See [release maintenance](../docs/release_process.md) for the update procedure.

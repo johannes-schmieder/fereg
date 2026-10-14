@@ -5,6 +5,35 @@ confirmed the required distribution permissions. See
 [licensing](licensing.md), [validation](VALIDATION.md) and
 [development checks](development_workflow.md). GitHub tests remain paused.
 
+## Main-branch installation
+
+The root `fereg.pkg` and `stata.toc` support `github install
+johannes-schmieder/fereg` and direct `net install` from the raw `main` URL.
+The manifest uses the maintained files in `stata/`, plus the qualified native
+plugin, checksum, licenses and source link in `dist/`. The current distribution
+includes only the universal macOS plugin. The larger native file is an explicit
+exception to source-only repository hygiene for this installation route.
+
+Before pushing a runtime change, rebuild the plugin, run its native and installed
+OLS/PPML checks, and refresh `dist/fereg-native.json`. Its `source_sha` names the
+clean build input; `runtime_sha256` is produced by
+`scripts/check_github_install.py`'s `runtime_identity()` function. Preserve the
+plugin SHA-256 and size, source-archive hash and platform caveats. The check runs
+in `scripts/run_tests.sh` and rejects a stale binary, incomplete package, changed
+checksum, or metadata that Stata would omit during installation. Documentation
+and test-only commits may retain a binary when the runtime identity matches.
+
+Publish the exact corresponding-source archive and dependency audit before
+pushing the root package that refers to them. Use a new versioned release for
+each replacement binary; never replace an existing source archive with different
+bytes. Store only the current plugin on `main`. Keep the checksum filename
+relative and update `dist/fereg-SOURCE.txt` and the root package distribution date.
+Test both the root package locally and the actual `github install` command over
+HTTP in a fresh Stata process with isolated user ado directories. Verify all
+installed bytes, native selftest and independent OLS/PPML examples.
+
+## Versioned packages and corresponding source
+
 Build the platform plugin with `scripts/build_macos.sh`, `build_linux.sh` or
 `build_windows.ps1`. Each build runs its native audit/load checks and writes a
 checksum. Run scientific, transaction and installed-package checks for the actual

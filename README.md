@@ -15,24 +15,33 @@ requirements live in [SPEC](docs/SPEC.md), with current validation scope in
 
 ## Install in Stata
 
-The current **macOS beta** requires Stata 18 or newer. It includes a universal
-Apple Silicon/Intel plugin; installation is tested on Apple Silicon. In a fresh
-Stata session, run:
+Install the current package from `main`, using the same community-contributed
+[`github` installer](https://github.com/haghish/github) as `fevc`:
 
 ```stata
-net install fereg, from("https://github.com/fe-tools/fereg/releases/download/v0.5.0-beta.1") replace
+* Install the github command once, if needed
+net install github, from("https://haghish.github.io/github/")
+github install johannes-schmieder/fereg
 fereg, selftest
 ```
 
-This installs both `fereg` and `feppml`. No Rust, Python or extra Stata packages
-are needed to use the binary package. Restart Stata before updating an existing
-installation so it unloads the old plugin.
+Or install directly without the `github` command:
 
-Linux and Windows binaries are not included in this beta. See the
-[installation guide](docs/installation.md) for local source builds on those
-platforms, a macOS source build, an offline install, and troubleshooting. The
-[release](https://github.com/fe-tools/fereg/releases/tag/v0.5.0-beta.1) also
-provides the matching source archive, dependency sources, licenses and checksums.
+```stata
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/main/") replace
+```
+
+Both routes install `fereg`, `feppml`, help files and the current native plugin
+from `main`. The **macOS beta** requires Stata 18 or newer and includes a
+universal Apple Silicon/Intel plugin; installation is tested on Apple Silicon.
+No Rust, Python or extra Stata packages are needed to use the binary package.
+Exit Stata before updating, then install in a fresh session so the previous
+plugin is unloaded.
+
+Linux and Windows binaries are not included. See the
+[installation guide](docs/installation.md) for source builds, offline
+installation and troubleshooting. Native build identity, checksums and
+corresponding-source links are retained in [dist](dist/README.md).
 
 ## Quick start
 

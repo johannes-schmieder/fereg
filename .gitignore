@@ -3,6 +3,8 @@
 /vendor/*/target/
 /dist/*.plugin
 /dist/*.sha256
+!/dist/fereg_macos.plugin
+!/dist/fereg_macos.plugin.sha256
 /dist/*.dll
 /dist/*.so
 /dist/*.dylib

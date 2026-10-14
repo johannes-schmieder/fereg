@@ -5,22 +5,32 @@ macOS and contains both Apple Silicon and Intel code. Installation and licensed
 estimation checks run on Apple Silicon; native Intel-host qualification is
 still outstanding. Linux and Windows source builds remain available below.
 
-## Install the macOS beta
+## Install the current macOS package from main
 
 Start a fresh Stata session and run:
 
 ```stata
-net install fereg, from("https://github.com/fe-tools/fereg/releases/download/v0.5.0-beta.1") replace
+* Install the github command once, if needed
+net install github, from("https://haghish.github.io/github/")
+github install johannes-schmieder/fereg
 fereg, selftest
 help fereg
 help feppml
 ```
 
+The installer reads the root `fereg.pkg` from `main`, as it does for `fevc`.
+A direct installation without the `github` command is equivalent:
+
+```stata
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/main/") replace
+```
+
 Both commands and their shared native plugin are installed together. Rust,
 Python, BLAS, OpenMP and other Stata packages are not needed to use this binary
 package. Stata normally installs user packages in its PLUS directory; `sysdir`
-shows that location. Do not point `net install` at the repository's `stata/`
-directory: the generated release package supplies the required plugin.
+shows that location. Use the repository root URL above: the `stata/` subdirectory
+contains the release template, while the root package includes the maintained
+native binary.
 
 Test an OLS and a PPML fit:
 
@@ -31,7 +41,7 @@ feppml price mpg, absorb(rep78) vce(robust)
 ```
 
 For an offline installation, download `fereg-0.5.0.zip` from the
-[beta release](https://github.com/fe-tools/fereg/releases/tag/v0.5.0-beta.1),
+[beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.1),
 extract it, and use the absolute path of the extracted directory containing
 `fereg.pkg`:
 
@@ -43,8 +53,9 @@ fereg, selftest
 ## Update or remove
 
 Exit every Stata session that has loaded fereg before updating. Reopen Stata,
-then rerun the installation command with `replace`. `clear all` does not
-reliably unload a native plugin. On Windows, loaded plugin files also cannot
+then rerun `github install johannes-schmieder/fereg` (which replaces its prior
+installation), or the direct `net install` command with `replace`. `clear all`
+does not reliably unload a native plugin. On Windows, loaded plugin files also cannot
 be overwritten. To remove an installed package, run `ado uninstall fereg`.
 
 ## Build from source
@@ -55,7 +66,7 @@ Rust 1.85.1; run the commands from the repository root. Native outputs go in
 `dist/`. This builds the same runtime used by the binary beta.
 
 ```bash
-git clone --depth 1 --branch v0.5.0-beta.1 https://github.com/fe-tools/fereg.git
+git clone --depth 1 --branch main https://github.com/johannes-schmieder/fereg.git
 cd fereg
 ```
 

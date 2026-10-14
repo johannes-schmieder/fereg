@@ -1,0 +1,35 @@
+v 3
+d fereg 0.5.0: high-dimensional fixed-effect OLS/WLS and PPML
+d Current main-branch package; universal macOS beta, Stata 18 or newer.
+d Distribution-Date: 20261014
+f stata/fereg.ado
+f stata/fereg_run.ado
+f stata/_fereg_estimate_public.ado
+f stata/_fereg_estimate_ols.ado
+f stata/_fereg_load.ado
+f stata/_fereg_factor_sample.ado
+f stata/_fereg_indepvars.ado
+f stata/_fereg_memory_baseline.ado
+f stata/_fereg_memory_validate.ado
+f stata/feppml.ado
+f stata/_fereg_ppml.ado
+f stata/_fereg_estimate_ppml.ado
+f stata/_fereg_ppml_result_mata.ado
+F stata/_fereg_ppml_result_mata.json
+f stata/_fereg_ppml_validation_error.mo
+f stata/_fereg_ppml_validate_result.mo
+f stata/_fereg_ppml_post_scalars.mo
+f stata/feppml_p.ado
+f stata/fereg_parse.ado
+f stata/fereg_p.ado
+f stata/fereg_estat.ado
+f stata/fereg.sthlp
+f stata/feppml.sthlp
+f stata/fereg_parse.sthlp
+f stata/fereg_postestimation.sthlp
+F dist/fereg-LICENSE.txt
+F dist/fereg-THIRD-PARTY-NOTICES.txt
+F dist/fereg-SOURCE.txt
+F dist/fereg-native.json
+f dist/fereg_macos.plugin
+F dist/fereg_macos.plugin.sha256

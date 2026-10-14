@@ -242,7 +242,7 @@ def write_sbom(source: Path, output: Path, source_sha: str) -> None:
         "SPDXID": "SPDXRef-DOCUMENT",
         "name": f"{PACKAGE_NAME}-sbom",
         "documentNamespace": (
-            f"https://github.com/fe-tools/fereg/spdx/{VERSION}/{source_sha}"
+            f"https://github.com/johannes-schmieder/fereg/spdx/{VERSION}/{source_sha}"
         ),
         "creationInfo": {
             "created": FIXED_UTC,
@@ -292,7 +292,7 @@ def copy_release_files(
     (staging / "fereg-SOURCE.txt").write_text(
         "The corresponding source for this beta, including pinned dependency sources,\n"
         "licenses, and build instructions, is available alongside the binary package:\n"
-        f"https://github.com/fe-tools/fereg/releases/download/{RELEASE_TAG}/"
+        f"https://github.com/johannes-schmieder/fereg/releases/download/{RELEASE_TAG}/"
         f"{PACKAGE_NAME}-source.zip\n\n"
         "For a modified local build, its source is the checkout used to build it.\n",
         encoding="utf-8",

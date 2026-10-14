@@ -1,0 +1,9 @@
+Corresponding source for the included native plugin:
+https://github.com/johannes-schmieder/fereg/releases/download/v0.5.0-beta.1/fereg-0.5.0-source.zip
+
+Source commit: 46aa78f67b102373675b7c72196dba1fbfb7d337
+SHA-256: c2d7441cf757d2fc4bb64c529b9e0ba8560e7338b652595614e2d3b8eedaf4b8
+
+The archive includes exact Cargo.lock dependency sources, third-party licenses,
+build scripts and an offline Cargo configuration. See its SOURCE_MANIFEST.json.
+Current frontend source: https://github.com/johannes-schmieder/fereg/tree/main/stata

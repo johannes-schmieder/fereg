@@ -1,5 +1,6 @@
 # PDFs contain byte offsets and must not undergo text conversion or line diffs.
 *.pdf binary
+*.plugin binary
 # Keep pinned vendor inputs identical to their recorded upstream file hashes.
 vendor/rayon-core/** -text
 # Preserve the upstream design note's existing trailing blank verbatim.
