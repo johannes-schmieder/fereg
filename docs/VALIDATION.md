@@ -47,8 +47,8 @@ scientific prerequisites and terminal optional unavailabilities are reused;
 unavailable optional arms are not retried. No ablation rerun or kernel promotion
 is implied. B requires a complete eligible A selection; public-default C also
 requires resolved standard qualification, a qualifying B winner and the existing
-activation/equivalence gates. No recovery measurement has yet been completed by
-this authorization record.
+activation/equivalence gates. The recovery observations below remain separate
+from that authorization.
 
 Admission precedes launch in a separate inspected step. Freeze the logical CPU
 count and activity classifications, then collect six process snapshots ten
@@ -101,6 +101,46 @@ attempt. The nominal two-look allocation remains unchanged because no additional
 eligible performance analysis occurred. Independent Astra methodology review
 agreed with this treatment. Another interference trigger ends this attempt and
 preserves its outputs; it does not authorize automatic repeated sampling.
+
+That retry completed with all 60 calls exact and a passing terminal host record:
+19 monitor snapshots, no interference trigger, maximum unrelated aggregate CPU
+50.8 percentage points, and complete owned-process cleanup. No background service
+was paused. Collection ran 10:16:02--10:17:25 America/New_York. The original and
+new session summaries remain visible; only the declared pooled result decides.
+
+| Confirmed cell, 21 eligible pairs | Median ratio | Nominal 99% interval | Outcome against 1.05 |
+| --- | --- | --- | --- |
+| OLS, 129 regressors, four workers | 1.011018 | [0.994271, 1.054836] | Inconclusive |
+| PPML, five regressors, one worker | 1.001253 | [0.989739, 1.006928] | Pass |
+
+Thus 19 of 20 standard cells pass; overall standard qualification remains
+unresolved. The completed confirmation summary has SHA-256
+`f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca`,
+the pooled report
+`538c1285da28f0a0c9b14202a61eb60a820d418b79219923ea0d9555fde6230c`,
+and the terminal host record
+`440badae9e2febf3fc634e7242ecf76baf0d23774e7a70a288fe17288b5121db`.
+
+One terminal continuation is now declared for the unchanged artifact under the
+standing retry authorization: only the unresolved wide-OLS cell receives exactly
+42 additional paired repetitions and one warmup per plugin (86 calls maximum,
+90 seconds per call, 900 seconds total). All original seven, completed-confirmation
+14 and new 42 pairs enter the final 63-pair comparison. Keep the other 19 passing
+cells and preserve the externally invalidated eight observations separately.
+Use the unchanged median paired ratio and `max(5%, 1 ms)` allowance, 10,000
+bootstrap draws, seed 739391, and nominal 99.8% interval endpoints 9 and 9989.
+Only the final pooled upper endpoint decides; session-only results are descriptive.
+The same admission and interference guard applies, with no automatic restart.
+
+Independent Astra review accepted this as a final prospective amendment within
+the existing approximate protocol. The three upper-tail allocations sum to
+`0.025 + 0.005 + 0.001 = 0.031`; this is a nominal allocation, **not** guaranteed
+3.1% sequential error control. Percentile-bootstrap coverage is approximate,
+the additional sample size and confidence level were chosen after earlier
+results, and pooling assumes comparable paired-ratio distributions across
+sessions. A remaining nonpass ends the current qualification attempt on this
+unchanged artifact; further work turns to profiling or reconsidering the artifact,
+rather than adding eligible observations until a pass.
 
 The following section retains the original terminal outcomes unchanged.
 
