@@ -189,8 +189,8 @@ protocols and seven more compact host records. Independent row-by-row comparison
 and bootstrap reconstruction agree exactly. No full process inventory or
 personal path is retained. It is 877,202 bytes with SHA-256
 `4b2f11426c6d38fc01699397dfbd2d7c828902e7490851e87ebc331887a95e8a`.
-The updated 21-page routing PDF is 616,812 bytes, SHA-256
-`6d69ed42dce98710a25929eb66cacc98f851a33b4fab71fa0d557d1c27e8e7ea`.
+The updated 21-page routing PDF is 616,969 bytes, SHA-256
+`72844a8dc6debb269d293bb3bba510eb2bc376a6adbaae9d8bb189288520012b`.
 Its first and final pages distinguish the passing standard gate from pending
 routing selection. Compilation, all page-number checks and visual inspection of
 both changed pages pass. Independent Astra reconstruction also confirms the
@@ -204,8 +204,34 @@ are hashed into its completion record. This prevents an early producer failure
 from attaching a new host record to stale results. Its four focused tests and
 independent Astra review pass; its SHA-256 is
 `fca17b66d89a36b6398d642ffbbe2ad133512c21d4b4d3404efa085db1616512`.
-Replacement policy A, B and C remain unrun. Documentation and evidence edits do
-not change runtime artifact inputs.
+Replacement policy A subsequently passed quiet-host admission. Its first final
+launch check rejected an unrelated background-service burst before any native
+call. The next launch started 11:13:47 America/New_York and was stopped after
+60.06 seconds when Spotlight's index store reached 207.6% CPU. The guard confirms
+complete owned-process cleanup and coordinator exit by interrupt. The whole
+cohort was declared ineligible from the host record before its performance
+values were inspected. Its host record has SHA-256
+`4dea30ef0be2499bd4dcea6047cac9cafdd3480ef19c5327e6dd379c8d8cd546`;
+its failed records have SHA-256
+`968275094718348c5c31a46a4cd277f7c3f8ecbdef4f555c8912492a8082d33b`.
+
+All 512 completed timing calls (128 warmups and 384 measured calls) and 139
+completed traced calls pass their science and certificate checks. One additional
+traced dispatch has no terminal result. Eight partial performance summaries are
+preserved without a selection or performance conclusion. These interrupted
+observations do not alter the completed standard gate. B and C remain unopened,
+and public Auto is unchanged. Further collection awaits a quiet host; the
+separate clarification about temporarily pausing indexing services is pending,
+and no service has been paused. Documentation and evidence edits do not change
+runtime artifact inputs.
+
+The separate [interrupted policy evidence](../bench/results/solver-routing-policy-a-interrupted-20261014.json)
+retains every source field, observation and partial summary in lossless column
+tables, plus three compact host records. Independent reconstruction reproduces
+the entire original source object, including absent fields on the unfinished
+call. It is 819,578 bytes, SHA-256
+`e5ca973e7379ba53513d844332b6b3607e4c41d42437d81feb46ff924e39e335`.
+The completed standard evidence remains unchanged.
 
 The following section retains the original terminal outcomes unchanged.
 

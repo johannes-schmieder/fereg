@@ -72,7 +72,7 @@
 \textbf{Design in one sentence.} Keep \code{auto} as a small deterministic router: exact structural shortcuts, inexpensive incumbent iterations, and at most one bounded optional upgrade, followed by an independent original-problem certificate.
 \end{note}
 \sub{Purpose and implementation boundary}
-Serial routing, overlap, prefix arms and PPML topology sharing are implemented. The explicit-CMG repair passes its full suite and fresh native checks (page 16); untimed routing prerequisites pass (page 15). Authorized recovery now passes all 20 standard cells (page 21). Original timing outcomes remain on pages 18--20; ablation timings are exploratory and replacement policy A is pending. Ordinary \code{auto} and explicit IT remain unchanged. No routing policy is selected or promoted.
+Serial routing, overlap, prefix arms and PPML topology sharing are implemented. The explicit-CMG repair passes its full suite and fresh native checks (page 16); untimed routing prerequisites pass (page 15). Authorized recovery now passes all 20 standard cells (page 21). Original timing outcomes remain on pages 18--20; ablation timings are exploratory and replacement policy A is interrupted/ineligible. Ordinary \code{auto} and explicit IT remain unchanged. No routing policy is selected or promoted.
 \sub{Scientific and runtime invariants}
 Preserve explicit solver contracts, unsafe-CG rejection, supported OLS/PPML requests and both bias modes. Existing authorities decide sample membership, rank, omissions and separation; preserve original factor slots and base flags. Routing, factor pivots and numerical preconditioners must not redefine those decisions.
 
@@ -1660,7 +1660,7 @@ B and C & Not run or inspected for selection. & No frozen B winner, public activ
 \sect{20 / AUTHORIZED RECOVERY}{All 20 standard cells now pass}
 \tagline{Codex update. Original outcomes remain on pages 18--20. This is the standard gate only.}
 \begin{note}\smallbody
-Johannes approved bounded recovery and future retries, with prospective bounds, host conditions and repeated-look accounting. Earlier failed or inconclusive runs remain unchanged. Scientific tolerances, model semantics and allowances are unchanged. \textbf{Replacement policy A, B and C are unrun; public Auto and explicit IT remain unchanged.}
+Johannes approved bounded recovery and future retries, with prospective bounds, host conditions and repeated-look accounting. Earlier failed or inconclusive runs remain unchanged. Scientific tolerances, model semantics and allowances are unchanged. \textbf{Replacement policy A is ineligible; B/C remain unopened. Public Auto and explicit IT are unchanged.}
 \end{note}
 \sub{Terminal wide-OLS result: 7 original + 14 confirmation + 42 new = 63 pairs}
 {\smallbody
@@ -1715,9 +1715,9 @@ The final continuation kept artifacts, inputs, median paired-ratio statistic, $\
 
 The nominal upper-tail sum is $0.025+0.005+0.001=0.031$, \textbf{not guaranteed 3.1\% sequential error control}. Percentile-bootstrap coverage is approximate; later sample size and confidence were chosen after earlier results, and pooling assumes comparable paired-ratio distributions across sessions. No exact or simultaneous guarantee is claimed.
 
-Replacement policy A remains pending: the same 42 cells, 12-policy grid, comparators and three pairs; terminal optional unavailabilities are not retried. B/C remain unopened. This standard-gate pass neither selects a router nor qualifies public activation; the separate A/B/C and invocation-equivalence obligations remain.
+Replacement policy A stopped at 60.06 seconds after \code{mds\_stores} reached 207.6\% CPU. Host evidence invalidated the entire cohort before timing inspection; cleanup is confirmed (return code $-2$). All 512 completed timing records and 139 completed traced calls passed science/certification; one traced call is unfinished and eight partial summaries remain. No performance conclusion or policy selection follows. B/C remain unopened. Timing awaits service-pause clarification or a changed host; the standard pass does not discharge routing/activation gates.
 }
-\anchor{Maintained recovery evidence and full hashes: \code{docs/VALIDATION.md}. Final pooled report SHA-256: \code{2478806f}; final clean host record: \code{96dff2b9}; 86-call summary: \code{51806cfc}. The prior 21-pair report \code{538c1285} and all invalidated records remain preserved.}
+\anchor{Recovery evidence and full hashes: \code{docs/VALIDATION.md}. Final pool: \code{2478806f}; clean host: \code{96dff2b9}; 86 calls: \code{51806cfc}; prior 21 pairs: \code{538c1285}. Ineligible A host: \code{4dea30ef}; records: \code{96827509}. Prior records remain preserved.}
 \vfill
 {\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}STANDARD GATE PASSED. ROUTING SELECTION PENDING. PUBLIC DEFAULT UNCHANGED.}
 \end{compactleaf}
