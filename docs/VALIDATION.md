@@ -153,9 +153,25 @@ the recovery interval plot and explanation on page 21; original results remain
 historical on pages 18--20. Compilation and changed-page visual checks pass.
 Its SHA-256 is
 `b978b696c5af7f06da1b62d55dfb66c1dcf5d4c179930d2af7bbdab80ef84318`.
-The final continuation has made no native calls: its two recorded admissions
-were rejected for competing host work. Replacement policy A, B and C remain
-unrun. Documentation and evidence edits do not change runtime artifact inputs.
+The final continuation subsequently passed its fifth admission and launched.
+After 70.07 seconds, Core Spotlight reached 120.6% CPU and the guard stopped
+the owned process tree, confirming cleanup. The whole attempt was declared
+ineligible from the host record before inspecting its timing values. No final
+pooled analysis occurred. One replacement attempt under the standing retry
+authorization preserves these interrupted observations separately and retains
+the same fixed 42 new pairs, 63-pair eligible pool, bounds and terminal decision.
+The replacement changes output locations only; it adds no eligible statistical
+look and does not relax the host guard.
+
+Before replacement policy A collection, a reviewed coordinator also binds fresh
+outputs to the guarded process. It rejects existing output, executes the frozen
+native command unchanged, and returns success only after complete policy records
+are hashed into its completion record. This prevents an early producer failure
+from attaching a new host record to stale results. Its four focused tests and
+independent Astra review pass; its SHA-256 is
+`fca17b66d89a36b6398d642ffbbe2ad133512c21d4b4d3404efa085db1616512`.
+Replacement policy A, B and C remain unrun. Documentation and evidence edits do
+not change runtime artifact inputs.
 
 The following section retains the original terminal outcomes unchanged.
 
