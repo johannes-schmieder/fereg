@@ -416,6 +416,14 @@ claims. The CLI currently supports macOS/Linux harnesses, not Windows.
 
 ## Finite routing policy qualification
 
+The [2026-10-14 retained observations](results/solver-routing-20261014.json)
+leave public adoption blocked: standard timing is scientifically exact with 18
+passes and two inconclusive cells; ablation timings are exploratory because of
+overlapping host activity; policy A was interrupted and cannot select a policy.
+No B/C selection or automatic retry follows. See the
+[validation explanation](../docs/VALIDATION.md#routing-timing-outcome-2026-10-14)
+before interpreting these measurements or proposing a new bounded qualification.
+
 [`routing.py`](routing.py) supplies the policy manifest, sanctioned developer
 injection mapping and A/B/C selector. It reuses `time_exact.compare`: paired
 median ratios, 10,000 fixed-seed bootstrap draws and a nominal 95% interval **per

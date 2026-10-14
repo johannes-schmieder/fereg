@@ -14,6 +14,78 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Routing timing outcome, 2026-10-14
+
+Commit `b22c54a0` implements the reviewed hidden routing experiments and the
+qualified explicit-OLS-CMG numerical repair. Public Auto and explicit IT remain
+unchanged. **Performance adoption is blocked.** The independent scientific
+qualification below remains valid; timing does not replace it.
+
+The [compact timing evidence](../bench/results/solver-routing-20261014.json)
+retains all 320 standard observations, all 1,352 ablation slots (including 72
+not-run slots), and all 232 interrupted policy observations in acquisition order,
+with original source hashes, case/artifact identities, scientific fingerprints,
+failure classifications and unchanged summaries. Its SHA-256 is
+`00c338afbca1d2a5be599a51cfa8a5d6c018cecdf6a2d4e4fed652094f70a342`.
+These compact observations and this explanation are retained evidence; ignored
+raw captures are not promised as permanent records.
+An independent row-by-row audit matched all retained values, order, statuses,
+summaries, fingerprints and source hashes. The documentation/data update has
+identical production tokens and all 58 artifact inputs to `b22c54a0`; runtime
+qualification is reused. Local documentation links and whitespace checks pass.
+
+| Panel | Outcome and limits |
+| --- | --- |
+| Standard 20 workloads | Completed one warmup and seven paired repetitions. All 320 calls retain exact science and solver signatures. Eighteen cells pass `max(5%, 1 ms)`; two are inconclusive. The complete panel does **not** pass nonregression. No retry or continuation was declared. |
+| Backend ablation A | All 26 cells collected. All 320 new traced calls and 1,280 warmup/measured calls pass science/repeatability. Eighteen prior optional unavailabilities remain unavailable, with 72 dependent slots not run. A macOS storage scan started during collection, so **all ablation timings are exploratory**, not quiet-host qualification. Ablations cannot select a policy. |
+| Policy A | Interrupted after competing Stata and storage work was detected at launch. The lead mistakenly dispatched the runner in the same tool batch as the host check, then stopped only the owned runner. Its 58 traced and 232 warmup/measured calls passed science; only three cell summaries were complete when interrupted during the fourth summary calculation. The producer records `failed`, not a complete panel. No policy selection occurred; B and C remain untouched. |
+
+The two standard nonpasses are reported without trimming or substitution:
+
+| Standard case | Baseline / candidate median (s) | Paired median ratio | Nominal 95% bootstrap interval | Allowance |
+| --- | --- | --- | --- | --- |
+| OLS, 129 regressors, four workers | 0.373374 / 0.379300 | 1.013664 | [0.990950, 1.103904] | 1.05 |
+| PPML, five regressors, one worker | 0.429588 / 0.430434 | 1.006928 | [0.980497, 1.062558] | 1.05 |
+
+Neither interval establishes a regression, but neither establishes the required
+nonregression bound. The original fixed-run stopping rule remains terminal.
+Successful A/B experiments cannot supersede this unresolved adoption prerequisite,
+and the final C holdout must remain untouched while it is unresolved. A distinct,
+bounded qualification amendment requires an explicit decision before execution;
+it must preserve these observations and account for repeated looks. No such
+amendment is approved by this report.
+
+Host observations use America/New_York local time. The standard panel ran
+06:49:36--07:00:30, before the observed storage-service start. Ablation ran
+07:01:56--07:20:02; StorageManagementService started at 07:11:52. At the policy
+launch, a process snapshot showed Stata at 162.3% CPU, that storage service at
+112.2%, and ApplicationsStorageExtension at 84.4%. Policy observations span
+07:21:22--07:21:35 (13.326 seconds). These observations establish possible
+ablation overlap and competing work at policy launch; they do not establish
+continuous utilization, a per-cell contamination boundary, or the cause of any
+individual timing. Activity Monitor had been quit with Johannes's authorization;
+no competing application was terminated. Builds, tests and agent host workloads
+were stopped throughout the measurements.
+
+The standard timing command first aborted in preflight because historical
+qualification receipt 19 still named the former IT checker at its live path.
+No native call or timing output existed. An independently reviewed task-local
+wrapper relocated only that exact receipt, in memory, to its byte-identical
+saved source; current reviewed checker/bridge validation runs before and after
+the unchanged recipe. Four focused tests and one nonnative preflight passed.
+All original files, the abort, command, cases, artifacts, statistics and bounds
+remain unchanged. This reference correction did not repeat a measurement.
+
+| Timing provenance | SHA-256 |
+| --- | --- |
+| Standard terminal summary | `3514797db3806da7b625dc4683bfbbed82a86610bbbac615b5671ac1209fd7ed` |
+| Standard terminal wrapper log | `2e6cc29f8cb4c2658626ffd4939fcb6d16dd61639e8cc6a73b9eb675b3784c1f` |
+| Standard cell log | `7d82d44c725b4f4e366fdfc170d8bb594983b7e4b922ee812cb68ea935c5e261` |
+| Original preflight abort | `39a8b2a91c5c21aff7449014908e7e9da4e77e8fe07684d7c20db5f77d5d4903` |
+| Reviewed receipt relocation wrapper | `25ae3deb1aa6e82690aee3a062c7a0c36cd2cafbc0441a68f0346087e4af132a` |
+| Complete ablation A collection | `d9f33acbccfc7f485597fbae741181fdcb0dfad2635673a180d87f30f270951a` |
+| Interrupted policy A collection | `5a48c8a08f7f5b678b711904f5d9ec7aba17276acc0a7e689e8cd7c88fb1ef57` |
+
 ## Integrated experimental routing, 2026-10-14
 
 The integrated implementation adds serial checkpointed Schur and general-LSMR
