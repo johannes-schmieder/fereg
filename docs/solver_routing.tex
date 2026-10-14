@@ -72,7 +72,7 @@
 \textbf{Design in one sentence.} Keep \code{auto} as a small deterministic router: exact structural shortcuts, inexpensive incumbent iterations, and at most one bounded optional upgrade, followed by an independent original-problem certificate.
 \end{note}
 \sub{Purpose and implementation boundary}
-Serial routing, overlap, prefix arms and PPML topology sharing are implemented. The explicit-CMG repair passes its full suite and fresh native checks (page 16); untimed routing prerequisites pass (page 15). Authorized recovery leaves 19 standard cells passing and one inconclusive (page 21). Original timing outcomes remain on pages 18--20; ablation timings are exploratory and replacement policy A is pending. Ordinary \code{auto} and explicit IT remain unchanged. No routing policy is selected or promoted.
+Serial routing, overlap, prefix arms and PPML topology sharing are implemented. The explicit-CMG repair passes its full suite and fresh native checks (page 16); untimed routing prerequisites pass (page 15). Authorized recovery now passes all 20 standard cells (page 21). Original timing outcomes remain on pages 18--20; ablation timings are exploratory and replacement policy A is pending. Ordinary \code{auto} and explicit IT remain unchanged. No routing policy is selected or promoted.
 \sub{Scientific and runtime invariants}
 Preserve explicit solver contracts, unsafe-CG rejection, supported OLS/PPML requests and both bias modes. Existing authorities decide sample membership, rank, omissions and separation; preserve original factor slots and base flags. Routing, factor pivots and numerical preconditioners must not redefine those decisions.
 
@@ -1654,67 +1654,72 @@ B and C & Not run or inspected for selection. & No frozen B winner, public activ
 
 
 % PAGE 21 ---------------------------------------------------------------------
-% Authorized recovery status authored by Codex; not GPT Pro code approval.
+% Authorized terminal recovery status authored by Codex; not GPT Pro code approval.
 \newleaf
 \begin{compactleaf}
-\sect{20 / AUTHORIZED RECOVERY}{19 pass; wide OLS remains inconclusive}
-\tagline{Codex update. Original outcomes remain unchanged on pages 18--20. No default promotion.}
+\sect{20 / AUTHORIZED RECOVERY}{All 20 standard cells now pass}
+\tagline{Codex update. Original outcomes remain on pages 18--20. This is the standard gate only.}
 \begin{note}\smallbody
-Johannes approved bounded recovery and future retries after the original report. Each further attempt needs prospective eligibility, bounds, host conditions and analysis, with prior observations and repeated-look accounting retained. This is not permission to sample automatically until a pass. Scientific tolerances, model semantics and performance allowances remain unchanged.
+Johannes approved bounded recovery and future retries, with prospective bounds, host conditions and repeated-look accounting. Earlier failed or inconclusive runs remain unchanged. Scientific tolerances, model semantics and allowances are unchanged. \textbf{Replacement policy A, B and C are unrun; public Auto and explicit IT remain unchanged.}
 \end{note}
-\sub{Completed confirmation: 7 original + 14 new = 21 eligible pairs per cell}
+\sub{Terminal wide-OLS result: 7 original + 14 confirmation + 42 new = 63 pairs}
 {\smallbody
-All 60 calls preserve exact science and solver signatures. The guarded run completed in 83.3 seconds with 19 monitor snapshots, no trigger, maximum unrelated aggregate CPU of 50.8 percentage points across 24 logical CPUs, and complete owned-process cleanup. No service was paused. Sampled, decayed CPU readings screen material interference; they cannot establish absence of all noise.
+The clean replacement completed all 86 calls with exact science and solver signatures, 11:03:08--11:05:34 America/New\_York. Its guard recorded 32 snapshots, maximum unrelated aggregate CPU of 44.5 percentage points across 24 logical CPUs, no trigger and complete owned-process cleanup. No background service was paused. Sampled, decayed CPU readings screen material interference, not every possible source of noise.
 }
 \begin{center}
-\begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily\fontsize{9}{11}\selectfont]
-\node[anchor=west,font=\sffamily\bfseries\fontsize{9}{11}\selectfont] at (0,0.45) {Pooled 21 pairs};
-\node[font=\sffamily\bfseries\fontsize{9}{11}\selectfont] at (10.1,0.45) {Median paired ratio and nominal 99\% interval};
-\draw[Rule,line width=0.40pt] (5.30000,.12)--(5.30000,-1.55);
-\node[text=Muted] at (5.30000,-1.85) {0.980};
-\draw[Rule,line width=0.40pt] (7.40000,.12)--(7.40000,-1.55);
-\node[text=Muted] at (7.40000,-1.85) {1.000};
-\draw[Rule,line width=0.40pt] (10.02500,.12)--(10.02500,-1.55);
-\node[text=Muted] at (10.02500,-1.85) {1.025};
-\draw[Amber,line width=0.90pt] (12.65000,.12)--(12.65000,-1.55);
-\node[text=Muted] at (12.65000,-1.85) {1.050};
-\draw[Rule,line width=0.40pt] (15.27500,.12)--(15.27500,-1.55);
-\node[text=Muted] at (15.27500,-1.85) {1.075};
-\node[anchor=west] at (0,-0.350) {Wide K129 / 4 workers};
-\draw[Amber,line width=1.5pt] (6.798488,-0.350)--(13.157750,-0.350);
-\fill[Amber] (8.556937,-0.350) circle (.065cm);
-\node[text=Amber,anchor=west] at (15.8,-0.350) {Open};
-\node[anchor=west] at (0,-1.150) {PPML K5 / 1 worker};
-\draw[Teal,line width=1.5pt] (6.322629,-1.150)--(8.127425,-1.150);
-\fill[Teal] (7.531600,-1.150) circle (.065cm);
-\node[text=Teal,anchor=west] at (15.8,-1.150) {Pass};
+\begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily\fontsize{8.7}{10.6}\selectfont]
+\node[anchor=west,font=\sffamily\bfseries\fontsize{9}{11}\selectfont] at (0,0.45) {Comparison / confidence};
+\node[font=\sffamily\bfseries\fontsize{9}{11}\selectfont] at (10.1,0.45) {Median paired ratio and nominal interval};
+\draw[Rule,line width=0.40pt] (5.70000,.12)--(5.70000,-2.15);
+\node[text=Muted] at (5.70000,-2.42) {0.980};
+\draw[Rule,line width=0.40pt] (7.70000,.12)--(7.70000,-2.15);
+\node[text=Muted] at (7.70000,-2.42) {1.000};
+\draw[Rule,line width=0.40pt] (10.20000,.12)--(10.20000,-2.15);
+\node[text=Muted] at (10.20000,-2.42) {1.025};
+\draw[Amber,line width=0.90pt] (12.70000,.12)--(12.70000,-2.15);
+\node[text=Muted] at (12.70000,-2.42) {1.050};
+\draw[Rule,line width=0.40pt] (15.20000,.12)--(15.20000,-2.15);
+\node[text=Muted] at (15.20000,-2.42) {1.075};
+\node[anchor=west] at (0,-0.350) {Wide / prior 21 / 99\%};
+\draw[Amber,line width=1.5pt] (7.127131,-0.350)--(13.183571,-0.350);
+\fill[Amber] (8.801845,-0.350) circle (.065cm);
+\node[text=Amber,anchor=west] at (15.7,-0.350) {Prior open};
+\node[anchor=west] at (0,-1.100) {PPML / 21 / 99\%};
+\draw[Teal,line width=1.5pt] (6.673933,-1.100)--(8.392785,-1.100);
+\fill[Teal] (7.825333,-1.100) circle (.065cm);
+\node[text=Teal,anchor=west] at (15.7,-1.100) {Pass};
+\node[anchor=west] at (0,-1.850) {Wide / final 63 / 99.8\%};
+\draw[Teal,line width=1.5pt] (6.994190,-1.850)--(9.263642,-1.850);
+\fill[Teal] (8.058862,-1.850) circle (.065cm);
+\node[text=Teal,anchor=west] at (15.7,-1.850) {Pass};
 
 \end{tikzpicture}
 \end{center}
 {\smallbody
-\begin{tabularx}{\linewidth}{P{0.18\linewidth}P{0.12\linewidth}P{0.12\linewidth}P{0.12\linewidth}Y}
+\begin{tabularx}{\linewidth}{P{0.29\linewidth}P{0.15\linewidth}Y P{0.13\linewidth}}
 \toprule
-\textbf{Cell} & \textbf{Original 7 median} & \textbf{New 14 median} & \textbf{Pooled 21 median} & \textbf{Pooled nominal 99\% interval}\\
+\textbf{Preserved comparison} & \textbf{Median ratio} & \textbf{Nominal interval} & \textbf{Outcome}\\
 \midrule
-Wide OLS / 4 & 1.013664 & 1.007821 & 1.011018 & [0.994271, 1.054836]\\
-PPML / 1 & 1.006928 & 1.000797 & 1.001253 & [0.989739, 1.006928]\\
+Wide / prior 21 pairs, 99\% & 1.011018 & [0.994271, 1.054836] & Inconclusive\\
+PPML / 21 pairs, 99\% & 1.001253 & [0.989739, 1.006928] & Pass\\
+Wide / final 63 pairs, 99.8\% & 1.003589 & [0.992942, 1.015636] & Pass\\
 \bottomrule
 \end{tabularx}
-Only the pooled upper endpoint decides, against 1.05. With 10,000 bootstrap draws, seed 739391 and zero-based endpoints 49/9949, PPML passes; wide OLS remains inconclusive (upper 1.0548357). The original 18 passing cells are retained. \textbf{19/20 is not an overall standard-qualification pass.}
+Only the final pooled upper endpoint decides against 1.05. Retaining the original 18 passes and PPML's 21-pair pass yields \textbf{20/20 standard nonregression passes}. The new 42 pairs alone are descriptive: median 1.001589, nominal 95\% interval [0.992047, 1.009302]; they do not replace the pooled decision.
 
-The first launched attempt was stopped after 20.07 seconds when Core Spotlight reached 110\% CPU. Its eight observations were declared ineligible from the host receipt before timing values were read. They remain preserved, outside the eligible pool; no additional eligible statistical look resulted.
+The earlier clean two-cell confirmation had 60 exact calls in 83.3 seconds, 19 snapshots and maximum unrelated aggregate CPU 50.8. Preserve both invalidated attempts outside eligible pools: eight observations stopped at Core Spotlight 110\% after 20.07 seconds, and 40 stopped at 120.6\% after 70.07 seconds. Each whole attempt was invalidated from host evidence before its timing values were read; neither added an eligible statistical look.
 }
-\sub{Declared terminal continuation; not yet collected}
+\sub{Frozen terminal rule and confidence limits}
 {\smallbody
-Only wide OLS receives exactly 42 additional pairs: $7+14+42=63$ pooled pairs. Preserve the other 19 passes and all invalidated observations. Limits are one warmup per plugin, 86 calls, 90 seconds per call and 900 seconds total. Keep the same artifacts, inputs, median paired ratio, allowance and host guard. Use 10,000 draws, seed 739391, nominal 99.8\% interval endpoints 9/9989; only the final pooled upper endpoint decides. No automatic restart. A remaining nonpass ends this unchanged-artifact qualification attempt; subsequent work turns to profiling or reconsidering the artifact.
+The final continuation kept artifacts, inputs, median paired-ratio statistic, $\max(5\%,1\ \mathrm{ms})$ allowance and host guard. Its limits were exactly 42 new pairs, one warmup per plugin, 86 calls, 90 seconds per call and 900 seconds total. The final analysis uses 10,000 draws, seed 739391 and nominal 99.8\% zero-based endpoints 9/9989. This is the terminal eligible look for the unchanged artifact; a nonpass would have ended the attempt, not added observations until a pass.
 
-The nominal upper-tail sum is $0.025+0.005+0.001=0.031$, \textbf{not guaranteed 3.1\% sequential error control}. Percentile-bootstrap coverage is approximate; later sample sizes and confidence levels follow earlier results, and pooling assumes comparable paired-ratio distributions across sessions. No exact or simultaneous guarantee is claimed.
+The nominal upper-tail sum is $0.025+0.005+0.001=0.031$, \textbf{not guaranteed 3.1\% sequential error control}. Percentile-bootstrap coverage is approximate; later sample size and confidence were chosen after earlier results, and pooling assumes comparable paired-ratio distributions across sessions. No exact or simultaneous guarantee is claimed.
 
-Replacement policy A is authorized but pending: same 42 cells, 12-policy grid, comparators and three pairs; terminal optional unavailabilities are not retried. B/C remain unopened. Public Auto and explicit IT remain unchanged.
+Replacement policy A remains pending: the same 42 cells, 12-policy grid, comparators and three pairs; terminal optional unavailabilities are not retried. B/C remain unopened. This standard-gate pass neither selects a router nor qualifies public activation; the separate A/B/C and invocation-equivalence obligations remain.
 }
-\anchor{Maintained recovery evidence and full hashes: \code{docs/VALIDATION.md}, ``Authorized routing qualification recovery.'' Pooled report SHA-256: \code{538c1285}; confirmation: \code{f6c523ca}; clean host record: \code{440badae}; invalidated attempt: \code{b685a892}. These identify evidence, not ignored-path retention promises.}
+\anchor{Maintained recovery evidence and full hashes: \code{docs/VALIDATION.md}. Final pooled report SHA-256: \code{2478806f}; final clean host record: \code{96dff2b9}; 86-call summary: \code{51806cfc}. The prior 21-pair report \code{538c1285} and all invalidated records remain preserved.}
 \vfill
-{\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}STANDARD QUALIFICATION UNRESOLVED. FINAL CONTINUATION DECLARED, NOT RUN.}
+{\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{Teal}STANDARD GATE PASSED. ROUTING SELECTION PENDING. PUBLIC DEFAULT UNCHANGED.}
 \end{compactleaf}
 
 \end{document}

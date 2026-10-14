@@ -113,15 +113,15 @@ new session summaries remain visible; only the declared pooled result decides.
 | OLS, 129 regressors, four workers | 1.011018 | [0.994271, 1.054836] | Inconclusive |
 | PPML, five regressors, one worker | 1.001253 | [0.989739, 1.006928] | Pass |
 
-Thus 19 of 20 standard cells pass; overall standard qualification remains
-unresolved. The completed confirmation summary has SHA-256
+At this intermediate look, 19 of 20 standard cells passed; overall standard
+qualification remained unresolved. The completed confirmation summary has SHA-256
 `f6c523cad77c6006a7b69d81374dd833baa7246e652681288b2b53bb1c3a9eca`,
 the pooled report
 `538c1285da28f0a0c9b14202a61eb60a820d418b79219923ea0d9555fde6230c`,
 and the terminal host record
 `440badae9e2febf3fc634e7242ecf76baf0d23774e7a70a288fe17288b5121db`.
 
-One terminal continuation is now declared for the unchanged artifact under the
+One terminal continuation was declared for the unchanged artifact under the
 standing retry authorization: only the unresolved wide-OLS cell receives exactly
 42 additional paired repetitions and one warmup per plugin (86 calls maximum,
 90 seconds per call, 900 seconds total). All original seven, completed-confirmation
@@ -142,16 +142,14 @@ sessions. A remaining nonpass ends the current qualification attempt on this
 unchanged artifact; further work turns to profiling or reconsidering the artifact,
 rather than adding eligible observations until a pass.
 
-The compact evidence file now appends all eight invalidated and 60 eligible
+The intermediate compact export appended eight invalidated and 60 eligible
 recovery observations, every pooled pair, twelve compact host records and the
-unrun final continuation declaration. Every value from the earlier export is
-unchanged; no full process inventory or personal path is retained. The extended
-file has SHA-256
-`429d8d6df1b576ea263e40cbabc895aacd28c2711c7f7fca0337c3ee4398f213`
-and is 739,715 bytes. The updated routing PDF is 21 pages (617,007 bytes), with
+then-unrun final continuation declaration. That 739,715-byte version had SHA-256
+`429d8d6df1b576ea263e40cbabc895aacd28c2711c7f7fca0337c3ee4398f213`.
+The corresponding routing PDF was 21 pages (617,007 bytes), with
 the recovery interval plot and explanation on page 21; original results remain
 historical on pages 18--20. Compilation and changed-page visual checks pass.
-Its SHA-256 is
+Its SHA-256 was
 `b978b696c5af7f06da1b62d55dfb66c1dcf5d4c179930d2af7bbdab80ef84318`.
 The final continuation subsequently passed its fifth admission and launched.
 After 70.07 seconds, Core Spotlight reached 120.6% CPU and the guard stopped
@@ -162,6 +160,42 @@ authorization preserves these interrupted observations separately and retains
 the same fixed 42 new pairs, 63-pair eligible pool, bounds and terminal decision.
 The replacement changes output locations only; it adds no eligible statistical
 look and does not relax the host guard.
+
+That replacement completed 11:03:08--11:05:34 America/New_York with all 86 calls
+exact. Its terminal host record confirms 32 snapshots, no interference trigger,
+maximum unrelated aggregate CPU 44.5 percentage points, successful coordinator
+exit and complete cleanup. No background service was paused. The host record
+was inspected before the pooled analysis. All original seven, first eligible
+confirmation 14 and terminal 42 pairs are retained; the failed eight- and
+40-observation attempts remain separate and excluded.
+
+| Final wide-OLS comparison | Median ratio | Interval | Outcome against 1.05 |
+| --- | --- | --- | --- |
+| All 63 eligible pairs, declared nominal 99.8% | 1.003589 | [0.992942, 1.015636] | Pass |
+| New 42 pairs alone, descriptive nominal 95% | 1.001589 | [0.992047, 1.009302] | Descriptive only |
+
+**All 20 standard cells now pass the declared nonregression gate.** The terminal
+pooled report has SHA-256
+`2478806f2ffaaac9ba56517c572907b5c47e82558b0a2fa0b818c5ff4f3f3b5e`;
+the clean host record has SHA-256
+`96dff2b9068ecb781485eb28469b1af9360004a54f4b003b037912cd09545ec8`.
+The approximate-bootstrap and session-comparability limitations above still
+apply. This closes the standard continuation; it does not select a routing
+policy, qualify the exploratory ablations, or change public Auto.
+
+The current compact export preserves every previous value and appends the
+interrupted 40 observations, final 86 observations, all 63 eligible pairs, bound
+protocols and seven more compact host records. Independent row-by-row comparison
+and bootstrap reconstruction agree exactly. No full process inventory or
+personal path is retained. It is 877,202 bytes with SHA-256
+`4b2f11426c6d38fc01699397dfbd2d7c828902e7490851e87ebc331887a95e8a`.
+The updated 21-page routing PDF is 616,812 bytes, SHA-256
+`6d69ed42dce98710a25929eb66cacc98f851a33b4fab71fa0d557d1c27e8e7ea`.
+Its first and final pages distinguish the passing standard gate from pending
+routing selection. Compilation, all page-number checks and visual inspection of
+both changed pages pass. Independent Astra reconstruction also confirms the
+eligible pool, original scientific fingerprints, retained 19 passes and final
+bootstrap decision. Runtime artifact inputs remain unchanged.
 
 Before replacement policy A collection, a reviewed coordinator also binds fresh
 outputs to the guarded process. It rejects existing output, executes the frozen
