@@ -298,7 +298,7 @@ All 512 timing calls and 141 completed traced calls passed their recorded scienc
 and certificate checks; one traced dispatch remains unfinished. Eight partial
 summaries are preserved without selection or a performance conclusion. The
 [second retry evidence](../bench/results/solver-routing-policy-a-retry02-interrupted-20261014.json)
-reconstructs the complete source object exactly: 823,401 bytes, SHA-256
+reconstructs the complete source object exactly. Its initial export was 823,401 bytes, SHA-256
 `f137944e95409cfa128a3e853784d741437aab27e688aa6e8b6251004548d9e5`.
 The completed standard gate and previous evidence remain unchanged.
 
@@ -320,6 +320,23 @@ The frozen protocol has SHA-256
 `6a886afd42f3523d59479a8114f1c0a8f66ea114a786e1472953de1a0d697109`;
 the guarded command has SHA-256
 `edf9a728036fa4c5bee3508d77a99a2cd79b57b76941836d299877a6ff8e7ad1`.
+Its first admission rejected an unrelated FEVC Stata test suite, with unrelated
+aggregate activity reaching 871.7 CPU percentage points. No native routing call
+started. The admission record has SHA-256
+`d5cf58513bcd5b0f09edfbab61d198edc3d6d51e8cae6f0ba6b0bc40ff0b9f1d`.
+The unrelated test process was inspected but not interrupted.
+After that test finished, two fresh admissions also failed: the first recorded
+Spotlight and desktop-service activity; the second recorded sustained desktop
+activity and an individual-limit violation. Their admission records have SHA-256
+`0f93db215b5259eb76134fd8480c0497c43eacd3bf0ac39e1771fb70af18f2b3` and
+`d0816cd2707e253a46768b60bf80adc74348ee25dd37360a0dd530b9c83a69b9`.
+This task's computer-use session was reset before the final admission. No native
+output directory or producer log was created. The bounded wait ended with the
+fixed retry prepared but unlaunched; host availability remains unresolved.
+The compact second-retry export now also retains all three follow-up admission
+summaries and sample observations, without changing its original source object:
+832,996 bytes, SHA-256
+`c22f2b2c15f6eaba9ea61a5b56144f6d1eb6b55f0f368be109c700887e6a7bb7`.
 
 The same amended guard, fresh separately inspected admission, terminal host
 clearance and fresh-record completion gate remain mandatory. Another interference
