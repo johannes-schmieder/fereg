@@ -220,10 +220,9 @@ completed traced calls pass their science and certificate checks. One additional
 traced dispatch has no terminal result. Eight partial performance summaries are
 preserved without a selection or performance conclusion. These interrupted
 observations do not alter the completed standard gate. B and C remain unopened,
-and public Auto is unchanged. Further collection awaits a quiet host; the
-separate clarification about temporarily pausing indexing services is pending,
-and no service has been paused. Documentation and evidence edits do not change
-runtime artifact inputs.
+and public Auto is unchanged. Johannes subsequently directed another retry while
+away from the computer, with Spotlight left running. No service has been paused.
+Documentation and evidence edits do not change runtime artifact inputs.
 
 The separate [interrupted policy evidence](../bench/results/solver-routing-policy-a-interrupted-20261014.json)
 retains every source field, observation and partial summary in lossless column
@@ -232,6 +231,16 @@ the entire original source object, including absent fields on the unfinished
 call. It is 819,578 bytes, SHA-256
 `e5ca973e7379ba53513d844332b6b3607e4c41d42437d81feb46ff924e39e335`.
 The completed standard evidence remains unchanged.
+
+This further policy A attempt is declared before collection. It retains the same
+42 cells, 12-policy grid, comparators, three paired repetitions, one warmup,
+120-second call limit and 14,400-second panel limit. The 18 previously unavailable
+optional comparisons remain unavailable. Fresh outputs preserve every previous
+attempt; neither interrupted cohort can enter selection. The same independently
+inspected admission and runtime interference guard apply, with no service
+changes. Only a complete eligible cohort may produce a sealed A shortlist and
+open B. No standard continuation, policy retuning or additional eligible
+statistical look is introduced by replacing a host-ineligible incomplete cohort.
 
 The following section retains the original terminal outcomes unchanged.
 
