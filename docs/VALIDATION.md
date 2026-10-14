@@ -14,6 +14,62 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Authorized routing qualification recovery, 2026-10-14
+
+After reviewing the outcome below, Johannes approved the bounded recovery and
+explicitly authorized future retries. This supersedes the requirement to ask
+again before another retry; it does not turn any existing failed or inconclusive
+run into a pass. Before each additional attempt, freeze its eligibility, bounds,
+host conditions and analysis, retain previous observations, and account for
+repeated looks. Scientific tolerances, model semantics and performance allowances
+remain unchanged.
+
+The first approved recovery preserves the candidate, baseline, harness and inputs.
+Only the two inconclusive standard cells receive 14 additional paired repetitions
+each, with one warmup per artifact and cell (60 calls maximum, 90 seconds per call,
+600 seconds total). All seven original pairs and 14 new pairs remain in the final
+21-pair comparison. It uses 10,000 bootstrap draws with seed 739391 and the nominal
+99% two-sided percentile interval (zero-based endpoints 49 and 9949), retaining
+the existing `max(5%, 1 ms)` allowance. Original, new-session and pooled results
+remain visible; only the frozen pooled upper bound decides this recovery.
+The original nominal 2.5% upper-tail allocation plus the final 0.5% gives a nominal
+3% per-cell allocation across the two looks. Percentile-bootstrap coverage is
+approximate, pooling assumes comparable sessions, and no exact or simultaneous
+error-control guarantee is claimed. Any later statistical look needs its own
+prospective allocation under the standing retry authorization.
+
+One complete replacement policy A uses the same 42 cells, finite 12-policy grid,
+comparators, three paired repetitions, 120-second call and 14,400-second panel
+limits. The entire interrupted A run remains in the evidence and is ineligible
+for selection because of independently observed host interference. Its three
+partial performance summaries were not read before that decision. Existing
+scientific prerequisites and terminal optional unavailabilities are reused;
+unavailable optional arms are not retried. No ablation rerun or kernel promotion
+is implied. B requires a complete eligible A selection; public-default C also
+requires resolved standard qualification, a qualifying B winner and the existing
+activation/equivalence gates. No recovery measurement has yet been completed by
+this authorization record.
+
+Admission precedes launch in a separate inspected step. Freeze the logical CPU
+count and activity classifications, then collect six process snapshots ten
+seconds apart. Every snapshot must keep unrelated aggregate CPU at or below
+10% of logical capacity, every unrelated process at or below 50% of one core,
+and competing computation at or below 5% of one core. Ordinary desktop processes
+remain counted. During measurement, a fixed five-second monitor stops the owned
+measurement process group for any unrelated process at 100% once, aggregate
+excess in two successive snapshots, or competing/unclassified computational
+activity above 5% in two successive snapshots. Monitor failure also stops the
+attempt. These are practical interference guards: decayed process CPU averages
+and discrete samples cannot establish absence of all noise. No unrelated process
+is terminated. Each trigger ends that attempt and preserves its observations;
+the standing retry authorization does not make a contaminated attempt eligible.
+
+The approved proposal has SHA-256
+`fb0cabaa34c687adae88a19071b60a88a0735e1e60195d5491e19a64f72cb5b9`.
+Its methodology and hardware-scaled host thresholds received independent Astra
+review. Executable guards and pooled analysis require their focused checks before
+use. The following section retains the original terminal outcomes unchanged.
+
 ## Routing timing outcome, 2026-10-14
 
 Commit `b22c54a0` implements the reviewed hidden routing experiments and the
@@ -50,10 +106,10 @@ The two standard nonpasses are reported without trimming or substitution:
 Neither interval establishes a regression, but neither establishes the required
 nonregression bound. The original fixed-run stopping rule remains terminal.
 Successful A/B experiments cannot supersede this unresolved adoption prerequisite,
-and the final C holdout must remain untouched while it is unresolved. A distinct,
-bounded qualification amendment requires an explicit decision before execution;
-it must preserve these observations and account for repeated looks. No such
-amendment is approved by this report.
+and the final C holdout must remain untouched while it is unresolved. At the
+close of this original report, no further qualification amendment had been
+approved. The subsequent authorization above permits bounded recovery and
+future retries while preserving these observations and repeated-look accounting.
 
 Host observations use America/New_York local time. The standard panel ran
 06:49:36--07:00:30, before the observed storage-service start. Ablation ran

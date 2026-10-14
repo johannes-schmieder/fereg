@@ -420,7 +420,9 @@ The [2026-10-14 retained observations](results/solver-routing-20261014.json)
 leave public adoption blocked: standard timing is scientifically exact with 18
 passes and two inconclusive cells; ablation timings are exploratory because of
 overlapping host activity; policy A was interrupted and cannot select a policy.
-No B/C selection or automatic retry follows. See the
+No B/C selection follows from those observations. Johannes subsequently
+authorized bounded recovery and future retries; each attempt still needs frozen
+bounds, retained observations and appropriate repeated-look accounting. See the
 [validation explanation](../docs/VALIDATION.md#routing-timing-outcome-2026-10-14)
 before interpreting these measurements or proposing a new bounded qualification.
 
