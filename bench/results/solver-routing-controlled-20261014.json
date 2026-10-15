@@ -7171,6 +7171,21 @@
           "sge_time": "2026-10-14T18:20:10-04:00",
           "queue": "econ@scc-tb4.scc.bu.edu",
           "state": "r"
+        },
+        "terminal_accounting": {
+          "jobnumber": "8103651",
+          "hostname": "scc-tb4.scc.bu.edu",
+          "qname": "econ",
+          "project": "welfgr",
+          "granted_pe": "omp",
+          "slots": "4",
+          "failed": "0",
+          "exit_status": "0",
+          "start_time": "Wed Oct 14 22:20:10 2026",
+          "end_time": "Thu Oct 15 00:08:22 2026",
+          "ru_wallclock": "6492",
+          "cpu": "9204.264",
+          "maxvmem": "1.138G"
         }
       },
       {
@@ -7182,7 +7197,17 @@
         "mem_per_core": "3G",
         "h_rt_seconds": 43200,
         "hold_jid": "8103651",
-        "maximum_native_calls": 12960
+        "maximum_native_calls": 12960,
+        "first_observed_start": {
+          "sge_time": "2026-10-14T20:14:52-04:00",
+          "queue": "econ@scc-zj4.scc.bu.edu",
+          "state": "r",
+          "slots": 28,
+          "observed_utc": "2026-10-15T00:16:01.190493+00:00",
+          "lifecycle_evidence_sha256": "80320ae908430449f65c0e064252103a76bdeb9de1c21ffade0e5d4067ce7d61",
+          "round_one_entered": true,
+          "terminal_qualification": false
+        }
       },
       {
         "id": "8103792",
@@ -7209,10 +7234,10 @@
     ],
     "accepted_utc": "2026-10-14T22:15:36Z",
     "control_archive_sha256": "11084fc6a0b231339c82d8d8271b913c758d505419202177f707e542e4818174",
-    "status": "submitted_not_yet_qualified",
+    "status": "collection_running_not_yet_qualified",
     "raw_outputs_remote": true,
     "collection_user_hold": {
-      "status": "applied",
+      "status": "released_after_validated_prerequisites",
       "job_id": "8103652",
       "reason": "SGE completion dependency does not establish successful predecessor accounting",
       "release_requires": [
@@ -7220,7 +7245,10 @@
         "complete fresh ready proof bound to frozen plan and artifact/input identities"
       ],
       "permission": "root explicitly approved automatic release after both checks",
-      "recorded_utc": "2026-10-14T22:18:26.193606+00:00"
+      "recorded_utc": "2026-10-14T22:18:26.193606+00:00",
+      "confirmation_recorded_utc": "2026-10-15T00:11:52.948137+00:00",
+      "release_output_sha256": "ec61888c12f040656c8a379d26e0f9dfb88a44e40f6ccd67af195dd40db9ca39",
+      "prerequisite_validation_sha256": "3f0b7c586552d7402ec7f0c41a98195d8949b41bd0526a7bacfc259550813d0a"
     },
     "source_archive_sha256": "f4f33bf06b4745566503e688b32b8314006973be171ea98ddb0e65d5c602e710",
     "input_archive_sha256": "e4f983e50bcb0b92a1d60c88d46a489489f4355f44a54d5b3db7900c4bf109d5",
@@ -7229,7 +7257,7 @@
     "A_cells": 42,
     "policy_candidates": 13,
     "setup_correction": "Plan output moved under the permitted task output root before submission; original failed freeze preserved, no solver or timing calls occurred.",
-    "claim": "Submitted jobs are not scientific or timing evidence. No routing policy is selected and public Auto remains unchanged."
+    "claim": "Submission alone did not qualify the campaign. Fresh Linux scientific prerequisites now validate; no accepted timing result, selected routing policy or public Auto promotion follows."
   },
   "activation_tooling": {
     "status": "source_review_and_tool_checks_passed",
@@ -7263,5 +7291,206 @@
       "Scientific and performance qualification of a new public default remains pending.",
       "The benchmark context fully revalidates dependencies before measurement; preparation cost is outside native-call timing."
     ]
+  },
+  "scc_discovery_prerequisites": {
+    "status": "ready_with_recorded_optional_unavailability",
+    "tool_commit": "09f7c134f098fe715cc4f62e23051211488112aa",
+    "job_id": "8103651",
+    "validated_utc": "2026-10-15T00:11:20.524347+00:00",
+    "plan_sha256": "bab1ae3021c632d227c6ee04c12ef3bbf5e7e1c5edf1122618acc11a2859f3a0",
+    "proof_sha256": "7ac6bf801486a4af39569d6a72e3b87203543f7fc263814791acbe82d0991543",
+    "records_sha256": "e3aaeb673b8a2f31aba04512d4df42a1240f0bff5300f0645922a292161b567e",
+    "terminal_validation_sha256": "3f0b7c586552d7402ec7f0c41a98195d8949b41bd0526a7bacfc259550813d0a",
+    "checked_wrapper_sha256": {
+      "no-fe-t1": "2ea83264a9818537428873f1ba0d5eba409141e1f90576b1e28ffe77a04d7be9",
+      "no-fe-t4": "5dfc08f14ea51de1512c99acd5c84e6f4b736fc52c53c595e96ad5ddbb95d323",
+      "one-fe-t1": "66c804b67f407987b3ad5aa3f1d8ea5a355bf7d0cef5096193f6dec7606f0c3a",
+      "one-fe-t4": "cffe9ca4b7f261989c13126cf3f6d33493de3637d715eb501c377e6af534c150",
+      "slopes-t1": "bca9dcad0d600e9dc467dc0cd1393315836efd9ac3473f24b1fce497847f87c4",
+      "slopes-t4": "4bc27a23683dc0626386473ba4242c7479ca6d5f8bcd6efd2ae8f102658ef87c",
+      "low-saved-t1": "84d461cebcaa0302e467812c6c55f8c5ba7f8753c5d80f15cef4ef52e2216ea2",
+      "low-saved-t4": "6b69aac22a1b0e1ee3cc916b659110edecd9e41cae65fdff445f5184d34d407b",
+      "dense-t1": "8db1cd1aeb65c22c390ffc8d9e328fdc17cc39948426d6b1052c420ab6a0f1a5",
+      "dense-t4": "21f573ae008713675ea7775cafbe58519e8d798e67787ef6cdc0f45b67a5223f",
+      "small-retained-t1": "3723d605163b19d62004d3b0443a5f44480e307c134ceff5be22beee31d5a6b1",
+      "small-retained-t4": "805df4ada3cdaaa37949f4c54b8cbf67b0a36b65f785f701a81e8ce587e72674",
+      "small-third-t1": "1220dd2d3e8b17e094078a899a733661a975846bc0c68b660a96efd359f6c2f7",
+      "small-third-t4": "90b25dad4a964a8f651f1b7a06f0d03be130a67454832842469f3d1e50ed8236",
+      "four-fe-t1": "5744d6f08c647182c982f8fc31bf96d0e4bfe5d9b11fc584ff732cacc236aba9",
+      "four-fe-t4": "227d31b0a637ea680118465aa0d45a0fa9f640521935b25254c365c4e5b8c78b",
+      "eight-fe-t1": "1224213242d6c1a6b4ce2b440949fa55b1d89137db8fb1aec13996e68db90b25",
+      "eight-fe-t4": "add03bb8a1a0dbc2248ef777f3fc5b3605efe4a49b007d0259ccf7b3b9c7256e",
+      "weighted-t1": "0ef2147b1af2125a3010138c21b6ab0f2b9ad19858cacca2c7ce379cce1df541",
+      "weighted-t4": "39002b054dd6cb39ec43a0467e5e28eda63503e0ed09841db7b25355ae547489",
+      "weak-t1": "7ca36841204296f5b194688460226d8e1cbad789ed36d246dee1113bc8e58bf9",
+      "weak-t4": "8290278f09bbd23f9467be8d514d3f15fb96c13bb1295dab68b9625270c4c106",
+      "repeated-cells-t1": "428f14933315bc640638ee7362a69ecc8fc3d03d962c633cbf1afe8593670d06",
+      "repeated-cells-t4": "8fd66045aca90344d3fbb5bfcb7adc2f0ffdb7c47ca703ce06252c4d996f9e66",
+      "wide-rhs-t1": "ff3b67d3403936740a179bb14329eb5863fe4b0238e2e392ccfd1a522368c9f5",
+      "wide-rhs-t4": "7e111a7606612dff6902893b1bcd84e1e03a396e0079baa61d064d2474b971cc",
+      "high-degree-mixed-t1": "c0a9dbc63d434bef9e53c1c4535b21a95913cede00f094587b6600e049aeddb4",
+      "high-degree-mixed-t4": "7fa39b1885de21ad5804a87d6e1ed1d758af5c69abf88786ea80d169dae7e7ee",
+      "high-degree-weak-t1": "d757ea261cd7f65bf9b7e732a00cb46ff8d66c9a271785558cb71ac9ef130a18",
+      "high-degree-weak-t4": "a2c30a2741699f3f0c2692c34f4875312509c30d55a26d5faf7e2a3ced3cbf8a",
+      "high-degree-stress-t1": "0d05543bf82a8b1b85e048febc93909f2a820a5d7677ec89b451477aa9229564",
+      "high-degree-stress-t4": "1b8a69296967e85ee004e20e1a7a611b1d0a0c6870517f3061c24631114652b4",
+      "sixteen-fe-t1": "fa05707529de4048afe72f41af43e10b60cf083c212a61acc34be1ab438730a6",
+      "sixteen-fe-t4": "541f85df0f44faff47e7ab346034d663f95b34dffe00b689e6744069a1556c10",
+      "disconnected-t1": "16e7fb8db8944d37df5a2c850bc545c44a8b435637990da90b97fb74bb4446d6",
+      "disconnected-t4": "48388e637cdc6e2052ff0c8cce46ab757b989695422ad81ba60cc9edfbe1932d",
+      "near-confounded-third-t1": "41dbf1aacfc3468649d60ad449a99c9013c5ec10152079228e8c6cf28c306951",
+      "near-confounded-third-t4": "6366225c1144a634caa7f9e7f46479ebc09ed1676ab55b03c77a9b5a8a1087ed",
+      "weight-dynamic-t1": "09db31356eddb8a76b3b379e4aa856bc4fa47f83752ca862d2278b00a0565607",
+      "weight-dynamic-t4": "ff184c94b917d6ceda49b9f4a6b240a37d6c30a8823b99f73550a01807a51d7b",
+      "inactive-columns-t1": "aa51accda36425317c954203ba1d064ed446ca46358dff33811a7d81ede4bc7f",
+      "inactive-columns-t4": "ca15fba72153ba63bed2735d5849eca3a0dba0790a732c8cf421549b7c4b844e"
+    },
+    "cells": 42,
+    "planned_arm_cell_pairs": 864,
+    "passed_arm_cell_pairs": 846,
+    "exact_repeat_pairs": 846,
+    "planned_call_slots": 1728,
+    "native_calls_dispatched": 1710,
+    "passed_native_calls": 1692,
+    "unavailable_optional_pairs": [
+      {
+        "cell": "weak-t1",
+        "arm": "map",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weak-t1",
+        "arm": "it",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weak-t1",
+        "arm": "it-coefficients",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weak-t4",
+        "arm": "map",
+        "reason": "iteration_limit_without_certificate",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weak-t4",
+        "arm": "it",
+        "reason": "iteration_limit_without_certificate",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weak-t4",
+        "arm": "it-coefficients",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "high-degree-weak-t1",
+        "arm": "map",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "high-degree-weak-t1",
+        "arm": "it",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "high-degree-weak-t1",
+        "arm": "it-coefficients",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "high-degree-weak-t4",
+        "arm": "map",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "high-degree-weak-t4",
+        "arm": "it",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "high-degree-weak-t4",
+        "arm": "it-coefficients",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weight-dynamic-t1",
+        "arm": "map",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weight-dynamic-t1",
+        "arm": "it",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weight-dynamic-t1",
+        "arm": "it-coefficients",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weight-dynamic-t4",
+        "arm": "map",
+        "reason": "iteration_limit_without_certificate",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weight-dynamic-t4",
+        "arm": "it",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      },
+      {
+        "cell": "weight-dynamic-t4",
+        "arm": "it-coefficients",
+        "reason": "120_second_timeout",
+        "repeat": "not_run"
+      }
+    ],
+    "cmg_cross_worker_checks": {
+      "passed": 14
+    },
+    "generic_it_cross_worker_checks": {
+      "passed": 1
+    },
+    "accounting": {
+      "jobnumber": "8103651",
+      "hostname": "scc-tb4.scc.bu.edu",
+      "qname": "econ",
+      "project": "welfgr",
+      "granted_pe": "omp",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 14 22:20:10 2026",
+      "end_time": "Thu Oct 15 00:08:22 2026",
+      "ru_wallclock": "6492",
+      "cpu": "9204.264",
+      "maxvmem": "1.138G"
+    },
+    "operational_note": "One preceding read-only validation reached all proof checks but qacct exceeded its5-second query cap. This repeated read allows15 seconds; no native call or measurement was repeated.",
+    "collection_release": {
+      "confirmation_recorded_utc": "2026-10-15T00:11:52.948137+00:00",
+      "release_output_sha256": "ec61888c12f040656c8a379d26e0f9dfb88a44e40f6ccd67af195dd40db9ca39",
+      "prerequisite_validation_sha256": "3f0b7c586552d7402ec7f0c41a98195d8949b41bd0526a7bacfc259550813d0a",
+      "status": "released_after_validated_prerequisites"
+    },
+    "claim": "Fresh Linux scientific prerequisites validated. Optional failures retain their original outcomes and are not retried. Timing, node isolation for collection, shortlist selection and any Mac default promotion remain unqualified.",
+    "producer_status": "complete_with_failed_cells"
   }
 }

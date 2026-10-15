@@ -140,12 +140,28 @@ four-hour cap) and dependent discovery job `8103652` (28 slots on a requested
 28-processor host, 84 GB, twelve-hour cap), using tools frozen at `09f7c134`.
 The plan binds 211 files, 42 original A cells and the full baseline-plus-twelve
 policy grid. Before submission, a plan-output path correction fixed a rejected
-freeze without running any solver. The discovery job also has a user hold:
-release requires predecessor accounting with `failed=0` and `exit_status=0`
-and its complete fresh scientific proof. The collector must independently
-verify actual reservation and placement before timing. Submission establishes
-neither science nor performance qualification; the retained evidence records
-the exact plan, archive hashes and resource requests.
+freeze without running any solver. The discovery job initially had a user hold:
+release required predecessor accounting with `failed=0` and `exit_status=0`
+and its complete fresh scientific proof.
+
+The prerequisite job completed on `scc-tb4` with both accounting codes zero,
+6,492 seconds wall time and reported `maxvmem=1.138G`. Validation checked
+the frozen plan, artifact/input identities and all 42 resulting packets. Of
+864 planned solver/case pairs, 846 passed with exact repeats: 1,692 passing
+native calls. Eighteen optional MAP, Irons–Tuck and coefficient-space Irons–Tuck
+comparisons on weak, high-degree weak and dynamic-weight graphs reached their
+declared time or iteration limits; their repeats were not run. The original
+failures remain unavailable comparisons, giving 1,710 actual native calls.
+All 14 CMG and the one generic Irons–Tuck cross-worker checks passed. This is
+Linux scientific evidence from a shared allocation, not timing evidence.
+
+Only after these checks, the existing job `8103652` was released. Collection
+started on `scc-zj4` with 28 reserved slots and entered its first round after
+initial admission. Terminal isolation/accounting and aggregate evidence must
+still pass before any shortlist is accepted. The retained compact evidence
+records all packet hashes, the terminal validation and accounting, optional
+failures and release identity.
+No Mac B selection or new public default follows from this prerequisite result.
 
 The separate public-activation and C transition now passes independent source
 review. Its prerequisite hook collects two hidden-policy and two uninjected
