@@ -449,6 +449,21 @@ descriptive analysis and protocol failure remain preserved. Subsequent planning
 concerns materially revised algorithms with independent mathematical witnesses
 and a prospective parser fix, rather than retrying the current h policies.
 
+A subsequent **prospective observer repair** strips executable right-padding
+before classification and retains the exact final field as `executable_raw`.
+Internal spaces, arguments, process identities, sampled counters, ownership,
+compute categories and activity thresholds remain unchanged. A bounded,
+invocation-local cache reuses only command/executable classification, never
+activity or eligibility decisions. This does not replace the closed B receipt
+or requalify its observations. Independent high-effort Astra review finds no
+remaining P1/P2. All 22 host tests, 28 timer tests, 334 benchmark tests and
+`./scripts/run_tests.sh` pass; the Linux ELF audit is platform-skipped on Mac.
+Production identity remains unchanged (192 runtime modules, 58 artifact inputs).
+A passive live parser preflight recognizes the expected compute categories in
+1,339 rows, including 761 padded names, with no snapshot error. This checks
+parsing, not host eligibility or performance. Source and check hashes are in the
+[compact evidence](../bench/results/solver-routing-controlled-20261014.json).
+
 Original `ps` stdout was not captured. Parsed process snapshots and sampled
 counters remain bound, but sampling can miss short-lived or first-seen sleeping
 work, missing arguments and PID reuse within start-time resolution. The frozen

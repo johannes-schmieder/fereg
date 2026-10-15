@@ -6,6 +6,7 @@ Ordinary OS/desktop load is retained. Eligibility is recomputed from the raw
 observations without reading solve times, scientific results or arm labels.
 """
 import argparse
+from functools import lru_cache
 import hashlib
 import json
 import math
@@ -87,7 +88,9 @@ def parse_ps(output):
         process = {"pid": int(parts[0]), "ppid": int(parts[1]),
                    "start": " ".join(parts[2:7]), "state": parts[7],
                    "cpu_seconds": cpu_seconds(parts[8]), "cpu_percent": float(parts[9]),
-                   "rss_kib": int(parts[10]), "executable": parts[11], "command": None}
+                   "rss_kib": int(parts[10]), "executable_raw": parts[11],
+                   "executable": parts[11].rstrip(), "command": None}
+        # Keep lossless final-field identity evidence alongside its unpadded name.
         require(process["pid"] > 0 and process["ppid"] >= 0, "invalid process PID")
         require(all(math.isfinite(process[key]) and process[key] >= 0
                     for key in ["cpu_seconds", "cpu_percent", "rss_kib"]), "invalid ps metric")
@@ -194,6 +197,10 @@ def validate_events(events, run_id):
 
 def process_activity(samples, calls, roots, policy):
     """Track identities through sampled parent edges; never keep a bare PID exemption."""
+    @lru_cache(maxsize=8192)
+    def classify(command, executable):
+        return known_compute(command, policy, executable)
+
     owned = {tuple(root) for root in roots}
     call_identities, prior, evidence = {}, {}, []
     previous_time = None
@@ -222,7 +229,7 @@ def process_activity(samples, calls, roots, policy):
         owned.update(current_owned)
         for process in processes:
             key = identity(process)
-            category = known_compute(process["command"], policy, process["executable"])
+            category = classify(process["command"], process["executable"])
             if key in current_owned or category is None:
                 continue
             previous = prior.get(key)

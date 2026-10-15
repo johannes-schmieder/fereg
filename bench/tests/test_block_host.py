@@ -53,6 +53,73 @@ class ProcessEvidence(unittest.TestCase):
                         "python3 desktop_helper.py", "Safari", "unknown_compute --busy"]:
             self.assertIsNone(host.known_compute(command, host.POLICY), command)
 
+    def test_padded_literal_ps_identity_reaches_argument_classification_and_activity(self):
+        cases = [
+            ('codex', '/opt/bin/codex exec', 'codex'),
+            ('node_repl', '/Applications/Codex.app/tool runtimes/node_repl', 'node_repl'),
+            ('cargo', '/opt/bin/cargo test', 'cargo'),
+            ('python3', '/opt/bin/python3 -m unittest tests', 'python-module:unittest'),
+            ('python3', '/opt/bin/python3 bench/routing.py run', 'python-repository-script'),
+            ('bash', '/bin/bash scripts/run_tests.sh', 'repository-shell-script'),
+            ('WindowServer', '/System/WindowServer', None),
+            ('python3', '/opt/bin/python3 desktop_helper.py', None),
+        ]
+        for executable, command, category in cases:
+            with self.subTest(executable=executable, command=command):
+                literal = executable + '   \t '
+                row = '42 1 Wed Oct 14 13:15:59 2026 R 0:01.00 2.0 123 ' + literal + '\n'
+                parsed = host.parse_ps(row)
+                host.attach_ps_arguments(parsed,
+                    '42 Wed Oct 14 13:15:59 2026 ' + command + '\n')
+                self.assertEqual(parsed[0]['executable_raw'], literal)
+                self.assertEqual(parsed[0]['executable'], executable)
+                self.assertEqual(parsed[0]['command'], command)
+                self.assertEqual(host.known_compute(command, host.POLICY, parsed[0]['executable']), category)
+                hits = host.process_activity([sample(1, parsed)], [], [], host.POLICY)
+                self.assertEqual([hit['category'] for hit in hits], [] if category is None else [category])
+
+    def test_ps_normalization_preserves_internal_spaces_raw_padding_and_other_fields(self):
+        prefix = '42 7 Wed Oct 14 13:15:59 2026 S 0:01.25 2.5 123 '
+        padded = host.parse_ps(prefix + 'Codex  Helper   \n')[0]
+        unpadded = host.parse_ps(prefix + 'Codex  Helper\n')[0]
+        self.assertEqual(padded['executable_raw'], 'Codex  Helper   ')
+        self.assertEqual(padded['executable'], 'Codex  Helper')
+        self.assertEqual(unpadded['executable_raw'], unpadded['executable'])
+        self.assertEqual({key: value for key, value in padded.items() if key != 'executable_raw'},
+                         {key: value for key, value in unpadded.items() if key != 'executable_raw'})
+        self.assertEqual((padded['pid'], padded['ppid'], padded['start'], padded['state'],
+                          padded['cpu_seconds'], padded['cpu_percent'], padded['rss_kib']),
+                         (42, 7, 'Wed Oct 14 13:15:59 2026', 'S', 1.25, 2.5, 123))
+
+    def test_classification_reuse_preserves_cpu_and_parent_ownership_changes(self):
+        command = 'python3 -m unittest tests'
+        first = process(command=command, cpu=1)
+        active = {**first, 'cpu_seconds': 1.25}
+        root = process(pid=1, parent=0, command='unknown supervisor')
+        owned = {**active, 'ppid': 1, 'cpu_seconds': 1.5, 'state': 'R', 'cpu_percent': 100}
+        reused = {**first, 'start': 'reused-pid', 'state': 'R', 'cpu_percent': 2}
+        samples = [sample(1, [first]), sample(2, [active]), sample(3, [root, owned]),
+                   sample(4, [reused])]
+        with patch.object(host.shlex, 'split', wraps=host.shlex.split) as split:
+            hits = host.process_activity(samples, [], [host.identity(root)], host.POLICY)
+        self.assertEqual([(hit['start'], hit['cpu_delta_seconds']) for hit in hits],
+                         [('start-a', .25), ('reused-pid', None)])
+        self.assertEqual([hit['category'] for hit in hits], ['python-module:unittest'] * 2)
+        self.assertEqual(sum(call.args == (command,) for call in split.call_args_list), 1)
+
+    def test_classification_distinguishes_commands_and_each_new_policy(self):
+        initial = process(pid=9, command='python3 desktop_helper.py', state='R', percent=2)
+        changed = {**initial, 'command': 'python3 -m unittest tests'}
+        different_executable = {**changed, 'executable': 'desktop-python'}
+        hits = host.process_activity([sample(1, [initial]), sample(2, [changed]),
+                                      sample(3, [different_executable])], [], [], host.POLICY)
+        self.assertEqual([hit['end_monotonic_ns'] for hit in hits], [2 * 10**9])
+        policy = copy.deepcopy(host.POLICY)
+        self.assertEqual(host.process_activity([sample(1, [initial])], [], [], policy), [])
+        policy['executables'].append('python3')
+        hits = host.process_activity([sample(1, [initial])], [], [], policy)
+        self.assertEqual([hit['category'] for hit in hits], ['python3'])
+
     def test_os_executable_name_handles_unquoted_paths_and_narrow_agent_runtimes(self):
         for executable, command in [
             ("stata-mp", "/Applications/Stata 19/StataMP.app/Contents/MacOS/stata-mp -b do fit.do"),

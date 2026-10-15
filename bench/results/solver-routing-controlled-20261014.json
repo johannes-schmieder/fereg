@@ -167,7 +167,27 @@
         2.5166015625
       ]
     ],
-    "classification": "All 72 planned blocks eligible; ordinary activity retained. Sampled process evidence only, no memory-pressure or sleep-detection claim."
+    "classification": "All 72 planned blocks eligible; ordinary activity retained. Sampled process evidence only, no memory-pressure or sleep-detection claim.",
+    "prospective_padding_repair": {
+      "scope": "Prospective observer tooling only; closed Mac B evidence and its faulty receipt remain unchanged. No new timing, B decision, activation or C execution.",
+      "parser": "Strip final-field executable right padding for identity matching; retain executable_raw losslessly and preserve internal spaces, joined arguments, identity, counters and ownership.",
+      "classification_cache": "Bounded 8192-entry category cache local to one process_activity call, keyed by complete command and normalized executable; no cached activity, ownership or mask decisions.",
+      "policy_categories_thresholds_and_exclusions_unchanged": true,
+      "source_sha256": "2fa2b6c10fd62a798d43e15210fbcebf958c518116c2fe0625c53d4873e55d71",
+      "tests_sha256": "baa237ad4e530f33c6cfa13b0077c42898ad696bc7d12b3a9d362ce9e1add945",
+      "independent_review": "gpt-6-astra at high effort: no remaining P1/P2 in reviewed diff, semantics or focused tests.",
+      "checks": {
+        "host_tests": 22,
+        "time_block_tests": 28,
+        "bench_tests": 334,
+        "repository_suite": "pass; Linux GNU ELF audit remains platform-skipped on Mac",
+        "production_identity": "unchanged against 2950f70b; 192 runtime modules, 58 artifact inputs",
+        "live_parser_preflight": "1339 process rows, 761 padded executable fields, normalized identity matches raw.rstrip for every row; known categories recognized; no snapshot error. Passive parser check only, not timing admission.",
+        "repository_log_sha256": "1f5e7ef708d9a80bc3c5e98ee9c241d3907ed462f9a75830c58a3a25d823c9c8",
+        "bench_log_sha256": "0572b584cd48dc6447bec98e11f34ae5b253f9812a8d73a147ac40a51b74e7f1",
+        "live_preflight_sha256": "bc4403bc160a4093294988dc3abd1678a92e0a28934c917bb387f7f0149a0932"
+      }
+    }
   },
   "analysis": {
     "summary": [
