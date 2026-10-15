@@ -8651,5 +8651,3233 @@
         "completed_mac_qualification_reused": true
       }
     }
+  },
+  "cmg_construction_diagnostic_20261015": {
+    "schema": 1,
+    "kind": "cmg_development_work_diagnostic_summary",
+    "status": "complete_science_and_exact_diagnostic_repeats_passed",
+    "scope": "Instrumented operation/work/refusal attribution and same-hierarchy numerical witnesses only; no speedup, relative-performance, qualification, isolated-host or public-routing claim. All elapsed values are descriptive instrumented observations.",
+    "limits": {
+      "maximum_native_calls": 40,
+      "per_call_seconds": 120,
+      "aggregate_seconds": 1200,
+      "actual_calls": 40,
+      "elapsed_seconds": 24.475396916968748,
+      "finalization_seconds": 0.0990372090600431,
+      "retries": 0,
+      "C_access": false,
+      "public_auto_changed": false
+    },
+    "fixed_design": {
+      "families": [
+        "weak",
+        "high-degree-weak",
+        "weight-dynamic",
+        "dense",
+        "wide-rhs"
+      ],
+      "workers": [
+        1,
+        4
+      ],
+      "arms": [
+        "h16-k0",
+        "cmgschur5"
+      ],
+      "first_and_repeat_each": true,
+      "degree": 5,
+      "samples": 0,
+      "seed": 0,
+      "one_original_bounded_attempt_per_action": true,
+      "builder_budget_unchanged": "one unchanged 32W0 attempt; no h resampling",
+      "no_baselines_or_extra_native_calls": true
+    },
+    "provenance": {
+      "source_commit": "165d37b4fad84bf1ee45f35d037096b2f59161a6",
+      "source_method": "git archive; no worktree",
+      "modified_copied_source_files": [
+        {
+          "path": "crates/fereg-core/src/fe/cmg_schur/bounded.rs",
+          "original_sha256": "f3a3a8ed333952c97e03ec751305f098bc4bc592327b87d75fcb961566bb69cd",
+          "diagnostic_sha256": "1884751c8f7cfa0a5bff81bbbd6b69f6029f20c491213d098ad2bc5365e0f3d3"
+        },
+        {
+          "path": "crates/fereg-core/src/fe/cmg_schur.rs",
+          "original_sha256": "0fa5c29d9fcec049dc4fb1aa09bb7a5b99d70c3e9ac30fe62f0aa50d933e9e07",
+          "diagnostic_sha256": "dfca2cceb5de011b958beeb0b51959702d55fbad28e3969406f836f1fd41a85c"
+        }
+      ],
+      "source_closure_files": 406,
+      "source_closure_canonical_sha256": "949cd9f4027a2428a7a0708f6b7c08d69ce08c73d36dc4b5f35955e2ec179f41",
+      "source_hashes_file_sha256": "10efbe5103c79ba6bb62ba0983e5bee96de9d6965b737215ca0f1ff5a48603f2",
+      "instrumentation_patch_sha256": "0e1c969a70c53c35506a35105989c5b8516ba7eb02ab1ab96194f07f49aa4c04",
+      "runner_sha256": "c61b890a8d806278cd1d2c4fdac10f386c07fd6d00514a8cc1041dab529ad26d",
+      "input_inventory_sha256": "89e03a6f22bae61d5691a8092ba1d9279a192051e30f66f15bff909b201bc13a",
+      "pre_native_review_sha256": "bc4e6320da1a649ca6dee17d6fbdfbea2e57ebbcea33c3b41710d07ab6094bc2",
+      "plugin_sha256": "1177247d2bdda601ab84e109ca292e6dfa6a3dc0649a5db1a9bf63fef3599c7d",
+      "harness_sha256": "e50ef580caca89663d5af70a7eb471ea75a77b59568c604608bd0e8c09342d14",
+      "manifest_file_sha256": "b870f85d2934e63287bb4ae3fb110bf0abb3bc159e8991c927aa0ad2166923bc",
+      "manifest_canonical_sha256": "b73168543234ebcfb4bae46595e266fba2cb00b2223e31da3dedc267abcf16dc",
+      "records_file_sha256": "b2ba5972117e5f63cdad23d7638593902a0131f15afefe85169ccb4d816c5f01",
+      "completion_file_sha256": "01b3d58c9502cfd1d1213719a4043ab674cf27cd3b8f4df3f388d4daf10c5145",
+      "retained_call_artifact_index_canonical_sha256": "d8719b8d88d57f4d56f21c25bed7dd6f245d22b74c5ec96195e2b14717cc981e",
+      "input_families": {
+        "weak": {
+          "case": "f4a734706f718c173327bcb1fab8a43924ca7868b245c643182262e25db8d63f",
+          "sidecar": "c5753fc0c0c2411b828b8ad58381e5f0dc885f67ff844f28bcda265f056218cf",
+          "oracle": "6f07697cab27ae215bcd8b1e7e361717f9eabccbdb9a687e9751f1e7e4326529",
+          "arrays": "adfd87a0a2b2fadfd5ca61dd129ee65d18c0eb5bed2d8034a557a1f2e13684d8"
+        },
+        "high-degree-weak": {
+          "case": "32c7df30f8aa89b237d532694ab0919c5f47b616eea77f593185787412048a88",
+          "sidecar": "5f44a931f5af1974afc7a78ba91b6bd2a9b5893265f7090c06d13098de2c807c",
+          "oracle": "72556a65400d94577085106f7b065aa0e83117b8410cd22fee2c62b6c64a07e8",
+          "arrays": "01fa1ff858ca0ec9c731ff7d379f36a815eac88e7b0c99109090c4553f8d0d79"
+        },
+        "weight-dynamic": {
+          "case": "85898c40f725d91108f6a68c683a3863442fb2f8eb11694dd17bd0e4cd9508fd",
+          "sidecar": "b507510115273dfb3d9dd647d529d87346eb20a24bd808f726e7aa5a293ca53f",
+          "oracle": "8ed2275d94a726a479518198f72dd0519a323e94241ea4f65ca14d4df95c1113",
+          "arrays": "03ee9f1b71dab5d1d14f9fdce89472d87caf2c8183827064f634b8f54dd6c68b"
+        },
+        "dense": {
+          "case": "dd6753c950f5dd188906b33bc8e315ce0368be5199b5fceb365bdb548a3dc43e",
+          "sidecar": "5585f9304b1f37c7d1bd074d6328062e3b131a94cf1cfa963f890cf215b4fa02",
+          "oracle": "a29340623a61241b565ae940239d87934e2f7473aa50a041bc560e8b7e1da81a",
+          "arrays": "f1f3a2a03099a5cd5936a756817f0ccd2a3966524ad6a2bda2785c3a9e0f74c7"
+        },
+        "wide-rhs": {
+          "case": "87cf0d473589cea7ffeebe6fef38803d90f93e86cea714018daf0d630b28ab9f",
+          "sidecar": "9c517557ceec4c913d32f4e34e02d45b7b49ca04d48375566c388cb7f6886cb5",
+          "oracle": "28906e5265fe37bbccf079951f6795e6b4d684a0b7f7ce662ed4c1adbd3233ac",
+          "arrays": "15756516e246b4f2cafecaa9d046025c9b4b39bf2e8b32fe81a0ed8e7a2dd16d"
+        }
+      }
+    },
+    "raw_validation": {
+      "bound_dependency_hashes_checked": 450,
+      "call_logs_hashed": 40,
+      "raw_numeric_json_hashed": 40,
+      "binary_columns_hashed": 40,
+      "retained_call_bytes_hashed": 883878042,
+      "all_source_input_artifact_output_hashes_match": true,
+      "science_and_certificate_passes": 40,
+      "exact_estimation_repeat_pairs": 20,
+      "normalized_diagnostic_repeat_pairs": 16,
+      "typed_no_build_repeat_pairs": 4,
+      "normalized_record_order_preserved": true,
+      "excluded_diagnostic_fields": [
+        "graph_seconds",
+        "hierarchy_seconds",
+        "workspace_seconds",
+        "apply_seconds"
+      ],
+      "original_outputs_modified": false
+    },
+    "host": {
+      "platform": "macOS-26.6.2-arm64-arm-64bit",
+      "start_end": {
+        "start": {
+          "metadata_sha256": "7d84f4cf58f226e8b44d4230d1d1e6428ec90909a2e47050521ee2ed5304eae9",
+          "process_and_thread_return_codes": [
+            0,
+            0
+          ],
+          "process_and_thread_output_sha256": [
+            "385a9e696e763c89b24d4bfbfe849ab1e138b3e985c3bf7e867ce5178473cc55",
+            "ef339be6b2f51a7eb3e01c4f54e5093c7b070ec54f38fe86960e791f2c8b3c40"
+          ],
+          "hostname": "Mac-Studio.local",
+          "job_id": null,
+          "slots": null,
+          "isolation_status": "not_assessed"
+        },
+        "end": {
+          "metadata_sha256": "ec0df22c36aa04791cc0e5fb20885c0fba7698a4395a10585b6822dbec25b8b6",
+          "process_and_thread_return_codes": [
+            0,
+            0
+          ],
+          "process_and_thread_output_sha256": [
+            "8cdcddfc29de0c8169370aab4391befbc7a0e888bc161887022b9394d5c983d3",
+            "283d22b340b6d2e39839bf96b4d98909151a150540db457bb322dd52fb99306e"
+          ],
+          "hostname": "Mac-Studio.local",
+          "job_id": null,
+          "slots": null,
+          "isolation_status": "not_assessed"
+        }
+      },
+      "coverage": "start/end process and current-runner thread snapshots only; no continuous observation or isolation assessment",
+      "SCC_job_submitted": false,
+      "perf": {
+        "status": "skipped_on_macOS",
+        "native_calls": 0,
+        "timeout_seconds": 8
+      },
+      "scheduler_preflight_file_sha256": "6057c6b5f4ae50374702f80ca89408d208ed28b68ea1209b43ebb5f5c3e8788a",
+      "scc_scheduler_preflight": "timed out; local Mac diagnostic used instead"
+    },
+    "phase_counts_columns": [
+      "tag",
+      "attempted_gates",
+      "attempted_units",
+      "admitted_gates",
+      "admitted_units",
+      "callbacks",
+      "allocations",
+      "break_checks"
+    ],
+    "exact_phase_share_rule": "For each profile and count column, a row count divided by the matching totals entry is its exact rational share; no rounding or wall-time attribution is implied. Allocation gates can charge zero units.",
+    "scan_columns_meaning": [
+      "load_calls",
+      "entries_visited",
+      "sort_input_items",
+      "distinct_cells"
+    ],
+    "scan_duplicate_rule": "sort_input_items - distinct_cells for each census/emission pass; partial refused emission is retained as observed.",
+    "work_profiles": {
+      "04927cbd658498b72ceb9599fd5e533e8f6cf99e93cc0cea17d193b2bc259830": {
+        "status": "complete",
+        "work_used": 106787008,
+        "operation_ordinal": 2025148,
+        "last_original_phase": "fereg.cmg.prepare",
+        "refusal": null,
+        "phase_counts": [
+          [
+            "validation",
+            6009,
+            88416,
+            6009,
+            88416,
+            6009,
+            3,
+            6010
+          ],
+          [
+            "load",
+            210000,
+            12960000,
+            210000,
+            12960000,
+            210000,
+            0,
+            210000
+          ],
+          [
+            "sort",
+            735630,
+            40520320,
+            735630,
+            40520320,
+            735630,
+            0,
+            735630
+          ],
+          [
+            "aggregation",
+            256324,
+            8202368,
+            256324,
+            8202368,
+            256324,
+            0,
+            256324
+          ],
+          [
+            "census-components",
+            57319,
+            2305256,
+            57319,
+            2305256,
+            57319,
+            3,
+            57319
+          ],
+          [
+            "emission",
+            13608,
+            664384,
+            13608,
+            664384,
+            13608,
+            0,
+            13608
+          ],
+          [
+            "Laplacian",
+            255856,
+            15521408,
+            255856,
+            15521408,
+            255856,
+            6,
+            255856
+          ],
+          [
+            "hierarchy",
+            484468,
+            26475624,
+            484468,
+            26475624,
+            484468,
+            71,
+            484468
+          ],
+          [
+            "workspace",
+            5934,
+            49232,
+            5934,
+            49232,
+            5934,
+            26,
+            5934
+          ]
+        ],
+        "totals": {
+          "attempted_gates": 2025148,
+          "attempted_units": 106787008,
+          "admitted_gates": 2025148,
+          "admitted_units": 106787008,
+          "callbacks": 2025148,
+          "allocations": 109,
+          "break_checks": 2025149
+        },
+        "scans": {
+          "census": {
+            "load_calls": 5000,
+            "entries_visited": 100000,
+            "sort_input_items": 100000,
+            "distinct_cells": 14081,
+            "duplicate_items_collapsed": 85919
+          },
+          "emission": {
+            "load_calls": 5000,
+            "entries_visited": 100000,
+            "sort_input_items": 100000,
+            "distinct_cells": 14081,
+            "duplicate_items_collapsed": 85919
+          }
+        }
+      },
+      "e55e79172cec520ce8486dc6463eeeeb85ab9a91992db35036a040ffc83c8f07": {
+        "status": "work-budget-refused",
+        "work_used": 855687152,
+        "operation_ordinal": 15609316,
+        "last_original_phase": "coarse edge sorting",
+        "refusal": {
+          "required_units": 64,
+          "remaining_units": 16,
+          "ordinal": 15609316,
+          "effective_construction_allowance": 855687168,
+          "phase": "coarse edge sorting",
+          "basis": "work-units"
+        },
+        "phase_counts": [
+          [
+            "validation",
+            12009,
+            176416,
+            12009,
+            176416,
+            12009,
+            3,
+            12010
+          ],
+          [
+            "load",
+            1220000,
+            77120000,
+            1220000,
+            77120000,
+            1220000,
+            0,
+            1220000
+          ],
+          [
+            "sort",
+            6644452,
+            386524928,
+            6644452,
+            386524928,
+            6644452,
+            0,
+            6644452
+          ],
+          [
+            "aggregation",
+            1688800,
+            54041600,
+            1688800,
+            54041600,
+            1688800,
+            0,
+            1688800
+          ],
+          [
+            "census-components",
+            582600,
+            18080344,
+            582600,
+            18080344,
+            582600,
+            3,
+            582600
+          ],
+          [
+            "emission",
+            122090,
+            2433408,
+            122090,
+            2433408,
+            122090,
+            0,
+            122090
+          ],
+          [
+            "Laplacian",
+            2735960,
+            165681976,
+            2735960,
+            165681976,
+            2735960,
+            6,
+            2735960
+          ],
+          [
+            "hierarchy",
+            2603406,
+            151628544,
+            2603405,
+            151628480,
+            2603405,
+            15,
+            2603406
+          ],
+          [
+            "workspace",
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "totals": {
+          "attempted_gates": 15609317,
+          "attempted_units": 855687216,
+          "admitted_gates": 15609316,
+          "admitted_units": 855687152,
+          "callbacks": 15609316,
+          "allocations": 27,
+          "break_checks": 15609318
+        },
+        "scans": {
+          "census": {
+            "load_calls": 10000,
+            "entries_visited": 600000,
+            "sort_input_items": 600000,
+            "distinct_cells": 122200,
+            "duplicate_items_collapsed": 477800
+          },
+          "emission": {
+            "load_calls": 10000,
+            "entries_visited": 600000,
+            "sort_input_items": 600000,
+            "distinct_cells": 122200,
+            "duplicate_items_collapsed": 477800
+          }
+        }
+      },
+      "7ac775a0c27143ba806063d04223cb1ad9c07b68560269a7832fde5a8280a9f8": {
+        "status": "work-budget-refused",
+        "work_used": 342945736,
+        "operation_ordinal": 6601757,
+        "last_original_phase": "fereg.cmg.prepare",
+        "refusal": {
+          "required_units": 64,
+          "remaining_units": 56,
+          "ordinal": 6601757,
+          "effective_construction_allowance": 342945792,
+          "phase": "fereg.cmg.prepare",
+          "basis": "work-units"
+        },
+        "phase_counts": [
+          [
+            "validation",
+            12009,
+            176416,
+            12009,
+            176416,
+            12009,
+            3,
+            12010
+          ],
+          [
+            "load",
+            771955,
+            48797680,
+            771955,
+            48797680,
+            771955,
+            0,
+            771955
+          ],
+          [
+            "sort",
+            4159747,
+            241724976,
+            4159746,
+            241724912,
+            4159746,
+            0,
+            4159747
+          ],
+          [
+            "aggregation",
+            1052056,
+            33665792,
+            1052056,
+            33665792,
+            1052056,
+            0,
+            1052056
+          ],
+          [
+            "census-components",
+            582592,
+            18079880,
+            582592,
+            18079880,
+            582592,
+            1,
+            582592
+          ],
+          [
+            "emission",
+            23399,
+            501056,
+            23399,
+            501056,
+            23399,
+            0,
+            23399
+          ],
+          [
+            "Laplacian",
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            "hierarchy",
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            "workspace",
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "totals": {
+          "attempted_gates": 6601758,
+          "attempted_units": 342945800,
+          "admitted_gates": 6601757,
+          "admitted_units": 342945736,
+          "callbacks": 6601757,
+          "allocations": 4,
+          "break_checks": 6601759
+        },
+        "scans": {
+          "census": {
+            "load_calls": 10000,
+            "entries_visited": 600000,
+            "sort_input_items": 600000,
+            "distinct_cells": 122200,
+            "duplicate_items_collapsed": 477800
+          },
+          "emission": {
+            "load_calls": 2655,
+            "entries_visited": 159300,
+            "sort_input_items": 159300,
+            "distinct_cells": 24208,
+            "duplicate_items_collapsed": 135092
+          }
+        }
+      },
+      "032163d5c224f98da1d8d591488e43eebd1e6b10f281a37fbe0bbc2d43ce2b71": {
+        "status": "complete",
+        "work_used": 127327112,
+        "operation_ordinal": 2411778,
+        "last_original_phase": "fereg.cmg.prepare",
+        "refusal": null,
+        "phase_counts": [
+          [
+            "validation",
+            106009,
+            1688416,
+            106009,
+            1688416,
+            106009,
+            3,
+            106010
+          ],
+          [
+            "load",
+            210000,
+            12960000,
+            210000,
+            12960000,
+            210000,
+            0,
+            210000
+          ],
+          [
+            "sort",
+            1020976,
+            58782464,
+            1020976,
+            58782464,
+            1020976,
+            0,
+            1020976
+          ],
+          [
+            "aggregation",
+            256324,
+            8202368,
+            256324,
+            8202368,
+            256324,
+            0,
+            256324
+          ],
+          [
+            "census-components",
+            57319,
+            2305256,
+            57319,
+            2305256,
+            57319,
+            3,
+            57319
+          ],
+          [
+            "emission",
+            13608,
+            664384,
+            13608,
+            664384,
+            13608,
+            0,
+            13608
+          ],
+          [
+            "Laplacian",
+            255893,
+            15523776,
+            255893,
+            15523776,
+            255893,
+            6,
+            255893
+          ],
+          [
+            "hierarchy",
+            485835,
+            27152176,
+            485835,
+            27152176,
+            485835,
+            71,
+            485835
+          ],
+          [
+            "workspace",
+            5814,
+            48272,
+            5814,
+            48272,
+            5814,
+            26,
+            5814
+          ]
+        ],
+        "totals": {
+          "attempted_gates": 2411778,
+          "attempted_units": 127327112,
+          "admitted_gates": 2411778,
+          "admitted_units": 127327112,
+          "callbacks": 2411778,
+          "allocations": 109,
+          "break_checks": 2411779
+        },
+        "scans": {
+          "census": {
+            "load_calls": 5000,
+            "entries_visited": 100000,
+            "sort_input_items": 100000,
+            "distinct_cells": 14081,
+            "duplicate_items_collapsed": 85919
+          },
+          "emission": {
+            "load_calls": 5000,
+            "entries_visited": 100000,
+            "sort_input_items": 100000,
+            "distinct_cells": 14081,
+            "duplicate_items_collapsed": 85919
+          }
+        }
+      }
+    },
+    "request_summaries": [
+      {
+        "family": "weak",
+        "workers": 1,
+        "arm": "h16-k0",
+        "first_repeat_call_indices": [
+          0,
+          39
+        ],
+        "science_fingerprint_sha256": "732ad2da461aeba784d7dd909358cf87dcf1f1d7063960061fbf8882ea7fbfdc",
+        "column_sha256": "7c775b507aec2a0b6e6c34d495e77c2e191b59f871081669d9f3e00093d6a01f",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "aca782f4a24aec33ca677ea4a5e2f04692f591b4dcbbe5f465574ec74de5341a",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.075397,
+          0.073209
+        ],
+        "observed_maxrss_bytes": [
+          34766848,
+          35471360
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "bounded",
+            "action": "primary",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.01082925,
+                0.010690125
+              ],
+              "hierarchy_seconds": [
+                0.004007083,
+                0.00391875
+              ],
+              "workspace_seconds": [
+                5.2625e-05,
+                4.1459e-05
+              ]
+            },
+            "work_profile_sha256": "04927cbd658498b72ceb9599fd5e533e8f6cf99e93cc0cea17d193b2bc259830",
+            "signatures": {
+              "graph": "90265f4d1e8f72d3",
+              "firm_components": "0d66a43a62009115",
+              "full_preconditioner": "f062b4db01ce9adb",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "f853dcb387acf3f1",
+              "rhs_bank_signature": "ac12ab7c29010ef1",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 313416,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.00034925,
+                      0.000342459
+                    ],
+                    [
+                      0.000335042,
+                      0.00033375
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000337167,
+                      0.000331
+                    ],
+                    [
+                      0.000332833,
+                      0.000333292
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000149875,
+                      0.000148709
+                    ],
+                    [
+                      0.000155291,
+                      0.000149083
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "actions": [
+          {
+            "final": 0,
+            "preset": "routing_h16_k0",
+            "iterations_used": 22,
+            "setup_work_used": 132295264,
+            "setup_work_limit": 168968192,
+            "certified": true,
+            "construction_ordinals": [
+              1
+            ],
+            "action": "primary",
+            "attempted": 1,
+            "completed": 1,
+            "refused": 0,
+            "not_attempted": false
+          },
+          {
+            "final": 1,
+            "preset": "routing_h16_k0",
+            "iterations_used": 8,
+            "setup_work_used": 0,
+            "setup_work_limit": 67970048,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "final_residual",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          }
+        ]
+      },
+      {
+        "family": "weak",
+        "workers": 1,
+        "arm": "cmgschur5",
+        "first_repeat_call_indices": [
+          1,
+          2
+        ],
+        "science_fingerprint_sha256": "38246bd00708f20f0f90e0c81547792e04c0a03eed1cecc7b7128c4d091926d6",
+        "column_sha256": "606eb2eee5dc7391a01ba3ae87e4b05e0847a926458907c0f7a16d37f8a2762e",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "99c58b28d83109e657037dc60e628b37faa2c392894832f6661984025376c775",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.048818,
+          0.048607
+        ],
+        "observed_maxrss_bytes": [
+          35405824,
+          35356672
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "explicit",
+            "action": "not_labeled_by_explicit_trace",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.00180475,
+                0.001772167
+              ],
+              "hierarchy_seconds": [
+                0.000562708,
+                0.000541416
+              ],
+              "workspace_seconds": [
+                2.3625e-05,
+                2.4167e-05
+              ]
+            },
+            "signatures": {
+              "graph": "90265f4d1e8f72d3",
+              "firm_components": "0d66a43a62009115",
+              "full_preconditioner": "f062b4db01ce9adb",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "f853dcb387acf3f1",
+              "rhs_bank_signature": "ac12ab7c29010ef1",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 313416,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.00033425,
+                      0.000333792
+                    ],
+                    [
+                      0.000334542,
+                      0.000334291
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000334833,
+                      0.00033475
+                    ],
+                    [
+                      0.00033625,
+                      0.000336
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000151709,
+                      0.000161542
+                    ],
+                    [
+                      0.000154125,
+                      0.0001525
+                    ]
+                  ]
+                },
+                {
+                  "variant": "parallel-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000154291,
+                      0.000147833
+                    ],
+                    [
+                      0.000153917,
+                      0.000148417
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "family": "weak",
+        "workers": 4,
+        "arm": "h16-k0",
+        "first_repeat_call_indices": [
+          3,
+          4
+        ],
+        "science_fingerprint_sha256": "2362b9464fd8407cfa45d62330f54c3726987bcb1306af9795c549afb23f90b0",
+        "column_sha256": "7c775b507aec2a0b6e6c34d495e77c2e191b59f871081669d9f3e00093d6a01f",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "aca782f4a24aec33ca677ea4a5e2f04692f591b4dcbbe5f465574ec74de5341a",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.0487,
+          0.047314
+        ],
+        "observed_maxrss_bytes": [
+          36192256,
+          36175872
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "bounded",
+            "action": "primary",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.010702,
+                0.0106885
+              ],
+              "hierarchy_seconds": [
+                0.003864459,
+                0.003880875
+              ],
+              "workspace_seconds": [
+                4.0584e-05,
+                4.0709e-05
+              ]
+            },
+            "work_profile_sha256": "04927cbd658498b72ceb9599fd5e533e8f6cf99e93cc0cea17d193b2bc259830",
+            "signatures": {
+              "graph": "90265f4d1e8f72d3",
+              "firm_components": "0d66a43a62009115",
+              "full_preconditioner": "f062b4db01ce9adb",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "f853dcb387acf3f1",
+              "rhs_bank_signature": "ac12ab7c29010ef1",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 313416,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000335917,
+                      0.000335958
+                    ],
+                    [
+                      0.000336583,
+                      0.000334375
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000330167,
+                      0.00033525
+                    ],
+                    [
+                      0.000337375,
+                      0.000332542
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000152334,
+                      0.000148167
+                    ],
+                    [
+                      0.0001505,
+                      0.000148541
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "actions": [
+          {
+            "final": 0,
+            "preset": "routing_h16_k0",
+            "iterations_used": 22,
+            "setup_work_used": 132295264,
+            "setup_work_limit": 168968192,
+            "certified": true,
+            "construction_ordinals": [
+              1
+            ],
+            "action": "primary",
+            "attempted": 1,
+            "completed": 1,
+            "refused": 0,
+            "not_attempted": false
+          },
+          {
+            "final": 1,
+            "preset": "routing_h16_k0",
+            "iterations_used": 8,
+            "setup_work_used": 0,
+            "setup_work_limit": 67970048,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "final_residual",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          }
+        ]
+      },
+      {
+        "family": "weak",
+        "workers": 4,
+        "arm": "cmgschur5",
+        "first_repeat_call_indices": [
+          5,
+          6
+        ],
+        "science_fingerprint_sha256": "aff7c8c88ce49ed95b0b2163383585bfa1d37ff556c73699953752d1a448e19d",
+        "column_sha256": "606eb2eee5dc7391a01ba3ae87e4b05e0847a926458907c0f7a16d37f8a2762e",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "99c58b28d83109e657037dc60e628b37faa2c392894832f6661984025376c775",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.033179,
+          0.033377
+        ],
+        "observed_maxrss_bytes": [
+          36683776,
+          36356096
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "explicit",
+            "action": "not_labeled_by_explicit_trace",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.001799125,
+                0.001816458
+              ],
+              "hierarchy_seconds": [
+                0.000536708,
+                0.000531208
+              ],
+              "workspace_seconds": [
+                0.000249208,
+                0.000192458
+              ]
+            },
+            "signatures": {
+              "graph": "90265f4d1e8f72d3",
+              "firm_components": "0d66a43a62009115",
+              "full_preconditioner": "f062b4db01ce9adb",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "f853dcb387acf3f1",
+              "rhs_bank_signature": "ac12ab7c29010ef1",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 313416,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000335667,
+                      0.000335625
+                    ],
+                    [
+                      0.000339542,
+                      0.00033525
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000335542,
+                      0.000337833
+                    ],
+                    [
+                      0.000336167,
+                      0.000338208
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000151333,
+                      0.0001615
+                    ],
+                    [
+                      0.000150458,
+                      0.000149042
+                    ]
+                  ]
+                },
+                {
+                  "variant": "parallel-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "172a5583b08781eb",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.00031425,
+                      0.000322583
+                    ],
+                    [
+                      0.000302625,
+                      0.000310167
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "family": "high-degree-weak",
+        "workers": 1,
+        "arm": "h16-k0",
+        "first_repeat_call_indices": [
+          7,
+          8
+        ],
+        "science_fingerprint_sha256": "85bd727e29b2c0610e528adb788dbaa05b12522564397fb796140245107d29ec",
+        "column_sha256": "8e5a5c5e9f6fd26e2dcc01055f9c7656773dd79861af90fb8955a096e73d66fb",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "fdb216aff4f4c5a261fa9676146c4955cf86785b146a016e644d0cf7aff9b9f0",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.627687,
+          0.629557
+        ],
+        "observed_maxrss_bytes": [
+          153075712,
+          153042944
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "bounded",
+            "action": "primary",
+            "status": "work-budget-refused",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.094972625,
+                0.094802292
+              ],
+              "hierarchy_seconds": [
+                0.020794416,
+                0.020772125
+              ],
+              "workspace_seconds": [
+                0.0,
+                0.0
+              ]
+            },
+            "work_profile_sha256": "e55e79172cec520ce8486dc6463eeeeb85ab9a91992db35036a040ffc83c8f07"
+          },
+          {
+            "ordinal": 2,
+            "type": "bounded",
+            "action": "final_residual",
+            "status": "work-budget-refused",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.04524,
+                0.0452685
+              ],
+              "hierarchy_seconds": [
+                0.0,
+                0.0
+              ],
+              "workspace_seconds": [
+                0.0,
+                0.0
+              ]
+            },
+            "work_profile_sha256": "7ac775a0c27143ba806063d04223cb1ad9c07b68560269a7832fde5a8280a9f8"
+          }
+        ],
+        "actions": [
+          {
+            "final": 0,
+            "preset": "routing_h16_k0",
+            "iterations_used": 53,
+            "setup_work_used": 855687152,
+            "setup_work_limit": 977928192,
+            "certified": true,
+            "construction_ordinals": [
+              1
+            ],
+            "action": "primary",
+            "attempted": 1,
+            "completed": 0,
+            "refused": 1,
+            "not_attempted": false
+          },
+          {
+            "final": 1,
+            "preset": "routing_h16_k0",
+            "iterations_used": 27,
+            "setup_work_used": 342945736,
+            "setup_work_limit": 391938048,
+            "certified": true,
+            "construction_ordinals": [
+              2
+            ],
+            "action": "final_residual",
+            "attempted": 1,
+            "completed": 0,
+            "refused": 1,
+            "not_attempted": false
+          }
+        ]
+      },
+      {
+        "family": "high-degree-weak",
+        "workers": 1,
+        "arm": "cmgschur5",
+        "first_repeat_call_indices": [
+          9,
+          10
+        ],
+        "science_fingerprint_sha256": "f29e26dee854dfd51512ee5ba76bcc11b81fd7238f874420d9a8e7a2786370ed",
+        "column_sha256": "bf47d419b18210f3247e7217622be9f634d0ef6d5b2517b3461f9d24c409caee",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "867a23f8609b1c7c82df9426042b8a48b639e07efd4161b844a605976ad1d174",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.47455,
+          0.470922
+        ],
+        "observed_maxrss_bytes": [
+          160743424,
+          160694272
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "explicit",
+            "action": "not_labeled_by_explicit_trace",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.016082208,
+                0.016054708
+              ],
+              "hierarchy_seconds": [
+                0.008237708,
+                0.008189041
+              ],
+              "workspace_seconds": [
+                8.9083e-05,
+                8.6875e-05
+              ]
+            },
+            "signatures": {
+              "graph": "cdc366cae9ad51f7",
+              "firm_components": "b93495babc21bf57",
+              "full_preconditioner": "8eecb4e1b06bf00d",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "e5a8bfb8b98cd3f9",
+              "rhs_bank_signature": "2504a6c023545659",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 3231360,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4ab5f3f9ce0614f6",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.010906334,
+                      0.010958042
+                    ],
+                    [
+                      0.010908208,
+                      0.010901583
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4ab5f3f9ce0614f6",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.010970875,
+                      0.011089291
+                    ],
+                    [
+                      0.010898,
+                      0.010943042
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4ab5f3f9ce0614f6",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.004091125,
+                      0.004048375
+                    ],
+                    [
+                      0.004107334,
+                      0.004040166
+                    ]
+                  ]
+                },
+                {
+                  "variant": "parallel-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4ab5f3f9ce0614f6",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.004068084,
+                      0.004065833
+                    ],
+                    [
+                      0.004045417,
+                      0.00404075
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "family": "high-degree-weak",
+        "workers": 4,
+        "arm": "h16-k0",
+        "first_repeat_call_indices": [
+          11,
+          12
+        ],
+        "science_fingerprint_sha256": "869defc18deffe5af8ba05c6eeced45be618b19c103c19506e6daff655ac7c9c",
+        "column_sha256": "8e5a5c5e9f6fd26e2dcc01055f9c7656773dd79861af90fb8955a096e73d66fb",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "fdb216aff4f4c5a261fa9676146c4955cf86785b146a016e644d0cf7aff9b9f0",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.36137,
+          0.361928
+        ],
+        "observed_maxrss_bytes": [
+          153812992,
+          153731072
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "bounded",
+            "action": "primary",
+            "status": "work-budget-refused",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.095349709,
+                0.093090625
+              ],
+              "hierarchy_seconds": [
+                0.020764958,
+                0.020822667
+              ],
+              "workspace_seconds": [
+                0.0,
+                0.0
+              ]
+            },
+            "work_profile_sha256": "e55e79172cec520ce8486dc6463eeeeb85ab9a91992db35036a040ffc83c8f07"
+          },
+          {
+            "ordinal": 2,
+            "type": "bounded",
+            "action": "final_residual",
+            "status": "work-budget-refused",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.045124833,
+                0.046222459
+              ],
+              "hierarchy_seconds": [
+                0.0,
+                0.0
+              ],
+              "workspace_seconds": [
+                0.0,
+                0.0
+              ]
+            },
+            "work_profile_sha256": "7ac775a0c27143ba806063d04223cb1ad9c07b68560269a7832fde5a8280a9f8"
+          }
+        ],
+        "actions": [
+          {
+            "final": 0,
+            "preset": "routing_h16_k0",
+            "iterations_used": 53,
+            "setup_work_used": 855687152,
+            "setup_work_limit": 977928192,
+            "certified": true,
+            "construction_ordinals": [
+              1
+            ],
+            "action": "primary",
+            "attempted": 1,
+            "completed": 0,
+            "refused": 1,
+            "not_attempted": false
+          },
+          {
+            "final": 1,
+            "preset": "routing_h16_k0",
+            "iterations_used": 27,
+            "setup_work_used": 342945736,
+            "setup_work_limit": 391938048,
+            "certified": true,
+            "construction_ordinals": [
+              2
+            ],
+            "action": "final_residual",
+            "attempted": 1,
+            "completed": 0,
+            "refused": 1,
+            "not_attempted": false
+          }
+        ]
+      },
+      {
+        "family": "high-degree-weak",
+        "workers": 4,
+        "arm": "cmgschur5",
+        "first_repeat_call_indices": [
+          13,
+          14
+        ],
+        "science_fingerprint_sha256": "7f07e907b827878aaca9ebc7d520a40eb7decaf757198afc5b0c7098f990aa1d",
+        "column_sha256": "bf47d419b18210f3247e7217622be9f634d0ef6d5b2517b3461f9d24c409caee",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "867a23f8609b1c7c82df9426042b8a48b639e07efd4161b844a605976ad1d174",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.332443,
+          0.33237
+        ],
+        "observed_maxrss_bytes": [
+          172589056,
+          172523520
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "explicit",
+            "action": "not_labeled_by_explicit_trace",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.015233959,
+                0.015230792
+              ],
+              "hierarchy_seconds": [
+                0.007692375,
+                0.007733459
+              ],
+              "workspace_seconds": [
+                0.001962375,
+                0.001994666
+              ]
+            },
+            "signatures": {
+              "graph": "cdc366cae9ad51f7",
+              "firm_components": "b93495babc21bf57",
+              "full_preconditioner": "8eecb4e1b06bf00d",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "e5a8bfb8b98cd3f9",
+              "rhs_bank_signature": "2504a6c023545659",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 3231360,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4ab5f3f9ce0614f6",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.010904916,
+                      0.010882917
+                    ],
+                    [
+                      0.010884875,
+                      0.010875458
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4ab5f3f9ce0614f6",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.010901,
+                      0.010892958
+                    ],
+                    [
+                      0.010906291,
+                      0.010900417
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4ab5f3f9ce0614f6",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.0040825,
+                      0.004035833
+                    ],
+                    [
+                      0.004076125,
+                      0.004083
+                    ]
+                  ]
+                },
+                {
+                  "variant": "parallel-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4ab5f3f9ce0614f6",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.004457875,
+                      0.004396709
+                    ],
+                    [
+                      0.004421292,
+                      0.004485375
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "family": "weight-dynamic",
+        "workers": 1,
+        "arm": "h16-k0",
+        "first_repeat_call_indices": [
+          15,
+          16
+        ],
+        "science_fingerprint_sha256": "e08ac4c4ddb4a53b66ae4d79e1591da35e3cad1c86b7ceef91f1a7425766e323",
+        "column_sha256": "fa2715843523ca4ae47647bb67de93f28ec22e1c31f6fb55ebc599136b377d0f",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "f3f2f4b259c0684b08a6b993ad46707c5378f10d338223f095243dc52349ad4c",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.087845,
+          0.087666
+        ],
+        "observed_maxrss_bytes": [
+          39305216,
+          39239680
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "bounded",
+            "action": "primary",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.014441417,
+                0.014630917
+              ],
+              "hierarchy_seconds": [
+                0.00394725,
+                0.00394475
+              ],
+              "workspace_seconds": [
+                3.9958e-05,
+                3.9333e-05
+              ]
+            },
+            "work_profile_sha256": "032163d5c224f98da1d8d591488e43eebd1e6b10f281a37fbe0bbc2d43ce2b71",
+            "signatures": {
+              "graph": "59b5dc97347733ae",
+              "firm_components": "0d66a43a62009115",
+              "full_preconditioner": "0e7f332455613639",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "f853dcb387acf3f1",
+              "rhs_bank_signature": "ac12ab7c29010ef1",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 307656,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000337916,
+                      0.000335167
+                    ],
+                    [
+                      0.000336667,
+                      0.000351209
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000337291,
+                      0.000337292
+                    ],
+                    [
+                      0.000341125,
+                      0.000334292
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000155625,
+                      0.0001525
+                    ],
+                    [
+                      0.00015475,
+                      0.000151917
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "actions": [
+          {
+            "final": 0,
+            "preset": "routing_h16_k0",
+            "iterations_used": 23,
+            "setup_work_used": 152884008,
+            "setup_work_limit": 168968192,
+            "certified": true,
+            "construction_ordinals": [
+              1
+            ],
+            "action": "primary",
+            "attempted": 1,
+            "completed": 1,
+            "refused": 0,
+            "not_attempted": false
+          },
+          {
+            "final": 1,
+            "preset": "routing_h16_k0",
+            "iterations_used": 9,
+            "setup_work_used": 0,
+            "setup_work_limit": 67970048,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "final_residual",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          }
+        ]
+      },
+      {
+        "family": "weight-dynamic",
+        "workers": 1,
+        "arm": "cmgschur5",
+        "first_repeat_call_indices": [
+          17,
+          18
+        ],
+        "science_fingerprint_sha256": "7e9eaea17cac8b587c0232d5cc1de25fcd317fd9fc3ff703559c02b73c53a07a",
+        "column_sha256": "e0f86a1db3f85328c5de8a9a22a4e26b6737c7561438fac21df5ccf59a00c779",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "6d25128a8b406182269ed46a18cdca00946f778430830f1e845fe1d478202774",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.060841,
+          0.060785
+        ],
+        "observed_maxrss_bytes": [
+          39387136,
+          39321600
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "explicit",
+            "action": "not_labeled_by_explicit_trace",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.0036325,
+                0.003612125
+              ],
+              "hierarchy_seconds": [
+                0.0005175,
+                0.000515
+              ],
+              "workspace_seconds": [
+                2.65e-05,
+                2.5875e-05
+              ]
+            },
+            "signatures": {
+              "graph": "59b5dc97347733ae",
+              "firm_components": "0d66a43a62009115",
+              "full_preconditioner": "0e7f332455613639",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "f853dcb387acf3f1",
+              "rhs_bank_signature": "ac12ab7c29010ef1",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 307656,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000335792,
+                      0.000336417
+                    ],
+                    [
+                      0.000337667,
+                      0.00033625
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000338333,
+                      0.000338583
+                    ],
+                    [
+                      0.000340375,
+                      0.0003375
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000153875,
+                      0.000157167
+                    ],
+                    [
+                      0.000158125,
+                      0.000163417
+                    ]
+                  ]
+                },
+                {
+                  "variant": "parallel-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000152375,
+                      0.000163833
+                    ],
+                    [
+                      0.00015725,
+                      0.000153709
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "family": "weight-dynamic",
+        "workers": 4,
+        "arm": "h16-k0",
+        "first_repeat_call_indices": [
+          19,
+          20
+        ],
+        "science_fingerprint_sha256": "2e1dfebf4ce8379bdc029fd325210366a72b9799913da6e65dbdaff46bd6ae56",
+        "column_sha256": "fa2715843523ca4ae47647bb67de93f28ec22e1c31f6fb55ebc599136b377d0f",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "f3f2f4b259c0684b08a6b993ad46707c5378f10d338223f095243dc52349ad4c",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.06109,
+          0.060988
+        ],
+        "observed_maxrss_bytes": [
+          40075264,
+          40009728
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "bounded",
+            "action": "primary",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.014545167,
+                0.014485792
+              ],
+              "hierarchy_seconds": [
+                0.003866458,
+                0.003889667
+              ],
+              "workspace_seconds": [
+                4.0125e-05,
+                3.9292e-05
+              ]
+            },
+            "work_profile_sha256": "032163d5c224f98da1d8d591488e43eebd1e6b10f281a37fbe0bbc2d43ce2b71",
+            "signatures": {
+              "graph": "59b5dc97347733ae",
+              "firm_components": "0d66a43a62009115",
+              "full_preconditioner": "0e7f332455613639",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "f853dcb387acf3f1",
+              "rhs_bank_signature": "ac12ab7c29010ef1",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 307656,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000339417,
+                      0.000349084
+                    ],
+                    [
+                      0.000337833,
+                      0.000335333
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000341,
+                      0.00034075
+                    ],
+                    [
+                      0.000341,
+                      0.000337
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000154791,
+                      0.000151625
+                    ],
+                    [
+                      0.000155292,
+                      0.000152042
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "actions": [
+          {
+            "final": 0,
+            "preset": "routing_h16_k0",
+            "iterations_used": 23,
+            "setup_work_used": 152884008,
+            "setup_work_limit": 168968192,
+            "certified": true,
+            "construction_ordinals": [
+              1
+            ],
+            "action": "primary",
+            "attempted": 1,
+            "completed": 1,
+            "refused": 0,
+            "not_attempted": false
+          },
+          {
+            "final": 1,
+            "preset": "routing_h16_k0",
+            "iterations_used": 9,
+            "setup_work_used": 0,
+            "setup_work_limit": 67970048,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "final_residual",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          }
+        ]
+      },
+      {
+        "family": "weight-dynamic",
+        "workers": 4,
+        "arm": "cmgschur5",
+        "first_repeat_call_indices": [
+          21,
+          22
+        ],
+        "science_fingerprint_sha256": "7aa1c0747841cc81bf4519106ec86d0087350f91617b363f46b3459a45f19508",
+        "column_sha256": "e0f86a1db3f85328c5de8a9a22a4e26b6737c7561438fac21df5ccf59a00c779",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "6d25128a8b406182269ed46a18cdca00946f778430830f1e845fe1d478202774",
+        "estimation_coefficient_slots": 3,
+        "descriptive_call_seconds": [
+          0.044478,
+          0.044376
+        ],
+        "observed_maxrss_bytes": [
+          40189952,
+          40255488
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "explicit",
+            "action": "not_labeled_by_explicit_trace",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.003654666,
+                0.003648208
+              ],
+              "hierarchy_seconds": [
+                0.000514167,
+                0.000515833
+              ],
+              "workspace_seconds": [
+                0.000111584,
+                0.000104542
+              ]
+            },
+            "signatures": {
+              "graph": "59b5dc97347733ae",
+              "firm_components": "0d66a43a62009115",
+              "full_preconditioner": "0e7f332455613639",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "f853dcb387acf3f1",
+              "rhs_bank_signature": "ac12ab7c29010ef1",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 307656,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000337041,
+                      0.00034775
+                    ],
+                    [
+                      0.00033875,
+                      0.000337083
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000338375,
+                      0.000336333
+                    ],
+                    [
+                      0.000337125,
+                      0.000340584
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000154792,
+                      0.000152666
+                    ],
+                    [
+                      0.000154917,
+                      0.000163959
+                    ]
+                  ]
+                },
+                {
+                  "variant": "parallel-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "6d6b2989b31a02dd",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.00039625,
+                      0.000297125
+                    ],
+                    [
+                      0.000437416,
+                      0.000314125
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "family": "dense",
+        "workers": 1,
+        "arm": "h16-k0",
+        "first_repeat_call_indices": [
+          23,
+          24
+        ],
+        "science_fingerprint_sha256": "5b05d6c9ee5ebe5760c5a37a3a1b52a2d087254703d945a34abc8edd75d608c4",
+        "column_sha256": "c4138a7ce478a4bc873d30a2c9318b5763e467326201aadb033d2bffcb83b526",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "not_attempted",
+        "normalized_diagnostic_sha256": null,
+        "estimation_coefficient_slots": 6,
+        "descriptive_call_seconds": [
+          0.039202,
+          0.038991
+        ],
+        "observed_maxrss_bytes": [
+          44924928,
+          44843008
+        ],
+        "constructions": [],
+        "actions": [
+          {
+            "final": 0,
+            "preset": "routing_h16_k0",
+            "iterations_used": 3,
+            "setup_work_used": 0,
+            "setup_work_limit": 258241536,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "primary",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          },
+          {
+            "final": 1,
+            "preset": "routing_h16_k0",
+            "iterations_used": 3,
+            "setup_work_used": 0,
+            "setup_work_limit": 64616448,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "final_residual",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          }
+        ],
+        "no_build_attestation": {
+          "basis": "traced resource actions completed before the fixed builder checkpoint",
+          "traced_first": true,
+          "first_call_index": 23,
+          "request": {
+            "family": "dense",
+            "workers": 1,
+            "arm": "h16-k0"
+          },
+          "expected_preset": "routing_h16_k0",
+          "all_setup_work_used": 0,
+          "iterations_used": [
+            3,
+            3
+          ],
+          "checkpoint": 16,
+          "auto_schur_route_present": false
+        }
+      },
+      {
+        "family": "dense",
+        "workers": 1,
+        "arm": "cmgschur5",
+        "first_repeat_call_indices": [
+          25,
+          26
+        ],
+        "science_fingerprint_sha256": "3a3642337f950017c1f0c18fe0e803a7579f8c081f82e248fdfb420c742b0915",
+        "column_sha256": "acebcb853f39391427bc284338e20070ade635cb02f625305d38ce16fd18c379",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "6972728f7895b4f461eafbd86479d70c701501ff439b3b56b725bb997000283a",
+        "estimation_coefficient_slots": 6,
+        "descriptive_call_seconds": [
+          0.060523,
+          0.06044
+        ],
+        "observed_maxrss_bytes": [
+          47595520,
+          47579136
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "explicit",
+            "action": "not_labeled_by_explicit_trace",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.004814416,
+                0.004818375
+              ],
+              "hierarchy_seconds": [
+                0.002968917,
+                0.002929167
+              ],
+              "workspace_seconds": [
+                2.4584e-05,
+                2.2625e-05
+              ]
+            },
+            "signatures": {
+              "graph": "1e58d6164a116c96",
+              "firm_components": "b3fa27830ba7be51",
+              "full_preconditioner": "ee57473fefe543d9",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "6eb750d42d1d0ee1",
+              "rhs_bank_signature": "671b1fb8315994d7",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 192600,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "78398afc9ef92a5e",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000310041,
+                      0.000307833
+                    ],
+                    [
+                      0.000309417,
+                      0.000307834
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "78398afc9ef92a5e",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000308042,
+                      0.000309958
+                    ],
+                    [
+                      0.000346667,
+                      0.000325917
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "78398afc9ef92a5e",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000385125,
+                      0.000384542
+                    ],
+                    [
+                      0.000386125,
+                      0.000385167
+                    ]
+                  ]
+                },
+                {
+                  "variant": "parallel-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "78398afc9ef92a5e",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.00038475,
+                      0.000384958
+                    ],
+                    [
+                      0.000385459,
+                      0.000385625
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "family": "dense",
+        "workers": 4,
+        "arm": "h16-k0",
+        "first_repeat_call_indices": [
+          27,
+          28
+        ],
+        "science_fingerprint_sha256": "8cece6b3149b81475bfafafaa07e14d8ea16388b42165711c63f2fdc1f1f6bdb",
+        "column_sha256": "c4138a7ce478a4bc873d30a2c9318b5763e467326201aadb033d2bffcb83b526",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "not_attempted",
+        "normalized_diagnostic_sha256": null,
+        "estimation_coefficient_slots": 6,
+        "descriptive_call_seconds": [
+          0.023685,
+          0.023332
+        ],
+        "observed_maxrss_bytes": [
+          45613056,
+          45514752
+        ],
+        "constructions": [],
+        "actions": [
+          {
+            "final": 0,
+            "preset": "routing_h16_k0",
+            "iterations_used": 3,
+            "setup_work_used": 0,
+            "setup_work_limit": 258241536,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "primary",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          },
+          {
+            "final": 1,
+            "preset": "routing_h16_k0",
+            "iterations_used": 3,
+            "setup_work_used": 0,
+            "setup_work_limit": 64616448,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "final_residual",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          }
+        ],
+        "no_build_attestation": {
+          "basis": "traced resource actions completed before the fixed builder checkpoint",
+          "traced_first": true,
+          "first_call_index": 27,
+          "request": {
+            "family": "dense",
+            "workers": 4,
+            "arm": "h16-k0"
+          },
+          "expected_preset": "routing_h16_k0",
+          "all_setup_work_used": 0,
+          "iterations_used": [
+            3,
+            3
+          ],
+          "checkpoint": 16,
+          "auto_schur_route_present": false
+        }
+      },
+      {
+        "family": "dense",
+        "workers": 4,
+        "arm": "cmgschur5",
+        "first_repeat_call_indices": [
+          29,
+          30
+        ],
+        "science_fingerprint_sha256": "9be97313e25baa287c7ef688b517514f76f0ff6fccf41724b569fd619c29534e",
+        "column_sha256": "acebcb853f39391427bc284338e20070ade635cb02f625305d38ce16fd18c379",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "6972728f7895b4f461eafbd86479d70c701501ff439b3b56b725bb997000283a",
+        "estimation_coefficient_slots": 6,
+        "descriptive_call_seconds": [
+          0.047595,
+          0.048149
+        ],
+        "observed_maxrss_bytes": [
+          48250880,
+          47906816
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "explicit",
+            "action": "not_labeled_by_explicit_trace",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.004852,
+                0.004863542
+              ],
+              "hierarchy_seconds": [
+                0.00298975,
+                0.002963583
+              ],
+              "workspace_seconds": [
+                2.5708e-05,
+                2.35e-05
+              ]
+            },
+            "signatures": {
+              "graph": "1e58d6164a116c96",
+              "firm_components": "b3fa27830ba7be51",
+              "full_preconditioner": "ee57473fefe543d9",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "6eb750d42d1d0ee1",
+              "rhs_bank_signature": "671b1fb8315994d7",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 192600,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "78398afc9ef92a5e",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000323541,
+                      0.000308667
+                    ],
+                    [
+                      0.00031025,
+                      0.000308
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "78398afc9ef92a5e",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000308167,
+                      0.000307875
+                    ],
+                    [
+                      0.000307875,
+                      0.000307459
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "78398afc9ef92a5e",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.0003855,
+                      0.000384792
+                    ],
+                    [
+                      0.000385333,
+                      0.000384875
+                    ]
+                  ]
+                },
+                {
+                  "variant": "parallel-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "78398afc9ef92a5e",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000384625,
+                      0.000386667
+                    ],
+                    [
+                      0.000384541,
+                      0.000384625
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "family": "wide-rhs",
+        "workers": 1,
+        "arm": "h16-k0",
+        "first_repeat_call_indices": [
+          31,
+          32
+        ],
+        "science_fingerprint_sha256": "a2697fa05dae5465a72da9742cc2ac594d74c087560f8286b9bf61c341d05b23",
+        "column_sha256": "c9075228f611645dd4ae77e2b62f7e2e818383b8745b22adc9a0b63823381cf6",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "not_attempted",
+        "normalized_diagnostic_sha256": null,
+        "estimation_coefficient_slots": 17,
+        "descriptive_call_seconds": [
+          0.103469,
+          0.103026
+        ],
+        "observed_maxrss_bytes": [
+          82132992,
+          82083840
+        ],
+        "constructions": [],
+        "actions": [
+          {
+            "final": 0,
+            "preset": "routing_h16_k0",
+            "iterations_used": 14,
+            "setup_work_used": 0,
+            "setup_work_limit": 643204864,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "primary",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          },
+          {
+            "final": 1,
+            "preset": "routing_h16_k0",
+            "iterations_used": 13,
+            "setup_work_used": 0,
+            "setup_work_limit": 70882048,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "final_residual",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          }
+        ],
+        "no_build_attestation": {
+          "basis": "traced resource actions completed before the fixed builder checkpoint",
+          "traced_first": true,
+          "first_call_index": 31,
+          "request": {
+            "family": "wide-rhs",
+            "workers": 1,
+            "arm": "h16-k0"
+          },
+          "expected_preset": "routing_h16_k0",
+          "all_setup_work_used": 0,
+          "iterations_used": [
+            14,
+            13
+          ],
+          "checkpoint": 16,
+          "auto_schur_route_present": false
+        }
+      },
+      {
+        "family": "wide-rhs",
+        "workers": 1,
+        "arm": "cmgschur5",
+        "first_repeat_call_indices": [
+          33,
+          34
+        ],
+        "science_fingerprint_sha256": "0a73576c193adb5b7f6307cd6f58af9834afee1ca77ececec7e5e14235725dcf",
+        "column_sha256": "0c8cb3d0c8ebfd4005c9101b982059667bdce8758a6aab9df746fbee0ea2bb8e",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "0a7d203867dbac736df489f0ad12ad510d637c4765681add59ff9286de27bf00",
+        "estimation_coefficient_slots": 17,
+        "descriptive_call_seconds": [
+          0.131534,
+          0.131633
+        ],
+        "observed_maxrss_bytes": [
+          82804736,
+          82722816
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "explicit",
+            "action": "not_labeled_by_explicit_trace",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.001668959,
+                0.001684875
+              ],
+              "hierarchy_seconds": [
+                0.002980375,
+                0.002979125
+              ],
+              "workspace_seconds": [
+                2.6042e-05,
+                2.7917e-05
+              ]
+            },
+            "signatures": {
+              "graph": "e83adc9f09ded646",
+              "firm_components": "0d66a43a62009115",
+              "full_preconditioner": "33d3d762390ded91",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "f853dcb387acf3f1",
+              "rhs_bank_signature": "ac12ab7c29010ef1",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 326616,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4672a81c335d8088",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000711042,
+                      0.000707916
+                    ],
+                    [
+                      0.0007135,
+                      0.000710792
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4672a81c335d8088",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000710375,
+                      0.000708709
+                    ],
+                    [
+                      0.000711791,
+                      0.000710875
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4672a81c335d8088",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000615083,
+                      0.000613167
+                    ],
+                    [
+                      0.000620208,
+                      0.000617292
+                    ]
+                  ]
+                },
+                {
+                  "variant": "parallel-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4672a81c335d8088",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000613375,
+                      0.000612583
+                    ],
+                    [
+                      0.000617208,
+                      0.000616333
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "family": "wide-rhs",
+        "workers": 4,
+        "arm": "h16-k0",
+        "first_repeat_call_indices": [
+          35,
+          36
+        ],
+        "science_fingerprint_sha256": "f8f011836c285bee43f81277a35fd4fbda31c4caec83db3d40711549b5c6b3d7",
+        "column_sha256": "c9075228f611645dd4ae77e2b62f7e2e818383b8745b22adc9a0b63823381cf6",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "not_attempted",
+        "normalized_diagnostic_sha256": null,
+        "estimation_coefficient_slots": 17,
+        "descriptive_call_seconds": [
+          0.056864,
+          0.053958
+        ],
+        "observed_maxrss_bytes": [
+          85016576,
+          81969152
+        ],
+        "constructions": [],
+        "actions": [
+          {
+            "final": 0,
+            "preset": "routing_h16_k0",
+            "iterations_used": 14,
+            "setup_work_used": 0,
+            "setup_work_limit": 643204864,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "primary",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          },
+          {
+            "final": 1,
+            "preset": "routing_h16_k0",
+            "iterations_used": 13,
+            "setup_work_used": 0,
+            "setup_work_limit": 70882048,
+            "certified": true,
+            "construction_ordinals": [],
+            "action": "final_residual",
+            "attempted": 0,
+            "completed": 0,
+            "refused": 0,
+            "not_attempted": true
+          }
+        ],
+        "no_build_attestation": {
+          "basis": "traced resource actions completed before the fixed builder checkpoint",
+          "traced_first": true,
+          "first_call_index": 35,
+          "request": {
+            "family": "wide-rhs",
+            "workers": 4,
+            "arm": "h16-k0"
+          },
+          "expected_preset": "routing_h16_k0",
+          "all_setup_work_used": 0,
+          "iterations_used": [
+            14,
+            13
+          ],
+          "checkpoint": 16,
+          "auto_schur_route_present": false
+        }
+      },
+      {
+        "family": "wide-rhs",
+        "workers": 4,
+        "arm": "cmgschur5",
+        "first_repeat_call_indices": [
+          37,
+          38
+        ],
+        "science_fingerprint_sha256": "038acd3ebeafc3244e31385cd9d9afc9cc5982c2403a7609bed34422cc771e82",
+        "column_sha256": "0c8cb3d0c8ebfd4005c9101b982059667bdce8758a6aab9df746fbee0ea2bb8e",
+        "exact_estimation_repeat": true,
+        "diagnostic_status": "recorded",
+        "normalized_diagnostic_sha256": "0a7d203867dbac736df489f0ad12ad510d637c4765681add59ff9286de27bf00",
+        "estimation_coefficient_slots": 17,
+        "descriptive_call_seconds": [
+          0.095624,
+          0.095893
+        ],
+        "observed_maxrss_bytes": [
+          84361216,
+          84819968
+        ],
+        "constructions": [
+          {
+            "ordinal": 1,
+            "type": "explicit",
+            "action": "not_labeled_by_explicit_trace",
+            "status": "complete",
+            "coarse_seconds_first_repeat": {
+              "graph_seconds": [
+                0.00171,
+                0.001707459
+              ],
+              "hierarchy_seconds": [
+                0.003016583,
+                0.00303475
+              ],
+              "workspace_seconds": [
+                0.000206417,
+                0.000166583
+              ]
+            },
+            "signatures": {
+              "graph": "e83adc9f09ded646",
+              "firm_components": "0d66a43a62009115",
+              "full_preconditioner": "33d3d762390ded91",
+              "hash": "fnv1a-stream-debug",
+              "scope": "all-levels-transfers-centering-repeats-terminal-factors"
+            },
+            "same_hierarchy_apply": {
+              "status": "passed",
+              "rhs_lanes": 4,
+              "graph_components": "f853dcb387acf3f1",
+              "rhs_bank_signature": "ac12ab7c29010ef1",
+              "constant_matvec_maxabs": 0.0,
+              "additional_admitted_bytes": 326616,
+              "additional_memory_limit_bytes": 134217728,
+              "variants": [
+                {
+                  "variant": "scalar",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4672a81c335d8088",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000712083,
+                      0.000711209
+                    ],
+                    [
+                      0.0007115,
+                      0.000708875
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch1",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4672a81c335d8088",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000710792,
+                      0.000717375
+                    ],
+                    [
+                      0.000709083,
+                      0.000718375
+                    ]
+                  ]
+                },
+                {
+                  "variant": "serial-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4672a81c335d8088",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000617125,
+                      0.000617667
+                    ],
+                    [
+                      0.000618709,
+                      0.000614834
+                    ]
+                  ]
+                },
+                {
+                  "variant": "parallel-batch4",
+                  "exact_internal_and_native_repeat": true,
+                  "finite": true,
+                  "maximum_absolute_discrepancy_from_scalar": 0.0,
+                  "maximum_relative_discrepancy_from_scalar": 0.0,
+                  "output_signature": "4672a81c335d8088",
+                  "descriptive_apply_seconds_first_repeat": [
+                    [
+                      0.000866084,
+                      0.000820209
+                    ],
+                    [
+                      0.000851042,
+                      0.000777958
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "cross_path_signatures": [
+      {
+        "family": "weak",
+        "workers": 1,
+        "status": "all_three_signatures_equal",
+        "compared": true
+      },
+      {
+        "family": "weak",
+        "workers": 4,
+        "status": "all_three_signatures_equal",
+        "compared": true
+      },
+      {
+        "family": "high-degree-weak",
+        "workers": 1,
+        "status": "bounded_build_refused",
+        "compared": false
+      },
+      {
+        "family": "high-degree-weak",
+        "workers": 4,
+        "status": "bounded_build_refused",
+        "compared": false
+      },
+      {
+        "family": "weight-dynamic",
+        "workers": 1,
+        "status": "all_three_signatures_equal",
+        "compared": true
+      },
+      {
+        "family": "weight-dynamic",
+        "workers": 4,
+        "status": "all_three_signatures_equal",
+        "compared": true
+      },
+      {
+        "family": "dense",
+        "workers": 1,
+        "status": "bounded_not_attempted",
+        "compared": false
+      },
+      {
+        "family": "dense",
+        "workers": 4,
+        "status": "bounded_not_attempted",
+        "compared": false
+      },
+      {
+        "family": "wide-rhs",
+        "workers": 1,
+        "status": "bounded_not_attempted",
+        "compared": false
+      },
+      {
+        "family": "wide-rhs",
+        "workers": 4,
+        "status": "bounded_not_attempted",
+        "compared": false
+      }
+    ],
+    "interpretation": {
+      "construction_counts_first_calls_only": {
+        "bounded_attempts": 8,
+        "bounded_complete": 4,
+        "bounded_work_refusals": 4,
+        "explicit_complete": 10
+      },
+      "same_counts_repeated_exactly_on_second_calls": true,
+      "observed_maxrss_bytes": 172589056,
+      "additional_apply_memory_cap_bytes": 134217728,
+      "additional_apply_memory_scope": "diagnostic-owned allocation, not a change to the production memory ledger",
+      "elapsed_scope": "coarse graph/hierarchy/workspace and whole apply-bank initialization/lane packing/scatter; no callback-level wall-time measurement or overhead estimate",
+      "refusals": "High-degree-weak primary/final bounded work refusals are expected candidate refusals, not scientific failures; no memory refusal is inferred.",
+      "no_attempts": "Dense and wide-RHS h16 actions finish below checkpoint16 with zero setup work and no auto_schur_route; their typed first-call attestations and exact repeat inheritance are retained.",
+      "signature_algorithm": "FNV1a stream of diagnostic graph/component/full hierarchy representations, as printed; SHA256 binds the raw records and output columns.",
+      "all_retained_apply_discrepancies_zero": true,
+      "no_production_edit_or_new_native_call_by_summary": true
+    },
+    "summary_file_sha256": "4a3cb3bf8ea290d7ad543e7118b696c0e3f8d47e97518ab016401127a81c4657",
+    "independent_review": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high",
+      "status": "passed_for_work_and_numerical_diagnosis_only",
+      "checks": "450 bound dependencies;40 result/column/log hashes;20 exact science, columns and normalized diagnostic repeats;40 independent oracle checks;20 cross-arm/worker scientific comparisons;208 finite/exact zero-discrepancy apply witnesses",
+      "conclusion": "Canonical-cell preparation dominates admitted work and is performed twice. Cache-first is supported; no completion, speedup or qualification follows until the revised artifact is checked."
+    },
+    "instrumentation_source": "bench/results/solver-routing-cmg-diagnostic-20261015.patch"
   }
 }

@@ -497,6 +497,49 @@ compact evidence.
 | Original frozen analyzer output, non-qualifying | `ca62d0aadbe2d84d12d740058f39002b0b356726ac4723f94e5c9e7e1d9de5af` |
 | Independent complete-output addendum | `e29eb9218453824c8814333ade3a6674433bd9b030aef3b161faa9edba781e24` |
 
+A separate, bounded **construction diagnostic** uses an instrumented archive of
+`165d37b4`, not a replacement Mac selection panel. It completed all 40 calls
+(five existing B workloads, one/four workers, bounded h16-k0/explicit degree-5
+CMG-Schur, first/repeat), with 120-second call and 1,200-second aggregate caps.
+All calls passed their independent scientific witnesses; all 20 complete
+science/solver fingerprints, output-column bytes and normalized diagnostic
+repeats match. No C body was accessed and no retry ran. Mac process/thread
+snapshots completed, but isolation is not established and all instrumented
+elapsed observations are descriptive only. The SCC scheduler's bounded XML
+preflight timed out despite healthy SSH; no new SCC job was submitted.
+
+Independent high-effort Astra review rechecked all 450 bound dependencies, all
+40 raw result/column/log hashes, 40 oracle checks and 20 cross-arm/worker
+comparisons. All 208 application witnesses are finite, repeat exactly and have
+zero scalar/batch discrepancies on the same immutable hierarchy. Successful
+bounded and explicit constructions have identical recorded graph, component
+and full-preconditioner signatures for weak and dynamic-weight cases. These
+streaming FNV signatures supplement the SHA-256-bound raw outputs; they are not
+cryptographic equivalence proofs.
+
+| Primary bounded build | Cell loading/sorting/aggregation work | Total admitted work |
+| --- | ---: | ---: |
+| Weak | 61,682,688 | 106,787,008 |
+| Dynamic weights | 79,944,832 | 127,327,112 |
+| High-degree weak | 517,686,528 | 855,687,152 |
+
+The high-degree primary build refuses a 64-unit coarse-edge-sort operation with
+16 units remaining; its final action refuses a 64-unit local-sort operation
+with 56 units remaining. Both retain the original allowance. Each complete
+census/emission pair repeats the same canonical cell preparation. This supports
+removing that duplicate pass before changing control granularity or production
+batching; it does not prove that a revised build will complete. Dense and
+wide-RHS h16 calls correctly perform no optional construction. The largest
+application-diagnostic admission is 3,231,360 bytes under its separate
+128 MiB cap; it is excluded from production memory claims.
+
+The [instrumentation patch](../bench/results/solver-routing-cmg-diagnostic-20261015.patch)
+is retained with the [compact evidence](../bench/results/solver-routing-controlled-20261014.json).
+Patch SHA-256 is `0e1c969a70c53c35506a35105989c5b8516ba7eb02ab1ab96194f07f49aa4c04`;
+summary SHA-256 is `4a3cb3bf8ea290d7ad543e7118b696c0e3f8d47e97518ab016401127a81c4657`;
+40-call records SHA-256 is `b2ba5972117e5f63cdad23d7638593902a0131f15afefe85169ccb4d816c5f01`.
+Public Auto and the closed B NO-GO remain unchanged.
+
 Retained SCC raw evidence and sealed products remain in the campaign
 `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.
 The [compact evidence](../bench/results/solver-routing-controlled-20261014.json)

@@ -1,0 +1,745 @@
+--- a/crates/fereg-core/src/fe/cmg_schur/bounded.rs
++++ b/crates/fereg-core/src/fe/cmg_schur/bounded.rs
+@@ -41,25 +41,110 @@
+     used: u64,
+     ordinal: u64,
+     control: &'a mut dyn cmg::BuildControl,
++    diagnostic: DiagnosticWork,
++}
++
++const TAGS: [&str; 9] = [
++    "validation",
++    "load",
++    "sort",
++    "aggregation",
++    "census-components",
++    "emission",
++    "Laplacian",
++    "hierarchy",
++    "workspace",
++];
++
++#[derive(Default)]
++struct DiagnosticWork {
++    tag: usize,
++    pass: usize,
++    // attempted gates/units, admitted gates/units, callbacks, allocations, Break checks.
++    counts: [[u64; 7]; 9],
++    // Separate census/emission worker loads, source entries, sort lengths, aggregate cells.
++    scans: [[u64; 4]; 2],
++    refusal: Option<(u64, u64, u64)>,
++    refusal_basis: &'static str,
++    last_phase: &'static str,
++    status: &'static str,
++    seconds: [f64; 3],
++    timer: Option<(usize, Instant)>,
++}
++
++impl Work<'_> {
++    fn timer(&mut self, stage: Option<usize>) {
++        if let Some((index, started)) = self.diagnostic.timer.take() {
++            self.diagnostic.seconds[index] += started.elapsed().as_secs_f64();
++        }
++        self.diagnostic.timer = stage.map(|index| (index, Instant::now()));
++    }
++}
++
++impl Drop for Work<'_> {
++    fn drop(&mut self) {
++        self.timer(None);
++        use std::io::Write as _;
++        let stderr = std::io::stderr();
++        let mut stderr = stderr.lock();
++        for (tag, counts) in TAGS.iter().zip(self.diagnostic.counts) {
++            let _ = writeln!(
++                stderr,
++                "FEREG_CMG_DIAGNOSTIC|phase=bounded_work|tag={tag}|attempted_gates={}|attempted_units={}|admitted_gates={}|admitted_units={}|callbacks={}|allocations={}|break_checks={}",
++                counts[0], counts[1], counts[2], counts[3], counts[4], counts[5], counts[6]
++            );
++        }
++        let _ = writeln!(
++            stderr,
++            "FEREG_CMG_DIAGNOSTIC|phase=bounded_summary|status={}|last_original_phase={}|used={}|ordinal={}|refusal_basis={}|refusal_required_remaining_ordinal={:?}|census_load_entries_sort_cells={:?}|emission_load_entries_sort_cells={:?}|graph_seconds={:.9}|hierarchy_seconds={:.9}|workspace_seconds={:.9}|instrumentation=diagnostic-overhead-only",
++            self.diagnostic.status,
++            self.diagnostic.last_phase,
++            self.used,
++            self.ordinal,
++            self.diagnostic.refusal_basis,
++            self.diagnostic.refusal,
++            self.diagnostic.scans[0],
++            self.diagnostic.scans[1],
++            self.diagnostic.seconds[0],
++            self.diagnostic.seconds[1],
++            self.diagnostic.seconds[2]
++        );
++    }
+ }
+ 
+ impl Work<'_> {
+     fn gate(&mut self, phase: &'static str, operation: BuildOperation) -> Attempt<()> {
++        let counts = &mut self.diagnostic.counts[self.diagnostic.tag];
++        counts[0] = counts[0].saturating_add(1);
++        counts[1] = counts[1].saturating_add(match operation {
++            BuildOperation::Work { units } => u64::from(units),
++            BuildOperation::Allocation { .. } => 0,
++        });
++        counts[5] = counts[5].saturating_add(u64::from(matches!(
++            operation,
++            BuildOperation::Allocation { .. }
++        )));
++        counts[6] = counts[6].saturating_add(1);
++        self.diagnostic.last_phase = phase;
+         crate::interrupt::checkpoint()?;
+         let units = match operation {
+             BuildOperation::Work { units } if (1..=1024).contains(&units) => u64::from(units),
+             BuildOperation::Work { .. } => {
+-                return Err(invalid_data("invalid bounded CMG work chunk").into())
++                return Err(invalid_data("invalid bounded CMG work chunk").into());
+             }
+             BuildOperation::Allocation { .. } => 0,
+         };
+         if units > self.budget - self.used {
++            self.diagnostic.refusal_basis = "work-units";
++            self.diagnostic.refusal = Some((units, self.budget - self.used, self.ordinal));
+             return Err(AttemptError::Refused(BuildRefusal::WorkBudget));
+         }
+         let ordinal = self
+             .ordinal
+             .checked_add(1)
+             .ok_or_else(|| invalid_data("bounded CMG operation ordinal overflows"))?;
++        self.diagnostic.counts[self.diagnostic.tag][4] =
++            self.diagnostic.counts[self.diagnostic.tag][4].saturating_add(1);
+         match self.control.checkpoint(cmg::BuildBoundary {
+             phase,
+             chunk_id: self.ordinal,
+@@ -67,16 +152,24 @@
+             operation,
+         }) {
+             BuildDecision::Continue => {}
+-            BuildDecision::StopUnused => return Err(AttemptError::Refused(BuildRefusal::Unused)),
++            BuildDecision::StopUnused => {
++                self.diagnostic.refusal_basis = "callback-stop-unused";
++                self.diagnostic.refusal = Some((units, self.budget - self.used, self.ordinal));
++                return Err(AttemptError::Refused(BuildRefusal::Unused));
++            }
+             BuildDecision::Interrupted => {
+                 return Err(FeregError::new(
+                     crate::error::ErrorCode::Interrupted,
+                     "bounded CMG construction was interrupted",
+                 )
+-                .into())
++                .into());
+             }
+         }
+         // A parked callback has returned only after admitting this complete chunk.
++        self.diagnostic.counts[self.diagnostic.tag][2] =
++            self.diagnostic.counts[self.diagnostic.tag][2].saturating_add(1);
++        self.diagnostic.counts[self.diagnostic.tag][3] =
++            self.diagnostic.counts[self.diagnostic.tag][3].saturating_add(units);
+         self.used += units;
+         self.ordinal = ordinal;
+         Ok(())
+@@ -212,6 +305,12 @@
+             .checked_sub(budget.execution_bytes)
+             .and_then(|bytes| bytes.checked_sub(parents));
+         if available.is_none_or(|available| available < additional as u128) {
++            work.diagnostic.refusal_basis = "memory-bytes";
++            work.diagnostic.refusal = Some((
++                additional as u64,
++                available.unwrap_or(0).min(u64::MAX as u128) as u64,
++                work.ordinal,
++            ));
+             return Err(AttemptError::Refused(BuildRefusal::MemoryBudget));
+         }
+     }
+@@ -263,6 +362,16 @@
+         work_budget: u64,
+         control: &mut dyn cmg::BuildControl,
+     ) -> Result<(BoundedCmgBuild, f64)> {
++        let mut work = Work {
++            budget: work_budget,
++            used: 0,
++            ordinal: 0,
++            control,
++            diagnostic: DiagnosticWork {
++                status: "fatal-or-incomplete",
++                ..DiagnosticWork::default()
++            },
++        };
+         sampling.validate()?;
+         if n_retained == 0
+             || n_eliminated == 0
+@@ -276,13 +385,8 @@
+                 "CMG reduced component CSR dimensions are inconsistent",
+             ));
+         }
++        work.diagnostic.counts[0][6] += 1;
+         crate::interrupt::checkpoint()?;
+-        let mut work = Work {
+-            budget: work_budget,
+-            used: 0,
+-            ordinal: 0,
+-            control,
+-        };
+         let mut memory = Admission {
+             budget,
+             peak: SolverWorkspacePeak::ZERO,
+@@ -314,8 +418,18 @@
+             finish(graph, components, &mut work, &mut memory)
+         })();
+         let (preconditioner, refusal) = match attempt {
+-            Ok(candidate) => (Some(candidate), None),
+-            Err(AttemptError::Refused(reason)) => (None, Some(reason)),
++            Ok(candidate) => {
++                work.diagnostic.status = "complete";
++                (Some(candidate), None)
++            }
++            Err(AttemptError::Refused(reason)) => {
++                work.diagnostic.status = match reason {
++                    BuildRefusal::WorkBudget => "work-budget-refused",
++                    BuildRefusal::MemoryBudget => "memory-budget-refused",
++                    BuildRefusal::Unused => "controller-unused",
++                };
++                (None, Some(reason))
++            }
+             Err(AttemptError::Fatal(error)) => return Err(error),
+         };
+         Ok((
+@@ -427,6 +541,16 @@
+         work_budget: u64,
+         control: &mut dyn cmg::BuildControl,
+     ) -> Result<BoundedCmgBuild> {
++        let mut work = Work {
++            budget: work_budget,
++            used: 0,
++            ordinal: 0,
++            control,
++            diagnostic: DiagnosticWork {
++                status: "fatal-or-incomplete",
++                ..DiagnosticWork::default()
++            },
++        };
+         sampling.validate()?;
+         if !(4..=6).contains(&degree)
+             || firms.len() != membership.nobs()
+@@ -436,13 +560,8 @@
+                 "CMG Schur observation source dimensions or cutoff are invalid",
+             ));
+         }
++        work.diagnostic.counts[0][6] += 1;
+         crate::interrupt::checkpoint()?;
+-        let mut work = Work {
+-            budget: work_budget,
+-            used: 0,
+-            ordinal: 0,
+-            control,
+-        };
+         let mut memory = Admission {
+             budget,
+             peak: SolverWorkspacePeak::ZERO,
+@@ -456,8 +575,18 @@
+         let attempt = graph(source, degree, sampling, &mut work, &mut memory)
+             .and_then(|(graph, components, _)| finish(graph, components, &mut work, &mut memory));
+         let (preconditioner, refusal) = match attempt {
+-            Ok(preconditioner) => (Some(preconditioner), None),
+-            Err(AttemptError::Refused(reason)) => (None, Some(reason)),
++            Ok(preconditioner) => {
++                work.diagnostic.status = "complete";
++                (Some(preconditioner), None)
++            }
++            Err(AttemptError::Refused(reason)) => {
++                work.diagnostic.status = match reason {
++                    BuildRefusal::WorkBudget => "work-budget-refused",
++                    BuildRefusal::MemoryBudget => "memory-budget-refused",
++                    BuildRefusal::Unused => "controller-unused",
++                };
++                (None, Some(reason))
++            }
+             Err(AttemptError::Fatal(error)) => return Err(error),
+         };
+         Ok(BoundedCmgBuild {
+@@ -475,6 +604,8 @@
+     work: &mut Work<'_>,
+     memory: &mut Admission,
+ ) -> Attempt<CmgSchurPreconditioner> {
++    work.diagnostic.tag = 7;
++    work.timer(Some(1));
+     let options = CmgOptions::default();
+     let experiment = ComponentBuildOptions {
+         prune_coarse_isolates: true,
+@@ -501,6 +632,8 @@
+             control,
+         )
+     })?;
++    work.diagnostic.tag = 8;
++    work.timer(Some(2));
+     // Keep the already-admitted conservative hierarchy bound. Exact storage
+     // reporting recursively deduplicates allocation owners and is quadratic;
+     // it must never become an ungated operation in optional construction.
+@@ -533,6 +666,8 @@
+     let rhs = work.filled(graph.vertex_count(), 0.0)?;
+     let solution = work.filled(graph.vertex_count(), 0.0)?;
+     work.charge(256)?;
++    work.timer(None);
++    diagnostic_completed(&graph, &components, &preconditioner, None)?;
+     Ok(CmgSchurPreconditioner {
+         preconditioner,
+         parallel: None,
+@@ -690,10 +825,16 @@
+ 
+ impl BoundedCells<'_> {
+     fn load_bounded(&mut self, worker: usize, work: &mut Work<'_>) -> Attempt<f64> {
++        let outer_tag = work.diagnostic.tag;
++        work.diagnostic.tag = 1;
++        work.diagnostic.scans[work.diagnostic.pass][0] =
++            work.diagnostic.scans[work.diagnostic.pass][0].saturating_add(1);
+         work.charge(16)?;
+         self.cells.clear();
+         for position in 0..self.source.row_count(worker) {
+             work.charge(64)?;
++            work.diagnostic.scans[work.diagnostic.pass][1] =
++                work.diagnostic.scans[work.diagnostic.pass][1].saturating_add(1);
+             let (firm, raw_weight) = self.source.entry(worker, position);
+             let weight = raw_weight / self.weight_scale;
+             if firm as usize >= self.source.firm_count() {
+@@ -704,11 +845,15 @@
+             }
+             self.cells.push((firm, weight));
+         }
++        work.diagnostic.tag = 2;
++        work.diagnostic.scans[work.diagnostic.pass][2] =
++            work.diagnostic.scans[work.diagnostic.pass][2].saturating_add(self.cells.len() as u64);
+         work.sort(&mut self.cells, |left, right| {
+             left.0
+                 .cmp(&right.0)
+                 .then_with(|| left.1.total_cmp(&right.1))
+         })?;
++        work.diagnostic.tag = 3;
+         let mut read = 0;
+         let mut write = 0;
+         let mut total = 0.0;
+@@ -727,6 +872,8 @@
+             let weight = sum + correction;
+             self.cells[write] = (firm, weight);
+             neumaier_add(weight, &mut total, &mut total_correction);
++            work.diagnostic.scans[work.diagnostic.pass][3] =
++                work.diagnostic.scans[work.diagnostic.pass][3].saturating_add(1);
+             write += 1;
+         }
+         self.cells.truncate(write);
+@@ -734,6 +881,7 @@
+         if !total.is_finite() || total <= 0.0 {
+             return Err(invalid_data("CMG Schur worker weight total is invalid").into());
+         }
++        work.diagnostic.tag = outer_tag;
+         Ok(total)
+     }
+ 
+@@ -744,6 +892,8 @@
+         labels: &mut [usize],
+         work: &mut Work<'_>,
+     ) -> Attempt<GraphCounts> {
++        work.diagnostic.tag = 4;
++        work.diagnostic.pass = 0;
+         let mut counts = GraphCounts::default();
+         for worker in 0..self.source.worker_count() {
+             self.load_bounded(worker, work)?;
+@@ -790,6 +940,8 @@
+         edges: &mut Vec<(usize, usize, f64)>,
+         work: &mut Work<'_>,
+     ) -> Attempt<()> {
++        work.diagnostic.tag = 5;
++        work.diagnostic.pass = 1;
+         let mut auxiliary = self.source.firm_count();
+         for worker in 0..self.source.worker_count() {
+             let total = self.load_bounded(worker, work)?;
+@@ -837,6 +989,8 @@
+     work: &mut Work<'_>,
+     memory: &mut Admission,
+ ) -> Attempt<(Laplacian, FirmComponents, f64)> {
++    work.timer(Some(0));
++    work.diagnostic.tag = 0;
+     work.charge(64)?;
+     let firms = source.firm_count();
+     let weights = source.weights();
+@@ -923,6 +1077,7 @@
+     if edges.len() != counts.input_edges {
+         return Err(invalid_data("CMG Schur edge census changed during construction").into());
+     }
++    work.diagnostic.tag = 6;
+     let graph_bound = bytes::<[u64; 4]>(counts.input_edges)?
+         .checked_add(bytes::<f64>(vertices)?)
+         .and_then(|bytes| bytes.checked_add(128))
+@@ -939,6 +1094,7 @@
+     drop(edges);
+     drop(workers);
+     drop(sampler);
++    work.diagnostic.tag = 4;
+     work.charge(256)?;
+     let parents =
+         graph_storage_bound(&graph)? + vec_capacity_bytes(&labels) + vec_capacity_bytes(&sizes);
+@@ -949,6 +1105,7 @@
+         sums: work.filled(component_count, 0.0)?,
+         corrections: work.filled(component_count, 0.0)?,
+     };
++    work.timer(None);
+     Ok((graph, components, weight_scale))
+ }
+ 
+--- a/crates/fereg-core/src/fe/cmg_schur.rs
++++ b/crates/fereg-core/src/fe/cmg_schur.rs
+@@ -12,9 +12,9 @@
+     ParallelRuntimeAllowance,
+ };
+ 
+-use crate::error::{allocation, invalid_argument, invalid_data, FeregError, Result};
++use crate::error::{FeregError, Result, allocation, invalid_argument, invalid_data};
+ use crate::linalg::neumaier_add;
+-use crate::memory::{vec_capacity_bytes, FeSolverMemoryBudget, SolverWorkspacePeak};
++use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak, vec_capacity_bytes};
+ 
+ use super::cmg::cmg_error;
+ use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, LevelIndex};
+@@ -26,6 +26,204 @@
+ pub(super) use sampling::Sampling;
+ 
+ const MAX_BATCH_COLUMNS: usize = 4;
++
++// Temporary diagnostic-only streaming FNV-1a: no formatted hierarchy String.
++// Pinned Debug covers every hierarchy level/graph/transfer, centering plan,
++// repeat count and complete terminal GroundedLdl factors, not just its report.
++struct DiagnosticHash(u64);
++impl std::fmt::Write for DiagnosticHash {
++    fn write_str(&mut self, value: &str) -> std::fmt::Result {
++        for byte in value.bytes() {
++            self.0 = (self.0 ^ u64::from(byte)).wrapping_mul(0x100000001b3);
++        }
++        Ok(())
++    }
++}
++fn diagnostic_hash(value: &impl std::fmt::Debug) -> u64 {
++    use std::fmt::Write;
++    let mut hash = DiagnosticHash(0xcbf29ce484222325);
++    write!(&mut hash, "{value:?}").expect("infallible diagnostic FNV writer");
++    hash.0
++}
++
++fn diagnostic_completed(
++    graph: &Laplacian,
++    components: &FirmComponents,
++    pre: &CmgPreconditioner,
++    parallel: Option<(&ParallelCmgPlan, &ParallelExecutor)>,
++) -> Result<()> {
++    crate::diagnostics::emit_solver_trace(&format!(
++        "FEREG_CMG_DIAGNOSTIC|phase=signatures|graph={:016x}|firm_components={:016x}|full_preconditioner={:016x}|hash=fnv1a-stream-debug|scope=all-levels-transfers-centering-repeats-terminal-factors",
++        diagnostic_hash(graph),
++        diagnostic_hash(&(&components.labels, &components.sizes)),
++        diagnostic_hash(pre)
++    ));
++    let run = || -> Result<()> {
++        const LIMIT: usize = 128 * 1024 * 1024;
++        let n = graph.vertex_count();
++        let elements = n
++            .checked_mul(4)
++            .ok_or_else(|| allocation("diagnostic bank overflow"))?;
++        let scalar_bytes = pre.workspace_allocation_bytes().map_err(cmg_error)?;
++        let one_bytes = CmgBatchWorkspace::allocation_bytes(pre, 1).map_err(cmg_error)?;
++        let four_bytes = CmgBatchWorkspace::allocation_bytes(pre, 4).map_err(cmg_error)?;
++        let admitted = scalar_bytes
++            .checked_add(one_bytes)
++            .and_then(|v| v.checked_add(four_bytes))
++            .and_then(|v| bytes::<[f64; 18]>(n).ok()?.checked_add(v))
++            .and_then(|v| bytes::<usize>(n).ok()?.checked_add(v))
++            // Fixed counters, bank descriptors and bounded trace/hash bookkeeping.
++            .and_then(|v| v.checked_add(4096))
++            .and_then(|v| {
++                v.checked_add(
++                    std::mem::size_of::<CmgWorkspace>()
++                        + 2 * std::mem::size_of::<CmgBatchWorkspace>(),
++                )
++            });
++        if admitted.is_none_or(|bytes| bytes > LIMIT) {
++            crate::diagnostics::emit_solver_trace(&format!(
++                "FEREG_CMG_DIAGNOSTIC|phase=apply_witness|status=skipped-diagnostic-memory|bytes={admitted:?}|limit={LIMIT}|production_ledger=unchanged"
++            ));
++            return Ok(());
++        }
++        // All simultaneous banks/labels/workspaces are admitted before any is allocated.
++        // They never touch the solver's work ledger or its mutable apply state.
++        let mut scalar = pre.try_workspace().map_err(cmg_error)?;
++        let mut one = CmgBatchWorkspace::try_new(pre, 1, one_bytes).map_err(cmg_error)?;
++        let mut four = CmgBatchWorkspace::try_new(pre, 4, four_bytes).map_err(cmg_error)?;
++        let mut rhs = filled(elements, 0.0)?;
++        let mut baseline = filled(elements, 0.0)?;
++        let mut actual = filled(elements, 0.0)?;
++        let mut repeated = filled(elements, 0.0)?;
++        let mut lane_rhs = filled(n, 0.0)?;
++        let mut lane_out = filled(n, 0.0)?;
++        let mut labels = capacity(n)?;
++        labels.extend(0..n);
++        fn root(labels: &[usize], mut vertex: usize) -> usize {
++            while labels[vertex] != vertex {
++                vertex = labels[vertex];
++            }
++            vertex
++        }
++        // Independently derive connected components from all canonical graph edges.
++        for edge in graph.edges() {
++            let a = root(&labels, edge.u());
++            let b = root(&labels, edge.v());
++            labels[a.max(b)] = a.min(b);
++        }
++        for vertex in 0..n {
++            labels[vertex] = root(&labels, vertex);
++        }
++        for vertex in 0..n {
++            // Component-constant vectors belong to the graph nullspace; they are
++            // NOT submitted as incompatible RHS to the compatible apply API.
++            lane_rhs[vertex] = (labels[vertex] % 7 + 1) as f64;
++            if labels[vertex] != vertex {
++                for lane in 1..4 {
++                    let value = (((vertex + lane * 3) % 9) as f64 - 4.0) * 0.25;
++                    rhs[vertex * 4 + lane] = value;
++                    rhs[labels[vertex] * 4 + lane] -= value;
++                }
++            }
++        }
++        graph
++            .matvec_into(&lane_rhs, &mut lane_out)
++            .map_err(cmg_error)?;
++        let null_error = lane_out.iter().map(|v| v.abs()).fold(0.0, f64::max);
++        if lane_out.iter().any(|v| !v.is_finite() || *v != 0.0) {
++            return Err(invalid_data(
++                "diagnostic component-constant graph nullspace failed",
++            ));
++        }
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_CMG_DIAGNOSTIC|phase=nullspace|status=passed|constant_matvec_maxabs={null_error}|graph_components={:016x}|rhs={:016x}|admitted_bytes={}|limit={LIMIT}",
++            diagnostic_hash(&labels),
++            diagnostic_hash(&rhs),
++            admitted.unwrap()
++        ));
++        let variants = if parallel.is_some() { 4 } else { 3 };
++        for variant in 0..variants {
++            let name = [
++                "scalar",
++                "serial-batch1",
++                "serial-batch4",
++                "parallel-batch4",
++            ][variant];
++            for repeat in 0..2 {
++                let apply_started = Instant::now();
++                actual.fill(f64::NAN);
++                if variant < 2 {
++                    for lane in 0..4 {
++                        for vertex in 0..n {
++                            lane_rhs[vertex] = rhs[vertex * 4 + lane];
++                        }
++                        lane_out.fill(f64::NAN);
++                        if variant == 0 {
++                            pre.apply_compatible_into(&lane_rhs, &mut lane_out, &mut scalar)
++                        } else {
++                            pre.apply_compatible_batch_into(&lane_rhs, &mut lane_out, 1, &mut one)
++                        }
++                        .map_err(cmg_error)?;
++                        for vertex in 0..n {
++                            actual[vertex * 4 + lane] = lane_out[vertex];
++                        }
++                    }
++                } else if let Some((plan, executor)) = parallel.filter(|_| variant == 3) {
++                    plan.apply_compatible_batch_into(
++                        pre,
++                        &rhs,
++                        &mut actual,
++                        4,
++                        &mut four,
++                        executor,
++                    )
++                    .map_err(cmg_error)?;
++                } else {
++                    pre.apply_compatible_batch_into(&rhs, &mut actual, 4, &mut four)
++                        .map_err(cmg_error)?;
++                }
++                let apply_seconds = apply_started.elapsed().as_secs_f64();
++                if actual.iter().any(|v| !v.is_finite())
++                    || actual.iter().step_by(4).any(|v| *v != 0.0)
++                {
++                    return Err(invalid_data(
++                        "diagnostic apply is nonfinite or fails zero RHS",
++                    ));
++                }
++                if variant == 0 && repeat == 0 {
++                    baseline.copy_from_slice(&actual);
++                }
++                if repeat == 0 {
++                    repeated.copy_from_slice(&actual);
++                }
++                let exact = actual
++                    .iter()
++                    .zip(&repeated)
++                    .all(|(a, b)| a.to_bits() == b.to_bits());
++                let mut absolute = 0.0_f64;
++                let mut relative = 0.0_f64;
++                for (&a, &b) in actual.iter().zip(&baseline) {
++                    absolute = absolute.max((a - b).abs());
++                    relative =
++                        relative.max((a - b).abs() / a.abs().max(b.abs()).max(f64::MIN_POSITIVE));
++                }
++                crate::diagnostics::emit_solver_trace(&format!(
++                    "FEREG_CMG_DIAGNOSTIC|phase=apply_witness|variant={name}|repeat={repeat}|finite=true|exact_repeat={exact}|maxabs={absolute:.17e}|maxrel={relative:.17e}|apply_seconds={apply_seconds:.9}|elapsed_scope=apply-bank-initialization-lane-packing-scatter|output={:016x}|scope=diagnostic-not-qualification",
++                    diagnostic_hash(&actual)
++                ));
++                if !exact {
++                    return Err(invalid_data("diagnostic apply exact repeat failed"));
++                }
++            }
++        }
++        Ok(())
++    };
++    run().map_err(|error| {
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_CMG_DIAGNOSTIC|phase=apply_witness|status=terminal-diagnostic-error|error={error}"));
++        error
++    })
++}
+ 
+ pub(super) struct CmgSchurPreconditioner {
+     preconditioner: CmgPreconditioner,
+@@ -164,6 +362,7 @@
+                 + components.bytes(),
+         )?;
+         let hierarchy_seconds = hierarchy_started.elapsed().as_secs_f64();
++        let workspace_started = Instant::now();
+         let bound = ParallelCmgPlan::construction_allocation_bound(&preconditioner, &executor)
+             .map_err(cmg_error)?;
+         let parents = storage(&[&graph, &executor, &preconditioner])? + components.bytes();
+@@ -187,14 +386,36 @@
+             runtime_extra,
+             &mut memory,
+         )?;
++        let workspace_seconds = workspace_started.elapsed().as_secs_f64();
++        diagnostic_completed(
++            &graph,
++            &components,
++            &preconditioner,
++            Some((&plan, &executor)),
++        )?;
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_CMG_DIAGNOSTIC|phase=explicit_coarse|graph_seconds={graph_seconds:.9}|hierarchy_seconds={hierarchy_seconds:.9}|workspace_seconds={workspace_seconds:.9}|instrumentation=diagnostic-overhead-only"
++        ));
+         if crate::diagnostics::solver_trace_enabled() {
+             let report = preconditioner.hierarchy().report();
+             crate::diagnostics::emit_solver_trace(&format!(
+                 "FEREG_SOLVER_TRACE|phase=cmgschur_setup|degree={degree}|samples={}|seed={}|workers={}|retained_workers={}|sampled_workers={}|firms={}|vertices={}|input_edges={}|edges={}|components={}|threads={}|parallel_operators={}|batch_columns={batch_columns}|levels={}|hierarchy_vertices={:?}|hierarchy_nonzeros={:?}|repeats={:?}|graph_seconds={graph_seconds:.9}|hierarchy_seconds={hierarchy_seconds:.9}|setup_seconds={:.9}",
+-                sampling.samples, sampling.seed, design.effects()[left_effect].n_levels(), counts.retained_workers, counts.sampled_workers, components.labels.len(),
+-                graph.vertex_count(), counts.input_edges, graph.edge_count(), components.sizes.len(),
+-                executor.thread_count(), plan.operator_count(), report.vertex_counts().len(),
+-                report.vertex_counts(), report.matrix_nonzeros(), preconditioner.repeat_counts(),
++                sampling.samples,
++                sampling.seed,
++                design.effects()[left_effect].n_levels(),
++                counts.retained_workers,
++                counts.sampled_workers,
++                components.labels.len(),
++                graph.vertex_count(),
++                counts.input_edges,
++                graph.edge_count(),
++                components.sizes.len(),
++                executor.thread_count(),
++                plan.operator_count(),
++                report.vertex_counts().len(),
++                report.vertex_counts(),
++                report.matrix_nonzeros(),
++                preconditioner.repeat_counts(),
+                 started.elapsed().as_secs_f64(),
+             ));
+         }
+@@ -1360,10 +1581,12 @@
+                 .unwrap();
+                 let graph = solver.preconditioner.hierarchy().levels()[0].graph();
+                 assert_eq!(graph.vertex_count(), 93);
+-                assert!(graph
+-                    .edges()
+-                    .iter()
+-                    .all(|edge| edge.weight().is_finite() && edge.weight() > 0.0));
++                assert!(
++                    graph
++                        .edges()
++                        .iter()
++                        .all(|edge| edge.weight().is_finite() && edge.weight() > 0.0)
++                );
+                 let components = cmg::Components::from_laplacian(graph);
+                 assert_eq!(components.sizes(), &[30, 60, 3]);
+                 if samples == 1 {
+@@ -1480,14 +1703,16 @@
+         let peak = solver.construction_peak().bytes().unwrap() as u128;
+         assert!(solver.retained_bytes().unwrap() <= peak);
+         drop(solver);
+-        assert!(build(
+-            sampling,
+-            Some(FeSolverMemoryBudget {
+-                execution_bytes: 11,
+-                usable_bytes: peak + 11
+-            })
+-        )
+-        .is_ok());
++        assert!(
++            build(
++                sampling,
++                Some(FeSolverMemoryBudget {
++                    execution_bytes: 11,
++                    usable_bytes: peak + 11
++                })
++            )
++            .is_ok()
++        );
+         assert!(matches!(
+             build(
+                 sampling,
+@@ -1954,11 +2179,13 @@
+             assert_eq!(baseline.scalar_workspace.is_some(), rhs_capacity > 1);
+             let admitted = baseline.construction_peak().bytes().unwrap() as u128;
+             drop(baseline);
+-            assert!(build(Some(FeSolverMemoryBudget {
+-                execution_bytes: 123,
+-                usable_bytes: admitted + 123
+-            }))
+-            .is_ok());
++            assert!(
++                build(Some(FeSolverMemoryBudget {
++                    execution_bytes: 123,
++                    usable_bytes: admitted + 123
++                }))
++                .is_ok()
++            );
+             assert!(matches!(
+                 build(Some(FeSolverMemoryBudget {
+                     execution_bytes: 123,
+@@ -1986,14 +2213,18 @@
+                 })
+             ));
+             let mut solver = build(None).unwrap();
+-            assert!(solver
+-                .apply_batch(&[0.0], &mut [0.0], 1, 1, None, None)
+-                .is_err());
++            assert!(
++                solver
++                    .apply_batch(&[0.0], &mut [0.0], 1, 1, None, None)
++                    .is_err()
++            );
+             let mut residual = vec![0.0; 28];
+             residual[1] = f64::NAN;
+-            assert!(solver
+-                .apply_batch(&residual, &mut vec![0.0; 28], 1, 1, None, None)
+-                .is_err());
+-        }
+-    }
+-}
++            assert!(
++                solver
++                    .apply_batch(&residual, &mut vec![0.0; 28], 1, 1, None, None)
++                    .is_err()
++            );
++        }
++    }
++}
