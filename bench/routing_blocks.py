@@ -33,6 +33,11 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def mac_platform(value):
+    """platform.platform() uses macOS on newer Python and Darwin on older hosts."""
+    return isinstance(value, str) and value.startswith(('Darwin-', 'macOS-'))
+
+
 def reference(path):
     path = Path(path).resolve(strict=True)
     return {'path': str(path), 'sha256': digest(path)}
@@ -281,9 +286,15 @@ def qualification(context_bound, records_bound):
     """Accept only fresh Mac science explicitly generated for this new context."""
     context, manifest = load_context(context_bound)
     records = read(records_bound)
+    import routing_science_completion as completion
+    if isinstance(records.get('value'), dict) and records['value'].get('kind') == completion.KIND:
+        return completion.load_completion(context_bound, records_bound)
+    require(records.get('kind') != completion.KIND and not
+            {'effective_outcomes', 'effective_rows', 'completion', 'plan'}.intersection(records),
+            'derived science requires its separately validated completion certificate')
     cells = context['cells']
     arms = set().union(*(set(required_arms(context, cell)) for cell in cells))
-    require(records.get('platform', '').startswith('Darwin')
+    require(mac_platform(records.get('platform'))
             and records.get('purpose') == 'scientific_prerequisites'
             and records.get('status') in {'complete', 'complete_with_failed_cells'}
             and records.get('stage') == context['stage']
@@ -317,12 +328,21 @@ def science_context(packet):
     require(packet['source']['sha256'] == cell['case_sha256'], 'source differs from frozen cell')
     checked(packet['source'])
     required = required_arms(context, cell)
-    _, dependencies = runner.evidence(checked(packet['witness']), cell, manifest, required,
-        stage=context['stage'], selection_sha256=routing.identity(context))
+    import routing_science_completion as completion
+    if records.get('kind') == completion.KIND:
+        bundle = completion.science_bundle(context, manifest, records, cell, packet['witness'])
+    else:
+        witness_path = checked(packet['witness'])
+        witness, dependencies = runner.evidence(witness_path, cell, manifest, required,
+            stage=context['stage'], selection_sha256=routing.identity(context))
+        proof = routing.unseal(routing.read_json((witness_path.parent / witness['scoped_replay']['path']).resolve()))
+        bundle = {'witness': witness, 'proof': proof, 'witness_path': witness_path,
+                  'dependencies': [reference(path) for path in dependencies]}
     return {'manifest': manifest, 'cell': cell, 'required': required, 'stage': context['stage'],
             'selection_sha256': routing.identity(context),
+            'science': bundle,
             'bindings': [*context_bindings(packet['context'], context), packet['qualification'],
-                         packet['witness'], packet['source'], *[reference(path) for path in dependencies]]}
+                         packet['witness'], packet['source'], *bundle['dependencies']]}
 
 
 def comparison_coverage(context_bound, records_bound):
@@ -332,9 +352,12 @@ def comparison_coverage(context_bound, records_bound):
     for cell in context['cells']:
         cid = cell['id']
         required = required_arms(context, cell)
-        outcomes[cid] = runner.prerequisite_outcomes(manifest, required,
-            [row for row in records['prerequisites'] if row['cell'] == cid],
-            [row for row in records['records'] if row['cell'] == cid])
+        if records.get('kind') == 'routing_science_completion_v1':
+            outcomes[cid] = records['effective_outcomes'][cid]
+        else:
+            outcomes[cid] = runner.prerequisite_outcomes(manifest, required,
+                [row for row in records['prerequisites'] if row['cell'] == cid],
+                [row for row in records['records'] if row['cell'] == cid])
         for arm in [*context['protections'], *cell['comparators']]:
             state = outcomes[cid][arm]['status']
             require(state == 'passed' or (arm not in context['protections'] and state == 'unavailable'),

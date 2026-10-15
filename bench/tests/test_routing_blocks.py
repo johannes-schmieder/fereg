@@ -470,6 +470,15 @@ class BlockContext(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 blocks.qualification(self.context_ref, self.write({**records, key: value}))
 
+    def test_platform_platform_Mac_spellings_admit_without_accepting_other_hosts(self):
+        records = self.qualified()
+        for value in ['macOS-26.6.2-arm64-arm-64bit', 'Darwin-25.6.0-arm64-arm-64bit']:
+            with self.subTest(platform=value):
+                blocks.qualification(self.context_ref, self.write({**records, 'platform': value}))
+        for value in ['Linux-6.8-x86_64', 'Windows-11', 'Darwinian-host', 'macOSish', 'Darwin', '', None, {}, [], 1, True]:
+            with self.subTest(platform=value), self.assertRaisesRegex(ValueError, 'fresh complete Mac'):
+                blocks.qualification(self.context_ref, self.write({**records, 'platform': value}))
+
     def test_all_candidate_reference_edges_and_identity_protection_retained(self):
         coverage = blocks.comparison_coverage(self.context_ref, self.write(self.qualified()))
         self.assertEqual(len(coverage['comparisons']), 42 * 4 * 2)
@@ -516,7 +525,8 @@ class BlockContext(unittest.TestCase):
 
     def test_timing_spec_derives_complete_mirrored_edges_and_packets(self):
         config = self.timing_config()
-        with patch.object(runner, 'evidence', return_value=({}, {})):
+        proof = self.write(routing.seal({'synthetic': 'verified proof'}))
+        with patch.object(runner, 'evidence', return_value=({'scoped_replay': proof}, {})):
             spec = blocks.timing_spec(config)
         self.assertEqual(len(spec['cells']), 42)
         self.assertEqual(sum(len(cell['comparisons']) for cell in spec['cells']), 42 * 7)
@@ -527,6 +537,13 @@ class BlockContext(unittest.TestCase):
         packet = spec['cells'][0]['validation']
         with self.assertRaisesRegex(ValueError, 'fresh Mac qualification'):
             blocks.science_context({**packet, 'witness': self.write({'stale': 'other host'})})
+
+    def test_ordinary_records_cannot_supply_derived_outcome_overrides(self):
+        for field in ['effective_outcomes', 'effective_rows', 'completion', 'plan', 'kind']:
+            records = self.qualified()
+            records[field] = 'routing_science_completion_v1' if field == 'kind' else {'forged': 'passed'}
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'separately validated'):
+                blocks.qualification(self.context_ref, self.write(records))
 
     def test_context_dependency_inventory_binds_discovery_and_review_closure(self):
         names = {Path(bound['path']).name for bound in blocks.context_bindings(self.context_ref, self.context)}
@@ -570,7 +587,8 @@ class BlockContext(unittest.TestCase):
 
     def decision_fixture(self):
         config = self.timing_config()
-        with patch.object(runner, 'evidence', return_value=({}, {})):
+        proof = self.write(routing.seal({'synthetic': 'verified proof'}))
+        with patch.object(runner, 'evidence', return_value=({'scoped_replay': proof}, {})):
             spec = blocks.timing_spec(config)
         analysis = {'missing_monitor_evidence': False, 'scientific_or_execution_failure': False,
                     'summary': [{'cell_id': cell['id'], 'comparison_id': pair['id'],
@@ -584,7 +602,8 @@ class BlockContext(unittest.TestCase):
 
     def decide_synthetic(self, config, spec, analysis, bound):
         import time_blocks
-        with patch.object(runner, 'evidence', return_value=({}, {})), \
+        proof = self.write(routing.seal({'synthetic': 'verified proof'}))
+        with patch.object(runner, 'evidence', return_value=({'scoped_replay': proof}, {})), \
              patch.object(time_blocks, 'load_manifest', return_value=({'spec': spec}, {})), \
              patch.object(time_blocks, 'analyze', return_value=analysis):
             return routing.unseal(blocks.decide(config, bound, bound, bound))

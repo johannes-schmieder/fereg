@@ -7354,7 +7354,7 @@
       "actual_mac_b_c_executed": false
     },
     "mac_blocks_admission": {
-      "status": "declared_witness_preparation_blocked_by_derived_metadata_error",
+      "status": "complete_B_scientific_prerequisites_independently_admitted_no_timing",
       "inputs_file_sha256": "68f9ba2780330d4e880462b3d41fcfc75b0061a780ce67061e03a8f2c11f80d1",
       "b_context_file_sha256": "b00166786272c8dc42459c1b2165f78323f92f363d04bce8666b7dcfc223590a",
       "c_declaration_file_sha256": "54de87f44938352f4e06348c264b3d27cc696481513bfd80360e9f712e7403ec",
@@ -7362,7 +7362,7 @@
       "C_attempts": 24,
       "native_calls_at_declaration": 0,
       "C_case_bodies_accessed": false,
-      "actual_B_science": "not_yet_run",
+      "actual_B_science": "42_cells_admitted_from_40_original_and_2_separately_derived_wrappers",
       "actual_B_timing": "not_yet_run",
       "actual_C": "not_yet_run",
       "public_auto_changed": false,
@@ -7423,6 +7423,346 @@
           "artifact_inputs": 58,
           "status": "unchanged"
         }
+      },
+      "B_science_prerequisites": {
+        "status": "complete_with_failed_cells",
+        "exit_status": 1,
+        "records_file_sha256": "e66c18a4efd7f0143effacdf47e748c5b94ed008bd631b896ebb5ddde5b57fbe",
+        "elapsed_seconds": 2411.6715738750063,
+        "cells": 42,
+        "planned_solver_case_pairs": 486,
+        "passed_pairs_with_exact_repeats": 460,
+        "optional_unavailable_pairs": 18,
+        "blocked_first_calls": 8,
+        "blocked_missing_repeats_not_run": 8,
+        "qualified_wrappers": 40,
+        "required_wrappers": 42,
+        "original_records_and_failures_preserved": true,
+        "blocked_calls": [
+          {
+            "cell": "four-fe-t1",
+            "arms": [
+              "lsmr",
+              "map",
+              "it",
+              "it-coefficients"
+            ]
+          },
+          {
+            "cell": "four-fe-t4",
+            "arms": [
+              "lsmr",
+              "map",
+              "it",
+              "it-coefficients"
+            ]
+          }
+        ],
+        "original_error": "scoped replay changed an unaffected field: /matrices/RSOLVER/bits/8; /matrices/RSOLVER/bits/9",
+        "diagnosis": {
+          "classification": "request_dependent_diagnostic_only_cross_request_checker_failure",
+          "independent_raw_and_source_review": "gpt-6-astra high passed for classification and bounded proposal only",
+          "review_file_sha256": "3eadbd56f83fef32484770e6a073e3f46401a58b143c1ce7ef39cbb53e3d1fff",
+          "review_raw_evidence_bindings": 33,
+          "raw_evidence_sha256": [
+            "e66c18a4efd7f0143effacdf47e748c5b94ed008bd631b896ebb5ddde5b57fbe",
+            "0a79c82f149c3095c127be47289520d29e42ce180138163de6dbf42a30a32f77",
+            "4a5e55aa1d3fc4839f45ffd7c20a657c06f348a08a1443867d28a8fdafb5e5c1",
+            "c69ef5e0cb2c5694f1e7b975c24f098a9a363d84d1ded7d4821a9aa5f46ff026",
+            "d9ad2e3e6e4f83d3992ac757fc2cf432b7ec9c5bf9a0130b7bcc3b99bcd38fa8",
+            "c78c2b7419d3e95d2327ce2f528b5995b96a545fecd4dec9a0afdde2fc410b9d",
+            "31ba1469104417a69cc7daccf08d3f77ddfb8445baa4b9a4f1713bde013b3854",
+            "c0b597debb4ba538aec3e05daf99145079680313c4b57ad14a7e91651a20bf30",
+            "e423bd583076f1da150fc6060c0e7ff2473aa07bbf3050dd4aafaeffe3977380",
+            "cacfade313ffd6319598616b0521c127d1f6dbdd4ccae8935e03f60cff95589e",
+            "de904d3e7dc277e1afe8588c56510bfb222e57977c0c0a8fbaf84172cda31bbc",
+            "5200d9dede210e0defebee09848134d39fa349e8fcf11fe175cde088f67616f5",
+            "8d6b7d1dc3e10231adf7941b04f0bf7f5609106b1ef0ae2a02bfe79d5929fa8e",
+            "cb16664847a1ef77309f587ee2fc97832d3a61da7441a1eb3a3f666c5f4c7fc1",
+            "6db236c68e8688d76542857bb02c4b1ac9912e1b7d04173d74e559f6c79969b1",
+            "4d59fa825adc3ea275c5a6d8c61ea0d75769cefa3c3a5a69e59b2a5bb986f4bf",
+            "ac88ff360a3a927afe8d3056ff6ebf3d10eb0a52ef0e6fc756bb6f711b40bd1a",
+            "5f705fa135b6d60ca3de9acf8a153da011cf6ce4e905e530c3567e257fb03150",
+            "15c51edbd48435936fb7eca2beec7a3310a7143b34364466a1ba4f25798d6014",
+            "5c1b223e1a81f829fd74af94392c4ec34a86ca09be3ac519a37f833ade672aca",
+            "6e39b4543032fc79457473f98f65ae864dd621b82da0deaeae02af8687fb5eac",
+            "9420cbcff5455a8738f3a01d06078f518fe956261ddaf01f8e4764d18b17db87",
+            "cacfade313ffd6319598616b0521c127d1f6dbdd4ccae8935e03f60cff95589e",
+            "a3bb3e1979d31fd6f9a9da3179b6b9ef0a3c2b7be4a6eff5030ca11eec58ed4d",
+            "007f62ab2170c9bc9fedee453ea18be4c002f1273ef4a730356c7f806eece646",
+            "8d6b7d1dc3e10231adf7941b04f0bf7f5609106b1ef0ae2a02bfe79d5929fa8e",
+            "09ac783a9a3e73ae3c02308da1b6ef1cf852f8ae253027a82f7bbbcf28746945",
+            "0cde0a4fd3b57a55284bded87b69ce843d7e41980f8e6b0d9363efef7ed9f8f7",
+            "4d59fa825adc3ea275c5a6d8c61ea0d75769cefa3c3a5a69e59b2a5bb986f4bf",
+            "3cbdc74044388d02127922c99996f9978a3b78e224a6efcd2f31f362008bb26e",
+            "6424cc62cdc6d5f6509d2baf21808dd04b3e5c5d57a5da51bb1d5f9e845d1884",
+            "15c51edbd48435936fb7eca2beec7a3310a7143b34364466a1ba4f25798d6014",
+            "b2038620625a1b1b1894c093daf2c50314bff6744d48cf6b3b612e87525f5bfa"
+          ],
+          "affected_exact_view_indices": [
+            8,
+            9
+          ],
+          "affected_fields": [
+            "primary fallback_used",
+            "primary warning count"
+          ],
+          "baseline_auto_primary": "certified MAP after Auto LSMR fallback; fallback_used=1, warning_count=1",
+          "explicit_primary": "clean explicit requests; fallback_used=0, warning_count=0",
+          "original_independent_oracle_and_numeric_comparison": "passed before the recorded checker exception, established by frozen execution order and immutable exception evidence",
+          "independent_retained_log_resource_checks": {
+            "passed": 8,
+            "iteration_caps": "passed",
+            "memory_caps": "passed",
+            "setup_caps": "not_applicable"
+          },
+          "baseline_evidence": "Retained successful baseline solver_rows and matching prerequisite/repeat fingerprints, plus hash-matched execution order.",
+          "limitation": "Full original four-FE baseline result JSON and output columns are unavailable; no fresh complete baseline raw replay or comparison is claimed.",
+          "scientific_scope": "No model, sample, rank, omission, separation, numerical tolerance, candidate or production change is established. Same-request exact-repeat diagnostics remain required.",
+          "qualification": "incomplete; original blocked records remain blocked",
+          "affected_published_raw_RSOLVER_columns": [
+            10,
+            11
+          ]
+        },
+        "bounded_completion_proposal": {
+          "status": "under_development_not_ready_not_executed",
+          "checker_repair": "Narrow request-dependent diagnostic handling and an explicit separate derived completion; no blanket fallback/warning exclusion or case-family fence.",
+          "prospective_freeze_and_implementation_review_required": true,
+          "original_stopping_rule": "fixed panel, no retry or continuation; failed prerequisites block dependent timing",
+          "prospective_supersession_scope": "only the eight originally not-run repeats",
+          "native_call_cap": 8,
+          "calls_executed": 0,
+          "per_call_timeout_seconds": 120,
+          "total_budget_seconds": 1200,
+          "original_remaining_budget_floor_seconds": 11988,
+          "call_set": [
+            {
+              "cell": "four-fe-t1",
+              "arm": "lsmr",
+              "missing_repeat_count": 1
+            },
+            {
+              "cell": "four-fe-t1",
+              "arm": "map",
+              "missing_repeat_count": 1
+            },
+            {
+              "cell": "four-fe-t1",
+              "arm": "it",
+              "missing_repeat_count": 1
+            },
+            {
+              "cell": "four-fe-t1",
+              "arm": "it-coefficients",
+              "missing_repeat_count": 1
+            },
+            {
+              "cell": "four-fe-t4",
+              "arm": "lsmr",
+              "missing_repeat_count": 1
+            },
+            {
+              "cell": "four-fe-t4",
+              "arm": "map",
+              "missing_repeat_count": 1
+            },
+            {
+              "cell": "four-fe-t4",
+              "arm": "it",
+              "missing_repeat_count": 1
+            },
+            {
+              "cell": "four-fe-t4",
+              "arm": "it-coefficients",
+              "missing_repeat_count": 1
+            }
+          ],
+          "first_calls_reexecuted": false,
+          "optional_unavailable_pairs_retried": false,
+          "retry_or_replacement_allowed": false,
+          "exact_repeat_requirement": "Each missing repeat must match its retained first-call full exact science signature, output-column hash and timing-stripped same-request solver diagnostics; retain independent truth, resources and worker checks.",
+          "derived_record_requirement": "Preserve the original records, tool hashes and artifacts; explain checker-only reclassification in an explicit separate derivation without restamping original observations.",
+          "any_new_failure": "stops completion and blocks dependent timing"
+        },
+        "B_timing_executed": false,
+        "B_selection_completed": false,
+        "public_activation_executed": false,
+        "C_case_bodies_accessed": false,
+        "C_executed": false,
+        "public_auto_changed": false,
+        "qualification_passed": false,
+        "optional_unavailable_repeats_not_run": 18,
+        "total_repeat_records_not_run": 26
+      },
+      "B_science_completion": {
+        "status": "complete_independently_raw_reviewed_and_admitted_for_B_science_only",
+        "original_cohort": {
+          "records_file_sha256": "e66c18a4efd7f0143effacdf47e748c5b94ed008bd631b896ebb5ddde5b57fbe",
+          "status": "complete_with_failed_cells",
+          "byte_identical": true,
+          "original_blocked_and_not_run_rows_unchanged": true,
+          "initial_proposal": "Historical unexecuted proposal remains unchanged inside B_science_prerequisites; the separate completion below records its reviewed implementation and actual execution."
+        },
+        "code": {
+          "source_sha256": {
+            "routing_blocks.py": "c4bbc9d8917a23524b4f07ff845fd05bf1383c3d402a8b46c9fbfaccd53fa766",
+            "routing_run.py": "c114972517e2b20cab2083864bcd38551730aea73790c172481bc0a95cc512be",
+            "routing_science_completion.py": "428d62d0c90e82620273362b842555d6999f257403086bfa2d7f35ed05d71751",
+            "time_blocks.py": "4aea1b6cf5071414d0523123dcef72de7c2770e17fd5980ad0513e9058ecf9f0"
+          },
+          "archive_sha256": {
+            "routing_blocks.py": "df001d97ea3b8fa496b82918fbddf5e90fa81596a0e31eb10b8b45687554de77",
+            "routing_run.py": "4a5e55aa1d3fc4839f45ffd7c20a657c06f348a08a1443867d28a8fdafb5e5c1",
+            "time_blocks.py": "835a65afbe037d87d258a92180ceac300f9997341000fc40153cf3186a3f9402"
+          },
+          "scope": "Typed separate completion and source-only B/C transition; inherited original hashes and exact archived source identities remain strict. Models, native inputs/artifacts, budgets, tolerances and timing designs are unchanged.",
+          "B_transition_only_difference": "coordinator_sha256",
+          "C_transition_only_differences": [
+            "b_context",
+            "sources"
+          ],
+          "ordinary_qualification_rejects_derived_only_fields": true,
+          "verification": "Fresh stat-guarded hash memo per validation pass; actual bytes hashed once per distinct canonical dependency, stamp changes fail and no global cache or silent refresh is used.",
+          "unique_executor_sha256": "437d14d0fdc914102a5d6edd41fe1642135eaf949b8ed3c549aaf100b7490b7a",
+          "once_only_claim_sha256": "7128cf964d77e0f733f3416e3017e4c6822aafdd799923c9f8ae59b5d3405d6d"
+        },
+        "preflight_history": {
+          "first_attempt": {
+            "status": "failed_before_plan_or_native_claim",
+            "file_sha256": "04bb242cfb1d018a0e54ab975599177874c45c25db95c1af608272cb66706fac",
+            "actual_platform": "macOS-26.6.2-arm64-arm-64bit",
+            "cause": "Both admission predicates accepted only Darwin-prefixed labels while the original producer records platform.platform().",
+            "other_declared_metadata_matches": true,
+            "plan_created": false,
+            "native_calls": 0,
+            "completion_source_sha256": "f0615d4552e6db5f521db6a4e75afb174f39d9364ff8975645c37ecb7ffa3713"
+          },
+          "narrow_correction": "Only two source predicates were updated to accept string labels beginning Darwin- or macOS-; Linux/Windows, misleading prefixes, bare labels and non-string values remain rejected.",
+          "passed_preflight": {
+            "file_sha256": "021c2e12458e0d0ea8e3996dac45aff5ab0dad3e3b03079dd27d185c8f861093",
+            "declare_elapsed_seconds": 4.014218874974176,
+            "bindings": 402,
+            "requests": 8,
+            "native_calls": 0,
+            "no_native_claim_at_preflight": true
+          }
+        },
+        "source_review_versions": {
+          "initial": {
+            "file_sha256": "1f5ec70bf776230bef9d4ccf1fff09903cd119d964840dd34d7bd0a975c52d41",
+            "evidence_bindings": 133,
+            "status": "passed_for_then_current_prospective_source_and_bounded_design"
+          },
+          "platform_corrected": {
+            "file_sha256": "119daef737682899ec57fce5f3995c13d42fb8b742414c8fac1e6738d4486df9",
+            "evidence_bindings": 139,
+            "status": "go_for_pure_plan_and_preflight_only",
+            "current_330_test_status_at_review": "pending",
+            "native_dispatch_condition": "Current-source full 330-test pass and execution-readiness checks must pass before the exclusive native claim."
+          }
+        },
+        "checks": {
+          "earlier_fixture_failure": {
+            "tests": 323,
+            "errors": 9,
+            "elapsed_seconds": 40.566,
+            "log_sha256": "6bf3ccf0f2b45acd12c88f84c83ad826d1feb2d1a99d4432dabe39af8f227278",
+            "cause": "Outdated public-deployment fixtures lacked scoped_replay; fixture migration and later full suites pass."
+          },
+          "earlier_concurrent_check": "Earlier approximately 95-second concurrent/older-source check is retained as historical evidence only; no current readiness claim or invented log hash.",
+          "prior_full_bench": {
+            "tests": 328,
+            "elapsed_seconds": 184.748,
+            "status": "passed_on_older_source_before_Mac_label_correction",
+            "log_sha256": "f0d2c11f43aa59ac4278088e2150a10a0f41589f29ca2d5d821bfce29af12b69"
+          },
+          "initial_repository_python_failure": {
+            "status": "failed_due_to_incorrect_Python_runtime_missing_tomllib",
+            "log_sha256": "be2e5ebe391e6a9edb2cb8575c748b895b1c66eef8bf56223d28ecf85dc73703"
+          },
+          "full_repository": {
+            "status": "passed_after_Python_runtime_correction",
+            "log_sha256": "7de877492263987e7144973a33edeb2530812ab78c3a7519027d0fc96b3ca45c"
+          },
+          "current_focused": {
+            "tests": 40,
+            "elapsed_seconds": 7.245,
+            "status": "passed",
+            "log_sha256": "015634fda177d85ea9da96795df1d368a0caf596558bbea2703b771e2f855035"
+          },
+          "current_full_bench": {
+            "tests": 330,
+            "elapsed_seconds": 190.54,
+            "status": "passed",
+            "log_sha256": "cf08777761883adedf96fe165fc2103d979750bec1d0c6f60f03b7a3ec00f279"
+          },
+          "execution_readiness": {
+            "file_sha256": "9d12cd1d8bebb2705e324707432364ac11966369cca88e83956669fa459039e6",
+            "status": "passed_before_once_only_claim",
+            "binds_current_full_330_test_pass": true
+          },
+          "runtime_production_modules": 192,
+          "artifact_inputs": 58,
+          "production_and_native_artifacts_changed": false
+        },
+        "plan": {
+          "file_sha256": "e31f94f2d98aa1e89c23b5080fc969c5825df7e171fcbfde97e9d71af8582551",
+          "canonical_sha256": "01252be46129c0578a145361098bdef0de389f2231c14a3570930c1f4efba8fb",
+          "bindings": 402,
+          "requests": 8,
+          "per_call_timeout_seconds": 120,
+          "budget_seconds": 1200,
+          "stopping": "exactly the eight missing repeats; stop on first failure; no retries or timing"
+        },
+        "actual_execution": {
+          "status": "complete",
+          "exit_status": 0,
+          "native_calls": 8,
+          "elapsed_seconds": 72.04086220893078,
+          "native_report_file_sha256": "c48d0bb9910f39e03ec23b63eaf13e2abfa22dbdae8d62d10561806a9f47a52d",
+          "completion_file_sha256": "9fb7541c7437409a5a446b64ce8d769064309cfee38aa557a78d338a5a82f92f",
+          "completion_canonical_sha256": "c54917de2999e1d2c7bbcfaa9eaa75ac0e3b175700ac632173532620e58491c6",
+          "full_first_repeat_science_fingerprints": "exact including timing-stripped diagnostics and output-column bytes",
+          "original_native_inputs_plugins_worker_requests_unchanged": true,
+          "per_call_limit_seconds": 120,
+          "first_calls_reexecuted": 0,
+          "optional_outcomes_retried": 0,
+          "retries": 0,
+          "SCC_availability_imported": false
+        },
+        "independent_raw_admission_review": {
+          "file_sha256": "612f091a0d36196fb0e9bd762110bd47df52675d5962057969522c18b8614d71",
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high",
+          "status": "passed",
+          "actual_hash_verified_bindings": 434,
+          "raw_comparison": "Different implementation removed only time fields, compared every remaining raw scientific field exactly and compared output columns chunk-by-chunk byte-exactly.",
+          "independently_reconstructed_fingerprints": "match original immutable diagnostic review and typed completion tables",
+          "execution_checks": "All calls complete with native return code zero and 120-second caps; prepared/plugin/worker headers, unique claim, reviewed executor and full330-to-readiness-to-claim chronology verified."
+        },
+        "qualified_composition": {
+          "status": "admitted_for_B_scientific_prerequisites_only",
+          "qualification_elapsed_seconds": 19.16,
+          "cells": 42,
+          "inherited_original_wrappers": 40,
+          "separately_derived_cells": 2,
+          "passing_arm_requests": 468,
+          "original_Mac_unavailable_arm_requests": 18,
+          "all_unaffected_rows": "exactly equal to their original immutable rows",
+          "original_failure_lineage_preserved": true
+        },
+        "limitations": [
+          "The full original four-FE baseline raw outputs/columns remain unavailable; frozen original execution-order evidence and retained baseline diagnostics support the previous comparison, without reconstructing absent raw science.",
+          "Environment enforcement is established by the pinned executed helper and successful control flow, not a separate independent environment snapshot."
+        ],
+        "B_timing_executed": false,
+        "B_selection_completed": false,
+        "public_activation_executed": false,
+        "C_case_bodies_accessed": false,
+        "C_executed": false,
+        "public_auto_changed": false,
+        "admission_scope": "Complete Mac B scientific prerequisites only; no timing winner, performance claim, activation, C inspection/confirmation or promotion."
       }
     }
   },
@@ -7902,12 +8242,23 @@
       "recovery_overlay_sha256": "92f84cf0a2b514dcec8d5ceb3c3875c9c9149f3a37e3738fc5dc211ed8b25d18"
     },
     "report": {
-      "pdf_sha256": "13384c744c78277a76d877c32986bf7ee58b0cd740d339b7571aad0b3b24df15",
-      "source_sha256": "7c5dad9d4379cbd634a4d90341e354206b08bf63bf67c76bbb69c0f1e7801f09",
+      "pdf_sha256": "fc3554c987918d0e24905cbc8ed25303fae1bf28383aed0534eb1cc9e67e7fd8",
+      "source_sha256": "e9e21e1fc6acc59cd747cb6cf9ff1933a74251d110c1d8de3a9ef11b81868489",
       "pages": 22,
       "changed_page": 22,
       "built_in_compiler": "success",
-      "visual_review": "22pages; first21 extracted-text pages unchanged. Page22 records accepted SCC discovery and reviewed clerical B amendment; Mac selection/confirmation pending."
+      "visual_review": "22 pages; first 21 extracted-text pages unchanged. Page 22 records independently admitted Mac B science (42 cells, 468 passes, 18 original optional unavailabilities), current 330-test pass, and no B timing, winner or C claim.",
+      "previous_versions": [
+        {
+          "pdf_sha256": "13384c744c78277a76d877c32986bf7ee58b0cd740d339b7571aad0b3b24df15",
+          "source_sha256": "7c5dad9d4379cbd634a4d90341e354206b08bf63bf67c76bbb69c0f1e7801f09",
+          "pages": 22,
+          "changed_page": 22,
+          "built_in_compiler": "success",
+          "visual_review": "22pages; first21 extracted-text pages unchanged. Page22 records accepted SCC discovery and reviewed clerical B amendment; Mac selection/confirmation pending."
+        }
+      ],
+      "export_compiler": "success"
     },
     "postprocessor": {
       "job_id": "8126751",

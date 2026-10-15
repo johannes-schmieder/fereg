@@ -439,7 +439,8 @@ class FrozenCollection(unittest.TestCase):
         runner = types.SimpleNamespace(evidence=Mock(return_value=(witness, [])),
                                        reader_arm=Mock(return_value='auto'), verify_public_request=Mock())
         context = {'manifest': manifest, 'cell': cell, 'required': list(item['arms']), 'stage': 'C',
-                   'selection_sha256': 'context', 'bindings': []}
+                   'selection_sha256': 'context', 'bindings': [],
+                   'science': {'witness': witness, 'proof': proof, 'witness_path': self.root / 'input.case', 'dependencies': []}}
         modules = {'routing_run': runner, 'routing_blocks': types.SimpleNamespace(science_context=Mock(return_value=context)),
                    'routing': types.SimpleNamespace(unseal=lambda value: value), 'cmgschur': types.SimpleNamespace(),
                    'routing_oracle': types.SimpleNamespace(KIND='independent'),
@@ -448,6 +449,7 @@ class FrozenCollection(unittest.TestCase):
         with patch.dict(sys.modules, modules):
             adapter = blocks.RoutingScience(item)
             self.assertEqual(adapter.reader, {'arm0': 'auto', 'arm1': 'auto'})
+            runner.evidence.assert_not_called()
             self.assertEqual(runner.verify_public_request.call_count, 2)
             runner.verify_public_request.assert_any_call(self.root / 'input.case', manifest, 'arm1')
             runner.verify_public_request.side_effect = ValueError('public request includes injection')

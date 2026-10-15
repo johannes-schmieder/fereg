@@ -48,8 +48,12 @@ class PublicBlocks(unittest.TestCase):
                 row['normalized_regret_median_interval']['upper'] = .1
         self.manifests = {self.b_bound['path']: {'spec': self.b_spec, 'bindings': []}}
         self.analyses = {self.b_bound['path']: self.b_analysis}
-        self.enterContext(patch.object(runner, 'evidence', side_effect=lambda path, *_args, **_kwargs:
-                                      (json.loads(path.read_text()), {})))
+        verified_proof = self.write(routing.seal({'synthetic': 'verified proof'}))
+        def verified_evidence(path, *_args, **_kwargs):
+            value = json.loads(path.read_text())
+            value.setdefault('scoped_replay', verified_proof)
+            return value, {}
+        self.enterContext(patch.object(runner, 'evidence', side_effect=verified_evidence))
         self.enterContext(patch.object(time_blocks, 'load_manifest', side_effect=lambda path: (self.manifests[str(path)], {})))
         self.enterContext(patch.object(time_blocks, 'analyze', side_effect=lambda path, *_: copy.deepcopy(self.analyses[str(path)])))
         decision = blocks.decide(self.b_config, self.b_bound, self.b_bound, self.b_bound)

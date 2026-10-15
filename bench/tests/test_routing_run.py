@@ -146,6 +146,106 @@ class ExplicitComparatorScope(unittest.TestCase):
             self.compare(raw, 'cmg')
 
 
+class CrossRequestComparatorScope(unittest.TestCase):
+    META = {'categorical_intercepts': True, 'absorbed_terms': 3}
+
+    @staticmethod
+    def pair(arm):
+        reference = ExplicitComparatorScope.raw('auto')
+        raw = ExplicitComparatorScope.raw(arm)
+        for column, value in {0: 1., 1: 2., 2: 4., 3: 2., 10: 1., 11: 1.,
+                              12: 1., 13: 3., 14: 0., 15: 0.}.items():
+            reference['matrices']['RSOLVER']['bits'][column] = bits(value)
+        return reference, raw
+
+    def compare(self, reference, raw, arm, meta=None):
+        with patch.object(routing_run.cmgschur, 'scientific_comparison'):
+            routing_run.compatibility(reference, raw, None, None,
+                                      self.META if meta is None else meta, arm)
+
+    def test_only_authenticated_primary_cross_request_adds_two_leaves(self):
+        for arm in ['lsmr', 'map', 'it']:
+            for preconditioner in [2., 3., 4.]:
+                with self.subTest(arm=arm, preconditioner=preconditioner):
+                    reference, raw = self.pair(arm)
+                    reference['matrices']['RSOLVER']['bits'][13] = bits(preconditioner)
+                    scope = set(routing_run.cross_request_scope(reference, raw, arm, self.META))
+                    previous = set(routing_run.replay_scope(raw, arm, self.META))
+                    self.assertEqual(scope - previous,
+                        {'/matrices/RSOLVER/bits/8', '/matrices/RSOLVER/bits/9'})
+                    self.assertFalse(previous - scope)
+                    self.compare(reference, raw, arm)
+
+    def test_reference_and_target_mapping_mutations_cannot_receive_allowance(self):
+        reference_changes = [(0, 2.), (1, 4.), (2, 0.), (2, -1.), (2, .5),
+            (2, float('nan')), (2, float('inf')), (3, 1.), (10, 0.), (11, 2.),
+            (12, 0.), (13, 0.), (14, 1.), (15, .1)]
+        target_changes = [(0, 1.), (1, 4.), (2, 0.), (2, -1.), (2, .5),
+            (2, float('nan')), (2, float('inf')), (3, 1.), (10, 1.), (11, 1.),
+            (12, 2.), (13, 1.), (14, 1.), (15, .1)]
+        for arm in ['lsmr', 'map', 'it']:
+            for side, changes in [('reference', reference_changes), ('target', target_changes)]:
+                for column, value in changes:
+                    with self.subTest(arm=arm, side=side, column=column, value=value):
+                        reference, raw = self.pair(arm)
+                        changed = reference if side == 'reference' else raw
+                        changed['matrices']['RSOLVER']['bits'][column] = bits(value)
+                        with self.assertRaises(ValueError):
+                            self.compare(reference, raw, arm)
+
+    def test_return_codes_shapes_and_final_diagnostics_remain_protected(self):
+        for arm in ['lsmr', 'map', 'it']:
+            for side in ['reference', 'target']:
+                for mutation in ['return', 'bool return', 'rows', 'columns', 'bits', 'bool rows']:
+                    with self.subTest(arm=arm, side=side, mutation=mutation):
+                        reference, raw = self.pair(arm)
+                        changed = reference if side == 'reference' else raw
+                        solver = changed['matrices']['RSOLVER']
+                        if mutation in ['return', 'bool return']:
+                            changed['return_code'] = False if mutation == 'bool return' else 459
+                        elif mutation == 'bits':
+                            solver['bits'].pop()
+                        else:
+                            field = 'rows' if mutation == 'bool rows' else mutation
+                            solver[field] = True if mutation == 'bool rows' else 1
+                        with self.assertRaises(ValueError):
+                            self.compare(reference, raw, arm)
+            for column in [10, 11]:
+                reference, raw = self.pair(arm)
+                raw['matrices']['RSOLVER']['bits'][16 + column] = bits(1.)
+                with self.subTest(arm=arm, final_column=column), self.assertRaises(ValueError):
+                    self.compare(reference, raw, arm)
+
+    def test_auto_same_request_and_generic_it_get_no_cross_request_scope(self):
+        for arm in ['auto', 'lsmr', 'map', 'it']:
+            reference = ExplicitComparatorScope.raw(arm)
+            raw = copy.deepcopy(reference)
+            scope = routing_run.cross_request_scope(reference, raw, arm, self.META)
+            self.assertEqual(scope, routing_run.replay_scope(raw, arm, self.META))
+            raw['matrices']['RSOLVER']['bits'][10] = bits(1.)
+            with self.subTest(same_request=arm), self.assertRaises(ValueError):
+                self.compare(reference, raw, arm)
+        reference, raw = self.pair('it')
+        for meta in [{}, {'categorical_intercepts': False, 'absorbed_terms': 3},
+                     {'categorical_intercepts': True, 'absorbed_terms': True}]:
+            with self.subTest(meta=meta), self.assertRaises(ValueError):
+                self.compare(reference, raw, 'it', meta)
+        generic = GenericItComparatorScope.raw()
+        reference = ExplicitComparatorScope.raw('auto', 1, 10, 3)
+        for column, value in {1: 2., 10: 1., 11: 1., 12: 1., 13: 3.}.items():
+            reference['matrices']['RSOLVER']['bits'][column] = bits(value)
+        with self.assertRaises(ValueError):
+            self.compare(reference, generic, 'it', GenericItComparatorScope.META)
+
+    def test_scientific_comparison_failure_still_precedes_scope(self):
+        reference, raw = self.pair('lsmr')
+        with patch.object(routing_run.cmgschur, 'scientific_comparison',
+                          side_effect=ValueError('independent science failed')) as science:
+            with self.assertRaisesRegex(ValueError, 'independent science failed'):
+                routing_run.compatibility(reference, raw, None, None, self.META, 'lsmr')
+            science.assert_called_once_with(reference, raw, None, None, self.META)
+
+
 class GenericItComparatorScope(unittest.TestCase):
     META = {'categorical_intercepts': False, 'absorbed_terms': 2}
 
@@ -826,6 +926,83 @@ class RoutingProducer(unittest.TestCase):
         self.bound_dependency.write_text('changed after collection')
         with self.assertRaisesRegex(ValueError, 'frozen dependency hash mismatch'):
             routing_run.evidence(wrapper, self.cell, self.spec, list(self.spec['arms']))
+
+    def historical_source_proof(self, suffix='historical'):
+        logical = self.root / f'{suffix}-checker.py'
+        logical.write_text('original reviewed source bytes\n')
+        snapshot = self.root / f'{suffix}-snapshot.py'
+        snapshot.write_bytes(logical.read_bytes())
+        self.evidence['frozen_dependencies'] = [{'path': logical.name, 'sha256': digest(logical)}]
+        self.witness.write_text(json.dumps(self.evidence))
+        output, _ = self.run_panel(prerequisites_only=True, output_name=suffix)
+        wrapper = self.root / suffix / output['qualified_wrappers'][self.cell['id']]['path']
+        value = json.loads(wrapper.read_text())
+        proof_path = wrapper.parent / value['scoped_replay']['path']
+        proof = routing.unseal(json.loads(proof_path.read_text()))
+        old_tools = {**proof['tool_sha256'], 'routing_run.py': digest(logical)}
+        proof['tool_sha256'] = old_tools
+        proof_path.write_text(json.dumps(routing.seal(proof)))
+        for name in ['scoped_replay', 'resource_contract']:
+            value[name]['sha256'] = digest(proof_path)
+        wrapper.write_text(json.dumps(value))
+        logical.write_text('changed live source bytes\n')
+        return wrapper, logical.resolve(), snapshot.resolve(), old_tools, proof_path
+
+    def test_historical_source_needs_explicit_old_tools_and_checked_snapshot_resolution(self):
+        wrapper, logical, snapshot, old_tools, proof = self.historical_source_proof()
+        original_proof = proof.read_bytes()
+        calls = []
+        def resolve(bound):
+            calls.append(bound)
+            self.assertEqual(bound, {'path': str(logical), 'sha256': digest(snapshot)})
+            return snapshot
+        arms = list(self.spec['arms'])
+        with self.assertRaisesRegex(ValueError, 'frozen dependency hash mismatch'):
+            routing_run.evidence(wrapper, self.cell, self.spec, arms)
+        with self.assertRaisesRegex(ValueError, 'frozen dependency hash mismatch'):
+            routing_run.evidence(wrapper, self.cell, self.spec, arms, expected_tools=old_tools)
+        with self.assertRaisesRegex(ValueError, 'different producer or checkers'):
+            routing_run.evidence(wrapper, self.cell, self.spec, arms, dependency_resolver=resolve)
+        value, bound = routing_run.evidence(wrapper, self.cell, self.spec, arms,
+            expected_tools=old_tools, dependency_resolver=resolve)
+        self.assertEqual(value['frozen_dependencies'],
+                         [{'path': str(logical), 'sha256': digest(snapshot)}])
+        self.assertIn(snapshot, bound)
+        self.assertNotIn(logical, bound)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(proof.read_bytes(), original_proof)
+        self.assertEqual(routing.unseal(json.loads(proof.read_text()))['tool_sha256'], old_tools)
+
+    def test_historical_source_snapshot_still_requires_exact_original_bytes(self):
+        wrapper, logical, snapshot, old_tools, _ = self.historical_source_proof()
+        snapshot.write_text('forged archived source\n')
+        with self.assertRaisesRegex(ValueError, 'frozen dependency hash mismatch'):
+            routing_run.evidence(wrapper, self.cell, self.spec, list(self.spec['arms']),
+                expected_tools=old_tools, dependency_resolver=lambda _: snapshot)
+
+    def test_historical_source_resolver_cannot_alias_independent_truth_or_replay_proofs(self):
+        for name in ['independent_witness', 'scoped_replay', 'resource_contract']:
+            with self.subTest(reference=name):
+                wrapper, logical, snapshot, old_tools, _ = self.historical_source_proof(name)
+                value = json.loads(wrapper.read_text())
+                original = (wrapper.parent / value[name]['path']).resolve()
+                # Give the selected reference its own path, so the named guard
+                # is exercised even when replay and resource share one proof.
+                current = self.root / f'{name}-live.json'
+                current.write_bytes(original.read_bytes())
+                preserved = self.root / f'{name}-preserved.json'
+                preserved.write_bytes(current.read_bytes())
+                value[name] = {'path': str(current), 'sha256': digest(current)}
+                wrapper.write_text(json.dumps(value))
+                current.write_text('changed independent evidence or proof\n')
+                seen = []
+                def resolve(bound):
+                    seen.append(bound)
+                    return snapshot if bound['path'] == str(logical) else preserved
+                with self.assertRaisesRegex(ValueError, name + ': evidence file hash mismatch'):
+                    routing_run.evidence(wrapper, self.cell, self.spec, list(self.spec['arms']),
+                        expected_tools=old_tools, dependency_resolver=resolve)
+                self.assertEqual(seen, [])
 
     def test_b_and_c_proofs_require_their_frozen_selection_and_own_case(self):
         for stage in ['B', 'C']:

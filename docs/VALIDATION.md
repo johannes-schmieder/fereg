@@ -266,8 +266,9 @@ no third fresh attempt is permitted.
 
 The SCC shortlist is `baseline`, `h32-k0`, `h16-k0`, `h32-k1`, in that order,
 for Mac selection only. These are descriptive point estimates; the nine paired
-slots are not asserted independent. Public Auto is unchanged, and Mac B/C has
-not been executed. Evidence-only handoff job `8132293` subsequently completed
+slots are not asserted independent. At that SCC boundary, public Auto was
+unchanged and Mac B/C had not been executed. Evidence-only handoff job `8132293`
+subsequently completed
 with terminal accounting `0/0` in 173 seconds, a passing application marker and
 zero native calls. Its fresh frozen aggregate replay matches the entire accepted
 result exactly and produces the typed Mac admission receipt. Independent
@@ -291,9 +292,117 @@ designs remain exact. The amended B12 and untouched C24 declarations precede
 any oracle, native or timing call in the amended cohort. All 23 focused tests,
 305 benchmark tests and the full repository suite pass; independent Astra source
 and test review passes. Runtime production identity remains unchanged for 192
-modules and 58 artifact inputs. C inputs remain untouched; fresh B witnesses and
-science still precede timing, and no B selection, activation or C result is claimed. Retained raw evidence and sealed products remain
-in the SCC campaign `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.
+modules and 58 artifact inputs. At that amendment boundary, fresh B witnesses
+and science remained prerequisites for timing; C inputs were untouched.
+
+Fresh Mac B science then ran against the amended declaration and exited with
+status one after 2,411.6715738750063 seconds. Its retained result is
+`complete_with_failed_cells`: of 486 planned solver/case pairs, 460 passed with
+exact repeats, 18 optional pairs were unavailable, and eight first calls were
+blocked with their eight repeats not run. Only 40 of the required 42 checked
+wrappers were published. The original records, tool identities, failed first
+calls and missing repeats remain unchanged.
+
+Both `four-fe-t1` and `four-fe-t4` blocked explicit `lsmr`, `map`, `it` and
+`it-coefficients` at the same cross-request checker assertion. Independent
+high-effort Astra raw/source review identifies request-dependent primary
+fallback/warning diagnostics: Auto reached certified MAP after an LSMR fallback
+and recorded `1/1`, while the clean explicit requests recorded `0/0`. The error's
+`exact_view` RSOLVER indices 8/9 are published raw columns 10/11,
+`fallback_used` and warning count; raw timing columns 8/9 were already removed.
+The original independent numerical comparison and oracle checks completed before
+the recorded exception, as established by hash-matched execution order and
+immutable failure evidence. All eight retained logs also pass independent
+iteration/memory resource checks. Full original baseline results and output
+columns are unavailable, so the review uses retained baseline `solver_rows` and
+execution-order evidence and makes no fresh full baseline raw-replay claim.
+Same-request repeat diagnostics must stay exact; scientific tolerances and
+resource checks remain unchanged.
+
+The initial narrow checker repair and separate derived completion were still
+under development at the diagnosis milestone. Its proposal froze the intended
+scope to exactly eight missing repeats, one per blocked arm/worker pair, with no
+retry or replacement: 120 seconds per call and 1,200 seconds total, within the
+original remaining budget of 11,988 seconds. At that point the calls had not run,
+and no readiness or qualification pass was claimed. The original failed cohort
+and that initial proposal remain historical evidence.
+
+The implemented consumer now retains the old tool hashes, resolves only three
+exact archived source identities, and accepts the completion through a separate
+typed path. Ordinary qualification rejects derived-only fields. The B/C
+transition changes source provenance only; native inputs, artifacts, scientific
+tolerances and the B12/C24 designs remain fixed. A unique reviewed executor and
+exclusive claim prevent copied-plan retries. Verification uses a fresh
+stat-guarded hash memo for each pass, with unchanged content checks and no global
+cache. Runtime production and native artifact inputs remain unchanged for 192
+modules and 58 artifact inputs.
+
+The first actual pure preflight failed before creating a plan or native claim:
+the original record's `macOS-26.6.2-arm64-arm-64bit` platform label did not match
+the old Darwin-only predicates. The narrow correction changes two source
+predicates to accept proper `Darwin-` and `macOS-` string labels while retaining
+Linux, Windows, misleading-label and type rejection. Earlier source review,
+preflight failure, nine outdated deployment-fixture errors, an approximately
+95-second concurrent/older-source check and the older 328-test pass remain
+retained. Current checks pass all 40 focused tests in 7.245 seconds and all 330
+benchmark tests in 190.540 seconds; the full repository suite passes after the
+Python-runtime correction. Independent Astra source review bound 139 files and
+cleared pure plan/preflight only, with native dispatch conditional on the final
+330-test pass and execution readiness. The actual readiness receipt binds that
+passing log before the claim. The successful pure plan preflight took
+4.014218874974176 seconds with 402 bindings and eight requests, making no native
+call; this is validation overhead, not a solver performance measurement.
+
+The once-only executor then completed exactly eight native calls with exit
+status zero in 72.04086220893078 seconds. Each repeat uses its original prepared
+input, plugin, worker request and 120-second cap, and matches the retained
+first-call full fingerprint, including timing-stripped solver diagnostics and
+binary output-column bytes. No first call was re-executed, no optional failure
+was retried, and no SCC availability outcome was imported. The typed completion
+is a separate derivation: original records `e66c18a4…` remain byte-identical and
+`complete_with_failed_cells`, including the eight blocked first calls and eight
+not-run repeats.
+
+Independent high-effort Astra raw admission review now passes against 434
+hash-verified evidence bindings. A different comparison implementation strips
+only time fields, checks every remaining raw scientific field exactly, compares
+column files chunk-by-chunk byte-exactly, and independently reproduces the
+original and completion fingerprints. It verifies completion certificates,
+prepared/plugin/worker identities, the reviewed executor, once-only claim,
+process completion/caps and full-suite-to-readiness-to-claim chronology. Actual
+`routing_blocks.qualification` validation then took 19.16 seconds and admits all
+42 B cells: 40 inherited proofs plus two separately derived cells, with 468
+passing arm requests and the original 18 Mac optional unavailabilities. Every
+unaffected row remains exactly equal to its original immutable row.
+
+This admits B scientific prerequisites only. The missing original full baseline
+raw output/columns limitation remains. Environment enforcement is established by
+the pinned executed helper and successful control flow; there is no separate
+independent environment snapshot. No B timing, B winner, public activation or
+C-body access has occurred, and public Auto remains unchanged.
+
+| Mac B science evidence | SHA-256 |
+| --- | --- |
+| Original failed-cohort records | `e66c18a4efd7f0143effacdf47e748c5b94ed008bd631b896ebb5ddde5b57fbe` |
+| Independent checker diagnosis, 33 raw bindings | `3eadbd56f83fef32484770e6a073e3f46401a58b143c1ce7ef39cbb53e3d1fff` |
+| Prospective source review, 139 bindings | `119daef737682899ec57fce5f3995c13d42fb8b742414c8fac1e6738d4486df9` |
+| Frozen eight-request plan file | `e31f94f2d98aa1e89c23b5080fc969c5825df7e171fcbfde97e9d71af8582551` |
+| Actual eight-call native report | `c48d0bb9910f39e03ec23b63eaf13e2abfa22dbdae8d62d10561806a9f47a52d` |
+| Separate typed completion file | `9fb7541c7437409a5a446b64ce8d769064309cfee38aa557a78d338a5a82f92f` |
+| Independent raw B-science admission, 434 bindings | `612f091a0d36196fb0e9bd762110bd47df52675d5962057969522c18b8614d71` |
+
+The current 22-page [routing explanation](solver_routing.pdf) records this
+science admission and the current 330-test pass on page 22. Built-in compilation
+and exported compilation pass; visual inspection confirms the changed page,
+and the first 21 extracted-text pages remain exactly unchanged. PDF SHA-256 is
+`fc3554c987918d0e24905cbc8ed25303fae1bf28383aed0534eb1cc9e67e7fd8`;
+[editable source](solver_routing.tex) SHA-256 is
+`e9e21e1fc6acc59cd747cb6cf9ff1933a74251d110c1d8de3a9ef11b81868489`.
+Earlier report hashes remain historical in the compact evidence. The report
+makes no B timing, winner or C qualification claim.
+
+Retained SCC raw evidence and sealed products remain in the campaign
+`/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.
 The [compact evidence](../bench/results/solver-routing-controlled-20261014.json)
 preserves every earlier failure, both attempt reports and these final bindings:
 
@@ -319,14 +428,15 @@ against `09f7c134`; the compact evidence retains source and check-output hashes.
 The narrow Mac admission fix now accepts the original Linux archive/commit/input
 identity through the sealed parent's candidate-artifact bindings. Mac and newer
 explicit plugin identities retain their existing checks. Independent high-effort
-Astra review clears the source and tests. All 17 focused block tests, the current
-`./scripts/run_tests.sh` suite and all 299 benchmark tests pass; the benchmark
+Astra review clears the source and tests. At that earlier boundary, all 17
+focused block tests, the
+`./scripts/run_tests.sh` suite and all 299 benchmark tests passed; the benchmark
 suite completed in 176.505 seconds. Production identity is unchanged against
 `abf20e8f` for 192 runtime modules and 58 artifact inputs, so prior native
 qualification evidence remains valid. No new native qualification or Mac B/C
 execution is claimed.
 
-| Current Mac-admission tooling check | SHA-256 |
+| Earlier Mac-admission tooling check | SHA-256 |
 | --- | --- |
 | Coordinator source | `5456df8770f35c8a583f5ad5a6ba060256a00b944299327d1b51522325dd72f0` |
 | Coordinator tests | `ab40d1de2d8720d764dfe5c2212911a8789826bd90c6d0984aa3116cc31e61ee` |

@@ -137,10 +137,42 @@ def replay_scope(raw, arm, meta=None):
     return scope
 
 
+def cross_request_scope(reference, raw, arm, meta=None):
+    """Bind primary Auto fallback diagnostics to one certified explicit request."""
+    eligible = arm in {'lsmr', 'map'} or (arm == 'it' and isinstance(meta, dict)
+        and meta.get('categorical_intercepts') is True
+        and type(meta.get('absorbed_terms')) is int and meta['absorbed_terms'] > 0)
+    if not eligible:
+        return replay_scope(raw, arm, meta)
+    for result in [reference, raw]:
+        solver = result['matrices']['RSOLVER']
+        if (type(result.get('return_code')) is not int or result['return_code'] != 0
+                or type(solver['rows']) is not int or type(solver['columns']) is not int
+                or (solver['rows'], solver['columns'], len(solver['bits'])) != (2, 16, 32)):
+            raise ValueError('cross-request result/diagnostic shape changed')
+    scope = replay_scope(raw, arm, meta)
+    before = cmgschur.numbers(reference['matrices']['RSOLVER'])[:16]
+    after = cmgschur.numbers(raw['matrices']['RSOLVER'])[:16]
+    fields = [0, 1, 3, 10, 11, 12, 14, 15]
+    expected = cmgschur.EXPECTED_SOLVER[arm]
+    iterations = [before[2], after[2]]
+    if ([before[i] for i in fields] == [1, 2, 2, 1, 1, 1, 0, 0]
+            and before[13] in {2, 3, 4}
+            and [after[i] for i in fields] == [expected, expected, 2, 0, 0,
+                                             1 if arm == 'lsmr' else 0, 0, 0]
+            and after[13] in ({2, 3, 4} if arm == 'lsmr' else {0})
+            and all(math.isfinite(value) and value > 0 and value.is_integer() for value in iterations)):
+        # Raw columns 10/11 become 8/9 after exact_view removes timing.
+        # Final diagnostics and same-request comparisons receive no new scope.
+        scope.extend(['/matrices/RSOLVER/bits/8', '/matrices/RSOLVER/bits/9'])
+    return scope
+
+
 def compatibility(reference, raw, reference_columns, columns, meta, arm):
     cmgschur.scientific_comparison(reference, raw, reference_columns, columns, meta)
     changed = differences(exact_view(reference, False), exact_view(raw, False))
-    outside = [path for path in changed if not allowed_difference(path, replay_scope(raw, arm, meta))]
+    scope = cross_request_scope(reference, raw, arm, meta)
+    outside = [path for path in changed if not allowed_difference(path, scope)]
     if outside:
         raise ValueError('scoped replay changed an unaffected field: ' + '; '.join(outside[:5]))
 
@@ -317,7 +349,14 @@ def tool_identities():
     return {path: digest(path) for path in [*producers, *checkers]}
 
 
-def evidence(path, cell, manifest, arms, *, prerequisites_only=False, local_oracle=False, stage='A', selection_sha256=None):
+def evidence(path, cell, manifest, arms, *, prerequisites_only=False, local_oracle=False, stage='A',
+             selection_sha256=None, expected_tools=None, dependency_resolver=None, dependency_verifier=None):
+    """Check a proof; reviewed completion may resolve archived source bytes.
+
+    Historical provenance is explicit: the caller validates the tool transition,
+    while this reader still checks every byte and the original logical bindings.
+    Independent truth, replay proofs and failure artifacts are never aliased.
+    """
     value = routing.read_json(path)
     if (value.get('schema') != 2 or value.get('status') != ('ready' if prerequisites_only else 'checked')
             or value.get('case_sha256') != cell['case_sha256']
@@ -343,11 +382,14 @@ def evidence(path, cell, manifest, arms, *, prerequisites_only=False, local_orac
     for dependency in dependencies:
         if not isinstance(dependency, dict) or set(dependency) != {'path', 'sha256'} or not isinstance(dependency['path'], str):
             raise ValueError('invalid frozen dependency binding')
-        source = (path.parent / dependency['path']).resolve(strict=True)
-        if not routing.sha(dependency['sha256']) or digest(source) != dependency['sha256']:
-            raise ValueError('frozen dependency hash mismatch: ' + str(source))
+        logical = (path.parent / dependency['path']).resolve(strict=True)
+        source = (dependency_resolver({'path': str(logical), 'sha256': dependency['sha256']})
+                  if dependency_resolver is not None else logical)
+        actual_hash = digest(source) if dependency_verifier is None else dependency_verifier(source)
+        if not routing.sha(dependency['sha256']) or actual_hash != dependency['sha256']:
+            raise ValueError('frozen dependency hash mismatch: ' + str(logical))
         bound[source] = dependency['sha256']
-        normalized_dependencies.append({'path': str(source), 'sha256': dependency['sha256']})
+        normalized_dependencies.append({'path': str(logical), 'sha256': dependency['sha256']})
     if 'frozen_dependencies' in value:
         value['frozen_dependencies'] = normalized_dependencies
     if not prerequisites_only:
@@ -359,7 +401,9 @@ def evidence(path, cell, manifest, arms, *, prerequisites_only=False, local_orac
         for key in ['schema', 'status', 'manifest_sha256', 'cell_id', 'case_sha256', 'body_sha256', 'threads', 'arms', 'arm_outcomes', 'stage', 'selection_sha256', 'frozen_dependencies']:
             if proof.get(key) != value.get(key):
                 raise ValueError('per-arm evidence disagrees with its sealed prerequisite proof')
-        if proof.get('tool_sha256') != {p.name: v for p, v in tool_identities().items()}:
+        if expected_tools is None:
+            expected_tools = {p.name: v for p, v in tool_identities().items()}
+        if proof.get('tool_sha256') != expected_tools:
             raise ValueError('prerequisite proof used different producer or checkers')
         rows = [*proof['prerequisites'], *proof['repeat_checks']]
         if any(row.get('cell') != cell['id'] or row.get('arm') not in proof['arms'] for row in rows):

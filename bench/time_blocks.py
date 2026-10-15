@@ -271,7 +271,8 @@ def mirrored_schedule(spec):
 
 def source_bindings():
     names = ['time_blocks.py', 'time_exact.py', 'native_io.py', 'routing.py', 'routing_run.py',
-             'routing_cases.py', 'routing_oracle.py', 'cmgschur.py', 'cmgschur_cases.py', 'native.py']
+             'routing_cases.py', 'routing_oracle.py', 'cmgschur.py', 'cmgschur_cases.py', 'native.py',
+             'routing_science_completion.py']
     paths = [Path(__file__).with_name(name) for name in names]
     paths += [ROOT / 'scripts' / name for name in ['replay_plugins.py', 'replay_psd.py', 'replay_bias_reference.py', 'replay_cmg_polish.py']]
     paths.append(ROOT / 'crates/fereg-oracle/python/replay_ols_reference.py')
@@ -361,9 +362,15 @@ class RoutingScience:
         self.meta = inspect_case(source, cell['family'])
         require(self.meta['body_sha256'] == cell['body_sha256'], 'Routing numeric/model body changed')
         witness_path = check(packet['witness'])
-        witness, dependencies = runner.evidence(witness_path, cell, manifest, required, stage=stage,
-                                               selection_sha256=selection_sha256)
-        self.bindings = [*context_bindings, *[reference(path) for path in dependencies]]
+        if packet['kind'] == 'routing_blocks':
+            bundle = context['science']
+            witness, proof, witness_path = bundle['witness'], bundle['proof'], bundle['witness_path']
+            self.bindings = context_bindings
+        else:
+            witness, dependencies = runner.evidence(witness_path, cell, manifest, required, stage=stage,
+                                                   selection_sha256=selection_sha256)
+            proof = routing.unseal(read((witness_path.parent / witness['scoped_replay']['path']).resolve()))
+            self.bindings = [reference(path) for path in dependencies]
         sidecar = source.with_suffix('.json')
         if sidecar.exists():
             side = read(sidecar)
@@ -388,7 +395,6 @@ class RoutingScience:
             self.meta['routing_oracle'], paths = routing_oracle.load_reference(oracle_path, cell['case_sha256'], cell['body_sha256'])
             self.bindings.extend(reference(path) for path in paths)
         require(any(key in self.meta for key in ['oracle', 'replay_reference', 'routing_oracle']), 'Missing executable independent truth')
-        proof = routing.unseal(read((witness_path.parent / witness['scoped_replay']['path']).resolve()))
         self.expected, self.reader = {}, {}
         for side, execution in execution_arms(item).items():
             arm = execution['label']
