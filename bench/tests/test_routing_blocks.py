@@ -265,6 +265,190 @@ class BlockContext(unittest.TestCase):
         with self.assertRaises(ValueError):
             blocks.declare(self.rebound_discovery_inputs(plan), self.design)
 
+    def model_amendment_fixture(self, *, parallel=False):
+        original = copy.deepcopy(self.spec)
+        case = self.root / f'metadata-{self.serial}.case'
+        case.write_text('synthetic immutable model bytes\n')
+        sidecar = case.with_suffix('.json')
+        original['panels']['B'][0].update(case_file=case.name,
+            case_sha256=blocks.reference(case)['sha256'], absorbed_terms=2,
+            categorical_intercepts=True)
+        cell = original['panels']['B'][0]
+        sidecar.write_text(json.dumps({'case_sha256': cell['case_sha256'],
+                                      'body_sha256': cell['body_sha256'], 'absorbed_terms': 3}))
+        parent = {**self.plan, 'tournament': routing.seal(original), 'frozen_files': {}}
+        plan = self.parallel_linux_plan(parent) if parallel else parent
+        inputs = self.rebound_discovery_inputs(plan, manifest=original)
+        original_review = blocks.read(inputs['discovery_review'])
+        amended = copy.deepcopy(original)
+        amended['panels']['B'][0]['absorbed_terms'] = 3
+        evidence = self.write({'independent_review': 'count correction before observations'})
+        amendment = {'kind': blocks.KIND + '_B_model_metadata_amendment', 'status': 'passed',
+            'calls': {'oracle': 0, 'native': 0, 'timing': 0},
+            'original_manifest': inputs['manifest'],
+            'original_manifest_sha256': routing.identity(original),
+            'original_review': inputs['discovery_review'],
+            'amended_manifest_sha256': routing.identity(amended),
+            'changes': [{'cell_id': original['panels']['B'][0]['id'], 'before': 2, 'after': 3,
+                         'case': blocks.reference(case), 'sidecar': blocks.reference(sidecar)}],
+            'evidence': [evidence]}
+        bound = [amendment['original_manifest'], amendment['original_review'], evidence,
+                 amendment['changes'][0]['case'], amendment['changes'][0]['sidecar']]
+        review = {**original_review, 'raw_evidence': original_review['raw_evidence'] + bound,
+                  'model_metadata_amendment': amendment}
+        return inputs, amended, review
+
+    def test_reviewed_B_count_amendment_accepts_original_and_parallel_without_native_access(self):
+        for parallel in [False, True]:
+            with self.subTest(parallel=parallel):
+                inputs, amended, review = self.model_amendment_fixture(parallel=parallel)
+                inputs.update(manifest=self.write(routing.seal(amended)),
+                              discovery_review=self.write(review))
+                with patch.object(runner, 'inspect_case') as inspect:
+                    context = blocks.declare(inputs, self.design)
+                    inspect.assert_not_called()
+                self.assertEqual(context['cells'][0]['absorbed_terms'], 3)
+                self.assertEqual(context['cells'][0]['case_sha256'],
+                    blocks.read(review['model_metadata_amendment']['original_manifest'],
+                                sealed=True)['panels']['B'][0]['case_sha256'])
+
+    def test_reviewed_B_count_amendment_rejects_unreviewed_changes_and_provenance(self):
+        changes = ['A count', 'C count', 'body', 'policy', 'categorical', 'comparators',
+                   'case identity', 'duplicate', 'missing evidence', 'missing raw proof',
+                   'oracle calls', 'native calls', 'timing calls', 'bool before', 'bool after',
+                   'extra manifest field', 'wrong original identity', 'wrong original review',
+                   'missing original raw', 'case basename', 'sidecar path', 'unlisted change',
+                   'original panel drift', 'zero before', 'zero after', 'unchanged count']
+        for parallel in [False, True]:
+            for change in changes:
+                with self.subTest(parallel=parallel, change=change):
+                    inputs, amended, review = self.model_amendment_fixture(parallel=parallel)
+                    amendment = review['model_metadata_amendment']
+                    correction = amendment['changes'][0]
+                    cell = amended['panels']['B'][0]
+                    if change in ['A count', 'C count']:
+                        amended['panels'][change[0]][0]['absorbed_terms'] = 3
+                    elif change == 'body':
+                        cell['body_sha256'] = h('changed model bytes')
+                    elif change == 'policy':
+                        amended['arms']['h8-k0']['policy'] = routing.policy('h16-k0')
+                    elif change == 'categorical':
+                        cell['categorical_intercepts'] = False
+                    elif change == 'comparators':
+                        cell['comparators'] = []
+                    elif change == 'case identity':
+                        cell['case_sha256'] = h('changed input')
+                    elif change == 'duplicate':
+                        amendment['changes'].append(copy.deepcopy(correction))
+                    elif change == 'missing evidence':
+                        amendment['evidence'] = []
+                    elif change == 'missing raw proof':
+                        review['raw_evidence'].remove(correction['sidecar'])
+                    elif change in ['oracle calls', 'native calls', 'timing calls']:
+                        amendment['calls'][change.split()[0]] = 1
+                    elif change == 'bool before':
+                        correction['before'] = True
+                    elif change == 'bool after':
+                        correction['after'] = True
+                        cell['absorbed_terms'] = True
+                    elif change == 'extra manifest field':
+                        amended['unreviewed_metadata'] = 'extra'
+                    elif change == 'wrong original identity':
+                        amendment['original_manifest_sha256'] = h('different original')
+                    elif change == 'wrong original review':
+                        previous = blocks.read(amendment['original_review'])
+                        previous['remote_validation'] = self.write({'another': 'validation'})
+                        replacement = self.write(previous)
+                        review['raw_evidence'].append(replacement)
+                        amendment['original_review'] = replacement
+                    elif change == 'missing original raw':
+                        previous = blocks.read(amendment['original_review'])
+                        review['raw_evidence'].remove(previous['raw_evidence'][0])
+                    elif change == 'case basename':
+                        alternate = self.root / f'other-{self.serial}.case'
+                        alternate.write_text('synthetic immutable model bytes\n')
+                        correction['case'] = blocks.reference(alternate)
+                        review['raw_evidence'].append(correction['case'])
+                    elif change == 'sidecar path':
+                        correction['sidecar'] = self.write({'wrong': 'sidecar location'})
+                        review['raw_evidence'].append(correction['sidecar'])
+                    elif change == 'original panel drift':
+                        original = blocks.read(amendment['original_manifest'], sealed=True)
+                        original['panels']['A'][0]['body_sha256'] = h('changed original A')
+                        amendment['original_manifest'] = self.write(routing.seal(original))
+                        amendment['original_manifest_sha256'] = routing.identity(original)
+                        review['raw_evidence'].append(amendment['original_manifest'])
+                        amended['panels']['A'] = copy.deepcopy(original['panels']['A'])
+                    elif change == 'zero before':
+                        correction['before'] = 0
+                    elif change == 'zero after':
+                        correction['after'] = cell['absorbed_terms'] = 0
+                    elif change == 'unchanged count':
+                        correction['after'] = cell['absorbed_terms'] = correction['before']
+                    else:
+                        amended['panels']['B'][1]['absorbed_terms'] = 3
+                    # Rebind all affected outer objects: failures must exercise
+                    # the amendment contract, not a stale amended-manifest seal.
+                    amendment['amended_manifest_sha256'] = routing.identity(amended)
+                    inputs.update(manifest=self.write(routing.seal(amended)),
+                                  discovery_review=self.write(review))
+                    with self.assertRaises(ValueError):
+                        blocks.declare(inputs, self.design)
+
+    def reject_original_review_raw_shape(self, shape):
+        for parallel in [False, True]:
+            with self.subTest(parallel=parallel):
+                inputs, amended, review = self.model_amendment_fixture(parallel=parallel)
+                amendment = review['model_metadata_amendment']
+                previous = blocks.read(amendment['original_review'])
+                if shape == 'missing':
+                    del previous['raw_evidence']
+                else:
+                    previous['raw_evidence'] = [] if shape == 'empty' else 'not a list'
+                replacement = self.write(previous)
+                review['raw_evidence'].remove(amendment['original_review'])
+                review['raw_evidence'].append(replacement)
+                amendment['original_review'] = replacement
+                inputs.update(manifest=self.write(routing.seal(amended)),
+                              discovery_review=self.write(review))
+                with self.assertRaisesRegex(ValueError, 'retain the original discovery review'):
+                    blocks.declare(inputs, self.design)
+
+    def test_model_amendment_rejects_empty_original_review_raw_evidence(self):
+        self.reject_original_review_raw_shape('empty')
+
+    def test_model_amendment_rejects_missing_original_review_raw_evidence(self):
+        self.reject_original_review_raw_shape('missing')
+
+    def test_model_amendment_rejects_nonlist_original_review_raw_evidence(self):
+        self.reject_original_review_raw_shape('nonlist')
+
+    def test_model_amendment_requires_unchanged_case_and_corrected_count_in_sidecar(self):
+        for parallel in [False, True]:
+            for field in ['case_sha256', 'body_sha256', 'absorbed_terms']:
+                mutations = ['missing', 'forged']
+                if field == 'absorbed_terms':
+                    mutations.append('boolean')
+                for mutation in mutations:
+                    with self.subTest(parallel=parallel, field=field, mutation=mutation):
+                        inputs, amended, review = self.model_amendment_fixture(parallel=parallel)
+                        correction = review['model_metadata_amendment']['changes'][0]
+                        previous = correction['sidecar']
+                        metadata = blocks.read(previous)
+                        if mutation == 'missing':
+                            del metadata[field]
+                        else:
+                            metadata[field] = (True if mutation == 'boolean' else
+                                               4 if field == 'absorbed_terms' else h('forged sidecar'))
+                        Path(previous['path']).write_text(json.dumps(metadata))
+                        correction['sidecar'] = blocks.reference(previous['path'])
+                        review['raw_evidence'].remove(previous)
+                        review['raw_evidence'].append(correction['sidecar'])
+                        inputs.update(manifest=self.write(routing.seal(amended)),
+                                      discovery_review=self.write(review))
+                        with self.assertRaisesRegex(ValueError, 'sidecar does not attest the corrected count'):
+                            blocks.declare(inputs, self.design)
+
     def test_C_legacy_previous_and_linux_rejected_before_case_access(self):
         with patch.object(blocks.platform, 'system', return_value='Darwin'):
             for stage, previous in [('C', None), ('B', {'stage': 'A'})]:

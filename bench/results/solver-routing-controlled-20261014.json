@@ -7352,6 +7352,78 @@
       },
       "runtime_evidence": "Prior native scientific and timing evidence reused; no renewed native qualification required.",
       "actual_mac_b_c_executed": false
+    },
+    "mac_blocks_admission": {
+      "status": "declared_witness_preparation_blocked_by_derived_metadata_error",
+      "inputs_file_sha256": "68f9ba2780330d4e880462b3d41fcfc75b0061a780ce67061e03a8f2c11f80d1",
+      "b_context_file_sha256": "b00166786272c8dc42459c1b2165f78323f92f363d04bce8666b7dcfc223590a",
+      "c_declaration_file_sha256": "54de87f44938352f4e06348c264b3d27cc696481513bfd80360e9f712e7403ec",
+      "B_attempts": 12,
+      "C_attempts": 24,
+      "native_calls_at_declaration": 0,
+      "C_case_bodies_accessed": false,
+      "actual_B_science": "not_yet_run",
+      "actual_B_timing": "not_yet_run",
+      "actual_C": "not_yet_run",
+      "public_auto_changed": false,
+      "witness_preparation": {
+        "status": "failed_before_any_oracle_or_native_call",
+        "log_sha256": "ba16a416b62bf9a7ea3292e13b823076bf4c42a5208ccdbfc7a0bc86b5e1d2e4",
+        "retained_partial_wrappers": 6,
+        "oracle_attempts": 0,
+        "native_calls": 0,
+        "first_affected_cell": "low-saved-t1",
+        "affected_cells": [
+          "low-saved-t1",
+          "low-saved-t4"
+        ],
+        "field": "absorbed_terms",
+        "declared": 2,
+        "actual": 3,
+        "case_bytes_unchanged": true,
+        "model_body_unchanged": true,
+        "cause": "Historical preparation copied panel A family shape metadata across all stages. B case header and original sidecar already specify three categorical effects.",
+        "dependent_science_and_timing": "blocked",
+        "C_case_bodies_accessed": false
+      },
+      "metadata_amendment": {
+        "status": "independently_reviewed_checked_and_declared_before_any_oracle_native_or_timing_call",
+        "reason": "Correct A-to-all-panels metadata copying defect without changing the existing B model bytes.",
+        "source_sha256": "df001d97ea3b8fa496b82918fbddf5e90fa81596a0e31eb10b8b45687554de77",
+        "test_sha256": "8c07be139d4423aeddfa8475b02adb8bb5f3ff25ec14194a749f3a9f823b606d",
+        "independent_source_and_test_review": "gpt-6-astra high go",
+        "focused_tests": 23,
+        "repository_suite_exit_status": 0,
+        "repository_suite_log_sha256": "b486ad6eb40fbd12b8e1e10b5fd8fd3583dfd07f2d2ccb8013466667536f1a7a",
+        "amended_manifest_file_sha256": "0a79c82f149c3095c127be47289520d29e42ce180138163de6dbf42a30a32f77",
+        "permitted_change": "Explicit reviewed unique positive B absorbed_terms count corrections only; exact whole-manifest patch equality, original review retained, unchanged case/body/sidecar bindings, original sidecar attests corrected count.",
+        "case_model_bytes_changed": false,
+        "A_C_metadata_changed": false,
+        "categorical_flags_changed": false,
+        "candidate_grid_or_comparators_changed": false,
+        "scientific_tolerances_changed": false,
+        "timing_design_changed": false,
+        "oracle_native_timing_calls_before_amendment": 0,
+        "original_failed_preparation_retained": true,
+        "C_case_bodies_accessed": false,
+        "benchmark_suite": {
+          "tests": 305,
+          "exit_status": 0,
+          "wall_seconds": 180.125,
+          "log_sha256": "bd8abde52f77a0ffd6725cc00ed3b149e9ff39613fccdb009486c291e013c685"
+        },
+        "amended_review_sha256": "d1070195a79ea1046ad5a4bd7e977bff05469e3f20eb410baf63d0485ccd0a7d",
+        "review_evidence_bindings": 104,
+        "b_context_file_sha256": "bbbaf0074bc36f6c8d1bfb6116e97c926c70a35ec1291ffca3f79dd644d8da42",
+        "c_declaration_file_sha256": "a2504a0eca0f1b5eae73154a0d94df78f91b02fdbbdac4e8369b8176134a887d",
+        "inputs_file_sha256": "b252ba84bcf16859876f47fe2bb2a1e9c4c36ee87a46a6d2c86f1daace6d6a49",
+        "production_identity": {
+          "against": "e4f3f709",
+          "runtime_modules": 192,
+          "artifact_inputs": 58,
+          "status": "unchanged"
+        }
+      }
     }
   },
   "scc_discovery_prerequisites": {
@@ -7830,12 +7902,12 @@
       "recovery_overlay_sha256": "92f84cf0a2b514dcec8d5ceb3c3875c9c9149f3a37e3738fc5dc211ed8b25d18"
     },
     "report": {
-      "pdf_sha256": "02374316135bd0318ca79129520d14ba39ad98f7305344d9b277288bcb59b3bd",
-      "source_sha256": "aa3fa36ab4f4a89300e03a459d8b8d545099de436c2bacffbd51050ed5b83316",
+      "pdf_sha256": "13384c744c78277a76d877c32986bf7ee58b0cd740d339b7571aad0b3b24df15",
+      "source_sha256": "7c5dad9d4379cbd634a4d90341e354206b08bf63bf67c76bbb69c0f1e7801f09",
       "pages": 22,
       "changed_page": 22,
       "built_in_compiler": "success",
-      "visual_review": "Latest page22 rendered and inspected; first21 extracted-text pages unchanged;22pages; no clipping. SCC discovery accepted; Mac B/C unexecuted."
+      "visual_review": "22pages; first21 extracted-text pages unchanged. Page22 records accepted SCC discovery and reviewed clerical B amendment; Mac selection/confirmation pending."
     },
     "postprocessor": {
       "job_id": "8126751",
@@ -8029,11 +8101,38 @@
         "comparisons_per_ranking_row": 360,
         "full_recomputed_aggregate_match": "exact"
       },
-      "mac_handoff_validation": "actual_typed_remote_validation_not_yet_run",
+      "mac_handoff_validation": {
+        "status": "passed",
+        "job_id": "8132293",
+        "failed": 0,
+        "exit_status": 0,
+        "slots": 1,
+        "wall_seconds": 173,
+        "cpu_seconds": 163.402,
+        "maxvmem": "1.497G",
+        "host": "scc-tb4",
+        "native_calls": 0,
+        "wrapper_sha256": "59d9f5c604c488405d7828f0573f6fc8e1f7a7e8b024670fa138ef5e584aaf2a",
+        "validation_file_sha256": "16af42d2fb4e747e5fa3207eab08c6a366f6339bc75415cd6afb98fc4ea66635",
+        "terminal_accounting_sha256": "72f56a1aec3c76c0dbe14ed09fa0e4275be5fe6b007b6153bc442d6eefa2272a",
+        "application_log_sha256": "ea3d3c57473a997ee29ca99f4d375a9d51279219b175748661c757044042fdfb",
+        "full_replayed_aggregate_match": "exact",
+        "independent_wrapper_review": "gpt-6-astra high go",
+        "scope": "Evidence-only typed Mac handoff receipt; no native solves or frozen evidence mutation."
+      },
       "mac_b_c_executed": false,
       "public_auto_changed": false,
       "promotion": false,
-      "retained_remote_campaign": "/projectnb/welfgr/fereg/runs/solver-routing-20261014/"
+      "retained_remote_campaign": "/projectnb/welfgr/fereg/runs/solver-routing-20261014/",
+      "mac_admission_review": {
+        "status": "passed",
+        "file_sha256": "773ba47963ffebaaeef4ac0de38e8b3ca463fd11110ab123ea6bb8d9ed533c28",
+        "model": "gpt-6-astra",
+        "reasoning_effort": "high",
+        "raw_evidence_bindings": 84,
+        "production_artifact_counterpart_review": "passed",
+        "completed_mac_qualification_reused": true
+      }
     }
   }
 }

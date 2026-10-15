@@ -267,8 +267,32 @@ no third fresh attempt is permitted.
 The SCC shortlist is `baseline`, `h32-k0`, `h16-k0`, `h32-k1`, in that order,
 for Mac selection only. These are descriptive point estimates; the nine paired
 slots are not asserted independent. Public Auto is unchanged, and Mac B/C has
-not been executed. Actual typed remote handoff validation and its review remain
-required before Mac admission. Retained raw evidence and sealed products remain
+not been executed. Evidence-only handoff job `8132293` subsequently completed
+with terminal accounting `0/0` in 173 seconds, a passing application marker and
+zero native calls. Its fresh frozen aggregate replay matches the entire accepted
+result exactly and produces the typed Mac admission receipt. Independent
+high-effort Astra review binds 84 actual local evidence files and validates
+completed Mac qualification and cross-platform production/artifact provenance.
+The coordinator has now admitted B12 and declared the separate untouched C24
+budget before B case access. The single B witness preparation then stopped
+after six local-truth wrappers: `low-saved-t1` and its four-worker counterpart
+have unchanged frozen case/body bytes with three categorical effects, while the
+derived declaration says two. Earlier preparation copied panel A family shape
+metadata into every panel. The original B sidecar and canonical header already
+specify three. No oracle attempt or native call occurred. The old declarations,
+partial wrappers and failure log remain retained; strict model checks stay in
+place. Independent high-effort Astra review subsequently verified an explicit
+clerical amendment against 104 evidence bindings, retaining every original raw
+reference. It corrects only those two B counts. The validator applies the exact
+reviewed patch to the original sealed manifest and requires whole-manifest
+equality, unchanged case/body bindings and original sidecar attestation. A/C
+metadata, categorical flags, comparator/solver policies, tolerances and timing
+designs remain exact. The amended B12 and untouched C24 declarations precede
+any oracle, native or timing call in the amended cohort. All 23 focused tests,
+305 benchmark tests and the full repository suite pass; independent Astra source
+and test review passes. Runtime production identity remains unchanged for 192
+modules and 58 artifact inputs. C inputs remain untouched; fresh B witnesses and
+science still precede timing, and no B selection, activation or C result is claimed. Retained raw evidence and sealed products remain
 in the SCC campaign `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.
 The [compact evidence](../bench/results/solver-routing-controlled-20261014.json)
 preserves every earlier failure, both attempt reports and these final bindings:

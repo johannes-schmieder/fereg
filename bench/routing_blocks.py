@@ -67,6 +67,68 @@ def design_valid(design, *, attempts=12):
                 and 0 < design[key] <= limit, 'invalid prospective ' + key)
 
 
+def model_metadata_valid(manifest, linux, review):
+    """Allow reviewed B count errata without changing any frozen model bytes."""
+    amendment = review.get('model_metadata_amendment')
+    if amendment is None:
+        require(manifest['panels'] == linux['panels'], 'Mac handoff changed panel metadata')
+        return
+    require(isinstance(amendment, dict)
+            and amendment.get('kind') == KIND + '_B_model_metadata_amendment'
+            and amendment.get('status') == 'passed',
+            'model metadata amendment requires an independent premeasurement review')
+    calls = amendment.get('calls')
+    require(isinstance(calls, dict) and set(calls) == {'oracle', 'native', 'timing'}
+            and all(type(value) is int and value == 0 for value in calls.values()),
+            'model metadata amendment cannot follow oracle, native or timing calls')
+    original = read(amendment['original_manifest'], sealed=True)
+    original_review = read(amendment['original_review'])
+    routing.validate_manifest(original)
+    require(original['panels'] == linux['panels']
+            and amendment.get('original_manifest_sha256') == routing.identity(original)
+            and amendment.get('amended_manifest_sha256') == routing.identity(manifest),
+            'model metadata amendment changed its original or amended identity')
+    keys = ['kind', 'status', 'plan_sha256', 'result_sha256', 'collection_sha256',
+            'isolation_sha256', 'production_tokens_sha256', 'remote_validation']
+    original_raw = original_review.get('raw_evidence')
+    require(all(original_review.get(key) == review.get(key) for key in keys)
+            and isinstance(original_raw, list) and original_raw
+            and all(bound in review['raw_evidence'] for bound in original_raw),
+            'model metadata amendment must retain the original discovery review')
+    changes, evidence = amendment.get('changes'), amendment.get('evidence')
+    require(isinstance(changes, list) and changes and isinstance(evidence, list) and evidence,
+            'model metadata amendment requires explicit corrections and provenance')
+    cells = {cell['id']: cell for cell in original['panels']['B']}
+    seen, bound = set(), [amendment['original_manifest'], amendment['original_review'], *evidence]
+    for change in changes:
+        require(isinstance(change, dict)
+                and set(change) == {'cell_id', 'before', 'after', 'case', 'sidecar'},
+                'only B absorbed-term count corrections are supported')
+        cid, before, after = change['cell_id'], change['before'], change['after']
+        require(isinstance(cid, str) and cid in cells and cid not in seen
+                and type(before) is int and type(after) is int and before > 0 and after > 0
+                and before != after and cells[cid].get('absorbed_terms') == before,
+                'invalid or duplicate B absorbed-term correction')
+        case, sidecar = change['case'], change['sidecar']
+        require(case.get('sha256') == cells[cid]['case_sha256']
+                and Path(case['path']).name == cells[cid]['case_file']
+                and Path(sidecar['path']) == Path(case['path']).with_suffix('.json'),
+                'model metadata correction lacks its unchanged case and sidecar')
+        metadata = read(sidecar)
+        require(metadata.get('case_sha256') == cells[cid]['case_sha256']
+                and metadata.get('body_sha256') == cells[cid]['body_sha256']
+                and type(metadata.get('absorbed_terms')) is int
+                and metadata['absorbed_terms'] == after,
+                'original case sidecar does not attest the corrected count')
+        seen.add(cid)
+        cells[cid]['absorbed_terms'] = after
+        bound += [case, sidecar]
+    require(original == manifest, 'model metadata amendment changed more than reviewed B counts')
+    for item in bound:
+        require(item in review['raw_evidence'] and checked(item).stat().st_size > 0,
+                'model metadata amendment evidence is missing or changed')
+
+
 def declare(inputs, design):
     """Validate metadata and reviewed evidence before B input access is allowed."""
     require(set(inputs) == set(INPUTS), 'incomplete discovery-to-Mac handoff')
@@ -96,7 +158,6 @@ def declare(inputs, design):
             and len(ranking) == len(linux['candidates'])
             and shortlist == [row['arm'] for row in ranking[:4]], 'shortlist differs from complete discovery ranking')
     require(manifest['candidates'] == linux['candidates']
-            and manifest['panels'] == linux['panels']
             and manifest['protections'] == linux['protections']
             and manifest['failure_policy'] == linux['failure_policy'], 'Mac handoff changed tournament coverage or policy')
     require(len(manifest['panels']['B']) == 42, 'Mac selection requires all original 42 B cells')
@@ -149,6 +210,7 @@ def declare(inputs, design):
     require(isinstance(raw, list) and raw, 'retain remote validation raw evidence bindings')
     for bound in raw:
         require(checked(bound).stat().st_size > 0, 'empty discovery evidence')
+    model_metadata_valid(manifest, linux, review)
     require(pilot.get('kind') == KIND + '_pilot_review' and pilot.get('status') == 'passed'
             and pilot.get('recommended_attempts') == {'B': 12, 'C': 24}, 'pilot review does not authorize this block design')
     require(pilot.get('evidence'), 'pilot review requires actual evidence')
