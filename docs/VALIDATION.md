@@ -156,12 +156,29 @@ All 14 CMG and the one generic Irons–Tuck cross-worker checks passed. This is
 Linux scientific evidence from a shared allocation, not timing evidence.
 
 Only after these checks, the existing job `8103652` was released. Collection
-started on `scc-zj4` with 28 reserved slots and entered its first round after
-initial admission. Terminal isolation/accounting and aggregate evidence must
-still pass before any shortlist is accepted. The retained compact evidence
-records all packet hashes, the terminal validation and accounting, optional
-failures and release identity.
-No Mac B selection or new public default follows from this prerequisite result.
+completed three sealed rounds on `scc-zj4` with 28 reserved slots: both accounting
+codes are zero, wall time is 21,607 seconds and reported `maxvmem=1.486G`.
+Successful collection accounting alone does not establish node isolation or a
+valid shortlist.
+
+The dependent evidence-only wrapper `8103792` exited with status one after
+58 seconds, before finalization or aggregation. Its six accounting queries,
+each capped at five seconds, could not retrieve predecessor `8103651`; its
+output directory remains empty. Fresh successful accounting reads took
+6.9–7.2 seconds. The failed wrapper, log and terminal accounting remain retained.
+
+An independent Astra review cleared a separate evidence-only repair: up to three
+60-second accounting reads per predecessor, the original validators and
+scientific tolerances, exclusive output creation and a 25-minute allocation.
+The repair binds the sealed collection and frozen plan/source identities and
+refuses existing finalization products. One submission attempt returned no job
+ID during SCC scheduler communication timeouts; status queries also failed,
+while SSH remained available. Its acceptance is unconfirmed and must be resolved
+before another submission is considered. The original campaign heartbeat stopped
+at the terminal failure. A single recovery follow-up now checks the uncertain
+submission without dispatching a duplicate. Terminal isolation and aggregate
+validation, followed by independent raw-evidence review, remain required before
+Mac B. No Mac B/C calls, shortlist or new public default follow from these results.
 
 The separate public-activation and C transition now passes independent source
 review. Its prerequisite hook collects two hidden-policy and two uninjected

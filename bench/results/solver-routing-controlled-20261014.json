@@ -7207,6 +7207,21 @@
           "lifecycle_evidence_sha256": "80320ae908430449f65c0e064252103a76bdeb9de1c21ffade0e5d4067ce7d61",
           "round_one_entered": true,
           "terminal_qualification": false
+        },
+        "terminal_accounting": {
+          "jobnumber": "8103652",
+          "hostname": "scc-zj4.scc.bu.edu",
+          "qname": "econ",
+          "project": "welfgr",
+          "granted_pe": "omp28",
+          "slots": "28",
+          "failed": "0",
+          "exit_status": "0",
+          "start_time": "Thu Oct 15 00:14:53 2026",
+          "end_time": "Thu Oct 15 06:15:00 2026",
+          "ru_wallclock": "21607",
+          "cpu": "25771.497",
+          "maxvmem": "1.486G"
         }
       },
       {
@@ -7229,12 +7244,27 @@
           "both predecessors qacct failed=0 exit_status=0",
           "frozen complete proof and collection",
           "verified isolation receipt before aggregate"
-        ]
+        ],
+        "terminal_accounting": {
+          "jobnumber": "8103792",
+          "hostname": "scc-tb4.scc.bu.edu",
+          "qname": "econ",
+          "project": "welfgr",
+          "granted_pe": "NONE",
+          "slots": "1",
+          "failed": "0",
+          "exit_status": "1",
+          "start_time": "Thu Oct 15 06:18:05 2026",
+          "end_time": "Thu Oct 15 06:19:03 2026",
+          "ru_wallclock": "58",
+          "cpu": "25.670",
+          "maxvmem": "422.410M"
+        }
       }
     ],
     "accepted_utc": "2026-10-14T22:15:36Z",
     "control_archive_sha256": "11084fc6a0b231339c82d8d8271b913c758d505419202177f707e542e4818174",
-    "status": "collection_running_not_yet_qualified",
+    "status": "collection_complete_validation_repair_submission_unconfirmed",
     "raw_outputs_remote": true,
     "collection_user_hold": {
       "status": "released_after_validated_prerequisites",
@@ -7257,7 +7287,7 @@
     "A_cells": 42,
     "policy_candidates": 13,
     "setup_correction": "Plan output moved under the permitted task output root before submission; original failed freeze preserved, no solver or timing calls occurred.",
-    "claim": "Submission alone did not qualify the campaign. Fresh Linux scientific prerequisites now validate; no accepted timing result, selected routing policy or public Auto promotion follows."
+    "claim": "Collection completed successfully. The first evidence wrapper failed to retrieve accounting within its bounded five-second queries and stopped before finalization. A single independently reviewed evidence-only repair submission has an unconfirmed outcome during scheduler communication errors. No accepted timing result, shortlist, Mac selection or public Auto promotion follows."
   },
   "activation_tooling": {
     "status": "source_review_and_tool_checks_passed",
@@ -7492,5 +7522,88 @@
     },
     "claim": "Fresh Linux scientific prerequisites validated. Optional failures retain their original outcomes and are not retried. Timing, node isolation for collection, shortlist selection and any Mac default promotion remain unqualified.",
     "producer_status": "complete_with_failed_cells"
+  },
+  "scc_discovery_terminal_collection": {
+    "status": "complete_not_yet_qualified",
+    "job_id": "8103652",
+    "file_sha256": "078323ac20bb20e748de857b243de5da9e7d1cee23d9923886b3cff7cda7cfb5",
+    "canonical_sha256": "8d3ba71fe1947f01655fb5df24eec58e9d68c6ddd6fedbe0019fa93de0cee6d5",
+    "rounds": 3,
+    "terminal_lifecycle_capture_sha256": "4cd38f501734c967649656e2b385ccb7b3de3c9c0e1000557dcf4092157d540a",
+    "node_isolation_validation": "pending",
+    "aggregate_validation": "pending"
+  },
+  "scc_discovery_postprocessing_recovery": {
+    "failed_job_id": "8103792",
+    "failed_wrapper_sha256": "0f8485147c607e36ef14fc94378fcf58c6fc10bdfafa723d463908dc02f160c2",
+    "failure": "predecessor accounting absent after bounded wait: 8103651",
+    "failure_log_sha256": "673238d20a5fea541ce8f8bfd0465bd882ac1270959909a9da9701dab6d101d8",
+    "original_output_directory_empty": true,
+    "fresh_successful_query_seconds": {
+      "8103651": 7.115687198995147,
+      "8103652": 7.138735784974415,
+      "8103792": 6.90356626996072
+    },
+    "repair": {
+      "schema": 1,
+      "observed_utc": "2026-10-15T06:43:49.385048+00:00",
+      "stage": "postprocess_accounting_repair",
+      "status": "submission_outcome_unconfirmed_scheduler_gdi_timeout",
+      "script_sha256": "a115b15ae28e686aad457b03a5f7ffe732d16d81bb0f4b2c68fe184256680cdf",
+      "qsub_attempts": 1,
+      "job_id": null,
+      "native_calls": 0,
+      "h_rt_seconds": 1500,
+      "maximum_accounting_attempts_per_predecessor": 3,
+      "per_query_timeout_seconds": 60,
+      "predecessor_ids": [
+        "8103651",
+        "8103652"
+      ],
+      "preserves_failed_job": "8103792",
+      "review": {
+        "model": "gpt-6-astra",
+        "reasoning_effort": "high",
+        "status": "go_for_one_evidence_only_job",
+        "script_sha256": "a115b15ae28e686aad457b03a5f7ffe732d16d81bb0f4b2c68fe184256680cdf"
+      },
+      "qsub_diagnostic": "Unable to run job: failed receiving gdi request response for mid=1 (got syncron message receive timeout error)..\nExiting.",
+      "qstat_diagnostic": "error: failed receiving gdi request response for mid=1 (got syncron message receive timeout error).",
+      "ssh_access": "hostname scc1 succeeded",
+      "next_action": "Resolve exact submission outcome with scheduler/accounting and fixed script/log identity before any further submission. Never duplicate or rerun native measurements.",
+      "healthy_diagnostic_checks": [],
+      "latest_diagnostics": {
+        "qstat_complete_listing": "unavailable after GDI error, two 45-second timeouts and one 30-second timeout",
+        "qacct_exact_repair_name": "job name not found; not proof of nonacceptance",
+        "repair_log_and_exclusive_directory": "absent at last check; not proof of nonacceptance",
+        "retry_submissions": 0,
+        "observed_utc": "2026-10-15T06:50:43.786727Z",
+        "capture_sha256": "e9c1a0e8f540db6e4a6d30392ed85ed0f7382c17b7d1150fa37584ed41a086c7"
+      },
+      "monitor": {
+        "id": "continue-solver-routing-qualification",
+        "status": "ACTIVE",
+        "cadence_minutes": 30,
+        "scope": "resolve uncertain validation-only submission, then monitor that exact job",
+        "old_campaign_monitor_deleted_first": true
+      },
+      "diagnostic_stopping_rule": {
+        "maximum_unmatched_healthy_checks": 3,
+        "minimum_spacing_seconds": 300,
+        "absence_requires": "authoritative scheduler-side submission/spool history or a documented accounting completeness guarantee covering the attempt",
+        "no_match_after_limit": "stop submission attempts and report the required scheduler confirmation"
+      }
+    },
+    "measurement_retries": 0,
+    "scientific_tolerances_changed": false,
+    "frozen_tools_changed": false,
+    "heartbeat_deleted_after_terminal_failure": true,
+    "recovery_monitor_active": true,
+    "milestone_review": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high",
+      "status": "go_for_documentation_and_evidence",
+      "scope": "terminal accounting, failed wrapper, exact repair identity, uncertain submission and bounded diagnostic checks; no timing qualification"
+    }
   }
 }
