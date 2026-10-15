@@ -378,8 +378,9 @@ unaffected row remains exactly equal to its original immutable row.
 This admits B scientific prerequisites only. The missing original full baseline
 raw output/columns limitation remains. Environment enforcement is established by
 the pinned executed helper and successful control flow; there is no separate
-independent environment snapshot. No B timing, B winner, public activation or
-C-body access has occurred, and public Auto remains unchanged.
+independent environment snapshot. At this science-admission boundary, no B
+timing, B winner, public activation or C-body access had occurred; public Auto
+remained unchanged.
 
 | Mac B science evidence | SHA-256 |
 | --- | --- |
@@ -391,15 +392,95 @@ C-body access has occurred, and public Auto remains unchanged.
 | Separate typed completion file | `9fb7541c7437409a5a446b64ce8d769064309cfee38aa557a78d338a5a82f92f` |
 | Independent raw B-science admission, 434 bindings | `612f091a0d36196fb0e9bd762110bd47df52675d5962057969522c18b8614d71` |
 
-The current 22-page [routing explanation](solver_routing.pdf) records this
-science admission and the current 330-test pass on page 22. Built-in compilation
+The science-admission snapshot of the [routing explanation](solver_routing.pdf)
+was 22 pages and recorded this admission and the 330-test pass. Built-in compilation
 and exported compilation pass; visual inspection confirms the changed page,
 and the first 21 extracted-text pages remain exactly unchanged. PDF SHA-256 is
 `fc3554c987918d0e24905cbc8ed25303fae1bf28383aed0534eb1cc9e67e7fd8`;
 [editable source](solver_routing.tex) SHA-256 is
 `e9e21e1fc6acc59cd747cb6cf9ff1933a74251d110c1d8de3a9ef11b81868489`.
-Earlier report hashes remain historical in the compact evidence. The report
-makes no B timing, winner or C qualification claim.
+Earlier report hashes remain historical in the compact evidence. That snapshot
+made no B timing, winner or C qualification claim; the updated report is bound below.
+
+The subsequent fixed Mac B timing campaign at `16774e2e` is terminal **NO-GO
+for performance qualification**. Collector and observer both exited zero. The
+collector records 8,477.926190333092 seconds excluding preflight, within the
+frozen 43,200-second total and 120-second call caps. All 42 warmup units and 504 blocks completed: exactly
+468 warmup and 11,232 timed native calls, with no retries or extra observations.
+Independent high-effort Astra raw review checks all 904 frozen bindings, retained
+logs and clocks, 468 admitted cell-arm fingerprints and prepared inputs. The
+original 18 optional Mac unavailabilities remain unchanged. Another monitor was
+paused during measurement and restored afterward.
+
+The blocking defect is in frozen `parse_ps`: macOS `ucomm` executable names
+retain right-padding, while `known_compute` compares unnormalized names. The
+original classifier therefore recognized zero known-compute categories. The
+retained 2,555 parsed snapshots contain 3,298,909 process rows, bracket the run,
+have no observer errors and a maximum gap of 5.176543 seconds. A separate
+whitespace-normalized external audit uses the same declared categories, activity
+thresholds, ownership and whole-block overlap policy. It finds 284 active
+intervals affecting 102 blocks, leaving 402 blocks and four to twelve per cell.
+`near-confounded-third-t1` retains only four and has no finite one-sided 0.025
+median upper bound. This audit is descriptive: it issues no alternate host
+receipt and cannot retroactively qualify the campaign.
+
+All four candidate frontiers fail both independent descriptive audits. The
+original faulty 504-block mask has 43 failed edges for baseline, 47 for h32-k0,
+53 for h16-k0 and 53 for h32-k1. The normalized 402-block audit has respectively
+51, 55, 59 and 63. Shared-block arithmetic was independently rederived for all
+1,326 comparisons per mask; 23,706 numeric interval values match the frozen
+pair functions to a maximum absolute difference of 3.197442310920451e-14.
+These are conditional, marginal median bounds, not simultaneous or selected-winner
+coverage. Balanced ordering and one session do not establish independent block
+scores; failed-edge counts are correlated. No causal speed claim follows.
+
+The original frozen analyzer then completed with exit zero: all 1,326 summaries
+contain 1,130 passing and 196 failing bounds, with conditional statistical pass
+and qualification pass both false. Independent Astra comparison checks every
+summary field, coverage, masks and frontiers: 87,516 exact scalar and 58,348
+numeric comparisons, maximum difference 5.6621374255882984e-14 (intervals:
+2.2537527399890678e-14). The original raw review remains unchanged; a separate
+addendum closes its previously pending official-output comparison. The analyzer's
+successful host validation did not detect the classification defect and cannot
+establish host eligibility; snapshot coverage itself was complete. No B finalist decision or
+activation has run, no C case body has been accessed, and public Auto remains
+unchanged. The complete campaign, original host receipt, raw evidence,
+descriptive analysis and protocol failure remain preserved. Subsequent planning
+concerns materially revised algorithms with independent mathematical witnesses
+and a prospective parser fix, rather than retrying the current h policies.
+
+Original `ps` stdout was not captured. Parsed process snapshots and sampled
+counters remain bound, but sampling can miss short-lived or first-seen sleeping
+work, missing arguments and PID reuse within start-time resolution. The frozen
+producer deleted successful numeric outputs and binary columns: retained
+fingerprints, column hashes, all logs and source-bound contemporary checks
+support the recorded science, without independent post hoc recomputation of
+each timed output. The earlier baseline-raw and environment-witness limitations
+also remain. Codex app/exec-service activity dominates the normalized inventory;
+the census cannot attribute it to polling, file watching or other requests, and
+none is retrospectively exempted. Two separately sampled Stata processes were
+first-seen/sleeping and did not trigger the frozen activity rule; no extra
+exclusions were invented.
+
+The updated 22-page [routing PDF](solver_routing.pdf) records this terminal
+NO-GO on page 22; its first 21 layout-preserving extracted-text pages remain
+exactly unchanged. Compilation and visual review pass. PDF SHA-256 is
+`720ba60b563f3df4b96059cb0dfff997954ded41e72857da4aec980a1b41bf2f`
+(625,716 bytes); [source](solver_routing.tex) SHA-256 is
+`c5eec711d2f8645b461cf107bd69072e8f577bd2f1affb7d3d9ac67b7b583748`.
+The preceding science-admission PDF hashes remain historical above and in the
+compact evidence.
+
+| Terminal Mac B evidence | SHA-256 |
+| --- | --- |
+| Frozen 904-binding manifest file | `31faa339679f7dc9103f8af742e02f37a42a84320ed3f34d8b784c47cb8c9938` |
+| Manifest canonical identity | `6e200f98a9d6b45a1fef0ff62a3bad7eee0a56b4aaa7241bc6ca754859012ed0` |
+| Complete 11,700-call records | `94cd0f911dee3f29448435440b40feef71e97ac70abf9b2492d947a66c7f154c` |
+| Complete event stream | `f980496499400a4c9c5e487f7eb26c55eba96a8a8c82435e133de0afad41e19c` |
+| Original non-qualifying host receipt | `cc7cd04c5766beee54948b84b8557251a8d3992959e9c890421424a38373ca18` |
+| Independent raw review, NO-GO | `4df4aed96150b1fbf6408aa9a9651ad05596c7c19ccb87811618dcbe9ac8f3ac` |
+| Original frozen analyzer output, non-qualifying | `ca62d0aadbe2d84d12d740058f39002b0b356726ac4723f94e5c9e7e1d9de5af` |
+| Independent complete-output addendum | `e29eb9218453824c8814333ade3a6674433bd9b030aef3b161faa9edba781e24` |
 
 Retained SCC raw evidence and sealed products remain in the campaign
 `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.

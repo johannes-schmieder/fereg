@@ -7354,7 +7354,7 @@
       "actual_mac_b_c_executed": false
     },
     "mac_blocks_admission": {
-      "status": "complete_B_scientific_prerequisites_independently_admitted_no_timing",
+      "status": "terminal_Mac_B_no_go_for_performance_qualification",
       "inputs_file_sha256": "68f9ba2780330d4e880462b3d41fcfc75b0061a780ce67061e03a8f2c11f80d1",
       "b_context_file_sha256": "b00166786272c8dc42459c1b2165f78323f92f363d04bce8666b7dcfc223590a",
       "c_declaration_file_sha256": "54de87f44938352f4e06348c264b3d27cc696481513bfd80360e9f712e7403ec",
@@ -7363,7 +7363,7 @@
       "native_calls_at_declaration": 0,
       "C_case_bodies_accessed": false,
       "actual_B_science": "42_cells_admitted_from_40_original_and_2_separately_derived_wrappers",
-      "actual_B_timing": "not_yet_run",
+      "actual_B_timing": "completed_fixed_campaign_nonqualifying_host_classification_defect",
       "actual_C": "not_yet_run",
       "public_auto_changed": false,
       "witness_preparation": {
@@ -7763,6 +7763,143 @@
         "C_executed": false,
         "public_auto_changed": false,
         "admission_scope": "Complete Mac B scientific prerequisites only; no timing winner, performance claim, activation, C inspection/confirmation or promotion."
+      },
+      "B_timing_campaign": {
+        "status": "terminal_no_go_for_qualification",
+        "source_commit": "16774e2e190731e4f260b59e65bd014a66975388",
+        "manifest": {
+          "file_sha256": "31faa339679f7dc9103f8af742e02f37a42a84320ed3f34d8b784c47cb8c9938",
+          "canonical_sha256": "6e200f98a9d6b45a1fef0ff62a3bad7eee0a56b4aaa7241bc6ca754859012ed0",
+          "frozen_bindings": 904
+        },
+        "execution": {
+          "collector_exit_status": 0,
+          "observer_exit_status": 0,
+          "status": "complete",
+          "cells": 42,
+          "warmup_units": 42,
+          "warmup_calls": 468,
+          "complete_blocks": 504,
+          "timed_calls": 11232,
+          "total_native_calls": 11700,
+          "elapsed_seconds": 8477.926190333092,
+          "budget_seconds": 43200,
+          "per_call_cap_seconds": 120,
+          "retries": 0,
+          "extra_observations": 0,
+          "all_904_bindings_checked": true,
+          "admitted_cell_arm_fingerprints_matched": 468,
+          "original_Mac_optional_unavailable_arm_requests": 18,
+          "SCC_availability_imported": false,
+          "records_file_sha256": "94cd0f911dee3f29448435440b40feef71e97ac70abf9b2492d947a66c7f154c",
+          "events_file_sha256": "f980496499400a4c9c5e487f7eb26c55eba96a8a8c82435e133de0afad41e19c",
+          "original_host_receipt_file_sha256": "cc7cd04c5766beee54948b84b8557251a8d3992959e9c890421424a38373ca18",
+          "other_monitor": "paused during measurement and restored afterward",
+          "elapsed_seconds_excludes_preflight": true
+        },
+        "independent_raw_review": {
+          "status": "no_go_for_qualification",
+          "file_sha256": "4df4aed96150b1fbf6408aa9a9651ad05596c7c19ccb87811618dcbe9ac8f3ac",
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high",
+          "scope": "Immutable execution/science facts and descriptive arithmetic only; original host classification cannot certify performance. No replacement receipt or retroactive qualification."
+        },
+        "host_classification_defect": {
+          "source": "frozen block_host.parse_ps",
+          "cause": "Right-padding in macOS ucomm executable names was retained; known_compute compared these unnormalized names and recognized zero categories.",
+          "original_known_category_count": 0,
+          "snapshots": 2555,
+          "parsed_process_rows": 3298909,
+          "maximum_snapshot_gap_seconds": 5.176543,
+          "maximum_snapshot_acquisition_seconds": 0.123127709,
+          "observer_errors": 0,
+          "missing_argument_rows": 2757,
+          "sampled_native_identities": 1344,
+          "original_eligible_blocks": 504,
+          "parsed_observations_file_sha256": "372bc00f66fde159501c44e5b2d4ba1823cf0da3cdeda4595b0051a51555664b",
+          "audit_canonical_sha256": "1d9492044418b9aa0cdf76a84ccd8035afcd991512ad02c4eb6e389f633d9783"
+        },
+        "normalized_external_audit": {
+          "status": "descriptive_only_not_retroactive_qualification",
+          "change": "Whitespace normalization only; same declared categories, activity thresholds, ownership and whole-block overlap policy.",
+          "active_intervals": 284,
+          "affected_blocks": 102,
+          "remaining_blocks": 402,
+          "remaining_blocks_per_cell_range": [
+            4,
+            12
+          ],
+          "least_covered_cell": "near-confounded-third-t1",
+          "least_covered_cell_blocks": 4,
+          "one_sided_median_upper_tail": 0.025,
+          "least_covered_cell_finite_upper_bound": false,
+          "alternate_host_receipt_issued": false
+        },
+        "descriptive_statistical_audits": {
+          "status": "no_passing_candidate_frontier_on_either_mask",
+          "scope": "Descriptive only; no valid performance qualification, causal speed claim or finalist decision. Failed edges share observations and are not independent events.",
+          "original_mask_canonical_sha256": "813c4442a07eec173106ba7fa92c2fdcdf768746e177e5d852859f8131567f71",
+          "normalized_mask_canonical_sha256": "d19eb3455d0c0ac7f83993001d62125b9b1e76982a9959cae25834de8a8afbe8",
+          "failed_edges_original_mask": {
+            "baseline": 43,
+            "h32-k0": 47,
+            "h16-k0": 53,
+            "h32-k1": 53
+          },
+          "failed_edges_normalized_audit_mask": {
+            "baseline": 51,
+            "h32-k0": 55,
+            "h16-k0": 59,
+            "h32-k1": 63
+          },
+          "comparisons_per_mask": 1326,
+          "independent_numeric_interval_values_compared": 23706,
+          "maximum_absolute_interval_difference": 3.197442310920451e-14,
+          "method": "Shared mirrored block scores with exact binomial median bounds: protected max(5%, 1 ms), internal max(20%, 1 ms), one-sided tail 1/40; no minima, pair exclusions, favorable-time filtering or added observations.",
+          "statistical_limit": "Marginal bounds condition on independent/common-median block scores. Balanced randomization, one session and diagnostics do not establish independence or simultaneous/selected-winner coverage."
+        },
+        "official_original_analyzer": {
+          "status": "completed_exit_0_nonqualifying",
+          "terminal_output_sha256": "ca62d0aadbe2d84d12d740058f39002b0b356726ac4723f94e5c9e7e1d9de5af",
+          "partial_output_used": false,
+          "qualification_effect": "Cannot repair invalid original host classification; no B decision is authorized.",
+          "exit_status": 0,
+          "summary_count": 1326,
+          "passing_bounds": 1130,
+          "failing_bounds": 196,
+          "conditional_statistical_pass": false,
+          "qualification_pass": false,
+          "scientific_or_execution_failure": false,
+          "missing_monitor_evidence": false,
+          "monitor_error": null,
+          "independent_comparison": {
+            "review_file_sha256": "e29eb9218453824c8814333ade3a6674433bd9b030aef3b161faa9edba781e24",
+            "status": "closed_no_go_for_qualification",
+            "every_summary_field_checked": true,
+            "exact_scalar_comparisons": 87516,
+            "numeric_scalar_comparisons": 58348,
+            "maximum_absolute_numeric_difference": 5.6621374255882984e-14,
+            "maximum_interval_absolute_difference": 2.2537527399890678e-14,
+            "numeric_absolute_tolerance": 1e-12,
+            "numeric_relative_tolerance": 1e-12,
+            "all_original_frontiers_match": true,
+            "new_native_calls": 0,
+            "analyzer_reruns": 0
+          }
+        },
+        "limitations": [
+          "Original ps stdout was not captured; parsed snapshots, joined arguments, process identities, sampled counters and boundaries remain hash-bound.",
+          "Successful numeric JSON and output-column files were deleted by the frozen producer. Source-bound contemporary checks, retained fingerprints/column hashes and all logs establish recorded checks; post hoc independent recomputation of each timed numerical output is unavailable.",
+          "Sampled host evidence can miss short-lived work, first-seen sleeping work, missing arguments and PID reuse within ps start-time resolution; no otherwise-idle-host or independence proof is claimed.",
+          "Earlier missing full original baseline raw/columns and environment-witness limitations remain unchanged.",
+          "Normalized audit activity is dominated by Codex app/exec services; raw census cannot attribute their CPU to polling, file watching or other requests, so none is retrospectively exempted. Separate sampled Stata processes were first-seen/sleeping and did not trigger the frozen active threshold; no extra exclusions were invented."
+        ],
+        "disposition": "Retain the completed campaign, original faulty host receipt, raw evidence, descriptive audits and protocol failure unchanged. Future work is a materially revised algorithmic hypothesis with independent scientific witnesses and a prospective parser fix, not a retry of the current h policies.",
+        "B_finalist_decision_executed": false,
+        "public_activation_executed": false,
+        "C_case_bodies_accessed": false,
+        "C_executed": false,
+        "public_auto_changed": false
       }
     }
   },
@@ -8242,12 +8379,12 @@
       "recovery_overlay_sha256": "92f84cf0a2b514dcec8d5ceb3c3875c9c9149f3a37e3738fc5dc211ed8b25d18"
     },
     "report": {
-      "pdf_sha256": "fc3554c987918d0e24905cbc8ed25303fae1bf28383aed0534eb1cc9e67e7fd8",
-      "source_sha256": "e9e21e1fc6acc59cd747cb6cf9ff1933a74251d110c1d8de3a9ef11b81868489",
+      "pdf_sha256": "720ba60b563f3df4b96059cb0dfff997954ded41e72857da4aec980a1b41bf2f",
+      "source_sha256": "c5eec711d2f8645b461cf107bd69072e8f577bd2f1affb7d3d9ac67b7b583748",
       "pages": 22,
       "changed_page": 22,
       "built_in_compiler": "success",
-      "visual_review": "22 pages; first 21 extracted-text pages unchanged. Page 22 records independently admitted Mac B science (42 cells, 468 passes, 18 original optional unavailabilities), current 330-test pass, and no B timing, winner or C claim.",
+      "visual_review": "22 pages; first 21 layout-preserving extracted-text pages exactly unchanged (f68245335b25fd7bc2b1e5f00899cb3bd6866eba2c0bf7df0a42a31256c1c830). Page22 records terminal fixed B12 science/execution, host classification defect, descriptive audits and no qualification/promotion/C access. Source anchor, flowchart and all text visually verified.",
       "previous_versions": [
         {
           "pdf_sha256": "13384c744c78277a76d877c32986bf7ee58b0cd740d339b7571aad0b3b24df15",
@@ -8256,6 +8393,15 @@
           "changed_page": 22,
           "built_in_compiler": "success",
           "visual_review": "22pages; first21 extracted-text pages unchanged. Page22 records accepted SCC discovery and reviewed clerical B amendment; Mac selection/confirmation pending."
+        },
+        {
+          "pdf_sha256": "fc3554c987918d0e24905cbc8ed25303fae1bf28383aed0534eb1cc9e67e7fd8",
+          "source_sha256": "e9e21e1fc6acc59cd747cb6cf9ff1933a74251d110c1d8de3a9ef11b81868489",
+          "pages": 22,
+          "changed_page": 22,
+          "built_in_compiler": "success",
+          "visual_review": "22 pages; first 21 extracted-text pages unchanged. Page 22 records independently admitted Mac B science (42 cells, 468 passes, 18 original optional unavailabilities), current 330-test pass, and no B timing, winner or C claim.",
+          "export_compiler": "success"
         }
       ],
       "export_compiler": "success"
