@@ -171,14 +171,56 @@ An independent Astra review cleared a separate evidence-only repair: up to three
 60-second accounting reads per predecessor, the original validators and
 scientific tolerances, exclusive output creation and a 25-minute allocation.
 The repair binds the sealed collection and frozen plan/source identities and
-refuses existing finalization products. One submission attempt returned no job
-ID during SCC scheduler communication timeouts; status queries also failed,
-while SSH remained available. Its acceptance is unconfirmed and must be resolved
-before another submission is considered. The original campaign heartbeat stopped
-at the terminal failure. A single recovery follow-up now checks the uncertain
-submission without dispatching a duplicate. Terminal isolation and aggregate
-validation, followed by independent raw-evidence review, remain required before
-Mac B. No Mac B/C calls, shortlist or new public default follow from these results.
+refuses existing finalization products. An initial submission returned no job ID
+during scheduler communication timeouts. A subsequent Astra review established
+that the identical permanent directory claim permits at most one finalizer;
+guarded recovery `8121739` then ran and exited with `failed=0`, `exit_status=1`
+after 43 seconds. It exposed 16 failed scheduler observations in the third round.
+The original full-collection isolation protocol therefore failed. Its partial
+accounting product, logs, measurements and failed finalization remain intact;
+the old claim is never deleted or retried.
+
+Both earlier complete rounds precede every scheduler gap. Separate reviewed
+window-certificate tooling uses two conservative monotonic upper bounds: the
+third round's original elapsed duration and an observed direct-child native call
+in its directory. It checks scheduler coverage through both bounds, the entire
+collection's process/configuration/accounting evidence, and all three rounds'
+original scientific outcomes and fingerprints. This is a narrower retrospective
+certificate, not a repaired full-run pass. An initial proof-only job `8126703`
+rejected an incorrectly supplied producer-source hash before science; the
+corrected binding is the actual frozen `09f7c134` producer `e7203750…`.
+Corrected proof-only job `8126709` passed both original-source replay and a
+second fresh-process replay, with terminal accounting `0/0`, 168 seconds wall time
+and `maxvmem=838.719M`. Its certificate retains the two original round hashes,
+checks 242 scheduler observations with a maximum gap of 60.011 seconds, and
+records all 16 errors outside the certified window. Independent high-effort Astra
+raw review also passes: all 4,322 process rows,
+both configurations, original accounting, all three rounds' science and exact
+fingerprints, and the certificate's eight raw hashes. No per-solve timing values
+or rankings were inspected. Only rounds one and two receive the narrower
+certificate.
+
+A separate prospective coordinator can retain the certified first two rounds
+and run only a complete replacement third round. It preserves all 13 original
+producer/checker files, inputs, tolerances, warmups and call budgets. Each fresh
+attempt reserves and verifies its own complete 28-core allocation. At most one
+replacement is allowed after complete unchanged science and independently
+recorded infrastructure failure; incomplete science and solver timeouts cannot
+trigger replacement. The original third round stays excluded. A new aggregate
+and independent raw-evidence review remain required before Mac B; no shortlist
+or public-default change has been accepted.
+
+The recovery tooling at `27661fbc` passes independent high-effort Astra source,
+clock-proof and architecture review. The full repository suite passes again;
+295 unique benchmark tests pass across the routing and complementary suites,
+including the final corrected-window regression. Production identity remains
+unchanged for 192 runtime modules and 58 artifact inputs. These are tooling
+checks. The window replay and independent raw review passed; the replacement
+measurement remains pending. SCC setup `8126735` passed all 53 focused tests
+and froze the 287-file plan with terminal accounting `0/0`. Replacement
+round-three job `8126744` is accepted with a verified-28-core requirement and a
+four-hour producer budget; dependent evidence-only job `8126751` has a
+40-minute cap. Neither job has yet established a valid aggregate or shortlist.
 
 The separate public-activation and C transition now passes independent source
 review. Its prerequisite hook collects two hidden-policy and two uninjected

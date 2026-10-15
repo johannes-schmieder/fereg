@@ -7264,7 +7264,7 @@
     ],
     "accepted_utc": "2026-10-14T22:15:36Z",
     "control_archive_sha256": "11084fc6a0b231339c82d8d8271b913c758d505419202177f707e542e4818174",
-    "status": "collection_complete_validation_repair_submission_unconfirmed",
+    "status": "original_full_protocol_failed_first_two_rounds_independently_certified",
     "raw_outputs_remote": true,
     "collection_user_hold": {
       "status": "released_after_validated_prerequisites",
@@ -7287,7 +7287,7 @@
     "A_cells": 42,
     "policy_candidates": 13,
     "setup_correction": "Plan output moved under the permitted task output root before submission; original failed freeze preserved, no solver or timing calls occurred.",
-    "claim": "Collection completed successfully. The first evidence wrapper failed to retrieve accounting within its bounded five-second queries and stopped before finalization. A single independently reviewed evidence-only repair submission has an unconfirmed outcome during scheduler communication errors. No accepted timing result, shortlist, Mac selection or public Auto promotion follows."
+    "claim": "Original collection completed but its full-isolation protocol failed at16scheduler observations during round3. Evidence-only window replay and independent Astra raw review retain only rounds1and2. A separate prospective complete replacement round3 is required before any aggregate/shortlist. No Mac selection or public Auto promotion follows."
   },
   "activation_tooling": {
     "status": "source_review_and_tool_checks_passed",
@@ -7530,8 +7530,8 @@
     "canonical_sha256": "8d3ba71fe1947f01655fb5df24eec58e9d68c6ddd6fedbe0019fa93de0cee6d5",
     "rounds": 3,
     "terminal_lifecycle_capture_sha256": "4cd38f501734c967649656e2b385ccb7b3de3c9c0e1000557dcf4092157d540a",
-    "node_isolation_validation": "pending",
-    "aggregate_validation": "pending"
+    "node_isolation_validation": "failed_original_full_protocol_16_scheduler_errors_in_third_round",
+    "aggregate_validation": "not_run_original_protocol_failed"
   },
   "scc_discovery_postprocessing_recovery": {
     "failed_job_id": "8103792",
@@ -7548,10 +7548,10 @@
       "schema": 1,
       "observed_utc": "2026-10-15T06:43:49.385048+00:00",
       "stage": "postprocess_accounting_repair",
-      "status": "submission_outcome_unconfirmed_scheduler_gdi_timeout",
+      "status": "guarded_recovery_terminal_failed_isolation",
       "script_sha256": "a115b15ae28e686aad457b03a5f7ffe732d16d81bb0f4b2c68fe184256680cdf",
       "qsub_attempts": 1,
-      "job_id": null,
+      "job_id": "8121739",
       "native_calls": 0,
       "h_rt_seconds": 1500,
       "maximum_accounting_attempts_per_predecessor": 3,
@@ -7570,7 +7570,7 @@
       "qsub_diagnostic": "Unable to run job: failed receiving gdi request response for mid=1 (got syncron message receive timeout error)..\nExiting.",
       "qstat_diagnostic": "error: failed receiving gdi request response for mid=1 (got syncron message receive timeout error).",
       "ssh_access": "hostname scc1 succeeded",
-      "next_action": "Resolve exact submission outcome with scheduler/accounting and fixed script/log identity before any further submission. Never duplicate or rerun native measurements.",
+      "next_action": "Preserve permanent claim and partial products. Do not retry original finalization. Independently certify complete early windows before a separately frozen replacement third round.",
       "healthy_diagnostic_checks": [],
       "latest_diagnostics": {
         "qstat_complete_listing": "unavailable after GDI error, two 45-second timeouts and one 30-second timeout",
@@ -7582,9 +7582,9 @@
       },
       "monitor": {
         "id": "continue-solver-routing-qualification",
-        "status": "ACTIVE",
+        "status": "DELETED",
         "cadence_minutes": 30,
-        "scope": "resolve uncertain validation-only submission, then monitor that exact job",
+        "scope": "lead actively executing authorized recovery",
         "old_campaign_monitor_deleted_first": true
       },
       "diagnostic_stopping_rule": {
@@ -7592,18 +7592,226 @@
         "minimum_spacing_seconds": 300,
         "absence_requires": "authoritative scheduler-side submission/spool history or a documented accounting completeness guarantee covering the attempt",
         "no_match_after_limit": "stop submission attempts and report the required scheduler confirmation"
+      },
+      "original_submission_job_id": null,
+      "terminal_accounting": {
+        "failed": 0,
+        "exit_status": 1,
+        "ru_wallclock": 43,
+        "cpu": 34.227,
+        "maxvmem": "785.352M"
       }
     },
     "measurement_retries": 0,
     "scientific_tolerances_changed": false,
     "frozen_tools_changed": false,
     "heartbeat_deleted_after_terminal_failure": true,
-    "recovery_monitor_active": true,
+    "recovery_monitor_active": false,
     "milestone_review": {
       "model": "gpt-6-astra",
       "reasoning_effort": "high",
-      "status": "go_for_documentation_and_evidence",
+      "status": "original_protocol_failed_separate_prefix_and_prospective_replacement_reviewed",
       "scope": "terminal accounting, failed wrapper, exact repair identity, uncertain submission and bounded diagnostic checks; no timing qualification"
+    }
+  },
+  "scc_discovery_partial_recovery": {
+    "status": "first_two_rounds_verified_fresh_third_accepted",
+    "tools_commit": "27661fbc",
+    "original_protocol_status": "failed",
+    "retained_round_candidates": [
+      1,
+      2
+    ],
+    "excluded_original_round": 3,
+    "fresh_required_logical_rounds": [
+      3
+    ],
+    "source_sha256": {
+      "bench/routing_parallel.py": "b45ad8126604aa6625c5f8091158ff104d8ebb9a0cb32ea5f9f9d134528a4f78",
+      "bench/scc_routing_host.py": "722c9a3c50c71b3e2a21a0d039bf92dd010b49f57697a60162c2c2d3561677e7",
+      "bench/routing_window.py": "2f58f91b7f449c7dd4b66494a24b84731433805b43312d4e47a6b049e052b82e",
+      "bench/routing_blocks.py": "f0caa91c55fca2bc21868abd501482c8615b39c11379ea0dab95f883e9162195"
+    },
+    "proof_attempts": [
+      {
+        "job_id": "8126703",
+        "native_calls": 0,
+        "failed": 0,
+        "exit_status": 1,
+        "wall_seconds": 6,
+        "failure": "Supplied source pin4a5... differs from actual frozen09f7 producer e7203750...; rejected before science.",
+        "driver_sha256": "8e7e995df357788a2fae19d28360c796cb1b27956fa1f90c78e30e2cc844d0bf"
+      },
+      {
+        "job_id": "8126709",
+        "native_calls": 0,
+        "status": "complete_verified",
+        "driver_sha256": "2f58f91b7f449c7dd4b66494a24b84731433805b43312d4e47a6b049e052b82e",
+        "failed": 0,
+        "exit_status": 0,
+        "wall_seconds": 168,
+        "cpu_seconds": 157.089,
+        "maxvmem": "838.719M",
+        "hostname": "scc-gr4"
+      }
+    ],
+    "deployment": "Separate09f7 source copy with only reviewed recovery modules overlaid. All13 original producer/checker bytes retained; later Mac activation tooling does not enter discovery.",
+    "review": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high",
+      "status": "go_for_narrow_window_replay_and_prospective_complete_round",
+      "scope": "actual frozen producer clock/order, source pins, both prefix bounds, complete scientific precedence, terminal infrastructure replacement and immutable finalization",
+      "actual_raw_evidence_status": "independent_gpt_6_astra_high_go",
+      "raw_checks": [
+        "both configurations and complete28physicalcore reservation",
+        "all4322 process observations and no known competing compute",
+        "all242 scheduler prefix snapshots through both conservative bounds",
+        "all16 outside-window errors retained",
+        "original accounting0/0 and allocation/window coverage",
+        "all3 round hashes and all846 passing science/fingerprint/resource pairs each",
+        "all18 original optional unavailable outcomes and blocked repeats each",
+        "exact warmup/repetition coverage and all8 raw hashes",
+        "no per-solve timing values or rankings inspected"
+      ]
+    },
+    "validation": {
+      "repository_suite": "passed",
+      "unique_benchmark_tests": 295,
+      "production_runtime_modules": 192,
+      "production_artifact_inputs": 58,
+      "production_unchanged": true,
+      "check_output_sha256": {
+        "repository_suite": "1987e432904d6a93c1ff8a6340215bf347628d1962c768d531eb3f2fc09d666e",
+        "routing_161_tests": "f52c3e1134c3d7862e3c000ee8e3946dd40d90ab20d76dbfc6a27d77f16a0a23",
+        "complementary_133_tests": "a98aa40a5ecc5e5cd47e806cd7dcc974e09824f4b1cf5db73eaa49417bb0e7c7",
+        "corrected_window_12_tests": "93fa5193c23ba42c2861a270cae3363a7120fcb32f441cf599c412a22e85ef28",
+        "production_identity": "efe34cc29de76a3003037491b8d0d739a3e0615be9c26532e453c7376af95934"
+      }
+    },
+    "promotion": false,
+    "mac_b_c_executed": false,
+    "window_certificate": {
+      "canonical_sha256": "3254e5331e1a0e490a9d3fde6f3f814fe44efcae1bf7246dc4f526573e8c0e71",
+      "file_sha256": "5c2268fd17d91eefcd064d84169c79e182bee198aaf8dcdaaa47f89f5bc3e33b",
+      "completion_file_sha256": "0c919aebea0e82d199d122afa70071dc724fc716d0357a293d51e354d8a7a7aa",
+      "accounting_capture_sha256": "07ddfb79168c6bef8b9086c5776aa2e09a73691f6ff849d922ab6497869a8112",
+      "window": {
+        "started_monotonic_ns": 539055624770544,
+        "completed_monotonic_ns": 553412161655130
+      },
+      "bounds": {
+        "elapsed_round3": {
+          "completed_monotonic_ns": 553412161655130,
+          "elapsed_s": 7233.436568689998,
+          "conservative_duration_ns": 7232000000000
+        },
+        "process_round3": {
+          "completed_monotonic_ns": 553495055058315,
+          "line": 2891,
+          "pid": 683039,
+          "ppid": 630320,
+          "start": "Thu Oct 15 04:15:48 2026",
+          "snapshot_monotonic_ns": 553495005258785
+        }
+      },
+      "scheduler_prefix": {
+        "first_line": 1,
+        "last_line": 242,
+        "observations": 242,
+        "started_monotonic_ns": 539048801050627,
+        "completed_monotonic_ns": 553508801302093,
+        "maximum_gap_ns": 60011004156
+      },
+      "outside_window_errors": 16,
+      "round_refs": [
+        {
+          "round": 1,
+          "sha256": "e384457910cd9ccc9b8c45238ea69d358663606c693c3a7248a4d066388899cb"
+        },
+        {
+          "round": 2,
+          "sha256": "061c7889c482a0ee7f650066b4af10501325c60e5af8da3f69b8eb5ae3c8ec03"
+        }
+      ],
+      "original_protocol_status": "failed",
+      "scientific_validation": "all three original rounds, outcomes and exact fingerprints",
+      "process_validation": "complete original collection; no observed competing compute",
+      "promotion": false
+    },
+    "plan_canonical_sha256": "564d21412ffe6c5c3a3f2ef781d89cc5aa45e1219a935fa43c4a3a6d0e2b4a78",
+    "plan_file_sha256": "20a05c11d225d5af19e630fac1a1ec7aa4c1a40b07467a1dc44defc5d64d4f83",
+    "frozen_files": 287,
+    "producer_tools": 13,
+    "setup": {
+      "job_id": "8126735",
+      "failed": 0,
+      "exit_status": 0,
+      "wall_seconds": 120,
+      "cpu_seconds": 116.487,
+      "maxvmem": "1.531G",
+      "host": "scc-tb4",
+      "focused_tests": 53,
+      "native_calls": 0,
+      "accounting_capture_sha256": "64d91739163dc7808f355d2ef759a43210d588e47959bec435ee2c7b53b20b00",
+      "marker_file_sha256": "fce1ace2d84e9240f2524e7ea78aca84f86a8db8c9bc1255aea9af013e0bbf2d",
+      "source_check_file_sha256": "661b1e1890e7f328a2ef8c26d7535694630f39360a0bcef01d78393584b3730a",
+      "wrapper_sha256": "1e6f4f9934aead2adf4372b1a000ac55be9e834e82185bcdd88e4314d3b7988a"
+    },
+    "fresh_round": {
+      "job_id": "8126744",
+      "logical_round": 3,
+      "attempt": 1,
+      "status": "accepted_not_yet_qualified",
+      "slots": 28,
+      "num_proc": 28,
+      "mem_per_core": "3G",
+      "h_rt_seconds": 15600,
+      "producer_budget_seconds": 14400,
+      "per_call_timeout_seconds": 120,
+      "timeout_seconds": 15510,
+      "cleanup_seconds": 60,
+      "wrapper_sha256": "8ce24a0dfa0b9631a06b3692565436f875963a06828f22545c8c1c950dfc66d8",
+      "scientific_tolerances_changed": false,
+      "original_optional_failures_retried": false,
+      "maximum_infrastructure_replacements": 1,
+      "full_round_required": true
+    },
+    "archives": {
+      "original_source_sha256": "f4f33bf06b4745566503e688b32b8314006973be171ea98ddb0e65d5c602e710",
+      "recovery_overlay_sha256": "92f84cf0a2b514dcec8d5ceb3c3875c9c9149f3a37e3738fc5dc211ed8b25d18"
+    },
+    "report": {
+      "pdf_sha256": "3eaac8e65cc4dd6bc4f01eb2f46ff6404e89b6ca880d5c1030d72198825a359f",
+      "source_sha256": "e22c6efd9922e9c8f3536d9a37bff92938fee7cc1c7a7a7568229ed56e50f83f",
+      "pages": 22,
+      "changed_page": 22,
+      "built_in_compiler": "success",
+      "visual_review": "updated page22 rendered and inspected; no clipping or extra page"
+    },
+    "postprocessor": {
+      "job_id": "8126751",
+      "depends_on": "8126744",
+      "status": "accepted_waiting_for_collection",
+      "slots": 1,
+      "mem_per_core": "4G",
+      "h_rt_seconds": 2400,
+      "outer_timeout_seconds": 2370,
+      "cleanup_seconds": 20,
+      "maximum_accounting_probes": 3,
+      "accounting_timeout_seconds": 60,
+      "accounting_probe_spacing_seconds": 30,
+      "finalize_timeout_seconds": 480,
+      "aggregate_timeout_seconds": 1320,
+      "native_calls": 0,
+      "wrapper_sha256": "c6bfd7e52a534bff8347024996f562f363bc4f0f52252eccd60ccdf6110145d3",
+      "review": "independent_gpt_6_astra_high_go",
+      "passing_requirements": [
+        "exact collection allocation and terminal accounting",
+        "complete original science and exact fingerprints",
+        "strict reservation and process isolation certificate",
+        "fully replayed aggregate",
+        "independent raw-evidence review before Mac admission"
+      ]
     }
   }
 }
