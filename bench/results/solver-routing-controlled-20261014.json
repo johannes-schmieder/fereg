@@ -7287,7 +7287,7 @@
     "A_cells": 42,
     "policy_candidates": 13,
     "setup_correction": "Plan output moved under the permitted task output root before submission; original failed freeze preserved, no solver or timing calls occurred.",
-    "claim": "Original collection completed but its full-isolation protocol failed at16scheduler observations during round3. Evidence-only window replay and independent Astra raw review retain only rounds1and2. A separate prospective complete replacement round3 is required before any aggregate/shortlist. No Mac selection or public Auto promotion follows."
+    "claim": "Original collection completed but its full-isolation protocol failed at 16 scheduler observations during round 3. Separate retrospective window replay and independent Astra raw review retain only original rounds 1 and 2. The prospectively frozen round-3 replacement and final strict aggregate now pass; the original full protocol and original third-round timings remain failed/excluded. The descriptive shortlist is for Mac selection only; no Mac B/C result or public Auto promotion follows."
   },
   "activation_tooling": {
     "status": "source_review_and_tool_checks_passed",
@@ -7320,7 +7320,39 @@
       "Source and synthetic-fixture checks only; no actual Mac B selection, public activation, A/B equivalence or C calls.",
       "Scientific and performance qualification of a new public default remains pending.",
       "The benchmark context fully revalidates dependencies before measurement; preparation cost is outside native-call timing."
-    ]
+    ],
+    "mac_admission_artifact_binding_fix": {
+      "status": "source_review_and_checks_passed",
+      "scope": "Accept original Linux archival source metadata through its sealed parent artifact bindings; keep explicit plugin SHA requirements for Mac/current source records. No estimator or native artifact inputs change.",
+      "source_sha256": "5456df8770f35c8a583f5ad5a6ba060256a00b944299327d1b51522325dd72f0",
+      "test_sha256": "ab40d1de2d8720d764dfe5c2212911a8789826bd90c6d0984aa3116cc31e61ee",
+      "independent_review": {
+        "model": "gpt-6-astra",
+        "reasoning_effort": "high",
+        "status": "go"
+      },
+      "focused_block_tests": 17,
+      "repository_suite": {
+        "status": "passed",
+        "exit_status": 0,
+        "log_sha256": "18808c4552956f2f0e5956bbabcad3f6bf3a808eb6dc540be6477831b0f13fdb"
+      },
+      "benchmark_suite": {
+        "status": "passed",
+        "exit_status": 0,
+        "tests": 299,
+        "wall_seconds": 176.505,
+        "log_sha256": "3dbd2699c63dbeb5c1f8bfc00cb9d7887101f78bbcabaf97d87af6798515802a"
+      },
+      "production_identity": {
+        "against": "abf20e8fd65af04698bed2263c14577f8c529a51",
+        "runtime_modules": 192,
+        "artifact_inputs": 58,
+        "status": "unchanged"
+      },
+      "runtime_evidence": "Prior native scientific and timing evidence reused; no renewed native qualification required.",
+      "actual_mac_b_c_executed": false
+    }
   },
   "scc_discovery_prerequisites": {
     "status": "ready_with_recorded_optional_unavailability",
@@ -7524,7 +7556,7 @@
     "producer_status": "complete_with_failed_cells"
   },
   "scc_discovery_terminal_collection": {
-    "status": "complete_not_yet_qualified",
+    "status": "complete_original_full_protocol_failed",
     "job_id": "8103652",
     "file_sha256": "078323ac20bb20e748de857b243de5da9e7d1cee23d9923886b3cff7cda7cfb5",
     "canonical_sha256": "8d3ba71fe1947f01655fb5df24eec58e9d68c6ddd6fedbe0019fa93de0cee6d5",
@@ -7615,7 +7647,7 @@
     }
   },
   "scc_discovery_partial_recovery": {
-    "status": "first_two_rounds_verified_last_replacement_accepted",
+    "status": "complete_discovery_only_independently_raw_verified",
     "tools_commit": "27661fbc",
     "original_protocol_status": "failed",
     "retained_round_candidates": [
@@ -7798,12 +7830,12 @@
       "recovery_overlay_sha256": "92f84cf0a2b514dcec8d5ceb3c3875c9c9149f3a37e3738fc5dc211ed8b25d18"
     },
     "report": {
-      "pdf_sha256": "02017a9ae84e95823470ba27e23a76a138d99ad9cfcd705119149eda604eb319",
-      "source_sha256": "4caca9d168f81b090c36dc3d88ab41ac0d44fcbea5b1ee528e438297d29b7140",
+      "pdf_sha256": "02374316135bd0318ca79129520d14ba39ad98f7305344d9b277288bcb59b3bd",
+      "source_sha256": "aa3fa36ab4f4a89300e03a459d8b8d545099de436c2bacffbd51050ed5b83316",
       "pages": 22,
       "changed_page": 22,
       "built_in_compiler": "success",
-      "visual_review": "Updated page22 rendered and inspected; first21 extracted-text pages unchanged;22pages; no clipping"
+      "visual_review": "Latest page22 rendered and inspected; first21 extracted-text pages unchanged;22pages; no clipping. SCC discovery accepted; Mac B/C unexecuted."
     },
     "postprocessor": {
       "job_id": "8126751",
@@ -7896,7 +7928,7 @@
       "job_id": "8130631",
       "logical_round": 3,
       "attempt": 2,
-      "status": "running_not_qualified",
+      "status": "complete_science_and_strict_isolation_verified",
       "slots": 28,
       "num_proc": 28,
       "mem_per_core": "3G",
@@ -7912,12 +7944,25 @@
       "unchanged_plan_sha256": "564d21412ffe6c5c3a3f2ef781d89cc5aa45e1219a935fa43c4a3a6d0e2b4a78",
       "observed_start_sge": "2026-10-15T09:41:21-04:00",
       "observed_host": "scc-zj4",
-      "lifecycle_capture_sha256": "60a66068b8f23beb1468294e166ca18c0903d152614b33ed5b624865992762b7"
+      "lifecycle_capture_sha256": "60a66068b8f23beb1468294e166ca18c0903d152614b33ed5b624865992762b7",
+      "failed": 0,
+      "exit_status": 0,
+      "wall_seconds": 7267,
+      "cpu_seconds": 8690.34,
+      "maxvmem": "1.855G",
+      "host": "scc-zj4",
+      "producer_completion": "passed",
+      "producer_completion_file_sha256": "d65fbb287e7fbe5383ad172d837fed80511d95e1a1cde16ba12364b00e4df066",
+      "collection_file_sha256": "3af939149b5eb6b5f056828214f5b0603c48b0d85ddcb295c5965591812739f2",
+      "collection_canonical_sha256": "973c6b11cd4c92a71fa0435bdb1583ac78478d0b5f4d234976e1e77fee17af9d",
+      "isolation_receipt_file_sha256": "0578d3b3f8eea83f56b89881de5eec4892eec8d8ce9c3a8e442543868fc0ea65",
+      "isolation_receipt_canonical_sha256": "978c06964e3d1539ca597dc71d15c87145723b2741edfdedb9353287e2ab3766",
+      "terminal_accounting_capture_sha256": "45c2788a2166f7571dca27b3a3453a5e499850d64adf21ca1367e28b43ff6295"
     },
     "last_postprocessor": {
       "job_id": "8130649",
       "depends_on": "8130631",
-      "status": "accepted_dependency_held",
+      "status": "complete_strict_aggregate_verified",
       "slots": 1,
       "mem_per_core": "4G",
       "h_rt_seconds": 2400,
@@ -7925,7 +7970,70 @@
       "wrapper_sha256": "748bbd37df9a06a5af39432b3dcc151a5a51def7ca9f8c2d51b114d8db7ceb7e",
       "first_report_sha256": "3a439318d0835e7b8cdf5cf992b486fb976d7cf1776553584ecb2e45bc83c6b7",
       "review": "independent_gpt_6_astra_high_go",
-      "requirements": "Revalidate both attempt reports; retain first infrastructure failure; select second only if complete science and strict isolation pass. No third attempt."
+      "requirements": "Revalidate both attempt reports; retain first infrastructure failure; select second only if complete science and strict isolation pass. No third attempt.",
+      "failed": 0,
+      "exit_status": 0,
+      "wall_seconds": 317,
+      "cpu_seconds": 305.373,
+      "maxvmem": "1.515G",
+      "host": "scc-tb4",
+      "completion": "passed",
+      "completion_file_sha256": "fe7e5cb04157cbd1819d3141459a47330e6611cfe22a60589c0f4d722e53bc06",
+      "attempt_report_file_sha256": "863bcf34cd0d24984c3334abe8d4de1a19f8aa3b52c8eb596e1c86042ed4d8c4",
+      "attempts_file_sha256": "8c219a16ce7a4601f391712229fecc9e4d093d43c8bfa6969d02e42e6938b69a",
+      "terminal_accounting_capture_sha256": "45c2788a2166f7571dca27b3a3453a5e499850d64adf21ca1367e28b43ff6295"
+    },
+    "final_aggregate": {
+      "status": "discovery_only_independently_raw_verified",
+      "canonical_sha256": "7ffe3acc72848035afc68d2b216830dd268a72b508ad44ba40d02e3a126ad76a",
+      "file_sha256": "56afacb1c018c979159203cba9bd53e6c7851f12343e2bdc0b5e7391f5664e50",
+      "plan_sha256": "564d21412ffe6c5c3a3f2ef781d89cc5aa45e1219a935fa43c4a3a6d0e2b4a78",
+      "collection_sha256": "1c10892d9240557ffb83f1129a538847856d0ea1c9fae82e99562581000af23d",
+      "isolation_sha256": "97723e0fa92d0b1a53f0e8b6bb9fd189c58f78462cc4a3a2dd07673594d8ef20",
+      "retained_original_rounds": [
+        1,
+        2
+      ],
+      "selected_fresh_logical_round": 3,
+      "selected_fresh_attempt": 2,
+      "excluded_attempts": [
+        "original round 3",
+        "fresh logical round 3 attempt 1"
+      ],
+      "cells": 42,
+      "candidate_policies": 13,
+      "passing_solver_case_pairs": 846,
+      "prior_optional_unavailable_pairs": 18,
+      "prior_optional_failures_retried": false,
+      "measured_paired_slots": 9,
+      "measured_values": 7614,
+      "shortlist": [
+        "baseline",
+        "h32-k0",
+        "h16-k0",
+        "h32-k1"
+      ],
+      "interpretation": "Descriptive point estimates only; nine paired slots are not asserted independent. Shortlist for Mac selection only.",
+      "independent_raw_review": {
+        "model": "gpt-6-astra",
+        "reasoning_effort": "high",
+        "status": "passed",
+        "process_rows": 1451,
+        "scheduler_rows": 122,
+        "scheduler_errors": 0,
+        "maximum_scheduler_gap_s": 60.000187054,
+        "strict_reservation_process_and_accounting_validation": "passed",
+        "scientific_outcomes_and_exact_fingerprints": "passed",
+        "independently_recomputed_measurement_values": 7614,
+        "independently_recomputed_ranking_rows": 13,
+        "comparisons_per_ranking_row": 360,
+        "full_recomputed_aggregate_match": "exact"
+      },
+      "mac_handoff_validation": "actual_typed_remote_validation_not_yet_run",
+      "mac_b_c_executed": false,
+      "public_auto_changed": false,
+      "promotion": false,
+      "retained_remote_campaign": "/projectnb/welfgr/fereg/runs/solver-routing-20261014/"
     }
   }
 }

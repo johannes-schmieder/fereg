@@ -149,6 +149,122 @@ class BlockContext(unittest.TestCase):
         with self.assertRaises(ValueError):
             blocks.declare({**inputs, 'discovery_plan': self.write(routing.seal(forged))}, self.design)
 
+    def legacy_linux_plan(self):
+        spec = copy.deepcopy(self.spec)
+        spec['candidate_source_identity'] = {'production_tokens_sha256': h('production'),
+            'archive_sha256': h('archive'), 'artifact_inputs_sha256': h('artifact inputs'),
+            'commit': 'a' * 40}
+        plugin = str(self.root / 'linux-candidate.plugin')
+        return {**self.plan, 'tournament': routing.seal(spec),
+                'plugins': {arm: plugin for arm in spec['candidates'] if arm != 'baseline'},
+                'frozen_files': {plugin: h('candidate')}}
+
+    def parallel_linux_plan(self, parent):
+        import routing_parallel as parallel
+        parent = {**parent, 'library_limits': discovery.LIBRARY_LIMITS,
+                  'producer_tools': {'producer.py': h('producer')}}
+        refs = {name: self.write({'bound': name})
+                for name in ['parent_plan', 'proof', 'receipt_generator']}
+        return {'kind': parallel.KIND + '_plan', 'schema': 1, 'design': parallel.DESIGN,
+                'parent': routing.seal(parent), 'parent_sha256': routing.identity(parent),
+                **refs, 'proof_sha256': h('proof'), 'output_root': str(self.root / 'parallel'),
+                'producer_tools': parent['producer_tools'],
+                'frozen_files': {**parent['frozen_files'],
+                                 **{ref['path']: ref['sha256'] for ref in refs.values()}}}
+
+    def rebound_discovery_inputs(self, plan, *, manifest=None):
+        summary = {**self.summary, 'plan_sha256': routing.identity(plan)}
+        validation = self.write({'status': 'passed', 'result_sha256': routing.identity(summary),
+                                 'plan_sha256': routing.identity(plan)})
+        review = {**self.review, 'plan_sha256': routing.identity(plan),
+                  'result_sha256': routing.identity(summary), 'remote_validation': validation}
+        return {**self.inputs, 'manifest': self.write(routing.seal(
+                    self.spec if manifest is None else manifest)),
+                'discovery_plan': self.write(routing.seal(plan)),
+                'discovery_result': self.write(routing.seal(summary)),
+                'discovery_review': self.write(review)}
+
+    def test_legacy_linux_artifact_binding_accepts_original_and_parallel_metadata(self):
+        for parallel in [False, True]:
+            with self.subTest(parallel=parallel):
+                plan = self.legacy_linux_plan()
+                if parallel:
+                    plan = self.parallel_linux_plan(plan)
+                with patch.object(runner, 'inspect_case') as inspect:
+                    context = blocks.declare(self.rebound_discovery_inputs(plan), self.design)
+                    inspect.assert_not_called()
+                self.assertEqual(context['candidates'], self.summary['shortlist'])
+
+    def test_legacy_linux_binding_rejects_tampered_metadata_with_fresh_review_identities(self):
+        changes = ['missing plugin', 'missing frozen', 'wrong frozen', 'mixed frozen',
+                   'relative plugin', 'missing archive', 'invalid archive',
+                   'missing artifact inputs', 'invalid artifact inputs',
+                   'missing commit', 'short commit', 'nonhex commit',
+                   'null explicit plugin', 'invalid explicit plugin', 'wrong explicit plugin']
+        for parallel in [False, True]:
+            for change in changes:
+                with self.subTest(parallel=parallel, change=change):
+                    plan = self.legacy_linux_plan()
+                    spec = routing.unseal(plan['tournament'])
+                    source = spec['candidate_source_identity']
+                    arm = next(iter(plan['plugins']))
+                    path = plan['plugins'][arm]
+                    if change == 'missing plugin':
+                        del plan['plugins'][arm]
+                    elif change == 'missing frozen':
+                        del plan['frozen_files'][path]
+                    elif change == 'wrong frozen':
+                        plan['frozen_files'][path] = h('other artifact')
+                    elif change == 'mixed frozen':
+                        other = str(self.root / 'different-linux.plugin')
+                        plan['plugins'][arm] = other
+                        plan['frozen_files'][other] = h('other artifact')
+                    elif change == 'relative plugin':
+                        plan['plugins'][arm] = 'relative.plugin'
+                        plan['frozen_files']['relative.plugin'] = h('candidate')
+                    elif change in ['missing archive', 'invalid archive']:
+                        source.pop('archive_sha256')
+                        if change == 'invalid archive':
+                            source['archive_sha256'] = 'invalid'
+                    elif change in ['missing artifact inputs', 'invalid artifact inputs']:
+                        source.pop('artifact_inputs_sha256')
+                        if change == 'invalid artifact inputs':
+                            source['artifact_inputs_sha256'] = None
+                    elif change == 'missing commit':
+                        source.pop('commit')
+                    elif change == 'short commit':
+                        source['commit'] = 'a' * 39
+                    elif change == 'nonhex commit':
+                        source['commit'] = 'z' * 40
+                    else:
+                        source['plugin_sha256'] = {'null explicit plugin': None,
+                            'invalid explicit plugin': 'invalid',
+                            'wrong explicit plugin': h('other artifact')}[change]
+                    plan['tournament'] = routing.seal(spec)
+                    if parallel:
+                        plan = self.parallel_linux_plan(plan)
+                    with self.assertRaises(ValueError):
+                        blocks.declare(self.rebound_discovery_inputs(plan), self.design)
+
+    def test_missing_Mac_plugin_identity_cannot_use_linux_legacy_fallback(self):
+        mac = copy.deepcopy(self.spec)
+        del mac['candidate_source_identity']['plugin_sha256']
+        for parallel in [False, True]:
+            with self.subTest(parallel=parallel):
+                plan = self.legacy_linux_plan()
+                if parallel:
+                    plan = self.parallel_linux_plan(plan)
+                with self.assertRaises(ValueError):
+                    blocks.declare(self.rebound_discovery_inputs(plan, manifest=mac), self.design)
+
+    def test_parallel_outer_bindings_cannot_replace_original_parent_plugin_map(self):
+        parent = self.legacy_linux_plan()
+        original_plugins = parent.pop('plugins')
+        plan = self.parallel_linux_plan(parent)
+        plan['plugins'] = original_plugins
+        with self.assertRaises(ValueError):
+            blocks.declare(self.rebound_discovery_inputs(plan), self.design)
+
     def test_C_legacy_previous_and_linux_rejected_before_case_access(self):
         with patch.object(blocks.platform, 'system', return_value='Darwin'):
             for stage, previous in [('C', None), ('B', {'stage': 'A'})]:

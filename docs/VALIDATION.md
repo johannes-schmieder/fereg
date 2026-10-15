@@ -114,9 +114,9 @@ The previously accepted standard-20 timing evidence remains valid.
 The SCC setup job also passed both Linux builds, export/glibc audits, actual
 ABI/selftests and numeric guards, followed by 292 independent scientific calls
 (73 cases, baseline and candidate, two repeats each). Fixed-worker repeats
-were exact. This was an untimed four-slot setup job; isolated routing discovery
-still requires its reviewed scheduler/process evidence collector. No routing
-policy has been selected, and public Auto remains unchanged.
+were exact. This was an untimed four-slot setup job. At that boundary, isolated
+routing discovery still required its reviewed scheduler/process evidence
+collector and no routing policy had been selected. Public Auto remains unchanged.
 
 The next tooling boundary adds shared mirrored multiarm blocks, the reviewed
 SCC reservation/process collector, and a separate discovery-to-Mac B context.
@@ -200,23 +200,23 @@ fingerprints, and the certificate's eight raw hashes. No per-solve timing values
 or rankings were inspected. Only rounds one and two receive the narrower
 certificate.
 
-A separate prospective coordinator can retain the certified first two rounds
-and run only a complete replacement third round. It preserves all 13 original
+The separate prospective coordinator was frozen to retain the certified first
+two rounds and run only a complete replacement third round. It preserves all 13 original
 producer/checker files, inputs, tolerances, warmups and call budgets. Each fresh
 attempt reserves and verifies its own complete 28-core allocation. At most one
 replacement is allowed after complete unchanged science and independently
 recorded infrastructure failure; incomplete science and solver timeouts cannot
 trigger replacement. The original third round stays excluded. A new aggregate
-and independent raw-evidence review remain required before Mac B; no shortlist
-or public-default change has been accepted.
+and independent raw-evidence review were required before a Mac shortlist could
+be admitted; the completed SCC result is recorded below.
 
 The recovery tooling at `27661fbc` passes independent high-effort Astra source,
 clock-proof and architecture review. The full repository suite passes again;
 295 unique benchmark tests pass across the routing and complementary suites,
 including the final corrected-window regression. Production identity remains
 unchanged for 192 runtime modules and 58 artifact inputs. These are tooling
-checks. The window replay and independent raw review passed; the replacement
-measurement remains pending. SCC setup `8126735` passed all 53 focused tests
+checks at that tooling boundary. The window replay and independent raw review
+passed before replacement measurement. SCC setup `8126735` passed all 53 focused tests
 and froze the 287-file plan with terminal accounting `0/0`.
 
 The first fresh round-three attempt, `8126744`, completed its full producer
@@ -239,14 +239,46 @@ responses passed identity/structure checks; terminal accounting is `0/0`, with
 responsiveness only and never substitutes for the frozen isolation protocol.
 No further health panel was run or selected from repeated attempts.
 
-The final predeclared replacement is job `8130631`, logical round three,
-attempt two, with the same 28-core requirement, four-hour producer budget,
-artifacts, input bytes and original tolerances. Evidence-only job `8130649`
-depends on it and revalidates both attempt reports before any aggregate. The
-first attempt stays excluded; no third attempt is permitted. The wrappers and
-replacement eligibility received independent high-effort Astra review. Both
-new jobs are accepted but not qualified. No aggregate, shortlist, Mac B/C result
-or public-default promotion has been accepted.
+The final predeclared replacement, job `8130631`, completed logical round
+three, attempt two, with the same 28-core requirement, four-hour producer budget,
+artifacts, input bytes and original tolerances. Its collection and producer
+completion markers pass. Evidence-only job `8130649` revalidated both attempt
+reports, the strict isolation receipt and the complete aggregate; its completion
+marker also passes. Both jobs have terminal accounting `failed=0` and
+`exit_status=0`:
+
+| Job | Host / slots | Wall seconds | CPU seconds | maxvmem |
+| --- | --- | ---: | ---: | ---: |
+| Collection `8130631` | `scc-zj4` / 28 | 7,267 | 8,690.340 | 1.855G |
+| Evidence `8130649` | `scc-tb4` / 1 | 317 | 305.373 | 1.515G |
+
+Independent high-effort Astra raw review passes the final reservation,
+configuration, process, scheduler and accounting evidence: 1,451 process rows,
+122 scheduler observations, zero scheduler errors and a maximum scheduler gap
+of 60.000187054 seconds. All 846 usable solver/case pairs preserve the original
+science and exact fingerprints; the 18 original optional unavailable pairs
+remain carried without retry. Certified original rounds one and two plus the
+fresh third round provide nine paired measured slots. Independent recomputation
+of all 7,614 measurement values, 13 ranking rows and 360 comparisons per row
+matches the complete aggregate exactly. The original full-run protocol and
+original third round remain failed/excluded, as does the first fresh attempt;
+no third fresh attempt is permitted.
+
+The SCC shortlist is `baseline`, `h32-k0`, `h16-k0`, `h32-k1`, in that order,
+for Mac selection only. These are descriptive point estimates; the nine paired
+slots are not asserted independent. Public Auto is unchanged, and Mac B/C has
+not been executed. Actual typed remote handoff validation and its review remain
+required before Mac admission. Retained raw evidence and sealed products remain
+in the SCC campaign `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.
+The [compact evidence](../bench/results/solver-routing-controlled-20261014.json)
+preserves every earlier failure, both attempt reports and these final bindings:
+
+| Final aggregate binding | SHA-256 |
+| --- | --- |
+| Canonical aggregate | `7ffe3acc72848035afc68d2b216830dd268a72b508ad44ba40d02e3a126ad76a` |
+| Aggregate file | `56afacb1c018c979159203cba9bd53e6c7851f12343e2bdc0b5e7391f5664e50` |
+| Collection envelope | `1c10892d9240557ffb83f1129a538847856d0ea1c9fae82e99562581000af23d` |
+| Isolation binding | `97723e0fa92d0b1a53f0e8b6bb9fd189c58f78462cc4a3a2dd07673594d8ef20` |
 
 The separate public-activation and C transition now passes independent source
 review. Its prerequisite hook collects two hidden-policy and two uninjected
@@ -254,11 +286,28 @@ public-Auto calls on every original A/B cell, checks exact science and solver
 signatures, and retains the actual resource-evidence provenance. Only complete
 equivalence admits the original C panel, with 24 separate paired blocks per
 required edge. No actual B selection, activation or C calls have occurred.
-The final integration passes all 260 benchmark tests and the full repository
-suite, including 295 Python tests with the available scientific dependencies,
+The earlier activation-tooling integration passed all 260 benchmark tests and
+the full repository suite, including 295 Python tests with the available scientific dependencies,
 1,331 core tests, 195 plugin FFI tests and ten isolated allocator audits. The
 Linux mock audit remains unavailable on Mac. Production identity is unchanged
 against `09f7c134`; the compact evidence retains source and check-output hashes.
+
+The narrow Mac admission fix now accepts the original Linux archive/commit/input
+identity through the sealed parent's candidate-artifact bindings. Mac and newer
+explicit plugin identities retain their existing checks. Independent high-effort
+Astra review clears the source and tests. All 17 focused block tests, the current
+`./scripts/run_tests.sh` suite and all 299 benchmark tests pass; the benchmark
+suite completed in 176.505 seconds. Production identity is unchanged against
+`abf20e8f` for 192 runtime modules and 58 artifact inputs, so prior native
+qualification evidence remains valid. No new native qualification or Mac B/C
+execution is claimed.
+
+| Current Mac-admission tooling check | SHA-256 |
+| --- | --- |
+| Coordinator source | `5456df8770f35c8a583f5ad5a6ba060256a00b944299327d1b51522325dd72f0` |
+| Coordinator tests | `ab40d1de2d8720d764dfe5c2212911a8789826bd90c6d0984aa3116cc31e61ee` |
+| Full repository suite output | `18808c4552956f2f0e5956bbabcad3f6bf3a808eb6dc540be6477831b0f13fdb` |
+| 299 benchmark tests output | `3dbd2699c63dbeb5c1f8bfc00cb9d7887101f78bbcabaf97d87af6798515802a` |
 
 ## Authorized routing qualification recovery, 2026-10-14
 

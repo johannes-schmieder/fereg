@@ -16,6 +16,7 @@ import json
 import math
 from pathlib import Path
 import platform
+import re
 
 import routing
 import routing_discovery as discovery
@@ -78,11 +79,13 @@ def declare(inputs, design):
     pilot = read(inputs['pilot_review'])
     if plan.get('kind') == discovery.KIND + '_plan':
         require(plan.get('design') == discovery.DESIGN, 'wrong original SCC discovery design')
+        linux_parent = plan
         linux = routing.unseal(plan['tournament'])
         discovery.validate_spec(linux)
     else:
         import routing_parallel
-        linux = routing_parallel.metadata(plan)['spec']
+        metadata = routing_parallel.metadata(plan)
+        linux_parent, linux = metadata['parent'], metadata['spec']
     require(summary.get('kind') == discovery.KIND + '_shortlist'
             and summary.get('status') == 'discovery_only' and summary.get('promotion') is False
             and summary.get('plan_sha256') == routing.identity(plan), 'invalid discovery-only shortlist')
@@ -104,12 +107,32 @@ def declare(inputs, design):
     production = manifest.get('candidate_source_identity', {}).get('production_tokens_sha256')
     require(routing.sha(production) and production == linux.get('candidate_source_identity', {}).get('production_tokens_sha256'),
             'Mac and Linux candidates lack matching production source identity')
-    for platform_manifest in [manifest, linux]:
+    for platform_manifest, parent in [(manifest, None), (linux, linux_parent)]:
         source = platform_manifest.get('candidate_source_identity', {})
-        require(routing.sha(source.get('plugin_sha256')) and
-                {platform_manifest['arms'][arm]['sha256'] for arm in platform_manifest['candidates']
-                 if arm != 'baseline'} == {source['plugin_sha256']},
-                'candidate production source is not bound to its platform artifact')
+        candidate_arms = [arm for arm in platform_manifest['candidates'] if arm != 'baseline']
+        hashes = {platform_manifest['arms'][arm]['sha256'] for arm in candidate_arms}
+        require(len(hashes) == 1 and all(routing.sha(value) for value in hashes),
+                'candidate arms require one platform artifact')
+        if parent is None or 'plugin_sha256' in source:
+            require(routing.sha(source.get('plugin_sha256')) and hashes == {source['plugin_sha256']},
+                    'candidate production source is not bound to its platform artifact')
+        else:
+            # Older Linux source records bind the artifact through the original
+            # frozen parent instead of repeating its hash in the source record.
+            # Keep that sealed evidence intact; never read deployment paths here.
+            require(routing.sha(source.get('archive_sha256'))
+                    and routing.sha(source.get('artifact_inputs_sha256'))
+                    and isinstance(source.get('commit'), str)
+                    and re.fullmatch(r'[0-9a-f]{40}', source['commit']),
+                    'archival Linux source identity is incomplete')
+            plugins, frozen = parent.get('plugins'), parent.get('frozen_files')
+            require(isinstance(plugins, dict) and isinstance(frozen, dict),
+                    'original Linux artifact bindings are missing')
+            for arm in candidate_arms:
+                path = plugins.get(arm)
+                require(isinstance(path, str) and Path(path).is_absolute()
+                        and frozen.get(path) == platform_manifest['arms'][arm]['sha256'],
+                        'original frozen Linux artifact differs from candidate source')
     expected = {'kind': KIND + '_discovery_review', 'status': 'passed',
                 'plan_sha256': routing.identity(plan), 'result_sha256': routing.identity(summary),
                 'collection_sha256': summary.get('collection_sha256'),
