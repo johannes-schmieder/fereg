@@ -76,10 +76,13 @@ def declare(inputs, design):
     summary = read(inputs['discovery_result'], sealed=True)
     review = read(inputs['discovery_review'])
     pilot = read(inputs['pilot_review'])
-    linux = routing.unseal(plan['tournament'])
-    discovery.validate_spec(linux)
-    require(plan.get('kind') == discovery.KIND + '_plan' and plan.get('design') == discovery.DESIGN,
-            'handoff requires the frozen SCC discovery plan')
+    if plan.get('kind') == discovery.KIND + '_plan':
+        require(plan.get('design') == discovery.DESIGN, 'wrong original SCC discovery design')
+        linux = routing.unseal(plan['tournament'])
+        discovery.validate_spec(linux)
+    else:
+        import routing_parallel
+        linux = routing_parallel.metadata(plan)['spec']
     require(summary.get('kind') == discovery.KIND + '_shortlist'
             and summary.get('status') == 'discovery_only' and summary.get('promotion') is False
             and summary.get('plan_sha256') == routing.identity(plan), 'invalid discovery-only shortlist')
@@ -161,6 +164,13 @@ def context_bindings(bound, context):
         import routing_block_deployment
         return routing_block_deployment.context_bindings(bound, context)
     values = [bound, *context['inputs'].values(), reference(__file__), reference(discovery.__file__)]
+    plan = read(context['inputs']['discovery_plan'], sealed=True)
+    if plan.get('kind') != discovery.KIND + '_plan':
+        import routing_parallel
+        values.append(reference(routing_parallel.__file__))
+        if plan.get('legacy_window'):
+            import routing_window
+            values.append(reference(routing_window.__file__))
     review = read(context['inputs']['discovery_review'])
     values += [review['remote_validation'], *review['raw_evidence']]
     values += read(context['inputs']['pilot_review'])['evidence']

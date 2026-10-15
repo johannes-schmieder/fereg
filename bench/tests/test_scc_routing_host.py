@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import Mock, patch
 
@@ -89,6 +90,15 @@ class Fixture:
                 'rounds': self.collection['rounds'], 'raw_evidence': raw,
                 **host.derived(self.plan, self.collection, raw)}
 
+    def parallel(self, logical_round=2, attempt=1):
+        self.plan['round_contract'] = {'parallel_plan_sha256': 'a' * 64,
+                                       'logical_round': logical_round, 'attempt': attempt}
+        self.collection['round_contract'] = dict(self.plan['round_contract'])
+        self.collection['plan_sha256'] = host.routing.identity(self.plan)
+        self.collection['rounds'] = [{'path': str(self.root / 'collection/round-1/records.json'),
+                                     'sha256': 'b' * 64}]
+        self.processes()
+
 
 class SCCEvidence(unittest.TestCase):
     def setUp(self):
@@ -104,6 +114,49 @@ class SCCEvidence(unittest.TestCase):
         self.fixture.mutate('queue_configuration', lambda v: v[1]['value']['host'].update(stdout=v[1]['value']['host']['stdout'].replace('0.01', '8.5')))
         self.fixture.mutate('affinity', lambda v: v[1]['value'].update(proc_status=v[1]['value']['proc_status'].replace('100 kB', '800 kB')))
         self.assertEqual(self.verify()['status'], 'verified')
+
+    def test_one_round_contract_replays_without_changing_legacy_requirement(self):
+        self.fixture.parallel()
+        # Isolate receipt semantics; source freezing is checked separately.
+        with patch.object(host, 'check_sources'):
+            self.assertEqual(self.verify()['status'], 'verified')
+        del self.fixture.plan['round_contract']
+        del self.fixture.collection['round_contract']
+        self.fixture.collection['plan_sha256'] = host.routing.identity(self.fixture.plan)
+        self.fixture.processes()
+        with self.assertRaisesRegex(ValueError, 'incomplete or different collection'):
+            self.verify()
+
+    def test_parallel_round_contract_mismatch_missing_round_and_invalid_identity_refuse(self):
+        for mutation in [lambda f: f.collection['round_contract'].update(logical_round=1),
+                         lambda f: f.collection['round_contract'].update(attempt=True),
+                         lambda f: f.collection.pop('round_contract'),
+                         lambda f: f.collection.update(rounds=[]),
+                         lambda f: f.collection.update(rounds=[{'path': str(f.root / 'collection/round-2/records.json')}]),
+                         lambda f: f.plan['round_contract'].update(logical_round=0),
+                         lambda f: f.plan['round_contract'].update(logical_round=True),
+                         lambda f: f.plan['round_contract'].update(attempt=3),
+                         lambda f: f.plan['round_contract'].update(parallel_plan_sha256='bad')]:
+            with self.subTest(mutation=mutation):
+                self.fixture = Fixture(Path(self.directory.name))
+                self.fixture.parallel()
+                mutation(self.fixture)
+                with patch.object(host, 'check_sources'), self.assertRaises(ValueError):
+                    self.verify()
+
+    def test_parallel_dependency_must_be_frozen(self):
+        self.fixture.parallel()
+        original = host.discovery.reference
+        def reference(path):
+            if Path(path).name == 'routing_parallel.py':
+                return {'path': str(Path(path).resolve()), 'sha256': 'c' * 64}
+            return original(path)
+        with patch.object(host.discovery, 'reference', side_effect=reference):
+            with self.assertRaisesRegex(ValueError, 'unfrozen isolation tool dependency'):
+                host.check_sources(self.fixture.plan)
+            ref = reference(Path(host.__file__).with_name('routing_parallel.py'))
+            self.fixture.plan['frozen_files'][ref['path']] = ref['sha256']
+            host.check_sources(self.fixture.plan)
 
     def test_slots_alone_without_global_all_queue_rule_refuse(self):
         for bad in ['limit queues {econ} hosts {*} to slots=$num_proc', 'limit hosts {*} to slots=56']:
@@ -159,6 +212,18 @@ class SCCEvidence(unittest.TestCase):
         self.fixture.mutate('scheduler', lambda v: v[1].update(monotonic_ns=5_000_000_000))
         with self.assertRaises(ValueError): self.verify()
 
+    def test_scheduler_and_process_errors_are_refused_before_missing_timestamps(self):
+        for key in ['scheduler', 'process_observations']:
+            for timestamped in [False, True]:
+                with self.subTest(key=key, timestamped=timestamped):
+                    self.fixture = Fixture(Path(self.directory.name))
+                    error = {'kind': 'error', 'error': 'command timed out'}
+                    if timestamped:
+                        error.update(monotonic_ns=3_000_000_000, wall_time_ns=123)
+                    self.fixture.mutate(key, lambda rows: rows.insert(1, error))
+                    with self.assertRaisesRegex(ValueError, 'observer error'):
+                        self.verify()
+
     def test_accounting_and_job_identity_refuse(self):
         path = self.fixture.root / 'accounting.json'
         value = json.loads(path.read_text())
@@ -204,6 +269,18 @@ class SCCEvidence(unittest.TestCase):
             host.periodic(stop, 60, action, self.fixture.root / 'errors.jsonl', 0)
         self.assertEqual(starts, [60.0, 120.0, 180.0])
 
+    def test_periodic_error_is_timestamped_and_sets_required_failure_event(self):
+        stop, failed = Mock(), threading.Event()
+        stop.wait.side_effect = [False, True]
+        error_path = self.fixture.root / 'errors.jsonl'
+        with patch.object(host.time, 'monotonic', return_value=0), \
+             patch.object(host.time, 'monotonic_ns', return_value=123), \
+             patch.object(host.time, 'time_ns', return_value=456):
+            host.periodic(stop, 5, Mock(side_effect=ValueError('missing census')), error_path, 0, failed)
+        self.assertTrue(failed.is_set())
+        self.assertEqual(list(host.rows(error_path)), [{'kind': 'error', 'error': 'missing census',
+                                                       'monotonic_ns': 123, 'wall_time_ns': 456}])
+
     def test_scheduler_io_has_a_separate_thread_from_process_coverage(self):
         with patch.object(host.threading, 'Thread') as constructor:
             host.start_observers(Mock(), self.fixture.root, self.fixture.collection['host'], 123, 456)
@@ -212,6 +289,51 @@ class SCCEvidence(unittest.TestCase):
         self.assertEqual([c.kwargs['args'][1] for c in calls], [5, 60])
         self.assertEqual([c.kwargs['args'][-1] for c in calls], [123, 456])
         self.assertTrue(all(c.kwargs['target'] is host.periodic for c in calls))
+
+    def test_observer_threads_share_the_operation_failure_event(self):
+        failed = threading.Event()
+        with patch.object(host.threading, 'Thread') as constructor:
+            host.start_observers(Mock(), self.fixture.root, self.fixture.collection['host'], 123, 456, failed)
+        self.assertTrue(all(c.kwargs['kwargs']['failure_event'] is failed for c in constructor.call_args_list))
+
+    def test_operation_retains_end_and_error_when_final_configuration_fails(self):
+        f = self.fixture
+        directory = f.root / 'isolation'
+        initial = next(row for row in host.rows(f.root / 'process_observations.jsonl') if row['kind'] == 'snapshot')
+        census = next(host.rows(f.root / 'scheduler.jsonl'))
+        observers = [Mock(), Mock()]
+        for observer in observers:
+            observer.is_alive.return_value = False
+        def configuration(target, machine, stage):
+            if stage == 'after':
+                raise ValueError('qconf unavailable after collection')
+            host.append(target / 'scheduler.jsonl', census)
+            return {}, census
+        operation = Mock(return_value=f.collection)
+        with patch.object(host.discovery, 'validate_plan'), \
+             patch.object(host.discovery, 'host', return_value=f.collection['host']), \
+             patch.object(host.os, 'getpid', return_value=42), \
+             patch.object(host, 'configuration', side_effect=configuration), \
+             patch.object(host, 'check_configuration', return_value='econ'), \
+             patch.object(host, 'check_scheduler_snapshot'), \
+             patch.object(host, 'process_snapshot', return_value=initial), \
+             patch.object(host, 'start_observers', return_value=observers), \
+             patch.object(host.discovery, 'collect') as legacy:
+            with self.assertRaisesRegex(ValueError, 'infrastructure evidence failure'):
+                host.observe(f.plan, {}, operation)
+        legacy.assert_not_called()
+        call = operation.call_args.args
+        self.assertEqual(call[:3], (f.plan, {}, f.root / 'collection'))
+        self.assertTrue(call[3].is_set())
+        process = list(host.rows(directory / 'process_observations.jsonl'))
+        self.assertEqual(process[-1]['kind'], 'end')
+        self.assertEqual(process[-1]['status'], 'incomplete')
+        self.assertEqual(process[-1]['collection_sha256'], host.routing.identity(f.collection))
+        errors = [row for row in host.rows(directory / 'scheduler.jsonl') if row.get('kind') == 'error']
+        self.assertEqual(len(errors), 1)
+        self.assertIn('qconf unavailable', errors[0]['error'])
+        self.assertGreater(errors[0]['monotonic_ns'], 0)
+        self.assertGreater(errors[0]['wall_time_ns'], 0)
 
     def test_first_deadline_is_anchored_before_initial_command_latency(self):
         for interval, initial_latency, expected in [(5, 6, 6), (60, 26, 60)]:

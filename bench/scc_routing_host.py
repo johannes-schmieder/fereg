@@ -104,15 +104,42 @@ def policy(plan):
 
 
 def check_sources(plan):
-    for path in [Path(__file__), Path(block_host.__file__), Path(discovery.__file__), Path(routing.__file__)]:
+    paths = [Path(__file__), Path(block_host.__file__), Path(discovery.__file__), Path(routing.__file__)]
+    if 'round_contract' in plan:
+        paths.append(Path(__file__).with_name('routing_parallel.py'))
+    for path in paths:
         ref = discovery.reference(path)
         require(plan['frozen_files'].get(ref['path']) == ref['sha256'], 'unfrozen isolation tool dependency')
     require(plan['receipt_generator'] == discovery.reference(__file__), 'wrong receipt generator')
 
 
+def round_contract(plan, collection=None):
+    if 'round_contract' not in plan:
+        require(collection is None or 'round_contract' not in collection, 'unexpected collection round contract')
+        return None
+    value = plan['round_contract']
+    require(isinstance(value, dict) and set(value) == {'parallel_plan_sha256', 'logical_round', 'attempt'}
+            and isinstance(value['parallel_plan_sha256'], str)
+            and re.fullmatch(r'[0-9a-f]{64}', value['parallel_plan_sha256']) is not None
+            and type(value['logical_round']) is int and 1 <= value['logical_round'] <= 3
+            and type(value['attempt']) is int and 1 <= value['attempt'] <= 2,
+            'invalid parallel round contract')
+    if collection is not None:
+        require(routing.identity(collection.get('round_contract')) == routing.identity(value),
+                'collection round contract differs')
+        rounds = collection.get('rounds', [])
+        expected = Path(plan['output_root']) / 'collection/round-1/records.json'
+        require(len(rounds) == 1 and isinstance(rounds[0], dict)
+                and isinstance(rounds[0].get('path'), str)
+                and Path(rounds[0]['path']).resolve() == expected.resolve(),
+                'parallel collection must contain its one logical round')
+    return value
+
+
 def boundary_pair(path):
     records = list(rows(path))
-    require(len(records) == 2 and [r['stage'] for r in records] == ['before', 'after'],
+    require(all(r.get('kind') != 'error' for r in records), 'configuration observer error')
+    require(len(records) == 2 and [r.get('stage') for r in records] == ['before', 'after'],
             'missing configuration boundary')
     return [record['value'] for record in records]
 
@@ -202,8 +229,9 @@ def check_affinity(raw, host, pid):
 
 def check_scheduler(path, host, queue, collection):
     snapshots = list(rows(path))
-    require(len(snapshots) >= 2 and snapshots[0]['stage'] == 'before'
-            and snapshots[-1]['stage'] == 'after', 'missing scheduler boundary')
+    require(all(snapshot.get('kind') != 'error' for snapshot in snapshots), 'scheduler observer error')
+    require(len(snapshots) >= 2 and snapshots[0].get('stage') == 'before'
+            and snapshots[-1].get('stage') == 'after', 'missing scheduler boundary')
     require(snapshots[0]['monotonic_ns'] <= collection['started_monotonic_ns']
             <= collection['completed_monotonic_ns'] <= snapshots[-1]['monotonic_ns'],
             'scheduler census does not cover collection')
@@ -306,8 +334,9 @@ def accounting(raw, collection):
 
 def derived(plan, collection, raw):
     check_sources(plan)
+    contract = round_contract(plan, collection)
     require(collection['plan_sha256'] == routing.identity(plan)
-            and collection['status'] == 'complete' and len(collection['rounds']) == 3,
+            and collection['status'] == 'complete' and len(collection['rounds']) == (1 if contract else 3),
             'incomplete or different collection')
     require(collection['host']['slots'] == SLOTS and collection['host']['machine'] == 'x86_64',
             'wrong physical allocation or architecture')
@@ -344,6 +373,8 @@ def configuration(directory, host, stage):
     # At exit, bracket the completed measurement before slower configuration
     # reads. At entry, take the live scheduler census last, just before admission.
     census = scheduler(host, stage) if stage == 'after' else None
+    if census is not None:
+        append(directory / 'scheduler.jsonl', census)
     env = {key: os.environ[key] for key in ('JOB_ID', 'NSLOTS', 'PE', 'QUEUE')}
     values = {
         'queue_configuration': {'complexes': command(['qconf', '-sc']),
@@ -362,7 +393,7 @@ def configuration(directory, host, stage):
         append(directory / (key + '.jsonl'), {'stage': stage, 'value': value})
     if census is None:
         census = scheduler(host, stage)
-    append(directory / 'scheduler.jsonl', census)
+        append(directory / 'scheduler.jsonl', census)
     return values, census
 
 
@@ -374,31 +405,40 @@ def process_snapshot():
     return result
 
 
-def periodic(stop, seconds, action, error_path, initial_ns):
+def observer_error(path, error, failure_event=None):
+    if failure_event is not None:
+        failure_event.set()
+    append(path, {'kind': 'error', 'monotonic_ns': time.monotonic_ns(),
+                  'wall_time_ns': time.time_ns(), 'error': str(error)})
+
+
+def periodic(stop, seconds, action, error_path, initial_ns, failure_event=None):
     deadline = initial_ns / 1e9 + seconds
     while not stop.wait(max(0, deadline - time.monotonic())):
         try:
             action()
         except Exception as error:
-            append(error_path, {'kind': 'error', 'error': str(error)})
+            observer_error(error_path, error, failure_event)
         deadline += seconds
 
 
-def start_observers(stop, directory, host, initial_process_ns, initial_scheduler_ns):
+def start_observers(stop, directory, host, initial_process_ns, initial_scheduler_ns, failure_event=None):
     process_path, scheduler_path = (directory / name for name in
                                    ('process_observations.jsonl', 'scheduler.jsonl'))
     work = [(5, lambda: append(process_path, process_snapshot()), process_path, initial_process_ns),
             (60, lambda: append(scheduler_path, scheduler(host, 'periodic')), scheduler_path, initial_scheduler_ns)]
-    observers = [threading.Thread(target=periodic, args=(stop, interval, action, path, initial_ns), daemon=True)
+    observers = [threading.Thread(target=periodic, args=(stop, interval, action, path, initial_ns),
+                 kwargs={'failure_event': failure_event}, daemon=True)
                  for interval, action, path, initial_ns in work]
     for observer in observers:
         observer.start()
     return observers
 
 
-def observe(plan, proof):
+def observe(plan, proof, operation=None):
     discovery.validate_plan(plan)
     check_sources(plan)
+    round_contract(plan)
     host = discovery.host()
     require(host['slots'] == SLOTS and host['library_limits'] == discovery.LIBRARY_LIMITS,
             'collector requires the complete 28-slot job and fixed library limits')
@@ -416,21 +456,45 @@ def observe(plan, proof):
     require(len(owner) == 1 and not block_host.process_activity([parsed], [], owner, policy(plan)),
             'known competing compute or absent owner at initial admission')
     stop = threading.Event()
-    observers = start_observers(stop, directory, host, initial['monotonic_ns'], census['monotonic_ns'])
+    failure_event = threading.Event() if operation is not None else None
+    observers = start_observers(stop, directory, host, initial['monotonic_ns'], census['monotonic_ns'], failure_event)
     result = None
     try:
-        result = discovery.collect(plan, proof, Path(plan['output_root']) / 'collection')
+        output = Path(plan['output_root']) / 'collection'
+        result = (operation(plan, proof, output, failure_event) if operation is not None
+                  else discovery.collect(plan, proof, output))
         return result
     finally:
         stop.set()
-        observers[0].join(timeout=10)
-        require(not observers[0].is_alive(), 'process observer did not finish')
-        append(path, process_snapshot())
-        observers[1].join(timeout=25)
-        require(not observers[1].is_alive(), 'scheduler observer did not finish')
-        configuration(directory, host, 'after')
-        append(path, {'kind': 'end', 'status': result['status'] if result else 'incomplete',
-                      'collection_sha256': routing.identity(result) if result else None})
+        if operation is None:
+            observers[0].join(timeout=10)
+            require(not observers[0].is_alive(), 'process observer did not finish')
+            append(path, process_snapshot())
+            observers[1].join(timeout=25)
+            require(not observers[1].is_alive(), 'scheduler observer did not finish')
+            configuration(directory, host, 'after')
+            append(path, {'kind': 'end', 'status': result['status'] if result else 'incomplete',
+                          'collection_sha256': routing.identity(result) if result else None})
+        else:
+            errors = []
+            def retain(action, error_path):
+                try:
+                    action()
+                except Exception as error:
+                    errors.append(str(error))
+                    observer_error(error_path, error, failure_event)
+            def joined(observer, timeout, name):
+                observer.join(timeout=timeout)
+                require(not observer.is_alive(), name + ' observer did not finish')
+            retain(lambda: joined(observers[0], 10, 'process'), path)
+            retain(lambda: append(path, process_snapshot()), path)
+            retain(lambda: joined(observers[1], 25, 'scheduler'), directory / 'scheduler.jsonl')
+            retain(lambda: configuration(directory, host, 'after'), directory / 'scheduler.jsonl')
+            append(path, {'kind': 'end', 'monotonic_ns': time.monotonic_ns(), 'wall_time_ns': time.time_ns(),
+                          'status': result['status'] if result and not failure_event.is_set() else 'incomplete',
+                          'collection_sha256': routing.identity(result) if result else None})
+            if errors and sys.exc_info()[0] is None:
+                raise ValueError('infrastructure evidence failure: ' + '; '.join(errors))
 
 
 def finalize(plan, collection):

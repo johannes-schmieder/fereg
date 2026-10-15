@@ -120,6 +120,35 @@ class BlockContext(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 blocks.declare({**self.inputs, 'discovery_review': self.write(review)}, self.design)
 
+    def test_parallel_handoff_validates_embedded_parent_before_body_access(self):
+        import routing_parallel as parallel
+        parent = {**self.plan, 'library_limits': discovery.LIBRARY_LIMITS,
+                  'producer_tools': {'producer.py': h('producer')}, 'frozen_files': {}}
+        refs = {name: self.write({'bound': name})
+                for name in ['parent_plan', 'proof', 'receipt_generator']}
+        plan = {'kind': parallel.KIND + '_plan', 'schema': 1, 'design': parallel.DESIGN,
+                'parent': routing.seal(parent), 'parent_sha256': routing.identity(parent),
+                **refs, 'proof_sha256': h('proof'), 'output_root': str(self.root / 'parallel'),
+                'producer_tools': parent['producer_tools'],
+                'frozen_files': {ref['path']: ref['sha256'] for ref in refs.values()}}
+        summary = {**self.summary, 'plan_sha256': routing.identity(plan)}
+        validation = self.write({'status': 'passed', 'result_sha256': routing.identity(summary),
+                                 'plan_sha256': routing.identity(plan)})
+        review = {**self.review, 'plan_sha256': routing.identity(plan),
+                  'result_sha256': routing.identity(summary), 'remote_validation': validation}
+        inputs = {**self.inputs, 'discovery_plan': self.write(routing.seal(plan)),
+                  'discovery_result': self.write(routing.seal(summary)),
+                  'discovery_review': self.write(review)}
+        with patch.object(runner, 'inspect_case') as inspect:
+            context = blocks.declare(inputs, self.design)
+            inspect.assert_not_called()
+        names = {Path(ref['path']).name for ref in
+                 blocks.context_bindings(self.write(routing.seal(context)), context)}
+        self.assertIn('routing_parallel.py', names)
+        forged = {**plan, 'parent_sha256': h('different parent')}
+        with self.assertRaises(ValueError):
+            blocks.declare({**inputs, 'discovery_plan': self.write(routing.seal(forged))}, self.design)
+
     def test_C_legacy_previous_and_linux_rejected_before_case_access(self):
         with patch.object(blocks.platform, 'system', return_value='Darwin'):
             for stage, previous in [('C', None), ('B', {'stage': 'A'})]:
