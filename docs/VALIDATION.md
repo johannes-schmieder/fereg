@@ -217,10 +217,36 @@ including the final corrected-window regression. Production identity remains
 unchanged for 192 runtime modules and 58 artifact inputs. These are tooling
 checks. The window replay and independent raw review passed; the replacement
 measurement remains pending. SCC setup `8126735` passed all 53 focused tests
-and froze the 287-file plan with terminal accounting `0/0`. Replacement
-round-three job `8126744` is accepted with a verified-28-core requirement and a
-four-hour producer budget; dependent evidence-only job `8126751` has a
-40-minute cap. Neither job has yet established a valid aggregate or shortlist.
+and froze the 287-file plan with terminal accounting `0/0`.
+
+The first fresh round-three attempt, `8126744`, completed its full producer
+round on `scc-zj4` but exited `0/1` after 7,309 seconds because its final
+scheduler query timed out. The evidence-only job `8126751` completed `0/0`
+and independently classified it as infrastructure failure, without aggregation.
+Independent Astra raw review confirms all 846 passing pairs, 18 original
+unavailable pairs, complete warmup/repetition/resource coverage and exact
+science, prepared-input and witness fingerprints. All 55 timestamped scheduler
+errors match the retained report. Its 1,457 process snapshots have complete
+coverage and no known competing compute, but the terminal observer marker is
+incomplete and the final configuration observations are absent. This is
+replacement eligibility, not valid timing or node-isolation evidence.
+
+Before using the single remaining replacement, one prospective five-minute
+one-slot scheduler-health job, `8130615`, required three query pairs at fixed
+60-second starts, retaining the original ten-second command cap. All six
+responses passed identity/structure checks; terminal accounting is `0/0`, with
+122 seconds wall time and zero native solver calls. This checks current service
+responsiveness only and never substitutes for the frozen isolation protocol.
+No further health panel was run or selected from repeated attempts.
+
+The final predeclared replacement is job `8130631`, logical round three,
+attempt two, with the same 28-core requirement, four-hour producer budget,
+artifacts, input bytes and original tolerances. Evidence-only job `8130649`
+depends on it and revalidates both attempt reports before any aggregate. The
+first attempt stays excluded; no third attempt is permitted. The wrappers and
+replacement eligibility received independent high-effort Astra review. Both
+new jobs are accepted but not qualified. No aggregate, shortlist, Mac B/C result
+or public-default promotion has been accepted.
 
 The separate public-activation and C transition now passes independent source
 review. Its prerequisite hook collects two hidden-policy and two uninjected
