@@ -743,21 +743,24 @@ selected SGE settings do not explain the failure. SSH remains available and the
 underlying scheduler-query cause is unproven. Local release and preparation work
 continue independently; scheduler responsiveness is required before dispatch.
 
-The current 26-page [routing explanation](solver_routing.pdf) includes a private
-portfolio flowchart, frontier table, exact direct-work/cache bounds, development
-history and the independently reviewed terminal-factor screen on page 26.
-The original 22-page mathematics is preserved; page 1 points to the amendments,
-and totals, whitespace and amendment labels reflect 26 pages. Page 25 explicitly
-labels S1 evidence; page 26 records the separate final universal eight-call
-functional pass and the full gate. Earlier failures remain visible. The lead
-visually checked the latest pages 1, 25 and 26, reusing reviewed unchanged layout.
-The latest source has not received a new full Pro review. PDF SHA-256 is
-`836bd38dc5cd2bd3dfad338bba2f104acab3d2ef6655ca102711c3fdf45c7217`;
+The current 27-page [routing explanation](solver_routing.pdf) includes the
+private portfolio flowchart, frontier table, exact direct-work/cache bounds,
+development history and terminal-factor screen on pages 23–26. Page 27 records
+the completed fresh SCC discovery NO-GO, paired-ratio table and remaining-RHS
+limitation. Public Auto remains unchanged. The original 22-page mathematics
+is preserved, and pages 2–26 retain their exact source body and extracted text
+after header/footer and whitespace normalization. An initial comparison stopped
+on PDF extractor word-spacing differences; the corrected content check passes.
+The lead visually checked the updated cover and final evidence leaf, reusing
+prior verified unchanged layouts. Independent high-effort fact/math review and
+raw evidence review pass; no new full Pro review is claimed. PDF SHA-256 is
+`99ce95328c5bb0845280d127bc94d6648cdcc4b475c94bc128cc999cc0dcd4d9`;
 [editable source](solver_routing.tex) SHA-256 is
-`17e54dc64d0c26c932d5dac299eccfac113526bc710bf642c41d1f5620df58b8`.
-The saved source compiles successfully through the built-in compiler. The
+`d68c529e98c14f90bbe872cecfc9d957888c961b5e0771c1cdfa2de2a6c994e9`.
+The saved source compiles successfully through the built-in compiler. The older
 attribution follow-up remains FAILED at five of six calls, with no sixth call or
-retry; performance qualification and public activation remain pending.
+retry. The new discovery rejects this candidate; no Mac selection, public
+activation or confirmation follows.
 
 Separately, the prospective campaign's independent preparation role completed
 12 fixed fresh imported inputs/references: four each for A, B and untouched C.
@@ -866,6 +869,95 @@ protocol has one full round per distinct node and zero measurement replacements;
 no intermediate timing or ranking was inspected. Complete terminal accounting,
 fresh science, strict isolation and independent raw aggregate review remain
 required before any new shortlist or Mac selection.
+
+All four jobs subsequently completed with terminal accounting `0/0`.
+The three collectors used 6,727, 10,157 and 6,763 seconds on their respective
+nodes, totaling 23,647 of the fixed 43,200 allocation-seconds. Finalizer
+`8137673` ran for 511 seconds on `scc-tb4`, serial `NONE/1`, after the last
+collector ended. The campaign monitor was deleted before inspecting results.
+All original measurements, optional failures and stopping rules remain intact;
+no measurement replacement or extra observation was submitted.
+
+The complete finalizer reports **portfolio V1 NO-GO**, with a baseline-only
+shortlist. Independent high-effort record review verifies all 126 scientific
+proofs, 126 checked wrappers, 1,026 passing exact science pairs, stable
+availability and protected discrete decisions across hosts, and all 636 ranking
+comparisons. Each node has 342 available arm-cells and 18 optional unavailable
+arm-cells. The three nodes dispatch 7,236 native calls: 7,182 successes and
+54 original optional failures, comprising 47 timeouts and seven iteration-budget
+exhaustions. Unavailable arms are not retried or assigned invented runtimes.
+The 3,078 successful measured calls provide nine locally paired slots per
+available arm-cell; these slots are not asserted to be independent samples.
+
+The lead independently reproduces all 42 portfolio/baseline paired median
+ratios. The following point estimates illustrate the mixed frontier; the
+[compact result](../bench/results/solver-routing-controlled-20261014.json)
+retains all 42, including the nine baseline violations.
+
+| Family | 1 worker | 4 workers |
+| --- | ---: | ---: |
+| Weak two-FE | 0.669 | 1.010 |
+| High-degree weak | 0.773 | 1.122 |
+| Dynamic weights | 0.654 | 0.950 |
+| Small third FE | 1.108 | 0.994 |
+| Four FEs | 1.066 | 0.986 |
+| Eight FEs | 1.075 | 1.073 |
+| Sixteen FEs | 1.112 | 1.310 |
+| Near-confounded third FE | 1.333 | 1.122 |
+| Wide RHS | 1.001 | 0.999 |
+
+Ratios below one favor the portfolio. The geometric mean over all 42 cells is
+`1.0005864414545023`, combining gains and losses rather than establishing
+neutrality. Eight of nine baseline violations involve at least three FEs.
+The worst available internal comparison is sixteen FEs/four workers against
+LSMR: paired ratio `1.4571265636472241` at allowance `1.2`, giving normalized
+score `2.285632818236121`. That score is normalized excess cost, not a
+2.286-fold runtime. Both predeclared rejection conditions are met. The protected
+baseline allowance stays max(5%, 1 ms), the internal allowance max(20%, 1 ms).
+These Linux discovery point estimates are not Mac performance qualification.
+The campaign requested full-node isolation; validation requires the complete
+reservation, process and scheduler evidence. Native worker comparisons here are
+one and four, not 28-worker scaling results.
+
+Independent high-effort review also clears the strict full-node isolation
+evidence and complete aggregate. Separately reviewed, zero-native evidence job
+`8140245` passes terminal accounting `0/0`, serial `NONE/1`, after 215 seconds
+on `scc-tb4`. Its original-source replay reproduces the entire canonical
+aggregate exactly, and its raw census checks 4,712 process snapshots and 397
+scheduler query envelopes containing 794 successful commands. No transport retry
+was used and no known competing compute was detected. Maximum process gap is
+5.0033 seconds, maximum scheduler gap 60.0003 seconds, within the unchanged
+7.5/75-second bounds. Both owned command groups drain cleanly, without signal,
+error or cleanup escalation; no native solver call or measurement was rerun.
+Successful numerical arrays and logs were deleted by the original frozen
+producer. Their oracle/scoped checks are
+source-bound execution attestations; they cannot be freshly recomputed from
+missing arrays. The retained records, proofs, resource diagnostics, worker
+decisions, failure payloads, isolation evidence and complete aggregate remain
+independently checkable. The original canonical aggregate is
+`a89d500049863211317fb70ce121968b3c7bde105136ec4859e76a4cc1ef1476`, file
+SHA-256 `a177a0b8fdaca394df4224c2e883e32bcdf2f6066d9c00e9378e3f84afe39d40`,
+at `finalizer/discovery-shortlist.json` in the fresh SCC campaign.
+The final independent review is retained there as
+`independent-review/finalraw-review.json`, SHA-256
+`9319bcc143e8c32a97f5935f9ae3005ac8f5d9fae09f50efe75789c58be77559`.
+Replay completion SHA-256 is
+`a848188f24f5e65da8c24be5fe8d792dc4aee5e965277bd274b311bde98c89df`;
+the independent raw census is
+`a8d01fd754dff09e5d43b763cbfa79efe8a8b008c8c970ec777f5e9cc631c61a`.
+
+The result closes this candidate's route to fresh Mac B, public activation and
+confirmation C. Public Auto remains unchanged and B/C remain untouched. The
+next engineering questions are the complete strict-prefix/seeded-LSMR cost and
+the loss of difficult two-FE gains at four workers. The observed differences do
+not isolate MAP sweep cost or establish that serial CMG alone causes the losses.
+Current V1 reuses a hierarchy and scales setup allowance with the first
+nontrivial batch and physical stride, but retains a fixed iteration-16 checkpoint
+and scalar CMG applications. It has no remaining-RHS payback rule; Low mode
+normally fixes the allowance on the outcome-only projection before regressor
+chunks. Wide-RHS parity does not establish a benefit from always building
+earlier. A successor needs a separately declared scope and design, preserving
+this failed screen rather than retuning it into a pass.
 
 A separate prospective Mac handoff helper passes independent source review and
 16 pure tests. After full discovery/B-context and untouched-C-declaration gates,

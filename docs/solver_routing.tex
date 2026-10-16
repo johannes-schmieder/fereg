@@ -27,7 +27,7 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\sffamily\fontsize{8.5}{10}\selectfont\color{Muted}FEREG / ENGINEERING SPECIFICATION}
-\fancyhead[R]{\sffamily\fontsize{8.5}{10}\selectfont\color{Muted}REVISED 14 OCTOBER 2026}
+\fancyhead[R]{\sffamily\fontsize{8.5}{10}\selectfont\color{Muted}REVISED 16 OCTOBER 2026}
 \fancyfoot[L]{\sffamily\fontsize{8}{10}\selectfont\color{Muted}Mapped native checks passed / performance adoption blocked}
 \fancyfoot[R]{\sffamily\fontsize{8.5}{10}\selectfont\color{Ink}\thepage\ / \pageref*{LastPage}}
 \renewcommand{\headrulewidth}{0.3pt}
@@ -66,7 +66,7 @@
 \vspace{6pt}
 {\sffamily\fontsize{13}{17}\selectfont\color{Muted}Integrated experimental contract;\par mapped native checks passed; performance adoption blocked\par}
 \vspace{3pt}
-{\sffamily\fontsize{10.5}{14}\selectfont 13 October 2026 / amended 14 October 2026\par}
+{\sffamily\fontsize{10.5}{14}\selectfont 13 October 2026 / amended through 16 October 2026\par}
 \vspace{6pt}
 \begin{note}
 \textbf{Design in one sentence.} Keep \code{auto} as a small deterministic router: exact structural shortcuts, inexpensive incumbent iterations, and at most one bounded optional upgrade, followed by an independent original-problem certificate.
@@ -94,7 +94,7 @@ Use one native call. SPI stays on the main thread; workers own Rust-managed stat
 16 CMG repair; 17 deployment (Codex) & 18--21 Timing history and recovery (Codex)\\
 \bottomrule
 \end{tabularx}}
-{\tinybody\color{Teal}\textbf{Current private policy:} amendments on pages 23--26; public Auto is unchanged.\par}
+{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Public Auto unchanged.\par}
 \vfill
 {\fontsize{9}{11.8}\selectfont\color{Muted}\textbf{Authorship.} GPT Pro authored the original specification and diagrams. Codex authored later bindings and amendments. Exact-case Pro review informed the direct-cost correction (page 14); generic Pro review informed allocation (page 8). The explicit-CMG repair (page 16) is a Codex amendment, not GPT Pro code approval.\par
 Document rendering and layout validation do not constitute solver implementation or scientific/performance qualification.}
@@ -1980,6 +1980,57 @@ Existing finite stops & Stagnation, fill and maximum levels remain binding; the 
 Published CMG \code{3422b04} passes 115 default and 220 all-feature tests, strict Clippy and formatting. Fereg passes 46 focused checks, strict core Clippy and the full test entrypoint. The final universal eight-call study passes independent science, four exact repeat pairs, cross-worker decisions and resource checks; weak and high-degree weak CMG install at iteration 16 with one/four workers. Twelve compatible-dipole cases do \emph{not} certify all-RHS floating-point stability. Earlier rounded-matvec failures remain explicit. No speed, default activation or performance qualification follows.
 \end{binding}
 \anchor{Design \code{bb93342e}; CMG \code{3422b04}; fereg \code{3f487f21}; upstream \code{hierarchy.rs}, \code{ldl.rs}, \code{preconditioner.rs}; fereg \code{bounded.rs::finish}.}
+
+% PAGE 27 / completed fresh portfolio discovery; no Mac selection or promotion.
+\newpage
+\fancyhead[R]{\sffamily\fontsize{8.5}{10}\selectfont\color{Muted}EVIDENCE / 16 OCTOBER 2026}
+\fancyfoot[L]{\sffamily\fontsize{8}{10}\selectfont\color{Muted}Private portfolio / discovery NO-GO}
+\smallbody
+\sect{EVIDENCE UPDATE / 16 OCTOBER}{Targeted gains; portfolio NO-GO}
+\tagline{Three complete Linux rounds. Descriptive discovery ratios; no Mac performance claim.}
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex,
+ box/.style={draw=Rule,fill=Light,rounded corners=2pt,align=center,font=\sffamily\fontsize{9}{11}\selectfont,inner sep=5pt},
+ stop/.style={box,draw=Amber,fill=Warm},arr/.style={->,line width=.7pt,draw=Muted}]
+\node[box,text width=15.6cm] (run) at (8.2,0) {Three distinct 28-core allocations; all original jobs and finalizer have terminal accounting 0/0\\42 cells/node, 342 exact scientific pairs/node, 18 recorded optional unavailabilities/node};
+\node[stop,text width=15.6cm] (screen) at (8.2,-1.15) {Predetermined screen rejects portfolio V1: nine baseline violations\\Worst internal score 2.286 exceeds 1; overall geometric mean versus baseline 1.0006};
+\node[stop,text width=15.6cm] (close) at (8.2,-2.25) {Baseline-only stop. No fresh Mac B, public activation or confirmation C for this candidate.\\No replacement, favorable subset, extra observation or retuned pass.};
+\draw[arr] (run)--(screen);\draw[arr] (screen)--(close);
+\end{tikzpicture}
+\end{center}
+\vspace{-5pt}
+\sub{Complete-solve portfolio / baseline ratios}
+For each cell: median of nine within-node paired ratios, using three measured slots per node. Values below 1 are faster. Nodes and slots are not nine independent statistical units; these point estimates carry no Mac qualification interval. The full-precision screen retains max(5\%, 1 ms) against baseline and max(20\%, 1 ms) against every available internal comparator.
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Family} & \textbf{1 worker} & \textbf{4 workers}\\
+\midrule
+Weak two-FE & \textcolor{Teal}{0.669} & 1.010\\
+High-degree weak & \textcolor{Teal}{0.773} & \textcolor{Amber}{1.122}\\
+Dynamic weights & \textcolor{Teal}{0.654} & 0.950\\
+Small third FE & \textcolor{Amber}{1.108} & 0.994\\
+Four FEs & \textcolor{Amber}{1.066} & 0.986\\
+Eight FEs & \textcolor{Amber}{1.075} & \textcolor{Amber}{1.073}\\
+Sixteen FEs & \textcolor{Amber}{1.112} & \textcolor{Amber}{1.310}\\
+Near-confounded third FE & \textcolor{Amber}{1.333} & \textcolor{Amber}{1.122}\\
+Wide RHS & 1.001 & 0.999\\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{-5pt}
+\sub{What the result establishes and what remains open}
+One-worker difficult two-FE inputs show approximately 23--35\% lower times, but those gains mostly disappear at four workers. Eight of nine baseline violations involve at least three FEs. The overall ratio near 1 combines gains and losses; it does not establish neutrality. The worst internal edge is sixteen FEs/four workers versus LSMR: ratio 1.457 at allowance 1.20. Its normalized score $(1.45712656-1)/0.20\approx2.286$ is not a 2.286-fold runtime.
+
+The complete strict-prefix/seeded-LSMR path needs attribution; these comparisons do not isolate the cost of MAP sweeps. Serial bounded CMG setup/application, hierarchy quality, checkpoint delay and certification are separate possible causes of the four-worker result. Existing wide-RHS parity supplies no evidence for always building earlier on wide batches.
+
+\begin{binding}\tinybody
+\textbf{RHS limitation.} The hierarchy is shared, but V1 applies scalar CMG cycles. Its setup allowance scales with the first nontrivial batch and physical storage width; activation remains at iteration 16. Low mode normally starts with the outcome alone, then reuses that allowance across regressor chunks. There is no explicit remaining-RHS payback test. Any successor must price actual compatible remaining work, including setup, handoff, applications and certificates, under a separately declared design.
+
+\textbf{Evidence boundary.} Independent Astra high review passes the retained records, proofs and complete ranking. Pure replay job \code{8140245} passes 0/0 with no native calls and reproduces the entire canonical aggregate. Raw isolation replay checks 4,712 process snapshots and 794 successful scheduler commands, with no detected competing compute. Successful numerical arrays were deleted by the frozen producer: their oracle/scoped checks are source-bound producer attestations, not a fresh recomputation from missing arrays. All failures remain recorded; the old Mac B is still closed. No new full GPT Pro review is claimed.
+\end{binding}
+\anchor{SCC source \code{cc2aae4d}; jobs \code{8137670--8137673}; canonical aggregate \code{a89d5000}. Full comparison and accounting summaries: \code{docs/VALIDATION.md} and \code{bench/results/solver-routing-controlled-20261014.json}.}
+\clearpage
 
 \end{compactleaf}
 

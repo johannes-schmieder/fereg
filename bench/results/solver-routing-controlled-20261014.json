@@ -12624,21 +12624,23 @@
       }
     },
     "pdf_amendment": {
-      "pages": 26,
+      "pages": 27,
       "new_pages": [
         23,
         24,
         25,
-        26
+        26,
+        27
       ],
-      "source_sha256": "17e54dc64d0c26c932d5dac299eccfac113526bc710bf642c41d1f5620df58b8",
-      "pdf_sha256": "836bd38dc5cd2bd3dfad338bba2f104acab3d2ef6655ca102711c3fdf45c7217",
-      "review": "Independent high-effort Astra math/source review clears page26 factor-only bounds and flow, alongside unchanged reviewed pages23/24. The final factual update uses independently reviewed eight-call raw evidence c5887373d627e3c701a9845c77e1f3bf1b8341b553053bfd8f227d6c52d6d9b3 and the passing full entrypoint. Lead inspected latest pages1/25/26; original pages2-22 text/math are unchanged after footer/whitespace normalization. The saved source compiles through the desktop compiler. No new full Pro review of amendments is claimed.",
-      "status": "Private portfolio functional evidence passes; prior attribution remains FAILED5/6 and native92 incomplete. Performance, public activation and qualification remain pending."
+      "source_sha256": "d68c529e98c14f90bbe872cecfc9d957888c961b5e0771c1cdfa2de2a6c994e9",
+      "pdf_sha256": "99ce95328c5bb0845280d127bc94d6648cdcc4b475c94bc128cc999cc0dcd4d9",
+      "review": "Prior independent Astra source/math and native reviews of pages23–26 remain valid. Page27 reports the completed fresh SCC NO-GO and RHS limitation, with independent high-effort fact/math review and final raw evidence review9319bcc143e8c32a97f5935f9ae3005ac8f5d9fae09f50efe75789c58be77559. Built-in compilation passes. Lead visually checked latest cover and page27; pages2–26 source and extracted text are unchanged after header/footer and whitespace normalization. No new full Pro review is claimed.",
+      "status": "Functional evidence remains valid, but the fresh three-node portfolio screen closes NO-GO. PublicAuto unchanged; no new MacB, activation or C.",
+      "layout_checks": "27pages with no cover spill; final leaf header/footer date/status verified. Initial strict extracted-space comparison flagged word-joining differences; whitespace-insensitive content comparison and exact earlier source-body prefix pass. New final leaf and cover visually verified."
     }
   },
   "scc_portfolio_preparation": {
-    "status": "discovery_running_on_three_distinct_nodes_terminal_science_isolation_and_aggregate_pending",
+    "status": "discovery_complete_independently_validated_baseline_only_NO_GO",
     "policy": "qstat-pair-retry-v1",
     "scope": "Prospective explicitly plan-bound schema2 variant only; original DESIGN/schema1/default behavior and all old outcomes unchanged.",
     "query_pair_attempts_max": 2,
@@ -12672,7 +12674,7 @@
         "new_jobs_submitted": 0
       }
     },
-    "native_measurement_calls": 0,
+    "native_measurement_calls": 3078,
     "shortlist_accepted": false,
     "fresh_import_preparation": {
       "status": "passed_inputs_only",
@@ -13148,7 +13150,7 @@
       "independent_raw_review": "gpt-6-astra high GO: exact sealed parent/canonical identities/design,294 locally available frozen hashes without mismatch;9 SCC-specific dependencies inherited only from reviewed actual build/staging. Actual own0/0 serial accounting verified."
     },
     "three_node_discovery_dispatch": {
-      "status": "released_once_and_observed_running_no_results_inspected",
+      "status": "all_four_jobs_terminal_accounting_zero_zero",
       "dispatcher_sha256": "d3ae2602112389c9cdb930800387c28a489c2c54825c50db1a3dbfe9084b33a2",
       "dispatcher_tests_sha256": "b617f51866f981e4c72547f4c0718a51cee9fc69eebb9aaa0d67603bed1712e5",
       "dispatcher_tests": 13,
@@ -13219,9 +13221,9 @@
       },
       "lifecycle_observation_utc": "2026-10-16T10:41:31.534359Z",
       "observed_start_utc_all_three": "2026-10-16T10:41:13Z",
-      "measurement_results_inspected": false,
-      "node_isolation": "pending actual strict allocation/process/scheduler validation; distinct qstat node names are not an isolation pass",
-      "terminal_accounting": "pending for all4 exact jobs",
+      "measurement_results_inspected": true,
+      "node_isolation": "passed frozen full reservation/process/scheduler validation and independent original-source raw replay; no known competing compute detected",
+      "terminal_accounting": "all4 exact jobs structurally complete0/0 within fixed resource and wallclock bounds",
       "shortlist_accepted": false,
       "public_Auto": "unchanged",
       "independent_release_lifecycle_review": "gpt-6-astra high GO: one exact comma-list user-hold release, no remaining target user holds, then actual lifecycle-only three-node running snapshot. No measurement output inspected and no isolation/science/qualification inference."
@@ -13232,6 +13234,801 @@
       "production_identity": "passed_against_cc2aae4d_192modules_58artifact_inputs_exact",
       "applicable_new_task_tool_checks": "17 evidence-wrapper tests and13 dispatcher tests pass; independent Astra reruns pass. No runtime production edit.",
       "runtime_gate": "Valid prior307Python/1927Rust evidence reused for prose-only repository changes; actualLinux190focusedchecks remain separate."
+    },
+    "three_node_discovery_terminal_result": {
+      "status": "valid_closed_baseline_only_NO_GO",
+      "scope": "Fresh schema2 sourcecc2 portfolio discovery only; all three complete fixed rounds retained. Original SCC14 and old MacB failures remain closed.",
+      "remote_campaign": "/projectnb/welfgr/fereg/runs/portfolio-v1-20261015",
+      "source_commit": "cc2aae4dd92ac9d7c25c684c44783af194ab9e66",
+      "baseline_commit": "46aa78f67b102373675b7c72196dba1fbfb7d337",
+      "parallel_plan_sha256": "7792b8756dbe045764af5b232636369fcb98796abe1ad3f5731096a3c39a95c0",
+      "result_file": "finalizer/discovery-shortlist.json",
+      "result_file_sha256": "a177a0b8fdaca394df4224c2e883e32bcdf2f6066d9c00e9378e3f84afe39d40",
+      "result_canonical_sha256": "a89d500049863211317fb70ce121968b3c7bde105136ec4859e76a4cc1ef1476",
+      "completion_sha256": "80d9f789b0003c4e41997a7a56dd63499f403110048a406cce2e08acf9999d7e",
+      "collector_accounting": [
+        {
+          "job": "8137670",
+          "round": 1,
+          "node": "scc-zj4",
+          "failed": 0,
+          "exit_status": 0,
+          "slots": 28,
+          "granted_pe": "omp28",
+          "wallclock_s": 6727,
+          "maxvmem": "1.853G"
+        },
+        {
+          "job": "8137671",
+          "round": 2,
+          "node": "scc-wo4",
+          "failed": 0,
+          "exit_status": 0,
+          "slots": 28,
+          "granted_pe": "omp28",
+          "wallclock_s": 10157,
+          "maxvmem": "1.876G"
+        },
+        {
+          "job": "8137672",
+          "round": 3,
+          "node": "scc-yk3",
+          "failed": 0,
+          "exit_status": 0,
+          "slots": 28,
+          "granted_pe": "omp28",
+          "wallclock_s": 6763,
+          "maxvmem": "1.782G"
+        }
+      ],
+      "finalizer_accounting": {
+        "job": "8137673",
+        "node": "scc-tb4",
+        "failed": 0,
+        "exit_status": 0,
+        "slots": 1,
+        "granted_pe": "NONE",
+        "wallclock_s": 511,
+        "maxvmem": "832.465M",
+        "start_utc": "2026-10-16T13:31:16Z",
+        "end_utc": "2026-10-16T13:39:47Z"
+      },
+      "total_collector_wallclock_s": 23647,
+      "allocation_budget_s": 43200,
+      "retained_science": {
+        "cells_per_node": 42,
+        "arm_cell_slots_per_node": 360,
+        "passing_exact_science_pairs_per_node": 342,
+        "passing_exact_science_pairs_total": 1026,
+        "optional_unavailable_armcells_per_node": 18,
+        "actual_native_calls_per_node": 2412,
+        "actual_native_calls_total": 7236,
+        "successful_native_calls_total": 7182,
+        "optional_native_failures_total": 54,
+        "optional_failure_kinds_by_round": [
+          {
+            "timeout": 16,
+            "iteration_exhausted": 2
+          },
+          {
+            "timeout": 15,
+            "iteration_exhausted": 3
+          },
+          {
+            "timeout": 16,
+            "iteration_exhausted": 2
+          }
+        ],
+        "measured_successful_calls_total": 3078,
+        "measured_slots_per_available_armcell": 9,
+        "science_proofs_verified": 126,
+        "checked_wrappers_verified": 126,
+        "cross_host_availability_exact": true,
+        "cross_host_protected_discrete_decisions_exact": true,
+        "resource_diagnostic_hashes_recomputed": 7182,
+        "ranking_comparisons_recomputed": 636,
+        "finite_ranking_comparisons": 600,
+        "unavailability_comparisons": 36,
+        "resource_action_inequalities_checked": 2814,
+        "cmg_worker_check_groups_recomputed": 84,
+        "generic_it_worker_check_groups_recomputed": 6,
+        "retained_failure_logs_verified": 54,
+        "retained_failure_results_verified": 7,
+        "large_failure_columns": "hashes replayed remotely; seven large payloads not duplicated locally"
+      },
+      "isolation": "passed original frozen validator and independent raw replay/census on all three distinct complete28core hosts; no known competing compute detected",
+      "portfolio_screen": {
+        "baseline_violations": 9,
+        "geomean_baseline_ratio": 1.0005864414545023,
+        "worst_internal_normalized": 2.285632818236121,
+        "worst_internal_cell": "sixteen-fe-t4",
+        "worst_internal_reference": "lsmr",
+        "worst_internal_paired_ratio": 1.4571265636472241,
+        "worst_internal_allowance": 1.2,
+        "normalization": "(paired median ratio -1)/(allowance -1); not a runtime multiple",
+        "shortlist": [
+          "baseline"
+        ],
+        "candidate_survived": false,
+        "descriptive_point_estimates_only": true
+      },
+      "all_baseline_comparisons": [
+        {
+          "cell": "no-fe-t1",
+          "ratio": 1.0083571283012218,
+          "baseline_median_ms": 3.0901259999999997,
+          "candidate_median_ms": 3.071139,
+          "baseline_allowance": 1.323611399664609,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.0645701825750795,
+            1.01480211891535,
+            0.9846070342195571
+          ]
+        },
+        {
+          "cell": "no-fe-t4",
+          "ratio": 1.0181089109541384,
+          "baseline_median_ms": 2.9855530000000003,
+          "candidate_median_ms": 3.312793,
+          "baseline_allowance": 1.3349463231769794,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9740403575806149,
+            1.0490676082831174,
+            1.0181089109541384
+          ]
+        },
+        {
+          "cell": "one-fe-t1",
+          "ratio": 1.0072759826220514,
+          "baseline_median_ms": 2.757978,
+          "candidate_median_ms": 2.7781529999999997,
+          "baseline_allowance": 1.3625844731176247,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.8733814662134695,
+            0.9917757330945407,
+            1.0143609239158018
+          ]
+        },
+        {
+          "cell": "one-fe-t4",
+          "ratio": 0.9909824601453411,
+          "baseline_median_ms": 3.28093,
+          "candidate_median_ms": 3.278283,
+          "baseline_allowance": 1.3047916292026955,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.098741325668156,
+            0.8965733199598797,
+            0.9909824601453411
+          ]
+        },
+        {
+          "cell": "slopes-t1",
+          "ratio": 1.0267246568096688,
+          "baseline_median_ms": 3.161747,
+          "candidate_median_ms": 3.18615,
+          "baseline_allowance": 1.3162808409401512,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.1515870353835436,
+            0.9783236925661668,
+            1.1611810653469161
+          ]
+        },
+        {
+          "cell": "slopes-t4",
+          "ratio": 0.9933401593287217,
+          "baseline_median_ms": 3.804316,
+          "candidate_median_ms": 3.6781,
+          "baseline_allowance": 1.2628593418632943,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.166879055724646,
+            1.0063184366935454,
+            0.868511609165141
+          ]
+        },
+        {
+          "cell": "low-saved-t1",
+          "ratio": 0.99114382891384,
+          "baseline_median_ms": 5.750417,
+          "candidate_median_ms": 5.654018000000001,
+          "baseline_allowance": 1.1739004319165027,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9683454843848555,
+            1.0014857040439218,
+            0.9832361722636811
+          ]
+        },
+        {
+          "cell": "low-saved-t4",
+          "ratio": 0.9763857575239954,
+          "baseline_median_ms": 6.380745999999999,
+          "candidate_median_ms": 6.254519,
+          "baseline_allowance": 1.1567214867979387,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.0011513726032546,
+            0.9384608008566052,
+            0.9763857575239954
+          ]
+        },
+        {
+          "cell": "dense-t1",
+          "ratio": 1.004044383768318,
+          "baseline_median_ms": 119.31442,
+          "candidate_median_ms": 119.287573,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9841692536198312,
+            1.004044383768318,
+            1.0047107026334168
+          ]
+        },
+        {
+          "cell": "dense-t4",
+          "ratio": 1.030611048886379,
+          "baseline_median_ms": 93.237088,
+          "candidate_median_ms": 93.57586699999999,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.04224236879874,
+            1.037843444584799,
+            0.9849685554564821
+          ]
+        },
+        {
+          "cell": "small-retained-t1",
+          "ratio": 0.9819239811236776,
+          "baseline_median_ms": 80.94432,
+          "candidate_median_ms": 79.16761199999999,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9725164841111232,
+            0.9893784131006632,
+            0.9981512279392555
+          ]
+        },
+        {
+          "cell": "small-retained-t4",
+          "ratio": 0.9977862953354157,
+          "baseline_median_ms": 69.62199700000001,
+          "candidate_median_ms": 70.14538200000001,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9816398766858128,
+            0.9977862953354157,
+            1.0075175235206195
+          ]
+        },
+        {
+          "cell": "small-third-t1",
+          "ratio": 1.1076811294854862,
+          "baseline_median_ms": 549.444644,
+          "candidate_median_ms": 609.6920289999999,
+          "baseline_allowance": 1.05,
+          "passes_screen": false,
+          "per_node_ratio": [
+            1.1101070276946863,
+            1.1322418547386732,
+            1.1071568131330556
+          ]
+        },
+        {
+          "cell": "small-third-t4",
+          "ratio": 0.9938850783803772,
+          "baseline_median_ms": 371.45905600000003,
+          "candidate_median_ms": 378.219169,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9377730295323544,
+            0.9642325578273956,
+            1.0203484132382787
+          ]
+        },
+        {
+          "cell": "four-fe-t1",
+          "ratio": 1.0659879657520055,
+          "baseline_median_ms": 561.893027,
+          "candidate_median_ms": 599.614102,
+          "baseline_allowance": 1.05,
+          "passes_screen": false,
+          "per_node_ratio": [
+            1.0660464422372573,
+            1.0587355328669514,
+            1.0629825256111558
+          ]
+        },
+        {
+          "cell": "four-fe-t4",
+          "ratio": 0.9859516571583937,
+          "baseline_median_ms": 347.90696199999996,
+          "candidate_median_ms": 349.901705,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.951408560995325,
+            0.9859516571583937,
+            0.9883515929500253
+          ]
+        },
+        {
+          "cell": "eight-fe-t1",
+          "ratio": 1.0753223569846726,
+          "baseline_median_ms": 1023.139329,
+          "candidate_median_ms": 1098.98062,
+          "baseline_allowance": 1.05,
+          "passes_screen": false,
+          "per_node_ratio": [
+            1.0931909932830874,
+            1.082773110258239,
+            1.071244435772746
+          ]
+        },
+        {
+          "cell": "eight-fe-t4",
+          "ratio": 1.0733632207911719,
+          "baseline_median_ms": 531.921453,
+          "candidate_median_ms": 570.944924,
+          "baseline_allowance": 1.05,
+          "passes_screen": false,
+          "per_node_ratio": [
+            1.0450545152954562,
+            1.0862498601948452,
+            1.0377232419605404
+          ]
+        },
+        {
+          "cell": "weighted-t1",
+          "ratio": 1.0064093590413703,
+          "baseline_median_ms": 169.46666299999998,
+          "candidate_median_ms": 169.614208,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.981532786505678,
+            1.0171414369640122,
+            1.0064093590413703
+          ]
+        },
+        {
+          "cell": "weighted-t4",
+          "ratio": 1.0093997168016082,
+          "baseline_median_ms": 142.13326600000002,
+          "candidate_median_ms": 141.81504999999999,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.0093997168016082,
+            0.9823997954153122,
+            1.0292804101021746
+          ]
+        },
+        {
+          "cell": "weak-t1",
+          "ratio": 0.6688480706463047,
+          "baseline_median_ms": 205.15831,
+          "candidate_median_ms": 134.309521,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.6688480706463047,
+            0.6704734983360764,
+            0.653737895489608
+          ]
+        },
+        {
+          "cell": "weak-t4",
+          "ratio": 1.0100552507650855,
+          "baseline_median_ms": 112.302756,
+          "candidate_median_ms": 115.073166,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.0246691185388184,
+            0.9587516979500695,
+            1.0127098200898037
+          ]
+        },
+        {
+          "cell": "repeated-cells-t1",
+          "ratio": 1.0007326433069692,
+          "baseline_median_ms": 108.281904,
+          "candidate_median_ms": 107.92508000000001,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.0065882783556153,
+            0.9942739718905793,
+            1.0112122771022425
+          ]
+        },
+        {
+          "cell": "repeated-cells-t4",
+          "ratio": 0.9922133515401538,
+          "baseline_median_ms": 83.592902,
+          "candidate_median_ms": 83.631811,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.0059611400977562,
+            1.0027233634637116,
+            0.9813478958249598
+          ]
+        },
+        {
+          "cell": "wide-rhs-t1",
+          "ratio": 1.0008733174099498,
+          "baseline_median_ms": 250.21120299999998,
+          "candidate_median_ms": 250.70904500000003,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9999025519101853,
+            1.0042699299283409,
+            1.0008733174099498
+          ]
+        },
+        {
+          "cell": "wide-rhs-t4",
+          "ratio": 0.9994378530238575,
+          "baseline_median_ms": 151.266637,
+          "candidate_median_ms": 151.35698,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9840313036112517,
+            0.9994378530238575,
+            1.0004877607353466
+          ]
+        },
+        {
+          "cell": "high-degree-mixed-t1",
+          "ratio": 0.9916513006913203,
+          "baseline_median_ms": 480.025824,
+          "candidate_median_ms": 477.400666,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9995368600985185,
+            0.9878119770904281,
+            0.9945312150539634
+          ]
+        },
+        {
+          "cell": "high-degree-mixed-t4",
+          "ratio": 0.9926966563077794,
+          "baseline_median_ms": 302.978484,
+          "candidate_median_ms": 304.164024,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.0042892282570408,
+            0.9762537266373769,
+            0.9938577494345585
+          ]
+        },
+        {
+          "cell": "high-degree-weak-t1",
+          "ratio": 0.7729986184344319,
+          "baseline_median_ms": 970.7531240000001,
+          "candidate_median_ms": 746.327287,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.7673101324699946,
+            0.8983570708998436,
+            0.7696208803836139
+          ]
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "ratio": 1.122291262833858,
+          "baseline_median_ms": 487.34207000000004,
+          "candidate_median_ms": 517.812105,
+          "baseline_allowance": 1.05,
+          "passes_screen": false,
+          "per_node_ratio": [
+            1.122291262833858,
+            1.212729606291298,
+            1.0528113691469352
+          ]
+        },
+        {
+          "cell": "high-degree-stress-t1",
+          "ratio": 1.0019026860234528,
+          "baseline_median_ms": 446.295008,
+          "candidate_median_ms": 449.292116,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9926610302431131,
+            1.011972361112326,
+            1.006498655878795
+          ]
+        },
+        {
+          "cell": "high-degree-stress-t4",
+          "ratio": 1.001017921163337,
+          "baseline_median_ms": 297.824748,
+          "candidate_median_ms": 306.80100300000004,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.0701011843638866,
+            1.001017921163337,
+            0.9904312854484478
+          ]
+        },
+        {
+          "cell": "sixteen-fe-t1",
+          "ratio": 1.1117186538150268,
+          "baseline_median_ms": 1710.922354,
+          "candidate_median_ms": 1907.6459260000001,
+          "baseline_allowance": 1.05,
+          "passes_screen": false,
+          "per_node_ratio": [
+            1.1293080807347726,
+            1.1207737278196281,
+            1.1046539578966772
+          ]
+        },
+        {
+          "cell": "sixteen-fe-t4",
+          "ratio": 1.3095047559996706,
+          "baseline_median_ms": 899.3361170000001,
+          "candidate_median_ms": 1192.128704,
+          "baseline_allowance": 1.05,
+          "passes_screen": false,
+          "per_node_ratio": [
+            1.3095047559996706,
+            1.0791805978180657,
+            1.311072341237081
+          ]
+        },
+        {
+          "cell": "disconnected-t1",
+          "ratio": 0.9917846538141334,
+          "baseline_median_ms": 106.919414,
+          "candidate_median_ms": 106.04103400000001,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.976086778325457,
+            1.0127130398812083,
+            0.9933293018066571
+          ]
+        },
+        {
+          "cell": "disconnected-t4",
+          "ratio": 0.9889025363034358,
+          "baseline_median_ms": 83.456919,
+          "candidate_median_ms": 82.39555399999999,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9819511070136677,
+            0.9618040435330507,
+            1.0093952791629937
+          ]
+        },
+        {
+          "cell": "near-confounded-third-t1",
+          "ratio": 1.3326374134719765,
+          "baseline_median_ms": 252.34797799999998,
+          "candidate_median_ms": 337.095238,
+          "baseline_allowance": 1.05,
+          "passes_screen": false,
+          "per_node_ratio": [
+            1.3380147980957182,
+            1.22802728808397,
+            1.337772629345257
+          ]
+        },
+        {
+          "cell": "near-confounded-third-t4",
+          "ratio": 1.1217656404574499,
+          "baseline_median_ms": 180.878012,
+          "candidate_median_ms": 201.24375899999998,
+          "baseline_allowance": 1.05,
+          "passes_screen": false,
+          "per_node_ratio": [
+            1.1195636668839812,
+            1.1482340632287842,
+            1.1217656404574499
+          ]
+        },
+        {
+          "cell": "weight-dynamic-t1",
+          "ratio": 0.6536938066805823,
+          "baseline_median_ms": 260.24611600000003,
+          "candidate_median_ms": 171.088686,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.6647131060906679,
+            0.6536938066805823,
+            0.6505153243996796
+          ]
+        },
+        {
+          "cell": "weight-dynamic-t4",
+          "ratio": 0.9496166461640951,
+          "baseline_median_ms": 150.498693,
+          "candidate_median_ms": 146.031385,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9544643505755752,
+            0.8917920536356834,
+            0.96197623260756
+          ]
+        },
+        {
+          "cell": "inactive-columns-t1",
+          "ratio": 0.9865269922554599,
+          "baseline_median_ms": 79.694251,
+          "candidate_median_ms": 77.981659,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            1.0150593041228027,
+            0.9780281116094406,
+            0.9979517852885481
+          ]
+        },
+        {
+          "cell": "inactive-columns-t4",
+          "ratio": 0.9807061383270399,
+          "baseline_median_ms": 70.97999,
+          "candidate_median_ms": 73.77157600000001,
+          "baseline_allowance": 1.05,
+          "passes_screen": true,
+          "per_node_ratio": [
+            0.9756063475926,
+            0.9670797422278444,
+            1.0991672477387953
+          ]
+        }
+      ],
+      "independent_review": {
+        "model": "gpt-6-astra",
+        "reasoning_effort": "high",
+        "record_proof_resource_worker_decision_and_all_ranking_checks": "passed",
+        "full_retained_aggregate_and_raw_isolation": "passed",
+        "local_record_review_sha256": "48f1cecac9c68b18c48cc98cfd81e205223dac70d2aa87fe743d529aca40ffa7",
+        "lead_ratio_rederivation_sha256": "8944f48e0d8af6a60090789d38ada06d9a5ac181312ede8022f2bf20a7b3ccad",
+        "pure_replay_job": "8140245",
+        "pure_replay_native_calls": 0,
+        "pure_replay_helper_sha256": "d9a4a7bf3f23ced447af2444ae6d00f7a502bda9978b837e1645d8e94fe1083e",
+        "pure_replay_shell_sha256": "d26e4438c492d941a9a12ea607731bfa77f3580c4b93fd4198a1c6200f500c8c",
+        "pure_replay_config_sha256": "94aebf62c934c46b04a1039573ef580aaa4dc5f4b595e3e2976ee933a766153f",
+        "final_raw_review_file": "independent-review/finalraw-review.json",
+        "final_raw_review_sha256": "9319bcc143e8c32a97f5935f9ae3005ac8f5d9fae09f50efe75789c58be77559",
+        "full_canonical_aggregate_equality": true,
+        "pure_replay_accounting": {
+          "failed": 0,
+          "exit_status": 0,
+          "node": "scc-tb4",
+          "slots": 1,
+          "granted_pe": "NONE",
+          "wallclock_s": 215,
+          "maxvmem": "1.082G"
+        },
+        "pure_replay_completion_sha256": "a848188f24f5e65da8c24be5fe8d792dc4aee5e965277bd274b311bde98c89df",
+        "raw_census_sha256": "a8d01fd754dff09e5d43b763cbfa79efe8a8b008c8c970ec777f5e9cc631c61a",
+        "aggregate_replay_stdout_sha256": "3c83b9a865a480796f50218a7b7f9c404e64c561d5196dd12843df0b3224879a",
+        "aggregate_replay_elapsed_s": 165.24822860199492,
+        "census_elapsed_s": 47.47675975202583,
+        "owned_command_cleanup": "both clean; no errors, signals, deferred signals or escalation"
+      },
+      "retention_limit": "Successful numerical arrays and logs were deleted by the frozen producer. Independent oracle/scoped numerical checks are source-bound producer attestations, not fresh recomputation from missing arrays. Retained records, scientific proof/witness metadata, resources, worker decisions, failure payloads, raw isolation and full ranking can be independently checked. No native rerun.",
+      "interpretation": "One-worker weak/high-degree-weak/dynamic-weight ratios0.668848/0.772999/0.653694 are targeted Linux discovery gains. Eight of nine baseline violations have3+FEs; 4worker two-FE gains largely disappear. Geomean near1 combines opposing changes, not neutrality or performance qualification. Setup/application, prefix/seed/certificate cost and convergence effects are not causally separated.",
+      "rhs_limit": "Current hierarchy reuse and current-batch work scaling do not implement remaining-RHS payback; checkpoint16 and scalar bounded CMG apply remain fixed. Low normally initializes allowance on outcome-only projection. Wide-RHS parity does not establish earlier-build benefit.",
+      "stopping": "Baseline-only stop for this fixed candidate; no measurement replacements, extra observations, favorable subset or automatic retuning. No fresh MacB, activation or C; any successor requires a separate declared design.",
+      "public_Auto": "unchanged",
+      "fresh_B_started": false,
+      "confirmation_C_started": false,
+      "monitor_deleted": true,
+      "checks": "Passed: final compact identities/counts/full aggregate/review/retention/PDF hashes and all local Markdown references;27page rendering and visual QA; built-in compiler success; earlier source/math/text preserved; git diff --check. Production identity PASS againstcc2 with192modules/58artifact inputs exact; valid prior runtime evidence reused for prose-only changes.",
+      "discovery_result_validated": true,
+      "raw_isolation_census": {
+        "distinct_physical_hosts": 3,
+        "frozen_full_reservation_accounting_process_scheduler_replay": "passed",
+        "known_unowned_compute_overlap": [],
+        "maximum_process_gap_s": 5.003213722,
+        "maximum_process_sample_duration_s": 0.174855571,
+        "maximum_scheduler_envelope_s": 1.384165282,
+        "maximum_scheduler_success_gap_s": 60.000252012,
+        "process_snapshots": 4712,
+        "raw_file_bindings_match_all_three_original_receipts": true,
+        "scheduler_command_errors": 0,
+        "scheduler_commands": 794,
+        "scheduler_envelopes": 397,
+        "scheduler_transport_retries_used": 0,
+        "rounds": [
+          {
+            "round": 1,
+            "node": "scc-zj4",
+            "process_snapshots": 1340,
+            "process_max_gap_s": 5.003213722,
+            "scheduler_envelopes": 113,
+            "scheduler_commands": 226,
+            "scheduler_max_success_gap_s": 60.000238402,
+            "raw_file_hashes": {
+              "queue_configuration": "538b4b788e66e6730ae0e4883d0c5e04f2b1f891f65de1a1ce9aa9423fc2efe7",
+              "scheduler": "1fd0315a5d414198da47d9c7c4e7686e779855100ebf1659fc6abe9806d197e0",
+              "process_observations": "0c2a3b81dd4990ecef76a7cd0ccbcc7ec386d2f0904115a2e2b0e1da4b403b2a",
+              "resource_quota": "824155e53c89bbcee118bca84c4c5deae23e6bc87301224d3a3a2e667d1391b8",
+              "accounting": "ee606a212e8aceb59e6bd61b036a267e0b848966328d719fd0d1dd8fe96a9db7",
+              "job_environment": "971c4e3b17b9fe560950366655d0aed45d930834ed8269e5875ea944a1202722",
+              "parallel_environment": "ae6044ef8fb0a941dd3cb57be565c0bf8fc8c14bdce146ebcdf35a80899199d9",
+              "affinity": "c42e43b61873b19562b65de2d736fde7a2f0d2984c928e3b7798b8f4bdd02616"
+            }
+          },
+          {
+            "round": 2,
+            "node": "scc-wo4",
+            "process_snapshots": 2025,
+            "process_max_gap_s": 5.001053546,
+            "scheduler_envelopes": 170,
+            "scheduler_commands": 340,
+            "scheduler_max_success_gap_s": 60.000230535,
+            "raw_file_hashes": {
+              "queue_configuration": "f44c5951d34720b619a7b34b4e35d707cdf17eaa06311f79dcefad5512659b35",
+              "scheduler": "d23cb5070a6dbdd0d0e857edea19cda22e3dc370e5061fa01f2b439dac148542",
+              "process_observations": "91bdb34a58ab307319c1eac9f5e24801293a23797944968a5ce19f9cbbcb2094",
+              "resource_quota": "824155e53c89bbcee118bca84c4c5deae23e6bc87301224d3a3a2e667d1391b8",
+              "accounting": "a321b6244ce1b1d5bac6631080e53c46ad3cc8badd896a6121bd45b5122c4ad2",
+              "job_environment": "8831cbf5d901ad3ecfff1c724c31b71724c8bc6848b61efae0b44240a3be4579",
+              "parallel_environment": "ae6044ef8fb0a941dd3cb57be565c0bf8fc8c14bdce146ebcdf35a80899199d9",
+              "affinity": "1dac1adcdea79d10945b2e414f99276a4f6f16511962d04957f692c08f544e2e"
+            }
+          },
+          {
+            "round": 3,
+            "node": "scc-yk3",
+            "process_snapshots": 1347,
+            "process_max_gap_s": 5.000685366,
+            "scheduler_envelopes": 114,
+            "scheduler_commands": 228,
+            "scheduler_max_success_gap_s": 60.000252012,
+            "raw_file_hashes": {
+              "queue_configuration": "e634454ec2630b232865ee31a0562ce9ccfdebace20a3b1ce63d4f6986413d84",
+              "scheduler": "432865a8063ef718da88e7b708900c4eca692ff904c5eaa4c4f4db20e0aefd5c",
+              "process_observations": "4f14a4ceb65cb69c4592ea263eecb0166dc0871e1d8799eb50599b26486b23bd",
+              "resource_quota": "824155e53c89bbcee118bca84c4c5deae23e6bc87301224d3a3a2e667d1391b8",
+              "accounting": "9cd166acf1a9a7c0cc144ab3641c3980a1f71049e47a9fc17e58d603046184c4",
+              "job_environment": "ee12fa7bc4a2e12da4231c75829731ee15e3c8e79f0233e9f28a06d5ce28caa7",
+              "parallel_environment": "ae6044ef8fb0a941dd3cb57be565c0bf8fc8c14bdce146ebcdf35a80899199d9",
+              "affinity": "767cf659007ace633f30cfba7d56359e6717f11129a75c89587e73499ecbe35a"
+            }
+          }
+        ]
+      },
+      "operational_collection_notes": "An all-artifact failure copy stopped at its8MB limit before local writes; result/log-only copy and large-columns inventory then passed. Initial final-review retention stopped at a local preliminary-hash gate before SSH; only the final stable report was sent. These are metadata collection boundaries, not native retries or changes to validation."
+    },
+    "documentation_checks_20261016_terminal": {
+      "compact_JSON_counts_IDs_hashes_and_references": "passed",
+      "local_markdown_references": "passed",
+      "git_diff_check": "passed",
+      "production_identity": "passed_against_cc2aae4d_192modules_58artifact_inputs_exact",
+      "runtime_gate": "Prose-only repository changes: unchanged valid307Python/1927Rust evidence reused, no new runtime build or native solve.",
+      "latex_builtin_compiler": "success",
+      "PDF_pages": 27,
+      "PDF_visual_QA": "cover and new final leaf pass; unchanged earlier page layouts reused",
+      "earlier_document_content": "pages2–26 exact source prefix and extracted-content equality after header/footer/whitespace normalization",
+      "independent_fact_math_review": "gpt-6-astra high GO; final review9319 and all42 ratios/counts/scope checked",
+      "raw_review_metadata_retained_on_SCC": true
     }
   }
 }
