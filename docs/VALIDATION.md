@@ -829,6 +829,37 @@ verifies Rust/Cargo 1.85.1, GCC 12.2.0, Python 3.12.4, NumPy 1.26.4 and SciPy
 ten-second scheduler queries still time out with empty output. No new build or
 benchmark job has been submitted, and public Auto remains unchanged.
 
+The scheduler recovered at 09:47 UTC: the actual owner listing and full-host PE
+query both passed. The readiness monitor was deleted before continuation.
+Separately reviewed setup job `8137493` completed on `scc-gr4` with terminal
+accounting `0/0`, 402 seconds wall time and `maxvmem=3.650G`. Both actual Linux
+ELF builds pass GLIBC 2.28, export, ABI/load and numeric-guard checks; all ten
+commands and 190 focused tests pass. Independent high-effort raw review verifies
+the artifacts, logs, tools, source identities, shared release profile and Cargo
+configuration. The inherited ABI selftest briefly requests 32 workers for two
+small checksum reductions despite the four-slot reservation; setup is not
+evidence of a universal four-worker cap, isolation or performance.
+
+The actual resource and sample-1 admissions bind these Linux artifacts while
+allocation-local science, observed memory, solver availability and timing remain
+pending. The independently reviewed evidence-only binder completes all 42 A-cell
+witness packets, with all 46 output hashes verified and zero native calls.
+A subsequent display-only log-name error is retained; binding was not rerun.
+Reviewed pure sealing job `8137604` stops at its first resource guard, before
+creating outputs or calling a solver. SCC reports a one-slot job without a
+parallel-environment field; actual terminal accounting and the precise serial
+environment are being checked before a narrow launcher repair. The failed job
+and original wrapper remain preserved. No frozen plan or discovery dispatch is
+claimed.
+
+A separate prospective Mac handoff helper passes independent source review and
+16 pure tests. After full discovery/B-context and untouched-C-declaration gates,
+it can reuse already certified fresh B references, checking exact paths and
+hashes before parsing. It keeps the shared Linux sampling descriptor unchanged
+while separately binding the Mac artifact through all three source identities.
+This is source-only preparation: no B/C numerical payload, reference target or
+native execution was accessed for this review.
+
 Retained SCC raw evidence and sealed products remain in the campaign
 `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.
 The [compact evidence](../bench/results/solver-routing-controlled-20261014.json)

@@ -12638,7 +12638,7 @@
     }
   },
   "scc_portfolio_preparation": {
-    "status": "source_reviewed_not_dispatched",
+    "status": "actual_linux_setup_and_binding_passed_serial_seal_diagnosis_pending",
     "policy": "qstat-pair-retry-v1",
     "scope": "Prospective explicitly plan-bound schema2 variant only; original DESIGN/schema1/default behavior and all old outcomes unchanged.",
     "query_pair_attempts_max": 2,
@@ -12928,6 +12928,162 @@
       "SSH": "passed",
       "jobs_submitted": 0,
       "interpretation": "Application queries still fail; no dispatch readiness or active benchmark job follows from successful staging."
+    },
+    "scheduler_recovery": {
+      "observed_utc": "2026-10-16T09:47:29Z",
+      "owner_qstat": "passed_actual_full_owner_listing",
+      "omp28_qconf": "passed_identity_and_pe_slots_allocation",
+      "readiness_sha256": "4203222a931890c67fb795db440aaa9ad11dad3c24caafabf24c06e1735dd096",
+      "readiness_monitor": "deleted_before_active_continuation",
+      "setup_job": "8137493",
+      "seal_job": "8137604",
+      "discovery_jobs_submitted": 0
+    },
+    "actual_linux_setup": {
+      "status": "passed_build_ABI_guards_and_focused_tooling_only",
+      "source_commit": "cc2aae4dd92ac9d7c25c684c44783af194ab9e66",
+      "baseline_source_commit": "46aa78f67b102373675b7c72196dba1fbfb7d337",
+      "job_id": "8137493",
+      "job_name": "fereg_pf1_setup",
+      "hostname": "scc-gr4",
+      "queue": "econ",
+      "project": "welfgr",
+      "requested_slots": 4,
+      "granted_pe": "omp",
+      "failed": 0,
+      "exit_status": 0,
+      "started_utc": "2026-10-16T09:52:48Z",
+      "ended_utc": "2026-10-16T09:59:30Z",
+      "wall_seconds": 402,
+      "maxvmem": "3.650G",
+      "setup_config_sha256": "26ae18ef3fb428f8be542728c0cea48f1faedcf02af54772e952659413c3e042",
+      "build_complete_sha256": "6d78e08317836a68796c784ed7d7a96d98b072b927e4fac8769c1f711173bb5a",
+      "accounting_observation_sha256": "e55f5038ff7e514016999f27501c62ccf3f8296ee2b05d4c319e585a295bf736",
+      "commands": 10,
+      "command_sha256": [
+        "d0ba048fa4a84b5d6e952945e5bd203d0a21ca05774b54a10d408ded2bc29480",
+        "11c8eb8caa4f4ba878edec8239f75845365c306c6674ff9ee3583e7540caba3e",
+        "4c0728c60ac3e46927817039f7802384de5f3f70709a881606ae8c6b3b866cb3",
+        "6292ea1f8786947970c9065f26d9b4c557905f5431df55f617956b1b42c1a2d9",
+        "a0d8118134510a677e48db07279e02bbeec2de7dca4203ead064bcc6a66b679e",
+        "baf8fce3c573ce80d55cf1806f2af03f4fa9cd091203f22a08903e5b3045fcde",
+        "2743fa12957c453c568b24d426557511b18b561e0225b07393ddaf6945d2801a",
+        "3f1624f4007dd4bce0ca3ebfdb3c39b52c50b6cee5ec5e994b44f8b0fa5d3376",
+        "086252a83868b060b5c95ed3e0fef5e6de6d814eb6c8fe32a817e9188c06f7d1",
+        "52ee6cb604314ee81f2454732967469091bf337b8643862b4a5a4f93f27cd817"
+      ],
+      "all_command_status_cleanup_signal_and_budget_checks": "passed",
+      "actual_artifacts": {
+        "baseline": {
+          "sha256": "befba306b72f532557f38572868e1f4d3dcd8320ace3ad2ad01a0c6f99b052e6",
+          "runtime_sha256": "d9a987ef19304b9e810b08e5f9da18202dc78355c0cf81fe4cfad28695965225",
+          "source_commit": "46aa78f67b102373675b7c72196dba1fbfb7d337",
+          "bytes": 15549392
+        },
+        "candidate": {
+          "sha256": "f02e7070851e00fae19b39eb6abccc4189e32ffb4e2f7c764634bede8fcc2848",
+          "runtime_sha256": "097fc6b4f67611e779d916784fe5178033efe6fffa04528e7b2dd62fc117f068",
+          "source_commit": "cc2aae4dd92ac9d7c25c684c44783af194ab9e66",
+          "bytes": 15571280
+        }
+      },
+      "harness_sha256": "c1d8a6b6fb005f128d437706f09dd1a66e6206d6fccd03c8addbed309ba36087",
+      "release_profile": {
+        "codegen-units": 1,
+        "lto": "fat",
+        "opt-level": 3,
+        "panic": "unwind",
+        "strip": true
+      },
+      "tool_sha256": {
+        "cargo": "87e9ff02f95ea17d877e7c4eeb0f365f50fe3827f5afec132131ff3b8031a57e",
+        "cc": "2d474d25511872d27549d3bbc34d33fe78f985c1c53e018f47f4d534ff9a4b1e",
+        "python": "f62d663ae97a6edcd3070f1437627f3cb34829a87826abd6969d1f795d44f0c4",
+        "rustc": "f8d033fd72e878ec60493788c8bffec2e6c154dcab6f0cb4c145af8ada26a7ed",
+        "rustdoc": "45e24800b42661ca36e2615a275a9a49247d89fcf3f975a1b2bed76df87729b6"
+      },
+      "Cargo_configuration": {
+        "present": 3,
+        "absent": 17,
+        "checks": "exact_before_and_after_fetch_build_publication"
+      },
+      "source_checks": 25,
+      "ABI_and_glibc": "Both actual ELF64 x86_64 plugins pass GLIBC<=2.28, public exports/no unresolved symbols, ABI/selftest and two input/two output guards. Expected injected panic is contained.",
+      "focused_tests": {
+        "routing": 37,
+        "routing_run": 71,
+        "routing_discovery": 16,
+        "routing_parallel": 29,
+        "scc_routing_host": 37,
+        "total": 190
+      },
+      "independent_raw_review": "gpt-6-astra high GO after actual ELF pair/harness, 10 command/20 log closure, terminal accounting and source/profile/tool/Cargo checks.",
+      "resource_caveat": "Inherited ABI selftest requests 32 workers for two tiny 100000-u64 checksum reductions despite four-slot reservation. Cargo jobs and BLAS caps do not prove all native workers<=4. No setup isolation, timing or resource-performance claim follows.",
+      "scope": "Build/load and code-scoped admission only. Allocation-local native science, memory/availability, strict isolation and complete independently reviewed aggregation remain pending."
+    },
+    "actual_Linux_admission_review": {
+      "status": "passed_for_evidence_only_binding_then_pure_seal",
+      "binder_sha256": "7005c92bee7450227b194d04257bf3ed0d3e2ea6d27ac7376c9730bae3446892",
+      "binding_config_sha256": "2e9f9a8306348a19521bef71fbb996cab2c7e4c265f61ecc343dc1c3dd9eb467",
+      "resource_descriptor_sha256": "23752c619cb2174c2b0be7e92f6bdf649b66e0ca2dcfe768d5dbade0b4230f44",
+      "sample1_descriptor_sha256": "df2d01494ac06e277dc80b2d574ca66a0fad1248bd04af76bc581a0599e2cbd4",
+      "code_evidence_refs_per_descriptor": 19,
+      "samples": [
+        1
+      ],
+      "degree": 5,
+      "seed": 0,
+      "sampling_named_independent_unit_tests": 4,
+      "seal_config_sha256": "78dc16703aeb2ab1956cea586e8e10e2ebd50404c6dc0b7e82c00531641af814",
+      "independent_review": "gpt-6-astra high GO on exact actual files, preserved failed-preparation/completion chain and portable certificate; no Linux science/availability import."
+    },
+    "actual_Linux_binding": {
+      "status": "ready_for_reviewed_freeze_only",
+      "elapsed_seconds": 49.547417849011254,
+      "returncode": 0,
+      "cleanup_error": null,
+      "deferred_signals": [],
+      "command_sha256": "6029ce92947eaebe6f5b11c526080019f05c2d363b40392eb23c911010387a9a",
+      "stdout_sha256": "3cc1080de0f1118cba77020e90dabfa74170225faa0745ff995480d68af4549f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binding_complete_sha256": "de64bfc610c93e09c012118cc3a3a67d675a54bbedb8e3f2e11be22b56a9bd03",
+      "bound_JSON_files": 46,
+      "A_ready_cells": 42,
+      "native_calls": 0,
+      "outer_display_failure": "After successful captured binder, the display-only read used bind.stdout.log instead of actual bind.stdout and failed. Original outer rc1 retained; no binding rerun. Later read-only inspection and all46 output hashes verify completed binding.",
+      "pure_seal_job": "8137604",
+      "seal_status": "first_guard_rejected_before_output_or_solver_call_terminal_accounting_pending",
+      "independent_raw_review": "gpt-6-astra high GO: all46 boundJSONs,42A-cell mappings and manifest identity;216 unique dependency refs,207 available local hashes checked exactly,9 SCC-specific refs inherited only from actual staged/setup verification. All command/log/status evidence matches."
+    },
+    "new_Mac_handoff_source_review": {
+      "status": "passed_source_only_no_declaration_or_numeric_execution",
+      "helper_sha256": "ab5e33e8133d51268a0675e7de83300c6be9a6c4e26d824a0bdca5203ae1e602",
+      "test_sha256": "4b324a4171e6e6748ea268b2114f757f75a6ba41f927028c7261f54acc071c84",
+      "unchanged_API_sha256": "b1babf744e1a44a73eafb446c6e5fe2acaad6e293fc665b9f2c89ef400c3e897",
+      "pure_tests": 16,
+      "lead_test_log_sha256": "49de2c5dd2238969abd46a8959c5054be886698ee6391516371235edbdbf1af4",
+      "independent_review": "gpt-6-astra high exact-source GO and independent16test pass. Full B context and untouched C declaration gates precede payload access.",
+      "reference_reuse": "Certified fresh B JSON/NPZ reused only after full admission; exact B path/hash checked before parsing, source/data closures separate, original failed preparation and passed completion preserved. No recomputation/subprocesses.",
+      "platform_binding": "Shared Linux sample1 descriptor stays byte-identical; closed hash-checked relocation plus equal production/artifact/runtime identities bind separate Mac plugin.",
+      "remaining": "Valid independently reviewed discovery, actual declarations, 42 fresh Mac science/resource witnesses, B12, reviewed activation/equivalence and C24.",
+      "actual_B_or_C_payload_access": false,
+      "native_calls": 0
+    },
+    "serial_seal_diagnosis": {
+      "job_id": "8137604",
+      "observed_utc": "2026-10-16T10:15:51Z",
+      "status": "application_guard_failure_observed_scheduler_still_running_accounting_absent",
+      "failure": "pure seal requires omp1",
+      "scope": "Rejected before setup-seal directory creation, freeze or any native call. qstat-j has one slot and no parallel-environment field; actual serial environment and terminal accounting remain required before repair. Original wrapper/build/binder and failed evidence preserved.",
+      "measurement_calls": 0,
+      "new_discovery_jobs": 0,
+      "repair_review": "gpt-6-astra high planning requires a separately source-bound wrapper with only demonstrated serial guard differences; collector omp28/28 and all science/isolation/deadlines/stopping remain exact."
+    },
+    "documentation_checks_20261016_setup": {
+      "compact_JSON_counts_and_hashes": "passed",
+      "git_diff_check": "passed",
+      "production_identity": "passed_against_cc2aae4d_192modules_58artifact_inputs_exact",
+      "runtime_gate": "Valid prior307Python/1927Rust evidence reused for prose-only facts; actualLinux190focusedchecks reported separately."
     }
   }
 }
