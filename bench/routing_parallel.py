@@ -454,7 +454,8 @@ def _operation(plan, plan_path, logical_round, attempt, view, proof, output, fai
     command = [sys.executable, str(Path(__file__).resolve()), 'producer', '--plan', str(plan_path),
                '--round', str(logical_round), '--attempt', str(attempt)]
     process, interrupted, partial, cleanup, observer_fault = None, False, {}, None, False
-    prior_term, prior_int = signal.getsignal(signal.SIGTERM), signal.getsignal(signal.SIGINT)
+    prior_term, prior_int, prior_alarm = (signal.getsignal(number) for number in
+                                         (signal.SIGTERM, signal.SIGINT, signal.SIGALRM))
     def terminate(_signum, _frame):
         raise KeyboardInterrupt('supervisor received SIGTERM')
     signal.signal(signal.SIGTERM, terminate)
@@ -484,6 +485,7 @@ def _operation(plan, plan_path, logical_round, attempt, view, proof, output, fai
         cleanup_signals = []
         signal.signal(signal.SIGINT, lambda signum, frame: cleanup_signals.append(signum))
         signal.signal(signal.SIGTERM, lambda signum, frame: cleanup_signals.append(signum))
+        signal.signal(signal.SIGALRM, lambda signum, frame: cleanup_signals.append(signum))
         try:
             if interrupted and plan['schema'] == 2:
                 root = Path(view['output_root'])
@@ -499,6 +501,7 @@ def _operation(plan, plan_path, logical_round, attempt, view, proof, output, fai
         finally:
             signal.signal(signal.SIGTERM, prior_term)
             signal.signal(signal.SIGINT, prior_int)
+            signal.signal(signal.SIGALRM, prior_alarm)
             if cleanup_signals:
                 interrupted = True
                 result['supervisor_error'] = 'supervisor interrupted during owned producer cleanup'

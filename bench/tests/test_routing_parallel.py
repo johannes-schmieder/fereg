@@ -249,6 +249,52 @@ class PortfolioParallelTests(unittest.TestCase):
                 if not timing_started:
                     self.assertEqual(result['interruption_artifacts']['timing'], {})
 
+    def test_outer_alarm_during_owned_cleanup_is_deferred_after_early_term(self):
+        import signal
+        for early_term in (False, True):
+            with self.subTest(early_term=early_term):
+                self.plan['output_root'] = str(self.root / f'cleanup-alarm-{early_term}')
+                view = parallel.round_view(self.plan, 1, 1)
+                process, event = Mock(), Mock()
+                process.poll.return_value = None
+                def outer_alarm(signum, frame):
+                    raise TimeoutError('outer entry deadline expired')
+                prior = {signal.SIGTERM: signal.SIG_DFL, signal.SIGINT: signal.default_int_handler,
+                         signal.SIGALRM: outer_alarm}
+                handlers = dict(prior)
+                def install(number, handler):
+                    previous = handlers[number]
+                    handlers[number] = handler
+                    return previous
+                def boundary(_timeout):
+                    if early_term:
+                        handlers[signal.SIGTERM](signal.SIGTERM, None)
+                    raise KeyboardInterrupt('operation stopped before cleanup')
+                event.wait.side_effect = boundary
+                def stop(child):
+                    self.assertIs(child, process)
+                    handlers[signal.SIGALRM](signal.SIGALRM, None)
+                    return {'returncode': -2, 'escalated': False}
+                machine = {'hostname': 'scc-node1', 'job_id': '101', 'slots': 28, 'machine': 'x86_64',
+                           'library_limits': discovery.LIBRARY_LIMITS}
+                with patch.object(discovery, 'host', return_value=machine), \
+                     patch.object(parallel.subprocess, 'Popen', return_value=process), \
+                     patch.object(parallel, '_stop_owned', side_effect=stop) as cleanup, \
+                     patch.object(parallel.time, 'monotonic_ns', return_value=100), \
+                     patch.object(parallel.signal, 'getsignal', side_effect=lambda number: handlers[number]), \
+                     patch.object(parallel.signal, 'signal', side_effect=install), \
+                     patch.object(parallel.signal, 'setitimer') as timer:
+                    result = parallel._operation(self.plan, self.root / 'plan.json', 1, 1, view, None,
+                                                 Path(view['output_root']) / 'collection', event, joint_start_ns=0)
+                cleanup.assert_called_once_with(process)
+                timer.assert_not_called()
+                self.assertEqual(handlers, prior)
+                self.assertEqual(result['status'], 'incomplete')
+                self.assertTrue(result['supervisor_interrupted'])
+                self.assertEqual(result['producer_cleanup']['returncode'], -2)
+                self.assertIn('interrupted during owned producer cleanup', result['supervisor_error'])
+                self.assertEqual(discovery.load(Path(view['output_root']) / 'collection/collection.json'), result)
+
     def test_science_snapshot_failure_keeps_timing_capture_and_owned_cleanup(self):
         view = parallel.round_view(self.plan, 1, 1)
         root = Path(view['output_root'])

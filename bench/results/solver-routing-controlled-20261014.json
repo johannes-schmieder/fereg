@@ -12760,6 +12760,62 @@
       "scope": "HistoricalMacpreparation proof+exactAdata only; no nonexistentMacdependency dereference onLinux. ActualLinuxsource/dependencies/artifacts and allocation-local science remain mandatory.",
       "native_or_SCC_calls": 0,
       "freeze_or_binding_performed": false
+    },
+    "owned_cleanup_integration": {
+      "status": "passed_review_and_full_gate",
+      "source_sha256": "d21da079f77f4510afe50c9b28b6d40246e857c17f6e71f8ed7c4eb109be013e",
+      "test_sha256": "1882461c08260364c40d9854fe8996a01a2883fe85b098c29e3182f549ad02b1",
+      "scope": "Defer SIGALRM only through existing bounded owned-producer cleanup, restore prior handler, retain interrupted/incomplete outcome. No timer cancellation or renewal; no science, source runtime, artifact or measurement policy change.",
+      "focused_tests": 94,
+      "focused_log_sha256": "8ba6d50cbffa149a9a64172e4eae7439db8d3291e10422899fc6cdeb9bd4a8d2",
+      "independent_review": "gpt-6-astra high GO for exact maintained source, mocked collision tests and wrapper lifetime repairs.",
+      "full_entrypoint": {
+        "status": "passed",
+        "elapsed_seconds": 68.695385,
+        "python_main_tooling_tests": 300,
+        "python_additional_tests": 7,
+        "rust_test_executions_passed": 1927,
+        "rust_test_processes": 86,
+        "rust_failed": 0,
+        "rust_ignored": 14,
+        "stdout_sha256": "0a6f262974cbe47fe5a8f9f9dabf18904faa4966af0700fe5a583338775e3005",
+        "stderr_sha256": "1f9563cb215c00e5b9fffbd4ffe242c9876184664d04130725f812b7f883eb49",
+        "native_identity_guard": "passed unchanged; actual supplied bundle remains6eee/source3f/runtime097fc"
+      },
+      "input_certificate_binding_to_modified_file": false
+    },
+    "SCC_wrapper_source_review": {
+      "status": "passed_source_only",
+      "wrapper_sha256": "f842e36b16dccdef3553a3320737ce30d22c5d903b242cd13534d18aefa16acf",
+      "wrapper_tests": 15,
+      "wrapper_test_sha256": "9c0edaf1812643395813bc5128988d2458060e68afb5e87fffdaac44d9eeee3a",
+      "proposal_sha256": "65e4ec89eaa2a610b6c60fa7bffcf04fc4ce060d38744d8ce1efeb7f306accf6",
+      "shell_syntax_checks": 4,
+      "setup_work_seconds": 5370,
+      "setup_inclusive_seconds": 5400,
+      "collector_work_seconds": 14220,
+      "collector_inclusive_seconds": 14400,
+      "measurement_replacements": 0,
+      "scope": "Separate bounded setup/liveconfig-Cargo environment closure; direct owned collector with distinct-host claims; all-three-terminal accounting before full science/isolation/aggregate replay. No qsub implemented or measurement performed.",
+      "independent_review": "gpt-6-astra high GO; actual source/config/build/binder/healthy dispatch remain prerequisites."
+    },
+    "Linux_binder_source_review": {
+      "status": "passed_source_only",
+      "source_sha256": "e2a9191f7b3505f883135de5566e89a3666e757d0af9530b6fe09deb3a5a01a8",
+      "tests": 5,
+      "test_sha256": "363338d7ca718e0d3ea89bb0377b9328110af418abf3fad74da93a7747173a1a",
+      "proposal_sha256": "47068bcf6445042088815503a553e603fbc9870813e412d4a5a6d3a13c047ae1",
+      "independent_review": "gpt-6-astra high GO for closed actualLinux/source/build/admission checks, explicit originalfailure+completion+portableproof refs and42Aready configurations. Actualexecution/freeze stillpending."
+    },
+    "scheduler_transport_diagnosis": {
+      "time_utc": "2026-10-16T03:04:36.716Z–03:05:37.266Z",
+      "SSH_host": "scc1",
+      "configured_master": "sccsvc.bu.edu:536",
+      "one_TCP_connection": "passed0.000120s",
+      "one_owner_qstat_cap_seconds": 60,
+      "owner_qstat": "timeout60.064s_empty_stdout_stderr",
+      "capture_sha256": "d5768cfe881e9733f9dd7fe5a6bbf4f35b8c65423ef1cd27bfc9ccca0e76db31",
+      "interpretation": "Listener reachable, scheduler application/protocol response unverified. This is not an authentication failure and gives no dispatch/accounting proof. New campaign remains unsubmitted."
     }
   }
 }

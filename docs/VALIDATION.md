@@ -788,8 +788,17 @@ Its A-only local transport validation passes; B/C numeric payloads remain local
 and embargoed. This historical proof does not replace live Linux dependencies,
 artifact admission or fresh allocation-local science. At 02:51 UTC, a fresh
 bounded check still finds SSH available but both scheduler queries unresponsive;
-the new campaign directory is absent and no job has been submitted. SCC wrapper
-hardening and the explicit portable binder are still under review.
+the new campaign directory is absent and no job has been submitted. Independent
+high-effort source review now clears the SCC wrappers and explicit portable Linux
+binder. Their actual build/configuration/admission and freeze prerequisites remain
+pending. A cleanup-only maintained tooling repair defers an outer alarm through
+bounded producer cleanup, restores the handler and marks interruption incomplete;
+94 focused tests and the unchanged full entrypoint pass (307 Python checks and
+1,927 Rust test executions). Runtime, installed package and prior scientific
+artifacts remain unchanged. Setup and collection retain fixed entry deadlines
+and cleanup reserves. At 03:04–03:05 UTC the configured scheduler TCP listener is
+reachable, but one bounded owner query still returns nothing in 60 seconds. The
+scheduler application/protocol cause is unproven; no job submission was attempted.
 
 Retained SCC raw evidence and sealed products remain in the campaign
 `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.
