@@ -3,6 +3,8 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -194,6 +196,88 @@ class BinaryAuditTests(unittest.TestCase):
             self._mocked_audit(
                 b"\xfe\xed\xfa\xcf", {("lipo", "-archs"): "arm64\n"}
             )
+
+    def test_macho_raw_path_guard_accepts_remapped_and_system_metadata(self):
+        MODULE.reject_macho_personal_paths(
+            b"\x00\xff/fereg-source/crates/core.rs\x00/usr/lib/libSystem.B.dylib\x01"
+            b"/Userspace/local_symbol\x00"
+        )
+
+    def test_macho_raw_path_guard_rejects_nul_and_nonprintable_debug_names(self):
+        for metadata in (
+            b"\x00/Users/owner/project/target/object.o\x00",
+            b"\xff\x01/Users/owner/source.rs\x02\x00",
+            b"/Users/",
+        ):
+            with self.subTest(metadata=metadata), self.assertRaisesRegex(RuntimeError, "/Users/"):
+                MODULE.reject_macho_personal_paths(metadata)
+
+    def test_macho_path_rejection_precedes_object_tool_acceptance(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "artifact.plugin"
+            path.write_bytes(b"\xca\xfe\xba\xbe\x00\x01/Users/owner/object.o\x00")
+            with mock.patch.object(MODULE, "require_tool") as tools, mock.patch.object(MODULE, "run") as run:
+                with self.assertRaisesRegex(RuntimeError, "personal /Users/ path"):
+                    MODULE.audit_macho(path)
+                tools.assert_not_called()
+                run.assert_not_called()
+
+    def test_macos_build_strips_only_debug_symbols_before_universal_packaging(self):
+        completed, commands = self._mocked_macos_build()
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        strips = [i for i, command in enumerate(commands) if command[0] == "strip"]
+        self.assertEqual(len(strips), 2)
+        for index, suffix in zip(strips, ("x86_64", "arm64")):
+            strip = commands[index]
+            self.assertEqual(strip[1:3], ["-S", "-o"])
+            self.assertEqual(len(strip), 5)
+            self.assertTrue(strip[3].endswith(f"/fereg_macos.{suffix}.plugin"))
+            self.assertTrue(strip[4].endswith(f"/fereg_macos.{suffix}.unstripped.plugin"))
+            link = commands[index - 1]
+            self.assertEqual(link[:2], ["clang", "-bundle"])
+            self.assertEqual(link[-2:], ["-o", strip[4]])
+        lipo = next(i for i, command in enumerate(commands) if command[0] == "lipo")
+        signing = next(i for i, command in enumerate(commands) if command[0] == "codesign")
+        audit = next(i for i, command in enumerate(commands) if command[0] == "python3")
+        loader = next(i for i, command in enumerate(commands) if command[0] == "loader")
+        checksum = next(i for i, command in enumerate(commands) if command[0] == "shasum")
+        self.assertLess(max(strips), lipo)
+        self.assertEqual([lipo, signing, audit, loader, checksum], sorted([lipo, signing, audit, loader, checksum]))
+        self.assertFalse(any("unstripped" in arg for arg in commands[lipo]))
+
+    def test_macos_build_strip_failure_blocks_signing_audit_loader_and_checksum(self):
+        completed, commands = self._mocked_macos_build(fail_strip=True)
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertEqual(commands[-1][0], "strip")
+        self.assertFalse({"lipo", "codesign", "python3", "loader", "shasum"} & {c[0] for c in commands})
+
+    def _mocked_macos_build(self, *, fail_strip=False):
+        # Execute the shell control flow in an isolated root with every build,
+        # signing, audit and loader tool replaced by an argument-recording stub.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            scripts, tools = root / "scripts", root / "tools"
+            scripts.mkdir(); tools.mkdir()
+            script = scripts / "build_macos.sh"
+            script.write_bytes((ROOT / "scripts/build_macos.sh").read_bytes())
+            recorder = '#!/bin/bash\nprintf "%s" "${0##*/}" >> "$MOCK_LOG"\n' \
+                'printf "\\t%s" "$@" >> "$MOCK_LOG"\nprintf "\\n" >> "$MOCK_LOG"\n' \
+                'if [[ "${0##*/}" == strip && "$MOCK_FAIL_STRIP" == 1 ]]; then exit 7; fi\n'
+            for name in ("rustup", "cargo", "clang", "strip", "lipo", "codesign", "python3", "shasum"):
+                path = tools / name; path.write_text(recorder); path.chmod(0o755)
+            loader = root / "tests/mock_spi/run_actual_unix_plugin_test.sh"
+            loader.parent.mkdir(parents=True)
+            loader.write_text('#!/bin/bash\nprintf "loader\\n" >> "$MOCK_LOG"\n')
+            loader.chmod(0o755)
+            log = root / "commands.log"
+            completed = subprocess.run(
+                ["/bin/bash", str(script)], text=True, capture_output=True,
+                env={**os.environ, "PATH": str(tools) + os.pathsep + os.environ.get("PATH", ""),
+                     "MOCK_LOG": str(log), "MOCK_FAIL_STRIP": str(int(fail_strip)),
+                     "CARGO_TARGET_DIR": str(root / "cargo"), "FEREG_BUILD_DATE": "2000-01-01",
+                     "FEREG_GIT_COMMIT": "synthetic"},
+            )
+            return completed, [line.split("\t") for line in log.read_text().splitlines()]
 
     def test_end_to_end_windows_audit(self):
         responses = {

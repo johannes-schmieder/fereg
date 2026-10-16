@@ -12370,7 +12370,35 @@
         "fereg_layout": "f68207f36ac6edd1f26c006dd7a0f62c81983ae25c7815f85f04870ee25104c7",
         "fereg_clippy": "2f94d6a52e8895e0cc1d605084ad88e41e97cedd4393ace23cd5b030f8409490"
       },
-      "retention": "Committed source, upstream proof/tests and compact facts/identities; capture hashes do not promise a retained raw archive. No new native, isolation, performance, activation or promotion pass."
+      "retention": "Committed source, upstream proof/tests and compact facts/identities; capture hashes do not promise a retained raw archive. No new native, isolation, performance, activation or promotion pass.",
+      "pre_dispatch_packaging": {
+        "status": "rejected_unexecuted",
+        "source_commit": "07e1255b1df9cfec3365343e7453445358a30237",
+        "plugin_sha256": "5cbe19d2741897de3961028fe98a6b812e94f9a6735519fc6a5e0dc0595287f7",
+        "plugin_bytes": 18555712,
+        "build_record_sha256": "c9805e70e6badb491e5c7ac4bde5d0c5983f96921464343edd52ed65d0446f5d",
+        "sealed_plan_sha256": "1bea001dbfa546ab399819fda9189ae81a2f69f56b0548287d7a6c9f490927bc",
+        "study_native_calls": 0,
+        "failure": "Independent raw-byte review found21 personal build paths in N_OSO/STABS debug-map names:11 x86_64 and10 arm64. The original strings-based scan falsely reported passed; its original record is retained and rejected.",
+        "scientific_interpretation": "No study call dispatched; no numerical failure, functional pass or performance claim.",
+        "reviewed_repair": "Use Darwin strip -S only on each thin bundle before lipo/signing, retain unstripped preimages and ordinary local symbols. Raw-byte audit rejects personal home paths. Verify unchanged non-linkedit sections and non-debug symbols on the actual rebuilt artifact before fresh plan admission.",
+        "focused_checks": {
+          "binary_audit_tests_passed": 24,
+          "packaging_tests_passed": 12,
+          "shell_syntax": true
+        },
+        "captured_log_sha256": {
+          "mac-debug-map-binary-audit-tests.log": "8c1ee291ea4e388fe8664ca4de1684f288437fb7c3bd437d5f6c1627d991990e",
+          "mac-debug-map-packaging-tests.log": "dc2f45c772db9ebb59d71c23f91e86ea2091e0f5637aca2c6ef39e17111ca9d8"
+        },
+        "independent_source_review": {
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high",
+          "status": "passed",
+          "scope": "Three tracked build/audit/test changes only; actual rebuilt artifact and task wrapper admission remain separate."
+        },
+        "production_identity_vs_source": "PASS:192 runtime modules and58 artifact inputs unchanged against07e1255b1df9cfec3365343e7453445358a30237."
+      }
     },
     "pdf_amendment": {
       "pages": 25,

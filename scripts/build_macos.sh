@@ -33,7 +33,9 @@ build_slice() {
     "$RUST_BUILD_ROOT/$rust_target/release/libfereg_plugin.a" \
     -framework Security -framework CoreFoundation -framework SystemConfiguration \
     -liconv -lresolv \
-    -o "$BUILD/fereg_macos.$suffix.plugin"
+    -o "$BUILD/fereg_macos.$suffix.unstripped.plugin"
+  # Retain the linked preimage; remove debug-map paths without stripping local symbols.
+  strip -S -o "$BUILD/fereg_macos.$suffix.plugin" "$BUILD/fereg_macos.$suffix.unstripped.plugin"
 }
 
 build_slice x86_64-apple-darwin x86_64-apple-macos10.13 -mmacosx-version-min=10.13 x86_64

@@ -667,6 +667,19 @@ The full test entrypoint, refreshed actual native bundle, eight-call
 changed-artifact witness and performance qualification remain pending; the
 stale-native gate remains intact. Public Auto is unchanged.
 
+The first final-universal packaging candidate was rejected before any of its
+eight planned study calls. Independent raw-byte review found 21 personal build
+paths solely in Mach-O `N_OSO` debug-map records (11 x86_64, 10 arm64); the
+original `strings` scan had incorrectly reported success. The original artifact,
+build report and unexecuted sealed plan remain rejected. The narrow reviewed fix
+uses `strip -S` before universal packaging and signing, retaining the exact
+unstripped preimages and ordinary symbols. The maintained audit now scans raw
+bytes; 24 binary-audit and 12 packaging tests plus shell syntax pass. Actual
+non-linkedit section/symbol comparison, rebuild, artifact admission and the
+unchanged eight-call study remain pending. This is a packaging defect, not a
+scientific failure or qualification result. Compact identities are recorded in
+`terminal_affordability.pre_dispatch_packaging` in the same evidence document.
+
 The current 25-page [routing explanation](solver_routing.pdf) appends a separate
 private-portfolio flowchart, frontier table, exact charged bounds and development
 evidence chart. The latest factual update changes only page 25 to record the

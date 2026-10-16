@@ -286,7 +286,14 @@ def audit_elf(path: Path) -> dict[str, object]:
     }
 
 
+def reject_macho_personal_paths(data: bytes) -> None:
+    # Raw metadata can contain NUL-separated debug-map names invisible to strings.
+    if b"/Users/" in data:
+        raise RuntimeError("macOS plugin contains a personal /Users/ path")
+
+
 def audit_macho(path: Path) -> dict[str, object]:
+    reject_macho_personal_paths(path.read_bytes())
     lipo, otool, nm = require_tool("lipo"), require_tool("otool"), require_tool("nm")
     architecture_text = run(lipo, "-archs", str(path))
     architectures = architecture_text.split()
