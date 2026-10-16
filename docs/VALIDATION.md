@@ -800,6 +800,35 @@ and cleanup reserves. At 03:04–03:05 UTC the configured scheduler TCP listener
 reachable, but one bounded owner query still returns nothing in 60 seconds. The
 scheduler application/protocol cause is unproven; no job submission was attempted.
 
+On October 16, the fresh campaign source is fixed at `cc2aae4d`, with baseline
+`46aa78f6` and compiled Mac source `3f487f21`. An independently reviewed 70 MB
+shallow Git archive preserves all three exact commits, clean checkout, independent
+objects, runtime identities and installed-package identity. Its round-trip and
+Git integrity checks pass. The archive and the existing A-only input transport
+reached the new `portfolio-v1-20261015` SCC directory after a fresh absence check;
+both remote SHA-256 hashes match. No B/C numerical payload was transferred.
+The recorded 3 GB full-history bundle is superseded as a transport, without
+changing source history or any measurement.
+Create-once deployment completes in 40.16 seconds, checking every extracted
+file, the exact helper bytes, live tools and numerical modules, the three
+tracked Cargo configurations and 17 absent ancestor/Cargo-home configurations.
+The separate clean candidate and baseline checkouts retain their exact runtime
+identities. A further source-identity and 21-file pending-evidence check passes
+in 30.42 seconds. These are file/setup inspections, with zero native calls.
+Independent high-effort review verifies the retained remote command captures,
+completion record, actual configuration and 21 evidence-file hashes. It clears
+the staging milestone only; no numerical payload was opened for that review.
+
+Independent high-effort review clears the final wrapper, six-test Linux binder,
+pending admission templates and nine-test create-once deployment helper. The
+templates retain null Linux artifact identities and explicitly reuse Mac evidence
+only for the source contract. Actual Linux builds, final admission review,
+allocation-local science and isolation remain prerequisites. The live inventory
+verifies Rust/Cargo 1.85.1, GCC 12.2.0, Python 3.12.4, NumPy 1.26.4 and SciPy
+1.14.0, including three Linux numerical-module hashes. At 03:44 UTC, both fresh
+ten-second scheduler queries still time out with empty output. No new build or
+benchmark job has been submitted, and public Auto remains unchanged.
+
 Retained SCC raw evidence and sealed products remain in the campaign
 `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.
 The [compact evidence](../bench/results/solver-routing-controlled-20261014.json)

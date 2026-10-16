@@ -12786,9 +12786,9 @@
     },
     "SCC_wrapper_source_review": {
       "status": "passed_source_only",
-      "wrapper_sha256": "f842e36b16dccdef3553a3320737ce30d22c5d903b242cd13534d18aefa16acf",
+      "wrapper_sha256": "7b0cb699b41845e5f3052f669ca8eaadfd1c9a22af011b3995a4c692b8e7a736",
       "wrapper_tests": 15,
-      "wrapper_test_sha256": "9c0edaf1812643395813bc5128988d2458060e68afb5e87fffdaac44d9eeee3a",
+      "wrapper_test_sha256": "65b37a6b7d6659f10f25fda9c83643a98c38a9b26ded461217e992b232ef03ad",
       "proposal_sha256": "65e4ec89eaa2a610b6c60fa7bffcf04fc4ce060d38744d8ce1efeb7f306accf6",
       "shell_syntax_checks": 4,
       "setup_work_seconds": 5370,
@@ -12797,15 +12797,19 @@
       "collector_inclusive_seconds": 14400,
       "measurement_replacements": 0,
       "scope": "Separate bounded setup/liveconfig-Cargo environment closure; direct owned collector with distinct-host claims; all-three-terminal accounting before full science/isolation/aggregate replay. No qsub implemented or measurement performed.",
-      "independent_review": "gpt-6-astra high GO; actual source/config/build/binder/healthy dispatch remain prerequisites."
+      "independent_review": "gpt-6-astra high GO; actual source/config/build/binder/healthy dispatch remain prerequisites.",
+      "superseded_wrapper_sha256": "f842e36b16dccdef3553a3320737ce30d22c5d903b242cd13534d18aefa16acf",
+      "superseded_test_sha256": "9c0edaf1812643395813bc5128988d2458060e68afb5e87fffdaac44d9eeee3a",
+      "focused_test_child_paths": "Explicit current checkout bench/scripts; independent of mutable sys.path."
     },
     "Linux_binder_source_review": {
       "status": "passed_source_only",
-      "source_sha256": "e2a9191f7b3505f883135de5566e89a3666e757d0af9530b6fe09deb3a5a01a8",
-      "tests": 5,
-      "test_sha256": "363338d7ca718e0d3ea89bb0377b9328110af418abf3fad74da93a7747173a1a",
-      "proposal_sha256": "47068bcf6445042088815503a553e603fbc9870813e412d4a5a6d3a13c047ae1",
-      "independent_review": "gpt-6-astra high GO for closed actualLinux/source/build/admission checks, explicit originalfailure+completion+portableproof refs and42Aready configurations. Actualexecution/freeze stillpending."
+      "source_sha256": "7005c92bee7450227b194d04257bf3ed0d3e2ea6d27ac7376c9730bae3446892",
+      "tests": 6,
+      "test_sha256": "43a3376c9e7f9649b0717526e955a57d26f425455ab0ec16199aacd328b40034",
+      "proposal_sha256": "650b6189851e14211495d71e215e33b7ee41a78c9391e2b627abee4886dd22f8",
+      "independent_review": "gpt-6-astra high GO; byte-exact prior binder except reviewed wrapper pin. Actual Linux builds, descriptors, binding and freeze remain pending.",
+      "superseded_source_sha256": "e2a9191f7b3505f883135de5566e89a3666e757d0af9530b6fe09deb3a5a01a8"
     },
     "scheduler_transport_diagnosis": {
       "time_utc": "2026-10-16T03:04:36.716Z–03:05:37.266Z",
@@ -12816,6 +12820,114 @@
       "owner_qstat": "timeout60.064s_empty_stdout_stderr",
       "capture_sha256": "d5768cfe881e9733f9dd7fe5a6bbf4f35b8c65423ef1cd27bfc9ccca0e76db31",
       "interpretation": "Listener reachable, scheduler application/protocol response unverified. This is not an authentication failure and gives no dispatch/accounting proof. New campaign remains unsubmitted."
+    },
+    "pending_admission_templates": {
+      "status": "reviewed_source_only_unusable_until_real_Linux_bindings",
+      "evidence_sha256": "30b3386b34d32c7a043c4467170942b1ad46d729c2ccccb5fbf89f9f2cd98e98",
+      "transport_sha256": "06ab25f7a3cea10d1f675d26fe7251a6e729a5e3a77d3fb3263819762774d5eb",
+      "resource_template_sha256": "2f19bb8f33b29f7e9994a43c718bff6aedd70a58a241425968ba7dee1b539b68",
+      "sample1_template_sha256": "e8d251e3cfab3f5abd738317e50171ebdb5c9b679ac1ee1b5a6451641cd17a0f",
+      "binding_template_sha256": "0c364a262ba4925076d7d7ca3d19d9e8f0646ea7f23b96c95019f2c5032e1b57",
+      "additional_evidence_files": 17,
+      "additional_evidence_bytes": 514506,
+      "current_source_files": 9,
+      "source_commit": "cc2aae4dd92ac9d7c25c684c44783af194ab9e66",
+      "runtime_sha256": "097fc6b4f67611e779d916784fe5178033efe6fffa04528e7b2dd62fc117f068",
+      "Linux_artifact_hashes": null,
+      "independent_review": "gpt-6-astra high GO for pending templates and exact source-scoped evidence; no Linux native, memory, optional availability, isolation or timing admission. All42cells on each of3allocations still require fresh science."
+    },
+    "source_transport": {
+      "status": "independently_reviewed_exact_shallow_Git_archive",
+      "source_commit": "cc2aae4dd92ac9d7c25c684c44783af194ab9e66",
+      "baseline_source_commit": "46aa78f67b102373675b7c72196dba1fbfb7d337",
+      "compiled_source_commit": "3f487f214331bc9b87c379fa0a27de6347f9a8f7",
+      "archive_sha256": "d2d60e00df8bbe888efe2e589d6f1bacc7c841cfe4acd52e27439ef0ac90c79c",
+      "archive_bytes": 69976473,
+      "members": 1221,
+      "validation_sha256": "7c36507f91d1a413f1476f404aee1bf8eaa8450fec2e6c718ab111bb461f3331",
+      "superseded_local_bundle_sha256": "5f4bf6dda12501e666f8b2dbb34e0e22c094e74975a27c727c7d9f3ea6d81326",
+      "superseded_local_bundle_bytes": 3024469022,
+      "A_input_archive_sha256": "c85475a76a958472b98f7c5d8f686dde59beb95e869ce36a06965dfac6ccf9fc",
+      "A_input_archive_bytes": 835491840,
+      "input_archive_members": 147,
+      "B_C_numeric_payloads": 0,
+      "checks": "Three exact commits and runtime identities, clean checkout, shallow fsck, independent objects, archive round-trip and installed package identity passed. Root refs unchanged; no external fetch/native calls.",
+      "independent_review": "gpt-6-astra high GO for lightweight file staging only."
+    },
+    "SCC_live_tool_inventory": {
+      "status": "read_only_success",
+      "time_utc": "2026-10-16T03:18:01.326978Z–03:18:08.760381Z",
+      "capture_sha256": "75c0469b3e4b4c66d2f944939fcccc0f4e14518082635336b0f65d17ec84c6df",
+      "elapsed_seconds": 7.433115917,
+      "Rust_Cargo": "1.85.1",
+      "GCC": "12.2.0",
+      "Python": "3.12.4",
+      "NumPy": "1.26.4",
+      "SciPy": "1.14.0",
+      "numerical_extension_ELFs": 3,
+      "quota_GB": 6950,
+      "usage_GB": 6363.94,
+      "tracked_Cargo_config_SHA256": "b25e4a2d0a7562470f166e8082f1ff2ee01bcd01cc222935e4fcffb15febfc4f",
+      "scope": "Tool and dependency inventory only. Actual three deployed tracked configs and17ancestor/Cargo-home absences must be rechecked; no scheduler responsiveness or build/science claim."
+    },
+    "lightweight_staging": {
+      "status": "create_once_deployment_and_post_staging_identity_checks_passed",
+      "remote_campaign": "/projectnb/welfgr/fereg/runs/portfolio-v1-20261015",
+      "created_utc": "2026-10-16T03:26:13Z",
+      "packet_sha256": "02adec306364ff330e3db6ae1002c33e461563ad65766990f7c8c49f53058adc",
+      "archive_transfer_seconds": 461.559006584,
+      "archive_transfer_bytes": 905469420,
+      "archive_transfer_capture_sha256": "ae5a036424fa1bd5f58d7178e555dbc04c861f31bb2720a073e150539d549e40",
+      "remote_hash_capture_sha256": "ebffe965d9bb7bbe44c5f3d3f65c2d9a5aec21b4bfdaaccf02be4221c0be7d90",
+      "helper_transfer_capture_sha256": "a067ea9201f5495b58399fa5effaa37acbdfb02f8c073b2579d27eba6d0e93b9",
+      "bootstrap_source_sha256": "ec1f920ed236261fffd7a16eabe4f11ae4f22cbe8ed062b5ac86c350e7f1bd5a",
+      "bootstrap_test_sha256": "85dbb1ea52b38fbdae174578476d9e849415c8211f2c1408e7e92aa17a997767",
+      "bootstrap_proposal_sha256": "3f26e252b13a2bd76e3774094401c00f98068e16fd6e497a2feb596b1cf07871",
+      "bootstrap_tests": 9,
+      "bootstrap_config_sha256": "47cc2219ab648eac035bb8848933b0469462e4d3ec77581e02c0b28a8ede9d71",
+      "bootstrap_work_seconds": 570,
+      "bootstrap_inclusive_seconds": 600,
+      "independent_review": "gpt-6-astra high source and actual configuration GO for create-once file deployment only.",
+      "native_calls": 0,
+      "jobs_submitted": 0,
+      "remaining": "Scheduler recovery, actual scheduled Linux builds, final admission review, reviewed binding/freeze and every allocation science/isolation/selection/confirmation gate.",
+      "bootstrap_elapsed_seconds": 40.159634375,
+      "bootstrap_command_sha256": "10340f45c385e1fdd9336d63343e3d47c03d52b63ebfa3e9b15049448a1e78fc",
+      "deployment_completion_sha256": "fdf4cb24a62b608be0fa42030d0e922aa5f532f1520fec1e8e0579933d8ceb9f",
+      "post_staging_proof_sha256": "6c09b61574028e1f859845f36175a5142ee047d01a16de176201e109cddae4b1",
+      "post_staging_command_sha256": "75b9e8bb5542a0567e314296c6c9325ceaea20666f6bb91c450d359ca66f99a1",
+      "post_staging_identity_seconds": 30.419859875,
+      "admission_files_staged": 21,
+      "actual_clean_source_identities": {
+        "source": {
+          "commit": "cc2aae4dd92ac9d7c25c684c44783af194ab9e66",
+          "runtime_sha256": "097fc6b4f67611e779d916784fe5178033efe6fffa04528e7b2dd62fc117f068"
+        },
+        "build-current": {
+          "commit": "cc2aae4dd92ac9d7c25c684c44783af194ab9e66",
+          "runtime_sha256": "097fc6b4f67611e779d916784fe5178033efe6fffa04528e7b2dd62fc117f068"
+        },
+        "build-baseline": {
+          "commit": "46aa78f67b102373675b7c72196dba1fbfb7d337",
+          "runtime_sha256": "d9a987ef19304b9e810b08e5f9da18202dc78355c0cf81fe4cfad28695965225"
+        }
+      },
+      "independent_raw_review": "gpt-6-astra high GO after exact retained remote command/proof/config, tool/numerical/Cargo, source identities,21file and archive-hash comparison; no fresh remote execution or numerical payload access.",
+      "documentation_checks": {
+        "JSON_source_and_documentation_references": "passed",
+        "git_diff_check": "passed",
+        "production_identity": "passed against cc2aae4d:192runtime modules/58artifact inputs exact",
+        "initial_system_Python_attempt": "Missing tomllib under system Python3.9; actual comparison rerun with pinned Python3.12 passed.",
+        "runtime_suite": "Valid prior307Python/1927Rust evidence reused for prose-only follow-up."
+      }
+    },
+    "scheduler_readiness_latest": {
+      "observed_utc": "2026-10-16T03:44:04.553376+00:00",
+      "owner_qstat": "timeout10s_empty_stdout_stderr",
+      "omp28_qconf": "timeout10s_empty_stdout_stderr",
+      "SSH": "passed",
+      "jobs_submitted": 0,
+      "interpretation": "Application queries still fail; no dispatch readiness or active benchmark job follows from successful staging."
     }
   }
 }
