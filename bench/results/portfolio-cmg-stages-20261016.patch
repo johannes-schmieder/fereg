@@ -1,0 +1,75 @@
+--- a/crates/fereg-core/src/fe/cmg_schur/bounded.rs
++++ b/crates/fereg-core/src/fe/cmg_schur/bounded.rs
+@@ -1163,7 +1163,21 @@
+         labels.push(firm);
+     }
+     let mut sizes = work.filled(firms, usize::MAX)?;
+-    let counts = workers.census_bounded(cutoff, sampling, &mut labels, work)?;
++    let counts = {
++        // TASK-LOCAL graph substage: one clock, no per-operation instrumentation.
++        let diagnostic_work_begin = work.used;
++        let diagnostic_ordinal_begin = work.ordinal;
++        let diagnostic_stage = crate::diagnostics::DiagnosticScope::new("graph_census", 0);
++        let diagnostic_result = workers.census_bounded(cutoff, sampling, &mut labels, work);
++        drop(diagnostic_stage);
++        if crate::diagnostics::solver_trace_enabled() {
++            eprintln!("FEREG_DIAGNOSTIC|event=graph_work|phase=graph_census|work_begin={}|work_end={}|work_delta={}|ordinal_begin={}|ordinal_end={}|ordinal_delta={}|completed={}|thread={:?}",
++                diagnostic_work_begin, work.used, work.used - diagnostic_work_begin,
++                diagnostic_ordinal_begin, work.ordinal, work.ordinal - diagnostic_ordinal_begin,
++                diagnostic_result.is_ok(), std::thread::current().id());
++        }
++        diagnostic_result
++    }?;
+     for firm in 0..firms {
+         work.charge(8)?;
+         labels[firm] = find_root(&mut labels, firm, work)?;
+@@ -1199,7 +1213,21 @@
+     let edge_bytes = bytes::<(usize, usize, f64)>(counts.input_edges)?;
+     admit(memory, work, scratch, edge_bytes)?;
+     let mut edges = work.capacity(counts.input_edges)?;
+-    workers.emit_edges_bounded(&mut sampler, cutoff, &mut edges, work)?;
++    {
++        // TASK-LOCAL graph substage: one clock, no per-operation instrumentation.
++        let diagnostic_work_begin = work.used;
++        let diagnostic_ordinal_begin = work.ordinal;
++        let diagnostic_stage = crate::diagnostics::DiagnosticScope::new("graph_emit", 0);
++        let diagnostic_result = workers.emit_edges_bounded(&mut sampler, cutoff, &mut edges, work);
++        drop(diagnostic_stage);
++        if crate::diagnostics::solver_trace_enabled() {
++            eprintln!("FEREG_DIAGNOSTIC|event=graph_work|phase=graph_emit|work_begin={}|work_end={}|work_delta={}|ordinal_begin={}|ordinal_end={}|ordinal_delta={}|completed={}|thread={:?}",
++                diagnostic_work_begin, work.used, work.used - diagnostic_work_begin,
++                diagnostic_ordinal_begin, work.ordinal, work.ordinal - diagnostic_ordinal_begin,
++                diagnostic_result.is_ok(), std::thread::current().id());
++        }
++        diagnostic_result
++    }?;
+     work.charge(128)?;
+     if edges.len() != counts.input_edges {
+         return Err(invalid_data("CMG Schur edge census changed during construction").into());
+@@ -1214,9 +1242,23 @@
+         scratch + vec_capacity_bytes(&edges),
+         graph_bound,
+     )?;
+-    let graph = work.cmg(|control| {
+-        Laplacian::from_edges_controlled(vertices, &edges, admitted, u64::MAX, control)
+-    })?;
++    let graph = {
++        // TASK-LOCAL graph substage: one clock, no per-operation instrumentation.
++        let diagnostic_work_begin = work.used;
++        let diagnostic_ordinal_begin = work.ordinal;
++        let diagnostic_stage = crate::diagnostics::DiagnosticScope::new("graph_canonicalize", 0);
++        let diagnostic_result = work.cmg(|control| {
++            Laplacian::from_edges_controlled(vertices, &edges, admitted, u64::MAX, control)
++        });
++        drop(diagnostic_stage);
++        if crate::diagnostics::solver_trace_enabled() {
++            eprintln!("FEREG_DIAGNOSTIC|event=graph_work|phase=graph_canonicalize|work_begin={}|work_end={}|work_delta={}|ordinal_begin={}|ordinal_end={}|ordinal_delta={}|completed={}|thread={:?}",
++                diagnostic_work_begin, work.used, work.used - diagnostic_work_begin,
++                diagnostic_ordinal_begin, work.ordinal, work.ordinal - diagnostic_ordinal_begin,
++                diagnostic_result.is_ok(), std::thread::current().id());
++        }
++        diagnostic_result
++    }?;
+     drop(edges);
+     drop(workers);
+     drop(sampler);

@@ -1164,6 +1164,69 @@ strict unseeded LSMR as the next general-FE candidate to test across the full
 declared domain. It does not resolve the separate two-FE CMG construction cost,
 prove a universal winner, or reopen the closed V1 discovery/Mac outcomes.
 
+### CMG graph-stage diagnosis, 2026-10-16
+
+A separate, prospectively fixed eight-call diagnostic splits the graph timer
+into census, edge emission and canonicalization. It covers revealed weak and
+high-degree weak A cases at one/four workers, with two observations forming one exact repeat pair per cell,
+120 seconds per call, 1,200 seconds inclusive and no retries or exclusions.
+The [observational patch](../bench/results/portfolio-cmg-stages-20261016.patch)
+adds one timer and read-only work/ordinal deltas per reached stage. Arithmetic,
+ordering, admission, allocation and cancellation statements are unchanged.
+
+| Revealed case | Workers | Census, ms | Emit, ms | Canonicalize, ms | Whole graph, ms | Hierarchy, ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Weak | 1 | 7.904 | 0.854 | 3.517 | 12.631 | 4.491 |
+| Weak | 4 | 7.719 | 0.854 | 3.393 | 12.291 | 4.351 |
+| High-degree weak | 1 | 62.883 | 16.639 | 33.722 | 113.663 | 35.382 |
+| High-degree weak | 4 | 62.874 | 16.619 | 33.641 | 113.572 | 35.356 |
+
+These are medians of two instrumented elapsed observations, not CPU shares or
+qualification estimates. The three children are disjoint; the parent includes
+them plus other graph work and must not be added to them. Census is the largest
+substage, but includes controlled sorting, compensated merging, cache storage
+and component union. Canonicalization includes edge validation, sorting,
+merging and allocations; it is not a sort-only timer. Both retain substantial
+serial costs at four workers. The stage counts are work/allocation boundaries,
+not instructions: high-degree census traverses 5,449,572 boundaries with
+277,335,840 charged units. These counts do not identify callback latency.
+
+All eight fresh numerical arrays pass independently rerun original oracle and
+model checks. Four fixed-worker pairs are exact, both families agree across
+workers with stable discrete decisions, and all resource limits and work counts
+pass. Comparison to the old 48-call V1 study uses retained exact column hashes
+and scientific records; its deleted arrays were not recomputed. Independent
+Astra high review rechecks all 3,071 bindings, eight oracle/model checks, eight
+old V1 fingerprints, four exact pairs, all stage ownership and 16 action caps.
+Exactly eight calls finished in 83.932 seconds without a retry.
+
+The source transform and 32-command native build/ABI audit pass. The new clock
+source reuses the reviewed predecessor's source-only scientific integration;
+there was no new full suite or installed-package admission. A preparer metadata
+comparison was corrected before native execution. The superseded review still
+contains one stale auxiliary test-log hash; the actual reviewed source, tests,
+live eight-test pass and final plan are bound separately, and the raw review
+retains that discrepancy. No frozen measurement was repaired or discarded.
+Eighteen passive host snapshots retain ordinary OS activity, including about
+82 CPU-seconds of `suggestd` and 14 of `corespotlightd`, plus the runner's own
+scientific checking. This is diagnostic evidence, not an idle-host certificate
+or a Mac speed claim.
+
+| Stage diagnostic binding | SHA-256 |
+| --- | --- |
+| Observational patch | `24c3d17d7291929b143dd5afcc0a492ae066bbf52b1ec4764829efc0a4c5a341` |
+| Instrumented plugin | `91af5727a05a3fa6ceb7ea8748029b4e8eebdecdd2080f509b5f965e0a0c0a7a` |
+| Fixed plan | `4be88d06500d99d277c7c8d4b45f1c11d7b1fa54d237ea6e54b66ad2ebef41eb` |
+| Eight-call result | `9ced797cfaf4919a7f2276cc1cf72a5c372a7251fa7556cd096b4c6a000f8801` |
+| Independent raw review | `c33d99f36e1b4fd999029172ffd9219188f3f09dd851f65e266b92565e959dd9` |
+
+The next engineering question is whether optimized synchronous construction
+still dispatches an always-Continue callback at each boundary. Removing only
+that redundant dispatch could preserve every cancellation check, charged unit,
+ordinal and controlled callback. Disassembly is required before treating it as
+an optimization opportunity. These observations do not justify a worker-scaled
+admission threshold or a new routing policy.
+
 A separate prospective Mac handoff helper passes independent source review and
 16 pure tests. After full discovery/B-context and untouched-C-declaration gates,
 it can reuse already certified fresh B references, checking exact paths and

@@ -19241,5 +19241,885 @@
         "public_activation": false
       }
     }
+  },
+  "portfolio_cmg_graph_stages_20261016": {
+    "cell_medians_s": {
+      "columns": [
+        "cell",
+        "workers",
+        "observation_indices",
+        "native_s",
+        "harness_native_s_secondary",
+        "main_inclusive_s",
+        "final_inclusive_s",
+        "graph_parent_inclusive_s",
+        "census_s",
+        "emit_s",
+        "canonicalize_s",
+        "graph_residual_s",
+        "hierarchy_s",
+        "workspace_s",
+        "cycles_s"
+      ],
+      "rows": [
+        [
+          "weak-t1",
+          1,
+          [
+            0,
+            1
+          ],
+          0.06883729150000001,
+          0.0739365,
+          0.044211229000000005,
+          0.010059667,
+          0.0126305,
+          0.0079040415,
+          0.000854458,
+          0.003516792,
+          0.0003552085000000007,
+          0.0044905835,
+          6.49375e-05,
+          0.0024844155
+        ],
+        [
+          "weak-t4",
+          4,
+          [
+            2,
+            3
+          ],
+          0.041868416500000005,
+          0.046911999999999995,
+          0.027381416999999998,
+          0.004553833,
+          0.0122909165,
+          0.0077193125000000005,
+          0.000853875,
+          0.0033929995,
+          0.0003247294999999999,
+          0.004351479,
+          5.8145999999999995e-05,
+          0.0024255645
+        ],
+        [
+          "high-degree-weak-t1",
+          1,
+          [
+            4,
+            5
+          ],
+          0.422433563,
+          0.452208,
+          0.2897007285,
+          0.050781083000000005,
+          0.1136630835,
+          0.06288325,
+          0.0166390625,
+          0.0337224165,
+          0.00041835450000000246,
+          0.035381687,
+          0.00012889599999999998,
+          0.0166794995
+        ],
+        [
+          "high-degree-weak-t4",
+          4,
+          [
+            6,
+            7
+          ],
+          0.276397396,
+          0.306017,
+          0.20291889600000002,
+          0.021200729,
+          0.113572062,
+          0.0628740625,
+          0.0166185205,
+          0.0336406665,
+          0.00043881250000000344,
+          0.035355958,
+          0.000135771,
+          0.016665856
+        ]
+      ]
+    },
+    "exact_pairs": {
+      "columns": [
+        "cell",
+        "observation_indices",
+        "science_sha256",
+        "columns_sha256"
+      ],
+      "rows": [
+        [
+          "weak-t1",
+          [
+            0,
+            1
+          ],
+          "9682186606e340837fd1491d39ec6dde00477d8666235aaff959fc43791a8cfd",
+          "906f1bac58945292d4ca3bdeb9cde3626d9dad4b3040e58b127de17208f58665"
+        ],
+        [
+          "weak-t4",
+          [
+            2,
+            3
+          ],
+          "a9a69c0a82b8db2edb7b8fc91ad6b10140a489c757c4f7c8f30e8df8073c3191",
+          "906f1bac58945292d4ca3bdeb9cde3626d9dad4b3040e58b127de17208f58665"
+        ],
+        [
+          "high-degree-weak-t1",
+          [
+            4,
+            5
+          ],
+          "c87435d49d2bd98dc3ae8e620dbe9265dc0ec3ca8881d7546136ce3aea0fd1a8",
+          "10d17bce3e98b75346d1239749a6e66e87e3dd7d8fc29c8bdb1ae0451a21e02b"
+        ],
+        [
+          "high-degree-weak-t4",
+          [
+            6,
+            7
+          ],
+          "3a1780082a85e9ec2a4bb90de3964296e61dd1102b5c8ff937c8ac8c87b54ec2",
+          "10d17bce3e98b75346d1239749a6e66e87e3dd7d8fc29c8bdb1ae0451a21e02b"
+        ]
+      ]
+    },
+    "exact_stage_work_counters": {
+      "columns": [
+        "index",
+        "phase",
+        "work_begin",
+        "work_end",
+        "work_delta",
+        "ordinal_begin",
+        "ordinal_end",
+        "ordinal_delta"
+      ],
+      "rows": [
+        [
+          0,
+          "graph_census",
+          89768,
+          33484584,
+          33394816,
+          6038,
+          679760,
+          673722
+        ],
+        [
+          0,
+          "graph_emit",
+          33540848,
+          37105672,
+          3564824,
+          682264,
+          751746,
+          69482
+        ],
+        [
+          0,
+          "graph_canonicalize",
+          37105928,
+          51671448,
+          14565520,
+          751748,
+          987894,
+          236146
+        ],
+        [
+          1,
+          "graph_census",
+          89768,
+          33484584,
+          33394816,
+          6038,
+          679760,
+          673722
+        ],
+        [
+          1,
+          "graph_emit",
+          33540848,
+          37105672,
+          3564824,
+          682264,
+          751746,
+          69482
+        ],
+        [
+          1,
+          "graph_canonicalize",
+          37105928,
+          51671448,
+          14565520,
+          751748,
+          987894,
+          236146
+        ],
+        [
+          2,
+          "graph_census",
+          89768,
+          33484584,
+          33394816,
+          6038,
+          679760,
+          673722
+        ],
+        [
+          2,
+          "graph_emit",
+          33540848,
+          37105672,
+          3564824,
+          682264,
+          751746,
+          69482
+        ],
+        [
+          2,
+          "graph_canonicalize",
+          37105928,
+          51671448,
+          14565520,
+          751748,
+          987894,
+          236146
+        ],
+        [
+          3,
+          "graph_census",
+          89768,
+          33484584,
+          33394816,
+          6038,
+          679760,
+          673722
+        ],
+        [
+          3,
+          "graph_emit",
+          33540848,
+          37105672,
+          3564824,
+          682264,
+          751746,
+          69482
+        ],
+        [
+          3,
+          "graph_canonicalize",
+          37105928,
+          51671448,
+          14565520,
+          751748,
+          987894,
+          236146
+        ],
+        [
+          4,
+          "graph_census",
+          178088,
+          277513928,
+          277335840,
+          12078,
+          5461650,
+          5449572
+        ],
+        [
+          4,
+          "graph_emit",
+          277626192,
+          363333816,
+          85707624,
+          5466654,
+          7002518,
+          1535864
+        ],
+        [
+          4,
+          "graph_canonicalize",
+          363334072,
+          510071320,
+          146737248,
+          7002520,
+          9325763,
+          2323243
+        ],
+        [
+          5,
+          "graph_census",
+          178088,
+          277513928,
+          277335840,
+          12078,
+          5461650,
+          5449572
+        ],
+        [
+          5,
+          "graph_emit",
+          277626192,
+          363333816,
+          85707624,
+          5466654,
+          7002518,
+          1535864
+        ],
+        [
+          5,
+          "graph_canonicalize",
+          363334072,
+          510071320,
+          146737248,
+          7002520,
+          9325763,
+          2323243
+        ],
+        [
+          6,
+          "graph_census",
+          178088,
+          277513928,
+          277335840,
+          12078,
+          5461650,
+          5449572
+        ],
+        [
+          6,
+          "graph_emit",
+          277626192,
+          363333816,
+          85707624,
+          5466654,
+          7002518,
+          1535864
+        ],
+        [
+          6,
+          "graph_canonicalize",
+          363334072,
+          510071320,
+          146737248,
+          7002520,
+          9325763,
+          2323243
+        ],
+        [
+          7,
+          "graph_census",
+          178088,
+          277513928,
+          277335840,
+          12078,
+          5461650,
+          5449572
+        ],
+        [
+          7,
+          "graph_emit",
+          277626192,
+          363333816,
+          85707624,
+          5466654,
+          7002518,
+          1535864
+        ],
+        [
+          7,
+          "graph_canonicalize",
+          363334072,
+          510071320,
+          146737248,
+          7002520,
+          9325763,
+          2323243
+        ]
+      ]
+    },
+    "fixed_design": {
+      "additional_native_calls_for_summary": 0,
+      "all_first_timing_observations_retained_unfiltered": true,
+      "cells": 4,
+      "cleanup_reserve_s": 30,
+      "elapsed_s": 83.93182549998164,
+      "families": [
+        "weak",
+        "high-degree-weak"
+      ],
+      "inclusive_budget_s": 1200,
+      "native_calls": 8,
+      "observations_per_cell": 2,
+      "per_call_timeout_s": 120,
+      "retries": 0,
+      "warmups": 0,
+      "workers": [
+        1,
+        4
+      ]
+    },
+    "historical_test_evidence_caveat": {
+      "actual_plan_review_sha256": "2ab87bd4e47472d2dafd2dfb6101981f3939010bcb2394ad0cda8b3b68591579",
+      "final_live_test_evidence_sha256": "8231cff27e61ed693035d34049dd513ca1efc75af6524ba35983937135377fe9",
+      "meaning": "An earlier review inherited a six-test pass-log binding; its historical pathname later held an intermediate eight-test failure from a synthetic fixture. The failure remains failed. Final eight live-prerequisite tests passed; actual-plan review independently reran actual prerequisites. No artifact/source change follows; do not claim all historical auxiliary references remained unchanged.",
+      "preserved_intermediate_failure_sha256": "94335eb1d655b7a683c91d16f3cd615291b3fe868bea978b65c8bc0ceb9cd728",
+      "stale_auxiliary_hash_in_prior_review": "8b711784691cc6be3911a1c1ae781b9df23a1a44ac219f626267ae50d07212e1"
+    },
+    "independent_raw_review": {
+      "interpretation": [
+        "Census is the largest measured graph substage in these weak/high-degree weak inputs; canonicalization is also material and is not a sort-only measurement.",
+        "Parent graph time includes its children, following graph_work logs and unscoped work. Do not sum parent plus children.",
+        "Admitted work/ordinal deltas are ledger/callback-boundary counts, not measured CPU instructions.",
+        "Both worker counts share one synchronous graph construction path; these observations do not establish parallelization gains.",
+        "No benchmark performance qualification, public activation, fresh full-suite/package claim or B/C access."
+      ],
+      "plan_bindings_rechecked": 3071,
+      "reviewed_utc": "2026-10-16T22:39:50.256844+00:00",
+      "reviewer": "general_frontier_astra",
+      "scope": {
+        "all_recorded_rows_independently_rederived": true,
+        "cross_worker_discrete_families": 2,
+        "cross_worker_scientific_families": 2,
+        "exact_old_V1_head_and_recorded_binary_fingerprint_checks": 8,
+        "fixed_worker_counter_repeat_pairs": 4,
+        "fixed_worker_exact_repeat_pairs": 4,
+        "fresh_independent_oracle_checks": 8,
+        "fresh_original_model_metadata_checks": 8,
+        "old_arrays_limitation": "Deleted previously; compare recorded exact binary fingerprints, with mandatory independent oracle on every fresh retained array.",
+        "positive_stage_and_action_ownership_checks": 8,
+        "raw_json_and_array_files_retained": 16,
+        "resource_action_cap_checks": 16
+      },
+      "sha256": "c33d99f36e1b4fd999029172ffd9219188f3f09dd851f65e266b92565e959dd9",
+      "status": "GO"
+    },
+    "kind": "cmg_graph_stages_descriptive_evidence",
+    "observations": {
+      "columns": [
+        "index",
+        "cell",
+        "workers",
+        "repeat",
+        "native_s",
+        "harness_native_s_secondary",
+        "main_inclusive_s",
+        "final_inclusive_s",
+        "graph_parent_inclusive_s",
+        "census_s",
+        "emit_s",
+        "canonicalize_s",
+        "graph_residual_s",
+        "hierarchy_s",
+        "workspace_s",
+        "cycles_s",
+        "cycle_scope_count",
+        "main_iterations",
+        "final_iterations",
+        "builder_work",
+        "builder_limit",
+        "main_setup_work",
+        "main_setup_limit",
+        "final_setup_work",
+        "final_setup_limit"
+      ],
+      "rows": [
+        [
+          0,
+          "weak-t1",
+          1,
+          0,
+          0.067632625,
+          0.072622,
+          0.04342125,
+          0.009839167,
+          0.012425458,
+          0.007745708,
+          0.000833875,
+          0.003463917,
+          0.0003819580000000017,
+          0.004443542,
+          6.9e-05,
+          0.002450084,
+          26,
+          22,
+          8,
+          66731672,
+          147846144,
+          92029272,
+          168968192,
+          0,
+          67970048
+        ],
+        [
+          1,
+          "weak-t1",
+          1,
+          1,
+          0.070041958,
+          0.075251,
+          0.045001208,
+          0.010280167,
+          0.012835542,
+          0.008062375,
+          0.000875041,
+          0.003569667,
+          0.0003284589999999997,
+          0.004537625,
+          6.0875e-05,
+          0.002518747,
+          26,
+          22,
+          8,
+          66731672,
+          147846144,
+          92029272,
+          168968192,
+          0,
+          67970048
+        ],
+        [
+          2,
+          "weak-t4",
+          4,
+          0,
+          0.041946958,
+          0.046957,
+          0.027360875,
+          0.00453225,
+          0.012268417,
+          0.007726292,
+          0.000839958,
+          0.003384708,
+          0.0003174589999999991,
+          0.004353208,
+          5.8042e-05,
+          0.002435459,
+          26,
+          22,
+          8,
+          66731672,
+          147846144,
+          92029272,
+          168968192,
+          0,
+          67970048
+        ],
+        [
+          3,
+          "weak-t4",
+          4,
+          1,
+          0.041789875000000004,
+          0.046867,
+          0.027401959,
+          0.004575416,
+          0.012313416,
+          0.007712333,
+          0.000867792,
+          0.003401291,
+          0.0003320000000000007,
+          0.00434975,
+          5.825e-05,
+          0.00241567,
+          26,
+          22,
+          8,
+          66731672,
+          147846144,
+          92029272,
+          168968192,
+          0,
+          67970048
+        ],
+        [
+          4,
+          "high-degree-weak-t1",
+          1,
+          0,
+          0.422511292,
+          0.4524,
+          0.289535041,
+          0.050786875,
+          0.113507125,
+          0.062792542,
+          0.016641125,
+          0.033658083,
+          0.0004153749999999956,
+          0.035433958,
+          0.000128542,
+          0.016658711,
+          22,
+          21,
+          7,
+          638781848,
+          855686144,
+          791553688,
+          977928192,
+          0,
+          391938048
+        ],
+        [
+          5,
+          "high-degree-weak-t1",
+          1,
+          1,
+          0.42235583400000004,
+          0.452016,
+          0.289866416,
+          0.050775291,
+          0.113819042,
+          0.062973958,
+          0.016637,
+          0.03378675,
+          0.0004213340000000093,
+          0.035329416,
+          0.00012925,
+          0.016700288,
+          22,
+          21,
+          7,
+          638781848,
+          855686144,
+          791553688,
+          977928192,
+          0,
+          391938048
+        ],
+        [
+          6,
+          "high-degree-weak-t4",
+          4,
+          0,
+          0.276407709,
+          0.306154,
+          0.2028505,
+          0.021183625,
+          0.113568416,
+          0.0629095,
+          0.016637833,
+          0.033586375,
+          0.00043470800000000587,
+          0.035355708,
+          0.000143292,
+          0.016672002,
+          22,
+          21,
+          7,
+          638781848,
+          855686144,
+          791553688,
+          977928192,
+          0,
+          391938048
+        ],
+        [
+          7,
+          "high-degree-weak-t4",
+          4,
+          1,
+          0.276387083,
+          0.30588,
+          0.202987292,
+          0.021217833,
+          0.113575708,
+          0.062838625,
+          0.016599208,
+          0.033694958,
+          0.000442917000000001,
+          0.035356208,
+          0.00012825,
+          0.01665971,
+          22,
+          21,
+          7,
+          638781848,
+          855686144,
+          791553688,
+          977928192,
+          0,
+          391938048
+        ]
+      ]
+    },
+    "passive_host": {
+      "before_after_boundaries": true,
+      "errors": 0,
+      "limitation": "Passive roughly5-second process census cannot exclude short unsampled activity. Ordinary OS activity is retained; this is not an isolation or performance qualification.",
+      "max_snapshot_gap_s": 5.071908,
+      "no_observations_removed": true,
+      "selected_observed_activity": [
+        {
+          "max_reported_cpu_percent": 100.0,
+          "observed_cpu_delta_s": 82.06999999997788,
+          "role": "ordinary_OS_suggestd",
+          "snapshots": 18
+        },
+        {
+          "max_reported_cpu_percent": 175.0,
+          "observed_cpu_delta_s": 14.080000000001746,
+          "role": "ordinary_OS_corespotlightd",
+          "snapshots": 18
+        },
+        {
+          "max_reported_cpu_percent": 100.0,
+          "observed_cpu_delta_s": 70.52,
+          "role": "checker_Python",
+          "snapshots": 16
+        }
+      ],
+      "snapshots": 18
+    },
+    "provenance": {
+      "archive_commit": "c90d03fbdb34b1b16318870761344f0a883e645f",
+      "build_after_sha256": "2f5e588c35813bc0b00e5be547a2e7d832f524c798d967610c33e7fd41ab5b8f",
+      "build_before_sha256": "1a5858dcd344241c8fd234ae724c753f92659d9b9c987bda9219420097ad3458",
+      "build_profile": "release/fat-LTO/codegen-units1",
+      "build_status": "passed",
+      "compiled_date": "2026-10-16",
+      "compiled_identity": "298bbf40f769",
+      "harness_sha256": "e50ef580caca89663d5af70a7eb471ea75a77b59568c604608bd0e8c09342d14",
+      "helper_sha256": {
+        "build_mac_sh": "9fa6302b418ab6a54b83c6486db13aac7972c7dd6a53525d6ccfee54ec07464a",
+        "build_provenance_py": "5045b625e969cdbfcd82b7043147118aa97a0f45a997e14893864f9893802380",
+        "instrument_py": "fcc415b1a491f3ef9f99cdfcfc51d6b13a7ad0fffc2be24df15b040ea0a56b65",
+        "instrumentation_patch": "24c3d17d7291929b143dd5afcc0a492ae066bbf52b1ec4764829efc0a4c5a341",
+        "observe_execution_py": "7238fcc181d8d3d13b91814df029d64aa0eb2aea20e930eb27214492f80e890c",
+        "prepare_config_py": "a9ab2fc9ec48328a118971a6cdfd5644ce9566382860d5fa73cb97c9958471f0",
+        "prepare_config_superseded_py": "959750d960f714fcd85394100d0e195b9dea878e2a06c9b3228208757f7c992c",
+        "prepare_source_py": "c4c139b3d85927364f35b2ecedfdca102bd0c4fc746cce23992ade892e4a24f6",
+        "run_py": "cf205fbc735835d479b9a165aa3f622a8e9673531ab4b2509c73f012eafed1d0",
+        "test_instrument_py": "1c218fd04d6d0a6c9b9e6c2b4362957fe34f972914b5a72fea338762c6a0c943",
+        "test_preparation_py": "94cc9e6fa7f5b804cd712356c537f3be3317e777f1732b49325d7cd7dbd69843",
+        "test_prepare_config_py": "20247ecdd8d802dd7d0ace182ba4971a150e0bf502522b6bbe7cb4edc910b976",
+        "test_prepare_config_superseded_py": "2b6b325c6ff50101a320b98149bd21ed61f5e9c9a291fd04df2a3c882a13f1e6",
+        "test_run_py": "d79499d60c21beb9b763cdf8789bcadcee0f70db741f578eeeaa9e13c9ffb7b6"
+      },
+      "inherited_source_integration_review_sha256": "e3faba8968fccc5913a69834887977c8c7057afd883f3f1245e231dc2905cea2",
+      "metadata_sha256": {
+        "actual_plan_review": "2ab87bd4e47472d2dafd2dfb6101981f3939010bcb2394ad0cda8b3b68591579",
+        "admission": "508d75905f693180b49752423bf624766af5480965d882b1a2050fba6d26086d",
+        "build_provenance": "3b542fe1633cfee186588abe8e1ead4e3e578966d411982cfa5b912079fcd9e8",
+        "configuration": "07d9e4f784635553389fee6888f2d17a9654db89bb23874c6155cd79932a3a2a",
+        "configuration_preparation": "2baa0650770bf3ab4e391df1e34a287b80a0390dc1388f919a905c26b13648e4",
+        "integration_build_review": "f0c61df69bd68ac495063da31507a44982589b0a5d604500d846839d97ea07dc",
+        "native_claim": "25e5431eae7a0d891f552a7a959580f86d718cbce74b713e43b1753b77ad6c99",
+        "plan": "4be88d06500d99d277c7c8d4b45f1c11d7b1fa54d237ea6e54b66ad2ebef41eb",
+        "proposal": "c824599122929912653d8b5b1c5f290b579ce7dc4e44523787be32429c07481d",
+        "raw_science_review": "c33d99f36e1b4fd999029172ffd9219188f3f09dd851f65e266b92565e959dd9",
+        "result": "9ced797cfaf4919a7f2276cc1cf72a5c372a7251fa7556cd096b4c6a000f8801",
+        "runner_review": "a82a4071ebc324f7ec7ea7e01e979e74390a19e8fcb2233b5f474ad721e3c39d",
+        "runner_review_final": "610a6ea8e6bd571cdef1b626081ca465ac6b0c59b2cc770db4c0b77ee750a907",
+        "source_preparation_review": "830f44a6de0e61e4787af535685529e4954176a47c8aa73cb718d031cf06ea4e",
+        "source_review": "39e2b958b1a93a482a8b9b8a831815db8d13d3b39832dfe8a141234569a50d7f",
+        "source_snapshot": "ad4c3a2d7322b3c21988194ed6b54093de9372629bdf0e6d944aa745343ba74d"
+      },
+      "plan_bindings_count": 3071,
+      "plan_bindings_identity": "05d012674938a1fca3856f4174cb02451b0f2da9b7aa87110adda3b78cf53015",
+      "plugin_sha256": "91af5727a05a3fa6ceb7ea8748029b4e8eebdecdd2080f509b5f965e0a0c0a7a",
+      "prior_build_sha256": "7abc87e1199f186113723b88372e300731bec70347d14571d9c08bf53e5e6c16",
+      "prior_instrumented_source_sha256": "43ff9fb8cff48a58b178a3fa097cc8d45cefe89f5181e1b87d9a51c35cea1c3c",
+      "raw_compiled_source_sha256": "298bbf40f76939b88e5badef1ab717ba3b536b28e98874171c47cf3bcf9f060c",
+      "source_identity": {
+        "artifact_inputs_sha256": "d940c6f98d2c0ac66844dfb5a4743b4a20852630202e4c4f44a280b3394987de",
+        "production_tokens_sha256": "6531d9e247cadc83e03d94fefdaa643fff42a1297f02fa91f768f8afed5ea309",
+        "runtime_sha256": "633969be9e2bbfb14853654f94fe6fa4843ea482634a04504ba6a5042a3d8118"
+      },
+      "source_integration_rerun_for_stage_source": false,
+      "source_overlay_sha256": "24c3d17d7291929b143dd5afcc0a492ae066bbf52b1ec4764829efc0a4c5a341",
+      "source_unchanged": true,
+      "stage_source_review_sha256": "39e2b958b1a93a482a8b9b8a831815db8d13d3b39832dfe8a141234569a50d7f"
+    },
+    "public_auto_activation": false,
+    "qualification": false,
+    "retained_raw_product_identities": {
+      "columns": [
+        "index",
+        "raw_result_sha256",
+        "binary_columns_sha256"
+      ],
+      "rows": [
+        [
+          0,
+          "84193489a62a07e0839059e0f2fc819cf8082eb66adbc48b4d348ba2cc38c7d5",
+          "906f1bac58945292d4ca3bdeb9cde3626d9dad4b3040e58b127de17208f58665"
+        ],
+        [
+          1,
+          "72db6c441c4c0799b7b4cf3f8f16375a1c31875815a79d15bb1db8bbdd4dea7e",
+          "906f1bac58945292d4ca3bdeb9cde3626d9dad4b3040e58b127de17208f58665"
+        ],
+        [
+          2,
+          "c6a36ba233d6964cc658fb92faf1303852fbfa16d44fc58ad4675f139927f862",
+          "906f1bac58945292d4ca3bdeb9cde3626d9dad4b3040e58b127de17208f58665"
+        ],
+        [
+          3,
+          "e9b827ffd5c4ec3fb2ba749e81fa9ae6712f7ca4e1df74352690fc3f3557058a",
+          "906f1bac58945292d4ca3bdeb9cde3626d9dad4b3040e58b127de17208f58665"
+        ],
+        [
+          4,
+          "ebf5f9b1511594919364c2499d3a43186e01aad5a2f706ce929d466491fa41c3",
+          "10d17bce3e98b75346d1239749a6e66e87e3dd7d8fc29c8bdb1ae0451a21e02b"
+        ],
+        [
+          5,
+          "2fa30636f3341fee2b58a9a8b9bb349e75b3d3879f87221f4572981ba512315a",
+          "10d17bce3e98b75346d1239749a6e66e87e3dd7d8fc29c8bdb1ae0451a21e02b"
+        ],
+        [
+          6,
+          "5ecdd30af8120062ff5e12e8cf65537375074f50f5dc3db6a0d68e1cc333a625",
+          "10d17bce3e98b75346d1239749a6e66e87e3dd7d8fc29c8bdb1ae0451a21e02b"
+        ],
+        [
+          7,
+          "7a776aee916b1feac0528bf09659f15bd3cefa937cb2345fe24561c3de31ed8a",
+          "10d17bce3e98b75346d1239749a6e66e87e3dd7d8fc29c8bdb1ae0451a21e02b"
+        ]
+      ]
+    },
+    "schema": 1,
+    "scope": "Once-per-reached-stage RAII timers and existing work/ordinal deltas only. Original Result propagated after diagnostics; all original work, allocation, cancellation, arithmetic and ordering statements preserved.",
+    "status": "independently_reviewed_diagnostic_evidence",
+    "timing_semantics": {
+      "canonicalize": "Upstream validation, allocation, global canonical sorting, compensated merge, diagonal construction and callbacks; not a sorting-only clock.",
+      "census": "Local canonical sorting/compensated aggregation, canonical-cache store, edge census and component union.",
+      "counters": "Admitted work allowance, not measured instructions. Ordinal counts admitted work and allocation boundaries, not instructions/comparisons. Recorded three-stage work sums are not total graph/build work. Thread IDs are process-local and omitted from integer-counter comparison.",
+      "emit": "Canonical-cache reload, sampling/tree emission or low-degree clique emission.",
+      "graph_partition": "Census, emit and canonicalize are disjoint direct children. Graph residual=graph parent minus those three child durations. Never add inclusive parent to children. Residual includes unscoped work and diagnostic logging.",
+      "hierarchy_and_cycles": "Hierarchy is a separate controlled serial construction scope; cycles sum disjoint apply-cycle scopes across the call and exclude gather/scatter.",
+      "limitations": [
+        "Two observations per cell, fixed schedule and no warmups; no qualification, promotion or causal speed claim.",
+        "Instrumented elapsed wall clocks include diagnostic/callback/observer overhead; not CPU time, CPU shares or time per operation.",
+        "No isolated-host claim. No B/C inputs used.",
+        "Prior48 binary arrays were deleted earlier. Prior V1 equality uses retained heads and recorded array hashes, not a fresh replay of old arrays. Fresh arrays are retained and runner-oracle-checked.",
+        "Predecessor source-only integration is reused; no new full-suite or installed-package success is claimed."
+      ],
+      "medians": "Arithmetic median of both observations, including the first timing observation; no filtering.",
+      "primary": "RRUNTIME native_s; harness clock retained separately",
+      "unit": "seconds"
+    },
+    "validation": {
+      "complete_positive_graph_coverage": 8,
+      "cross_worker_discrete_families": 2,
+      "cross_worker_scientific_families": 2,
+      "fixed_worker_exact_pairs": 4,
+      "fresh_raw_json_and_binary_arrays_retained_and_hash_checked": 16,
+      "integer_work_and_ordinal_counters_repeat_and_cross_worker_exact": true,
+      "matching_prior_V1_fingerprints": 8,
+      "original_A_oracle_passes": 8,
+      "raw_independent_review": "GO",
+      "resource_action_cap_checks": 16,
+      "resource_passes": 8
+    }
   }
 }

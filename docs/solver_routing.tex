@@ -94,7 +94,7 @@ Use one native call. SPI stays on the main thread; workers own Rust-managed stat
 16 CMG repair; 17 deployment (Codex) & 18--21 Timing history and recovery (Codex)\\
 \bottomrule
 \end{tabularx}}
-{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Diagnosis: pages 28--29. Public Auto unchanged.\par}
+{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Diagnosis: pages 28--30. Public Auto unchanged.\par}
 \vfill
 {\fontsize{9}{11.8}\selectfont\color{Muted}\textbf{Authorship.} GPT Pro authored the original specification and diagrams. Codex authored later bindings and amendments. Exact-case Pro review informed the direct-cost correction (page 14); generic Pro review informed allocation (page 8). The explicit-CMG repair (page 16) is a Codex amendment, not GPT Pro code approval.\par
 Document rendering and layout validation do not constitute solver implementation or scientific/performance qualification.}
@@ -2126,6 +2126,60 @@ All six cells improve descriptively, by about 13--41\%. Unseeded LSMR performs m
 \textbf{Evidence boundary.} Independent Astra high raw review reruns all 24 original oracle/model checks and verifies 12 exact repeat pairs, cross-worker discrete decisions and resource limits. There are two instrumented observations per arm/cell, fixed V1/control/control/V1 order, no warmups and approximately one-core \code{suggestd} activity throughout. All observations remain included. Logging overhead differs by route, and the first cell spans a reader-repair pause. The original reader failed after successful call 0 because its action summary follows the timed scope. A reviewed continuation revalidated that result and ran only calls 1--23, finishing at 22:12 UTC within the original 22:28 UTC deadline. Every numerical array and failure is retained; no solve was repeated. No qualification or public activation follows.
 \end{binding}
 \anchor{Private control patch \code{ed404864}; plugin \code{eed24ef2}; plan \code{6deb3796}; continuation \code{fcb88de2}; result \code{b5fd6c41}; independent raw review \code{2636d8e9}. Current evidence: \code{docs/VALIDATION.md} and the compact controlled-results JSON.}
+\clearpage
+
+% PAGE 30 / independently reviewed CMG graph substages.
+\smallbody
+\sect{CMG CONSTRUCTION / 16 OCTOBER}{The serial census is the largest stage}
+\tagline{Eight fixed calls; two revealed two-FE cases; exact numerical and work replay.}
+A second observational patch splits graph construction into three disjoint stages. The values below are medians of two instrumented observations per cell. They describe elapsed costs; they are not estimates of the speedup an optimization will achieve.
+
+\sub{High-degree weak graph construction, milliseconds}
+\begin{center}
+\begin{tikzpicture}[x=.12cm,y=.7cm,font=\sffamily\fontsize{9}{11}\selectfont]
+\foreach \y/\label/\a/\b/\c in {0/1 worker/62.883/16.639/33.722,-1.5/4 workers/62.874/16.619/33.641}{
+ \node[anchor=east] at (-1.5,\y) {\label};
+ \fill[Teal] (0,\y-.3) rectangle (\a,\y+.3);
+ \fill[Amber] (\a,\y-.3) rectangle ({\a+\b},\y+.3);
+ \fill[Muted] ({\a+\b},\y-.3) rectangle ({\a+\b+\c},\y+.3);
+ \node[text=white] at ({\a/2},\y) {\a};
+ \node[text=white] at ({\a+\b/2},\y) {\b};
+ \node[text=white] at ({\a+\b+\c/2},\y) {\c};
+}
+\node[anchor=west,text=Teal] at (0,-2.6) {Census};
+\node[anchor=west,text=Amber] at (40,-2.6) {Edge emission};
+\node[anchor=west,text=Muted] at (80,-2.6) {Canonicalization};
+\end{tikzpicture}
+\end{center}
+\vspace{-6pt}
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+ & \multicolumn{2}{c}{\textbf{Weak, ms}} & \multicolumn{2}{c}{\textbf{High-degree weak, ms}}\\
+\textbf{Phase} & \textbf{1 worker} & \textbf{4 workers} & \textbf{1 worker} & \textbf{4 workers}\\
+\midrule
+Census & 7.904 & 7.719 & 62.883 & 62.874\\
+Edge emission & 0.854 & 0.854 & 16.639 & 16.619\\
+Canonicalization & 3.517 & 3.393 & 33.722 & 33.641\\
+Whole graph (inclusive) & 12.631 & 12.291 & 113.663 & 113.572\\
+Hierarchy & 4.491 & 4.351 & 35.382 & 35.356\\
+CMG cycles, all actions & 2.484 & 2.426 & 16.679 & 16.666\\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{-5pt}
+\sub{What to optimize next}
+Census accounts for about 55\% of high-degree graph construction. It loads and sorts worker cells, merges weights with compensated sums, caches canonical cells and joins components. Canonicalization adds about 30\%, including validation, global edge sorting, merging and allocations. Neither timer isolates sorting alone. The parent includes the three stages plus other work; do not add parent and children.
+
+The high-degree census crosses 5.45 million admitted work/allocation boundaries. A synchronous builder passes an always-Continue callback through the same interface used for externally controlled construction. Inspect optimized code before attempting to remove redundant dispatch: fat LTO may already eliminate it. Any specialization must preserve every cancellation checkpoint, work charge, ordinal, refusal and controlled callback. The count is not an instruction count or measured callback latency.
+
+\begin{note}\smallbody
+\textbf{Routing implication.} In these observations, four workers reduce other solve time while these construction stages remain serial. More RHS can amortize setup, but worker count alone is not a payback rule. Reduce avoidable construction cost before changing the admission or upgrade policy; the existing numerical and resource contract stays binding.
+\end{note}
+\begin{binding}\tinybody
+\textbf{Evidence boundary.} Eight fresh independent oracle/model checks, four exact repeat pairs, cross-worker agreement, original V1 fingerprints, resource limits and all 3,071 bindings pass independent Astra high review. The fixed eight calls finish in 83.932 seconds, with no retries or exclusions. Source-only integration is inherited; the new native build/ABI checks pass. A superseded auxiliary test-log reference remains discrepant and explicitly recorded; actual code, live tests and the executed plan are independently bound. Ordinary OS activity and instrument overhead remain. No speed qualification, public activation, new shortlist, B or C measurement follows.
+\end{binding}
+\anchor{Patch \code{24c3d17d}; plugin \code{91af5727}; plan \code{4be88d06}; result \code{9ced797c}; raw review \code{c33d99f3}. Eight observations and exact counters: compact controlled-results JSON.}
 \clearpage
 
 \end{compactleaf}
