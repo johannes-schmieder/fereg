@@ -12638,7 +12638,7 @@
     }
   },
   "scc_portfolio_preparation": {
-    "status": "actual_linux_setup_and_binding_passed_serial_seal_diagnosis_pending",
+    "status": "discovery_running_on_three_distinct_nodes_terminal_science_isolation_and_aggregate_pending",
     "policy": "qstat-pair-retry-v1",
     "scope": "Prospective explicitly plan-bound schema2 variant only; original DESIGN/schema1/default behavior and all old outcomes unchanged.",
     "query_pair_attempts_max": 2,
@@ -12937,7 +12937,7 @@
       "readiness_monitor": "deleted_before_active_continuation",
       "setup_job": "8137493",
       "seal_job": "8137604",
-      "discovery_jobs_submitted": 0
+      "discovery_jobs_submitted": 3
     },
     "actual_linux_setup": {
       "status": "passed_build_ABI_guards_and_focused_tooling_only",
@@ -13051,9 +13051,10 @@
       "A_ready_cells": 42,
       "native_calls": 0,
       "outer_display_failure": "After successful captured binder, the display-only read used bind.stdout.log instead of actual bind.stdout and failed. Original outer rc1 retained; no binding rerun. Later read-only inspection and all46 output hashes verify completed binding.",
-      "pure_seal_job": "8137604",
-      "seal_status": "first_guard_rejected_before_output_or_solver_call_terminal_accounting_pending",
-      "independent_raw_review": "gpt-6-astra high GO: all46 boundJSONs,42A-cell mappings and manifest identity;216 unique dependency refs,207 available local hashes checked exactly,9 SCC-specific refs inherited only from actual staged/setup verification. All command/log/status evidence matches."
+      "seal_status": "repaired_serial_pure_seal_passed_0_0_job8137651",
+      "independent_raw_review": "gpt-6-astra high GO: all46 boundJSONs,42A-cell mappings and manifest identity;216 unique dependency refs,207 available local hashes checked exactly,9 SCC-specific refs inherited only from actual staged/setup verification. All command/log/status evidence matches.",
+      "first_pure_seal_job": "8137604",
+      "repaired_pure_seal_job": "8137651"
     },
     "new_Mac_handoff_source_review": {
       "status": "passed_source_only_no_declaration_or_numeric_execution",
@@ -13072,18 +13073,165 @@
     "serial_seal_diagnosis": {
       "job_id": "8137604",
       "observed_utc": "2026-10-16T10:15:51Z",
-      "status": "application_guard_failure_observed_scheduler_still_running_accounting_absent",
+      "status": "resolved_by_one_probe_and_narrow_separate_wrapper_copy",
       "failure": "pure seal requires omp1",
-      "scope": "Rejected before setup-seal directory creation, freeze or any native call. qstat-j has one slot and no parallel-environment field; actual serial environment and terminal accounting remain required before repair. Original wrapper/build/binder and failed evidence preserved.",
+      "scope": "Rejected before setup-seal directory creation, freeze or any native call. qstat-j showed one slot with no parallel-environment field. Actual terminal accounting and precise serial environment were required before repair and are recorded below. Original wrapper/build/binder and failed evidence remain preserved.",
       "measurement_calls": 0,
       "new_discovery_jobs": 0,
-      "repair_review": "gpt-6-astra high planning requires a separately source-bound wrapper with only demonstrated serial guard differences; collector omp28/28 and all science/isolation/deadlines/stopping remain exact."
+      "repair_review": "gpt-6-astra high planning requires a separately source-bound wrapper with only demonstrated serial guard differences; collector omp28/28 and all science/isolation/deadlines/stopping remain exact.",
+      "failed_seal_accounting": {
+        "job": "8137604",
+        "failed": 0,
+        "exit_status": 1,
+        "slots": 1,
+        "granted_pe": "NONE",
+        "wall_seconds": 19
+      },
+      "probe": {
+        "job": "8137613",
+        "failed": 0,
+        "exit_status": 0,
+        "slots": 1,
+        "granted_pe": "NONE",
+        "wall_seconds": 1,
+        "NSLOTS": "1",
+        "PE": "absent",
+        "proof_sha256": "bcea67b8654802d783e7894908b6b0edb2fb7ae88e196e01b5f2d097d1bff4dc",
+        "native_calls": 0,
+        "build_calls": 0
+      },
+      "repair": {
+        "wrapper_sha256": "472ca7d7a1c55d77185e1d5d224ef5ba100362d14d8caddd17dff826704b74cf",
+        "tests_sha256": "18e08cc0669e3d0e9def9baa85311ae0163689ca39367bfb00c64e7b695e79bc",
+        "tests": 17,
+        "test_log_sha256": "f9812afcc6a871a4dcb3c6c0759229f78caadb7d5e56d0fac10f2e58d99b2220",
+        "independent_review": "gpt-6-astra high exact-copy and independent17test GO; only two pure-role guards accept demonstrated NSLOTS1/PE absent, plus new seal-test reference. Collector, science, cleanup, accounting and deadlines stay byte-exact. Original7b, build, binder and failed job remain unchanged."
+      }
     },
     "documentation_checks_20261016_setup": {
       "compact_JSON_counts_and_hashes": "passed",
       "git_diff_check": "passed",
       "production_identity": "passed_against_cc2aae4d_192modules_58artifact_inputs_exact",
       "runtime_gate": "Valid prior307Python/1927Rust evidence reused for prose-only facts; actualLinux190focusedchecks reported separately."
+    },
+    "actual_pure_seal": {
+      "job": "8137651",
+      "failed": 0,
+      "exit_status": 0,
+      "hostname": "scc-gr4",
+      "slots": 1,
+      "granted_pe": "NONE",
+      "wall_seconds": 54,
+      "maxvmem": "526.477M",
+      "started_utc": "2026-10-16T10:28:13Z",
+      "ended_utc": "2026-10-16T10:29:07Z",
+      "accounting_observation_sha256": "ca033a791d21a6bea7ba4dea0063ebfe5259c50e74f454214e9f437f2820a219",
+      "completion_sha256": "c4accaf39777d9a66775a0e5f524656a202339d0acff93287a52f9c58c84f46a",
+      "parallel_plan_file_sha256": "bf6c6ac6644f95a0a55a24f7cb4e6c4129ada17d7a65cb553ccca7babf6998f4",
+      "parallel_plan_canonical_sha256": "7792b8756dbe045764af5b232636369fcb98796abe1ad3f5731096a3c39a95c0",
+      "frozen_files": 303,
+      "producer_files": 13,
+      "A_cells": 42,
+      "arm_cell_slots": 360,
+      "native_calls": 0,
+      "design": {
+        "physical_nodes": 3,
+        "logical_rounds": 3,
+        "attempts_per_round": 1,
+        "measurement_replacements": 0,
+        "maximum_native_calls_per_node": 2520,
+        "maximum_native_calls_total": 7560,
+        "allocation_seconds_per_node": 14400,
+        "per_call_seconds": 120,
+        "scheduler_query_policy": "qstat-pair-retry-v1"
+      },
+      "independent_raw_review": "gpt-6-astra high GO: exact sealed parent/canonical identities/design,294 locally available frozen hashes without mismatch;9 SCC-specific dependencies inherited only from reviewed actual build/staging. Actual own0/0 serial accounting verified."
+    },
+    "three_node_discovery_dispatch": {
+      "status": "released_once_and_observed_running_no_results_inspected",
+      "dispatcher_sha256": "d3ae2602112389c9cdb930800387c28a489c2c54825c50db1a3dbfe9084b33a2",
+      "dispatcher_tests_sha256": "b617f51866f981e4c72547f4c0718a51cee9fc69eebb9aaa0d67603bed1712e5",
+      "dispatcher_tests": 13,
+      "independent_source_review": "gpt-6-astra high GO after narrow SIGTERM capture/cleanup repair and independent13mockedtests. No measurement or retries in submitter.",
+      "collect_config_sha256": "e2c8296973340f695c6014743b69f50dc9759f2bb0aa9523ff7eb30fb7b2d029",
+      "finalizer_config_sha256": "429a957e87494c3a92a30a837f9228f2889ebff255526ff11cf54345a2613252",
+      "readiness_sha256": "f7e3c80c372cb60a48662af6d648930761827784d93cb79dce8fb1337ae06970",
+      "dispatch_claim_complete_sha256": "ef8b4c7269fc32fc278e54af62e3802140f0b2f4dbae5ccdb2502b5db1a48026",
+      "dispatch_bindings": 9,
+      "launch_envelope": "New collector/finalizer shell bytes are bound separately by permanent dispatch claim and checked before/after every qsub. They differ from frozen original shells only in entrypoint basename; they are not claimed as members of frozen_files.",
+      "collector_shell_sha256": "d01a991c7ba0fbfef34c9341fafd4dcf6ee60ff5b94d0a87effc711913a9727b",
+      "finalizer_shell_sha256": "ca3716bef513c2cef82299cccadc170e1ccd21311c25b2ff929e39d2eedede65",
+      "held_inspection_sha256": "179dc56cd6a6eec2a9de6851c0660b58efd30c844a5636e31753903d7f9ad6d7",
+      "user_hold_inspection_sha256": "de6136cad1c6db89ec1a721bc3a5daab7330a3eb572cddd202c48cd4e9476ec9",
+      "independent_actual_job_review": "gpt-6-astra high GO: all4 intents/rawresponses/accepted/verified records,9 hashes, owner/project/name/roundargv/resources/userholds and exact finalizer requested+actual dependencies. Release scoped only to three userholds.",
+      "collector_jobs": [
+        {
+          "job": "8137670",
+          "round": 1,
+          "observed_node": "scc-zj4"
+        },
+        {
+          "job": "8137671",
+          "round": 2,
+          "observed_node": "scc-wo4"
+        },
+        {
+          "job": "8137672",
+          "round": 3,
+          "observed_node": "scc-yk3"
+        }
+      ],
+      "collector_request": {
+        "project": "welfgr",
+        "PE": "omp28",
+        "slots": 28,
+        "num_proc": 28,
+        "mem_per_core": "3G",
+        "h_rt_seconds": 14400,
+        "queue_or_host_pin": false
+      },
+      "finalizer_job": "8137673",
+      "finalizer_dependencies": [
+        "8137670",
+        "8137671",
+        "8137672"
+      ],
+      "finalizer_request": {
+        "project": "welfgr",
+        "slots": 1,
+        "serial_granted_pe_expected": "NONE",
+        "mem_per_core": "4G",
+        "h_rt_seconds": 3900,
+        "native_calls": 0
+      },
+      "release": {
+        "argv": [
+          "qrls",
+          "-h",
+          "u",
+          "8137670,8137671,8137672"
+        ],
+        "started_utc": "2026-10-16T10:40:11.168783Z",
+        "returncode": 0,
+        "remaining_target_user_holds": 0,
+        "result_sha256": "7170297a7b6d97d29a14e439e5c16f90c859ebf8fdc78c72197b472f706f22a9",
+        "attempts": 1
+      },
+      "lifecycle_observation_utc": "2026-10-16T10:41:31.534359Z",
+      "observed_start_utc_all_three": "2026-10-16T10:41:13Z",
+      "measurement_results_inspected": false,
+      "node_isolation": "pending actual strict allocation/process/scheduler validation; distinct qstat node names are not an isolation pass",
+      "terminal_accounting": "pending for all4 exact jobs",
+      "shortlist_accepted": false,
+      "public_Auto": "unchanged",
+      "independent_release_lifecycle_review": "gpt-6-astra high GO: one exact comma-list user-hold release, no remaining target user holds, then actual lifecycle-only three-node running snapshot. No measurement output inspected and no isolation/science/qualification inference."
+    },
+    "documentation_checks_20261016_dispatch": {
+      "compact_JSON_counts_IDs_hashes_and_references": "passed",
+      "git_diff_check": "passed",
+      "production_identity": "passed_against_cc2aae4d_192modules_58artifact_inputs_exact",
+      "applicable_new_task_tool_checks": "17 evidence-wrapper tests and13 dispatcher tests pass; independent Astra reruns pass. No runtime production edit.",
+      "runtime_gate": "Valid prior307Python/1927Rust evidence reused for prose-only repository changes; actualLinux190focusedchecks remain separate."
     }
   }
 }

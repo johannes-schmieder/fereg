@@ -845,12 +845,27 @@ allocation-local science, observed memory, solver availability and timing remain
 pending. The independently reviewed evidence-only binder completes all 42 A-cell
 witness packets, with all 46 output hashes verified and zero native calls.
 A subsequent display-only log-name error is retained; binding was not rerun.
-Reviewed pure sealing job `8137604` stops at its first resource guard, before
-creating outputs or calling a solver. SCC reports a one-slot job without a
-parallel-environment field; actual terminal accounting and the precise serial
-environment are being checked before a narrow launcher repair. The failed job
-and original wrapper remain preserved. No frozen plan or discovery dispatch is
-claimed.
+The first pure seal, `8137604`, stopped at its initial resource guard before
+outputs or solver calls, with accounting `0/1` after 19 seconds. One separately
+reviewed probe, `8137613`, passed `0/0` and confirmed SCC serial accounting
+`slots=1`, `granted_pe=NONE`, with `NSLOTS=1` and absent `PE`. A new wrapper copy
+changes only the two pure-role allocation guards and its test reference; all
+17 focused tests and independent review pass. The original wrapper, failed
+job, builds and binding stay unchanged. Repaired seal `8137651` passes `0/0`
+after 54 seconds and freezes the actual 303-file, 42-cell plan. Independent
+review verifies the canonical plan, exact design and available raw hash closure.
+
+After separate source/configuration review and 13 mocked dispatch tests, three
+collectors were submitted user-held with a dependent zero-native finalizer.
+Independent review verifies all accepted IDs, raw responses, unchanged source
+hashes, actual requests, user holds and exact dependencies. Their user holds
+were released together once. At 10:41 UTC, `8137670`, `8137671` and `8137672`
+run concurrently on `scc-zj4`, `scc-wo4` and `scc-yk3`, each requesting a complete
+28-core node. Finalizer `8137673` waits on those exact three IDs. This fresh
+protocol has one full round per distinct node and zero measurement replacements;
+no intermediate timing or ranking was inspected. Complete terminal accounting,
+fresh science, strict isolation and independent raw aggregate review remain
+required before any new shortlist or Mac selection.
 
 A separate prospective Mac handoff helper passes independent source review and
 16 pure tests. After full discovery/B-context and untouched-C-declaration gates,
