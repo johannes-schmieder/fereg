@@ -94,6 +94,17 @@ class RunnerTests(unittest.TestCase):
             for arm in runner.ARMS:
                 self.assertIn((case,rhs,kind,arm),keys)
 
+    def test_manifest_rejects_invalid_grid_and_keeps_historical_cells(self):
+        runner.validate_manifest(runner.ORIGINAL_CELLS,runner.ARMS)
+        runner.validate_manifest(runner.SUPPLEMENT_CELLS,runner.PROTECTED_ARMS)
+        runner.validate_manifest([('mosaic',8192,4,'mixed')],runner.PROTECTED_ARMS)
+        with self.assertRaises(AssertionError):
+            runner.validate_manifest(runner.PROTECTED_CELLS,runner.PROTECTED_ARMS)
+        with self.assertRaises(AssertionError):
+            runner.validate_manifest([('mosaic',256,4,'mixed')],runner.PROTECTED_ARMS)
+        self.assertIn(('grid',8192,4,'mixed'),runner.PROTECTED_CELLS)
+        self.assertEqual(len(runner.SUPPLEMENT_CELLS)*len(runner.PROTECTED_ARMS)*13,169)
+
 
 if __name__ == '__main__':
     unittest.main()

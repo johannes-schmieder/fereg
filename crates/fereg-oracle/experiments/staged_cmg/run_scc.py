@@ -27,6 +27,40 @@ PROTECTED_CELLS = ORIGINAL_CELLS + [
     ('mosaic', 8192, 4, 'mixed'), ('expander', 4096, 4, 'rev'),
     ('fringe', 4096, 4, 'rev')]
 
+SUPPLEMENT_CELLS = [('grid', 8100, 4, 'mixed')]
+
+
+def protocol_config(protocol):
+    if protocol == 'protected-grid':
+        return PROTECTED_ARMS, SUPPLEMENT_CELLS, 20261018, 600
+    if protocol == 'protected':
+        return PROTECTED_ARMS, PROTECTED_CELLS, 20261017, 1800
+    return ARMS, ORIGINAL_CELLS, SEED, 1800
+
+
+def validate_manifest(cells, arms):
+    assert len(cells) == len(set(cells)) and len(arms) == len(set(arms))
+    assert all(a in PROTECTED_ARMS for a in arms)
+    for case,n,rhs,kind in cells:
+        assert case in CASES + ['mosaic'] and n >= 64 and rhs > 0
+        assert kind in ['cut','random','mixed','rev']
+        if case == 'grid':
+            assert math.isqrt(n)**2 == n, ('grid requires a square vertex count', n)
+        if case == 'mosaic':
+            assert n >= 128 and n % 2 == 0 and math.isqrt(n//2)**2 == n//2, ('mosaic grid half must be square',n)
+
+
+def preflight(binary, output, cells, arms, cpu):
+    path = output / 'preflight.jsonl'
+    assert not path.exists(), 'never overwrite preflight evidence'
+    for case,n,rhs,kind in cells:
+        for arm in arms:
+            result = invoke(binary,case,n,rhs,arm,cpu,kind if kind in ['random','rev'] else 'cut')
+            append(path,dict(case=case,n=n,rhs_count=rhs,rhs_kind=kind,arm=arm,result=result))
+            # Structured numerical/resource failures and timeouts are retained outcomes.
+            # Malformed output, panic, wrong identity or an invalid success blocks timing.
+            assert not (result['status']=='failed' and 'stdout' in result), result
+
 
 def signature(result):
     if result['status'] != 'ok':
@@ -180,8 +214,7 @@ def invoke(binary, case, n, rhs, arm, cpu=None, pattern='cut'):
 
 def summarize(path, output, protocol='original'):
     rows = [json.loads(line) for line in path.read_text().splitlines()]
-    cells = PROTECTED_CELLS if protocol == 'protected' else ORIGINAL_CELLS
-    arms = PROTECTED_ARMS if protocol == 'protected' else ARMS
+    arms, cells, seed, _ = protocol_config(protocol)
     results = []
     for case, n, rhs, kind in cells:
         cell = [r for r in rows if (r['case'], r.get('n',4096), r['rhs_count'], r['rhs_kind']) == (case,n,rhs,kind) and r['phase'] == 'measure']
@@ -210,7 +243,7 @@ def summarize(path, output, protocol='original'):
                 'decisions':[{k:v for k,v in d.items() if not k.endswith('_seconds')}
                              for d in success[0].get('decisions',[])] if success else []})
     output.write_text(json.dumps({'scope':'serial prepared-Schur SCC discovery only',
-        'protocol':protocol, 'blocks':6, 'seed':20261017 if protocol=='protected' else SEED,
+        'protocol':protocol, 'blocks':6, 'seed':seed,
         'results':results},indent=2)+'\n')
 
 
@@ -233,15 +266,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', choices=['smoke', 'measure', 'summary'])
     parser.add_argument('--binary', type=Path)
-    parser.add_argument('--protocol', choices=['original','protected'], default='original')
+    parser.add_argument('--protocol', choices=['original','protected','protected-grid'], default='original')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    arms = PROTECTED_ARMS if args.protocol == 'protected' else ARMS
+    arms, manifest, seed, budget = protocol_config(args.protocol)
     rows = args.output / 'observations.jsonl'
     if args.mode == 'summary':
         summarize(rows, args.output / 'summary.json', args.protocol)
         return
+    validate_manifest(manifest, arms)
     assert args.binary and args.binary.is_file()
     if args.mode == 'smoke':
         for case in CASES:
@@ -260,12 +294,14 @@ def main():
     observer = Observer(args.output / 'host-observations.jsonl')
     observer.sample()
     observer.thread.start()
-    rng = random.Random(20261017 if args.protocol == 'protected' else SEED)
-    cells = (PROTECTED_CELLS if args.protocol == 'protected' else ORIGINAL_CELLS).copy()
+    rng = random.Random(seed)
+    cells = manifest.copy()
     signatures = {}
     cpu = config['affinity'][0]
     started = time.monotonic()
     try:
+        if args.protocol == 'protected-grid':
+            preflight(args.binary,args.output,cells,arms,cpu)
         for block in range(-1, 6):
             rng.shuffle(cells)
             for case, n, rhs, kind in cells:
@@ -275,7 +311,7 @@ def main():
                     order += list(reversed(order))
                 for arm in order:
                     observer.check()
-                    assert time.monotonic() - started < 1800, 'campaign budget exceeded'
+                    assert time.monotonic() - started < budget, 'campaign budget exceeded'
                     result = invoke(args.binary, case, n, rhs, arm, cpu, kind if kind in ['random','rev'] else 'cut')
                     append(rows, {'phase': 'warmup' if block < 0 else 'measure', 'block': block,
                                   'case': case, 'n': n, 'rhs_count': rhs, 'rhs_kind': kind, 'arm': arm, 'result': result})

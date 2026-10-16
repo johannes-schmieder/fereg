@@ -655,3 +655,32 @@ described above; the remaining runtime/ABI suite was not reached. An initial
 invocation with the shell's Python 3.9 failed four imports because `tomllib`
 was unavailable; using the installed supported Python resolved those imports.
 These are functional checks, not local performance evidence.
+
+### Separate grid input correction, declared before its data
+
+The original second panel is retained unchanged, including every failed row.
+Its larger grid cell is a protocol error: the generator requires a square
+vertex count, and 8192 fails before any solve or valid timing. This cell supplies
+no solver evidence. The 8192 cluster residual-replacement failures and the
+larger-hub controlled-full memory refusal are genuine retained outcomes, not
+input errors. The original screen cannot pass and will not be rescued.
+
+After independent Astra review, a **separate supplemental discovery** repairs
+only the input-domain mistake. The deterministic choice is the largest square
+not exceeding the originally intended 8192, namely 8100. The new
+`protected-grid` manifest has one cell, grid/8100/four mixed RHSs, all thirteen
+arms, seed 20261018, one warmup and six balanced blocks: 169 observations
+(13 warmups, 156 measured). It reuses the exact Linux executable from `e0155f8b`.
+The per-solve timeout remains 30 seconds; internal budget is 600 seconds and
+scheduler limit 15 minutes. It runs once after the original allocation ends,
+with the same independently verified whole-node isolation and one-core pin.
+There are no retries, substitutions or pooling with original observations.
+
+The harness now validates every manifest dimension before execution, including
+mosaic's embedded half-size grid. Historical constants and summary lookup are
+preserved, so regenerating the original summary cannot hide its invalid cell.
+The supplemental allocation first records thirteen exact-cell functional
+preflights outside the statistical panel. Panics, malformed output, wrong
+identity or invalid successful certificates block measurement. Structured
+numerical/resource failures and timeouts stay failures and are retained.
+Supplemental success cannot erase the original failures or pass its screen.
