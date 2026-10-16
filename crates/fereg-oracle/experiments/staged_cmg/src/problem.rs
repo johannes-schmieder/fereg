@@ -182,12 +182,20 @@ pub fn generate(case: &str, n: usize) -> Problem {
         }
     };
     match case {
-        "expander" | "hubs" => {
+        "expander" | "hubs" | "sparse-expander" | "weighted-expander" => {
             for i in 0..n {
                 edge(i, (i + 1) % n, 1.);
             }
-            for _ in 0..3 * n {
-                edge(rng.next() as usize % n, rng.next() as usize % n, 1.);
+            let random_edges = if case == "sparse-expander" { n } else { 3 * n };
+            for _ in 0..random_edges {
+                let a = rng.next() as usize % n;
+                let b = rng.next() as usize % n;
+                let w = if case == "weighted-expander" {
+                    10_f64.powf(2. * rng.unit() - 1.)
+                } else {
+                    1.
+                };
+                edge(a, b, w);
             }
         }
         "fringe" => {

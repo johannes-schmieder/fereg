@@ -110,7 +110,7 @@ impl<'a> Solver<'a> {
     }
     fn apply(&mut self, r: &[f64], z: &mut [f64]) -> Result<f64, String> {
         let t = Instant::now();
-        self.pre.apply(r, z);
+        self.pre.try_apply(r, z)?;
         self.p.project(z);
         self.row.apply_seconds += t.elapsed().as_secs_f64();
         let rz = dot(r, z);
@@ -239,12 +239,35 @@ impl<'a> Solver<'a> {
 }
 
 pub fn run(p: &Problem, rhs: &[Vec<f64>], arm: &str) -> Result<ResultRow, String> {
+    if arm == "auto-commit" {
+        return crate::router::run(p, rhs);
+    }
     if crate::protected::ARMS.contains(&arm) {
         return crate::protected::run(p, rhs, arm);
     }
     let total = Instant::now();
     let setup = Instant::now();
-    let mut solver = Solver::new(p, arm);
+    let mut solver = Solver::new(
+        p,
+        if arm == "full-guarded" {
+            "diagonal"
+        } else {
+            arm
+        },
+    );
+    if arm == "full-guarded" {
+        let base = crate::guarded::base(p, rhs).map_err(|e| e.to_string())?;
+        let mut c = crate::guarded::Control { cancel: |_| false };
+        let built = crate::guarded::build(p, None, base, crate::guarded::MEMORY, &mut c)
+            .map_err(|e| e.to_string())?;
+        solver.row.graph_builds = built.graph_builds;
+        solver.row.graph_seconds = built.graph_seconds;
+        solver
+            .row
+            .decisions
+            .push(format!("{{\"memory_bound\":{}}}", built.peak));
+        solver.pre = Preconditioner::Full(Box::new(built.full));
+    }
     solver.row.setup += setup.elapsed().as_secs_f64();
     for (i, b) in rhs.iter().enumerate() {
         let x = solver.solve(b, rhs.len() - i - 1)?;
@@ -253,6 +276,14 @@ pub fn run(p: &Problem, rhs: &[Vec<f64>], arm: &str) -> Result<ResultRow, String
         }
         solver.row.solutions.push(x);
     }
-    solver.row.seconds = total.elapsed().as_secs_f64();
-    Ok(solver.row)
+    let Solver {
+        mut row,
+        pre,
+        graph,
+        ..
+    } = solver;
+    drop(pre);
+    drop(graph);
+    row.seconds = total.elapsed().as_secs_f64();
+    Ok(row)
 }

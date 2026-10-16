@@ -18,6 +18,11 @@ impl Full {
     pub fn levels(&self) -> usize {
         self.pre.hierarchy().levels().len()
     }
+    pub fn try_apply(&mut self, b: &[f64], x: &mut [f64]) -> Result<(), String> {
+        self.pre
+            .apply_compatible_into(b, x, &mut self.workspace)
+            .map_err(|e| e.to_string())
+    }
     pub fn apply(&mut self, b: &[f64], x: &mut [f64]) {
         self.pre
             .apply_compatible_into(b, x, &mut self.workspace)
@@ -101,6 +106,14 @@ pub enum Preconditioner {
     Full(Box<Full>),
 }
 impl Preconditioner {
+    pub fn try_apply(&mut self, b: &[f64], x: &mut [f64]) -> Result<(), String> {
+        if let Self::Full(f) = self {
+            f.try_apply(b, x)
+        } else {
+            self.apply(b, x);
+            Ok(())
+        }
+    }
     pub fn apply(&mut self, b: &[f64], x: &mut [f64]) {
         match self {
             Self::Diagonal(d) => diagonal(d, b, x),

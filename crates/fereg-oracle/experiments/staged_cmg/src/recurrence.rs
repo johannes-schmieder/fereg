@@ -103,7 +103,7 @@ impl PcgState {
     }
     fn apply(&mut self, p: &Problem, pre: &mut Preconditioner) -> Result<f64, String> {
         let t = Instant::now();
-        pre.apply(&self.r, &mut self.z);
+        pre.try_apply(&self.r, &mut self.z)?;
         p.project(&mut self.z);
         self.apply_seconds += t.elapsed().as_secs_f64();
         self.work += self.tariff.apply + self.tariff.project + 2 * self.tariff.n;
@@ -130,6 +130,36 @@ impl PcgState {
             return Err("final_certificate_failed".into());
         }
         self.done = true;
+        Ok(())
+    }
+    /// Extra selector checkpoint: no residual replacement or recurrence mutation.
+    pub fn probe(&mut self, p: &Problem, b: &[f64]) -> Result<f64, String> {
+        let actual = self.certificate(p, b);
+        if !actual.is_finite() {
+            return Err("nonfinite_certificate".into());
+        }
+        if actual <= self.target {
+            self.finish(p, b)?;
+        }
+        Ok(actual)
+    }
+    /// Commit to a fixed preconditioner without renewing iteration or repair caps.
+    pub fn restart(
+        &mut self,
+        p: &Problem,
+        b: &[f64],
+        pre: &mut Preconditioner,
+    ) -> Result<(), String> {
+        self.probe(p, b)?;
+        if self.done {
+            return Ok(());
+        }
+        self.r.copy_from_slice(&self.truth);
+        p.project(&mut self.r);
+        self.work += 2 * self.tariff.n + self.tariff.project;
+        self.rz = self.apply(p, pre)?;
+        self.d.copy_from_slice(&self.z);
+        self.work += 2 * self.tariff.n;
         Ok(())
     }
     pub fn failure_context(&mut self, p: &Problem, b: &[f64], reason: String) -> String {
@@ -202,6 +232,50 @@ impl PcgState {
 #[cfg(test)]
 mod preservation_tests {
     use super::*;
+    #[test]
+    fn probe_preserves_recurrence_and_commit_preserves_caps() {
+        let p = crate::problem::generate("grid", 64);
+        let b = p.rhs(1).remove(0);
+        let mut pre = Preconditioner::Diagonal(p.diagonal.clone());
+        let tariff = Tariff::new(&p, 8 * p.n as u64);
+        let mut state = PcgState::new(&p, &b, &mut pre, tariff, None).unwrap();
+        for _ in 0..16 {
+            state.advance(&p, &b, &mut pre, false).unwrap();
+        }
+        let prior = (
+            state.x.clone(),
+            state.r.clone(),
+            state.z.clone(),
+            state.d.clone(),
+            state.ap.clone(),
+            state.rz,
+        );
+        state.probe(&p, &b).unwrap();
+        assert_eq!(
+            (
+                state.x.clone(),
+                state.r.clone(),
+                state.z.clone(),
+                state.d.clone(),
+                state.ap.clone(),
+                state.rz
+            ),
+            prior
+        );
+        state.repairs = 1;
+        let before = (state.iterations, state.repairs, state.bnorm, state.target);
+        let mut full = Preconditioner::Full(Box::new(crate::preconditioner::Full::new(&p.graph())));
+        state.restart(&p, &b, &mut full).unwrap();
+        assert_eq!(
+            (state.iterations, state.repairs, state.bnorm, state.target),
+            before
+        );
+        while !state.done && state.iterations < LIMIT {
+            state.advance(&p, &b, &mut full, false).unwrap();
+        }
+        assert!(state.done);
+        assert!(state.repairs <= 2);
+    }
     #[test]
     fn parked_construction_preserves_every_cheap_recurrence_vector() {
         use crate::builder::BuildTask;

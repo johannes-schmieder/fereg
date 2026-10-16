@@ -127,5 +127,68 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(len((Path(directory)/'preflight.jsonl').read_text().splitlines()),1)
 
 
+class RouterProtocol(unittest.TestCase):
+    def test_router_manifest_and_gate_counts(self):
+        arms,cells,seed,budget=runner.protocol_config('router')
+        runner.validate_manifest(cells,arms)
+        self.assertEqual((len(arms),len(cells),seed),(5,14,20261021))
+        self.assertEqual(len(arms)*len(cells)*13,910)
+        self.assertEqual(len(runner.GUARDED_ARMS)*len(runner.GUARDED_CELLS)*13,130)
+        self.assertIn(('mosaic',8192,4,'components-rev'),cells)
+
+    def test_gate_rejects_setup_science_and_completeness(self):
+        import evaluate_router
+        rows=[];pre=[]
+        for case,n,rhs,kind in runner.GUARDED_CELLS:
+            for arm in runner.GUARDED_ARMS:
+                result=dict(status='ok',digest='same',iterations=1,upgrades=0,certificates=2,relative_residual=1e-10,graph_builds=1,coarse_n=0,tail_levels=0,decisions=[],seconds=.1,setup_seconds=.01)
+                r=dict(case=case,n=n,rhs_count=rhs,rhs_kind=kind,arm=arm,result=result)
+                pre.append(r)
+                rows.extend([{**r,'phase':'warmup','block':-1}]+[{**r,'phase':'measure','block':b} for b in range(6) for _ in range(2)])
+        with tempfile.TemporaryDirectory() as directory:
+            out=Path(directory)
+            def write():
+                for filename,data in [('observations.jsonl',rows),('preflight.jsonl',pre)]:
+                    (out/filename).write_text(''.join(json.dumps(r)+'\n' for r in data))
+            write();self.assertTrue(evaluate_router.constructor_gate(out)['passed'])
+            selected=next(r for r in rows if r['case']=='grid' and r['arm']=='full-guarded')['result']
+            selected['setup_seconds']=.04
+            write();self.assertFalse(evaluate_router.constructor_gate(out)['passed'])
+            selected['digest']='different';write()
+            with self.assertRaises(AssertionError):evaluate_router.constructor_gate(out)
+            rows.pop();write()
+            with self.assertRaises(AssertionError):evaluate_router.constructor_gate(out)
+
+    def test_selector_retains_failures_and_rejects_incomplete_and_mismatch(self):
+        import evaluate_router
+        rows = []; pre = []
+        for case,n,rhs,kind in runner.ROUTER_CELLS:
+            for arm in runner.ROUTER_ARMS:
+                result = dict(status='ok', digest=arm, iterations=1, upgrades=0, certificates=2,
+                              relative_residual=1e-10, graph_builds=1, coarse_n=0, tail_levels=0,
+                              decisions=[], seconds=.1)
+                r = dict(case=case,n=n,rhs_count=rhs,rhs_kind=kind,arm=arm,result=result)
+                pre.append(r)
+                rows.extend([{**r,'phase':'warmup','block':-1}] + [{**r,'phase':'measure','block':b} for b in range(6) for _ in range(2)])
+        with tempfile.TemporaryDirectory() as directory:
+            out=Path(directory)
+            def write():
+                for filename,data in [('observations.jsonl',rows),('preflight.jsonl',pre)]:
+                    (out/filename).write_text(''.join(json.dumps(r)+'\n' for r in data))
+            write(); report=evaluate_router.selector_report(out)
+            self.assertTrue(report['passed'])
+            self.assertEqual(report['cells'][3]['comparator'],'diagonal')
+            selected = next(r for r in pre if r['case']=='grid' and r['n']==8100 and r['arm']=='auto-commit')['result']
+            selected.update(status='failed',reason='numerical_limit')
+            write(); report=evaluate_router.selector_report(out)
+            cell=next(c for c in report['cells'] if c['case']=='grid' and c['n']==8100)
+            self.assertFalse(cell['passed']); self.assertEqual(cell['arms']['auto-commit']['failures'],14)
+            rows[-1] = {**rows[-1], 'result': {**rows[-1]['result'], 'digest':'changed'}}
+            write()
+            with self.assertRaises(AssertionError): evaluate_router.selector_report(out)
+            rows.pop();write()
+            with self.assertRaises(AssertionError): evaluate_router.selector_report(out)
+
+
 if __name__ == '__main__':
     unittest.main()

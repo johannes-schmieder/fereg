@@ -1,9 +1,11 @@
 mod builder;
+mod guarded;
 mod local;
 mod preconditioner;
 mod problem;
 mod protected;
 mod recurrence;
+mod router;
 mod solve;
 #[cfg(test)]
 mod tests;
@@ -17,13 +19,28 @@ fn main() {
     let p = problem::generate(&args[1], args[2].parse().unwrap());
     let count: usize = args[3].parse().unwrap();
     let pattern = args.get(5).map_or("cut", String::as_str);
-    assert!(["cut", "random", "rev"].contains(&pattern));
+    assert!(["cut", "random", "rev", "components", "components-rev"].contains(&pattern));
     let mut rhs = if pattern == "random" {
         p.rhs(count + 1).into_iter().skip(1).collect()
     } else {
         p.rhs(count)
     };
-    if pattern == "rev" {
+    if pattern.starts_with("components") {
+        assert!(
+            p.sizes.len() >= 2,
+            "component patterns need multiple components"
+        );
+        for (index, b) in rhs.iter_mut().enumerate() {
+            let selected = if index == 0 { p.sizes.len() - 1 } else { 0 };
+            for (value, &label) in b.iter_mut().zip(&p.labels) {
+                if label != selected {
+                    *value = 0.;
+                }
+            }
+            p.project(b);
+        }
+    }
+    if pattern == "rev" || pattern == "components-rev" {
         rhs.reverse();
     }
     match solve::run(&p, &rhs, &args[4]) {

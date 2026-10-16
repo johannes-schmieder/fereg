@@ -579,3 +579,288 @@ fn persistent_failure_after_a_park_joins_and_later_batches_work() {
     assert!(a.decisions[0].contains("\"build_status\":\"parked\""));
     assert!(a.decisions[1].contains("\"resumed\":true"));
 }
+
+#[test]
+fn guarded_construction_matches_ordinary_and_unwinds_every_phase() {
+    use crate::guarded::{self, Control, Error};
+    let p = generate("grid", 64);
+    let rhs = p.rhs(2);
+    let base = guarded::base(&p, &rhs).unwrap();
+    let mut phases = std::collections::BTreeSet::new();
+    let mut built = guarded::build(
+        &p,
+        None,
+        base,
+        guarded::MEMORY,
+        &mut Control {
+            cancel: |phase| {
+                phases.insert(phase);
+                false
+            },
+        },
+    )
+    .unwrap();
+    let graph = p.graph();
+    let mut ordinary = Full::new(&graph);
+    for b in &rhs {
+        let mut a = vec![0.; p.n];
+        let mut c = a.clone();
+        ordinary.try_apply(b, &mut a).unwrap();
+        built.full.try_apply(b, &mut c).unwrap();
+        assert_eq!(a, c);
+    }
+    for phase in phases {
+        let result = guarded::build(
+            &p,
+            None,
+            base,
+            guarded::MEMORY,
+            &mut Control {
+                cancel: |here| here == phase,
+            },
+        );
+        assert!(
+            matches!(result, Err(Error::Fatal(_))),
+            "cancellation at {phase}"
+        );
+    }
+    let result = guarded::build(
+        &p,
+        None,
+        base,
+        built.peak - 1,
+        &mut Control { cancel: |_| false },
+    );
+    assert!(matches!(result, Err(Error::Memory { .. })));
+    assert!(guarded::build(
+        &p,
+        None,
+        base,
+        built.peak,
+        &mut Control { cancel: |_| false }
+    )
+    .is_ok());
+    let admitted = guarded::graph(
+        &p,
+        guarded::edges(&p, &mut Control { cancel: |_| false }).unwrap(),
+        &mut Control { cancel: |_| false },
+    )
+    .unwrap();
+    assert_eq!(graph, admitted);
+}
+
+#[test]
+fn guarded_full_science_repeats_and_matches_existing_full() {
+    for case in ["expander", "fringe", "clusters", "grid", "hubs"] {
+        let p = generate(case, 256);
+        let rhs = p.rhs(2);
+        let ordinary = run(&p, &rhs, "full").unwrap();
+        let a = run(&p, &rhs, "full-guarded").unwrap();
+        let b = run(&p, &rhs, "full-guarded").unwrap();
+        assert_eq!(a.solutions, ordinary.solutions);
+        assert_eq!(
+            (a.digest, a.iterations, a.certificates),
+            (ordinary.digest, ordinary.iterations, ordinary.certificates)
+        );
+        assert_eq!(a.decisions, b.decisions);
+        assert_eq!(a.solutions, b.solutions);
+    }
+}
+
+#[test]
+fn checked_forest_is_exact_and_cancellation_unwinds() {
+    use crate::guarded::Control;
+    for case in ["expander", "fringe", "clusters", "grid", "hubs"] {
+        let p = generate(case, 256);
+        let graph = p.graph();
+        let expected = Forest::new(&graph);
+        let mut phases = std::collections::BTreeSet::new();
+        let actual = Forest::checked(
+            &graph,
+            &mut Control {
+                cancel: |phase| {
+                    phases.insert(phase);
+                    false
+                },
+            },
+        )
+        .unwrap();
+        for b in p.rhs(2) {
+            let mut a = vec![0.; p.n];
+            let mut c = a.clone();
+            expected.apply(&b, &mut a);
+            actual.apply(&b, &mut c);
+            assert_eq!(a, c);
+        }
+        for phase in phases {
+            assert!(Forest::checked(
+                &graph,
+                &mut Control {
+                    cancel: |here| here == phase
+                }
+            )
+            .is_err());
+        }
+    }
+}
+
+#[test]
+fn router_structure_and_grace_have_general_boundaries() {
+    use crate::guarded::Control;
+    use crate::router::{grace, structure, Structure};
+    let p = Problem::new(
+        7,
+        vec![
+            vec![(0, 1.), (0, 2.), (1, 1.)],
+            vec![(1, 1.), (2, 1.), (3, 1.)],
+            vec![(5, 1.)],
+        ],
+    );
+    let s = structure(&p, &mut Control { cancel: |_| false }).unwrap();
+    assert_eq!(
+        s,
+        Structure {
+            active: 4,
+            low: 3,
+            edges: 4
+        }
+    );
+    assert!(s.forest(p.firms.len()));
+    assert!(!Structure {
+        active: 0,
+        low: 0,
+        edges: 0
+    }
+    .forest(0));
+    assert!(Structure {
+        active: 4,
+        low: 2,
+        edges: 8
+    }
+    .forest(2));
+    assert!(!Structure {
+        active: 4,
+        low: 2,
+        edges: 9
+    }
+    .forest(2));
+    assert!(!Structure {
+        active: 5,
+        low: 2,
+        edges: 1
+    }
+    .forest(10));
+    assert!(grace(16., 4., 1.));
+    assert!(!grace(16., 4., 0.99));
+    for (a, b, t) in [
+        (1., 2., 0.1),
+        (1., 1., 0.1),
+        (f64::NAN, 1., 0.1),
+        (2., 1., 0.),
+        (2., 0., 1e-8),
+    ] {
+        assert!(!grace(a, b, t));
+    }
+    assert!(
+        structure(&generate("fringe", 256), &mut Control { cancel: |_| false })
+            .unwrap()
+            .forest(usize::MAX)
+    );
+    assert!(
+        !structure(&generate("grid", 256), &mut Control { cancel: |_| false })
+            .unwrap()
+            .forest(usize::MAX)
+    );
+}
+
+#[test]
+fn router_dense_science_repeat_refusal_reuse_and_shared_cap() {
+    use crate::guarded::{self, Control};
+    use crate::router::{run_config, Config};
+    for case in ["expander", "fringe", "clusters", "grid", "hubs"] {
+        let p = generate(case, 64);
+        let rhs = p.rhs(3);
+        let a = run(&p, &rhs, "auto-commit").unwrap();
+        let b = run(&p, &rhs, "auto-commit").unwrap();
+        assert_eq!(a.solutions, b.solutions);
+        assert_eq!(
+            (a.iterations, a.certificates, a.upgrades),
+            (b.iterations, b.certificates, b.upgrades)
+        );
+        for (x, r) in a.solutions.iter().zip(&rhs) {
+            near(x, &dense_solve(&dense_problem(&p), &p.labels, r), 2e-7);
+        }
+    }
+    let p = generate("grid", 256);
+    let rhs = p.rhs(3);
+    let a = run(&p, &rhs, "auto-commit").unwrap();
+    assert_eq!(a.upgrades, 1);
+    assert_eq!(a.graph_builds, 1);
+    assert!(a
+        .decisions
+        .iter()
+        .any(|d| d.contains("\"rhs\":1,\"started_full\":true")));
+    let refused = run_config(
+        &p,
+        &rhs,
+        Config {
+            memory: guarded::base(&p, &rhs).unwrap(),
+            ..Config::default()
+        },
+        &mut Control { cancel: |_| false },
+    )
+    .unwrap();
+    let cheap = run(&p, &rhs, "diagonal").unwrap();
+    assert_eq!(refused.solutions, cheap.solutions);
+    assert_eq!(refused.iterations, cheap.iterations);
+    assert_eq!(refused.upgrades, 0);
+    assert_eq!(refused.graph_builds, 0);
+    assert_eq!(
+        refused
+            .decisions
+            .iter()
+            .filter(|d| d.contains("\"event\":\"memory_refusal\""))
+            .count(),
+        1
+    );
+    assert!(run_config(
+        &p,
+        &rhs,
+        Config {
+            iterations: 24,
+            ..Config::default()
+        },
+        &mut Control { cancel: |_| false }
+    )
+    .err()
+    .unwrap()
+    .contains("iterations_24"));
+    assert!(run_config(
+        &p,
+        &rhs,
+        Config {
+            iterations: 16001,
+            ..Config::default()
+        },
+        &mut Control { cancel: |_| false }
+    )
+    .is_err());
+    for phase in [
+        "routing incidences",
+        "pcg iteration",
+        "full admission",
+        "router installation",
+    ] {
+        assert!(run_config(
+            &p,
+            &rhs,
+            Config::default(),
+            &mut Control {
+                cancel: |here| here == phase
+            }
+        )
+        .err()
+        .unwrap()
+        .contains("interrupt"));
+    }
+}

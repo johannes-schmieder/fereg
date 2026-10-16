@@ -37,7 +37,22 @@ PERSISTENT_CELLS = [('expander',4096,4,'mixed'),('expander',4096,4,'rev'),
 
 
 
+ROUTER_ARMS = ['diagonal','forest','full','diagonal-full','auto-commit']
+ROUTER_CELLS = PERSISTENT_CELLS + [
+    ('sparse-expander',4096,4,'mixed'),('sparse-expander',4096,4,'rev'),
+    ('weighted-expander',4096,4,'mixed'),('weighted-expander',4096,4,'rev'),
+    ('mosaic',8192,4,'components'),('mosaic',8192,4,'components-rev')]
+
+GUARDED_ARMS = ['full','full-guarded']
+GUARDED_CELLS = [('expander',4096,4,'mixed'),('fringe',4096,4,'mixed'),
+    ('clusters',4096,1,'cut'),('grid',8100,4,'mixed'),('hubs',8192,1,'random')]
+
+
 def protocol_config(protocol):
+    if protocol == 'router':
+        return ROUTER_ARMS, ROUTER_CELLS, 20261021, 1800
+    if protocol == 'guarded-gate':
+        return GUARDED_ARMS, GUARDED_CELLS, 20261020, 300
     if protocol == 'persistent':
         return PERSISTENT_ARMS, PERSISTENT_CELLS, 20261019, 1800
     if protocol == 'protected-grid':
@@ -49,10 +64,10 @@ def protocol_config(protocol):
 
 def validate_manifest(cells, arms):
     assert len(cells) == len(set(cells)) and len(arms) == len(set(arms))
-    assert all(a in PROTECTED_ARMS + PERSISTENT_ARMS for a in arms)
+    assert all(a in PROTECTED_ARMS + PERSISTENT_ARMS + GUARDED_ARMS + ROUTER_ARMS for a in arms)
     for case,n,rhs,kind in cells:
-        assert case in CASES + ['mosaic'] and n >= 64 and rhs > 0
-        assert kind in ['cut','random','mixed','rev']
+        assert case in CASES + ['mosaic','sparse-expander','weighted-expander'] and n >= 64 and rhs > 0
+        assert kind in ['cut','random','mixed','rev','components','components-rev']
         if case == 'grid':
             assert math.isqrt(n)**2 == n, ('grid requires a square vertex count', n)
         if case == 'mosaic':
@@ -65,8 +80,9 @@ def preflight(binary, output, cells, arms, cpu, check=lambda: None):
     for case,n,rhs,kind in cells:
         for arm in arms:
             check()
-            result = invoke(binary,case,n,rhs,arm,cpu,kind if kind in ['random','rev'] else 'cut')
+            result = invoke(binary,case,n,rhs,arm,cpu,kind if kind in ['random','rev','components','components-rev'] else 'cut')
             append(path,dict(case=case,n=n,rhs_count=rhs,rhs_kind=kind,arm=arm,result=result))
+            check()
             # Structured numerical/resource failures and timeouts are retained outcomes.
             # Malformed output, panic, wrong identity or an invalid success blocks timing.
             assert not (result['status']=='failed' and 'stdout' in result), result
@@ -202,8 +218,10 @@ def invoke(binary, case, n, rhs, arm, cpu=None, pattern='cut'):
     if cpu is not None:
         argv = ['taskset', '-c', str(cpu)] + argv
     try:
+        invoked=time.monotonic()
         run = subprocess.run(argv, capture_output=True, text=True, timeout=30)
         result = json.loads(run.stdout)
+        result['process_seconds']=time.monotonic()-invoked
         if run.returncode != 0:
             result['status'] = 'failed'
             result['exit_status'] = run.returncode
@@ -220,7 +238,7 @@ def invoke(binary, case, n, rhs, arm, cpu=None, pattern='cut'):
                     assert d['memory_bound'] <= 1 << 30
         return result
     except subprocess.TimeoutExpired:
-        return {'status': 'timeout'}
+        return {'status': 'timeout','process_seconds':time.monotonic()-invoked}
     except (ValueError, AssertionError, KeyError, TypeError) as error:
         return {'status': 'failed', 'reason': str(error), 'stdout': run.stdout, 'stderr': run.stderr}
 
@@ -294,13 +312,17 @@ def protected_replay(binary,output):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['smoke', 'measure', 'summary'])
+    parser.add_argument('mode', choices=['smoke', 'measure', 'summary', 'pilot'])
     parser.add_argument('--binary', type=Path)
-    parser.add_argument('--protocol', choices=['original','protected','protected-grid','persistent'], default='original')
+    parser.add_argument('--protocol', choices=['original','protected','protected-grid','persistent','guarded-gate','router'], default='original')
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--budget-seconds',type=int)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     arms, manifest, seed, budget = protocol_config(args.protocol)
+    if args.budget_seconds is not None:
+        assert args.protocol=='router' and 60<=args.budget_seconds<=1800
+        budget=args.budget_seconds
     rows = args.output / 'observations.jsonl'
     if args.mode == 'summary':
         summarize(rows, args.output / 'summary.json', args.protocol)
@@ -321,10 +343,18 @@ def main():
                 result=invoke(args.binary,'clusters',8192,4,arm)
                 append(args.output/'cluster-diagnostic.jsonl',dict(case='clusters',n=8192,rhs_count=4,arm=arm,result=result))
                 assert not (result['status']=='failed' and 'stdout' in result),result
-        print('STAGED_CMG_SMOKE_PASS', flush=True)
+        if args.protocol == 'router':
+            for arm in ROUTER_ARMS:
+                result=invoke(args.binary,'clusters',8192,1,arm)
+                append(args.output/'cluster-diagnostic.jsonl',dict(arm=arm,result=result))
+                assert not (result['status']=='failed' and 'stdout' in result),result
+            legacy_replay(args.binary,args.output)
+            protected_replay(args.binary,args.output)
+        print('STAGED_CMG_SMOKE_PASS' , flush=True)
         return
     assert not rows.exists(), 'never overwrite prior observations'
     config = configuration()
+    config['budget_seconds']=budget
     config['binary_sha256'] = hashlib.sha256(args.binary.read_bytes()).hexdigest()
     if args.protocol=='persistent':
         config['previous_binary_sha256']=hashlib.sha256(Path(os.environ['STAGED_PREVIOUS_BINARY']).read_bytes()).hexdigest()
@@ -342,9 +372,12 @@ def main():
         observer.check()
         assert time.monotonic() - started < budget, 'campaign budget exceeded'
     try:
-        if args.protocol in ['protected-grid','persistent']:
+        if args.protocol in ['protected-grid','persistent','guarded-gate','router']:
             preflight(args.binary,args.output,cells,arms,cpu,check)
-        for block in range(-1, 6):
+            if args.protocol=='router':
+                for r in [json.loads(line) for line in (args.output/'preflight.jsonl').read_text().splitlines()]:
+                    signatures[(r['case'],r['n'],r['rhs_count'],r['rhs_kind'],r['arm'])]=signature(r['result'])
+        for block in ([-1] if args.mode == 'pilot' else range(-1, 6)):
             rng.shuffle(cells)
             for case, n, rhs, kind in cells:
                 order = arms.copy()
@@ -353,10 +386,11 @@ def main():
                     order += list(reversed(order))
                 for arm in order:
                     check()
-                    result = invoke(args.binary, case, n, rhs, arm, cpu, kind if kind in ['random','rev'] else 'cut')
+                    result = invoke(args.binary, case, n, rhs, arm, cpu, kind if kind in ['random','rev','components','components-rev'] else 'cut')
                     append(rows, {'phase': 'warmup' if block < 0 else 'measure', 'block': block,
                                   'case': case, 'n': n, 'rhs_count': rhs, 'rhs_kind': kind, 'arm': arm, 'result': result})
-                    if result['status'] == 'ok':
+                    check()
+                    if result['status'] == 'ok' or args.protocol=='router':
                         observed = signature(result)
                         key = (case, n, rhs, kind, arm)
                         assert signatures.setdefault(key, observed) == observed, 'repeat mismatch'
@@ -368,13 +402,16 @@ def main():
         observer.sample()
         after = configuration()
         append(args.output / 'host-observations.jsonl', {'final_configuration': after})
-        ignored = {'binary_sha256', 'previous_binary_sha256', 'host_configuration_raw', 'complexes_raw'}
+        ignored = {'budget_seconds','binary_sha256', 'previous_binary_sha256', 'host_configuration_raw', 'complexes_raw'}
         assert {k: v for k, v in after.items() if k not in ignored} == {k: v for k, v in config.items() if k not in ignored}
+        check()
         summarize(rows, args.output / 'summary.json', args.protocol)
         all_rows = [json.loads(line) for line in rows.read_text().splitlines()]
-        assert len(all_rows) == len(cells)*len(arms)*13, 'incomplete protocol'
+        expected=len(cells)*len(arms)*(1 if args.mode=='pilot' else 13)
+        assert len(all_rows) == expected, 'incomplete protocol'
         failures = sum(r['result']['status'] != 'ok' for r in all_rows)
-        print(f'STAGED_CMG_DISCOVERY_COMPLETE observations={len(all_rows)} failures={failures}', flush=True)
+        marker='STAGED_CMG_PILOT_COMPLETE' if args.mode=='pilot' else 'STAGED_CMG_DISCOVERY_COMPLETE'
+        print(f'{marker} observations={len(all_rows)} failures={failures}', flush=True)
     finally:
         observer.stop.set()
 

@@ -1060,3 +1060,124 @@ observations through their counts and retained individual times. Documentation
 references, finite JSON, artifact-size checks and `git diff --check` pass.
 Production identity remains unchanged (192 modules, 58 artifact inputs); prior
 runtime evidence and the documented installed-plugin identity blocker are reused.
+
+
+### Probe-and-commit successor: declared scope and construction prerequisite
+
+The next standalone candidate keeps the ordinary diagonal, forest, full and
+old diagonal-to-full arms intact. Its numerical scope is the new selector's
+iterates, restart/solver decisions and answers; production remains unchanged.
+Original-incidence returned-vector certificates at 1e-8, the shared 16000-step
+cap and two residual replacements remain mandatory. Independent witnesses are
+existing dense grounded solves, energy/symmetry/positivity, exact static-arm
+replay and the retained weak-cluster coordinate witness. No sample, model,
+rank, omission or separation semantics change.
+
+Before a selector panel, test one synchronous guarded-full constructor. It
+uses the pinned controlled CMG APIs with eight-term dense chunks and only a
+cancellation callback. There are no builder threads, grant ledgers, channels,
+parking, callback traces or double admission. Requested-storage admission covers
+input/output banks, solver scratch, graph tuples and compact banks, complete
+CMG construction and workspace. This is a conservative modeled-storage budget,
+not an RSS guarantee. Allocator/OS and cleanup latency remain outside the
+upstream computational cancellation bound. Typed memory refusal is distinct
+from interruption and numeric/overflow/allocation errors.
+
+Frozen construction gate: `guarded-gate`, seed 20261020, full and full-guarded
+on expander/4096/mixed4, fringe/4096/mixed4, clusters/4096/cut1,
+grid/8100/mixed4, hubs/8192/random1. Ten preflights, ten warmups and six
+randomized balanced blocks (120 measured calls), 300-second total budget,
+30-second per-call timeout, isolated SCC one-core execution. No replacement
+observations. Same ordinary numerical signatures are required on every success;
+all refusals remain recorded. The four non-hub cases must have six complete
+blocks and median paired setup and complete-solve costs no greater than ordinary
+plus max(50%, 1 ms). This is a discovery prerequisite, not qualification. A hub
+memory refusal is reported and blocks any full-static claim for that cell; it
+is not discarded or relabeled success. A missing or failed gate blocks the
+selector timing panel. Boundary cancellation and exact memory admission are
+checked separately before timing. If this wrapper fails, retain its evidence
+and diagnose the construction path before another declared candidate.
+
+
+The first gate (job 8144754, source manifest
+`33785f88e8f6a73f3ab7fb248f15d9cbed7ae1378df9d81b50e0c8446973559a`)
+completed all 130 observations and failed the speed prerequisite. Guarded setup
+ratios were approximately 2.11, 1.85, 3.71 and 1.90 for expander, fringe,
+clusters and grid. Thirteen hub observations refused the conservative memory
+bound. All successful ordinary/guarded science agreed exactly. This result is
+retained; the selector panel did not run on that artifact.
+
+The reviewed successor opts into CMG's cooperative prepaid work batching and
+interruptible introsort. Its computational cancellation allowance is at most
+65535 primitive allowance units, with allocations still checked immediately;
+it preserves numeric operation order and default controlled frontiers. The
+wrapper edge-count scan now checks cancellation every 64 workers. The second
+artifact repeats the same frozen gate and criterion. Successful constructor
+comparison is a prerequisite for the selector pilot/panel, not a claim of
+production qualification. All five selector arms now include preconditioner and
+graph destruction in their complete-solve timer; the first gate retains its
+original endpoint.
+
+The selector is `auto-commit`: active nonisolated neighbor-count upper bounds
+saturate at three, forest requires at least half <=2 and clique bound <=4 times
+incidence, with complete memory admission. It probes at 16 and 24, grants one
+8-step extension only when the current residual contraction predicts at most
+eight remaining steps, and commits at 24 or 32. It restarts in place without
+resetting caps. A memory refusal preserves recurrence and disables all future
+build attempts in the batch. Ready CMG is used immediately for later RHSs.
+The operator is fixed for a batch; changing-weight reuse is outside this scope.
+
+Frozen selector discovery: five arms (diagonal, forest, ordinary full, original
+diagonal-full, auto-commit), fourteen cells in `ROUTER_CELLS`, seed 20261021.
+The eight retained persistent-panel cells are supplemented with sparse and
+weighted expanders in forward/reverse RHS order and mosaic component-separated
+hard-first/easy-later and reversed batches. Sparse expanders add n random edges
+to a ring; weighted expanders use three n random edges with log-uniform weights
+from 0.1 to 10. These generators are not router features or routing rules.
+A separate isolated pilot executes every exact arm/cell twice (preflight and one
+observation) under a 300-second budget. The complete panel's budget is frozen
+from pilot process costs before submission, capped at 1800 seconds. The panel
+has 70 preflights and 910 observations including 70 warmups, six randomized
+balanced blocks, 30-second per-invocation timeout, no replacement/resampling.
+All observations and failures remain retained. Case/arm scientific signatures
+must match preflight and repeat exactly; failed signatures are also checked.
+Easy expander/hubs/fringe cells target max(5%,1 ms) overhead against their
+appropriate cheap method. Remaining cells target at most twice the fastest
+feasible static method, while retaining comparisons against the old trigger.
+Report each block's paired excess and descriptive ratio; these discovery targets
+do not substitute for untouched confirmation. Weak-cluster/8192 has a separate
+mandatory diagnostic across all five arms and remains a reliability limitation
+if any candidate fails. No tolerance or cap is changed to obtain success.
+
+The cooperative constructor revision is `65ea7157f0184939d3181511e9a13bb7a60cd3a7` on upstream branch
+`codex/cooperative-build-chunks`; only this standalone crate pins it.
+
+
+The discovery comparison rule is fixed before panel data: expander (both RHS
+orders), fringe and hubs compare against diagonal, forest and diagonal,
+respectively. Each of the other ten cells compares against the static arm among
+diagonal/forest/full with the lowest median of its six complete block geometric
+mean times; ties prefer that listed order. A static arm is eligible only if every
+preflight, warmup and measured invocation succeeds and its scientific signature
+repeats. Any selector failure fails its cell. A missing required block makes a
+comparison inconclusive. The static lower envelope is a retrospective comparator,
+not a claim that its choices were inferable online or a production memory audit
+of the legacy controls. For each easy cell report N-B-max(0.05B,0.001); for
+other cells report N-2B, using paired block geometric means. The discovery target
+passes only when all six block excesses are <=0. The all-six rule is descriptive
+here: blocks share a session, so no independent-session confidence or release
+qualification is claimed. Report the old trigger separately on every cell.
+
+A harness review caught a deadline edge case before the second timing gate:
+checking only before invocation could accept a final invocation that crossed
+the campaign deadline. The repaired runner appends the row, then checks the
+budget and observer, including after final configuration. Smoke evidence is
+reused because this change affects only timing/preflight control, with focused
+runner tests; executable source and solver binary are unchanged.
+
+The pilot-based panel budget is the ceiling to 60 seconds of
+`120 + 1.5 * 14 * sum(max(preflight_process, pilot_process))` over the 70
+arm/cell pairs. The multiplier covers all fourteen calls per pair in the panel,
+with conservative pilot choice and 50% process-cost plus 120-second overhead
+headroom. A value exceeding 1800 seconds blocks the frozen panel instead of
+silently reducing its observations. This formula is fixed before the pilot.

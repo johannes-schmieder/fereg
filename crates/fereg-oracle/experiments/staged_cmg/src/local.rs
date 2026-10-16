@@ -32,6 +32,139 @@ impl Forest {
         }
         Self::with_edges(graph, &selected)
     }
+    /// Same forest and arithmetic as `new`, with admitted CSR scratch and cancellation.
+    pub fn checked<F: FnMut(&'static str) -> bool>(
+        graph: &Laplacian,
+        c: &mut crate::guarded::Control<F>,
+    ) -> Result<Self, crate::guarded::Error> {
+        use crate::guarded::{filled, Error};
+        let n = graph.vertex_count();
+        let mut heavy = filled(n, 0usize, c)?;
+        let mut chosen = filled(n, 0.0, c)?;
+        let mut roots = filled(n, 0usize, c)?;
+        for i in 0..n {
+            if i % 64 == 0 {
+                c.check("forest roots")?;
+            }
+            heavy[i] = i;
+            roots[i] = i;
+        }
+        for (i, e) in graph.edges().iter().enumerate() {
+            if i % 64 == 0 {
+                c.check("forest heavy edges")?;
+            }
+            for (v, u) in [(e.u(), e.v()), (e.v(), e.u())] {
+                if e.weight() > chosen[v] || (e.weight() == chosen[v] && u < heavy[v]) {
+                    chosen[v] = e.weight();
+                    heavy[v] = u;
+                }
+            }
+        }
+        let mut selected = filled(graph.edge_count(), false, c)?;
+        let mut counts = filled(n, 0usize, c)?;
+        let mut grounding = filled(n, 0.0, c)?;
+        for (i, e) in graph.edges().iter().enumerate() {
+            if i % 64 == 0 {
+                c.check("forest selection")?;
+            }
+            let mut keep = false;
+            if heavy[e.u()] == e.v() || heavy[e.v()] == e.u() {
+                let mut a = e.u();
+                let mut b = e.v();
+                while roots[a] != a {
+                    c.check("forest root walk")?;
+                    roots[a] = roots[roots[a]];
+                    a = roots[a];
+                }
+                while roots[b] != b {
+                    c.check("forest root walk")?;
+                    roots[b] = roots[roots[b]];
+                    b = roots[b];
+                }
+                if a != b {
+                    roots[a] = b;
+                    keep = true;
+                }
+            }
+            selected[i] = keep;
+            if keep {
+                counts[e.u()] += 1;
+                counts[e.v()] += 1;
+            } else {
+                grounding[e.u()] += 2. * e.weight();
+                grounding[e.v()] += 2. * e.weight();
+            }
+        }
+        let mut offsets = filled(n + 1, 0usize, c)?;
+        for i in 0..n {
+            if i % 64 == 0 {
+                c.check("forest offsets")?;
+            }
+            offsets[i + 1] = offsets[i] + counts[i];
+            counts[i] = offsets[i];
+        }
+        let mut adj = filled(offsets[n], (0usize, 0.), c)?;
+        for (i, e) in graph.edges().iter().enumerate() {
+            if i % 64 == 0 {
+                c.check("forest adjacency")?;
+            }
+            if selected[i] {
+                for (v, u) in [(e.u(), e.v()), (e.v(), e.u())] {
+                    adj[counts[v]] = (u, e.weight());
+                    counts[v] += 1;
+                }
+            }
+        }
+        let mut parent = filled(n, usize::MAX, c)?;
+        let mut weight = filled(n, 0., c)?;
+        let mut order = filled(n, 0usize, c)?;
+        order.clear();
+        let mut stack = filled(n, 0usize, c)?;
+        stack.clear();
+        for start in 0..n {
+            c.check("forest traversal root")?;
+            if parent[start] != usize::MAX {
+                continue;
+            }
+            parent[start] = start;
+            stack.push(start);
+            while let Some(v) = stack.pop() {
+                c.check("forest traversal")?;
+                order.push(v);
+                for (i, &(u, w)) in adj[offsets[v]..offsets[v + 1]].iter().enumerate() {
+                    if i % 64 == 0 {
+                        c.check("forest traversal neighbors")?;
+                    }
+                    if u == parent[v] {
+                        continue;
+                    }
+                    if parent[u] != usize::MAX {
+                        return Err(Error::Fatal("forest_cycle".into()));
+                    }
+                    parent[u] = v;
+                    weight[u] = w;
+                    stack.push(u);
+                }
+            }
+        }
+        let mut pivot = filled(n, 0., c)?;
+        for (i, &v) in order.iter().rev().enumerate() {
+            if i % 64 == 0 {
+                c.check("forest pivots")?;
+            }
+            pivot[v] = grounding[v] + weight[v];
+            if parent[v] != v {
+                grounding[parent[v]] += weight[v] * (grounding[v] / pivot[v]);
+            }
+        }
+        c.check("forest publication")?;
+        Ok(Self {
+            parent,
+            weight,
+            pivot,
+            order,
+        })
+    }
     pub fn with_edges(graph: &Laplacian, selected: &[bool]) -> Self {
         let n = graph.vertex_count();
         let mut adjacency = vec![vec![]; n];

@@ -7,7 +7,7 @@ publish = false
 [workspace]
 
 [dependencies]
-cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "938b87e5a863ad333870413b61478966c56908b7", features = ["experimental-components"] }
+cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "65ea7157f0184939d3181511e9a13bb7a60cd3a7", features = ["experimental-components"] }
 
 [profile.release]
 lto = "thin"

@@ -80,7 +80,7 @@ impl Ledger {
         self.optional -= n;
     }
 }
-fn empty() -> ResultRow {
+pub(crate) fn empty() -> ResultRow {
     ResultRow {
         seconds: 0.,
         setup: 0.,

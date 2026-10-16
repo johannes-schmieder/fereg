@@ -18,7 +18,15 @@ if [[ "${STAGED_PROTOCOL:-original}" == persistent ]]; then
 fi
 "$staged_python" --version
 if [[ "$mode" == smoke ]]; then
-    cargo +1.85.1 test --locked
+    cargo +1.85.1 test --locked --release
     cargo +1.85.1 build --locked --release
 fi
-"$staged_python" run_scc.py "$mode" --binary "$root/build/release/staged-cmg-prototype" --output "$root/$mode" --protocol "${STAGED_PROTOCOL:-original}"
+if [[ "$mode" == gate ]]; then
+    "$staged_python" run_scc.py measure --binary "$root/build/release/staged-cmg-prototype" --output "$root/gate" --protocol guarded-gate
+    "$staged_python" evaluate_router.py gate "$root/gate" > "$root/gate/verdict.json"
+    "$staged_python" run_scc.py pilot --binary "$root/build/release/staged-cmg-prototype" --output "$root/pilot" --protocol router --budget-seconds 300
+else
+    extra=()
+    if [[ -n "${STAGED_BUDGET_SECONDS:-}" ]]; then extra=(--budget-seconds "$STAGED_BUDGET_SECONDS"); fi
+    "$staged_python" run_scc.py "$mode" --binary "$root/build/release/staged-cmg-prototype" --output "$root/$mode" --protocol "${STAGED_PROTOCOL:-original}" "${extra[@]}"
+fi
