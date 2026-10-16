@@ -932,3 +932,131 @@ Review also identified and fixed a preflight deadline gap: the same budget and
 isolation checks now run before every preflight and measurement invocation. A
 started invocation retains its thirty-second timeout, so exhaustion can overrun
 the internal boundary by at most one invocation; no further solve starts.
+
+
+### Independent weak-cluster coordinate witness
+
+A separate diagnostic copy of candidate `054804e0` captured one rejected Mac
+`diagonal-c1` iterate for clusters/8192/four mixed RHSs. Capture occurs only on
+the failure path and does not modify the iterate; the frozen SCC executable is
+unchanged. Independent symmetric edge-flux evaluation converts the original
+binary64 inputs exactly and uses 60- and 100-digit decimal arithmetic. Both
+precisions give residual norm `2.9990618778690667e-6`, versus the certificate's
+`2.9990618731931064e-6` and unchanged target `9.050966799187809e-7`. The residual's
+constant component and RHS sum are zero. Thus the stored iterate itself fails
+the residual criterion; certificate-evaluation error and RHS incompatibility do
+not explain this failure. This is not a coefficient forward-error bound.
+
+The failure is RHS0's challenger at iteration 21: the third failed certificate
+follows two permitted residual replacements. Later RHSs are not reached. The
+coordinate range is about 262.2 million and maximum coordinate ULP is `1.49e-8`,
+supporting investigation of solution-coordinate accuracy. It does not establish
+an unavoidable binary64 floor, identify a defective update, or show that
+compensated updates fix it. The SCC failure string matches, which reproduces the
+failure signature without establishing cross-platform identity of full iterates.
+Any later split/compensated representation must certify the actual flattened
+returned vector as well. Independent Astra review found no scientific blocker
+in this witness. No tolerance, model, repair limit or production path changes.
+
+### Persistent prototype SCC evaluation (2026-10-16)
+
+Candidate `054804e0`, pinned CMG `938b87e5`, is implemented and pushed on the
+experimental branches. [Compact evidence](persistent-discovery.json) retains all
+200 arm/cell summaries, individual measured times, complete paired-block times,
+failures, identities, accounting, instruction profiles and the coordinate witness.
+Raw evidence and the reproducible audit are retained in SCC campaign
+`/projectnb/welfgr/fereg/runs/20261016-persistent-cmg-e0f69a8d`, under `measure/`,
+`smoke/`, `profile/`, `coordinate-diagnostic/` and `analysis/`; hashes resolve
+relative to that campaign. No production integration or Mac performance claim.
+
+Smoke job **8140146** passed all eighteen Rust tests, 125 small observations,
+135 legacy replays and eighty prior fixed-share replays, with scheduler
+`failed=0, exit_status=0`. The two larger-cluster diagnostic failures were
+retained separately. Discovery job **8140234** ran on `scc-zj4` from
+13:52:14 to 14:22:16 UTC, using one numeric core in the reserved 28-core node.
+It exhausted the predeclared thirty-minute internal budget: `failed=0`,
+`exit_status=1`, wall 1802 seconds, CPU 1862.136 seconds including process and
+observer work, maximum virtual memory `327.812M` as reported by SGE. This is
+**an incomplete experiment**, not a successful discovery or qualification.
+No retry, extension, replacement or resampling was performed.
+
+The retained prefix contains **2081/2600 observations**: 200 warmups and 1881
+measured solves, plus all 200 separate preflights. Four complete balanced blocks
+and part of the fifth are available; 519 observations are missing. Every row
+matches the frozen randomized order, and every observed scientific/failure
+signature matches its preflight and repeats. All 33 failed panel observations
+are the same conservative hubs/8192 memory refusal in the three controlled-full
+arms (eleven each, including warmups), with three matching preflight refusals;
+no observed numerical failure or solver
+timeout occurred in this timed prefix. These refusals do not establish physical
+memory exhaustion. The excluded-from-timing clusters/8192 failures remain an
+unresolved reliability limitation, not a successful outcome.
+
+The audit verified 47 successful previous-binary arm/cells exactly and one
+identical structured failure; controlled/chunked full solves matched ordinary
+full scientifically in all seven successful cells. Ninety-two cheap-only cells
+matched their starter's science. All 2388 observed successful persistent RHS
+records satisfied grant continuity, reservation/refund, iteration and modeled
+memory checks. Failed-path joining has separate Rust-test/source evidence, not
+an observed failure ledger. The maximum accepted relative residual was
+`9.981490464158646e-9`. Source and both executable hashes matched after the run.
+Initial physical topology and 173 scheduler/process snapshots showed isolation,
+with maximum snapshot gap 10.49 seconds. The budget exit skipped the final
+configuration check; that missing prerequisite remains explicit.
+
+The following ratios are medians of the available complete paired cell blocks,
+with descriptive ranges; they are not confidence intervals or selection passes.
+Incomplete pairs remain recorded but do not become completed pairs; arithmetic
+means retain singleton observations and are descriptive only. Other cells
+and comparisons remain in the compact evidence.
+
+| Comparison (candidate / comparator) | Paired ratio [range] | Blocks |
+| --- | --- | ---: |
+| Grid/8100, diagonal persistent / current nonpersistent full-share policy | 0.346 [0.346, 0.347] | 5 |
+| Grid/8100, diagonal persistent+chunked / frozen previous full-share policy | 0.218 [0.218, 0.218] | 5 |
+| Grid/8100, diagonal persistent+chunked / diagonal PCG | 0.395 [0.390, 0.397] | 5 |
+| Grid/8100, diagonal persistent+chunked / ordinary full CMG | 17.028 [16.984, 17.060] | 5 |
+| Grid/4096, diagonal persistent+chunked / diagonal PCG | 0.226 [0.225, 0.227] | 4 |
+| Expander/mixed, diagonal persistent+chunked quarter share / diagonal PCG | 1.450 [1.420, 1.484] | 5 |
+| Expander/mixed, diagonal persistent+chunked full share / diagonal PCG | 2.549 [2.487, 2.630] | 5 |
+
+Persistence works mechanically and can help materially: on grid/8100 the
+retained diagonal constructor completes during RHS2 and is reused thereafter;
+chunking moves installation from incumbent iteration 1232 to 264 on that RHS.
+Forest persistence alone never finishes there, whereas chunking finishes on
+RHS4. On grid/4096, forest construction finishes on RHS3 without chunking and
+RHS2 with it. Cumulative telemetry is never summed across RHSs.
+
+Grouping dense work reduces complete controlled-full solve time to 0.296–0.437
+of the frozen previous controlled-full executable on the six dense-factor cells;
+clusters is 0.933. This includes setup and solving, not a pure factorization
+measurement. Nevertheless, chunked full remains 2.76–4.74 times ordinary full
+CMG across the seven successful cells. The default primitive control path also
+**regresses**: candidate full-controlled is 1.125–1.150 times its frozen previous
+version on the six dense-factor cells (clusters 1.022). Exact arithmetic replay
+does not excuse that slowdown. Keep the upstream change experimental until the
+default-path regression is resolved and independently measured.
+
+No policy is selected. The incomplete panel cannot pass the frozen six-block
+screen, and every new policy's observed expander/mixed overhead already exceeds
+its declared easy-case allowance (quarter share 1.30, full share 2.05). On the
+larger grid, ordinary full CMG averages about 0.093 seconds, versus 1.575 seconds
+for the combined diagonal policy and 3.992 seconds for diagonal PCG. Delayed
+construction sacrifices a large opportunity even when it improves on PCG.
+The next useful direction is a cheap, general estimate of setup versus solve
+cost that can route early to ordinary full CMG, while preserving the cheap
+solver and scientific certificates. It must avoid case-name routing fences.
+Separately, recover primitive-control performance and investigate the stored
+coordinate failure. These are further experiments, not production changes
+justified by the present partial panel.
+
+
+Independent Astra results review recomputed every retained block time, checked
+all raw-file hashes and repeat groups, and confirmed the reported ratios and
+lifecycle checks. The same qualitative findings hold in the four common complete
+blocks; this diagnostic does not replace or complete the frozen panel. Null
+block times explicitly distinguish missing/incomplete evidence from successful
+observations through their counts and retained individual times. Documentation
+references, finite JSON, artifact-size checks and `git diff --check` pass.
+Production identity remains unchanged (192 modules, 58 artifact inputs); prior
+runtime evidence and the documented installed-plugin identity blocker are reused.
