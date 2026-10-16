@@ -663,9 +663,11 @@ strengthens exact same-policy repeats. No production workaround was added.
 The same compact evidence records these facts and hashes under
 `portfolio_development.terminal_affordability`. Current runtime identity is
 `097fc6b4f67611e779d916784fe5178033efe6fffa04528e7b2dd62fc117f068`.
-The full test entrypoint, refreshed actual native bundle, eight-call
-changed-artifact witness and performance qualification remain pending; the
-stale-native gate remains intact. Public Auto is unchanged.
+The full test entrypoint now passes after a one-line refresh of the separate
+fuzz lockfile to the reviewed CMG pin. Its initial stale-lock failure remains
+recorded. The gate includes the main 300-test Python suite plus seven additional
+Python checks, both strict Clippy modes, independent Rust witnesses, FFI and ten isolated allocator audits, complexity and bridge
+checks. The native identity gate remains intact. Public Auto is unchanged.
 
 The first final-universal packaging candidate was rejected before any of its
 eight planned study calls. Independent raw-byte review found 21 personal build
@@ -674,27 +676,102 @@ original `strings` scan had incorrectly reported success. The original artifact,
 build report and unexecuted sealed plan remain rejected. The narrow reviewed fix
 uses `strip -S` before universal packaging and signing, retaining the exact
 unstripped preimages and ordinary symbols. The maintained audit now scans raw
-bytes; 24 binary-audit and 12 packaging tests plus shell syntax pass. Actual
-non-linkedit section/symbol comparison, rebuild, artifact admission and the
-unchanged eight-call study remain pending. This is a packaging defect, not a
-scientific failure or qualification result. Compact identities are recorded in
+bytes; 24 binary-audit and 12 packaging tests plus shell syntax pass. The rebuilt universal artifact passes exact non-linkedit section and ordinary
+symbol comparisons in both slices, raw-byte privacy, binary audit and ABI/load.
+This was a packaging defect, not a scientific failure or qualification result. Compact identities are recorded in
 `terminal_affordability.pre_dispatch_packaging` in the same evidence document.
 
-The current 25-page [routing explanation](solver_routing.pdf) appends a separate
-private-portfolio flowchart, frontier table, exact charged bounds and development
-evidence chart. The latest factual update changes only page 25 to record the
-failed attribution follow-up. Text and PDF content streams on pages 1–24,
-including the formulas on pages 23–24, are unchanged. Existing independent Astra
-mathematical/contract review supports the unchanged mathematics; the page-25
-update follows the independent failed-protocol raw review cited above, and the
-lead visually checked its latest rendering. The latest source has not received
-a new full Pro review. PDF SHA-256 is
-`83ce0ae4fdd5b1b9c1cb6610693e7a1f2282159fdff042f02f507aa7fea458c6`;
+The actual final universal bundle, built from clean source `3f487f214331bc9b87c379fa0a27de6347f9a8f7`,
+has SHA-256 `6eeec78a552eede98af1eb1aeb534a63bf156855aa92e32fb75d7ea925f35442`
+and 18,464,144 bytes. Its separately admitted fixed eight-call functional study
+passes all independent oracles, four exact repeat pairs, cross-worker science
+and discrete checks, and resource limits. Both weak and high-degree weak inputs
+install CMG at checkpoint 16 with one/four workers. Independent high-effort Astra
+review checked every raw output, log and binary column; review SHA-256 is
+`c5887373d627e3c701a9845c77e1f3bf1b8341b553053bfd8f227d6c52d6d9b3`.
+This observes installation on these inputs without completing native92's missing
+coverage or changing failed6. It establishes no speedup or performance qualification.
+
+The corresponding-source archive builds offline from an empty Cargo home with
+all dependency paths inside the archive, then passes universal audit and ABI/load.
+Its bytes are not asserted identical to the supplied bundle. The matching
+[public companion recipe](macos_source_build.md) adds the required Rust path
+remaps to the frozen archive's abbreviated command; an unadorned ordinary build
+is not claimed passing. Archive and supplied binary bytes remain unchanged.
+Current advisory count is zero. Fifty staged licensed fixtures pass. Twenty-one repository-only
+fixtures initially fail at checkout-path assertions or missing unshipped test
+helpers; their unchanged tests then all pass in the required repository context
+against the same plugin. Both OLS and public-scope PPML Break/rollback checks
+pass. An initial OLS Break CLI argument error occurred before native execution
+and remains recorded. Actual local `net install` succeeds and all 31 installed
+payloads match exact accepted hashes. Its admission checker stops before smoke
+because Stata lowercases three metadata basenames and writes `PLUS/stata.trk`;
+independent review confirms those are the only differences. The failed report is
+retained. A separately sealed and independently admitted smoke-only continuation
+passes selftest and independent installed OLS/PPML examples, preserving all 31
+payloads and the tracker byte-exact. It uses one Stata process, no reinstall or
+retry, and retains the original failed admission. HTTP/GitHub installation and
+publication remain pending; no new platform or routing-performance claim follows.
+Compact records are in `terminal_affordability.final_universal_functional` and
+`terminal_affordability.release_validation` in the same evidence document.
+
+The prospective SCC observer now has an explicitly plan-bound
+`qstat-pair-retry-v1` variant. At most two query pairs share one deadline bounded
+by 20 seconds and the previous successful pair start plus 75 seconds; no backoff
+or budget renewal is allowed. Every exit-zero partial response is semantically
+validated, the first valid complete pair terminates the envelope, and all failed
+attempts remain replayable. Invalid semantic evidence is terminal. Legacy plans
+and outcomes remain unchanged. Independent high-effort review and 93 focused
+checks pass. This absorbs brief transport failures while preserving strict
+reservation/process/configuration checks; persistent scheduler stalls still
+invalidate measurements, with no replacement. A bounded dispatch preflight at
+2026-10-16 01:52 UTC confirms SSH access and no new campaign directory, but owner
+`qstat` and `omp28` configuration queries each time out at ten seconds. No new
+jobs or measurements have been submitted. Two further bounded owner queries
+in login and nonlogin shells also time out; identical client resolution and
+selected SGE settings do not explain the failure. SSH remains available and the
+underlying scheduler-query cause is unproven. Local release and preparation work
+continue independently; scheduler responsiveness is required before dispatch.
+
+The current 26-page [routing explanation](solver_routing.pdf) includes a private
+portfolio flowchart, frontier table, exact direct-work/cache bounds, development
+history and the independently reviewed terminal-factor screen on page 26.
+The original 22-page mathematics is preserved; page 1 points to the amendments,
+and totals, whitespace and amendment labels reflect 26 pages. Page 25 explicitly
+labels S1 evidence; page 26 records the separate final universal eight-call
+functional pass and the full gate. Earlier failures remain visible. The lead
+visually checked the latest pages 1, 25 and 26, reusing reviewed unchanged layout.
+The latest source has not received a new full Pro review. PDF SHA-256 is
+`836bd38dc5cd2bd3dfad338bba2f104acab3d2ef6655ca102711c3fdf45c7217`;
 [editable source](solver_routing.tex) SHA-256 is
-`02d9fe4950452b27879411b49c22c4b86779f5b38b4c34ff2b254cc6c13179a7`.
-The saved root source compiles successfully through the built-in compiler. The
+`17e54dc64d0c26c932d5dac299eccfac113526bc710bf642c41d1f5620df58b8`.
+The saved source compiles successfully through the built-in compiler. The
 attribution follow-up remains FAILED at five of six calls, with no sixth call or
-retry; it establishes no performance or qualification result.
+retry; performance qualification and public activation remain pending.
+
+Separately, the prospective campaign's independent preparation role completed
+12 fixed fresh imported inputs/references: four each for A, B and untouched C.
+All headers, output positions, independent full covariance/constant/prediction
+and balanced saved-channel gauges pass; source, tool and dependency bindings
+remain unchanged. All 12 bodies are unique and disjoint from 63 prior frozen
+body hashes across eight metadata files. The fixed 120-second/import and
+600-second/panel budgets pass without retry or seed repair, with zero native
+plugin calls. C numeric content and targets remain embargoed. These are inputs
+and independent references, not complete 21-family panels or native qualification.
+The same compact evidence records their reviewed source and metadata identities
+under `scc_portfolio_preparation.fresh_import_preparation`.
+The full fresh panels now contain 63 distinct model bodies and 126 worker cells.
+All 48 categorical references and complete input/freshness checks pass. The
+original preparation remains failed: its first reference child could not import
+SciPy, before any computation or reference product. A separately authorized and
+reviewed reference-only adapter keeps the exact generated bodies, fixes the child
+environment and completes the unchanged references once. Prior and continuation
+elapsed time total 77.722 seconds under the original 14,400-second budget; no
+body regeneration, native call or C disclosure occurred. The later binder must
+retain both outcomes explicitly; the original bind is still ineligible. Compact
+identities and scope are under `scc_portfolio_preparation.fresh_panel_preparation`.
+Independent high-effort review verifies the complete safe metadata, command counts,
+source bindings and freshness without reading C numeric files or targets.
 
 Retained SCC raw evidence and sealed products remain in the campaign
 `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.

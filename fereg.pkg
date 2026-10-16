@@ -1,7 +1,7 @@
 v 3
 d fereg 0.5.0: high-dimensional fixed-effect OLS/WLS and PPML
 d Current main-branch package; universal macOS beta, Stata 18 or newer.
-d Distribution-Date: 20261014
+d Distribution-Date: 20261016
 f stata/fereg.ado
 f stata/fereg_run.ado
 f stata/_fereg_estimate_public.ado

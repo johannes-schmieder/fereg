@@ -41,7 +41,7 @@ feppml price mpg, absorb(rep78) vce(robust)
 ```
 
 For an offline installation, download `fereg-0.5.0.zip` from the
-[beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.1),
+[beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.2),
 extract it, and use the absolute path of the extracted directory containing
 `fereg.pkg`:
 
@@ -74,9 +74,13 @@ Choose the commands for your platform:
 
 | Platform | Additional build tools | Build and stage |
 | --- | --- | --- |
-| macOS | Xcode Command Line Tools (`xcode-select --install`) | `bash scripts/build_macos.sh` then `python3 scripts/stage_local_install.py --platform macos` |
+| macOS | Xcode Command Line Tools (`xcode-select --install`) | Follow the [Mac source build recipe](macos_source_build.md), then `python3 scripts/stage_local_install.py --platform macos` |
 | Linux x86-64 | GCC or Clang, GNU binutils and development libc headers | `bash scripts/build_linux.sh` then `python3 scripts/stage_local_install.py --platform linux` |
 | Windows x86-64 | Visual Studio 2022 Build Tools with Desktop development with C++, Windows SDK, and Python on PATH | In PowerShell: `powershell -File scripts/build_windows.ps1` then `python scripts/stage_local_install.py --platform windows` |
+
+Mac builds require the explicit path-remap setup in that recipe to pass the
+raw-byte privacy audit; its final note gives the identity settings for a current
+Git checkout. The versioned archive instructions retain its exact source identity.
 
 Build scripts audit the native binary and run load/ABI checks. The staging
 command verifies the plugin checksum and prints a `net install` command with

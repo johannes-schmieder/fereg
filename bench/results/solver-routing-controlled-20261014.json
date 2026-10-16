@@ -12330,7 +12330,25 @@
           "formatting": true,
           "complexity_ratchet": true
         },
-        "full_run_tests": "Pending refreshed actual native bundle; stale-artifact gate remains intact.",
+        "full_run_tests": {
+          "status": "passed",
+          "python_tests": 307,
+          "rust_test_executions_passed": 1927,
+          "rust_process_invocations": 86,
+          "ignored_rust_tests": 14,
+          "includes_isolated_allocator_audits": 10,
+          "strict_clippy_both_modes": true,
+          "complexity_ratchet": true,
+          "bridge_and_numeric_guards": true,
+          "linux_ELF_audit": "Expected skip on Mac",
+          "stdout_sha256": "c1f9455bca0b5c3daacdf1b16dc5623f14f67262a73e360ecf807b87ddf5ac5e",
+          "stderr_sha256": "b7915cfeff112357ab3374aab3129c6c402eac0a3a65c7c34af5fc1613437d7d",
+          "initial_failure": "Initial entrypoint passed300 Python tests then stopped at stale separate fuzz/Cargo.lock CMG pin. One-line lock refresh to reviewed3422 pin passed focused locked check; original failed logs retained. Production192 modules/58 artifact inputs unchanged.",
+          "initial_stdout_sha256": "0415d668a471bf812800f4ba981852ca90728bc16337f3ffeb41f9091cee41b9",
+          "initial_stderr_sha256": "48cb824151100bae3d4cb15074d67b3d186741270ecd01fd7a48ceb211ccf2cd",
+          "python_main_tooling_tests": 300,
+          "python_additional_tests": 7
+        },
         "release_tooling_focused_tests": 25
       },
       "failures_retained": {
@@ -12397,20 +12415,279 @@
           "status": "passed",
           "scope": "Three tracked build/audit/test changes only; actual rebuilt artifact and task wrapper admission remain separate."
         },
-        "production_identity_vs_source": "PASS:192 runtime modules and58 artifact inputs unchanged against07e1255b1df9cfec3365343e7453445358a30237."
+        "production_identity_vs_source": "PASS:192 runtime modules and58 artifact inputs unchanged against07e1255b1df9cfec3365343e7453445358a30237.",
+        "independent_rejection_sha256": "5f580ce02b0cf9d3f9141af42fef6407343626df36029dd18ee954e885fa0018"
+      },
+      "final_universal_functional": {
+        "status": "passed_functional_only",
+        "source_commit": "3f487f214331bc9b87c379fa0a27de6347f9a8f7",
+        "runtime_sha256": "097fc6b4f67611e779d916784fe5178033efe6fffa04528e7b2dd62fc117f068",
+        "plugin_sha256": "6eeec78a552eede98af1eb1aeb534a63bf156855aa92e32fb75d7ea925f35442",
+        "plugin_bytes": 18464144,
+        "architectures": [
+          "x86_64",
+          "arm64"
+        ],
+        "licensed_host": "Apple Silicon macOS",
+        "build_record_sha256": "3eb0f47b56b467e6e027b31967adae8d6d52885ba86953408608ade1a9cf7ef2",
+        "build_wrapper_sha256": "ce5f58dead8fe941f6c24632ce6502fb331d589af4e0a48341d895a1dd70d02a",
+        "strip_verifier_sha256": "6efdd9045035637fcb8260fc8abcea8068b942a30a16a5f036cdafd2be19dc5a",
+        "strip_proof": {
+          "runtime_sections_per_slice": 16,
+          "unchanged_non_debug_symbols": {
+            "x86_64": 11895,
+            "arm64": 11793
+          },
+          "removed_debug_symbols": {
+            "x86_64": 2456,
+            "arm64": 2462
+          },
+          "raw_personal_path_scan": true,
+          "separate_binary_audit_and_ABI": true,
+          "limitation": "Section/symbol proof does not independently establish LINKEDIT relocation/export-trie semantics."
+        },
+        "fixed_study": {
+          "calls": 8,
+          "exact_repeat_pairs": 4,
+          "workers": [
+            1,
+            4
+          ],
+          "families": [
+            "weak",
+            "high-degree-weak"
+          ],
+          "call_limit_seconds": 120,
+          "inclusive_budget_seconds": 1200,
+          "actual_inclusive_seconds": 11.175784208928235,
+          "retries": 0,
+          "old_rejected_study_calls": 0,
+          "uses_existing_declared_prepared_inputs": true,
+          "C_access": false,
+          "all_independent_oracles": true,
+          "all_resource_checks": true,
+          "cross_worker_science_and_discrete": true,
+          "both_families_and_workers_installed_CMG_at": 16,
+          "weak_setup_work": 91982952,
+          "weak_setup_limit": 168968192,
+          "high_degree_setup_work": 795913944,
+          "high_degree_setup_limit": 977928192,
+          "max_oracle_row_output_error": {
+            "weak": 3.997e-13,
+            "high-degree-weak": 2.071e-12
+          }
+        },
+        "plan_sha256": "55a4245cdad9a1985da2a413468f79db2578538d554004900dc5d0e53ad66c6b",
+        "admission_sha256": "e0773fc58344b3fa9e5859f9ad9724c4cedc9533a2c03a444f1a5fc3a5310ba3",
+        "records_sha256": "14d0ad21508c42130e322d0cbd95e07dbd3cd3d1bd8c1b4b5de68a8bec4dc13b",
+        "independent_raw_review_sha256": "c5887373d627e3c701a9845c77e1f3bf1b8341b553053bfd8f227d6c52d6d9b3",
+        "independent_review": {
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high",
+          "status": "passed",
+          "scope": "Actual artifact/provenance, every raw output/log/column, eight oracle checks, exact repeats, cross-worker comparisons and original resource limits."
+        },
+        "interpretation": "Functional evidence only. Native92 remains incomplete route coverage; failed6 and rejected unexecuted artifact remain unchanged. Installation here is observed, not guaranteed generally. No speed, isolation, qualification, default activation or promotion claim."
+      },
+      "release_validation": {
+        "status": "local_checks_passed_publication_pending",
+        "corresponding_source_sha256": "ed6b2ecc1a8eb471a77870598963c30d77bdcdcee412fc08034a7426a7f361da",
+        "native_archive_sha256": "c97be548a8b2abc8ca6861d175405c4dfa39d59beac31b09c23ad74ce10428a5",
+        "advisory_count": 0,
+        "dependency_audit_sha256": "7884ed9b5edb8402f6bc131b959b81409e847353017b51b440680d30fb632d2f",
+        "offline_source_build": {
+          "status": "passed",
+          "empty_cargo_home": true,
+          "all_dependencies_inside_source_archive": true,
+          "universal_audit_and_ABI": true,
+          "source_manifest_unchanged": true,
+          "result_sha256": "e9f952f8c120f788026b33622c3257a2ad7bc59911ac465a829b2773d529a793",
+          "plugin_sha256": "38fa61a9ce310f30c59f03153b4e3b3677683480cfe7744fbef104397fe4c9d0",
+          "bit_reproducibility_claim": false
+        },
+        "licensed_fixtures": {
+          "distinct": 71,
+          "staged_passes": 50,
+          "repository_context_passes": 21,
+          "initial_staged_context_failures": 21,
+          "cause": "18 checkout-path assertions and3 unavailable unshipped test-helper commands, before their scientific checks; unchanged fixtures pass in required repository context. Initial failed run remains failed.",
+          "staged_summary_sha256": "ad3cee46ea3111ce2e63409c25fbaa49b668dcc7d0d35efdb31c085f91ec0260",
+          "repository_summary_sha256": "3fc0d2638a50271cbb6421c073c5c359ab1e90ea48648ea5d31172514a4bb37d"
+        },
+        "break_checks": {
+          "OLS": "passed",
+          "PPML_public_scope": "passed",
+          "ols_log_sha256": "333a6ad1b7a72ef326613576c7b3dfe0a347ea3cf31b866fcd50605b6b672cf6",
+          "ppml_log_sha256": "f5aada3ea8df93ebc394b615bb07031d17c06bbe03831bcbf2f1ade2b1a2f3fb",
+          "initial_invocation_error": "OLS --public-scope CLI rejected before native execution; corrected scope only, original error retained."
+        },
+        "remaining": [
+          "versioned HTTP and github installation",
+          "publication and checked main push"
+        ],
+        "qualification_claim": false,
+        "public_build_recipe": {
+          "status": "documented_checked_companion",
+          "sha256": "f56863797353ffc3223337024aa0a1c253a9992325932ffeefc0da955f2217bc",
+          "asset": "fereg-0.5.0-build-instructions.md",
+          "archive_unchanged": true,
+          "requirement": "The frozen archive abbreviated command omits Rust path remaps needed by the maintained raw-byte path audit. The companion supplies the actual successful offline recipe; plain unadorned build command is not claimed passing.",
+          "checks": "Exact companion copy, Bash syntax and local links pass; independent gpt-6-astra high technical recipe review GO after qualified→validated wording correction and fail-fast shell hardening. No fresh build or byte-reproducibility claim."
+        },
+        "independent_milestone_review": {
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high",
+          "status": "passed",
+          "scope": "Actual universal/source/native/PDF/TeX/recipe hashes; raw full-suite and licensed summaries; independently reviewed eight-call report; functional/unpublished claims and preserved failures. The Python count precision correction records300 main plus7 additional tests."
+        },
+        "installation_checks": {
+          "original_local_install": {
+            "status": "net_install_passed_admission_failed_before_smoke",
+            "payloads_exact_under_unique_casefold": 31,
+            "extras": "Stata tracking file PLUS/stata.trk only; three expected metadata basenames lowercased by installer.",
+            "native_smoke_calls": 0,
+            "failed_report_sha256": "0de94272bc2161405ef9df6cc47306f61c827af87effe3dff18b2c1660d186f5",
+            "source_sha256": "c3aebd63bbbcb505a04a85b601f065d494634feb414caad6e12612d5bea2b20c",
+            "independent_diagnosis": "gpt-6-astra high independently verifies all31 hashes/sizes and sole tracking extra. Original report/plan/claim/source preserved; separately reviewed smoke-only continuation pending."
+          },
+          "corrective_smoke": {
+            "status": "passed_corrective_smoke_only_original_admission_failed",
+            "source_sha256": "5b6492847c6936dd760202908eaae59e581a9c204b052c3f48c4e9e165b9cd1d",
+            "prospective_checker_sha256": "7e9f43069acc9597fd97d698b4a4edf2f3139315e9ae06391c2e2bb33eabcca3",
+            "plan_sha256": "f3be8e17bb502cb9a6731f3cf8e5713c85050bc7545934efec5c48dc23f23baf",
+            "independent_admission_sha256": "a13e7d3e71c35ed2605320bab46d933cb47eaf44a7e98582dd60f0c6fad8f40b",
+            "report_sha256": "adde977c9f48c1ac243dd8a4f30675320a6f6fac9e76277b2b7ed2b180036a12",
+            "elapsed_seconds": 1.4957787089515477,
+            "stata_processes": 1,
+            "net_install_processes": 0,
+            "retries": 0,
+            "payloads_exact_before_after": 31,
+            "process_returncode": 0,
+            "original_failed_evidence_unchanged": true,
+            "independent_source_and_plan_review": "gpt-6-astra high source/plan GO and final raw-result PASS: exact83bindings/31payloads/tracker, native selftest, unchanged OLS/PPML fixtures and independent witnesses/failure preservation; originalfailedrecords remain failed."
+          }
+        },
+        "publication_readiness": {
+          "status": "local_functional_prerequisites_passed_unpublished",
+          "assets": 47,
+          "checksum_entries": 46,
+          "flat_native_archive_assets": 41,
+          "sha256sums_sha256": "f06854afb46f5ea23ef62f06dbdc8458e255d7af4ebf4302f9ef06b19fcc654b",
+          "release_body_sha256": "ae1c25a6ddf04a6d1e2889c6e75dd9dad99c05f9ef4b28c84b5dbd945f0a52ca",
+          "independent_review": "gpt-6-astra high GO for exact copies, checksums and honest source/distribution/qualification claims; smoke completion and checked localP remain prerequisites.",
+          "remote_preflight": "beta.2 release/tag absent, main still377226f85f1bc61002d0b4c1eb0716af91c3c54c; no publication yet."
+        }
       }
     },
     "pdf_amendment": {
-      "pages": 25,
+      "pages": 26,
       "new_pages": [
         23,
         24,
-        25
+        25,
+        26
       ],
-      "source_sha256": "02d9fe4950452b27879411b49c22c4b86779f5b38b4c34ff2b254cc6c13179a7",
-      "pdf_sha256": "83ce0ae4fdd5b1b9c1cb6610693e7a1f2282159fdff042f02f507aa7fea458c6",
-      "review": "Existing independent high-effort Astra mathematical/contract review supports the unchanged mathematics. The page25 factual update follows independent failed-protocol raw review 1d59b53ffef6ec12a7a3edb96f4d78d41bffea92c9849bc181c4895832e63e4e; lead visually inspected the latest rendered page25. PDF text and content streams on pages1\u201324, including formulas/pages23\u201324, remain unchanged. The latest source has not received a new full Pro review.",
-      "status": "Private portfolio development evidence; attribution remains FAILED at five of six calls, with no sixth call or retry. Performance and qualification remain pending."
+      "source_sha256": "17e54dc64d0c26c932d5dac299eccfac113526bc710bf642c41d1f5620df58b8",
+      "pdf_sha256": "836bd38dc5cd2bd3dfad338bba2f104acab3d2ef6655ca102711c3fdf45c7217",
+      "review": "Independent high-effort Astra math/source review clears page26 factor-only bounds and flow, alongside unchanged reviewed pages23/24. The final factual update uses independently reviewed eight-call raw evidence c5887373d627e3c701a9845c77e1f3bf1b8341b553053bfd8f227d6c52d6d9b3 and the passing full entrypoint. Lead inspected latest pages1/25/26; original pages2-22 text/math are unchanged after footer/whitespace normalization. The saved source compiles through the desktop compiler. No new full Pro review of amendments is claimed.",
+      "status": "Private portfolio functional evidence passes; prior attribution remains FAILED5/6 and native92 incomplete. Performance, public activation and qualification remain pending."
+    }
+  },
+  "scc_portfolio_preparation": {
+    "status": "source_reviewed_not_dispatched",
+    "policy": "qstat-pair-retry-v1",
+    "scope": "Prospective explicitly plan-bound schema2 variant only; original DESIGN/schema1/default behavior and all old outcomes unchanged.",
+    "query_pair_attempts_max": 2,
+    "pair_budget_seconds": 20,
+    "per_command_cap_seconds": 10,
+    "successful_start_gap_max_seconds": 75,
+    "deadline": "min(pair_start+20s, previous successful pair start+75s), without renewal/backoff. Every exit-zero partial response is semantically checked; first valid complete pair terminates. Invalid semantic evidence is terminal.",
+    "retention": "All attempts, partial output, times and deadlines retained and independently replayed. Persistent scheduler stalls invalidate measurement; no replacement.",
+    "focused_tests_passed": 93,
+    "focused_log_sha256": "6ca550e62d7de019f1da96ef27ac3fe7b8a387dadb44a194365d62537d8411fe",
+    "independent_review": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high",
+      "status": "passed"
+    },
+    "dispatch_preflight": {
+      "time_utc": "2026-10-16T01:52:42.422473+00:00",
+      "SSH_host": "scc1",
+      "new_campaign_exists": false,
+      "owner_qstat": "timeout10s",
+      "omp28_qconf": "timeout10s",
+      "quota": "available",
+      "capture_sha256": "ac4ad07cce78cefb86e1b5c84cb5d3805881e121ff65b23a6bef4218c30697c4",
+      "interpretation": "No new jobs submitted. SSH availability is distinct from scheduler responsiveness.",
+      "follow_up_client_diagnosis": {
+        "capture_sha256": "58df315e9b703d83cb0b81eeb885b69940d7dc704044d6be4023b6b67dbda174",
+        "time_utc": "2026-10-16T02:12:55.744Z–02:13:18.211Z",
+        "queries": 2,
+        "per_query_cap_seconds": 10,
+        "result": "Login and nonlogin shells resolve the same qstat/qconf clients and SGE_ROOT; client help succeeds, both owner qstat calls time out with empty outputs. No observed client/module environment difference explains the blocker; SSH works, cause unproven.",
+        "new_jobs_submitted": 0
+      }
+    },
+    "native_measurement_calls": 0,
+    "shortlist_accepted": false,
+    "fresh_import_preparation": {
+      "status": "passed_inputs_only",
+      "imports": 12,
+      "per_panel": 4,
+      "seeds": {
+        "A": 2026101601,
+        "B": 2026101602,
+        "C": 2026101603
+      },
+      "max_serialized_elements": 14400,
+      "prior_frozen_body_hashes": 63,
+      "prior_metadata_files": 8,
+      "all_bodies_unique_and_disjoint": true,
+      "panel_budget_seconds": 600,
+      "per_import_budget_seconds": 120,
+      "native_plugin_calls": 0,
+      "retries": 0,
+      "C_numeric_embargo_preserved": true,
+      "driver_sha256": "0deb4cccf5fd9acf7753bdf548c02fbf0d5f678e00586bcac55b1db2f1190893",
+      "preparation_wrapper_sha256": "11d968daf3fa64a65310d6cab1172b5b202c01b984020bfce16c8bc746040a57",
+      "preparation_metadata_sha256": "911532ae32126065451dd7da75c8ea5c8150edceaac03af7d50bb363cc73e15b",
+      "compile_record_sha256": "df22cd62fc2a3c6dbbdd1e4af7d9b2b1c3b72aee42b63b9744de9d99a419f433",
+      "independent_source_math_review": "gpt-6-astra high GO before compile/generation; provenance repair compile retains original evidence.",
+      "checks": "Actual header/output registry, independent SVD full HC1 and normalized constant, predictions and balanced saved-channel gauges; source/tool/dependency before-after guards.",
+      "remaining": "Complete fresh21-family A/B/C panels, reference/ready-wrapper construction, source/setup and native science admission; no timing, frozen campaign or shortlist."
+    },
+    "fresh_panel_preparation": {
+      "status": "passed_reference_completion_original_preparation_failed",
+      "panels": 3,
+      "families_per_panel": 21,
+      "worker_cells": 126,
+      "unique_fresh_bodies": 63,
+      "categorical_reference_computations": 48,
+      "reference_JSON_files": 48,
+      "reference_NPZ_files": 48,
+      "original_elapsed_seconds": 26.704950875,
+      "completion_elapsed_seconds": 51.016814875,
+      "cumulative_elapsed_seconds": 77.72176575,
+      "aggregate_limit_seconds": 14400,
+      "reference_limit_seconds": 120,
+      "shared_validation_seconds": 8.993134625,
+      "shared_validation_limit_seconds": 600,
+      "native_plugin_calls": 0,
+      "SCC_calls": 0,
+      "regenerated_bodies": 0,
+      "reference_computation_retries": 0,
+      "C_numeric_embargo_preserved": true,
+      "original_source_sha256": "be1df9d792a1a1d51899fa961a620eeccef80c52de9f8b17ee0719fc22d2d6a6",
+      "original_failure_sha256": "4ce3bc300c83aaebe30fef2e03f1a550a2bbea1a77847088fe6b6ac45effb3f1",
+      "original_failure_cause": "First reference process lacked SciPy because mutable sys.path was copied to childPYTHONPATH. It failed before numerical computation, leaving zero reference products. All actual generated bodies and failed evidence retained unchanged.",
+      "reference_completion_source_sha256": "d88ddb85c3f4c3ca1372720bc9fda3e4913ec0606a37b911da7873abd6a148e4",
+      "completion_sha256": "5880c45abfa8a156b69122cd186816856eb0ed3b49d27d0cb59cd93d84352f84",
+      "claim_sha256": "ef5e8e5920e18c6160662e9d8adba660a0efb374f2082fbbcda040b88a6e08d0",
+      "generator_reuse_descriptor_sha256": "260e3f1488d07dbcbe7d94cdf0fff69098395b4f8417daaf1fd33483b10744e8",
+      "generator_scope": "Exact immutable prior4bf8 generator reused after independent source-closure review; oldCMGeb3/oldlock and no complete prebuild inventory disclosed. It is not labeled current-CMG-built and performs no estimation.",
+      "source_math_review": "gpt-6-astra high GO before both stages; safe-metadata raw milestone review PASS after completion, verifying48commands/cumulativebudgets/allsource-provenancebindings/bodyhash disjointness without reading C numerics.",
+      "binding_rule": "Old bind remains ineligible. Later binding must explicitly consume validated_inputs() and retain original failure and passed continuation references.",
+      "remaining": "Checked clean sourceP, actual Linux artifact/source/resource/sampling admissions, wrapper review and SCC availability; no freeze, native science, timing or shortlist."
     }
   }
 }
