@@ -1206,3 +1206,75 @@ unchanged merely because its boundaries agree. The identical frozen gate is
 repeated once on this changed artifact. If it fails, this prototype stops with
 its evidence retained and no selector timing panel; there is no further repair
 or sampling extension in this experiment.
+
+
+### Probe-and-commit result: built, constructor prerequisite failed
+
+Implementation `de02ee0b` and final pin `4926a356` are retained on
+`codex/staged-cmg-prototype`; production inputs remain identical to `55fd4ef7`.
+The final executable uses upstream CMG `73e2e43d046250e00319c45863ca609808e52c99`.
+[Compact evidence](probe-commit-discovery.json) contains all three constructor
+attempts, complete paired block costs, scientific signatures, accounting,
+isolation summaries, instruction attribution and raw-file hashes. The retained
+campaign is `/projectnb/welfgr/fereg/runs/20261016-probe-commit-55fd4ef7`:
+first gate under `gate/measure`, second under `candidate/gate`, final under
+`candidate-fast/gate`, with smoke/profile directories and distinct `logs/`.
+Each source directory has a frozen manifest; source archives are retained.
+Local temporary captures and build outputs are removed after documentation.
+
+The final smoke, job 8145116, passed all 24 Rust tests, 25 small solves,
+135 historical solver replays and 80 historical protected-construction replays.
+All 245 stored outcomes, including the five weak-cluster diagnostics, exactly
+matched the preceding candidate's scientific/control signatures. Its scheduler
+accounting has failed=0 and exit_status=0. Weak-cluster/8192 remains a real
+failure for every arm. The new selector stops at iteration 47 after exhausting
+its two allowed residual replacements; the recorded true residual is
+2.999721e-6 against a 9.050967e-7 target. A third residual replacement is refused;
+there is no tolerance relaxation or accepted result for this input.
+
+Final gate job 8145135 completed all ten preflights and 130 observations on
+`scc-wo4`, using one numerical core with 28 physical cores reserved and verified
+isolated. Initial/final configuration and scheduler/process observations passed.
+Every successful within-arm repeat and ordinary/guarded scientific comparison
+was exact, with maximum accepted relative residual 9.496448e-9. The hub cell
+retained thirteen measured/warmup memory refusals plus one preflight refusal,
+with required modeled storage 1236077155 bytes versus a 1073741824-byte limit.
+This is requested-storage admission, not a claim of observed resident memory.
+
+| Final gate cell | Guarded / ordinary setup | Guarded / ordinary complete solve |
+| --- | ---: | ---: |
+| Expander/4096/mixed4 | 2.057 | 1.568 |
+| Fringe/4096/mixed4 | 2.087 | 1.614 |
+| Clusters/4096/cut1 | 1.843 | 1.247 |
+| Grid/8100/mixed4 | 2.092 | 1.579 |
+
+Ratios are medians of six paired block geometric means, not confidence
+intervals. All four setup comparisons fail the predeclared max(50%,1 ms)
+allowance. Final gate accounting reports failed=0 and exit_status=1: the
+observation runner completed, then the gate reducer rejected the prerequisite.
+The `set -e` launcher stopped there. No selector pilot or 910-observation panel
+ran, and no automatic policy is selected. All three failed attempts remain
+recorded; different artifacts and allocations are not pooled into a passing
+comparison. The final repair did not demonstrate a passing constructor, and
+these data do not establish an old/new repair speedup.
+
+The architecture is implemented and covered by functional witnesses: structural
+starter choice, preserved cheap recurrence on memory refusal, bounded probes,
+one in-place CMG commitment, shared iteration/repair caps and later-RHS reuse.
+Its broad performance remains unmeasured because the required constructor is
+still too expensive. That blocks a claim that this selector is a workable
+production replacement; it does not establish that early commitment itself is
+ineffective. A future experiment must address construction kernel overhead
+without losing the required cancellation/memory contracts, and separately solve
+the weak-cluster returned-vector accuracy problem. This bounded experiment ends
+here rather than extending either thresholds or sampling.
+
+Local validation passed 24 prototype Rust tests, 14 harness tests, strict
+Clippy and formatting. Upstream release suites passed 172 experimental and
+118 default tests, including exact callback/error/counter comparisons for the
+accounting fast path. The repository entrypoint ran 243 Python tests (230 passed,
+13 skipped), then hit the previously documented installed-plugin/source identity
+mismatch; its later runtime/ABI checks did not run. Production identity remains
+unchanged (192 runtime modules, 58 artifact inputs). No Mac performance or
+end-to-end regression-command claim follows from this serial prepared-Schur
+SCC experiment.
