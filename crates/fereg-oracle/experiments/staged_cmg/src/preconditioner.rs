@@ -7,6 +7,9 @@ pub struct Full {
     workspace: CmgWorkspace,
 }
 impl Full {
+    pub fn from_parts(pre: CmgPreconditioner, workspace: CmgWorkspace) -> Self {
+        Self { pre, workspace }
+    }
     pub fn new(graph: &Laplacian) -> Self {
         let pre = CmgPreconditioner::build(graph, CmgOptions::default()).unwrap();
         let workspace = pre.workspace();

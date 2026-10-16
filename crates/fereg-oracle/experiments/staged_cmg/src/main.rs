@@ -1,6 +1,9 @@
+mod builder;
 mod local;
 mod preconditioner;
 mod problem;
+mod protected;
+mod recurrence;
 mod solve;
 #[cfg(test)]
 mod tests;
@@ -9,17 +12,20 @@ fn main() {
     let args: Vec<_> = std::env::args().collect();
     assert!(
         (5..=6).contains(&args.len()),
-        "usage: staged-cmg-prototype CASE FIRMS RHS_COUNT ARM [cut|random]"
+        "usage: staged-cmg-prototype CASE FIRMS RHS_COUNT ARM [cut|random|rev]"
     );
     let p = problem::generate(&args[1], args[2].parse().unwrap());
     let count: usize = args[3].parse().unwrap();
     let pattern = args.get(5).map_or("cut", String::as_str);
-    assert!(["cut", "random"].contains(&pattern));
-    let rhs = if pattern == "random" {
+    assert!(["cut", "random", "rev"].contains(&pattern));
+    let mut rhs = if pattern == "random" {
         p.rhs(count + 1).into_iter().skip(1).collect()
     } else {
         p.rhs(count)
     };
+    if pattern == "rev" {
+        rhs.reverse();
+    }
     match solve::run(&p, &rhs, &args[4]) {
         Ok(r) => println!(
             concat!(

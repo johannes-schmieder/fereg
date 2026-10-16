@@ -75,6 +75,25 @@ class RunnerTests(unittest.TestCase):
             self.assertIsNone(next(r for r in cell if r['arm'] == 'forest')['median_ratio'])
             self.assertIsNone(next(r for r in cell if r['arm'] == 'shallow')['median_ratio'])
 
+    def test_protected_protocol_completeness_and_timing_free_signature(self):
+        self.assertEqual(len(runner.PROTECTED_CELLS)*len(runner.PROTECTED_ARMS)*13,3718)
+        self.assertEqual(len(set(runner.PROTECTED_CELLS)),22)
+        a=dict(status='ok',digest='abc',iterations=3,upgrades=0,certificates=2,
+               relative_residual=1e-9,graph_builds=0,coarse_n=0,tail_levels=0,
+               decisions=[dict(incumbent_work=4,optional_work=1,build_active_seconds=.1)])
+        b={**a,'decisions':[dict(incumbent_work=4,optional_work=1,build_active_seconds=.9)]}
+        self.assertEqual(runner.signature(a),runner.signature(b))
+        b['decisions'][0]['optional_work']=2
+        self.assertNotEqual(runner.signature(a),runner.signature(b))
+
+    def test_legacy_reference_has_all_frozen_cells(self):
+        ref=json.loads(Path(runner.__file__).with_name('discovery.json').read_text())['discovery']['results']
+        self.assertEqual(len(ref),120)
+        keys={(r['case'],r['rhs'],r['rhs_kind'],r['arm']) for r in ref}
+        for case,n,rhs,kind in runner.ORIGINAL_CELLS:
+            for arm in runner.ARMS:
+                self.assertIn((case,rhs,kind,arm),keys)
+
 
 if __name__ == '__main__':
     unittest.main()

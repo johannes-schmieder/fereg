@@ -546,3 +546,112 @@ regression workload. Dense sketching and mixed precision remain lower-priority
 challengers until profiles justify their cost and strict numerical witnesses
 qualify them; [sketch-preconditioning stability](https://arxiv.org/abs/2302.07202)
 is a particular reason not to equate an iteration reduction with reliability.
+
+## Protected-incumbent prototype and frozen second discovery
+
+Claude Opus 5.5 Max read `f9157e09` and CMG `eb3f2bc1` and supplied the
+file-level implementation plan in the [consultation](https://claude.ai/chat/699fabc6-ba7f-46ba-9917-11e57c430570).
+The lead implemented it, with independent Astra extra-high API, mathematical
+and architectural reviews. This remains a standalone experiment. The old eight
+arms retain their original solver. The dependency revision and CMG numerical
+options are unchanged; `experimental-components` exposes the controlled APIs.
+
+Four new arms are `diagonal-q14`, `diagonal-q1`, `forest-q14` and `forest-q1`.
+They retain the complete cheap PCG recurrence, its target, two-repair limit and
+certificate cadence. Every eight cheap iterations, a scoped constructor gets
+prepaid work and runs until a deterministic frontier; the main thread waits.
+There is no concurrent numerical computation. A complete CMG hierarchy and
+workspace create a separate PCG challenger, initialized from a copy of the
+current cheap iterate and a recomputed original-operator residual. Later RHSs
+start the challenger at zero and reuse the hierarchy. Cheap certification drains
+and joins an incomplete constructor, discarding its suffix; a later RHS may
+retry. All spent work and the construction cap remain cumulative across RHSs.
+No partial hierarchy is usable. A winner must pass the same finite `1e-8`
+certificate, including a second certificate after final centering.
+
+The combined cheap/challenger cap is 16000 iterations **per RHS**. Certification
+of the last permitted iterate is allowed; exhaustion remains failure. Builder
+and challenger numerical errors remain arm failures even if the cheap track
+would otherwise succeed. Memory refusal disables optional work for the batch.
+The 1 GiB limit models requested storage, jointly covering input/RHS banks,
+all outputs and telemetry, both recurrences, forest construction transients,
+raw clique tuples, graph, private CMG construction, final workspace, an 8 MiB
+builder stack and fixed bookkeeping allowance. It excludes allocator/OS
+metadata and is not an RSS guarantee. Baseline memory failure fails the arm;
+optional admission is checked before the builder stack is allocated.
+
+The ledger enforces `optional_issued <= incumbent_work / denominator`, with
+`denominator` 4 or 1 and no additive grant. Credits come only from performed
+cheap recurrence work; future RHS counts and forecasted convergence earn none.
+Grants reserve work before execution and are refunded only for the unused
+remainder after terminal acknowledgement and join. Snapshotting, initialization,
+certificates, failed/abandoned construction and challenger iterations are charged.
+CMG's primitive-work gates are augmented with 32 units of callback bookkeeping
+per boundary. The wrapper's fixed tariff is in `recurrence.rs`: incidence
+matvec `16*cells + 8*workers + 2*n`, projection `8*n + 4*components`, diagonal
+apply `8*n`, forest apply `24*n`, plus explicit vector/reduction allowances.
+Challenger initialization/iterations prepay conservative complete-operation
+bounds, including CMG's queried scalar-cycle bound. One whole scalar cycle
+is indivisible. An epoch costs 256 nominal control units; each constructor
+costs 4096 nominal launch/cleanup units. Construction has a cumulative `10^12`
+unit cap. These fixed accounting units are **not calibrated time predictions**.
+The same-machine result/decision trace is deterministic. Timing never routes.
+
+This ledger is a spending envelope, not a completion or wall-time guarantee.
+Actual allocator/deallocator, page-fault, thread startup, synchronization and
+cleanup latency has no tariff-derived bound; all contributes to elapsed batch
+time. The original incidence preparation/input generation remains outside timing.
+CLI JSON serialization is outside the batch timer for every arm, as before;
+internal decision construction, solve output storage and joining are inside.
+The controlled full-build arm `full-controlled` isolates builder overhead from
+scheduling effects and must reproduce ordinary full-CMG scientific signatures.
+
+The second discovery is frozen before SCC timings:
+
+- Thirteen arms: the original eight, the four shares and `full-controlled`.
+- Twenty-two cells: the original fifteen at 4096 firms; grid and clusters with
+  four RHSs at 8192; hubs with one random RHS at 8192; a disconnected interleaved
+  expander/grid mosaic at 8192 with cut and four mixed RHSs; and reversed mixed
+  RHS order for expander and fringe at 4096. The smaller extension deliberately
+  keeps this first controller discovery bounded; it does not test broad scaling.
+- Seed 20261017; one complete warmup and six randomized balanced forward/reverse
+  blocks per cell. Exactly **3718 observations**: 286 warmups and 3432 measured.
+- Thirty-second per-batch timeout, thirty-minute internal campaign budget,
+  forty-five-minute scheduler limit. No replacement sampling or rescue panel.
+  Failures, cap exhaustion and timeouts remain observations. No scientific
+  failure is relabeled as host noise. Missing output is incomplete evidence.
+- One isolated 28-physical-core SCC node, `omp28`, all 28 slots reserved, both
+  solver and parked builder pinned to one physical core. Verify configuration,
+  live allocation and competing compute before/during/after the panel.
+- Smoke first: thirteen Rust tests, 65 small arm/case observations, and 135 Linux
+  legacy replays (120 original-arm signatures plus 15 full-controlled comparisons).
+  Require `qacct failed=0`, `exit_status=0` and `STAGED_CMG_SMOKE_PASS`.
+- Discovery acceptance requires accounting success, complete observations,
+  `STAGED_CMG_DISCOVERY_COMPLETE`, exact repeated scientific/control signatures,
+  finite certificates and valid isolation. Scientific failures may be retained
+  in a completed panel but disqualify the affected candidate.
+- Report six paired block ratios against cheap-only, full and old-trigger arms,
+  plus setup, completion/refusal/abandonment, winners and tariff expenditure.
+  The descriptive screen requires zero scientific failures/timeouts, easy false-
+  upgrade cells within `1 + share + 0.05` of their cheap starter, and grid/cluster
+  time below half the cheap starter. This is a discovery screen, not a release
+  gate. No finalist is promoted without untouched confirmation; no Mac claim
+  follows from these Linux measurements.
+
+New witnesses check controlled/full exact equality, cheap trajectory completion
+with zero service and memory refusal, independent dense agreement including
+isolates, repeatability across construction grant quanta, deterministic abandon
+and join, iteration exhaustion and actual CMG installation/reuse. Runtime
+production tokens and artifact inputs are unchanged from `f9157e09`.
+
+Before deployment, all thirteen Rust numerical/controller tests, eight Python
+harness tests, formatting, strict Clippy and `git diff --check` passed. The
+independent architectural reviewer verified the memory/cap repairs and found
+no remaining blocker. `check_complexity.py --compare-production f9157e09`
+confirms unchanged production identity (192 modules, 58 artifact inputs).
+With installed Python 3.14, `./scripts/run_tests.sh` passed 243 Python tests
+(13 skips), then stopped at the same pre-existing plugin/source identity check
+described above; the remaining runtime/ABI suite was not reached. An initial
+invocation with the shell's Python 3.9 failed four imports because `tomllib`
+was unavailable; using the installed supported Python resolved those imports.
+These are functional checks, not local performance evidence.

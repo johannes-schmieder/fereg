@@ -239,6 +239,9 @@ impl<'a> Solver<'a> {
 }
 
 pub fn run(p: &Problem, rhs: &[Vec<f64>], arm: &str) -> Result<ResultRow, String> {
+    if crate::protected::ARMS.contains(&arm) {
+        return crate::protected::run(p, rhs, arm);
+    }
     let total = Instant::now();
     let setup = Instant::now();
     let mut solver = Solver::new(p, arm);

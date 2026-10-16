@@ -18,6 +18,24 @@ ARMS = ['diagonal', 'eliminate', 'forest', 'shallow', 'full',
         'diagonal-full', 'forest-full', 'shallow-full']
 CASES = ['expander', 'fringe', 'clusters', 'grid', 'hubs']
 SEED = 20261016
+PROTECTED_ARMS = ARMS + ['diagonal-q14', 'diagonal-q1', 'forest-q14', 'forest-q1', 'full-controlled']
+ORIGINAL_CELLS = [(c, 4096, rhs, kind) for c in CASES
+                  for rhs, kind in [(1, 'cut'), (1, 'random'), (4, 'mixed')]]
+PROTECTED_CELLS = ORIGINAL_CELLS + [
+    ('grid', 8192, 4, 'mixed'), ('clusters', 8192, 4, 'mixed'),
+    ('hubs', 8192, 1, 'random'), ('mosaic', 8192, 1, 'cut'),
+    ('mosaic', 8192, 4, 'mixed'), ('expander', 4096, 4, 'rev'),
+    ('fringe', 4096, 4, 'rev')]
+
+
+def signature(result):
+    if result['status'] != 'ok':
+        return result['status'], result.get('reason')
+    decisions = [{k: v for k, v in d.items() if not k.endswith('_seconds')}
+                 for d in result.get('decisions', [])]
+    return tuple(result[k] for k in ['digest', 'iterations', 'upgrades', 'certificates',
+                 'relative_residual', 'graph_builds', 'coarse_n', 'tail_levels']) + (decisions,)
+
 
 
 def command(argv):
@@ -146,7 +164,13 @@ def invoke(binary, case, n, rhs, arm, cpu=None, pattern='cut'):
             assert (result['case'], result['n'], result['rhs'], result['arm']) == (case, n, rhs, arm)
             assert math.isfinite(result['seconds']) and result['seconds'] > 0
             assert 0 <= result['relative_residual'] <= 1e-8
-            assert result['graph_builds'] <= 1
+            assert result['graph_builds'] <= (rhs if '-q' in arm else 1)
+            for d in result.get('decisions', []):
+                if 'optional_work' in d:
+                    assert d['optional_work'] <= d['incumbent_work'] // d['share_denominator']
+                    assert d['optional_work'] == sum(d[k] for k in ['build_work', 'challenger_work', 'control_work'])
+                    assert d['incumbent_iterations'] + d['challenger_iterations'] <= 16000
+                    assert d['memory_bound'] <= 1 << 30
         return result
     except subprocess.TimeoutExpired:
         return {'status': 'timeout'}
@@ -154,53 +178,79 @@ def invoke(binary, case, n, rhs, arm, cpu=None, pattern='cut'):
         return {'status': 'failed', 'reason': str(error), 'stdout': run.stdout, 'stderr': run.stderr}
 
 
-def summarize(path, output):
+def summarize(path, output, protocol='original'):
     rows = [json.loads(line) for line in path.read_text().splitlines()]
+    cells = PROTECTED_CELLS if protocol == 'protected' else ORIGINAL_CELLS
+    arms = PROTECTED_ARMS if protocol == 'protected' else ARMS
     results = []
-    for case in CASES:
-        for rhs, kind in [(1, 'cut'), (1, 'random'), (4, 'mixed')]:
-            cell = [r for r in rows if r['case'] == case and r['rhs_count'] == rhs and r['rhs_kind'] == kind and r['phase'] == 'measure']
-            for arm in ARMS:
-                arm_rows = [r for r in cell if r['arm'] == arm]
+    for case, n, rhs, kind in cells:
+        cell = [r for r in rows if (r['case'], r.get('n',4096), r['rhs_count'], r['rhs_kind']) == (case,n,rhs,kind) and r['phase'] == 'measure']
+        for arm in arms:
+            arm_rows = [r for r in cell if r['arm'] == arm]
+            paired = {}
+            for comparator in ['diagonal', 'forest', 'full', 'diagonal-full', 'forest-full']:
                 ratios = []
                 for block in range(6):
                     a = [r['result'] for r in arm_rows if r['block'] == block]
-                    b = [r['result'] for r in cell if r['arm'] == 'diagonal' and r['block'] == block]
+                    b = [r['result'] for r in cell if r['arm'] == comparator and r['block'] == block]
                     if len(a) == len(b) == 2 and all(r['status'] == 'ok' for r in a+b):
-                        ratios.append(math.exp(sum(math.log(r['seconds']) for r in a)/2
-                                               - sum(math.log(r['seconds']) for r in b)/2))
-                success = [r['result'] for r in arm_rows if r['result']['status'] == 'ok']
-                results.append({'case': case, 'rhs': rhs, 'rhs_kind': kind, 'arm': arm,
-                    'observations': len(arm_rows), 'failures': len(arm_rows)-len(success),
-                    'block_ratios_to_diagonal': ratios,
-                    'median_ratio': statistics.median(ratios) if len(ratios) == 6 else None,
-                    'mean_seconds': statistics.mean(r['seconds'] for r in success) if success else None,
-                    'mean_setup_seconds': statistics.mean(r['setup_seconds'] for r in success) if success else None,
-                    'iterations': sorted({r['iterations'] for r in success}),
-                    'upgrades': sorted({r['upgrades'] for r in success}),
-                    'digests': sorted({r['digest'] for r in success})})
-    output.write_text(json.dumps({'scope': 'serial prepared-Schur SCC discovery only',
-        'blocks': 6, 'seed': SEED, 'results': results}, indent=2) + '\n')
+                        ratios.append(math.exp(sum(math.log(r['seconds']) for r in a)/2 - sum(math.log(r['seconds']) for r in b)/2))
+                paired[comparator] = ratios
+            ratios = paired['diagonal']
+            success = [r['result'] for r in arm_rows if r['result']['status'] == 'ok']
+            results.append({'case':case, 'n':n, 'rhs':rhs, 'rhs_kind':kind, 'arm':arm,
+                'observations':len(arm_rows), 'failures':len(arm_rows)-len(success),
+                'block_ratios_to_diagonal':ratios, 'paired_block_ratios':paired,
+                'median_ratio':statistics.median(ratios) if len(ratios)==6 else None,
+                'mean_seconds':statistics.mean(r['seconds'] for r in success) if success else None,
+                'mean_setup_seconds':statistics.mean(r['setup_seconds'] for r in success) if success else None,
+                'iterations':sorted({r['iterations'] for r in success}),
+                'upgrades':sorted({r['upgrades'] for r in success}),
+                'digests':sorted({r['digest'] for r in success}),
+                'decisions':[{k:v for k,v in d.items() if not k.endswith('_seconds')}
+                             for d in success[0].get('decisions',[])] if success else []})
+    output.write_text(json.dumps({'scope':'serial prepared-Schur SCC discovery only',
+        'protocol':protocol, 'blocks':6, 'seed':20261017 if protocol=='protected' else SEED,
+        'results':results},indent=2)+'\n')
+
+
+def legacy_replay(binary, output):
+    reference = json.loads(Path(__file__).with_name('discovery.json').read_text())['discovery']['results']
+    for case, n, rhs, kind in ORIGINAL_CELLS:
+        for arm in ARMS + ['full-controlled']:
+            baseline = next(r for r in reference if (r['case'],r['rhs'],r['rhs_kind'],r['arm']) ==
+                            (case,rhs,kind,'full' if arm=='full-controlled' else arm))
+            result = invoke(binary,case,n,rhs,arm,pattern='random' if kind=='random' else 'cut')
+            append(output / 'legacy-replay.jsonl',dict(case=case,n=n,rhs=rhs,kind=kind,arm=arm,result=result))
+            assert result['status']=='ok', result
+            assert result['digest'] in baseline['digests'], (case,kind,arm,'digest')
+            assert result['iterations'] in baseline['iterations'], (case,kind,arm,'iterations')
+            if arm!='full-controlled':
+                assert result['upgrades'] in baseline['upgrades']
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', choices=['smoke', 'measure', 'summary'])
     parser.add_argument('--binary', type=Path)
+    parser.add_argument('--protocol', choices=['original','protected'], default='original')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
+    arms = PROTECTED_ARMS if args.protocol == 'protected' else ARMS
     rows = args.output / 'observations.jsonl'
     if args.mode == 'summary':
-        summarize(rows, args.output / 'summary.json')
+        summarize(rows, args.output / 'summary.json', args.protocol)
         return
     assert args.binary and args.binary.is_file()
     if args.mode == 'smoke':
         for case in CASES:
-            for arm in ARMS:
+            for arm in arms:
                 result = invoke(args.binary, case, 256, 2, arm)
                 append(args.output / 'smoke.jsonl', {'case': case, 'arm': arm, 'result': result})
                 assert result['status'] == 'ok', (case, arm, result)
+        if args.protocol == 'protected':
+            legacy_replay(args.binary, args.output)
         print('STAGED_CMG_SMOKE_PASS', flush=True)
         return
     assert not rows.exists(), 'never overwrite prior observations'
@@ -210,29 +260,29 @@ def main():
     observer = Observer(args.output / 'host-observations.jsonl')
     observer.sample()
     observer.thread.start()
-    rng = random.Random(SEED)
-    cells = [(c, rhs, kind) for c in CASES for rhs, kind in [(1, 'cut'), (1, 'random'), (4, 'mixed')]]
+    rng = random.Random(20261017 if args.protocol == 'protected' else SEED)
+    cells = (PROTECTED_CELLS if args.protocol == 'protected' else ORIGINAL_CELLS).copy()
     signatures = {}
     cpu = config['affinity'][0]
     started = time.monotonic()
     try:
         for block in range(-1, 6):
             rng.shuffle(cells)
-            for case, rhs, kind in cells:
-                order = ARMS.copy()
+            for case, n, rhs, kind in cells:
+                order = arms.copy()
                 rng.shuffle(order)
                 if block >= 0:
                     order += list(reversed(order))
                 for arm in order:
                     observer.check()
                     assert time.monotonic() - started < 1800, 'campaign budget exceeded'
-                    result = invoke(args.binary, case, 4096, rhs, arm, cpu, 'random' if kind == 'random' else 'cut')
+                    result = invoke(args.binary, case, n, rhs, arm, cpu, kind if kind in ['random','rev'] else 'cut')
                     append(rows, {'phase': 'warmup' if block < 0 else 'measure', 'block': block,
-                                  'case': case, 'rhs_count': rhs, 'rhs_kind': kind, 'arm': arm, 'result': result})
+                                  'case': case, 'n': n, 'rhs_count': rhs, 'rhs_kind': kind, 'arm': arm, 'result': result})
                     if result['status'] == 'ok':
-                        signature = (result['digest'], result['iterations'], result['upgrades'])
-                        key = (case, rhs, kind, arm)
-                        assert signatures.setdefault(key, signature) == signature, 'repeat mismatch'
+                        observed = signature(result)
+                        key = (case, n, rhs, kind, arm)
+                        assert signatures.setdefault(key, observed) == observed, 'repeat mismatch'
                 print(f'block={block} case={case} rhs={rhs} kind={kind} complete', flush=True)
         observer.stop.set()
         observer.thread.join(timeout=45)
@@ -243,8 +293,9 @@ def main():
         append(args.output / 'host-observations.jsonl', {'final_configuration': after})
         ignored = {'binary_sha256', 'host_configuration_raw', 'complexes_raw'}
         assert {k: v for k, v in after.items() if k not in ignored} == {k: v for k, v in config.items() if k not in ignored}
-        summarize(rows, args.output / 'summary.json')
+        summarize(rows, args.output / 'summary.json', args.protocol)
         all_rows = [json.loads(line) for line in rows.read_text().splitlines()]
+        assert len(all_rows) == len(cells)*len(arms)*13, 'incomplete protocol'
         failures = sum(r['result']['status'] != 'ok' for r in all_rows)
         print(f'STAGED_CMG_DISCOVERY_COMPLETE observations={len(all_rows)} failures={failures}', flush=True)
     finally:

@@ -157,6 +157,22 @@ pub fn norm(a: &[f64]) -> f64 {
 }
 
 pub fn generate(case: &str, n: usize) -> Problem {
+    if case == "mosaic" {
+        assert!(n >= 128 && n % 2 == 0);
+        let mut workers = vec![];
+        for (offset, name) in ["expander", "grid"].into_iter().enumerate() {
+            let part = generate(name, n / 2);
+            for e in part.offsets.windows(2) {
+                workers.push(
+                    (e[0]..e[1])
+                        .map(|j| (2 * part.firms[j] + offset, part.weights[j]))
+                        .collect(),
+                );
+            }
+        }
+        return Problem::new(n, workers);
+    }
+
     assert!(n >= 64);
     let mut rng = Rng(0x97531);
     let mut workers = vec![];

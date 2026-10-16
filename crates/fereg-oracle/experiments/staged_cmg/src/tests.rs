@@ -226,13 +226,20 @@ fn all_arms_agree_with_dense_and_repeat_including_upgrades() {
         let p = generate(case, 64);
         let rhs = p.rhs(2);
         let a = dense_problem(&p);
-        for arm in ARMS {
+        for arm in ARMS.into_iter().chain(crate::protected::ARMS) {
             let first = run(&p, &rhs, arm).unwrap_or_else(|e| panic!("{case}/{arm}: {e}"));
             let second = run(&p, &rhs, arm).unwrap();
             assert_eq!(first.digest, second.digest);
             assert_eq!(first.iterations, second.iterations);
             assert_eq!(first.upgrades, second.upgrades);
-            assert!(first.graph_builds <= 1);
+            assert!(
+                first.graph_builds
+                    <= if crate::protected::ARMS.contains(&arm) {
+                        rhs.len()
+                    } else {
+                        1
+                    }
+            );
             if arm == "diagonal" {
                 assert_eq!(first.graph_builds, 0);
             }
@@ -281,10 +288,174 @@ fn disconnected_solves_and_isolates_agree_with_dense() {
     );
     let rhs = p.rhs(2);
     let dense = dense_problem(&p);
-    for arm in ARMS {
+    for arm in ARMS.into_iter().chain(crate::protected::ARMS) {
         let r = run(&p, &rhs, arm).unwrap();
         for (b, x) in rhs.iter().zip(r.solutions) {
             near(&x, &dense_solve(&dense, &p.labels, b), 2e-12);
         }
     }
+}
+
+#[test]
+fn protected_disabled_and_refused_are_exact_cheap_replays() {
+    use crate::protected::{run_config, Config};
+    for n in [64, 1024] {
+        for case in ["expander", "fringe", "clusters", "grid", "hubs"] {
+            let p = generate(case, n);
+            let rhs = p.rhs(2);
+            for starter in ["diagonal", "forest"] {
+                let baseline = run(&p, &rhs, starter).unwrap();
+                for config in [
+                    Config {
+                        denominator: 0,
+                        memory: 1 << 30,
+                        iterations: 16000,
+                    },
+                    Config {
+                        denominator: 1,
+                        memory: 12 * 1024 * 1024,
+                        iterations: 16000,
+                    },
+                ] {
+                    let row = run_config(&p, &rhs, &format!("{starter}-q1"), config).unwrap();
+                    assert_eq!(
+                        (row.digest, row.iterations, row.certificates),
+                        (baseline.digest, baseline.iterations, baseline.certificates),
+                        "{case}/{n}/{starter}"
+                    );
+                }
+            }
+        }
+    }
+}
+#[test]
+fn controlled_full_matches_existing_full_exactly() {
+    for n in [64, 1024] {
+        for case in ["expander", "fringe", "clusters", "grid", "hubs"] {
+            let p = generate(case, n);
+            let rhs = p.rhs(2);
+            let a = run(&p, &rhs, "full").unwrap();
+            let b = run(&p, &rhs, "full-controlled").unwrap();
+            assert_eq!(
+                (a.digest, a.iterations, a.certificates),
+                (b.digest, b.iterations, b.certificates),
+                "{case}/{n}"
+            );
+        }
+    }
+}
+#[test]
+fn parked_builder_quanta_and_abandon_are_deterministic() {
+    use crate::builder::{BuildTask, CAP};
+    let p = generate("clusters", 64);
+    let b = p.rhs(1).remove(0);
+    let mut expected = None;
+    for quantum in [257, 4096, 65536, CAP] {
+        std::thread::scope(|scope| {
+            let mut task = BuildTask::start(scope, &p, None, 0, 1 << 30, 7).unwrap();
+            while !task.terminal {
+                task.grant((task.report.snapshot.issued + quantum).min(CAP))
+                    .unwrap();
+            }
+            let mut ready = task.ready.take().unwrap();
+            let mut x = vec![0.; p.n];
+            ready.pre.apply(&b, &mut x);
+            let signature = (
+                task.report.trace,
+                task.report.snapshot.charged,
+                ready.cycle,
+                x,
+            );
+            if let Some(first) = &expected {
+                assert_eq!(first, &signature);
+            } else {
+                expected = Some(signature);
+            }
+        });
+    }
+    let mut expected = None;
+    for _ in 0..2 {
+        std::thread::scope(|scope| {
+            let mut task = BuildTask::start(scope, &p, None, 0, 1 << 30, 8).unwrap();
+            task.grant(10000).unwrap();
+            assert!(!task.terminal);
+            task.abandon().unwrap();
+            assert!(task.terminal && task.ready.is_none());
+            assert!(task.report.snapshot.charged <= 10000);
+            let signature = (task.report.trace, task.report.snapshot.charged);
+            if let Some(first) = expected {
+                assert_eq!(first, signature);
+            } else {
+                expected = Some(signature);
+            }
+        });
+    }
+}
+#[test]
+fn shared_iteration_exhaustion_remains_failure() {
+    let p = generate("grid", 1024);
+    for arm in ["diagonal-q1", "forest-q1"] {
+        let result = crate::protected::run_config(
+            &p,
+            &p.rhs(1),
+            arm,
+            crate::protected::Config {
+                denominator: 1,
+                memory: 1 << 30,
+                iterations: 20,
+            },
+        );
+        assert!(result.err().unwrap().starts_with("iteration_limit"));
+    }
+}
+#[test]
+fn protected_hard_case_installs_and_reuses_full() {
+    let p = generate("grid", 4096);
+    {
+        let arm = "diagonal-q1";
+        let a = run(&p, &p.rhs(2), arm).unwrap();
+        let b = run(&p, &p.rhs(2), arm).unwrap();
+        assert_eq!((a.digest, a.iterations), (b.digest, b.iterations));
+        assert_eq!(a.upgrades, 1, "{arm}");
+        assert!(a.tail_levels > 1);
+        assert!(
+            a.decisions.iter().any(|d| d.contains("challenger\"")),
+            "{arm}"
+        );
+    }
+}
+
+#[test]
+fn shared_cap_counts_actual_challenger_work_and_rejects_relaxation() {
+    let p = generate("grid", 4096);
+    let rhs = p.rhs(1);
+    let complete = run(&p, &rhs, "diagonal-q1").unwrap();
+    let install: usize = complete.decisions[0]
+        .split("\"install_iteration\":")
+        .nth(1)
+        .unwrap()
+        .trim_end_matches('}')
+        .parse()
+        .unwrap();
+    let config = crate::protected::Config {
+        denominator: 1,
+        memory: 1 << 30,
+        iterations: install + 64,
+    };
+    let error = crate::protected::run_config(&p, &rhs, "diagonal-q1", config)
+        .err()
+        .unwrap();
+    assert!(error.starts_with("iteration_limit_incumbent_"), "{error}");
+    let heavy: usize = error.rsplit('_').next().unwrap().parse().unwrap();
+    assert!(heavy > 0, "{error}");
+    let invalid = crate::protected::Config {
+        iterations: 16001,
+        ..config
+    };
+    assert_eq!(
+        crate::protected::run_config(&p, &rhs, "diagonal-q1", invalid)
+            .err()
+            .as_deref(),
+        Some("invalid_iteration_cap")
+    );
 }

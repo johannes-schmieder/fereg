@@ -18,4 +18,4 @@ if [[ "$mode" == smoke ]]; then
     cargo +1.85.1 test --locked
     cargo +1.85.1 build --locked --release
 fi
-"$staged_python" run_scc.py "$mode" --binary "$root/build/release/staged-cmg-prototype" --output "$root/$mode"
+"$staged_python" run_scc.py "$mode" --binary "$root/build/release/staged-cmg-prototype" --output "$root/$mode" --protocol "${STAGED_PROTOCOL:-original}"
