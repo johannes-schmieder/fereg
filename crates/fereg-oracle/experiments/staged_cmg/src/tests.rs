@@ -958,3 +958,78 @@ fn admitted_graph_hierarchy_factor_and_memory_boundary_are_exact() {
         }
     }
 }
+
+#[test]
+fn forecast_policy_preserves_cheap_science_and_commits_once() {
+    use crate::guarded::{self, Constructor, Control};
+    use crate::router::{forecast, run_config, Config, Policy};
+    assert_eq!(forecast(16., 4., 1., 8), Some(8.));
+    for (p, c, t, w) in [
+        (1., 2., 0.1, 8),
+        (1., 1., 0.1, 8),
+        (2., 1., 0., 8),
+        (f64::NAN, 1., 0.1, 8),
+        (2., 1., 0.1, 0),
+    ] {
+        assert!(forecast(p, c, t, w).is_none());
+    }
+    for case in ["expander", "fringe", "clusters", "grid", "hubs"] {
+        let p = generate(case, 64);
+        let rhs = p.rhs(3);
+        let a = run(&p, &rhs, "auto-forecast").unwrap();
+        let b = run(&p, &rhs, "auto-forecast").unwrap();
+        assert_eq!(a.solutions, b.solutions);
+        assert_eq!(a.iterations, b.iterations);
+        for (x, r) in a.solutions.iter().zip(&rhs) {
+            near(x, &dense_solve(&dense_problem(&p), &p.labels, r), 2e-7);
+        }
+    }
+    let p = generate("grid", 256);
+    let rhs = p.rhs(3);
+    let a = run(&p, &rhs, "auto-forecast").unwrap();
+    assert_eq!(a.upgrades, 1);
+    assert_eq!(a.graph_builds, 1);
+    let config = Config {
+        memory: guarded::base(&p, &rhs).unwrap(),
+        constructor: Constructor::Admitted,
+        policy: Policy::Forecast,
+        ..Config::default()
+    };
+    let refused = run_config(&p, &rhs, config, &mut Control { cancel: |_| false }).unwrap();
+    let cheap = run(&p, &rhs, "diagonal").unwrap();
+    assert_eq!(refused.solutions, cheap.solutions);
+    assert_eq!(refused.upgrades, 0);
+    assert_eq!(
+        refused
+            .decisions
+            .iter()
+            .filter(|d| d.contains("memory_refusal"))
+            .count(),
+        1
+    );
+    for case in ["expander", "sparse-expander", "weighted-expander"] {
+        let p = generate(case, 256);
+        let rhs = p.rhs(3);
+        let a = run(&p, &rhs, "auto-forecast").unwrap();
+        if a.upgrades == 0 {
+            assert_eq!(a.solutions, run(&p, &rhs, "diagonal").unwrap().solutions);
+        }
+    }
+}
+
+#[test]
+fn forecast_deadline_cannot_roll_forward_or_cross_a_repair() {
+    use crate::router::forecast_extension;
+    // Even a forecast of one more step must stop at the fixed deadline.
+    for k in [16, 24, 32, 40] {
+        assert!(forecast_extension(512., 2., 1., 8, k, true).1);
+    }
+    assert!(!forecast_extension(512., 2., 1., 8, 48, true).1);
+    // A replacement separates two recurrences; their ratio cannot grant time.
+    assert_eq!(
+        forecast_extension(512., 2., 1., 8, 24, false),
+        (None, false)
+    );
+    // A favorable but too distant forecast is not allowed to renew the horizon.
+    assert!(!forecast_extension(4., 2., 0.01, 8, 40, true).1);
+}

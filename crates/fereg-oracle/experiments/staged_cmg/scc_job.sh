@@ -3,6 +3,17 @@ set -euo pipefail
 mode=${1:?smoke or measure}
 root=${2:?absolute campaign root}
 cd "$root/source"
+sha256sum -c SHA256SUMS > "$root/logs/source-check-$mode.stdout"
+verify_exit() {
+    result=$?
+    trap - EXIT
+    sha256sum -c SHA256SUMS > "$root/logs/source-check-$mode-final.stdout" || result=1
+    if [[ -f "$root/logs/binary.sha256" ]]; then
+        sha256sum -c "$root/logs/binary.sha256" >> "$root/logs/source-check-$mode-final.stdout" || result=1
+    fi
+    exit "$result"
+}
+trap verify_exit EXIT
 module load miniconda/25.3.1
 staged_python="${SCC_MINICONDA_BIN:?}/python3"
 export CARGO_HOME=/projectnb/welfgr/fereg/toolchains/cargo
@@ -20,8 +31,12 @@ fi
 if [[ "$mode" == smoke ]]; then
     cargo +1.85.1 test --locked --release
     cargo +1.85.1 build --locked --release
+    sha256sum "$root/build/release/staged-cmg-prototype" > "$root/logs/binary.sha256"
 fi
-if [[ "$mode" == admitted-diagnostic ]]; then
+sha256sum -c "$root/logs/binary.sha256"
+if [[ "$mode" == forecast ]]; then
+    "$staged_python" diagnose_admitted.py "$root" forecast
+elif [[ "$mode" == admitted-diagnostic ]]; then
     "$staged_python" diagnose_admitted.py "$root"
 elif [[ "$mode" == gate ]]; then
     "$staged_python" run_scc.py measure --binary "$root/build/release/staged-cmg-prototype" --output "$root/gate" --protocol guarded-gate

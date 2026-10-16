@@ -239,13 +239,18 @@ impl<'a> Solver<'a> {
 }
 
 pub fn run(p: &Problem, rhs: &[Vec<f64>], arm: &str) -> Result<ResultRow, String> {
-    if arm == "auto-admitted" {
+    if matches!(arm, "auto-admitted" | "auto-forecast") {
         return crate::router::run_config(
             p,
             rhs,
             crate::router::Config {
                 memory: crate::guarded::DIAGNOSTIC_MEMORY,
                 constructor: crate::guarded::Constructor::Admitted,
+                policy: if arm == "auto-forecast" {
+                    crate::router::Policy::Forecast
+                } else {
+                    crate::router::Policy::Commit
+                },
                 ..crate::router::Config::default()
             },
             &mut crate::guarded::Control { cancel: |_| false },

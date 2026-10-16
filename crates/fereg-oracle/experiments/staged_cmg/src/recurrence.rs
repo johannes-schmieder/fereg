@@ -39,6 +39,7 @@ pub struct PcgState {
     bnorm: f64,
     target: f64,
     repairs: usize,
+    recursive_norm: f64,
     pub iterations: usize,
     pub certificates: usize,
     pub residual: f64,
@@ -56,6 +57,7 @@ impl PcgState {
         tariff: Tariff,
         start: Option<&[f64]>,
     ) -> Result<Self, String> {
+        let bnorm = norm(b);
         let mut s = Self {
             x: vec![0.; p.n],
             r: b.to_vec(),
@@ -64,9 +66,10 @@ impl PcgState {
             ap: vec![0.; p.n],
             truth: vec![0.; p.n],
             rz: 0.,
-            bnorm: norm(b),
+            bnorm,
             target: 0.,
             repairs: 0,
+            recursive_norm: bnorm,
             iterations: 0,
             certificates: 0,
             residual: 0.,
@@ -172,6 +175,10 @@ impl PcgState {
         format!("{reason}_iteration_{}_repairs_{}_recursive_{:.17e}_true_{:.17e}_bnorm_{:.17e}_target_{:.17e}",
             self.iterations,self.repairs,norm(&self.r),norm(&self.ap),self.bnorm,self.target)
     }
+    /// Routing telemetry only; the norm is already computed by the recurrence.
+    pub fn progress(&self) -> (f64, usize) {
+        (self.recursive_norm, self.repairs)
+    }
     pub fn advance(
         &mut self,
         p: &Problem,
@@ -195,7 +202,8 @@ impl PcgState {
         self.work += 10 * self.tariff.n + self.tariff.project + 32;
         self.iterations += 1;
         self.trace = (self.trace ^ self.r[0].to_bits()).wrapping_mul(1099511628211);
-        let apparent = norm(&self.r) <= self.target;
+        self.recursive_norm = norm(&self.r);
+        let apparent = self.recursive_norm <= self.target;
         if apparent || cap_boundary || self.iterations == LIMIT {
             let actual = self.certificate(p, b);
             if !actual.is_finite() {

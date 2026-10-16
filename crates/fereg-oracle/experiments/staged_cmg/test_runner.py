@@ -128,6 +128,28 @@ class RunnerTests(unittest.TestCase):
 
 
 class RouterProtocol(unittest.TestCase):
+    def test_forecast_manifest_and_pilot_budget(self):
+        from diagnose_admitted import pilot_budget
+        for protocol,seed in [('forecast-discovery',20261024),('forecast-confirmation',20261025)]:
+            arms,cells,observed_seed,budget=runner.protocol_config(protocol)
+            runner.validate_manifest(cells,arms)
+            self.assertEqual((len(arms),len(cells),observed_seed,budget),(5,14,seed,1800))
+        self.assertFalse(set(runner.CONFIRMATION_CELLS)&set(runner.ROUTER_CELLS))
+        rows=[dict(case=c,n=n,rhs_count=r,rhs_kind=k,arm=a,phase='warmup',block=-1,result={'process_seconds':.1})
+              for c,n,r,k in cells for a in arms]
+        with tempfile.TemporaryDirectory() as directory:
+            out=Path(directory)
+            def write():
+                for filename in ['preflight.jsonl','observations.jsonl']:
+                    (out/filename).write_text(''.join(json.dumps(r)+'\n' for r in rows))
+            write();self.assertEqual(pilot_budget(out,cells,arms),300)
+            saved=rows[-1];rows[-1]=rows[0];write()
+            with self.assertRaises(AssertionError):pilot_budget(out,cells,arms)
+            rows[-1]=saved
+            for r in rows:r['result']['process_seconds']=30
+            write()
+            with self.assertRaises(AssertionError):pilot_budget(out,cells,arms)
+
     def test_admitted_protocol_and_hub_required(self):
         import evaluate_router
         arms,cells,seed,budget=runner.protocol_config('admitted-router')

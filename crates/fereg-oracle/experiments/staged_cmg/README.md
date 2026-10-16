@@ -1311,3 +1311,47 @@ all-six-block targets remain unchanged. Weak clusters/8192 stays a separate
 mandatory diagnostic with unchanged failure semantics. All observations and
 failures remain retained; there is no resampling or tuning in this experiment.
 The next prototype is chosen from these results and gets a separate declaration.
+
+
+The admitted diagnostic (implementation `afb2c9a3`, SCC jobs 8149202/8149307)
+completed its smoke, constructor gate, pilot and 910-observation panel on scc-zj4.
+All 910 panel outcomes succeeded and repeated exactly; isolation passed. The
+constructor gate passed all five cells, including hubs. The old selector met
+9/14 descriptive cell targets, missing both expander orders, fringe and both
+sparse-expander orders. Sparse-expander cost approximately 4.98x the fastest
+static forest solver. This motivates the separately declared policy below;
+no constructor-gate or previous-policy outcome is relabeled.
+
+### Forecast-to-48 successor: frozen policy and evidence protocol
+
+`auto-forecast` keeps the structural starter and 8 GiB admitted constructor.
+At iterations 16/24/32/40 it forecasts cheap completion from the cached recursive
+residual norm: the initial-to-16 window first, then eight-iteration windows.
+It continues cheaply only when finite positive contraction predicts completion
+by the absolute iteration-48 deadline. A noncontracting/nonfinite estimate or
+residual replacement invalidates the forecast. At the next checkpoint it probes
+the true residual and, if unfinished, makes its sole CMG commitment. Iteration 48
+forces the same probe/commit. True acceptance, final returned-vector certificates,
+exact-residual restarts, repair/iteration caps, memory refusal and later-RHS
+reuse remain unchanged. The forecast never certifies a solution. It uses no
+family name, timing observation or unknown future benefit. Selector iterates,
+answers and decisions are in scope; every older arm must preserve its signatures.
+Independent dense solves and original-incidence certificates remain witnesses.
+The hierarchy remains uncancellable internally: this is a routing prototype,
+not a production or Mac qualification claim, and the weak-cluster failure remains.
+
+Freeze one candidate before either panel; no threshold search or repair panel.
+The five arms are diagonal, forest, full, auto-admitted and auto-forecast.
+Discovery uses the previous fourteen cells (seed 20261024). Untouched confirmation
+(seed 20261025) uses expander/sparse-expander/weighted-expander/6144 mixed4 and
+reversed4, fringe/6144 reversed4, clusters/6144 cut1, grid/6400 mixed4 and 10000
+reversed4, hubs/12288 random1, mosaic/12800 mixed4/components4/components-reversed4.
+These exact sizes have not appeared in prior committed experiment records.
+Each panel has 70 preflights, 70 warmups and 840 measured calls in six balanced
+blocks, a 30-second per-call limit and its own fixed pilot-derived budget using
+the preceding formula, capped at 1800 seconds. A pilot exceeding the cap blocks
+its panel. Discovery and confirmation are run once, with no edits between them;
+confirmation is retained even if discovery misses targets. The same easy
+max(5%,1 ms) and hard 2x-static descriptive targets apply. Static comparison is a
+retrospective lower envelope, not an available online oracle. No independent
+session confidence interval or broad reliability claim follows from these panels.

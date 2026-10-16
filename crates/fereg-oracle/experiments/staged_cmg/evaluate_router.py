@@ -60,13 +60,14 @@ def constructor_gate(output, admitted=False):
     return dict(passed=all(c['passed'] for c in cells if c['gate_required']),observations=len(rows),preflights=len(preflight),cells=cells)
 
 
-def selector_report(output, candidate="auto-commit"):
-    arm_names = [*runner.ROUTER_ARMS[:-1], candidate]
+def selector_report(output, candidate="auto-commit", arm_names=None, manifest=None, prior="diagonal-full"):
+    arm_names = arm_names or [*runner.ROUTER_ARMS[:-1], candidate]
+    manifest = manifest or runner.ROUTER_CELLS
     rows = read_rows(output / 'observations.jsonl')
     preflight = read_rows(output / 'preflight.jsonl')
     assert len(rows) == 910 and len(preflight) == 70, 'incomplete selector panel'
     cells = []
-    for case, n, rhs, kind in runner.ROUTER_CELLS:
+    for case, n, rhs, kind in manifest:
         key = (case, n, rhs, kind)
         matches = lambda r: (r['case'], r['n'], r['rhs_count'], r['rhs_kind']) == key
         data = [r for r in rows if matches(r)]
@@ -98,7 +99,7 @@ def selector_report(output, candidate="auto-commit"):
         old_ratios = []
         for block, cost in enumerate(arms[candidate]['block_seconds']):
             baseline = arms[comparator]['block_seconds'][block] if comparator else None
-            old = arms['diagonal-full']['block_seconds'][block]
+            old = arms[prior]['block_seconds'][block]
             if cost is not None and baseline is not None:
                 allowance = max(.05 * baseline, .001) if easy else baseline
                 paired.append(dict(block=block, reference=baseline, candidate=cost, ratio=cost/baseline, excess=cost-baseline-allowance))

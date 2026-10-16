@@ -7,11 +7,18 @@ use crate::recurrence::{PcgState, Tariff, LIMIT, TOL};
 use crate::solve::ResultRow;
 use std::time::Instant;
 
+#[derive(Clone, Copy, Default)]
+pub enum Policy {
+    #[default]
+    Commit,
+    Forecast,
+}
 #[derive(Clone, Copy)]
 pub struct Config {
     pub memory: usize,
     pub iterations: usize,
     pub constructor: guarded::Constructor,
+    pub policy: Policy,
 }
 impl Default for Config {
     fn default() -> Self {
@@ -19,6 +26,7 @@ impl Default for Config {
             memory: guarded::MEMORY,
             iterations: LIMIT,
             constructor: guarded::Constructor::Controlled,
+            policy: Policy::Commit,
         }
     }
 }
@@ -78,6 +86,37 @@ pub fn grace(previous: f64, current: f64, target: f64) -> bool {
     let rate = (current / previous).ln() / 8.;
     let remaining = (target / current).ln() / rate;
     remaining.is_finite() && (0. ..=8.).contains(&remaining)
+}
+/// A heuristic, never an acceptance certificate. It cannot move the fixed deadline.
+pub fn forecast(previous: f64, current: f64, target: f64, window: usize) -> Option<f64> {
+    if !previous.is_finite()
+        || !current.is_finite()
+        || !target.is_finite()
+        || target <= 0.
+        || current <= target
+        || current >= previous
+        || window == 0
+    {
+        return None;
+    }
+    let estimate = window as f64 * (target / current).ln() / (current / previous).ln();
+    (estimate.is_finite() && estimate >= 0.).then_some(estimate)
+}
+pub fn forecast_extension(
+    previous: f64,
+    current: f64,
+    target: f64,
+    window: usize,
+    iteration: usize,
+    unbroken: bool,
+) -> (Option<f64>, bool) {
+    let estimate = if unbroken {
+        forecast(previous, current, target, window)
+    } else {
+        None
+    };
+    let extend = iteration < 48 && estimate.is_some_and(|q| q <= (48 - iteration) as f64);
+    (estimate, extend)
 }
 pub fn run(p: &Problem, rhs: &[Vec<f64>]) -> Result<ResultRow, String> {
     run_config(
@@ -161,6 +200,9 @@ fn run_inner<F: FnMut(&'static str) -> bool>(
         let tariff = Tariff::new(p, 8 * p.n as u64);
         let mut state = PcgState::new(p, b, &mut pre, tariff, None).map_err(Error::Fatal)?;
         let mut previous = norm(b);
+        let target = TOL * previous;
+        let mut previous_iteration = 0;
+        let mut previous_repairs = 0;
         let mut extended = false;
         let mut switched = 0;
         while !state.done && state.iterations < config.iterations {
@@ -175,17 +217,50 @@ fn run_inner<F: FnMut(&'static str) -> bool>(
             if !state.done
                 && !full
                 && !disabled
-                && matches!(state.iterations, 16 | 24 | 32)
+                && match config.policy {
+                    Policy::Commit => matches!(state.iterations, 16 | 24 | 32),
+                    Policy::Forecast => matches!(state.iterations, 16 | 24 | 32 | 40 | 48),
+                }
                 && !last
             {
-                let actual = state.probe(p, b).map_err(Error::Fatal)?;
-                if state.done {
-                    break;
-                }
-                let extension = state.iterations == 24 && grace(previous, actual, TOL * norm(b));
-                let commit = state.iterations == 32 || (state.iterations == 24 && !extension);
-                row.decisions.push(format!("{{\"event\":\"probe\",\"rhs\":{index},\"iteration\":{},\"true_residual\":{actual:.17e},\"grace\":{extension},\"commit\":{commit}}}",state.iterations));
-                previous = actual;
+                let (commit, extension) = match config.policy {
+                    Policy::Commit => {
+                        let actual = state.probe(p, b).map_err(Error::Fatal)?;
+                        if state.done {
+                            break;
+                        }
+                        let extension = state.iterations == 24 && grace(previous, actual, target);
+                        let commit =
+                            state.iterations == 32 || (state.iterations == 24 && !extension);
+                        row.decisions.push(format!("{{\"event\":\"probe\",\"rhs\":{index},\"iteration\":{},\"true_residual\":{actual:.17e},\"grace\":{extension},\"commit\":{commit}}}",state.iterations));
+                        previous = actual;
+                        (commit, extension)
+                    }
+                    Policy::Forecast => {
+                        let (current, repairs) = state.progress();
+                        let (estimate, extension) = forecast_extension(
+                            previous,
+                            current,
+                            target,
+                            state.iterations - previous_iteration,
+                            state.iterations,
+                            repairs == previous_repairs,
+                        );
+                        let printed =
+                            estimate.map_or_else(|| "null".into(), |x| format!("{x:.17e}"));
+                        row.decisions.push(format!("{{\"event\":\"forecast\",\"rhs\":{index},\"iteration\":{},\"recursive_residual\":{current:.17e},\"estimated_remaining\":{printed},\"repairs\":{repairs},\"commit\":{}}}",state.iterations,!extension));
+                        previous = current;
+                        previous_iteration = state.iterations;
+                        previous_repairs = repairs;
+                        if !extension {
+                            state.probe(p, b).map_err(Error::Fatal)?;
+                            if state.done {
+                                break;
+                            }
+                        }
+                        (!extension, extension)
+                    }
+                };
                 extended |= extension;
                 if commit {
                     let t = Instant::now();
