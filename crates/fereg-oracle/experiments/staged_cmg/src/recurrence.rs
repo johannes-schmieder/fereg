@@ -132,6 +132,16 @@ impl PcgState {
         self.done = true;
         Ok(())
     }
+    pub fn failure_context(&mut self, p: &Problem, b: &[f64], reason: String) -> String {
+        // Diagnostics only after a failed recurrence; accepted arithmetic and
+        // certification cadence are unchanged. Reuse already admitted scratch.
+        p.apply(&self.x, &mut self.ap);
+        for (value, rhs) in self.ap.iter_mut().zip(b) {
+            *value = rhs - *value;
+        }
+        format!("{reason}_iteration_{}_repairs_{}_recursive_{:.17e}_true_{:.17e}_bnorm_{:.17e}_target_{:.17e}",
+            self.iterations,self.repairs,norm(&self.r),norm(&self.ap),self.bnorm,self.target)
+    }
     pub fn advance(
         &mut self,
         p: &Problem,
@@ -186,5 +196,53 @@ impl PcgState {
         self.work += 4 * self.tariff.n;
         self.rz = next;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod preservation_tests {
+    use super::*;
+    #[test]
+    fn parked_construction_preserves_every_cheap_recurrence_vector() {
+        use crate::builder::BuildTask;
+        let p = crate::problem::generate("grid", 64);
+        let b = p.rhs(1).remove(0);
+        let mut pre_a = Preconditioner::Diagonal(p.diagonal.clone());
+        let mut pre_b = Preconditioner::Diagonal(p.diagonal.clone());
+        let tariff = Tariff::new(&p, 8 * p.n as u64);
+        let mut a = PcgState::new(&p, &b, &mut pre_a, tariff, None).unwrap();
+        let mut bstate = PcgState::new(&p, &b, &mut pre_b, tariff, None).unwrap();
+        std::thread::scope(|scope| {
+            let mut task = BuildTask::start(scope, &p, None, 0, 1 << 30, (1, true)).unwrap();
+            while !a.done {
+                a.advance(&p, &b, &mut pre_a, false).unwrap();
+                if !task.terminal {
+                    task.grant(task.report.snapshot.issued + 257).unwrap();
+                }
+                bstate.advance(&p, &b, &mut pre_b, false).unwrap();
+                assert_eq!(
+                    (&a.x, &a.r, &a.z, &a.d, &a.ap, &a.truth),
+                    (
+                        &bstate.x,
+                        &bstate.r,
+                        &bstate.z,
+                        &bstate.d,
+                        &bstate.ap,
+                        &bstate.truth
+                    )
+                );
+                assert_eq!(
+                    (a.rz, a.target, a.repairs, a.certificates, a.work),
+                    (
+                        bstate.rz,
+                        bstate.target,
+                        bstate.repairs,
+                        bstate.certificates,
+                        bstate.work
+                    )
+                );
+            }
+            task.abandon().unwrap();
+        });
     }
 }

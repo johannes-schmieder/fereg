@@ -36,6 +36,7 @@ enum Event {
 }
 struct Control {
     prefix: BuildPrefix,
+    dense_chunks: bool,
     rx: mpsc::Receiver<Command>,
     tx: mpsc::Sender<Event>,
     trace: u64,
@@ -115,6 +116,9 @@ impl Control {
     }
 }
 impl BuildControl for Control {
+    fn group_dense_work(&self) -> bool {
+        self.dense_chunks
+    }
     fn checkpoint(&mut self, b: BuildBoundary) -> BuildDecision {
         // Price callback/trace bookkeeping as a separate ordered work gate.
         let overhead = BuildBoundary {
@@ -257,7 +261,7 @@ impl<'s> BuildTask<'s> {
         graph: Option<Arc<Laplacian>>,
         base: usize,
         memory_limit: usize,
-        task: u64,
+        (task, dense_chunks): (u64, bool),
     ) -> Result<Self, String> {
         if base.checked_add(STACK + 65536).ok_or("memory_overflow")? > memory_limit {
             return Err("memory_refused_before_spawn".into());
@@ -269,6 +273,7 @@ impl<'s> BuildTask<'s> {
             .spawn_scoped(scope, move || {
                 let mut c = Control {
                     prefix: BuildPrefix::new(task, CAP),
+                    dense_chunks,
                     rx: commands,
                     tx: events,
                     trace: 14695981039346656037,

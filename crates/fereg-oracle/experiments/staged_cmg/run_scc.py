@@ -28,9 +28,18 @@ PROTECTED_CELLS = ORIGINAL_CELLS + [
     ('fringe', 4096, 4, 'rev')]
 
 SUPPLEMENT_CELLS = [('grid', 8100, 4, 'mixed')]
+PERSISTENT_BASE_ARMS = ['diagonal','forest','full','diagonal-full','forest-full','full-controlled','full-chunked'] + [f'{starter}-{mode}{share}' for mode in ['q','p','c'] for starter in ['diagonal','forest'] for share in ['14','1']]
+PREVIOUS_ARMS = ['previous-'+a for a in ['full','full-controlled','diagonal-q14','diagonal-q1','forest-q14','forest-q1']]
+PERSISTENT_ARMS = PERSISTENT_BASE_ARMS + PREVIOUS_ARMS
+PERSISTENT_CELLS = [('expander',4096,4,'mixed'),('expander',4096,4,'rev'),
+    ('fringe',4096,4,'mixed'),('clusters',4096,1,'cut'),('grid',4096,4,'mixed'),
+    ('grid',8100,4,'mixed'),('mosaic',8192,4,'mixed'),('hubs',8192,1,'random')]
+
 
 
 def protocol_config(protocol):
+    if protocol == 'persistent':
+        return PERSISTENT_ARMS, PERSISTENT_CELLS, 20261019, 1800
     if protocol == 'protected-grid':
         return PROTECTED_ARMS, SUPPLEMENT_CELLS, 20261018, 600
     if protocol == 'protected':
@@ -40,7 +49,7 @@ def protocol_config(protocol):
 
 def validate_manifest(cells, arms):
     assert len(cells) == len(set(cells)) and len(arms) == len(set(arms))
-    assert all(a in PROTECTED_ARMS for a in arms)
+    assert all(a in PROTECTED_ARMS + PERSISTENT_ARMS for a in arms)
     for case,n,rhs,kind in cells:
         assert case in CASES + ['mosaic'] and n >= 64 and rhs > 0
         assert kind in ['cut','random','mixed','rev']
@@ -50,11 +59,12 @@ def validate_manifest(cells, arms):
             assert n >= 128 and n % 2 == 0 and math.isqrt(n//2)**2 == n//2, ('mosaic grid half must be square',n)
 
 
-def preflight(binary, output, cells, arms, cpu):
+def preflight(binary, output, cells, arms, cpu, check=lambda: None):
     path = output / 'preflight.jsonl'
     assert not path.exists(), 'never overwrite preflight evidence'
     for case,n,rhs,kind in cells:
         for arm in arms:
+            check()
             result = invoke(binary,case,n,rhs,arm,cpu,kind if kind in ['random','rev'] else 'cut')
             append(path,dict(case=case,n=n,rhs_count=rhs,rhs_kind=kind,arm=arm,result=result))
             # Structured numerical/resource failures and timeouts are retained outcomes.
@@ -185,6 +195,9 @@ class Observer:
 
 
 def invoke(binary, case, n, rhs, arm, cpu=None, pattern='cut'):
+    if arm.startswith('previous-'):
+        binary = Path(os.environ['STAGED_PREVIOUS_BINARY'])
+        arm = arm.removeprefix('previous-')
     argv = [str(binary), case, str(n), str(rhs), arm, pattern]
     if cpu is not None:
         argv = ['taskset', '-c', str(cpu)] + argv
@@ -221,7 +234,7 @@ def summarize(path, output, protocol='original'):
         for arm in arms:
             arm_rows = [r for r in cell if r['arm'] == arm]
             paired = {}
-            for comparator in ['diagonal', 'forest', 'full', 'diagonal-full', 'forest-full']:
+            for comparator in ['diagonal', 'forest', 'full', 'diagonal-full', 'forest-full'] + ([a for a in PERSISTENT_ARMS if a not in ['diagonal','forest','full','diagonal-full','forest-full']] if protocol=='persistent' else []):
                 ratios = []
                 for block in range(6):
                     a = [r['result'] for r in arm_rows if r['block'] == block]
@@ -262,11 +275,28 @@ def legacy_replay(binary, output):
                 assert result['upgrades'] in baseline['upgrades']
 
 
+def protected_replay(binary,output):
+    reference=json.loads(Path(__file__).with_name('protected-discovery.json').read_text())['campaigns'][0]['summary']['results']
+    count=0
+    for prior in reference:
+        if prior['arm'] not in ['diagonal-q14','diagonal-q1','forest-q14','forest-q1'] or prior['failures']:
+            continue
+        result=invoke(binary,prior['case'],prior['n'],prior['rhs'],prior['arm'],pattern=prior['rhs_kind'] if prior['rhs_kind'] in ['random','rev'] else 'cut')
+        append(output/'protected-replay.jsonl',dict(prior=prior['arm'],case=prior['case'],n=prior['n'],kind=prior['rhs_kind'],result=result))
+        assert result['status']=='ok',result
+        assert result['digest'] in prior['digests'] and result['iterations'] in prior['iterations']
+        assert result['upgrades'] in prior['upgrades']
+        decisions=[{k:v for k,v in d.items() if not k.endswith('_seconds')} for d in result['decisions']]
+        assert decisions==prior['decisions'],(prior['case'],prior['rhs_kind'],prior['arm'],'control replay')
+        count+=1
+    assert count==80,count
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', choices=['smoke', 'measure', 'summary'])
     parser.add_argument('--binary', type=Path)
-    parser.add_argument('--protocol', choices=['original','protected','protected-grid'], default='original')
+    parser.add_argument('--protocol', choices=['original','protected','protected-grid','persistent'], default='original')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -283,13 +313,22 @@ def main():
                 result = invoke(args.binary, case, 256, 2, arm)
                 append(args.output / 'smoke.jsonl', {'case': case, 'arm': arm, 'result': result})
                 assert result['status'] == 'ok', (case, arm, result)
-        if args.protocol == 'protected':
+        if args.protocol in ['protected','persistent']:
             legacy_replay(args.binary, args.output)
+        if args.protocol == 'persistent':
+            protected_replay(args.binary,args.output)
+            for arm in ['diagonal-c1','forest-c1']:
+                result=invoke(args.binary,'clusters',8192,4,arm)
+                append(args.output/'cluster-diagnostic.jsonl',dict(case='clusters',n=8192,rhs_count=4,arm=arm,result=result))
+                assert not (result['status']=='failed' and 'stdout' in result),result
         print('STAGED_CMG_SMOKE_PASS', flush=True)
         return
     assert not rows.exists(), 'never overwrite prior observations'
     config = configuration()
     config['binary_sha256'] = hashlib.sha256(args.binary.read_bytes()).hexdigest()
+    if args.protocol=='persistent':
+        config['previous_binary_sha256']=hashlib.sha256(Path(os.environ['STAGED_PREVIOUS_BINARY']).read_bytes()).hexdigest()
+        assert config['previous_binary_sha256']=='78313fb46e35b56da71a7261620b1852fdeca3beb6751babad2cbc0de967878f'
     (args.output / 'host.json').write_text(json.dumps(config, indent=2) + '\n')
     observer = Observer(args.output / 'host-observations.jsonl')
     observer.sample()
@@ -299,9 +338,12 @@ def main():
     signatures = {}
     cpu = config['affinity'][0]
     started = time.monotonic()
+    def check():
+        observer.check()
+        assert time.monotonic() - started < budget, 'campaign budget exceeded'
     try:
-        if args.protocol == 'protected-grid':
-            preflight(args.binary,args.output,cells,arms,cpu)
+        if args.protocol in ['protected-grid','persistent']:
+            preflight(args.binary,args.output,cells,arms,cpu,check)
         for block in range(-1, 6):
             rng.shuffle(cells)
             for case, n, rhs, kind in cells:
@@ -310,8 +352,7 @@ def main():
                 if block >= 0:
                     order += list(reversed(order))
                 for arm in order:
-                    observer.check()
-                    assert time.monotonic() - started < budget, 'campaign budget exceeded'
+                    check()
                     result = invoke(args.binary, case, n, rhs, arm, cpu, kind if kind in ['random','rev'] else 'cut')
                     append(rows, {'phase': 'warmup' if block < 0 else 'measure', 'block': block,
                                   'case': case, 'n': n, 'rhs_count': rhs, 'rhs_kind': kind, 'arm': arm, 'result': result})
@@ -327,7 +368,7 @@ def main():
         observer.sample()
         after = configuration()
         append(args.output / 'host-observations.jsonl', {'final_configuration': after})
-        ignored = {'binary_sha256', 'host_configuration_raw', 'complexes_raw'}
+        ignored = {'binary_sha256', 'previous_binary_sha256', 'host_configuration_raw', 'complexes_raw'}
         assert {k: v for k, v in after.items() if k not in ignored} == {k: v for k, v in config.items() if k not in ignored}
         summarize(rows, args.output / 'summary.json', args.protocol)
         all_rows = [json.loads(line) for line in rows.read_text().splitlines()]

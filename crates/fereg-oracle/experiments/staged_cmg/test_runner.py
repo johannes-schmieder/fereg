@@ -105,6 +105,27 @@ class RunnerTests(unittest.TestCase):
         self.assertIn(('grid',8192,4,'mixed'),runner.PROTECTED_CELLS)
         self.assertEqual(len(runner.SUPPLEMENT_CELLS)*len(runner.PROTECTED_ARMS)*13,169)
 
+    def test_persistent_manifest_and_previous_binary_identity(self):
+        arms,cells,seed,budget=runner.protocol_config('persistent')
+        runner.validate_manifest(cells,arms)
+        self.assertEqual(len(arms),25)
+        self.assertEqual(len(cells)*len(arms)*13,2600)
+        self.assertEqual((seed,budget),(20261019,1800))
+        good=dict(status='ok',case='grid',n=64,rhs=1,arm='full',seconds=1,relative_residual=1e-10,graph_builds=1)
+        with patch.dict(runner.os.environ,{'STAGED_PREVIOUS_BINARY':'/prior'}),patch.object(runner.subprocess,'run',return_value=subprocess.CompletedProcess([],0,json.dumps(good),'')) as run:
+            self.assertEqual(runner.invoke(Path('/candidate'),'grid',64,1,'previous-full')['status'],'ok')
+            self.assertEqual(run.call_args.args[0][0],'/prior')
+
+
+    def test_preflight_checks_budget_and_observer_before_each_solve(self):
+        with tempfile.TemporaryDirectory() as directory,patch.object(runner,'invoke',return_value={'status':'timeout'}) as invoke:
+            check=unittest.mock.Mock(side_effect=[None,RuntimeError('budget or isolation')])
+            with self.assertRaises(RuntimeError):
+                runner.preflight(Path('/binary'),Path(directory),[('grid',64,1,'cut')],['full','diagonal'],0,check)
+            self.assertEqual(invoke.call_count,1)
+            self.assertEqual(check.call_count,2)
+            self.assertEqual(len((Path(directory)/'preflight.jsonl').read_text().splitlines()),1)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -9,12 +9,21 @@ use std::fmt::Write;
 use std::sync::Arc;
 use std::time::Instant;
 
-pub const ARMS: [&str; 5] = [
+pub const ARMS: [&str; 14] = [
     "diagonal-q14",
     "diagonal-q1",
     "forest-q14",
     "forest-q1",
     "full-controlled",
+    "diagonal-p14",
+    "diagonal-p1",
+    "forest-p14",
+    "forest-p1",
+    "diagonal-c14",
+    "diagonal-c1",
+    "forest-c14",
+    "forest-c1",
+    "full-chunked",
 ];
 #[derive(Clone, Copy)]
 pub struct Config {
@@ -25,7 +34,7 @@ pub struct Config {
 impl Config {
     pub fn for_arm(arm: &str) -> Self {
         Self {
-            denominator: if arm.ends_with("q14") { 4 } else { 1 },
+            denominator: if arm.ends_with("14") { 4 } else { 1 },
             memory: 1 << 30,
             iterations: LIMIT,
         }
@@ -164,6 +173,8 @@ pub fn run_config(
     let total = Instant::now();
     let setup = Instant::now();
     let mut row = empty();
+    let chunked = arm.ends_with("-c14") || arm.ends_with("-c1") || arm == "full-chunked";
+    let persistent = arm.contains("-p") || chunked;
     let forest = arm.starts_with("forest");
     let edges = if forest { p.edge_bound() } else { 0 };
     let base = memory_base(p, rhs, forest, edges)?;
@@ -214,9 +225,9 @@ pub fn run_config(
         let mut retired_build = 0u64;
         let mut task_number = 0u64;
         let mut admitted_peak = base + transient;
-        if arm == "full-controlled" {
+        if arm.starts_with("full-") {
             let t = Instant::now();
-            let mut task = BuildTask::start(scope, p, None, base, config.memory, 0)?;
+            let mut task = BuildTask::start(scope, p, None, base, config.memory, (0, chunked))?;
             task.grant(CAP)?;
             if !task.terminal {
                 return Err("full_controlled_budget_exhausted".into());
@@ -230,8 +241,9 @@ pub fn run_config(
             row.setup += t.elapsed().as_secs_f64();
             row.tail_levels = ready.as_ref().unwrap().levels;
         }
+        let mut task: Option<BuildTask<'_>> = None;
         for (rhs_index, b) in rhs.iter().enumerate() {
-            if arm == "full-controlled" {
+            if arm.starts_with("full-") {
                 let full = ready.as_mut().unwrap();
                 let tariff = Tariff::new(p, full.cycle);
                 let mut state = PcgState::new(p, b, &mut full.pre, tariff, None)?;
@@ -253,23 +265,30 @@ pub fn run_config(
             let mut inc = PcgState::new(p, b, &mut cheap, cheap_tariff, None)?;
             ledger.inc = ledger.inc.checked_add(inc.work).ok_or("work_overflow")?;
             let mut heavy: Option<PcgState> = None;
-            let mut task: Option<BuildTask<'_>> = None;
+            let resumed = task.is_some();
+            let start_issued = task.as_ref().map_or(0, |t| t.report.snapshot.issued);
+            let start_charged = task.as_ref().map_or(0, |t| t.report.snapshot.charged);
+            let start_boundaries = task.as_ref().map_or(0, |t| t.report.boundaries);
             let mut shared = 0usize;
             let mut winner = "incumbent";
             let mut build_status = if ready.is_some() {
                 "reused"
+            } else if resumed {
+                "parked"
             } else if disabled {
                 "disabled"
             } else {
                 "not_started"
             };
-            let mut build_trace = 0u64;
+            let mut build_trace = task.as_ref().map_or(0, |t| t.report.trace);
             let mut peak = admitted_peak;
             let mut grants = 0usize;
             let mut install = None;
             let mut built_now = false;
-            let mut boundaries = 0;
-            let mut build_active = 0.;
+            let mut boundaries = start_boundaries;
+            let mut build_active = task.as_ref().map_or(0., |t| t.report.active_seconds);
+            let mut end_issued = start_issued;
+            let mut end_charged = start_charged;
             while !inc.done {
                 if shared >= config.iterations {
                     return Err(format!(
@@ -279,7 +298,16 @@ pub fn run_config(
                     ));
                 }
                 let before = inc.work;
-                inc.advance(p, b, &mut cheap, shared + 1 == config.iterations)?;
+                if let Err(error) = inc.advance(p, b, &mut cheap, shared + 1 == config.iterations) {
+                    return Err(if persistent {
+                        format!(
+                            "rhs_{rhs_index}_incumbent_{}",
+                            inc.failure_context(p, b, error)
+                        )
+                    } else {
+                        error
+                    });
+                }
                 ledger.inc = ledger
                     .inc
                     .checked_add(inc.work - before)
@@ -322,7 +350,7 @@ pub fn run_config(
                             graph.clone(),
                             base,
                             config.memory,
-                            task_number,
+                            (task_number, chunked),
                         )?);
                         row.setup += t.elapsed().as_secs_f64();
                         build_status = "parked";
@@ -338,6 +366,8 @@ pub fn run_config(
                             row.setup += t.elapsed().as_secs_f64();
                             grants += 1;
                         }
+                        end_issued = build.report.snapshot.issued;
+                        end_charged = build.report.snapshot.charged;
                         boundaries = build.report.boundaries;
                         build_active = build.report.active_seconds;
                         build_trace = build.report.trace;
@@ -378,7 +408,18 @@ pub fn run_config(
                             && ledger.spend(tariff.step_bound(), 1)
                         {
                             let before = s.work;
-                            s.advance(p, b, &mut full.pre, shared + 1 == config.iterations)?;
+                            if let Err(error) =
+                                s.advance(p, b, &mut full.pre, shared + 1 == config.iterations)
+                            {
+                                return Err(if persistent {
+                                    format!(
+                                        "rhs_{rhs_index}_challenger_{}",
+                                        s.failure_context(p, b, error)
+                                    )
+                                } else {
+                                    error
+                                });
+                            }
                             assert!(s.work - before <= tariff.step_bound());
                             shared += 1;
                         }
@@ -389,8 +430,11 @@ pub fn run_config(
                     }
                 }
             }
-            if let Some(build) = task.as_mut() {
+            if (!persistent || rhs_index + 1 == rhs.len()) && task.is_some() {
+                let build = task.as_mut().unwrap();
                 retire(build, &mut ledger, &mut row)?;
+                end_issued = build.report.snapshot.issued;
+                end_charged = build.report.snapshot.charged;
                 retired_build += build.report.snapshot.charged;
                 boundaries = build.report.boundaries;
                 build_active = build.report.active_seconds;
@@ -398,11 +442,22 @@ pub fn run_config(
                 peak = peak.max(build.report.memory);
                 admitted_peak = admitted_peak.max(peak);
                 build_status = "abandoned";
+                task = None;
             }
-            drop(task);
             assert!(ledger.optional <= ledger.allowance());
             let mut decision = String::with_capacity(4096);
             write!(&mut decision,"{{\"rhs\":{rhs_index},\"winner\":\"{winner}\",\"incumbent_iterations\":{},\"challenger_iterations\":{},\"incumbent_work\":{},\"optional_work\":{},\"build_work\":{},\"challenger_work\":{},\"control_work\":{},\"share_denominator\":{},\"build_status\":\"{build_status}\",\"build_trace\":\"{build_trace:016x}\",\"incumbent_trace\":\"{:016x}\",\"memory_bound\":{peak},\"grants\":{grants},\"build_boundaries\":{boundaries},\"build_active_seconds\":{build_active:.9},\"install_iteration\":{}}}",inc.iterations,heavy.as_ref().map_or(0,|s|s.iterations),ledger.inc,ledger.optional,ledger.build,ledger.challenger,ledger.control,config.denominator,inc.trace,install.map_or("null".into(),|v|v.to_string())).unwrap();
+            if persistent {
+                decision.pop();
+                let reserved = task
+                    .as_ref()
+                    .map_or(0, |t| t.report.snapshot.issued - t.report.snapshot.charged);
+                let pending_phase = task
+                    .as_ref()
+                    .and_then(|t| t.report.snapshot.pending)
+                    .map_or("", |b| b.boundary.phase);
+                write!(&mut decision,",\"task_id\":{task_number},\"resumed\":{resumed},\"issued_start\":{start_issued},\"charged_start\":{start_charged},\"issued_end\":{end_issued},\"charged_end\":{end_charged},\"boundaries_start\":{start_boundaries},\"reserved_build_work\":{reserved},\"pending_phase\":\"{pending_phase}\"}}").unwrap();
+            }
             assert!(decision.len() <= 4096);
             row.decisions.push(decision);
             state_counts(&mut row, &inc);

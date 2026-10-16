@@ -843,3 +843,92 @@ multiple RHSs and untouched confirmation; the present spending envelope alone
 supplies none of those performance guarantees. The nine current harness tests
 pass after adding dimension validation. The runtime evidence and the documented
 repository-suite identity blocker above remain unchanged.
+
+
+## Persistent-construction prototype: declared scope
+
+The next prototype preserves a parked constructor across realized RHSs. Existing
+`q14`/`q1` arms remain controls; new `p14`/`p1` arms retain construction progress
+without forecasting future work. The same cumulative ledger, memory admission,
+16000 combined iterations per RHS, original-incidence certificate and repair
+limit apply. A retained grant remainder is reserved until terminal collection;
+joining/refunding and graph totals occur once. Batch completion and failures
+drain/drop the task within the total timer. Completed hierarchies are reused.
+Numerical result changes are confined to new policies whose installation time
+changes; original arms must replay exactly. Independent dense/energy witnesses,
+cheap-only exactness, grant partition independence, retained-frontier and
+zero-RHS lifecycle tests cover the affected scope. No production code changes.
+
+Before choosing a control-path optimization, a bounded SCC instruction profile
+uses the existing frozen `e0155f8b` executable: expander and grid at 4096, one cut
+RHS, ordinary full and full-controlled, once each under Callgrind with a 120-second
+limit per invocation. These instrumented runs are diagnostic, not wall-time
+performance observations; scientific output and isolated allocation are checked.
+The prior failed panels and larger-grid supplement remain unchanged.
+
+The instruction diagnostic completed as job 8140049 on `scc-zj4` with clean
+scheduler accounting in 58 seconds. Callgrind counted 8,219,911,614 instructions
+for expander full-controlled versus 532,634,217 for ordinary full; grid counts
+were 2,213,389,887 versus 184,982,721. Prefix admission, wrapper admission and
+checkpoint bookkeeping jointly accounted for 80.02% and 78.37% of the respective
+controlled totals. Dense numerical factorization accounted for another 16.17%
+and 15.42%; controlled heapsort sift for 0.99% and 0.71%. These are whole-process
+instruction profiles, including preparation and solving, not elapsed-time claims.
+
+The resulting upstream change is opt-in `BuildControl::group_dense_work()`: eight
+consecutive dense inner-product terms retain their original arithmetic order and
+128-unit tariff each, with one prepayment of at most 1024 units. Allocation gates
+are unchanged. Default primitive mode keeps the same scientific and frontier
+signatures; its compiled loop structure changes, so frozen-binary comparisons
+are included rather than assuming its timing is unchanged. New `c14`/`c1` arms
+combine chunking with persistence; `p14`/`p1` isolate persistence; `full-chunked`
+compares complete construction without a cheap track. Per-task boundary and
+active-time fields are cumulative, not sums across RHSs. RHS telemetry records
+start/end issued and charged work, retained reservation, task identity and pending
+phase. New-policy recurrence failures additionally report RHS/track, iteration,
+repair count, recursive and true incidence residual, RHS norm and target without
+changing the tolerance, repair cap or accepted numerical path.
+
+### Frozen persistent discovery protocol
+
+The panel has eight cells: expander/4096 with four mixed and reversed RHSs,
+fringe/4096/four mixed, clusters/4096/one cut, grid/4096 and grid/8100/four mixed,
+mosaic/8192/four mixed, and hubs/8192/one random. Twenty-five arms include cheap
+diagonal/forest, ordinary full, both old full-upgrade triggers, primitive and
+chunked full construction, all twelve q/p/c share policies, and six arms from
+the unchanged previous executable (full, full-controlled and four q shares).
+Seed 20261019, one warmup and six randomized balanced forward/reverse blocks
+give **2600 observations** (200 warmups, 2400 measured). Exact-cell preflights
+are separate. Per-invocation timeout is 30 seconds; the internal budget including
+preflight is thirty minutes, with a forty-five-minute scheduler request. There
+is one attempt, no resampling, and every failure remains evidence.
+
+Smoke requires the eighteen Rust witnesses, all small arm/case observations,
+135 legacy numerical replays and eighty exact prior fixed-share control replays.
+A whole 28-physical-core node is reserved and verified before/during/after the
+serial panel; numeric work and the parked builder share one pinned physical
+core. Candidate and frozen previous binaries are compared within that allocation.
+A separate one-shot cluster/8192 diagnostic retains numerical failure context;
+it does not enter timing selection or authorize a tolerance change.
+
+The descriptive selection screen remains zero numerical failures/timeouts, easy
+expander/fringe overhead within `1 + share + 0.05` of the corresponding cheap
+solver, and hard grid/cluster time below half of that starter. Report all paired
+block ratios, six-block ranges, setup costs, construction completion/retention,
+resources and failures. Ranges are descriptive, not confidence intervals. A
+passing discovery policy still requires untouched confirmation and end-to-end
+coverage before any production promotion; no Mac claim follows from SCC.
+
+Candidate validation: eighteen Rust tests and eleven Python harness tests pass,
+along with formatting and strict Clippy. Independent Astra architecture review
+found no correctness blocker. Production identity remains unchanged from
+`e0f69a8d` (192 modules, 58 artifact inputs). The required repository script again
+passes its Python suite then stops at the existing native plugin/source identity
+mismatch; no plugin rebuild or production qualification is claimed. CMG's
+experimental-component scientific suite and strict Clippy pass at pinned revision
+`938b87e5a863ad333870413b61478966c56908b7`.
+
+Review also identified and fixed a preflight deadline gap: the same budget and
+isolation checks now run before every preflight and measurement invocation. A
+started invocation retains its thirty-second timeout, so exhaustion can overrun
+the internal boundary by at most one invocation; no further solve starts.

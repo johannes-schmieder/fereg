@@ -317,12 +317,15 @@ fn protected_disabled_and_refused_are_exact_cheap_replays() {
                         iterations: 16000,
                     },
                 ] {
-                    let row = run_config(&p, &rhs, &format!("{starter}-q1"), config).unwrap();
-                    assert_eq!(
-                        (row.digest, row.iterations, row.certificates),
-                        (baseline.digest, baseline.iterations, baseline.certificates),
-                        "{case}/{n}/{starter}"
-                    );
+                    for suffix in ["q1", "p1", "c1"] {
+                        let row =
+                            run_config(&p, &rhs, &format!("{starter}-{suffix}"), config).unwrap();
+                        assert_eq!(
+                            (row.digest, row.iterations, row.certificates),
+                            (baseline.digest, baseline.iterations, baseline.certificates),
+                            "{case}/{n}/{starter}"
+                        );
+                    }
                 }
             }
         }
@@ -335,12 +338,14 @@ fn controlled_full_matches_existing_full_exactly() {
             let p = generate(case, n);
             let rhs = p.rhs(2);
             let a = run(&p, &rhs, "full").unwrap();
-            let b = run(&p, &rhs, "full-controlled").unwrap();
-            assert_eq!(
-                (a.digest, a.iterations, a.certificates),
-                (b.digest, b.iterations, b.certificates),
-                "{case}/{n}"
-            );
+            for arm in ["full-controlled", "full-chunked"] {
+                let b = run(&p, &rhs, arm).unwrap();
+                assert_eq!(
+                    (a.digest, a.iterations, a.certificates),
+                    (b.digest, b.iterations, b.certificates),
+                    "{case}/{n}"
+                );
+            }
         }
     }
 }
@@ -352,7 +357,7 @@ fn parked_builder_quanta_and_abandon_are_deterministic() {
     let mut expected = None;
     for quantum in [257, 4096, 65536, CAP] {
         std::thread::scope(|scope| {
-            let mut task = BuildTask::start(scope, &p, None, 0, 1 << 30, 7).unwrap();
+            let mut task = BuildTask::start(scope, &p, None, 0, 1 << 30, (7, false)).unwrap();
             while !task.terminal {
                 task.grant((task.report.snapshot.issued + quantum).min(CAP))
                     .unwrap();
@@ -376,7 +381,7 @@ fn parked_builder_quanta_and_abandon_are_deterministic() {
     let mut expected = None;
     for _ in 0..2 {
         std::thread::scope(|scope| {
-            let mut task = BuildTask::start(scope, &p, None, 0, 1 << 30, 8).unwrap();
+            let mut task = BuildTask::start(scope, &p, None, 0, 1 << 30, (8, false)).unwrap();
             task.grant(10000).unwrap();
             assert!(!task.terminal);
             task.abandon().unwrap();
@@ -458,4 +463,119 @@ fn shared_cap_counts_actual_challenger_work_and_rejects_relaxation() {
             .as_deref(),
         Some("invalid_iteration_cap")
     );
+}
+
+fn decision_integer(row: &str, key: &str) -> u64 {
+    row.split(&format!("\"{key}\":"))
+        .nth(1)
+        .unwrap()
+        .split([',', '}'])
+        .next()
+        .unwrap()
+        .parse()
+        .unwrap()
+}
+
+#[test]
+fn persistent_frontier_survives_zero_rhs_and_refunds_only_at_batch_end() {
+    let p = generate("grid", 1024);
+    let b = p.rhs(1).remove(0);
+    let rhs = vec![b.clone(), vec![0.; p.n], b.clone()];
+    let cheap = run(&p, &rhs, "diagonal").unwrap();
+    let a = run(&p, &rhs, "diagonal-p14").unwrap();
+    assert_eq!(a.solutions, cheap.solutions);
+    assert_eq!(
+        (a.iterations, a.certificates, a.residual),
+        (cheap.iterations, cheap.certificates, cheap.residual)
+    );
+    assert_eq!(a.upgrades, 0);
+    assert!(a.decisions[0].contains("\"build_status\":\"parked\""));
+    assert!(a.decisions[1].contains("\"resumed\":true"));
+    assert_eq!(
+        decision_integer(&a.decisions[0], "issued_end"),
+        decision_integer(&a.decisions[1], "issued_start")
+    );
+    assert_eq!(
+        decision_integer(&a.decisions[0], "charged_end"),
+        decision_integer(&a.decisions[1], "charged_end")
+    );
+    assert_eq!(
+        decision_integer(&a.decisions[1], "issued_start"),
+        decision_integer(&a.decisions[1], "issued_end")
+    );
+    assert_eq!(
+        decision_integer(&a.decisions[1], "charged_end"),
+        decision_integer(&a.decisions[2], "charged_start")
+    );
+    assert!(a.decisions[2].contains("\"build_status\":\"abandoned\""));
+    assert_eq!(decision_integer(&a.decisions[2], "reserved_build_work"), 0);
+    assert!(a
+        .decisions
+        .iter()
+        .all(|d| decision_integer(d, "task_id") == 1));
+}
+
+#[test]
+fn persistent_work_can_install_after_an_earlier_rhs_completes() {
+    let p = generate("grid", 4096);
+    let rhs = p.rhs(3);
+    let a = run(&p, &rhs, "diagonal-p14").unwrap();
+    let b = run(&p, &rhs, "diagonal-p14").unwrap();
+    assert_eq!(a.solutions, b.solutions);
+    assert_eq!((a.digest, a.iterations), (b.digest, b.iterations));
+    assert_eq!(a.upgrades, 1);
+    assert_eq!(a.graph_builds, 1);
+    assert!(a.decisions[0].contains("\"build_status\":\"parked\""));
+    assert!(a.decisions[2].contains("\"build_status\":\"complete\""));
+    assert!(a.decisions[2].contains("\"resumed\":true"));
+    assert!(a
+        .decisions
+        .iter()
+        .all(|d| decision_integer(d, "task_id") == 1));
+    let first = run(&p, &rhs[..1], "diagonal").unwrap();
+    assert_eq!(a.solutions[0], first.solutions[0]);
+}
+
+#[test]
+fn chunked_builder_is_partition_independent_and_matches_full() {
+    use crate::builder::{BuildTask, CAP};
+    let p = generate("clusters", 64);
+    let b = p.rhs(1).remove(0);
+    let mut full = Full::new(&p.graph());
+    let mut expected = vec![0.; p.n];
+    full.apply(&b, &mut expected);
+    let mut signature = None;
+    for quantum in [257, 4096, 65536, CAP] {
+        std::thread::scope(|scope| {
+            let mut task = BuildTask::start(scope, &p, None, 0, 1 << 30, (7, true)).unwrap();
+            while !task.terminal {
+                task.grant((task.report.snapshot.issued + quantum).min(CAP))
+                    .unwrap();
+            }
+            let mut ready = task.ready.take().unwrap();
+            let mut x = vec![0.; p.n];
+            ready.pre.apply(&b, &mut x);
+            assert_eq!(
+                x.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+            );
+            let observed = (task.report.trace, task.report.snapshot.charged, ready.cycle);
+            if let Some(prior) = signature {
+                assert_eq!(observed, prior);
+            } else {
+                signature = Some(observed);
+            }
+        });
+    }
+}
+
+#[test]
+fn persistent_failure_after_a_park_joins_and_later_batches_work() {
+    let p = generate("expander", 256);
+    let b = p.rhs(1).remove(0);
+    let result = run(&p, &[b.clone(), vec![f64::NAN; p.n]], "diagonal-p14");
+    assert!(result.is_err());
+    let a = run(&p, &[b.clone(), b], "diagonal-p14").unwrap();
+    assert!(a.decisions[0].contains("\"build_status\":\"parked\""));
+    assert!(a.decisions[1].contains("\"resumed\":true"));
 }

@@ -13,6 +13,9 @@ export CARGO_BUILD_JOBS="${NSLOTS:?SGE slot allocation required}"
 export RUST_TEST_THREADS="$CARGO_BUILD_JOBS"
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 export LC_ALL=C TZ=UTC
+if [[ "${STAGED_PROTOCOL:-original}" == persistent ]]; then
+    export STAGED_PREVIOUS_BINARY="$root/previous/staged-cmg-prototype"
+fi
 "$staged_python" --version
 if [[ "$mode" == smoke ]]; then
     cargo +1.85.1 test --locked
