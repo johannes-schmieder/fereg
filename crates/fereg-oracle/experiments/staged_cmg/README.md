@@ -603,8 +603,11 @@ cleanup latency has no tariff-derived bound; all contributes to elapsed batch
 time. The original incidence preparation/input generation remains outside timing.
 CLI JSON serialization is outside the batch timer for every arm, as before;
 internal decision construction, solve output storage and joining are inside.
-The controlled full-build arm `full-controlled` isolates builder overhead from
-scheduling effects and must reproduce ordinary full-CMG scientific signatures.
+The controlled full-build arm `full-controlled` measures controlled construction
+without competition from a cheap track and must reproduce ordinary full-CMG
+scientific signatures. Its total timer includes scoped hierarchy destruction;
+ordinary full destroys its hierarchy after recording total time. Setup-phase
+comparisons avoid this total-timer difference.
 
 The second discovery is frozen before SCC timings:
 
@@ -684,3 +687,159 @@ preflights outside the statistical panel. Panics, malformed output, wrong
 identity or invalid successful certificates block measurement. Structured
 numerical/resource failures and timeouts stay failures and are retained.
 Supplemental success cannot erase the original failures or pass its screen.
+
+
+### Protected-construction results: no candidate for promotion
+
+The implementation is `e0155f8b`; input validation and the separately declared
+supplement are `c91c68e3`. The [retained evidence](protected-discovery.json)
+contains all 299 arm/cell summaries, paired block ratios, deterministic decision
+records, failure counts, scheduler accounting, artifact identities and raw-output
+hashes. Original and supplemental campaigns remain separate. Raw observations
+remain on SCC in campaigns `20261016-protected-cmg-e0155f8b` and
+`20261016-protected-cmg-grid-c91c68e3`. The executable SHA256 is
+`78313fb46e35b56da71a7261620b1852fdeca3beb6751babad2cbc0de967878f` in both.
+No production runtime or upstream numerical code changed.
+
+Smoke job **8138077** passed thirteen Rust tests, 65 small solves and 135 legacy
+replays, with the required marker and scheduler `failed=0`, `exit_status=0`.
+Original discovery job **8138109** ran on `scc-yk4` for 1190 seconds, ending
+2026-10-16 12:53:02 UTC. It recorded all **3718** observations: 286 warmups and
+3432 measured solves. Both scheduler fields were zero and the completion marker
+was present. The runner recorded 115 isolation snapshots. Numerical computation
+used one physical core; reserving and independently checking all 28 cores
+provided isolation. There were no observed competing compute jobs, replacements
+or excluded observations. These are Linux prepared-Schur measurements, not
+end-to-end regression-command timings or Mac qualification.
+
+The original panel retained **351 failures**, including 27 warmups:
+
+- 169 grid/8192 observations failed before solving because that generator
+  requires a square vertex count. This is the input-domain error described
+  above; these rows provide no timing evidence.
+- 169 clusters/8192/four-mixed-RHS observations reached the residual-replacement
+  limit, across all thirteen prototype arms. This is an unresolved numerical
+  failure, not evidence specific to the new controller or to production solvers.
+  The failed rows do not identify the failing RHS/recurrence.
+- Thirteen full-controlled/hubs/8192/random observations were rejected by the
+  conservative joint memory model. This was not an observed out-of-memory
+  event and does not show ordinary full CMG actually exceeded 1 GiB. Recorded
+  bounds describe admitted storage, not the rejected proposal or measured RSS.
+
+All successful scientific/control signatures repeated exactly. The largest
+accepted relative residual was `9.981490464158646e-9`. All 176 distinct successful
+fixed-share RHS records obeyed their cumulative ledger, memory and per-RHS
+iteration limits. All 63 successful arm/cells with no challenger iterations
+matched their cheap-only result, iteration count, certificate count and residual
+exactly. All nineteen successful full-controlled cells likewise matched ordinary
+full. Independent Astra review reproduced the paired summaries to rounding
+error and verified these invariants.
+
+The table reports arithmetic mean batch milliseconds and median paired ratios
+against the cheap starter. Brackets show the range across six balanced blocks,
+**not confidence intervals**. Mixed batches have four RHSs; cut batches have one.
+Different rows illustrate different fixed policies, not a selected universal
+winner. Old trigger means the corresponding `diagonal-full` or `forest-full` arm.
+
+| Cell | Protected arm | Cheap ms | Old trigger ms | Protected ms | Protected / cheap |
+|---|---|---:|---:|---:|---:|
+| expander/4096/mixed | diagonal-q14 | 16.945 | 70.498 | 26.475 | 1.581 [1.512, 1.604] |
+| fringe/4096/mixed | forest-q14 | 13.554 | 128.684 | 19.003 | 1.460 [1.188, 1.465] |
+| clusters/4096/cut | diagonal-q1 | 167.929 | 11.495 | 86.562 | 0.516 [0.509, 0.524] |
+| clusters/4096/cut | forest-q1 | 176.719 | 12.407 | 70.391 | 0.399 [0.394, 0.400] |
+| grid/4096/mixed | diagonal-q1 | 1532.401 | 34.535 | 495.751 | 0.321 [0.317, 0.338] |
+| mosaic/8192/mixed | diagonal-q1 | 3717.911 | 132.443 | 1805.376 | 0.486 [0.482, 0.489] |
+
+Protected spending reduces some old false-upgrade penalties and can buy useful
+CMG convergence on hard cells. It still loses substantially to cheap-only on
+easy cells and to the old trigger/full CMG on these hard examples. **Every one
+of the four fixed-share arms independently fails the declared easy-overhead
+screen on expander mixed.** Diagonal/forest quarter-share paired ratios are
+1.581/1.437, above 1.30; full-share ratios are 2.522/2.479, above 2.05.
+The panel cannot promote a policy, even setting aside its retained failures.
+
+Construction is the principal measured bottleneck. For expander mixed,
+ordinary full versus full-controlled takes 72.985 versus 681.158 ms in total,
+and 43.813 versus 651.371 ms in setup. For grid/4096 mixed, the corresponding
+numbers are 32.651 versus 194.147 ms total and 11.587 versus 172.967 ms setup.
+On these and the representative fringe, cluster-cut and mosaic cells, controlled
+setup is about fifteen times the ordinary setup cost. Setup already includes
+graph construction; adding graph time again would double count. This localizes
+the gap to the setup path, but does not identify callbacks, sorting, allocation,
+synchronization or another primitive as its cause. The total-timer destruction
+difference above also limits treating full-controlled as a perfectly isolated
+builder-only comparison.
+
+Completed hierarchies are reused, but unfinished construction is discarded.
+Across successful cells, diagonal-q1 has eight completed, nine reused, 26
+abandoned and one memory-refused RHS records. Each other protected arm has
+three completed, three reused, 37 abandoned and one refused. Cumulative credit
+preserves expenditure, **not construction progress**. The largest cumulative
+build charge is only `6.267e9` against the `1e12` cap, so cap exhaustion does
+not explain this panel's behavior.
+
+### Separate valid larger-grid outcome
+
+Job **8139211** ran the predeclared grid/8100/four-mixed-RHS supplement on
+`scc-zj4`, using the identical binary. It finished at 2026-10-16 13:01:57 UTC
+in 407 seconds, with scheduler `failed=0`, `exit_status=0`, the completion
+marker, thirteen successful preflights and all **169** successful observations
+(13 warmups, 156 measured). Forty isolation snapshots and matching initial/final
+configuration checks passed. Exact signatures included the preflights; all
+sixteen protected RHS ledgers passed. Maximum residual was
+`9.968823268997952e-9`. Independent review reproduced the schedule and summaries.
+
+| Arm | Mean batch ms | Median paired ratio to cheap starter [six-block range] |
+|---|---:|---:|
+| diagonal | 3992.216 | 1 |
+| diagonal-q14 | 5081.886 | 1.274 [1.261, 1.280] |
+| diagonal-q1 | 7236.343 | 1.814 [1.804, 1.817] |
+| forest | 1324.061 | 1 |
+| forest-q14 | 1701.633 | 1.285 [1.282, 1.290] |
+| forest-q1 | 2327.520 | 1.757 [1.752, 1.763] |
+| full | 109.827 | — |
+| diagonal-full | 114.114 | — |
+| full-controlled | 1015.063 | — |
+
+All four protected policies abandoned construction on every RHS, with zero
+upgrades or challenger iterations. Diagonal-q1 spent about 17.545 billion
+optional units without installing CMG. Full-controlled/full has a median paired
+ratio of 9.260 [9.083, 9.328]; its setup alone takes 967.155 versus 64.205 ms.
+The memory limit and cumulative construction cap did not bind.
+This separate cell supplies a counterexample to robustness across problem
+sizes. It is **not** a cross-node scaling measurement, cannot repair the original
+invalid cell and is not pooled with that panel. The favorable grid/4096 result
+therefore does not establish broad adaptive speed.
+
+### Next bounded experiment
+
+The mechanism is implemented and evaluated; no production promotion is justified.
+The next work should target the observed causes before tuning shares or adding
+parallel solver races:
+
+1. Profile ordinary and controlled construction on the same prepared operator,
+   with identical numerical options and matched timer boundaries. Attribute
+   setup to graph assembly, sorting/coalescing, coarsening, terminal construction,
+   work/memory gates and allocation. Use a fixed small diagnostic set and budget.
+   A CMG upstream change should reduce the identified control-path cost while
+   preserving exact scientific signatures, bounded deterministic yield points
+   and conservative admission. Check whether batching bookkeeping or using a
+   cheaper continuation representation helps; the present data do not choose
+   which implementation is responsible.
+2. Retain the parked, incomplete constructor across **realized** RHSs so later
+   earned credit advances the same build. Admit its retained memory, preserve
+   each cheap recurrence, charge all work and cleanup, and grant no credit from
+   speculative future RHSs. This needs a new frozen artifact and witnesses for
+   RHS-order behavior, cancellation, budgets, exact repeats and installation.
+3. Separately reproduce the cluster/8192 failure with per-RHS original-incidence
+   residual and compatibility witnesses. Keep the existing scientific threshold
+   and repair limit until the cause is understood. Failure across all prototype
+   arms is not permission to relax either safeguard.
+
+Only after those bounded diagnostics should a new discovery panel compare
+routing and upgrading against the best feasible static alternatives. Broad
+reliability must include easy-case overhead, hard-case completion, memory,
+multiple RHSs and untouched confirmation; the present spending envelope alone
+supplies none of those performance guarantees. The nine current harness tests
+pass after adding dimension validation. The runtime evidence and the documented
+repository-suite identity blocker above remain unchanged.
