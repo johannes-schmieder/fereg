@@ -1314,7 +1314,8 @@ The next prototype is chosen from these results and gets a separate declaration.
 
 
 The admitted diagnostic (implementation `afb2c9a3`, SCC jobs 8149202/8149307)
-completed its smoke, constructor gate, pilot and 910-observation panel on scc-zj4.
+completed its smoke on scc-gd4 and its constructor gate, pilot and
+910-observation panel on scc-zj4.
 All 910 panel outcomes succeeded and repeated exactly; isolation passed. The
 constructor gate passed all five cells, including hubs. The old selector met
 9/14 descriptive cell targets, missing both expander orders, fringe and both
@@ -1355,3 +1356,116 @@ confirmation is retained even if discovery misses targets. The same easy
 max(5%,1 ms) and hard 2x-static descriptive targets apply. Static comparison is a
 retrospective lower envelope, not an available online oracle. No independent
 session confidence interval or broad reliability claim follows from these panels.
+
+
+### Admitted diagnostic and forecast result: useful routing gain, incomplete coverage
+
+The admitted diagnostic passed its constructor prerequisite on all five cells;
+its router passed 9/14 discovery targets. The successor, implementation
+`d4d5aaa8`, passed 11/14 discovery targets and 9/14 untouched confirmation targets.
+Neither panel passes overall. The confirmation misses comprise four timing
+failures (both expander orders, fringe and hubs) and one scientific failure
+(weak clusters, for every solver). No production solver is replaced.
+[Compact evidence](admitted-forecast-discovery.json) retains all cell/block
+summaries, scientific signatures, failures, accounting, isolation and raw-file
+hashes for both experiments. Prior guarded-constructor failures remain closed.
+
+The sparse-expander improvement transfers to the unused size: approximately
+4.1x faster than the prior auto-admitted router in discovery and 3.1x in
+confirmation, measured within the successor allocation. Sparse discovery solves
+finish in 38–40 cheap iterations per RHS without building CMG; the previous
+policy unnecessarily committed to it. Hard grid and mosaic RHSs still trigger early commitment; subsequent RHSs
+reuse the hierarchy when present. This is evidence for forecasting before an irreversible
+construction decision, not evidence that one threshold handles every problem.
+
+Representative held-out complete-solve times follow. Values are medians of six
+block geometric means, in milliseconds; each block contains two observations
+per arm. Ratios and targets in the JSON use paired block summaries, so they need
+not equal ratios of the displayed medians. Both RHS orders and all other cells
+remain in the evidence, including unfavorable observations.
+
+| Held-out cell | Diagonal | Forest | Full CMG | Prior auto | Forecast auto | Target |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Expander/6144/mixed4 | 23.74 | 29.11 | 55.06 | 26.50 | 25.49 | Fail |
+| Sparse-expander/6144/mixed4 | 27.71 | 25.64 | 98.09 | 98.63 | 31.21 | Pass |
+| Weighted-expander/6144/mixed4 | 35.51 | 30.91 | 75.74 | 39.13 | 37.41 | Pass |
+| Fringe/6144/reversed4 | 2954.30 | 17.89 | 203.15 | 20.43 | 20.16 | Fail |
+| Grid/6400/mixed4 | 2670.17 | 864.17 | 70.15 | 76.38 | 74.75 | Pass |
+| Grid/10000/reversed4 | 5146.50 | 1662.68 | 56.43 | 66.84 | 64.32 | Pass |
+| Hubs/12288/random1 | 13.77 | 73.66 | 445.08 | 14.62 | 14.93 | Fail |
+| Mosaic/12800/mixed4 | 7212.31 | 2302.75 | 179.21 | 201.61 | 197.19 | Pass |
+| Clusters/6144/cut1 | Failed | Failed | Failed | Failed | Failed | Fail |
+
+The 13 scientifically successful confirmation cells have median paired
+forecast/static ratios ranging from 0.946 to 1.237. That is promising coverage
+on this bounded sample, but it excludes a genuinely unsuccessful fourteenth
+cell. The easy target remains max(5%,1 ms) in every block: the worst block
+exceeds that allowance by 1.234/1.467 ms for the expander orders, 1.509 ms for
+fringe and 2.628 ms for hubs. Hard-cell success permits up to twice the fastest
+feasible static arm; it does not mean the automatic solver is optimal. These
+are descriptive within-allocation results, without independent-session
+confidence intervals. The new sizes test transfer, not an exhaustive problem
+class or a separate-host replication of the policy.
+
+Confirmation completed all 70 preflights and 910 observations: 845 observations
+succeeded and 65 failed. All 65 failures, and five additional preflight failures,
+are the five arms on clusters/6144/cut1. No arm provides a successful comparator
+there. Auto-forecast rejects at iteration 37 after exhausting its two allowed
+residual replacements; its true residual is 1.934917e-6 against a 7.838367e-7
+target (about 2.47x too large). Clusters/8192 also still fails for all five smoke
+arms; the successor records 3.029744e-6 against 9.050967e-7. These are retained
+scientific failures, not accepted approximate answers. The recursive estimate
+is insufficient to certify them. This experiment does not establish a common
+root cause or a universal floating-point accuracy floor. All accepted outcomes
+repeat exactly; maximum accepted relative residuals are 9.981491e-9 in discovery
+and 9.979181e-9 in confirmation.
+
+The next engineering priorities follow from different evidence: independently
+diagnose the returned-vector accuracy failure on the weak inputs; profile and
+reduce easy-path overhead while retaining final certificates; and restore
+bounded cancellation to the admitted constructor without reintroducing the
+measured accounting cost. The admitted constructor and larger modeled budget made this reference
+feasible, but do not settle those issues. The modeled 8 GiB limit is a requested-storage
+ledger, not measured RSS; ordinary hierarchy/factor construction still lacks
+internal cancellation, and small Arc allocations remain infallible. Until these
+contracts and the failed cells are addressed, this remains a standalone serial
+prepared-Schur prototype. End-to-end regression integration, broad model/RHS
+coverage and focused Mac qualification remain outside the claims of this run.
+
+The retained SCC campaign is
+`/projectnb/welfgr/fereg/runs/20261016-admitted-router-d1f303a7`, with `diagnostic/`
+and `prototype/` roots, frozen source archives and distinct logs. Diagnostic
+jobs 8149202/8149307 and successor jobs 8149457/8149577 all have scheduler
+failed=0 and exit_status=0. The final job took 880 seconds and reported maxvmem
+325.246M; this scheduler virtual-memory observation is not the modeled memory
+bound. Smoke jobs used two reserved slots. Timing stages used one numerical
+core with all 28 physical cores reserved and independently verified isolated:
+diagnostic stages on scc-zj4, successor discovery and confirmation on scc-wo4.
+The successor pilot budgets fixed discovery at 600 seconds and confirmation at
+900 seconds; both finished once without edits, retries, exclusions or resampling.
+A zero job exit reports successful evidence collection, including the scientific
+failures, and does not convert failed selector targets into a pass.
+
+Executable source manifests are
+`9bcd5785fb23542c0d8a00e680f70c98fb94eaa7e95251d58034c5f352401931`
+(diagnostic, `afb2c9a3`) and
+`ce4ebd5a31c4648678c7819a4729ff00c7fd22a99a22564557de245911eb91ab`
+(successor, `d4d5aaa8`). Release binary hashes are
+`6b49a869901e036226cecc26c7783624b911e083869f583aecefb4f246ffd46f` and
+`5edbc9d91603c98b289941476a5a34463ed6c8ee7f7ff554626ac111eaf52c4f`, respectively.
+The diagnostic archive matches its commit; source was checked before submission
+and after completion, and every stage records the matching binary. Automatic
+batch entry/exit source and binary verification was added for the successor and
+passed. No new upstream CMG or within changes were needed in this experiment;
+the CMG pin remains `73e2e43d046250e00319c45863ca609808e52c99`.
+
+Validation passed 28 successor Rust tests on Mac and Linux, 16 Python harness
+tests, strict Clippy, formatting and shell syntax. All 239 overlapping smoke
+outcomes and 56 old-arm discovery preflights preserve their scientific/control
+signatures exactly. Independent Astra extra-high reviews cover the architecture
+and raw results. The repository entrypoint ran 243 Python tests (230 passed,
+13 skipped), then stopped at the existing installed-plugin/source identity
+mismatch; later runtime/ABI checks did not run. Production identity is unchanged
+from `d1f303a7` (192 runtime modules, 58 artifact inputs). No production rebuild
+or GitHub CI was performed. Local temporary captures are removed after the
+compact evidence is committed; raw evidence remains in the SCC campaign.
