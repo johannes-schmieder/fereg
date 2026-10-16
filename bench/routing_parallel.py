@@ -15,6 +15,11 @@ Schema 2 is a separate closed portfolio screen: each of three distinct hosts
 runs its own fresh science before one timing round, with no global proof,
 window, replacement or retry. One inclusive four-hour allocation budget governs
 science, timing and cleanup; terminal accounting is captured after job exit.
+
+Schema 3 retains one full parent manifest but executes a fixed 10/11-family
+partition in each of three rounds. Six distinct full-node allocations each run
+local science and paired timing; their proportional budgets total four hours per
+logical round. Only all six validated receipts permit full-parent scoring.
 """
 from __future__ import annotations
 
@@ -65,6 +70,18 @@ PORTFOLIO_QUERY_DESIGN = {
     **PORTFOLIO_DESIGN, 'scheduler_query_policy': discovery.SCHEDULER_QUERY_POLICY,
     'stopping': 'only bounded scheduler transport recovery under the frozen query policy; any science, observer or joint-budget failure invalidates the closed campaign; no producer retry, replacement, window or partial aggregation',
 }
+PARTITION_DESIGN = {
+    **PORTFOLIO_QUERY_DESIGN,
+    'shards_per_round': 2, 'physical_hosts': 6,
+    'partition': 'sorted family names: first 10 then remaining 11; both worker counts stay together; full 42-cell parent',
+    'inclusive_allocation_budget_s': 'floor(14400*M1/360), then remainder for shard 2; cleanup reserve included',
+    'maximum_native_calls_per_allocation': '7 * shard arm_slots; sum arm_slots = 360 per round',
+    'aggregate_minimum_replay_budget_s': 2100,
+    'order': 'three logical rounds times two fixed shards; six distinct physical hosts and jobs; own science then one subset round',
+    'worker_science': 'exact scientific-comparison discrete fields across passed same-family worker pairs; resource-dependent routing tuple differences retained descriptively; existing explicit CMG/IT checks unchanged',
+    'stopping': 'all six first allocations must pass before global scoring; no retry, replacement, reassignment or partial aggregation',
+    'heuristic_screen': 'only after all six terminal valid allocations: reject portfolio-unseeded if baseline_violations > 0 or worst available internal normalized comparison > 1; equality passes; at least one finite internal comparison required; retain complete ranking; descriptive only',
+}
 require = discovery.require
 write = discovery.write
 load = discovery.load
@@ -80,7 +97,7 @@ def binding_shape(ref):
 
 def metadata(plan):
     """Validate portable metadata without opening any deployment-host paths."""
-    if plan.get('schema') == 2:
+    if plan.get('schema') in (2, 3):
         return _portfolio_metadata(plan)
     require(plan.get('kind') == KIND + '_plan' and type(plan.get('schema')) is int and plan['schema'] == 1
             and routing.identity(plan.get('design')) == routing.identity(DESIGN), 'wrong parallel plan')
@@ -137,20 +154,26 @@ def metadata(plan):
 
 
 def _portfolio_metadata(plan):
+    partitioned = plan.get('schema') == 3
     require(set(plan) == {'kind', 'schema', 'design', 'parent', 'parent_sha256', 'parent_plan',
-                         'output_root', 'producer_tools', 'receipt_generator', 'frozen_files'}
+                         'output_root', 'producer_tools', 'receipt_generator', 'frozen_files'} | ({'partitions'} if partitioned else set())
             and plan['kind'] == KIND + '_plan' and type(plan['schema']) is int
-            and routing.identity(plan['design']) in {routing.identity(PORTFOLIO_DESIGN),
-                                                    routing.identity(PORTFOLIO_QUERY_DESIGN)},
+            and routing.identity(plan['design']) in ({routing.identity(PARTITION_DESIGN)} if partitioned else
+                                                    {routing.identity(PORTFOLIO_DESIGN), routing.identity(PORTFOLIO_QUERY_DESIGN)}),
             'wrong closed portfolio plan')
     parent = routing.unseal(plan['parent'])
     require(parent.get('kind') == discovery.PORTFOLIO_KIND + '_plan'
             and parent.get('design') == discovery.DESIGN
             and 'scheduler_query_policy' not in parent
+            and 'discovery_partition' not in parent and 'round_contract' not in parent
             and parent.get('library_limits') == discovery.LIBRARY_LIMITS
             and plan['parent_sha256'] == routing.identity(parent), 'wrong fresh portfolio discovery plan')
     spec = routing.unseal(parent['tournament'])
-    discovery.validate_spec(spec, portfolio=True)
+    discovery.validate_spec(spec, portfolio=True,
+                            candidate=routing.PORTFOLIO_UNSEEDED if partitioned else routing.PORTFOLIO_V1)
+    if partitioned:
+        require(routing.identity(plan['partitions']) == routing.identity(discovery.partitions(spec)),
+                'partition coverage, order, budgets or frontier changed')
     require(7 * sum(len(set(spec['candidates'] + spec['protections'] + cell['comparators']))
                     for cell in spec['panels']['A']) <= PORTFOLIO_DESIGN['maximum_native_calls_per_allocation'],
             'closed portfolio exceeds the frozen native-call budget')
@@ -202,7 +225,7 @@ def validate_plan(plan):
     require(all(plan['frozen_files'].get(p) == h for p, h in current_files().items()),
             'current parallel/host/producer source is not frozen')
     require(plan['receipt_generator'] == reference(isolation_host.__file__), 'wrong current receipt generator')
-    if plan['schema'] == 2:
+    if plan['schema'] in (2, 3):
         tests = ['test_routing_parallel.py']
         if 'scheduler_query_policy' in plan['design']:
             tests += ['test_scc_routing_host.py', 'test_routing_discovery.py']
@@ -231,9 +254,10 @@ def _prerequisite(parent, spec, proof):
 
 
 def freeze(config):
-    if config.get('schema') == 2:
+    if config.get('schema') in (2, 3):
         policy = config.get('scheduler_query_policy')
         require(policy is None or policy == discovery.SCHEDULER_QUERY_POLICY['kind'], 'unknown scheduler query policy')
+        require(config['schema'] != 3 or policy is not None, 'partitioned protocol requires the frozen scheduler policy')
         keys = {'schema', 'discovery_plan', 'output_root', 'receipt_generator', 'source_checks'}
         require(set(config) == keys | ({'scheduler_query_policy'} if policy is not None else set()),
                 'closed portfolio freeze accepts no original proof or window')
@@ -253,11 +277,14 @@ def freeze(config):
         for path, sha in current_files().items():
             require(path not in frozen or frozen[path] == sha, 'fresh portfolio source closure differs')
             frozen[path] = sha
-        result = {'kind': KIND + '_plan', 'schema': 2,
-                  'design': copy.deepcopy(PORTFOLIO_QUERY_DESIGN if policy is not None else PORTFOLIO_DESIGN),
+        result = {'kind': KIND + '_plan', 'schema': config['schema'],
+                  'design': copy.deepcopy(PARTITION_DESIGN if config['schema'] == 3 else
+                                          PORTFOLIO_QUERY_DESIGN if policy is not None else PORTFOLIO_DESIGN),
                   'parent': routing.seal(parent), 'parent_sha256': routing.identity(parent), 'parent_plan': parent_ref,
                   'output_root': str(root), 'producer_tools': parent['producer_tools'],
                   'receipt_generator': reference(config['receipt_generator']), 'frozen_files': frozen}
+        if config['schema'] == 3:
+            result['partitions'] = discovery.partitions(routing.unseal(parent['tournament']))
         validate_plan(result)
         return result
     parent_ref, proof_ref = reference(config['parent_plan']), reference(config['proof'])
@@ -301,11 +328,13 @@ def freeze(config):
     return result
 
 
-def round_view(plan, logical_round, attempt):
+def round_view(plan, logical_round, attempt, shard=None):
     metadata(plan)
     require(type(logical_round) is int and logical_round in (1, 2, 3)
             and type(attempt) is int and attempt in (1, 2), 'invalid logical round/attempt')
-    require(plan['schema'] != 2 or attempt == 1, 'closed portfolio has one attempt and no replacements')
+    require(plan['schema'] not in (2, 3) or attempt == 1, 'closed portfolio has one attempt and no replacements')
+    require((type(shard) is int and shard in (1, 2)) if plan['schema'] == 3 else shard is None,
+            'shard is required only for schema 3')
     require('legacy_window' not in plan or logical_round == 3, 'certified rounds one and two cannot be rerun')
     view = copy.deepcopy(routing.unseal(plan['parent']))
     view.update(output_root=str(Path(plan['output_root']) / f'round-{logical_round}' / f'attempt-{attempt}'),
@@ -314,14 +343,22 @@ def round_view(plan, logical_round, attempt):
                                 'logical_round': logical_round, 'attempt': attempt})
     if plan['schema'] == 2 and 'scheduler_query_policy' in plan['design']:
         view['scheduler_query_policy'] = copy.deepcopy(plan['design']['scheduler_query_policy'])
+    if plan['schema'] == 3:
+        part = copy.deepcopy(plan['partitions'][shard - 1])
+        view['output_root'] = str(Path(plan['output_root']) / f'round-{logical_round}/shard-{shard}/attempt-{attempt}')
+        view['discovery_partition'] = part
+        view['round_contract'].update(shard=shard, partition_sha256=routing.identity(part))
+        view['scheduler_query_policy'] = copy.deepcopy(plan['design']['scheduler_query_policy'])
     return view
 
 
-def producer(plan, proof, logical_round, attempt):
+def producer(plan, proof, logical_round, attempt, shard=None):
     spec = validate_plan(plan)
-    if plan['schema'] == 2:
+    require(plan['schema'] == 3 or shard is None, 'legacy protocol cannot select a shard')
+    if plan['schema'] in (2, 3):
         require(proof is None, 'closed portfolio never accepts a global prerequisite proof')
-        view = round_view(plan, logical_round, attempt)
+        view = round_view(plan, logical_round, attempt, shard)
+        spec = discovery.execution_spec(view)
         proof = discovery.prerequisites(view, Path(view['output_root']) / 'prerequisites')
         require(proof['host'] == discovery.host(), 'local prerequisite allocation changed')
         wrappers, outcomes, exact = _prerequisite(view, spec, proof)
@@ -440,19 +477,22 @@ def _operation(plan, plan_path, logical_round, attempt, view, proof, output, fai
     require(output == Path(view['output_root']) / 'collection', 'wrong observed output')
     output.mkdir(parents=True, exist_ok=False)
     machine = discovery.host()
+    allocation_budget = discovery.execution_budget(view)
     require(machine['library_limits'] == discovery.LIBRARY_LIMITS, 'set frozen library limits before launch')
     require(machine['slots'] == 28 and machine['machine'] == 'x86_64'
-            and (plan['schema'] == 2 or machine['machine'] == proof['host']['machine']),
+            and (plan['schema'] in (2, 3) or machine['machine'] == proof['host']['machine']),
             'run on the frozen complete 28-core x86_64 allocation')
     result = {'kind': discovery.KIND + '_collection', 'plan_sha256': routing.identity(view),
               'prerequisites_sha256': routing.identity(proof), 'round_contract': view['round_contract'],
               'host': machine, 'rounds': [], 'status': 'incomplete', 'collection_pid': os.getpid(),
               'started_wall_time_ns': time.time_ns(), 'started_monotonic_ns': time.monotonic_ns()}
-    if plan['schema'] == 2:
+    if plan['schema'] in (2, 3):
         require(type(joint_start_ns) is int, 'joint allocation budget must start before admission')
         result['joint_started_monotonic_ns'] = joint_start_ns
     command = [sys.executable, str(Path(__file__).resolve()), 'producer', '--plan', str(plan_path),
                '--round', str(logical_round), '--attempt', str(attempt)]
+    if plan['schema'] == 3:
+        command += ['--shard', str(view['round_contract']['shard'])]
     process, interrupted, partial, cleanup, observer_fault = None, False, {}, None, False
     prior_term, prior_int, prior_alarm = (signal.getsignal(number) for number in
                                          (signal.SIGTERM, signal.SIGINT, signal.SIGALRM))
@@ -463,20 +503,20 @@ def _operation(plan, plan_path, logical_round, attempt, view, proof, output, fai
         with (output / 'producer.log').open('x') as log:
             process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
             while process.poll() is None:
-                if plan['schema'] == 2:
+                if plan['schema'] in (2, 3):
                     require(time.monotonic_ns() - joint_start_ns <
-                            (PORTFOLIO_DESIGN['inclusive_allocation_budget_s'] - PORTFOLIO_DESIGN['cleanup_reserve_s']) * 1e9,
+                            (allocation_budget - PORTFOLIO_DESIGN['cleanup_reserve_s']) * 1e9,
                             'joint science/round budget expired before reserved cleanup')
                 if failure_event.wait(.1):
                     observer_fault = True
-                    require(plan['schema'] != 2, 'required portfolio host observation failed')
+                    require(plan['schema'] not in (2, 3), 'required portfolio host observation failed')
                     # Preserve the unchanged full scientific round. A required
                     # observer fault invalidates timing and never resets its budget.
                     time.sleep(.1)
     except BaseException as error:
         interrupted = True
         result['supervisor_error'] = f'{type(error).__name__}: {error}'
-        if plan['schema'] != 2:
+        if plan['schema'] not in (2, 3):
             try:
                 partial = _snapshot_partial(output / 'round-1')
             except (OSError, ValueError) as snapshot_error:
@@ -487,7 +527,7 @@ def _operation(plan, plan_path, logical_round, attempt, view, proof, output, fai
         signal.signal(signal.SIGTERM, lambda signum, frame: cleanup_signals.append(signum))
         signal.signal(signal.SIGALRM, lambda signum, frame: cleanup_signals.append(signum))
         try:
-            if interrupted and plan['schema'] == 2:
+            if interrupted and plan['schema'] in (2, 3):
                 root = Path(view['output_root'])
                 for phase, directory in [('science', root / 'prerequisites/producer'), ('timing', output / 'round-1')]:
                     try:
@@ -517,7 +557,7 @@ def _operation(plan, plan_path, logical_round, attempt, view, proof, output, fai
                 report = load(complete)
                 require(report['round_contract'] == view['round_contract']
                         and report['records'] == reference(record), 'producer completion identity differs')
-                if plan['schema'] == 2:
+                if plan['schema'] in (2, 3):
                     local = load(checked(report['proof']))
                     require(local['host'] == machine, 'local science host differs')
                     result.update(prerequisites=report['proof'], prerequisites_sha256=routing.identity(local))
@@ -527,20 +567,20 @@ def _operation(plan, plan_path, logical_round, attempt, view, proof, output, fai
     return result
 
 
-def collect(plan, proof, logical_round, attempt, plan_path):
+def collect(plan, proof, logical_round, attempt, plan_path, shard=None):
     validate_plan(plan)
-    if plan['schema'] == 2:
+    if plan['schema'] in (2, 3):
         require(proof is None and load(plan_path) == plan, 'closed portfolio requires its frozen plan and local science')
         joint_start_ns = time.monotonic_ns()
-        view = round_view(plan, logical_round, attempt)
+        view = round_view(plan, logical_round, attempt, shard)
         def operation(p, unused, output, event):
             return _operation(plan, plan_path, logical_round, attempt, p, None, output, event, joint_start_ns)
         result = isolation_host.observe(view, {}, operation=operation)
-        require(time.monotonic_ns() - joint_start_ns <= PORTFOLIO_DESIGN['inclusive_allocation_budget_s'] * 1e9,
+        require(time.monotonic_ns() - joint_start_ns <= discovery.execution_budget(view) * 1e9,
                 'inclusive allocation budget exceeded')
         return result
     require(load(plan_path) == plan and routing.identity(proof) == plan['proof_sha256'], 'wrong frozen plan/proof')
-    view = round_view(plan, logical_round, attempt)
+    view = round_view(plan, logical_round, attempt, shard)
     if attempt == 2:
         prior = inspect_attempt(plan, proof, logical_round, 1)
         require(prior['status'] == 'infra_failure' and 'accounting' in prior,
@@ -576,12 +616,13 @@ def _infra_errors(view, collection):
     return errors
 
 
-def inspect_attempt(plan, proof, logical_round, attempt):
+def inspect_attempt(plan, proof, logical_round, attempt, shard=None):
     """Fail closed: classify from retained bytes, never from retry assertions."""
     spec = validate_plan(plan)
-    if plan['schema'] == 2:
+    require(plan['schema'] == 3 or shard is None, 'legacy protocol cannot select a shard')
+    if plan['schema'] in (2, 3):
         require(proof is None, 'closed portfolio has no global proof')
-        return _inspect_portfolio(plan, spec, logical_round, attempt)
+        return _inspect_portfolio(plan, spec, logical_round, attempt, shard)
     require(routing.identity(proof) == plan['proof_sha256'], 'wrong original proof')
     view = round_view(plan, logical_round, attempt)
     root = Path(view['output_root'])
@@ -629,11 +670,11 @@ def inspect_attempt(plan, proof, logical_round, attempt):
     return result
 
 
-def finalize(plan, proof, logical_round, attempt):
+def finalize(plan, proof, logical_round, attempt, shard=None):
     validate_plan(plan)
-    require(proof is None if plan['schema'] == 2 else routing.identity(proof) == plan['proof_sha256'],
+    require(proof is None if plan['schema'] in (2, 3) else routing.identity(proof) == plan['proof_sha256'],
             'wrong prerequisite proof')
-    view = round_view(plan, logical_round, attempt)
+    view = round_view(plan, logical_round, attempt, shard)
     collection = load(Path(view['output_root']) / 'collection/collection.json')
     try:
         directory = Path(view['output_root']) / 'isolation'
@@ -656,19 +697,19 @@ def finalize(plan, proof, logical_round, attempt):
             receipt = isolation_host.finalize(view, collection)
         isolation_host.validate(view, collection, receipt)
     except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
-        result = inspect_attempt(plan, proof, logical_round, attempt)
+        result = inspect_attempt(plan, proof, logical_round, attempt, shard)
         if result['status'] != 'infra_failure':
             raise
         require('accounting' in result, 'terminal infrastructure accounting required')
         return result
-    return inspect_attempt(plan, proof, logical_round, attempt)
+    return inspect_attempt(plan, proof, logical_round, attempt, shard)
 
 
 def aggregate(plan, proof, attempts):
     spec = validate_plan(plan)
-    if plan['schema'] == 2:
+    if plan['schema'] in (2, 3):
         require(proof is None, 'closed portfolio has no global proof')
-        return _aggregate_portfolio(plan, spec, attempts)
+        return _aggregate_partitions(plan, spec, attempts) if plan['schema'] == 3 else _aggregate_portfolio(plan, spec, attempts)
     require(routing.identity(proof) == plan['proof_sha256'], 'wrong original proof')
     require(isinstance(attempts, list), 'attempt list required')
     labels = [(a['logical_round'], a['attempt']) for a in attempts]
@@ -758,8 +799,39 @@ def _discrete_science(records, outcomes):
     return routing.identity(signature)
 
 
-def _inspect_portfolio(plan, spec, logical_round, attempt):
-    view = round_view(plan, logical_round, attempt)
+def _partition_science(spec, records, outcomes):
+    """Scientific decisions are worker invariant; resource-dependent routes need not be."""
+    models, routes = {}, {}
+    for key, outcome in sorted(outcomes.items()):
+        if outcome['status'] != 'passed':
+            continue
+        rows = [row for row in [*records['prerequisites'], *records['records']]
+                if (row['cell'], row['arm']) == key and row.get('status') == 'passed']
+        hashes = [row.get('model_discrete_sha256') for row in rows]
+        require(hashes and all(routing.sha(value) and value == hashes[0] for value in hashes),
+                'missing or changed exact scientific decision signature')
+        models[key] = hashes[0]
+        routes[key] = [[r[i] for i in (0, 1, 3, 10, 11, 12, 13, 14)] for r in rows[0]['solver_rows']]
+    differences = []
+    for family in sorted({c['family'] for c in spec['panels']['A']}):
+        pair = sorted((c for c in spec['panels']['A'] if c['family'] == family), key=lambda c: c['threads'])
+        require(len(pair) == 2 and [c['threads'] for c in pair] == [1, 4], 'complete scientific worker pair required')
+        for arm in sorted(set(spec['candidates'] + spec['protections'] + pair[0]['comparators'])):
+            left, right = (pair[0]['id'], arm), (pair[1]['id'], arm)
+            if left in models and right in models:
+                require(models[left] == models[right], 'cross-worker scientific decisions changed')
+                if routes[left] != routes[right]:
+                    differences.append({'family': family, 'arm': arm,
+                                        'workers_1': routes[left], 'workers_4': routes[right]})
+    signature = [{'cell': key[0], 'arm': key[1], 'status': value['status'],
+                  'model_discrete_sha256': models.get(key)} for key, value in sorted(outcomes.items())]
+    return {'model_discrete_sha256': routing.identity(signature), 'worker_route_differences': differences}
+
+
+def _inspect_portfolio(plan, spec, logical_round, attempt, shard=None):
+    view = round_view(plan, logical_round, attempt, shard)
+    if plan['schema'] == 3:
+        spec = discovery.execution_spec(view)
     root = Path(view['output_root'])
     collection_path = root / 'collection/collection.json'
     collection = load(collection_path)
@@ -782,35 +854,44 @@ def _inspect_portfolio(plan, spec, logical_round, attempt):
                 'checked wrapper must be produced locally')
     require(len(collection.get('rounds', [])) == 1
             and checked(collection['rounds'][0]) == (root / 'collection/round-1/records.json').resolve(),
-            'one complete unchanged round required')
-    discovery.round_data(view, spec, routing.read_json(checked(collection['rounds'][0])), outcomes, exact)
+                'one complete unchanged execution round required')
+    timed = routing.read_json(checked(collection['rounds'][0]))
+    discovery.round_data(view, spec, timed, outcomes, exact)
     receipt_path = root / 'isolation/receipt.json'
     discovery.isolation(view, collection, load(receipt_path))
     account = routing.read_json(root / 'isolation/accounting.json')
     values = isolation_host.fields(isolation_host.output(account, ['qacct', '-j', collection['host']['job_id']]))
     wallclock = float(values.get('ru_wallclock', 'nan'))
-    require(math.isfinite(wallclock) and 0 < wallclock <= PORTFOLIO_DESIGN['inclusive_allocation_budget_s'],
-            'accounted allocation exceeds the inclusive four-hour budget')
+    require(math.isfinite(wallclock) and 0 < wallclock <= discovery.execution_budget(view),
+            'accounted allocation exceeds the inclusive allocation budget')
     endings = [row for row in isolation_host.rows(root / 'isolation/process_observations.jsonl') if row.get('kind') == 'end']
     require(len(endings) == 1 and type(collection.get('joint_started_monotonic_ns')) is int
             and all(type(collection.get(key)) is int for key in ('started_monotonic_ns', 'completed_monotonic_ns'))
             and type(endings[0].get('monotonic_ns')) is int
             and 0 <= collection['joint_started_monotonic_ns'] <= collection['started_monotonic_ns']
             <= collection['completed_monotonic_ns'] <= endings[0]['monotonic_ns']
-            <= collection['joint_started_monotonic_ns'] + PORTFOLIO_DESIGN['inclusive_allocation_budget_s'] * 1e9,
+            <= collection['joint_started_monotonic_ns'] + discovery.execution_budget(view) * 1e9,
             'joint science/round/cleanup allocation budget exceeded')
+    original = routing.read_json(checked(local['records']))
+    discrete = _discrete_science(original, outcomes)
+    scientific = _partition_science(spec, original, outcomes) if plan['schema'] == 3 else {}
+    if plan['schema'] == 3:
+        require(_discrete_science(timed, outcomes) == discrete
+                and _partition_science(spec, timed, outcomes) == scientific,
+                'timing records changed local scientific or routing decision signatures')
     return {'kind': KIND + '_attempt', **view['round_contract'], 'status': 'complete',
             'collection': reference(collection_path), 'isolation': reference(receipt_path), 'prerequisites': local_ref,
             'accounted_wallclock_s': wallclock,
-            'science_discrete_sha256': _discrete_science(routing.read_json(checked(local['records'])), outcomes)}
+            'science_discrete_sha256': discrete, **scientific}
 
 
-def portfolio_screen(ranking):
+def portfolio_screen(ranking, candidate=routing.PORTFOLIO_V1):
     """Prospective descriptive rejection rule; call only after full validation."""
+    require(candidate in routing.PORTFOLIOS, 'unknown portfolio screen candidate')
     require(isinstance(ranking, list) and len(ranking) == 2
-            and {row.get('arm') for row in ranking} == {'baseline', routing.PORTFOLIO_V1},
+            and {row.get('arm') for row in ranking} == {'baseline', candidate},
             'closed portfolio ranking required')
-    row = next(row for row in ranking if row['arm'] == routing.PORTFOLIO_V1)
+    row = next(row for row in ranking if row['arm'] == candidate)
     violations, worst = row.get('baseline_violations'), row.get('worst_internal_normalized')
     require(type(violations) is int and violations >= 0
             and type(worst) in (int, float) and math.isfinite(worst),
@@ -867,12 +948,71 @@ def _aggregate_portfolio(plan, spec, attempts):
             'protocol_source': KIND, 'ranking': ranking, **portfolio_screen(ranking)}
 
 
+def _aggregate_partitions(plan, spec, attempts):
+    labels = [(n, s, 1) for n in (1, 2, 3) for s in (1, 2)]
+    require(isinstance(attempts, list) and len(attempts) == 6
+            and all(all(type(row.get(key)) is int for key in ('logical_round', 'shard', 'attempt')) for row in attempts)
+            and [(row['logical_round'], row['shard'], row['attempt']) for row in attempts] == labels,
+            'partitioned discovery requires all six first allocations in round/shard order')
+    root = Path(plan['output_root'])
+    require(sorted(p.name for p in root.glob('round-*')) == ['round-1', 'round-2', 'round-3'],
+            'all logical round outputs must be retained')
+    reports, hosts, jobs, combined, full_outcomes, signatures, statuses = [], set(), set(), {}, {}, {}, {}
+    for (n, shard, attempt), supplied in zip(labels, attempts):
+        require(sorted(p.name for p in (root / f'round-{n}').glob('shard-*')) == ['shard-1', 'shard-2']
+                and sorted(p.name for p in (root / f'round-{n}/shard-{shard}').glob('attempt-*')) == ['attempt-1'],
+                'partitioned discovery forbids replacements or reassignment outputs')
+        report = _inspect_portfolio(plan, spec, n, attempt, shard)
+        require(routing.identity(report) == routing.identity(supplied), 'partition report differs from raw replay')
+        collection = load(checked(report['collection']))
+        host, job = isolation_host.hostname(collection['host']['hostname']), collection['host']['job_id']
+        require(isinstance(job, str) and job and host not in hosts and job not in jobs,
+                'six distinct physical hosts and scheduler jobs required')
+        hosts.add(host)
+        jobs.add(job)
+        view = round_view(plan, n, attempt, shard)
+        subset = discovery.execution_spec(view)
+        local = load(checked(report['prerequisites']))
+        _, outcomes, exact = _prerequisite(view, subset, local)
+        current = {key: value['status'] for key, value in outcomes.items()}
+        require(shard not in statuses or current == statuses[shard], 'cross-host subset availability changed')
+        current_signature = (report['science_discrete_sha256'], report['model_discrete_sha256'])
+        require(shard not in signatures or current_signature == signatures[shard],
+                'cross-host subset discrete decisions changed')
+        statuses[shard], signatures[shard] = current, current_signature
+        full_outcomes.update(outcomes)
+        data = discovery.round_data(view, subset, routing.read_json(checked(collection['rounds'][0])), outcomes, exact)
+        for key, values in data.items():
+            if values is None:
+                combined[key] = None
+            else:
+                combined.setdefault(key, []).extend(values)
+        reports.append(report)
+    expected = {(c['id'], a) for c in spec['panels']['A']
+                for a in set(spec['candidates'] + spec['protections'] + c['comparators'])}
+    require(set(combined) == set(full_outcomes) == expected
+            and all(value is None or len(value) == 9 for value in combined.values()),
+            'full parent requires exactly nine paired slots per available cell/arm')
+    require(sum(r['accounted_wallclock_s'] for r in reports) <= PARTITION_DESIGN['maximum_allocation_budget_s'],
+            'aggregate six-allocation budget exceeded')
+    ranking = discovery.score(spec, combined, full_outcomes)
+    envelope = {'kind': KIND + '_collection', 'schema': 3, 'plan_sha256': routing.identity(plan), 'attempts': reports}
+    receipts = [r['isolation'] for r in reports]
+    return {'kind': discovery.PORTFOLIO_KIND + '_shortlist', 'schema': 3, 'experiment_kind': 'portfolio',
+            'plan_sha256': routing.identity(plan), 'collection_sha256': routing.identity(envelope),
+            'isolation_sha256': routing.identity(receipts), 'collection': envelope, 'isolation': receipts,
+            'status': 'discovery_only', 'claim': PARTITION_DESIGN['inference'], 'promotion': False,
+            'protocol_source': KIND, 'ranking': ranking,
+            **portfolio_screen(ranking, candidate=routing.PORTFOLIO_UNSEEDED)}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['freeze', 'collect', 'producer', 'finalize', 'inspect-attempt', 'aggregate'])
     parser.add_argument('--plan', type=Path, required=True)
     parser.add_argument('--round', dest='logical_round', type=int)
     parser.add_argument('--attempt', type=int)
+    parser.add_argument('--shard', type=int)
     parser.add_argument('--attempts', type=Path, help='JSON list of derived attempt reports')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
@@ -880,18 +1020,18 @@ def main():
         write(routing.scratch(args.output), freeze(routing.read_json(args.plan)))
         return 0
     plan = load(args.plan)
-    proof = None if plan.get('schema') == 2 else load(checked(plan['proof']))
+    proof = None if plan.get('schema') in (2, 3) else load(checked(plan['proof']))
     if args.command == 'aggregate':
         result = aggregate(plan, proof, routing.read_json(args.attempts))
     elif args.command == 'producer':
-        producer(plan, proof, args.logical_round, args.attempt)
+        producer(plan, proof, args.logical_round, args.attempt, args.shard)
         return 0
     elif args.command == 'collect':
-        result = collect(plan, proof, args.logical_round, args.attempt, args.plan)
+        result = collect(plan, proof, args.logical_round, args.attempt, args.plan, args.shard)
     elif args.command == 'finalize':
-        result = finalize(plan, proof, args.logical_round, args.attempt)
+        result = finalize(plan, proof, args.logical_round, args.attempt, args.shard)
     else:
-        result = inspect_attempt(plan, proof, args.logical_round, args.attempt)
+        result = inspect_attempt(plan, proof, args.logical_round, args.attempt, args.shard)
     if args.output:
         write(routing.scratch(args.output), result)
     else:

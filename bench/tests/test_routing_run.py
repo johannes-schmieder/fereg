@@ -334,6 +334,167 @@ class PortfolioAutoScope(unittest.TestCase):
                 selected_policy=routing_run.comparison_policy(equivalent, 'public-auto'))
 
 
+class UnseededPortfolioScope(unittest.TestCase):
+    META = PortfolioAutoScope.META
+    raw = staticmethod(PortfolioAutoScope.raw)
+
+    def compare(self, raw, **kwargs):
+        return PortfolioAutoScope.compare(self, raw, policy=routing.policy(routing.PORTFOLIO_UNSEEDED), **kwargs)
+
+    def test_zero_pilot_lsmr_and_source_supported_map_paths_keep_existing_certificates(self):
+        for mode in (1, 2):
+            for route in ('lsmr', 'pc-fallback', 'map-fallback', 'map-no-lsmr'):
+                raw = self.raw(route, pilot=0, mode=mode)
+                reference = self.raw('lsmr', pilot=4, mode=mode)
+                with self.subTest(mode=mode, route=route):
+                    self.compare(raw, reference=reference)
+                    scope = set(routing_run.portfolio_scope(reference, raw, self.META, 'auto',
+                                routing.policy(routing.PORTFOLIO_UNSEEDED)))
+                    self.assertEqual(scope - set(routing_run.replay_scope(raw, 'auto', self.META)),
+                        {f'/matrices/RSOLVER/bits/{14*r+c}' for r in range(2) for c in [1,8,9,10,11,12]})
+        # A workspace decline before LSMR produces no attempted-report fallback
+        # bit. Its certified original-input MAP can still take positive work.
+        raw = self.raw('map-no-lsmr', pilot=0)
+        self.assertEqual(routing_run.cmgschur.numbers(raw['matrices']['RSOLVER'])[2], 10)
+        self.compare(raw)
+        raw = self.raw('map-fallback', pilot=0, mode=2)
+        raw['matrices']['RSOLVER']['bits'][11] = bits(4.)
+        self.compare(raw)
+
+    def test_zero_pilot_alone_does_not_admit_forged_routes_or_loose_certificates(self):
+        mutations = [(0, 3.), (1, 4.), (3, 3.), (10, 2.), (11, .5), (11, -1.),
+                     (12, 0.), (12, 2.), (13, 0.), (14, 1.), (14, 4.), (15, .1),
+                     (5, 2e-10), (2, 101.), (2, float('nan'))]
+        for row in range(2):
+            for column, value in mutations:
+                raw = self.raw('lsmr', pilot=0)
+                raw['matrices']['RSOLVER']['bits'][16*row+column] = bits(value)
+                with self.subTest(row=row, column=column), self.assertRaises(ValueError): self.compare(raw)
+        for route, column, value in [('map-fallback',10,0.), ('map-fallback',11,0.),
+                                     ('pc-fallback',13,4.), ('map-no-lsmr',11,1.)]:
+            for row in range(2):
+                raw = self.raw(route, pilot=0)
+                raw['matrices']['RSOLVER']['bits'][16*row+column] = bits(value)
+                with self.subTest(route=route,row=row,column=column), self.assertRaises(ValueError): self.compare(raw)
+        raw = self.raw(); raw['matrices']['RSOLVER']['bits'][21] = bits(2e-14)
+        with self.assertRaisesRegex(ValueError,'private Auto target'): self.compare(raw)
+        for key, value in [('return_code',1), ('return_code',True)]:
+            raw = self.raw(); raw[key] = value
+            with self.assertRaises(ValueError): self.compare(raw)
+        for rows, columns in [(1,32), (2,15), (True,16)]:
+            raw = self.raw(); raw['matrices']['RSOLVER'].update(rows=rows,columns=columns)
+            with self.assertRaises(ValueError): self.compare(raw)
+
+    def test_unseeded_two_fe_scope_and_direct_certificate_are_identical_to_v1(self):
+        meta = {**self.META,'absorbed_terms':2}
+        before, after = self.raw('map-no-lsmr'), self.raw('prefix')
+        for row in range(2): before['matrices']['RSOLVER']['bits'][16*row+1] = bits(4.)
+        after['matrices']['RSOLVER']['bits'][5] = bits(5e-9)
+        for raw, reference in [(self.raw(), self.raw()), (after,before)]:
+            self.assertEqual(routing_run.portfolio_scope(reference,raw,meta,'auto',routing.policy(routing.PORTFOLIO_UNSEEDED)),
+                             routing_run.portfolio_scope(reference,raw,meta,'auto',routing.policy(routing.PORTFOLIO_V1)))
+            self.compare(raw,reference=reference,meta=meta)
+        for row, column, value in [(0,5,2e-8),(1,5,2e-14),(0,14,1.),(1,10,1.)]:
+            changed = copy.deepcopy(after); changed['matrices']['RSOLVER']['bits'][16*row+column] = bits(value)
+            with self.subTest(row=row,column=column), self.assertRaises(ValueError): self.compare(changed,reference=before,meta=meta)
+
+    def test_unseeded_policy_and_metadata_identity_cannot_be_substituted(self):
+        spec = portfolio_manifest(routing.PORTFOLIO_UNSEEDED)
+        self.assertEqual(routing_run.comparison_policy(spec,routing.PORTFOLIO_UNSEEDED),routing.policy(routing.PORTFOLIO_UNSEEDED))
+        self.assertEqual(routing_run.input_policy(spec,routing.PORTFOLIO_UNSEEDED),routing.PORTFOLIO_UNSEEDED)
+        self.assertEqual(routing_run.reader_arm(spec,routing.PORTFOLIO_UNSEEDED),'auto')
+        for field,value in [('experiment_kind','routing'),('candidates',['baseline'])]:
+            bad = copy.deepcopy(spec); bad[field] = value
+            with self.assertRaises(ValueError): routing_run.comparison_policy(bad,routing.PORTFOLIO_UNSEEDED)
+        for field,value in [('injection','routing_portfolio_v1'),('steps',False),('certificate','requested')]:
+            selected = routing.policy(routing.PORTFOLIO_UNSEEDED); selected[field] = value
+            bad = copy.deepcopy(spec); bad['arms'][routing.PORTFOLIO_UNSEEDED]['policy'] = selected
+            with self.assertRaises(ValueError): routing_run.comparison_policy(bad,routing.PORTFOLIO_UNSEEDED)
+            with self.assertRaises(ValueError): routing_run.portfolio_scope(self.raw(),self.raw(),self.META,'auto',selected)
+        for field,value in [('absorbed_terms',True),('absorbed_terms',3.),('categorical_intercepts',1)]:
+            with self.assertRaises(ValueError): self.compare(self.raw(),meta={**self.META,field:value})
+        with self.assertRaises(ValueError): self.compare(self.raw(),reader='lsmr')
+        for table,index in [('RSTATUS',1),('RDOF',3),('RCERT',1),('RRUNTIME',43)]:
+            raw = self.raw(); raw['matrices'][table]['bits'][index] = bits(2.)
+            with self.subTest(table=table),self.assertRaises(ValueError): self.compare(raw)
+
+    def test_new_policy_does_not_gain_public_activation_allowance(self):
+        import routing_block_deployment as deployment
+        selected = routing.policy(routing.PORTFOLIO_UNSEEDED)
+        spec = {'kind':deployment.KIND,'arms':{'public-auto':{'effective_policy':selected},'incumbent':{'policy':selected}}}
+        for arm in ('public-auto','incumbent'): self.assertIsNone(routing_run.comparison_policy(spec,arm))
+
+    def test_exact_unseeded_preset_and_two_fe_resource_caps(self):
+        action = TRACE.replace('routing_h4_k0','routing_portfolio_unseeded')
+        route = 'FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=16|samples=1\n'
+        for log in (action,action+route):
+            checked = routing_run.resource_diagnostics(log,routing.PORTFOLIO_UNSEEDED,False,{})
+            self.assertEqual(checked['action_resources'][0]['preset'],'routing_portfolio_unseeded')
+        for log in ('',TRACE,action.replace('certified=1','certified=0'),
+                    action.replace('iterations=5','iterations=101'),action.replace('setup_work=12','setup_work=33'),
+                    action.replace('memory_bytes=64','memory_bytes=129'),action+route.replace('samples=1','samples=0'),
+                    action+route.replace('checkpoint=16','checkpoint=32')):
+            with self.subTest(log=log),self.assertRaises(ValueError):
+                routing_run.resource_diagnostics(log,routing.PORTFOLIO_UNSEEDED,False,{})
+        with self.assertRaises(ValueError):
+            routing_run.resource_diagnostics(TRACE.replace('routing_h4_k0','routing_portfolio_v1'),
+                routing.PORTFOLIO_UNSEEDED,False,{},expected_preset='routing_portfolio_v1')
+
+
+class ModelDiscreteSignature(unittest.TestCase):
+    def test_full_model_matrices_presence_flags_and_discrete_dof_are_included(self):
+        raw = result('auto')
+        original = routing_run.model_discrete_sha256(raw)
+        changes = [(name,0) for name in ('RSTATUS','RFE','RCLUSTER','RSUBSET','RMARKB','RMARKV','RREC')]
+        changes += [(name,0) for name in ('RFIT','RDOF','RCERT')]
+        changes += [('RDOF',2*row+1) for row in range(20) if row not in {4,11}]
+        for name,index in changes:
+            changed = copy.deepcopy(raw);changed['matrices'][name]['bits'][index] = bits(2.)
+            with self.subTest(name=name,index=index):
+                self.assertNotEqual(routing_run.model_discrete_sha256(changed),original)
+
+    def test_route_continuous_fields_excluded_and_numeric_signed_zero_equal(self):
+        raw = result('auto')
+        raw['matrices']['RDOF']['bits'][3] = bits(0.)
+        changed = copy.deepcopy(raw)
+        for name,index in [('RFIT',1),('RCERT',1),('RDOF',9),('RDOF',23),('RSOLVER',1),('RRUNTIME',39),('RB',0)]:
+            changed['matrices'][name]['bits'][index] = bits(2.)
+        changed['matrices']['RDOF']['bits'][3] = bits(-0.)
+        self.assertEqual(routing_run.model_discrete_sha256(raw),routing_run.model_discrete_sha256(changed))
+        # Model tables compare raw bits; selected RDOF cells compare numbers.
+        raw['matrices']['RMARKB']['bits'][0] = bits(0.)
+        changed = copy.deepcopy(raw);changed['matrices']['RMARKB']['bits'][0] = bits(-0.)
+        self.assertNotEqual(routing_run.model_discrete_sha256(raw),routing_run.model_discrete_sha256(changed))
+
+    def test_invalid_raw_or_model_shape_is_rejected(self):
+        for mutate in [lambda raw:raw.update(return_code=True),
+                       lambda raw:raw['matrices']['RDOF'].update(rows=10,columns=4),
+                       lambda raw:raw['matrices']['RSTATUS'].update(rows=True),
+                       lambda raw:raw['matrices'].pop('RMARKB')]:
+            raw = result('auto');mutate(raw)
+            with self.subTest(mutate=mutate),self.assertRaises(ValueError):routing_run.model_discrete_sha256(raw)
+
+
+class DiscoveryPartitionAdmission(unittest.TestCase):
+    def test_partition_guard_precedes_any_paths_and_requires_full_parent_validation(self):
+        import routing_discovery as discovery
+        spec = portfolio_manifest(routing.PORTFOLIO_UNSEEDED)
+        base = dict(manifest=spec,stage='A',previous=None,harness=Path('/not-opened'),plugins={},cases={},
+                    witnesses={},output=Path('/not-created'),discovery_partition={'unvalidated':True})
+        variants = [dict(stage='B'),dict(stage='C'),dict(previous={}),dict(ablation_only=True),
+                    dict(qualification_context={}),dict(manifest=portfolio_manifest())]
+        with patch.object(discovery,'partition_spec') as partition,patch.object(routing_run,'inspect_case') as inspect:
+            for change in variants:
+                with self.subTest(change=change),self.assertRaises(ValueError):routing_run.run(**{**base,**change})
+            bad = copy.deepcopy(spec);bad['panels']['A'][0]['coverage']=[]
+            with self.assertRaisesRegex(ValueError,'coverage'):routing_run.run(**{**base,'manifest':bad})
+            partition.assert_not_called();inspect.assert_not_called()
+        with patch.object(discovery,'partition_spec',side_effect=ValueError('descriptor mismatch')) as partition, \
+             patch.object(routing_run,'inspect_case') as inspect:
+            with self.assertRaisesRegex(ValueError,'descriptor mismatch'):routing_run.run(**base)
+            partition.assert_called_once_with(spec,base['discovery_partition']);inspect.assert_not_called()
+
+
 class CrossRequestComparatorScope(unittest.TestCase):
     META = {'categorical_intercepts': True, 'absorbed_terms': 3}
 
@@ -725,8 +886,9 @@ class RoutingProducer(unittest.TestCase):
         self.evidence['arm_outcomes'] = {a: {'status': 'passed'} for a in self.spec['arms']}
         self.plugins = {a: self.baseline if a == 'baseline' else self.plugin for a in self.spec['arms']}
 
-    def run_panel(self, failure=None, ablation_only=False, prerequisites_only=False, witnesses=None, output_name='output', existing_proof=False, stage='A', previous=None):
+    def run_panel(self, failure=None, ablation_only=False, prerequisites_only=False, witnesses=None, output_name='output', existing_proof=False, stage='A', previous=None, discovery_partition=None, budget=14400.):
         calls = []
+        self.latest_calls = calls
         def native(command, log, timeout):
             traced = 'FEREG_SOLVER_TRACE=1' in command
             for name in routing_run.CLEARED_ENV:
@@ -736,6 +898,8 @@ class RoutingProducer(unittest.TestCase):
             fields = dict(a.decode().split('=', 1) for a in args[1:])
             arm = fields.get('inject', fields['solver'])
             calls.append((arm, traced))
+            if failure == 'partition-validator-mutation':
+                self.partition_validator.write_text('changed validator bytes')
             if failure == 'timeout' and arm == 'routing_h4_k0':
                 raise TimeoutError('intentional bounded failure')
             raw = result(routing_run.EXPLICIT.get(fields['solver'], fields['solver']))
@@ -743,8 +907,9 @@ class RoutingProducer(unittest.TestCase):
                 raw['matrices']['RSOLVER']['bits'][row * 16 + 12] = bits(1. if fields['solver'] == 'lsmr' else 0.)
                 raw['matrices']['RSOLVER']['bits'][row * 16 + 13] = bits(3. if fields['solver'] == 'lsmr' else 0.)
             if self.spec.get('experiment_kind') == 'portfolio':
-                candidate = arm == 'routing_portfolio_v1'
-                raw = PortfolioAutoScope.raw('prefix' if candidate else 'lsmr', pilot=2 if candidate else 0)
+                candidate = arm in {'routing_portfolio_v1', 'routing_portfolio_unseeded'}
+                seeded = arm == 'routing_portfolio_v1'
+                raw = PortfolioAutoScope.raw('prefix' if seeded else 'lsmr', pilot=2 if seeded else 0)
                 if fields['solver'] == 'lsmr':
                     for row in range(2):
                         raw['matrices']['RSOLVER']['bits'][16 * row] = bits(3.)
@@ -833,7 +998,8 @@ class RoutingProducer(unittest.TestCase):
                 patch.object(routing_run.cmgschur, 'run_process', side_effect=native):
             output = routing_run.run(self.spec, stage, previous, self.harness, self.plugins,
                         {self.cell['id']: self.source}, {self.cell['id']: self.witness} if witnesses is None else witnesses,
-                        self.root / output_name, ablation_only=ablation_only, prerequisites_only=prerequisites_only)
+                        self.root / output_name, ablation_only=ablation_only, prerequisites_only=prerequisites_only,
+                        discovery_partition=discovery_partition, budget=budget)
         return output, calls
 
     def test_successful_producer_is_directly_consumed_by_selector(self):
@@ -1293,6 +1459,99 @@ class RoutingProducer(unittest.TestCase):
         timed, _ = self.run_panel(existing_proof=True, output_name='timed')
         self.assertEqual(routing.evaluate(self.spec, 'A', timed)['shortlist'],
                          ['baseline', routing.PORTFOLIO_V1])
+
+    def test_unseeded_producer_has_exact_repeats_and_actual_private_preset(self):
+        self.configure_experiment(portfolio_manifest(routing.PORTFOLIO_UNSEEDED))
+        out, calls = self.run_panel(prerequisites_only=True)
+        self.assertEqual(out['status'], 'complete')
+        self.assertTrue(all('model_discrete_sha256' not in row for row in out['prerequisites']+out['records']))
+        self.assertEqual({arm for arm,_ in calls}, {'auto','lsmr','routing_portfolio_unseeded'})
+        for row in out['prerequisites'] + out['records']:
+            if row['arm'] == routing.PORTFOLIO_UNSEEDED:
+                self.assertTrue(all(values[14:]==[0.,0.] for values in row['solver_rows']))
+                self.assertEqual(row['action_resources'][0]['preset'],'routing_portfolio_unseeded')
+        link = out['qualified_wrappers'][self.cell['id']]
+        self.witness = self.root / 'output' / link['path']
+        timed,_ = self.run_panel(existing_proof=True,output_name='unseeded-timed')
+        self.assertEqual(timed['status'],'complete')
+        self.assertEqual(routing.evaluate(self.spec,'A',timed)['shortlist'],['baseline',routing.PORTFOLIO_UNSEEDED])
+
+    def test_partition_consumes_parent_ready_then_emits_only_derived_checked_proofs(self):
+        import routing_discovery as discovery
+        self.configure_experiment(portfolio_manifest(routing.PORTFOLIO_UNSEEDED))
+        parent = copy.deepcopy(self.spec)
+        derived = copy.deepcopy(parent)
+        derived['failure_policy']['aggregate_budget_s'] = 200.
+        descriptor = {'synthetic_partition':'only this validated test cell'}
+        with (patch.object(discovery,'partition_spec',return_value=derived) as partition,
+              patch.object(routing_run,'model_discrete_sha256',wraps=routing_run.model_discrete_sha256) as model):
+            out,_ = self.run_panel(prerequisites_only=True,discovery_partition=descriptor,budget=200.)
+            self.assertEqual(model.call_count,6)
+            expected = routing_run.model_discrete_sha256(PortfolioAutoScope.raw())
+            self.assertTrue(all(row['model_discrete_sha256']==expected for row in out['prerequisites']+out['records']))
+        partition.assert_called_once_with(parent,descriptor)
+        self.assertEqual(out['status'],'complete')
+        self.assertEqual(out['parent_manifest_sha256'],routing.identity(parent))
+        self.assertEqual(out['manifest_sha256'],routing.identity(derived))
+        self.assertEqual(out['discovery_partition'],descriptor)
+        validator = {'path':str(Path(discovery.__file__).resolve()),'sha256':digest(Path(discovery.__file__))}
+        self.assertEqual(out['discovery_partition_validator'],validator)
+        self.assertEqual(len(routing_run.tool_identities()),13)
+        link = out['qualified_wrappers'][self.cell['id']]
+        self.witness = self.root / 'output' / link['path']
+        wrapper = json.loads(self.witness.read_text())
+        self.assertEqual(wrapper['manifest_sha256'],routing.identity(derived))
+        self.assertIn(validator,wrapper['frozen_dependencies'])
+        with (patch.object(discovery,'partition_spec',return_value=derived),
+              patch.object(routing_run,'model_discrete_sha256',wraps=routing_run.model_discrete_sha256) as model):
+            timed,_ = self.run_panel(existing_proof=True,output_name='partition-timed',
+                                     discovery_partition=descriptor,budget=200.)
+            self.assertEqual(model.call_count,15)
+            self.assertEqual({row['repetition'] for row in timed['records']},{-1,0,1,2})
+            self.assertTrue(all(row['model_discrete_sha256']==expected for row in timed['prerequisites']+timed['records']))
+        self.assertEqual(timed['status'],'complete')
+        self.assertIn(validator,json.loads(self.witness.read_text())['frozen_dependencies'])
+        # Remove the validator from BOTH checked wrapper and sealed proof and
+        # refresh all link hashes, so rejection tests missing provenance itself.
+        wrapper = json.loads(self.witness.read_text())
+        proof_path = self.witness.parent / wrapper['scoped_replay']['path']
+        proof = routing.unseal(json.loads(proof_path.read_text()))
+        proof['frozen_dependencies'].remove(validator)
+        wrapper['frozen_dependencies'].remove(validator)
+        proof_path.write_text(json.dumps(routing.seal(proof)))
+        for name in ('scoped_replay','resource_contract','independent_witness'):
+            if wrapper[name]['path'] == proof_path.name:
+                wrapper[name]['sha256'] = digest(proof_path)
+        self.witness.write_text(json.dumps(wrapper))
+        with patch.object(discovery,'partition_spec',return_value=derived):
+            with self.assertRaisesRegex(routing_run.FrozenIdentityError,'omits its exact discovery validator'):
+                self.run_panel(existing_proof=True,output_name='omitted-validator',
+                               discovery_partition=descriptor,budget=200.)
+        self.assertEqual(self.latest_calls,[])
+        self.assertFalse((self.root/'omitted-validator').exists())
+        with patch.object(discovery,'partition_spec',return_value=derived):
+            wrong,_ = self.run_panel(prerequisites_only=True,output_name='checked-is-not-parent-ready',
+                                     discovery_partition=descriptor,budget=200.)
+        self.assertEqual(wrong['qualified_wrappers'],{})
+        self.assertTrue(all(row['status']!='passed' for row in wrong['prerequisites']))
+
+    def test_partition_validator_mutation_stops_after_first_mock_native_call(self):
+        import routing_discovery as discovery
+        self.configure_experiment(portfolio_manifest(routing.PORTFOLIO_UNSEEDED))
+        derived = copy.deepcopy(self.spec)
+        derived['failure_policy']['aggregate_budget_s'] = 200.
+        self.partition_validator = self.root / 'partition-validator.py'
+        self.partition_validator.write_text('original validator bytes')
+        with patch.object(discovery,'__file__',str(self.partition_validator)), \
+             patch.object(discovery,'partition_spec',return_value=derived):
+            with self.assertRaisesRegex(routing_run.FrozenIdentityError,'partition validator changed'):
+                self.run_panel(prerequisites_only=True,failure='partition-validator-mutation',
+                               discovery_partition={'synthetic':'reviewed descriptor'},budget=200.)
+        self.assertEqual(len(self.latest_calls),1)
+        report = json.loads((self.root/'output/records.json').read_text())
+        self.assertEqual(report['status'],'failed')
+        self.assertEqual(report['qualified_wrappers'],{})
+        self.assertFalse(list((self.root/'output').glob('proof-*.json')))
 
     def test_actual_portfolio_producer_rows_feed_parallel_discrete_science(self):
         import routing_parallel as parallel

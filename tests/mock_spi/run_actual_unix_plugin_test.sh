@@ -4,6 +4,15 @@ if [[ $# -ne 1 ]]; then
   printf 'usage: %s PATH_TO_PLUGIN\n' "$0" >&2
   exit 2
 fi
+# Cap actual ABI selftest requests, not just the compiler or BLAS environment.
+# Unset preserves the local 32-worker check; verbose uses min(2, cap).
+case "${FEREG_TEST_THREADS-32}" in
+  [1-9]|[12][0-9]|3[0-2]) ;;
+  *)
+    printf 'FEREG_TEST_THREADS must be an integer from 1 to 32 without leading zeros\n' >&2
+    exit 2
+    ;;
+esac
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PLUGIN="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 BUILD="$ROOT/target/actual-plugin-harness"

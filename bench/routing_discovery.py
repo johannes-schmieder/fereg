@@ -12,6 +12,10 @@ only after external reservation/process/accounting evidence is available. The
 nine paired slots are descriptive point estimates, not independent samples or a
 confidence claim. This tool never reads B/C case files or promotes a policy.
 
+The separate prospective parallel schema 3 retains the full parent here and
+derives two exact family subsets for execution. Only its six-allocation replay
+can score the full parent; a subset is not an independently valid tournament.
+
 The isolation descriptor is produced by a separately reviewed, frozen collector.
 Its raw scheduler/configuration/affinity/process/accounting references are kept;
 hash binding establishes provenance, not independent proof of their truth. The
@@ -20,6 +24,7 @@ reservation facts and observed process noise are deliberately separate fields.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import math
 import os
@@ -82,12 +87,85 @@ def load(path):
     return routing.unseal(routing.read_json(Path(path)))
 
 
-def validate_spec(spec, *, portfolio=False):
+def validate_spec(spec, *, portfolio=False, candidate=None):
     routing.validate_manifest(spec)
     require(spec.get('experiment_kind', 'routing') == ('portfolio' if portfolio else 'routing')
             and spec.get('purpose') != 'ablation_only', 'discovery requires the routing tournament')
-    require(spec['candidates'] == (['baseline', routing.PORTFOLIO_V1] if portfolio else GRID)
+    require(spec['candidates'] == (['baseline', candidate or routing.PORTFOLIO_V1] if portfolio else GRID)
             and len(spec['panels']['A']) == 42, 'discovery candidate portfolio or 42 A cells differs')
+
+
+def partitions(spec):
+    """A prospective, structural split; never consult times or availability."""
+    import routing_cases
+    validate_spec(spec, portfolio=True, candidate=routing.PORTFOLIO_UNSEEDED)
+    cells = spec['panels']['A']
+    families = sorted({cell['family'] for cell in cells})
+    require(set(families) == routing.PORTFOLIO_COVERAGE and len(families) == 21
+            and all(sorted(c['threads'] for c in cells if c['family'] == family) == [1, 4]
+                                      for family in families), 'partition requires 21 complete worker pairs')
+    for family in families:
+        pair = [c for c in cells if c['family'] == family]
+        require(all(type(c.get('absorbed_terms')) is int and type(c.get('categorical_intercepts')) is bool
+                    and c['comparators'] == routing_cases.comparators(c, sampled=True, compact_it=True) for c in pair)
+                and all(pair[0].get(k) == pair[1].get(k) for k in
+                        ('case_sha256', 'body_sha256', 'absorbed_terms', 'categorical_intercepts',
+                         'comparators', 'memory_limit_bytes')),
+                'worker pair or complete mathematical comparator frontier changed')
+    groups = [families[:10], families[10:]]
+    slots = [sum(len(set(spec['candidates'] + spec['protections'] + c['comparators']))
+                 for c in cells if c['family'] in group) for group in groups]
+    require(sum(slots) == 360, 'partition must retain the complete 360-slot comparator frontier')
+    budgets = [14400 * slots[0] // 360]
+    budgets.append(14400 - budgets[0])
+    return [{'shard': index + 1, 'parent_manifest_sha256': routing.identity(spec),
+             'families': group, 'cell_ids': [c['id'] for c in cells if c['family'] in group],
+             'arm_slots': slots[index], 'inclusive_allocation_budget_s': budgets[index],
+             'maximum_native_calls': 7 * slots[index]}
+            for index, group in enumerate(groups)]
+
+
+def partition_spec(spec, partition):
+    """Derive an execution view only after validating the complete parent."""
+    require(isinstance(partition, dict) and type(partition.get('shard')) is int
+            and partition['shard'] in (1, 2), 'invalid discovery partition')
+    expected = partitions(spec)[partition['shard'] - 1]
+    require(routing.identity(partition) == routing.identity(expected), 'discovery partition differs from full parent')
+    result = copy.deepcopy(spec)
+    result['panels']['A'] = [c for c in result['panels']['A'] if c['id'] in expected['cell_ids']]
+    result['failure_policy']['aggregate_budget_s'] = expected['inclusive_allocation_budget_s']
+    return result
+
+
+def execution_spec(plan):
+    spec = routing.unseal(plan['tournament'])
+    if 'discovery_partition' not in plan:
+        return spec
+    contract = plan.get('round_contract', {})
+    part = plan['discovery_partition']
+    require(plan.get('kind') == PORTFOLIO_KIND + '_plan'
+            and routing.identity(plan.get('scheduler_query_policy')) == routing.identity(SCHEDULER_QUERY_POLICY)
+            and set(contract) == {'parallel_plan_sha256', 'logical_round', 'shard', 'attempt', 'partition_sha256'}
+            and routing.sha(contract['parallel_plan_sha256'])
+            and type(contract['logical_round']) is int and contract['logical_round'] in (1, 2, 3)
+            and type(contract['attempt']) is int and contract['attempt'] == 1
+            and type(contract['shard']) is int and contract['shard'] == part.get('shard')
+            and contract['partition_sha256'] == routing.identity(part), 'unbound discovery partition')
+    return partition_spec(spec, part)
+
+
+def execution_budget(plan):
+    return execution_spec(plan)['failure_policy']['aggregate_budget_s'] if 'discovery_partition' in plan else 14400.0
+
+
+def validate_partition_records(plan, records):
+    if 'discovery_partition' in plan:
+        require(records.get('discovery_partition') == plan['discovery_partition']
+                and records.get('parent_manifest_sha256') == routing.identity(routing.unseal(plan['tournament'])),
+                'records lost full-parent/subset binding')
+    else:
+        require('discovery_partition' not in records and 'parent_manifest_sha256' not in records,
+                'unexpected partition records')
 
 
 def freeze(config):
@@ -97,7 +175,7 @@ def freeze(config):
     """
     spec = load(config['manifest'])
     portfolio = spec.get('experiment_kind') == 'portfolio'
-    validate_spec(spec, portfolio=portfolio)
+    validate_spec(spec, portfolio=portfolio, candidate=routing.portfolio_candidate(spec) if portfolio else None)
     cells = spec['panels']['A']
     arms = set(spec['candidates'] + spec['protections'] + [a for c in cells for a in c['comparators']])
     require(set(config['plugins']) == arms, 'artifact coverage changed')
@@ -159,12 +237,13 @@ def validate_plan(plan):
             and plan.get('library_limits') == LIBRARY_LIMITS, 'wrong discovery plan')
     scheduler_query_policy(plan)
     spec = routing.unseal(plan['tournament'])
-    validate_spec(spec, portfolio=plan['kind'] == PORTFOLIO_KIND + '_plan')
+    portfolio = plan['kind'] == PORTFOLIO_KIND + '_plan'
+    validate_spec(spec, portfolio=portfolio, candidate=routing.portfolio_candidate(spec) if portfolio else None)
     for path, sha in plan['frozen_files'].items():
         checked({'path': path, 'sha256': sha})
     require(plan['producer_tools'] == {p.name: h for p, h in routing_run.tool_identities().items()},
             'producer/checker source changed')
-    return spec
+    return execution_spec(plan)
 
 
 def scheduler_query_policy(plan):
@@ -175,11 +254,14 @@ def scheduler_query_policy(plan):
     require(plan.get('kind') == PORTFOLIO_KIND + '_plan'
             and routing.identity(plan['scheduler_query_policy']) == routing.identity(SCHEDULER_QUERY_POLICY)
             and isinstance(contract, dict)
-            and set(contract) == {'parallel_plan_sha256', 'logical_round', 'attempt'}
+            and set(contract) == ({'parallel_plan_sha256', 'logical_round', 'shard', 'attempt', 'partition_sha256'}
+                                  if 'discovery_partition' in plan else {'parallel_plan_sha256', 'logical_round', 'attempt'})
             and routing.sha(contract.get('parallel_plan_sha256'))
             and type(contract.get('logical_round')) is int and 1 <= contract['logical_round'] <= 3
             and type(contract.get('attempt')) is int and contract['attempt'] == 1,
             'scheduler query policy requires its frozen portfolio round')
+    if 'discovery_partition' in plan:
+        execution_spec(plan)
     return plan['scheduler_query_policy']
 
 
@@ -194,10 +276,14 @@ def host():
 
 
 def invoke(plan, spec, witnesses, output, prerequisite=False):
-    return routing_run.run(spec, 'A', None, Path(plan['harness']),
-        {k: Path(v) for k, v in plan['plugins'].items()},
-        {k: Path(v) for k, v in plan['cases'].items()}, witnesses, output,
-        timeout=120.0, budget=14400.0, prerequisites_only=prerequisite)
+    ids = {c['id'] for c in spec['panels']['A']}
+    arms = set(spec['candidates'] + spec['protections'] + [a for c in spec['panels']['A'] for a in c['comparators']])
+    options = {'discovery_partition': plan['discovery_partition']} if 'discovery_partition' in plan else {}
+    return routing_run.run(routing.unseal(plan['tournament']), 'A', None, Path(plan['harness']),
+        {k: Path(v) for k, v in plan['plugins'].items() if k in arms},
+        {k: Path(v) for k, v in plan['cases'].items() if k in ids},
+        {k: v for k, v in witnesses.items() if k in ids}, output,
+        timeout=120.0, budget=execution_budget(plan), prerequisites_only=prerequisite, **options)
 
 
 def prerequisite_status(spec, records):
@@ -226,7 +312,7 @@ def prerequisites(plan, output):
     status, error = 'ready', None
     try:
         prerequisite_status(spec, result)
-        require(set(result['qualified_wrappers']) == set(plan['cases']), 'missing Linux wrappers')
+        require(set(result['qualified_wrappers']) == {c['id'] for c in spec['panels']['A']}, 'missing Linux wrappers')
         validate_plan(plan)
     except ValueError as exc:
         status, error = 'incomplete', str(exc)
@@ -252,11 +338,12 @@ def fingerprints(records, outcomes):
 
 
 def round_data(plan, spec, records, expected_outcomes, expected_fingerprints):
+    validate_partition_records(plan, records)
     require(records.get('platform', '').startswith('Linux') and records.get('tool_sha256') == plan['producer_tools'],
             'round is not from the frozen Linux producer')
     require(records.get('purpose') == 'policy_tournament' and records.get('warmups') == 1
             and records.get('repetitions') == 3 and records.get('timeout_s') == 120.0
-            and records.get('budget_s') == 14400.0, 'round measurement contract changed')
+            and records.get('budget_s') == execution_budget(plan), 'round measurement contract changed')
     times, outcomes, _ = routing.observations(spec, 'A', spec['candidates'], records, None)
     require({k: v['status'] for k, v in outcomes.items()}
             == {k: v['status'] for k, v in expected_outcomes.items()},
@@ -431,16 +518,18 @@ def aggregate(plan, proof, collection, receipt):
 
 
 def validate_prerequisite_identity(plan, records):
-    spec = routing.unseal(plan['tournament'])
+    spec = execution_spec(plan)
+    validate_partition_records(plan, records)
+    arms = set(spec['candidates'] + spec['protections'] + [a for c in spec['panels']['A'] for a in c['comparators']])
     require(records.get('platform', '').startswith('Linux')
             and records.get('purpose') == 'scientific_prerequisites'
             and records.get('stage') == 'A' and records.get('selection_sha256') is None
             and records.get('repetitions') == 1 and records.get('warmups') == 0
-            and records.get('timeout_s') == 120.0 and records.get('budget_s') == 14400.0
+            and records.get('timeout_s') == 120.0 and records.get('budget_s') == execution_budget(plan)
             and records.get('manifest_sha256') == routing.identity(spec)
             and records.get('tool_sha256') == plan['producer_tools']
             and records.get('harness_sha256') == spec['harness_sha256']
-            and records.get('artifacts') == {a: spec['arms'][a]['sha256'] for a in plan['plugins']}
+            and records.get('artifacts') == {a: spec['arms'][a]['sha256'] for a in arms}
             and records.get('cases') == {c['id']: c['case_sha256'] for c in spec['panels']['A']},
             'fresh Linux prerequisite identities required; Mac evidence cannot carry')
 

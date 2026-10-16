@@ -1,6 +1,7 @@
 #include <dlfcn.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "../../plugin/stplugin.h"
 
@@ -362,12 +363,33 @@ static int load_symbol(void *library, const char *name, void *target, size_t tar
     return 0;
 }
 
-static int check_selftest_verbose(stata_call_function call)
+/* ABI checks only: replay inputs retain their own scientific worker requests. */
+static int test_thread_limit(const char *value, int *threads)
 {
+    size_t length;
+    int parsed;
+    *threads = 32;
+    if (value == NULL) return 0;
+    length = strlen(value);
+    if (length < 1 || length > 2 || value[0] < '1' || value[0] > '9') return 1;
+    parsed = value[0] - '0';
+    if (length == 2) {
+        if (value[1] < '0' || value[1] > '9') return 1;
+        parsed = 10 * parsed + value[1] - '0';
+    }
+    if (parsed > 32) return 1;
+    *threads = parsed;
+    return 0;
+}
+
+static int check_selftest_verbose(stata_call_function call, int threads)
+{
+    char worker_argument[16];
     char *arguments[] = {
         "selftest", "ado=0.5.0", "protocol_major=1", "protocol_minor=6",
-        "stata=18.0", "threads=2", "verbose=1"
+        "stata=18.0", worker_argument, "verbose=1"
     };
+    (void) snprintf(worker_argument, sizeof(worker_argument), "threads=%d", threads < 2 ? threads : 2);
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
     if (strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
@@ -382,17 +404,19 @@ static int check_selftest_verbose(stata_call_function call)
     return 0;
 }
 
-static int check_selftest(stata_call_function call)
+static int check_selftest(stata_call_function call, int threads)
 {
+    char worker_argument[16];
     char *arguments[] = {
         "selftest",
         "ado=0.5.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
-        "threads=32",
+        worker_argument,
         "plugin_file=validation.plugin"
     };
+    (void) snprintf(worker_argument, sizeof(worker_argument), "threads=%d", threads);
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
     if (strstr(display_buffer, "fereg.selftest.overall=pass") == NULL ||
@@ -1152,9 +1176,19 @@ int main(int argc, char *argv[])
     stata_call_function call = NULL;
     ST_plugin plugin;
     int result;
+    int threads;
+    const char *thread_limit = getenv("FEREG_TEST_THREADS");
 
     if (argc != 2 && !(argc == 5 && strcmp(argv[2], "--replay") == 0)) {
         fprintf(stderr, "usage: actual_plugin_loader_test PATH [--replay INPUT OUTPUT]\n");
+        return 2;
+    }
+    if (test_thread_limit(thread_limit, &threads) != 0) {
+        fprintf(stderr, "FEREG_TEST_THREADS must be an integer from 1 to 32 without leading zeros\n");
+        return 2;
+    }
+    if (argc == 5 && thread_limit != NULL) {
+        fprintf(stderr, "FEREG_TEST_THREADS is ABI-only; unset it for --replay\n");
         return 2;
     }
     library = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL);
@@ -1204,13 +1238,13 @@ int main(int argc, char *argv[])
         return 6;
     }
 
-    result = check_selftest_verbose(call);
+    result = check_selftest_verbose(call, threads);
     if (result != 0) {
         fprintf(stderr, "verbose selftest path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);
         return 10 + result;
     }
-    result = check_selftest(call);
+    result = check_selftest(call, threads);
     if (result != 0) {
         fprintf(stderr, "selftest path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);

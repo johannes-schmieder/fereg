@@ -75,15 +75,15 @@ def prefix_manifest():
     return spec
 
 
-def portfolio_manifest():
+def portfolio_manifest(arm=routing.PORTFOLIO_V1):
     original = manifest()
     spec = copy.deepcopy(original)
     spec.update(experiment_kind='portfolio', prior_manifests=[routing.seal(original)],
                 sampled_qualification={'1': h('sample-1-scientific-evidence')},
-                candidates=['baseline', routing.PORTFOLIO_V1])
+                candidates=['baseline', arm])
     spec['arms'] = {a: original['arms'][a] for a in ['baseline', 'lsmr']}
-    spec['arms'][routing.PORTFOLIO_V1] = {'sha256': h('candidate'),
-        'policy': routing.policy(routing.PORTFOLIO_V1), 'role': 'candidate'}
+    spec['arms'][arm] = {'sha256': h('candidate'),
+        'policy': routing.policy(arm), 'role': 'candidate'}
     for stage, cells in spec['panels'].items():
         cells[0].update(case_sha256=h('portfolio-case-' + stage),
                         body_sha256=h('portfolio-body-' + stage),
@@ -284,6 +284,65 @@ class RoutingTournament(unittest.TestCase):
                 routing.validate_manifest(spec)
             with self.subTest(policy_name=value), self.assertRaises(ValueError):
                 routing.policy_name(value)
+
+    def test_unseeded_policy_is_distinct_and_v1_canonical_bytes_are_unchanged(self):
+        old = routing.policy(routing.PORTFOLIO_V1)
+        self.assertEqual(routing.identity(old), 'daca7ef0e399c7fa8aadaef6de43e24b1b1b326383578dbc532f9225bbcfecec')
+        selected = routing.policy(routing.PORTFOLIO_UNSEEDED)
+        self.assertEqual(selected, {**old, 'prefix': 'none', 'steps': 0, 'map_sweeps': 0,
+                                   'injection': 'routing_portfolio_unseeded'})
+        self.assertEqual(selected['two_fe'], old['two_fe'])
+        selected['two_fe']['trees'] = 2
+        self.assertEqual(routing.policy(routing.PORTFOLIO_V1), old)
+        self.assertEqual(routing.policy(routing.PORTFOLIO_UNSEEDED)['two_fe']['trees'], 1)
+        self.assertEqual(routing.conservative(routing.PORTFOLIO_V1), (1, 0, 0, 0))
+        self.assertLess(routing.conservative('baseline'), routing.conservative(routing.PORTFOLIO_UNSEEDED))
+
+    def test_unseeded_candidate_has_exact_typed_identity_and_no_mixed_grid(self):
+        spec = portfolio_manifest(routing.PORTFOLIO_UNSEEDED)
+        routing.validate_manifest(spec)
+        self.assertEqual(routing.portfolio_candidate(spec), routing.PORTFOLIO_UNSEEDED)
+        self.assertEqual(routing.policy_name(spec['arms'][routing.PORTFOLIO_UNSEEDED]['policy']), routing.PORTFOLIO_UNSEEDED)
+        selected = routing.policy(routing.PORTFOLIO_UNSEEDED)
+        altered = []
+        for key, values in [('steps', [False, 0., 1]), ('map_sweeps', [False, 0., 4]),
+                            ('prefix', ['map4']), ('injection', ['routing_portfolio_v1']),
+                            ('certificate', ['requested']), ('optional_cmg_handoff', [True, 0])]:
+            for value in values:
+                altered.append({**selected, key: value})
+        for key in selected:
+            value = copy.deepcopy(selected); del value[key]; altered.append(value)
+        for key, value in [('checkpoint', 16.), ('trees', True), ('seed', False), ('canonical_cache', 1)]:
+            bad = copy.deepcopy(selected); bad['two_fe'][key] = value; altered.append(bad)
+        altered.append({**selected, 'unreviewed': True})
+        for value in altered:
+            bad = copy.deepcopy(spec); bad['arms'][routing.PORTFOLIO_UNSEEDED]['policy'] = value
+            with self.subTest(value=value), self.assertRaises(ValueError): routing.validate_manifest(bad)
+            with self.subTest(name=value), self.assertRaises(ValueError): routing.policy_name(value)
+        for candidates in [[], ['baseline'], ['baseline', 'baseline'], [routing.PORTFOLIO_UNSEEDED],
+                           ['baseline', routing.PORTFOLIO_V1, routing.PORTFOLIO_UNSEEDED],
+                           ['baseline', 'prefix-none']]:
+            bad = copy.deepcopy(spec); bad['candidates'] = candidates
+            with self.subTest(candidates=candidates), self.assertRaises(ValueError): routing.portfolio_candidate(bad)
+            with self.subTest(manifest=candidates), self.assertRaises(ValueError): routing.validate_manifest(bad)
+        old = portfolio_manifest(); old['candidates'].reverse()
+        self.assertEqual(routing.portfolio_candidate(old), routing.PORTFOLIO_V1)
+        routing.validate_manifest(old)  # Preserve existing set-based V1 admission.
+
+    def test_unseeded_headers_preserve_model_and_v1_header_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); source = root / 'source.case'
+            source.write_bytes(case_bytes([b'estimate-ols', b'threads=1', b'memory=low', b'tolerance=1e-8']))
+            old, new = root / 'v1.case', root / 'unseeded.case'
+            routing.prepare(source, old, routing.PORTFOLIO_V1, 4)
+            routing.prepare(source, new, routing.PORTFOLIO_UNSEEDED, 4)
+            self.assertEqual(new.read_bytes(), old.read_bytes().replace(
+                b'27\ninject=routing_portfolio_v1', b'33\ninject=routing_portfolio_unseeded'))
+            with new.open('rb') as stream:
+                _, arguments = case_header(stream)
+            self.assertIn(b'memory=low', arguments)
+            self.assertIn(b'tolerance=1e-8', arguments)
+            self.assertIn(b'preconditioner=auto', arguments)
 
     def test_overlap_is_binary_for_a_fully_qualified_frozen_serial_policy(self):
         spec = overlap_manifest()

@@ -94,7 +94,7 @@ Use one native call. SPI stays on the main thread; workers own Rust-managed stat
 16 CMG repair; 17 deployment (Codex) & 18--21 Timing history and recovery (Codex)\\
 \bottomrule
 \end{tabularx}}
-{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Diagnosis: pages 28--31. Public Auto unchanged.\par}
+{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Diagnosis: pages 28--31. Next discovery: page 32. Public Auto unchanged.\par}
 \vfill
 {\fontsize{9}{11.8}\selectfont\color{Muted}\textbf{Authorship.} GPT Pro authored the original specification and diagrams. Codex authored later bindings and amendments. Exact-case Pro review informed the direct-cost correction (page 14); generic Pro review informed allocation (page 8). The explicit-CMG repair (page 16) is a Codex amendment, not GPT Pro code approval.\par
 Document rendering and layout validation do not constitute solver implementation or scientific/performance qualification.}
@@ -2227,6 +2227,40 @@ Graph construction falls by about 59--60\%. High-degree hierarchy construction a
 \anchor{Controller patch \code{0b3c7fcd}; candidate plugin \code{fec86539}; plan \code{9f2cff08}; result \code{39fb3ed4}; raw review \code{93c2edf1}. Exact data, validation scope and preserved prior failures: compact controlled-results JSON and \code{docs/VALIDATION.md}.}
 \clearpage
 
+\end{compactleaf}
+
+% PAGE 32 / prospective combined-candidate discovery.
+\begin{compactleaf}
+\smallbody
+\sect{31 / NEXT DISCOVERY}{One combined candidate, six isolated nodes}
+\tagline{Prospective experiment on revealed A cases; no new shortlist or qualification yet.}
+\sub{What changes, and what the experiment can establish}
+The candidate combines the exact synchronous CMG construction optimization with strict unseeded LSMR for general categorical FEs. Checkpoint, sampling and work budgets stay fixed. It faces the qualified baseline and the complete existing mathematical comparator frontier on all 42 A cells: 21 families at one and four workers. These are known discovery cases; their earlier measurements and optional availability are not reused.
+
+\sub{Three repetitions, each divided into two fixed family groups}
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Partition per round} & \textbf{Cells} & \textbf{Call cap} & \textbf{Budget, s}\\
+\midrule
+First 10 sorted families & 20 & 1,274 & 7,280\\
+Remaining 11 families & 22 & 1,246 & 7,120\\
+\bottomrule
+\end{tabular}
+\end{center}
+Each family keeps both worker counts and all solver alternatives on the same allocation. Three repetitions of each partition require six distinct physical hosts, each with verified full-node isolation. The partitions contain 182 and 178 arm-cell slots. Budgets are proportional to these counts and include cleanup. The design retains at most 7,560 native calls and 43,200 allocation-seconds overall; partitioning does not renew the original budget on every node.
+
+Scientific decisions must agree across worker counts. Solver-route differences are recorded separately: workspace admission and Low-mode chunk aggregation can legitimately change execution metadata. Existing strict CMG/IT contracts and fixed-worker repeatability still apply.
+
+\sub{What remains fixed}
+Every available arm receives two fresh scientific prerequisite calls, one traced call, one warmup and three measurements per host. The per-call cap remains 120 seconds. No measurement replacement, partition reassignment or favorable partial aggregate is allowed. Only complete accounting, science, exact local repeats, stable cross-host decisions and strict isolation across all six allocations admit the aggregate. Existing baseline-violation and worst-normalized-ratio rules can still return baseline only.
+
+\begin{note}\smallbody
+\textbf{Scaling interpretation.} Each cell has three independent host repetitions and nine measured slots, not nine independent replicates. One- and four-worker comparisons stay paired within a host. Different families may now use different hosts within a logical round; do not interpret that round as one common host for uncertainty. Six nodes may shorten execution, but queue delays and family-cost imbalance remain.
+\end{note}
+\sub{Release boundary}
+The integrated source has passed its full source-only suite. The new experiment still requires reviewed tooling, actual Linux builds and ABI checks, input binding and dispatch. Public Auto stays unchanged. Only a valid independently reviewed shortlist admits fresh Mac B12 selection, reviewed activation and equivalence, then untouched C24 confirmation. Earlier V1 discovery and Mac B remain closed NO-GO.
+\clearpage
 \end{compactleaf}
 
 \end{document}

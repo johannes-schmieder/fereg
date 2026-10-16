@@ -12,7 +12,7 @@ import routing
 import routing_discovery as discovery
 import routing_parallel as parallel
 from test_routing import h
-from test_routing_discovery import spec42, portfolio42, producer, save_json
+from test_routing_discovery import spec42, portfolio42, partition42, producer, save_json
 
 
 class PortfolioParallelTests(unittest.TestCase):
@@ -41,25 +41,33 @@ class PortfolioParallelTests(unittest.TestCase):
         self.evidence.start()
         self.addCleanup(self.evidence.stop)
 
-    def node(self, n, hostname=None, job=None):
-        view = parallel.round_view(self.plan, n, 1)
+    def node(self, n, hostname=None, job=None, shard=None):
+        view = parallel.round_view(self.plan, n, 1, shard)
+        spec = discovery.execution_spec(view)
         root = Path(view['output_root'])
         science = root / 'prerequisites/producer'
         science.mkdir(parents=True)
-        original = producer(self.spec, True)
+        original = producer(spec, True)
         original['tool_sha256'] = self.parent['producer_tools']
-        machine = {'hostname': hostname or f'scc-node{n}', 'job_id': job or str(100 + n),
+        machine = {'hostname': hostname or f'scc-node{n}' + (f'-shard{shard}' if shard else ''),
+                   'job_id': job or str(100 + n * 2 + (shard or 0)),
                    'slots': 28, 'affinity': list(range(28)), 'machine': 'x86_64',
                    'library_limits': discovery.LIBRARY_LIMITS}
         proof = {'kind': discovery.KIND + '_prerequisites', 'status': 'ready',
                  'host': machine, 'plan_sha256': routing.identity(view), 'wrappers': {}}
-        for index, cell in enumerate(self.spec['panels']['A']):
+        for index, cell in enumerate(spec['panels']['A']):
             proof['wrappers'][cell['id']] = save_json(science / f'witness-{index}.json', {'node': n, 'cell': cell['id']})
-        timed = producer(self.spec)
+        timed = producer(spec)
         timed['tool_sha256'] = self.parent['producer_tools']
         for records in (original, timed):
+            if shard is not None:
+                records.update(discovery_partition=view['discovery_partition'],
+                               parent_manifest_sha256=routing.identity(self.spec))
             for row in [*records['prerequisites'], *records['records']]:
                 row['solver_rows'] = [[0.0] * 16, [0.0] * 16]
+                if shard is not None:
+                    family = next(c['family'] for c in spec['panels']['A'] if c['id'] == row['cell'])
+                    row['model_discrete_sha256'] = h('scientific-model-' + family)
                 row['science_sha256'] = h(f"host-{n}-{row['cell']}-{row['arm']}")
                 if records is timed:
                     row['witness_sha256'] = proof['wrappers'][row['cell']]['sha256']
@@ -841,6 +849,180 @@ class ParallelTests(unittest.TestCase):
             result = parallel.aggregate(self.plan, self.proof, [*reports, second])
             self.assertEqual(result['collection']['selected'][0]['attempt'], 2)
             self.assertEqual(len(result['collection']['attempts']), 4)
+
+
+class PartitionParallelTests(unittest.TestCase):
+    node = PortfolioParallelTests.node
+
+    def setUp(self):
+        PortfolioParallelTests.setUp(self)
+        self.spec = partition42()
+        self.parent['tournament'] = routing.seal(self.spec)
+        self.parent['plugins'] = {a: 'unused' for a in self.spec['arms']}
+        for name in ('test_routing_discovery.py', 'test_scc_routing_host.py'):
+            ref = discovery.reference(Path(__file__).with_name(name))
+            self.frozen[ref['path']] = ref['sha256']
+        self.parent['frozen_files'] = dict(self.frozen)
+        self.parent_ref = save_json(self.root / 'partition-parent.json', routing.seal(self.parent))
+        self.frozen[self.parent_ref['path']] = self.parent_ref['sha256']
+        self.plan.update(schema=3, design=copy.deepcopy(parallel.PARTITION_DESIGN),
+                         parent=routing.seal(self.parent), parent_plan=self.parent_ref,
+                         parent_sha256=routing.identity(self.parent), partitions=discovery.partitions(self.spec))
+
+    def six_nodes(self):
+        for n in (1, 2, 3):
+            for shard in (1, 2):
+                self.node(n, shard=shard)
+        return [parallel.inspect_attempt(self.plan, None, n, 1, shard) for n in (1, 2, 3) for shard in (1, 2)]
+
+    def test_portable_full_parent_schema_and_strict_shard_dispatch(self):
+        with patch.object(Path, 'open', side_effect=AssertionError('host file read')):
+            self.assertEqual(parallel.metadata(self.plan)['spec'], self.spec)
+        self.assertEqual(parallel.validate_plan(self.plan), self.spec)
+        for shard, count in [(1, 20), (2, 22)]:
+            view = parallel.round_view(self.plan, 2, 1, shard)
+            self.assertEqual(Path(view['output_root']).relative_to(self.plan['output_root']).as_posix(),
+                             f'round-2/shard-{shard}/attempt-1')
+            self.assertEqual(len(discovery.execution_spec(view)['panels']['A']), count)
+            self.assertEqual(discovery.scheduler_query_policy(view), discovery.SCHEDULER_QUERY_POLICY)
+        for shard, attempt in [(None, 1), (True, 1), (3, 1), (1, 2)]:
+            with self.subTest(shard=shard, attempt=attempt), self.assertRaises(ValueError):
+                parallel.round_view(self.plan, 1, attempt, shard)
+        for change in ('schema', 'design', 'partitions', 'candidate'):
+            bad = copy.deepcopy(self.plan)
+            if change == 'schema': bad['schema'] = 2
+            elif change == 'design': bad['design'] = parallel.PORTFOLIO_QUERY_DESIGN
+            elif change == 'partitions': bad['partitions'][0]['inclusive_allocation_budget_s'] += 1
+            else:
+                parent = routing.unseal(bad['parent']); parent['tournament'] = routing.seal(portfolio42())
+                bad.update(parent=routing.seal(parent), parent_sha256=routing.identity(parent))
+            with self.subTest(change=change), self.assertRaises(ValueError): parallel.metadata(bad)
+
+    def test_freeze_preserves_full_parent_and_binds_all_partition_tools(self):
+        check = self.root / 'checks.txt'; check.write_text('passed')
+        config = {'schema': 3, 'discovery_plan': self.parent_ref['path'],
+                  'output_root': str(self.root / 'partitioned-freeze'),
+                  'receipt_generator': parallel.isolation_host.__file__, 'source_checks': [str(check)],
+                  'scheduler_query_policy': discovery.SCHEDULER_QUERY_POLICY['kind']}
+        with patch.object(routing, 'scratch', side_effect=lambda p: p.resolve()):
+            frozen = parallel.freeze(config)
+            self.assertEqual(frozen['partitions'], discovery.partitions(self.spec))
+            self.assertEqual(parallel.metadata(frozen)['spec'], self.spec)
+            missing = dict(config); del missing['scheduler_query_policy']
+            with self.assertRaises(ValueError): parallel.freeze(missing)
+
+    def test_all_six_raw_proofs_before_full_parent_score(self):
+        with patch.object(discovery, 'isolation') as replay:
+            reports = self.six_nodes()
+            with patch.object(discovery, 'score', wraps=discovery.score) as score:
+                result = parallel.aggregate(self.plan, None, reports)
+                score.assert_called_once()
+                self.assertEqual(score.call_args.args[0], self.spec)
+                self.assertEqual(len(score.call_args.args[1]), 360)
+                self.assertTrue(all(len(v) == 9 for v in score.call_args.args[1].values()))
+        self.assertEqual(replay.call_count, 12)
+        self.assertEqual(result['schema'], 3)
+        self.assertFalse(result['promotion'])
+        self.assertEqual(len(result['collection']['attempts']), 6)
+        with patch.object(discovery, 'score') as score:
+            for bad in (reports[:5], reports[::-1], reports[:3] * 2):
+                with self.assertRaises(ValueError): parallel.aggregate(self.plan, None, bad)
+            score.assert_not_called()
+
+    def test_duplicate_host_or_replacement_and_forged_report_block_global_score(self):
+        self.node(1, shard=1)
+        self.node(1, shard=2, hostname='scc-node1-shard1')
+        for n in (2, 3):
+            for s in (1, 2): self.node(n, shard=s)
+        with patch.object(discovery, 'isolation'), patch.object(discovery, 'score') as score:
+            reports = [parallel.inspect_attempt(self.plan, None, n, 1, s) for n in (1, 2, 3) for s in (1, 2)]
+            with self.assertRaisesRegex(ValueError, 'six distinct'): parallel.aggregate(self.plan, None, reports)
+            bad = copy.deepcopy(reports); bad[0]['accounted_wallclock_s'] += 1
+            with self.assertRaisesRegex(ValueError, 'raw replay'): parallel.aggregate(self.plan, None, bad)
+            (Path(self.plan['output_root']) / 'round-1/shard-1/attempt-2').mkdir()
+            with self.assertRaisesRegex(ValueError, 'replacements'): parallel.aggregate(self.plan, None, reports)
+            score.assert_not_called()
+
+    def test_subset_science_identity_and_budget_cannot_import_other_shard(self):
+        view, collection, proof = self.node(1, shard=1)
+        original = routing.read_json(discovery.checked(proof['records']))
+        discovery.validate_prerequisite_identity(view, original)
+        for field, value in [('manifest_sha256', routing.identity(self.spec)),
+                             ('parent_manifest_sha256', h('other-parent')),
+                             ('discovery_partition', self.plan['partitions'][1]), ('budget_s', 14400)]:
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                discovery.validate_prerequisite_identity(view, {**original, field: value})
+        account = Path(view['output_root']) / 'isolation/accounting.json'
+        value = routing.read_json(account)
+        value['stdout'] = f"ru_wallclock {self.plan['partitions'][0]['inclusive_allocation_budget_s'] + 1}\n"
+        account.write_text(json.dumps(value))
+        with patch.object(discovery, 'isolation'), self.assertRaisesRegex(ValueError, 'inclusive allocation'):
+            parallel.inspect_attempt(self.plan, None, 1, 1, 1)
+
+    def test_real_cross_host_decision_change_and_failed_receipt_block_global_score(self):
+        with patch.object(discovery, 'isolation'):
+            reports = self.six_nodes()
+            view = parallel.round_view(self.plan, 2, 1, 1)
+            root = Path(view['output_root'])
+            collection = discovery.load(root / 'collection/collection.json')
+            proof = discovery.load(collection['prerequisites']['path'])
+            for ref in (proof['records'], collection['rounds'][0]):
+                value = routing.read_json(Path(ref['path']))
+                for row in [*value['prerequisites'], *value['records']]:
+                    row['solver_rows'][0][3] = 2.0
+                ref.update(save_json(Path(ref['path']), value))
+            proof_ref = save_json(root / 'prerequisites/prerequisites.json', routing.seal(proof))
+            collection.update(prerequisites=proof_ref, prerequisites_sha256=routing.identity(proof))
+            save_json(root / 'collection/collection.json', routing.seal(collection))
+            changed = [parallel.inspect_attempt(self.plan, None, n, 1, s) for n in (1, 2, 3) for s in (1, 2)]
+            self.assertNotEqual(changed[0]['science_discrete_sha256'], changed[2]['science_discrete_sha256'])
+            with patch.object(discovery, 'score') as score, self.assertRaisesRegex(ValueError, 'cross-host subset discrete'):
+                parallel.aggregate(self.plan, None, changed)
+            score.assert_not_called()
+        with patch.object(discovery, 'isolation', side_effect=ValueError('isolation failed')):
+            with self.assertRaisesRegex(ValueError, 'isolation failed'):
+                parallel.aggregate(self.plan, None, reports)
+
+    def test_model_decisions_exact_across_workers_but_resource_routes_are_descriptive(self):
+        view, _, proof = self.node(1, shard=1)
+        spec = discovery.execution_spec(view)
+        raw = routing.read_json(discovery.checked(proof['records']))
+        outcomes = discovery.prerequisite_status(spec, raw)
+        original = parallel._partition_science(spec, raw, outcomes)
+        self.assertEqual(original['worker_route_differences'], [])
+        cid = next(c['id'] for c in spec['panels']['A'] if c['threads'] == 4)
+        for row in [*raw['prerequisites'], *raw['records']]:
+            if row['cell'] == cid and row['arm'] == routing.PORTFOLIO_UNSEEDED:
+                row['solver_rows'][0][1] = 3.0
+                row['solver_rows'][0][11] = 7.0
+        changed = parallel._partition_science(spec, raw, outcomes)
+        self.assertEqual(changed['model_discrete_sha256'], original['model_discrete_sha256'])
+        self.assertEqual(len(changed['worker_route_differences']), 1)
+        for row in [*raw['prerequisites'], *raw['records']]:
+            if row['cell'] == cid:
+                row['model_discrete_sha256'] = h('changed-model')
+        with self.assertRaisesRegex(ValueError, 'cross-worker scientific'):
+            parallel._partition_science(spec, raw, outcomes)
+        del raw['prerequisites'][0]['model_discrete_sha256']
+        with self.assertRaisesRegex(ValueError, 'missing or changed'):
+            parallel._partition_science(spec, raw, outcomes)
+
+    def test_supervisor_uses_shard_budget_cleanup_reserve_and_explicit_command(self):
+        view = parallel.round_view(self.plan, 1, 1, 1)
+        budget = view['discovery_partition']['inclusive_allocation_budget_s']
+        machine = {'hostname': 'node', 'job_id': '9', 'slots': 28, 'machine': 'x86_64',
+                   'library_limits': discovery.LIBRARY_LIMITS}
+        process, event = Mock(), Mock(); process.poll.return_value = None
+        with patch.object(discovery, 'host', return_value=machine), \
+             patch.object(parallel.subprocess, 'Popen', return_value=process) as launch, \
+             patch.object(parallel, '_stop_owned', return_value={'returncode': -2, 'escalated': False}) as stop, \
+             patch.object(parallel.time, 'monotonic_ns', return_value=int((budget - 180) * 1e9)), \
+             patch.object(parallel.signal, 'signal'):
+            result = parallel._operation(self.plan, self.root / 'plan.json', 1, 1, view, None,
+                                         Path(view['output_root']) / 'collection', event, joint_start_ns=0)
+        self.assertEqual(launch.call_args.args[0][-2:], ['--shard', '1'])
+        self.assertIn('joint science/round budget expired', result['supervisor_error'])
+        stop.assert_called_once_with(process)
 
 
 if __name__ == '__main__':

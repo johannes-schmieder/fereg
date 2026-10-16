@@ -191,12 +191,12 @@ def comparison_policy(manifest, arm):
                 or routing.identity(incumbent.get('policy')) != routing.identity(selected)):
             raise ValueError('activated portfolio comparison requires its exact C policy binding')
         return selected
-    if arm != routing.PORTFOLIO_V1:
+    if arm not in routing.PORTFOLIOS:
         return None
     selected = manifest['arms'][arm].get('policy')
     if (manifest.get('experiment_kind') != 'portfolio'
             or arm not in manifest['candidates']
-            or routing.identity(selected) != routing.identity(routing.policy(routing.PORTFOLIO_V1))):
+            or routing.identity(selected) != routing.identity(routing.policy(arm))):
         raise ValueError('portfolio comparison requires its exact prospective policy')
     return selected
 
@@ -242,8 +242,14 @@ def portfolio_scope(reference, raw, meta, arm, selected):
     prepared_fit::merge_solve_report own these tuples. Repeats still compare the
     complete original fingerprint before reaching this cross-artifact check.
     """
-    if routing.identity(selected) != routing.identity(routing.policy(routing.PORTFOLIO_V1)) or arm != 'auto':
+    selected_name = next((name for name in routing.PORTFOLIOS
+                          if routing.identity(selected) == routing.identity(routing.policy(name))), None)
+    if selected_name is None or arm != 'auto':
         raise ValueError('unsupported portfolio comparison policy/request')
+    unseeded = selected_name == routing.PORTFOLIO_UNSEEDED
+    if unseeded and (not isinstance(meta, dict) or type(meta.get('categorical_intercepts')) is not bool
+                     or type(meta.get('absorbed_terms')) is not int or meta['absorbed_terms'] < 0):
+        raise ValueError('unseeded portfolio requires inspected fixed-effect metadata')
     if meta.get('categorical_intercepts') is True and type(meta.get('absorbed_terms')) is int and meta['absorbed_terms'] == 2:
         return portfolio_direct_scope(reference, raw, meta)
     if (meta.get('categorical_intercepts') is not True
@@ -275,6 +281,8 @@ def portfolio_scope(reference, raw, meta, arm, selected):
                     or fallback not in {0, 1} or not 0 <= pilot <= min(4, iterations)
                     or iterations > cap):
                 raise ValueError('portfolio Auto route/counter tuple is invalid')
+            if candidate and unseeded and pilot != 0:
+                raise ValueError('unseeded portfolio cannot contain a MAP pilot')
             # A no-LSMR MAP route has no preconditioner. A genuine LSMR
             # continuation keeps its request/resolved metadata, even if MAP
             # ultimately certifies. Low merges max work, OR fallback and sums
@@ -283,6 +291,8 @@ def portfolio_scope(reference, raw, meta, arm, selected):
             # routing.prepare pins preconditioner=auto for both artifacts.
             pair = requested_pc == 1 and used_pc in {2, 3, 4}
             if absent:
+                # LSMR workspace non-admission can reach original-input MAP
+                # without an attempted report, hence without a fallback bit.
                 valid = used == 2 and warnings == 0 and (not candidate or fallback == 0)
             else:
                 valid = pair and (used == 3 or fallback == 1)
@@ -320,6 +330,20 @@ def compatibility(reference, raw, reference_columns, columns, meta, arm, *, sele
     outside = [path for path in changed if not allowed_difference(path, scope)]
     if outside:
         raise ValueError('scoped replay changed an unaffected field: ' + '; '.join(outside[:5]))
+
+
+def model_discrete_sha256(raw):
+    """Exactly the model decisions compared by cmgschur.scientific_comparison."""
+    cmgschur.validate_result(raw)
+    tables = raw['matrices']
+    names = ('RSTATUS', 'RFE', 'RCLUSTER', 'RSUBSET', 'RMARKB', 'RMARKV', 'RREC')
+    if not set(names) <= set(tables) or (tables['RDOF']['rows'], tables['RDOF']['columns']) != (20, 2):
+        raise ValueError('unsupported model-discrete matrix layout')
+    dof = cmgschur.numbers(tables['RDOF'])
+    discrete = [dof[2*row+1] for row in range(20) if row not in {4, 11}]
+    return routing.identity({'matrices': {name: tables[name] for name in names},
+        'presence': {name: tables[name]['bits'][::2] for name in ('RFIT', 'RDOF', 'RCERT')},
+        'dof': [0.0 if value == 0 else value for value in discrete]})
 
 
 def _explicit_worker_identity(source, cell, arm, artifact, *, prepared, solver, label):
@@ -607,6 +631,9 @@ def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None
     candidate = requested not in {None, 'baseline'}
     expected = ({'injection': routing.ABLATIONS[requested]} if requested in routing.ABLATIONS else
                 routing.policy(requested) if candidate else None)
+    if (requested == routing.PORTFOLIO_UNSEEDED and expected_preset is not None
+            and expected_preset != expected['injection']):
+        raise ValueError('unseeded portfolio requires its exact private preset')
     schur_policy = expected.get('two_fe', expected) if expected else None
     actions, route = [], []
     for line in log.splitlines():
@@ -650,16 +677,32 @@ def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None
 
 def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
         timeout=120.0, budget=14400.0, ablation_only=False, prerequisites_only=False,
-        qualification_context=None):
+        qualification_context=None, discovery_partition=None):
     # required_candidates enforces no A predecessor, frozen A shortlist for B,
     # and exactly the passing frozen B winner for C before reading any inputs.
     selection_sha256 = routing.identity(previous) if previous else None
     context_bindings = []
+    parent_manifest_sha256 = None
+    partition_validator = None
+    evidence_manifest = manifest
+    if discovery_partition is not None:
+        if (stage != 'A' or previous is not None or ablation_only or qualification_context is not None
+                or routing.portfolio_candidate(manifest) != routing.PORTFOLIO_UNSEEDED):
+            raise ValueError('discovery partition requires private unseeded A with no selection or qualification')
     if qualification_context is None:
         routing.validate_manifest(manifest)
         if manifest.get('purpose') == 'ablation_only' and not ablation_only:
             raise ValueError('ablation manifest requires --ablation-only collection')
         candidates = routing.required_candidates(manifest, stage, previous)
+        if discovery_partition is not None:
+            import routing_discovery
+            validator_path = Path(routing_discovery.__file__).resolve(strict=True)
+            partition_validator = {'path': str(validator_path), 'sha256': digest(validator_path)}
+            context_bindings.append(partition_validator)
+            parent_manifest_sha256 = routing.identity(manifest)
+            manifest = routing_discovery.partition_spec(manifest, discovery_partition)
+            if not prerequisites_only:
+                evidence_manifest = manifest
     else:
         if not prerequisites_only or ablation_only:
             raise ValueError('new qualification context is scientific-prerequisites-only')
@@ -731,9 +774,15 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
             if prerequisites_only and cid not in witnesses:
                 raise ValueError('missing bound resource-contract evidence' if local_oracle else
                                  'missing case-specific independent witness and resource-contract evidence')
-            science[cid], proof_hashes = evidence(witnesses[cid], cell, manifest, required[cid],
+            # A validated discovery partition may consume unchanged parent-ready
+            # witnesses. Fresh checked proofs and timed witnesses bind the exact
+            # derived manifest; prior availability is never imported here.
+            science[cid], proof_hashes = evidence(witnesses[cid], cell, evidence_manifest, required[cid],
                 prerequisites_only=prerequisites_only, local_oracle=local_oracle, stage=stage,
                 selection_sha256=selection_sha256)
+            if (partition_validator is not None and not prerequisites_only
+                    and partition_validator not in science[cid].get('frozen_dependencies', [])):
+                raise FrozenIdentityError('partition proof omits its exact discovery validator')
             identities.update(proof_hashes)
             independent = science[cid].get('independent_witness')
             if independent:
@@ -795,10 +844,18 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
               'generic_it_worker_checks': []}
     if qualification_context is not None:
         result['qualification_context'] = qualification_context
+    if discovery_partition is not None:
+        result.update(discovery_partition=discovery_partition,
+                      parent_manifest_sha256=parent_manifest_sha256,
+                      discovery_partition_validator=partition_validator)
     pending_publications = []
     def save():
         (output / 'records.json').write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
     def execute(row, arm, source, target, log, cell, traced):
+        def validator_unchanged():
+            if partition_validator is not None and digest(Path(partition_validator['path'])) != partition_validator['sha256']:
+                raise FrozenIdentityError('discovery partition validator changed')
+        validator_unchanged()
         left = budget - (time.monotonic() - started)
         row.update(dispatched=False, prepared_sha256=digest(source), call_limit_s=min(timeout, max(0.0, left)))
         if left <= 0:
@@ -810,6 +867,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
         try:
             row.update(cmgschur.run_process(native_command(harness, plugins[arm], source, target, cell, traced),
                                            log, row['call_limit_s']))
+            validator_unchanged()
             row['process_completed'] = True
             return True
         except (RuntimeError, TimeoutError, OSError) as error:
@@ -974,6 +1032,8 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                                      'witness_sha256': digest(witnesses[cid])}
                     if manifest.get('purpose') == 'activation_equivalence':
                         verified[arm]['solver_signature_sha256'] = routing.identity(exact_view(raw, False)['matrices']['RSOLVER'])
+                    if discovery_partition is not None:
+                        prerequisite['model_discrete_sha256'] = model_discrete_sha256(raw)
                     prerequisite.update(status='passed', certificate_pass=True, science_pass=True, science_sha256=fingerprints[arm], **verified[arm])
                     if manifest.get('experiment_kind') == 'portfolio':
                         prerequisite['solver_rows'] = detail['solver_rows']
@@ -1025,6 +1085,8 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                         check_oracle(raw, columns, meta)
                         compatibility(reference, raw, reference_columns, columns, meta, reader,
                                       selected_policy=comparison_policy(manifest, arm))
+                        if discovery_partition is not None:
+                            row['model_discrete_sha256'] = model_discrete_sha256(raw)
                         row.update(status='passed', certificate_pass=True, science_pass=True, **verified[arm])
                         if manifest.get('experiment_kind') == 'portfolio':
                             row['solver_rows'] = detail['solver_rows']
@@ -1062,7 +1124,9 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                              'independent_oracle_sha256': (meta['routing_oracle_sha256'] if 'routing_oracle' in meta else
                                  routing.identity(meta.get('oracle', meta.get('replay_reference'))) if local_oracle else None),
                              'external_evidence': science[cid],
-                             'frozen_dependencies': science[cid].get('frozen_dependencies', []),
+                             'frozen_dependencies': [*science[cid].get('frozen_dependencies', []),
+                                 *([partition_validator] if partition_validator is not None
+                                   and partition_validator not in science[cid].get('frozen_dependencies', []) else [])],
                              'evidence_source': {'path': str(witnesses[cid]), 'sha256': digest(witnesses[cid])},
                              'prerequisites': [r for r in result['prerequisites'] if r['cell'] == cid],
                              'repeat_checks': rows,

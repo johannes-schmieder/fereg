@@ -1326,6 +1326,62 @@ This source-only suite deliberately does not admit the installed package. The
 combined uninstrumented native build, fresh broad discovery and Mac B/C remain
 pending; no speed qualification or public default activation follows.
 
+### Prospective combined-candidate discovery on six SCC nodes
+
+The next experiment compares the integrated `portfolio-unseeded` candidate with
+the same qualified baseline and complete mathematical comparator frontier. It
+reuses the 42 revealed A cases (21 families, each with one and four workers),
+not their prior availability, science, timings or shortlist. This is a new
+discovery experiment on known cases, not an untouched confirmation set. Old V1
+discovery and Mac B remain closed NO-GO. Public Auto is unchanged.
+
+Each of three logical rounds has two fixed family partitions. The first ten
+families in canonical sorted order form partition 1; the remaining eleven form
+partition 2. Both worker counts and every solver comparison for a family stay
+within one allocation. The six allocations must use distinct physical hosts
+and establish full-node isolation, not merely reserve 28 slots. Each cell still
+has three host repetitions; its nine measured slots are not nine independent
+replicates. Splitting families changes cross-family host covariance, so a logical
+round must not be treated as one shared host in an uncertainty calculation.
+
+| Fixed partition | Families / cells | Arm-cell slots | Native-call maximum | Inclusive allocation budget |
+| --- | --- | --- | --- | --- |
+| 1 | 10 / 20 | 182 | 1,274 | 7,280 seconds |
+| 2 | 11 / 22 | 178 | 1,246 | 7,120 seconds |
+
+Every available arm has two fresh prerequisite calls, a traced call, one warmup
+and three measurements. The complete design retains at most 7,560 calls and
+43,200 allocation-seconds, including cleanup; no extra sampling budget comes
+from doubling the node count. Per-call limits remain 120 seconds. The split
+depends on family identities and arm counts, never observed speed or
+availability. There are no measurement replacements, reassigned partitions or
+partial aggregates. All six terminal accounts, application completions,
+scientific certificates, exact local repeats, cross-host discrete decisions and
+isolation evidence must pass before scoring the complete frontier. The existing
+baseline-violation and worst-normalized-ratio rules still stop at baseline only.
+
+Cross-worker agreement concerns scientific decisions: sample and drop decisions,
+rank/omission metadata, recovery markers, presence flags and discrete degrees of
+freedom. Solver-route differences are retained separately. Worker-dependent
+workspace admission can legitimately select LSMR or MAP, and Low-mode chunks
+can aggregate warning and pilot metadata differently. Those execution fields
+are not a universal equality requirement across worker counts. Existing stricter
+CMG/IT contracts and fixed-worker, cross-host checks remain in force.
+
+The typed policy, partition producer and validators pass independent Astra
+high-effort source review. The full benchmark suite passes 413 tests in 171.867
+seconds, with all 48 source/test files unchanged throughout. An earlier run
+retains ten environment errors (eight missing SciPy, two missing psutil); using
+the existing task dependencies resolves them. All 192 production modules and
+58 artifact inputs remain identical to runtime commit `dd9d4286`, so its valid
+source-only runtime suite is reused. These tooling checks do not establish
+Linux performance. The design remains prospective pending the actual Linux
+build, ABI checks, input binding, pure seal and dispatch.
+Scheduled setup uses four slots and explicitly caps the actual native ABI
+checksum worker request; library environment variables alone cannot enforce
+that cap. Fresh guarded Mac B12 and untouched C24 remain conditional on a valid,
+independently reviewed new shortlist.
+
 A separate prospective Mac handoff helper passes independent source review and
 16 pure tests. After full discovery/B-context and untouched-C-declaration gates,
 it can reuse already certified fresh B references, checking exact paths and

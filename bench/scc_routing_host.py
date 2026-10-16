@@ -119,7 +119,12 @@ def round_contract(plan, collection=None):
         require(collection is None or 'round_contract' not in collection, 'unexpected collection round contract')
         return None
     value = plan['round_contract']
-    require(isinstance(value, dict) and set(value) == {'parallel_plan_sha256', 'logical_round', 'attempt'}
+    partitioned = 'discovery_partition' in plan
+    if partitioned:
+        discovery.execution_spec(plan)
+    require(isinstance(value, dict) and set(value) == ({'parallel_plan_sha256', 'logical_round', 'attempt',
+                                                       'shard', 'partition_sha256'} if partitioned else
+                                                      {'parallel_plan_sha256', 'logical_round', 'attempt'})
             and isinstance(value['parallel_plan_sha256'], str)
             and re.fullmatch(r'[0-9a-f]{64}', value['parallel_plan_sha256']) is not None
             and type(value['logical_round']) is int and 1 <= value['logical_round'] <= 3

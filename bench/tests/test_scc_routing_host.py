@@ -578,6 +578,37 @@ class SchedulerQueryRecovery(unittest.TestCase):
         self.assertTrue(operation.call_args.args[3].is_set())
         observers[1].join.assert_called_once_with(timeout=25)
 
+    def test_partition_receipt_replays_full_isolation_and_exact_parent_subset_contract(self):
+        from test_routing_discovery import partition42
+        f = self.fixture
+        spec = partition42()
+        part = host.discovery.partitions(spec)[0]
+        self.capture([{}, {}])
+        self.now = 7 * 10**9
+        self.capture([{}, {}], 'after')
+        f.write('scheduler', self.envelopes())
+        f.plan.update(kind=host.discovery.PORTFOLIO_KIND + '_plan', tournament=host.routing.seal(spec),
+                      scheduler_query_policy=copy.deepcopy(host.discovery.SCHEDULER_QUERY_POLICY),
+                      discovery_partition=part)
+        ref = host.discovery.reference(Path(host.__file__).with_name('routing_parallel.py'))
+        f.plan['frozen_files'][ref['path']] = ref['sha256']
+        f.parallel(attempt=1)
+        f.plan['round_contract'].update(shard=1, partition_sha256=host.routing.identity(part))
+        f.collection.update(round_contract=copy.deepcopy(f.plan['round_contract']),
+                            plan_sha256=host.routing.identity(f.plan))
+        f.processes()
+        receipt = f.receipt()
+        self.assertEqual(host.validate(f.plan, f.collection, receipt)['status'], 'verified')
+        for key, value in [('shard', 2), ('attempt', 2), ('partition_sha256', 'c' * 64)]:
+            bad = copy.deepcopy(f.plan)
+            bad['round_contract'][key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError): host.round_contract(bad)
+        bad = copy.deepcopy(f.plan); del bad['discovery_partition']
+        with self.assertRaises(ValueError): host.round_contract(bad)
+        # The new envelope does not relax full-node reservation or overlap checks.
+        f.processes(other=(99, 1, 'cargo', '00:00:10', '100.0', 'R'))
+        with self.assertRaises(ValueError): host.validate(f.plan, f.collection, f.receipt())
+
 
 if __name__ == '__main__':
     unittest.main()

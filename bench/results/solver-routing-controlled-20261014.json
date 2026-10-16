@@ -21559,5 +21559,107 @@
       "Source tests do not establish performance, native combined build/ABI, SCC discovery, Mac B/C, or public promotion.",
       "Test output contains two interleaved child-process summary prefixes; all86 numeric result summaries are retained and counted."
     ]
+  },
+  "portfolio_partitioned_discovery_source_20261016": {
+    "status": "reviewed_source_only_linux_build_and_discovery_pending",
+    "runtime_source_parent": "dd9d4286",
+    "scope": "Typed private portfolio-unseeded, schema3 fixed partitions, exact model decisions across workers and bounded native ABI setup requests. No public Auto change.",
+    "production_identity": {
+      "comparison": "dd9d4286",
+      "runtime_modules": 192,
+      "artifact_inputs": 58,
+      "unchanged": true
+    },
+    "design": {
+      "schema": 3,
+      "families": 21,
+      "cells": 42,
+      "workers": [
+        1,
+        4
+      ],
+      "candidate": "portfolio-unseeded",
+      "rounds": 3,
+      "distinct_hosts": 6,
+      "shards": [
+        {
+          "families": 10,
+          "cells": 20,
+          "arm_slots": 182,
+          "inclusive_seconds": 7280,
+          "max_native_calls": 1274
+        },
+        {
+          "families": 11,
+          "cells": 22,
+          "arm_slots": 178,
+          "inclusive_seconds": 7120,
+          "max_native_calls": 1246
+        }
+      ],
+      "maximum_calls_total": 7560,
+      "allocation_seconds_total": 43200,
+      "call_seconds": 120,
+      "measurement_replacements": 0,
+      "scope": "Revealed A inputs/references reused; fresh science, availability, isolation and timing required. Old V1 and Mac B remain closed NO-GO."
+    },
+    "source_review": {
+      "reasoning_effort": "high",
+      "resolved_findings": [
+        "Partition-only validator source included in live identity and checked-proof dependencies; omission/mutation rejected.",
+        "Worker scientific decisions compare exactly; resource-dependent solver choices recorded separately.",
+        "ABI tests skip unsupported non-Unix platforms.",
+        "Baseline build overlay verifies exact HEAD and complete two-file status after every build phase.",
+        "Snapshot validator rejects optimized Python before assertions could be disabled."
+      ],
+      "review_model": "gpt-6-astra",
+      "review_roles": [
+        "cmg_polish_astra: typed policy, partition protocol and model-discrete producer/consumer",
+        "general_frontier_astra: independent ABI harness cap",
+        "parallel_code_astra: task helper lifecycle and source transport"
+      ],
+      "scope": "Source architecture only. Actual Linux artifacts, setup accounting, admission descriptors, sealed plan and dispatch identities remain prerequisites. Public activation unchanged; no performance or scientific qualification inferred.",
+      "source_hashes": {
+        "bench/routing.py": "805b4e2eb975197b7c0f546373ce342070c2436d99cbea422b4658ee19625d07",
+        "bench/routing_discovery.py": "d5e96f592647f5ec099e9eb1882837aeeb7757d563fe8f9ffcdfa3d2ccd637c9",
+        "bench/routing_parallel.py": "55f36dfcdb6b029b3d0e136f3ba7b43b1a528954b096d7902c6ef0830394df10",
+        "bench/routing_run.py": "415808270573af87e8acd04063a623337fd6e30d67fcd920f51062e2ed06939c",
+        "bench/scc_routing_host.py": "b0056e54b38fd0e89aae7f144ff748131b443c6f053b83dae16e46b8c45aba8a",
+        "tests/mock_spi/actual_plugin_loader_test.c": "b77af675ef4aabe07af2fb7841b6b788315b512ceacdccb77f1686738bf27049",
+        "tests/mock_spi/run_actual_unix_plugin_test.sh": "746f9ad32c6014da8f16c54d7b8109a8795d82aab543b0cae6e676699eab81e6",
+        "tests/python/test_actual_plugin_threads.py": "521149be637eb83ba9ba8416c280529bd6f710f5d4071be17bb8c97a7881025b"
+      },
+      "status": "independent_source_review_passed"
+    },
+    "validation": {
+      "benchmark_tests": 413,
+      "benchmark_test_seconds": 171.867,
+      "benchmark_elapsed_seconds": 185.8791067090351,
+      "returncode": 0,
+      "unchanged_source_files": 48,
+      "command_sha256": "d69f2d55adf95548066601c7cef4a0dc43f21355e99d0061955f75ca524bcf9a",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "ba086e99bfa25632f12f0d21eb27eece8fdbfc32fcf05c8bdda5a5f98568f9e1",
+      "source_before_sha256": "96c28664d4c702de74448a308c2eb187ed0fbd2faf9b42e766b751b9af10448f",
+      "source_after_sha256": "96c28664d4c702de74448a308c2eb187ed0fbd2faf9b42e766b751b9af10448f",
+      "prior_attempt": {
+        "tests": 397,
+        "environment_errors": {
+          "missing_scipy": 8,
+          "missing_psutil": 2
+        },
+        "source_unchanged": true,
+        "command_sha256": "bc54cd2b364a344d0ad841418a9cd2f1ccdf25ef7592fe161c31b545a5d47a44",
+        "scope": "Retained failed environment run; repeated with existing task scientific dependencies."
+      },
+      "native_harness_cap_tests": {
+        "tests": 6,
+        "elapsed_seconds": 1.513,
+        "returncode": 0,
+        "scope": "Mock native selftest caps and malformed/replay handling; actual Linux ELF calls pending."
+      }
+    },
+    "admission": "Source-only evidence. Actual same-profile Linux builds, ABI/guards, terminal accounting, admission descriptors and sealed full six-host evidence remain prerequisites. No speed qualification or activation.",
+    "source_review_sha256": "b1bec941f23ab79d71f1967eee162daea58ccf95028bc01c1eeb09467e8c0774"
   }
 }

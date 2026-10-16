@@ -26,6 +26,8 @@ CHECKPOINTS = (4, 8, 16, 32)
 ABLATIONS = {name: 'routing_' + name for name in ['diagonal', 'cells', 'direct']}
 PREFIXES = {'prefix-none': ('none', 0), 'prefix-map4': ('map4', 4), 'prefix-it4': ('it4', 8)}
 PORTFOLIO_V1 = 'portfolio-v1'
+PORTFOLIO_UNSEEDED = 'portfolio-unseeded'
+PORTFOLIOS = (PORTFOLIO_V1, PORTFOLIO_UNSEEDED)
 COMPACT_IT = 'it-coefficients'
 EXPERIMENT_KINDS = {'routing', 'prefix', 'overlap', 'portfolio'}
 PREFIX_COVERAGE = {'small-third', 'near-confounded-third', 'four-fe', 'eight-fe', 'sixteen-fe'}
@@ -196,6 +198,9 @@ def policy(arm):
                                             'preflight_work': 1024,
                                             'structural_iteration_allowance': 4,
                                             'choice': 'direct_or_incumbent_cmg'}}}
+    if arm == PORTFOLIO_UNSEEDED:
+        return {**policy(PORTFOLIO_V1), 'prefix': 'none', 'steps': 0, 'map_sweeps': 0,
+                'injection': 'routing_portfolio_unseeded'}
     if arm in PREFIXES:
         name, sweeps = PREFIXES[arm]
         return {'prefix': name, 'steps': 0 if name == 'none' else 4, 'map_sweeps': sweeps,
@@ -218,12 +223,25 @@ def policy(arm):
 def policy_name(value):
     if value is None:
         return 'baseline'
-    choices = [PORTFOLIO_V1, *PREFIXES, *(f'h{h}-k{k}' for h in CHECKPOINTS for k in TREES),
+    choices = [*PORTFOLIOS, *PREFIXES, *(f'h{h}-k{k}' for h in CHECKPOINTS for k in TREES),
                *(f'overlap-h{h}-k{k}' for h in CHECKPOINTS[1:] for k in TREES)]
     for name in choices:
-        if (identity(policy(name)) == identity(value) if name == PORTFOLIO_V1 else policy(name) == value):
+        if (identity(policy(name)) == identity(value) if name in PORTFOLIOS else policy(name) == value):
             return name
     raise ValueError('unknown or incomplete fixed routing policy')
+
+
+def portfolio_candidate(manifest):
+    """Return one sanctioned portfolio challenger, without recursive validation."""
+    candidates = manifest.get('candidates')
+    if (manifest.get('experiment_kind') != 'portfolio' or not isinstance(candidates, list)
+            or len(candidates) != 2 or any(not isinstance(a, str) for a in candidates)
+            or 'baseline' not in candidates):
+        raise ValueError('portfolio candidate set requires baseline and one sanctioned policy')
+    challengers = [arm for arm in candidates if arm != 'baseline']
+    if len(challengers) != 1 or challengers[0] not in PORTFOLIOS:
+        raise ValueError('portfolio candidate set requires baseline and one sanctioned policy')
+    return challengers[0]
 
 
 def prepare(source, destination, arm, threads):
@@ -259,7 +277,7 @@ def conservative(arm):
         return (int(arm == 'overlap'), 0, 0, 0)
     if arm in PREFIXES:
         return (1, list(PREFIXES).index(arm), 0, 0)
-    if arm == PORTFOLIO_V1:
+    if arm in PORTFOLIOS:
         return (1, 0, 0, 0)
     p = policy(arm)
     return (0, 0, 0, 0) if p is None else (1, p['trees'] != 0, -p['checkpoint'], p['trees'])
@@ -342,7 +360,7 @@ def validate_manifest(manifest):
     incumbent_policy = arms.get('incumbent', {}).get('policy')
     if incumbent_policy is not None:
         name = policy_name(incumbent_policy)
-        if name.startswith('overlap-') or name == PORTFOLIO_V1 or kind in {'prefix', 'portfolio'}:
+        if name.startswith('overlap-') or name in PORTFOLIOS or kind in {'prefix', 'portfolio'}:
             raise ValueError('stage incumbent contains an unrelated experiment policy')
     for arm, config in arms.items():
         if config.get('role') != arm_role(manifest, arm):
@@ -364,15 +382,15 @@ def validate_manifest(manifest):
         raise ValueError('sampled qualification maps counts 1/2 to scientific evidence hashes')
     counts.update(map(int, sampled))
     if kind == 'portfolio' and set(sampled) != {'1'}:
-        raise ValueError('portfolio V1 requires exactly the sample-1 scientific qualification binding')
+        raise ValueError('portfolio requires exactly the sample-1 scientific qualification binding')
     if (ablation or kind == 'prefix') and sampled:
         raise ValueError('this isolated experiment does not declare sampled policy candidates')
     expected = ({'baseline'} if ablation else {'baseline', *PREFIXES} if kind == 'prefix' else
-                {'baseline', PORTFOLIO_V1} if kind == 'portfolio' else
+                {'baseline', portfolio_candidate(manifest)} if kind == 'portfolio' else
                 {'serial', 'overlap'} if kind == 'overlap' else
                 {'baseline', *(f'h{h}-k{k}' for h in CHECKPOINTS for k in counts)})
     if set(candidates) != expected:
-        raise ValueError('freeze exactly baseline and portfolio-v1 as the candidate set' if kind == 'portfolio'
+        raise ValueError('freeze exactly baseline and one portfolio policy as the candidate set' if kind == 'portfolio'
                          else 'freeze the full four-checkpoint grid for each qualified tree count')
     candidate_hashes = {arms[a]['sha256'] for a in candidates if a != 'baseline'}
     if not ablation and len(candidate_hashes) != 1:
@@ -380,7 +398,7 @@ def validate_manifest(manifest):
     for arm in candidates:
         expected_policy = (arms['serial']['policy'] if kind == 'overlap' and arm == 'serial' else
                            policy('overlap-' + policy_name(arms['serial']['policy'])) if kind == 'overlap' else policy(arm))
-        if (identity(arms[arm].get('policy')) != identity(expected_policy) if arm == PORTFOLIO_V1
+        if (identity(arms[arm].get('policy')) != identity(expected_policy) if arm in PORTFOLIOS
                 else arms[arm].get('policy') != expected_policy):
             raise ValueError(f'{arm}: policy and sanctioned injection must match')
     if set(manifest['panels']) != ({'A'} if ablation else set(REPETITIONS)):

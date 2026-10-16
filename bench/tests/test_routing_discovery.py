@@ -30,12 +30,96 @@ def portfolio42():
     return spec
 
 
+def partition42():
+    import routing_cases
+    spec = portfolio_manifest(routing.PORTFOLIO_UNSEEDED)
+    cells = []
+    terms = {'no-fe': 0, 'one-fe': 1, 'slopes': 1, 'small-third': 3,
+             'near-confounded-third': 3, 'four-fe': 4, 'eight-fe': 8, 'sixteen-fe': 16}
+    for family in sorted(routing.PORTFOLIO_COVERAGE):
+        for threads in (1, 4):
+            cell = {'id': f'{family}-t{threads}', 'family': family, 'threads': threads,
+                    'coverage': [family], 'case_sha256': h('partition-case-' + family),
+                    'body_sha256': h('partition-body-' + family),
+                    'absorbed_terms': terms.get(family, 2), 'categorical_intercepts': family != 'slopes'}
+            cell['comparators'] = routing_cases.comparators(cell, sampled=True, compact_it=True)
+            cells.append(cell)
+    spec['panels']['A'] = cells
+    for arm in {a for c in cells for a in c['comparators']}:
+        spec['arms'][arm] = {'sha256': h('candidate'), 'role': 'optional_comparator'}
+        if arm == routing.COMPACT_IT:
+            spec['arms'][arm].update(solver='it', injection='it_coefficients')
+        elif arm.startswith('cmgschur-k'):
+            spec['arms'][arm].update(solver='cmgschur', cmgsamples=int(arm[-1]))
+    return spec
+
+
+class PartitionDiscoveryTests(unittest.TestCase):
+    def test_complete_parent_derives_exact_disjoint_worker_pairs_and_budgets(self):
+        spec = partition42()
+        parts = discovery.partitions(spec)
+        self.assertEqual([len(p['families']) for p in parts], [10, 11])
+        self.assertEqual([len(p['cell_ids']) for p in parts], [20, 22])
+        self.assertEqual(sum(p['arm_slots'] for p in parts), 360)
+        self.assertEqual(sum(p['inclusive_allocation_budget_s'] for p in parts), 14400)
+        self.assertEqual(3 * sum(p['maximum_native_calls'] for p in parts), 7560)
+        self.assertEqual(parts[0]['inclusive_allocation_budget_s'], 14400 * parts[0]['arm_slots'] // 360)
+        before = routing.identity(spec)
+        for part in parts:
+            derived = discovery.partition_spec(spec, part)
+            self.assertEqual([c['id'] for c in derived['panels']['A']], part['cell_ids'])
+            self.assertEqual(derived['panels']['B'], spec['panels']['B'])
+            self.assertEqual(derived['failure_policy']['aggregate_budget_s'], part['inclusive_allocation_budget_s'])
+            self.assertEqual(derived['failure_policy']['per_call_timeout_s'], 120)
+        self.assertEqual(routing.identity(spec), before)
+
+    def test_forged_partial_parent_frontier_or_descriptor_rejected(self):
+        spec = partition42()
+        part = discovery.partitions(spec)[0]
+        for key, value in [('shard', True), ('cell_ids', part['cell_ids'][:-1]),
+                           ('families', list(reversed(part['families']))), ('arm_slots', 1),
+                           ('inclusive_allocation_budget_s', 14400), ('maximum_native_calls', 2520),
+                           ('parent_manifest_sha256', h('other'))]:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                discovery.partition_spec(spec, {**part, key: value})
+        for change in ('worker', 'body', 'frontier', 'family', 'partial'):
+            bad = copy.deepcopy(spec)
+            cell = bad['panels']['A'][0]
+            if change == 'worker': cell['threads'] = 4
+            elif change == 'body': cell['body_sha256'] = h('different-worker-input')
+            elif change == 'frontier': cell['comparators'].pop()
+            elif change == 'family': cell['family'] = 'invented'
+            else: bad['panels']['A'].pop()
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                discovery.partitions(bad)
+
+    def test_unbound_partition_and_records_cannot_self_enable(self):
+        spec = partition42()
+        part = discovery.partitions(spec)[0]
+        plan = {'kind': discovery.PORTFOLIO_KIND + '_plan', 'tournament': routing.seal(spec),
+                'discovery_partition': part, 'scheduler_query_policy': discovery.SCHEDULER_QUERY_POLICY,
+                'round_contract': {'parallel_plan_sha256': h('parent'), 'logical_round': 1,
+                                   'shard': 1, 'attempt': 1, 'partition_sha256': routing.identity(part)}}
+        self.assertEqual(len(discovery.execution_spec(plan)['panels']['A']), 20)
+        record = {'discovery_partition': part, 'parent_manifest_sha256': routing.identity(spec)}
+        discovery.validate_partition_records(plan, record)
+        for key in ('round_contract', 'scheduler_query_policy'):
+            bad = dict(plan); del bad[key]
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                discovery.execution_spec(bad)
+        with self.assertRaises(ValueError): discovery.validate_partition_records(plan, {})
+        with self.assertRaises(ValueError): discovery.validate_partition_records({}, record)
+
+
 def producer(spec, prerequisite=False):
     value = records(spec, 'A')
+    allowed = {c['id']: set(spec['candidates'] + spec['protections'] + c['comparators']) for c in spec['panels']['A']}
+    for key in ('records', 'prerequisites'):
+        value[key] = [row for row in value[key] if row['arm'] in allowed[row['cell']]]
     value.update(platform='Linux-test', tool_sha256={'test': h('source')},
                  purpose='scientific_prerequisites' if prerequisite else 'policy_tournament',
                  repetitions=1 if prerequisite else 3, warmups=0 if prerequisite else 1,
-                 timeout_s=120.0, budget_s=14400.0)
+                 timeout_s=120.0, budget_s=spec['failure_policy']['aggregate_budget_s'])
     if prerequisite:
         value['records'] = [r for r in value['records'] if r['repetition'] == 0]
     return value
