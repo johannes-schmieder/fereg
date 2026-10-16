@@ -1233,6 +1233,7 @@ impl AutoSchurRoute {
                 self.request.budget,
                 self.setup.builder_allowance(),
                 !self.preset.overlaps(),
+                self.preset == super::RoutingPreset::portfolio_v1(),
             )?;
             self.setup.charge(built.work_used)?;
             built

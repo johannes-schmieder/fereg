@@ -311,7 +311,14 @@ impl CmgSchurPreconditioner {
                     "CMG reduced component is disconnected",
                 )));
             }
-            finish(graph, components, cache_bytes, &mut work, &mut memory)
+            finish(
+                graph,
+                components,
+                cache_bytes,
+                false,
+                &mut work,
+                &mut memory,
+            )
         })();
         let (preconditioner, refusal) = match attempt {
             Ok(candidate) => (Some(candidate), None),
@@ -385,6 +392,7 @@ impl CmgSchurPreconditioner {
     /// by a refusal. Actual allocation and numerical failures remain fatal.
     /// Only synchronous presets may cache the census; an overlap preset's
     /// one-worker fallback keeps the original two-pass work and allocation gates.
+    /// `bounded_terminal` is the separate, portfolio-only factor-preflight policy.
     #[allow(clippy::too_many_arguments)]
     pub(in crate::fe) fn try_build_bounded(
         design: &BorrowedInterceptFeDesign<'_>,
@@ -396,6 +404,7 @@ impl CmgSchurPreconditioner {
         budget: Option<FeSolverMemoryBudget>,
         work_budget: u64,
         cache_census: bool,
+        bounded_terminal: bool,
     ) -> Result<BoundedCmgBuild> {
         sampling.validate()?;
         if design.effects().len() != 2 || left_effect > 1 || rhs_capacity == 0 {
@@ -413,6 +422,7 @@ impl CmgSchurPreconditioner {
             budget,
             work_budget,
             cache_census,
+            bounded_terminal,
             &mut |_| BuildDecision::Continue,
         )
     }
@@ -441,6 +451,7 @@ impl CmgSchurPreconditioner {
             budget,
             work_budget,
             false,
+            false,
             control,
         )
     }
@@ -456,6 +467,7 @@ impl CmgSchurPreconditioner {
         budget: Option<FeSolverMemoryBudget>,
         work_budget: u64,
         cache_census: bool,
+        bounded_terminal: bool,
         control: &mut dyn cmg::BuildControl,
     ) -> Result<BoundedCmgBuild> {
         sampling.validate()?;
@@ -493,7 +505,14 @@ impl CmgSchurPreconditioner {
             &mut memory,
         )
         .and_then(|(graph, components, _, cache_bytes)| {
-            finish(graph, components, cache_bytes, &mut work, &mut memory)
+            finish(
+                graph,
+                components,
+                cache_bytes,
+                bounded_terminal,
+                &mut work,
+                &mut memory,
+            )
         });
         let (preconditioner, refusal) = match attempt {
             Ok(preconditioner) => (Some(preconditioner), None),
@@ -513,6 +532,7 @@ fn finish(
     graph: Laplacian,
     components: FirmComponents,
     cache_bytes: u128,
+    bounded_terminal: bool,
     work: &mut Work<'_>,
     memory: &mut Admission,
 ) -> Attempt<CmgSchurPreconditioner> {
@@ -530,15 +550,33 @@ fn finish(
     // Controlled builders pass zero and preserve their existing admission order.
     let parents = graph_storage_bound(&graph)? + components.bytes() + cache_bytes;
     let admitted = admit(memory, work, parents, bound)?;
+    // The finite upstream meter shadows callback-admitted work; callbacks alone
+    // debit this owner. Capture the remainder after the existing admission work.
+    let remaining_work = if bounded_terminal {
+        work.budget - work.used
+    } else {
+        u64::MAX
+    };
     let preconditioner = work.cmg(|control| {
-        CmgPreconditioner::build_component_experiment_serial_controlled(
-            &graph,
-            options,
-            experiment,
-            admitted,
-            u64::MAX,
-            control,
-        )
+        if bounded_terminal {
+            CmgPreconditioner::build_component_experiment_serial_controlled_with_factor_preflight(
+                &graph,
+                options,
+                experiment,
+                admitted,
+                remaining_work,
+                control,
+            )
+        } else {
+            CmgPreconditioner::build_component_experiment_serial_controlled(
+                &graph,
+                options,
+                experiment,
+                admitted,
+                u64::MAX,
+                control,
+            )
+        }
     })?;
     // Keep the already-admitted conservative hierarchy bound. Exact storage
     // reporting recursively deduplicates allocation owners and is quadratic;
@@ -1395,6 +1433,7 @@ mod cache_tests {
                     budget,
                     work,
                     true,
+                    false,
                 )
             } else {
                 CmgSchurPreconditioner::try_build_observations_bounded_controlled(
@@ -1422,6 +1461,30 @@ mod cache_tests {
                 sampling,
             )
             .unwrap()
+        }
+
+        fn build_terminal(
+            &self,
+            enabled: bool,
+            allowance: u64,
+            control: &mut dyn cmg::BuildControl,
+        ) -> Result<BoundedCmgBuild> {
+            CmgSchurPreconditioner::build_observations_bounded(
+                &self.membership,
+                &self.firms,
+                self.firm_index.n_levels(),
+                BorrowedMapWeights::Provided(&self.weights),
+                5,
+                Sampling {
+                    samples: 1,
+                    seed: 0,
+                },
+                None,
+                allowance,
+                false,
+                enabled,
+                control,
+            )
         }
     }
 
@@ -1468,6 +1531,121 @@ mod cache_tests {
             );
             assert_eq!(&rows.cells, canonical);
         }
+    }
+
+    #[test]
+    fn terminal_preflight_is_opt_in_and_charges_each_callback_once() {
+        let fixture = Fixture::new();
+        let sampling = Sampling {
+            samples: 1,
+            seed: 0,
+        };
+        let mut old_trace = Vec::new();
+        let old = fixture
+            .build_terminal(false, u64::MAX, &mut |boundary| {
+                old_trace.push(boundary);
+                BuildDecision::Continue
+            })
+            .unwrap();
+        let controlled = fixture.build(sampling, None, u64::MAX, false);
+        assert_eq!(old.work_used, controlled.work_used);
+        assert_eq!(old.peak, controlled.peak);
+        let mut trace = Vec::new();
+        let enabled = fixture
+            .build_terminal(true, u64::MAX, &mut |boundary| {
+                trace.push(boundary);
+                BuildDecision::Continue
+            })
+            .unwrap();
+        let preflight = trace
+            .iter()
+            .position(|boundary| boundary.phase == "terminal factor preflight")
+            .unwrap();
+        assert_eq!(
+            trace[preflight].operation,
+            BuildOperation::Work { units: 1024 }
+        );
+        assert_eq!(enabled.work_used, old.work_used + 1024);
+        assert_eq!(enabled.peak, old.peak);
+        assert_eq!(
+            trace
+                .iter()
+                .filter(|boundary| boundary.phase != "terminal factor preflight")
+                .map(|boundary| (boundary.phase, boundary.operation))
+                .collect::<Vec<_>>(),
+            old_trace
+                .iter()
+                .map(|boundary| (boundary.phase, boundary.operation))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            enabled.preconditioner.unwrap().preconditioner.hierarchy(),
+            old.preconditioner.unwrap().preconditioner.hierarchy()
+        );
+        let mut charged = 0;
+        for (ordinal, boundary) in trace.iter().enumerate() {
+            assert_eq!(boundary.chunk_id, ordinal as u64);
+            assert_eq!(boundary.charged_work, charged);
+            if let BuildOperation::Work { units } = boundary.operation {
+                charged += u64::from(units);
+            }
+        }
+        assert_eq!(charged, enabled.work_used);
+    }
+
+    #[test]
+    fn terminal_preflight_preserves_stop_and_exhaustion_semantics() {
+        let fixture = Fixture::new();
+        let mut trace = Vec::new();
+        fixture
+            .build_terminal(true, u64::MAX, &mut |boundary| {
+                trace.push(boundary);
+                BuildDecision::Continue
+            })
+            .unwrap();
+        let preflight = trace
+            .iter()
+            .position(|boundary| boundary.phase == "terminal factor preflight")
+            .unwrap();
+        for decision in [BuildDecision::StopUnused, BuildDecision::Interrupted] {
+            let mut seen = 0;
+            let result = fixture.build_terminal(true, u64::MAX, &mut |boundary| {
+                assert_eq!(boundary, trace[seen]);
+                let answer = if seen == preflight {
+                    decision
+                } else {
+                    BuildDecision::Continue
+                };
+                seen += 1;
+                answer
+            });
+            assert_eq!(seen, preflight + 1);
+            if decision == BuildDecision::StopUnused {
+                let stopped = result.unwrap();
+                assert_eq!(stopped.refusal, Some(BuildRefusal::Unused));
+                assert!(stopped.preconditioner.is_none());
+                assert_eq!(stopped.work_used, trace[preflight].charged_work);
+            } else {
+                assert_eq!(
+                    result.err().unwrap().code,
+                    crate::error::ErrorCode::Interrupted
+                );
+            }
+        }
+        // Exhaustion immediately after the new gate must stop before another
+        // callback; the upstream meter never adds its charged total a second time.
+        let allowance = trace[preflight].charged_work + 1024;
+        let mut limited_trace = Vec::new();
+        let limited = fixture
+            .build_terminal(true, allowance, &mut |boundary| {
+                limited_trace.push(boundary);
+                BuildDecision::Continue
+            })
+            .unwrap();
+        assert_eq!(limited.refusal, Some(BuildRefusal::WorkBudget));
+        assert!(limited.preconditioner.is_none());
+        assert_eq!(limited.work_used, allowance);
+        assert_eq!(limited_trace, trace[..=preflight]);
     }
 
     #[test]

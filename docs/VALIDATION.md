@@ -634,6 +634,39 @@ independent failed-protocol review is
 Capture identities promise no retained raw archive. No isolation, speedup,
 qualification, public routing, activation or promotion claim follows.
 
+A subsequent private-portfolio source change adds a conservative terminal-factor
+screen through published [CMG revision
+`3422b0408023769f08f33391b90a613745601e7d`](https://github.com/johannes-schmieder/CMG/commit/3422b0408023769f08f33391b90a613745601e7d).
+The separately charged 1,024-unit checked integer bound uses the actual remaining
+allowance; nonfit continues existing coarsening before any factor attempt.
+Default/explicit, existing controlled/reduced/overlap paths remain unchanged.
+Later factor, workspace, memory and startup guards still apply: this is neither
+reserved credit nor an installation or performance guarantee. The setup cap,
+restart reserve, thresholds, original operator and scientific tolerances stay
+fixed; private hierarchies, iterations and rounding may change.
+
+Independent high-effort Astra math/source review passed. Final-manifest upstream
+checks pass 115 default and 220 all-feature tests, strict Clippy and formatting.
+The bound witnesses cover 1,154 full factors, 9,331 ordered union sequences,
+four additional chains and 48 heapsorts. Twelve local/spanning compatible-dipole
+cases pass at unchanged `1e-11`. Earlier rounded-matvec failures remain recorded;
+unchanged legacy finalization of the same hierarchy produces bit-exact outputs
+for all 18 diagnostic applications. These finite witnesses do not establish an
+all-RHS floating-point bound. Fereg passes 24 CMG, 18 routing, two independent
+portfolio-oracle and two layout tests, plus strict core all-target Clippy,
+formatting and the complexity ratchet. An initial 17-pass/one-fail routing result
+is retained: its stale cross-policy bit/iteration/work equality contradicted the
+declared changed-hierarchy scope. The reviewed test repair keeps the original
+independent analytic tolerances, caps, owner reuse and cross-worker checks, and
+strengthens exact same-policy repeats. No production workaround was added.
+
+The same compact evidence records these facts and hashes under
+`portfolio_development.terminal_affordability`. Current runtime identity is
+`097fc6b4f67611e779d916784fe5178033efe6fffa04528e7b2dd62fc117f068`.
+The full test entrypoint, refreshed actual native bundle, eight-call
+changed-artifact witness and performance qualification remain pending; the
+stale-native gate remains intact. Public Auto is unchanged.
+
 The current 25-page [routing explanation](solver_routing.pdf) appends a separate
 private-portfolio flowchart, frontier table, exact charged bounds and development
 evidence chart. The latest factual update changes only page 25 to record the

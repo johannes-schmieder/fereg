@@ -518,6 +518,82 @@ fn portfolio_direct_break_after_selection_propagates_without_publication() {
 }
 
 #[test]
+fn only_portfolio_checkpoint_enables_terminal_factor_preflight() {
+    let fixture = PortfolioRectangle::new();
+    let mut charges = Vec::new();
+    let mut results = Vec::new();
+    for (preset, bounded_terminal) in [
+        (RoutingPreset::new(16, 1).unwrap(), false),
+        (RoutingPreset::portfolio_v1(), true),
+    ] {
+        let design = fixture.design();
+        let mut owner = ReusableCategoricalMapAbsorber::new(fixture.design(), 2, 1).unwrap();
+        owner.request_auto_routing(preset, None, 0);
+        let route = owner.auto_route.as_mut().unwrap();
+        route
+            .begin(
+                config().tolerance,
+                false,
+                schur_iteration_work(design.nobs(), 4, 2, 2, 2),
+            )
+            .unwrap();
+        let reference = CmgSchurPreconditioner::try_build_bounded(
+            &design,
+            BorrowedMapWeights::Unit,
+            0,
+            route.request.degree,
+            route.request.sampling,
+            2,
+            None,
+            route.setup.builder_allowance(),
+            true,
+            bounded_terminal,
+        )
+        .unwrap();
+        assert_eq!(reference.refusal, None);
+        let mut reference_preconditioner = reference.preconditioner.unwrap();
+        let expected_work = reference.work_used
+            + reference_preconditioner.startup_work(2).unwrap()
+            + route.setup.restart_reserve;
+        let mut setup_seconds = 0.0;
+        let mut solve_started = Instant::now();
+        let mut actual = route
+            .checkpoint(
+                &design,
+                validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap(),
+                0,
+                2,
+                2,
+                16,
+                config().max_iterations,
+                &mut setup_seconds,
+                &mut solve_started,
+            )
+            .unwrap()
+            .expect("small bounded candidate fits either policy");
+        assert!(route.setup.attempted);
+        assert_eq!(route.setup.used, expected_work);
+        assert!(route.setup.used <= route.setup.limit);
+        assert_eq!(route.peak, reference.peak);
+        let mut expected = [0.0; 4];
+        let mut result = [0.0; 4];
+        let rhs = [1.0, 2.0, -1.0, -2.0];
+        reference_preconditioner
+            .apply_batch(&rhs, &mut expected, 2, 2, None, None)
+            .unwrap();
+        actual
+            .apply_batch(&rhs, &mut result, 2, 2, None, None)
+            .unwrap();
+        assert_same_bits(&result, &expected);
+        charges.push(route.setup.used);
+        results.push(result);
+    }
+    // Both presets cache the census. Only portfolio pays the terminal screen.
+    assert_eq!(charges[1], charges[0] + 1024);
+    assert_same_bits(&results[1], &results[0]);
+}
+
+#[test]
 fn one_worker_overlap_checkpoint_retains_original_uncached_builder() {
     let witness = PairedGraph::new();
     crate::ThreadTeam::new(crate::ThreadConfig::from_requested(1, true).unwrap())
@@ -949,7 +1025,7 @@ fn routing_restart_has_independent_weighted_disconnected_science_and_repeats() {
 }
 
 #[test]
-fn portfolio_two_fe_matches_h16_k1_and_reuses_one_setup_across_rhs_widths() {
+fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths() {
     let witness = PairedGraph::new();
     let mut across_workers: Option<DenseMatrix> = None;
     for workers in [1, 4] {
@@ -1044,11 +1120,17 @@ fn portfolio_two_fe_matches_h16_k1_and_reuses_one_setup_across_rhs_widths() {
                 })
                 .unwrap()
         };
-        let mut expected = run(RoutingPreset::new(16, 1).unwrap());
-        expected.6 .1 += super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK;
+        let expected = run(RoutingPreset::new(16, 1).unwrap());
         let actual = run(RoutingPreset::portfolio_v1());
-        assert_eq!(actual, expected);
-        assert_eq!(actual, run(RoutingPreset::portfolio_v1()));
+        // Both policies satisfy the independent analytic witnesses above. The
+        // portfolio factor screen may change the hierarchy, but never its quota.
+        assert_eq!(actual.6 .0, expected.6 .0);
+        let replay = run(RoutingPreset::portfolio_v1());
+        assert_eq!(actual, replay);
+        assert_same_bits(actual.0.as_slice(), replay.0.as_slice());
+        assert_same_bits(&actual.1.values, &replay.1.values);
+        assert_same_bits(actual.3.as_slice(), replay.3.as_slice());
+        assert_same_bits(&actual.4.values, &replay.4.values);
         if let Some(previous) = across_workers.as_ref() {
             for (actual, expected) in actual.3.as_slice().iter().zip(previous.as_slice()) {
                 assert!((actual - expected).abs() < 1e-9);

@@ -68,7 +68,7 @@ Extract its `THIRD_PARTY_LICENSES.txt` and pass that file to native staging with
 GPLv3 text and corresponding-source URL. Test a build from the source archive
 with Cargo offline before publishing it alongside the exact binary package.
 
-For the `v0.5.0-beta.1` release, upload the binary/source ZIPs and checksums, plus
+For each versioned beta, upload the binary/source ZIPs and checksums, plus
 every flat file from the binary package as individual GitHub release assets.
 This supplies the versioned `net install` URL in the
 [installation guide](installation.md). Run a fresh Stata installation from that

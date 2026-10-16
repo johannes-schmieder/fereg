@@ -1120,6 +1120,7 @@ mod tests {
                 None,
                 u64::MAX,
                 true,
+                false,
             )
             .unwrap();
             assert_eq!(built.refusal, None);
@@ -1160,6 +1161,7 @@ mod tests {
                 None,
                 used - 1,
                 true,
+                false,
             )
             .unwrap();
             assert!(exhausted.preconditioner.is_none());
@@ -1175,6 +1177,7 @@ mod tests {
                 None,
                 used,
                 true,
+                false,
             )
             .unwrap();
             assert!(exact.preconditioner.is_some());
@@ -1280,6 +1283,7 @@ mod tests {
             None,
             0,
             true,
+            false,
         )
         .unwrap();
         assert!(zero.preconditioner.is_none());
@@ -1298,6 +1302,7 @@ mod tests {
             }),
             u64::MAX,
             true,
+            false,
         )
         .unwrap();
         assert!(memory.preconditioner.is_none());
@@ -1314,6 +1319,7 @@ mod tests {
             None,
             u64::MAX,
             true,
+            false,
         )
         .err()
         .unwrap();

@@ -12267,6 +12267,111 @@
         "No retry, sixth call, relaxed phase contract, public routing change, isolation, controlled performance, qualification, activation or promotion follows from this evidence."
       ]
     },
+    "terminal_affordability": {
+      "schema": 1,
+      "date": "2026-10-16",
+      "kind": "private_portfolio_terminal_factor_screen",
+      "status": "source_checks_passed_native_qualification_pending",
+      "public_Auto_changed": false,
+      "qualification_or_performance_pass": false,
+      "cmg_revision": "3422b0408023769f08f33391b90a613745601e7d",
+      "runtime_sha256": "097fc6b4f67611e779d916784fe5178033efe6fffa04528e7b2dd62fc117f068",
+      "scope": "Only the private portfolio bounded observation builder opts in. The upstream checked complete component-factor work bound is compared with actual remaining work after a charged1024-unit preflight. A declined eligible factor continues existing coarsening; empty/singleton refusal stops safely. This is no credit reservation or completion guarantee. Existing later memory/workspace/startup/numeric gates remain binding. Private hierarchy, installation, iterations and rounding may change; original models, operators, tolerances and discrete scientific decisions remain authoritative. Default, explicit, existing controlled/reduced/overlap paths retain their behavior.",
+      "unchanged_limits": {
+        "setup_W0": 32,
+        "restart_reserve_W0": 4,
+        "direct_threshold": 700,
+        "checkpoint": 16,
+        "high_degree_samples": 1,
+        "seed": 0,
+        "optional_attempts_per_accuracy_key": 1
+      },
+      "work_bound": {
+        "variables": "v terminal vertices; e canonical undirected edges; d=max(v-1,0); T=choose(d,2); U=choose(d,3); H=floor(log2(max(d,1)))+1",
+        "C": "64+112v+80e+24*choose(v,2)",
+        "S": "16+16*max(d-1,0)+64*(floor(d/2)+max(d-1,0))*H",
+        "F": "456+C+936v+968d+784e+680T+128U+S",
+        "arithmetic": "checked u128 intermediates and checked u64 conversion; overflow declines; allocation-free fixed scalar expression",
+        "limitation": "Conservative cubic bound can reject an affordable sparse factor and change a previously successful hierarchy. Neither installation nor faster convergence follows."
+      },
+      "independent_review": {
+        "model": "gpt-6-astra",
+        "reasoning_effort": "high",
+        "math_and_source": "GO for factor-only design bb93342ed7cb13560977c36c697b45971af32ea163bcf599dd64062ab2f70cdd and final upstream/fereg source/test hashes; separate exact-manifest checks passed before upstream publication.",
+        "test_scope_repair": "GO for removing only invalid affected cross-policy equality; no tolerance, production or resource-cap relaxation."
+      },
+      "checks": {
+        "toolchain": "Rust/Cargo1.85.1",
+        "upstream_final_manifest": {
+          "default_tests_passed": 115,
+          "all_features_tests_passed": 220,
+          "strict_clippy_default_and_all_features": true,
+          "formatting": true,
+          "temporary_parent_workspace_removed": true,
+          "source_manifest_unchanged": true,
+          "github_workflow_runs_for_revision": 0
+        },
+        "upstream_bound_and_action_witnesses": {
+          "full_factor_cases": 1154,
+          "ordered_union_sequences": 9331,
+          "additional_union_chains": 4,
+          "heapsorts": 48,
+          "generous_boundary_and_bit_cases": 20,
+          "local_and_spanning_dipole_cases": 12,
+          "dipole_tolerance": 1e-11,
+          "qualification_claim": false
+        },
+        "fereg_focused": {
+          "cmg_tests": 24,
+          "routing_tests": 18,
+          "independent_portfolio_oracle_tests": 2,
+          "layout_tests": 2,
+          "strict_core_all_targets_clippy": true,
+          "formatting": true,
+          "complexity_ratchet": true
+        },
+        "full_run_tests": "Pending refreshed actual native bundle; stale-artifact gate remains intact.",
+        "release_tooling_focused_tests": 25
+      },
+      "failures_retained": {
+        "upstream_initial_test_failure_sha256": "176386cf16adee07af9b87783c7f8ef3b51582881f2b21c94561001a0486cebf",
+        "rounded_matvec_diagnostic_sha256": "8f32c5bf11e79c74b4377dbb3e25d7e4cf4ee6706299cdd4d15358b8048907e8",
+        "upstream_test_corrections": "An initial test incorrectly treated F as a whole-build guarantee; corrected to observe the exact decision boundary and allow later gated exhaustion. Floating-matvec probes exceeded1e-11; the identical selected hierarchy finalized by unchanged legacy code has bit-exact outputs for18 applications and the same defects. Twelve independent exact-compatible local/spanning dipole cases pass unchanged1e-11. Original rounded failures remain diagnostic, not relabeled passes or an all-RHS stability certificate.",
+        "fereg_initial_routing": {
+          "passed": 17,
+          "failed": 1,
+          "log_sha256": "c5adbc29bd5726cdabed4d39e64663439c0ec8e79fb112c750cbb60ae14b1b58",
+          "cause": "Stale exact private-portfolio versus legacy h16/k1 hierarchy/iteration/work equality. F(64,0)=6624728 already exceeds the entire5941248 setup limit, so enabled coarsening is required. Independent analytic residual and saved-FE checks passed at original tolerances.",
+          "reviewed_repair": "Preserve both independent analytic checks, fixed limits, same-owner reuse/no renewed quota and cross-worker checks; compare setup limits and strengthen same-policy bit repeats. Tiny fitting graph retains exact cross-policy application/+1024 witness."
+        },
+        "test_only_compile_failures": [
+          {
+            "cause": "Closure type annotations missing",
+            "sha256": "110aae4273db6531d95e2b60bbbbd6614aa6425b0806f0d06d4572ad9015da2d"
+          },
+          {
+            "cause": "Rounded diagnostic test import missing",
+            "sha256": "d607bf436091865c61f2a2a8479324bb855f7c6ec1aeda8d4466e3e454537692"
+          }
+        ]
+      },
+      "source_sha256": {
+        "crates/fereg-core/src/fe/cmg_schur/bounded.rs": "fe3b8d19ec7d23c7836296309cb01b3c6d0b7e88f67bd92e7ed09f85418b5e59",
+        "crates/fereg-core/src/fe/borrowed_map.rs": "c21efbfc0bd7a08ed02227d3653d0804f980e9fa9c9e8a165030249b433a862a",
+        "crates/fereg-core/src/fe/cmg_schur.rs": "1b9ffcaa519046faa2a26dab845d0da4d611bfdb4a9e36a7ac01c4e261ed8e5f",
+        "crates/fereg-core/src/fe/borrowed_map/routing_tests.rs": "9e2f000436c6a313bdaaac8ecebc9fae65b06c934121765475052bfcba021042"
+      },
+      "captured_log_sha256": {
+        "upstream_default_final": "a28df44865f7596544adf2a2c10a9da51e23b8de257c41f37e8108ae8fbfee46",
+        "upstream_all_features_final": "2e7fe62fda6d0e9c18897507034b08a760530c20d176d0de0e1a242c0f23a7a6",
+        "fereg_cmg": "3c116d1f56b5f10553b048c576947b1ff905de8dee30897e0361f6cac9faf4a0",
+        "fereg_routing_reviewed": "ae3bd03cdd3cb9d262affeaf2e6f301761747da890d50b9134f4de6f395cfecb",
+        "fereg_oracle": "4dd7ba3725382086eff642944599e6d6f6a4006b2c7803f174392e559659f487",
+        "fereg_layout": "f68207f36ac6edd1f26c006dd7a0f62c81983ae25c7815f85f04870ee25104c7",
+        "fereg_clippy": "2f94d6a52e8895e0cc1d605084ad88e41e97cedd4393ace23cd5b030f8409490"
+      },
+      "retention": "Committed source, upstream proof/tests and compact facts/identities; capture hashes do not promise a retained raw archive. No new native, isolation, performance, activation or promotion pass."
+    },
     "pdf_amendment": {
       "pages": 25,
       "new_pages": [
@@ -12276,7 +12381,7 @@
       ],
       "source_sha256": "02d9fe4950452b27879411b49c22c4b86779f5b38b4c34ff2b254cc6c13179a7",
       "pdf_sha256": "83ce0ae4fdd5b1b9c1cb6610693e7a1f2282159fdff042f02f507aa7fea458c6",
-      "review": "Existing independent high-effort Astra mathematical/contract review supports the unchanged mathematics. The page25 factual update follows independent failed-protocol raw review 1d59b53ffef6ec12a7a3edb96f4d78d41bffea92c9849bc181c4895832e63e4e; lead visually inspected the latest rendered page25. PDF text and content streams on pages1–24, including formulas/pages23–24, remain unchanged. The latest source has not received a new full Pro review.",
+      "review": "Existing independent high-effort Astra mathematical/contract review supports the unchanged mathematics. The page25 factual update follows independent failed-protocol raw review 1d59b53ffef6ec12a7a3edb96f4d78d41bffea92c9849bc181c4895832e63e4e; lead visually inspected the latest rendered page25. PDF text and content streams on pages1\u201324, including formulas/pages23\u201324, remain unchanged. The latest source has not received a new full Pro review.",
       "status": "Private portfolio development evidence; attribution remains FAILED at five of six calls, with no sixth call or retry. Performance and qualification remain pending."
     }
   }

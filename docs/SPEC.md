@@ -361,6 +361,23 @@ The canonical cache uses the complete admission envelope above. These are
 prospective engineering constants, not a policy selected by the earlier failed
 Mac panel. There is no sampling ladder, resampling or second optional attempt.
 
+Only this private portfolio's bounded CMG build screens an eligible direct
+terminal against its actual remaining construction allowance. An allocation-free,
+checked integer upper bound covers the complete component-factor construction,
+including component discovery, ordering, numeric fill and storage conversion.
+The 1,024-unit screen is charged before comparison. Overflow or a bound exceeding
+the remaining allowance continues the existing coarsening branch before any
+factor attempt; empty or singleton graphs refuse safely instead. The direct
+threshold, coarsening/stagnation/fill limits, setup allowance and restart reserve
+stay fixed. Existing controlled, reduced, overlap and explicit builds do not opt
+in. This is a conservative factor-affordability screen, not reserved credit or
+an installation guarantee: pending reporting, workspace, memory, startup and
+numerical gates remain authoritative. Newly chosen private hierarchies may
+change installation, iterations and eligible OLS rounding within the declared
+routing scope; the original model, certificate, tolerances and discrete
+decisions remain authoritative. Independent factor-work bounds, compatible
+Laplacian action witnesses and exact disabled-path replay precede qualification.
+
 With three or more categorical FEs, this arm tries at most four categorical MAP
 sweeps before seeded LSMR. It replaces the three-FE shortcut,
 including when prefix admission declines it. Both prefix acceptance and the
