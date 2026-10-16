@@ -128,6 +128,43 @@ class RunnerTests(unittest.TestCase):
 
 
 class RouterProtocol(unittest.TestCase):
+    def test_admitted_protocol_and_hub_required(self):
+        import evaluate_router
+        arms,cells,seed,budget=runner.protocol_config('admitted-router')
+        runner.validate_manifest(cells,arms)
+        self.assertEqual((len(arms),len(cells),seed,budget),(5,14,20261022,1800))
+        arms,cells,seed,budget=runner.protocol_config('admitted-gate')
+        runner.validate_manifest(cells,arms)
+        self.assertEqual((len(arms),len(cells),seed,budget),(2,5,20261023,300))
+        rows=[];pre=[]
+        for case,n,rhs,kind in cells:
+            for arm in arms:
+                result=dict(status='ok',digest='same',iterations=1,upgrades=0,certificates=2,relative_residual=1e-10,graph_builds=1,coarse_n=0,tail_levels=0,decisions=[],seconds=.1,setup_seconds=.01)
+                r=dict(case=case,n=n,rhs_count=rhs,rhs_kind=kind,arm=arm,result=result)
+                pre.append(r)
+                rows.extend([{**r,'phase':'warmup','block':-1}]+[{**r,'phase':'measure','block':b} for b in range(6) for _ in range(2)])
+        with tempfile.TemporaryDirectory() as directory:
+            out=Path(directory)
+            def write():
+                for filename,data in [('observations.jsonl',rows),('preflight.jsonl',pre)]:
+                    (out/filename).write_text(''.join(json.dumps(r)+'\n' for r in data))
+            write()
+            report=evaluate_router.constructor_gate(out,admitted=True)
+            self.assertTrue(report['passed'])
+            self.assertTrue(all(c['gate_required'] for c in report['cells']))
+            saved=pre[-1];pre[-1]=pre[0];write()
+            with self.assertRaises(AssertionError):evaluate_router.constructor_gate(out,admitted=True)
+            pre[-1]=saved
+            saved=rows[13];rows[13]=rows[0];write()
+            with self.assertRaises(AssertionError):evaluate_router.constructor_gate(out,admitted=True)
+            rows[13]=saved
+            rows[1]={**rows[1],'phase':'warmup'};write()
+            with self.assertRaises(AssertionError):evaluate_router.constructor_gate(out,admitted=True)
+            rows[1]={**rows[1],'phase':'measure'}
+            next(r['result'] for r in pre if r['case']=='hubs' and r['arm']=='full-admitted').update(status='failed',reason='memory_refused')
+            write()
+            with self.assertRaises(AssertionError):evaluate_router.constructor_gate(out,admitted=True)
+
     def test_router_manifest_and_gate_counts(self):
         arms,cells,seed,budget=runner.protocol_config('router')
         runner.validate_manifest(cells,arms)

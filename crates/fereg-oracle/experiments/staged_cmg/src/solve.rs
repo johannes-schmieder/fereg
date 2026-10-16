@@ -239,6 +239,18 @@ impl<'a> Solver<'a> {
 }
 
 pub fn run(p: &Problem, rhs: &[Vec<f64>], arm: &str) -> Result<ResultRow, String> {
+    if arm == "auto-admitted" {
+        return crate::router::run_config(
+            p,
+            rhs,
+            crate::router::Config {
+                memory: crate::guarded::DIAGNOSTIC_MEMORY,
+                constructor: crate::guarded::Constructor::Admitted,
+                ..crate::router::Config::default()
+            },
+            &mut crate::guarded::Control { cancel: |_| false },
+        );
+    }
     if arm == "auto-commit" {
         return crate::router::run(p, rhs);
     }
@@ -249,17 +261,32 @@ pub fn run(p: &Problem, rhs: &[Vec<f64>], arm: &str) -> Result<ResultRow, String
     let setup = Instant::now();
     let mut solver = Solver::new(
         p,
-        if arm == "full-guarded" {
+        if matches!(arm, "full-guarded" | "full-admitted") {
             "diagonal"
         } else {
             arm
         },
     );
-    if arm == "full-guarded" {
+    if matches!(arm, "full-guarded" | "full-admitted") {
         let base = crate::guarded::base(p, rhs).map_err(|e| e.to_string())?;
         let mut c = crate::guarded::Control { cancel: |_| false };
-        let built = crate::guarded::build(p, None, base, crate::guarded::MEMORY, &mut c)
-            .map_err(|e| e.to_string())?;
+        let (limit, constructor) = if arm == "full-admitted" {
+            (
+                crate::guarded::DIAGNOSTIC_MEMORY,
+                crate::guarded::Constructor::Admitted,
+            )
+        } else {
+            (
+                crate::guarded::MEMORY,
+                crate::guarded::Constructor::Controlled,
+            )
+        };
+        let built = if arm == "full-guarded" {
+            crate::guarded::build(p, None, base, limit, &mut c)
+        } else {
+            crate::guarded::build_with(p, None, base, limit, constructor, &mut c)
+        }
+        .map_err(|e| e.to_string())?;
         solver.row.graph_builds = built.graph_builds;
         solver.row.graph_seconds = built.graph_seconds;
         solver

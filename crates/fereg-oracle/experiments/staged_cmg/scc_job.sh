@@ -21,7 +21,9 @@ if [[ "$mode" == smoke ]]; then
     cargo +1.85.1 test --locked --release
     cargo +1.85.1 build --locked --release
 fi
-if [[ "$mode" == gate ]]; then
+if [[ "$mode" == admitted-diagnostic ]]; then
+    "$staged_python" diagnose_admitted.py "$root"
+elif [[ "$mode" == gate ]]; then
     "$staged_python" run_scc.py measure --binary "$root/build/release/staged-cmg-prototype" --output "$root/gate" --protocol guarded-gate
     "$staged_python" evaluate_router.py gate "$root/gate" > "$root/gate/verdict.json"
     "$staged_python" run_scc.py pilot --binary "$root/build/release/staged-cmg-prototype" --output "$root/pilot" --protocol router --budget-seconds 300

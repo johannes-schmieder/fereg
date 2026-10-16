@@ -11,12 +11,14 @@ use std::time::Instant;
 pub struct Config {
     pub memory: usize,
     pub iterations: usize,
+    pub constructor: guarded::Constructor,
 }
 impl Default for Config {
     fn default() -> Self {
         Self {
             memory: guarded::MEMORY,
             iterations: LIMIT,
+            constructor: guarded::Constructor::Controlled,
         }
     }
 }
@@ -187,7 +189,14 @@ fn run_inner<F: FnMut(&'static str) -> bool>(
                 extended |= extension;
                 if commit {
                     let t = Instant::now();
-                    match guarded::build(p, graph.as_ref(), retained, config.memory, c) {
+                    match guarded::build_with(
+                        p,
+                        graph.as_ref(),
+                        retained,
+                        config.memory,
+                        config.constructor,
+                        c,
+                    ) {
                         Ok(built) => {
                             peak = peak.max(built.peak);
                             row.graph_seconds += built.graph_seconds;

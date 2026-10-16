@@ -9,6 +9,15 @@ use std::fmt;
 use std::time::Instant;
 
 pub const MEMORY: usize = 1 << 30;
+pub const DIAGNOSTIC_MEMORY: usize = 8 << 30;
+
+#[derive(Clone, Copy, Default)]
+pub enum Constructor {
+    #[default]
+    Controlled,
+    /// Diagnostic only: ordinary admitted kernels have no internal cancellation.
+    Admitted,
+}
 const WORK: u64 = 1_000_000_000_000;
 
 #[derive(Debug)]
@@ -186,6 +195,16 @@ pub fn build<F: FnMut(&'static str) -> bool>(
     limit: usize,
     c: &mut Control<F>,
 ) -> Result<Built, Error> {
+    build_with(p, existing, base, limit, Constructor::Controlled, c)
+}
+pub fn build_with<F: FnMut(&'static str) -> bool>(
+    p: &Problem,
+    existing: Option<&Laplacian>,
+    base: usize,
+    limit: usize,
+    constructor: Constructor,
+    c: &mut Control<F>,
+) -> Result<Built, Error> {
     c.check("full admission")?;
     let count = existing.map_or_else(|| edges(p, c), |g| Ok(g.edge_count()))?;
     let options = CmgOptions::default();
@@ -211,19 +230,38 @@ pub fn build<F: FnMut(&'static str) -> bool>(
     let g = existing
         .or(owned.as_ref())
         .expect("existing or constructed graph");
-    let pre = CmgPreconditioner::build_component_experiment_serial_controlled(
-        g,
-        options,
-        experiment,
-        construction,
-        WORK,
-        c,
-    )?;
-    let exact = pre.workspace_allocation_bytes_controlled(WORK, c)?;
-    if exact > workspace {
-        return Err(Error::Fatal("workspace_bound_failed".into()));
-    }
-    let ws = pre.try_workspace_controlled(WORK, c)?;
+    let (pre, ws) = match constructor {
+        Constructor::Controlled => {
+            let pre = CmgPreconditioner::build_component_experiment_serial_controlled(
+                g,
+                options,
+                experiment,
+                construction,
+                WORK,
+                c,
+            )?;
+            let exact = pre.workspace_allocation_bytes_controlled(WORK, c)?;
+            if exact > workspace {
+                return Err(Error::Fatal("workspace_bound_failed".into()));
+            }
+            let ws = pre.try_workspace_controlled(WORK, c)?;
+            (pre, ws)
+        }
+        Constructor::Admitted => {
+            // Benchmark reference only. The whole hierarchy/factor call is uncancellable.
+            let pre = CmgPreconditioner::build_component_experiment_serial_with_budget(
+                g,
+                options,
+                experiment,
+                construction,
+            )?;
+            if pre.workspace_allocation_bytes()? > workspace {
+                return Err(Error::Fatal("workspace_bound_failed".into()));
+            }
+            let ws = pre.try_workspace()?;
+            (pre, ws)
+        }
+    };
     c.check("full publication")?;
     Ok(Built {
         full: Full::from_parts(pre, ws),

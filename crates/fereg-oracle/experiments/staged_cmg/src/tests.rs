@@ -864,3 +864,97 @@ fn router_dense_science_repeat_refusal_reuse_and_shared_cap() {
         .contains("interrupt"));
     }
 }
+
+#[test]
+fn admitted_diagnostic_preserves_solutions_and_refusal() {
+    use crate::guarded::{self, Constructor, Control};
+    for case in ["expander", "fringe", "clusters", "grid", "hubs"] {
+        let p = generate(case, 256);
+        let rhs = p.rhs(3);
+        for (a, b) in [("full", "full-admitted"), ("auto-commit", "auto-admitted")] {
+            let old = run(&p, &rhs, a).unwrap();
+            let new = run(&p, &rhs, b).unwrap();
+            assert_eq!(old.solutions, new.solutions);
+            assert_eq!(
+                (old.iterations, old.certificates, old.upgrades, old.residual),
+                (new.iterations, new.certificates, new.upgrades, new.residual)
+            );
+        }
+        let base = guarded::base(&p, &rhs).unwrap();
+        assert!(matches!(
+            guarded::build_with(
+                &p,
+                None,
+                base,
+                base,
+                Constructor::Admitted,
+                &mut Control { cancel: |_| false }
+            ),
+            Err(guarded::Error::Memory { .. })
+        ));
+    }
+}
+
+#[test]
+fn admitted_graph_hierarchy_factor_and_memory_boundary_are_exact() {
+    use crate::guarded::{self, Constructor, Control};
+    use cmg::{CmgOptions, CmgPreconditioner, ComponentBuildOptions};
+    for case in ["grid", "fringe", "hubs"] {
+        let p = generate(case, 64);
+        let rhs = p.rhs(2);
+        let base = guarded::base(&p, &rhs).unwrap();
+        let graph = p.graph();
+        let checked =
+            guarded::graph(&p, p.edge_bound(), &mut Control { cancel: |_| false }).unwrap();
+        assert_eq!(graph, checked);
+        let ordinary = CmgPreconditioner::build(&graph, CmgOptions::default()).unwrap();
+        let admitted = CmgPreconditioner::build_component_experiment_serial_with_budget(
+            &checked,
+            CmgOptions::default(),
+            ComponentBuildOptions::default(),
+            guarded::DIAGNOSTIC_MEMORY,
+        )
+        .unwrap();
+        assert_eq!(ordinary, admitted);
+        for existing in [None, Some(&checked)] {
+            // Charge a retained graph separately in the existing-graph scenario.
+            let retained = base
+                + if existing.is_some() {
+                    guarded::graph_bound(&p, p.edge_bound()).unwrap()
+                } else {
+                    0
+                };
+            let mut built = guarded::build_with(
+                &p,
+                existing,
+                retained,
+                guarded::DIAGNOSTIC_MEMORY,
+                Constructor::Admitted,
+                &mut Control { cancel: |_| false },
+            )
+            .unwrap();
+            let mut reference = Full::new(&graph);
+            for b in &rhs {
+                let mut x = vec![0.; p.n];
+                let mut y = x.clone();
+                built.full.apply(b, &mut x);
+                reference.apply(b, &mut y);
+                assert_eq!(x, y);
+            }
+            let peak = built.peak;
+            assert!(guarded::build_with(
+                &p,
+                existing,
+                retained,
+                peak,
+                Constructor::Admitted,
+                &mut Control { cancel: |_| false }
+            )
+            .is_ok());
+            assert!(
+                matches!(guarded::build_with(&p,existing,retained,peak-1,Constructor::Admitted,
+                &mut Control { cancel: |_| false }), Err(guarded::Error::Memory { required, limit }) if required==peak && limit==peak-1)
+            );
+        }
+    }
+}

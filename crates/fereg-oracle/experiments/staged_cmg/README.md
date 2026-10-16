@@ -1278,3 +1278,36 @@ mismatch; its later runtime/ABI checks did not run. Production identity remains
 unchanged (192 runtime modules, 58 artifact inputs). No Mac performance or
 end-to-end regression-command claim follows from this serial prepared-Schur
 SCC experiment.
+
+
+### Memory-generous admitted-constructor diagnostic (new experiment)
+
+This separately declared diagnostic preserves all closed guarded-gate failures.
+`full-admitted` and `auto-admitted` retain the checked owned-solve ledger but use
+an 8 GiB modeled requested-storage limit, ordinary memory-admitted CMG hierarchy
+and factor construction, and ordinary fallible workspace provisioning. The graph
+wrapper remains the controlled, fallible path, so the changed variable is hierarchy
+construction/workspace accounting. The ordinary hierarchy/factor call has no
+internal cancellation checkpoints: this is a benchmark reference, not a production
+candidate. Admission is not an RSS guarantee, and small Arc allocations are still
+infallible. No production memory controls or total optional-work rules change.
+
+Options, arithmetic, 16/24/32 routing, restart/repair/iteration caps, returned-vector
+certification and complete-solve destruction timing stay fixed. Before timing,
+require exact static/admitted solutions and discrete solver signatures, admitted
+versus controlled router agreement on small inputs, and admission/refusal checks.
+The five-cell constructor protocol has ten preflights and 130 observations,
+seed 20261023, six balanced blocks, a 300-second budget and 30-second call limit.
+Every cell, including hubs, must succeed and meet the existing max(50%,1 ms)
+setup and total allowance. One attempt; failure blocks the selector panel.
+
+If it passes, run the fourteen-cell selector pilot and panel with `auto-admitted`
+replacing `auto-commit`, seed 20261022. Each has 70 preflights; the pilot has
+70 warmup-tagged observations and the panel has 910 observations. Freeze the
+panel budget as ceil-to-60(120 + 1.5 * 14 * sum(max(preflight process time,
+pilot process time))) across arm/cells, capped at 1800 seconds; larger estimates
+block the panel. The existing descriptive easy max(5%,1 ms) and hard 2x-static
+all-six-block targets remain unchanged. Weak clusters/8192 stays a separate
+mandatory diagnostic with unchanged failure semantics. All observations and
+failures remain retained; there is no resampling or tuning in this experiment.
+The next prototype is chosen from these results and gets a separate declaration.

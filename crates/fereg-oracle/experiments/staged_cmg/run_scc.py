@@ -43,12 +43,19 @@ ROUTER_CELLS = PERSISTENT_CELLS + [
     ('weighted-expander',4096,4,'mixed'),('weighted-expander',4096,4,'rev'),
     ('mosaic',8192,4,'components'),('mosaic',8192,4,'components-rev')]
 
+ADMITTED_ARMS = ['diagonal','forest','full','diagonal-full','auto-admitted']
+ADMITTED_GATE_ARMS = ['full','full-admitted']
+
 GUARDED_ARMS = ['full','full-guarded']
 GUARDED_CELLS = [('expander',4096,4,'mixed'),('fringe',4096,4,'mixed'),
     ('clusters',4096,1,'cut'),('grid',8100,4,'mixed'),('hubs',8192,1,'random')]
 
 
 def protocol_config(protocol):
+    if protocol == 'admitted-router':
+        return ADMITTED_ARMS, ROUTER_CELLS, 20261022, 1800
+    if protocol == 'admitted-gate':
+        return ADMITTED_GATE_ARMS, GUARDED_CELLS, 20261023, 300
     if protocol == 'router':
         return ROUTER_ARMS, ROUTER_CELLS, 20261021, 1800
     if protocol == 'guarded-gate':
@@ -64,7 +71,7 @@ def protocol_config(protocol):
 
 def validate_manifest(cells, arms):
     assert len(cells) == len(set(cells)) and len(arms) == len(set(arms))
-    assert all(a in PROTECTED_ARMS + PERSISTENT_ARMS + GUARDED_ARMS + ROUTER_ARMS for a in arms)
+    assert all(a in PROTECTED_ARMS + PERSISTENT_ARMS + GUARDED_ARMS + ROUTER_ARMS + ADMITTED_ARMS + ADMITTED_GATE_ARMS for a in arms)
     for case,n,rhs,kind in cells:
         assert case in CASES + ['mosaic','sparse-expander','weighted-expander'] and n >= 64 and rhs > 0
         assert kind in ['cut','random','mixed','rev','components','components-rev']
@@ -314,14 +321,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', choices=['smoke', 'measure', 'summary', 'pilot'])
     parser.add_argument('--binary', type=Path)
-    parser.add_argument('--protocol', choices=['original','protected','protected-grid','persistent','guarded-gate','router'], default='original')
+    parser.add_argument('--protocol', choices=['original','protected','protected-grid','persistent','guarded-gate','router','admitted-gate','admitted-router'], default='original')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--budget-seconds',type=int)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     arms, manifest, seed, budget = protocol_config(args.protocol)
     if args.budget_seconds is not None:
-        assert args.protocol=='router' and 60<=args.budget_seconds<=1800
+        assert args.protocol in ['router','admitted-router'] and 60<=args.budget_seconds<=1800
         budget=args.budget_seconds
     rows = args.output / 'observations.jsonl'
     if args.mode == 'summary':
@@ -343,8 +350,8 @@ def main():
                 result=invoke(args.binary,'clusters',8192,4,arm)
                 append(args.output/'cluster-diagnostic.jsonl',dict(case='clusters',n=8192,rhs_count=4,arm=arm,result=result))
                 assert not (result['status']=='failed' and 'stdout' in result),result
-        if args.protocol == 'router':
-            for arm in ROUTER_ARMS:
+        if args.protocol in ['router','admitted-router']:
+            for arm in arms:
                 result=invoke(args.binary,'clusters',8192,1,arm)
                 append(args.output/'cluster-diagnostic.jsonl',dict(arm=arm,result=result))
                 assert not (result['status']=='failed' and 'stdout' in result),result
@@ -372,9 +379,9 @@ def main():
         observer.check()
         assert time.monotonic() - started < budget, 'campaign budget exceeded'
     try:
-        if args.protocol in ['protected-grid','persistent','guarded-gate','router']:
+        if args.protocol in ['protected-grid','persistent','guarded-gate','router','admitted-gate','admitted-router']:
             preflight(args.binary,args.output,cells,arms,cpu,check)
-            if args.protocol=='router':
+            if args.protocol in ['router','admitted-router']:
                 for r in [json.loads(line) for line in (args.output/'preflight.jsonl').read_text().splitlines()]:
                     signatures[(r['case'],r['n'],r['rhs_count'],r['rhs_kind'],r['arm'])]=signature(r['result'])
         for block in ([-1] if args.mode == 'pilot' else range(-1, 6)):
@@ -390,7 +397,7 @@ def main():
                     append(rows, {'phase': 'warmup' if block < 0 else 'measure', 'block': block,
                                   'case': case, 'n': n, 'rhs_count': rhs, 'rhs_kind': kind, 'arm': arm, 'result': result})
                     check()
-                    if result['status'] == 'ok' or args.protocol=='router':
+                    if result['status'] == 'ok' or args.protocol in ['router','admitted-router']:
                         observed = signature(result)
                         key = (case, n, rhs, kind, arm)
                         assert signatures.setdefault(key, observed) == observed, 'repeat mismatch'
