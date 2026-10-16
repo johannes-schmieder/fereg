@@ -12490,7 +12490,7 @@
         "interpretation": "Functional evidence only. Native92 remains incomplete route coverage; failed6 and rejected unexecuted artifact remain unchanged. Installation here is observed, not guaranteed generally. No speed, isolation, qualification, default activation or promotion claim."
       },
       "release_validation": {
-        "status": "published_versioned_and_full_commit_installs_passed_main_pending",
+        "status": "publication_and_all_install_routes_passed_routing_qualification_pending",
         "corresponding_source_sha256": "ed6b2ecc1a8eb471a77870598963c30d77bdcdcee412fc08034a7426a7f361da",
         "native_archive_sha256": "c97be548a8b2abc8ca6861d175405c4dfa39d59beac31b09c23ad74ce10428a5",
         "advisory_count": 0,
@@ -12521,10 +12521,7 @@
           "ppml_log_sha256": "f5aada3ea8df93ebc394b615bb07031d17c06bbe03831bcbf2f1ade2b1a2f3fb",
           "initial_invocation_error": "OLS --public-scope CLI rejected before native execution; corrected scope only, original error retained."
         },
-        "remaining": [
-          "normal checked main push",
-          "actual default Github and raw-main installation"
-        ],
+        "remaining": [],
         "qualification_claim": false,
         "public_build_recipe": {
           "status": "documented_checked_companion",
@@ -12585,7 +12582,28 @@
             "report_sha256": "2ec866cc17238f59b19040dbaeaffce061519e52284e9b931dd71b023c9f960a",
             "scope": "Actual installed github2.3.0 command with version(full40hex), fresh isolated sysdirs and independent OLS/PPML examples; not a substituted net-install claim."
           },
-          "published_routes_independent_review": "gpt-6-astra high raw PASS: actualHTTP30 and full-PGithub31 exactpayloads/tracking/bindings, bothscientificsmokes/selftests0, all47 actualHTTPSdownloads exact. DefaultGithub/rawmain not yet claimed."
+          "published_routes_independent_review": "gpt-6-astra high raw PASS: actualHTTP30 and full-PGithub31 exactpayloads/tracking/bindings, bothscientificsmokes/selftests0, all47 actualHTTPSdownloads exact. DefaultGithub/rawmain not yet claimed.",
+          "github_default_main": {
+            "status": "passed",
+            "main_commit_at_execution": "3f9d226780543ff8afec22717828f43bbb10fcee",
+            "payloads_exact_before_after": 31,
+            "stata_processes": 2,
+            "retries": 0,
+            "elapsed_seconds": 14.523157709045336,
+            "report_sha256": "129ccdccba3b311132f9eb315b26a0ffdf9dfd7b46ed2961fdae31917fa7a370",
+            "independent_raw_review": "gpt-6-astra high PASS: actual distinct installercommand, native selftest, independentOLS/PPML witnesses and failurepreservation, exactpayloads/tracking/allbindings. No rerun or substitution."
+          },
+          "raw_main": {
+            "status": "passed",
+            "main_commit_at_execution": "3f9d226780543ff8afec22717828f43bbb10fcee",
+            "payloads_exact_before_after": 31,
+            "stata_processes": 2,
+            "retries": 0,
+            "elapsed_seconds": 11.558216292061843,
+            "report_sha256": "0f157800e1042851e33471a2dd2a2d7bb66eaef13628270c9e680b2518e87286",
+            "independent_raw_review": "gpt-6-astra high PASS: actual distinct installercommand, native selftest, independentOLS/PPML witnesses and failurepreservation, exactpayloads/tracking/allbindings. No rerun or substitution."
+          },
+          "main_push": "Normal fast-forward push to3f9d226780543ff8afec22717828f43bbb10fcee completed before actual defaultGithub/rawmain checks. Laterprose-only result commits retain identical installed package bytes."
         },
         "publication_readiness": {
           "status": "published",
@@ -12714,6 +12732,34 @@
       "source_math_review": "gpt-6-astra high GO before both stages; safe-metadata raw milestone review PASS after completion, verifying48commands/cumulativebudgets/allsource-provenancebindings/bodyhash disjointness without reading C numerics.",
       "binding_rule": "Old bind remains ineligible. Later binding must explicitly consume validated_inputs() and retain original failure and passed continuation references.",
       "remaining": "Checked clean sourceP, actual Linux artifact/source/resource/sampling admissions, wrapper review and SCC availability; no freeze, native science, timing or shortlist."
+    },
+    "dispatch_readiness_followup": {
+      "time_utc": "2026-10-16T02:51:27.366689Z",
+      "SSH_host": "scc1",
+      "new_campaign_exists": false,
+      "owner_qstat": "timeout10s_empty_stdout_stderr",
+      "omp28_qconf": "timeout10s_empty_stdout_stderr",
+      "capture_sha256": "4283bda32994b3a7b89b4f86c2ded5a5b85b91a9c9b290b1639c696e558cb2f7",
+      "jobs_submitted": 0,
+      "interpretation": "SSH works; scheduler-query failure persists. No batch job exists for this new campaign; dispatch is blocked, not pending inSGE."
+    },
+    "portable_input_handoff": {
+      "status": "generated_and_locally_validated_A_only",
+      "source_sha256": "9da94eb774fa856343a08b2207aa47a28b8b654d8a8f60d754cdc78ccabdaa9d",
+      "certificate_sha256": "0a6ba8bcbf59286b9253f376cd56c608d2ce39cdb4b93a93909c3dd124df01f1",
+      "certificate_canonical_sha256": "dbf4ca78febf298b57d4fb75707830dd7bc7dcd1f7a15993a6b989058d151106",
+      "certificate_bytes": 1077001,
+      "transport_files": 146,
+      "A_payload_files": 79,
+      "historical_source_command_metadata_files": 67,
+      "inventory_bytes": 834299470,
+      "local_validation_seconds": 3.692913,
+      "validation_sha256": "1932b9eb0506fff6f0b0417ea3d67a91c8a1e7c78fd819d2921ac5dc650aacf4",
+      "B_C_payload_in_transport": false,
+      "source_API_review": "gpt-6-astra high source/API GO before generation and safe-metadata outcome PASS afterward: exactcertificate/seal/146closedentries/67historicalhashes/body-headeridentities, no Cnumeric or Macbinary transport.",
+      "scope": "HistoricalMacpreparation proof+exactAdata only; no nonexistentMacdependency dereference onLinux. ActualLinuxsource/dependencies/artifacts and allocation-local science remain mandatory.",
+      "native_or_SCC_calls": 0,
+      "freeze_or_binding_performed": false
     }
   }
 }

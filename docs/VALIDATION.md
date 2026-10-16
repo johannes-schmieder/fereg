@@ -716,8 +716,12 @@ with build source still `3f487f21`. All 47 public assets match their accepted ha
 Actual public versioned `net install` (30 flat payloads) and actual installed
 `github install` at that full commit (31 root payloads) pass independently in
 fresh processes/directories, including exact bytes, selftest and OLS/PPML checks.
-Normal main push and default GitHub/raw-main installation remain pending. No new
-platform or routing-performance claim follows.
+Main was then pushed normally to `3f9d2267`. Both the actual unversioned
+`github install` and the separate raw-main HTTPS `net install` pass in fresh
+isolated Stata processes: 31 exact payloads, selftest, independent OLS/PPML
+witnesses and failure-preservation checks. Independent high-effort raw review
+clears all installation routes. Later prose-only result commits retain identical
+package bytes. No new platform or routing-performance claim follows.
 Compact records are in `terminal_affordability.final_universal_functional` and
 `terminal_affordability.release_validation` in the same evidence document.
 
@@ -778,6 +782,14 @@ retain both outcomes explicitly; the original bind is still ineligible. Compact
 identities and scope are under `scc_portfolio_preparation.fresh_panel_preparation`.
 Independent high-effort review verifies the complete safe metadata, command counts,
 source bindings and freshness without reading C numeric files or targets.
+A separately reviewed portable certificate binds the exact A data and historical
+preparation records for Linux: 79 A payloads and 67 metadata/source/command files.
+Its A-only local transport validation passes; B/C numeric payloads remain local
+and embargoed. This historical proof does not replace live Linux dependencies,
+artifact admission or fresh allocation-local science. At 02:51 UTC, a fresh
+bounded check still finds SSH available but both scheduler queries unresponsive;
+the new campaign directory is absent and no job has been submitted. SCC wrapper
+hardening and the explicit portable binder are still under review.
 
 Retained SCC raw evidence and sealed products remain in the campaign
 `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.
