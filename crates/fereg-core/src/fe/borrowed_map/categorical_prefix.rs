@@ -265,6 +265,232 @@ mod tests {
         }
     }
 
+    fn check_original_certificate(
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: BorrowedMapWeights<'_>,
+        original: &DenseMatrix,
+        residual: &DenseMatrix,
+        tolerance: f64,
+    ) -> FeCertificate {
+        let weights = validate_weights(weights, design.nobs()).unwrap();
+        let mut workspace = BorrowedMapWorkspace::new(
+            design,
+            design.nobs(),
+            original.ncols(),
+            &mut SystemWorkspaceReservation,
+        )
+        .unwrap();
+        update_workspace_norms(original, weights, &mut workspace, true).unwrap();
+        certify(design, weights, residual, tolerance, &mut workspace).unwrap()
+    }
+
+    fn project<'a>(
+        design: &BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'_>,
+        original: &DenseMatrix,
+        map: MapConfig,
+        native_limit: usize,
+        budget: Option<FeSolverMemoryBudget>,
+        route: &mut routing_lsmr::GeneralRoutingState<'a>,
+    ) -> CertifiedBorrowedMap {
+        let levels: Vec<_> = design
+            .effects()
+            .iter()
+            .map(|effect| effect.n_levels())
+            .collect();
+        let lsmr = LsmrConfig {
+            max_iterations: native_limit,
+            preconditioner: LsmrPreconditioner::Off,
+            ..LsmrConfig::default()
+        };
+        let estimate = estimate_fe_solver_memory(
+            design.nobs(),
+            original.ncols(),
+            &levels,
+            rayon::current_num_threads(),
+            lsmr.local_size,
+        )
+        .unwrap();
+        project_general_categorical(
+            design,
+            weights,
+            original.clone(),
+            map,
+            lsmr,
+            budget,
+            true,
+            estimate,
+            false,
+            Some(4),
+            Some(route),
+            false,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn portfolio_v1_keeps_strict_certificate_at_prefix_and_final_exit() {
+        fixture(|design, weights, original| {
+            let weights = BorrowedMapWeights::Provided(weights);
+            let coefficient_bytes = FeCoefficientBatch::intercept_zeros(design, 1)
+                .unwrap()
+                .retained_bytes();
+            let unresolved = attempt(
+                design,
+                weights,
+                &original,
+                config(),
+                CategoricalPrefix::Map4,
+                None,
+                coefficient_bytes,
+                0,
+                100,
+                true,
+            )
+            .unwrap();
+            let seed = unresolved.seed.unwrap();
+            let mut residual = original.clone();
+            for row in 0..design.nobs() {
+                for (effect, term) in design.effects().iter().enumerate() {
+                    residual[(row, 0)] -= seed.rhs(0).unwrap()
+                        [seed.effect_offsets[effect] + term.codes()[row] as usize];
+                }
+            }
+            let ratio = check_original_certificate(design, weights, &original, &residual, 1e-14)
+                .relative_infinity_norm;
+            let map = MapConfig {
+                tolerance: 2.0 * ratio,
+                ..config()
+            };
+            let strict = crate::fe::auto::direct_lsmr_tolerance(map.tolerance);
+            assert!(ratio > strict && ratio < map.tolerance);
+            let mut legacy = routing_lsmr::GeneralRoutingState::new(
+                crate::fe::RoutingPreset::prefix(CategoricalPrefix::Map4),
+            );
+            let requested = project(design, weights, &original, map, 50, None, &mut legacy);
+            assert_eq!(requested.report().used_solver, FeSolverKind::Map);
+            assert!(!legacy.has_prepared());
+            assert!(
+                !check_original_certificate(
+                    design,
+                    weights,
+                    &original,
+                    requested.residualized(),
+                    strict
+                )
+                .passed
+            );
+            let mut portfolio =
+                routing_lsmr::GeneralRoutingState::new(crate::fe::RoutingPreset::portfolio_v1());
+            let result = project(design, weights, &original, map, 50, None, &mut portfolio);
+            assert_eq!(result.report().pilot_iterations, 4);
+            assert!(result.report().iterations > 4 && result.report().iterations <= 50);
+            assert!(
+                check_original_certificate(
+                    design,
+                    weights,
+                    &original,
+                    result.residualized(),
+                    strict
+                )
+                .passed
+            );
+            assert_eq!(
+                portfolio.work().0,
+                0,
+                "portfolio general stage never builds a pair replacement"
+            );
+        });
+    }
+
+    #[test]
+    fn portfolio_v1_certifies_exact_prefix_and_declines_without_stacking_pilots() {
+        fixture(|design, _, original| {
+            let preset = crate::fe::RoutingPreset::portfolio_v1();
+            let map = MapConfig {
+                tolerance: 1e-8,
+                max_iterations: 256,
+                ..config()
+            };
+            let exact = DenseMatrix::from_columns(&[design.effects()[0]
+                .codes()
+                .iter()
+                .map(|&code| f64::from(code))
+                .collect()])
+            .unwrap();
+            let mut route = routing_lsmr::GeneralRoutingState::new(preset);
+            let result = project(
+                design,
+                BorrowedMapWeights::Unit,
+                &exact,
+                map,
+                128,
+                None,
+                &mut route,
+            );
+            assert_eq!(result.report().used_solver, FeSolverKind::Map);
+            assert_eq!(
+                result.report().pilot_iterations,
+                2,
+                "passing first sweep includes confirmation"
+            );
+            assert!(!route.has_prepared());
+            assert!(result
+                .residualized()
+                .as_slice()
+                .iter()
+                .all(|&value| value == 0.0));
+            let mut capped = routing_lsmr::GeneralRoutingState::new(preset);
+            let result = project(
+                design,
+                BorrowedMapWeights::Unit,
+                &original,
+                map,
+                4,
+                None,
+                &mut capped,
+            );
+            assert_eq!(
+                result.report().pilot_iterations,
+                0,
+                "four-step native cap cannot fund prefix plus LSMR"
+            );
+            let estimate = estimate_fe_solver_memory(
+                design.nobs(),
+                1,
+                &[2, 2, 2],
+                rayon::current_num_threads(),
+                LsmrConfig::default().local_size,
+            )
+            .unwrap();
+            let budget = FeSolverMemoryBudget {
+                execution_bytes: 0,
+                usable_bytes: estimate.lsmr_bytes(LsmrPreconditioner::Off),
+            };
+            let mut constrained = routing_lsmr::GeneralRoutingState::new(preset);
+            let result = project(
+                design,
+                BorrowedMapWeights::Unit,
+                &original,
+                map,
+                128,
+                Some(budget),
+                &mut constrained,
+            );
+            assert_eq!(
+                result.report().pilot_iterations,
+                0,
+                "seed admission refusal cannot enable the old 3FE pilot"
+            );
+            assert!(
+                u128::from(result.report().solver_workspace_peak.bytes().unwrap())
+                    <= budget.usable_bytes
+            );
+            assert!(result.report().certified());
+            assert_eq!(constrained.work().0, 0);
+        });
+    }
+
     #[test]
     fn bounded_prefix_seeds_reconstruct_weighted_original_slots() {
         fixture(|design, weights, original| {
@@ -446,12 +672,15 @@ mod tests {
             preconditioner: LsmrPreconditioner::Off,
             ..LsmrConfig::default()
         };
-        for (arm, sweeps) in [
-            (CategoricalPrefix::Map4, 4),
-            (CategoricalPrefix::CompactIt4, 8),
+        for (preset, sweeps) in [
+            (crate::fe::RoutingPreset::prefix(CategoricalPrefix::Map4), 4),
+            (
+                crate::fe::RoutingPreset::prefix(CategoricalPrefix::CompactIt4),
+                8,
+            ),
+            (crate::fe::RoutingPreset::portfolio_v1(), 4),
         ] {
-            let mut route =
-                routing_lsmr::GeneralRoutingState::new(crate::fe::RoutingPreset::prefix(arm));
+            let mut route = routing_lsmr::GeneralRoutingState::new(preset);
             for action in 0..2 {
                 assert_eq!(route.has_prepared(), action > 0);
                 // Opposite equal-weight rows share every FE membership, so the
@@ -466,7 +695,7 @@ mod tests {
                         }
                     })
                     .collect();
-                let input = DenseMatrix::from_columns(&[(0..rows)
+                let column: Vec<_> = (0..rows)
                     .map(|row| {
                         noise[row]
                             + codes
@@ -479,8 +708,11 @@ mod tests {
                                 })
                                 .sum::<f64>()
                     })
-                    .collect()])
-                .unwrap();
+                    .collect();
+                let columns: Vec<Vec<_>> = (1..=action + 1)
+                    .map(|scale| column.iter().map(|x| scale as f64 * x).collect())
+                    .collect();
+                let input = DenseMatrix::from_columns(&columns).unwrap();
                 let result = project_borrowed_intercept_structural(
                     &design,
                     BorrowedMapWeights::Provided(&weights),
@@ -502,21 +734,35 @@ mod tests {
                 assert_eq!(report.pilot_iterations, sweeps);
                 assert!(report.iterations > sweeps && report.iterations <= lsmr.max_iterations);
                 assert!(!report.fallback_used);
-                for (actual, expected) in result.residualized().as_slice().iter().zip(&noise) {
-                    assert!((actual - expected).abs() < 1e-8);
+                for column in 0..input.ncols() {
+                    for (row, expected) in noise.iter().enumerate() {
+                        assert!(
+                            (result.residualized()[(row, column)] - (column + 1) as f64 * expected)
+                                .abs()
+                                < 1e-8
+                        );
+                    }
                 }
                 let validated =
                     validate_weights(BorrowedMapWeights::Provided(&weights), rows).unwrap();
-                let mut workspace =
-                    BorrowedMapWorkspace::new(&design, rows, 1, &mut SystemWorkspaceReservation)
-                        .unwrap();
+                let mut workspace = BorrowedMapWorkspace::new(
+                    &design,
+                    rows,
+                    input.ncols(),
+                    &mut SystemWorkspaceReservation,
+                )
+                .unwrap();
                 update_workspace_norms(&input, validated, &mut workspace, true).unwrap();
                 assert!(
                     certify(
                         &design,
                         validated,
                         result.residualized(),
-                        map.tolerance,
+                        if preset.strict_categorical_prefix() {
+                            crate::fe::auto::direct_lsmr_tolerance(map.tolerance)
+                        } else {
+                            map.tolerance
+                        },
                         &mut workspace
                     )
                     .unwrap()

@@ -39,6 +39,9 @@ def declare(b_context, design):
     sources = [*time_blocks.source_bindings(), blocks.reference(blocks.__file__),
                blocks.reference(blocks.discovery.__file__), blocks.reference(activation.__file__),
                blocks.reference(__file__)]
+    if manifest.get('experiment_kind') == 'portfolio':
+        import routing_parallel
+        sources.append(blocks.reference(routing_parallel.__file__))
     return {'schema': 1, 'kind': KIND + '_declaration', 'status': 'prospective_before_Mac_B',
             'b_context': b_context, 'original_manifest_sha256': routing.identity(manifest),
             'non_c_cells': activation.non_c_cells(manifest), 'contract': copy.deepcopy(CONTRACT),

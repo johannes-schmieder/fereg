@@ -1787,4 +1787,139 @@ Both descriptive audits reject all four frontiers; the faulty all-block mask has
 \anchor{\href{development_workflow.md}{Approved protocol} (\code{da8551cc}); \href{../bench/results/solver-routing-controlled-20261014.json}{controlled evidence}; \href{VALIDATION.md}{validation}. Codex-authored amendment.}
 
 \end{compactleaf}
+
+% PAGES 23+ / source-reviewed private portfolio; no qualification claim.
+\newleaf
+\fancyhead[R]{\sffamily\fontsize{8.5}{10}\selectfont\color{Muted}AMENDMENT / 15 OCTOBER 2026}
+\fancyfoot[L]{\sffamily\fontsize{8}{10}\selectfont\color{Muted}Private portfolio / qualification pending}
+\begin{compactleaf}
+\smallbody
+\sect{PROSPECTIVE AMENDMENT / 1 OF 3}{One fixed portfolio, three structural paths}
+\tagline{Implemented private qualification arm: \code{routing\_portfolio\_v1}. Public Auto remains unchanged.}
+\begin{note}\smallbody
+\textbf{Status.} This amendment describes the private implementation. Its fixed 92-call development study passed all independent scientific checks and all 46 exact repeats. Declared route coverage remains incomplete; performance qualification is pending. It neither selects a winner nor reopens the closed Mac B NO-GO; old C remains untouched.
+\end{note}
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex,
+ box/.style={draw=Rule,fill=Light,rounded corners=2pt,align=center,font=\sffamily\fontsize{8.6}{10.4}\selectfont,inner sep=4pt},
+ focus/.style={box,draw=Teal,fill=Pale},
+ arr/.style={->,line width=.7pt,draw=Muted},
+ lab/.style={font=\sffamily\fontsize{8}{9.5}\selectfont,fill=white,inner sep=1.5pt,text=Muted}]
+\node[focus,text width=15.9cm] (start) at (8.2,0) {Bind original sample, weights, factor slots, requested accuracy, worker count and resource limits};
+\node[box,text width=3.7cm] (exact) at (2.2,-1.15) {0/1 categorical FE\\Existing structural projection};
+\node[focus,text width=5.0cm] (two) at (7.85,-1.15) {2 categorical FEs\\Original Schur operator; incumbent $D_f$};
+\node[focus,text width=4.2cm] (many) at (14.0,-1.15) {$\geq3$ categorical FEs\\Admitted strict MAP prefix, at most 4 sweeps};
+\node[box,text width=5.0cm] (choose) at (7.85,-2.48) {If uncertified and no retained inverse:\\once-per-accuracy $F=1024$ preflight\\Choose direct \emph{or} incumbent--CMG};
+\node[box,text width=4.2cm] (seed) at (14.0,-3.00) {Strict prefix certificate passes: return.\\Otherwise seed LSMR with original-slot coefficients; rebuild residual from original RHS};
+\node[box,text width=3.65cm] (direct) at (5.2,-4.5) {Direct admitted: one complete attempt + original certificate.\\Refusal: incumbent, no CMG};
+\node[box,text width=3.65cm] (cmg) at (9.65,-4.5) {Else diagonal Schur PCG; at $h=16$ one synchronous CMG attempt, $k=1$, cutoff 5, seed 0};
+\node[focus,text width=15.9cm] (finish) at (8.2,-6.2) {Every successful exit: applicable original-design certificate; remaining native cap governs corrections/fallback.\\Break/fatal: join owned work and roll back. Explicit solvers, PPML and slope/mixed routes retain their behavior.};
+\draw[arr] (start.south) -- ++(0,-.25) -| (exact.north);
+\draw[arr] (start.south) -- ++(0,-.25) -| (two.north);
+\draw[arr] (start.south) -- ++(0,-.25) -| (many.north);
+\draw[arr] (two)--(choose);
+\draw[arr] (choose.south)--++(0,-.3)-|(direct.north);
+\draw[arr] (choose.south)--++(0,-.3)-|(cmg.north);
+\draw[arr] (many)--(seed);
+\draw[arr] (exact.south)--(2.2,-5.6)--(finish.north -| exact.south);
+\draw[arr] (direct.south)--(finish.north -| direct.south);
+\draw[arr] (cmg.south)--(finish.north -| cmg.south);
+\draw[arr] (seed.south)--(finish.north -| seed.south);
+\end{tikzpicture}
+\end{center}
+\vspace{-4pt}
+\begin{tabularx}{\linewidth}{P{.14\linewidth}P{.31\linewidth}Y}
+\toprule
+\textbf{Geometry} & \textbf{Intended frontier} & \textbf{Cost and limitation}\\
+\midrule
+0/1 FE & Preserve existing cheap projection. & No optional profiling benefit; other estimation costs may dominate.\\
+2 FEs & Direct for fully admitted small retained systems; incumbent for easy graphs; sampled CMG for unresolved modes. & Direct factors and RHS work can dominate; a small year dimension alone does not imply admission. CMG setup/application may lose to cheap iterations.\\
+$\geq3$ FEs & MAP can finish easy systems; an unfinished prefix provides a coefficient seed. & Prefix copies, sweeps and certificates are overhead on hard systems. It replaces the old shortcut; there is \emph{no general-pair CMG checkpoint} in V1.\\
+\bottomrule
+\end{tabularx}
+\sub{The same problem, a finite hypothesis}
+For two FEs, $S=D_f-B^{\mathsf T}D_w^{-1}B$ remains the exact implicit Schur operator. One connected weighted tree per above-cutoff worker changes only the fixed preconditioner; low-degree cliques stay exact. Connectivity and unbiasedness do not give a universal spectral or runtime guarantee. Original sample, rank, omissions, factor slots and both bias modes remain authoritative. No family labels, seed search or new $h/k$ grid select this arm.
+\anchor{\code{docs/SPEC.md}; core \code{fe/routing.rs} and \code{fe/borrowed\_map.rs};\newline categorical-prefix implementation under \code{fe/borrowed\_map/}. Paths beneath \code{crates/fereg-core/src/}.}
+
+\newpage
+\smallbody
+\sect{PROSPECTIVE AMENDMENT / 2 OF 3}{Charged bounds, memory and evidence}
+\tagline{Work units are conservative operation/access charges, not seconds or predictions of speed.}
+\sub{Two separate work tests; no certificate credit for optional preparation}
+For $n$ observations, incumbent orientation sizes $p,q$, $r$ active RHSs and physical bank stride $s$, the checked Schur tariff is
+\[
+ W(n,p,q,r,s)=10nr+10n+(4p+64q)r+(p+3q)s+8p+12q+64r.
+\]
+$W_0$ fixes the physical setup reference at the first active batch. $W_{\rm ref}=W(n,p,q,r,r)$ prices the current packed RHSs without inactive-bank credit. Let $U$ be already spent setup work \emph{before} the direct preflight, $F=1024$, $A$ the subsequent noncertificate direct work, and $C$ its original-design certificate:
+\[
+ \boxed{F+A\leq4W_{\rm ref}},\qquad
+ \boxed{A+C\leq32W_0-U-F}.
+\]
+For a fully admitted attempt, returned work is $A+C$, excluding already charged $F$. Census/profile refusals return their incurred prefix work, without charging an unrun certificate. Census, \emph{both} orientation profiles, assembly, factorization, current-RHS solves, reconstruction and direct-only checks belong to $A$. The complete admitted reservation is charged before numerical work, even if a later test refuses it. Protected fallback/output reserves and joint memory admission still apply.
+
+Keep the incumbent orientation fixed in $W_{\rm ref}$. For each candidate eliminated/retained orientation, use $L=p+q$, $c=\min(p,q)$, $z=q-1$ and $J=\min\{pqz/2,\lfloor nz/2\rfloor\}$, its sufficient bound is
+\[
+\begin{aligned}
+ A_{\rm ub}={}&(13+g)n+hnr+72L+64c+18Lr+128\\
+             &+32z^2(q+r)+48J,
+\end{aligned}
+\]
+where $(g,h)=(18,36)$ for unit weights and $(34,52)$ for provided weights. The original two-FE certificate is bounded by
+\[
+ C=152nr+112n+128r+64\lceil n/512\rceil r+128Lr.
+\]
+Use $A_{\rm ub}$ in both admission tests and check complete joint memory before scanning. Any admitted bound opens the direct attempt; its preflight profile is discarded. The subsequent census profiles both actual orientations and selects the least admitted complete work, with original effect order breaking ties. Component-square and cubic sums are bounded by $(q-1)^2$ and $(q-1)^2q$; $J$ bounds clique pairs. Overflow declines; conservative bounds can reject a feasible solve.
+
+Only a request without a retained inverse runs this preflight. A selected direct attempt consumes its one opportunity for that accuracy key. On preflight decline, its charge remains and one CMG opportunity survives across Low chunks. Chunks never replenish setup quota. A new accuracy/final-residual key has its own allowance and may reuse a retained CMG inverse.
+
+\sub{CMG construction and canonical cache}
+At the fixed unresolved checkpoint, CMG must fit the remaining $32W_0$ ledger, its $4W_0$ handoff reserve, startup application charge and joint memory envelope. Installation uses a fresh original-operator correction residual; refusal preserves the incumbent recurrence. The synchronous cache saves first-pass canonical cells, offsets and compensated totals, preserving emission/sampler order and bits. Before allocation, one checked envelope covers cache, cell/sampler scratch, graph, components, hierarchy and scalar/application banks alongside live parent storage. Insufficient memory or overflow selects the original two-pass path \emph{before} allocation. Its separate 1,024-unit cache-admission charge, stores and reads remain charged; cache storage is reserved through finish, with no ledger refund.
+
+\sub{Strict many-FE continuation; parallel preparation is a separate option}
+For each action request $\tau$ (final residual: $\min(\tau,10^{-14})$), prefix, seeded correction and MAP fallback use
+$\tau_* = \tau$ if $\tau\leq10^{-14}$, otherwise $\max(10^{-2}\tau,10^{-14})$.
+An accepted prefix may require its existing confirmation sweep, still within four. Admission may skip it; actual sweeps consume the unchanged action cap. Original RHS, weights, normalization and factor-slot seed are preserved.
+
+V1 builds CMG synchronously. Existing \code{routing\_overlap\_*} arms instead reserve one scoped worker, retain fixed foreground partitions on at most $P-1$ executing workers, and issue bounded deterministic grants. This can hide preparation but costs a core and simultaneous live memory; refusal, cancellation and join rules remain binding. It is not activated here, and no unmeasured overlap or batching gain is claimed.
+
+\newpage
+\smallbody
+\sect{PROSPECTIVE AMENDMENT / 3 OF 3}{Development proof and the next gate}
+\tagline{Scientific checks pass; incomplete route coverage and construction refusals remain visible.}
+\sub{Canonical preparation is a large share of charged construction work}
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=.68cm,font=\sffamily\fontsize{9}{11}\selectfont]
+\foreach \y/\label/\share/\pct in {0/Weak/5.77624/57.76,-1/Dynamic weights/6.27870/62.79,-2/High-degree weak/6.04995/60.50}{
+ \node[anchor=west] at (0,\y) {\label};
+ \fill[Light] (4,\y-.2) rectangle (14,\y+.2);
+ \fill[Teal] (4,\y-.2) rectangle ({4+\share},\y+.2);
+ \node[text=white] at ({4+\share/2},\y) {\pct\%};
+}
+\node[anchor=west,text=Muted] at (4,-2.8) {Teal: canonical cell preparation. Gray: other admitted work.};
+\end{tikzpicture}
+\end{center}
+\vspace{-3pt}
+\begin{binding}\tinybody
+\textbf{Evidence and next gate.} The 40-call diagnostic committed in \code{377226f8} passed its independent science and exact repeats. Cell load/sort/aggregation comprised \textbf{57.76\%, 62.79\%, 60.50\%} of admitted work for weak, dynamic-weight and high-degree weak primary builds: \emph{work shares, not speedups}. Refusal can occur later; saving those passes does not prove build completion. Same-hierarchy scalar/batch witnesses were exact. The subsequent 92-call study observes certified direct solves at one/four workers, seeded LSMR and high-degree CMG installation. Weak CMG exhausts its builder allowance; weighted and wide-RHS solves finish before iteration 16. Early-prefix acceptance and cache admission remain unproven. No extra calls repair missing coverage. The failed old B supplies no promotion or reused shortlist.
+
+The prospective SCC discovery uses three distinct isolated hosts/jobs, each a full fresh 42-cell round: two science calls plus one traced prerequisite, one warmup and three measured calls per case--arm slot; at most $3\times360\times7=7560$ calls. Caps: 120 s/call, 14,400 s/allocation, 43,200 allocation-seconds total; no replacements or partial rescue. All three valid rounds precede the frozen descriptive rejection screen. Only a surviving fixed candidate may enter separately frozen fresh Mac B and untouched C, against the qualified incumbent with matched release profiles. No universal runtime guarantee follows from this design.
+\end{binding}
+\sub{Observed native route coverage: 92 checks and 46 exact repeats}
+\begin{tabularx}{\linewidth}{P{.23\linewidth}P{.34\linewidth}Y}
+\toprule
+\textbf{Path} & \textbf{Observed at one/four workers} & \textbf{Remaining limitation}\\
+\midrule
+Many-FE prefix & All three cases continue through seeded LSMR. & No early-prefix certificate observed.\\
+Weak CMG & Both action attempts refuse with cumulative setup just below $28W_0$. & Exact refusal phase is not in standard traces.\\
+High-degree CMG & Primary hierarchy installs; primary/final counts 22/8 versus old 53/27. & Installation does not prove cache admission or a speedup.\\
+Weighted / wide RHS & Counts 7/6 and 14/13; neither reaches checkpoint 16. & No CMG construction required on these inputs.\\
+Small direct system & Both action certificates pass with zero iterations. & One declared development model; no general runtime claim.\\
+\bottomrule
+\end{tabularx}
+\smallbody
+The six-call attribution proposal inspects weak, high-degree weak and near-confounded inputs with one exact repeat each. It preserves the candidate, one worker, 120 seconds/call, a 900-second inclusive cap and no retries. Its purpose is to locate construction and continuation costs before qualification, without changing $h/k$, tolerances or fallback reserves. It has not run.
+\anchor{\code{fe/routing.rs}, \code{fe/routing\_direct.rs}, \code{fe/cmg\_schur/bounded.rs};\newline \code{bench/routing\_parallel.py}; maintained evidence in \code{docs/VALIDATION.md}.}
+
+\end{compactleaf}
+
 \end{document}

@@ -168,10 +168,155 @@ def cross_request_scope(reference, raw, arm, meta=None):
     return scope
 
 
-def compatibility(reference, raw, reference_columns, columns, meta, arm):
+def comparison_policy(manifest, arm):
+    """Only the prospective portfolio candidate owns the new diagnostic scope."""
+    import routing_block_deployment
+    if manifest.get('kind') == routing_block_deployment.KIND and arm in {'public-auto', 'incumbent'}:
+        public = manifest['arms'].get('public-auto', {})
+        incumbent = manifest['arms'].get('incumbent', {})
+        selected = public.get('effective_policy')
+        if routing.identity(selected) != routing.identity(routing.policy(routing.PORTFOLIO_V1)):
+            return None
+        # run() first rederives this activated context from B and the exact
+        # public/hidden equivalence evidence. Equivalence contexts themselves
+        # never enter this C-only cross-artifact allowance.
+        if (manifest.get('purpose') != 'public_default_holdout'
+                or set(manifest.get('panels', {})) != {'C'}
+                or manifest.get('candidates') != ['public-auto']
+                or manifest.get('protections') != ['baseline', 'incumbent']
+                or public.get('invocation') != {'solver': 'auto', 'injection': None}
+                or public.get('solver') != 'auto' or public.get('policy') is not None
+                or public.get('role') != 'candidate'
+                or incumbent.get('role') != 'required_reference'
+                or routing.identity(incumbent.get('policy')) != routing.identity(selected)):
+            raise ValueError('activated portfolio comparison requires its exact C policy binding')
+        return selected
+    if arm != routing.PORTFOLIO_V1:
+        return None
+    selected = manifest['arms'][arm].get('policy')
+    if (manifest.get('experiment_kind') != 'portfolio'
+            or arm not in manifest['candidates']
+            or routing.identity(selected) != routing.identity(routing.policy(routing.PORTFOLIO_V1))):
+        raise ValueError('portfolio comparison requires its exact prospective policy')
+    return selected
+
+
+def portfolio_direct_scope(reference, raw, meta):
+    """The certified zero-iteration MAP return owns only its changed family ID."""
+    scope = cross_request_scope(reference, raw, 'auto', meta)
+    tables = [value['matrices']['RSOLVER'] for value in [reference, raw]]
+    if any((table['rows'], table['columns'], len(table['bits'])) != (2, 16, 32)
+           for table in tables):
+        raise ValueError('portfolio direct solver shape changed')
+    decoded = [cmgschur.numbers(table) for table in tables]
+    for index in range(2):
+        before, after = [values[16 * index:16 * (index + 1)] for values in decoded]
+        if before[1] == after[1]:
+            continue
+        for value, row, candidate in [(reference, before, False), (raw, after, True)]:
+            cmg_polish_limits(value, label='portfolio direct Auto')
+            runtime = cmgschur.numbers(value['matrices']['RRUNTIME'])
+            tolerance, cap = runtime[45], runtime[47]
+            fields = [0, 1, 3, 10, 11, 12, 13, 14, 15]
+            if (type(value.get('return_code')) is not int or value['return_code'] != 0
+                    or not all(math.isfinite(v) and v >= 0 for v in row)
+                    or [row[i] for i in fields] != [1, 2 if candidate else 4, 2, 0, 0, 0, 0, 0, 0]
+                    or not row[2].is_integer() or (candidate and row[2] != 0)
+                    or runtime[44] != 1 or runtime[46] != 1
+                    or not math.isfinite(tolerance) or tolerance <= 0
+                    or not math.isfinite(cap) or cap < 1 or not cap.is_integer() or row[2] > cap):
+                raise ValueError('portfolio direct Auto route/counter tuple is invalid')
+            # try_direct_route certifies at MapConfig::tolerance; the final
+            # residual caller tightens that request to min(tolerance, 1e-14).
+            # This is not the private general-LSMR certificate target.
+            if candidate and row[5] > (tolerance if index == 0 else min(tolerance, 1e-14)):
+                raise ValueError('portfolio direct certificate exceeds its requested target')
+        scope.append(f'/matrices/RSOLVER/bits/{14 * index + 1}')
+    return scope
+
+
+def portfolio_scope(reference, raw, meta, arm, selected):
+    """Validate Auto report tuples before admitting named route diagnostics.
+
+    borrowed_map::{project_general_categorical,finish_general_map} and
+    prepared_fit::merge_solve_report own these tuples. Repeats still compare the
+    complete original fingerprint before reaching this cross-artifact check.
+    """
+    if routing.identity(selected) != routing.identity(routing.policy(routing.PORTFOLIO_V1)) or arm != 'auto':
+        raise ValueError('unsupported portfolio comparison policy/request')
+    if meta.get('categorical_intercepts') is True and type(meta.get('absorbed_terms')) is int and meta['absorbed_terms'] == 2:
+        return portfolio_direct_scope(reference, raw, meta)
+    if (meta.get('categorical_intercepts') is not True
+            or type(meta.get('absorbed_terms')) is not int or meta['absorbed_terms'] < 3):
+        return cross_request_scope(reference, raw, arm, meta)
+    terms, rows = meta['absorbed_terms'], meta.get('rows')
+    if type(rows) is not int or rows < 1:
+        raise ValueError('portfolio comparison requires inspected row count')
+    for value, candidate in [(reference, False), (raw, True)]:
+        table = value['matrices']['RSOLVER']
+        if (type(value.get('return_code')) is not int or value['return_code'] != 0
+                or type(table['rows']) is not int or type(table['columns']) is not int
+                or (table['rows'], table['columns'], len(table['bits'])) != (2, 16, 32)):
+            raise ValueError('portfolio result/solver shape changed')
+        _, actions = cmg_polish_limits(value, label='portfolio Auto')
+        runtime = cmgschur.numbers(value['matrices']['RRUNTIME'])
+        tolerance, cap = runtime[45], runtime[47]
+        if (runtime[44] != 1 or runtime[46] != 1 or not math.isfinite(tolerance)
+                or tolerance <= 0 or not math.isfinite(cap) or cap < 1 or not cap.is_integer()):
+            raise ValueError('portfolio runtime tolerance/iteration policy is invalid')
+        decoded = cmgschur.numbers(table)
+        for index in range(2):
+            row = decoded[index * 16:(index + 1) * 16]
+            requested, used, iterations, stop = row[:4]
+            fallback, warnings, requested_pc, used_pc, pilot, contraction = row[10:]
+            if (not all(math.isfinite(v) and v >= 0 for v in row)
+                    or any(not row[i].is_integer() for i in [0, 1, 2, 3, 10, 11, 12, 13, 14])
+                    or requested != 1 or used not in {2, 3} or stop != 2
+                    or fallback not in {0, 1} or not 0 <= pilot <= min(4, iterations)
+                    or iterations > cap):
+                raise ValueError('portfolio Auto route/counter tuple is invalid')
+            # A no-LSMR MAP route has no preconditioner. A genuine LSMR
+            # continuation keeps its request/resolved metadata, even if MAP
+            # ultimately certifies. Low merges max work, OR fallback and sums
+            # warnings; an LSMR chunk outranks a successful MAP prefix.
+            absent = requested_pc == used_pc == 0
+            # routing.prepare pins preconditioner=auto for both artifacts.
+            pair = requested_pc == 1 and used_pc in {2, 3, 4}
+            if absent:
+                valid = used == 2 and warnings == 0 and (not candidate or fallback == 0)
+            else:
+                valid = pair and (used == 3 or fallback == 1)
+                if candidate and fallback and used == 3:
+                    valid &= requested_pc == 1 and used_pc == 2 and warnings >= 1
+                if used == 2:
+                    valid &= warnings >= 1
+                if not fallback and used_pc != 4:
+                    valid &= warnings == 0
+            # within emits at most one build warning per nonempty categorical
+            # pair component, bounded by rows * choose(terms,2), per action.
+            # Add one preconditioner/MAP fallback warning. Low's primary action
+            # count is bounded by outcome + coefficient-capacity chunks; final
+            # residual projection is one action in either execution mode.
+            count = actions[0] if index == 0 else 1
+            warning_cap = count * (rows * terms * (terms - 1) // 2 + 1)
+            if not valid or warnings > warning_cap or (candidate and contraction != 0):
+                raise ValueError('portfolio Auto preconditioner/fallback/warning tuple is invalid')
+            if candidate:
+                target = tolerance if index == 0 else min(tolerance, 1e-14)
+                strict = target if target <= 1e-14 else max(target * 1e-2, 1e-14)
+                if row[5] > strict:
+                    raise ValueError('portfolio original-design certificate exceeds private Auto target')
+    scope = replay_scope(raw, arm, meta)
+    # Raw columns 1,10,11,12,13,14 after removal of setup/solve time.
+    return scope + [f'/matrices/RSOLVER/bits/{14 * row + column}'
+                    for row in range(2) for column in [1, 8, 9, 10, 11, 12]]
+
+
+def compatibility(reference, raw, reference_columns, columns, meta, arm, *, selected_policy=None):
     cmgschur.scientific_comparison(reference, raw, reference_columns, columns, meta)
     changed = differences(exact_view(reference, False), exact_view(raw, False))
-    scope = cross_request_scope(reference, raw, arm, meta)
+    scope = (cross_request_scope(reference, raw, arm, meta) if selected_policy is None else
+             portfolio_scope(reference, raw, meta, arm, selected_policy))
     outside = [path for path in changed if not allowed_difference(path, scope)]
     if outside:
         raise ValueError('scoped replay changed an unaffected field: ' + '; '.join(outside[:5]))
@@ -462,15 +607,16 @@ def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None
     candidate = requested not in {None, 'baseline'}
     expected = ({'injection': routing.ABLATIONS[requested]} if requested in routing.ABLATIONS else
                 routing.policy(requested) if candidate else None)
+    schur_policy = expected.get('two_fe', expected) if expected else None
     actions, route = [], []
     for line in log.splitlines():
         if not line.startswith('FEREG_SOLVER_TRACE|'):
             continue
         fields = dict(part.split('=', 1) for part in line.split('|')[1:] if '=' in part)
         if fields.get('phase') == 'auto_schur_route':
-            if expected and ('checkpoint' not in expected
-                    or fields.get('checkpoint') != str(expected['checkpoint'])
-                    or fields.get('samples') != str(expected['trees'])):
+            if schur_policy and ('checkpoint' not in schur_policy
+                    or fields.get('checkpoint') != str(schur_policy['checkpoint'])
+                    or fields.get('samples') != str(schur_policy['trees'])):
                 raise ValueError('actual Schur route does not match requested policy')
             route.append(fields)
         if fields.get('phase') != 'routing_action':
@@ -818,7 +964,8 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                             raise ValueError('native science differs from independently checked prerequisite cohort')
                     check_oracle(raw, columns, meta)
                     if reference is not None:
-                        compatibility(reference, raw, reference_columns, columns, meta, reader)
+                        compatibility(reference, raw, reference_columns, columns, meta, reader,
+                                      selected_policy=comparison_policy(manifest, arm))
                     effective, preset = resource_policy(manifest, arm)
                     actual = resource_diagnostics(log.read_text(), effective,
                         meta['absorbed_terms'] == 0, science[cid], expected_preset=preset)
@@ -826,8 +973,10 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                     verified[arm] = {**actual, 'diagnostic_sha256': routing.identity(actual),
                                      'witness_sha256': digest(witnesses[cid])}
                     if manifest.get('purpose') == 'activation_equivalence':
-                        verified[arm]['solver_signature_sha256'] = routing.identity(raw['matrices']['RSOLVER'])
+                        verified[arm]['solver_signature_sha256'] = routing.identity(exact_view(raw, False)['matrices']['RSOLVER'])
                     prerequisite.update(status='passed', certificate_pass=True, science_pass=True, science_sha256=fingerprints[arm], **verified[arm])
+                    if manifest.get('experiment_kind') == 'portfolio':
+                        prerequisite['solver_rows'] = detail['solver_rows']
                     if reader == 'cmg':
                         prerequisite['cmg_worker_signature'] = cmg_diagnostic_signature(detail['solver_rows'])
                     if reader == 'it' and generic_it_metadata(meta):
@@ -874,10 +1023,13 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                         if detail['science_sha256'] != fingerprints[arm]:
                             raise ValueError('timed call differs from traced prerequisite science or solver signature')
                         check_oracle(raw, columns, meta)
-                        compatibility(reference, raw, reference_columns, columns, meta, reader)
+                        compatibility(reference, raw, reference_columns, columns, meta, reader,
+                                      selected_policy=comparison_policy(manifest, arm))
                         row.update(status='passed', certificate_pass=True, science_pass=True, **verified[arm])
+                        if manifest.get('experiment_kind') == 'portfolio':
+                            row['solver_rows'] = detail['solver_rows']
                         if manifest.get('purpose') == 'activation_equivalence':
-                            row['solver_signature_sha256'] = routing.identity(raw['matrices']['RSOLVER'])
+                            row['solver_signature_sha256'] = routing.identity(exact_view(raw, False)['matrices']['RSOLVER'])
                     except FrozenIdentityError:
                         raise
                     except (ValueError, RuntimeError, TimeoutError) as error:

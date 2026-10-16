@@ -5,14 +5,349 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import routing
 import routing_discovery as discovery
 import routing_parallel as parallel
 from test_routing import h
-from test_routing_discovery import spec42, producer, save_json
+from test_routing_discovery import spec42, portfolio42, producer, save_json
+
+
+class PortfolioParallelTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.spec = portfolio42()
+        self.frozen = parallel.current_files()
+        tests = discovery.reference(__file__)
+        self.frozen[tests['path']] = tests['sha256']
+        self.parent = {'kind': discovery.PORTFOLIO_KIND + '_plan', 'schema': 1, 'design': discovery.DESIGN,
+                       'tournament': routing.seal(self.spec), 'producer_tools': {
+                           p.name: sha for p, sha in parallel.routing_run.tool_identities().items()},
+                       'plugins': {a: 'unused' for a in self.spec['arms']},
+                       'library_limits': discovery.LIBRARY_LIMITS,
+                       'output_root': str(self.root / 'fresh'), 'frozen_files': dict(self.frozen)}
+        self.parent_ref = save_json(self.root / 'fresh-plan.json', routing.seal(self.parent))
+        self.frozen[self.parent_ref['path']] = self.parent_ref['sha256']
+        self.plan = {'kind': parallel.KIND + '_plan', 'schema': 2, 'design': copy.deepcopy(parallel.PORTFOLIO_DESIGN),
+                     'parent': routing.seal(self.parent), 'parent_sha256': routing.identity(self.parent),
+                     'parent_plan': self.parent_ref, 'producer_tools': self.parent['producer_tools'],
+                     'receipt_generator': discovery.reference(parallel.isolation_host.__file__),
+                     'frozen_files': self.frozen, 'output_root': str(self.root / 'closed')}
+        self.evidence = patch.object(discovery.routing_run, 'evidence')
+        self.evidence.start()
+        self.addCleanup(self.evidence.stop)
+
+    def node(self, n, hostname=None, job=None):
+        view = parallel.round_view(self.plan, n, 1)
+        root = Path(view['output_root'])
+        science = root / 'prerequisites/producer'
+        science.mkdir(parents=True)
+        original = producer(self.spec, True)
+        original['tool_sha256'] = self.parent['producer_tools']
+        machine = {'hostname': hostname or f'scc-node{n}', 'job_id': job or str(100 + n),
+                   'slots': 28, 'affinity': list(range(28)), 'machine': 'x86_64',
+                   'library_limits': discovery.LIBRARY_LIMITS}
+        proof = {'kind': discovery.KIND + '_prerequisites', 'status': 'ready',
+                 'host': machine, 'plan_sha256': routing.identity(view), 'wrappers': {}}
+        for index, cell in enumerate(self.spec['panels']['A']):
+            proof['wrappers'][cell['id']] = save_json(science / f'witness-{index}.json', {'node': n, 'cell': cell['id']})
+        timed = producer(self.spec)
+        timed['tool_sha256'] = self.parent['producer_tools']
+        for records in (original, timed):
+            for row in [*records['prerequisites'], *records['records']]:
+                row['solver_rows'] = [[0.0] * 16, [0.0] * 16]
+                row['science_sha256'] = h(f"host-{n}-{row['cell']}-{row['arm']}")
+                if records is timed:
+                    row['witness_sha256'] = proof['wrappers'][row['cell']]['sha256']
+        proof['records'] = save_json(science / 'records.json', original)
+        proof_ref = save_json(root / 'prerequisites/prerequisites.json', routing.seal(proof))
+        output = root / 'collection'
+        (output / 'round-1').mkdir(parents=True)
+        record_ref = save_json(output / 'round-1/records.json', timed)
+        collection = {'kind': discovery.KIND + '_collection', 'status': 'complete',
+                      'plan_sha256': routing.identity(view), 'round_contract': view['round_contract'],
+                      'prerequisites': proof_ref, 'prerequisites_sha256': routing.identity(proof),
+                      'host': machine, 'rounds': [record_ref], 'producer_returncode': 0,
+                      'supervisor_interrupted': False, 'observer_failure_seen': False,
+                      'joint_started_monotonic_ns': 0, 'started_monotonic_ns': 100, 'completed_monotonic_ns': 300}
+        save_json(output / 'collection.json', routing.seal(collection))
+        (root / 'isolation').mkdir()
+        save_json(root / 'isolation/receipt.json', routing.seal({'test': n}))
+        save_json(root / 'isolation/accounting.json', {
+            'argv': ['qacct', '-j', machine['job_id']], 'returncode': 0, 'locale': 'C', 'timezone': 'UTC',
+            'stdout': 'ru_wallclock 1000.0\n'})
+        (root / 'isolation/process_observations.jsonl').write_text(json.dumps({
+            'kind': 'end', 'monotonic_ns': 400, 'collection_sha256': routing.identity(collection)}) + '\n')
+        return view, collection, proof
+
+    def reports(self):
+        return [parallel.inspect_attempt(self.plan, None, n, 1) for n in (1, 2, 3)]
+
+    def test_portable_metadata_and_current_source_closure(self):
+        with patch.object(Path, 'open', side_effect=AssertionError('host path read')):
+            self.assertEqual(parallel.metadata(self.plan)['spec'], self.spec)
+        self.assertEqual(parallel.validate_plan(self.plan), self.spec)
+        for key in ('proof', 'legacy_window', 'proof_sha256'):
+            bad = {**self.plan, key: {}}
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                parallel.metadata(bad)
+        bad = copy.deepcopy(self.plan)
+        bad['frozen_files'][str(Path(discovery.__file__).resolve())] = h('changed')
+        with self.assertRaises(ValueError):
+            parallel.validate_plan(bad)
+        with self.assertRaises(ValueError):
+            parallel.round_view(self.plan, 1, 2)
+
+    def test_freeze_has_no_global_proof_or_legacy_window_and_binds_tests(self):
+        source_check = self.root / 'checks.json'
+        source_check.write_text('{"focused_tests":"passed"}')
+        config = {'schema': 2, 'discovery_plan': self.parent_ref['path'],
+                  'output_root': str(self.root / 'new-freeze'), 'receipt_generator': parallel.isolation_host.__file__,
+                  'source_checks': [str(source_check)]}
+        with patch.object(routing, 'scratch', side_effect=lambda p: p.resolve()):
+            plan = parallel.freeze(config)
+            self.assertEqual(plan['schema'], 2)
+            self.assertNotIn('proof', plan)
+            self.assertNotIn('legacy_window', plan)
+            self.assertEqual(plan['frozen_files'][str(Path(__file__).resolve())], discovery.digest(Path(__file__)))
+            with self.assertRaisesRegex(ValueError, 'no original proof or window'):
+                parallel.freeze({**config, 'proof': 'old-proof.json'})
+
+    def test_producer_runs_own_two_call_science_then_one_full_round(self):
+        view, _, proof = self.node(2)
+        order = []
+        def science(p, output):
+            self.assertEqual(p, view)
+            self.assertEqual(output, Path(view['output_root']) / 'prerequisites')
+            order.append('science')
+            return proof
+        def invoke(p, spec, wrappers, output):
+            self.assertEqual(p, view)
+            self.assertEqual(spec, self.spec)
+            self.assertEqual(len(wrappers), 42)
+            self.assertEqual(output, Path(view['output_root']) / 'collection/round-1')
+            order.append('round')
+            return routing.read_json(output / 'records.json')
+        with patch.object(discovery, 'prerequisites', side_effect=science), \
+             patch.object(discovery, 'host', return_value=proof['host']), \
+             patch.object(discovery, 'invoke', side_effect=invoke) as calls:
+            parallel.producer(self.plan, None, 2, 1)
+            self.assertEqual(order, ['science', 'round'])
+            self.assertEqual(calls.call_count, 1)
+            with self.assertRaisesRegex(ValueError, 'global prerequisite proof'):
+                parallel.producer(self.plan, proof, 2, 1)
+        report = discovery.load(Path(view['output_root']) / 'collection/producer-complete.json')
+        self.assertEqual(report['proof'], discovery.reference(Path(view['output_root']) / 'prerequisites/prerequisites.json'))
+
+    def test_joint_budget_stops_and_reaps_own_child_before_reserved_cleanup(self):
+        view = parallel.round_view(self.plan, 1, 1)
+        machine = {'hostname': 'scc-node1', 'job_id': '101', 'slots': 28, 'machine': 'x86_64',
+                   'library_limits': discovery.LIBRARY_LIMITS}
+        process = Mock()
+        process.poll.return_value = None
+        event = Mock()
+        event.wait.return_value = False
+        with patch.object(discovery, 'host', return_value=machine), \
+             patch.object(parallel.subprocess, 'Popen', return_value=process), \
+             patch.object(parallel, '_stop_owned', return_value={'returncode': -2, 'escalated': False}) as stop, \
+             patch.object(parallel.time, 'monotonic_ns', return_value=14_400_000_000_000), \
+             patch.object(parallel.signal, 'signal'):
+            result = parallel._operation(self.plan, self.root / 'plan.json', 1, 1, view, None,
+                                         Path(view['output_root']) / 'collection', event, joint_start_ns=0)
+        self.assertEqual(result['status'], 'incomplete')
+        self.assertIn('joint science/round budget expired', result['supervisor_error'])
+        self.assertTrue(result['supervisor_interrupted'])
+        stop.assert_called_once_with(process)
+
+    def test_science_interruption_retains_real_partial_files_before_owned_cleanup(self):
+        names = ('records.json', 'current.json', 'current.json.columns', 'current.log')
+        for timing_started in (False, True):
+            with self.subTest(timing_started=timing_started):
+                self.plan['output_root'] = str(self.root / f'interrupted-{timing_started}')
+                view = parallel.round_view(self.plan, 1, 1)
+                root = Path(view['output_root'])
+                sources = {'science': root / 'prerequisites/producer'}
+                if timing_started:
+                    sources['timing'] = root / 'collection/round-1'
+                process = Mock()
+                process.poll.return_value = None
+                def launch(*_args, **_kwargs):
+                    for phase, source in sources.items():
+                        source.mkdir(parents=True)
+                        for name in names:
+                            (source / name).write_bytes(f'{phase}:{name}:partial-native-bytes'.encode())
+                    return process
+                def stop(child):
+                    self.assertIs(child, process)
+                    for phase, source in sources.items():
+                        for name in names:
+                            saved = root / 'interruption' / phase / name
+                            self.assertEqual(saved.read_bytes(), (source / name).read_bytes())
+                            (source / name).unlink()  # Model the producer's SIGINT finally cleanup.
+                    return {'returncode': -2, 'escalated': False}
+                event = Mock()
+                event.wait.side_effect = KeyboardInterrupt('science interrupted')
+                machine = {'hostname': 'scc-node1', 'job_id': '101', 'slots': 28, 'machine': 'x86_64',
+                           'library_limits': discovery.LIBRARY_LIMITS}
+                with patch.object(discovery, 'host', return_value=machine), \
+                     patch.object(parallel.subprocess, 'Popen', side_effect=launch), \
+                     patch.object(parallel, '_stop_owned', side_effect=stop), \
+                     patch.object(parallel.time, 'monotonic_ns', return_value=100), \
+                     patch.object(parallel.signal, 'signal'):
+                    result = parallel._operation(self.plan, self.root / 'plan.json', 1, 1, view, None,
+                                                 root / 'collection', event, joint_start_ns=0)
+                self.assertEqual(result['status'], 'incomplete')
+                self.assertEqual(set(result['interruption_artifacts']), {'science', 'timing'})
+                for phase in sources:
+                    for name in names:
+                        ref = result['interruption_artifacts'][phase][name]
+                        self.assertEqual(discovery.checked(ref).read_bytes(), f'{phase}:{name}:partial-native-bytes'.encode())
+                if not timing_started:
+                    self.assertEqual(result['interruption_artifacts']['timing'], {})
+
+    def test_science_snapshot_failure_keeps_timing_capture_and_owned_cleanup(self):
+        view = parallel.round_view(self.plan, 1, 1)
+        root = Path(view['output_root'])
+        process, event = Mock(), Mock()
+        process.poll.return_value = None
+        event.wait.side_effect = KeyboardInterrupt('interrupted')
+        machine = {'hostname': 'scc-node1', 'job_id': '101', 'slots': 28, 'machine': 'x86_64',
+                   'library_limits': discovery.LIBRARY_LIMITS}
+        def snapshot(directory, saved):
+            if directory == root / 'prerequisites/producer':
+                raise OSError('science copy failed')
+            self.assertEqual(directory, root / 'collection/round-1')
+            self.assertEqual(saved, root / 'interruption/timing')
+            return {'preserved': 'timing'}
+        with patch.object(discovery, 'host', return_value=machine), \
+             patch.object(parallel.subprocess, 'Popen', return_value=process), \
+             patch.object(parallel, '_snapshot_partial', side_effect=snapshot), \
+             patch.object(parallel, '_stop_owned', return_value={'returncode': -2, 'escalated': False}) as stop, \
+             patch.object(parallel.time, 'monotonic_ns', return_value=100), \
+             patch.object(parallel.signal, 'signal'):
+            result = parallel._operation(self.plan, self.root / 'plan.json', 1, 1, view, None,
+                                         root / 'collection', event, joint_start_ns=0)
+        self.assertEqual(result['snapshot_errors'], {'science': 'science copy failed'})
+        self.assertEqual(result['interruption_artifacts']['timing'], {'preserved': 'timing'})
+        stop.assert_called_once_with(process)
+
+    def test_three_local_proofs_allow_cross_cpu_bits_and_produce_nine_paired_slots(self):
+        for n in (1, 2, 3):
+            self.node(n)
+        with patch.object(discovery, 'isolation') as isolation:
+            reports = self.reports()
+            result = parallel.aggregate(self.plan, None, reports)
+        self.assertEqual(isolation.call_count, 6)
+        self.assertEqual(result['schema'], 2)
+        self.assertEqual(result['experiment_kind'], 'portfolio')
+        self.assertFalse(result['promotion'])
+        self.assertEqual(len(result['ranking']), 2)
+        self.assertEqual(len(result['collection']['attempts']), 3)
+        self.assertEqual(sum(r['accounted_wallclock_s'] for r in reports), 3000.0)
+        self.assertEqual({r['science_discrete_sha256'] for r in reports}, {reports[0]['science_discrete_sha256']})
+        with self.assertRaises(ValueError):
+            parallel.aggregate(self.plan, {}, reports)
+        with self.assertRaises(ValueError):
+            parallel.aggregate(self.plan, None, reports[:2])
+        with self.assertRaises(ValueError):
+            parallel.aggregate(self.plan, None, reports[::-1])
+
+    def test_shared_physical_host_or_job_and_replacement_output_refuse(self):
+        for duplicate in ('host', 'job', 'replacement'):
+            with self.subTest(duplicate=duplicate):
+                # Each scenario gets an independent output tree.
+                self.plan['output_root'] = str(self.root / duplicate)
+                for n in (1, 2, 3):
+                    self.node(n, hostname='scc-same' if duplicate == 'host' else None,
+                              job='999' if duplicate == 'job' else None)
+                if duplicate == 'replacement':
+                    (Path(self.plan['output_root']) / 'round-2/attempt-2').mkdir()
+                with patch.object(discovery, 'isolation'):
+                    reports = self.reports()
+                    with self.assertRaises(ValueError):
+                        parallel.aggregate(self.plan, None, reports)
+
+    def test_local_proof_host_round_and_budget_forgeries_refuse(self):
+        for changed in ('host', 'proof', 'round', 'budget', 'observer', 'accounting'):
+            with self.subTest(changed=changed):
+                self.plan['output_root'] = str(self.root / changed)
+                view, collection, proof = self.node(1)
+                root = Path(view['output_root'])
+                if changed == 'host':
+                    collection['host'] = {**collection['host'], 'job_id': 'another-job'}
+                elif changed == 'proof':
+                    collection['prerequisites_sha256'] = h('another-proof')
+                elif changed == 'round':
+                    collection['rounds'] = []
+                elif changed == 'observer':
+                    collection['observer_failure_seen'] = True
+                elif changed == 'accounting':
+                    path = root / 'isolation/accounting.json'
+                    value = routing.read_json(path)
+                    value['stdout'] = 'ru_wallclock 14400.1\n'
+                    save_json(path, value)
+                else:
+                    collection['joint_started_monotonic_ns'] = -15_000_000_000_000
+                save_json(root / 'collection/collection.json', routing.seal(collection))
+                with patch.object(discovery, 'isolation'), self.assertRaises(ValueError):
+                    parallel.inspect_attempt(self.plan, None, 1, 1)
+
+    def test_prospective_portfolio_screen_rejects_only_declared_point_failures(self):
+        for violations, worst, rejected in [(0, 1.0, False), (0, 1.001, True), (1, .9, True), (2, 1.1, True)]:
+            ranking = [{'arm': 'baseline'}, {'arm': routing.PORTFOLIO_V1,
+                       'baseline_violations': violations, 'worst_internal_normalized': worst}]
+            result = parallel.portfolio_screen(ranking)
+            self.assertEqual(result['shortlist'] == ['baseline'], rejected)
+            self.assertEqual(result['heuristic_rejection'] is not None, rejected)
+        for worst in (None, float('nan'), float('inf'), True):
+            with self.subTest(worst=worst), self.assertRaises(ValueError):
+                parallel.portfolio_screen([{'arm': 'baseline'}, {'arm': routing.PORTFOLIO_V1,
+                                           'baseline_violations': 0, 'worst_internal_normalized': worst}])
+
+    def test_cross_cpu_continuous_pilot_contraction_and_iterations_are_allowed(self):
+        original = producer(self.spec, True)
+        expected = discovery.prerequisite_status(self.spec, original)
+        for row in [*original['prerequisites'], *original['records']]:
+            row['solver_rows'] = [[0.0] * 16, [0.0] * 16]
+        first = parallel._discrete_science(original, expected)
+        for row in [*original['prerequisites'], *original['records']]:
+            row['solver_rows'][0][2] = 17.0
+            row['solver_rows'][0][15] = .375
+        self.assertEqual(parallel._discrete_science(original, expected), first)
+
+    def test_cross_host_discrete_difference_and_failed_isolation_block_aggregation(self):
+        for n in (1, 2, 3):
+            self.node(n)
+        with patch.object(discovery, 'isolation'):
+            reports = self.reports()
+            reports[1]['science_discrete_sha256'] = h('forged-summary')
+            with self.assertRaises(ValueError):
+                parallel.aggregate(self.plan, None, reports)
+            # A real change retained in node 2's otherwise locally exact rows
+            # also blocks, rather than merely rejecting a forged report field.
+            view = parallel.round_view(self.plan, 2, 1)
+            root = Path(view['output_root'])
+            collection = discovery.load(root / 'collection/collection.json')
+            proof = discovery.load(collection['prerequisites']['path'])
+            for ref in (proof['records'], collection['rounds'][0]):
+                value = routing.read_json(Path(ref['path']))
+                for row in [*value['prerequisites'], *value['records']]:
+                    row['solver_rows'][0][3] = 2.0
+                ref.update(save_json(Path(ref['path']), value))
+            proof_ref = save_json(root / 'prerequisites/prerequisites.json', routing.seal(proof))
+            collection.update(prerequisites=proof_ref, prerequisites_sha256=routing.identity(proof))
+            save_json(root / 'collection/collection.json', routing.seal(collection))
+            changed = self.reports()
+            self.assertNotEqual(changed[0]['science_discrete_sha256'], changed[1]['science_discrete_sha256'])
+            with self.assertRaisesRegex(ValueError, 'cross-host discrete'):
+                parallel.aggregate(self.plan, None, changed)
+        with patch.object(discovery, 'isolation', side_effect=ValueError('accounting or coverage failure')):
+            with self.assertRaises(ValueError):
+                parallel.aggregate(self.plan, None, reports)
 
 
 class ParallelTests(unittest.TestCase):

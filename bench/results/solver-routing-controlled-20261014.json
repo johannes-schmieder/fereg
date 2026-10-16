@@ -11879,5 +11879,217 @@
       "conclusion": "Canonical-cell preparation dominates admitted work and is performed twice. Cache-first is supported; no completion, speedup or qualification follows until the revised artifact is checked."
     },
     "instrumentation_source": "bench/results/solver-routing-cmg-diagnostic-20261015.patch"
+  },
+  "portfolio_development": {
+    "schema": 1,
+    "date": "2026-10-15",
+    "kind": "portfolio_v1_development_science_summary",
+    "status": "incomplete-route-coverage",
+    "scientific_checks": "passed",
+    "scope": "One fixed changed-artifact development study on seven existing B inputs and one separately generated direct-route input. No policy selection, controlled performance, qualification, activation or promotion claim; no C body access.",
+    "policy": {
+      "name": "portfolio-v1",
+      "injection": "routing_portfolio_v1",
+      "many_fe": "Strict private Auto target; MAP4 then seeded LSMR; optional pair CMG disabled.",
+      "two_fe": "Dimension-upper-bound direct-or-incumbent-CMG selection; fixed preflight1024 and structural allowance4; otherwise synchronous h16/k1 with canonical-cache eligibility.",
+      "public_auto_changed": false
+    },
+    "design": {
+      "existing_B_families": [
+        "small-third",
+        "near-confounded-third",
+        "low-saved",
+        "weak",
+        "high-degree-weak",
+        "weighted",
+        "wide-rhs"
+      ],
+      "development_input": {
+        "rows": 20000,
+        "levels": [
+          100,
+          10
+        ],
+        "regressors": 1,
+        "weights": "unit",
+        "seed": 2026101509,
+        "graph": "random-mobility",
+        "eligibility": "development only; not original B or qualification"
+      },
+      "workers": [
+        1,
+        4
+      ],
+      "artifacts": [
+        "retained72ff",
+        "current2890"
+      ],
+      "first_traced_then_exact_repeat": true,
+      "unaffected_controls": [
+        "uninjected Auto",
+        "explicit LSMR",
+        "explicit CMG-Schur5",
+        "overlap-h16-k0 at one worker"
+      ]
+    },
+    "limits": {
+      "native_call_cap": 92,
+      "actual_native_calls": 92,
+      "per_call_seconds": 120,
+      "aggregate_seconds": 2400,
+      "elapsed_seconds": 178.03908854105975,
+      "elapsed_scope": "Runner checking, estimation and profiling interval; excludes initial guard/import setup before its timer and the separate development-input preparation.",
+      "retries": 0,
+      "extra_calls": 0,
+      "C_access": false,
+      "timing_is_descriptive": true
+    },
+    "preparation": {
+      "status": "passed",
+      "generator_calls": 1,
+      "oracle_calls": 1,
+      "native_fit_calls": 0,
+      "generator_limit_seconds": 60,
+      "oracle_limit_seconds": 120,
+      "aggregate_limit_seconds": 180,
+      "elapsed_seconds": 0.7182329999050125,
+      "retries": 0
+    },
+    "verification": {
+      "frozen_source_inventory_files": 475,
+      "bound_dependency_hashes": 564,
+      "retained_result_column_log_hashes": 276,
+      "independent_oracle_checks": 92,
+      "complete_science_solver_and_column_exact_repeats": 46,
+      "current_typed_route_checks": 32,
+      "scoped_cross_artifact_comparisons": 16,
+      "unaffected_exact_cross_artifact_controls": 7,
+      "cross_worker_scientific_and_discrete_comparisons": 22,
+      "traced_first_resource_checks": 46,
+      "exact_repeat_resource_inheritance_checks": 46,
+      "Low_mode_and_saved_output_checks": 8,
+      "source_and_dependency_rechecks_before_and_after": "passed",
+      "actual_coverage_classification_recomputed": "matched"
+    },
+    "coverage": {
+      "observed": [
+        "cmg-installation:high-degree-weak",
+        "direct-certified:1",
+        "direct-certified:4",
+        "many-fe-seeded-lsmr"
+      ],
+      "missing": [
+        "cmg-installation:weak",
+        "cmg-installation:weighted",
+        "cmg-installation:wide-rhs",
+        "many-fe-early-prefix"
+      ],
+      "high_degree": "Both workers installed CMG at checkpoint16/samples1; primary22 and final8 iterations. Installation does not prove canonical-cache admission.",
+      "direct": "Both workers certified20000 rows/3 RHS at zero iterations; total setup work14455076 <=25747904 includes1024 preflight work. No separate preflight trace is claimed.",
+      "many_fe": "All three many-FE inputs used LSMR with four-step pilot; early MAP acceptance was not observed."
+    },
+    "refusal_and_no_attempt_evidence": {
+      "weak": {
+        "workers": [
+          1,
+          4
+        ],
+        "checkpoint": 16,
+        "samples": 1,
+        "installed": false,
+        "refusal": "WorkBudget",
+        "primary": {
+          "setup_work": 147847160,
+          "setup_limit": 168968192,
+          "remaining_below_28W0": 8,
+          "iterations": 66
+        },
+        "final": {
+          "setup_work": 59473744,
+          "setup_limit": 67970048,
+          "remaining_below_28W0": 48,
+          "iterations": 42
+        },
+        "interpretation": "The32W0 setup ledger reserves4W0 for restart. Both attempts reached the bounded builder allowance and refused; standard aggregate traces do not identify the exact failing operation or cache admission."
+      },
+      "weighted": {
+        "workers": [
+          1,
+          4
+        ],
+        "iterations_primary_final": [
+          7,
+          6
+        ],
+        "setup_work_per_action": 1024,
+        "construction": "No route trace; both actions converge before checkpoint16."
+      },
+      "wide_rhs": {
+        "workers": [
+          1,
+          4
+        ],
+        "iterations_primary_final": [
+          14,
+          13
+        ],
+        "setup_work_per_action": 1024,
+        "construction": "No route trace; both actions converge before checkpoint16, as anticipated before dispatch."
+      }
+    },
+    "provenance": {
+      "runtime_sha256": "5cdfeb313776b2fceaedb1a3f8ff6d0ad0dff4749688485dc33e96a16725a23d",
+      "raw_build_source_sha256": "994ae6a03da38eecfe13b050d31c4ebd22daeeb8ea607b29451d8d0fe530c0ec",
+      "cmg_revision": "eb3f2bc1f794b68a9cd9b5cc9292f7322f4f592a",
+      "current_plugin_sha256": "2890a103f2e887a1545d379e87d41397ee2e2a3b457e6a09a8424cdce55a55f8",
+      "reference_plugin_sha256": "72ff85cc33e088ec85c9e30feddc589a3f2aa1068bca1d812e74fba498c3207e",
+      "build_provenance_sha256": "ef35a0340030da3734566efc57ff920b9468c2c536f6099a9cb786f68c418e3a",
+      "records_sha256": "cb9359a408243b3381da1df8cc9fdd53b5101755cfce365e1cc5d8651cdea569",
+      "independent_raw_review_sha256": "1d4191d2fe30594772e0cd9d0db11c29d71edc0b6d27194d5e3ad935b348514e",
+      "preparation_sha256": "67bf6300ddb3802c23845a5310c9556075edbe3992d4e7ea3c8d57251a4661d1",
+      "frozen_file_sha256": "e3867868fdc50bccdd58ec311eed1bba8f94e0f438c79800f5b30a31242515dc",
+      "frozen_canonical_sha256": "8e1cd5001fcf8cf32d8f4fa22296f5f5178155448d3cc1cd4bcfa30ae93d08f9",
+      "frozen_review_sha256": "2ccfaa107546656b07efb04d641459271e35706dfe08d89d42048f64d1bc5364",
+      "predispatch_coverage_addendum_sha256": "54d7a64296ffe522a8fbe763f4799affaa2f72c7a6555cfd407ab409da0d74fc",
+      "retention": "Compact committed summary and capture identities; ignored raw files are temporary task outputs, not a promised retained archive."
+    },
+    "validation_boundary": {
+      "benchmark_tests": "371 passed in169.879s",
+      "workspace_strict_clippy": "passed",
+      "full_repository_suite": "Pending: blocked by stale installed native bundle; not claimed passed for this runtime.",
+      "workspace_tests": {
+        "passed": 1708,
+        "failed": 0,
+        "ignored": 4,
+        "result_groups": 65
+      },
+      "ffi_serial_tests": {
+        "passed": 196,
+        "failed": 0,
+        "ignored": 10
+      },
+      "ffi_strict_clippy": "passed",
+      "ffi_fresh_process_audits": {
+        "passed": 10,
+        "failed": 0
+      }
+    },
+    "interpretation": [
+      "All92 scoped scientific observations passed; the declared route-coverage requirement did not. Exit0 does not relabel incomplete coverage as complete.",
+      "No extra calls or replacements follow from missing coverage. Existing unit/oracle witnesses remain separate evidence; future fresh discovery/qualification requires its own admission and review.",
+      "No isolation, speedup, Mac release-performance, activation or promotion claim. The original closed campaign and its NO-GO remain unchanged."
+    ],
+    "pdf_amendment": {
+      "pages": 25,
+      "new_pages": [
+        23,
+        24,
+        25
+      ],
+      "source_sha256": "ff51052a5b2db1161bc83889857667cd9464aee4118b7146056bb13276954a05",
+      "pdf_sha256": "516ea513388aba9b0e175df7e4395fc636b3686d7835e29cbb73cf12a752f43d",
+      "review": "Independent high-effort Astra mathematical/contract review; source precision repairs verified. Lead visually inspected final rendered pages23–25 and contact sheets of historical pages1–22.",
+      "status": "Private portfolio development evidence and prospective routing explanation; qualification remains pending."
+    }
   }
 }

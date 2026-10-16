@@ -16,7 +16,7 @@ import routing
 import routing_run
 from native_io import case_header, digest
 from test_cmgschur import bits, case_bytes, result
-from test_routing import h, manifest, records, prefix_manifest, overlap_manifest
+from test_routing import h, manifest, records, prefix_manifest, overlap_manifest, portfolio_manifest
 
 TRACE = ('FEREG_SOLVER_TRACE|phase=routing_action|preset=routing_h4_k0|final=0|certified=1|iterations=5|native_limit=100|'
          'setup_work=12|setup_limit=32|memory_bytes=64|memory_limit=128\n')
@@ -144,6 +144,194 @@ class ExplicitComparatorScope(unittest.TestCase):
         raw['matrices']['RCERT']['bits'][1] = bits(0.)
         with self.assertRaisesRegex(ValueError, 'unaffected field'):
             self.compare(raw, 'cmg')
+
+
+class PortfolioAutoScope(unittest.TestCase):
+    META = {'categorical_intercepts': True, 'absorbed_terms': 3, 'rows': 2}
+
+    @staticmethod
+    def raw(route='lsmr', *, pilot=0, mode=1, warnings=None):
+        raw = ExplicitComparatorScope.raw('auto', mode, 1, 3)
+        runtime = raw['matrices']['RRUNTIME']['bits']
+        for column, value in {43: 1e-8, 45: 1e-8, 47: 100.}.items():
+            runtime[column] = bits(value)
+        used, fallback, requested_pc, used_pc = {
+            'prefix': (2, 0, 0, 0), 'map-no-lsmr': (2, 0, 0, 0),
+            'lsmr': (3, 0, 1, 4), 'map-fallback': (2, 1, 1, 4),
+            'pc-fallback': (3, 1, 1, 2)}[route]
+        for row in range(2):
+            fields = {0: 1, 1: used, 2: pilot if route == 'prefix' else 10,
+                      3: 2, 4: 0., 5: 1e-15, 6: 1e-15, 7: 1e-15,
+                      10: fallback, 11: fallback if warnings is None else warnings,
+                      12: requested_pc, 13: used_pc, 14: pilot, 15: 0.}
+            for column, value in fields.items():
+                raw['matrices']['RSOLVER']['bits'][row * 16 + column] = bits(float(value))
+        return raw
+
+    def compare(self, raw, *, reference=None, meta=None, policy=None, reader='auto'):
+        reference = self.raw(mode=int(routing_run.cmgschur.numbers(raw['matrices']['RRUNTIME'])[3])) if reference is None else reference
+        with patch.object(routing_run.cmgschur, 'scientific_comparison') as science:
+            routing_run.compatibility(reference, raw, None, None,
+                self.META if meta is None else meta, reader,
+                selected_policy=routing.policy(routing.PORTFOLIO_V1) if policy is None else policy)
+            science.assert_called_once()
+
+    def test_only_named_portfolio_leaves_follow_valid_actual_routes(self):
+        for route, pilot in [('prefix', 0), ('prefix', 2), ('prefix', 4), ('lsmr', 4),
+                             ('lsmr', 0), ('lsmr', 1), ('map-no-lsmr', 0),
+                             ('map-fallback', 4), ('pc-fallback', 4)]:
+            raw = self.raw(route, pilot=pilot)
+            before = copy.deepcopy(raw)
+            with self.subTest(route=route, pilot=pilot):
+                self.compare(raw)
+                scope = set(routing_run.portfolio_scope(self.raw(), raw, self.META, 'auto',
+                            routing.policy(routing.PORTFOLIO_V1)))
+                old = set(routing_run.replay_scope(raw, 'auto', self.META))
+                self.assertEqual(scope - old, {f'/matrices/RSOLVER/bits/{14*r+c}'
+                    for r in range(2) for c in [1, 8, 9, 10, 11, 12]})
+                self.assertEqual(raw, before)
+
+    def test_low_merge_preserves_concrete_route_and_bounded_warning_counts(self):
+        raw = self.raw('map-fallback', pilot=4, mode=2)
+        raw['matrices']['RSOLVER']['bits'][11] = bits(4.)  # outcome + three chunks
+        self.compare(raw)
+        raw = self.raw('lsmr', pilot=4, mode=2)  # MAP-only chunks + LSMR chunk
+        self.compare(raw)
+        raw['matrices']['RSOLVER']['bits'][11] = bits(29.)  # bound is 4*(2*3+1)
+        with self.assertRaisesRegex(ValueError, 'warning tuple'):
+            self.compare(raw)
+
+    def test_portfolio_rejects_forged_routes_and_loose_certificates(self):
+        mutations = [(0, 3.), (1, 4.), (3, 3.), (10, 1.), (11, .5), (11, -1.),
+                     (12, 0.), (13, 0.), (14, 5.), (14, 11.), (15, .1),
+                     (5, 2e-10), (2, 101.), (2, float('nan'))]
+        for row in range(2):
+            for column, value in mutations:
+                raw = self.raw('lsmr', pilot=4)
+                raw['matrices']['RSOLVER']['bits'][row * 16 + column] = bits(value)
+                with self.subTest(row=row, column=column), self.assertRaises(ValueError):
+                    self.compare(raw)
+        for route, column, value in [('prefix', 11, 1.), ('map-fallback', 10, 0.),
+                                      ('map-fallback', 11, 0.), ('pc-fallback', 13, 4.)]:
+            raw = self.raw(route, pilot=2)
+            raw['matrices']['RSOLVER']['bits'][column] = bits(value)
+            with self.subTest(route=route, column=column), self.assertRaises(ValueError):
+                self.compare(raw)
+        raw = self.raw('pc-fallback', pilot=4)
+        raw['matrices']['RSOLVER']['bits'][12] = bits(2.)
+        with self.assertRaisesRegex(ValueError, 'preconditioner'):
+            self.compare(raw)  # An explicit Off request is not the prepared Auto request.
+        raw = self.raw()
+        raw['matrices']['RSOLVER']['bits'][21] = bits(2e-14)
+        with self.assertRaisesRegex(ValueError, 'private Auto target'):
+            self.compare(raw)
+
+    def test_portfolio_never_scopes_unaffected_models_or_ordinary_auto(self):
+        raw = self.raw('prefix', pilot=2)
+        for meta in [{**self.META, 'absorbed_terms': n} for n in [0, 1, 2]] + [
+                {**self.META, 'categorical_intercepts': False}]:
+            with self.subTest(meta=meta), self.assertRaises(ValueError):
+                self.compare(raw, meta=meta)
+        with patch.object(routing_run.cmgschur, 'scientific_comparison'), self.assertRaisesRegex(ValueError, 'unaffected field'):
+            routing_run.compatibility(self.raw(), raw, None, None, self.META, 'auto')
+        for policy in [routing.policy('prefix-map4'), routing.policy('h16-k0'),
+                       {**routing.policy(routing.PORTFOLIO_V1), 'certificate': 'requested'}]:
+            with self.subTest(policy=policy), self.assertRaises(ValueError):
+                self.compare(raw, policy=policy)
+        with self.assertRaises(ValueError):
+            self.compare(raw, reader='lsmr')
+        for table, index in [('RDOF', 3), ('RCERT', 1), ('RRUNTIME', 43), ('RSTATUS', 1)]:
+            changed = self.raw('prefix', pilot=2)
+            changed['matrices'][table]['bits'][index] = bits(2.)
+            with self.subTest(table=table), self.assertRaises(ValueError):
+                self.compare(changed)
+
+    def test_two_fe_portfolio_preserves_the_existing_routing_scope(self):
+        raw = self.raw()
+        meta = {**self.META, 'absorbed_terms': 2}
+        selected = routing.policy(routing.PORTFOLIO_V1)
+        self.assertEqual(routing_run.portfolio_scope(raw, raw, meta, 'auto', selected),
+                         routing_run.cross_request_scope(raw, raw, 'auto', meta))
+        # Changed native iteration work already belongs to the old h/k scope.
+        changed = copy.deepcopy(raw)
+        changed['matrices']['RSOLVER']['bits'][2] = bits(12.)
+        self.compare(changed, reference=raw, meta=meta)
+        for field, value in [('checkpoint', 16.0), ('trees', True), ('trees', 2),
+                             ('canonical_cache', 1)]:
+            forged = copy.deepcopy(selected)
+            forged['two_fe'][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                self.compare(raw, meta=meta, policy=forged)
+
+    def test_portfolio_binding_rejects_wrong_manifest_candidate_and_policy(self):
+        spec = portfolio_manifest()
+        self.assertEqual(routing_run.comparison_policy(spec, routing.PORTFOLIO_V1),
+                         routing.policy(routing.PORTFOLIO_V1))
+        self.assertIsNone(routing_run.comparison_policy(spec, 'baseline'))
+        bad = copy.deepcopy(spec)
+        bad['arms'][routing.PORTFOLIO_V1]['policy']['two_fe']['trees'] = True
+        with self.assertRaises(ValueError):
+            routing_run.comparison_policy(bad, routing.PORTFOLIO_V1)
+        for field, value in [('experiment_kind', 'routing'), ('candidates', ['baseline'])]:
+            bad = copy.deepcopy(spec)
+            bad[field] = value
+            with self.assertRaises(ValueError):
+                routing_run.comparison_policy(bad, routing.PORTFOLIO_V1)
+
+    def test_two_fe_direct_changes_only_the_validated_family_leaf(self):
+        meta = {**self.META, 'absorbed_terms': 2}
+        before, after = self.raw('map-no-lsmr'), self.raw('prefix')
+        for row in range(2):
+            before['matrices']['RSOLVER']['bits'][16 * row + 1] = bits(4.)
+        # Primary direct certification uses the requested, not private, target.
+        after['matrices']['RSOLVER']['bits'][5] = bits(5e-9)
+        self.compare(after, reference=before, meta=meta)
+        scope = set(routing_run.portfolio_scope(before, after, meta, 'auto', routing.policy(routing.PORTFOLIO_V1)))
+        self.assertEqual(scope - set(routing_run.replay_scope(after, 'auto', meta)),
+                         {'/matrices/RSOLVER/bits/1', '/matrices/RSOLVER/bits/15'})
+        for which, row, column, value in [('after', 0, 2, 1.), ('after', 0, 5, 2e-8),
+                ('after', 1, 5, 2e-14), ('before', 0, 1, 3.), ('before', 0, 14, 1.)] + [
+                ('after', row, column, 1.) for row in range(2) for column in [10, 11, 12, 13, 14, 15]]:
+            a, b = copy.deepcopy(before), copy.deepcopy(after)
+            (a if which == 'before' else b)['matrices']['RSOLVER']['bits'][16 * row + column] = bits(value)
+            with self.subTest(which=which, row=row, column=column), self.assertRaises(ValueError):
+                self.compare(b, reference=a, meta=meta)
+        for column in [43, 45, 47]:
+            changed = copy.deepcopy(after)
+            changed['matrices']['RRUNTIME']['bits'][column] = bits(2.)
+            with self.subTest(runtime=column), self.assertRaises(ValueError):
+                self.compare(changed, reference=before, meta=meta)
+
+    def test_activated_portfolio_policy_is_bound_to_c_and_keeps_equivalence_exact(self):
+        import routing_block_deployment as deployment
+        selected = routing.policy(routing.PORTFOLIO_V1)
+        spec = {'kind': deployment.KIND, 'purpose': 'public_default_holdout', 'panels': {'C': []},
+            'candidates': ['public-auto'], 'protections': ['baseline', 'incumbent'], 'arms': {
+                'baseline': {'policy': None},
+                'incumbent': {'role': 'required_reference', 'policy': copy.deepcopy(selected)},
+                'public-auto': {'role': 'candidate', 'solver': 'auto', 'policy': None,
+                    'invocation': {'solver': 'auto', 'injection': None}, 'effective_policy': selected}}}
+        for arm in ['public-auto', 'incumbent']:
+            self.assertEqual(routing_run.comparison_policy(spec, arm), selected)
+        self.assertIsNone(routing_run.comparison_policy(spec, 'baseline'))
+        for key, value in [('purpose', 'activation_equivalence'), ('panels', {'B': []}),
+                           ('candidates', ['incumbent']), ('protections', ['baseline'])]:
+            bad = copy.deepcopy(spec); bad[key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                routing_run.comparison_policy(bad, 'public-auto')
+        for arm, key, value in [('public-auto', 'invocation', {'solver': 'auto', 'injection': 'x'}),
+                ('public-auto', 'policy', selected), ('public-auto', 'solver', 'map'),
+                ('incumbent', 'role', 'candidate'), ('incumbent', 'policy', routing.policy('h16-k1'))]:
+            bad = copy.deepcopy(spec); bad['arms'][arm][key] = value
+            with self.subTest(arm=arm, key=key), self.assertRaises(ValueError):
+                routing_run.comparison_policy(bad, 'public-auto')
+        equivalent = copy.deepcopy(spec)
+        equivalent.update(kind=deployment.EQUIVALENCE, purpose='activation_equivalence', panels={'A': []})
+        for arm in ['public-auto', 'incumbent']:
+            self.assertIsNone(routing_run.comparison_policy(equivalent, arm))
+        with patch.object(routing_run.cmgschur, 'scientific_comparison'), self.assertRaises(ValueError):
+            routing_run.compatibility(self.raw(), self.raw('prefix', pilot=2), None, None, self.META, 'auto',
+                selected_policy=routing_run.comparison_policy(equivalent, 'public-auto'))
 
 
 class CrossRequestComparatorScope(unittest.TestCase):
@@ -554,6 +742,14 @@ class RoutingProducer(unittest.TestCase):
             for row in range(2):
                 raw['matrices']['RSOLVER']['bits'][row * 16 + 12] = bits(1. if fields['solver'] == 'lsmr' else 0.)
                 raw['matrices']['RSOLVER']['bits'][row * 16 + 13] = bits(3. if fields['solver'] == 'lsmr' else 0.)
+            if self.spec.get('experiment_kind') == 'portfolio':
+                candidate = arm == 'routing_portfolio_v1'
+                raw = PortfolioAutoScope.raw('prefix' if candidate else 'lsmr', pilot=2 if candidate else 0)
+                if fields['solver'] == 'lsmr':
+                    for row in range(2):
+                        raw['matrices']['RSOLVER']['bits'][16 * row] = bits(3.)
+                if failure == 'portfolio-repeat' and candidate and not traced:
+                    raw['matrices']['RSOLVER']['bits'][14] = bits(1.)
             if failure == 'repeat' and arm == 'routing_h4_k0' and not traced:
                 raw['matrices']['RB']['bits'][0] = '3ff0000000000001'
             if failure == 'dof' and arm == 'routing_h4_k0':
@@ -579,6 +775,10 @@ class RoutingProducer(unittest.TestCase):
                 raw['error'] = f'fereg: {label}: {message}\n'
             if failure == 'cohort-change':
                 raw['matrices']['RB']['bits'][0] = '3ff0000000000001'
+            if self.spec.get('purpose') == 'activation_equivalence':
+                for row in range(2):
+                    for column in [8, 9]:
+                        raw['matrices']['RSOLVER']['bits'][16 * row + column] = bits(float(len(calls)))
             target = Path(command[-1])
             target.write_text(json.dumps({**raw, 'columns': []}))
             self.data.tofile(target.with_suffix('.json.columns'))
@@ -642,6 +842,7 @@ class RoutingProducer(unittest.TestCase):
         self.assertEqual(set(output['summary'][0]['arms']), set(self.spec['arms']))
         self.assertEqual(output['summary'][0]['arms']['h4-k0']['over_baseline']['median_ratio'], 1.)
         self.assertEqual(len(output['prerequisites']), 6)
+        self.assertTrue(all('solver_rows' not in row for row in output['prerequisites']))
         self.assertEqual(len(output['records']), 24)
         self.assertEqual(sum(traced for _, traced in calls), 6)
         self.assertEqual(sum(not traced for _, traced in calls), 24)
@@ -1081,6 +1282,83 @@ class RoutingProducer(unittest.TestCase):
         self.assertEqual(routing.evaluate(self.spec, 'A', timed)['shortlist'],
                          ['baseline', 'prefix-none', 'prefix-map4', 'prefix-it4'])
 
+    def test_portfolio_producer_uses_distinct_strict_arm_without_the_prefix_grid(self):
+        self.configure_experiment(portfolio_manifest())
+        out, calls = self.run_panel(prerequisites_only=True)
+        self.assertEqual(out['status'], 'complete')
+        self.assertEqual(out['experiment_kind'], 'portfolio')
+        self.assertEqual({a for a, _ in calls}, {'auto', 'lsmr', 'routing_portfolio_v1'})
+        link = out['qualified_wrappers'][self.cell['id']]
+        self.witness = self.root / 'output' / link['path']
+        timed, _ = self.run_panel(existing_proof=True, output_name='timed')
+        self.assertEqual(routing.evaluate(self.spec, 'A', timed)['shortlist'],
+                         ['baseline', routing.PORTFOLIO_V1])
+
+    def test_actual_portfolio_producer_rows_feed_parallel_discrete_science(self):
+        import routing_parallel as parallel
+        self.configure_experiment(portfolio_manifest())
+        output, _ = self.run_panel(prerequisites_only=True)
+        self.assertEqual(output['status'], 'complete')
+        # run_panel writes raw native JSON and uses the real cmgschur.read_run;
+        # neither the records nor the diagnostic fields are fabricated here.
+        outcomes = routing_run.prerequisite_outcomes(self.spec, list(self.spec['arms']),
+            output['prerequisites'], output['records'])
+        keyed = {(self.cell['id'], arm): outcome for arm, outcome in outcomes.items()}
+        self.assertTrue(routing.sha(parallel._discrete_science(output, keyed)))
+        for first in output['prerequisites']:
+            repeat = next(r for r in output['records'] if r['arm'] == first['arm'])
+            self.assertEqual(first['solver_rows'], repeat['solver_rows'])
+            self.assertEqual(len(first['solver_rows']), 2)
+            self.assertTrue(all(len(row) == 16 for row in first['solver_rows']))
+            for row in first['solver_rows']:
+                self.assertEqual(row[0], 3. if first['arm'] == 'lsmr' else 1.)
+                self.assertEqual(row[1], 2. if first['arm'] == routing.PORTFOLIO_V1 else 3.)
+        missing = copy.deepcopy(output)
+        del missing['prerequisites'][0]['solver_rows']
+        with self.assertRaisesRegex(ValueError, 'missing local solver diagnostics'):
+            parallel._discrete_science(missing, keyed)
+        changed = copy.deepcopy(output)
+        changed['records'][0]['solver_rows'][0][14] += 1
+        with self.assertRaisesRegex(ValueError, 'local discrete decisions changed'):
+            parallel._discrete_science(changed, keyed)
+        link = output['qualified_wrappers'][self.cell['id']]
+        self.witness = self.root / 'output' / link['path']
+        timed, _ = self.run_panel(existing_proof=True, output_name='portfolio-timed')
+        self.assertEqual(timed['status'], 'complete')
+        self.assertTrue(routing.sha(parallel._discrete_science(timed, keyed)))
+
+    def test_portfolio_same_request_repeat_diagnostics_remain_exact(self):
+        self.configure_experiment(portfolio_manifest())
+        out, _ = self.run_panel(prerequisites_only=True, failure='portfolio-repeat')
+        failed = [row for row in out['records'] if row['arm'] == routing.PORTFOLIO_V1]
+        self.assertEqual(len(failed), 1)
+        self.assertIn('differs from traced prerequisite', failed[0]['error'])
+        self.assertNotEqual(failed[0]['status'], 'passed')
+        # The wrapper preserves the failed candidate alongside a valid baseline;
+        # it must never advertise this candidate as scientifically available.
+        wrapper = json.loads((self.root / 'output' / out['qualified_wrappers'][self.cell['id']]['path']).read_text())
+        self.assertEqual(wrapper['arm_outcomes'][routing.PORTFOLIO_V1]['status'], 'blocked')
+
+    def test_equivalence_producer_signature_excludes_only_solver_timing(self):
+        self.spec['purpose'] = 'activation_equivalence'
+        current = json.loads(self.witness.read_text())
+        current['manifest_sha256'] = routing.identity(self.spec)
+        self.witness.write_text(json.dumps(current))
+        out, _ = self.run_panel(prerequisites_only=True)
+        self.assertEqual(out['status'], 'complete')
+        for first in out['prerequisites']:
+            repeat = next(row for row in out['records'] if row['arm'] == first['arm'])
+            self.assertEqual(first['solver_signature_sha256'], repeat['solver_signature_sha256'])
+            raw = result('lsmr' if first['arm'] == 'lsmr' else 'auto')
+            for row in range(2):
+                raw['matrices']['RSOLVER']['bits'][16 * row + 12] = bits(1. if first['arm'] == 'lsmr' else 0.)
+                raw['matrices']['RSOLVER']['bits'][16 * row + 13] = bits(3. if first['arm'] == 'lsmr' else 0.)
+            self.assertEqual(first['solver_signature_sha256'],
+                routing.identity(routing_run.exact_view(raw, False)['matrices']['RSOLVER']))
+            raw['matrices']['RSOLVER']['bits'][14] = bits(123.)
+            self.assertNotEqual(first['solver_signature_sha256'],
+                routing.identity(routing_run.exact_view(raw, False)['matrices']['RSOLVER']))
+
     def test_binary_overlap_producer_uses_the_frozen_serial_checkpoint(self):
         self.configure_experiment(overlap_manifest(), terms=2)
         out, calls = self.run_panel(prerequisites_only=True)
@@ -1142,6 +1420,23 @@ class RoutingProducer(unittest.TestCase):
         wrong = TRACE + 'FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=32|samples=2\n'
         with self.assertRaisesRegex(ValueError, 'does not match'):
             routing_run.resource_diagnostics(wrong, 'h4-k0', False, self.evidence)
+
+    def test_portfolio_resources_validate_nested_two_fe_policy_and_all_caps(self):
+        action = TRACE.replace('routing_h4_k0', 'routing_portfolio_v1')
+        route = 'FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=16|samples=1\n'
+        for log in [action, action + route]:
+            checked = routing_run.resource_diagnostics(log, routing.PORTFOLIO_V1, False, self.evidence)
+            self.assertEqual(checked['resource_checks'], {'iteration_caps': 'passed',
+                'memory_caps': 'passed', 'setup_caps': 'passed'})
+            self.assertEqual(checked['action_resources'][0]['preset'], 'routing_portfolio_v1')
+        for invalid in ['', route, action + route.replace('checkpoint=16', 'checkpoint=8'),
+                        action + route.replace('samples=1', 'samples=0'),
+                        action.replace('setup_work=12', 'setup_work=33'),
+                        action.replace('iterations=5', 'iterations=101'),
+                        action.replace('memory_bytes=64', 'memory_bytes=129'),
+                        action.replace('certified=1', 'certified=0'), TRACE]:
+            with self.subTest(log=invalid), self.assertRaises(ValueError):
+                routing_run.resource_diagnostics(invalid, routing.PORTFOLIO_V1, False, self.evidence)
 
     def test_evidence_worker_and_policy_scope_cannot_be_reused(self):
         for field, value in [('threads', 4), ('cell_id', 'B-cell'), ('manifest_sha256', h('other')),

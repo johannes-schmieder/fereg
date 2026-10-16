@@ -131,6 +131,32 @@ class PublicBlocks(unittest.TestCase):
         return {'context': self.context_ref, 'qualification': self.write(records),
                 'harness': self.binary('harness', 'harness'), 'monitor': None, 'cells': cells}
 
+    def test_portfolio_declaration_keeps_separate_24_block_c_and_binds_parallel_source(self):
+        spec, _, _, _, inputs = self.b.portfolio_inputs()
+        context = blocks.declare(inputs, self.b.design)
+        bound = self.write(routing.seal(context))
+        before = copy.deepcopy(spec['panels']['C'])
+        with patch.object(runner, 'inspect_case') as inspect:
+            declaration = deployment.declare(bound,
+                {**self.b.design, 'attempts': 24, 'session_id': 'portfolio-C'})
+            inspect.assert_not_called()
+        self.assertEqual(declaration['design']['attempts'], 24)
+        self.assertEqual(declaration['contract'], deployment.CONTRACT)
+        self.assertIn('routing_parallel.py', {Path(ref['path']).name for ref in declaration['sources']})
+        self.assertEqual(spec['panels']['C'], before)
+        self.assertEqual({c['stage'] for c in declaration['non_c_cells']}, {'A', 'B'})
+        with self.assertRaises(ValueError):
+            deployment.declare(bound, {**self.b.design, 'attempts': 12})
+        # A valid new B context does not authorize C or reuse an old activation.
+        with self.assertRaises(ValueError):
+            blocks.prerequisite_context(spec, 'C', None, bound)
+        crossed = {**self.partial_inputs, 'declaration': self.write(routing.seal(declaration))}
+        with patch.object(runner, 'inspect_case') as inspect, self.assertRaises(ValueError):
+            deployment.derive(crossed)
+        inspect.assert_not_called()
+        with self.assertRaises(ValueError):
+            deployment.equivalence_context(crossed, 'C')
+
     def test_genuine_C_view_complete_activation_and_source_closure(self):
         self.assertEqual(blocks.load_context(self.context_ref), (self.context, self.view))
         self.assertEqual(self.context['cells'], self.b.spec['panels']['C'])
@@ -234,6 +260,9 @@ class PublicBlocks(unittest.TestCase):
             traced = 'FEREG_SOLVER_TRACE=1' in command
             calls.append((public, traced))
             raw = test_routing_run.result('auto')
+            for row in range(2):
+                for column in [8, 9]:
+                    raw['matrices']['RSOLVER']['bits'][16 * row + column] = test_routing_run.bits(float(len(calls)))
             target = Path(command[-1])
             target.write_text(json.dumps({**raw, 'columns': []}))
             fixture.data.tofile(target.with_suffix('.json.columns'))
@@ -254,7 +283,7 @@ class PublicBlocks(unittest.TestCase):
         self.assertEqual(sorted(calls), [(False, False), (False, True), (True, False), (True, True)])
         rows = [*records['prerequisites'], *records['records']]
         self.assertEqual({row['solver_signature_sha256'] for row in rows},
-                         {routing.identity(test_routing_run.result('auto')['matrices']['RSOLVER'])})
+                         {routing.identity(runner.exact_view(test_routing_run.result('auto'), False)['matrices']['RSOLVER'])})
         self.assertTrue(all(row['resource_checks']['setup_caps'] == 'passed' for row in rows))
 
     def test_only_fresh_optional_unavailability_can_remove_a_C_pair(self):

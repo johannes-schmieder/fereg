@@ -56,8 +56,11 @@ def read_bound(ref, *, json=False):
 def origin(envelope):
     value = routing.unseal(envelope)
     routing.validate_manifest(value)
-    require(value.get('experiment_kind', 'routing') == 'routing'
-            and value.get('purpose') != 'ablation_only', 'deployment requires the original serial tournament')
+    require(value.get('experiment_kind', 'routing') in {'routing', 'portfolio'}
+            and value.get('purpose') != 'ablation_only', 'deployment requires serial routing or the exact portfolio')
+    if value.get('experiment_kind') == 'portfolio':
+        require(value['candidates'] == ['baseline', routing.PORTFOLIO_V1],
+                'portfolio deployment requires its exact closed candidate order')
     require(PUBLIC not in value['arms'] and not any('incumbent' in cell['comparators']
             for cell in value['panels']['C']), 'reserved deployment arm collides with an original comparator')
     # Replacing a duplicate baseline loses no protected behavior. A distinct

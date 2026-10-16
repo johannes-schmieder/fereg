@@ -13,7 +13,7 @@ pub struct RoutingPreset {
     samples: u32,
     ablation: Option<RoutingAblation>,
     overlap: bool,
-    prefix: Option<CategoricalPrefix>,
+    prefix: Option<PrefixPlan>,
     break_builder: bool,
 }
 
@@ -23,6 +23,12 @@ pub enum CategoricalPrefix {
     None,
     Map4,
     CompactIt4,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PrefixPlan {
+    Isolated(CategoricalPrefix),
+    PortfolioV1,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,9 +45,10 @@ impl std::fmt::Display for RoutingPreset {
         }
         if let Some(prefix) = self.prefix {
             return f.write_str(match prefix {
-                CategoricalPrefix::None => "routing_prefix_none",
-                CategoricalPrefix::Map4 => "routing_prefix_map4",
-                CategoricalPrefix::CompactIt4 => "routing_prefix_it4",
+                PrefixPlan::Isolated(CategoricalPrefix::None) => "routing_prefix_none",
+                PrefixPlan::Isolated(CategoricalPrefix::Map4) => "routing_prefix_map4",
+                PrefixPlan::Isolated(CategoricalPrefix::CompactIt4) => "routing_prefix_it4",
+                PrefixPlan::PortfolioV1 => "routing_portfolio_v1",
             });
         }
         if self.overlap {
@@ -108,9 +115,24 @@ impl RoutingPreset {
             samples: 0,
             ablation: None,
             overlap: false,
-            prefix: Some(prefix),
+            prefix: Some(PrefixPlan::Isolated(prefix)),
             break_builder: false,
         }
+    }
+
+    /// Two-FE direct-or-h16/k1 portfolio, or strict MAP4 followed by seeded
+    /// incumbent LSMR for more categorical effects. No general pair setup.
+    pub fn portfolio_v1() -> Self {
+        Self {
+            checkpoint: 16,
+            samples: 1,
+            prefix: Some(PrefixPlan::PortfolioV1),
+            ..Self::prefix(CategoricalPrefix::Map4)
+        }
+    }
+
+    pub(crate) fn strict_categorical_prefix(self) -> bool {
+        self.prefix == Some(PrefixPlan::PortfolioV1)
     }
 
     #[doc(hidden)]
@@ -126,7 +148,10 @@ impl RoutingPreset {
     }
 
     pub(crate) fn categorical_prefix(self) -> Option<CategoricalPrefix> {
-        self.prefix
+        self.prefix.map(|prefix| match prefix {
+            PrefixPlan::Isolated(prefix) => prefix,
+            PrefixPlan::PortfolioV1 => CategoricalPrefix::Map4,
+        })
     }
 
     #[doc(hidden)]
@@ -140,6 +165,16 @@ impl RoutingPreset {
 
     pub(crate) fn checkpoint(self) -> usize {
         self.checkpoint
+    }
+
+    /// Prefix arms cannot nominate or build a general within pair replacement.
+    /// Their two-FE policy may independently have a finite checkpoint.
+    pub(crate) fn general_pair_checkpoint(self) -> usize {
+        if self.prefix.is_some() {
+            usize::MAX
+        } else {
+            self.checkpoint
+        }
     }
     pub(crate) fn samples(self) -> u32 {
         self.samples
@@ -187,16 +222,36 @@ pub(super) fn schur_iteration_work(
 /// itself binds canonical sample, topology and weights; the accuracy key starts
 /// a new setup allowance for final residual projection, retaining a built M.
 pub(super) struct SetupLedger {
-    accuracy: Option<(u64, bool)>,
+    // The choice occupies padding in the existing accuracy key, preserving
+    // the retained route owner's layout and memory admission.
+    accuracy: Option<(u64, bool, PortfolioChoice)>,
     pub attempted: bool,
     pub limit: u64,
     pub used: u64,
     pub restart_reserve: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum PortfolioChoice {
+    Undecided,
+    Direct,
+    IncumbentCmg,
+}
+
 impl SetupLedger {
     pub fn matches_accuracy(&self, tolerance: f64, final_residual: bool) -> bool {
-        self.accuracy == Some((tolerance.to_bits(), final_residual))
+        self.accuracy.is_some_and(|(bits, final_phase, _)| {
+            bits == tolerance.to_bits() && final_phase == final_residual
+        })
+    }
+
+    pub fn portfolio_choice(&self) -> PortfolioChoice {
+        self.accuracy
+            .map_or(PortfolioChoice::Undecided, |(_, _, choice)| choice)
+    }
+
+    pub fn select_portfolio(&mut self, choice: PortfolioChoice) {
+        self.accuracy.as_mut().expect("routing accuracy bound").2 = choice;
     }
 
     pub fn new() -> Self {
@@ -210,11 +265,14 @@ impl SetupLedger {
     }
 
     pub fn begin(&mut self, tolerance: f64, final_residual: bool, iteration_work: Option<u64>) {
-        let key = (tolerance.to_bits(), final_residual);
-        if self.accuracy == Some(key) {
+        if self.matches_accuracy(tolerance, final_residual) {
             return;
         }
-        self.accuracy = Some(key);
+        self.accuracy = Some((
+            tolerance.to_bits(),
+            final_residual,
+            PortfolioChoice::Undecided,
+        ));
         self.used = 0;
         self.attempted = false;
         // Reserve four incumbent iterations for reconstruction and recurrence
@@ -277,5 +335,49 @@ mod tests {
         assert!(ledger.charge(1).is_err());
         assert!(RoutingPreset::new(7, 0).is_err());
         assert!(RoutingPreset::new(8, 3).is_err());
+    }
+
+    #[test]
+    fn portfolio_v1_separates_two_fe_escalation_from_general_prefix() {
+        let preset = RoutingPreset::portfolio_v1();
+        assert_eq!(preset.to_string(), "routing_portfolio_v1");
+        assert!(preset.strict_categorical_prefix());
+        assert_eq!(preset.categorical_prefix(), Some(CategoricalPrefix::Map4));
+        assert_eq!(preset.checkpoint(), 16);
+        assert_eq!(preset.samples(), 1);
+        assert_eq!(preset.general_pair_checkpoint(), usize::MAX);
+        assert!(!preset.overlaps());
+        assert_eq!(preset.kernel(), None);
+        let legacy = RoutingPreset::prefix(CategoricalPrefix::Map4);
+        assert!(!legacy.strict_categorical_prefix());
+        assert_ne!(preset, legacy);
+        assert_eq!(legacy.to_string(), "routing_prefix_map4");
+        assert_eq!(legacy.checkpoint(), usize::MAX);
+        assert_eq!(legacy.general_pair_checkpoint(), usize::MAX);
+        let old_pair = RoutingPreset::new(16, 1).unwrap();
+        assert!(!old_pair.strict_categorical_prefix());
+        assert_eq!(old_pair.general_pair_checkpoint(), 16);
+    }
+
+    #[test]
+    fn portfolio_v1_preserves_the_original_preset_resource_layout() {
+        use std::mem::{align_of, size_of};
+        // The original preset has usize/u32 values and four one-byte controls.
+        // Keep the owner admission unchanged on each supported pointer width.
+        let alignment = align_of::<usize>().max(align_of::<u32>());
+        let original_payload = size_of::<usize>() + size_of::<u32>() + 4;
+        let original_size = original_payload.div_ceil(alignment) * alignment;
+        assert_eq!(size_of::<Option<PrefixPlan>>(), 1);
+        assert_eq!(align_of::<RoutingPreset>(), alignment);
+        assert_eq!(size_of::<RoutingPreset>(), original_size);
+        for prefix in [
+            CategoricalPrefix::None,
+            CategoricalPrefix::Map4,
+            CategoricalPrefix::CompactIt4,
+        ] {
+            let isolated = RoutingPreset::prefix(prefix);
+            assert_eq!(isolated.categorical_prefix(), Some(prefix));
+            assert!(!isolated.strict_categorical_prefix());
+        }
     }
 }

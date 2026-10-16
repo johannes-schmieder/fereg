@@ -10,7 +10,7 @@ import routing
 import routing_blocks as blocks
 import routing_discovery as discovery
 import routing_run as runner
-from test_routing import h, manifest
+from test_routing import h, manifest, portfolio_manifest
 
 
 class BlockContext(unittest.TestCase):
@@ -119,6 +119,143 @@ class BlockContext(unittest.TestCase):
             else: review['result_sha256'] = h('another shortlist')
             with self.subTest(change=change), self.assertRaises(ValueError):
                 blocks.declare({**self.inputs, 'discovery_review': self.write(review)}, self.design)
+
+    def portfolio_inputs(self):
+        import routing_parallel as parallel
+        spec = portfolio_manifest()
+        for stage in ['A', 'B']:
+            cell = spec['panels'][stage][0]
+            spec['panels'][stage] = [{**cell, 'id': f'{stage}-portfolio-{i}',
+                'case_sha256': h(f'{stage}-portfolio-case-{i}'),
+                'body_sha256': h(f'{stage}-portfolio-body-{i}')} for i in range(42)]
+        spec['candidate_source_identity'] = {'production_tokens_sha256': h('production'),
+            'plugin_sha256': h('candidate'), 'artifact_inputs_sha256': h('inputs')}
+        parent = {'kind': discovery.PORTFOLIO_KIND + '_plan', 'schema': 1,
+            'design': discovery.DESIGN, 'tournament': routing.seal(spec),
+            'library_limits': discovery.LIBRARY_LIMITS, 'producer_tools': {'producer.py': h('producer')},
+            'frozen_files': {}, 'output_root': str(self.root / 'discovery')}
+        parent_ref, collector = self.write(routing.seal(parent)), self.write({'collector': 'frozen'})
+        plan = {'kind': parallel.KIND + '_plan', 'schema': 2, 'design': parallel.PORTFOLIO_DESIGN,
+            'parent': routing.seal(parent), 'parent_sha256': routing.identity(parent), 'parent_plan': parent_ref,
+            'output_root': str(self.root / 'portfolio-rounds'), 'producer_tools': parent['producer_tools'],
+            'receipt_generator': collector,
+            'frozen_files': {ref['path']: ref['sha256'] for ref in [parent_ref, collector]}}
+        reports = []
+        for n in [1, 2, 3]:
+            root = Path(plan['output_root']) / f'round-{n}' / 'attempt-1'
+            refs = {key: {'path': str(root / relative), 'sha256': h(f'{n}-{key}')}
+                    for key, relative in [('collection', 'collection/collection.json'),
+                        ('isolation', 'isolation/receipt.json'), ('prerequisites', 'prerequisites/prerequisites.json')]}
+            reports.append({'kind': parallel.KIND + '_attempt', 'parallel_plan_sha256': routing.identity(plan),
+                'logical_round': n, 'attempt': 1, 'status': 'complete', **refs,
+                'science_discrete_sha256': h('stable-discrete'), 'accounted_wallclock_s': 100.})
+        collection = {'kind': parallel.KIND + '_collection', 'schema': 2,
+                      'plan_sha256': routing.identity(plan), 'attempts': reports}
+        receipts = [report['isolation'] for report in reports]
+        ranking = [{'arm': a, 'baseline_violations': 0, 'worst_internal_normalized': .5}
+                   for a in [routing.PORTFOLIO_V1, 'baseline']]
+        summary = {'kind': discovery.PORTFOLIO_KIND + '_shortlist', 'schema': 2,
+            'experiment_kind': 'portfolio', 'protocol_source': parallel.KIND,
+            'status': 'discovery_only', 'promotion': False, 'plan_sha256': routing.identity(plan),
+            'collection': collection, 'isolation': receipts, 'collection_sha256': routing.identity(collection),
+            'isolation_sha256': routing.identity(receipts), 'ranking': ranking,
+            **parallel.portfolio_screen(ranking)}
+        raw = self.write({'raw': 'complete local science, scheduler and timing observations'})
+        shared = {'status': 'passed', 'plan_sha256': routing.identity(plan),
+                  'result_sha256': routing.identity(summary), 'collection_sha256': summary['collection_sha256'],
+                  'isolation_sha256': summary['isolation_sha256']}
+        review = {'kind': blocks.KIND + '_discovery_review', **shared,
+            'production_tokens_sha256': h('production'), 'raw_evidence': [raw],
+            'remote_validation': self.write({**shared, 'recomputed_result': summary}),
+            'independent_raw_review': self.write({**shared, 'evidence': [raw],
+                'prerequisites': [report['prerequisites'] for report in reports]})}
+        inputs = {**self.inputs, 'manifest': self.write(routing.seal(spec)),
+            'discovery_plan': self.write(routing.seal(plan)), 'discovery_result': self.write(routing.seal(summary)),
+            'discovery_review': self.write(review)}
+        return spec, plan, summary, review, inputs
+
+    def test_portfolio_closed_handoff_requires_fresh_mac_science_and_no_body_access(self):
+        spec, _, summary, _, inputs = self.portfolio_inputs()
+        with patch.object(runner, 'inspect_case') as inspect:
+            context = blocks.declare(inputs, self.design)
+            inspect.assert_not_called()
+        self.assertEqual(context['candidates'], summary['shortlist'])
+        bound = self.write(routing.seal(context))
+        with patch.object(blocks.platform, 'system', return_value='Linux'), self.assertRaises(ValueError):
+            blocks.prerequisite_context(spec, 'B', None, bound)
+        with patch.object(blocks.platform, 'system', return_value='Darwin'):
+            self.assertEqual(blocks.prerequisite_context(spec, 'B', None, bound)['candidates'], summary['shortlist'])
+        with self.assertRaises(ValueError):
+            blocks.prerequisite_context(spec, 'C', None, bound)
+        names = {Path(ref['path']).name for ref in blocks.context_bindings(bound, context)}
+        self.assertIn('routing_parallel.py', names)
+        old = self.spec, self.context, self.context_ref
+        self.spec, self.context, self.context_ref = spec, context, bound
+        try:
+            records = self.qualified()
+            blocks.qualification(bound, self.write(records))
+            records['platform'] = 'Linux-node'
+            with self.assertRaises(ValueError): blocks.qualification(bound, self.write(records))
+            import routing_science_completion as completion
+            with self.assertRaisesRegex(ValueError, 'fresh Mac science'):
+                blocks.qualification(bound, self.write(routing.seal({'kind': completion.KIND})))
+        finally:
+            self.spec, self.context, self.context_ref = old
+
+    def test_portfolio_rejects_old_campaign_cross_kind_and_local_proof_forgery(self):
+        spec, plan, summary, _, inputs = self.portfolio_inputs()
+        for key in ['discovery_plan', 'discovery_result', 'discovery_review']:
+            with self.subTest(old=key), self.assertRaises((ValueError, KeyError)):
+                blocks.declare({**inputs, key: self.inputs[key]}, self.design)
+        with self.assertRaises(ValueError):
+            blocks.declare({**inputs, 'manifest': self.inputs['manifest']}, self.design)
+        for kind in ['wrong-kind', 'old-schema', 'old-protocol', 'missing-round', 'borrowed-proof',
+                     'repeat-round', 'extra-attempt', 'discrete', 'budget', 'wrong-receipt']:
+            bad = copy.deepcopy(summary)
+            reports = bad['collection']['attempts']
+            if kind == 'wrong-kind': bad['kind'] = discovery.KIND + '_shortlist'
+            elif kind == 'old-schema': bad['schema'] = 1
+            elif kind == 'old-protocol': bad['protocol_source'] = discovery.KIND
+            elif kind == 'missing-round': reports.pop()
+            elif kind == 'borrowed-proof': reports[1]['prerequisites'] = reports[0]['prerequisites']
+            elif kind == 'repeat-round': reports[1]['logical_round'] = 1
+            elif kind == 'extra-attempt': reports[0]['attempt'] = 2
+            elif kind == 'discrete': reports[0]['science_discrete_sha256'] = h('changed')
+            elif kind == 'budget': reports[0]['accounted_wallclock_s'] = 14401
+            else: bad['isolation'][0] = bad['isolation'][1]
+            bad['collection_sha256'] = routing.identity(bad['collection'])
+            bad['isolation_sha256'] = routing.identity(bad['isolation'])
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                blocks.portfolio_discovery_valid(plan, bad)
+        for field in ['proof', 'legacy_window']:
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                blocks.portfolio_discovery_valid({**plan, field: {}}, summary)
+
+    def test_portfolio_requires_recomputed_remote_result_and_independent_raw_review(self):
+        _, _, summary, review, inputs = self.portfolio_inputs()
+        for kind in ['missing-review', 'missing-evidence', 'wrong-proof', 'status-only-remote', 'changed-result']:
+            bad = copy.deepcopy(review)
+            if kind == 'missing-review': bad.pop('independent_raw_review')
+            elif kind in ['missing-evidence', 'wrong-proof']:
+                independent = blocks.read(bad['independent_raw_review'])
+                independent['evidence' if kind == 'missing-evidence' else 'prerequisites'] = []
+                bad['independent_raw_review'] = self.write(independent)
+            else:
+                remote = blocks.read(bad['remote_validation'])
+                if kind == 'status-only-remote': remote.pop('recomputed_result')
+                else: remote['recomputed_result']['ranking'][0]['arm'] = 'h16-k1'
+                bad['remote_validation'] = self.write(remote)
+            with self.subTest(kind=kind), self.assertRaises((ValueError, KeyError)):
+                blocks.declare({**inputs, 'discovery_review': self.write(bad)}, self.design)
+
+    def test_portfolio_heuristic_rejection_cannot_open_mac_b(self):
+        import routing_parallel as parallel
+        _, plan, summary, _, inputs = self.portfolio_inputs()
+        summary['ranking'][0]['baseline_violations'] = 1
+        summary.update(parallel.portfolio_screen(summary['ranking']))
+        blocks.portfolio_discovery_valid(plan, summary)
+        with self.assertRaisesRegex(ValueError, 'no Mac B'):
+            blocks.declare({**inputs, 'discovery_result': self.write(routing.seal(summary))}, self.design)
 
     def test_parallel_handoff_validates_embedded_parent_before_body_access(self):
         import routing_parallel as parallel

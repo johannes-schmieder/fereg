@@ -12,6 +12,7 @@ use rayon::prelude::*;
 use within::{Effect, LsmrOptions, PreconditionerConfig};
 
 use super::map::ReusableMapCapacities;
+use super::routing::PortfolioChoice;
 
 mod categorical_prefix;
 mod irons_tuck;
@@ -1111,6 +1112,73 @@ struct AutoSchurRoute {
 }
 
 impl AutoSchurRoute {
+    /// Select the portfolio family once, using only validated dimensions and
+    /// the already-admitted parent budget. A selected direct refusal is final.
+    fn direct_limits(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: BorrowedMapWeights<'_>,
+        rhs: usize,
+        graph: &TwoFePcgWorkspace,
+    ) -> Result<Option<super::routing_direct::DirectLimits>> {
+        let portfolio = self.preset == super::RoutingPreset::portfolio_v1();
+        let preflight_work = if portfolio {
+            self.setup.select_portfolio(PortfolioChoice::IncumbentCmg);
+            if graph.cmg_schur.is_some() {
+                return Ok(None);
+            }
+            let work = super::routing_direct::PORTFOLIO_PREFLIGHT_WORK;
+            if self.setup.limit.saturating_sub(self.setup.used) < work {
+                self.setup.attempted = true;
+                return Ok(None);
+            }
+            crate::interrupt::checkpoint()?;
+            self.setup.charge(work)?;
+            work
+        } else {
+            self.setup.attempted = true;
+            0
+        };
+        // Wref is the packed current action, not padded Low bank capacity.
+        let reference_iteration_work = super::routing::schur_iteration_work(
+            design.nobs(),
+            graph.left_weights.len(),
+            graph.right_weights.len(),
+            rhs,
+            rhs,
+        );
+        let certificate_work = super::routing_direct::original_certificate_work(
+            design.nobs(),
+            design.total_term_slots(),
+            2,
+            rhs,
+        );
+        let (Some(reference_iteration_work), Some(certificate_work)) =
+            (reference_iteration_work, certificate_work)
+        else {
+            self.setup.attempted = true;
+            return Ok(None);
+        };
+        let limits = super::routing_direct::DirectLimits {
+            reference_iteration_work,
+            preflight_work,
+            remaining_setup_work: self.setup.limit.saturating_sub(self.setup.used),
+            component_census_work: 0,
+            certificate_work,
+            certificate_bytes: 0,
+            retained_live_bytes: 0,
+            memory: self.request.budget,
+        };
+        if portfolio {
+            if super::routing_direct::portfolio_preflight(design, weights, rhs, limits).is_none() {
+                return Ok(None);
+            }
+            self.setup.select_portfolio(PortfolioChoice::Direct);
+            self.setup.attempted = true;
+        }
+        Ok(Some(limits))
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn checkpoint(
         &mut self,
@@ -1164,6 +1232,7 @@ impl AutoSchurRoute {
                 stride,
                 self.request.budget,
                 self.setup.builder_allowance(),
+                !self.preset.overlaps(),
             )?;
             self.setup.charge(built.work_used)?;
             built
@@ -2138,6 +2207,106 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         self.absorb(weights, values, config, !final_residual)
     }
 
+    fn try_direct_route(
+        &mut self,
+        raw_weights: BorrowedMapWeights<'_>,
+        weights: ValidatedWeights<'_>,
+        values: &DenseMatrix,
+        config: MapConfig,
+        setup_seconds: &mut f64,
+        solve_started: &mut Instant,
+    ) -> Result<Option<CertifiedBorrowedMap>> {
+        let Some(route) = self.auto_route.as_mut().filter(|route| {
+            !route.setup.attempted
+                && (route.preset.kernel() == Some(super::routing::RoutingAblation::Direct)
+                    || (route.preset == super::RoutingPreset::portfolio_v1()
+                        && route.setup.portfolio_choice() == PortfolioChoice::Undecided))
+        }) else {
+            return Ok(None);
+        };
+        let started = Instant::now();
+        let rhs_count = values.ncols();
+        let graph = self.two_fe_pcg.as_ref().expect("direct two-FE geometry");
+        let limits = route.direct_limits(&self.design, raw_weights, rhs_count, graph)?;
+        if let Some(limits) = limits {
+            if TWO_FE_DIRECT_BREAK_AFTER_SELECTION.replace(false) {
+                crate::interrupt::request_cancellation();
+            }
+            let attempt = super::routing_direct::attempt_with_census(
+                &self.design,
+                raw_weights,
+                values,
+                limits,
+            )?;
+            route.setup.charge(attempt.work_used)?;
+            route.peak = route
+                .peak
+                .max(SolverWorkspacePeak::from_bytes(attempt.peak_bytes)?);
+            if crate::diagnostics::solver_trace_enabled() {
+                crate::diagnostics::emit_solver_trace(&format!(
+                    "FEREG_SOLVER_TRACE|phase=auto_direct_route|work={}|limit={}|decline={:?}|profiles={:?}|orientation={:?}",
+                    attempt.work_used,
+                    route.setup.limit,
+                    attempt.decline,
+                    attempt.profiles,
+                    attempt.candidate.as_ref().map(|c| c.eliminated_effect)
+                ));
+            }
+            if let Some(candidate) = attempt.candidate {
+                let (direct_work, direct_limit) = (route.setup.used, route.setup.limit);
+                let certificate =
+                    self.with_pilot_group_scratch(rhs_count, |design, workspace| {
+                        certify(
+                            design,
+                            weights,
+                            &candidate.residualized,
+                            config.tolerance,
+                            workspace,
+                        )
+                    })?;
+                if certificate.passed && !TWO_FE_DIRECT_CERTIFICATE_FAILURE.replace(false) {
+                    if crate::diagnostics::solver_trace_enabled() {
+                        crate::diagnostics::emit_solver_trace(&format!(
+                            "FEREG_SOLVER_TRACE|phase=auto_direct_certified|rows={}|rhs={rhs_count}|iterations=0|work={}|limit={}",
+                            self.design.nobs(), direct_work, direct_limit
+                        ));
+                    }
+                    let elapsed = started.elapsed();
+                    *setup_seconds += elapsed.as_secs_f64();
+                    *solve_started += elapsed;
+                    let coefficients = if self.retain_coefficients {
+                        Some(FeCoefficientBatch::from_values(
+                            vec![1; 2],
+                            self.design.effects().iter().map(|e| e.n_levels()).collect(),
+                            rhs_count,
+                            candidate.coefficients,
+                        )?)
+                    } else {
+                        None
+                    };
+                    return attach_optional_coefficients(
+                        certified_result(
+                            candidate.residualized,
+                            SolveStopReason::Certified,
+                            0,
+                            certificate,
+                            *setup_seconds,
+                            solve_started.elapsed().as_secs_f64(),
+                        )?,
+                        coefficients,
+                    )
+                    .map(Some);
+                }
+                // The unchanged incumbent receives every direct refusal. The
+                // selected family has already consumed the optional attempt.
+            }
+        }
+        let elapsed = started.elapsed();
+        *setup_seconds += elapsed.as_secs_f64();
+        *solve_started += elapsed;
+        Ok(None)
+    }
+
     fn absorb(
         &mut self,
         weights: BorrowedMapWeights<'_>,
@@ -2239,114 +2408,15 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 ),
             )?;
         }
-        let direct = self.auto_route.as_ref().is_some_and(|route| {
-            route.preset.kernel() == Some(super::routing::RoutingAblation::Direct)
-                && !route.setup.attempted
-        });
-        if direct {
-            let started = Instant::now();
-            let graph = self.two_fe_pcg.as_ref().expect("direct two-FE geometry");
-            // Selection compares the packed current action, independently of
-            // inactive bank capacity and the session's physical setup quota.
-            let reference_iteration_work = super::routing::schur_iteration_work(
-                self.design.nobs(),
-                graph.left_weights.len(),
-                graph.right_weights.len(),
-                rhs_count,
-                rhs_count,
-            );
-            let route = self.auto_route.as_mut().expect("direct routing owner");
-            route.setup.attempted = true;
-            let certificate_work = super::routing_direct::original_certificate_work(
-                self.design.nobs(),
-                self.design.total_term_slots(),
-                2,
-                rhs_count,
-            );
-            if let (Some(certificate_work), Some(reference_iteration_work)) =
-                (certificate_work, reference_iteration_work)
-            {
-                let attempt = super::routing_direct::attempt_with_census(
-                    &self.design,
-                    raw_weights,
-                    &values,
-                    super::routing_direct::DirectLimits {
-                        reference_iteration_work,
-                        remaining_setup_work: route.setup.limit.saturating_sub(route.setup.used),
-                        component_census_work: 0,
-                        certificate_work,
-                        certificate_bytes: 0,
-                        retained_live_bytes: 0,
-                        memory: route.request.budget,
-                    },
-                )?;
-                route.setup.charge(attempt.work_used)?;
-                route.peak = route
-                    .peak
-                    .max(SolverWorkspacePeak::from_bytes(attempt.peak_bytes)?);
-                if crate::diagnostics::solver_trace_enabled() {
-                    crate::diagnostics::emit_solver_trace(&format!(
-                        "FEREG_SOLVER_TRACE|phase=auto_direct_route|work={}|limit={}|decline={:?}|profiles={:?}|orientation={:?}",
-                        attempt.work_used,
-                        route.setup.limit,
-                        attempt.decline,
-                        attempt.profiles,
-                        attempt.candidate.as_ref().map(|c| c.eliminated_effect)
-                    ));
-                }
-                if let Some(candidate) = attempt.candidate {
-                    let (direct_work, direct_limit) = (route.setup.used, route.setup.limit);
-                    let certificate =
-                        self.with_pilot_group_scratch(rhs_count, |design, workspace| {
-                            certify(
-                                design,
-                                weights,
-                                &candidate.residualized,
-                                config.tolerance,
-                                workspace,
-                            )
-                        })?;
-                    if certificate.passed {
-                        if crate::diagnostics::solver_trace_enabled() {
-                            crate::diagnostics::emit_solver_trace(&format!(
-                                "FEREG_SOLVER_TRACE|phase=auto_direct_certified|rows={}|rhs={rhs_count}|iterations=0|work={}|limit={}",
-                                self.design.nobs(),
-                                direct_work,
-                                direct_limit
-                            ));
-                        }
-                        let elapsed = started.elapsed();
-                        setup_seconds += elapsed.as_secs_f64();
-                        solve_started += elapsed;
-                        let coefficients = if self.retain_coefficients {
-                            Some(FeCoefficientBatch::from_values(
-                                vec![1; 2],
-                                self.design.effects().iter().map(|e| e.n_levels()).collect(),
-                                rhs_count,
-                                candidate.coefficients,
-                            )?)
-                        } else {
-                            None
-                        };
-                        return attach_optional_coefficients(
-                            certified_result(
-                                candidate.residualized,
-                                SolveStopReason::Certified,
-                                0,
-                                certificate,
-                                setup_seconds,
-                                solve_started.elapsed().as_secs_f64(),
-                            )?,
-                            coefficients,
-                        );
-                    }
-                    // A failed actual factor/certificate receives the untouched
-                    // incumbent with no second optional experiment this session.
-                }
-            }
-            let elapsed = started.elapsed();
-            setup_seconds += elapsed.as_secs_f64();
-            solve_started += elapsed;
+        if let Some(result) = self.try_direct_route(
+            raw_weights,
+            weights,
+            &values,
+            config,
+            &mut setup_seconds,
+            &mut solve_started,
+        )? {
+            return Ok(result);
         }
 
         if let (Some(route), Some(graph)) = (self.auto_route.as_mut(), self.two_fe_pcg.as_mut()) {
@@ -2828,6 +2898,8 @@ crate::fault::fault_plan! {
     static TWO_FE_CERTIFICATE_REJECTED_AT: usize = 0;
     static TWO_FE_ROUTING_LAUNCH_AT: usize = 0;
     static TWO_FE_ROUTING_BUILD_AT: usize = 0;
+    static TWO_FE_DIRECT_CERTIFICATE_FAILURE: bool = false;
+    static TWO_FE_DIRECT_BREAK_AFTER_SELECTION: bool = false;
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -4490,11 +4562,24 @@ fn project_general_categorical<'a>(
 ) -> Result<CertifiedBorrowedMap> {
     lsmr.tolerance = super::auto::direct_lsmr_tolerance(map.tolerance);
     lsmr.max_iterations = lsmr.max_iterations.min((map.max_iterations / 2).max(1));
+    // The portfolio arm keeps the incumbent's strict certificate at every
+    // successful exit, including an early prefix or original-input fallback.
+    // Legacy prefix arms retain their requested-tolerance contract.
+    let map = MapConfig {
+        tolerance: if general_routing
+            .as_ref()
+            .is_some_and(|state| state.strict_categorical_prefix())
+        {
+            lsmr.tolerance
+        } else {
+            map.tolerance
+        },
+        ..map
+    };
     let prefix_arm = general_routing
         .as_ref()
         .and_then(|state| state.categorical_prefix());
-    // Prefix completion and its correction share the requested certificate;
-    // the stricter private recurrence target does not change that contract.
+    // Prefix completion and correction share this arm's certificate contract.
     let certificate_tolerance = prefix_arm.map_or(lsmr.tolerance, |_| map.tolerance);
     let preconditioner = resolve_borrowed_lsmr_preconditioner(
         design.effects().len(),

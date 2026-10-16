@@ -134,6 +134,81 @@ def model_metadata_valid(manifest, linux, review):
                 'model metadata amendment evidence is missing or changed')
 
 
+def portfolio_discovery_valid(plan, summary):
+    """Check portable closed-campaign evidence; remote replay verifies its bytes."""
+    import routing_parallel as parallel
+    require(plan.get('schema') == 2 and plan.get('kind') == parallel.KIND + '_plan',
+            'portfolio requires its fresh schema-2 parallel discovery plan')
+    metadata = parallel.metadata(plan)
+    require(summary.get('kind') == discovery.PORTFOLIO_KIND + '_shortlist'
+            and type(summary.get('schema')) is int and summary['schema'] == 2
+            and summary.get('experiment_kind') == 'portfolio'
+            and summary.get('protocol_source') == parallel.KIND
+            and summary.get('status') == 'discovery_only' and summary.get('promotion') is False
+            and summary.get('plan_sha256') == routing.identity(plan), 'invalid closed portfolio discovery result')
+    collection, receipts = summary.get('collection'), summary.get('isolation')
+    require(isinstance(collection, dict)
+            and set(collection) == {'kind', 'schema', 'plan_sha256', 'attempts'}
+            and collection['kind'] == parallel.KIND + '_collection'
+            and type(collection['schema']) is int and collection['schema'] == 2
+            and collection['plan_sha256'] == routing.identity(plan)
+            and summary.get('collection_sha256') == routing.identity(collection)
+            and isinstance(receipts, list) and len(receipts) == 3
+            and summary.get('isolation_sha256') == routing.identity(receipts),
+            'portfolio collection/isolation binding changed')
+    reports = collection['attempts']
+    require(isinstance(reports, list) and len(reports) == 3, 'portfolio needs three complete local science rounds')
+    discrete, accounted = set(), 0.0
+    for n, report in enumerate(reports, 1):
+        require(isinstance(report, dict) and set(report) == {'kind', 'parallel_plan_sha256',
+                'logical_round', 'attempt', 'status', 'collection', 'isolation', 'prerequisites',
+                'science_discrete_sha256', 'accounted_wallclock_s'}
+                and report['kind'] == parallel.KIND + '_attempt' and report['status'] == 'complete'
+                and report['parallel_plan_sha256'] == routing.identity(plan)
+                and type(report['logical_round']) is int and report['logical_round'] == n
+                and type(report['attempt']) is int and report['attempt'] == 1
+                and routing.sha(report['science_discrete_sha256']), 'invalid portfolio local round')
+        elapsed = report['accounted_wallclock_s']
+        require(type(elapsed) in (int, float) and math.isfinite(elapsed)
+                and 0 < elapsed <= parallel.PORTFOLIO_DESIGN['inclusive_allocation_budget_s'],
+                'portfolio allocation exceeded its accounted budget')
+        accounted += elapsed
+        root = Path(plan['output_root']) / f'round-{n}' / 'attempt-1'
+        for key, relative in [('collection', 'collection/collection.json'),
+                              ('isolation', 'isolation/receipt.json'),
+                              ('prerequisites', 'prerequisites/prerequisites.json')]:
+            parallel.binding_shape(report[key])
+            require(Path(report[key]['path']) == root / relative, 'portfolio proof/receipt is not allocation-local')
+        require(report['isolation'] == receipts[n - 1], 'portfolio local isolation list changed')
+        discrete.add(report['science_discrete_sha256'])
+    require(len(discrete) == 1, 'portfolio cross-host discrete decisions changed')
+    require(accounted <= parallel.PORTFOLIO_DESIGN['maximum_allocation_budget_s'],
+            'portfolio campaign exceeded its accounted budget')
+    screen = parallel.portfolio_screen(summary.get('ranking', []))
+    require(all(key in summary and summary[key] == value for key, value in screen.items()),
+            'portfolio shortlist differs from its frozen heuristic screen')
+    return metadata
+
+
+def portfolio_review_valid(review, validation, plan, summary):
+    require(routing.identity(validation.get('recomputed_result')) == routing.identity(summary),
+            'portfolio remote validation must retain the exact independently recomputed result')
+    independent = read(review['independent_raw_review'])
+    expected = {'status': 'passed', 'plan_sha256': routing.identity(plan),
+                'result_sha256': routing.identity(summary),
+                'collection_sha256': summary['collection_sha256'],
+                'isolation_sha256': summary['isolation_sha256']}
+    require(all(independent.get(key) == value for key, value in expected.items()),
+            'portfolio requires an independent raw-evidence review of this complete result')
+    evidence = independent.get('evidence')
+    require(isinstance(evidence, list) and evidence
+            and all(bound in review['raw_evidence'] for bound in evidence),
+            'portfolio independent review must retain its raw evidence')
+    require(independent.get('prerequisites') ==
+            [report['prerequisites'] for report in summary['collection']['attempts']],
+            'portfolio independent review did not inspect all three local proofs')
+
+
 def declare(inputs, design):
     """Validate metadata and reviewed evidence before B input access is allowed."""
     require(set(inputs) == set(INPUTS), 'incomplete discovery-to-Mac handoff')
@@ -144,7 +219,11 @@ def declare(inputs, design):
     summary = read(inputs['discovery_result'], sealed=True)
     review = read(inputs['discovery_review'])
     pilot = read(inputs['pilot_review'])
-    if plan.get('kind') == discovery.KIND + '_plan':
+    portfolio = manifest.get('experiment_kind') == 'portfolio'
+    if portfolio:
+        metadata = portfolio_discovery_valid(plan, summary)
+        linux_parent, linux = metadata['parent'], metadata['spec']
+    elif plan.get('kind') == discovery.KIND + '_plan':
         require(plan.get('design') == discovery.DESIGN, 'wrong original SCC discovery design')
         linux_parent = plan
         linux = routing.unseal(plan['tournament'])
@@ -153,7 +232,9 @@ def declare(inputs, design):
         import routing_parallel
         metadata = routing_parallel.metadata(plan)
         linux_parent, linux = metadata['parent'], metadata['spec']
-    require(summary.get('kind') == discovery.KIND + '_shortlist'
+    require(manifest.get('experiment_kind', 'routing') == linux.get('experiment_kind', 'routing'),
+            'Mac handoff cannot cross experiment kinds')
+    require(summary.get('kind') == (discovery.PORTFOLIO_KIND if portfolio else discovery.KIND) + '_shortlist'
             and summary.get('status') == 'discovery_only' and summary.get('promotion') is False
             and summary.get('plan_sha256') == routing.identity(plan), 'invalid discovery-only shortlist')
     shortlist = summary.get('shortlist', [])
@@ -161,7 +242,13 @@ def declare(inputs, design):
     require(1 <= len(shortlist) <= 4 and len(set(shortlist)) == len(shortlist)
             and {row['arm'] for row in ranking} == set(linux['candidates'])
             and len(ranking) == len(linux['candidates'])
-            and shortlist == [row['arm'] for row in ranking[:4]], 'shortlist differs from complete discovery ranking')
+            and (portfolio or shortlist == [row['arm'] for row in ranking[:4]]), 'shortlist differs from complete discovery ranking')
+    if portfolio:
+        require(routing.PORTFOLIO_V1 in shortlist, 'portfolio discovery rejected the sole candidate; no Mac B')
+        require(manifest.get('sampled_qualification') == linux.get('sampled_qualification'),
+                'Mac portfolio changed its sample-1 scientific evidence binding')
+        require(review.get('model_metadata_amendment') is None,
+                'fresh portfolio metadata must be correct before discovery; no legacy amendment')
     require(manifest['candidates'] == linux['candidates']
             and manifest['protections'] == linux['protections']
             and manifest['failure_policy'] == linux['failure_policy'], 'Mac handoff changed tournament coverage or policy')
@@ -179,7 +266,9 @@ def declare(inputs, design):
         hashes = {platform_manifest['arms'][arm]['sha256'] for arm in candidate_arms}
         require(len(hashes) == 1 and all(routing.sha(value) for value in hashes),
                 'candidate arms require one platform artifact')
-        if parent is None or 'plugin_sha256' in source:
+        if portfolio:
+            require(routing.sha(source.get('artifact_inputs_sha256')), 'portfolio artifact inputs are unbound')
+        if portfolio or parent is None or 'plugin_sha256' in source:
             require(routing.sha(source.get('plugin_sha256')) and hashes == {source['plugin_sha256']},
                     'candidate production source is not bound to its platform artifact')
         else:
@@ -215,6 +304,8 @@ def declare(inputs, design):
     require(isinstance(raw, list) and raw, 'retain remote validation raw evidence bindings')
     for bound in raw:
         require(checked(bound).stat().st_size > 0, 'empty discovery evidence')
+    if portfolio:
+        portfolio_review_valid(review, validation, plan, summary)
     model_metadata_valid(manifest, linux, review)
     require(pilot.get('kind') == KIND + '_pilot_review' and pilot.get('status') == 'passed'
             and pilot.get('recommended_attempts') == {'B': 12, 'C': 24}, 'pilot review does not authorize this block design')
@@ -263,6 +354,8 @@ def context_bindings(bound, context):
             values.append(reference(routing_window.__file__))
     review = read(context['inputs']['discovery_review'])
     values += [review['remote_validation'], *review['raw_evidence']]
+    if plan.get('schema') == 2:
+        values.append(review['independent_raw_review'])
     values += read(context['inputs']['pilot_review'])['evidence']
     for value in values:
         checked(value)
@@ -288,6 +381,8 @@ def qualification(context_bound, records_bound):
     records = read(records_bound)
     import routing_science_completion as completion
     if isinstance(records.get('value'), dict) and records['value'].get('kind') == completion.KIND:
+        require(manifest.get('experiment_kind') != 'portfolio',
+                'portfolio requires fresh Mac science, never legacy completion evidence')
         return completion.load_completion(context_bound, records_bound)
     require(records.get('kind') != completion.KIND and not
             {'effective_outcomes', 'effective_rows', 'completion', 'plan'}.intersection(records),

@@ -11,7 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import routing
 import routing_discovery as discovery
-from test_routing import h, manifest, records
+from test_routing import h, manifest, portfolio_manifest, records
 
 
 def spec42():
@@ -19,6 +19,14 @@ def spec42():
     cell = spec['panels']['A'][0]
     spec['panels']['A'] = [{**cell, 'id': f'A-{i}', 'case_sha256': h(f'case-{i}'),
                            'body_sha256': h(f'body-{i}')} for i in range(42)]
+    return spec
+
+
+def portfolio42():
+    spec = portfolio_manifest()
+    cell = spec['panels']['A'][0]
+    spec['panels']['A'] = [{**cell, 'id': f'A-{i}', 'case_sha256': h(f'portfolio-case-{i}'),
+                           'body_sha256': h(f'portfolio-body-{i}')} for i in range(42)]
     return spec
 
 
@@ -79,6 +87,47 @@ class DiscoveryTests(unittest.TestCase):
                 bad['purpose'] = 'ablation_only'
             with self.subTest(change=change), self.assertRaises(ValueError):
                 discovery.validate_spec(bad)
+
+    def test_portfolio_is_explicit_and_closed_while_legacy_grid_stays_strict(self):
+        spec = portfolio42()
+        discovery.validate_spec(spec, portfolio=True)
+        with self.assertRaises(ValueError):
+            discovery.validate_spec(spec)
+        with self.assertRaises(ValueError):
+            discovery.validate_spec(self.spec, portfolio=True)
+        for change in ('candidate', 'coverage', 'cell'):
+            bad = copy.deepcopy(spec)
+            if change == 'candidate':
+                bad['candidates'].append('h4-k0')
+            elif change == 'coverage':
+                for cell in bad['panels']['A']:
+                    cell['coverage'] = sorted(routing.COVERAGE)
+            else:
+                bad['panels']['A'].pop()
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                discovery.validate_spec(bad, portfolio=True)
+        plan = {**self.plan, 'kind': discovery.PORTFOLIO_KIND + '_plan',
+                'tournament': routing.seal(spec)}
+        with patch.object(discovery, 'validate_plan', return_value=spec):
+            with self.assertRaisesRegex(ValueError, 'closed parallel'):
+                discovery.collect(plan, self.proof, self.root / 'collection')
+            with self.assertRaisesRegex(ValueError, 'closed parallel'):
+                discovery.aggregate(plan, self.proof, {}, {})
+
+    def test_portfolio_local_science_uses_only_its_closed_candidate_set(self):
+        spec = portfolio42()
+        plan = {**self.plan, 'tournament': routing.seal(spec)}
+        original = producer(spec, True)
+        proof = {**self.proof, 'wrappers': {}}
+        for cell in spec['panels']['A']:
+            proof['wrappers'][cell['id']] = {'sha256': h('local-wrapper-' + cell['id'])}
+        expected = discovery.prerequisite_status(spec, original)
+        timed = producer(spec)
+        for row in [*timed['prerequisites'], *timed['records']]:
+            row['witness_sha256'] = proof['wrappers'][row['cell']]['sha256']
+        values = discovery.round_data(plan, spec, timed, expected,
+                                      discovery.expected_fingerprints(proof, original, expected))
+        self.assertEqual({arm for _, arm in values}, {'baseline', routing.PORTFOLIO_V1, 'lsmr'})
 
     def test_freeze_binds_only_A_files_and_detects_later_changes(self):
         spec = copy.deepcopy(self.spec)

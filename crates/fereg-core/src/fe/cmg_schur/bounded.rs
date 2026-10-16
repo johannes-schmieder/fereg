@@ -303,15 +303,15 @@ impl CmgSchurPreconditioner {
                 columns,
                 weights,
             };
-            let (graph, components, scale) =
-                graph(source, degree, sampling, &mut work, &mut memory)?;
+            let (graph, components, scale, cache_bytes) =
+                graph(source, degree, sampling, false, &mut work, &mut memory)?;
             weight_scale = scale;
             if components.sizes.len() != 1 {
                 return Err(AttemptError::Fatal(invalid_data(
                     "CMG reduced component is disconnected",
                 )));
             }
-            finish(graph, components, &mut work, &mut memory)
+            finish(graph, components, cache_bytes, &mut work, &mut memory)
         })();
         let (preconditioner, refusal) = match attempt {
             Ok(candidate) => (Some(candidate), None),
@@ -383,6 +383,8 @@ impl CmgSchurPreconditioner {
     /// incumbent owners in execution_bytes. `work_budget` excludes the caller's
     /// reserved residual-recompute/restart allowance. No solver state is changed
     /// by a refusal. Actual allocation and numerical failures remain fatal.
+    /// Only synchronous presets may cache the census; an overlap preset's
+    /// one-worker fallback keeps the original two-pass work and allocation gates.
     #[allow(clippy::too_many_arguments)]
     pub(in crate::fe) fn try_build_bounded(
         design: &BorrowedInterceptFeDesign<'_>,
@@ -393,6 +395,7 @@ impl CmgSchurPreconditioner {
         rhs_capacity: usize,
         budget: Option<FeSolverMemoryBudget>,
         work_budget: u64,
+        cache_census: bool,
     ) -> Result<BoundedCmgBuild> {
         sampling.validate()?;
         if design.effects().len() != 2 || left_effect > 1 || rhs_capacity == 0 {
@@ -400,7 +403,7 @@ impl CmgSchurPreconditioner {
                 "CMG Schur requires two intercept effects and positive RHS capacity",
             ));
         }
-        Self::try_build_observations_bounded_controlled(
+        Self::build_observations_bounded(
             design.effects()[left_effect].level_index(),
             design.effects()[1 - left_effect].codes(),
             design.effects()[1 - left_effect].n_levels(),
@@ -409,6 +412,7 @@ impl CmgSchurPreconditioner {
             sampling,
             budget,
             work_budget,
+            cache_census,
             &mut |_| BuildDecision::Continue,
         )
     }
@@ -425,6 +429,33 @@ impl CmgSchurPreconditioner {
         sampling: Sampling,
         budget: Option<FeSolverMemoryBudget>,
         work_budget: u64,
+        control: &mut dyn cmg::BuildControl,
+    ) -> Result<BoundedCmgBuild> {
+        Self::build_observations_bounded(
+            membership,
+            firms,
+            retained,
+            weights,
+            degree,
+            sampling,
+            budget,
+            work_budget,
+            false,
+            control,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_observations_bounded(
+        membership: &LevelIndex,
+        firms: &[u32],
+        retained: usize,
+        weights: BorrowedMapWeights<'_>,
+        degree: usize,
+        sampling: Sampling,
+        budget: Option<FeSolverMemoryBudget>,
+        work_budget: u64,
+        cache_census: bool,
         control: &mut dyn cmg::BuildControl,
     ) -> Result<BoundedCmgBuild> {
         sampling.validate()?;
@@ -453,8 +484,17 @@ impl CmgSchurPreconditioner {
             retained,
             weights,
         };
-        let attempt = graph(source, degree, sampling, &mut work, &mut memory)
-            .and_then(|(graph, components, _)| finish(graph, components, &mut work, &mut memory));
+        let attempt = graph(
+            source,
+            degree,
+            sampling,
+            cache_census,
+            &mut work,
+            &mut memory,
+        )
+        .and_then(|(graph, components, _, cache_bytes)| {
+            finish(graph, components, cache_bytes, &mut work, &mut memory)
+        });
         let (preconditioner, refusal) = match attempt {
             Ok(preconditioner) => (Some(preconditioner), None),
             Err(AttemptError::Refused(reason)) => (None, Some(reason)),
@@ -472,15 +512,12 @@ impl CmgSchurPreconditioner {
 fn finish(
     graph: Laplacian,
     components: FirmComponents,
+    cache_bytes: u128,
     work: &mut Work<'_>,
     memory: &mut Admission,
 ) -> Attempt<CmgSchurPreconditioner> {
     let options = CmgOptions::default();
-    let experiment = ComponentBuildOptions {
-        prune_coarse_isolates: true,
-        preserve_unpruned_stopping: true,
-        factor_terminal_components: true,
-    };
+    let experiment = component_options();
     work.charge(1024)?;
     let bound = CmgPreconditioner::component_serial_construction_allocation_bound(
         graph.vertex_count(),
@@ -489,7 +526,9 @@ fn finish(
         experiment,
     )
     .map_err(cmg_error)?;
-    let parents = graph_storage_bound(&graph)? + components.bytes();
+    // The synchronous cache stays reserved even after graph emission drops it.
+    // Controlled builders pass zero and preserve their existing admission order.
+    let parents = graph_storage_bound(&graph)? + components.bytes() + cache_bytes;
     let admitted = admit(memory, work, parents, bound)?;
     let preconditioner = work.cmg(|control| {
         CmgPreconditioner::build_component_experiment_serial_controlled(
@@ -682,10 +721,172 @@ impl<'a> CellSource<'a> {
     }
 }
 
+fn component_options() -> ComponentBuildOptions {
+    ComponentBuildOptions {
+        prune_coarse_isolates: true,
+        preserve_unpruned_stopping: true,
+        factor_terminal_components: true,
+    }
+}
+
+struct CanonicalCells {
+    cells: Vec<(u32, f64)>,
+    // One start offset and the original compensated total per worker. The next
+    // start (or cells.len() for the last worker) is the current row's end.
+    rows: Vec<(usize, f64)>,
+}
+
+impl CanonicalCells {
+    fn new(observations: usize, workers: usize, work: &mut Work<'_>) -> Attempt<Self> {
+        Ok(Self {
+            cells: work.capacity(observations)?,
+            rows: work.capacity(workers)?,
+        })
+    }
+
+    fn store(&mut self, cells: &[(u32, f64)], total: f64, work: &mut Work<'_>) -> Attempt<()> {
+        work.charge(32)?;
+        self.rows.push((self.cells.len(), total));
+        for cell in cells {
+            work.charge(16)?;
+            self.cells.push(*cell);
+        }
+        Ok(())
+    }
+
+    fn load(
+        &self,
+        worker: usize,
+        cells: &mut Vec<(u32, f64)>,
+        work: &mut Work<'_>,
+    ) -> Attempt<f64> {
+        work.charge(32)?;
+        let (start, total) = self.rows[worker];
+        let end = self
+            .rows
+            .get(worker + 1)
+            .map_or(self.cells.len(), |row| row.0);
+        cells.clear();
+        for cell in &self.cells[start..end] {
+            work.charge(16)?;
+            cells.push(*cell);
+        }
+        Ok(total)
+    }
+}
+
+struct CacheEnvelope {
+    cache_bytes: usize,
+    peak_bytes: usize,
+}
+
+/// Sum phase envelopes rather than reclaiming any stage. This dimension-only
+/// proof runs before cache allocation; arithmetic/helper refusal selects the
+/// original two-pass builder. It is a peak bound, never a controller allowance.
+fn cache_envelope(
+    observations: usize,
+    workers: usize,
+    firms: usize,
+    max_rows: usize,
+    cutoff: usize,
+    sampling: Sampling,
+) -> Option<CacheEnvelope> {
+    fn bank<T>(count: usize) -> Option<usize> {
+        count.checked_mul(std::mem::size_of::<T>())
+    }
+    // Sampled high-degree rows emit trees on firms; census retains auxiliary
+    // worker vertices only when sampling is disabled.
+    let vertices = if sampling.samples > 0 {
+        firms
+    } else {
+        firms.checked_add(workers)?
+    };
+    if vertices == 0 || vertices as u128 > u32::MAX as u128 + 1 {
+        return None;
+    }
+    let edges = cutoff
+        .checked_sub(1)?
+        .max(sampling.samples as usize)
+        .max(1)
+        .checked_mul(observations)?;
+    let cache_bytes = bank::<(u32, f64)>(observations)?
+        .checked_add(bank::<(usize, f64)>(workers)?)?
+        .checked_add(std::mem::size_of::<CanonicalCells>())?;
+    let sampler = if sampling.samples > 0 {
+        SampledTrees::allocation_bytes(max_rows).ok()?
+    } else {
+        0
+    };
+    let options = CmgOptions::default();
+    let hierarchy = CmgPreconditioner::component_serial_construction_allocation_bound(
+        vertices,
+        edges,
+        options,
+        component_options(),
+    )
+    .ok()?;
+    let workspace = CmgPreconditioner::scalar_workspace_allocation_bound(vertices, options).ok()?;
+    let owners = std::mem::size_of::<BoundedCells<'_>>()
+        + std::mem::size_of::<SampledTrees>()
+        + std::mem::size_of::<FirmComponents>()
+        + std::mem::size_of::<Vec<(usize, usize, f64)>>()
+        + std::mem::size_of::<Laplacian>()
+        + std::mem::size_of::<CmgSchurPreconditioner>();
+    let peak_bytes = [
+        cache_bytes,
+        bank::<(u32, f64)>(max_rows)?,
+        sampler,
+        bank::<[usize; 2]>(firms)?,
+        bank::<[f64; 2]>(firms)?,
+        bank::<(usize, usize, f64)>(edges)?,
+        bank::<[u64; 4]>(edges)?
+            .checked_add(bank::<f64>(vertices)?)?
+            .checked_add(128)?,
+        bank::<[u64; 2]>(edges)?
+            .checked_add(bank::<f64>(vertices)?)?
+            .checked_add(128)?,
+        hierarchy,
+        workspace,
+        bank::<[f64; 2]>(vertices)?,
+        owners,
+    ]
+    .into_iter()
+    .try_fold(0usize, usize::checked_add)?;
+    Some(CacheEnvelope {
+        cache_bytes,
+        peak_bytes,
+    })
+}
+
+fn admitted_cache_bytes(
+    source: CellSource<'_>,
+    max_rows: usize,
+    cutoff: usize,
+    sampling: Sampling,
+    budget: Option<FeSolverMemoryBudget>,
+) -> Option<usize> {
+    let CellSource::Observations { membership, .. } = source else {
+        return None;
+    };
+    let envelope = cache_envelope(
+        membership.nobs(),
+        source.worker_count(),
+        source.firm_count(),
+        max_rows,
+        cutoff,
+        sampling,
+    )?;
+    let available = budget.map_or(Some(usize::MAX as u128), |budget| {
+        budget.usable_bytes.checked_sub(budget.execution_bytes)
+    })?;
+    (envelope.peak_bytes as u128 <= available).then_some(envelope.cache_bytes)
+}
+
 struct BoundedCells<'a> {
     source: CellSource<'a>,
     weight_scale: f64,
     cells: Vec<(u32, f64)>,
+    cache: Option<CanonicalCells>,
 }
 
 impl BoundedCells<'_> {
@@ -746,7 +947,10 @@ impl BoundedCells<'_> {
     ) -> Attempt<GraphCounts> {
         let mut counts = GraphCounts::default();
         for worker in 0..self.source.worker_count() {
-            self.load_bounded(worker, work)?;
+            let total = self.load_bounded(worker, work)?;
+            if let Some(cache) = &mut self.cache {
+                cache.store(&self.cells, total, work)?;
+            }
             work.charge(64)?;
             let count = self.cells.len();
             if let Some(&(first, _)) = self.cells.first() {
@@ -792,7 +996,13 @@ impl BoundedCells<'_> {
     ) -> Attempt<()> {
         let mut auxiliary = self.source.firm_count();
         for worker in 0..self.source.worker_count() {
-            let total = self.load_bounded(worker, work)?;
+            let total = if let Some(cache) = &self.cache {
+                // Sampling sorts this scratch by weight; the retained canonical
+                // row and its compensated total remain immutable.
+                cache.load(worker, &mut self.cells, work)?
+            } else {
+                self.load_bounded(worker, work)?
+            };
             if self.cells.len() > cutoff {
                 if let Some(sampler) = sampler.as_mut() {
                     sampler.prepare_bounded(&mut self.cells, worker, work)?;
@@ -834,9 +1044,10 @@ fn graph(
     source: CellSource<'_>,
     cutoff: usize,
     sampling: Sampling,
+    cache_census: bool,
     work: &mut Work<'_>,
     memory: &mut Admission,
-) -> Attempt<(Laplacian, FirmComponents, f64)> {
+) -> Attempt<(Laplacian, FirmComponents, f64, u128)> {
     work.charge(64)?;
     let firms = source.firm_count();
     let weights = source.weights();
@@ -857,6 +1068,14 @@ fn graph(
         max_rows = max_rows.max(source.row_count(worker));
     }
     work.charge(128)?;
+    let cache_bytes = if cache_census {
+        // Retain this dimension/helper allowance even when the cache declines:
+        // the original two-pass construction receives only the remaining work.
+        work.charge(1024)?;
+        admitted_cache_bytes(source, max_rows, cutoff, sampling, memory.budget).unwrap_or(0)
+    } else {
+        0
+    };
     let sampler_bytes = if sampling.samples > 0 {
         SampledTrees::allocation_bytes(max_rows)?
     } else {
@@ -865,12 +1084,25 @@ fn graph(
     let bound = bytes::<(u32, f64)>(max_rows)?
         .checked_add(sampler_bytes)
         .and_then(|total| total.checked_add(bytes::<[usize; 2]>(firms).ok()?))
+        .and_then(|total| total.checked_add(cache_bytes))
         .ok_or_else(|| allocation("bounded CMG topology scratch overflows"))?;
     admit(memory, work, 0, bound)?;
     let mut workers = BoundedCells {
         source,
         weight_scale,
         cells: work.capacity(max_rows)?,
+        cache: if cache_bytes > 0 {
+            let CellSource::Observations { membership, .. } = source else {
+                return Err(invalid_data("CMG canonical cache requires observations").into());
+            };
+            Some(CanonicalCells::new(
+                membership.nobs(),
+                source.worker_count(),
+                work,
+            )?)
+        } else {
+            None
+        },
     };
     let mut sampler = if sampling.samples > 0 {
         Some(SampledTrees::new_bounded(sampling, max_rows, work)?)
@@ -912,6 +1144,7 @@ fn graph(
         .filter(|vertices| *vertices > 0 && *vertices as u128 <= u32::MAX as u128 + 1)
         .ok_or_else(|| allocation("CMG Schur graph vertex count is not supported"))?;
     let scratch = vec_capacity_bytes(&workers.cells)
+        + cache_bytes as u128
         + sampler.as_ref().map_or(0, SampledTrees::bytes)
         + vec_capacity_bytes(&labels)
         + vec_capacity_bytes(&sizes);
@@ -940,8 +1173,10 @@ fn graph(
     drop(workers);
     drop(sampler);
     work.charge(256)?;
-    let parents =
-        graph_storage_bound(&graph)? + vec_capacity_bytes(&labels) + vec_capacity_bytes(&sizes);
+    let parents = graph_storage_bound(&graph)?
+        + vec_capacity_bytes(&labels)
+        + vec_capacity_bytes(&sizes)
+        + cache_bytes as u128;
     admit(memory, work, parents, bytes::<[f64; 2]>(component_count)?)?;
     let components = FirmComponents {
         labels,
@@ -949,7 +1184,7 @@ fn graph(
         sums: work.filled(component_count, 0.0)?,
         corrections: work.filled(component_count, 0.0)?,
     };
-    Ok((graph, components, weight_scale))
+    Ok((graph, components, weight_scale, cache_bytes as u128))
 }
 
 #[cfg(test)]
@@ -1059,5 +1294,357 @@ mod control_tests {
         })
         .unwrap();
         assert_eq!(trace, replay);
+    }
+}
+
+#[cfg(test)]
+mod cache_tests {
+    use super::*;
+    use crate::fe::BorrowedInterceptEffect;
+
+    fn completed<T>(value: Attempt<T>) -> T {
+        match value {
+            Ok(value) => value,
+            Err(AttemptError::Refused(reason)) => panic!("unexpected refusal: {reason:?}"),
+            Err(AttemptError::Fatal(error)) => panic!("unexpected failure: {error}"),
+        }
+    }
+
+    struct Fixture {
+        workers: Vec<u32>,
+        firms: Vec<u32>,
+        weights: Vec<f64>,
+        membership: LevelIndex,
+        firm_index: LevelIndex,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            let mut workers = Vec::new();
+            let mut firms = Vec::new();
+            let mut weights = Vec::new();
+            let mut first = 0;
+            for (worker, degree) in [1, 2, 3, 6, 9].into_iter().enumerate() {
+                for firm in 0..degree {
+                    for duplicate in 0..8 {
+                        workers.push(worker as u32);
+                        firms.push(first + firm);
+                        weights.push(if duplicate == 0 {
+                            1.0e12
+                        } else {
+                            (firm + 1) as f64
+                        });
+                    }
+                }
+                first += degree;
+            }
+            Self {
+                membership: LevelIndex::from_codes(&workers, 5).unwrap(),
+                firm_index: LevelIndex::from_codes(&firms, first as usize).unwrap(),
+                workers,
+                firms,
+                weights,
+            }
+        }
+
+        fn design(&self) -> BorrowedInterceptFeDesign<'_> {
+            BorrowedInterceptFeDesign::new(
+                self.workers.len(),
+                vec![
+                    BorrowedInterceptEffect::new(
+                        &self.workers,
+                        self.membership.n_levels(),
+                        &self.membership,
+                    )
+                    .unwrap(),
+                    BorrowedInterceptEffect::new(
+                        &self.firms,
+                        self.firm_index.n_levels(),
+                        &self.firm_index,
+                    )
+                    .unwrap(),
+                ],
+            )
+            .unwrap()
+        }
+
+        fn source(&self) -> CellSource<'_> {
+            CellSource::Observations {
+                membership: &self.membership,
+                firms: &self.firms,
+                retained: self.firm_index.n_levels(),
+                weights: BorrowedMapWeights::Provided(&self.weights),
+            }
+        }
+
+        fn build(
+            &self,
+            sampling: Sampling,
+            budget: Option<FeSolverMemoryBudget>,
+            work: u64,
+            cached: bool,
+        ) -> BoundedCmgBuild {
+            if cached {
+                CmgSchurPreconditioner::try_build_bounded(
+                    &self.design(),
+                    BorrowedMapWeights::Provided(&self.weights),
+                    0,
+                    5,
+                    sampling,
+                    1,
+                    budget,
+                    work,
+                    true,
+                )
+            } else {
+                CmgSchurPreconditioner::try_build_observations_bounded_controlled(
+                    &self.membership,
+                    &self.firms,
+                    self.firm_index.n_levels(),
+                    BorrowedMapWeights::Provided(&self.weights),
+                    5,
+                    sampling,
+                    budget,
+                    work,
+                    &mut |_| BuildDecision::Continue,
+                )
+            }
+            .unwrap()
+        }
+
+        fn envelope(&self, sampling: Sampling) -> CacheEnvelope {
+            cache_envelope(
+                self.workers.len(),
+                self.membership.n_levels(),
+                self.firm_index.n_levels(),
+                9 * 8,
+                5,
+                sampling,
+            )
+            .unwrap()
+        }
+    }
+
+    #[test]
+    fn canonical_cells_and_compensated_totals_survive_sampler_scratch_mutation() {
+        let fixture = Fixture::new();
+        let mut control = |_| BuildDecision::Continue;
+        let mut work = Work {
+            budget: u64::MAX,
+            used: 0,
+            ordinal: 0,
+            control: &mut control,
+        };
+        let mut rows = BoundedCells {
+            source: fixture.source(),
+            weight_scale: 1.0e12,
+            cells: completed(work.capacity(72)),
+            cache: None,
+        };
+        let mut cache = completed(CanonicalCells::new(fixture.workers.len(), 5, &mut work));
+        let mut expected = Vec::new();
+        for worker in 0..5 {
+            let total = completed(rows.load_bounded(worker, &mut work));
+            expected.push((rows.cells.clone(), total.to_bits()));
+            completed(cache.store(&rows.cells, total, &mut work));
+        }
+        let sampling = Sampling {
+            samples: 2,
+            seed: 19,
+        };
+        let mut sampler = completed(SampledTrees::new_bounded(sampling, 72, &mut work));
+        for (worker, (canonical, total)) in expected.iter().enumerate() {
+            assert_eq!(
+                completed(cache.load(worker, &mut rows.cells, &mut work)).to_bits(),
+                *total
+            );
+            assert_eq!(&rows.cells, canonical);
+            if canonical.len() > 5 {
+                completed(sampler.prepare_bounded(&mut rows.cells, worker, &mut work));
+            }
+            assert_eq!(
+                completed(cache.load(worker, &mut rows.cells, &mut work)).to_bits(),
+                *total
+            );
+            assert_eq!(&rows.cells, canonical);
+        }
+    }
+
+    #[test]
+    fn cache_preserves_full_graph_hierarchy_and_application_with_less_charged_work() {
+        let fixture = Fixture::new();
+        for samples in [0, 1, 2] {
+            let sampling = Sampling { samples, seed: 0 };
+            let envelope = fixture.envelope(sampling);
+            let budget = Some(FeSolverMemoryBudget {
+                usable_bytes: envelope.peak_bytes as u128 + 913,
+                execution_bytes: 913,
+            });
+            let old = fixture.build(sampling, budget, u64::MAX, false);
+            let new = fixture.build(sampling, budget, u64::MAX, true);
+            assert!(new.work_used < old.work_used);
+            let used = new.work_used;
+            let mut old = old.preconditioner.unwrap();
+            let mut new = new.preconditioner.unwrap();
+            assert_eq!(
+                old.preconditioner.hierarchy(),
+                new.preconditioner.hierarchy()
+            );
+            assert_eq!(old.components.labels, new.components.labels);
+            assert_eq!(old.components.sizes, new.components.sizes);
+            assert_eq!(
+                new.retained_bytes().unwrap(),
+                old.retained_bytes().unwrap() + envelope.cache_bytes as u128
+            );
+            let n = fixture.firm_index.n_levels();
+            let rhs: Vec<_> = (0..n).map(|i| (i as f64 * 0.31).sin()).collect();
+            let mut expected = vec![0.0; n];
+            let mut actual = vec![0.0; n];
+            old.apply_batch(&rhs, &mut expected, 1, 1, None, None)
+                .unwrap();
+            new.apply_batch(&rhs, &mut actual, 1, 1, None, None)
+                .unwrap();
+            assert_eq!(expected, actual);
+            let exact = fixture.build(sampling, budget, used, true);
+            assert!(exact.preconditioner.is_some());
+            assert_eq!(exact.work_used, used);
+            let short = fixture.build(sampling, budget, used - 1, true);
+            assert!(short.preconditioner.is_none());
+            assert_eq!(short.refusal, Some(BuildRefusal::WorkBudget));
+            assert!(short.work_used < used);
+        }
+    }
+
+    #[test]
+    fn complete_peak_decline_keeps_the_original_usable_two_pass_path() {
+        let fixture = Fixture::new();
+        let sampling = Sampling {
+            samples: 2,
+            seed: 0,
+        };
+        let original = fixture.build(sampling, None, u64::MAX, false);
+        let needed = original.peak.bytes().unwrap() as u128;
+        assert!(needed < fixture.envelope(sampling).peak_bytes as u128);
+        let budget = Some(FeSolverMemoryBudget {
+            usable_bytes: needed + 123,
+            execution_bytes: 123,
+        });
+        assert!(admitted_cache_bytes(fixture.source(), 72, 5, sampling, budget).is_none());
+        let declined = fixture.build(sampling, budget, u64::MAX, true);
+        assert_eq!(declined.refusal, None);
+        assert_eq!(declined.work_used, original.work_used + 1024);
+        assert_eq!(declined.peak, original.peak);
+        let original = original.preconditioner.unwrap();
+        let declined = declined.preconditioner.unwrap();
+        assert_eq!(
+            declined.retained_bytes().unwrap(),
+            original.retained_bytes().unwrap()
+        );
+        assert_eq!(
+            declined.preconditioner.hierarchy(),
+            original.preconditioner.hierarchy()
+        );
+        let exhausted = Some(FeSolverMemoryBudget {
+            usable_bytes: 1,
+            execution_bytes: 2,
+        });
+        assert!(admitted_cache_bytes(fixture.source(), 72, 5, sampling, exhausted).is_none());
+    }
+
+    #[test]
+    fn sampled_cache_envelope_omits_worker_vertices_and_bounds_complete_build() {
+        let fixture = Fixture::new();
+        let workers = fixture.membership.n_levels();
+        let firms = fixture.firm_index.n_levels();
+        let row_bytes = workers * std::mem::size_of::<(usize, f64)>();
+        for samples in [0, 1, 2] {
+            let sampling = Sampling { samples, seed: 0 };
+            let envelope = fixture.envelope(sampling);
+            let without_workers =
+                cache_envelope(fixture.workers.len(), 0, firms, 72, 5, sampling).unwrap();
+            assert_eq!(
+                envelope.cache_bytes - without_workers.cache_bytes,
+                row_bytes
+            );
+            if samples > 0 {
+                // Workers still need cached row metadata, but cannot enlarge
+                // graph, hierarchy, workspace or RHS/output vertex banks.
+                assert_eq!(envelope.peak_bytes - without_workers.peak_bytes, row_bytes);
+            } else {
+                assert!(envelope.peak_bytes - without_workers.peak_bytes > row_bytes);
+            }
+            let budget = Some(FeSolverMemoryBudget {
+                usable_bytes: envelope.peak_bytes as u128 + 913,
+                execution_bytes: 913,
+            });
+            assert_eq!(
+                admitted_cache_bytes(fixture.source(), 72, 5, sampling, budget),
+                Some(envelope.cache_bytes)
+            );
+            let built = fixture.build(sampling, budget, u64::MAX, true);
+            assert_eq!(built.refusal, None);
+            assert!(built.peak.bytes().unwrap() as u128 <= envelope.peak_bytes as u128);
+            let preconditioner = built.preconditioner.unwrap();
+            assert!(preconditioner.retained_bytes().unwrap() <= envelope.peak_bytes as u128);
+            let graph = preconditioner.preconditioner.hierarchy().levels()[0].graph();
+            // Exactly the degree-six and degree-nine rows need auxiliary
+            // vertices without sampling; both become firm-only sampled trees.
+            assert_eq!(
+                graph.vertex_count(),
+                firms + if samples == 0 { 2 } else { 0 }
+            );
+        }
+    }
+
+    #[test]
+    fn checked_envelope_overflow_declines_without_allocation() {
+        let sampling = Sampling::default();
+        for (observations, workers, firms, max_rows) in [
+            (usize::MAX, 1, 1, 1),
+            (1, usize::MAX, 1, 1),
+            (1, 1, usize::MAX, 1),
+            (1, 1, 1, usize::MAX),
+        ] {
+            assert!(cache_envelope(observations, workers, firms, max_rows, 5, sampling).is_none());
+        }
+    }
+
+    #[test]
+    fn empty_observations_and_isolated_firms_keep_identical_graphs() {
+        let membership = LevelIndex::from_codes(&[], 0).unwrap();
+        let source = CellSource::Observations {
+            membership: &membership,
+            firms: &[],
+            retained: 3,
+            weights: BorrowedMapWeights::Unit,
+        };
+        let build = |cached| {
+            let mut control = |_| BuildDecision::Continue;
+            let mut work = Work {
+                budget: u64::MAX,
+                used: 0,
+                ordinal: 0,
+                control: &mut control,
+            };
+            let mut memory = Admission {
+                budget: None,
+                peak: SolverWorkspacePeak::ZERO,
+            };
+            completed(graph(
+                source,
+                5,
+                Sampling::default(),
+                cached,
+                &mut work,
+                &mut memory,
+            ))
+        };
+        let (old, old_components, old_scale, _) = build(false);
+        let (new, new_components, new_scale, cache_bytes) = build(true);
+        assert_eq!(old, new);
+        assert_eq!(old_components.labels, new_components.labels);
+        assert_eq!(old_components.sizes, new_components.sizes);
+        assert_eq!(old_scale.to_bits(), new_scale.to_bits());
+        assert!(cache_bytes > 0);
     }
 }

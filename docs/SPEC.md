@@ -231,6 +231,24 @@ fatal errors preserve atomic failure. Existing preconditioner-breakdown fallback
 uses only the remaining native budget. These optional caps do not constrain an
 explicit CMG request.
 
+The synchronous two-FE observation builder may retain its first-pass canonical
+cells and already-compensated worker totals for edge emission. This preserves
+the original canonical values, order and sampler input bits. Before allocating
+the cache, a checked conservative envelope admits the cache together with cell
+scratch, sampling, graph construction, components, hierarchy, scalar workspace
+and final application banks, net of live parent/execution storage. Overflow or
+insufficient memory chooses the original two-pass path before allocation. The
+1,024-unit preflight cost remains charged even when the cache is declined;
+allocation, stores and reads are also charged, with no refund or second attempt.
+Cache bytes remain reserved through finish. Controlled/general-pair builders
+and overlap presets, including their one-worker serial fallback, retain the
+uncached path and its original gates. Previously admitted cached builds require
+identical graph, hierarchy and application results. Saved work may newly admit
+a hidden synchronous routing build: installation, iterations and downstream
+OLS numerical values then fall within the declared routing scope, while the
+original strict certificate, model and discrete decisions remain authoritative.
+This optimization does not activate public routing or establish a speed claim.
+
 Three separate hidden two-FE experiments isolate structural choices:
 `routing_diagonal` uses the current-weight Schur diagonal with the observation
 operator; `routing_cells` retains the incumbent `D_f` preconditioner and applies
@@ -321,6 +339,43 @@ prefix. An early certificate reports the concrete MAP or IT family. Low reports
 combine those prefixes with actual LSMR metadata when a chunk needs LSMR, while
 preserving any real fallback; an intentional prefix alone is not a fallback.
 Uninjected Auto retains its existing shortcut.
+
+The separate `routing_portfolio_v1` qualification arm uses one fixed structural
+portfolio. With exactly two categorical FEs it retains the incumbent recurrence
+and first prices an allocation-free direct-or-CMG choice. At the first
+uncertified action without a retained inverse, a 1,024-unit preflight is charged
+once per existing accuracy key, including on decline. A checked dimension-only
+upper bound must admit direct census, both orientation profiles, assembly,
+factorization and outputs within four packed current-RHS incumbent iterations,
+including the preflight. The complete attempt plus its original certificate
+must fit the remaining setup allowance and simultaneous memory budget. A
+selected direct attempt consumes the sole optional opportunity before census;
+numerical, geometry or certificate refusal cannot enable CMG afterward. A
+declined preflight retains its charge and the one CMG opportunity across Low
+chunks. Previously retained CMG inverses remain reusable.
+
+The incumbent-CMG choice considers one synchronous build at iteration 16, using cutoff 5, one
+sampled tree per high-degree worker and seed zero. Sampling changes only the
+preconditioner; the original Schur operator and certificate remain authoritative.
+The canonical cache uses the complete admission envelope above. These are
+prospective engineering constants, not a policy selected by the earlier failed
+Mac panel. There is no sampling ladder, resampling or second optional attempt.
+
+With three or more categorical FEs, this arm tries at most four categorical MAP
+sweeps before seeded LSMR. It replaces the three-FE shortcut,
+including when prefix admission declines it. Both prefix acceptance and the
+original-design certificate after correction or MAP fallback use Auto's private
+`direct_lsmr_tolerance`, rather than the requested MAP tolerance used by the
+isolated prefix arms. The original response, weights, normalization and factor
+slots remain authoritative: an unfinished prefix passes coefficients only, and
+the seeded LSMR result includes that seed. Actual prefix sweeps consume the
+existing action cap; the correction receives only its remainder. This first
+portfolio has no general-FE CMG checkpoint and does not stack direct or diagonal
+attempts before CMG. Zero/one-FE and sloped paths, explicit solvers and PPML
+retain their behavior. This new injected arm may change eligible OLS numerical
+results and solver diagnostics within the existing scientific tolerances;
+model and discrete decisions remain unchanged. It is
+experimental and does not change public Auto or establish performance evidence.
 
 `routing_overlap_h{8|16|32}_k{0|1|2}` separately tests preparation on one existing
 worker. It requires an exclusively admitted synchronous/scoped executor action

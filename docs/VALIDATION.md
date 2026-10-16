@@ -477,9 +477,10 @@ none is retrospectively exempted. Two separately sampled Stata processes were
 first-seen/sleeping and did not trigger the frozen activity rule; no extra
 exclusions were invented.
 
-The updated 22-page [routing PDF](solver_routing.pdf) records this terminal
-NO-GO on page 22; its first 21 layout-preserving extracted-text pages remain
-exactly unchanged. Compilation and visual review pass. PDF SHA-256 is
+The preceding 22-page snapshot of the [routing PDF](solver_routing.pdf) recorded this terminal
+NO-GO on page 22; its first 21 layout-preserving extracted-text pages were
+exactly unchanged at that point. Compilation and visual review passed for that
+snapshot. Its PDF SHA-256 is
 `720ba60b563f3df4b96059cb0dfff997954ded41e72857da4aec980a1b41bf2f`
 (625,716 bytes); [source](solver_routing.tex) SHA-256 is
 `c5eec711d2f8645b461cf107bd69072e8f577bd2f1affb7d3d9ac67b7b583748`.
@@ -539,6 +540,65 @@ Patch SHA-256 is `0e1c969a70c53c35506a35105989c5b8516ba7eb02ab1ab96194f07f49aa4c
 summary SHA-256 is `4a3cb3bf8ea290d7ad543e7118b696c0e3f8d47e97518ab016401127a81c4657`;
 40-call records SHA-256 is `b2ba5972117e5f63cdad23d7638593902a0131f15afefe85169ccb4d816c5f01`.
 Public Auto and the closed B NO-GO remain unchanged.
+
+A subsequent fixed **portfolio-v1 development study** completed all 92 native
+calls on seven existing B inputs and one separately generated direct-route
+input, at one/four workers. The changed artifact combines strict MAP4 with
+seeded LSMR for three or more categorical effects, and a bounded direct-or-CMG
+choice with fixed h16/k1 for two effects. It does not change public Auto. The
+separate preparation used one generator and one independent oracle call,
+zero native fits and 0.718233 seconds under its 180-second cap. The study used
+120-second call and 2,400-second aggregate caps, with no retry, extra call or C
+body access. Its 178.039089-second interval includes checking and profiling but
+excludes the initial guard/import setup and separate input preparation.
+
+Independent raw review rechecked all 564 bound dependencies, the 475-file source
+inventory, all 276 result/column/log hashes, 92 independent oracle checks and
+46 exact complete science/solver/output-column repeats. Sixteen scoped
+cross-artifact comparisons, seven exact unaffected controls, 22 worker
+scientific/discrete comparisons and all 46 traced first-call resource checks
+passed. All repeat resource inheritances required exact science and output
+bytes. The Low-mode and saved-output witnesses also passed.
+
+The terminal status remains **incomplete-route-coverage**. Both workers witnessed
+the independent direct certificate at zero iterations, seeded LSMR continuation
+and high-degree-weak CMG installation. No early-prefix MAP acceptance or CMG
+installation on weak, weighted or wide-RHS was observed. Weak reached checkpoint
+16 but refused work at 147,847,160/168,968,192 primary setup units and
+59,473,744/67,970,048 final units. The 32W0 ledger reserves 4W0 for restart;
+the recorded attempts finish 8 and 48 units below the 28W0 builder allowance.
+These aggregate traces do not locate the precise refused operation or prove
+cache admission. Weighted converged in 7/6 primary/final iterations and wide-RHS
+in 14/13, before checkpoint 16, with only the 1,024-unit preflight charge.
+CMG installation on high-degree weak likewise does not prove cache admission.
+
+The [compact evidence](../bench/results/solver-routing-controlled-20261014.json)
+records this milestone under `portfolio_development`, including runtime identity
+`5cdfeb313776b2fceaedb1a3f8ff6d0ad0dff4749688485dc33e96a16725a23d`,
+plugin `2890a103f2e887a1545d379e87d41397ee2e2a3b457e6a09a8424cdce55a55f8`,
+92-call records `cb9359a408243b3381da1df8cc9fdd53b5101755cfce365e1cc5d8651cdea569`
+and independent review `1d4191d2fe30594772e0cd9d0db11c29d71edc0b6d27194d5e3ad935b348514e`.
+Capture hashes identify reviewed temporary evidence; they do not promise a
+retained raw archive. All 371 benchmark tests, 1,708 workspace tests and 196
+serial FFI tests passed. Four workspace tests remain ignored; all ten serially
+ignored FFI allocator audits subsequently passed in separate fresh processes.
+Strict workspace and FFI Clippy checks passed. The full repository suite remains pending because the installed native bundle
+is stale. No isolation, speed, qualification, activation or promotion claim
+follows. Missing coverage stays explicit, permits no extra calls, and cannot
+clear a dependent gate requiring that evidence. The original campaign remains
+closed with its NO-GO unchanged.
+
+The current 25-page [routing explanation](solver_routing.pdf) appends a separate
+private-portfolio flowchart, frontier table, exact charged bounds and development
+evidence chart. Independent Astra mathematical/contract review and visual review
+of the rendered amendment passed; prior source content is preserved, with page
+counts updated. PDF SHA-256 is
+`516ea513388aba9b0e175df7e4395fc636b3686d7835e29cbb73cf12a752f43d`;
+[editable source](solver_routing.tex) SHA-256 is
+`ff51052a5b2db1161bc83889857667cd9464aee4118b7146056bb13276954a05`.
+Compilation succeeds through the built-in compiler and the exported PDF was
+rendered and inspected. The six-call attribution proposal described there has
+not run; it cannot establish a performance or qualification result.
 
 Retained SCC raw evidence and sealed products remain in the campaign
 `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.

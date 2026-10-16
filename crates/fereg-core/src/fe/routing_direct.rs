@@ -11,11 +11,18 @@ use crate::memory::{fallible_filled, FeSolverMemoryBudget};
 
 use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, ComponentInfo};
 
+/// Once-per-session pure portfolio selection, charged by the caller even when
+/// direct is declined. See `portfolio_preflight` for its operation envelope.
+pub(crate) const PORTFOLIO_PREFLIGHT_WORK: u64 = 1024;
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct DirectLimits {
     /// Packed ordinary Schur iteration at current RHS width, independent of
     /// retained inactive banks and the physical session setup reference W0.
     pub reference_iteration_work: u64,
+    /// Already charged pure preflight; counts toward 4W, never returned as work.
+    pub preflight_work: u64,
+    /// Remaining optional work AFTER charging `preflight_work`.
     pub remaining_setup_work: u64,
     /// Previously incurred census work; normally zero for `attempt_with_census`.
     pub component_census_work: u64,
@@ -34,7 +41,11 @@ impl DirectLimits {
     fn admits_work(self, noncertificate: u64) -> bool {
         self.reference_iteration_work
             .checked_mul(4)
-            .is_some_and(|cap| noncertificate <= cap)
+            .is_some_and(|cap| {
+                self.preflight_work
+                    .checked_add(noncertificate)
+                    .is_some_and(|total| total <= cap)
+            })
             && noncertificate
                 .checked_add(self.certificate_work)
                 .is_some_and(|total| total <= self.remaining_setup_work)
@@ -53,9 +64,9 @@ pub(crate) enum DirectDecline {
 pub(crate) struct DirectProfile {
     pub eliminated_effect: usize,
     pub dense_elements: usize,
-    /// All attempt work except the immutable common terminal certificate.
+    /// Census through output, excluding preflight and the common certificate.
     pub noncertificate_work: u64,
-    /// Complete bound, including both profiles and caller certification.
+    /// Both profiles through caller certification, excluding spent preflight.
     pub work_bound: u64,
     /// Additional peak, including output and caller certification scratch.
     pub peak_bytes: u128,
@@ -74,7 +85,8 @@ pub(crate) struct DirectAttempt {
     pub profiles: [Option<DirectProfile>; 2],
     pub candidate: Option<DirectCandidate>,
     pub decline: Option<DirectDecline>,
-    /// Conservative work charged. Numerical failure may leave reserved work unused.
+    /// Conservative work charged, excluding the already charged preflight.
+    /// Numerical failure may leave reserved work unused.
     pub work_used: u64,
     /// Additional storage admitted; other live storage is not included here.
     pub peak_bytes: u128,
@@ -154,6 +166,111 @@ fn fits(limits: DirectLimits, bytes: u128) -> bool {
         .retained_live_bytes
         .checked_add(bytes)
         .is_some_and(|total| limits.memory.is_none_or(|budget| budget.fits(total)))
+}
+
+/// Sufficient admission before any census, membership scan or allocation.
+/// Weights must already satisfy the caller's positive/finite validation. Only
+/// their mode is inspected. Validated designs already reject empty declared
+/// levels. No numerical success or rank conclusion follows from this bound.
+///
+/// Scalar-work audit: the two fixed orientation evaluations use fewer than
+/// 160 checked arithmetic/conversion operations, including their work/memory
+/// gates. Packed Wref, the existing certificate bound and caller ledger/state
+/// bookkeeping have a further 96-operation allowance. Each checked operation
+/// costs at most arithmetic plus its overflow predicate (512 total); reserve
+/// 256 more reads/writes/comparisons and 256 entry/exit/guard units. No scan or
+/// allocation is hidden in this 1,024-unit envelope. The caller charges it once
+/// and passes the post-charge remainder. Returned profile work excludes it.
+pub(crate) fn portfolio_preflight(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    rhs: usize,
+    limits: DirectLimits,
+) -> Option<DirectProfile> {
+    if design.effects().len() != 2
+        || design.nobs() == 0
+        || rhs == 0
+        || limits.preflight_work != PORTFOLIO_PREFLIGHT_WORK
+        || limits.component_census_work != 0
+    {
+        return None;
+    }
+    let p = design.effects()[0].n_levels();
+    let q = design.effects()[1].n_levels();
+    // Evaluate exactly both orientations; neither evaluation inspects data.
+    [
+        portfolio_bound(design.nobs(), p, q, rhs, weights, 0, limits),
+        portfolio_bound(design.nobs(), q, p, rhs, weights, 1, limits),
+    ]
+    .into_iter()
+    .flatten()
+    .filter(|profile| {
+        limits.admits_work(profile.noncertificate_work) && fits(limits, profile.peak_bytes)
+    })
+    .min_by_key(|profile| (profile.work_bound, profile.eliminated_effect))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn portfolio_bound(
+    n: usize,
+    p: usize,
+    q: usize,
+    rhs: usize,
+    weights: BorrowedMapWeights<'_>,
+    eliminated_effect: usize,
+    limits: DirectLimits,
+) -> Option<DirectProfile> {
+    if n == 0 || p == 0 || q == 0 || rhs == 0 {
+        return None;
+    }
+    let levels = p.checked_add(q)?;
+    let components = p.min(q);
+    let z = q.checked_sub(1)?;
+    let cells = product(z, z)?;
+    let level_rhs = product(levels, rhs)?;
+    let row_rhs = product(n, rhs)?;
+    // For actual component sizes q_i, sum(q_i-1)^2 <= (q-1)^2,
+    // sum(q_i-1)^2*q_i <= (q-1)^2*q. For eliminated touches d_g,
+    // d_g<=q and sum d_g<=n, so both clique-pair bounds are valid.
+    let pairs = (product(product(p, q)?, z)? / 2).min(product(n, z)? / 2);
+    // Census 8n+48L; BOTH profiles/validation 5n+24L+64c; then
+    // existing geometry, RHS, level/output, factor/solve and clique tariffs.
+    let operations = work(n, 13 + geometry_row_work(weights))?
+        .checked_add(work(row_rhs, rhs_row_work(weights))?)?
+        .checked_add(work(levels, 72)?)?
+        .checked_add(work(components, 64)?)?
+        .checked_add(work(level_rhs, 18)?)?
+        .checked_add(128)?
+        .checked_add(work(product(cells, q.checked_add(rhs)?)?, 32)?)?
+        .checked_add(work(pairs, 48)?)?;
+    let indices = components
+        .checked_mul(5)?
+        .checked_add(1)?
+        .checked_add(q.checked_mul(2)?)?;
+    let floats = cells
+        .checked_add(p)?
+        .checked_add(q.checked_mul(2)?)?
+        .checked_add(components)?
+        .checked_add(level_rhs)?
+        .checked_add(row_rhs)?;
+    let labels = (levels as u128)
+        .checked_mul(std::mem::size_of::<usize>() as u128)?
+        .checked_add(2 * std::mem::size_of::<Vec<usize>>() as u128)?;
+    let census_peak = labels
+        .checked_add((levels as u128).checked_mul(std::mem::size_of::<usize>() as u128)?)?
+        .checked_add(1024)?;
+    let profile_peak = labels
+        .checked_add((indices as u128).checked_mul(std::mem::size_of::<usize>() as u128)?)?
+        .checked_add((floats as u128).checked_mul(8)?)?
+        .checked_add(limits.certificate_bytes)?
+        .checked_add(1024)?;
+    Some(DirectProfile {
+        eliminated_effect,
+        dense_elements: cells,
+        noncertificate_work: operations,
+        work_bound: operations.checked_add(limits.certificate_work)?,
+        peak_bytes: census_peak.max(profile_peak),
+    })
 }
 
 /// Own the bounded topology census when the caller has no retained components.
@@ -857,6 +974,7 @@ mod tests {
     fn limits() -> DirectLimits {
         DirectLimits {
             reference_iteration_work: 1_000_000,
+            preflight_work: 0,
             remaining_setup_work: 4_000_000,
             component_census_work: 100,
             certificate_work: 1_000,
@@ -884,6 +1002,200 @@ mod tests {
         let components = connected_components_all(&[&a, &b], &[2, 2]).unwrap();
         let rhs = DenseMatrix::from_columns(&[vec![1., 2., 4., 8.]]).unwrap();
         f(&design, &components, &rhs);
+    }
+
+    fn portfolio_limits() -> DirectLimits {
+        DirectLimits {
+            preflight_work: PORTFOLIO_PREFLIGHT_WORK,
+            component_census_work: 0,
+            ..limits()
+        }
+    }
+
+    #[test]
+    fn portfolio_dimension_envelope_has_independent_admission_and_decline_examples() {
+        // Hand-counted global envelopes; no synthetic graph is needed to
+        // exercise the allocation-free dimension calculation or its overflow.
+        for (n, p, q, rhs, expected_a, four_w, expected_c) in [
+            (20_000, 100, 10, 1, 1_595_180, 1_608_616, 5_296_768),
+            (10_000, 1_000, 10, 65, 27_319_588, 27_923_320, 108_414_720),
+            (60_000, 3_000, 20, 6, 43_025_360, 17_290_656, 63_805_440),
+        ] {
+            let certificate = original_certificate_work(n, p + q, 2, rhs).unwrap();
+            assert_eq!(certificate, expected_c);
+            let bound = DirectLimits {
+                reference_iteration_work: four_w / 4,
+                remaining_setup_work: 8 * four_w - PORTFOLIO_PREFLIGHT_WORK,
+                certificate_work: certificate,
+                certificate_bytes: 0,
+                retained_live_bytes: 0,
+                ..portfolio_limits()
+            };
+            let profile =
+                portfolio_bound(n, p, q, rhs, BorrowedMapWeights::Unit, 0, bound).unwrap();
+            assert_eq!(profile.noncertificate_work, expected_a);
+            assert_eq!(bound.admits_work(expected_a), q == 10);
+            let weighted =
+                portfolio_bound(n, p, q, rhs, BorrowedMapWeights::Provided(&[]), 0, bound).unwrap();
+            assert_eq!(
+                weighted.noncertificate_work - expected_a,
+                16 * n as u64 * (rhs as u64 + 1)
+            );
+            assert!(!bound.admits_work(weighted.noncertificate_work));
+        }
+        let one =
+            portfolio_bound(12, 3, 1, 2, BorrowedMapWeights::Unit, 0, portfolio_limits()).unwrap();
+        assert_eq!((one.dense_elements, one.noncertificate_work), (0, 1860));
+        for (n, p, q, rhs) in [
+            (0, 1, 1, 1),
+            (1, 0, 1, 1),
+            (1, 1, 0, 1),
+            (1, 1, 1, 0),
+            (usize::MAX, 2, 2, 2),
+            (1, usize::MAX, 2, 1),
+            (1, 1, usize::MAX, 1),
+        ] {
+            assert!(portfolio_bound(
+                n,
+                p,
+                q,
+                rhs,
+                BorrowedMapWeights::Unit,
+                0,
+                portfolio_limits()
+            )
+            .is_none());
+        }
+    }
+
+    #[test]
+    fn portfolio_preflight_enforces_exact_work_and_joint_memory_boundaries() {
+        with_rectangle(|design, _, rhs| {
+            // Global unknown-component upper bound is A1076 (actual A1012).
+            let mut bound = DirectLimits {
+                reference_iteration_work: 525, // (1076 + preflight1024)/4
+                remaining_setup_work: 2836,    // A1076 + C1760; F already spent.
+                certificate_work: 1760,
+                ..portfolio_limits()
+            };
+            let admitted =
+                portfolio_preflight(design, BorrowedMapWeights::Unit, rhs.ncols(), bound).unwrap();
+            assert_eq!(admitted.noncertificate_work, 1076);
+            assert_eq!(admitted.work_bound, 2836);
+            bound.memory = Some(FeSolverMemoryBudget {
+                execution_bytes: 100,
+                usable_bytes: 100 + bound.retained_live_bytes + admitted.peak_bytes,
+            });
+            assert_eq!(
+                portfolio_preflight(design, BorrowedMapWeights::Unit, 1, bound),
+                Some(admitted)
+            );
+            for change in 0..6 {
+                let mut refused = bound;
+                match change {
+                    0 => refused.reference_iteration_work -= 1,
+                    1 => refused.remaining_setup_work -= 1,
+                    2 => refused.memory.as_mut().unwrap().usable_bytes -= 1,
+                    3 => refused.preflight_work = 0,
+                    4 => refused.component_census_work = 1,
+                    _ => refused.reference_iteration_work = u64::MAX,
+                }
+                assert!(
+                    portfolio_preflight(design, BorrowedMapWeights::Unit, 1, refused).is_none()
+                );
+            }
+            bound.certificate_work = u64::MAX;
+            assert!(portfolio_preflight(design, BorrowedMapWeights::Unit, 1, bound).is_none());
+        });
+    }
+
+    #[test]
+    fn actual_direct_gate_includes_sunk_preflight_without_charging_it_again() {
+        with_rectangle(|design, _, rhs| {
+            let mut bound = DirectLimits {
+                reference_iteration_work: 509, // (actual A1012 + F1024)/4.
+                remaining_setup_work: 2772,    // Actual A+C, not A+C+F.
+                certificate_work: 1760,
+                ..portfolio_limits()
+            };
+            let accepted =
+                attempt_with_census(design, BorrowedMapWeights::Unit, rhs, bound).unwrap();
+            assert!(accepted.candidate.is_some());
+            assert_eq!(accepted.work_used, 2772);
+            bound.reference_iteration_work -= 1;
+            let rejected =
+                attempt_with_census(design, BorrowedMapWeights::Unit, rhs, bound).unwrap();
+            assert_eq!(rejected.decline, Some(DirectDecline::Work));
+            assert_eq!(rejected.work_used, 404); // Census and both profiles only.
+            bound.preflight_work = 0;
+            assert!(
+                attempt_with_census(design, BorrowedMapWeights::Unit, rhs, bound)
+                    .unwrap()
+                    .candidate
+                    .is_some()
+            );
+        });
+    }
+
+    #[test]
+    fn every_small_bipartite_partition_fits_the_dimension_envelope() {
+        // Every subset of a 2x3 bipartite graph, with repeated observations.
+        // Includes disconnected blocks and absent declared levels. The latter
+        // must fail validation before routing; valid finalized partitions have
+        // census/profile storage bounded by the independent global envelope.
+        for mask in 1..64 {
+            let (mut a, mut b) = (Vec::new(), Vec::new());
+            for edge in 0..6 {
+                if mask & (1 << edge) != 0 {
+                    for _ in 0..=edge % 3 {
+                        a.push((edge / 3) as u32);
+                        b.push((edge % 3) as u32);
+                    }
+                }
+            }
+            let ia = LevelIndex::from_codes(&a, 2).unwrap();
+            let ib = LevelIndex::from_codes(&b, 3).unwrap();
+            let unused_a = (0..2).any(|level| ia.members(level).is_empty());
+            let unused_b = (0..3).any(|level| ib.members(level).is_empty());
+            let effect_a = BorrowedInterceptEffect::new(&a, 2, &ia);
+            let effect_b = BorrowedInterceptEffect::new(&b, 3, &ib);
+            assert_eq!(effect_a.is_err(), unused_a);
+            assert_eq!(effect_b.is_err(), unused_b);
+            if unused_a || unused_b {
+                continue;
+            }
+            let design =
+                BorrowedInterceptFeDesign::new(a.len(), vec![effect_a.unwrap(), effect_b.unwrap()])
+                    .unwrap();
+            let rhs = DenseMatrix::from_columns(&[
+                vec![1.; a.len()],
+                (0..a.len()).map(|i| i as f64).collect(),
+            ])
+            .unwrap();
+            let weighted: Vec<_> = (0..a.len()).map(|i| 1. + (i % 4) as f64).collect();
+            for weights in [
+                BorrowedMapWeights::Unit,
+                BorrowedMapWeights::Provided(&weighted),
+            ] {
+                let bound = portfolio_limits();
+                let preflight = portfolio_preflight(&design, weights, 2, bound).unwrap();
+                let actual = attempt_with_census(&design, weights, &rhs, bound).unwrap();
+                assert!(actual.work_used <= preflight.work_bound);
+                let mut maximum_peak = 0;
+                for (effect, actual_profile) in actual.profiles.iter().enumerate() {
+                    let (p, q) = if effect == 0 { (2, 3) } else { (3, 2) };
+                    let upper = portfolio_bound(a.len(), p, q, 2, weights, effect, bound).unwrap();
+                    maximum_peak = maximum_peak.max(upper.peak_bytes);
+                    if let Some(actual_profile) = actual_profile {
+                        assert!(actual_profile.noncertificate_work <= upper.noncertificate_work);
+                        assert!(actual_profile.peak_bytes <= upper.peak_bytes);
+                    }
+                }
+                // Actual selection may choose another, cheaper orientation;
+                // its own memory gate remains authoritative.
+                assert!(actual.peak_bytes <= maximum_peak);
+            }
+        }
     }
 
     #[test]
@@ -1195,6 +1507,7 @@ mod tests {
             super::super::routing::schur_iteration_work(n, levels, levels, 1, 64).unwrap();
         let limits = DirectLimits {
             reference_iteration_work: w_ref,
+            preflight_work: 0,
             remaining_setup_work: 32 * w_ref,
             component_census_work: 0,
             certificate_work: original_certificate_work(n, 2 * levels, 2, 1).unwrap(),

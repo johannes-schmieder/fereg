@@ -216,10 +216,10 @@ impl<'a> GeneralRoutingState<'a> {
             let mut progress = reserved(columns.len()).map_err(failure)?;
             let pilot = self.replacement.is_none()
                 && (!self.setup.attempted || self.preparation.is_some())
-                && options.maxiter > self.preset.checkpoint();
+                && options.maxiter > self.preset.general_pair_checkpoint();
             let mut epoch = 0;
             loop {
-                let cap = if pilot && epoch < self.preset.checkpoint() {
+                let cap = if pilot && epoch < self.preset.general_pair_checkpoint() {
                     4
                 } else {
                     options.maxiter
@@ -255,7 +255,7 @@ impl<'a> GeneralRoutingState<'a> {
                     self.park_for_certificate().map_err(failure)?;
                     break;
                 }
-                if !pilot || epoch > self.preset.checkpoint() {
+                if !pilot || epoch > self.preset.general_pair_checkpoint() {
                     self.park_for_certificate().map_err(failure)?;
                     break;
                 }
@@ -263,7 +263,7 @@ impl<'a> GeneralRoutingState<'a> {
                     self.park_for_certificate().map_err(failure)?;
                     break;
                 }
-                if epoch == self.preset.checkpoint() {
+                if epoch == self.preset.general_pair_checkpoint() {
                     self.join_pair_at_checkpoint(
                         solver,
                         options,
@@ -304,7 +304,7 @@ impl<'a> GeneralRoutingState<'a> {
                     *setup_seconds += setup_started.elapsed().as_secs_f64();
                 }
                 if self.preparation.is_none() {
-                    epoch = self.preset.checkpoint() + 1;
+                    epoch = self.preset.general_pair_checkpoint() + 1;
                 }
             }
             if let Some(preparation) = &self.preparation {

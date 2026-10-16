@@ -75,6 +75,22 @@ def prefix_manifest():
     return spec
 
 
+def portfolio_manifest():
+    original = manifest()
+    spec = copy.deepcopy(original)
+    spec.update(experiment_kind='portfolio', prior_manifests=[routing.seal(original)],
+                sampled_qualification={'1': h('sample-1-scientific-evidence')},
+                candidates=['baseline', routing.PORTFOLIO_V1])
+    spec['arms'] = {a: original['arms'][a] for a in ['baseline', 'lsmr']}
+    spec['arms'][routing.PORTFOLIO_V1] = {'sha256': h('candidate'),
+        'policy': routing.policy(routing.PORTFOLIO_V1), 'role': 'candidate'}
+    for stage, cells in spec['panels'].items():
+        cells[0].update(case_sha256=h('portfolio-case-' + stage),
+                        body_sha256=h('portfolio-body-' + stage),
+                        coverage=sorted(routing.PORTFOLIO_COVERAGE))
+    return spec
+
+
 def overlap_manifest():
     original = manifest()
     times = {'h8-k0': .8}
@@ -145,6 +161,129 @@ class RoutingTournament(unittest.TestCase):
                 bad['panels']['A'][0]['body_sha256'] = self.spec['panels']['C'][0]['body_sha256']
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 routing.validate_manifest(bad)
+
+    def test_portfolio_map4_is_a_separate_binary_strict_target_experiment(self):
+        spec = portfolio_manifest()
+        routing.validate_manifest(spec)
+        selected = routing.policy(routing.PORTFOLIO_V1)
+        self.assertEqual(routing.policy_name(selected), routing.PORTFOLIO_V1)
+        self.assertEqual(selected['certificate'], 'private_auto')
+        self.assertFalse(selected['optional_cmg_handoff'])
+        self.assertNotIn('certificate', routing.policy('prefix-map4'))
+        a = routing.evaluate(spec, 'A', records(spec, 'A'))
+        self.assertEqual(a['shortlist'], ['baseline', routing.PORTFOLIO_V1])
+        b = routing.evaluate(spec, 'B', records(spec, 'B', a), a)
+        self.assertEqual(b['selected'], 'baseline')
+        for invalid in ['loose-target', 'extra-policy', 'missing-sampled', 'old-body', 'no-history', 'missing-coverage']:
+            bad = copy.deepcopy(spec)
+            if invalid == 'loose-target':
+                bad['arms'][routing.PORTFOLIO_V1]['policy']['certificate'] = 'requested'
+            elif invalid == 'extra-policy':
+                bad['candidates'].append('prefix-it4')
+                bad['arms']['prefix-it4'] = {'sha256': h('candidate'),
+                    'policy': routing.policy('prefix-it4'), 'role': 'candidate'}
+            elif invalid == 'missing-sampled':
+                bad['sampled_qualification'] = {}
+            elif invalid == 'old-body':
+                bad['panels']['A'][0]['body_sha256'] = self.spec['panels']['C'][0]['body_sha256']
+            elif invalid == 'no-history':
+                bad.pop('prior_manifests')
+            else:
+                bad['panels']['A'][0]['coverage'].remove('one-fe')
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                routing.validate_manifest(bad)
+
+    def test_portfolio_requires_exact_sample_one_binding_and_all_coverage(self):
+        spec = portfolio_manifest()
+        for sampled in [None, [], 'science1', {}, {'2': h('science2')}, {'1': 'not-evidence'},
+                        {'1': True}, {'1': h('science1'), '2': h('science2')}]:
+            bad = copy.deepcopy(spec)
+            bad['sampled_qualification'] = sampled
+            with self.subTest(sampled=sampled), self.assertRaises(ValueError):
+                routing.validate_manifest(bad)
+        for stage in routing.REPETITIONS:
+            for tag in routing.PORTFOLIO_COVERAGE:
+                bad = copy.deepcopy(spec)
+                bad['panels'][stage][0]['coverage'].remove(tag)
+                with self.subTest(stage=stage, tag=tag), self.assertRaisesRegex(ValueError, 'missing coverage'):
+                    routing.validate_manifest(bad)
+        for stage in ['B', 'C']:
+            bad = copy.deepcopy(spec)
+            bad['panels'][stage][0]['body_sha256'] = bad['panels']['A'][0]['body_sha256']
+            with self.subTest(stage=stage), self.assertRaisesRegex(ValueError, 'must not share'):
+                routing.validate_manifest(bad)
+
+    def test_portfolio_rejects_changed_fields_types_missing_fields_and_policy_grids(self):
+        selected = routing.policy(routing.PORTFOLIO_V1)
+        self.assertEqual(selected['two_fe'], {'checkpoint': 16, 'trees': 1, 'degree': 5,
+            'seed': 0, 'construction': 'synchronous', 'canonical_cache': True,
+            'small_direct': {'selection': 'dimension_upper_bound_v1', 'preflight_work': 1024,
+                             'structural_iteration_allowance': 4, 'choice': 'direct_or_incumbent_cmg'}})
+        self.assertEqual(selected['prefix_min_terms'], 3)
+        altered = []
+        for path, values in [(('prefix_min_terms',), [2, 3.0]),
+                             (('optional_cmg_handoff',), [True, 0]),
+                             (('two_fe', 'checkpoint'), [8, 16.0]),
+                             (('two_fe', 'trees'), [0, 2, True]),
+                             (('two_fe', 'degree'), [4]),
+                             (('two_fe', 'seed'), [1]),
+                             (('two_fe', 'construction'), ['overlap']),
+                             (('two_fe', 'canonical_cache'), [False, 1])]:
+            for value in values:
+                bad = copy.deepcopy(selected)
+                owner = bad if len(path) == 1 else bad[path[0]]
+                owner[path[-1]] = value
+                altered.append(bad)
+        for field in selected:
+            bad = copy.deepcopy(selected)
+            bad.pop(field)
+            altered.append(bad)
+        altered.append({**selected, 'unreviewed_option': True})
+        for value in altered:
+            spec = portfolio_manifest()
+            spec['arms'][routing.PORTFOLIO_V1]['policy'] = value
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                routing.validate_manifest(spec)
+            with self.subTest(policy_name=value), self.assertRaises(ValueError):
+                routing.policy_name(value)
+        spec = portfolio_manifest()
+        for arm in ['h4-k1', 'h8-k1', 'h16-k1', 'h32-k1']:
+            spec['candidates'].append(arm)
+            spec['arms'][arm] = {'sha256': h('candidate'), 'policy': routing.policy(arm), 'role': 'candidate'}
+        with self.assertRaisesRegex(ValueError, 'candidate set'):
+            routing.validate_manifest(spec)
+        for old_name in ['composed-map4', 'routing_composed_map4']:
+            with self.assertRaises(ValueError):
+                routing.policy(old_name)
+
+    def test_portfolio_direct_choice_is_exact_and_cannot_stack_attempts(self):
+        selected = routing.policy(routing.PORTFOLIO_V1)
+        altered = []
+        for field, values in [('selection', ['dimension_upper_bound_v2', 'measured_cost']),
+                              ('preflight_work', [0, 1024.0, True]),
+                              ('structural_iteration_allowance', [5, 4.0, True]),
+                              ('choice', ['direct_then_cmg', 'direct_or_incumbent'])]:
+            for value in values:
+                bad = copy.deepcopy(selected)
+                bad['two_fe']['small_direct'][field] = value
+                altered.append(bad)
+        for field in selected['two_fe']['small_direct']:
+            bad = copy.deepcopy(selected)
+            del bad['two_fe']['small_direct'][field]
+            altered.append(bad)
+        bad = copy.deepcopy(selected)
+        del bad['two_fe']['small_direct']
+        altered.append(bad)
+        bad = copy.deepcopy(selected)
+        bad['two_fe']['small_direct']['retry_cmg_after_decline'] = True
+        altered.append(bad)
+        for value in altered:
+            spec = portfolio_manifest()
+            spec['arms'][routing.PORTFOLIO_V1]['policy'] = value
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                routing.validate_manifest(spec)
+            with self.subTest(policy_name=value), self.assertRaises(ValueError):
+                routing.policy_name(value)
 
     def test_overlap_is_binary_for_a_fully_qualified_frozen_serial_policy(self):
         spec = overlap_manifest()
@@ -222,7 +361,7 @@ class RoutingTournament(unittest.TestCase):
             root = Path(tmp)
             source = root / 'source.case'
             source.write_bytes(case_bytes([b'estimate-ols', b'threads=1', b'solver=auto']))
-            for name in [*routing.PREFIXES, 'overlap-h8-k1', routing.COMPACT_IT]:
+            for name in [routing.PORTFOLIO_V1, *routing.PREFIXES, 'overlap-h8-k1', routing.COMPACT_IT]:
                 target = root / (name + '.case')
                 routing.prepare(source, target, name, 4)
                 with target.open('rb') as stream:

@@ -265,6 +265,39 @@ inconclusive evidence prevents confirmation; there is no fallback or continuatio
 The final result remains conditional and requires operational review before
 promotion. Evidence revalidation happens outside native-call timing.
 
+The separate prospective `portfolio` experiment in `routing.py` admits exactly
+baseline and `portfolio-v1`. The latter uses `routing_portfolio_v1`: exactly two
+categorical effects first apply a charged dimension-only sufficient bound for
+direct factorization, preserving the four-iteration structural cap, full setup
+cap and joint memory admission. Direct and incumbent-CMG are exclusive; a
+declined direct preflight retains its charge and permits one synchronous CMG
+attempt at iteration 16, cutoff 5, one sampled tree and seed zero. Three or
+more categorical effects try at most four MAP sweeps with strict private Auto
+certification and an original-slot seed for incumbent LSMR, with no general-FE
+CMG handoff. Earlier isolated policies and their evidence remain distinct.
+Fresh A/B/C bodies, the full standard and high-degree/extended coverage, actual
+sampling science, the existing scientific gates and fixed stopping rules remain
+required. This finite hypothesis does not reopen a completed campaign or promote
+the candidate into public Auto.
+
+For this hypothesis, discovery uses the separate closed schema-2 path in
+`routing_parallel.py`. Three distinct reserved nodes each run fresh two-call
+science prerequisites and one complete 42-cell round. Each available arm has
+two science calls, one traced call, one warmup and three measured solves:
+at most 2,520 calls per allocation and 7,560 overall. Science, timing and cleanup
+share a fixed 14,400-second allocation budget; terminal accounting must also
+fit that bound. No global science proof, old window, retry or replacement enters
+this campaign. Require all three complete terminal records, independent science,
+strict isolation and full aggregate replay before reading a shortlist.
+
+The frozen descriptive screen rejects the portfolio if any baseline comparison
+violates its allowance, or its worst available internal normalized comparison
+exceeds one; equality passes this screen. Missing valid internal comparisons
+block screening. A rejection retains the complete ranking and stops before Mac
+B. Passing the screen only admits fresh Mac B12 selection, reviewed public/hidden
+equivalence and untouched C24 confirmation, with the existing tolerances,
+allowance and stopping rules. It does not establish a performance claim.
+
 ### CMG-Schur prototype comparison
 
 [`cmgschur_cases.py`](cmgschur_cases.py) and [`cmgschur.py`](cmgschur.py) compare

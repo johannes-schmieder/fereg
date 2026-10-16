@@ -40,6 +40,12 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             }
             (None, false)
         }
+        "routing_portfolio_v1" => {
+            if solver != FeSolverKind::Auto {
+                return Err(syntax("hidden routing injection requires solver(auto)"));
+            }
+            (Some(RoutingPreset::portfolio_v1()), false)
+        }
         "routing_prefix_none" | "routing_prefix_map4" | "routing_prefix_it4" => {
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
@@ -149,4 +155,50 @@ pub(crate) fn create_native_break_marker(prefix: &str, marker: &str, token: &str
 
 fn internal(message: String) -> FeregError {
     FeregError::new(ErrorCode::Internal, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn portfolio_routing_accepts_only_the_finite_auto_arm_without_break_token() {
+        let parsed = parse_ols("routing_portfolio_v1", FeSolverKind::Auto, "").unwrap();
+        assert_eq!(parsed.routing, Some(RoutingPreset::portfolio_v1()));
+        assert!(!parsed.it_coefficients);
+        assert!(parsed.native_break_token.is_none());
+        for solver in [
+            FeSolverKind::Map,
+            FeSolverKind::Lsmr,
+            FeSolverKind::Cmg,
+            FeSolverKind::CmgSchur,
+            FeSolverKind::Cg,
+            FeSolverKind::IronsTuck,
+            FeSolverKind::Squarem,
+        ] {
+            assert!(parse_ols("routing_portfolio_v1", solver, "").is_err());
+        }
+        for stage in [
+            "routing_composed_map4",
+            "routing_portfolio_v2",
+            "routing_portfolio_v1_h8_k1",
+            "routing_portfolio_v01",
+            "routing_portfolio_map4",
+            "ROUTING_PORTFOLIO_V1",
+        ] {
+            assert!(parse_ols(stage, FeSolverKind::Auto, "").is_err());
+        }
+        assert!(parse_ols(
+            "routing_portfolio_v1",
+            FeSolverKind::Auto,
+            "0123456789abcdef0123456789abcdef"
+        )
+        .is_err());
+        assert_eq!(
+            parse_ols("routing_prefix_map4", FeSolverKind::Auto, "")
+                .unwrap()
+                .routing,
+            Some(RoutingPreset::prefix(CategoricalPrefix::Map4))
+        );
+    }
 }

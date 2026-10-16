@@ -7,7 +7,7 @@ import unittest
 
 import routing
 import routing_deployment as deployment
-from test_routing import h, manifest, records
+from test_routing import h, manifest, records, portfolio_manifest
 
 
 class DeploymentGate(unittest.TestCase):
@@ -83,6 +83,33 @@ class DeploymentGate(unittest.TestCase):
 
     def derive(self):
         return deployment.derive(self.declaration, self.original, self.a, self.ar, self.b, self.br, self.packet)
+
+    def test_exact_portfolio_origin_preserves_activation_and_untouched_c_contract(self):
+        spec = portfolio_manifest()
+        spec['candidate_source_identity'] = {'plugin_sha256': h('candidate'),
+            'production_tokens_sha256': h('production'), 'artifact_inputs_sha256': h('inputs')}
+        original = copy.deepcopy(spec)
+        self.assertEqual(deployment.origin(routing.seal(spec)), original)
+        declared = deployment.declare(routing.seal(spec))
+        self.assertEqual(declared['contract'], deployment.CONTRACT)
+        self.assertEqual(spec['panels']['C'], original['panels']['C'])
+        self.assertEqual({c['stage'] for c in declared['non_c_cells']}, {'A', 'B'})
+        for kind in ['prefix', 'overlap', 'composed', 'routing']:
+            bad = copy.deepcopy(spec)
+            bad['experiment_kind'] = kind
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                deployment.origin(routing.seal(bad))
+        for change in ['order', 'policy', 'sampling', 'source', 'incumbent']:
+            bad = copy.deepcopy(spec)
+            if change == 'order': bad['candidates'].reverse()
+            elif change == 'policy': bad['arms'][routing.PORTFOLIO_V1]['policy']['two_fe']['trees'] = 2
+            elif change == 'sampling': bad['sampled_qualification'] = {}
+            elif change == 'source': bad['candidate_source_identity']['plugin_sha256'] = h('different')
+            else:
+                bad['protections'].append('incumbent')
+                bad['arms']['incumbent'] = {**bad['arms']['baseline'], 'sha256': h('different')}
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                deployment.origin(routing.seal(bad))
 
     def test_exact_public_holdout_preserves_original_contract_and_hidden_protection(self):
         value = self.derive()

@@ -36,6 +36,7 @@ import routing_run
 from time_exact import sha256_file as digest
 
 KIND = 'routing_scc_discovery'
+PORTFOLIO_KIND = 'routing_scc_portfolio_discovery'
 GRID = ['baseline', *[f'h{h}-k{k}' for k in routing.TREES for h in routing.CHECKPOINTS]]
 DESIGN = {'rounds': 3, 'measured_slots': 9, 'warmups_per_round': 1,
           'per_call_timeout_s': 120.0, 'prerequisite_budget_s': 14400.0,
@@ -75,12 +76,12 @@ def load(path):
     return routing.unseal(routing.read_json(Path(path)))
 
 
-def validate_spec(spec):
+def validate_spec(spec, *, portfolio=False):
     routing.validate_manifest(spec)
-    require(spec.get('experiment_kind', 'routing') == 'routing'
+    require(spec.get('experiment_kind', 'routing') == ('portfolio' if portfolio else 'routing')
             and spec.get('purpose') != 'ablation_only', 'discovery requires the routing tournament')
-    require(spec['candidates'] == GRID and len(spec['panels']['A']) == 42,
-            'discovery freezes twelve nonbaseline policies plus baseline and 42 A cells')
+    require(spec['candidates'] == (['baseline', routing.PORTFOLIO_V1] if portfolio else GRID)
+            and len(spec['panels']['A']) == 42, 'discovery candidate portfolio or 42 A cells differs')
 
 
 def freeze(config):
@@ -89,9 +90,10 @@ def freeze(config):
     Only A input paths may be supplied. Witness closures and A sidecars are frozen.
     """
     spec = load(config['manifest'])
-    validate_spec(spec)
+    portfolio = spec.get('experiment_kind') == 'portfolio'
+    validate_spec(spec, portfolio=portfolio)
     cells = spec['panels']['A']
-    arms = set(GRID + spec['protections'] + [a for c in cells for a in c['comparators']])
+    arms = set(spec['candidates'] + spec['protections'] + [a for c in cells for a in c['comparators']])
     require(set(config['plugins']) == arms, 'artifact coverage changed')
     require(set(config['cases']) == set(config['witnesses']) == {c['id'] for c in cells},
             'only complete A input coverage is permitted')
@@ -123,7 +125,7 @@ def freeze(config):
             paths[str(source)] = ref['sha256']
         witness = Path(config['witnesses'][cid]).resolve(strict=True)
         value, bound = routing_run.evidence(witness, cell, spec,
-            list(dict.fromkeys(GRID + spec['protections'] + cell['comparators'])),
+            list(dict.fromkeys(spec['candidates'] + spec['protections'] + cell['comparators'])),
             prerequisites_only=True, local_oracle='oracle' in meta or 'replay_reference' in meta
             or cell['family'] == 'inactive-columns')
         paths.update({str(p): h for p, h in bound.items()})
@@ -135,7 +137,7 @@ def freeze(config):
                 paths.update({str(p): h for p, h in bound.items()})
     root = routing.scratch(Path(config['output_root']))
     require(not root.exists(), 'freeze a fresh campaign output root')
-    return {'kind': KIND + '_plan', 'schema': 1, 'design': DESIGN, 'tournament': routing.seal(spec),
+    return {'kind': (PORTFOLIO_KIND if portfolio else KIND) + '_plan', 'schema': 1, 'design': DESIGN, 'tournament': routing.seal(spec),
             'output_root': str(root), 'library_limits': LIBRARY_LIMITS,
             'harness': str(Path(config['harness']).resolve()),
             **{key: {k: str(Path(v).resolve()) for k, v in config[key].items()}
@@ -147,10 +149,10 @@ def freeze(config):
 
 
 def validate_plan(plan):
-    require(plan.get('kind') == KIND + '_plan' and plan.get('design') == DESIGN
+    require(plan.get('kind') in {KIND + '_plan', PORTFOLIO_KIND + '_plan'} and plan.get('design') == DESIGN
             and plan.get('library_limits') == LIBRARY_LIMITS, 'wrong discovery plan')
     spec = routing.unseal(plan['tournament'])
-    validate_spec(spec)
+    validate_spec(spec, portfolio=plan['kind'] == PORTFOLIO_KIND + '_plan')
     for path, sha in plan['frozen_files'].items():
         checked({'path': path, 'sha256': sha})
     require(plan['producer_tools'] == {p.name: h for p, h in routing_run.tool_identities().items()},
@@ -180,7 +182,7 @@ def prerequisite_status(spec, records):
     outcomes = {}
     for cell in spec['panels']['A']:
         cid = cell['id']
-        arms = list(dict.fromkeys(GRID + spec['protections'] + cell['comparators']))
+        arms = list(dict.fromkeys(spec['candidates'] + spec['protections'] + cell['comparators']))
         result = routing_run.prerequisite_outcomes(spec, arms,
             [r for r in records['prerequisites'] if r['cell'] == cid],
             [r for r in records['records'] if r['cell'] == cid])
@@ -232,7 +234,7 @@ def round_data(plan, spec, records, expected_outcomes, expected_fingerprints):
     require(records.get('purpose') == 'policy_tournament' and records.get('warmups') == 1
             and records.get('repetitions') == 3 and records.get('timeout_s') == 120.0
             and records.get('budget_s') == 14400.0, 'round measurement contract changed')
-    times, outcomes, _ = routing.observations(spec, 'A', GRID, records, None)
+    times, outcomes, _ = routing.observations(spec, 'A', spec['candidates'], records, None)
     require({k: v['status'] for k, v in outcomes.items()}
             == {k: v['status'] for k, v in expected_outcomes.items()},
             'new outcome stops discovery without retry')
@@ -261,11 +263,12 @@ def checked_wrappers(plan, spec, proof):
     witnesses = {k: checked(v) for k, v in proof['wrappers'].items()}
     for cell in spec['panels']['A']:
         routing_run.evidence(witnesses[cell['id']], cell, spec,
-            list(dict.fromkeys(GRID + spec['protections'] + cell['comparators'])))
+            list(dict.fromkeys(spec['candidates'] + spec['protections'] + cell['comparators'])))
     return witnesses
 
 
 def collect(plan, proof, output):
+    require(plan.get('kind') == KIND + '_plan', 'portfolio collection requires the closed parallel protocol')
     spec, machine = validate_plan(plan), host()
     require(machine['library_limits'] == plan['library_limits'], 'set all frozen library thread limits before launch')
     require(output == Path(plan['output_root']) / 'collection', 'collection destination is frozen')
@@ -373,6 +376,7 @@ def score(spec, times, outcomes):
 
 
 def aggregate(plan, proof, collection, receipt):
+    require(plan.get('kind') == KIND + '_plan', 'portfolio aggregation requires the closed parallel protocol')
     spec = validate_plan(plan)
     require(collection.get('kind') == KIND + '_collection' and collection.get('status') == 'complete'
             and collection.get('plan_sha256') == routing.identity(plan)

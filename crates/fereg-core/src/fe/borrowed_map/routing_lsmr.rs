@@ -137,6 +137,10 @@ impl<'a> GeneralRoutingState<'a> {
         self.preset.categorical_prefix()
     }
 
+    pub(super) fn strict_categorical_prefix(&self) -> bool {
+        self.preset.strict_categorical_prefix()
+    }
+
     pub(crate) fn begin(
         &mut self,
         tolerance: f64,
@@ -371,9 +375,9 @@ impl<'a> GeneralRoutingState<'a> {
             )?;
             let pilot = self.replacement.is_none()
                 && !self.setup.attempted
-                && options.maxiter > self.preset.checkpoint();
+                && options.maxiter > self.preset.general_pair_checkpoint();
             let cap = if pilot {
-                self.preset.checkpoint()
+                self.preset.general_pair_checkpoint()
             } else {
                 options.maxiter
             };
@@ -1178,6 +1182,80 @@ mod tests {
                 })
                 .collect();
             BorrowedInterceptFeDesign::new(self.codes[0].len(), effects).unwrap()
+        }
+    }
+
+    #[test]
+    fn portfolio_general_seeded_schwarz_never_scans_or_builds_optional_pairs() {
+        let fixture = Fixture::new();
+        let design = fixture.design();
+        let weights = validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap();
+        let options = LsmrOptions {
+            tol: 1e-14,
+            maxiter: 200,
+            local_size: None,
+        };
+        let rhs: Vec<_> = fixture.rhs.iter().map(Vec::as_slice).collect();
+        let mut seed = FeCoefficientBatch::intercept_zeros(&design, rhs.len()).unwrap();
+        for (index, value) in seed.values.iter_mut().enumerate() {
+            *value = (index as f64 * 0.173).sin();
+        }
+        let solver =
+            build_retained_borrowed_lsmr(&design, weights, PreconditionerConfig::default(), true)
+                .unwrap();
+        let expected: Vec<_> = rhs
+            .iter()
+            .enumerate()
+            .map(|(column, original)| {
+                let mut session = solver
+                    .start_session_categorical_seeded(original, seed.rhs(column).unwrap(), &options)
+                    .unwrap();
+                session.run_action(None, options.maxiter, None).unwrap();
+                session.finish()
+            })
+            .collect();
+        assert!(expected.iter().any(|result| result.iterations > 16));
+        let estimate = estimate_fe_solver_memory(
+            design.nobs(),
+            rhs.len(),
+            &[160, 161, 3],
+            rayon::current_num_threads(),
+            None,
+        )
+        .unwrap();
+        let mut memory =
+            BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Schwarz, None, 0).unwrap();
+        let mut route = GeneralRoutingState::new(RoutingPreset::portfolio_v1());
+        route.begin(1e-14, false, &design, rhs.len(), None).unwrap();
+        let (actual, fallback) = route
+            .solve(
+                &design,
+                weights,
+                &rhs,
+                &options,
+                LsmrPreconditioner::Auto,
+                PreconditionerConfig::default(),
+                true,
+                &mut memory,
+                Some(&seed),
+            )
+            .unwrap();
+        assert!(!fallback);
+        assert!(!route.setup.attempted);
+        assert_eq!(route.work().0, 0);
+        assert!(route.incumbent_work.is_none() && route.design_work.is_none());
+        assert!(route.replacement.is_none() && route.preparation.is_none());
+        for (column, expected) in expected.iter().enumerate() {
+            assert_eq!(actual.iterations[column], expected.iterations);
+            assert_eq!(actual.x(column), expected.x);
+            assert_eq!(actual.demeaned(column), expected.demeaned);
+            for (codes, levels) in fixture.codes.iter().zip([160, 161, 3]) {
+                let mut moments = vec![0.0; levels];
+                for (row, &level) in codes.iter().enumerate() {
+                    moments[level as usize] += actual.demeaned(column)[row];
+                }
+                assert!(moments.iter().all(|moment| moment.abs() < 1e-8));
+            }
         }
     }
 

@@ -25,8 +25,9 @@ from time_exact import compare
 CHECKPOINTS = (4, 8, 16, 32)
 ABLATIONS = {name: 'routing_' + name for name in ['diagonal', 'cells', 'direct']}
 PREFIXES = {'prefix-none': ('none', 0), 'prefix-map4': ('map4', 4), 'prefix-it4': ('it4', 8)}
+PORTFOLIO_V1 = 'portfolio-v1'
 COMPACT_IT = 'it-coefficients'
-EXPERIMENT_KINDS = {'routing', 'prefix', 'overlap'}
+EXPERIMENT_KINDS = {'routing', 'prefix', 'overlap', 'portfolio'}
 PREFIX_COVERAGE = {'small-third', 'near-confounded-third', 'four-fe', 'eight-fe', 'sixteen-fe'}
 TREES = (0, 1, 2)
 REPETITIONS = {'A': 3, 'B': 7, 'C': 7}
@@ -157,6 +158,9 @@ def arm_outcome(manifest, rows, prerequisite=None):
 COVERAGE = {'no-fe', 'one-fe', 'dense', 'weak', 'small-retained', 'small-third',
             'four-fe', 'eight-fe', 'weighted', 'repeated-cells', 'wide-rhs', 'slopes'}
 SAMPLED_COVERAGE = {'high-degree-mixed', 'high-degree-weak', 'high-degree-stress'}
+PORTFOLIO_COVERAGE = COVERAGE | SAMPLED_COVERAGE | {
+    'sixteen-fe', 'disconnected', 'near-confounded-third', 'weight-dynamic',
+    'inactive-columns', 'low-saved'}
 
 
 def identity(value):
@@ -182,6 +186,16 @@ def sha(value):
 def policy(arm):
     if arm == 'baseline':
         return None
+    if arm == PORTFOLIO_V1:
+        return {'prefix': 'map4', 'steps': 4, 'map_sweeps': 4, 'prefix_min_terms': 3,
+                'replace_existing_prefix': True, 'optional_cmg_handoff': False,
+                'certificate': 'private_auto', 'injection': 'routing_portfolio_v1',
+                'two_fe': {'checkpoint': 16, 'trees': 1, 'degree': 5, 'seed': 0,
+                           'construction': 'synchronous', 'canonical_cache': True,
+                           'small_direct': {'selection': 'dimension_upper_bound_v1',
+                                            'preflight_work': 1024,
+                                            'structural_iteration_allowance': 4,
+                                            'choice': 'direct_or_incumbent_cmg'}}}
     if arm in PREFIXES:
         name, sweeps = PREFIXES[arm]
         return {'prefix': name, 'steps': 0 if name == 'none' else 4, 'map_sweeps': sweeps,
@@ -204,10 +218,10 @@ def policy(arm):
 def policy_name(value):
     if value is None:
         return 'baseline'
-    choices = [*PREFIXES, *(f'h{h}-k{k}' for h in CHECKPOINTS for k in TREES),
+    choices = [PORTFOLIO_V1, *PREFIXES, *(f'h{h}-k{k}' for h in CHECKPOINTS for k in TREES),
                *(f'overlap-h{h}-k{k}' for h in CHECKPOINTS[1:] for k in TREES)]
     for name in choices:
-        if policy(name) == value:
+        if (identity(policy(name)) == identity(value) if name == PORTFOLIO_V1 else policy(name) == value):
             return name
     raise ValueError('unknown or incomplete fixed routing policy')
 
@@ -245,6 +259,8 @@ def conservative(arm):
         return (int(arm == 'overlap'), 0, 0, 0)
     if arm in PREFIXES:
         return (1, list(PREFIXES).index(arm), 0, 0)
+    if arm == PORTFOLIO_V1:
+        return (1, 0, 0, 0)
     p = policy(arm)
     return (0, 0, 0, 0) if p is None else (1, p['trees'] != 0, -p['checkpoint'], p['trees'])
 
@@ -326,7 +342,7 @@ def validate_manifest(manifest):
     incumbent_policy = arms.get('incumbent', {}).get('policy')
     if incumbent_policy is not None:
         name = policy_name(incumbent_policy)
-        if name.startswith('overlap-') or kind == 'prefix':
+        if name.startswith('overlap-') or name == PORTFOLIO_V1 or kind in {'prefix', 'portfolio'}:
             raise ValueError('stage incumbent contains an unrelated experiment policy')
     for arm, config in arms.items():
         if config.get('role') != arm_role(manifest, arm):
@@ -344,23 +360,28 @@ def validate_manifest(manifest):
             raise ValueError('CMG-Schur comparator samples must be 0/1/2')
     sampled = manifest.get('sampled_qualification', {})
     counts = {0}
-    if any(k not in {'1', '2'} or not sha(v) for k, v in sampled.items()):
+    if not isinstance(sampled, dict) or any(k not in {'1', '2'} or not sha(v) for k, v in sampled.items()):
         raise ValueError('sampled qualification maps counts 1/2 to scientific evidence hashes')
     counts.update(map(int, sampled))
+    if kind == 'portfolio' and set(sampled) != {'1'}:
+        raise ValueError('portfolio V1 requires exactly the sample-1 scientific qualification binding')
     if (ablation or kind == 'prefix') and sampled:
         raise ValueError('this isolated experiment does not declare sampled policy candidates')
     expected = ({'baseline'} if ablation else {'baseline', *PREFIXES} if kind == 'prefix' else
+                {'baseline', PORTFOLIO_V1} if kind == 'portfolio' else
                 {'serial', 'overlap'} if kind == 'overlap' else
                 {'baseline', *(f'h{h}-k{k}' for h in CHECKPOINTS for k in counts)})
     if set(candidates) != expected:
-        raise ValueError('freeze the full four-checkpoint grid for each qualified tree count')
+        raise ValueError('freeze exactly baseline and portfolio-v1 as the candidate set' if kind == 'portfolio'
+                         else 'freeze the full four-checkpoint grid for each qualified tree count')
     candidate_hashes = {arms[a]['sha256'] for a in candidates if a != 'baseline'}
     if not ablation and len(candidate_hashes) != 1:
         raise ValueError('policy candidates must share one frozen artifact')
     for arm in candidates:
         expected_policy = (arms['serial']['policy'] if kind == 'overlap' and arm == 'serial' else
                            policy('overlap-' + policy_name(arms['serial']['policy'])) if kind == 'overlap' else policy(arm))
-        if arms[arm].get('policy') != expected_policy:
+        if (identity(arms[arm].get('policy')) != identity(expected_policy) if arm == PORTFOLIO_V1
+                else arms[arm].get('policy') != expected_policy):
             raise ValueError(f'{arm}: policy and sanctioned injection must match')
     if set(manifest['panels']) != ({'A'} if ablation else set(REPETITIONS)):
         raise ValueError('predeclare all three panels')
@@ -405,7 +426,9 @@ def validate_manifest(manifest):
             raise ValueError('A/B/C must not share case or numeric/model body hashes')
         seen_hashes.update(stage_hashes)
         seen_bodies.update(stage_bodies)
-        required_coverage = PREFIX_COVERAGE if kind == 'prefix' else COVERAGE | (SAMPLED_COVERAGE if sampled else set())
+        required_coverage = (PREFIX_COVERAGE if kind == 'prefix' else
+                             PORTFOLIO_COVERAGE if kind == 'portfolio' else
+                             COVERAGE | (SAMPLED_COVERAGE if sampled else set()))
         if not ablation and not required_coverage <= tags:
             raise ValueError(f'{stage}: missing coverage {sorted(required_coverage - tags)}')
     return manifest

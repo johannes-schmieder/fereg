@@ -1,3 +1,4 @@
+use super::super::{cmg_schur::CmgSchurPreconditioner, routing::schur_iteration_work};
 use super::*;
 use crate::fe::{LevelIndex, RoutingPreset, ValidatedBorrowedInterceptSource};
 
@@ -163,6 +164,455 @@ fn assert_same_bits(actual: &[f64], expected: &[f64]) {
             .map(|value| value.to_bits())
             .collect::<Vec<_>>(),
     );
+}
+
+/// A tall unit-weight rectangle admits the O(1) direct bound. Opposite row
+/// pairs give its exact projection without another numerical solver.
+struct PortfolioRectangle {
+    codes: [Vec<u32>; 2],
+    indices: [LevelIndex; 2],
+    values: DenseMatrix,
+    residuals: DenseMatrix,
+}
+
+impl PortfolioRectangle {
+    fn new() -> Self {
+        let mut codes = [Vec::new(), Vec::new()];
+        let mut values = [Vec::new(), Vec::new()];
+        let mut residuals = [Vec::new(), Vec::new()];
+        for left in 0..4 {
+            for right in 0..2 {
+                for repeat in 0..64 {
+                    for sign in [-1., 1.] {
+                        codes[0].push(left as u32);
+                        codes[1].push(right as u32);
+                        for rhs in 0..2 {
+                            let noise = sign * (1 + repeat % 7 + rhs) as f64 / 16.;
+                            residuals[rhs].push(noise);
+                            values[rhs].push(
+                                noise
+                                    + PairedGraph::left(left, rhs)
+                                    + PairedGraph::right(right, rhs),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        let indices = [
+            LevelIndex::from_codes(&codes[0], 4).unwrap(),
+            LevelIndex::from_codes(&codes[1], 2).unwrap(),
+        ];
+        Self {
+            codes,
+            indices,
+            values: DenseMatrix::from_columns(&values).unwrap(),
+            residuals: DenseMatrix::from_columns(&residuals).unwrap(),
+        }
+    }
+
+    fn design(&self) -> BorrowedInterceptFeDesign<'_> {
+        let sources = [
+            ValidatedBorrowedInterceptSource::new(&self.codes[0], 4, &self.indices[0]).unwrap(),
+            ValidatedBorrowedInterceptSource::new(&self.codes[1], 2, &self.indices[1]).unwrap(),
+        ];
+        BorrowedInterceptFeDesign::new(
+            self.values.nrows(),
+            sources.iter().map(|source| source.effect()).collect(),
+        )
+        .unwrap()
+    }
+
+    fn first(&self) -> DenseMatrix {
+        DenseMatrix::from_columns(&[(0..self.values.nrows())
+            .map(|row| self.values[(row, 0)])
+            .collect()])
+        .unwrap()
+    }
+
+    fn check(&self, fit: &CertifiedBorrowedMap) {
+        assert!(fit.report().certified());
+        let coefficients = fit.coefficients.as_ref().unwrap();
+        for rhs in 0..fit.residualized().ncols() {
+            let base = rhs * coefficients.coefficients_per_rhs;
+            for row in 0..self.values.nrows() {
+                assert!(
+                    (fit.residualized()[(row, rhs)] - self.residuals[(row, rhs)]).abs() < 1e-12
+                );
+                let fitted = coefficients.values[base + self.codes[0][row] as usize]
+                    + coefficients.values
+                        [base + coefficients.effect_offsets[1] + self.codes[1][row] as usize];
+                assert!(
+                    (self.values[(row, rhs)] - fit.residualized()[(row, rhs)] - fitted).abs()
+                        < 1e-12
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn portfolio_choice_preserves_the_existing_owner_resource_layout() {
+    #[allow(dead_code)]
+    struct PriorLedger {
+        accuracy: Option<(u64, bool)>,
+        attempted: bool,
+        limit: u64,
+        used: u64,
+        restart_reserve: u64,
+    }
+    #[allow(dead_code)]
+    struct PriorRoute {
+        preset: super::super::RoutingPreset,
+        request: CmgSchurRequest,
+        setup: PriorLedger,
+        peak: SolverWorkspacePeak,
+        preparation: Option<
+            super::super::routing_overlap::Preparation<super::super::cmg_schur::BoundedCmgBuild>,
+        >,
+        preparation_charged: u64,
+        preparation_bytes: u128,
+        preparation_memory: Option<std::sync::Arc<std::sync::atomic::AtomicU64>>,
+    }
+    assert_eq!(
+        std::mem::size_of::<super::super::routing::SetupLedger>(),
+        std::mem::size_of::<PriorLedger>()
+    );
+    assert_eq!(
+        std::mem::size_of::<AutoSchurRoute>(),
+        std::mem::size_of::<PriorRoute>()
+    );
+    assert_eq!(
+        std::mem::align_of::<AutoSchurRoute>(),
+        std::mem::align_of::<PriorRoute>()
+    );
+    assert_eq!(
+        std::mem::size_of::<Option<AutoSchurRoute>>(),
+        std::mem::size_of::<Option<PriorRoute>>()
+    );
+}
+
+#[test]
+fn portfolio_direct_numerical_refusal_keeps_incumbent_bits_without_a_cmg_retry() {
+    let codes = [
+        vec![0, 0, 0, 1, 1, 1, 2, 2, 2],
+        vec![0, 1, 2, 0, 1, 2, 0, 1, 2],
+    ];
+    let indices = [
+        LevelIndex::from_codes(&codes[0], 3).unwrap(),
+        LevelIndex::from_codes(&codes[1], 3).unwrap(),
+    ];
+    let sources = [
+        ValidatedBorrowedInterceptSource::new(&codes[0], 3, &indices[0]).unwrap(),
+        ValidatedBorrowedInterceptSource::new(&codes[1], 3, &indices[1]).unwrap(),
+    ];
+    let make_design =
+        || BorrowedInterceptFeDesign::new(9, sources.iter().map(|s| s.effect()).collect()).unwrap();
+    let design = make_design();
+    let weights = [1., 1e-200, 1e-200, 1., 1., 1., 1., 1., 1.];
+    let columns: Vec<Vec<f64>> = (0..65)
+        .map(|rhs| {
+            (0..9)
+                .map(|row| {
+                    (rhs + 1) as f64 * (codes[0][row] as f64 + codes[1][row] as f64 / 2.)
+                        + [0.25, -0.5, 0.75][row % 3]
+                })
+                .collect()
+        })
+        .collect();
+    let values = DenseMatrix::from_columns(&columns).unwrap();
+    let mut incumbent = ReusableCategoricalMapAbsorber::new(make_design(), 65, 1).unwrap();
+    incumbent.retain_coefficients = true;
+    let expected = incumbent
+        .absorb_ols(
+            BorrowedMapWeights::Provided(&weights),
+            values.clone().into(),
+            config(),
+            false,
+        )
+        .unwrap();
+    let mut owner = ReusableCategoricalMapAbsorber::new(make_design(), 65, 1).unwrap();
+    owner.retain_coefficients = true;
+    owner.request_auto_routing(RoutingPreset::portfolio_v1(), None, 0);
+    let actual = owner
+        .absorb_ols(
+            BorrowedMapWeights::Provided(&weights),
+            values.clone().into(),
+            config(),
+            false,
+        )
+        .unwrap();
+    let route = owner.auto_route.as_ref().unwrap();
+    assert_eq!(route.setup.portfolio_choice(), PortfolioChoice::Direct);
+    assert!(route.setup.attempted);
+    assert!(route.setup.used > super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK);
+    assert!(route.setup.used <= route.setup.limit);
+    assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
+    assert_eq!(actual.residualized(), expected.residualized());
+    assert_eq!(actual.coefficients, expected.coefficients);
+    assert_eq!(actual.report().iterations, expected.report().iterations);
+    assert_eq!(actual.report().certificate, expected.report().certificate);
+    // The positive input weights pass caller validation; the eliminated pair
+    // formed from two 1e-200 cells underflows inside the direct factor setup.
+    let graph = owner.two_fe_pcg.as_ref().unwrap();
+    let attempt = super::super::routing_direct::attempt_with_census(
+        &design,
+        BorrowedMapWeights::Provided(&weights),
+        &values,
+        super::super::routing_direct::DirectLimits {
+            reference_iteration_work: schur_iteration_work(
+                9,
+                graph.left_weights.len(),
+                graph.right_weights.len(),
+                65,
+                65,
+            )
+            .unwrap(),
+            preflight_work: super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK,
+            remaining_setup_work: route.setup.limit
+                - super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK,
+            component_census_work: 0,
+            certificate_work: super::super::routing_direct::original_certificate_work(9, 6, 2, 65)
+                .unwrap(),
+            certificate_bytes: 0,
+            retained_live_bytes: 0,
+            memory: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        attempt.decline,
+        Some(super::super::routing_direct::DirectDecline::Numerical)
+    );
+    assert_eq!(
+        route.setup.used,
+        super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK + attempt.work_used
+    );
+}
+
+#[test]
+fn portfolio_direct_selection_certifies_then_keeps_one_choice_across_low_chunks() {
+    let fixture = PortfolioRectangle::new();
+    let mut first_work = None;
+    for capacity in [2, 64] {
+        let mut owner = ReusableCategoricalMapAbsorber::new(fixture.design(), capacity, 1).unwrap();
+        owner.retain_coefficients = true;
+        owner.request_auto_routing(RoutingPreset::portfolio_v1(), None, 0);
+        let first = owner
+            .absorb_ols(
+                BorrowedMapWeights::Unit,
+                fixture.first().into(),
+                config(),
+                false,
+            )
+            .unwrap();
+        fixture.check(&first);
+        assert_eq!(first.report().iterations, 0);
+        let route = owner.auto_route.as_ref().unwrap();
+        assert_eq!(route.setup.portfolio_choice(), PortfolioChoice::Direct);
+        assert!(route.setup.attempted);
+        let work = (route.setup.used, route.setup.limit);
+        assert!(work.0 > super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK);
+        assert!(work.0 <= work.1);
+        if let Some(previous) = first_work {
+            assert_eq!(
+                work.0, previous,
+                "padding cannot change direct admission or charged work"
+            );
+        }
+        first_work = Some(work.0);
+        let later = owner
+            .absorb_ols(
+                BorrowedMapWeights::Unit,
+                fixture.values.clone().into(),
+                config(),
+                false,
+            )
+            .unwrap();
+        fixture.check(&later);
+        let route = owner.auto_route.as_ref().unwrap();
+        assert_eq!(route.setup.portfolio_choice(), PortfolioChoice::Direct);
+        assert_eq!((route.setup.used, route.setup.limit), work);
+        assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
+        let final_fit = owner
+            .absorb_ols(
+                BorrowedMapWeights::Unit,
+                fixture.first().into(),
+                MapConfig {
+                    tolerance: 1e-14,
+                    ..config()
+                },
+                true,
+            )
+            .unwrap();
+        fixture.check(&final_fit);
+        assert_eq!(final_fit.report().iterations, 0);
+        assert_eq!(owner.auto_route.as_ref().unwrap().setup.used, work.0);
+    }
+}
+
+#[test]
+fn portfolio_direct_certificate_refusal_preserves_incumbent_and_cannot_enable_cmg() {
+    let fixture = PortfolioRectangle::new();
+    let mut incumbent = ReusableCategoricalMapAbsorber::new(fixture.design(), 2, 1).unwrap();
+    incumbent.retain_coefficients = true;
+    let expected = incumbent
+        .absorb_ols(
+            BorrowedMapWeights::Unit,
+            fixture.values.clone().into(),
+            config(),
+            false,
+        )
+        .unwrap();
+    let mut owner = ReusableCategoricalMapAbsorber::new(fixture.design(), 2, 1).unwrap();
+    owner.retain_coefficients = true;
+    owner.request_auto_routing(RoutingPreset::portfolio_v1(), None, 0);
+    TWO_FE_DIRECT_CERTIFICATE_FAILURE.set(true);
+    let actual = owner
+        .absorb_ols(
+            BorrowedMapWeights::Unit,
+            fixture.values.clone().into(),
+            config(),
+            false,
+        )
+        .unwrap();
+    assert!(!TWO_FE_DIRECT_CERTIFICATE_FAILURE.get());
+    fixture.check(&actual);
+    assert_eq!(actual.residualized(), expected.residualized());
+    assert_eq!(actual.coefficients, expected.coefficients);
+    assert_eq!(actual.report().iterations, expected.report().iterations);
+    assert_eq!(actual.report().certificate, expected.report().certificate);
+    let route = owner.auto_route.as_ref().unwrap();
+    assert_eq!(route.setup.portfolio_choice(), PortfolioChoice::Direct);
+    assert!(route.setup.attempted);
+    assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
+}
+
+#[test]
+fn portfolio_direct_break_after_selection_propagates_without_publication() {
+    const CHILD: &str = "FEREG_PORTFOLIO_DIRECT_BREAK_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD, "1")
+            .args(["fe::borrowed_map::routing_tests::portfolio_direct_break_after_selection_propagates_without_publication", "--exact", "--test-threads=1"])
+            .status().unwrap();
+        assert!(status.success());
+        return;
+    }
+    let fixture = PortfolioRectangle::new();
+    let mut owner = ReusableCategoricalMapAbsorber::new(fixture.design(), 2, 1).unwrap();
+    owner.request_auto_routing(RoutingPreset::portfolio_v1(), None, 0);
+    TWO_FE_DIRECT_BREAK_AFTER_SELECTION.set(true);
+    let result = owner.absorb_ols(
+        BorrowedMapWeights::Unit,
+        fixture.values.clone().into(),
+        config(),
+        false,
+    );
+    assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted);
+    let route = owner.auto_route.as_ref().unwrap();
+    assert_eq!(route.setup.portfolio_choice(), PortfolioChoice::Direct);
+    assert!(route.setup.attempted);
+    assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
+    crate::interrupt::reset_cancellation();
+}
+
+#[test]
+fn one_worker_overlap_checkpoint_retains_original_uncached_builder() {
+    let witness = PairedGraph::new();
+    crate::ThreadTeam::new(crate::ThreadConfig::from_requested(1, true).unwrap())
+        .install(|| {
+            assert_eq!(rayon::current_num_threads(), 1);
+            let design = witness.design();
+            let weights = BorrowedMapWeights::Provided(&witness.weights);
+            let iteration_work = schur_iteration_work(
+                witness.weights.len(),
+                PairedGraph::LEVELS,
+                PairedGraph::LEVELS,
+                3,
+                3,
+            );
+            for samples in [0, 1, 2] {
+                let mut owner =
+                    ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+                owner.request_auto_routing(RoutingPreset::overlap(8, samples).unwrap(), None, 0);
+                let route = owner.auto_route.as_mut().unwrap();
+                route
+                    .begin(config().tolerance, false, iteration_work)
+                    .unwrap();
+                let reference = CmgSchurPreconditioner::try_build_observations_bounded_controlled(
+                    &witness.indexes[0],
+                    &witness.codes[1],
+                    PairedGraph::LEVELS,
+                    weights,
+                    route.request.degree,
+                    route.request.sampling,
+                    None,
+                    route.setup.builder_allowance(),
+                    &mut |_| cmg::BuildDecision::Continue,
+                )
+                .unwrap();
+                assert_eq!(reference.refusal, None);
+                let mut reference_preconditioner = reference.preconditioner.unwrap();
+                let expected_work = reference.work_used
+                    + reference_preconditioner.startup_work(3).unwrap()
+                    + route.setup.restart_reserve;
+                let mut setup_seconds = 0.0;
+                let mut solve_started = Instant::now();
+                // The early overlap epoch must not launch a service on t1.
+                assert!(route
+                    .checkpoint(
+                        &design,
+                        validate_weights(weights, design.nobs()).unwrap(),
+                        0,
+                        3,
+                        3,
+                        4,
+                        config().max_iterations,
+                        &mut setup_seconds,
+                        &mut solve_started,
+                    )
+                    .unwrap()
+                    .is_none());
+                assert!(route.preparation.is_none());
+                assert_eq!(route.setup.used, 0);
+                let mut fallback = route
+                    .checkpoint(
+                        &design,
+                        validate_weights(weights, design.nobs()).unwrap(),
+                        0,
+                        3,
+                        3,
+                        8,
+                        config().max_iterations,
+                        &mut setup_seconds,
+                        &mut solve_started,
+                    )
+                    .unwrap()
+                    .expect("t1 overlap fallback builds at its checkpoint");
+                assert!(route.setup.attempted);
+                assert!(route.preparation.is_none());
+                assert_eq!(route.setup.used, expected_work);
+                assert_eq!(route.peak, reference.peak);
+                assert_eq!(
+                    fallback.retained_bytes().unwrap(),
+                    reference_preconditioner.retained_bytes().unwrap()
+                );
+                let rhs: Vec<_> = (0..PairedGraph::LEVELS * 3)
+                    .map(|i| (i as f64 * 0.31).sin())
+                    .collect();
+                let mut expected = vec![0.0; rhs.len()];
+                let mut actual = vec![0.0; rhs.len()];
+                reference_preconditioner
+                    .apply_batch(&rhs, &mut expected, 3, 3, None, None)
+                    .unwrap();
+                fallback
+                    .apply_batch(&rhs, &mut actual, 3, 3, None, None)
+                    .unwrap();
+                assert_same_bits(&actual, &expected);
+            }
+        })
+        .unwrap();
 }
 
 #[test]
@@ -499,7 +949,117 @@ fn routing_restart_has_independent_weighted_disconnected_science_and_repeats() {
 }
 
 #[test]
-fn routing_quota_or_memory_refusal_preserves_the_exact_incumbent() {
+fn portfolio_two_fe_matches_h16_k1_and_reuses_one_setup_across_rhs_widths() {
+    let witness = PairedGraph::new();
+    let mut across_workers: Option<DenseMatrix> = None;
+    for workers in [1, 4] {
+        let run = |preset| {
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    TWO_FE_ROUTING_LAUNCH_AT.set(0);
+                    TWO_FE_ROUTING_BUILD_AT.set(0);
+                    let mut owner =
+                        ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                    owner.retain_coefficients = true;
+                    owner.request_auto_routing(preset, None, 0);
+                    let first = owner
+                        .absorb_ols(
+                            BorrowedMapWeights::Provided(&witness.weights),
+                            witness.columns(&[0]).into(),
+                            config(),
+                            false,
+                        )
+                        .unwrap();
+                    witness.check(&first, &[0]);
+                    assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 16);
+                    assert_eq!(TWO_FE_ROUTING_LAUNCH_AT.get(), 0);
+                    let route = owner.auto_route.as_ref().unwrap();
+                    assert_eq!(route.request.degree, 5);
+                    assert_eq!(route.request.sampling.samples, 1);
+                    assert_eq!(route.request.sampling.seed, 0);
+                    assert!(route.setup.attempted);
+                    if preset == RoutingPreset::portfolio_v1() {
+                        assert_eq!(
+                            route.setup.portfolio_choice(),
+                            PortfolioChoice::IncumbentCmg
+                        );
+                    }
+                    assert!(route.preparation.is_none());
+                    let work = (route.setup.limit, route.setup.used);
+                    let initial_work = schur_iteration_work(
+                        witness.weights.len(),
+                        PairedGraph::LEVELS,
+                        PairedGraph::LEVELS,
+                        1,
+                        3,
+                    )
+                    .unwrap();
+                    assert_eq!(work.0, 32 * initial_work);
+                    assert!(work.1 > 0 && work.1 <= work.0);
+                    let hierarchy = std::ptr::from_ref(
+                        owner
+                            .two_fe_pcg
+                            .as_ref()
+                            .unwrap()
+                            .cmg_schur
+                            .as_ref()
+                            .unwrap()
+                            .as_ref(),
+                    );
+                    let wider = owner
+                        .absorb_ols(
+                            BorrowedMapWeights::Provided(&witness.weights),
+                            witness.input.clone().into(),
+                            config(),
+                            false,
+                        )
+                        .unwrap();
+                    witness.check(&wider, &[0, 1, 2]);
+                    let route = owner.auto_route.as_ref().unwrap();
+                    assert_eq!((route.setup.limit, route.setup.used), work);
+                    assert_eq!(
+                        std::ptr::from_ref(
+                            owner
+                                .two_fe_pcg
+                                .as_ref()
+                                .unwrap()
+                                .cmg_schur
+                                .as_ref()
+                                .unwrap()
+                                .as_ref(),
+                        ),
+                        hierarchy,
+                    );
+                    assert!(first.report.iterations > 16);
+                    assert!(wider.report.iterations <= config().max_iterations);
+                    (
+                        first.residualized().clone(),
+                        first.coefficients.unwrap(),
+                        first.report.iterations,
+                        wider.residualized().clone(),
+                        wider.coefficients.unwrap(),
+                        wider.report.iterations,
+                        work,
+                    )
+                })
+                .unwrap()
+        };
+        let mut expected = run(RoutingPreset::new(16, 1).unwrap());
+        expected.6 .1 += super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK;
+        let actual = run(RoutingPreset::portfolio_v1());
+        assert_eq!(actual, expected);
+        assert_eq!(actual, run(RoutingPreset::portfolio_v1()));
+        if let Some(previous) = across_workers.as_ref() {
+            for (actual, expected) in actual.3.as_slice().iter().zip(previous.as_slice()) {
+                assert!((actual - expected).abs() < 1e-9);
+            }
+        }
+        across_workers = Some(actual.3);
+    }
+}
+
+#[test]
+fn routing_and_portfolio_quota_or_memory_refusal_preserve_the_exact_incumbent() {
     let witness = PairedGraph::new();
     let mut incumbent = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
     incumbent.retain_coefficients = true;
@@ -511,9 +1071,15 @@ fn routing_quota_or_memory_refusal_preserves_the_exact_incumbent() {
             false,
         )
         .unwrap();
-    for memory_refusal in [false, true] {
+    for (preset, memory_refusal) in [
+        (RoutingPreset::new(4, 1).unwrap(), false),
+        (RoutingPreset::new(4, 1).unwrap(), true),
+        (RoutingPreset::portfolio_v1(), false),
+        (RoutingPreset::portfolio_v1(), true),
+    ] {
         let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
-        request(&mut owner, 1);
+        owner.retain_coefficients = true;
+        owner.request_auto_routing(preset, None, 0);
         let route = owner.auto_route.as_mut().unwrap();
         if memory_refusal {
             route.request.budget = Some(FeSolverMemoryBudget {
@@ -559,9 +1125,16 @@ fn routing_quota_or_memory_refusal_preserves_the_exact_incumbent() {
 }
 
 #[test]
-fn routing_native_caps_around_checkpoint_never_extend_the_action() {
+fn routing_and_portfolio_native_caps_around_checkpoint_never_extend_the_action() {
     let witness = PairedGraph::new();
-    for checkpoint in [4, 8, 16, 32] {
+    for preset in [
+        RoutingPreset::new(4, 1).unwrap(),
+        RoutingPreset::new(8, 1).unwrap(),
+        RoutingPreset::new(16, 1).unwrap(),
+        RoutingPreset::new(32, 1).unwrap(),
+        RoutingPreset::portfolio_v1(),
+    ] {
+        let checkpoint = preset.checkpoint();
         for cap in [checkpoint - 1, checkpoint, checkpoint + 1] {
             let limited = MapConfig {
                 max_iterations: cap,
@@ -576,7 +1149,7 @@ fn routing_native_caps_around_checkpoint_never_extend_the_action() {
                 false,
             );
             let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
-            owner.request_auto_routing(RoutingPreset::new(checkpoint, 1).unwrap(), None, 0);
+            owner.request_auto_routing(preset, None, 0);
             let routed = owner.absorb_ols(
                 BorrowedMapWeights::Provided(&witness.weights),
                 witness.input.clone().into(),
