@@ -200,3 +200,349 @@ marginal iteration savings before upgrading, especially across future RHSs.
 Selection or heuristic changes need a new frozen candidate and untouched
 confirmation. This experiment has not changed public dispatch or selected
 a replacement for the production solver.
+
+## Automatic solver design after discovery
+
+The target is low complete-estimation latency across problem classes, with no
+user solver selection. The proposed next architecture combines representation
+selection, a small solver portfolio, bounded exploration and reuse across
+realized solves. It is a research proposal, not a change to public Auto or an
+approved replacement for the current qualification campaign.
+
+### Existing machinery and the remaining gaps
+
+The source audit of production revision `92774888` finds much of the plumbing
+already present: original-design certificates, deterministic CMG checkpoints,
+setup/memory admission, direct proposals, MAP/IT prefixes, seeded LSMR and
+one-worker preparation. See [the routing contract](../../../../docs/SPEC.md),
+[work accounting](../../../fereg-core/src/fe/routing.rs) and
+[general pair routing](../../../fereg-core/src/fe/borrowed_map/routing_lsmr.rs).
+Public OLS Auto is still the incumbent policy; PPML Auto resolves to MAP and
+has separate historical-preconditioner reuse. These are distinct integration
+problems.
+
+At `within` revision `efe35ee`, automatic Schwarz already includes local
+approximate Cholesky with `split_merge=Some(2)`, an AC2-style configuration.
+A direct two-FE approximate-Cholesky comparison is a new placement of an
+existing family, not the invention of a missing library. Production CMG pins
+`3422b040`, while this frozen experiment pins `eb3f2bc1`. Compare both artifacts
+before attributing a production advantage to the prototype. The specialized
+production two-FE path packs active RHS columns with independent
+CG recurrences; this is not true block Krylov, and other CMG adapters have
+different batching. The standalone experiment solves RHSs serially.
+
+`within::SolveSession::run_action` can resume an unchanged recurrence and restart
+from a recomputed residual after replacement. Its preconditioned residual
+telemetry is not comparable across replacements. CMG's `BuildPrefix` parks
+construction with private state; it does not publish a usable incomplete
+hierarchy. This prototype's custom one-level prefix is a separate mechanism.
+An actual staged-hierarchy API must expose a usable full preconditioner that
+is fixed, linear, symmetric and positive definite on the compatible quotient
+at every published stage before ordinary PCG uses it. Existing construction
+control can first be used as a rendezvous: keep the builder parked while the incumbent runs, then park the
+incumbent while a prepaid builder quantum runs. Two retained thread stacks do
+not require simultaneous numerical computation.
+
+### Setup pricing is a separate failure mode
+
+The independent challenge review identified an important distinction in the
+existing results. Rechecking the committed signatures, the expander mixed-batch
+trigger implied about `4*(16+3.282) = 77.1` diagonal iterations against 80 actually
+needed without upgrading. The fringe forest trigger implied about
+`4*(16+4.383) = 81.5` against 71. These forecasts were reasonably close; they do
+not establish that exaggerated future-RHS difficulty caused those two false
+upgrades. Using each cheap arm's measured mean non-setup time per iteration,
+those forecasts price remaining work at approximately 11.6 ms and 10.1 ms;
+the upgraded arms' incremental setup is approximately 34.5 ms and 65.1 ms.
+Replacing only the setup price with that observed cost would reject both under
+the existing four-times-price rule. This ex-post conversion supports setup
+underpricing as a material cause, without claiming it was the only contributor.
+Across the five single-cut cells, full-CMG setup alone cost about 14 to 617
+times that family's average
+diagonal iteration time, estimated as solve time excluding setup divided by
+iterations. This is a descriptive conversion, not a calibrated work tariff.
+Repair setup pricing and metering independently from progress forecasting.
+Offline re-pricing can identify hypotheses; it cannot measure a new policy's
+restart, cache, construction or certification costs.
+
+### Architecture to investigate
+
+1. **Keep the exact problem and its certificate central.** Every path solves
+   the same weighted regression. Explicit solver requests and existing sample,
+   rank, omission and separation decisions remain authoritative. Approximation
+   belongs in preconditioners, never in a silently changed estimation problem.
+2. **Choose the representation before buying a hierarchy.** Reuse canonical
+   incidence and component metadata. Estimate duplicate-cell compression,
+   degrees, possible fill, RHS width and memory traffic cheaply during existing
+   passes. Compare the matrix-free incidence operator, canonical-cell operator,
+   grounded direct component solves and exact low-degree reductions. Do not
+   expand high-degree worker cliques just to decide whether expansion was useful.
+   These choices need their own charged setup and reconstruction costs. The
+   prototype elimination arm still applies the original fine-space outer
+   operator: solving an exactly reduced core is a distinct opportunity.
+   Production already has a retained-star CMG representation; extend and compare
+   it rather than recreating that mechanism. Degree-two elimination inserts an
+   edge between surviving neighbors while removing two; reducing either side
+   can leave the bipartite form. The reduced-core interface must support that
+   general Laplacian and account for adjacency updates and reconstruction.
+   Numerical reduction must retain all observation contributions and reconstruct
+   eliminated coordinates; it is
+   not statistical singleton deletion.
+3. **Use a small set of complementary methods.** Diagonal, forest/elimination,
+   direct solves on affordable components, full CMG and existing approximate
+   Cholesky are the first candidates. A shallow stage is optional: it has not
+   earned a universal position between diagonal and full CMG. For three or more
+   FEs, preserve the general LSMR/Schwarz route and investigate global coarse
+   information that pairwise solvers miss. General multi-FE systems and slopes
+   are not automatically graph Laplacians.
+4. **Observe actual progress and control speculative spending.** Use original-
+   space progress per active RHS/component, including certificate work. A
+   noncontracting residual window is an uncertain forecast, not a prediction
+   that the entire iteration cap will be consumed. A nearly finished solve
+   receives a short bounded continuation before expensive construction. Do not
+   multiply the first RHS's difficulty by the number of unseen RHSs. Installed
+   setup may be reused; hypothetical future work may not fund current spending.
+5. **Reuse what has demonstrated value.** Share fixed-weight hierarchy/factors,
+   canonical operators and useful coarse spaces across RHSs. Under PPML weight
+   changes, distinguish reusable topology from old numeric preconditioning and
+   current numeric operators. Revalidate progress against the current problem.
+6. **Allocate parallel resources deliberately.** First exploit packed RHS
+   operations and independent components. Test deterministic serial interleaving
+   of one incumbent and one challenger before running several bandwidth-heavy
+   solvers simultaneously. A small builder on another core is useful only if
+   complete-estimation measurements show that its overlap repays foreground
+   slowdown, cache disruption and extra memory. Worker availability alone is
+   insufficient evidence.
+
+Keep the conservative admission ledger separate from a selection model.
+Selection can use a frozen hardware/resource model of streamed bytes, irregular
+accesses, arithmetic, synchronization, batch shape and factor work. It should
+predict remaining setup plus remaining applications, restart and certification,
+with uncertainty. It must not use live elapsed-time races to determine a
+numerically different path. A learned router can prioritize a candidate, but
+its predictions neither waive certificates nor authorize unbounded exploration.
+
+A bounded spectral monitor is another candidate ranking signal. Within a fixed
+PCG epoch, the existing recurrence coefficients can produce Lanczos Ritz
+estimates without extra operator applications; see the
+[Lanczos connection](https://netlib.org/linalg/old_html_templates/section2.9.1.html).
+Its scalar computation and storage still cost work. A CG energy-error bound
+using a valid condition bound is not an original regression residual certificate.
+Early Ritz values may miss weakly excited slow modes and repeated eigenvalues;
+they are not certified
+condition-number or remaining-iteration bounds. Cap the retained history, reset
+it at residual replacement or preconditioner changes, and validate a separate
+Golub--Kahan interpretation for LSMR: its bidiagonal singular values refer to
+the effective rectangular operator, whose normal equations square its condition
+number. Initially collect this telemetry without routing on it. A small observed spectral tail can motivate coarse enrichment,
+but cannot prove that the full problem has only a few troublesome directions.
+
+### What a protected portfolio can and cannot guarantee
+
+For an unchanged incumbent trajectory, let `I` be its cumulative charged work
+and let `C` include all optional work: initialization, copies, probes, failed
+builds, candidate iterations, certificates and scheduling. A single cumulative
+invariant `C <= a I + q` gives a work envelope. If the incumbent reaches its
+original certificate after `W_inc`, total work through that point is at most
+`(1+a) W_inc + q`. New setup cannot be relabeled as incumbent work to manufacture
+credit. The additive allowance `q` must not reset at every checkpoint or RHS;
+large indivisible factorization steps must be bounded or split.
+
+A challenger comparison also needs a minimum service guarantee; an upper
+spending ceiling alone can starve it. The comparator must follow an independently
+defined trajectory. A challenger started from a later incumbent iterate is not
+proved faster than the same method started from zero. Changing shares requires
+accounting for prior phases, rather than applying the final share retroactively.
+
+This is conditional on unchanged incumbent state, sufficient service and
+consistent accounting. It is not a wall-time bound: memory/cache effects and
+heterogeneous work remain relevant. Choosing diagonal as the incumbent only
+protects comparison with diagonal, not with production Auto. Keeping only an
+iterate and restarting is not preserving the incumbent recurrence.
+
+Existing native caps remain authoritative. Challenger iterations consume the
+same per-projection cap and can cause failure before an otherwise successful
+incumbent finishes. The envelope therefore applies until termination or cap
+exhaustion; it is not a completion/fallback guarantee under the current shared
+cap. Explicit cap-exhaustion experiments are required. Exhaustion where production
+Auto succeeds is a candidate failure, never an omitted timing or a successful
+regret observation. No new quota semantics are proposed by this document.
+
+There is an unavoidable exploration tradeoff even in an ideal additive-work
+model. Giving a fraction `p` to a protected incumbent and `1-p` to an independent
+challenger gives service factors `1/p` and `1/(1-p)`, before startup/quantum
+terms. An 80/20 split protects the incumbent to 1.25 times its work but can delay
+an overwhelmingly better challenger by five times its own work. A 50/50 split
+has factors two and two. Structural evidence and reusable state can improve
+practical choices; they do not erase this uncertainty. These examples are not
+latency promises or selected production constants. Equal logical work grants
+also do not by themselves establish serial/parallel bitwise identity: numerical
+ordering, worker configuration, input snapshots and adaptive decisions must
+meet the existing repeatability and cross-worker scientific contracts.
+
+### Adaptive upgrades with new information
+
+A useful middle stage may add a small coarse space that represents errors the
+cheap method cannot remove. This is a more targeted research direction than
+always adding another generic level. Independent relaxed test vectors, local
+aggregate modes, or information from previous RHSs can supply such directions;
+[bootstrap AMG](https://arxiv.org/abs/1406.1819) develops related coarsening ideas.
+[Subspace recycling](https://arxiv.org/abs/2001.10347) motivates reuse between
+related solves. Neither source establishes a speedup for this implementation.
+
+On the compatible quotient where `A` and the baseline inverse `B0` are SPD,
+let the independent columns of `Z` be orthogonal to the nullspace, define
+`E = Z' A Z` and `Q = Z E^-1 Z'`, and use the balanced inverse
+`B = Q + (I-QA) B0 (I-AQ)`. It is SPD on that quotient and satisfies `B A Z = Z`.
+For any vector `v`, its quadratic form is the sum of the nonnegative coarse
+energy and `((I-AQ)v)' B0 ((I-AQ)v)`; both can vanish only for zero `v` there.
+Stable auxiliary-basis filtering is not a change to model rank. Cached `AZ`
+avoids two extra full operator products per application, but costs additional
+vector passes, reductions and roughly two `n by k` arrays: even rank four
+requires about 64 MB per million retained coordinates in double precision,
+before scratch and the incumbent state.
+
+Freeze the inverse during each ordinary PCG epoch and recompute `b-Ax` on
+replacement before restarting. Fixed iteration counts do not make an inner CG
+solve linear. A flexible Krylov method is a separate algorithmic change, not
+permission to vary an ordinary PCG preconditioner invisibly; see
+[PETSc's FCG contract](https://petsc.org/main/manualpages/KSP/KSPFCG/) and
+[variable-preconditioning counterexamples](https://arxiv.org/abs/math/0605767).
+
+A basis taken solely from the current uninterrupted fixed-PCG history provides
+no new subspace information. At equal operator/preconditioner work, an iterate
+confined to that same Krylov space cannot beat CG's exact-arithmetic energy
+minimizer. Recycling is better motivated for later RHSs, necessary restarts,
+changed operators or genuinely independent directions. A few coarse vectors
+may repair a few bottlenecks; a grid's many slow modes can still require a full
+multilevel construction. Basis application cost must be measured, not inferred
+from iteration savings. Distinguish a stronger tail solve from better
+interpolation: an exact solve on the existing coarse space still cannot remove
+an error component outside that space. General spectral/interpolation
+enrichment can produce an SPD Galerkin matrix with positive off-diagonals;
+that matrix must not be passed to a Laplacian-only CMG backend without a valid
+representation. Piecewise-constant aggregation and a separate generic SPD
+coarse correction have different interfaces.
+
+For PPML, if support and coordinates are unchanged and positive weight ratios
+lie in `[m,M]`, then `m A_old <= A_new <= M A_old` in Loewner order. The same
+bounds survive a common Schur elimination by the minimum-energy identity,
+with the same elimination coordinates and a well-defined common quotient.
+An old fixed SPD inverse remains a valid preconditioner, with a condition-number
+bound worsened by at most `M/m`; it need not be rebuilt merely for validity.
+A current coarse correction must rebuild `Z' A_new Z`, and current elimination
+must use current weights. Extreme ratios, numerical underflow, changed support
+and changing normalization can invalidate or make these bounds uninformative.
+Existing PPML convergence and separation semantics remain unchanged.
+
+### Prioritized next experiments
+
+**First, separate two bounded experiments.** The controller experiment keeps
+numerical kernels and their dependency pins unchanged. For each of diagonal
+and forest, compare cheap-only, the present forecast, an observed-active-RHS
+rule with one bounded near-completion continuation, and incumbent-preserving
+interleaving at two predeclared exploration shares. Add immediate full CMG as
+a reference. These are eleven arms, with no learned router or new numerical
+family in that comparison. Charge all setup, probes, copies, restoration,
+synchronization and certification; no credit for unseen RHSs. The known
+expander/fringe false upgrades are mandatory regression cases, supplemented by
+larger problems, disconnected mixtures and opposing RHS difficulty orders.
+The result identifies a controller conditional on its starter, not an automatic
+rule that selects the best starter.
+
+The representation experiment compares existing static solver families on the
+same exact input representation and reduction plan: diagonal/direct core,
+forest, CMG, ordinary approximate Cholesky and its verified AC2-style variant.
+Keep current diagonal and full-CMG arms as references. Separate retained-star
+versus expanded-clique construction from exact outer-core reduction and from
+approximate factorization. This resolves whether hub costs belong to the
+solver family, its representation, or both. Ordinary AC and AC2 are not assumed
+to be nested upgrades: changing sampling can change earlier elimination and
+fill. Reuse the production retained-star and within factor infrastructure.
+
+Freeze the two panels independently. A controller fix can proceed in the
+existing prototype while the representation comparison establishes which
+challengers merit a broader automatic selector. Before production-policy
+selection, bridge to explicitly frozen production dependency pins and its
+packed independent-RHS semantics. The old serial-RHS experiment cannot select
+a batched production policy directly. This separation resolves the reviews'
+different priorities without conflating a routing improvement with new kernels.
+
+**Second, test genuinely useful intermediate work.** Add an owned hierarchy
+stage, or the bounded coarse correction above, as separate challengers. Every
+published full preconditioner must be fixed, linear, symmetric and positive
+definite on the compatible quotient; a symmetric terminal alone is insufficient. Test a basis learned on one RHS against both aligned
+and unrelated later RHSs, charging its training to the complete realized batch.
+Test new independent local directions separately for single-RHS acceleration.
+Compare against uninterrupted PCG, mandatory-restart controls and immediate
+full CMG. Within the recycling experiment, use three arms: repaired controller
+only, one-time coarse seeding, and seeding plus the recurring balanced inverse.
+A proposed initial rank cap is four. Accepted solution corrections are a cheap
+first source of candidates; reuse of their already-computed operator images
+needs matching bindings and numerical validation. One-time seeding may capture
+most of the benefit without streaming a dense basis every iteration. Include
+unrelated/orthogonal later RHSs and moving bottlenecks, not just favorable
+correlations. Do not conflate a better controller with a better preconditioner.
+
+**Third, extend the winning mechanism to repeated and general regression.**
+Evaluate PPML sequences with fixed, smooth-changing and abrupt-changing weights;
+three/five-FE pairwise versus global coarse corrections; slopes; wide RHS banks;
+and tight memory. Compare whole estimation including loading, projection,
+coefficient fitting, covariance, certification and publication. A faster prepared
+Schur solve alone does not establish the fastest regression command.
+
+The corpus should cross graph structure, scale, edge density, degree imbalance,
+component size, bottleneck strength, weight spread, RHS spectrum/correlation,
+RHS order/count, duplicate-cell ratio and memory allowance. Include weak bridges,
+long chains, anisotropic grids, heavy tails, dense high-degree workers and
+adversarial RHS mixtures. The [SDDM2023 corpus](https://rjkyng.github.io/SDDM2023/)
+adds graph stressors; it does not replace regression designs. A graph edge of
+conductance `g` embeds exactly as a degree-two worker with two weights `2g`,
+which makes such systems available as two-FE stress tests. Partition by
+graph/topology or data source before
+selection, not only by random RHS seed on the same graph. Include actual eligible
+regression workloads and independent dense/QR witnesses, preserving all public
+model decisions. Separate Linux discovery from focused Mac confirmation.
+
+Before each campaign, freeze artifacts, input manifests, candidate policies,
+setup allowances, per-case timeouts, total allocation budget, exclusion rules
+and a single selection criterion. Use randomized balanced blocks of complete
+solves at the declared harness
+boundary for solver discovery, and complete-estimation blocks for regression-
+command selection and claims. Retain failures, timeouts and unfavorable
+observations. Summarize
+median, upper-tail and worst-case regret against the best scientifically valid
+feasible static candidate, plus regressions versus production Auto and memory.
+Do not estimate the oracle from individual timing minima. Selection, untouched
+confirmation and any repeated-look allowances are separate; an inconclusive
+finalist does not replace the incumbent. Existing scientific thresholds and
+the repository timing allowance `max(5%, 1 ms)` remain in force; a proposed
+research ranking does not relax release qualification.
+
+A separate CMG experiment should compare terminal-factor policies on the same
+representation and operator. Attribute setup to coarsening, ordering, symbolic
+fill analysis and numerical factorization. A smaller terminal can reduce setup
+and increase application/iteration cost; choose using the whole solve. The
+challenge review's scratch terminal-threshold timings on a shared VM motivate
+this test but are not accepted performance evidence. Production's newer
+terminal-affordability screen must be included before proposing another screen.
+After work accounting is validated, a separately frozen experiment may compare
+a fixed setup ceiling with an allowance that grows from completed incumbent
+work, retaining memory, native-iteration and total-run limits. Borrowing against
+hypothetical future RHSs is not a substitute for earned credit.
+
+The first upstream changes to justify are exact continuation for the specialized
+two-FE recurrence and original-space per-RHS telemetry. Existing AC factors and
+`within` sessions should be reused. Controlled AC construction is needed before
+claiming small interruptible build quanta; its inspected builder is monolithic.
+Promote reusable hierarchy-stage APIs only after the isolated prototype shows
+that those intermediate stages repay their costs. LAMG/LAMG+ is a
+serious external comparator and a source of enrichment ideas, not yet a porting
+commitment. The [LAMG paper](https://arxiv.org/abs/1108.1310),
+[approximate elimination study](https://arxiv.org/abs/2303.00709), and recent
+[LAMG+ preprint](https://arxiv.org/abs/2606.24791) report complementary strengths
+on their own corpora; those claims require independent reproduction on this
+regression workload. Dense sketching and mixed precision remain lower-priority
+challengers until profiles justify their cost and strict numerical witnesses
+qualify them; [sketch-preconditioning stability](https://arxiv.org/abs/2302.07202)
+is a particular reason not to equate an iteration reduction with reliability.
