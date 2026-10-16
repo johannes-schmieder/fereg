@@ -959,6 +959,106 @@ chunks. Wide-RHS parity does not establish a benefit from always building
 earlier. A successor needs a separately declared scope and design, preserving
 this failed screen rather than retuning it into a pass.
 
+### Prospective cost attribution after portfolio V1, 2026-10-16
+
+The next operation diagnoses the closed candidate; it does not reopen its
+performance screen or use the untouched B/C payloads. Before native dispatch,
+freeze an observational source patch against `60f1e241`, the existing universal
+Mac plugin `6eeec78a552eede98af1eb1aeb534a63bf156855aa92e32fb75d7ea925f35442`,
+the diagnostic arm64 build and the six already revealed A input bodies:
+weak, high-degree weak, dynamic weights, small third FE, near-confounded third
+FE and sixteen FEs. Both artifacts use the same private V1 policy. The
+instrumented build retains release optimization settings; coarse clocks and
+trace output change no algebra, solver state layout, work tariff, admission,
+tolerance or stopping decision. It is never installed or published.
+
+The fixed schedule has one and four workers, with four complete calls per
+cell in control/instrumented/instrumented/control order: 48 native fits maximum,
+120 seconds per fit and 1,800 seconds for the complete diagnostic operation.
+There are no warmups, replacement calls or opportunistic continuation. A
+missing required phase, failed call or exact comparison stops the schedule and
+retains the failure. Successful calls must match scientific fields, output
+columns and solver signatures exactly across artifacts and fixed-worker repeats;
+build identities and clock values are not exact targets. Existing independent
+science for the unchanged runtime remains applicable. This is diagnostic
+attribution, not new independent scientific qualification or a speed comparison.
+
+Separate bounded-CMG graph, hierarchy and workspace construction from scalar
+cycle and gather/scatter costs. For many FEs, cover the actual
+`GeneralRoutingState::solve` session path, prefix setup/sweeps/certificates,
+session initialization/action/finalization and the outer certificate, including
+the final residual action. Verify phase coverage on the first relevant cell
+before proceeding. The earlier instrumentation failure in the unused seeded
+entrypoint remains failed. No production successor is selected from a missing
+phase or from charged-work counts mislabeled as CPU time.
+
+Independent source review identifies an additional confound: V1's strict
+prefix/fallback certificate is tighter than the incumbent's MAP early/fallback
+contract, although their main LSMR certificates agree. A future removal of the
+unconditional prefix must explicitly preserve its declared certificate scope;
+it cannot be described as an arithmetic-only change or silently weaken a gate.
+Any new candidate requires separate source review and qualification. Public
+Auto and the completed SCC NO-GO remain unchanged.
+
+The diagnostic completed all 48 original calls after one reader-only repair.
+The first control solve returned success, but the initial reader expected inline
+JSON columns while the retained timing harness writes a binary sidecar. That
+runner remains failed. Offline validation recovered the complete first result;
+a separately reviewed continuation ran only original indices 1--47 under the
+original conservative deadline. There was no repeated native call, new time
+allowance, replacement observation or changed scientific tolerance.
+
+All 36 comparisons to the first result in each of 12 cells are exact for the
+scientific heads, output-column fingerprints and solver signatures. Every call
+passed its actual resource caps. Independent Astra high review checked all 48
+command records, 113 bindings, 904 source files and 1,572 nested phase scopes.
+The [compact results](../bench/results/solver-routing-controlled-20261014.json)
+retain the two instrumented observations per cell, separate main/final actions,
+all failure identities and review SHA-256
+`3ab40849c0a6c1bd48bdca664b7fcfcd57ecb3aece87e2b698ca1a290b160bc5`.
+The [observational patch](../bench/results/portfolio-v1-attribution-20261016.patch)
+is retained. Successful continuation binaries were deleted after checking;
+independent replay verifies retained fingerprints, not missing numerical arrays.
+
+| Instrumented four-worker case | Dominant elapsed phases (ms) | Native total (ms) |
+| --- | --- | --- |
+| High-degree weak | Graph 114.1; hierarchy 35.3; CMG cycles 16.9 | 277.6 |
+| Small third FE | Prefix including setup 29.6; LSMR backend 25.8; session work 34.1 | 119.2 |
+| Near-confounded third FE | Prefix including setup 20.7; backend 7.7; session work 16.8 | 61.6 |
+| Sixteen FEs | Prefix including setup 168.1; backend 49.0; session work 69.5 | 374.9 |
+
+These are descriptive medians of two instrumented observations, with ordinary
+macOS activity and logging overhead. Nested phases must not be added; clocks
+are elapsed time, not CPU shares. They neither qualify performance nor identify
+the benefit of a code change. The high-degree graph and hierarchy costs barely
+change between one and four workers, making construction the larger initial
+target. For sixteen FEs, the main prefix precedes LSMR, but the final action
+certifies after four MAP sweeps without LSMR. Removing every prefix therefore
+has an unresolved tradeoff rather than a guaranteed saving.
+
+### Prospective strict-unseeded causal control, 2026-10-16
+
+Before selecting another routing policy, add one private developer control that
+differs from portfolio V1 only by omitting the unconditional categorical MAP
+prefix and its seed. Preserve the strict original-design acceptance and fallback
+tolerances, full action limit, one setup ledger, retained LSMR preparation,
+preconditioner choices, final-action handling and all two-FE/direct behavior.
+No geometry pilot substitutes for the removed prefix. Solver choice, iteration
+counts and affected floating-point projection/estimation/inference outputs may
+change; sample, rank, omissions, factor slots and independent mathematical
+targets may not. Public Auto and every existing explicit request remain exact.
+
+After focused mathematical tests, full integration and independent source/build
+review, a separate fixed 24-call diagnostic compares V1 and this control on the
+revealed small-third, near-confounded-third and sixteen-FE A bodies, at one and
+four workers, V1/control/control/V1 order. Each arm repeats exactly at fixed
+workers; both must satisfy the original independent witnesses and stable model
+decisions. Report main and final actions separately. Caps are 120 seconds per
+call and 1,800 seconds inclusive; no warmups, replacement calls or continuation
+on an inconclusive result. Native dispatch requires actual artifact/input/reader
+bindings and review. This resolves whether prefix savings repay its cost; it
+does not reopen the failed SCC screen, access B/C or authorize public activation.
+
 A separate prospective Mac handoff helper passes independent source review and
 16 pure tests. After full discovery/B-context and untouched-C-declaration gates,
 it can reuse already certified fresh B references, checking exact paths and

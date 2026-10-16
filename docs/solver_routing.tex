@@ -94,7 +94,7 @@ Use one native call. SPI stays on the main thread; workers own Rust-managed stat
 16 CMG repair; 17 deployment (Codex) & 18--21 Timing history and recovery (Codex)\\
 \bottomrule
 \end{tabularx}}
-{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Public Auto unchanged.\par}
+{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Cost diagnosis: page 28. Public Auto unchanged.\par}
 \vfill
 {\fontsize{9}{11.8}\selectfont\color{Muted}\textbf{Authorship.} GPT Pro authored the original specification and diagrams. Codex authored later bindings and amendments. Exact-case Pro review informed the direct-cost correction (page 14); generic Pro review informed allocation (page 8). The explicit-CMG repair (page 16) is a Codex amendment, not GPT Pro code approval.\par
 Document rendering and layout validation do not constitute solver implementation or scientific/performance qualification.}
@@ -2030,6 +2030,56 @@ The complete strict-prefix/seeded-LSMR path needs attribution; these comparisons
 \textbf{Evidence boundary.} Independent Astra high review passes the retained records, proofs and complete ranking. Pure replay job \code{8140245} passes 0/0 with no native calls and reproduces the entire canonical aggregate. Raw isolation replay checks 4,712 process snapshots and 794 successful scheduler commands, with no detected competing compute. Successful numerical arrays were deleted by the frozen producer: their oracle/scoped checks are source-bound producer attestations, not a fresh recomputation from missing arrays. All failures remain recorded; the old Mac B is still closed. No new full GPT Pro review is claimed.
 \end{binding}
 \anchor{SCC source \code{cc2aae4d}; jobs \code{8137670--8137673}; canonical aggregate \code{a89d5000}. Full comparison and accounting summaries: \code{docs/VALIDATION.md} and \code{bench/results/solver-routing-controlled-20261014.json}.}
+\clearpage
+
+% PAGE 28 / completed observational attribution; prospective causal comparison.
+\fancyfoot[L]{\sffamily\fontsize{8}{10}\selectfont\color{Muted}Private portfolio / engineering diagnosis only}
+\smallbody
+\sect{COST DIAGNOSIS / 16 OCTOBER}{Construction and prefixes dominate}
+\tagline{48 fixed calls, six revealed discovery families, one/four workers. No new qualification.}
+The instrumented build changes clocks and logging only. All 36 comparisons against the first result in each of 12 cells preserve scientific results, column fingerprints and solver signatures exactly. Below are medians of \emph{two instrumented observations}; ordinary desktop activity and measurement overhead remain. These are inclusive elapsed phases, not CPU shares or estimates of achievable speedup.
+
+\sub{Four-worker cost breakdown, milliseconds}
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=.48cm,font=\sffamily\fontsize{8.6}{10.5}\selectfont]
+\foreach \y/\label/\value/\shade in {0/High-degree: graph/114.1/Teal,-1/High-degree: hierarchy/35.3/Teal,-2/High-degree: CMG cycles/16.9/Teal,-4/Sixteen FEs: MAP prefix/168.1/Amber,-5/Sixteen FEs: backend build/49.0/Amber,-6/Sixteen FEs: LSMR run/69.5/Amber}{
+ \node[anchor=west] at (0,\y) {\label};
+ \fill[\shade] (5.25,\y-.24) rectangle ({5.25+\value*.048},\y+.24);
+ \node[anchor=west,text=Ink] at ({5.4+\value*.048},\y) {\value};
+}
+\node[anchor=west,text=Muted] at (5.25,-7.1) {Same time scale; phases shown are disjoint.};
+\end{tikzpicture}
+\end{center}
+\vspace{-5pt}
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Phase (all actions combined)} & \textbf{1 worker, ms} & \textbf{4 workers, ms}\\
+\midrule
+High-degree weak: graph + hierarchy & 151.6 & 149.4\\
+High-degree weak: CMG cycles & 16.8 & 16.9\\
+High-degree weak: complete native call & 426.0 & 277.6\\
+Sixteen FEs: prefix setup + execution & 403.3 & 168.1\\
+Sixteen FEs: backend construction & 89.7 & 49.0\\
+Sixteen FEs: LSMR session execution & 240.9 & 69.5\\
+Sixteen FEs: complete native call & 851.2 & 374.9\\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{-5pt}
+\sub{Two different engineering priorities}
+\textbf{Two FEs.} Graph and hierarchy construction take about 149 ms on the four-worker high-degree case, against 17 ms for CMG cycles. Faster cycles alone address a smaller cost. Source inspection finds cached-cell reloads, sampled-row sorting and duplicate edge staging; the broad graph timer does not distinguish their time shares. Preserve canonical order, compensated sums, sampling, work admission and cancellation when testing improvements. Parallel construction or overlap may help, but consumes cores and memory bandwidth needed by the incumbent.
+
+\textbf{Many FEs.} The four-worker sixteen-FE main action spends about 118 ms on its unsuccessful prefix before 49 ms of backend construction and 70 ms in LSMR. Its final, one-RHS action instead certifies in four MAP sweeps, about 49 ms, with no LSMR. Blanket prefix removal could discard that benefit. The first causal control therefore compares the existing policy with strict unseeded LSMR, keeping main and final actions separate:
+\[
+ T_{\rm prefix}+T_{\rm seeded\ LSMR}<T_{\rm unseeded\ LSMR}.
+\]
+The present traces measure only the left side. A separately declared 24-call comparison covers the three revealed many-FE families at one/four workers, with unchanged certificates, independent witnesses and fixed limits. It is a private experiment, not a promoted routing policy.
+
+\begin{binding}\tinybody
+\textbf{Provenance and limits.} The first native call succeeded but the original reader rejected the timing harness's binary-column dialect. That failed protocol remains recorded. A reviewed reader-only continuation reused call 0 and executed exactly calls 1--47 under the original deadline; no native call was repeated. Independent Astra high review checks all 48 records, 113 bindings, 904 source files and 1,572 timing scopes. Successful arrays were hashed and checked before cleanup; only call 0's binary remains. This instrumentation comparison reuses existing scientific qualification and does not claim a fresh independent oracle recomputation, causal speed gain, Mac selection or a valid new shortlist. All prior NO-GO outcomes remain.
+\end{binding}
+\anchor{Observational patch \code{66809728}; result \code{eff950e5}; raw review \code{3ab40849}. Compact evidence and prospective scope: \code{docs/VALIDATION.md}, \code{bench/results/solver-routing-controlled-20261014.json}.}
 \clearpage
 
 \end{compactleaf}
