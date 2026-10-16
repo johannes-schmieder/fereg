@@ -1048,8 +1048,8 @@ counts and affected floating-point projection/estimation/inference outputs may
 change; sample, rank, omissions, factor slots and independent mathematical
 targets may not. Public Auto and every existing explicit request remain exact.
 
-After focused mathematical tests, full integration and independent source/build
-review, a separate fixed 24-call diagnostic compares V1 and this control on the
+After focused mathematical tests, source-only integration and independent
+source/build review, a separate fixed 24-call diagnostic compares V1 and this control on the
 revealed small-third, near-confounded-third and sixteen-FE A bodies, at one and
 four workers, V1/control/control/V1 order. Each arm repeats exactly at fixed
 workers; both must satisfy the original independent witnesses and stable model
@@ -1058,6 +1058,36 @@ call and 1,800 seconds inclusive; no warmups, replacement calls or continuation
 on an inconclusive result. Native dispatch requires actual artifact/input/reader
 bindings and review. This resolves whether prefix savings repay its cost; it
 does not reopen the failed SCC screen, access B/C or authorize public activation.
+
+The private control passed 18 core, two parser and four independent QR oracle
+checks, including exact unaffected paths, strict certificates, saved factor slots,
+fixed-worker repeats and cross-worker decisions. Independent Astra high source
+review passed. Its first default integration invocation stopped after the Python
+checks because the working source no longer matched the installed plugin; no
+later integration checks ran in that invocation. This failure is retained.
+
+The experiment therefore remains an exact unpublished source patch; main's six
+experimental files were restored to the incumbent after preserving their bytes.
+The reviewed explicit `--source-only` mode retains every scientific, Rust, FFI
+and tooling check and omits only the installed-package checker, reporting that
+whole gate as not performed. It cannot pass installed-package admission or
+promotion. Actual experimental build/ABI checks and the declared native witnesses
+remain required before the 24-call diagnostic. This prospective clarification
+precedes all calls and does not turn the failed default invocation into a pass.
+
+The source-only entrypoint passes six mocked command-flow tests and independent
+Astra high review (`0cddfaf4ea103715f52e400ee912ff065446e833e37d2a53c506d51917ad1fb3`).
+After restoring main's unchanged incumbent, the normal full entrypoint passes in
+223.34 seconds: 255 Python tests plus seven portable checks, 1,927 Rust tests in
+86 groups, 14 Rust ignores, exact mathematical witnesses, strict Clippy, allocation
+and FFI audits, and the installed-package checker. The Linux linker audit is
+correctly skipped on Mac. Main's 192 runtime modules and 58 artifact inputs remain
+identical to `c90d03fb`. Default-pass command SHA-256 is
+`a71877e378949cfc5108ef7fa7e8ea57907bc994e9fd07dfe5831b891f6ddafa`;
+the earlier failed experimental invocation remains
+`b3107469694567c825361048c450a2307bd6e0c35537c4e73f96b7a255d0c902`.
+These are distinct outcomes; the candidate's source integration, actual build
+and 24-call study are separate prerequisites.
 
 A separate prospective Mac handoff helper passes independent source review and
 16 pure tests. After full discovery/B-context and untouched-C-declaration gates,

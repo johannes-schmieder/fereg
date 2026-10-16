@@ -24,6 +24,20 @@ lists the remaining fixtures no other profile or script runs, for Johannes to ma
 into a verdict profile or retire.
 See [the Stata runner](../ci/README.md). Target mapped tests during development;
 run the applicable integration checks before committing runtime changes.
+
+For an unpublished experimental source copy, `./scripts/run_tests.sh --source-only`
+runs every source integration check while explicitly omitting the installed-package
+checker. Its verdict does not establish the installed package's source binding,
+inventory, plugin hashes/ABI or Mata-object integrity. The default command remains
+strict; it never falls back to this mode after a failure. Unknown or additional
+arguments fail before checks start. Preserve any failed default invocation.
+Source integration is a development prerequisite, not package admission: separately
+build and audit/load the actual candidate, bind its source and tools, and run the
+declared scientific and transaction checks before interpreting an experiment.
+Keep the installed runtime unchanged while testing private patches. Main must pass
+the default entrypoint with matching installed artifacts before a distribution
+change is committed; source-only success never authorizes publication or promotion.
+
 GitHub testing is paused. Mac remains the default qualification host; Johannes
 additionally requested bounded Linux and Windows build checks on 2026-10-07.
 Existing GitHub build definitions remain inactive.

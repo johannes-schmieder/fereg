@@ -1,9 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ "$#" -eq 0 ]]; then
+  source_only=false
+elif [[ "$#" -eq 1 && "$1" == --source-only ]]; then
+  source_only=true
+else
+  printf '%s\n' 'Usage: scripts/run_tests.sh [--source-only]' >&2
+  exit 2
+fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+if [[ "$source_only" == true ]]; then
+  printf '%s\n' \
+    'SOURCE-ONLY: NOT PERFORMED: installed-package binding, inventory, hash, ABI and Mata checks.' \
+    'SOURCE-ONLY: this run does not qualify a package for release or promotion.'
+fi
 python3 -m unittest discover -s tests/python
-python3 scripts/check_github_install.py
+if [[ "$source_only" == false ]]; then
+  python3 scripts/check_github_install.py
+fi
 python3 scripts/check_fma_rounding_vectors.py
 python3 scripts/check_fe_boundary_response_oracle.py
 python3 scripts/check_fe_cancellation_oracle.py
@@ -49,4 +64,7 @@ if [[ "$(uname -s)" == Linux ]]; then
   tests/mock_spi/run_mock_linux_plugin_audit.sh
 else
   printf '%s\n' 'SKIP: Linux mock-plugin audit requires a GNU ELF linker.'
+fi
+if [[ "$source_only" == true ]]; then
+  printf '%s\n' 'SOURCE-ONLY: source integration PASS; installed-package admission NOT PERFORMED; release/promotion blocked.'
 fi
