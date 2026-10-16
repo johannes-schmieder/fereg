@@ -12490,7 +12490,7 @@
         "interpretation": "Functional evidence only. Native92 remains incomplete route coverage; failed6 and rejected unexecuted artifact remain unchanged. Installation here is observed, not guaranteed generally. No speed, isolation, qualification, default activation or promotion claim."
       },
       "release_validation": {
-        "status": "local_checks_passed_publication_pending",
+        "status": "published_versioned_and_full_commit_installs_passed_main_pending",
         "corresponding_source_sha256": "ed6b2ecc1a8eb471a77870598963c30d77bdcdcee412fc08034a7426a7f361da",
         "native_archive_sha256": "c97be548a8b2abc8ca6861d175405c4dfa39d59beac31b09c23ad74ce10428a5",
         "advisory_count": 0,
@@ -12522,8 +12522,8 @@
           "initial_invocation_error": "OLS --public-scope CLI rejected before native execution; corrected scope only, original error retained."
         },
         "remaining": [
-          "versioned HTTP and github installation",
-          "publication and checked main push"
+          "normal checked main push",
+          "actual default Github and raw-main installation"
         ],
         "qualification_claim": false,
         "public_build_recipe": {
@@ -12565,17 +12565,43 @@
             "process_returncode": 0,
             "original_failed_evidence_unchanged": true,
             "independent_source_and_plan_review": "gpt-6-astra high source/plan GO and final raw-result PASS: exact83bindings/31payloads/tracker, native selftest, unchanged OLS/PPML fixtures and independent witnesses/failure preservation; originalfailedrecords remain failed."
-          }
+          },
+          "http_beta2": {
+            "status": "passed",
+            "installed_payloads_exact_before_after": 30,
+            "elapsed_seconds": 13.308097500004806,
+            "stata_processes": 2,
+            "retries": 0,
+            "report_sha256": "5013cb741a5a3405322a7f86f7243380b35927ffb8996544112f1fdd522dc350",
+            "scope": "Actual public versioned net install with frozen flat ZIP/manifest/audit binding, selftest and independent installed OLS/PPML examples."
+          },
+          "github_full_commit": {
+            "status": "passed",
+            "commit": "1c72e59d25789704157856f4c1df790211cd00c2",
+            "installed_payloads_exact_before_after": 31,
+            "elapsed_seconds": 6.370476042036898,
+            "stata_processes": 2,
+            "retries": 0,
+            "report_sha256": "2ec866cc17238f59b19040dbaeaffce061519e52284e9b931dd71b023c9f960a",
+            "scope": "Actual installed github2.3.0 command with version(full40hex), fresh isolated sysdirs and independent OLS/PPML examples; not a substituted net-install claim."
+          },
+          "published_routes_independent_review": "gpt-6-astra high raw PASS: actualHTTP30 and full-PGithub31 exactpayloads/tracking/bindings, bothscientificsmokes/selftests0, all47 actualHTTPSdownloads exact. DefaultGithub/rawmain not yet claimed."
         },
         "publication_readiness": {
-          "status": "local_functional_prerequisites_passed_unpublished",
+          "status": "published",
           "assets": 47,
           "checksum_entries": 46,
           "flat_native_archive_assets": 41,
           "sha256sums_sha256": "f06854afb46f5ea23ef62f06dbdc8458e255d7af4ebf4302f9ef06b19fcc654b",
           "release_body_sha256": "ae1c25a6ddf04a6d1e2889c6e75dd9dad99c05f9ef4b28c84b5dbd945f0a52ca",
           "independent_review": "gpt-6-astra high GO for exact copies, checksums and honest source/distribution/qualification claims; smoke completion and checked localP remain prerequisites.",
-          "remote_preflight": "beta.2 release/tag absent, main still377226f85f1bc61002d0b4c1eb0716af91c3c54c; no publication yet."
+          "remote_preflight": "beta.2 release/tag absent, main still377226f85f1bc61002d0b4c1eb0716af91c3c54c; no publication yet.",
+          "release_id": 414478958,
+          "url": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.2",
+          "published_at": "2026-10-16T02:43:00Z",
+          "distribution_tag_commit": "1c72e59d25789704157856f4c1df790211cd00c2",
+          "actual_public_downloads": 47,
+          "public_download_verification_sha256": "193ef0bd244296b52bcca1d205f663e2db6335421e0f2c01521a2dafa7b14fb4"
         }
       }
     },

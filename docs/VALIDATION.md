@@ -710,8 +710,14 @@ independent review confirms those are the only differences. The failed report is
 retained. A separately sealed and independently admitted smoke-only continuation
 passes selftest and independent installed OLS/PPML examples, preserving all 31
 payloads and the tracker byte-exact. It uses one Stata process, no reinstall or
-retry, and retains the original failed admission. HTTP/GitHub installation and
-publication remain pending; no new platform or routing-performance claim follows.
+retry, and retains the original failed admission. [Beta.2](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.2)
+is published at distribution tag `1c72e59d25789704157856f4c1df790211cd00c2`,
+with build source still `3f487f21`. All 47 public assets match their accepted hashes.
+Actual public versioned `net install` (30 flat payloads) and actual installed
+`github install` at that full commit (31 root payloads) pass independently in
+fresh processes/directories, including exact bytes, selftest and OLS/PPML checks.
+Normal main push and default GitHub/raw-main installation remain pending. No new
+platform or routing-performance claim follows.
 Compact records are in `terminal_affordability.final_universal_functional` and
 `terminal_affordability.release_validation` in the same evidence document.
 
