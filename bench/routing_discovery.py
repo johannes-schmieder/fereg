@@ -48,6 +48,12 @@ EVIDENCE = {'scheduler', 'queue_configuration', 'parallel_environment',
             'resource_quota', 'job_environment', 'affinity', 'process_observations', 'accounting'}
 LIBRARY_LIMITS = {k: '1' for k in
                   ['OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS']}
+SCHEDULER_QUERY_POLICY = {
+    'kind': 'qstat-pair-retry-v1', 'maximum_pair_attempts': 2,
+    'query_budget_s': 20, 'command_budget_s': 10, 'successful_census_gap_s': 75,
+    'cadence_s': 60, 'retryable': ['transport', 'nonzero', 'timeout'],
+    'semantic_failure': 'terminal', 'producer_retries': 0, 'replacements': 0,
+}
 
 
 def require(condition, message):
@@ -151,6 +157,7 @@ def freeze(config):
 def validate_plan(plan):
     require(plan.get('kind') in {KIND + '_plan', PORTFOLIO_KIND + '_plan'} and plan.get('design') == DESIGN
             and plan.get('library_limits') == LIBRARY_LIMITS, 'wrong discovery plan')
+    scheduler_query_policy(plan)
     spec = routing.unseal(plan['tournament'])
     validate_spec(spec, portfolio=plan['kind'] == PORTFOLIO_KIND + '_plan')
     for path, sha in plan['frozen_files'].items():
@@ -158,6 +165,22 @@ def validate_plan(plan):
     require(plan['producer_tools'] == {p.name: h for p, h in routing_run.tool_identities().items()},
             'producer/checker source changed')
     return spec
+
+
+def scheduler_query_policy(plan):
+    """Only a prospective portfolio round view may enable query recovery."""
+    if 'scheduler_query_policy' not in plan:
+        return None
+    contract = plan.get('round_contract', {})
+    require(plan.get('kind') == PORTFOLIO_KIND + '_plan'
+            and routing.identity(plan['scheduler_query_policy']) == routing.identity(SCHEDULER_QUERY_POLICY)
+            and isinstance(contract, dict)
+            and set(contract) == {'parallel_plan_sha256', 'logical_round', 'attempt'}
+            and routing.sha(contract.get('parallel_plan_sha256'))
+            and type(contract.get('logical_round')) is int and 1 <= contract['logical_round'] <= 3
+            and type(contract.get('attempt')) is int and contract['attempt'] == 1,
+            'scheduler query policy requires its frozen portfolio round')
+    return plan['scheduler_query_policy']
 
 
 def host():

@@ -117,6 +117,46 @@ class PortfolioParallelTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'no original proof or window'):
                 parallel.freeze({**config, 'proof': 'old-proof.json'})
 
+    def test_scheduler_recovery_is_explicit_frozen_portfolio_design_only(self):
+        source_check = self.root / 'query-checks.json'
+        source_check.write_text('{"focused_tests":"passed"}')
+        config = {'schema': 2, 'discovery_plan': self.parent_ref['path'],
+                  'output_root': str(self.root / 'query-freeze'), 'receipt_generator': parallel.isolation_host.__file__,
+                  'source_checks': [str(source_check)]}
+        with patch.object(routing, 'scratch', side_effect=lambda p: p.resolve()):
+            original = parallel.freeze(config)
+            self.assertEqual(original['design'], parallel.PORTFOLIO_DESIGN)
+            self.assertNotIn('scheduler_query_policy', parallel.round_view(original, 1, 1))
+            plan = parallel.freeze({**config, 'scheduler_query_policy': discovery.SCHEDULER_QUERY_POLICY['kind']})
+            self.assertEqual(plan['design'], parallel.PORTFOLIO_QUERY_DESIGN)
+            self.assertEqual(parallel.validate_plan(plan), self.spec)
+            for n in (1, 2, 3):
+                view = parallel.round_view(plan, n, 1)
+                self.assertEqual(discovery.scheduler_query_policy(view), discovery.SCHEDULER_QUERY_POLICY)
+                self.assertEqual(view['round_contract']['parallel_plan_sha256'], routing.identity(plan))
+            for name in ('test_scc_routing_host.py', 'test_routing_discovery.py'):
+                path = Path(__file__).with_name(name).resolve()
+                self.assertEqual(plan['frozen_files'][str(path)], discovery.digest(path))
+                bad = copy.deepcopy(plan)
+                del bad['frozen_files'][str(path)]
+                with self.assertRaises(ValueError):
+                    parallel.validate_plan(bad)
+            for policy in (None, 'unknown', discovery.SCHEDULER_QUERY_POLICY):
+                with self.subTest(policy=policy), self.assertRaises(ValueError):
+                    parallel.freeze({**config, 'scheduler_query_policy': policy})
+        bad = copy.deepcopy(plan)
+        bad['design']['scheduler_query_policy']['maximum_pair_attempts'] = 3
+        with self.assertRaisesRegex(ValueError, 'wrong closed portfolio plan'):
+            parallel.metadata(bad)
+        with self.assertRaises(ValueError):
+            parallel.round_view(plan, 1, 2)
+        bad = copy.deepcopy(plan)
+        parent = routing.unseal(bad['parent'])
+        parent['scheduler_query_policy'] = copy.deepcopy(discovery.SCHEDULER_QUERY_POLICY)
+        bad['parent'], bad['parent_sha256'] = routing.seal(parent), routing.identity(parent)
+        with self.assertRaises(ValueError):
+            parallel.metadata(bad)
+
     def test_producer_runs_own_two_call_science_then_one_full_round(self):
         view, _, proof = self.node(2)
         order = []

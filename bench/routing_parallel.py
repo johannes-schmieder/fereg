@@ -61,6 +61,10 @@ PORTFOLIO_DESIGN = {
     'heuristic_screen': 'only after all three terminal valid rounds: reject portfolio-v1 if baseline_violations > 0 or worst available internal normalized comparison > 1; equality passes; at least one finite internal comparison required; retain complete ranking; descriptive only',
     'inference': discovery.DESIGN['inference'],
 }
+PORTFOLIO_QUERY_DESIGN = {
+    **PORTFOLIO_DESIGN, 'scheduler_query_policy': discovery.SCHEDULER_QUERY_POLICY,
+    'stopping': 'only bounded scheduler transport recovery under the frozen query policy; any science, observer or joint-budget failure invalidates the closed campaign; no producer retry, replacement, window or partial aggregation',
+}
 require = discovery.require
 write = discovery.write
 load = discovery.load
@@ -136,10 +140,13 @@ def _portfolio_metadata(plan):
     require(set(plan) == {'kind', 'schema', 'design', 'parent', 'parent_sha256', 'parent_plan',
                          'output_root', 'producer_tools', 'receipt_generator', 'frozen_files'}
             and plan['kind'] == KIND + '_plan' and type(plan['schema']) is int
-            and routing.identity(plan['design']) == routing.identity(PORTFOLIO_DESIGN), 'wrong closed portfolio plan')
+            and routing.identity(plan['design']) in {routing.identity(PORTFOLIO_DESIGN),
+                                                    routing.identity(PORTFOLIO_QUERY_DESIGN)},
+            'wrong closed portfolio plan')
     parent = routing.unseal(plan['parent'])
     require(parent.get('kind') == discovery.PORTFOLIO_KIND + '_plan'
             and parent.get('design') == discovery.DESIGN
+            and 'scheduler_query_policy' not in parent
             and parent.get('library_limits') == discovery.LIBRARY_LIMITS
             and plan['parent_sha256'] == routing.identity(parent), 'wrong fresh portfolio discovery plan')
     spec = routing.unseal(parent['tournament'])
@@ -196,8 +203,12 @@ def validate_plan(plan):
             'current parallel/host/producer source is not frozen')
     require(plan['receipt_generator'] == reference(isolation_host.__file__), 'wrong current receipt generator')
     if plan['schema'] == 2:
-        ref = reference(Path(__file__).parent / 'tests/test_routing_parallel.py')
-        require(plan['frozen_files'].get(ref['path']) == ref['sha256'], 'portfolio source-check tool is not frozen')
+        tests = ['test_routing_parallel.py']
+        if 'scheduler_query_policy' in plan['design']:
+            tests += ['test_scc_routing_host.py', 'test_routing_discovery.py']
+        for name in tests:
+            ref = reference(Path(__file__).parent / 'tests' / name)
+            require(plan['frozen_files'].get(ref['path']) == ref['sha256'], 'portfolio source-check tool is not frozen')
         return value['spec']
     proof = load(checked(plan['proof']))
     require(routing.identity(proof) == plan['proof_sha256'], 'original proof identity changed')
@@ -221,7 +232,10 @@ def _prerequisite(parent, spec, proof):
 
 def freeze(config):
     if config.get('schema') == 2:
-        require(set(config) == {'schema', 'discovery_plan', 'output_root', 'receipt_generator', 'source_checks'},
+        policy = config.get('scheduler_query_policy')
+        require(policy is None or policy == discovery.SCHEDULER_QUERY_POLICY['kind'], 'unknown scheduler query policy')
+        keys = {'schema', 'discovery_plan', 'output_root', 'receipt_generator', 'source_checks'}
+        require(set(config) == keys | ({'scheduler_query_policy'} if policy is not None else set()),
                 'closed portfolio freeze accepts no original proof or window')
         parent_ref = reference(config['discovery_plan'])
         parent = load(parent_ref['path'])
@@ -230,13 +244,17 @@ def freeze(config):
         require(not root.exists() and root != Path(parent['output_root']), 'freeze a fresh portfolio output root')
         require(config.get('source_checks'), 'freeze completed portfolio source-check evidence')
         frozen = dict(parent['frozen_files'])
-        for ref in [parent_ref, reference(Path(__file__).parent / 'tests/test_routing_parallel.py'),
+        tests = ['test_routing_parallel.py']
+        if policy is not None:
+            tests += ['test_scc_routing_host.py', 'test_routing_discovery.py']
+        for ref in [parent_ref, *[reference(Path(__file__).parent / 'tests' / name) for name in tests],
                     *[reference(p) for p in config['source_checks']]]:
             frozen[ref['path']] = ref['sha256']
         for path, sha in current_files().items():
             require(path not in frozen or frozen[path] == sha, 'fresh portfolio source closure differs')
             frozen[path] = sha
-        result = {'kind': KIND + '_plan', 'schema': 2, 'design': copy.deepcopy(PORTFOLIO_DESIGN),
+        result = {'kind': KIND + '_plan', 'schema': 2,
+                  'design': copy.deepcopy(PORTFOLIO_QUERY_DESIGN if policy is not None else PORTFOLIO_DESIGN),
                   'parent': routing.seal(parent), 'parent_sha256': routing.identity(parent), 'parent_plan': parent_ref,
                   'output_root': str(root), 'producer_tools': parent['producer_tools'],
                   'receipt_generator': reference(config['receipt_generator']), 'frozen_files': frozen}
@@ -294,6 +312,8 @@ def round_view(plan, logical_round, attempt):
                 frozen_files=copy.deepcopy(plan['frozen_files']), receipt_generator=plan['receipt_generator'],
                 round_contract={'parallel_plan_sha256': routing.identity(plan),
                                 'logical_round': logical_round, 'attempt': attempt})
+    if plan['schema'] == 2 and 'scheduler_query_policy' in plan['design']:
+        view['scheduler_query_policy'] = copy.deepcopy(plan['design']['scheduler_query_policy'])
     return view
 
 

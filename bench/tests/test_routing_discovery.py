@@ -390,5 +390,27 @@ class DiscoveryTests(unittest.TestCase):
             discovery.write(target, {})
 
 
+class SchedulerQueryPolicyTests(unittest.TestCase):
+    def test_only_exact_prospective_portfolio_round_can_opt_in(self):
+        self.assertIsNone(discovery.scheduler_query_policy({}))
+        plan = {'kind': discovery.PORTFOLIO_KIND + '_plan',
+                'scheduler_query_policy': copy.deepcopy(discovery.SCHEDULER_QUERY_POLICY),
+                'round_contract': {'parallel_plan_sha256': h('new frozen plan'), 'logical_round': 2, 'attempt': 1}}
+        self.assertEqual(discovery.scheduler_query_policy(plan), discovery.SCHEDULER_QUERY_POLICY)
+        mutations = [lambda p: p.update(kind=discovery.KIND + '_plan'),
+                     lambda p: p.pop('round_contract'),
+                     lambda p: p.update(scheduler_query_policy='qstat-pair-retry-v1'),
+                     lambda p: p['scheduler_query_policy'].update(query_budget_s=21),
+                     lambda p: p['scheduler_query_policy'].update(maximum_pair_attempts=3),
+                     lambda p: p['round_contract'].update(logical_round=True),
+                     lambda p: p['round_contract'].update(attempt=2),
+                     lambda p: p['round_contract'].update(parallel_plan_sha256='unbound')]
+        for mutation in mutations:
+            bad = copy.deepcopy(plan)
+            mutation(bad)
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                discovery.scheduler_query_policy(bad)
+
+
 if __name__ == '__main__':
     unittest.main()

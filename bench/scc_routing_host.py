@@ -8,6 +8,7 @@ and this tool never examines solve times or changes the collection schedule.
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 from datetime import datetime, timezone
 import json
@@ -177,7 +178,7 @@ def check_configuration(values, host, pid):
     return queue
 
 
-def reservation(raw, host, collection):
+def reservation(raw, host, collection, query_policy=None):
     for key in ('job_environment', 'parallel_environment', 'resource_quota'):
         stable_pair(raw[key])
     pairs = {key: boundary_pair(raw[key]) for key in
@@ -185,7 +186,7 @@ def reservation(raw, host, collection):
     for index in range(2):
         queue = check_configuration({key: values[index] for key, values in pairs.items()},
                                     host, collection['collection_pid'])
-    check_scheduler(raw['scheduler'], host, queue, collection)
+    check_scheduler(raw['scheduler'], host, queue, collection, query_policy)
     return {'num_proc': SLOTS, 'slots': SLOTS, 'pe_allocation_rule': '$pe_slots',
             'rqs_enabled': True, 'rqs_all_queues': True, 'rqs_limit': 'num_proc', 'single_host': True}
 
@@ -227,9 +228,15 @@ def check_affinity(raw, host, pid):
             and len({row[1:] for row in online}) == SLOTS, 'topology is not 28 complete physical cores')
 
 
-def check_scheduler(path, host, queue, collection):
+def check_scheduler(path, host, queue, collection, query_policy=None):
     snapshots = list(rows(path))
     require(all(snapshot.get('kind') != 'error' for snapshot in snapshots), 'scheduler observer error')
+    if query_policy is not None:
+        require(query_policy == discovery.SCHEDULER_QUERY_POLICY, 'unknown scheduler query policy')
+        snapshots = query_snapshots(snapshots, host, queue)
+    else:
+        require(all(snapshot.get('kind') != 'scheduler_query' for snapshot in snapshots),
+                'scheduler query recovery requires the frozen plan policy')
     require(len(snapshots) >= 2 and snapshots[0].get('stage') == 'before'
             and snapshots[-1].get('stage') == 'after', 'missing scheduler boundary')
     require(snapshots[0]['monotonic_ns'] <= collection['started_monotonic_ns']
@@ -244,7 +251,12 @@ def check_scheduler(path, host, queue, collection):
 
 
 def check_scheduler_snapshot(snapshot, host, queue):
-    job = fields(output(snapshot['job'], ['qstat', '-j', host['job_id']]), colon=True)
+    check_scheduler_job(snapshot['job'], host)
+    check_scheduler_queues(snapshot['queues'], host, queue)
+
+
+def check_scheduler_job(record, host):
+    job = fields(output(record, ['qstat', '-j', host['job_id']]), colon=True)
     require(job['job_number'] == host['job_id'] and job['project'] == 'welfgr'
             and re.fullmatch(r'omp28\s+range:\s*28', job['parallel environment']) is not None,
             'scheduler job or granted request differs')
@@ -254,7 +266,10 @@ def check_scheduler_snapshot(snapshot, host, queue):
     require(1 <= len(duration) <= 3 and all(s.isdigit() for s in duration), 'missing finite scheduler wall limit')
     seconds = sum(int(value) * 60**index for index, value in enumerate(reversed(duration)))
     require(0 < seconds <= 43200, 'collection scheduler wall limit exceeds twelve hours')
-    xml = ET.fromstring(output(snapshot['queues'], ['qstat', '-f', '-xml', '-q',
+
+
+def check_scheduler_queues(record, host, queue):
+    xml = ET.fromstring(output(record, ['qstat', '-f', '-xml', '-q',
                         '*@' + host['hostname'], '-u', '*']))
     queues = xml.findall('./queue_info/Queue-List')
     require(queues and all(hostname(q.findtext('name').split('@')[1]) == hostname(host['hostname'])
@@ -264,6 +279,158 @@ def check_scheduler_snapshot(snapshot, host, queue):
             and jobs[0][0].split('@')[0] == queue.split('@')[0]
             and jobs[0][1].findtext('JB_job_number') == host['job_id']
             and jobs[0][1].findtext('slots') == str(SLOTS), 'scheduler reports co-tenancy or missing full reservation')
+
+
+def query_arguments(host):
+    return [['qstat', '-j', host['job_id']],
+            ['qstat', '-f', '-xml', '-q', '*@' + host['hostname'], '-u', '*']]
+
+
+def query_command(argv, deadline):
+    """Retain bytes even for timeout/transport failures; never renew the deadline."""
+    started = time.monotonic_ns()
+    remaining = min(10 * 10**9, deadline - started)
+    require(remaining > 0, 'scheduler query deadline exhausted')
+    record = {'argv': argv, 'started_monotonic_ns': started, 'started_wall_time_ns': time.time_ns(),
+              'timeout_ns': remaining, 'locale': 'C', 'timezone': 'UTC', 'error': None}
+    stdout, stderr, returncode = b'', b'', None
+    try:
+        result = subprocess.run(argv, capture_output=True, timeout=remaining / 1e9,
+                                env={**os.environ, 'LC_ALL': 'C', 'TZ': 'UTC'})
+        stdout, stderr, returncode = result.stdout, result.stderr, result.returncode
+        status = 'success' if returncode == 0 else 'nonzero'
+    except subprocess.TimeoutExpired as error:
+        stdout, stderr = error.stdout or b'', error.stderr or b''
+        status, record['error'] = 'timeout', str(error)
+    except OSError as error:
+        status, record['error'] = 'transport', str(error)
+    record.update(finished_monotonic_ns=time.monotonic_ns(), finished_wall_time_ns=time.time_ns(),
+                  stdout_base64=base64.b64encode(stdout).decode('ascii'),
+                  stderr_base64=base64.b64encode(stderr).decode('ascii'),
+                  returncode=returncode, status=status)
+    return record
+
+
+def query_output(record, argv, host, queue, index):
+    """Every exit-zero component is semantic evidence, including a failed pair."""
+    require(record['argv'] == argv and record['locale'] == 'C' and record['timezone'] == 'UTC',
+            'scheduler query command identity differs')
+    stdout = base64.b64decode(record['stdout_base64'], validate=True)
+    stderr = base64.b64decode(record['stderr_base64'], validate=True)
+    status, code = record['status'], record['returncode']
+    require((status == 'success' and type(code) is int and code == 0 and record['error'] is None)
+            or (status == 'nonzero' and type(code) is int and code != 0 and record['error'] is None)
+            or (status in {'timeout', 'transport'} and code is None and isinstance(record['error'], str)),
+            'scheduler query command status differs')
+    if status != 'success':
+        return None
+    result = {'argv': argv, 'stdout': stdout.decode('utf-8'), 'stderr': stderr.decode('utf-8'),
+              'returncode': 0, 'locale': 'C', 'timezone': 'UTC'}
+    if index == 0:
+        check_scheduler_job(result, host)
+    else:
+        check_scheduler_queues(result, host, queue)
+    return result
+
+
+def query_deadline(started, previous):
+    return min(started + 20 * 10**9, previous + 75 * 10**9) if previous is not None else started + 20 * 10**9
+
+
+def query_snapshot(envelope, host, queue, previous):
+    """Replay the full envelope; a valid first pair cannot be discarded."""
+    require(previous is None or (type(previous) is int and previous >= 0), 'invalid prior scheduler timestamp')
+    require(envelope.get('kind') == 'scheduler_query' and envelope.get('schema') == 1
+            and envelope.get('status') == 'complete' and envelope.get('error') is None
+            and envelope.get('stage') in {'before', 'periodic', 'after'}, 'incomplete scheduler query envelope')
+    for name in ('started_monotonic_ns', 'finished_monotonic_ns', 'started_wall_time_ns',
+                 'finished_wall_time_ns', 'deadline_monotonic_ns'):
+        require(type(envelope[name]) is int and envelope[name] >= 0, 'invalid scheduler query timestamp')
+    started, finished, deadline = (envelope[name] for name in
+                                 ('started_monotonic_ns', 'finished_monotonic_ns', 'deadline_monotonic_ns'))
+    require(type(envelope['previous_success_monotonic_ns']) is type(previous)
+            and envelope['previous_success_monotonic_ns'] == previous
+            and deadline == query_deadline(started, previous) and started < deadline
+            and started <= finished <= deadline
+            and envelope['started_wall_time_ns'] <= envelope['finished_wall_time_ns'],
+            'scheduler query deadline or predecessor differs')
+    attempts = envelope['attempts']
+    require(isinstance(attempts, list) and 1 <= len(attempts) <= 2, 'scheduler query attempt count differs')
+    prior, wall = started, envelope['started_wall_time_ns']
+    for attempt_index, attempt in enumerate(attempts):
+        require(isinstance(attempt, list) and len(attempt) == 2, 'incomplete scheduler query pair')
+        outputs = []
+        for index, (record, argv) in enumerate(zip(attempt, query_arguments(host))):
+            for name in ('started_monotonic_ns', 'finished_monotonic_ns', 'started_wall_time_ns',
+                         'finished_wall_time_ns', 'timeout_ns'):
+                require(type(record[name]) is int and record[name] >= 0, 'invalid scheduler command timestamp')
+            begin, end = record['started_monotonic_ns'], record['finished_monotonic_ns']
+            require(prior <= begin <= end <= finished and 0 < record['timeout_ns'] <= min(10 * 10**9, deadline - begin)
+                    and wall <= record['started_wall_time_ns'] <= record['finished_wall_time_ns']
+                    <= envelope['finished_wall_time_ns'], 'scheduler command exceeds shared deadline or order')
+            outputs.append(query_output(record, argv, host, queue, index))
+            prior, wall = end, record['finished_wall_time_ns']
+        complete = all(value is not None for value in outputs)
+        require(complete == (attempt_index == len(attempts) - 1), 'scheduler discarded success or exhausted retries')
+    return {'stage': envelope['stage'], 'monotonic_ns': attempts[-1][0]['started_monotonic_ns'],
+            'job': outputs[0], 'queues': outputs[1]}
+
+
+def query_snapshots(envelopes, host, queue):
+    snapshots, previous, finished = [], None, None
+    for envelope in envelopes:
+        snapshot = query_snapshot(envelope, host, queue, previous)
+        require(finished is None or finished <= envelope['started_monotonic_ns'], 'overlapping scheduler queries')
+        snapshots.append(snapshot)
+        previous, finished = snapshot['monotonic_ns'], envelope['finished_monotonic_ns']
+    return snapshots
+
+
+class SchedulerQueries:
+    """One serial scheduler observer; the frozen plan selects this policy."""
+
+    def __init__(self, path, host, queue, failure_event):
+        self.path, self.host, self.queue, self.failure_event = path, host, queue, failure_event
+        self.previous, self.failed = None, False
+
+    def capture(self, stage):
+        require(not self.failed, 'scheduler observer already failed')
+        started = time.monotonic_ns()
+        envelope = {'kind': 'scheduler_query', 'schema': 1, 'stage': stage,
+                    'started_monotonic_ns': started, 'started_wall_time_ns': time.time_ns(),
+                    'previous_success_monotonic_ns': self.previous,
+                    'deadline_monotonic_ns': query_deadline(started, self.previous),
+                    'attempts': [], 'status': 'incomplete', 'error': None}
+        try:
+            for _ in range(2):
+                attempt, outputs = [], []
+                envelope['attempts'].append(attempt)
+                for index, argv in enumerate(query_arguments(self.host)):
+                    record = query_command(argv, envelope['deadline_monotonic_ns'])
+                    attempt.append(record)
+                    outputs.append(query_output(record, argv, self.host, self.queue, index))
+                    require(record['finished_monotonic_ns'] <= envelope['deadline_monotonic_ns'],
+                            'scheduler query completed after deadline')
+                if all(value is not None for value in outputs):
+                    envelope.update(status='complete', finished_monotonic_ns=time.monotonic_ns(),
+                                    finished_wall_time_ns=time.time_ns())
+                    snapshot = query_snapshot(envelope, self.host, self.queue, self.previous)
+                    self.previous = snapshot['monotonic_ns']
+                    return snapshot
+            raise ValueError('scheduler query exhausted two pairs')
+        except Exception as error:
+            self.failed = True
+            self.failure_event.set()
+            envelope.update(status='error', error=str(error), finished_monotonic_ns=time.monotonic_ns(),
+                            finished_wall_time_ns=time.time_ns())
+            raise
+        finally:
+            try:
+                append(self.path, envelope)
+            except Exception:
+                self.failed = True
+                self.failure_event.set()
+                raise
 
 
 def parsed_processes(row):
@@ -342,7 +509,7 @@ def derived(plan, collection, raw):
             'wrong physical allocation or architecture')
     require(set(raw) == KINDS, 'wrong raw evidence coverage')
     paths = {key: discovery.checked(ref) for key, ref in raw.items()}
-    return {'reservation': reservation(paths, collection['host'], collection),
+    return {'reservation': reservation(paths, collection['host'], collection, discovery.scheduler_query_policy(plan)),
             'accounting': accounting(json.loads(paths['accounting'].read_text()), collection),
             'observed_compute_overlap': process_facts(paths['process_observations'], plan, collection),
             'observation_complete': True}
@@ -369,11 +536,11 @@ def scheduler(host, stage):
             'queues': command(['qstat', '-f', '-xml', '-q', '*@' + host['hostname'], '-u', '*'])}
 
 
-def configuration(directory, host, stage):
+def configuration(directory, host, stage, query_state=None):
     # At exit, bracket the completed measurement before slower configuration
     # reads. At entry, take the live scheduler census last, just before admission.
-    census = scheduler(host, stage) if stage == 'after' else None
-    if census is not None:
+    census = (query_state.capture(stage) if query_state else scheduler(host, stage)) if stage == 'after' else None
+    if census is not None and query_state is None:
         append(directory / 'scheduler.jsonl', census)
     env = {key: os.environ[key] for key in ('JOB_ID', 'NSLOTS', 'PE', 'QUEUE')}
     values = {
@@ -392,8 +559,9 @@ def configuration(directory, host, stage):
         # /proc/self/status naturally change while the same process runs.
         append(directory / (key + '.jsonl'), {'stage': stage, 'value': value})
     if census is None:
-        census = scheduler(host, stage)
-        append(directory / 'scheduler.jsonl', census)
+        census = query_state.capture(stage) if query_state else scheduler(host, stage)
+        if query_state is None:
+            append(directory / 'scheduler.jsonl', census)
     return values, census
 
 
@@ -422,11 +590,14 @@ def periodic(stop, seconds, action, error_path, initial_ns, failure_event=None):
         deadline += seconds
 
 
-def start_observers(stop, directory, host, initial_process_ns, initial_scheduler_ns, failure_event=None):
+def start_observers(stop, directory, host, initial_process_ns, initial_scheduler_ns, failure_event=None,
+                    query_state=None):
     process_path, scheduler_path = (directory / name for name in
                                    ('process_observations.jsonl', 'scheduler.jsonl'))
+    scheduler_action = (lambda: query_state.capture('periodic')) if query_state else (
+                        lambda: append(scheduler_path, scheduler(host, 'periodic')))
     work = [(5, lambda: append(process_path, process_snapshot()), process_path, initial_process_ns),
-            (60, lambda: append(scheduler_path, scheduler(host, 'periodic')), scheduler_path, initial_scheduler_ns)]
+            (60, scheduler_action, scheduler_path, initial_scheduler_ns)]
     observers = [threading.Thread(target=periodic, args=(stop, interval, action, path, initial_ns),
                  kwargs={'failure_event': failure_event}, daemon=True)
                  for interval, action, path, initial_ns in work]
@@ -444,7 +615,12 @@ def observe(plan, proof, operation=None):
             'collector requires the complete 28-slot job and fixed library limits')
     directory = Path(plan['output_root']) / 'isolation'
     directory.mkdir(parents=True, exist_ok=False)
-    values, census = configuration(directory, host, 'before')
+    query_policy = discovery.scheduler_query_policy(plan)
+    failure_event = threading.Event() if operation is not None or query_policy is not None else None
+    query_state = (SchedulerQueries(directory / 'scheduler.jsonl', host, os.environ['QUEUE'], failure_event)
+                   if query_policy is not None else None)
+    query_options = {'query_state': query_state} if query_state is not None else {}
+    values, census = configuration(directory, host, 'before', **query_options)
     queue = check_configuration(values, host, os.getpid())
     check_scheduler_snapshot(census, host, queue)
     path = directory / 'process_observations.jsonl'
@@ -456,8 +632,8 @@ def observe(plan, proof, operation=None):
     require(len(owner) == 1 and not block_host.process_activity([parsed], [], owner, policy(plan)),
             'known competing compute or absent owner at initial admission')
     stop = threading.Event()
-    failure_event = threading.Event() if operation is not None else None
-    observers = start_observers(stop, directory, host, initial['monotonic_ns'], census['monotonic_ns'], failure_event)
+    observers = start_observers(stop, directory, host, initial['monotonic_ns'], census['monotonic_ns'],
+                                failure_event, **query_options)
     result = None
     try:
         output = Path(plan['output_root']) / 'collection'
@@ -472,7 +648,7 @@ def observe(plan, proof, operation=None):
             append(path, process_snapshot())
             observers[1].join(timeout=25)
             require(not observers[1].is_alive(), 'scheduler observer did not finish')
-            configuration(directory, host, 'after')
+            configuration(directory, host, 'after', **query_options)
             append(path, {'kind': 'end', 'status': result['status'] if result else 'incomplete',
                           'collection_sha256': routing.identity(result) if result else None})
         else:
@@ -480,16 +656,21 @@ def observe(plan, proof, operation=None):
             def retain(action, error_path):
                 try:
                     action()
+                    return True
                 except Exception as error:
                     errors.append(str(error))
                     observer_error(error_path, error, failure_event)
+                    return False
             def joined(observer, timeout, name):
                 observer.join(timeout=timeout)
                 require(not observer.is_alive(), name + ' observer did not finish')
             retain(lambda: joined(observers[0], 10, 'process'), path)
             retain(lambda: append(path, process_snapshot()), path)
-            retain(lambda: joined(observers[1], 25, 'scheduler'), directory / 'scheduler.jsonl')
-            retain(lambda: configuration(directory, host, 'after'), directory / 'scheduler.jsonl')
+            scheduler_joined = retain(lambda: joined(observers[1], 25, 'scheduler'), directory / 'scheduler.jsonl')
+            # A failed bounded join must not race a second query against the
+            # still-running observer. The legacy cleanup sequence is unchanged.
+            if scheduler_joined or query_state is None:
+                retain(lambda: configuration(directory, host, 'after', **query_options), directory / 'scheduler.jsonl')
             append(path, {'kind': 'end', 'monotonic_ns': time.monotonic_ns(), 'wall_time_ns': time.time_ns(),
                           'status': result['status'] if result and not failure_event.is_set() else 'incomplete',
                           'collection_sha256': routing.identity(result) if result else None})

@@ -1,5 +1,7 @@
 """Pure synthetic SCC evidence replay; no scheduler, native work or process signals."""
 from datetime import datetime, timezone
+import base64
+import copy
 import json
 from pathlib import Path
 import subprocess
@@ -358,6 +360,223 @@ class SCCEvidence(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), host.validate(f.plan, f.collection, receipt))
         self.assertEqual(result.stderr, '')
+
+
+class SchedulerQueryRecovery(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.fixture = Fixture(Path(self.directory.name))
+        self.machine = self.fixture.collection['host']
+        self.original = next(host.rows(self.fixture.root / 'scheduler.jsonl'))
+        self.path = self.fixture.root / 'queries.jsonl'
+        self.failed = threading.Event()
+        self.state = host.SchedulerQueries(self.path, self.machine, 'econ', self.failed)
+        self.now = 10**9
+        self.calls = []
+
+    def capture(self, steps, stage='before'):
+        pending = iter(steps)
+        def run(argv, **kwargs):
+            step = next(pending)
+            self.calls.append((argv, kwargs['timeout'], self.now))
+            self.now += int(step.get('seconds', 1) * 10**9)
+            stdout = step.get('stdout', self.original['job' if argv[1] == '-j' else 'queues']['stdout'].encode())
+            if step.get('status') == 'timeout':
+                raise subprocess.TimeoutExpired(argv, kwargs['timeout'], output=stdout, stderr=b'partial stderr\xff')
+            if step.get('status') == 'transport':
+                raise OSError('synthetic transport failure')
+            return subprocess.CompletedProcess(argv, step.get('returncode', 0), stdout, b'')
+        with patch.object(host.time, 'monotonic_ns', side_effect=lambda: self.now), \
+             patch.object(host.time, 'time_ns', side_effect=lambda: self.now + 100 * 10**9), \
+             patch.object(host.subprocess, 'run', side_effect=run):
+            return self.state.capture(stage)
+
+    def envelopes(self):
+        return list(host.rows(self.path))
+
+    def test_complete_pair_is_not_retried_and_default_cannot_accept_new_envelope(self):
+        result = self.capture([{}, {}])
+        self.assertEqual(result, self.original)
+        self.assertEqual(len(self.calls), 2)
+        self.assertFalse(self.failed.is_set())
+        self.assertEqual(host.query_snapshots(self.envelopes(), self.machine, 'econ'), [result])
+        with self.assertRaises((ValueError, KeyError)):
+            host.check_scheduler(self.path, self.machine, 'econ', self.fixture.collection)
+        with self.assertRaisesRegex(ValueError, 'incomplete scheduler query envelope'):
+            host.query_snapshots([self.original], self.machine, 'econ')
+
+    def test_timeout_partial_bytes_and_successful_component_survive_full_pair_retry(self):
+        result = self.capture([{'status': 'timeout', 'stdout': b'partial\xff', 'seconds': 2}, {}, {}, {}])
+        envelope = self.envelopes()[0]
+        self.assertEqual(len(self.calls), 4)
+        self.assertEqual([call[0] for call in self.calls], host.query_arguments(self.machine) * 2)
+        self.assertEqual(result['monotonic_ns'], 4 * 10**9)
+        self.assertEqual(base64.b64decode(envelope['attempts'][0][0]['stdout_base64']), b'partial\xff')
+        self.assertEqual(base64.b64decode(envelope['attempts'][0][0]['stderr_base64']), b'partial stderr\xff')
+        self.assertEqual(host.query_snapshots([envelope], self.machine, 'econ'), [result])
+
+    def test_transport_and_nonzero_retry_without_sleep_or_fresh_deadline(self):
+        result = self.capture([{'status': 'transport'}, {'returncode': 7}, {}, {}])
+        self.assertEqual(result['monotonic_ns'], 3 * 10**9)
+        envelope = self.envelopes()[0]
+        self.assertEqual(envelope['deadline_monotonic_ns'], 21 * 10**9)
+        self.assertEqual([r['status'] for r in envelope['attempts'][0]], ['transport', 'nonzero'])
+        host.query_snapshot(envelope, self.machine, 'econ', None)
+
+    def test_periodic_deadline_uses_previous_success_start_not_finish(self):
+        self.capture([{}, {}])
+        self.now = 61 * 10**9
+        result = self.capture([{'status': 'timeout', 'seconds': 10},
+                               {'returncode': 1, 'seconds': 1}, {'seconds': 1}, {'seconds': 3}], 'periodic')
+        self.assertEqual([call[1] for call in self.calls[2:]], [10, 5, 4, 3])
+        envelope = self.envelopes()[1]
+        self.assertEqual(envelope['deadline_monotonic_ns'], 76 * 10**9)
+        self.assertEqual(envelope['finished_monotonic_ns'], 76 * 10**9)
+        self.assertEqual(result['monotonic_ns'], 72 * 10**9)
+        self.assertEqual(host.query_snapshots(self.envelopes(), self.machine, 'econ')[-1], result)
+
+    def test_late_success_and_exhausted_budget_fail_and_retain_partial_attempts(self):
+        for steps, expected_calls in [([{'status': 'timeout', 'seconds': 10}, {'seconds': 10}], 2),
+                                       ([{'returncode': 1}, {}, {}, {'seconds': 18}], 4),
+                                       ([{'returncode': 1}, {}, {'returncode': 1}, {}], 4)]:
+            with self.subTest(steps=steps):
+                self.path.unlink(missing_ok=True)
+                self.now, self.calls = 10**9, []
+                self.failed.clear()
+                self.state = host.SchedulerQueries(self.path, self.machine, 'econ', self.failed)
+                with self.assertRaises(ValueError):
+                    self.capture(steps)
+                self.assertTrue(self.failed.is_set())
+                self.assertEqual(len(self.calls), expected_calls)
+                raw = self.envelopes()[0]
+                self.assertEqual(raw['status'], 'error')
+                self.assertLessEqual(len(raw['attempts']), 2)
+                with self.assertRaises(ValueError):
+                    host.query_snapshots([raw], self.machine, 'econ')
+                with self.assertRaisesRegex(ValueError, 'already failed'):
+                    self.capture([])
+
+    def test_semantic_failure_in_either_successful_partial_is_terminal(self):
+        bad_job = self.original['job']['stdout'].replace('num_proc=28', 'num_proc=14').encode()
+        bad_xml = self.original['queues']['stdout'].replace('<slots>28</slots>', '<slots>14</slots>').encode()
+        for steps, count in [([{'stdout': bad_job}], 1),
+                             ([{'returncode': 1}, {'stdout': bad_xml}], 2),
+                             ([{'status': 'transport'}, {'stdout': b'malformed xml'}], 2),
+                             ([{'stdout': b'\xff'}], 1)]:
+            with self.subTest(steps=steps):
+                self.path.unlink(missing_ok=True)
+                self.calls, self.now = [], 10**9
+                self.failed.clear()
+                self.state = host.SchedulerQueries(self.path, self.machine, 'econ', self.failed)
+                with self.assertRaises((ValueError, host.ET.ParseError)):
+                    self.capture(steps)
+                self.assertEqual(len(self.calls), count)
+                self.assertTrue(self.failed.is_set())
+                self.assertEqual(len(self.envelopes()[0]['attempts']), 1)
+
+    def test_replay_rejects_hidden_semantic_failure_and_discarded_success(self):
+        self.capture([{'returncode': 1}, {}, {}, {}])
+        original = self.envelopes()[0]
+        bad = copy.deepcopy(original)
+        bad['attempts'][0][0].update(status='success', returncode=0)
+        with self.assertRaisesRegex(ValueError, 'discarded success'):
+            host.query_snapshot(bad, self.machine, 'econ', None)
+        bad = copy.deepcopy(original)
+        bad['attempts'][0][1]['stdout_base64'] = base64.b64encode(b'malformed xml').decode()
+        with self.assertRaises(host.ET.ParseError):
+            host.query_snapshot(bad, self.machine, 'econ', None)
+
+    def test_replay_rejects_unbounded_reordered_or_renewed_timestamps(self):
+        self.capture([{'returncode': 1}, {}, {}, {}])
+        original = self.envelopes()[0]
+        mutations = [lambda e: e.update(deadline_monotonic_ns=22 * 10**9),
+                     lambda e: e.update(finished_monotonic_ns=22 * 10**9),
+                     lambda e: e.update(started_monotonic_ns=float('nan')),
+                     lambda e: e.update(previous_success_monotonic_ns=0),
+                     lambda e: e['attempts'][0][0].update(timeout_ns=11 * 10**9),
+                     lambda e: e['attempts'][0][0].update(timeout_ns=0),
+                     lambda e: e['attempts'][0][0].update(started_wall_time_ns=-1),
+                     lambda e: e['attempts'][1][0].update(started_monotonic_ns=10**9),
+                     lambda e: e['attempts'][1][1].update(finished_monotonic_ns=22 * 10**9),
+                     lambda e: e['attempts'][1][1].update(timeout_ns=float('inf')),
+                     lambda e: e['attempts'].append(copy.deepcopy(e['attempts'][-1]))]
+        for mutation in mutations:
+            bad = copy.deepcopy(original)
+            mutation(bad)
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                host.query_snapshot(bad, self.machine, 'econ', None)
+        # The per-command cap also shrinks within the envelope, independently
+        # of the ten-second cap and any earlier transport failure.
+        bad = copy.deepcopy(original)
+        bad['deadline_monotonic_ns'] = 6 * 10**9
+        bad['previous_success_monotonic_ns'] = -69 * 10**9
+        with self.assertRaises(ValueError):
+            host.query_snapshot(bad, self.machine, 'econ', -69 * 10**9)
+
+    def test_success_start_gap_and_full_collection_coverage_stay_required(self):
+        self.capture([{}, {}])
+        self.now = 7 * 10**9
+        self.capture([{}, {}], 'after')
+        host.check_scheduler(self.path, self.machine, 'econ', self.fixture.collection,
+                             host.discovery.SCHEDULER_QUERY_POLICY)
+        self.now = 83 * 10**9
+        with self.assertRaisesRegex(ValueError, 'deadline exhausted'):
+            self.capture([], 'periodic')
+        self.assertTrue(self.failed.is_set())
+
+    def test_full_receipt_replays_policy_from_plan_not_asserted_receipt(self):
+        f = self.fixture
+        self.capture([{}, {}])
+        self.now = 7 * 10**9
+        self.capture([{}, {}], 'after')
+        f.write('scheduler', self.envelopes())
+        f.plan.update(kind=host.discovery.PORTFOLIO_KIND + '_plan',
+                      scheduler_query_policy=copy.deepcopy(host.discovery.SCHEDULER_QUERY_POLICY))
+        ref = host.discovery.reference(Path(host.__file__).with_name('routing_parallel.py'))
+        f.plan['frozen_files'][ref['path']] = ref['sha256']
+        f.parallel(attempt=1)
+        receipt = f.receipt()
+        self.assertEqual(host.validate(f.plan, f.collection, receipt)['status'], 'verified')
+        del f.plan['scheduler_query_policy']
+        f.collection['plan_sha256'] = host.routing.identity(f.plan)
+        f.processes()
+        # Even legacy-looking extra fields cannot make a retry envelope valid
+        # when the plan never enabled the versioned query policy.
+        raw = self.envelopes()
+        for envelope, legacy in zip(raw, host.rows(f.root / 'scheduler.jsonl')):
+            envelope.update(monotonic_ns=legacy['started_monotonic_ns'],
+                            job=self.original['job'], queues=self.original['queues'])
+        f.write('scheduler', raw)
+        receipt.update(plan_sha256=host.routing.identity(f.plan), collection_sha256=host.routing.identity(f.collection),
+                       raw_evidence={key: host.discovery.reference(ref['path'])
+                                     for key, ref in receipt['raw_evidence'].items()},
+                       scheduler_query_policy=copy.deepcopy(host.discovery.SCHEDULER_QUERY_POLICY))
+        with self.assertRaisesRegex(ValueError, 'requires the frozen plan policy'):
+            host.validate(f.plan, f.collection, receipt)
+
+    def test_failed_scheduler_join_cannot_start_concurrent_final_query(self):
+        f = self.fixture
+        f.plan.update(kind=host.discovery.PORTFOLIO_KIND + '_plan',
+                      scheduler_query_policy=host.discovery.SCHEDULER_QUERY_POLICY,
+                      round_contract={'parallel_plan_sha256': 'a' * 64, 'logical_round': 1, 'attempt': 1})
+        initial = next(row for row in host.rows(f.root / 'process_observations.jsonl') if row['kind'] == 'snapshot')
+        observers = [Mock(), Mock()]
+        observers[0].is_alive.return_value = False
+        observers[1].is_alive.return_value = True
+        operation = Mock(return_value=f.collection)
+        with patch.object(host.discovery, 'validate_plan'), patch.object(host, 'check_sources'), \
+             patch.object(host.discovery, 'host', return_value=self.machine), \
+             patch.object(host.os, 'getpid', return_value=42), patch.dict(host.os.environ, {'QUEUE': 'econ'}), \
+             patch.object(host, 'configuration', return_value=({}, self.original)) as configuration, \
+             patch.object(host, 'check_configuration', return_value='econ'), \
+             patch.object(host, 'process_snapshot', return_value=initial), \
+             patch.object(host, 'start_observers', return_value=observers):
+            with self.assertRaisesRegex(ValueError, 'scheduler observer did not finish'):
+                host.observe(f.plan, {}, operation)
+        self.assertEqual(configuration.call_count, 1)
+        self.assertTrue(operation.call_args.args[3].is_set())
+        observers[1].join.assert_called_once_with(timeout=25)
 
 
 if __name__ == '__main__':
