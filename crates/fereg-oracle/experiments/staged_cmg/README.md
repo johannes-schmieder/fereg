@@ -1181,3 +1181,28 @@ arm/cell pairs. The multiplier covers all fourteen calls per pair in the panel,
 with conservative pilot choice and 50% process-cost plus 120-second overhead
 headroom. A value exceeding 1800 seconds blocks the frozen panel instead of
 silently reducing its observations. This formula is fixed before the pilot.
+
+The second gate, job 8144981, also completed 130 observations and failed:
+setup ratios 2.09, 1.83, 3.06 and 1.88 for expander, fringe, clusters and grid.
+Its launcher exited 1 at the gate verdict; no selector pilot ran. Successful
+science was exact and all thirteen hub refusals remained recorded.
+
+One bounded four-invocation Callgrind diagnosis (job 8144989, 90 seconds per
+invocation, no retries) compared ordinary/guarded expander4096/mixed4 and
+clusters4096/cut1. All four succeeded with exact cross-arm science. The work
+accounting function remained out of line: its 120.87 million exclusive
+instructions explained 54% of the 223.74 million extra expander instructions;
+32.49 million explained 68% of the 48.06 million extra cluster instructions.
+These whole-process instruction observations are not wall-time claims.
+
+The final bounded repair pins upstream
+`73e2e43d046250e00319c45863ca609808e52c99`: an always-inlined funded-credit
+consumption branch, with the complete prior admission body retained as the
+out-of-line slow path. Numerical operations, allowances, callback streams,
+allocation gates and errors are unchanged. Exact boundary/error/counter tests
+cover primitive/cooperative modes, invalid units after funding, budget tails,
+interruption and StopUnused. Primitive-control performance is not claimed
+unchanged merely because its boundaries agree. The identical frozen gate is
+repeated once on this changed artifact. If it fails, this prototype stops with
+its evidence retained and no selector timing panel; there is no further repair
+or sampling extension in this experiment.

@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "cmg"
 version = "0.1.0"
-source = "git+https://github.com/johannes-schmieder/CMG?rev=65ea7157f0184939d3181511e9a13bb7a60cd3a7#65ea7157f0184939d3181511e9a13bb7a60cd3a7"
+source = "git+https://github.com/johannes-schmieder/CMG?rev=73e2e43d046250e00319c45863ca609808e52c99#73e2e43d046250e00319c45863ca609808e52c99"
 
 [[package]]
 name = "staged-cmg-prototype"
