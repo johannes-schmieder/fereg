@@ -1,0 +1,439 @@
+--- a/crates/fereg-core/src/fe/cmg_schur/bounded.rs
++++ b/crates/fereg-core/src/fe/cmg_schur/bounded.rs
+@@ -41,10 +41,56 @@
+     used: u64,
+     ordinal: u64,
+     control: &'a mut dyn cmg::BuildControl,
++    diagnostic: Attribution,
++}
++
++// TEMPORARY attribution only: fixed counters, no timing inside a work gate.
++const ATTRIBUTION_TAGS: [&str; 10] = [
++    "validation",
++    "load",
++    "sort",
++    "aggregation",
++    "census-components",
++    "emission",
++    "Laplacian",
++    "hierarchy",
++    "workspace",
++    "sampling",
++];
++#[derive(Default)]
++struct Attribution {
++    tag: usize,
++    // attempted gates/units, admitted gates/units, allocations, callbacks
++    counts: [[u64; 6]; 10],
++    last_phase: &'static str,
++    refused: bool,
++    refusal_units: u64,
++    refusal_remaining: u64,
++    scans: [[u64; 3]; 2], // worker loads, input observations, canonical cells
++    pass: usize,
++}
++impl Drop for Work<'_> {
++    fn drop(&mut self) {
++        for (tag, count) in ATTRIBUTION_TAGS.iter().zip(self.diagnostic.counts) {
++            crate::diagnostics::emit_solver_trace(&format!(
++                "FEREG_ATTRIBUTION|phase=work|tag={tag}|attempted_gates={}|attempted_units={}|admitted_gates={}|admitted_units={}|allocations={}|callbacks={}",
++                count[0], count[1], count[2], count[3], count[4], count[5]));
++        }
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_ATTRIBUTION|phase=work_summary|used={}|limit={}|last_phase={}|work_refused={}|required={}|remaining={}|census={:?}|emission={:?}",
++            self.used, self.budget, self.diagnostic.last_phase, self.diagnostic.refused,
++            self.diagnostic.refusal_units, self.diagnostic.refusal_remaining,
++            self.diagnostic.scans[0], self.diagnostic.scans[1]));
++    }
+ }
+ 
+ impl Work<'_> {
+     fn gate(&mut self, phase: &'static str, operation: BuildOperation) -> Attempt<()> {
++        let tag = self.diagnostic.tag;
++        self.diagnostic.last_phase = phase;
++        self.diagnostic.counts[tag][0] += 1;
++        self.diagnostic.counts[tag][4] +=
++            u64::from(matches!(operation, BuildOperation::Allocation { .. }));
+         crate::interrupt::checkpoint()?;
+         let units = match operation {
+             BuildOperation::Work { units } if (1..=1024).contains(&units) => u64::from(units),
+@@ -53,13 +99,18 @@
+             }
+             BuildOperation::Allocation { .. } => 0,
+         };
++        self.diagnostic.counts[tag][1] += units;
+         if units > self.budget - self.used {
++            self.diagnostic.refused = true;
++            self.diagnostic.refusal_units = units;
++            self.diagnostic.refusal_remaining = self.budget - self.used;
+             return Err(AttemptError::Refused(BuildRefusal::WorkBudget));
+         }
+         let ordinal = self
+             .ordinal
+             .checked_add(1)
+             .ok_or_else(|| invalid_data("bounded CMG operation ordinal overflows"))?;
++        self.diagnostic.counts[tag][5] += 1;
+         match self.control.checkpoint(cmg::BuildBoundary {
+             phase,
+             chunk_id: self.ordinal,
+@@ -77,6 +128,8 @@
+             }
+         }
+         // A parked callback has returned only after admitting this complete chunk.
++        self.diagnostic.counts[tag][2] += 1;
++        self.diagnostic.counts[tag][3] += units;
+         self.used += units;
+         self.ordinal = ordinal;
+         Ok(())
+@@ -278,6 +331,7 @@
+         }
+         crate::interrupt::checkpoint()?;
+         let mut work = Work {
++            diagnostic: Attribution::default(),
+             budget: work_budget,
+             used: 0,
+             ordinal: 0,
+@@ -469,6 +523,7 @@
+         }
+         crate::interrupt::checkpoint()?;
+         let mut work = Work {
++            diagnostic: Attribution::default(),
+             budget: work_budget,
+             used: 0,
+             ordinal: 0,
+@@ -516,6 +571,14 @@
+     work: &mut Work<'_>,
+     memory: &mut Admission,
+ ) -> Attempt<CmgSchurPreconditioner> {
++    work.diagnostic.tag = 7;
++    let diagnostic_started = Instant::now();
++    crate::diagnostics::emit_solver_trace(&format!(
++        "FEREG_ATTRIBUTION|phase=root|vertices={}|edges={}|components={}|cache_bytes={cache_bytes}",
++        graph.vertex_count(),
++        graph.edge_count(),
++        components.sizes.len()
++    ));
+     let options = CmgOptions::default();
+     let experiment = component_options();
+     work.charge(1024)?;
+@@ -540,6 +603,20 @@
+             control,
+         )
+     })?;
++    crate::diagnostics::emit_solver_trace(&format!(
++        "FEREG_ATTRIBUTION|phase=hierarchy_complete|seconds={:.9}|levels={}",
++        diagnostic_started.elapsed().as_secs_f64(),
++        preconditioner.hierarchy().levels().len()
++    ));
++    for (level, entry) in preconditioner.hierarchy().levels().iter().enumerate() {
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_ATTRIBUTION|phase=hierarchy_level|level={level}|vertices={}|edges={}",
++            entry.graph().vertex_count(),
++            entry.graph().edge_count()
++        ));
++    }
++    work.diagnostic.tag = 8;
++    let diagnostic_workspace_started = Instant::now();
+     // Keep the already-admitted conservative hierarchy bound. Exact storage
+     // reporting recursively deduplicates allocation owners and is quadratic;
+     // it must never become an ungated operation in optional construction.
+@@ -572,6 +649,10 @@
+     let rhs = work.filled(graph.vertex_count(), 0.0)?;
+     let solution = work.filled(graph.vertex_count(), 0.0)?;
+     work.charge(256)?;
++    crate::diagnostics::emit_solver_trace(&format!(
++        "FEREG_ATTRIBUTION|phase=workspace_complete|seconds={:.9}",
++        diagnostic_workspace_started.elapsed().as_secs_f64()
++    ));
+     Ok(CmgSchurPreconditioner {
+         preconditioner,
+         parallel: None,
+@@ -879,6 +960,9 @@
+     let available = budget.map_or(Some(usize::MAX as u128), |budget| {
+         budget.usable_bytes.checked_sub(budget.execution_bytes)
+     })?;
++    crate::diagnostics::emit_solver_trace(&format!(
++        "FEREG_ATTRIBUTION|phase=cache_envelope|bytes={}|peak_bound={}|available={available}|admitted={}",
++        envelope.cache_bytes, envelope.peak_bytes, envelope.peak_bytes as u128 <= available));
+     (envelope.peak_bytes as u128 <= available).then_some(envelope.cache_bytes)
+ }
+ 
+@@ -891,6 +975,10 @@
+ 
+ impl BoundedCells<'_> {
+     fn load_bounded(&mut self, worker: usize, work: &mut Work<'_>) -> Attempt<f64> {
++        let outer_tag = work.diagnostic.tag;
++        work.diagnostic.tag = 1;
++        work.diagnostic.scans[work.diagnostic.pass][0] += 1;
++        work.diagnostic.scans[work.diagnostic.pass][1] += self.source.row_count(worker) as u64;
+         work.charge(16)?;
+         self.cells.clear();
+         for position in 0..self.source.row_count(worker) {
+@@ -905,11 +993,13 @@
+             }
+             self.cells.push((firm, weight));
+         }
++        work.diagnostic.tag = 2;
+         work.sort(&mut self.cells, |left, right| {
+             left.0
+                 .cmp(&right.0)
+                 .then_with(|| left.1.total_cmp(&right.1))
+         })?;
++        work.diagnostic.tag = 3;
+         let mut read = 0;
+         let mut write = 0;
+         let mut total = 0.0;
+@@ -931,6 +1021,8 @@
+             write += 1;
+         }
+         self.cells.truncate(write);
++        work.diagnostic.scans[work.diagnostic.pass][2] += write as u64;
++        work.diagnostic.tag = outer_tag;
+         let total = total + total_correction;
+         if !total.is_finite() || total <= 0.0 {
+             return Err(invalid_data("CMG Schur worker weight total is invalid").into());
+@@ -945,6 +1037,8 @@
+         labels: &mut [usize],
+         work: &mut Work<'_>,
+     ) -> Attempt<GraphCounts> {
++        work.diagnostic.tag = 4;
++        work.diagnostic.pass = 0;
+         let mut counts = GraphCounts::default();
+         for worker in 0..self.source.worker_count() {
+             let total = self.load_bounded(worker, work)?;
+@@ -994,6 +1088,8 @@
+         edges: &mut Vec<(usize, usize, f64)>,
+         work: &mut Work<'_>,
+     ) -> Attempt<()> {
++        work.diagnostic.tag = 5;
++        work.diagnostic.pass = 1;
+         let mut auxiliary = self.source.firm_count();
+         for worker in 0..self.source.worker_count() {
+             let total = if let Some(cache) = &self.cache {
+@@ -1005,11 +1101,13 @@
+             };
+             if self.cells.len() > cutoff {
+                 if let Some(sampler) = sampler.as_mut() {
++                    work.diagnostic.tag = 9;
+                     sampler.prepare_bounded(&mut self.cells, worker, work)?;
+                     while let Some(edge) = sampler.next_bounded(&self.cells, work)? {
+                         work.charge(8)?;
+                         edges.push(edge);
+                     }
++                    work.diagnostic.tag = 5;
+                 } else {
+                     for &(firm, weight) in &self.cells {
+                         work.charge(16)?;
+@@ -1048,6 +1146,8 @@
+     work: &mut Work<'_>,
+     memory: &mut Admission,
+ ) -> Attempt<(Laplacian, FirmComponents, f64, u128)> {
++    work.diagnostic.tag = 0;
++    let diagnostic_graph_started = Instant::now();
+     work.charge(64)?;
+     let firms = source.firm_count();
+     let weights = source.weights();
+@@ -1076,6 +1176,9 @@
+     } else {
+         0
+     };
++    crate::diagnostics::emit_solver_trace(&format!(
++        "FEREG_ATTRIBUTION|phase=cache_choice|requested={cache_census}|cache_bytes={cache_bytes}|workers={}|firms={firms}|max_rows={max_rows}|samples={}",
++        source.worker_count(), sampling.samples));
+     let sampler_bytes = if sampling.samples > 0 {
+         SampledTrees::allocation_bytes(max_rows)?
+     } else {
+@@ -1116,6 +1219,10 @@
+     }
+     let mut sizes = work.filled(firms, usize::MAX)?;
+     let counts = workers.census_bounded(cutoff, sampling, &mut labels, work)?;
++    crate::diagnostics::emit_solver_trace(&format!(
++        "FEREG_ATTRIBUTION|phase=census|sampled_workers={}|retained_workers={}|input_edges={}",
++        counts.sampled_workers, counts.retained_workers, counts.input_edges
++    ));
+     for firm in 0..firms {
+         work.charge(8)?;
+         labels[firm] = find_root(&mut labels, firm, work)?;
+@@ -1166,9 +1273,11 @@
+         scratch + vec_capacity_bytes(&edges),
+         graph_bound,
+     )?;
++    work.diagnostic.tag = 6;
+     let graph = work.cmg(|control| {
+         Laplacian::from_edges_controlled(vertices, &edges, admitted, u64::MAX, control)
+     })?;
++    work.diagnostic.tag = 4;
+     drop(edges);
+     drop(workers);
+     drop(sampler);
+@@ -1184,6 +1293,10 @@
+         sums: work.filled(component_count, 0.0)?,
+         corrections: work.filled(component_count, 0.0)?,
+     };
++    crate::diagnostics::emit_solver_trace(&format!(
++        "FEREG_ATTRIBUTION|phase=graph_complete|seconds={:.9}",
++        diagnostic_graph_started.elapsed().as_secs_f64()
++    ));
+     Ok((graph, components, weight_scale, cache_bytes as u128))
+ }
+ 
+@@ -1430,6 +1543,7 @@
+         let fixture = Fixture::new();
+         let mut control = |_| BuildDecision::Continue;
+         let mut work = Work {
++            diagnostic: Attribution::default(),
+             budget: u64::MAX,
+             used: 0,
+             ordinal: 0,
+@@ -1621,6 +1735,7 @@
+         let build = |cached| {
+             let mut control = |_| BuildDecision::Continue;
+             let mut work = Work {
++                diagnostic: Attribution::default(),
+                 budget: u64::MAX,
+                 used: 0,
+                 ordinal: 0,
+--- a/crates/fereg-core/src/fe/borrowed_map/categorical_prefix.rs
++++ b/crates/fereg-core/src/fe/borrowed_map/categorical_prefix.rs
+@@ -81,8 +81,15 @@
+         coefficients,
+         workspace,
+         limit,
++        diagnostic: [0.0; 2],
+     };
+     let result = state.run(compact, &mut attempt.report.iterations);
++    if let Ok((state, certificate)) = &result {
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_ATTRIBUTION|phase=prefix|rhs={}|iterations={}|passed={}|setup_seconds={:.9}|sweep_seconds={:.9}|certificate_seconds={:.9}",
++            original.ncols(), attempt.report.iterations, certificate.passed, attempt.report.setup_seconds,
++            state.diagnostic[0], state.diagnostic[1]));
++    }
+     attempt.report.solve_seconds = solve.elapsed().as_secs_f64();
+     match result {
+         Ok((state, certificate)) if certificate.passed => {
+@@ -124,23 +131,28 @@
+     coefficients: FeCoefficientBatch,
+     workspace: BorrowedMapWorkspace,
+     limit: usize,
++    diagnostic: [f64; 2],
+ }
+ 
+ impl State<'_, '_> {
+     fn certificate(&mut self) -> Result<FeCertificate> {
+-        certify(
++        let diagnostic_started = Instant::now();
++        let result = certify(
+             self.design,
+             self.weights,
+             &self.values,
+             self.map.tolerance,
+             &mut self.workspace,
+-        )
++        );
++        self.diagnostic[1] += diagnostic_started.elapsed().as_secs_f64();
++        result
+     }
+ 
+     fn sweep(&mut self, iterations: &mut usize) -> Result<FeCertificate> {
+         crate::interrupt::checkpoint()?;
+         // Failed partial sweeps consume their action; no retry receives credit.
+         *iterations += 1;
++        let diagnostic_started = Instant::now();
+         borrowed_residual_sweep_recording(
+             self.design,
+             self.weights,
+@@ -149,6 +161,7 @@
+             Some(&mut self.coefficients),
+             self.map.symmetric,
+         )?;
++        self.diagnostic[0] += diagnostic_started.elapsed().as_secs_f64();
+         self.certificate()
+     }
+ 
+--- a/crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs
++++ b/crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs
+@@ -29,6 +29,7 @@
+     let window = crate::memory::lsmr_rhs_window(rhs.len(), rayon::current_num_threads());
+     let mut batch = None;
+     for (window_index, columns) in rhs.chunks(window).enumerate() {
++        let diagnostic_initialize = Instant::now();
+         let mut sessions =
+             reserved(columns.len()).map_err(|error| (BatchError::Allocation(error), 0))?;
+         for (offset, column) in columns.iter().enumerate() {
+@@ -41,10 +42,21 @@
+                     .map_err(|error| (BatchError::Upstream(error.into()), 0))?,
+             );
+         }
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_ATTRIBUTION|phase=seeded_initialize|window={window_index}|rhs={}|seconds={:.9}",
++            columns.len(),
++            diagnostic_initialize.elapsed().as_secs_f64()
++        ));
++        let diagnostic_action = Instant::now();
+         let results: Vec<_> = sessions
+             .par_iter_mut()
+             .map(|session| session.run_action(None, options.maxiter, Some(&Cancellation)))
+             .collect();
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_ATTRIBUTION|phase=seeded_action|window={window_index}|rhs={}|seconds={:.9}",
++            columns.len(),
++            diagnostic_action.elapsed().as_secs_f64()
++        ));
+         let spent = consumed(&sessions, batch.as_ref(), options.maxiter);
+         crate::interrupt::checkpoint().map_err(|error| (BatchError::Allocation(error), spent))?;
+         // A fatal action cannot be hidden behind an earlier positivity refusal.
+@@ -75,6 +87,7 @@
+                 spent,
+             ));
+         }
++        let diagnostic_finish = Instant::now();
+         for session in sessions {
+             append(
+                 &mut batch,
+@@ -85,6 +98,11 @@
+             )
+             .map_err(|error| (BatchError::Allocation(error), spent))?;
+         }
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_ATTRIBUTION|phase=seeded_finish|window={window_index}|rhs={}|seconds={:.9}",
++            columns.len(),
++            diagnostic_finish.elapsed().as_secs_f64()
++        ));
+     }
+     batch.ok_or_else(|| {
+         (
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -5698,6 +5698,10 @@
+             }
+         }
+     };
++    crate::diagnostics::emit_solver_trace(&format!(
++        "FEREG_ATTRIBUTION|phase=lsmr_return|rhs={}|seeded={}|setup_seconds={:.9}|total_seconds={:.9}",
++        values.ncols(), initial_coefficients.is_some(), solved.time_setup, solved.time_total));
++    let diagnostic_reconstruction = Instant::now();
+     drop(rhs_views);
+     drop(rhs);
+     let result = (|| {
+@@ -5764,6 +5768,11 @@
+                 .reference_norms
+                 .copy_from_slice(reference_norms);
+         }
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_ATTRIBUTION|phase=reconstruction|rhs={}|seconds={:.9}",
++            values.ncols(),
++            diagnostic_reconstruction.elapsed().as_secs_f64()
++        ));
+         let certification_started = Instant::now();
+         let certificate_result = lsmr_norms::certify(
+             design,
+@@ -5784,6 +5793,9 @@
+             }
+         }
+         let certification_seconds = certification_started.elapsed().as_secs_f64();
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_ATTRIBUTION|phase=lsmr_certificate|rhs={}|passed={}|seconds={certification_seconds:.9}",
++            values.ncols(), certificate.passed));
+         if crate::diagnostics::solver_trace_enabled() {
+             for rhs in 0..lsmr_values.ncols() {
+                 crate::diagnostics::emit_solver_trace(&format!(

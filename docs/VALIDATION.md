@@ -588,17 +588,67 @@ follows. Missing coverage stays explicit, permits no extra calls, and cannot
 clear a dependent gate requiring that evidence. The original campaign remains
 closed with its NO-GO unchanged.
 
+A separate instrumented attribution follow-up remains **FAILED: five of six
+native calls** under its fixed six-call, 120-second-call and 900-second inclusive
+limits. Four records passed; the fifth, near-confounded-third record remains
+failed and unrepeated, and the sixth was never dispatched. There was no retry.
+Independent offline review passed all five retained independent-oracle,
+exact 92-study science/non-timing-solver/output-column, action-work/route and
+resource checks. Only the first four calls form two exact science and normalized
+diagnostic pairs. Those source-bound counters support bounded engineering facts;
+they do not complete the probe or qualify a performance subset.
+
+Weak directly admitted a 1,680,048-byte cache and performed zero raw emission
+reloads. Its completed root has 500 vertices and 8,113 edges. With the unchanged
+direct threshold of 700, the grounded sparse factor has dimension 499. Both
+actions refused a 128-unit terminal sparse numeric operation, with 8 and 48
+units remaining: builder work was 147,846,136/147,846,144 primary and
+59,472,720/59,472,768 final. Adding the 1,024-unit caller preflight reconciles
+these counts with the earlier setup totals. High-degree weak admitted a
+9,760,048-byte cache, also with zero raw emission reloads. Its hierarchy runs
+through vertex/edge pairs 1,000/41,992, 798/28,413, 706/22,077 and
+555/14,364; builder work completed at 723,206,248/855,686,144. Caller startup
+and restart charges remain separate. The 32W0 allowance and 4W0 restart reserve
+are unchanged; charged operation units do not measure CPU cost.
+
+The fifth call lacks `seeded_initialize`, `seeded_action` and `seeded_finish`
+telemetry because the probes instrumented `solve_prepared_input`, while the
+actual `GeneralRoutingState::solve` route uses `solve_windows`, routing sessions
+and `advance`. Coarse prefix, LSMR return, reconstruction and certificate phases
+were observed. This is an instrumentation coverage defect; the missing durations
+are unobserved, not zero. Its offline scientific agreement cannot replace the
+missing diagnostic repeat or change its failed status.
+
+The same [compact evidence](../bench/results/solver-routing-controlled-20261014.json)
+records this under `portfolio_development.attribution_followup`, binding the
+17,512-byte, 439-line
+[diagnostic patch](../bench/results/solver-routing-portfolio-attribution-20261015.patch)
+(`d0a378522121e2db51b4d413e68df336ed1b53dd9330d4dc582c77aa39351ad7`)
+to base code commit `e082f3238bf13e48dd6f1146a00a39a316f727cf` and the same
+production runtime identity recorded above. The copied checkout has earlier
+documentation; all four original patch inputs match that code commit exactly.
+The 47,607-byte records hash is
+`58f9e412b8b7242286c4556547e2e356a213aa0d80a1503fa61b87338f6e3e84`;
+independent failed-protocol review is
+`1d59b53ffef6ec12a7a3edb96f4d78d41bffea92c9849bc181c4895832e63e4e`.
+Capture identities promise no retained raw archive. No isolation, speedup,
+qualification, public routing, activation or promotion claim follows.
+
 The current 25-page [routing explanation](solver_routing.pdf) appends a separate
 private-portfolio flowchart, frontier table, exact charged bounds and development
-evidence chart. Independent Astra mathematical/contract review and visual review
-of the rendered amendment passed; prior source content is preserved, with page
-counts updated. PDF SHA-256 is
-`516ea513388aba9b0e175df7e4395fc636b3686d7835e29cbb73cf12a752f43d`;
+evidence chart. The latest factual update changes only page 25 to record the
+failed attribution follow-up. Text and PDF content streams on pages 1–24,
+including the formulas on pages 23–24, are unchanged. Existing independent Astra
+mathematical/contract review supports the unchanged mathematics; the page-25
+update follows the independent failed-protocol raw review cited above, and the
+lead visually checked its latest rendering. The latest source has not received
+a new full Pro review. PDF SHA-256 is
+`83ce0ae4fdd5b1b9c1cb6610693e7a1f2282159fdff042f02f507aa7fea458c6`;
 [editable source](solver_routing.tex) SHA-256 is
-`ff51052a5b2db1161bc83889857667cd9464aee4118b7146056bb13276954a05`.
-Compilation succeeds through the built-in compiler and the exported PDF was
-rendered and inspected. The six-call attribution proposal described there has
-not run; it cannot establish a performance or qualification result.
+`02d9fe4950452b27879411b49c22c4b86779f5b38b4c34ff2b254cc6c13179a7`.
+The saved root source compiles successfully through the built-in compiler. The
+attribution follow-up remains FAILED at five of six calls, with no sixth call or
+retry; it establishes no performance or qualification result.
 
 Retained SCC raw evidence and sealed products remain in the campaign
 `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.

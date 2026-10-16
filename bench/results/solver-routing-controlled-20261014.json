@@ -12079,6 +12079,194 @@
       "No extra calls or replacements follow from missing coverage. Existing unit/oracle witnesses remain separate evidence; future fresh discovery/qualification requires its own admission and review.",
       "No isolation, speedup, Mac release-performance, activation or promotion claim. The original closed campaign and its NO-GO remain unchanged."
     ],
+    "attribution_followup": {
+      "schema": 1,
+      "date": "2026-10-15",
+      "kind": "portfolio_attribution_failed_protocol_summary",
+      "status": "failed",
+      "protocol_completed": false,
+      "qualification_or_performance_pass": false,
+      "scope": "One fixed instrumented follow-up. The complete six-call protocol failed; only source-bound deterministic engineering facts from the first four calls are accepted. No C body access.",
+      "design": {
+        "families": [
+          "weak",
+          "high-degree-weak",
+          "near-confounded-third"
+        ],
+        "workers": 1,
+        "first_and_exact_repeat_each": true,
+        "native_call_cap": 6,
+        "per_call_seconds": 120,
+        "inclusive_seconds": 900,
+        "required_remaining_at_dispatch_seconds": 150,
+        "retries": 0
+      },
+      "execution": {
+        "actual_native_calls": 5,
+        "passed_records": 4,
+        "failed_records": 1,
+        "elapsed_seconds": 7.14541304204613,
+        "error_type": "ValueError",
+        "error": "required attribution phases missing",
+        "fifth_record_remains_failed": true,
+        "fifth_repeat_verified": false,
+        "sixth_call_dispatched": false,
+        "sixth_call_artifacts_present": false,
+        "extra_calls": 0,
+        "retries": 0
+      },
+      "independent_offline_verification": {
+        "source_files_rechecked_before_after": 902,
+        "original_and_copied_dependency_bindings": 2143,
+        "build_raw_source_hashes": 2437,
+        "build_products": 50,
+        "retained_result_column_log_hashes": 15,
+        "independent_oracle_checks_passed": 5,
+        "exact_92_reference_science_solver_column_checks_passed": 5,
+        "exact_action_work_and_route_checks_passed": 5,
+        "resource_cap_checks_passed": 5,
+        "complete_exact_science_and_normalized_diagnostic_pairs": 2,
+        "accepted_pair_call_indices": [
+          [
+            0,
+            1
+          ],
+          [
+            2,
+            3
+          ]
+        ],
+        "new_native_calls": 0,
+        "new_oracle_generation": 0
+      },
+      "weak": {
+        "cache_admitted": true,
+        "cache_bytes": 1680048,
+        "census_workers_per_action": 5000,
+        "census_observations_per_action": 100000,
+        "canonical_cells": 14081,
+        "raw_emission_worker_reloads_per_action": 0,
+        "root_vertices": 500,
+        "root_edges": 8113,
+        "direct_threshold": 700,
+        "grounded_sparse_factor_dimension": 499,
+        "refusal_phase": "terminal sparse numeric",
+        "required_units": 128,
+        "primary_builder": {
+          "used": 147846136,
+          "limit": 147846144,
+          "remaining": 8
+        },
+        "final_builder": {
+          "used": 59472720,
+          "limit": 59472768,
+          "remaining": 48
+        },
+        "caller_preflight_units_per_action": 1024,
+        "interpretation": "Cache admission and root construction passed; both work refusals occurred during terminal sparse numeric factorization. Work units are accounting tariffs, not measured CPU cost."
+      },
+      "high_degree_weak": {
+        "cache_admitted": true,
+        "cache_bytes": 9760048,
+        "census_workers": 10000,
+        "census_observations": 600000,
+        "canonical_cells": 122200,
+        "raw_emission_worker_reloads": 0,
+        "hierarchy_vertices_edges": [
+          [
+            1000,
+            41992
+          ],
+          [
+            798,
+            28413
+          ],
+          [
+            706,
+            22077
+          ],
+          [
+            555,
+            14364
+          ]
+        ],
+        "builder_work_used": 723206248,
+        "builder_work_limit": 855686144,
+        "builder_completed": true,
+        "installation_setup_work": 873989224,
+        "caller_preflight_units": 1024,
+        "caller_restart_reserve_units": 122241024,
+        "caller_startup_work_units": 28540928
+      },
+      "near_confounded_failure": {
+        "missing_phases": [
+          "seeded_initialize",
+          "seeded_action",
+          "seeded_finish"
+        ],
+        "observed_phases": [
+          "prefix",
+          "lsmr_return",
+          "reconstruction",
+          "lsmr_certificate"
+        ],
+        "cause": "The probes instrumented solve_prepared_input, but GeneralRoutingState::solve uses solve_windows/start_routing_sessions/advance. The required-phase check correctly failed on the fifth call.",
+        "offline_science_reference_and_resource_checks": "All passed for the retained fifth result; its failed protocol status and absent repeat remain unchanged.",
+        "missing_durations": "Unobserved; never interpreted as zeros."
+      },
+      "provenance": {
+        "base_code_commit": "e082f3238bf13e48dd6f1146a00a39a316f727cf",
+        "base_runtime_sha256": "5cdfeb313776b2fceaedb1a3f8ff6d0ad0dff4749688485dc33e96a16725a23d",
+        "copied_source_head": "377226f85f1bc61002d0b4c1eb0716af91c3c54c",
+        "source_association": "The copied checkout has earlier documentation; all four original instrumentation inputs match the base code commit exactly. The production runtime identity is unchanged.",
+        "cmg_revision": "eb3f2bc1f794b68a9cd9b5cc9292f7322f4f592a",
+        "instrumented_runtime_sha256": "c82d9ccbd16c887841b58a921ff25f836592142ca4fa1a4cdb9f986aaf036aa6",
+        "instrumented_plugin": {
+          "sha256": "20cf7b2ed28fcc4e9d678a5deeb51d41ff1637f72f252630e40289c8dbfd57cc",
+          "bytes": 9052096
+        },
+        "records": {
+          "sha256": "58f9e412b8b7242286c4556547e2e356a213aa0d80a1503fa61b87338f6e3e84",
+          "bytes": 47607
+        },
+        "failed_independent_raw_review": {
+          "sha256": "1d59b53ffef6ec12a7a3edb96f4d78d41bffea92c9849bc181c4895832e63e4e",
+          "bytes": 29890
+        },
+        "source_review": {
+          "sha256": "ea9d7a36d98a6503bd896e69d0dfa0cfdb9af4dbb8bca7407d53ec2afe72e730",
+          "bytes": 7359
+        },
+        "build_frozen_review": {
+          "sha256": "334fb138b650b7e9c3e83e4fca83eaf285f353c3d89ca3426a541d7a452e1fdd",
+          "bytes": 5571
+        },
+        "build_provenance": {
+          "sha256": "288f840a208159b4ea3d64d422170815dbac1394607d8f1deb30354aad1cd977",
+          "bytes": 14334
+        },
+        "frozen_plan": {
+          "sha256": "2cc71c1d24dde30959879c9115c6f27a4392d7637f9a59e04df5e21306e2380a",
+          "bytes": 915
+        },
+        "study": {
+          "sha256": "75100c3511b24b216ddc3487c79d40bba9f46f83a141c7db736339ad8e918fe3",
+          "bytes": 22202
+        },
+        "instrumentation_patch": {
+          "path": "bench/results/solver-routing-portfolio-attribution-20261015.patch",
+          "sha256": "d0a378522121e2db51b4d413e68df336ed1b53dd9330d4dc582c77aa39351ad7",
+          "bytes": 17512,
+          "lines": 439
+        },
+        "retention": "Compact committed summary and diagnostic patch; capture hashes identify reviewed temporary evidence and do not promise a retained raw archive."
+      },
+      "interpretation": [
+        "The whole probe remains FAILED at five of six calls. All five retained results pass independent offline science/reference checks, but only the first four have two complete exact diagnostic pairs; this is a bounded engineering subset, not a completed protocol or a performance-selection subset.",
+        "The 32W0 setup allowance and 4W0 restart reserve are unchanged. Cache admission does not imply builder completion; accounting-unit counts and instrumented durations do not establish speed.",
+        "No retry, sixth call, relaxed phase contract, public routing change, isolation, controlled performance, qualification, activation or promotion follows from this evidence."
+      ]
+    },
     "pdf_amendment": {
       "pages": 25,
       "new_pages": [
@@ -12086,10 +12274,10 @@
         24,
         25
       ],
-      "source_sha256": "ff51052a5b2db1161bc83889857667cd9464aee4118b7146056bb13276954a05",
-      "pdf_sha256": "516ea513388aba9b0e175df7e4395fc636b3686d7835e29cbb73cf12a752f43d",
-      "review": "Independent high-effort Astra mathematical/contract review; source precision repairs verified. Lead visually inspected final rendered pages23–25 and contact sheets of historical pages1–22.",
-      "status": "Private portfolio development evidence and prospective routing explanation; qualification remains pending."
+      "source_sha256": "02d9fe4950452b27879411b49c22c4b86779f5b38b4c34ff2b254cc6c13179a7",
+      "pdf_sha256": "83ce0ae4fdd5b1b9c1cb6610693e7a1f2282159fdff042f02f507aa7fea458c6",
+      "review": "Existing independent high-effort Astra mathematical/contract review supports the unchanged mathematics. The page25 factual update follows independent failed-protocol raw review 1d59b53ffef6ec12a7a3edb96f4d78d41bffea92c9849bc181c4895832e63e4e; lead visually inspected the latest rendered page25. PDF text and content streams on pages1–24, including formulas/pages23–24, remain unchanged. The latest source has not received a new full Pro review.",
+      "status": "Private portfolio development evidence; attribution remains FAILED at five of six calls, with no sixth call or retry. Performance and qualification remain pending."
     }
   }
 }
