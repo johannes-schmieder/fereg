@@ -12529,7 +12529,7 @@
           "asset": "fereg-0.5.0-build-instructions.md",
           "archive_unchanged": true,
           "requirement": "The frozen archive abbreviated command omits Rust path remaps needed by the maintained raw-byte path audit. The companion supplies the actual successful offline recipe; plain unadorned build command is not claimed passing.",
-          "checks": "Exact companion copy, Bash syntax and local links pass; independent gpt-6-astra high technical recipe review GO after qualified→validated wording correction and fail-fast shell hardening. No fresh build or byte-reproducibility claim."
+          "checks": "Exact companion copy, Bash syntax and local links pass; independent gpt-6-astra high technical recipe review GO after qualified\u2192validated wording correction and fail-fast shell hardening. No fresh build or byte-reproducibility claim."
         },
         "independent_milestone_review": {
           "model": "gpt-6-astra",
@@ -12634,7 +12634,7 @@
       ],
       "source_sha256": "d68c529e98c14f90bbe872cecfc9d957888c961b5e0771c1cdfa2de2a6c994e9",
       "pdf_sha256": "99ce95328c5bb0845280d127bc94d6648cdcc4b475c94bc128cc999cc0dcd4d9",
-      "review": "Prior independent Astra source/math and native reviews of pages23–26 remain valid. Page27 reports the completed fresh SCC NO-GO and RHS limitation, with independent high-effort fact/math review and final raw evidence review9319bcc143e8c32a97f5935f9ae3005ac8f5d9fae09f50efe75789c58be77559. Built-in compilation passes. Lead visually checked latest cover and page27; pages2–26 source and extracted text are unchanged after header/footer and whitespace normalization. No new full Pro review is claimed.",
+      "review": "Prior independent Astra source/math and native reviews of pages23\u201326 remain valid. Page27 reports the completed fresh SCC NO-GO and RHS limitation, with independent high-effort fact/math review and final raw evidence review9319bcc143e8c32a97f5935f9ae3005ac8f5d9fae09f50efe75789c58be77559. Built-in compilation passes. Lead visually checked latest cover and page27; pages2\u201326 source and extracted text are unchanged after header/footer and whitespace normalization. No new full Pro review is claimed.",
       "status": "Functional evidence remains valid, but the fresh three-node portfolio screen closes NO-GO. PublicAuto unchanged; no new MacB, activation or C.",
       "layout_checks": "27pages with no cover spill; final leaf header/footer date/status verified. Initial strict extracted-space comparison flagged word-joining differences; whitespace-insensitive content comparison and exact earlier source-body prefix pass. New final leaf and cover visually verified."
     }
@@ -12667,7 +12667,7 @@
       "interpretation": "No new jobs submitted. SSH availability is distinct from scheduler responsiveness.",
       "follow_up_client_diagnosis": {
         "capture_sha256": "58df315e9b703d83cb0b81eeb885b69940d7dc704044d6be4023b6b67dbda174",
-        "time_utc": "2026-10-16T02:12:55.744Z–02:13:18.211Z",
+        "time_utc": "2026-10-16T02:12:55.744Z\u201302:13:18.211Z",
         "queries": 2,
         "per_query_cap_seconds": 10,
         "result": "Login and nonlogin shells resolve the same qstat/qconf clients and SGE_ROOT; client help succeeds, both owner qstat calls time out with empty outputs. No observed client/module environment difference explains the blocker; SSH works, cause unproven.",
@@ -12814,7 +12814,7 @@
       "superseded_source_sha256": "e2a9191f7b3505f883135de5566e89a3666e757d0af9530b6fe09deb3a5a01a8"
     },
     "scheduler_transport_diagnosis": {
-      "time_utc": "2026-10-16T03:04:36.716Z–03:05:37.266Z",
+      "time_utc": "2026-10-16T03:04:36.716Z\u201303:05:37.266Z",
       "SSH_host": "scc1",
       "configured_master": "sccsvc.bu.edu:536",
       "one_TCP_connection": "passed0.000120s",
@@ -12858,7 +12858,7 @@
     },
     "SCC_live_tool_inventory": {
       "status": "read_only_success",
-      "time_utc": "2026-10-16T03:18:01.326978Z–03:18:08.760381Z",
+      "time_utc": "2026-10-16T03:18:01.326978Z\u201303:18:08.760381Z",
       "capture_sha256": "75c0469b3e4b4c66d2f944939fcccc0f4e14518082635336b0f65d17ec84c6df",
       "elapsed_seconds": 7.433115917,
       "Rust_Cargo": "1.85.1",
@@ -14026,7 +14026,7 @@
       "latex_builtin_compiler": "success",
       "PDF_pages": 27,
       "PDF_visual_QA": "cover and new final leaf pass; unchanged earlier page layouts reused",
-      "earlier_document_content": "pages2–26 exact source prefix and extracted-content equality after header/footer/whitespace normalization",
+      "earlier_document_content": "pages2\u201326 exact source prefix and extracted-content equality after header/footer/whitespace normalization",
       "independent_fact_math_review": "gpt-6-astra high GO; final review9319 and all42 ratios/counts/scope checked",
       "raw_review_metadata_retained_on_SCC": true
     }
@@ -20121,5 +20121,1443 @@
       "resource_action_cap_checks": 16,
       "resource_passes": 8
     }
+  },
+  "portfolio_cmg_controller_diagnostic_20261016": {
+    "schema": 1,
+    "kind": "cmg_noop_controller_diagnostic_compact_evidence",
+    "status": "passed_diagnostic_only",
+    "qualification": false,
+    "publication": false,
+    "public_activation": false,
+    "scope": {
+      "comparison": "Both private arms have identical coarse instrumentation. Candidate omits a known always-Continue external controller on observation-cache census path even if cache admission declines; controlled/overlap/reduced paths retain it.",
+      "preserved": "Work cancellation/checkpoint, units, budget, checked ordinal, commit order; graph mathematics/sorting/compensation, hierarchy/workspace/application, memory allowances and retained ownership.",
+      "static_dispatch": "Assembly confirms None bypasses boundary packing/indirect external callback; shared gate prologue/checks/optional branch remain. Not isolated callback latency.",
+      "platform": "Private arm64 Mac release fat-LTO/codegen-units1, Rust1.85.1, CMG3422b0408023769f08f33391b90a613745601e7d. No Linux extrapolation.",
+      "inputs": "Revealed A weak/high-degree-weak only, 1/4 workers, no B/C access."
+    },
+    "protocol": {
+      "schedule": "Four cell blocks baseline,candidate,candidate,baseline; original order retained.",
+      "native_calls": 16,
+      "cells": 4,
+      "observations_per_arm_cell": 2,
+      "per_call_timeout_s": 120,
+      "inclusive_budget_s": 1800,
+      "cleanup_reserve_s": 30,
+      "elapsed_s": 446.5663401670754,
+      "warmups": 0,
+      "retries": 0,
+      "exclusions": 0,
+      "failure": null,
+      "all_original_limits_preserved": true,
+      "fresh_raw_json_and_columns_retained": 32
+    },
+    "measurement_definition": {
+      "primary": "native_s",
+      "secondary": "harness_seconds",
+      "units": "seconds",
+      "ownership": "Graph, hierarchy/workspace occur once under main. Gather/cycle/scatter sums use immediate main/final ancestry. Final reuses retained preconditioner; no final build scope observed.",
+      "graph_partition": "census+emit+canonicalize+residual=graph parent per observation; residual from original parent subtraction. Stage medians need not sum to median parent.",
+      "nested_warning": "Main/final and graph inclusive; never add parent to children. Gather/cycle/scatter siblings; initialization adds an extra gather.",
+      "exact_profile_note": "All four observations/cell share profiles below. Process-local thread IDs and dynamic memory allowance excluded from exact profile; each allowance retained per observation and all32 action caps passed.",
+      "limits": "Elapsed clocks include logging/control overhead and combined operations, not CPU shares/instructions/sort-only/pure callback/cold-RHS measures. Fixed ABBA with two observations per arm is descriptive only."
+    },
+    "observation_columns": [
+      "index",
+      "cell",
+      "arm",
+      "native_s",
+      "harness_seconds",
+      "ols_main_action",
+      "ols_final_action",
+      "cmg_bounded_graph",
+      "graph_census",
+      "graph_emit",
+      "graph_canonicalize",
+      "graph_residual",
+      "cmg_bounded_hierarchy",
+      "cmg_bounded_workspace",
+      "cmg_apply_gather",
+      "cmg_apply_cycle",
+      "cmg_apply_scatter",
+      "main_gather",
+      "main_cycle",
+      "main_scatter",
+      "final_gather",
+      "final_cycle",
+      "final_scatter",
+      "memory_allowance_bytes",
+      "raw_result_sha256"
+    ],
+    "observations": [
+      [
+        0,
+        "weak-t1",
+        "baseline",
+        0.06836270800000001,
+        0.074032,
+        0.043501208,
+        0.009863292,
+        0.012431167,
+        0.0077065,
+        0.000841833,
+        0.003496541,
+        0.00038629299999999936,
+        0.004445833,
+        6.8917e-05,
+        0.000444126,
+        0.002432585,
+        0.000402835,
+        0.000310836,
+        0.001691961,
+        0.000280502,
+        0.00013329,
+        0.0007406240000000001,
+        0.000122333,
+        99378436506,
+        "9ef54a00525e7336f823eb602aeafb1339925772b1eb66e4a35af0dc81701d6d"
+      ],
+      [
+        1,
+        "weak-t1",
+        "candidate",
+        0.057538083000000004,
+        0.06258,
+        0.033429333,
+        0.00984925,
+        0.005022166,
+        0.00286525,
+        0.000325834,
+        0.001503458,
+        0.00032762399999999945,
+        0.001918708,
+        4.575e-05,
+        0.000445792,
+        0.0024376239999999998,
+        0.000402332,
+        0.000313708,
+        0.001695958,
+        0.000280333,
+        0.000132084,
+        0.000741666,
+        0.000121999,
+        99337791079,
+        "ac7b7521598e21d11df08b62d2750fd888489dcee9514f36a69ff9d9b0790772"
+      ],
+      [
+        2,
+        "weak-t1",
+        "candidate",
+        0.056942959,
+        0.061981,
+        0.032991917,
+        0.009842292,
+        0.004893417,
+        0.002860042,
+        0.000329334,
+        0.001448625,
+        0.00025541599999999963,
+        0.001816042,
+        3.5458e-05,
+        0.000443376,
+        0.002404129,
+        0.000404498,
+        0.000313708,
+        0.001668462,
+        0.000281707,
+        0.000129668,
+        0.000735667,
+        0.000122791,
+        99344082535,
+        "208e554fc9fe747a254e0127fa5cabd157b20b022f0aa1162a61bbc9fa0cb23a"
+      ],
+      [
+        3,
+        "weak-t1",
+        "baseline",
+        0.067128416,
+        0.072167,
+        0.043076667,
+        0.009881709,
+        0.012310583,
+        0.007726791,
+        0.000844,
+        0.00342175,
+        0.0003180419999999993,
+        0.004351292,
+        6.0458e-05,
+        0.00045128999999999997,
+        0.002433332,
+        0.000411501,
+        0.000321083,
+        0.00169733,
+        0.000287044,
+        0.000130207,
+        0.000736002,
+        0.000124457,
+        99354253722,
+        "64afc15106968a55b99070efab310158dca601d72bdaecc2cde2fe728aa5bfd1"
+      ],
+      [
+        4,
+        "weak-t4",
+        "baseline",
+        0.0420965,
+        0.047163,
+        0.027703333,
+        0.004371125,
+        0.012304958,
+        0.007742,
+        0.000837292,
+        0.00339625,
+        0.00032941599999999904,
+        0.004364416,
+        5.8541e-05,
+        0.000497875,
+        0.002416003,
+        0.000410997,
+        0.00034,
+        0.001676795,
+        0.000285872,
+        0.000157875,
+        0.000739208,
+        0.000125125,
+        99328091751,
+        "dd49c6a9f74d77290c8364b00f530f24865a9d4ba817bee6fd00d4749e711915"
+      ],
+      [
+        5,
+        "weak-t4",
+        "candidate",
+        0.031887833,
+        0.036952,
+        0.01758,
+        0.00439075,
+        0.004907083,
+        0.002863417,
+        0.000326792,
+        0.001452333,
+        0.0002645409999999992,
+        0.001821458,
+        3.4666e-05,
+        0.000499166,
+        0.002430166,
+        0.000412125,
+        0.000338665,
+        0.001690667,
+        0.000287041,
+        0.000160501,
+        0.000739499,
+        0.000125084,
+        99312048538,
+        "f325d392e961d0d16284605739acc6f1cfc730e67ceb56f4aa721b88d3723b6f"
+      ],
+      [
+        6,
+        "weak-t4",
+        "candidate",
+        0.031675875,
+        0.036669,
+        0.01741775,
+        0.00438975,
+        0.004936792,
+        0.002866042,
+        0.000330167,
+        0.001467792,
+        0.00027279099999999966,
+        0.001818625,
+        3.5958e-05,
+        0.000496165,
+        0.002430711,
+        0.000406083,
+        0.000336083,
+        0.001689169,
+        0.000282998,
+        0.000160082,
+        0.000741542,
+        0.000123085,
+        99227743028,
+        "4b90c737faa7824b85608bf44eb8c023cc9e960b99246d84be5659009427ac7d"
+      ],
+      [
+        7,
+        "weak-t4",
+        "baseline",
+        0.044553209,
+        0.049652,
+        0.029520292,
+        0.005037833,
+        0.012514583,
+        0.007753875,
+        0.0008475,
+        0.00343025,
+        0.0004829579999999986,
+        0.004411333,
+        7.05e-05,
+        0.00081279,
+        0.002726626,
+        0.000709959,
+        0.000581165,
+        0.001909959,
+        0.000505376,
+        0.000231625,
+        0.000816667,
+        0.000204583,
+        99197190144,
+        "a08b79ca4069e0107d23f94a426ef496ab37d1fc9b1c2980ea12b119d10c854e"
+      ],
+      [
+        8,
+        "high-degree-weak-t1",
+        "baseline",
+        0.42281450000000004,
+        0.452664,
+        0.289338666,
+        0.051906083,
+        0.11351075,
+        0.06269975,
+        0.016744417,
+        0.033635958,
+        0.00043062499999999004,
+        0.03536775,
+        0.000131,
+        0.000519877,
+        0.016869002,
+        0.000409876,
+        0.000343793,
+        0.011344791,
+        0.000276751,
+        0.00017608400000000002,
+        0.005524211,
+        0.000133125,
+        99229866394,
+        "02e57793c7ac05aef30cd56441b8745a317cff45242a260f8d5631e43797ca77"
+      ],
+      [
+        9,
+        "high-degree-weak-t1",
+        "candidate",
+        0.33516887500000003,
+        0.364746,
+        0.199848333,
+        0.053345916,
+        0.046353709,
+        0.024654791,
+        0.006071625,
+        0.015317292,
+        0.0003100010000000042,
+        0.014180958,
+        6.2417e-05,
+        0.000488,
+        0.016848245,
+        0.000405167,
+        0.000333625,
+        0.011336246,
+        0.000273125,
+        0.000154375,
+        0.005511999,
+        0.000132042,
+        99271350682,
+        "4c4516d57732296bb5dcbaa748a163c2b05ab96d398bddbd2794e9fa06c1fdf3"
+      ],
+      [
+        10,
+        "high-degree-weak-t1",
+        "candidate",
+        0.33213975000000007,
+        0.362908,
+        0.200155208,
+        0.050759042,
+        0.046364667,
+        0.024664125,
+        0.006077,
+        0.015312875,
+        0.0003106670000000006,
+        0.014203542,
+        6.1e-05,
+        0.000487333,
+        0.016694502,
+        0.00040417000000000003,
+        0.000338042,
+        0.011412668,
+        0.000276961,
+        0.000149291,
+        0.005281834,
+        0.000127209,
+        99285257421,
+        "c14067cf0da68aaeea2bd1948247dc371367e77f9e90a0a3a7809ff19a61afa6"
+      ],
+      [
+        11,
+        "high-degree-weak-t1",
+        "baseline",
+        0.422159708,
+        0.452255,
+        0.2894265,
+        0.051078083,
+        0.113516333,
+        0.062812959,
+        0.016665375,
+        0.033619333,
+        0.0004186659999999981,
+        0.035395958,
+        0.000128541,
+        0.000495875,
+        0.016679999,
+        0.000406126,
+        0.00034675,
+        0.011392874,
+        0.000280167,
+        0.000149125,
+        0.005287125,
+        0.000125959,
+        99283435520,
+        "b4da730cb2ccb17f0e0aef8cc388c99a62331245df9159222000347f141d3195"
+      ],
+      [
+        12,
+        "high-degree-weak-t4",
+        "baseline",
+        0.27651675000000003,
+        0.306264,
+        0.203151458,
+        0.021405167,
+        0.113774542,
+        0.062962833,
+        0.01666,
+        0.033714459,
+        0.00043725000000000014,
+        0.035366792,
+        0.000129167,
+        0.000639499,
+        0.016698461,
+        0.000404416,
+        0.000417748,
+        0.011400794,
+        0.000277418,
+        0.000221751,
+        0.005297667,
+        0.000126998,
+        99294694605,
+        "90be6b9cd753917c3068138aa72af52a49aa861727d82f54cc51289f7dcdb7fe"
+      ],
+      [
+        13,
+        "high-degree-weak-t4",
+        "candidate",
+        0.187007458,
+        0.21662,
+        0.114194458,
+        0.021079625,
+        0.0465365,
+        0.024665542,
+        0.006111125,
+        0.015417875,
+        0.0003419580000000033,
+        0.014175125,
+        6.0791e-05,
+        0.000614587,
+        0.016672874,
+        0.000405708,
+        0.000401876,
+        0.011365501,
+        0.000279498,
+        0.000212711,
+        0.005307373,
+        0.00012621,
+        99292977562,
+        "852cf02e4849f4257364ba0180cc731260afa70899f099d93a32deb4ae09bd3e"
+      ],
+      [
+        14,
+        "high-degree-weak-t4",
+        "candidate",
+        0.187431625,
+        0.21677,
+        0.1147435,
+        0.021133334,
+        0.046412791,
+        0.024627,
+        0.006068959,
+        0.01539,
+        0.00032683200000000606,
+        0.014167959,
+        6.3791e-05,
+        0.000631624,
+        0.016696793,
+        0.000405373,
+        0.000402625,
+        0.011394959,
+        0.000279166,
+        0.000228999,
+        0.005301834,
+        0.000126207,
+        99289779405,
+        "d4e9ddcfc6fe05a0e25789ce52e777391c956323cd976c1ef22937811517068c"
+      ],
+      [
+        15,
+        "high-degree-weak-t4",
+        "baseline",
+        0.276719208,
+        0.306279,
+        0.203387458,
+        0.021205167,
+        0.113722292,
+        0.062865333,
+        0.01674725,
+        0.033667166,
+        0.00044254300000000357,
+        0.035317667,
+        0.000128875,
+        0.000658623,
+        0.016880332,
+        0.000411416,
+        0.000437206,
+        0.011527083,
+        0.000284957,
+        0.000221417,
+        0.005353249,
+        0.000126459,
+        99287787111,
+        "998e96efe6f36ebee000ec64338bc9ec01a326ec321e8a2a42bd6a4c43b26ad0"
+      ]
+    ],
+    "cell_medians_s": {
+      "weak-t1": {
+        "baseline": {
+          "native_s": 0.06774556200000001,
+          "harness_seconds": 0.0730995,
+          "ols_main_action": 0.0432889375,
+          "ols_final_action": 0.009872500499999999,
+          "cmg_bounded_graph": 0.012370875,
+          "graph_census": 0.0077166455,
+          "graph_emit": 0.0008429164999999999,
+          "graph_canonicalize": 0.0034591455,
+          "graph_residual": 0.0003521674999999993,
+          "cmg_bounded_hierarchy": 0.0043985625,
+          "cmg_bounded_workspace": 6.468750000000001e-05,
+          "cmg_apply_gather": 0.000447708,
+          "cmg_apply_cycle": 0.0024329585,
+          "cmg_apply_scatter": 0.00040716799999999996,
+          "main_gather": 0.0003159595,
+          "main_cycle": 0.0016946455,
+          "main_scatter": 0.000283773,
+          "final_gather": 0.0001317485,
+          "final_cycle": 0.000738313,
+          "final_scatter": 0.000123395
+        },
+        "candidate": {
+          "native_s": 0.057240521,
+          "harness_seconds": 0.0622805,
+          "ols_main_action": 0.033210625,
+          "ols_final_action": 0.009845771,
+          "cmg_bounded_graph": 0.004957791499999999,
+          "graph_census": 0.002862646,
+          "graph_emit": 0.000327584,
+          "graph_canonicalize": 0.0014760415000000002,
+          "graph_residual": 0.00029151999999999954,
+          "cmg_bounded_hierarchy": 0.0018673750000000001,
+          "cmg_bounded_workspace": 4.0604e-05,
+          "cmg_apply_gather": 0.000444584,
+          "cmg_apply_cycle": 0.0024208765,
+          "cmg_apply_scatter": 0.00040341499999999996,
+          "main_gather": 0.000313708,
+          "main_cycle": 0.00168221,
+          "main_scatter": 0.00028102,
+          "final_gather": 0.00013087599999999998,
+          "final_cycle": 0.0007386665,
+          "final_scatter": 0.000122395
+        }
+      },
+      "weak-t4": {
+        "baseline": {
+          "native_s": 0.0433248545,
+          "harness_seconds": 0.0484075,
+          "ols_main_action": 0.0286118125,
+          "ols_final_action": 0.004704479,
+          "cmg_bounded_graph": 0.0124097705,
+          "graph_census": 0.0077479375,
+          "graph_emit": 0.000842396,
+          "graph_canonicalize": 0.00341325,
+          "graph_residual": 0.0004061869999999988,
+          "cmg_bounded_hierarchy": 0.0043878745,
+          "cmg_bounded_workspace": 6.45205e-05,
+          "cmg_apply_gather": 0.0006553325,
+          "cmg_apply_cycle": 0.0025713144999999996,
+          "cmg_apply_scatter": 0.000560478,
+          "main_gather": 0.0004605825,
+          "main_cycle": 0.001793377,
+          "main_scatter": 0.000395624,
+          "final_gather": 0.00019475,
+          "final_cycle": 0.0007779375,
+          "final_scatter": 0.00016485399999999998
+        },
+        "candidate": {
+          "native_s": 0.031781854,
+          "harness_seconds": 0.036810499999999996,
+          "ols_main_action": 0.017498874999999997,
+          "ols_final_action": 0.00439025,
+          "cmg_bounded_graph": 0.004921937499999999,
+          "graph_census": 0.0028647295,
+          "graph_emit": 0.0003284795,
+          "graph_canonicalize": 0.0014600625,
+          "graph_residual": 0.00026866599999999944,
+          "cmg_bounded_hierarchy": 0.0018200414999999998,
+          "cmg_bounded_workspace": 3.5312000000000003e-05,
+          "cmg_apply_gather": 0.0004976655,
+          "cmg_apply_cycle": 0.0024304384999999998,
+          "cmg_apply_scatter": 0.000409104,
+          "main_gather": 0.000337374,
+          "main_cycle": 0.0016899179999999999,
+          "main_scatter": 0.0002850195,
+          "final_gather": 0.0001602915,
+          "final_cycle": 0.0007405205,
+          "final_scatter": 0.0001240845
+        }
+      },
+      "high-degree-weak-t1": {
+        "baseline": {
+          "native_s": 0.422487104,
+          "harness_seconds": 0.4524595,
+          "ols_main_action": 0.28938258299999997,
+          "ols_final_action": 0.051492083,
+          "cmg_bounded_graph": 0.1135135415,
+          "graph_census": 0.0627563545,
+          "graph_emit": 0.016704896,
+          "graph_canonicalize": 0.0336276455,
+          "graph_residual": 0.00042464549999999407,
+          "cmg_bounded_hierarchy": 0.035381854000000004,
+          "cmg_bounded_workspace": 0.0001297705,
+          "cmg_apply_gather": 0.000507876,
+          "cmg_apply_cycle": 0.0167745005,
+          "cmg_apply_scatter": 0.00040800099999999996,
+          "main_gather": 0.00034527150000000003,
+          "main_cycle": 0.0113688325,
+          "main_scatter": 0.000278459,
+          "final_gather": 0.0001626045,
+          "final_cycle": 0.005405668000000001,
+          "final_scatter": 0.00012954200000000001
+        },
+        "candidate": {
+          "native_s": 0.33365431250000005,
+          "harness_seconds": 0.363827,
+          "ols_main_action": 0.2000017705,
+          "ols_final_action": 0.052052479,
+          "cmg_bounded_graph": 0.046359187999999996,
+          "graph_census": 0.024659458,
+          "graph_emit": 0.0060743125,
+          "graph_canonicalize": 0.0153150835,
+          "graph_residual": 0.0003103340000000024,
+          "cmg_bounded_hierarchy": 0.01419225,
+          "cmg_bounded_workspace": 6.17085e-05,
+          "cmg_apply_gather": 0.0004876665,
+          "cmg_apply_cycle": 0.0167713735,
+          "cmg_apply_scatter": 0.0004046685,
+          "main_gather": 0.00033583349999999996,
+          "main_cycle": 0.011374457000000001,
+          "main_scatter": 0.000275043,
+          "final_gather": 0.00015183299999999998,
+          "final_cycle": 0.0053969165,
+          "final_scatter": 0.0001296255
+        }
+      },
+      "high-degree-weak-t4": {
+        "baseline": {
+          "native_s": 0.276617979,
+          "harness_seconds": 0.30627150000000003,
+          "ols_main_action": 0.20326945800000001,
+          "ols_final_action": 0.021305167,
+          "cmg_bounded_graph": 0.113748417,
+          "graph_census": 0.062914083,
+          "graph_emit": 0.016703625,
+          "graph_canonicalize": 0.0336908125,
+          "graph_residual": 0.00043989650000000186,
+          "cmg_bounded_hierarchy": 0.0353422295,
+          "cmg_bounded_workspace": 0.000129021,
+          "cmg_apply_gather": 0.000649061,
+          "cmg_apply_cycle": 0.0167893965,
+          "cmg_apply_scatter": 0.00040791600000000003,
+          "main_gather": 0.000427477,
+          "main_cycle": 0.0114639385,
+          "main_scatter": 0.00028118749999999997,
+          "final_gather": 0.000221584,
+          "final_cycle": 0.005325458,
+          "final_scatter": 0.0001267285
+        },
+        "candidate": {
+          "native_s": 0.18721954149999998,
+          "harness_seconds": 0.216695,
+          "ols_main_action": 0.114468979,
+          "ols_final_action": 0.0211064795,
+          "cmg_bounded_graph": 0.0464746455,
+          "graph_census": 0.024646270999999997,
+          "graph_emit": 0.006090042,
+          "graph_canonicalize": 0.0154039375,
+          "graph_residual": 0.0003343950000000047,
+          "cmg_bounded_hierarchy": 0.014171542,
+          "cmg_bounded_workspace": 6.2291e-05,
+          "cmg_apply_gather": 0.0006231055,
+          "cmg_apply_cycle": 0.016684833500000003,
+          "cmg_apply_scatter": 0.0004055405,
+          "main_gather": 0.0004022505,
+          "main_cycle": 0.01138023,
+          "main_scatter": 0.000279332,
+          "final_gather": 0.000220855,
+          "final_cycle": 0.0053046034999999995,
+          "final_scatter": 0.0001262085
+        }
+      }
+    },
+    "candidate_over_baseline_ratios_of_medians": {
+      "weak-t1": {
+        "native_s": 0.844933886591715,
+        "harness_seconds": 0.8519962516843481,
+        "ols_main_action": 0.7671850342827194,
+        "ols_final_action": 0.9972925298914901,
+        "cmg_bounded_graph": 0.4007632038962482,
+        "graph_census": 0.3709702616246917,
+        "graph_emit": 0.3886316141634433,
+        "graph_canonicalize": 0.42670697141823033,
+        "graph_residual": 0.8277879134218805,
+        "cmg_bounded_hierarchy": 0.42454210892763267,
+        "cmg_bounded_workspace": 0.6276946859903381,
+        "cmg_apply_gather": 0.9930222377085064,
+        "cmg_apply_cycle": 0.9950340295570187,
+        "cmg_apply_scatter": 0.990782674473436,
+        "main_gather": 0.9928740867104803,
+        "main_cycle": 0.9926618871026418,
+        "main_scatter": 0.9902985837271339,
+        "final_gather": 0.993377533710061,
+        "final_cycle": 1.0004787942241298,
+        "final_scatter": 0.991895943919932
+      },
+      "weak-t4": {
+        "native_s": 0.7335709344390295,
+        "harness_seconds": 0.7604296854826215,
+        "ols_main_action": 0.6115961720355884,
+        "ols_final_action": 0.9332064188191721,
+        "cmg_bounded_graph": 0.39661793100847426,
+        "graph_census": 0.3697409149209064,
+        "graph_emit": 0.38993478126676767,
+        "graph_canonicalize": 0.4277631289826412,
+        "graph_residual": 0.661434265498404,
+        "cmg_bounded_hierarchy": 0.41478886873359755,
+        "cmg_bounded_workspace": 0.5472989204981362,
+        "cmg_apply_gather": 0.7594091548946527,
+        "cmg_apply_cycle": 0.9452124584526709,
+        "cmg_apply_scatter": 0.7299198184406881,
+        "main_gather": 0.7324941785673575,
+        "main_cycle": 0.9423105125135428,
+        "main_scatter": 0.7204302570117082,
+        "final_gather": 0.8230629011553273,
+        "final_cycle": 0.9519023057764924,
+        "final_scatter": 0.7526932922464727
+      },
+      "high-degree-weak-t1": {
+        "native_s": 0.7897384543600177,
+        "harness_seconds": 0.8041095390858187,
+        "ols_main_action": 0.6911327158207031,
+        "ols_final_action": 1.0108831487745407,
+        "cmg_bounded_graph": 0.40840226978558325,
+        "graph_census": 0.39293961856882553,
+        "graph_emit": 0.36362468224884487,
+        "graph_canonicalize": 0.45543133550637677,
+        "graph_residual": 0.7308072262628633,
+        "cmg_bounded_hierarchy": 0.4011166288798772,
+        "cmg_bounded_workspace": 0.47552024535622495,
+        "cmg_apply_gather": 0.9602078066299649,
+        "cmg_apply_cycle": 0.9998135861035027,
+        "cmg_apply_scatter": 0.9918321278624318,
+        "main_gather": 0.9726649897254767,
+        "main_cycle": 1.000494729779861,
+        "main_scatter": 0.9877324848541437,
+        "final_gather": 0.9337564458548193,
+        "final_cycle": 0.998381051148535,
+        "final_scatter": 1.000644578592271
+      },
+      "high-degree-weak-t4": {
+        "native_s": 0.6768162437482054,
+        "harness_seconds": 0.707525839002323,
+        "ols_main_action": 0.5631390968730776,
+        "ols_final_action": 0.9906742106269338,
+        "cmg_bounded_graph": 0.4085739980012205,
+        "graph_census": 0.3917448975613298,
+        "graph_emit": 0.3645940327324159,
+        "graph_canonicalize": 0.4572147822199301,
+        "graph_residual": 0.7601674484793657,
+        "cmg_bounded_hierarchy": 0.40098041918945715,
+        "cmg_bounded_workspace": 0.48279737407088774,
+        "cmg_apply_gather": 0.9600106923694384,
+        "cmg_apply_cycle": 0.9937720810870123,
+        "cmg_apply_scatter": 0.9941764971219563,
+        "main_gather": 0.9409874683316295,
+        "main_cycle": 0.9926981028378685,
+        "main_scatter": 0.993401200266726,
+        "final_gather": 0.9967100512672394,
+        "final_cycle": 0.9960839987847054,
+        "final_scatter": 0.9958967398809265
+      }
+    },
+    "exact_cell_profiles": {
+      "weak-t1": {
+        "input_sha256": "cf43042e07c71dd844ddf5def662ea36a60a4e3b90fe3750e56a68f1b9028d62",
+        "science_sha256": "9682186606e340837fd1491d39ec6dde00477d8666235aaff959fc43791a8cfd",
+        "columns_sha256": "906f1bac58945292d4ca3bdeb9cde3626d9dad4b3040e58b127de17208f58665",
+        "graph_work": [
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 6038,
+            "ordinal_delta": 673722,
+            "ordinal_end": 679760,
+            "phase": "graph_census",
+            "work_begin": 89768,
+            "work_delta": 33394816,
+            "work_end": 33484584
+          },
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 682264,
+            "ordinal_delta": 69482,
+            "ordinal_end": 751746,
+            "phase": "graph_emit",
+            "work_begin": 33540848,
+            "work_delta": 3564824,
+            "work_end": 37105672
+          },
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 751748,
+            "ordinal_delta": 236146,
+            "ordinal_end": 987894,
+            "phase": "graph_canonicalize",
+            "work_begin": 37105928,
+            "work_delta": 14565520,
+            "work_end": 51671448
+          }
+        ],
+        "build_outcome": [
+          {
+            "event": "build_outcome",
+            "installed": "true",
+            "kind": "observations",
+            "limit": "147846144",
+            "refusal": "None",
+            "work": "66731672"
+          }
+        ],
+        "actions": [
+          {
+            "final": "0",
+            "iterations_limit": 16000,
+            "iterations_used": 22,
+            "memory_bytes_used": 17708064,
+            "preset": "routing_portfolio_v1",
+            "setup_work_limit": 168968192,
+            "setup_work_used": 92029272
+          },
+          {
+            "final": "1",
+            "iterations_limit": 16000,
+            "iterations_used": 8,
+            "memory_bytes_used": 17708064,
+            "preset": "routing_portfolio_v1",
+            "setup_work_limit": 67970048,
+            "setup_work_used": 0
+          }
+        ],
+        "route": [
+          {
+            "checkpoint": "16",
+            "installed": "1",
+            "iterations": "16",
+            "phase": "auto_schur_route",
+            "refusal": "None",
+            "samples": "1",
+            "setup_limit": "168968192",
+            "setup_work": "92029272"
+          }
+        ],
+        "certified": [
+          "1",
+          "1"
+        ],
+        "apply_scope_counts": {
+          "ols_main_action": {
+            "gather": 19,
+            "cycle": 18,
+            "scatter": 18
+          },
+          "ols_final_action": {
+            "gather": 8,
+            "cycle": 8,
+            "scatter": 8
+          }
+        }
+      },
+      "weak-t4": {
+        "input_sha256": "975ed45eef7d6fbd03c9664860f275415b3d0e5434e1e85ac34a9a386a9082e0",
+        "science_sha256": "a9a69c0a82b8db2edb7b8fc91ad6b10140a489c757c4f7c8f30e8df8073c3191",
+        "columns_sha256": "906f1bac58945292d4ca3bdeb9cde3626d9dad4b3040e58b127de17208f58665",
+        "graph_work": [
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 6038,
+            "ordinal_delta": 673722,
+            "ordinal_end": 679760,
+            "phase": "graph_census",
+            "work_begin": 89768,
+            "work_delta": 33394816,
+            "work_end": 33484584
+          },
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 682264,
+            "ordinal_delta": 69482,
+            "ordinal_end": 751746,
+            "phase": "graph_emit",
+            "work_begin": 33540848,
+            "work_delta": 3564824,
+            "work_end": 37105672
+          },
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 751748,
+            "ordinal_delta": 236146,
+            "ordinal_end": 987894,
+            "phase": "graph_canonicalize",
+            "work_begin": 37105928,
+            "work_delta": 14565520,
+            "work_end": 51671448
+          }
+        ],
+        "build_outcome": [
+          {
+            "event": "build_outcome",
+            "installed": "true",
+            "kind": "observations",
+            "limit": "147846144",
+            "refusal": "None",
+            "work": "66731672"
+          }
+        ],
+        "actions": [
+          {
+            "final": "0",
+            "iterations_limit": 16000,
+            "iterations_used": 22,
+            "memory_bytes_used": 17708064,
+            "preset": "routing_portfolio_v1",
+            "setup_work_limit": 168968192,
+            "setup_work_used": 92029272
+          },
+          {
+            "final": "1",
+            "iterations_limit": 16000,
+            "iterations_used": 8,
+            "memory_bytes_used": 17708064,
+            "preset": "routing_portfolio_v1",
+            "setup_work_limit": 67970048,
+            "setup_work_used": 0
+          }
+        ],
+        "route": [
+          {
+            "checkpoint": "16",
+            "installed": "1",
+            "iterations": "16",
+            "phase": "auto_schur_route",
+            "refusal": "None",
+            "samples": "1",
+            "setup_limit": "168968192",
+            "setup_work": "92029272"
+          }
+        ],
+        "certified": [
+          "1",
+          "1"
+        ],
+        "apply_scope_counts": {
+          "ols_main_action": {
+            "gather": 19,
+            "cycle": 18,
+            "scatter": 18
+          },
+          "ols_final_action": {
+            "gather": 8,
+            "cycle": 8,
+            "scatter": 8
+          }
+        }
+      },
+      "high-degree-weak-t1": {
+        "input_sha256": "04be8ec27ebed2ccae196ab09a9cdf4022c1d1ad8d736ab57ce8b8d9c7789682",
+        "science_sha256": "c87435d49d2bd98dc3ae8e620dbe9265dc0ec3ca8881d7546136ce3aea0fd1a8",
+        "columns_sha256": "10d17bce3e98b75346d1239749a6e66e87e3dd7d8fc29c8bdb1ae0451a21e02b",
+        "graph_work": [
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 12078,
+            "ordinal_delta": 5449572,
+            "ordinal_end": 5461650,
+            "phase": "graph_census",
+            "work_begin": 178088,
+            "work_delta": 277335840,
+            "work_end": 277513928
+          },
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 5466654,
+            "ordinal_delta": 1535864,
+            "ordinal_end": 7002518,
+            "phase": "graph_emit",
+            "work_begin": 277626192,
+            "work_delta": 85707624,
+            "work_end": 363333816
+          },
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 7002520,
+            "ordinal_delta": 2323243,
+            "ordinal_end": 9325763,
+            "phase": "graph_canonicalize",
+            "work_begin": 363334072,
+            "work_delta": 146737248,
+            "work_end": 510071320
+          }
+        ],
+        "build_outcome": [
+          {
+            "event": "build_outcome",
+            "installed": "true",
+            "kind": "observations",
+            "limit": "855686144",
+            "refusal": "None",
+            "work": "638781848"
+          }
+        ],
+        "actions": [
+          {
+            "final": "0",
+            "iterations_limit": 16000,
+            "iterations_used": 21,
+            "memory_bytes_used": 105805888,
+            "preset": "routing_portfolio_v1",
+            "setup_work_limit": 977928192,
+            "setup_work_used": 791553688
+          },
+          {
+            "final": "1",
+            "iterations_limit": 16000,
+            "iterations_used": 7,
+            "memory_bytes_used": 105805888,
+            "preset": "routing_portfolio_v1",
+            "setup_work_limit": 391938048,
+            "setup_work_used": 0
+          }
+        ],
+        "route": [
+          {
+            "checkpoint": "16",
+            "installed": "1",
+            "iterations": "16",
+            "phase": "auto_schur_route",
+            "refusal": "None",
+            "samples": "1",
+            "setup_limit": "977928192",
+            "setup_work": "791553688"
+          }
+        ],
+        "certified": [
+          "1",
+          "1"
+        ],
+        "apply_scope_counts": {
+          "ols_main_action": {
+            "gather": 16,
+            "cycle": 15,
+            "scatter": 15
+          },
+          "ols_final_action": {
+            "gather": 7,
+            "cycle": 7,
+            "scatter": 7
+          }
+        }
+      },
+      "high-degree-weak-t4": {
+        "input_sha256": "ee05ed798a3a76a0cf379c73db28fd0d3e4ddad08e6aa6f09674d1e20aa63ef7",
+        "science_sha256": "3a1780082a85e9ec2a4bb90de3964296e61dd1102b5c8ff937c8ac8c87b54ec2",
+        "columns_sha256": "10d17bce3e98b75346d1239749a6e66e87e3dd7d8fc29c8bdb1ae0451a21e02b",
+        "graph_work": [
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 12078,
+            "ordinal_delta": 5449572,
+            "ordinal_end": 5461650,
+            "phase": "graph_census",
+            "work_begin": 178088,
+            "work_delta": 277335840,
+            "work_end": 277513928
+          },
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 5466654,
+            "ordinal_delta": 1535864,
+            "ordinal_end": 7002518,
+            "phase": "graph_emit",
+            "work_begin": 277626192,
+            "work_delta": 85707624,
+            "work_end": 363333816
+          },
+          {
+            "completed": "true",
+            "event": "graph_work",
+            "ordinal_begin": 7002520,
+            "ordinal_delta": 2323243,
+            "ordinal_end": 9325763,
+            "phase": "graph_canonicalize",
+            "work_begin": 363334072,
+            "work_delta": 146737248,
+            "work_end": 510071320
+          }
+        ],
+        "build_outcome": [
+          {
+            "event": "build_outcome",
+            "installed": "true",
+            "kind": "observations",
+            "limit": "855686144",
+            "refusal": "None",
+            "work": "638781848"
+          }
+        ],
+        "actions": [
+          {
+            "final": "0",
+            "iterations_limit": 16000,
+            "iterations_used": 21,
+            "memory_bytes_used": 105805888,
+            "preset": "routing_portfolio_v1",
+            "setup_work_limit": 977928192,
+            "setup_work_used": 791553688
+          },
+          {
+            "final": "1",
+            "iterations_limit": 16000,
+            "iterations_used": 7,
+            "memory_bytes_used": 105805888,
+            "preset": "routing_portfolio_v1",
+            "setup_work_limit": 391938048,
+            "setup_work_used": 0
+          }
+        ],
+        "route": [
+          {
+            "checkpoint": "16",
+            "installed": "1",
+            "iterations": "16",
+            "phase": "auto_schur_route",
+            "refusal": "None",
+            "samples": "1",
+            "setup_limit": "977928192",
+            "setup_work": "791553688"
+          }
+        ],
+        "certified": [
+          "1",
+          "1"
+        ],
+        "apply_scope_counts": {
+          "ols_main_action": {
+            "gather": 16,
+            "cycle": 15,
+            "scatter": 15
+          },
+          "ols_final_action": {
+            "gather": 7,
+            "cycle": 7,
+            "scatter": 7
+          }
+        }
+      }
+    },
+    "science": {
+      "all_reported_rows_and_summary_rederived": true,
+      "cross_artifact_diagnostic_pairs": 8,
+      "cross_worker_discrete_family_arm_groups": 4,
+      "cross_worker_scientific_families": 2,
+      "exact_work_ordinal_route_installation_checks": "all four observations per cell, plus explicit eight same-arm/eight cross-artifact pairs",
+      "four_way_exact_cells": 4,
+      "fresh_independent_original_oracle_checks": 16,
+      "fresh_original_model_metadata_checks": 16,
+      "positive_graph_action_ownership_checks": 16,
+      "resource_action_cap_checks": 32,
+      "retained_raw_json_and_array_files": 32,
+      "same_arm_fixed_worker_repeat_pairs": 8
+    },
+    "same_arm_pairs": [
+      [
+        0,
+        3
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        4,
+        7
+      ],
+      [
+        5,
+        6
+      ],
+      [
+        8,
+        11
+      ],
+      [
+        9,
+        10
+      ],
+      [
+        12,
+        15
+      ],
+      [
+        13,
+        14
+      ]
+    ],
+    "cross_artifact_pairs": [
+      [
+        0,
+        1
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        4,
+        5
+      ],
+      [
+        7,
+        6
+      ],
+      [
+        8,
+        9
+      ],
+      [
+        11,
+        10
+      ],
+      [
+        12,
+        13
+      ],
+      [
+        15,
+        14
+      ]
+    ],
+    "independent_review": {
+      "status": "GO",
+      "sha256": "93c2edf18582a2369a245b597eb0bbff427925a23bddd40765c747a5ee4a020b",
+      "blocking_findings": [],
+      "scope": "Actual closure, original models/oracles, arrays, exact science/diagnostics/work/ordinal/route ownership, caps, terminal execution and host census.",
+      "bound_plan_entries": 12264,
+      "unique_bound_paths": 3478
+    },
+    "host": {
+      "before_after_boundaries": true,
+      "errors": 0,
+      "limitation": "Five-second passive process census cannot exclude short unsampled compute. Activity is retained, not evidence of isolation or performance qualification.",
+      "max_snapshot_gap_s": 5.072214,
+      "no_observations_removed": true,
+      "snapshots": 90,
+      "selected_activity": [
+        {
+          "process": "suggestd",
+          "observed_cpu_delta_s": 442.85999999998603,
+          "maximum_reported_cpu_percent": 100.0,
+          "snapshots": 90
+        },
+        {
+          "process": "own scientific-checker Python",
+          "observed_cpu_delta_s": 428.32,
+          "maximum_reported_cpu_percent": 100.0,
+          "snapshots": 88
+        }
+      ],
+      "ordinary_bursts": "Other desktop/system activity retained; no exclusions or isolated-host claim."
+    },
+    "artifacts": {
+      "baseline": {
+        "plugin_sha256": "91af5727a05a3fa6ceb7ea8748029b4e8eebdecdd2080f509b5f965e0a0c0a7a",
+        "build_sha256": "3b542fe1633cfee186588abe8e1ead4e3e578966d411982cfa5b912079fcd9e8",
+        "source_snapshot_sha256": "ad4c3a2d7322b3c21988194ed6b54093de9372629bdf0e6d944aa745343ba74d",
+        "source_identity": {
+          "artifact_inputs_sha256": "d940c6f98d2c0ac66844dfb5a4743b4a20852630202e4c4f44a280b3394987de",
+          "production_tokens_sha256": "6531d9e247cadc83e03d94fefdaa643fff42a1297f02fa91f768f8afed5ea309",
+          "runtime_sha256": "633969be9e2bbfb14853654f94fe6fa4843ea482634a04504ba6a5042a3d8118"
+        }
+      },
+      "candidate": {
+        "plugin_sha256": "fec86539f113d662c3519f75869acbb8e009da873d8d46ca3f713ac0416ad3b2",
+        "build_sha256": "5d30bbec78f5c21767b32fb1fe8b901ca81868c72ec9ca9d1d5b7fe8bc79fdb2",
+        "source_snapshot_sha256": "d93b099a1fb56404970eef9e81ade61434258205c47ad1a9a1dfe249497a5edb",
+        "source_identity": {
+          "artifact_inputs_sha256": "d940c6f98d2c0ac66844dfb5a4743b4a20852630202e4c4f44a280b3394987de",
+          "production_tokens_sha256": "a674f875dd0441c9ffcf626827ca598490dc7ffca9844bfe7c5a751f4c55e8ed",
+          "runtime_sha256": "dc4c1c9a289c493df251516b5157ebcab0165b95de97a353689ad1f46cdd771d"
+        }
+      }
+    },
+    "validation": {
+      "composition": "Fresh main source-only integration + focused source science + reviewed private instrumentation + private native build/ABI.",
+      "exact_instrumented_tree_full_suite_run": false,
+      "installed_package_admission": "not performed; release/promotion blocked",
+      "fresh_main_source_only": {
+        "head": "ee49273a9a86547d74aae244e95d7a4a9a3cf06e",
+        "command": "bash scripts/run_tests.sh --source-only",
+        "returncode": 0,
+        "elapsed_s": 145.63139637501445,
+        "rust_passed": 1928,
+        "rust_test_groups": 86,
+        "rust_ignored": 14,
+        "python_suites": [
+          255,
+          7
+        ],
+        "python_total": 262,
+        "stdout_sha256": "56d496e1cfc6665c758c230eff6f2e1af9d0f43e301b0b9ebe51794d3b056d5c",
+        "stderr_sha256": "c7e78be48306848c80cfed7091f2f4ebe4e4ae66b6ad22cecd2fd70f23be567d",
+        "limitations": "Linux mock-plugin audit skipped without GNU ELF linker; installed-package admission not performed."
+      },
+      "focused_science_tests": 10,
+      "native_build": {
+        "status": "passed",
+        "commands": 32,
+        "source_unchanged": true,
+        "private_plugin_bytes": 8536432,
+        "ABI_and_bridge": "Actual loader/SPI selftest, numeric platform guards, binary audit and raw personal-path scan passed.",
+        "publication": false
+      },
+      "archive_commit": "c90d03fbdb34b1b16318870761344f0a883e645f",
+      "original_strict_source_rejection": "Original strict-source helpers/source/review and prospective static complexity rejection preserved. No instrumented-tree full suite launched or relabeled passing; composed evidence accepted explicitly.",
+      "prior_auxiliary_log_discrepancy": "Prior stage auxiliary test-log mismatch remains historical in its actual plan/raw reviews; current actual closure passes."
+    },
+    "provenance_sha256": {
+      "result.json": "39fb3ed4417fe8d3eb08a1dbc645650fbcc1d90b229040e73c1bba11cea9c383",
+      "raw-review.json": "93c2edf18582a2369a245b597eb0bbff427925a23bddd40765c747a5ee4a020b",
+      "plan.json": "9f2cff088b7d1f1af3acbc2e0212f0d93878e2daf65c5406ef031bcbe517f46c",
+      "configuration.json": "fbc1924b962512ef9342742bb5b9de61f6db279c4c8c52c03b7d50d0014b6637",
+      "source-review.json": "af8184d8508876d434b3201f4f36c5325c6730d0b2483952cf837780b499579f",
+      "focused-science.json": "db313be0aa1185d394c623a296ede0010eef268c96167c5813592afabfe277fd",
+      "source-integration.json": "f14afbde519afd48a6e97a0266596d0f74b793024d2444902027e2e5fff8e0c0",
+      "actual-source-build-review.json": "5c3bcf043f54338f8d5d0620bb5f33a5c01984b803fa51663b7b145b5ae55e3e",
+      "actual-plan-review.json": "fec552b46472273a30f5675e95747a6cf2c3b98a07cdd23d2582ac72da079294",
+      "actual-preparation-review.json": "ed50d624a385f3b1d2b490ad328a8c6f81999a9324b5b81a7cf75727618433a7",
+      "build-provenance.json": "5d30bbec78f5c21767b32fb1fe8b901ca81868c72ec9ca9d1d5b7fe8bc79fdb2",
+      "source-snapshot.json": "d93b099a1fb56404970eef9e81ade61434258205c47ad1a9a1dfe249497a5edb",
+      "instrumented.patch": "276fcf30d394c8f196a340ab69c9e5d49d2a0c8129ab20b19db0b6698e697688",
+      "main.patch": "0b3c7fcd0de32cf3f58397aaddd6eccbb3c51a6ab93b4de3b54759ef25193cc8",
+      "main-before.rs": "fe3b8d19ec7d23c7836296309cb01b3c6d0b7e88f67bd92e7ed09f85418b5e59",
+      "main-after.rs": "33ffe96ed1ce03d2cdd62d9dbc9304f105faeda1ab7938e7bdc56040b4097e64",
+      "main-complexity-before.json": "e759ec6f7163391a1ebeaafdc6b98bb60e1ef497ba7763ff429a47ea5e192ee4",
+      "main-complexity-after.json": "28281e274cf26cabb066f22d8517ec51ea08d2505b67ec5f06179aaca84f7616",
+      "main-complexity-growth.json": "7cea0ed480aa0c04ec972ac1589bce80fd7dd405ca7f7d98b324733a1ff646b7",
+      "proposal.json": "5e1402e634b87e9a79906800897ebf5bf3701ceaf0e18edb15c9a574fe487c36",
+      "integration-engineering-review.json": "14ca2bf48445738df4e70a6b073b7c0be0d95d71d86153d48bf13f417054f592",
+      "runner-review-composed.json": "62e05cd80ca440aa594fe6d4663ca0352eac6357318752ac8b3947ac05b1b5b0",
+      "runner-review.json": "08a5e5a3c5c6907c5f80d63521bf3b98aa8e547b236b9caccdbaf5c8489f2a45",
+      "source-preparation-review.json": "16e45188368066b4cb9358e68724da23cc304507242f4773426997c784e67494",
+      "run.py": "48a3f41dfecd38c812901846f5d1f58a36cc8646835178771ad879770b3887b0",
+      "prepare-config.py": "001ce25d737777c313e0442ea5656828d91f5d2c27d2562d2c034e4034f4d7a6",
+      "observe-execution.py": "321a2638cca77d0a569476311ec09f3ff5a0ad9b0e804768bf3c4e69c4ae57c2",
+      "build-provenance.py": "2853a8e8282392cb2db7bfe23053233edd269ae5a2a128f5f9cd7bb9791f554b",
+      "build-mac.sh": "9fa6302b418ab6a54b83c6486db13aac7972c7dd6a53525d6ccfee54ec07464a",
+      "test_run.py": "7873e92e51d9f9673006edb99e5ff614da9bf3bda02f563d3af511a68be993dc",
+      "test_prepare_config.py": "64f9ddc8a26f84453f0f5b48044ca6d35eff5f80621ea65e2464ce1da12814d0",
+      "test_preparation.py": "444aa6def89a3ac146d5e63a42b17314714f76f9a3c39e16668cf08e600b3edf",
+      "prepare-config.strict-source.py": "001ce25d737777c313e0442ea5656828d91f5d2c27d2562d2c034e4034f4d7a6",
+      "run.strict-source.py": "541de568db03ea45944b9a0fe554016f955d7aed63c7e9fb005afe587a47ecf2",
+      "test_prepare_config.strict-source.py": "de5216ef230108750f69fca9f7acc05880377482378b545dad812bc997f3f931",
+      "test_run.strict-source.py": "7873e92e51d9f9673006edb99e5ff614da9bf3bda02f563d3af511a68be993dc",
+      "proposal.strict-source.md": "bedfbeff95f9e1f72168ba77df7356f85f19206d68a5ac1afcf7aab32ed1e794",
+      "pure-tests.strict-source.log": "6246f8d146a403980afc21a0599150835d1ca571366f6f6fcb522d99dfd209c3",
+      "complexity-rejection.log": "9fabe4c8bd550fc102512ee1345a7bd011ab3ff1d1b37807c5aaf2a97151b6e8",
+      "static_dispatch_assembly": "e88c5a07ec97ea94892506153150953e221c6f0c20eadd72c594cd2c399e0ca7",
+      "full_main_suite_command": "1256b3d4ed16023ca296b0cbb5d402536843356d0631270c62174833054dc82b"
+    },
+    "limitations": [
+      "Two observations per arm/cell in one fixedABBA schedule, no warmups; eight diagnostic pairs are not independent qualification or strong-scaling replicates.",
+      "Both arms are instrumented. Elapsed stage costs include combined operations/logging/control overhead; nested parent/children must not be added.",
+      "Scientific/exact work agreement and prior static dispatch proof support the narrow redundant-controller interpretation, but do not establish a universal speedup or release frontier nonregression.",
+      "Actual main-source-only integration plus prior private integration and exact clock derivation is composed evidence; no full suite on instrumented tree or installed-package admission claimed.",
+      "Previously superseded auxiliary-log/strict-source evidence remains historical, not silently relabeled.",
+      "No B/C data, new campaign, public activation or publication claim."
+    ]
+  },
+  "portfolio_combined_source_integration_20261016": {
+    "status": "source_integration_passed",
+    "qualification": false,
+    "public_auto": "unchanged",
+    "installed_package_admission": "not_performed",
+    "native_build_for_combined_uninstrumented_source": "pending",
+    "scope": "Exact synchronous optional-controller patch plus reviewed private strict-unseeded portfolio arm; V1 mathematical policy and public Auto preserved. No graph-specific fences or threshold changes.",
+    "source_review_sha256": "dc4f5bc7a6bbca6f43daa7d48a6c6e75d3714fb7b36d7921d12e1b479e64755b",
+    "source_only_command_sha256": "dd5279ea2d643bb1173a6d2e86ab5a0802c3e7da9a36d68b767df47400ae592a",
+    "source_inventory_before_after_sha256": "3ad210186cac190662eccc0f9df32c022bea7d0192c4e666c2197035079071ae",
+    "tracked_files_unchanged_during_suite": 908,
+    "elapsed_s": 144.66195087495726,
+    "returncode": 0,
+    "rust_test_groups": 86,
+    "rust_passed": 1934,
+    "rust_failed": 0,
+    "rust_ignored": 14,
+    "python_tests": 255,
+    "portable_tests": 7,
+    "checks": [
+      "Clippy",
+      "formatting",
+      "fuzz compile",
+      "arithmetic witnesses",
+      "scientific and transaction tests",
+      "FFI and isolated allocation checks",
+      "strict C and mock SPI",
+      "numeric input/output guards",
+      "complexity ratchet"
+    ],
+    "skipped": [
+      "Linux ELF mock plugin audit on Mac",
+      "installed-package admission in explicitly selected source-only mode"
+    ],
+    "complexity": {
+      "core_production_lines_before": 106348,
+      "core_production_lines_after": 106373,
+      "plugin_production_lines_before": 15265,
+      "plugin_production_lines_after": 15271,
+      "limits_or_exemptions_changed": false
+    },
+    "limitations": [
+      "Source tests do not establish performance, native combined build/ABI, SCC discovery, Mac B/C, or public promotion.",
+      "Test output contains two interleaved child-process summary prefixes; all86 numeric result summaries are retained and counted."
+    ]
   }
 }

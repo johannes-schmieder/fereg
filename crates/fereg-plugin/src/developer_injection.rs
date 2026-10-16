@@ -46,6 +46,12 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             }
             (Some(RoutingPreset::portfolio_v1()), false)
         }
+        "routing_portfolio_unseeded" => {
+            if solver != FeSolverKind::Auto {
+                return Err(syntax("hidden routing injection requires solver(auto)"));
+            }
+            (Some(RoutingPreset::portfolio_unseeded()), false)
+        }
         "routing_prefix_none" | "routing_prefix_map4" | "routing_prefix_it4" => {
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
@@ -160,6 +166,39 @@ fn internal(message: String) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn portfolio_unseeded_accepts_only_the_exact_private_auto_control() {
+        let control = parse_ols("routing_portfolio_unseeded", FeSolverKind::Auto, "").unwrap();
+        assert_eq!(control.routing, Some(RoutingPreset::portfolio_unseeded()));
+        assert!(!control.it_coefficients);
+        assert!(control.native_break_token.is_none());
+        for solver in [
+            FeSolverKind::Map,
+            FeSolverKind::Lsmr,
+            FeSolverKind::Cmg,
+            FeSolverKind::CmgSchur,
+            FeSolverKind::Cg,
+            FeSolverKind::IronsTuck,
+            FeSolverKind::Squarem,
+        ] {
+            assert!(parse_ols("routing_portfolio_unseeded", solver, "").is_err());
+        }
+        for name in [
+            "routing_unseeded",
+            "routing_portfolio_unseeded_v1",
+            "routing_portfolio_unseeded_h16_k1",
+            "ROUTING_PORTFOLIO_UNSEEDED",
+        ] {
+            assert!(parse_ols(name, FeSolverKind::Auto, "").is_err());
+        }
+        assert!(parse_ols(
+            "routing_portfolio_unseeded",
+            FeSolverKind::Auto,
+            "0123456789abcdef0123456789abcdef"
+        )
+        .is_err());
+    }
 
     #[test]
     fn portfolio_routing_accepts_only_the_finite_auto_arm_without_break_token() {

@@ -40,7 +40,7 @@ pub(super) struct Work<'a> {
     budget: u64,
     used: u64,
     ordinal: u64,
-    control: &'a mut dyn cmg::BuildControl,
+    control: Option<&'a mut dyn cmg::BuildControl>,
 }
 
 impl Work<'_> {
@@ -60,23 +60,27 @@ impl Work<'_> {
             .ordinal
             .checked_add(1)
             .ok_or_else(|| invalid_data("bounded CMG operation ordinal overflows"))?;
-        match self.control.checkpoint(cmg::BuildBoundary {
-            phase,
-            chunk_id: self.ordinal,
-            charged_work: self.used,
-            operation,
-        }) {
-            BuildDecision::Continue => {}
-            BuildDecision::StopUnused => return Err(AttemptError::Refused(BuildRefusal::Unused)),
-            BuildDecision::Interrupted => {
-                return Err(FeregError::new(
-                    crate::error::ErrorCode::Interrupted,
-                    "bounded CMG construction was interrupted",
-                )
-                .into())
+        if let Some(control) = &mut self.control {
+            match control.checkpoint(cmg::BuildBoundary {
+                phase,
+                chunk_id: self.ordinal,
+                charged_work: self.used,
+                operation,
+            }) {
+                BuildDecision::Continue => {}
+                BuildDecision::StopUnused => {
+                    return Err(AttemptError::Refused(BuildRefusal::Unused))
+                }
+                BuildDecision::Interrupted => {
+                    return Err(FeregError::new(
+                        crate::error::ErrorCode::Interrupted,
+                        "bounded CMG construction was interrupted",
+                    )
+                    .into())
+                }
             }
         }
-        // A parked callback has returned only after admitting this complete chunk.
+        // Any external controller has admitted this complete chunk before charging it.
         self.used += units;
         self.ordinal = ordinal;
         Ok(())
@@ -281,7 +285,7 @@ impl CmgSchurPreconditioner {
             budget: work_budget,
             used: 0,
             ordinal: 0,
-            control,
+            control: Some(control),
         };
         let mut memory = Admission {
             budget,
@@ -412,6 +416,14 @@ impl CmgSchurPreconditioner {
                 "CMG Schur requires two intercept effects and positive RHS capacity",
             ));
         }
+        // This flag identifies synchronous presets even when cache admission
+        // declines. Overlap's uncached fallback retains its original controller.
+        let mut continue_build = |_| BuildDecision::Continue;
+        let control: Option<&mut dyn cmg::BuildControl> = if cache_census {
+            None
+        } else {
+            Some(&mut continue_build)
+        };
         Self::build_observations_bounded(
             design.effects()[left_effect].level_index(),
             design.effects()[1 - left_effect].codes(),
@@ -423,7 +435,7 @@ impl CmgSchurPreconditioner {
             work_budget,
             cache_census,
             bounded_terminal,
-            &mut |_| BuildDecision::Continue,
+            control,
         )
     }
 
@@ -452,7 +464,7 @@ impl CmgSchurPreconditioner {
             work_budget,
             false,
             false,
-            control,
+            Some(control),
         )
     }
 
@@ -468,7 +480,7 @@ impl CmgSchurPreconditioner {
         work_budget: u64,
         cache_census: bool,
         bounded_terminal: bool,
-        control: &mut dyn cmg::BuildControl,
+        control: Option<&mut dyn cmg::BuildControl>,
     ) -> Result<BoundedCmgBuild> {
         sampling.validate()?;
         if !(4..=6).contains(&degree)
@@ -1348,6 +1360,47 @@ mod cache_tests {
         }
     }
 
+    fn assert_same_build(actual: BoundedCmgBuild, expected: BoundedCmgBuild) {
+        assert_eq!(actual.work_used, expected.work_used);
+        assert_eq!(actual.peak, expected.peak);
+        assert_eq!(actual.refusal, expected.refusal);
+        match (actual.preconditioner, expected.preconditioner) {
+            (Some(mut actual), Some(mut expected)) => {
+                let left = actual.preconditioner.hierarchy();
+                let right = expected.preconditioner.hierarchy();
+                assert_eq!(left, right);
+                for (left, right) in left.levels().iter().zip(right.levels()) {
+                    for (a, b) in left.graph().diagonal().iter().zip(right.graph().diagonal()) {
+                        assert_eq!(a.to_bits(), b.to_bits());
+                    }
+                    for (a, b) in left.graph().edges().iter().zip(right.graph().edges()) {
+                        assert_eq!(a.weight().to_bits(), b.weight().to_bits());
+                    }
+                }
+                assert_eq!(actual.components.labels, expected.components.labels);
+                assert_eq!(actual.components.sizes, expected.components.sizes);
+                assert_eq!(actual.startup_work(2), expected.startup_work(2));
+                assert_eq!(
+                    actual.retained_bytes().unwrap(),
+                    expected.retained_bytes().unwrap()
+                );
+                let n = actual.components.labels.len();
+                let rhs: Vec<_> = (0..2 * n).map(|i| (i % 7) as f64 - 3.0).collect();
+                let mut a = vec![0.0; rhs.len()];
+                let mut b = vec![0.0; rhs.len()];
+                actual.apply_batch(&rhs, &mut a, 2, 2, None, None).unwrap();
+                expected
+                    .apply_batch(&rhs, &mut b, 2, 2, None, None)
+                    .unwrap();
+                for (a, b) in a.iter().zip(&b) {
+                    assert_eq!(a.to_bits(), b.to_bits());
+                }
+            }
+            (None, None) => {}
+            _ => panic!("controller presence changed construction success"),
+        }
+    }
+
     struct Fixture {
         workers: Vec<u32>,
         firms: Vec<u32>,
@@ -1483,8 +1536,64 @@ mod cache_tests {
                 allowance,
                 false,
                 enabled,
-                control,
+                Some(control),
             )
+        }
+    }
+
+    #[test]
+    fn synchronous_controller_elision_preserves_cached_and_uncached_builds() {
+        let fixture = Fixture::new();
+        for cached in [false, true] {
+            for samples in [0, 1, 2] {
+                let sampling = Sampling { samples, seed: 0 };
+                let budget = Some(FeSolverMemoryBudget {
+                    usable_bytes: fixture.envelope(sampling).peak_bytes as u128 + 913,
+                    execution_bytes: 913,
+                });
+                let build =
+                    |allowance, bounded_terminal, control: Option<&mut dyn cmg::BuildControl>| {
+                        CmgSchurPreconditioner::build_observations_bounded(
+                            &fixture.membership,
+                            &fixture.firms,
+                            fixture.firm_index.n_levels(),
+                            BorrowedMapWeights::Provided(&fixture.weights),
+                            5,
+                            sampling,
+                            budget,
+                            allowance,
+                            cached,
+                            bounded_terminal,
+                            control,
+                        )
+                        .unwrap()
+                    };
+                let synchronous = build(u64::MAX, false, None);
+                assert!(synchronous.preconditioner.is_some());
+                let used = synchronous.work_used;
+                let mut continue_build = |_| BuildDecision::Continue;
+                assert_same_build(
+                    synchronous,
+                    build(u64::MAX, false, Some(&mut continue_build)),
+                );
+                assert_same_build(
+                    build(u64::MAX, true, None),
+                    build(u64::MAX, true, Some(&mut continue_build)),
+                );
+                for allowance in [used, used - 1, 0] {
+                    let synchronous = build(allowance, false, None);
+                    assert_eq!(synchronous.preconditioner.is_some(), allowance == used);
+                    assert_eq!(
+                        synchronous.refusal,
+                        (allowance != used).then_some(BuildRefusal::WorkBudget),
+                    );
+                    assert!(synchronous.work_used <= allowance);
+                    assert_same_build(
+                        synchronous,
+                        build(allowance, false, Some(&mut continue_build)),
+                    );
+                }
+            }
         }
     }
 
@@ -1496,7 +1605,7 @@ mod cache_tests {
             budget: u64::MAX,
             used: 0,
             ordinal: 0,
-            control: &mut control,
+            control: Some(&mut control),
         };
         let mut rows = BoundedCells {
             source: fixture.source(),
@@ -1802,7 +1911,7 @@ mod cache_tests {
                 budget: u64::MAX,
                 used: 0,
                 ordinal: 0,
-                control: &mut control,
+                control: Some(&mut control),
             };
             let mut memory = Admission {
                 budget: None,

@@ -2,16 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 106348,
-      "before": 106312,
+      "after": 106373,
+      "before": 106348,
       "metric": "fereg-core/production_lines",
-      "reason": "Thread an explicit portfolio-only CMG terminal-affordability option through the existing private builder. Capture the actual post-admission remaining work for the reviewed upstream factor screen; keep legacy controlled/reduced/overlap calls and callback charging unchanged. Preserve route/ledger layouts, numerical and memory gates, and the 32W0 setup and 4W0 restart bounds. Independent bound, action, exact disabled-path, resource and interruption witnesses cover the scope; no new oversized file or function."
+      "reason": "Add one sanctioned private strict-unseeded routing control to isolate MAP-prefix value. The enum variant, constructor, family predicate and exact Auto-only injection reuse V1 two-FE and general solver ownership without new layouts, arithmetic, budgets or public routing. Independent source review and focused QR, exact unaffected-path, no-pilot, resource-layout and cross-worker witnesses cover the scope. The same reviewed candidate makes the synchronous external BuildControl optional, skipping only the no-op callback while retaining interrupt, validation, ordinal, budget and charge ordering; controlled and overlap callbacks remain. This contributes ten production lines and exact builder/refusal/native replay checks."
     },
     {
-      "after": 8374,
-      "before": 8373,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Thread an explicit portfolio-only CMG terminal-affordability option through the existing private builder. Capture the actual post-admission remaining work for the reviewed upstream factor screen; keep legacy controlled/reduced/overlap calls and callback charging unchanged. Preserve route/ledger layouts, numerical and memory gates, and the 32W0 setup and 4W0 restart bounds. Independent bound, action, exact disabled-path, resource and interruption witnesses cover the scope; no new oversized file or function."
+      "after": 15271,
+      "before": 15265,
+      "metric": "fereg-plugin/production_lines",
+      "reason": "Add one sanctioned private strict-unseeded routing control to isolate MAP-prefix value. The enum variant, constructor, family predicate and exact Auto-only injection reuse V1 two-FE and general solver ownership without new layouts, arithmetic, budgets or public routing. Independent source review and focused QR, exact unaffected-path, no-pilot, resource-layout and cross-worker witnesses cover the scope."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -3572,132 +3572,132 @@
           },
           {
             "condition": "let Some ( budget ) = memory . budget",
-            "line": 209
+            "line": 213
           },
           {
             "condition": "n_retained == 0 || n_eliminated == 0 || ! ( 4.. = 6 ) . contains ( & degree ) || n_eliminated . checked_add ( 1 ) != Some ( row_ptr . len ( ) ) || row_ptr . first ( ) != Some ( & 0 ) || row_ptr . last ( ) . copied ( ) . map ( | n | n as usize ) != Some ( columns . len ( ) ) || columns . len ( ) != weights . len ( )",
-            "line": 267
+            "line": 271
           },
           {
             "condition": "pair [ 0 ] >= pair [ 1 ] || pair [ 1 ] as usize > columns . len ( )",
-            "line": 294
+            "line": 298
           },
           {
             "condition": "components . sizes . len ( ) != 1",
-            "line": 309
+            "line": 313
           },
           {
             "condition": "self . parallel . is_some ( ) || rhs . len ( ) != self . components . labels . len ( ) || scratch . len ( ) < rhs . len ( ) || ! weight_scale . is_finite ( ) || weight_scale <= 0.0",
-            "line": 347
+            "line": 351
           },
           {
             "condition": "design . effects ( ) . len ( ) != 2 || left_effect > 1 || rhs_capacity == 0",
-            "line": 410
+            "line": 414
           },
           {
             "condition": "! ( 4.. = 6 ) . contains ( & degree ) || firms . len ( ) != membership . nobs ( ) || matches ! ( weights , BorrowedMapWeights :: Provided ( w ) if w . len ( ) != firms . len ( ) )",
-            "line": 474
+            "line": 486
           },
           {
             "condition": "w . len ( ) != firms . len ( ) )",
-            "line": 476
+            "line": 488
           },
           {
             "condition": "weights",
-            "line": 737
+            "line": 749
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 941
+            "line": 953
           },
           {
             "condition": "self . cells . len ( ) > cutoff",
-            "line": 1044
+            "line": 1056
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1066
+            "line": 1078
           },
           {
             "condition": "let BorrowedMapWeights :: Provided ( values ) = weights",
-            "line": 1093
+            "line": 1105
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1097
+            "line": 1109
           },
           {
             "condition": "edges . len ( ) != counts . input_edges",
-            "line": 1194
+            "line": 1206
           }
         ],
         "functions": {
           "admit#1": {
-            "line": 199,
+            "line": 203,
             "lines": 21
           },
           "admitted_cache_bytes#1": {
-            "line": 899,
+            "line": 911,
             "lines": 23
           },
           "apply_reduced_in_place#1": {
-            "line": 341,
+            "line": 345,
             "lines": 47
           },
           "bank#1": {
-            "line": 832,
+            "line": 844,
             "lines": 3
           },
           "build_observations_bounded#1": {
-            "line": 460,
+            "line": 472,
             "lines": 69
           },
           "cache_envelope#1": {
-            "line": 824,
+            "line": 836,
             "lines": 74
           },
           "capacity#1": {
-            "line": 135,
+            "line": 139,
             "lines": 10
           },
           "census_bounded#1": {
-            "line": 979,
+            "line": 991,
             "lines": 48
           },
           "charge#1": {
-            "line": 85,
+            "line": 89,
             "lines": 3
           },
           "cmg#1": {
-            "line": 89,
+            "line": 93,
             "lines": 45
           },
           "component_options#1": {
-            "line": 762,
+            "line": 774,
             "lines": 7
           },
           "emit_edges_bounded#1": {
-            "line": 1028,
+            "line": 1040,
             "lines": 51
           },
           "entry#1": {
-            "line": 726,
+            "line": 738,
             "lines": 28
           },
           "filled#1": {
-            "line": 146,
+            "line": 150,
             "lines": 8
           },
           "find_root#1": {
-            "line": 681,
+            "line": 693,
             "lines": 10
           },
           "finish#1": {
-            "line": 531,
+            "line": 543,
             "lines": 95
           },
           "firm_count#1": {
-            "line": 715,
+            "line": 727,
             "lines": 5
           },
           "from#1": {
@@ -3706,78 +3706,78 @@
           },
           "gate#1": {
             "line": 47,
-            "lines": 37
+            "lines": 41
           },
           "graph#1": {
-            "line": 1081,
+            "line": 1093,
             "lines": 146
           },
           "graph_storage_bound#1": {
-            "line": 673,
+            "line": 685,
             "lines": 7
           },
           "load#1": {
-            "line": 795,
+            "line": 807,
             "lines": 19
           },
           "load_bounded#1": {
-            "line": 931,
+            "line": 943,
             "lines": 47
           },
           "new#1": {
-            "line": 778,
+            "line": 790,
             "lines": 6
           },
           "parts#1": {
-            "line": 631,
+            "line": 643,
             "lines": 13
           },
           "restore_scale#1": {
-            "line": 630,
+            "line": 642,
             "lines": 40
           },
           "row_count#1": {
-            "line": 720,
+            "line": 732,
             "lines": 6
           },
           "sift#1": {
-            "line": 162,
+            "line": 166,
             "lines": 24
           },
           "sort#1": {
-            "line": 157,
+            "line": 161,
             "lines": 40
           },
           "store#1": {
-            "line": 785,
+            "line": 797,
             "lines": 9
           },
           "try_build_bounded#1": {
-            "line": 397,
-            "lines": 32
+            "line": 401,
+            "lines": 40
           },
           "try_build_observations_bounded_controlled#1": {
-            "line": 433,
+            "line": 445,
             "lines": 25
           },
           "try_build_reduced_bounded#1": {
-            "line": 227,
+            "line": 231,
             "lines": 24
           },
           "try_build_reduced_bounded_controlled#1": {
-            "line": 254,
+            "line": 258,
             "lines": 84
           },
           "weights#1": {
-            "line": 754,
+            "line": 766,
             "lines": 6
           },
           "worker_count#1": {
-            "line": 709,
+            "line": 721,
             "lines": 6
           }
         },
-        "production_lines": 1136
+        "production_lines": 1146
       },
       "crates/fereg-core/src/fe/cmg_schur/sampling.rs": {
         "chunk_candidates": [],
@@ -5246,99 +5246,107 @@
         "dispatch_candidates": [],
         "functions": {
           "ablation#1": {
-            "line": 84,
+            "line": 86,
             "lines": 16
           },
           "begin#1": {
-            "line": 267,
+            "line": 286,
             "lines": 21
           },
           "breaks_builder#1": {
-            "line": 146,
+            "line": 164,
             "lines": 3
           },
           "builder_allowance#1": {
-            "line": 289,
+            "line": 308,
             "lines": 5
           },
           "categorical_prefix#1": {
-            "line": 150,
-            "lines": 6
+            "line": 168,
+            "lines": 7
           },
           "charge#1": {
-            "line": 295,
+            "line": 314,
             "lines": 10
           },
           "checkpoint#1": {
-            "line": 166,
+            "line": 185,
             "lines": 3
           },
           "fmt#1": {
-            "line": 42,
-            "lines": 22
+            "line": 43,
+            "lines": 23
           },
           "general_pair_checkpoint#1": {
-            "line": 172,
+            "line": 191,
             "lines": 7
           },
           "kernel#1": {
-            "line": 162,
+            "line": 181,
             "lines": 3
           },
           "matches_accuracy#1": {
-            "line": 242,
+            "line": 261,
             "lines": 5
           },
           "new#1": {
-            "line": 67,
+            "line": 69,
             "lines": 15
           },
           "new#2": {
-            "line": 257,
+            "line": 276,
             "lines": 9
           },
           "overlap#1": {
-            "line": 101,
+            "line": 103,
             "lines": 10
           },
           "overlap_break#1": {
-            "line": 139,
+            "line": 157,
             "lines": 5
           },
           "overlaps#1": {
-            "line": 158,
+            "line": 177,
             "lines": 3
           },
+          "portfolio#1": {
+            "line": 145,
+            "lines": 6
+          },
           "portfolio_choice#1": {
-            "line": 248,
+            "line": 267,
             "lines": 4
           },
+          "portfolio_unseeded#1": {
+            "line": 138,
+            "lines": 6
+          },
           "portfolio_v1#1": {
-            "line": 125,
+            "line": 127,
             "lines": 8
           },
           "prefix#1": {
-            "line": 112,
+            "line": 114,
             "lines": 10
           },
           "samples#1": {
-            "line": 179,
+            "line": 198,
             "lines": 3
           },
           "schur_iteration_work#1": {
-            "line": 186,
+            "line": 205,
             "lines": 34
           },
           "select_portfolio#1": {
-            "line": 253,
+            "line": 272,
             "lines": 3
           },
           "strict_categorical_prefix#1": {
-            "line": 134,
+            "line": 152,
             "lines": 3
           }
         },
-        "production_lines": 245
+        "production_lines": 260
       },
       "crates/fereg-core/src/fe/routing_direct.rs": {
         "chunk_candidates": [],
@@ -20206,32 +20214,32 @@
         "dispatch_candidates": [
           {
             "condition": "! token . is_empty ( ) && ( token . len ( ) != 32 || ! token . bytes ( ) . all ( | byte | byte . is_ascii_digit ( ) || ( b <char> ..= b <char> ) . contains ( & byte ) ) )",
-            "line": 125
+            "line": 131
           }
         ],
         "functions": {
           "create_native_break_marker#1": {
-            "line": 144,
+            "line": 150,
             "lines": 11
           },
           "internal#1": {
-            "line": 156,
+            "line": 162,
             "lines": 3
           },
           "native_break_marker_path#1": {
-            "line": 138,
+            "line": 144,
             "lines": 3
           },
           "parse_ols#1": {
             "line": 24,
-            "lines": 91
+            "lines": 97
           },
           "validate_break_marker_token#1": {
-            "line": 118,
+            "line": 124,
             "lines": 19
           }
         },
-        "production_lines": 138
+        "production_lines": 144
       },
       "crates/fereg-plugin/src/dispatch.rs": {
         "chunk_candidates": [],
@@ -23089,14 +23097,14 @@
         "dispatch_candidates": 1382,
         "files_over_1500": 15,
         "functions_over_150": 60,
-        "production_lines": 106348
+        "production_lines": 106373
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
         "dispatch_candidates": 142,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 15265
+        "production_lines": 15271
       }
     },
     "schema": 1

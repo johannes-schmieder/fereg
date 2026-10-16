@@ -1227,6 +1227,105 @@ ordinal and controlled callback. Disassembly is required before treating it as
 an optimization opportunity. These observations do not justify a worker-scaled
 admission threshold or a new routing policy.
 
+### Synchronous CMG controller diagnostic, 2026-10-16
+
+Optimized disassembly of the preceding binary showed that each synchronous
+work boundary still packed a 48-byte descriptor and invoked an external
+always-Continue callback. The candidate makes that external controller optional.
+Synchronous cached presets use `None`, including when cache admission declines;
+controlled, reduced and overlap paths retain `Some`. Every interrupt check,
+validation, budget comparison, ordinal increment, work charge and refusal stays
+in its original order. The upstream accounting bridge remains. Candidate
+assembly confirms that the absent-controller branch skips packing and dispatch,
+then reaches the unchanged accounting instructions. This static finding alone
+is not a latency estimate.
+
+The prospective comparison used weak and high-degree weak revealed A cases at
+one/four workers. Each cell followed baseline/candidate/candidate/baseline:
+16 calls total, no warmups, retries, replacements or exclusions, 120 seconds per
+call and 1,800 seconds inclusive. Both arms use identical V1 requests and the
+same stage instrumentation. The runner reported 446.566 seconds from outer entry, before final observer teardown.
+The following are descriptive medians of two observations per arm/cell.
+
+| Revealed case | Workers | Baseline native, ms | Candidate native, ms | Candidate/baseline | Graph, baseline → candidate, ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Weak | 1 | 67.746 | 57.241 | 0.845 | 12.371 → 4.958 |
+| Weak | 4 | 43.325 | 31.782 | 0.734 | 12.410 → 4.922 |
+| High-degree weak | 1 | 422.487 | 333.654 | 0.790 | 113.514 → 46.359 |
+| High-degree weak | 4 | 276.618 | 187.220 | 0.677 | 113.748 → 46.475 |
+
+Both candidate observations are faster than both baseline observations in each
+cell. Graph construction falls by about 59–60%. High-degree hierarchy
+construction also falls from about 35.4 to 14.2 ms, while CMG cycle time remains
+near 16.7 ms. These disjoint setup scopes explain most of the roughly 89 ms
+native reduction on that case; graph children are not added again. Removing a
+serial cost has a larger proportional effect at four workers. The descriptive
+one-worker/four-worker native ratios rise from about 1.53 to 1.78 on high-degree
+weak, and 1.56 to 1.80 on weak. This is not four-core linear scaling, a cold
+single-RHS comparison, or an estimate of Linux performance against the public
+incumbent. In particular, do not multiply these ratios by the earlier SCC ratios.
+
+The runner reports all 16 fresh original oracle/model checks passed, with exact
+scientific outputs, column hashes, solver signatures, work and stage counters
+within each four-call cell. Cross-worker scientific/discrete and resource
+checks also pass. Independent Astra high raw review rehashes all 12,264 binding
+entries (3,478 distinct paths), reruns all 16 original oracle/model checks and
+verifies four exact four-call cells, eight within-arm repeat pairs, eight
+cross-artifact pairs, four family/arm worker comparisons and 32 action caps.
+No discrepancy was found. Ninety passive snapshots retain ordinary desktop
+activity, including 442.86 CPU-seconds of `suggestd` and 428.32 CPU-seconds of
+the runner's own checking. No observed compiler workload or unowned harness
+appears; this is not an idle-host claim. These results do not qualify a release
+or authorize public Auto activation.
+
+Fresh source-only integration on uninstrumented main plus the exact controller
+patch passes 1,928 Rust tests, 255 Python tests and seven portable checks, with
+Clippy, arithmetic, transaction, allocation and complexity checks. The focused
+builder tests pass all ten tests. The production complexity inventory grows by
+ten lines in this one file; no limit or exemption changes. The exact main
+inventory is unchanged across the suite. The private diagnostic source then
+combines that patch with the previously reviewed unseeded source and reversible
+observational clocks: one changed file out of the preceding 906-file snapshot.
+Its 32-command native build/ABI audit passes. This is composed validation, not
+a fresh full suite on the instrumented tree or installed-package admission.
+The earlier proposal to test the instrumented tree failed its prospective static
+complexity check before any suite ran; that rejected approach remains recorded.
+
+| Controller diagnostic binding | SHA-256 |
+| --- | --- |
+| Uninstrumented controller patch | `0b3c7fcd0de32cf3f58397aaddd6eccbb3c51a6ab93b4de3b54759ef25193cc8` |
+| Candidate plugin | `fec86539f113d662c3519f75869acbb8e009da873d8d46ca3f713ac0416ad3b2` |
+| Actual build and configuration review | `5c3bcf043f54338f8d5d0620bb5f33a5c01984b803fa51663b7b145b5ae55e3e` |
+| Fixed plan | `9f2cff088b7d1f1af3acbc2e0212f0d93878e2daf65c5406ef031bcbe517f46c` |
+| Actual plan review | `fec552b46472273a30f5675e95747a6cf2c3b98a07cdd23d2582ac72da079294` |
+| Sixteen-call result | `39fb3ed4417fe8d3eb08a1dbc645650fbcc1d90b229040e73c1bba11cea9c383` |
+| Independent raw review | `93c2edf18582a2369a245b597eb0bbff427925a23bddd40765c747a5ee4a020b` |
+
+The next candidate should combine this construction change with strict unseeded
+LSMR for general categorical FEs, retaining the existing two-FE constants and
+public incumbent. A genuine combined-source integration and fresh full-domain
+discovery are required; the separate diagnostic successes cannot substitute for
+them. Remaining setup cost and RHS reuse warrant measurement, not new
+worker-dependent thresholds fitted to these four cells. Old V1 discovery and
+Mac B outcomes remain closed NO-GO; no new B/C has started.
+
+The combined uninstrumented source is now integrated as an experimental path.
+Independent Astra review verifies both exact patches and their interaction.
+A fresh `./scripts/run_tests.sh --source-only` passes in 144.662 seconds:
+1,934 Rust tests in 86 groups (zero failures, 14 ignored), 255 Python tests and
+seven portable tests, with the mapped scientific, transaction, FFI, allocation,
+arithmetic, strict-C and complexity checks. All 908 tracked files remain exact
+across the suite. Two child-process summary prefixes are interleaved in the raw
+stdout; all 86 numeric summaries are retained and counted. The normal ratchet
+records +25 core and +6 plugin production lines, without changing any limit or
+exemption. Source-review SHA-256 is
+`dc4f5bc7a6bbca6f43daa7d48a6c6e75d3714fb7b36d7921d12e1b479e64755b`;
+command SHA-256 is
+`dd5279ea2d643bb1173a6d2e86ab5a0802c3e7da9a36d68b767df47400ae592a`.
+This source-only suite deliberately does not admit the installed package. The
+combined uninstrumented native build, fresh broad discovery and Mac B/C remain
+pending; no speed qualification or public default activation follows.
+
 A separate prospective Mac handoff helper passes independent source review and
 16 pure tests. After full discovery/B-context and untouched-C-declaration gates,
 it can reuse already certified fresh B references, checking exact paths and

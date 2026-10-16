@@ -29,6 +29,7 @@ pub enum CategoricalPrefix {
 enum PrefixPlan {
     Isolated(CategoricalPrefix),
     PortfolioV1,
+    PortfolioUnseeded,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,6 +50,7 @@ impl std::fmt::Display for RoutingPreset {
                 PrefixPlan::Isolated(CategoricalPrefix::Map4) => "routing_prefix_map4",
                 PrefixPlan::Isolated(CategoricalPrefix::CompactIt4) => "routing_prefix_it4",
                 PrefixPlan::PortfolioV1 => "routing_portfolio_v1",
+                PrefixPlan::PortfolioUnseeded => "routing_portfolio_unseeded",
             });
         }
         if self.overlap {
@@ -131,8 +133,24 @@ impl RoutingPreset {
         }
     }
 
+    /// Private causal control: V1 two-FE behavior, with strict unseeded LSMR
+    /// and no substitute geometry pilot for more categorical effects.
+    pub fn portfolio_unseeded() -> Self {
+        Self {
+            prefix: Some(PrefixPlan::PortfolioUnseeded),
+            ..Self::portfolio_v1()
+        }
+    }
+
+    pub(crate) fn portfolio(self) -> bool {
+        matches!(
+            self.prefix,
+            Some(PrefixPlan::PortfolioV1 | PrefixPlan::PortfolioUnseeded)
+        )
+    }
+
     pub(crate) fn strict_categorical_prefix(self) -> bool {
-        self.prefix == Some(PrefixPlan::PortfolioV1)
+        self.portfolio()
     }
 
     #[doc(hidden)]
@@ -151,6 +169,7 @@ impl RoutingPreset {
         self.prefix.map(|prefix| match prefix {
             PrefixPlan::Isolated(prefix) => prefix,
             PrefixPlan::PortfolioV1 => CategoricalPrefix::Map4,
+            PrefixPlan::PortfolioUnseeded => CategoricalPrefix::None,
         })
     }
 
@@ -357,6 +376,35 @@ mod tests {
         let old_pair = RoutingPreset::new(16, 1).unwrap();
         assert!(!old_pair.strict_categorical_prefix());
         assert_eq!(old_pair.general_pair_checkpoint(), 16);
+    }
+
+    #[test]
+    fn portfolio_unseeded_changes_only_the_general_prefix() {
+        let control = RoutingPreset::portfolio_unseeded();
+        let v1 = RoutingPreset::portfolio_v1();
+        assert_ne!(control, v1);
+        assert_eq!(control.to_string(), "routing_portfolio_unseeded");
+        assert_eq!(v1.to_string(), "routing_portfolio_v1");
+        assert!(control.portfolio() && v1.portfolio());
+        assert!(control.strict_categorical_prefix());
+        assert_eq!(control.categorical_prefix(), Some(CategoricalPrefix::None));
+        assert_eq!(v1.categorical_prefix(), Some(CategoricalPrefix::Map4));
+        assert_eq!(control.general_pair_checkpoint(), usize::MAX);
+        assert_eq!(control.checkpoint(), v1.checkpoint());
+        assert_eq!(control.samples(), v1.samples());
+        assert_eq!(control.kernel(), v1.kernel());
+        assert_eq!(control.overlaps(), v1.overlaps());
+        assert_eq!(control.breaks_builder(), v1.breaks_builder());
+        for isolated in [
+            CategoricalPrefix::None,
+            CategoricalPrefix::Map4,
+            CategoricalPrefix::CompactIt4,
+        ] {
+            let preset = RoutingPreset::prefix(isolated);
+            assert!(!preset.portfolio());
+            assert!(!preset.strict_categorical_prefix());
+            assert_eq!(preset.categorical_prefix(), Some(isolated));
+        }
     }
 
     #[test]

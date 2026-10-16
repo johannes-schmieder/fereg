@@ -252,6 +252,115 @@ impl PortfolioRectangle {
 }
 
 #[test]
+fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_widths() {
+    let mut codes = [Vec::new(), Vec::new(), Vec::new()];
+    let mut columns = [Vec::new(), Vec::new()];
+    let mut expected = [Vec::new(), Vec::new()];
+    for first in 0..2 {
+        for second in 0..2 {
+            for third in 0..2 {
+                for sign in [-1., 1.] {
+                    codes[0].push(first);
+                    codes[1].push(second);
+                    codes[2].push(third);
+                    for rhs in 0..2 {
+                        let noise = sign * (rhs + 1) as f64 / 8.;
+                        expected[rhs].push(noise);
+                        columns[rhs].push(
+                            noise + first as f64 + second as f64 / 2. - third as f64 / 4.
+                                + rhs as f64,
+                        );
+                    }
+                }
+            }
+        }
+    }
+    let indices: Vec<_> = codes
+        .iter()
+        .map(|code| LevelIndex::from_codes(code, 2).unwrap())
+        .collect();
+    let sources: Vec<_> = codes
+        .iter()
+        .zip(&indices)
+        .map(|(code, index)| ValidatedBorrowedInterceptSource::new(code, 2, index).unwrap())
+        .collect();
+    let design = BorrowedInterceptFeDesign::new(
+        columns[0].len(),
+        sources.iter().map(|s| s.effect()).collect(),
+    )
+    .unwrap();
+    let mut route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::portfolio_unseeded());
+    let mut ledger = None;
+    for rhs in [1, 2] {
+        let original = DenseMatrix::from_columns(&columns[..rhs]).unwrap();
+        let lsmr = LsmrConfig {
+            max_iterations: 8,
+            preconditioner: LsmrPreconditioner::Off,
+            ..LsmrConfig::default()
+        };
+        let estimate = estimate_fe_solver_memory(
+            design.nobs(),
+            rhs,
+            &[2, 2, 2],
+            rayon::current_num_threads(),
+            lsmr.local_size,
+        )
+        .unwrap();
+        let result = project_general_categorical(
+            &design,
+            BorrowedMapWeights::Unit,
+            original,
+            MapConfig {
+                tolerance: 1e-12,
+                max_iterations: 16,
+                ..config()
+            },
+            lsmr,
+            None,
+            true,
+            estimate,
+            false,
+            Some(4),
+            Some(&mut route),
+            false,
+        )
+        .unwrap();
+        assert_eq!(result.report().used_solver, FeSolverKind::Lsmr);
+        assert_eq!(result.report().pilot_iterations, 0);
+        assert!(!result.report().fallback_used);
+        assert!(result.report().iterations <= 8);
+        assert!(result.report().certificate.relative_infinity_norm <= 1e-14);
+        assert!(route.has_prepared());
+        assert_eq!(route.work().0, 0);
+        if let Some(previous) = ledger {
+            assert_eq!(route.work(), previous);
+        }
+        ledger = Some(route.work());
+        for (column, expected) in expected.iter().enumerate().take(rhs) {
+            for (row, &expected) in expected.iter().enumerate() {
+                assert!((result.residualized()[(row, column)] - expected).abs() < 1e-12);
+            }
+        }
+        let coefficients = result.coefficients.as_ref().unwrap();
+        assert_eq!(coefficients.level_counts, [2, 2, 2]);
+        for (column, original) in columns.iter().enumerate().take(rhs) {
+            for (row, &original) in original.iter().enumerate() {
+                let base = column * coefficients.coefficients_per_rhs;
+                let fitted: f64 = codes
+                    .iter()
+                    .enumerate()
+                    .map(|(effect, code)| {
+                        coefficients.values
+                            [base + coefficients.effect_offsets[effect] + code[row] as usize]
+                    })
+                    .sum();
+                assert!((original - result.residualized()[(row, column)] - fitted).abs() < 1e-12);
+            }
+        }
+    }
+}
+
+#[test]
 fn portfolio_choice_preserves_the_existing_owner_resource_layout() {
     #[allow(dead_code)]
     struct PriorLedger {
@@ -394,10 +503,15 @@ fn portfolio_direct_numerical_refusal_keeps_incumbent_bits_without_a_cmg_retry()
 fn portfolio_direct_selection_certifies_then_keeps_one_choice_across_low_chunks() {
     let fixture = PortfolioRectangle::new();
     let mut first_work = None;
-    for capacity in [2, 64] {
+    for (capacity, preset) in [
+        (2, RoutingPreset::portfolio_v1()),
+        (64, RoutingPreset::portfolio_v1()),
+        (2, RoutingPreset::portfolio_unseeded()),
+        (64, RoutingPreset::portfolio_unseeded()),
+    ] {
         let mut owner = ReusableCategoricalMapAbsorber::new(fixture.design(), capacity, 1).unwrap();
         owner.retain_coefficients = true;
-        owner.request_auto_routing(RoutingPreset::portfolio_v1(), None, 0);
+        owner.request_auto_routing(preset, None, 0);
         let first = owner
             .absorb_ols(
                 BorrowedMapWeights::Unit,
@@ -525,6 +639,7 @@ fn only_portfolio_checkpoint_enables_terminal_factor_preflight() {
     for (preset, bounded_terminal) in [
         (RoutingPreset::new(16, 1).unwrap(), false),
         (RoutingPreset::portfolio_v1(), true),
+        (RoutingPreset::portfolio_unseeded(), true),
     ] {
         let design = fixture.design();
         let mut owner = ReusableCategoricalMapAbsorber::new(fixture.design(), 2, 1).unwrap();
@@ -591,6 +706,8 @@ fn only_portfolio_checkpoint_enables_terminal_factor_preflight() {
     // Both presets cache the census. Only portfolio pays the terminal screen.
     assert_eq!(charges[1], charges[0] + 1024);
     assert_same_bits(&results[1], &results[0]);
+    assert_eq!(charges[2], charges[1]);
+    assert_same_bits(&results[2], &results[1]);
 }
 
 #[test]
@@ -1054,7 +1171,7 @@ fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths(
                     assert_eq!(route.request.sampling.samples, 1);
                     assert_eq!(route.request.sampling.seed, 0);
                     assert!(route.setup.attempted);
-                    if preset == RoutingPreset::portfolio_v1() {
+                    if preset.portfolio() {
                         assert_eq!(
                             route.setup.portfolio_choice(),
                             PortfolioChoice::IncumbentCmg
@@ -1127,6 +1244,7 @@ fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths(
         assert_eq!(actual.6 .0, expected.6 .0);
         let replay = run(RoutingPreset::portfolio_v1());
         assert_eq!(actual, replay);
+        assert_eq!(actual, run(RoutingPreset::portfolio_unseeded()));
         assert_same_bits(actual.0.as_slice(), replay.0.as_slice());
         assert_same_bits(&actual.1.values, &replay.1.values);
         assert_same_bits(actual.3.as_slice(), replay.3.as_slice());

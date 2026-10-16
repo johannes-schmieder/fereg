@@ -94,7 +94,7 @@ Use one native call. SPI stays on the main thread; workers own Rust-managed stat
 16 CMG repair; 17 deployment (Codex) & 18--21 Timing history and recovery (Codex)\\
 \bottomrule
 \end{tabularx}}
-{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Diagnosis: pages 28--30. Public Auto unchanged.\par}
+{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Diagnosis: pages 28--31. Public Auto unchanged.\par}
 \vfill
 {\fontsize{9}{11.8}\selectfont\color{Muted}\textbf{Authorship.} GPT Pro authored the original specification and diagrams. Codex authored later bindings and amendments. Exact-case Pro review informed the direct-cost correction (page 14); generic Pro review informed allocation (page 8). The explicit-CMG repair (page 16) is a Codex amendment, not GPT Pro code approval.\par
 Document rendering and layout validation do not constitute solver implementation or scientific/performance qualification.}
@@ -2180,6 +2180,51 @@ The high-degree census crosses 5.45 million admitted work/allocation boundaries.
 \textbf{Evidence boundary.} Eight fresh independent oracle/model checks, four exact repeat pairs, cross-worker agreement, original V1 fingerprints, resource limits and all 3,071 bindings pass independent Astra high review. The fixed eight calls finish in 83.932 seconds, with no retries or exclusions. Source-only integration is inherited; the new native build/ABI checks pass. A superseded auxiliary test-log reference remains discrepant and explicitly recorded; actual code, live tests and the executed plan are independently bound. Ordinary OS activity and instrument overhead remain. No speed qualification, public activation, new shortlist, B or C measurement follows.
 \end{binding}
 \anchor{Patch \code{24c3d17d}; plugin \code{91af5727}; plan \code{4be88d06}; result \code{9ced797c}; raw review \code{c33d99f3}. Eight observations and exact counters: compact controlled-results JSON.}
+\clearpage
+
+% PAGE 31 / exact synchronous-controller causal diagnostic.
+\smallbody
+\sect{CMG CONSTRUCTION / 16 OCTOBER}{Removing the dummy callback pays off}
+\tagline{Sixteen fixed paired calls; exact scientific and work replay; public Auto unchanged.}
+Optimized code still packed a 48-byte boundary and invoked an always-Continue external callback at each synchronous work gate. The candidate makes that controller optional. It preserves every interrupt check, validation, budget comparison, ordinal and work charge; controlled and overlap construction keep their callbacks. Candidate disassembly confirms the absent-controller branch skips packing and indirect dispatch.
+
+\sub{Ratio of complete native-time medians: candidate / baseline}
+\begin{center}
+\begin{tikzpicture}[x=8.5cm,y=.5cm,font=\sffamily\fontsize{8.8}{11}\selectfont]
+\draw[Rule,dashed] (1,.5) -- (1,-3.5);
+\foreach \y/\label/\value/\shade in {0/Weak: 1 worker/.845/Teal,-1/Weak: 4 workers/.734/Amber,-2/High-degree weak: 1 worker/.790/Teal,-3/High-degree weak: 4 workers/.677/Amber}{
+ \node[anchor=east] at (-.02,\y) {\label};
+ \fill[\shade] (0,\y-.22) rectangle (\value,\y+.22);
+ \node[anchor=west] at ({\value+.015},\y) {\value};
+}
+\node[anchor=east,text=Muted] at (1,-4.2) {Baseline = 1; lower is faster. Two observations per arm/cell.};
+\end{tikzpicture}
+\end{center}
+\vspace{-7pt}
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+ & \multicolumn{2}{c}{\textbf{Native solve, ms}} & \multicolumn{2}{c}{\textbf{Graph construction, ms}}\\
+\textbf{Revealed A case} & \textbf{Baseline} & \textbf{Candidate} & \textbf{Baseline} & \textbf{Candidate}\\
+\midrule
+Weak, 1 worker & 67.746 & 57.241 & 12.371 & 4.958\\
+Weak, 4 workers & 43.325 & 31.782 & 12.410 & 4.922\\
+High-degree weak, 1 worker & 422.487 & 333.654 & 113.514 & 46.359\\
+High-degree weak, 4 workers & 276.618 & 187.220 & 113.748 & 46.475\\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{-5pt}
+\sub{A serial cost explains the larger four-worker gain}
+Graph construction falls by about 59--60\%. High-degree hierarchy construction also falls from about 35.4 to 14.2 ms, while CMG cycle time stays near 16.7 ms. These disjoint setup scopes explain most of the roughly 89 ms complete-solve reduction. Do not add the graph's child scopes again. The descriptive one-worker/four-worker native ratio improves from 1.53 to 1.78 on high-degree weak, and from 1.56 to 1.80 on weak.
+
+\begin{note}\smallbody
+\textbf{Next candidate.} Combine this exact construction change with strict unseeded LSMR for general categorical FEs, keeping the current checkpoint, sampling and work budgets. Test the stable combined artifact across the full domain before adding core or RHS thresholds. More RHS still amortize setup, but these four cells do not establish a payback rule. Never multiply these Mac ratios by earlier Linux ratios.
+\end{note}
+\begin{binding}\tinybody
+\textbf{Evidence boundary.} Fixed baseline/candidate/candidate/baseline within each cell; 16 calls, 120 s each, 1,800 s inclusive, no warmups/retries/exclusions. The runner reports 446.566 s from outer entry, before observer teardown. Independent Astra high review verifies 16 original oracle/model checks, exact four-way science/work/counters, repeat pairs, cross-worker decisions, 32 action caps and every binding. Ordinary desktop activity remains, including approximately one-core \code{suggestd}; both observations per arm remain included. The controller source suite and instrumented native build/ABI pass. Diagnostic validation combines that suite, retained private evidence and reversible clocks. The subsequently combined experimental source passes a fresh 1,934-test Rust suite plus 255 Python and seven portable checks; its uninstrumented native build remains pending. No installed-package admission, release qualification, new SCC discovery or B/C evidence follows.
+\end{binding}
+\anchor{Controller patch \code{0b3c7fcd}; candidate plugin \code{fec86539}; plan \code{9f2cff08}; result \code{39fb3ed4}; raw review \code{93c2edf1}. Exact data, validation scope and preserved prior failures: compact controlled-results JSON and \code{docs/VALIDATION.md}.}
 \clearpage
 
 \end{compactleaf}

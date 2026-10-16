@@ -1121,7 +1121,7 @@ impl AutoSchurRoute {
         rhs: usize,
         graph: &TwoFePcgWorkspace,
     ) -> Result<Option<super::routing_direct::DirectLimits>> {
-        let portfolio = self.preset == super::RoutingPreset::portfolio_v1();
+        let portfolio = self.preset.portfolio();
         let preflight_work = if portfolio {
             self.setup.select_portfolio(PortfolioChoice::IncumbentCmg);
             if graph.cmg_schur.is_some() {
@@ -1233,7 +1233,7 @@ impl AutoSchurRoute {
                 self.request.budget,
                 self.setup.builder_allowance(),
                 !self.preset.overlaps(),
-                self.preset == super::RoutingPreset::portfolio_v1(),
+                self.preset.portfolio(),
             )?;
             self.setup.charge(built.work_used)?;
             built
@@ -2220,7 +2220,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         let Some(route) = self.auto_route.as_mut().filter(|route| {
             !route.setup.attempted
                 && (route.preset.kernel() == Some(super::routing::RoutingAblation::Direct)
-                    || (route.preset == super::RoutingPreset::portfolio_v1()
+                    || (route.preset.portfolio()
                         && route.setup.portfolio_choice() == PortfolioChoice::Undecided))
         }) else {
             return Ok(None);

@@ -88,7 +88,12 @@ fn exact_fit(first: &CertifiedPreparedOlsFit, second: &CertifiedPreparedOlsFit) 
     );
 }
 
-fn check_fit(design: &Design, oracle: &ExplicitOlsResult, fit: &CertifiedPreparedOlsFit) {
+fn check_fit(
+    design: &Design,
+    oracle: &ExplicitOlsResult,
+    fit: &CertifiedPreparedOlsFit,
+    prefix_limit: usize,
+) {
     assert_eq!(fit.finite_rank(), oracle.finite_regressor_rank);
     assert_eq!(fit.kept_generated_columns(), oracle.kept_regressors);
     assert_eq!(fit.dropped_generated_columns(), oracle.dropped_regressors);
@@ -124,9 +129,9 @@ fn check_fit(design: &Design, oracle: &ExplicitOlsResult, fit: &CertifiedPrepare
         );
         assert!(report.iterations <= 512);
         if design.effects.len() >= 3 {
-            assert!(report.pilot_iterations <= 4);
+            assert!(report.pilot_iterations <= prefix_limit);
             if report.used_solver == FeSolverKind::Lsmr {
-                assert_eq!(report.pilot_iterations, 4);
+                assert_eq!(report.pilot_iterations, prefix_limit);
                 assert!(report.iterations <= 128);
             }
         } else {
@@ -226,7 +231,12 @@ fn check_case(design: &Design, config: PreparedOlsFitConfig) -> CertifiedPrepare
         .unwrap()
     };
     let result = run();
-    check_fit(design, &oracle, result.fit());
+    let prefix_limit = if config.absorb.routing == Some(RoutingPreset::portfolio_unseeded()) {
+        0
+    } else {
+        4
+    };
+    check_fit(design, &oracle, result.fit(), prefix_limit);
     check_saved_effects(design, &oracle, &prepared, result.fit(), config);
     assert_eq!(result.dof().absorbed_rank, oracle.explicit_dummy_rank);
     assert_eq!(
@@ -251,6 +261,80 @@ fn check_case(design: &Design, config: PreparedOlsFitConfig) -> CertifiedPrepare
     assert_eq!(result.covariance(), again.covariance());
     assert_eq!(result.dof(), again.dof());
     result
+}
+
+fn same_discrete_reports(first: &SolveReport, second: &SolveReport) {
+    assert_eq!(first.requested_solver, second.requested_solver);
+    assert_eq!(first.used_solver, second.used_solver);
+    assert_eq!(first.stop_reason, second.stop_reason);
+    assert_eq!(first.fallback_used, second.fallback_used);
+    assert_eq!(
+        first.requested_preconditioner,
+        second.requested_preconditioner
+    );
+    assert_eq!(first.used_preconditioner, second.used_preconditioner);
+    assert_eq!(first.pilot_iterations, second.pilot_iterations);
+    assert_eq!(first.checkpoint_retries, second.checkpoint_retries);
+    assert_eq!(first.warnings, second.warnings);
+}
+
+#[test]
+fn portfolio_unseeded_matches_strict_qr_and_discrete_decisions_across_workers() {
+    use PreparedOlsExecutionMode::{Fast, Low};
+    for (effects, deficient, mode, preconditioner) in [
+        (3, false, Fast, LsmrPreconditioner::Off),
+        (5, true, Low, LsmrPreconditioner::Auto),
+        (16, false, Fast, LsmrPreconditioner::Auto),
+    ] {
+        let design = design(effects, 3, deficient, false);
+        let run = |workers| {
+            let mut options = config(mode, workers);
+            options.absorb.routing = Some(RoutingPreset::portfolio_unseeded());
+            options.absorb.lsmr.preconditioner = preconditioner;
+            check_case(&design, options)
+        };
+        let first = run(1);
+        let second = run(4);
+        assert_eq!(first.fit().finite_rank(), second.fit().finite_rank());
+        assert_eq!(
+            first.fit().kept_generated_columns(),
+            second.fit().kept_generated_columns()
+        );
+        assert_eq!(
+            first.fit().dropped_generated_columns(),
+            second.fit().dropped_generated_columns()
+        );
+        same_discrete_reports(
+            first.fit().absorption_report(),
+            second.fit().absorption_report(),
+        );
+        same_discrete_reports(
+            first.fit().residual_absorption_report(),
+            second.fit().residual_absorption_report(),
+        );
+        assert_eq!(first.dof(), second.dof());
+    }
+}
+
+#[test]
+fn portfolio_unseeded_preserves_v1_two_fe_and_unaffected_scopes_exactly() {
+    use PreparedOlsExecutionMode::{Fast, Low};
+    for (effects, slopes, mode, workers) in [
+        (0, false, Fast, 1),
+        (1, false, Low, 4),
+        (2, false, Fast, 1),
+        (2, false, Low, 4),
+        (3, true, Fast, 1),
+    ] {
+        let design = design(effects, 3, false, slopes);
+        let v1 = config(mode, workers);
+        let mut control = v1;
+        control.absorb.routing = Some(RoutingPreset::portfolio_unseeded());
+        let (expected, expected_rows) = support::native_fit(&design, v1, false).unwrap();
+        let (actual, actual_rows) = support::native_fit(&design, control, false).unwrap();
+        assert_eq!(expected_rows, actual_rows);
+        exact_fit(&expected, &actual);
+    }
 }
 
 #[test]
