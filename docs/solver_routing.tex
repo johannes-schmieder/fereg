@@ -94,7 +94,7 @@ Use one native call. SPI stays on the main thread; workers own Rust-managed stat
 16 CMG repair; 17 deployment (Codex) & 18--21 Timing history and recovery (Codex)\\
 \bottomrule
 \end{tabularx}}
-{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Cost diagnosis: page 28. Public Auto unchanged.\par}
+{\tinybody\color{Teal}\textbf{Private policy:} pages 23--26. SCC NO-GO: page 27. Diagnosis: pages 28--29. Public Auto unchanged.\par}
 \vfill
 {\fontsize{9}{11.8}\selectfont\color{Muted}\textbf{Authorship.} GPT Pro authored the original specification and diagrams. Codex authored later bindings and amendments. Exact-case Pro review informed the direct-cost correction (page 14); generic Pro review informed allocation (page 8). The explicit-CMG repair (page 16) is a Codex amendment, not GPT Pro code approval.\par
 Document rendering and layout validation do not constitute solver implementation or scientific/performance qualification.}
@@ -2074,12 +2074,58 @@ Sixteen FEs: complete native call & 851.2 & 374.9\\
 \[
  T_{\rm prefix}+T_{\rm seeded\ LSMR}<T_{\rm unseeded\ LSMR}.
 \]
-The present traces measure only the left side. A separately declared 24-call comparison covers the three revealed many-FE families at one/four workers, with unchanged certificates, independent witnesses and fixed limits. It is a private experiment, not a promoted routing policy.
+These attribution traces measured only the left side. The separately declared 24-call comparison on the next page covers the three revealed many-FE families at one/four workers, with unchanged certificates, independent witnesses and fixed limits. It is a private experiment, not a promoted routing policy.
 
 \begin{binding}\tinybody
 \textbf{Provenance and limits.} The first native call succeeded but the original reader rejected the timing harness's binary-column dialect. That failed protocol remains recorded. A reviewed reader-only continuation reused call 0 and executed exactly calls 1--47 under the original deadline; no native call was repeated. Independent Astra high review checks all 48 records, 113 bindings, 904 source files and 1,572 timing scopes. Successful arrays were hashed and checked before cleanup; only call 0's binary remains. This instrumentation comparison reuses existing scientific qualification and does not claim a fresh independent oracle recomputation, causal speed gain, Mac selection or a valid new shortlist. All prior NO-GO outcomes remain.
 \end{binding}
 \anchor{Observational patch \code{66809728}; result \code{eff950e5}; raw review \code{3ab40849}. Compact evidence and prospective scope: \code{docs/VALIDATION.md}, \code{bench/results/solver-routing-controlled-20261014.json}.}
+\clearpage
+
+% PAGE 29 / strict-unseeded causal diagnostic, not qualification.
+\smallbody
+\sect{CAUSAL DIAGNOSTIC / 16 OCTOBER}{The prefix did not pay off here}
+\tagline{Same experimental binary; strict certificates preserved; 24 fixed calls.}
+The private control removes V1's unconditional four-sweep MAP prefix and coefficient seed for categorical designs with at least three FEs. It retains the LSMR backend, original-design certificate, shared work limits, preconditioner choices and fallback contract. This is a change to the algorithm, not arithmetic-preserving instrumentation. Public Auto remains unchanged.
+
+\sub{Ratio of native-time medians: unseeded control / portfolio V1}
+\begin{center}
+\begin{tikzpicture}[x=8cm,y=.47cm,font=\sffamily\fontsize{8.6}{10.5}\selectfont]
+\draw[Rule,dashed] (1,.5) -- (1,-5.5);
+\foreach \y/\label/\value/\shade in {0/Small third: 1 worker/.852/Teal,-1/Small third: 4 workers/.873/Amber,-2/Near-confounded: 1 worker/.593/Teal,-3/Near-confounded: 4 workers/.678/Amber,-4/Sixteen FEs: 1 worker/.795/Teal,-5/Sixteen FEs: 4 workers/.779/Amber}{
+ \node[anchor=east] at (-.025,\y) {\label};
+ \fill[\shade] (0,\y-.22) rectangle (\value,\y+.22);
+ \node[anchor=west] at ({\value+.02},\y) {\value};
+}
+\node[anchor=east,text=Muted] at (1,-6.3) {V1 = 1; lower is faster. Two observations per arm/cell.};
+\end{tikzpicture}
+\end{center}
+\vspace{-7pt}
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+ & \multicolumn{2}{c}{\textbf{1 worker, ms}} & \multicolumn{2}{c}{\textbf{4 workers, ms}}\\
+\textbf{Revealed A case} & \textbf{V1} & \textbf{Unseeded} & \textbf{V1} & \textbf{Unseeded}\\
+\midrule
+Small third FE & 263.9 & 225.0 & 120.7 & 105.4\\
+Near-confounded third FE & 149.0 & 88.3 & 61.5 & 41.7\\
+Sixteen FEs & 849.4 & 675.5 & 360.3 & 280.6\\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{-5pt}
+\sub{More LSMR work can still mean less total work}
+All six cells improve descriptively, by about 13--41\%. Unseeded LSMR performs more session work on the small-third and sixteen-FE cases, but saves more prefix work. The sixteen-FE four-worker main action falls from 235 to 182 ms. Its final one-RHS action also falls from 49 to 23 ms: seven unseeded LSMR iterations with an already prepared backend beat four certified MAP sweeps. A small iteration count alone is not a cost comparison.
+
+\textbf{RHS and reuse matter.} The final solve does not pay the main action's backend construction again. This result therefore supports preserving preparation across actions; it does not prove that LSMR is cheapest for an isolated, cold one-RHS request. Descriptive ratios of one-worker to four-worker native medians for this control are about 2.1--2.4.
+
+\begin{note}\smallbody
+\textbf{Next policy question.} Test strict unseeded LSMR as the simpler general-FE candidate across the full declared domain. Keep the two-FE CMG construction/core/RHS payback problem separate. These three revealed cases cannot establish a universal winner, a new SCC shortlist, or Mac release performance.
+\end{note}
+\begin{binding}\tinybody
+\textbf{Evidence boundary.} Independent Astra high raw review reruns all 24 original oracle/model checks and verifies 12 exact repeat pairs, cross-worker discrete decisions and resource limits. There are two instrumented observations per arm/cell, fixed V1/control/control/V1 order, no warmups and approximately one-core \code{suggestd} activity throughout. All observations remain included. Logging overhead differs by route, and the first cell spans a reader-repair pause. The original reader failed after successful call 0 because its action summary follows the timed scope. A reviewed continuation revalidated that result and ran only calls 1--23, finishing at 22:12 UTC within the original 22:28 UTC deadline. Every numerical array and failure is retained; no solve was repeated. No qualification or public activation follows.
+\end{binding}
+\anchor{Private control patch \code{ed404864}; plugin \code{eed24ef2}; plan \code{6deb3796}; continuation \code{fcb88de2}; result \code{b5fd6c41}; independent raw review \code{2636d8e9}. Current evidence: \code{docs/VALIDATION.md} and the compact controlled-results JSON.}
 \clearpage
 
 \end{compactleaf}

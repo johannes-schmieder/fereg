@@ -1089,6 +1089,81 @@ the earlier failed experimental invocation remains
 These are distinct outcomes; the candidate's source integration, actual build
 and 24-call study are separate prerequisites.
 
+The private candidate's source-only integration subsequently passed: 1,933 Rust
+tests in 86 groups, 255 Python tests plus seven portable checks, 14 Rust ignores,
+and the unchanged mathematical, Clippy, allocation, FFI and complexity gates.
+Its first archived-source invocation failed a packaging unit test because the
+copy lacked its own Git inventory. Restoring local Git metadata at the exact
+base, without changing any of its 906 files, resolved that environment defect.
+The successful suite generated a mock executable; the outer inventory assertion
+recorded that extra file, which was preserved outside the compiled source tree.
+Every source hash remained exact and the suite was not repeated for that assertion.
+Installed-package admission remains explicitly not performed for this candidate.
+
+The reviewed observation transform then passed six checks. All 32 actual
+release-build, binary-audit, ABI/self-test and numeric-guard commands passed;
+independent Astra high review verified 2,447 input bindings and 108 products.
+The experimental arm64 plugin is
+`eed24ef22a77c2efac778d5d0063629f197d1c5b737eba516f173947cc714941`;
+integration/build review is
+`e3faba8968fccc5913a69834887977c8c7057afd883f3f1245e231dc2905cea2`.
+These checks admit only the declared diagnostic, not installation or promotion.
+
+The fixed study's first solve passed its original scientific and resource
+checks, but the reader rejected the post-action `routing_action` summary.
+The source emits that summary after the instrumented action scope closes.
+The failed runner, plan and result remain immutable. A separate reviewed reader
+repair binds each summary to the just-closed action, checks its final flag and
+requires exactly one summary, retaining all other positive coverage checks.
+It revalidated saved call 0 and executed only the original unstarted indices
+1--23, finishing at 22:12:07 UTC within the original absolute deadline
+22:28:19.158333 UTC, including its 30-second cleanup reserve. No completed solve
+was repeated; the budget, science and original failure are unchanged. This was
+an evidence-only repair, not continuation of an inconclusive candidate result.
+
+All 24 retained numerical outputs pass independent Astra high raw review,
+including fresh re-execution of their original oracle/model checks, 12 exact
+fixed-arm/worker repeat comparisons, cross-worker discrete decisions, resource
+caps and positive branch coverage. The review rederives every result row and
+checks all 3,272 original and 18 repair bindings. Raw-review SHA-256 is
+`2636d8e93f9928468e6faea6e36647bb95bd81c2f85b22f49430ad69d909acf8`;
+completed-result SHA-256 is
+`b5fd6c41204c3692f1723555b3d96ec00b423afb4d98326f054e57f35ecf4510`.
+The [private control patch](../bench/results/portfolio-unseeded-control-20261016.patch)
+is retained for reproducibility; it has not been applied to the public runtime.
+
+Median complete native times below use two observations per arm and cell, in
+the fixed V1/control/control/V1 order. They are descriptive diagnostic results,
+not controlled Mac qualification or a new discovery shortlist.
+
+| Revealed A family | Workers | V1, ms | Strict unseeded, ms | Control/V1 |
+| --- | ---: | ---: | ---: | ---: |
+| Small third FE | 1 | 263.936 | 224.975 | 0.852 |
+| Small third FE | 4 | 120.719 | 105.399 | 0.873 |
+| Near-confounded third FE | 1 | 148.963 | 88.277 | 0.593 |
+| Near-confounded third FE | 4 | 61.472 | 41.682 | 0.678 |
+| Sixteen FEs | 1 | 849.427 | 675.513 | 0.795 |
+| Sixteen FEs | 4 | 360.286 | 280.554 | 0.779 |
+
+Removing the prefix increases LSMR session work in small-third and sixteen-FE
+cases, but saves more prefix work in these observations. Both main and final
+actions improve in all six cells. For sixteen FEs, the final action uses seven
+unseeded LSMR iterations instead of four certified MAP sweeps, yet falls from
+130.95 to 50.08 ms at one worker and 49.28 to 22.70 ms at four. That final action
+reuses the main action's prepared backend; it does not establish the best route
+for an isolated cold one-RHS request. The control's descriptive ratios of
+one-worker to four-worker native medians range from 2.12 to 2.41.
+
+The diagnostic retains all observations, with no warmups or timing exclusions.
+Five-second host snapshots show sustained approximately one-core `suggestd`
+activity in both execution windows and no observed competing builds or native
+jobs; they cannot exclude short unsampled work. The first cell spans the reader
+repair pause. Instrumentation overhead differs with the scopes each route
+executes. These limits prevent a release speed claim. The result supports
+strict unseeded LSMR as the next general-FE candidate to test across the full
+declared domain. It does not resolve the separate two-FE CMG construction cost,
+prove a universal winner, or reopen the closed V1 discovery/Mac outcomes.
+
 A separate prospective Mac handoff helper passes independent source review and
 16 pure tests. After full discovery/B-context and untouched-C-declaration gates,
 it can reuse already certified fresh B references, checking exact paths and
