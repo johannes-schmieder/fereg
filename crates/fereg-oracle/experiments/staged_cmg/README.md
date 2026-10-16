@@ -95,6 +95,16 @@ Acceptance is unconfirmed. Do not submit a duplicate until scheduler/accounting
 checks resolve that exact job name. The remote campaign identifier is
 `20261016-staged-cmg-prototype-73d11a8a`.
 
+A follow-up at 2026-10-16 01:37 UTC reached the scheduler directly with
+`qping -info sccsvc.bu.edu 536 qmaster 1`. The daemon returned status `2` and
+`ERROR`; its worker/event/timer activity ages exceeded 6400 seconds. `qstat`
+and `qconf -sp omp28` still timed out, and the shared accounting file's last
+modification was 2026-10-15 19:49 Eastern. `qacct -j fereg_scmg_1016_smoke`
+still reported no matching job and no smoke output existed. This establishes
+a scheduler-side fault, but stale accounting cannot resolve the earlier
+submission's acceptance. No duplicate was submitted. The executable and
+frozen protocol remain unchanged; execution requires scheduler recovery.
+
 No compute-node numerical run, `qacct` acceptance, isolation validation or SCC
 timing evidence exists yet. Once the smoke is accounted successful with its
 application marker, discovery requests `-P welfgr -pe omp28 28 -l
