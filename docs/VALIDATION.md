@@ -1449,12 +1449,68 @@ submits collectors `8153231`–`8153236` in round/shard order and dependent
 finalizer `8153237`. Separate raw review verifies all seven job identities,
 resources, arguments and dependencies, 31 claim/config records and nine
 dispatch bindings. One `qrls` releases only the six collectors after fresh
-user-hold checks. At 02:50:47 UTC they are queued without user holds; the
-finalizer remains dependent. Full terminal accounting, fresh allocation
-science, strict isolation and reviewed aggregate results are still required.
-There are no new timing results or accepted shortlist yet. These records are retained under
+user-hold checks. All six subsequently ran on distinct complete 28-core hosts
+and finished failed=0/exit=0 within their declared budgets: 3,901 / 3,958 /
+5,927 / 2,505 / 3,915 / 2,472 seconds in round/shard order. Finalizer `8153237`
+finished failed=0/exit=0 at 04:40:08 UTC on 17 October, after all collectors,
+in 459 seconds. The campaign monitor was deleted after complete terminal
+accounting. No measurement was replaced or rerun.
+
+The complete aggregate returns **baseline only**. Its candidate has one baseline
+violation: high-degree weak at four workers has a paired median ratio of
+1.1510, above the 1.05 allowance. Within-host median paired ratios are 1.1613,
+1.1510 and 1.1280, so the regression appears on all three hosts. The worst
+internal comparison is weak at one worker against sampled CMG-k2: ratio
+1.4262 versus the 1.20 allowance. Normalized excess 2.1311 is
+`(1.4262 - 1) / 0.20`, not a 2.131-fold slowdown. Sixteen internal-comparator
+comparisons fail; these are not sixteen distinct failing cells.
+
+There are useful descriptive gains. Across all 42 cells the geometric mean
+candidate/incumbent ratio is 0.9388. Weak two-way ratios are 0.6452 / 0.8824 at
+one/four workers; dynamic weights are 0.6332 / 0.8847. Small-third and four-to-
+sixteen-FE cases improve by about 9--17%. Wide RHS remains near parity at
+1.0072 / 1.0076. Those cells finish before the upgrade checkpoint and do not
+identify CMG amortization. All observations remain included. The lead's
+independent calculation reproduces every aggregate ranking field from all
+3,078 measured observations. Three hosts per cell are the independent units;
+the frozen discovery score's nine paired slots are not nine independent
+replicates. These point estimates neither prove Mac performance nor admit B/C.
+Independent Astra high raw review verifies all seven terminal accounting records,
+126 checked scientific proofs, 1,026 passing exact science pairs and all 3,078
+measured observations. All 54 original optional first-call failures are retained
+(40 timeouts, 14 iteration-exhausted), with the same 18 unavailable arm/cell
+combinations each round. Actual dispatches total 7,236: 7,182 successful and 54
+failed; carried timing-side unavailability is not a second dispatch. All 4,502
+process snapshots, 384 scheduler envelopes (768 commands), reservation records
+and terminal observation markers pass isolation replay, with no scheduler retry
+or detected competing compute. Both independent scoring rederivations reproduce
+all ranking fields. The review checks the retained proofs, fingerprints and
+resource records; successful output arrays and transient logs were deleted by
+the original producer, so it does not claim a fresh oracle recomputation from
+those arrays. This completed, reviewed discovery establishes a performance
+NO-GO for the frozen candidate, not a new passing shortlist.
+
+Source review confirms the earlier synchronous no-controller optimization is
+already active in the candidate. The handoff preserves the first 16 iterations'
+solution progress and restarts conjugate recurrence state. The remaining bounded
+builder stages edges, uses serial controlled sorting and performs genuine
+fine-grained interrupt, budget, ordinal and work checks. Explicit CMG uses a
+different executor-based construction path. On high-degree weak, the candidate
+charges identical setup work at one/four workers and its first setup remains
+about 160 ms in the first host's traced prerequisites; final hierarchy reuse
+charges zero setup work. These observations do not isolate callback cost.
+The reviewed next engineering direction is static specialization of the
+bounded upstream meter dispatch, preserving arithmetic, every boundary and
+failure semantics. Its benefit is unmeasured: a finite causal diagnostic must
+precede another broad campaign. No family-specific or worker-count threshold
+is inferred from this screen.
+
+The original retained campaign is
 `/projectnb/welfgr/fereg/runs/portfolio-unseeded-20261016/`; the compact evidence
-records their hashes. No solver measurement or Rust rebuild occurred.
+records complete job, plan, aggregate and review hashes. Original setup failures
+remain retained. No runtime source changed during terminal review. Public Auto
+remains incumbent, all old campaigns/B remain closed, and this baseline-only
+result blocks fresh Mac B12/C24.
 
 Prospective Mac qualification tools now recognize the six-allocation schema and
 the exact unseeded candidate. They rederive the complete discovery context,

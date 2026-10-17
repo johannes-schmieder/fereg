@@ -27,7 +27,7 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\sffamily\fontsize{8.5}{10}\selectfont\color{Muted}FEREG / ENGINEERING SPECIFICATION}
-\fancyhead[R]{\sffamily\fontsize{8.5}{10}\selectfont\color{Muted}REVISED 16 OCTOBER 2026}
+\fancyhead[R]{\sffamily\fontsize{8.5}{10}\selectfont\color{Muted}REVISED 17 OCTOBER 2026}
 \fancyfoot[L]{\sffamily\fontsize{8}{10}\selectfont\color{Muted}Mapped native checks passed / performance adoption blocked}
 \fancyfoot[R]{\sffamily\fontsize{8.5}{10}\selectfont\color{Ink}\thepage\ / \pageref*{LastPage}}
 \renewcommand{\headrulewidth}{0.3pt}
@@ -66,7 +66,7 @@
 \vspace{6pt}
 {\sffamily\fontsize{13}{17}\selectfont\color{Muted}Integrated experimental contract;\par mapped native checks passed; performance adoption blocked\par}
 \vspace{3pt}
-{\sffamily\fontsize{10.5}{14}\selectfont 13 October 2026 / amended through 16 October 2026\par}
+{\sffamily\fontsize{10.5}{14}\selectfont 13 October 2026 / amended through 17 October 2026\par}
 \vspace{6pt}
 \begin{note}
 \textbf{Design in one sentence.} Keep \code{auto} as a small deterministic router: exact structural shortcuts, inexpensive incumbent iterations, and at most one bounded optional upgrade, followed by an independent original-problem certificate.
@@ -2229,11 +2229,11 @@ Graph construction falls by about 59--60\%. High-degree hierarchy construction a
 
 \end{compactleaf}
 
-% PAGE 32 / prospective combined-candidate discovery.
+% PAGE 32 / completed combined-candidate discovery design.
 \begin{compactleaf}
 \smallbody
-\sect{31 / NEXT DISCOVERY}{One combined candidate, six isolated nodes}
-\tagline{Prospective experiment on revealed A cases; no new shortlist or qualification yet.}
+\sect{31 / DISCOVERY DESIGN}{One combined candidate, six isolated nodes}
+\tagline{Completed discovery on revealed A cases; candidate fails its performance screen.}
 \sub{What changes, and what the experiment can establish}
 The candidate combines the exact synchronous CMG construction optimization with strict unseeded LSMR for general categorical FEs. Checkpoint, sampling and work budgets stay fixed. It faces the qualified baseline and the complete existing mathematical comparator frontier on all 42 A cells: 21 families at one and four workers. These are known discovery cases; their earlier measurements and optional availability are not reused.
 
@@ -2259,9 +2259,66 @@ Every available arm receives two fresh scientific prerequisite calls, one traced
 \textbf{Scaling interpretation.} Each cell has three independent host repetitions and nine measured slots, not nine independent replicates. One- and four-worker comparisons stay paired within a host. Different families may now use different hosts within a logical round; do not interpret that round as one common host for uncertainty. Six nodes may shorten execution, but queue delays and family-cost imbalance remain.
 \end{note}
 \sub{Release boundary}
-Frozen source \code{020eab1e} passes its source-only suite. Both private Mac builds pass their audits and host ABI checks. Linux builds, harness recovery, admission, input binding and plan sealing now pass; the earlier harness and assembly failures remain recorded. Independent Astra review verifies the actual plans, all 447 frozen bindings and the seven scheduled job identities, resources and dependencies. Collectors \code{8153231}--\code{8153236} were released once after fresh hold checks; finalizer \code{8153237} depends on all six. At 02:50 UTC on 17 October the collectors are queued. No new timing result or shortlist is established. Public Auto stays unchanged. Only a valid independently reviewed shortlist admits fresh Mac B12 selection, reviewed activation and equivalence, then untouched C24 confirmation. Earlier V1 discovery and Mac B remain closed NO-GO.
+Frozen source \code{020eab1e} passes its source-only suite. Both private Mac builds pass their audits and host ABI checks. Linux builds, harness recovery, admission, input binding and plan sealing now pass; the earlier harness and assembly failures remain recorded. Independent Astra review verifies the actual plans, all 447 frozen bindings and the seven scheduled job identities, resources and dependencies. Collectors \code{8153231}--\code{8153236} completed once on six distinct hosts, with failed=0/exit=0 and all allocation limits respected. Finalizer \code{8153237} completed at 04:40 UTC on 17 October in 459 seconds. The monitor was deleted. Its complete aggregate returns baseline only; the following page gives the measured rejection. Independent Astra high raw review verifies science, exact repeats, strict isolation and the complete aggregate. Public Auto stays unchanged; this outcome admits neither fresh Mac B12 nor C24. Earlier V1 discovery and Mac B remain closed NO-GO.
 
 \textbf{RHS coverage limit.} The panel includes a wide-RHS case but no matched cold-single-RHS, reused-single-RHS and wide-batch comparison on one topology. It cannot yet establish a general RHS payback rule. The earlier fast final one-RHS action reused an existing backend.
+\clearpage
+\end{compactleaf}
+
+
+% PAGE 33 / terminal combined-candidate performance.
+\begin{compactleaf}
+\smallbody
+\sect{32 / DISCOVERY RESULTS}{Real gains, but the upgrade still costs too much}
+\tagline{Linux discovery only; three independent hosts per cell; public Auto unchanged.}
+The complete fixed panel returns \textbf{baseline only}. The candidate's geometric mean ratio to the incumbent is 0.939 across 42 cells, but average gains cannot offset its high-degree weak four-worker regression. It also exceeds the declared comparator allowance in several cells. These are descriptive discovery point estimates, not confidence bounds or Mac release claims.
+
+\sub{Candidate / incumbent: lower is faster}
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Family} & \textbf{1 worker} & \textbf{4 workers}\\
+\midrule
+Weak two-way & 0.645 & 0.882\\
+High-degree weak & 0.788 & \textbf{1.151}\\
+Dynamic weights & 0.633 & 0.885\\
+Small third FE & 0.882 & 0.829\\
+Four FEs & 0.876 & 0.837\\
+Eight FEs & 0.881 & 0.859\\
+Sixteen FEs & 0.906 & 0.871\\
+Wide RHS & 1.007 & 1.008\\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{-5pt}
+The frozen screen uses medians of nine paired ratios, with three slots on each of three hosts. Slots are not independent replicates. All 42 cells remain included. On high-degree weak with four workers, the three within-host median ratios are 1.161, 1.151 and 1.128; the regression appears on every host.
+
+\sub{Scaling exposes the serial construction cost}
+\begin{center}
+\begin{tikzpicture}[x=4.1cm,y=.53cm,font=\sffamily\fontsize{8.8}{10.5}\selectfont]
+\draw[Rule,dashed] (1,.6) -- (1,-2.9);
+\foreach \y/\host/\old/\new in {0/Host 1/2.336/1.498,-1/Host 2/1.867/1.331,-2/Host 3/2.238/1.562}{
+ \node[anchor=east] at (-.02,\y) {\host};
+ \fill[Muted] (0,\y+.03) rectangle (\old,\y+.22);
+ \fill[Teal] (0,\y-.22) rectangle (\new,\y-.03);
+ \node[anchor=west,text=Muted] at ({\old+.015},\y+.12) {\old};
+ \node[anchor=west,text=Teal] at ({\new+.015},\y-.12) {\new};
+}
+\node[anchor=west,text=Muted] at (0,-3.1) {Incumbent};
+\node[anchor=west,text=Teal] at (.78,-3.1) {Candidate};
+\node[anchor=west] at (0,-3.7) {High-degree weak: 1-worker time / 4-worker time; higher is better.};
+\end{tikzpicture}
+\end{center}
+\vspace{-5pt}
+\textbf{Frontier gap.} Weak one-worker is 1.426 times explicit sampled CMG-k2, beyond its 1.20 allowance. The reported normalized excess 2.131 is $(1.426-1)/0.20$, not a 2.131-fold slowdown. Four-worker small-third and four-FE cases are 1.211 and 1.233 times explicit MAP. On high-degree weak at four workers, explicit CMG-k1 is 0.841 times the incumbent, so useful solver headroom remains despite the automatic route's regression.
+
+\begin{note}\smallbody
+\textbf{Next engineering target.} The synchronous no-controller optimization already applies, and the CMG handoff keeps the first 16 iterations' solution progress. Bounded construction still uses serial controlled sorting, staged edges and fine-grained work accounting. Specializing meter dispatch is a source-review recommendation; preserve every boundary, budget, interrupt, arithmetic result and fallback. A fixed causal diagnostic must establish its value before any new broad campaign. No checkpoint or family threshold is selected from these results.
+\end{note}
+\begin{binding}\tinybody
+\textbf{Evidence boundary.} Independent Astra high review verifies all seven accounting records, 126 proofs, 1,026 exact science pairs, 54 preserved optional failures and strict isolation. Both independent scoring rederivations reproduce every ranking field from all 3,078 measured observations. Successful arrays were deleted by the frozen producer; review replays retained proofs and fingerprints, not fresh oracle evaluations of those arrays. There is no measurement retry or partial aggregate. More RHS may amortize construction, but the wide-RHS cell finishes before the upgrade checkpoint and supplies no general payback evidence. B/C remain unopened for this candidate.
+\end{binding}
+\anchor{Frozen P \code{020eab1e}; plan \code{99a7cd4d}; terminal aggregate \code{f8534c5e}; completion \code{33d9033a}; independent raw review \code{9b1434bc}; lead scoring replay \code{d1134530}. Full hashes and retained campaign location: compact controlled-results JSON and \code{docs/VALIDATION.md}.}
 \clearpage
 \end{compactleaf}
 

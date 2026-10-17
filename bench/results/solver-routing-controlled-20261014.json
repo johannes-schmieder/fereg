@@ -22215,6 +22215,913 @@
       "collectors_state": "qw",
       "finalizer_state": "hqw dependent on all six",
       "scope": "No discovery result, shortlist, Mac B/C admission or public activation is established. No intermediate measurements may be inspected while any job is active. No measurement retry, replacement or partial aggregate is authorized."
+    },
+    "terminal_discovery": {
+      "status": "closed_valid_discovery_candidate_NO_GO_baseline_only",
+      "retained_campaign": "/projectnb/welfgr/fereg/runs/portfolio-unseeded-20261016",
+      "source_commit": "020eab1e9559fd68f619a4ec73fb04fcb6d1136f",
+      "monitor_deleted_after_all_seven_terminal": true,
+      "jobs": [
+        {
+          "job_id": "8153231",
+          "hostname": "scc-zj4.scc.bu.edu",
+          "jobname": "fereg_pu_A1_S1",
+          "failed": 0,
+          "exit_status": 0,
+          "slots": 28,
+          "granted_pe": "omp28",
+          "wallclock_s": 3901,
+          "cap_s": 7280,
+          "start_utc": "2026-10-17T02:51:34Z",
+          "end_utc": "2026-10-17T03:56:35Z",
+          "accounting_sha256": "99722aab3aaeadea9bd84eadbfd346f59707f9848e56567b4f55d33703579a0b"
+        },
+        {
+          "job_id": "8153232",
+          "hostname": "scc-wo4.scc.bu.edu",
+          "jobname": "fereg_pu_A1_S2",
+          "failed": 0,
+          "exit_status": 0,
+          "slots": 28,
+          "granted_pe": "omp28",
+          "wallclock_s": 3958,
+          "cap_s": 7120,
+          "start_utc": "2026-10-17T02:51:34Z",
+          "end_utc": "2026-10-17T03:57:32Z",
+          "accounting_sha256": "cea0eb324cb5ea7513177ceb915c9bffc0d5e982613c0293501953cf3e322976"
+        },
+        {
+          "job_id": "8153233",
+          "hostname": "scc-xc1.scc.bu.edu",
+          "jobname": "fereg_pu_A2_S1",
+          "failed": 0,
+          "exit_status": 0,
+          "slots": 28,
+          "granted_pe": "omp28",
+          "wallclock_s": 5927,
+          "cap_s": 7280,
+          "start_utc": "2026-10-17T02:51:34Z",
+          "end_utc": "2026-10-17T04:30:21Z",
+          "accounting_sha256": "6ea8ba7aeb21f8dfe13da7d690303fdc651a079d54f86be8aa0e221916c74ce2"
+        },
+        {
+          "job_id": "8153234",
+          "hostname": "scc-xc4.scc.bu.edu",
+          "jobname": "fereg_pu_A2_S2",
+          "failed": 0,
+          "exit_status": 0,
+          "slots": 28,
+          "granted_pe": "omp28",
+          "wallclock_s": 2505,
+          "cap_s": 7120,
+          "start_utc": "2026-10-17T02:51:34Z",
+          "end_utc": "2026-10-17T03:33:19Z",
+          "accounting_sha256": "92afea317706226f5361f6db6e3a89f041541d2db45dccd2c8676c7c11dac31d"
+        },
+        {
+          "job_id": "8153235",
+          "hostname": "scc-xf2.scc.bu.edu",
+          "jobname": "fereg_pu_A3_S1",
+          "failed": 0,
+          "exit_status": 0,
+          "slots": 28,
+          "granted_pe": "omp28",
+          "wallclock_s": 3915,
+          "cap_s": 7280,
+          "start_utc": "2026-10-17T02:51:34Z",
+          "end_utc": "2026-10-17T03:56:49Z",
+          "accounting_sha256": "422a85388717c0c5e2d88cd62b6d12a323db4a089fca77fea4cdc89f4e82c932"
+        },
+        {
+          "job_id": "8153236",
+          "hostname": "scc-xc3.scc.bu.edu",
+          "jobname": "fereg_pu_A3_S2",
+          "failed": 0,
+          "exit_status": 0,
+          "slots": 28,
+          "granted_pe": "omp28",
+          "wallclock_s": 2472,
+          "cap_s": 7120,
+          "start_utc": "2026-10-17T02:51:34Z",
+          "end_utc": "2026-10-17T03:32:46Z",
+          "accounting_sha256": "61c06475c1ecc753b1422bdae0adfca77fa4b769c03e3e19699ce5387f234413"
+        },
+        {
+          "job_id": "8153237",
+          "hostname": "scc-gd4.scc.bu.edu",
+          "jobname": "fereg_pu_final",
+          "failed": 0,
+          "exit_status": 0,
+          "slots": 1,
+          "granted_pe": "NONE",
+          "wallclock_s": 459,
+          "cap_s": 7200,
+          "start_utc": "2026-10-17T04:32:29Z",
+          "end_utc": "2026-10-17T04:40:08Z",
+          "accounting_sha256": "32d449ff899a9381e16ef534d7f993c4448f535cbe139b61faa2ad96a4c1370e"
+        }
+      ],
+      "completion_sha256": "33d9033a60c945b89451fdcc7c5927898ab6862abd56e18a3b03f35b44a2aa65",
+      "aggregate_file_sha256": "f8534c5e0ba6e116cd4ecb6c399a6fd894118da40a90be8bc0a595b920c601c6",
+      "aggregate_canonical_sha256": "5a6c8b407e765e1106d814f66aff2a10f79a834a0ff1d0c2dff4a68605dc243a",
+      "collection_canonical_sha256": "cf4be15b2591794dc9c51ebb1b28431272bfa3b6c20975f380c6c3472567f84a",
+      "isolation_canonical_sha256": "c41985395984a7dd12ee87a095c9a65796966ba5bd1bc01eb23fa734c2d447fd",
+      "report_sha256": {
+        "round-1-shard-1-report.json": "490859f1bfc8c87d90bf921d0a31b6da9a707f62475ddb348435e7279630836d",
+        "round-1-shard-2-report.json": "5f4f8b9f5afbf00c6516ae1e3ee1d88aa2c1675db4d08a01727d9fa3a6a6bdd9",
+        "round-2-shard-1-report.json": "afd0bb970cf1014e3dbc51634e9a2787c0a02320cd3bfd30e96a4c271f99855d",
+        "round-2-shard-2-report.json": "2f738f1e8cae0613e33fe753d2bb103984079384b76940d4e33682eb30a227f0",
+        "round-3-shard-1-report.json": "af81dfa20fcf6eb22fb0057e7307d79d579a65905b7d29eb48427236360be4be",
+        "round-3-shard-2-report.json": "a8117f9c31ac218d04a50d7d95628d836f783fad519d4061c05b9a9b2178ccca"
+      },
+      "no_native_calls_after_terminal": true,
+      "measurement_replacements": 0,
+      "candidate": {
+        "arm": "portfolio-unseeded",
+        "baseline_violations": 1,
+        "worst_internal_normalized": 2.1310849167005124,
+        "geomean_baseline_ratio": 0.938844967302225
+      },
+      "shortlist": [
+        "baseline"
+      ],
+      "candidate_survived_screen": false,
+      "promotion": false,
+      "Mac_B_admitted": false,
+      "Mac_C_admitted": false,
+      "scientific_review": "passed_retained_proofs_and_fingerprints_with_original_producer_attestation_limits",
+      "lead_rederivation": {
+        "status": "all_ranking_fields_reproduced_exactly",
+        "sha256": "d1134530af5710457229209f593020987abd85bbf929a719af6d59bbea66d58b",
+        "method": "Independent stdlib calculation from all six original timing records; 3078 observations, 318 comparisons per arm, no production scoring imports."
+      },
+      "candidate_baseline_comparisons": [
+        {
+          "cell": "no-fe-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.005165627181839,
+          "upper_allowance": 1.9314143713511842,
+          "pass": true
+        },
+        {
+          "cell": "no-fe-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.0207004289899642,
+          "upper_allowance": 1.5968641948928717,
+          "pass": true
+        },
+        {
+          "cell": "one-fe-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.0051112012446308,
+          "upper_allowance": 1.9478098011115912,
+          "pass": true
+        },
+        {
+          "cell": "one-fe-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.0041863466418335,
+          "upper_allowance": 1.747503152594546,
+          "pass": true
+        },
+        {
+          "cell": "slopes-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.0326543527013252,
+          "upper_allowance": 1.745249777915566,
+          "pass": true
+        },
+        {
+          "cell": "slopes-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.0120569204712486,
+          "upper_allowance": 1.6589490553306343,
+          "pass": true
+        },
+        {
+          "cell": "low-saved-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.999559369927424,
+          "upper_allowance": 1.1909520794299546,
+          "pass": true
+        },
+        {
+          "cell": "low-saved-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.0042262634270058,
+          "upper_allowance": 1.1779029898554378,
+          "pass": true
+        },
+        {
+          "cell": "dense-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.0036958796103115,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "dense-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9929159214979631,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "small-retained-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9951332143152956,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "small-retained-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9950373510654799,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "small-third-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.881637836460489,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "small-third-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.8288704223042274,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "four-fe-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.8755088585372028,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "four-fe-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.8371378420738179,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "eight-fe-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.881248837818938,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "eight-fe-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.8591017575914746,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "weighted-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9953685644398139,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "weighted-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.0029403065004172,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "weak-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.6451902584007894,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "weak-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.882410459561212,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "repeated-cells-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9972768037033521,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "repeated-cells-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9707266766559821,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "wide-rhs-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.0071734575618694,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "wide-rhs-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.007557615851731,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "high-degree-mixed-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9897347483309273,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "high-degree-mixed-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9962192777229637,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "high-degree-weak-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.7877883942105638,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.1510316548447215,
+          "upper_allowance": 1.05,
+          "pass": false
+        },
+        {
+          "cell": "high-degree-stress-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9966060359166609,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "high-degree-stress-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9991765813367248,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "sixteen-fe-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9061784533323596,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "sixteen-fe-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.8714778823181019,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "disconnected-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9923031978406988,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "disconnected-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9511145833313088,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "near-confounded-third-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9042143506116059,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "near-confounded-third-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.8590944893682793,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "weight-dynamic-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.6331831514129157,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "weight-dynamic-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.8846642056946026,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "inactive-columns-t1",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.0238789171785039,
+          "upper_allowance": 1.05,
+          "pass": true
+        },
+        {
+          "cell": "inactive-columns-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 0.9842583970269343,
+          "upper_allowance": 1.05,
+          "pass": true
+        }
+      ],
+      "failed_comparisons": [
+        {
+          "cell": "small-third-t4",
+          "reference": "map",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.2113256790063038,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "four-fe-t4",
+          "reference": "map",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.2331821235568188,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "weak-t1",
+          "reference": "cmgschur-k0",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.3512671141005712,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "weak-t1",
+          "reference": "cmgschur-k1",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.4077264138523558,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "weak-t1",
+          "reference": "cmgschur-k2",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.4262169833401024,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "weak-t4",
+          "reference": "cmgschur-k1",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.2896904144791,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "weak-t4",
+          "reference": "cmgschur-k2",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.290496134861176,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "high-degree-weak-t1",
+          "reference": "cmgschur-k1",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.3626318090163552,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "high-degree-weak-t1",
+          "reference": "cmgschur-k2",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.3466001162145886,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "reference": "baseline",
+          "protection": true,
+          "status": "compared",
+          "median_ratio": 1.1510316548447215,
+          "upper_allowance": 1.05,
+          "pass": false
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "reference": "cmgschur-k1",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.3538774477000977,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "reference": "cmgschur-k2",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.3383354172716677,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "weight-dynamic-t1",
+          "reference": "cmgschur-k0",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.261852366430892,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "weight-dynamic-t1",
+          "reference": "cmgschur-k1",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.3496044226083734,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "weight-dynamic-t1",
+          "reference": "cmgschur-k2",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.3657219885724212,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "weight-dynamic-t4",
+          "reference": "cmgschur-k1",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.2638876374322918,
+          "upper_allowance": 1.2,
+          "pass": false
+        },
+        {
+          "cell": "weight-dynamic-t4",
+          "reference": "cmgschur-k2",
+          "protection": false,
+          "status": "compared",
+          "median_ratio": 1.2616312925159279,
+          "upper_allowance": 1.2,
+          "pass": false
+        }
+      ],
+      "descriptive_per_host_sha256": "b95c633a9ce2e28208c8ef3702ce11079a647a38ca8dbcd7d30956d8b6cc13e3",
+      "high_degree_weak_t4_paired_ratios_by_host": [
+        1.1612722344006334,
+        1.1510316548447215,
+        1.1280067876327624
+      ],
+      "selected_worker_scaling": [
+        {
+          "family": "four-fe",
+          "one_over_four_by_host": {
+            "baseline": [
+              1.7204969355984372,
+              1.7045740271202199,
+              1.8754822591548594
+            ],
+            "portfolio-unseeded": [
+              1.789378425748008,
+              1.8052962652754316,
+              1.964051200237835
+            ]
+          }
+        },
+        {
+          "family": "high-degree-weak",
+          "one_over_four_by_host": {
+            "baseline": [
+              2.33553219779374,
+              1.8666489446216994,
+              2.2383696400285533
+            ],
+            "portfolio-unseeded": [
+              1.4975961742437829,
+              1.3311999278907862,
+              1.5621323103627847
+            ]
+          }
+        },
+        {
+          "family": "sixteen-fe",
+          "one_over_four_by_host": {
+            "baseline": [
+              1.4018186131365775,
+              2.0581778761498475,
+              2.065417117349606
+            ],
+            "portfolio-unseeded": [
+              1.6152555676231601,
+              2.1111867920683904,
+              2.1311991041458476
+            ]
+          }
+        },
+        {
+          "family": "weak",
+          "one_over_four_by_host": {
+            "baseline": [
+              2.247325469319199,
+              2.0769330325753144,
+              2.074728983426734
+            ],
+            "portfolio-unseeded": [
+              1.7046071668820688,
+              1.5281794244467928,
+              1.5107668908514007
+            ]
+          }
+        },
+        {
+          "family": "weight-dynamic",
+          "one_over_four_by_host": {
+            "baseline": [
+              2.062855224795654,
+              1.9748317544843443,
+              1.970896194488738
+            ],
+            "portfolio-unseeded": [
+              1.4656354115213266,
+              1.409053061019141,
+              1.4088972537787317
+            ]
+          }
+        },
+        {
+          "family": "wide-rhs",
+          "one_over_four_by_host": {
+            "baseline": [
+              2.106862158750404,
+              1.8056165585236326,
+              1.811676537260909
+            ],
+            "portfolio-unseeded": [
+              2.0638512552910475,
+              1.8270436873602205,
+              1.8464904708331018
+            ]
+          }
+        }
+      ],
+      "scope": "Discovery point estimates only. Three independent hosts per cell; nine slots are not independent replicates. Full frozen stopping rule returns baseline only. No favorable partial result, Mac qualification or public activation. All old campaigns and failures remain unchanged.",
+      "postterminal_collection_note": "A generic local reader initially resolved 82 prior-prerequisite failure aliases beside timing records. Tar preserved valid files and reported missing assumed paths. Original proof-bound failure files were collected from their actual science directories; no measurement or finalizer was rerun.",
+      "source_diagnosis_review": {
+        "reviewer": "gpt-6-astra high",
+        "sha256": "63d6f8367cbfdb37047ee93e66e6f09bcbd80950082a8a42fcccf26aa69c71bf",
+        "status": "completed_source_review",
+        "runtime_evidence": [
+          {
+            "path": "crates/fereg-core/src/fe/borrowed_map.rs",
+            "sha256": "15e794b1b2cc3c0da7ab9df9df032e6040ab40fbd2008aaef8cef3a3a7e09f64",
+            "matches_frozen_commit": true
+          },
+          {
+            "path": "crates/fereg-core/src/fe/cmg_schur.rs",
+            "sha256": "1b9ffcaa519046faa2a26dab845d0da4d611bfdb4a9e36a7ac01c4e261ed8e5f",
+            "matches_frozen_commit": true
+          },
+          {
+            "path": "crates/fereg-core/src/fe/cmg_schur/bounded.rs",
+            "sha256": "33ffe96ed1ce03d2cdd62d9dbc9304f105faeda1ab7938e7bdc56040b4097e64",
+            "matches_frozen_commit": true
+          },
+          {
+            "path": "Cargo.lock",
+            "sha256": "79bc3d566867792352ac4252282bed58547801c85cc80619b56d53ab908fac16",
+            "matches_frozen_commit": true
+          }
+        ],
+        "conclusions": [
+          "Synchronous portfolio passes cache_census=true and therefore Work.control=None. The optional-controller optimization is active in the candidate; explicit CMG uses a separate executor-based builder.",
+          "The 16 incumbent iterations are retained through residual reconstruction and FE coefficient accumulation; only conjugate recurrence state restarts. High-degree candidate 21 total iterations means 16 incumbent plus 5 post-install.",
+          "Bounded setup stages edges and uses serial controlled heapsort with genuine upstream-to-fereg interrupt, budget, ordinal and charging checks. Explicit construction uses standard/executor sorting without the computational-work meter. Portfolio factor-affordability policy also differs. Raw setup differences do not isolate callback cost.",
+          "High-degree candidate first setup is 160.895813 ms at one worker and 159.218884 ms at four workers; setup work is identically 791553688 of 977928192. Final reuse charges zero setup work and takes 7 iterations, as does explicit k1.",
+          "Weak-t1 candidate installs with 92029272 of 168968192 setup units; 22 total iterations comprise 16 incumbent plus 6 post-install, followed by 8 final iterations. Explicit k2 takes 6 initial and 6 final iterations, but changes sampling and is not a pure callback contrast."
+        ],
+        "next_direction": {
+          "proposal": "Prototype statically dispatched upstream bounded graph-construction meter/callback specialization, starting with canonicalization; retain existing dynamic APIs for external controllers.",
+          "preserve": [
+            "sort/comparator and arithmetic order",
+            "graph and application bits",
+            "work totals and exact boundary ordinals",
+            "allocation admission gates",
+            "interrupt and refusal behavior",
+            "solver signatures",
+            "existing computational-work and memory limits"
+          ],
+          "bounded_causal_diagnostic": "Before any broader change, predeclare one finite paired fixed-graph build/application diagnostic with first/repeat exact checks, graph-substage timing and instruction counts. No per-comparison timers, checkpoint/sample grid, or repeated sampling until pass.",
+          "limitation": "Benefit is unmeasured. Serial heapsort and edge staging may dominate; small dispatch savings must be reported honestly."
+        },
+        "scope": "Bounded source-only diagnosis of terminal unseeded discovery; not a new performance or qualification analysis."
+      },
+      "explicit_cmg_k1_over_baseline": {
+        "high-degree-weak-t1": 0.5598073468545823,
+        "high-degree-weak-t4": 0.841492463120482,
+        "weak-t1": 0.456262841872116,
+        "weak-t4": 0.6840941146632381,
+        "weight-dynamic-t4": 0.7021961580877367
+      },
+      "independent_raw_review": {
+        "reviewer": "gpt-6-astra high",
+        "sha256": "9b1434bc1990e9ff613a10638511abfa5e812b521e593a6d690f1729f3ae8037",
+        "status": "GO_valid_NO_GO_evidence",
+        "blocking_findings": [],
+        "scope": "Local read-only replay of retained six-allocation A science/timing/isolation evidence and seven terminal accounting records. No native execution, remeasurement, remote operation, source mutation, B/C numerical access, or fresh finalizer run.",
+        "conclusion": "Both frozen rejection conditions are met. The complete valid discovery returns baseline only; portfolio-unseeded is not admitted to fresh Mac B12, activation, or C24. This GO accepts the NO-GO evidence, not the candidate.",
+        "counts": {
+          "allocation_science_pairs_passed": 1026,
+          "allocation_optional_first_call_failures": 54,
+          "optional_failure_types": {
+            "timeout": 40,
+            "iteration_exhausted": 14
+          },
+          "unique_unavailable_cell_arm_pairs": 18,
+          "checked_wrapper_proof_pairs": 126,
+          "retained_failure_artifacts_rehashed": 82,
+          "successful_calls": 7182,
+          "failed_calls": 54,
+          "actual_native_dispatches": 7236,
+          "maximum_native_dispatches": 7560,
+          "unused_planned_calls": 324,
+          "science_first_and_repeat_successes": 2052,
+          "timed_traced_prerequisite_successes": 1026,
+          "warmup_successes": 1026,
+          "measured_successes": 3078,
+          "comparisons": 636,
+          "finite_comparisons": 600,
+          "availability_comparisons": 36
+        },
+        "isolation": {
+          "method": "Executed selected pure parsing/validation functions from exact frozen block_host/scc_routing_host source in an isolated namespace without observer, command, subprocess, finalization, or filesystem-writing entrypoints. Independently streamed sample/query counts and gaps; rehashed all 48 raw isolation files.",
+          "process_snapshots": 4502,
+          "scheduler_envelopes": 384,
+          "scheduler_commands": 768,
+          "scheduler_retries": 0,
+          "detected_known_compute_overlap": 0,
+          "reservation": "All before/after job environment, PE, RQS, queue/host complexes, actual affinity/core mapping and qstat job/queue XML checks pass; slots alone are not the isolation proof. All scheduler components succeed; no query was discarded. PID plus lstart and captured ancestry determine owned descendants.",
+          "coverage": "All collection intervals are bracketed; final observation and cleanup remain inside the joint science/collection inclusive allocation cap. Sampled process evidence does not establish absence of unsampled or unclassified work."
+        },
+        "science": {
+          "method": "Recomputed original frozen prerequisite outcomes, timing observations, CMG/generic-IT worker checks and model/solver discrete signatures from all twelve records; independently checked exact metadata/row equality for 126 sealed proof/wrapper pairs, all prepared/fingerprint identities and original failure carry-forward. All 375 distinct inherited proof dependency bindings match the frozen plan; the prior 447-binding setup/seal review is reused, not relabeled as 447 new local file hashes.",
+          "oracle_binding_counts": {
+            "categorical_reference_bound": 96,
+            "canonical_inactive_case_oracle_source_attested": 6,
+            "imported_independent_reference_bound": 24
+          },
+          "oracle_limit": "Rehashed existing A-only categorical reference JSON/NPZ and imported independent reference files; all case/body and oracle identities match. Six inactive-column proofs bind the original canonical-case oracle source. Successful numerical outputs/columns and transient native logs were deleted by the frozen producer: numerical oracle, scoped compatibility and exact scientific replay are producer attestations supported by retained exact fingerprints/proofs, not fresh mathematical recomputation from unavailable arrays.",
+          "resource_and_worker_checks": {
+            "worker_checks": 90,
+            "worker_statuses": {
+              "passed": 90
+            },
+            "action_resource_records": 2814,
+            "route_metadata_records": 126,
+            "frozen_dependency_bindings": 375,
+            "actual_calls": [
+              1238,
+              1174,
+              1238,
+              1174,
+              1238,
+              1174
+            ],
+            "total": 7236
+          },
+          "resource_limit": "Resource action/route counters, diagnostic hashes and integer caps were independently rechecked in retained parsed records. Successful raw trace logs are unavailable; this is verification of retained producer trace attestations. Timed calls inherit the traced prerequisite resource proof while their exact science fingerprints are checked.",
+          "availability": "All 54 first failures are optional comparators, with bounded timeout or raw return-code 459 iteration exhaustion. All 82 original failure logs/results/column artifacts hash correctly. Timing-side carried prior_prerequisite failures reference the original local proof and are never counted as new dispatches. No scientific failure was converted to an infrastructure replacement.",
+          "cross_worker": "All model-discrete signatures agree across paired workers, all local solver-discrete signatures agree across repeats and timing, all three hosts agree for each shard. Recorded resource-dependent worker-route differences are empty; all 90 producer CMG/generic-IT diagnostic checks replay as passed."
+        },
+        "scoring_method": "Separate standard-library reconstruction from raw row seconds (native harness monotonic timing), retaining one warmup and three measured slots per allocation; concatenate by logical round and compute median of nine paired ratios. No production score function was invoked. Every one of 636 comparisons and all ranking fields equals the retained result exactly; reconstructing the collection/isolation envelopes and rejection fields yields the entire exact canonical aggregate.",
+        "canonical_aggregate_reproduced_exactly": true,
+        "documentation_delta": "The current VALIDATION terminal counts, ratios, scaling summaries and explicit retention/qualification limits agree with this review. The new TeX results-page numerical table and scaling values agree; this is source/factual review, not visual PDF QA. Compact pending-review status should be updated only by binding this report; historical subtrees remain unchanged."
+      },
+      "aggregate_collector_wallclock_s": 22678.0,
+      "aggregate_collector_cap_s": 43200
     }
   }
 }
