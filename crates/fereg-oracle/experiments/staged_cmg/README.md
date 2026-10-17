@@ -1630,3 +1630,107 @@ with original source line numbers; temporary local copies removed afterward):
 - `audited-evidence-summary.json`: `830f49b0f813ba6c66c0519054d3dc17b35c3e3ee8a805fe7df577b629c3762e`
 - `current-main-incumbent-and-routing.txt`: `dfa8989c1cc237fda1d018fcac69bf1c59c5d69288581b94b721238ddc426580`
 - `prototype-source-and-history.txt`: `4152228e0195abae4b9a194bd0b4aa63ce2cbc9a5afa6adce01e3dfa35b9d28a`
+
+
+### Bounded local stored-float accuracy diagnostic (2026-10-16)
+
+The opt-in `accuracy-capture` Cargo feature and `STAGED_ACCURACY_CAPTURE` path
+record a failed one-RHS `auto-forecast` recurrence immediately before the third
+certificate miss returns. Ordinary builds do not contain the capture field or
+hooks. The feature leaves the update loop, operator, certificate, forecast,
+iteration limit and two permitted replacements unchanged. It records exact
+binary64 bits, including each separately rounded `alpha*d` update and the
+original coordinates at repair-epoch boundaries. Capture refuses to overwrite
+an existing file and stops explicitly above 1,048,576 recorded update values.
+This is bounded standalone diagnostic storage, not a production memory claim.
+
+[Compact results](accuracy-diagnostic.json) retain all local observation
+summaries, capture and executable hashes, source identities, exact comparisons,
+and validation. The baseline is source `625306bd`, with CMG `73e2e43d`. Release
+captures used Rust 1.97.1 on macOS arm64; final Rust checks used the repository's
+pinned 1.85.1. No SCC job was submitted and no historical SCC iterate was
+recovered. Both locally reproduced failure strings match the retained SCC
+forecast failures exactly, but this does not establish identity of the full
+cross-platform vectors.
+
+Two capture passes were bounded in advance to the 6144 and 8192 cluster cases.
+The second added repair-epoch metadata after the whole-trajectory replay exposed
+a causal limitation; it did not change solver arithmetic. In each pass, baseline,
+baseline repeat, feature build with capture disabled, capture, and capture
+repeat produced identical failure strings. Repeated capture files were
+byte-identical. Three small successful forecast controls (expander/128/cut,
+grid/64/random, clusters/128/cut) matched all scientific fields and routing
+decisions between default and feature builds, excluding clocks. No timings are
+used as performance evidence. Each solve had a 30-second timeout and each
+failed-case campaign had a 180-second budget; no failed observation was removed.
+
+`accuracy_diagnostic.py` decodes the stored binary64 values exactly into Python
+`Fraction` values. It verifies positive equal-weight two-cell workers and exact
+agreement between stored worker totals and weight sums, then evaluates each
+edge flux as `(weight/2)*(x_i-x_j)`. This independent symmetric formula gives
+exact residual components and an exact squared-norm comparison against the
+captured target. Decimal arithmetic at 60 and 100 digits only displays norms.
+The script rejects missing updates, changed stored coordinates, invalid repair
+anchors and unsupported worker shapes. Ordinary summation of the recorded
+updates reproduces every captured coordinate bit; a separate replay of the
+original binary64 evaluator also reproduces every captured truth-vector bit.
+
+| Local cluster case | 6144 | 8192 |
+| --- | ---: | ---: |
+| Failed iteration | 37 | 38 |
+| Unchanged target | 7.838367177e-7 | 9.050966799e-7 |
+| Exact residual of stored coordinates | 1.934917253e-6 | 3.029744105e-6 |
+| Exact-vs-captured residual-vector discrepancy norm | 7.170629599e-13 | 1.186170298e-12 |
+| Repair-epoch update offsets | 0, 34, 36 | 0, 35, 37 |
+| Exact residual of unflattened final-epoch sum | 3.749145345e-7 | 5.795216489e-7 |
+| Exact residual after flattening that sum | 1.934917253e-6 | 3.029744105e-6 |
+
+Both stored iterates fail. Evaluator rounding and incompatible constant loads
+do not explain their misses: component RHS and residual sums are exactly zero,
+and evaluator discrepancies are far smaller than the failures. Each last epoch
+contains one update after the second permitted replacement. Keeping that
+anchor-plus-rounded-product sum exact passes the same target; rounding it to
+binary64 returns the original failed coordinates bit for bit. Centering the
+flattened vectors also fails. This identifies loss in these specific final
+coordinate additions. The passing unflattened vectors are not admissible
+returned answers under the existing contract, and this evidence proves neither
+a universal binary64 floor nor the absence of a successful binary64 solution.
+It is not a coefficient forward-error bound or a production regression result.
+
+Whole-trajectory Kahan replay has exact residuals 8.523215029e-6 and
+1.345387743e-5. Flattening exact sums of all recorded products gives
+8.621372336e-6 and 1.375225619e-5. These worse residuals do not establish that a
+live compensated recurrence would fail: later replacements and directions had
+already responded to the original rounded coordinates. The final-epoch audit
+avoids that particular retrospective change by retaining its original corrected
+anchor. No update method, split output, operator, tolerance or acceptance rule
+is promoted by this diagnostic.
+
+To reproduce from the repository root, use a fresh task directory and the same
+compiler for a bitwise artifact comparison. The two solver invocations below
+are expected to exit 2 after writing their captures:
+
+```sh
+task=target/tmp/cells-accuracy
+CARGO_TARGET_DIR="$PWD/$task/build" cargo build --offline --release \
+  --manifest-path crates/fereg-oracle/experiments/staged_cmg/Cargo.toml \
+  --features accuracy-capture
+STAGED_ACCURACY_CAPTURE="$PWD/$task/capture-6144.json" \
+  "$task/build/release/staged-cmg-prototype" clusters 6144 1 auto-forecast cut
+STAGED_ACCURACY_CAPTURE="$PWD/$task/capture-8192.json" \
+  "$task/build/release/staged-cmg-prototype" clusters 8192 1 auto-forecast cut
+python3 crates/fereg-oracle/experiments/staged_cmg/accuracy_diagnostic.py \
+  "$task/capture-6144.json" "$task/capture-8192.json" \
+  --output "$task/witness.json"
+```
+
+Validation: all 28 prototype Rust tests pass with the capture feature compiled;
+all 22 Python tests pass (16 existing harness tests and six independent audit
+tests). Pinned-toolchain strict Clippy and formatting pass. Rust 1.97.1 strict
+Clippy initially rejected two pre-existing style lints in `problem.rs` and
+`protected.rs`; those unrelated sources were not changed. Production identity
+is unchanged against `625306bd` (192 modules, 58 artifact inputs). The required
+repository entrypoint runs 243 Python tests successfully, including 13 skips,
+then stops at the existing installed-plugin/source identity mismatch; later
+runtime and ABI checks did not run. Captures, executable copies, build outputs
+and raw logs are removed after their hashes and compact results are saved here.

@@ -1,0 +1,1217 @@
+{
+  "schema": 1,
+  "scope": "Local macOS arm64 exact stored-float diagnostic; no solver repair, acceptance change, performance claim, or new SCC run",
+  "source_base": "625306bdb4675c1950a4629f172a6bca34304194",
+  "upstream_cmg_revision": "73e2e43d046250e00319c45863ca609808e52c99",
+  "host": {
+    "system": "Darwin",
+    "release": "25.6.0",
+    "machine": "arm64"
+  },
+  "build_rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "check_rustc": "rustc 1.85.1 (4eb161250 2025-03-15)",
+  "capture_source_sha256": {
+    "src/accuracy_capture.rs": "2ce273eb0c7c9abbe5cc1454ad724fb3eed221cee64429e3ad58bf09f401890a",
+    "src/builder.rs": "9697b4ea147927eeed40081f49a20fb9a41fcf8b9ecf7d4de639ada060976f7f",
+    "src/guarded.rs": "1197595288140b1204e574c3e384512b0b6d2b0c51ba323fc56a3b52c89fd274",
+    "src/local.rs": "9a44142956a355353beb841e3940b1e3e99905b52f1cbaf4047da7193dbfd93b",
+    "src/main.rs": "8bc2dc56b30bff1f2e0d53756598a15693884746c02a51f2a9e500b30769a37a",
+    "src/preconditioner.rs": "5bfa716ab8bcbbcec0c0339ca14ff4faef496992bb164ff98c758f2d5121897f",
+    "src/problem.rs": "fb51bcb73c9b1df3521bdad6f1178b04099454cc8ff3ca2daaad8bfc083a03cc",
+    "src/protected.rs": "3b09799aa1fe19c3b6fbc9faccb357303670cc33e217e472fcea33356788b373",
+    "src/recurrence.rs": "9c8bbacb67c3277045a4493ef63d8ce0923ad44f094a021165b6c132365e7e7f",
+    "src/router.rs": "9a93d57f33a094ff3350b782f5c8b93634e251dced45bd15e7902a0e5598d6c9",
+    "src/solve.rs": "36b3ea0cfc594f50db179f7e42eeed3b4bb33f6d02dbe899fc512c9c967625f2",
+    "src/tests.rs": "ac6cd184d84d87cc7e452b886057d85ef6ca606460406b7d34f0564434547b6c",
+    "Cargo.toml": "86b9e469d9855afe97080db18c40b3bf0bfefc745e2b9d08d45f871e504ff792",
+    "Cargo.lock": "44d544a885a4a620d098edd019381289094a0f8471d72420d0c11e062fa541ac"
+  },
+  "audit_tool_sha256": {
+    "accuracy_diagnostic.py": "0b180a2d61296f183fe82e701f822becc017a17865536c95063b2361fbf61791",
+    "test_accuracy_diagnostic.py": "731507e37cc301e7b8884caafb9bc67e4b8af482929badc72e24938669fce103"
+  },
+  "bounds": {
+    "per_solve_timeout_seconds": 30,
+    "failed_case_campaign_budget_seconds": 180,
+    "maximum_recorded_update_values": 1048576,
+    "failed_cases": [
+      6144,
+      8192
+    ],
+    "successful_control_cases": 3,
+    "capture_passes": 2,
+    "deadline_check": "Before each failed-case invocation; a started call can overrun the campaign boundary by its 30-second timeout."
+  },
+  "historical_reference": {
+    "evidence": "admitted-forecast-discovery.json",
+    "sha256": "d24330601f3ef7866f4860eaa1e191691c7d52cbab55ca2a7a6319cf7b4c4e26",
+    "all_local_failure_strings_match_stored_scc_reference": true,
+    "cross_platform_full_iterate_identity_established": false,
+    "old_scc_iterates_recovered": false
+  },
+  "local_runs": {
+    "runs": [
+      {
+        "n": 6144,
+        "mode": "baseline",
+        "exit_code": 2,
+        "outcome": {
+          "status": "failed",
+          "reason": "rhs_0_residual_replacement_limit_iteration_37_repairs_3_recursive_3.74914533291050942e-7_true_1.93491725439687094e-6_bnorm_7.83836717690616922e1_target_7.83836717690616891e-7"
+        },
+        "stderr": "",
+        "capture_sha256": null
+      },
+      {
+        "n": 6144,
+        "mode": "baseline-repeat",
+        "exit_code": 2,
+        "outcome": {
+          "status": "failed",
+          "reason": "rhs_0_residual_replacement_limit_iteration_37_repairs_3_recursive_3.74914533291050942e-7_true_1.93491725439687094e-6_bnorm_7.83836717690616922e1_target_7.83836717690616891e-7"
+        },
+        "stderr": "",
+        "capture_sha256": null
+      },
+      {
+        "n": 6144,
+        "mode": "feature-disabled",
+        "exit_code": 2,
+        "outcome": {
+          "status": "failed",
+          "reason": "rhs_0_residual_replacement_limit_iteration_37_repairs_3_recursive_3.74914533291050942e-7_true_1.93491725439687094e-6_bnorm_7.83836717690616922e1_target_7.83836717690616891e-7"
+        },
+        "stderr": "",
+        "capture_sha256": null
+      },
+      {
+        "n": 6144,
+        "mode": "capture",
+        "exit_code": 2,
+        "outcome": {
+          "status": "failed",
+          "reason": "rhs_0_residual_replacement_limit_iteration_37_repairs_3_recursive_3.74914533291050942e-7_true_1.93491725439687094e-6_bnorm_7.83836717690616922e1_target_7.83836717690616891e-7"
+        },
+        "stderr": "",
+        "capture_sha256": "fd44061bc6dba535824cd2c86168bc6b02d41ede20394d4f699c27db746f4c13"
+      },
+      {
+        "n": 6144,
+        "mode": "capture-repeat",
+        "exit_code": 2,
+        "outcome": {
+          "status": "failed",
+          "reason": "rhs_0_residual_replacement_limit_iteration_37_repairs_3_recursive_3.74914533291050942e-7_true_1.93491725439687094e-6_bnorm_7.83836717690616922e1_target_7.83836717690616891e-7"
+        },
+        "stderr": "",
+        "capture_sha256": "fd44061bc6dba535824cd2c86168bc6b02d41ede20394d4f699c27db746f4c13"
+      },
+      {
+        "n": 8192,
+        "mode": "baseline",
+        "exit_code": 2,
+        "outcome": {
+          "status": "failed",
+          "reason": "rhs_0_residual_replacement_limit_iteration_38_repairs_3_recursive_5.79521663075105076e-7_true_3.02974411224551579e-6_bnorm_9.05096679918780893e1_target_9.05096679918780921e-7"
+        },
+        "stderr": "",
+        "capture_sha256": null
+      },
+      {
+        "n": 8192,
+        "mode": "baseline-repeat",
+        "exit_code": 2,
+        "outcome": {
+          "status": "failed",
+          "reason": "rhs_0_residual_replacement_limit_iteration_38_repairs_3_recursive_5.79521663075105076e-7_true_3.02974411224551579e-6_bnorm_9.05096679918780893e1_target_9.05096679918780921e-7"
+        },
+        "stderr": "",
+        "capture_sha256": null
+      },
+      {
+        "n": 8192,
+        "mode": "feature-disabled",
+        "exit_code": 2,
+        "outcome": {
+          "status": "failed",
+          "reason": "rhs_0_residual_replacement_limit_iteration_38_repairs_3_recursive_5.79521663075105076e-7_true_3.02974411224551579e-6_bnorm_9.05096679918780893e1_target_9.05096679918780921e-7"
+        },
+        "stderr": "",
+        "capture_sha256": null
+      },
+      {
+        "n": 8192,
+        "mode": "capture",
+        "exit_code": 2,
+        "outcome": {
+          "status": "failed",
+          "reason": "rhs_0_residual_replacement_limit_iteration_38_repairs_3_recursive_5.79521663075105076e-7_true_3.02974411224551579e-6_bnorm_9.05096679918780893e1_target_9.05096679918780921e-7"
+        },
+        "stderr": "",
+        "capture_sha256": "d592743ef154d091b9b51b0d3f3d64e97548056fd274d5ef1f6c478f2f479c87"
+      },
+      {
+        "n": 8192,
+        "mode": "capture-repeat",
+        "exit_code": 2,
+        "outcome": {
+          "status": "failed",
+          "reason": "rhs_0_residual_replacement_limit_iteration_38_repairs_3_recursive_5.79521663075105076e-7_true_3.02974411224551579e-6_bnorm_9.05096679918780893e1_target_9.05096679918780921e-7"
+        },
+        "stderr": "",
+        "capture_sha256": "d592743ef154d091b9b51b0d3f3d64e97548056fd274d5ef1f6c478f2f479c87"
+      }
+    ],
+    "successful_control_checks": [
+      {
+        "arguments": [
+          "expander",
+          "128",
+          "1",
+          "auto-forecast",
+          "cut"
+        ],
+        "exact_scientific_match": true,
+        "result": {
+          "status": "ok",
+          "case": "expander",
+          "n": 128,
+          "rhs": 1,
+          "arm": "auto-forecast",
+          "iterations": 19,
+          "upgrades": 0,
+          "certificates": 2,
+          "relative_residual": 3.5327456256306322e-09,
+          "digest": "e98f8df7ccb6be24",
+          "graph_builds": 0,
+          "coarse_n": 0,
+          "tail_levels": 0,
+          "decisions": [
+            {
+              "event": "route",
+              "starter": "diagonal",
+              "active": 128,
+              "low_degree": 0,
+              "edge_bound": 507,
+              "memory_bound": 126984
+            },
+            {
+              "event": "forecast",
+              "rhs": 0,
+              "iteration": 16,
+              "recursive_residual": 8.826328717268088e-07,
+              "estimated_remaining": 2.008322100468406,
+              "repairs": 0,
+              "commit": false
+            },
+            {
+              "event": "rhs",
+              "rhs": 0,
+              "started_full": false,
+              "iterations": 19,
+              "install_iteration": 0,
+              "grace": true,
+              "build_disabled": false,
+              "memory_bound": 126984
+            }
+          ]
+        }
+      },
+      {
+        "arguments": [
+          "grid",
+          "64",
+          "1",
+          "auto-forecast",
+          "random"
+        ],
+        "exact_scientific_match": true,
+        "result": {
+          "status": "ok",
+          "case": "grid",
+          "n": 64,
+          "rhs": 1,
+          "arm": "auto-forecast",
+          "iterations": 17,
+          "upgrades": 1,
+          "certificates": 4,
+          "relative_residual": 1.4727676173447636e-13,
+          "digest": "fe09220a2a908897",
+          "graph_builds": 1,
+          "coarse_n": 0,
+          "tail_levels": 1,
+          "decisions": [
+            {
+              "event": "route",
+              "starter": "diagonal",
+              "active": 64,
+              "low_degree": 4,
+              "edge_bound": 112,
+              "memory_bound": 98312
+            },
+            {
+              "event": "forecast",
+              "rhs": 0,
+              "iteration": 16,
+              "recursive_residual": 4.056229144986339,
+              "estimated_remaining": 4443.704019862052,
+              "repairs": 0,
+              "commit": true
+            },
+            {
+              "event": "rhs",
+              "rhs": 0,
+              "started_full": false,
+              "iterations": 17,
+              "install_iteration": 16,
+              "grace": false,
+              "build_disabled": false,
+              "memory_bound": 1253680
+            }
+          ]
+        }
+      },
+      {
+        "arguments": [
+          "clusters",
+          "128",
+          "1",
+          "auto-forecast",
+          "cut"
+        ],
+        "exact_scientific_match": true,
+        "result": {
+          "status": "ok",
+          "case": "clusters",
+          "n": 128,
+          "rhs": 1,
+          "arm": "auto-forecast",
+          "iterations": 17,
+          "upgrades": 1,
+          "certificates": 4,
+          "relative_residual": 9.341710476371252e-12,
+          "digest": "e4ac62e77d1d7226",
+          "graph_builds": 1,
+          "coarse_n": 0,
+          "tail_levels": 1,
+          "decisions": [
+            {
+              "event": "route",
+              "starter": "diagonal",
+              "active": 128,
+              "low_degree": 0,
+              "edge_bound": 504,
+              "memory_bound": 126984
+            },
+            {
+              "event": "forecast",
+              "rhs": 0,
+              "iteration": 16,
+              "recursive_residual": 0.13434709965821284,
+              "estimated_remaining": 50.48049739341609,
+              "repairs": 0,
+              "commit": true
+            },
+            {
+              "event": "rhs",
+              "rhs": 0,
+              "started_full": false,
+              "iterations": 17,
+              "install_iteration": 16,
+              "grace": false,
+              "build_disabled": false,
+              "memory_bound": 3175856
+            }
+          ]
+        }
+      }
+    ],
+    "binary_sha256": "fbf4012a518200c11e2b6ed59146b8d83bdea86a8576ab1b998166cb4c07fac4",
+    "baseline_binary_sha256": "81d231c74426138468a9dbd026f61deead121b18f2733160743e91c8e669066a",
+    "failure_signatures_and_capture_repeats_exact": true
+  },
+  "independent_witnesses": [
+    {
+      "n": 6144,
+      "workers": 24390,
+      "iterations": 37,
+      "repairs_counter": 3,
+      "trace": 17426043166176923068,
+      "recorded_update_values": 227328,
+      "repair_epoch_offsets": [
+        0,
+        34,
+        36
+      ],
+      "final_epoch_updates": 1,
+      "ordinary_update_replay_bit_exact": true,
+      "ordinary_evaluator_matches_captured_truth_bits": true,
+      "stored_totals_equal_exact_weight_sums": true,
+      "target": 7.838367176906169e-07,
+      "bnorm": 78.38367176906169,
+      "component_rhs_sums": [
+        "0"
+      ],
+      "maximum_stored_coordinate_ulp": 1.4901161193847656e-08,
+      "stored_coordinate_range": 147497410.85608286,
+      "captured_truth_vs_exact_residual_error_norm": "7.17062959868129994078207242829549606721951860581866952209848E-13",
+      "candidates": {
+        "final_epoch_kahan_flattened": {
+          "residual_norm_decimal_60": "0.00000193491725329817398308825120648896640959247162700450236029664",
+          "residual_norm_decimal_100": "0.000001934917253298173983088251206488966409592471627004502360296637867914298803434409211572859649000626593",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "45900139010792242873153061004565269208386129/7532522082464014979100130938354141098934272",
+          "maximum_absolute_residual": "9/67108864",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 1.934917254396871e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "182886afabd80ee4a6a28e807d3dd378b49fe60ddb194530ad3bb88315b12626",
+          "maximum_coordinate_change_from_stored": 0.0
+        },
+        "final_epoch_exact_sum_unflattened": {
+          "residual_norm_decimal_60": "3.74914534530201327519272798226880889140606401137300093413034E-7",
+          "residual_norm_decimal_100": "3.749145345302013275192727982268808891406064011373000934130337194657443368414990840702214548041360947E-7",
+          "passes_exact_captured_target": true,
+          "squared_residual_over_target_squared": "35790953359214762324435617767701958799335791240586446081537889663045456920337/156444362982488491185057481518999457299240312756375702382429864590394102120448",
+          "maximum_absolute_residual": "155238369970224143/4835703278458516698824704",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": false,
+          "maximum_coordinate_change_from_stored": 7.445591313604025e-09
+        },
+        "final_epoch_exact_sum_flattened": {
+          "residual_norm_decimal_60": "0.00000193491725329817398308825120648896640959247162700450236029664",
+          "residual_norm_decimal_100": "0.000001934917253298173983088251206488966409592471627004502360296637867914298803434409211572859649000626593",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "45900139010792242873153061004565269208386129/7532522082464014979100130938354141098934272",
+          "maximum_absolute_residual": "9/67108864",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 1.934917254396871e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "182886afabd80ee4a6a28e807d3dd378b49fe60ddb194530ad3bb88315b12626",
+          "maximum_coordinate_change_from_stored": 0.0
+        },
+        "final_epoch_exact_sum_flattened_centered": {
+          "residual_norm_decimal_60": "0.00000193491725515097822870302180783645697913560879635334965896463",
+          "residual_norm_decimal_100": "0.000001934917255150978228703021807836456979135608796353349658964626640092145273345212243755908897886619632",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "45900139098696748690401119344972411669280469/7532522082464014979100130938354141098934272",
+          "maximum_absolute_residual": "9/67108864",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 1.9349172559872846e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "a3b9117566a3c90a63fdf8222452d81b18fd199ce290678f24eea431d2e62c53",
+          "maximum_coordinate_change_from_stored": 1.1920928955078125e-07
+        },
+        "stored": {
+          "residual_norm_decimal_60": "0.00000193491725329817398308825120648896640959247162700450236029664",
+          "residual_norm_decimal_100": "0.000001934917253298173983088251206488966409592471627004502360296637867914298803434409211572859649000626593",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "45900139010792242873153061004565269208386129/7532522082464014979100130938354141098934272",
+          "maximum_absolute_residual": "9/67108864",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 1.934917254396871e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "182886afabd80ee4a6a28e807d3dd378b49fe60ddb194530ad3bb88315b12626",
+          "maximum_coordinate_change_from_stored": 0.0
+        },
+        "kahan_flattened": {
+          "residual_norm_decimal_60": "0.00000852321502899615278575659552335733623320871958251132770583558",
+          "residual_norm_decimal_100": "0.000008523215028996152785756595523357336233208719582511327705835575128291433394415102859129033573065626263",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "890627492240686241473692594781171974745895089/7532522082464014979100130938354141098934272",
+          "maximum_absolute_residual": "33/33554432",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 8.523215005020616e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "6052aaeff79353c3dd9c1b4c7ff4895e8e7e98b2dda2f495d486d23fbd7c3b1a",
+          "maximum_coordinate_change_from_stored": 7.450580596923828e-08
+        },
+        "kahan_flattened_centered": {
+          "residual_norm_decimal_60": "0.00000852321506326676229990173632859463226643247755937925232688977",
+          "residual_norm_decimal_100": "0.000008523215063266762299901736328594632266432477559379252326889768890864854534729580594570911775982297564",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "890627499402853796009909009079991428405158137/7532522082464014979100130938354141098934272",
+          "maximum_absolute_residual": "33/33554432",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 8.523215038091552e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "7b3cfdffddeaacdd9d331ab596b291c4d9221a642af2ec21c976bd72f97e2cc6",
+          "maximum_coordinate_change_from_stored": 1.9371509552001953e-07
+        },
+        "exact_sum_unflattened": {
+          "residual_norm_decimal_60": "0.00000841510022870821959316901452007775524138418210742829887506386",
+          "residual_norm_decimal_100": "0.000008415100228708219593169014520077755241384182107428298875063858839461824555481978098630395947402022142",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "18031310760272520525344882857548247705898985048556622789240801287498978553232913/156444362982488491185057481518999457299240312756375702382429864590394102120448",
+          "maximum_absolute_residual": "9253254859713762075/9671406556917033397649408",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": false,
+          "maximum_coordinate_change_from_stored": 6.919263742799618e-08
+        },
+        "exact_sum_flattened": {
+          "residual_norm_decimal_60": "0.00000862137233630757019694655429001458639595410613282809589109699",
+          "residual_norm_decimal_100": "0.000008621372336307570196946554290014586395954106132828095891096987582953765814031841528282582309152051447",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "911259375874581893996913207709275759710935601/7532522082464014979100130938354141098934272",
+          "maximum_absolute_residual": "65/67108864",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 8.621372317538481e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "9a21de0cc6840d004be8089b50cf20901582f231ce9fd2605b970e8c7d8d8e72",
+          "maximum_coordinate_change_from_stored": 7.450580596923828e-08
+        },
+        "exact_sum_flattened_centered": {
+          "residual_norm_decimal_60": "0.00000862137232092940316421450254720010896058196419599141429334292",
+          "residual_norm_decimal_100": "0.000008621372320929403164214502547200108960581964195991414293342915277841331715644352319753897600617016603",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "911259372623707593897685378589938660490923299/7532522082464014979100130938354141098934272",
+          "maximum_absolute_residual": "65/67108864",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 8.62137230251484e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "8b5167f511fd8f1fa38cbcac348519a76e39359b7d2d516b36f00699da1b9292",
+          "maximum_coordinate_change_from_stored": 1.9371509552001953e-07
+        }
+      },
+      "capture_sha256": "fd44061bc6dba535824cd2c86168bc6b02d41ede20394d4f699c27db746f4c13"
+    },
+    {
+      "n": 8192,
+      "workers": 32514,
+      "iterations": 38,
+      "repairs_counter": 3,
+      "trace": 17951314131116165433,
+      "recorded_update_values": 311296,
+      "repair_epoch_offsets": [
+        0,
+        35,
+        37
+      ],
+      "final_epoch_updates": 1,
+      "ordinary_update_replay_bit_exact": true,
+      "ordinary_evaluator_matches_captured_truth_bits": true,
+      "stored_totals_equal_exact_weight_sums": true,
+      "target": 9.050966799187809e-07,
+      "bnorm": 90.50966799187809,
+      "component_rhs_sums": [
+        "0"
+      ],
+      "maximum_stored_coordinate_ulp": 1.4901161193847656e-08,
+      "stored_coordinate_range": 262216055.40852237,
+      "captured_truth_vs_exact_residual_error_norm": "1.18617029820857615799191447448727425265106505233470259631833E-12",
+      "candidates": {
+        "final_epoch_kahan_flattened": {
+          "residual_norm_decimal_60": "0.00000302974410469247921614325019426959627522295402898827270502668",
+          "residual_norm_decimal_100": "0.000003029744104692479216143250194269596275222954028988272705026683467640509831058522635064850124270067840",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "56269247725903404115523766949797643775899857/5021681388309345608913611553781874283249664",
+          "maximum_absolute_residual": "5/33554432",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 3.029744112245516e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "eb670fa92c07892ab5002669a46ce364e3a4dcd2c3f1eaa3efa33b8b084804a7",
+          "maximum_coordinate_change_from_stored": 0.0
+        },
+        "final_epoch_exact_sum_unflattened": {
+          "residual_norm_decimal_60": "5.79521648879388316709716099625673292936604235977730732818458E-7",
+          "residual_norm_decimal_100": "5.795216488793883167097160996256732929366042359777307328184574738877137734715198129065814115329204532E-7",
+          "passes_exact_captured_target": true,
+          "squared_residual_over_target_squared": "5344758149690218244792465714195639422458712815065038512651809614676880944545/13037030248540713542671729924696294865626530503806525275730810172364787023872",
+          "maximum_absolute_residual": "71736322231924769/2417851639229258349412352",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": false,
+          "maximum_coordinate_change_from_stored": 7.449871623625251e-09
+        },
+        "final_epoch_exact_sum_flattened": {
+          "residual_norm_decimal_60": "0.00000302974410469247921614325019426959627522295402898827270502668",
+          "residual_norm_decimal_100": "0.000003029744104692479216143250194269596275222954028988272705026683467640509831058522635064850124270067840",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "56269247725903404115523766949797643775899857/5021681388309345608913611553781874283249664",
+          "maximum_absolute_residual": "5/33554432",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 3.029744112245516e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "eb670fa92c07892ab5002669a46ce364e3a4dcd2c3f1eaa3efa33b8b084804a7",
+          "maximum_coordinate_change_from_stored": 0.0
+        },
+        "final_epoch_exact_sum_flattened_centered": {
+          "residual_norm_decimal_60": "0.00000302974405007724690713474089704130230641567122425696693209392",
+          "residual_norm_decimal_100": "0.000003029744050077246907134740897041302306415671224256966932093921585440181532367935511721548072836468454",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "14067311424311235386138903492253768940507317/1255420347077336402228402888445468570812416",
+          "maximum_absolute_residual": "5/33554432",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 3.0297440591727564e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "35ef84e09840d3c089438c97ff8dbdeb649793e552afa42ae9d1de087ae8105d",
+          "maximum_coordinate_change_from_stored": 2.3096799850463867e-07
+        },
+        "stored": {
+          "residual_norm_decimal_60": "0.00000302974410469247921614325019426959627522295402898827270502668",
+          "residual_norm_decimal_100": "0.000003029744104692479216143250194269596275222954028988272705026683467640509831058522635064850124270067840",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "56269247725903404115523766949797643775899857/5021681388309345608913611553781874283249664",
+          "maximum_absolute_residual": "5/33554432",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 3.029744112245516e-06,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "eb670fa92c07892ab5002669a46ce364e3a4dcd2c3f1eaa3efa33b8b084804a7",
+          "maximum_coordinate_change_from_stored": 0.0
+        },
+        "kahan_flattened": {
+          "residual_norm_decimal_60": "0.0000134538774322849785713557326838106804028166340269220447793047",
+          "residual_norm_decimal_100": "0.00001345387743228497857135573268381068040281663402692204477930471447518951190746266154024506133754319805",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "277392141394540023527917312714778808975023419/1255420347077336402228402888445468570812416",
+          "maximum_absolute_residual": "27/33554432",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 1.3453877438577425e-05,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "d0f5a0fd5e473b732772efc08241ec96c45f8eed84b7cf12f5006ddebe007052",
+          "maximum_coordinate_change_from_stored": 7.450580596923828e-08
+        },
+        "kahan_flattened_centered": {
+          "residual_norm_decimal_60": "0.0000134538774304012749705937503154431798580830998699560765020780",
+          "residual_norm_decimal_100": "0.00001345387743040127497059375031544317985808309986995607650207801349802627411185946605731240895241451306",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "1109568565267454379324940944008971409726791923/5021681388309345608913611553781874283249664",
+          "maximum_absolute_residual": "27/33554432",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 1.3453877436647345e-05,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "95dad941308346f69065729ae33042d729252c3908475acf0e83249db2f473e1",
+          "maximum_coordinate_change_from_stored": 2.980232238769531e-07
+        },
+        "exact_sum_unflattened": {
+          "residual_norm_decimal_60": "0.0000133426824840427552023155997691735306037539980057295016321667",
+          "residual_norm_decimal_100": "0.00001334268248404275520231559976917353060375399800572950163216670337250752251014215889160243068014664283",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "2833185640721708738401366561775916287387281863369869961187075423351712697763249/13037030248540713542671729924696294865626530503806525275730810172364787023872",
+          "maximum_absolute_residual": "18139434051267404783/19342813113834066795298816",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": false,
+          "maximum_coordinate_change_from_stored": 7.232863785464904e-08
+        },
+        "exact_sum_flattened": {
+          "residual_norm_decimal_60": "0.0000137522561853224332583859825554691924287413777424674510179137",
+          "residual_norm_decimal_100": "0.00001375225618532243325838598255546919242874137774246745101791371740425322381857915510948781942845711893",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "2318660238635557721344391984474175913550304533/10043362776618691217827223107563748566499328",
+          "maximum_absolute_residual": "17/16777216",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 1.3752256183017474e-05,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "dc71d33bb222d78dd5fb9fb2864db278758d4f507b67e5e3752b9d01f0de66f1",
+          "maximum_coordinate_change_from_stored": 7.450580596923828e-08
+        },
+        "exact_sum_flattened_centered": {
+          "residual_norm_decimal_60": "0.0000137522561905711843076364241230123676398542997100913029443979",
+          "residual_norm_decimal_100": "0.00001375225619057118430763642412301236763985429971009130294439792989573016889692738070806111514612503031",
+          "passes_exact_captured_target": false,
+          "squared_residual_over_target_squared": "2318660240405459357659897913916324018606584099/10043362776618691217827223107563748566499328",
+          "maximum_absolute_residual": "17/16777216",
+          "component_residual_sums": [
+            "0"
+          ],
+          "flattened_binary64": true,
+          "ordinary_evaluator_residual_norm": 1.3752256187423729e-05,
+          "ordinary_evaluator_passes_captured_target": false,
+          "coordinate_sha256": "ece92e6670603624c4db2f8d44070126cae30f40aa46fb0d201f281782311dfb",
+          "maximum_coordinate_change_from_stored": 2.980232238769531e-07
+        }
+      },
+      "capture_sha256": "d592743ef154d091b9b51b0d3f3d64e97548056fd274d5ef1f6c478f2f479c87"
+    }
+  ],
+  "initial_capture_pass": {
+    "purpose": "Initial bounded capture lacked repair-epoch anchors; metadata refinement retained the same numerical failure signatures and whole-trajectory audit results.",
+    "runs": {
+      "runs": [
+        {
+          "n": 6144,
+          "mode": "baseline",
+          "exit_code": 2,
+          "outcome": {
+            "status": "failed",
+            "reason": "rhs_0_residual_replacement_limit_iteration_37_repairs_3_recursive_3.74914533291050942e-7_true_1.93491725439687094e-6_bnorm_7.83836717690616922e1_target_7.83836717690616891e-7"
+          },
+          "stderr": "",
+          "capture_sha256": null
+        },
+        {
+          "n": 6144,
+          "mode": "baseline-repeat",
+          "exit_code": 2,
+          "outcome": {
+            "status": "failed",
+            "reason": "rhs_0_residual_replacement_limit_iteration_37_repairs_3_recursive_3.74914533291050942e-7_true_1.93491725439687094e-6_bnorm_7.83836717690616922e1_target_7.83836717690616891e-7"
+          },
+          "stderr": "",
+          "capture_sha256": null
+        },
+        {
+          "n": 6144,
+          "mode": "feature-disabled",
+          "exit_code": 2,
+          "outcome": {
+            "status": "failed",
+            "reason": "rhs_0_residual_replacement_limit_iteration_37_repairs_3_recursive_3.74914533291050942e-7_true_1.93491725439687094e-6_bnorm_7.83836717690616922e1_target_7.83836717690616891e-7"
+          },
+          "stderr": "",
+          "capture_sha256": null
+        },
+        {
+          "n": 6144,
+          "mode": "capture",
+          "exit_code": 2,
+          "outcome": {
+            "status": "failed",
+            "reason": "rhs_0_residual_replacement_limit_iteration_37_repairs_3_recursive_3.74914533291050942e-7_true_1.93491725439687094e-6_bnorm_7.83836717690616922e1_target_7.83836717690616891e-7"
+          },
+          "stderr": "",
+          "capture_sha256": "d363b508a1b65e2481939c4b6d4c04970419123f80a9bc03817afd880e143c10"
+        },
+        {
+          "n": 6144,
+          "mode": "capture-repeat",
+          "exit_code": 2,
+          "outcome": {
+            "status": "failed",
+            "reason": "rhs_0_residual_replacement_limit_iteration_37_repairs_3_recursive_3.74914533291050942e-7_true_1.93491725439687094e-6_bnorm_7.83836717690616922e1_target_7.83836717690616891e-7"
+          },
+          "stderr": "",
+          "capture_sha256": "d363b508a1b65e2481939c4b6d4c04970419123f80a9bc03817afd880e143c10"
+        },
+        {
+          "n": 8192,
+          "mode": "baseline",
+          "exit_code": 2,
+          "outcome": {
+            "status": "failed",
+            "reason": "rhs_0_residual_replacement_limit_iteration_38_repairs_3_recursive_5.79521663075105076e-7_true_3.02974411224551579e-6_bnorm_9.05096679918780893e1_target_9.05096679918780921e-7"
+          },
+          "stderr": "",
+          "capture_sha256": null
+        },
+        {
+          "n": 8192,
+          "mode": "baseline-repeat",
+          "exit_code": 2,
+          "outcome": {
+            "status": "failed",
+            "reason": "rhs_0_residual_replacement_limit_iteration_38_repairs_3_recursive_5.79521663075105076e-7_true_3.02974411224551579e-6_bnorm_9.05096679918780893e1_target_9.05096679918780921e-7"
+          },
+          "stderr": "",
+          "capture_sha256": null
+        },
+        {
+          "n": 8192,
+          "mode": "feature-disabled",
+          "exit_code": 2,
+          "outcome": {
+            "status": "failed",
+            "reason": "rhs_0_residual_replacement_limit_iteration_38_repairs_3_recursive_5.79521663075105076e-7_true_3.02974411224551579e-6_bnorm_9.05096679918780893e1_target_9.05096679918780921e-7"
+          },
+          "stderr": "",
+          "capture_sha256": null
+        },
+        {
+          "n": 8192,
+          "mode": "capture",
+          "exit_code": 2,
+          "outcome": {
+            "status": "failed",
+            "reason": "rhs_0_residual_replacement_limit_iteration_38_repairs_3_recursive_5.79521663075105076e-7_true_3.02974411224551579e-6_bnorm_9.05096679918780893e1_target_9.05096679918780921e-7"
+          },
+          "stderr": "",
+          "capture_sha256": "89af07a63161aa7a29772cba4c00294c65149df33487fc29032b724410fb6a3e"
+        },
+        {
+          "n": 8192,
+          "mode": "capture-repeat",
+          "exit_code": 2,
+          "outcome": {
+            "status": "failed",
+            "reason": "rhs_0_residual_replacement_limit_iteration_38_repairs_3_recursive_5.79521663075105076e-7_true_3.02974411224551579e-6_bnorm_9.05096679918780893e1_target_9.05096679918780921e-7"
+          },
+          "stderr": "",
+          "capture_sha256": "89af07a63161aa7a29772cba4c00294c65149df33487fc29032b724410fb6a3e"
+        }
+      ],
+      "successful_control_checks": [
+        {
+          "arguments": [
+            "expander",
+            "128",
+            "1",
+            "auto-forecast",
+            "cut"
+          ],
+          "exact_scientific_match": true,
+          "result": {
+            "status": "ok",
+            "case": "expander",
+            "n": 128,
+            "rhs": 1,
+            "arm": "auto-forecast",
+            "iterations": 19,
+            "upgrades": 0,
+            "certificates": 2,
+            "relative_residual": 3.5327456256306322e-09,
+            "digest": "e98f8df7ccb6be24",
+            "graph_builds": 0,
+            "coarse_n": 0,
+            "tail_levels": 0,
+            "decisions": [
+              {
+                "event": "route",
+                "starter": "diagonal",
+                "active": 128,
+                "low_degree": 0,
+                "edge_bound": 507,
+                "memory_bound": 126984
+              },
+              {
+                "event": "forecast",
+                "rhs": 0,
+                "iteration": 16,
+                "recursive_residual": 8.826328717268088e-07,
+                "estimated_remaining": 2.008322100468406,
+                "repairs": 0,
+                "commit": false
+              },
+              {
+                "event": "rhs",
+                "rhs": 0,
+                "started_full": false,
+                "iterations": 19,
+                "install_iteration": 0,
+                "grace": true,
+                "build_disabled": false,
+                "memory_bound": 126984
+              }
+            ]
+          }
+        },
+        {
+          "arguments": [
+            "grid",
+            "64",
+            "1",
+            "auto-forecast",
+            "random"
+          ],
+          "exact_scientific_match": true,
+          "result": {
+            "status": "ok",
+            "case": "grid",
+            "n": 64,
+            "rhs": 1,
+            "arm": "auto-forecast",
+            "iterations": 17,
+            "upgrades": 1,
+            "certificates": 4,
+            "relative_residual": 1.4727676173447636e-13,
+            "digest": "fe09220a2a908897",
+            "graph_builds": 1,
+            "coarse_n": 0,
+            "tail_levels": 1,
+            "decisions": [
+              {
+                "event": "route",
+                "starter": "diagonal",
+                "active": 64,
+                "low_degree": 4,
+                "edge_bound": 112,
+                "memory_bound": 98312
+              },
+              {
+                "event": "forecast",
+                "rhs": 0,
+                "iteration": 16,
+                "recursive_residual": 4.056229144986339,
+                "estimated_remaining": 4443.704019862052,
+                "repairs": 0,
+                "commit": true
+              },
+              {
+                "event": "rhs",
+                "rhs": 0,
+                "started_full": false,
+                "iterations": 17,
+                "install_iteration": 16,
+                "grace": false,
+                "build_disabled": false,
+                "memory_bound": 1253680
+              }
+            ]
+          }
+        },
+        {
+          "arguments": [
+            "clusters",
+            "128",
+            "1",
+            "auto-forecast",
+            "cut"
+          ],
+          "exact_scientific_match": true,
+          "result": {
+            "status": "ok",
+            "case": "clusters",
+            "n": 128,
+            "rhs": 1,
+            "arm": "auto-forecast",
+            "iterations": 17,
+            "upgrades": 1,
+            "certificates": 4,
+            "relative_residual": 9.341710476371252e-12,
+            "digest": "e4ac62e77d1d7226",
+            "graph_builds": 1,
+            "coarse_n": 0,
+            "tail_levels": 1,
+            "decisions": [
+              {
+                "event": "route",
+                "starter": "diagonal",
+                "active": 128,
+                "low_degree": 0,
+                "edge_bound": 504,
+                "memory_bound": 126984
+              },
+              {
+                "event": "forecast",
+                "rhs": 0,
+                "iteration": 16,
+                "recursive_residual": 0.13434709965821284,
+                "estimated_remaining": 50.48049739341609,
+                "repairs": 0,
+                "commit": true
+              },
+              {
+                "event": "rhs",
+                "rhs": 0,
+                "started_full": false,
+                "iterations": 17,
+                "install_iteration": 16,
+                "grace": false,
+                "build_disabled": false,
+                "memory_bound": 3175856
+              }
+            ]
+          }
+        }
+      ],
+      "binary_sha256": "270e69b432cedcfccb00501a60bb292f58c2e2dd34cbe60b2e81fd9128a24485",
+      "baseline_binary_sha256": "81d231c74426138468a9dbd026f61deead121b18f2733160743e91c8e669066a",
+      "failure_signatures_and_capture_repeats_exact": true
+    },
+    "witness_sha256": "29cb9a9a58f157a1e1172e547090a2e3f4732ccd10310b146445733d40cf5bff",
+    "results": [
+      {
+        "n": 6144,
+        "workers": 24390,
+        "iterations": 37,
+        "repairs_counter": 3,
+        "trace": 17426043166176923068,
+        "recorded_update_values": 227328,
+        "ordinary_update_replay_bit_exact": true,
+        "stored_totals_equal_exact_weight_sums": true,
+        "target": 7.838367176906169e-07,
+        "bnorm": 78.38367176906169,
+        "component_rhs_sums": [
+          "0"
+        ],
+        "maximum_stored_coordinate_ulp": 1.4901161193847656e-08,
+        "stored_coordinate_range": 147497410.85608286,
+        "captured_truth_vs_exact_residual_error_norm": "7.17062959868129994078207242829549606721951860581866952209848E-13",
+        "candidates": {
+          "stored": {
+            "residual_norm_decimal_60": "0.00000193491725329817398308825120648896640959247162700450236029664",
+            "residual_norm_decimal_100": "0.000001934917253298173983088251206488966409592471627004502360296637867914298803434409211572859649000626593",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "45900139010792242873153061004565269208386129/7532522082464014979100130938354141098934272",
+            "maximum_absolute_residual": "9/67108864",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": true,
+            "ordinary_evaluator_residual_norm": 1.934917254396871e-06,
+            "ordinary_evaluator_passes_captured_target": false,
+            "coordinate_sha256": "182886afabd80ee4a6a28e807d3dd378b49fe60ddb194530ad3bb88315b12626",
+            "maximum_coordinate_change_from_stored": 0.0
+          },
+          "kahan_flattened": {
+            "residual_norm_decimal_60": "0.00000852321502899615278575659552335733623320871958251132770583558",
+            "residual_norm_decimal_100": "0.000008523215028996152785756595523357336233208719582511327705835575128291433394415102859129033573065626263",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "890627492240686241473692594781171974745895089/7532522082464014979100130938354141098934272",
+            "maximum_absolute_residual": "33/33554432",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": true,
+            "ordinary_evaluator_residual_norm": 8.523215005020616e-06,
+            "ordinary_evaluator_passes_captured_target": false,
+            "coordinate_sha256": "6052aaeff79353c3dd9c1b4c7ff4895e8e7e98b2dda2f495d486d23fbd7c3b1a",
+            "maximum_coordinate_change_from_stored": 7.450580596923828e-08
+          },
+          "kahan_flattened_centered": {
+            "residual_norm_decimal_60": "0.00000852321506326676229990173632859463226643247755937925232688977",
+            "residual_norm_decimal_100": "0.000008523215063266762299901736328594632266432477559379252326889768890864854534729580594570911775982297564",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "890627499402853796009909009079991428405158137/7532522082464014979100130938354141098934272",
+            "maximum_absolute_residual": "33/33554432",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": true,
+            "ordinary_evaluator_residual_norm": 8.523215038091552e-06,
+            "ordinary_evaluator_passes_captured_target": false,
+            "coordinate_sha256": "7b3cfdffddeaacdd9d331ab596b291c4d9221a642af2ec21c976bd72f97e2cc6",
+            "maximum_coordinate_change_from_stored": 1.9371509552001953e-07
+          },
+          "exact_sum_unflattened": {
+            "residual_norm_decimal_60": "0.00000841510022870821959316901452007775524138418210742829887506386",
+            "residual_norm_decimal_100": "0.000008415100228708219593169014520077755241384182107428298875063858839461824555481978098630395947402022142",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "18031310760272520525344882857548247705898985048556622789240801287498978553232913/156444362982488491185057481518999457299240312756375702382429864590394102120448",
+            "maximum_absolute_residual": "9253254859713762075/9671406556917033397649408",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": false,
+            "maximum_coordinate_change_from_stored": 6.919263742799618e-08
+          },
+          "exact_sum_flattened": {
+            "residual_norm_decimal_60": "0.00000862137233630757019694655429001458639595410613282809589109699",
+            "residual_norm_decimal_100": "0.000008621372336307570196946554290014586395954106132828095891096987582953765814031841528282582309152051447",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "911259375874581893996913207709275759710935601/7532522082464014979100130938354141098934272",
+            "maximum_absolute_residual": "65/67108864",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": true,
+            "ordinary_evaluator_residual_norm": 8.621372317538481e-06,
+            "ordinary_evaluator_passes_captured_target": false,
+            "coordinate_sha256": "9a21de0cc6840d004be8089b50cf20901582f231ce9fd2605b970e8c7d8d8e72",
+            "maximum_coordinate_change_from_stored": 7.450580596923828e-08
+          },
+          "exact_sum_flattened_centered": {
+            "residual_norm_decimal_60": "0.00000862137232092940316421450254720010896058196419599141429334292",
+            "residual_norm_decimal_100": "0.000008621372320929403164214502547200108960581964195991414293342915277841331715644352319753897600617016603",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "911259372623707593897685378589938660490923299/7532522082464014979100130938354141098934272",
+            "maximum_absolute_residual": "65/67108864",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": true,
+            "ordinary_evaluator_residual_norm": 8.62137230251484e-06,
+            "ordinary_evaluator_passes_captured_target": false,
+            "coordinate_sha256": "8b5167f511fd8f1fa38cbcac348519a76e39359b7d2d516b36f00699da1b9292",
+            "maximum_coordinate_change_from_stored": 1.9371509552001953e-07
+          }
+        },
+        "capture_sha256": "d363b508a1b65e2481939c4b6d4c04970419123f80a9bc03817afd880e143c10"
+      },
+      {
+        "n": 8192,
+        "workers": 32514,
+        "iterations": 38,
+        "repairs_counter": 3,
+        "trace": 17951314131116165433,
+        "recorded_update_values": 311296,
+        "ordinary_update_replay_bit_exact": true,
+        "stored_totals_equal_exact_weight_sums": true,
+        "target": 9.050966799187809e-07,
+        "bnorm": 90.50966799187809,
+        "component_rhs_sums": [
+          "0"
+        ],
+        "maximum_stored_coordinate_ulp": 1.4901161193847656e-08,
+        "stored_coordinate_range": 262216055.40852237,
+        "captured_truth_vs_exact_residual_error_norm": "1.18617029820857615799191447448727425265106505233470259631833E-12",
+        "candidates": {
+          "stored": {
+            "residual_norm_decimal_60": "0.00000302974410469247921614325019426959627522295402898827270502668",
+            "residual_norm_decimal_100": "0.000003029744104692479216143250194269596275222954028988272705026683467640509831058522635064850124270067840",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "56269247725903404115523766949797643775899857/5021681388309345608913611553781874283249664",
+            "maximum_absolute_residual": "5/33554432",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": true,
+            "ordinary_evaluator_residual_norm": 3.029744112245516e-06,
+            "ordinary_evaluator_passes_captured_target": false,
+            "coordinate_sha256": "eb670fa92c07892ab5002669a46ce364e3a4dcd2c3f1eaa3efa33b8b084804a7",
+            "maximum_coordinate_change_from_stored": 0.0
+          },
+          "kahan_flattened": {
+            "residual_norm_decimal_60": "0.0000134538774322849785713557326838106804028166340269220447793047",
+            "residual_norm_decimal_100": "0.00001345387743228497857135573268381068040281663402692204477930471447518951190746266154024506133754319805",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "277392141394540023527917312714778808975023419/1255420347077336402228402888445468570812416",
+            "maximum_absolute_residual": "27/33554432",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": true,
+            "ordinary_evaluator_residual_norm": 1.3453877438577425e-05,
+            "ordinary_evaluator_passes_captured_target": false,
+            "coordinate_sha256": "d0f5a0fd5e473b732772efc08241ec96c45f8eed84b7cf12f5006ddebe007052",
+            "maximum_coordinate_change_from_stored": 7.450580596923828e-08
+          },
+          "kahan_flattened_centered": {
+            "residual_norm_decimal_60": "0.0000134538774304012749705937503154431798580830998699560765020780",
+            "residual_norm_decimal_100": "0.00001345387743040127497059375031544317985808309986995607650207801349802627411185946605731240895241451306",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "1109568565267454379324940944008971409726791923/5021681388309345608913611553781874283249664",
+            "maximum_absolute_residual": "27/33554432",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": true,
+            "ordinary_evaluator_residual_norm": 1.3453877436647345e-05,
+            "ordinary_evaluator_passes_captured_target": false,
+            "coordinate_sha256": "95dad941308346f69065729ae33042d729252c3908475acf0e83249db2f473e1",
+            "maximum_coordinate_change_from_stored": 2.980232238769531e-07
+          },
+          "exact_sum_unflattened": {
+            "residual_norm_decimal_60": "0.0000133426824840427552023155997691735306037539980057295016321667",
+            "residual_norm_decimal_100": "0.00001334268248404275520231559976917353060375399800572950163216670337250752251014215889160243068014664283",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "2833185640721708738401366561775916287387281863369869961187075423351712697763249/13037030248540713542671729924696294865626530503806525275730810172364787023872",
+            "maximum_absolute_residual": "18139434051267404783/19342813113834066795298816",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": false,
+            "maximum_coordinate_change_from_stored": 7.232863785464904e-08
+          },
+          "exact_sum_flattened": {
+            "residual_norm_decimal_60": "0.0000137522561853224332583859825554691924287413777424674510179137",
+            "residual_norm_decimal_100": "0.00001375225618532243325838598255546919242874137774246745101791371740425322381857915510948781942845711893",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "2318660238635557721344391984474175913550304533/10043362776618691217827223107563748566499328",
+            "maximum_absolute_residual": "17/16777216",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": true,
+            "ordinary_evaluator_residual_norm": 1.3752256183017474e-05,
+            "ordinary_evaluator_passes_captured_target": false,
+            "coordinate_sha256": "dc71d33bb222d78dd5fb9fb2864db278758d4f507b67e5e3752b9d01f0de66f1",
+            "maximum_coordinate_change_from_stored": 7.450580596923828e-08
+          },
+          "exact_sum_flattened_centered": {
+            "residual_norm_decimal_60": "0.0000137522561905711843076364241230123676398542997100913029443979",
+            "residual_norm_decimal_100": "0.00001375225619057118430763642412301236763985429971009130294439792989573016889692738070806111514612503031",
+            "passes_exact_captured_target": false,
+            "squared_residual_over_target_squared": "2318660240405459357659897913916324018606584099/10043362776618691217827223107563748566499328",
+            "maximum_absolute_residual": "17/16777216",
+            "component_residual_sums": [
+              "0"
+            ],
+            "flattened_binary64": true,
+            "ordinary_evaluator_residual_norm": 1.3752256187423729e-05,
+            "ordinary_evaluator_passes_captured_target": false,
+            "coordinate_sha256": "ece92e6670603624c4db2f8d44070126cae30f40aa46fb0d201f281782311dfb",
+            "maximum_coordinate_change_from_stored": 2.980232238769531e-07
+          }
+        },
+        "capture_sha256": "89af07a63161aa7a29772cba4c00294c65149df33487fc29032b724410fb6a3e"
+      }
+    ]
+  },
+  "validation": {
+    "rust_tests_all_features": 28,
+    "rust_tests_passed": 28,
+    "python_harness_tests": 16,
+    "new_accuracy_tests": 6,
+    "python_total_passed": 22,
+    "pinned_toolchain_strict_clippy": "pass",
+    "format": "pass",
+    "production_identity": {
+      "reference": "HEAD",
+      "runtime_modules": 192,
+      "artifact_inputs": 58,
+      "result": "unchanged"
+    },
+    "repository_entrypoint": {
+      "python_tests": 243,
+      "python_skipped": 13,
+      "exit_code": 1,
+      "blocker": "Existing installed-plugin/source identity mismatch; later runtime/ABI checks not reached.",
+      "log_sha256": "38a32fd229219f7d108366b85e4958f2267e27a60045eec87be3b2b67f24ac31"
+    },
+    "newer_toolchain_clippy": "Rust 1.97.1 strict Clippy rejected pre-existing manual_is_multiple_of and manual_checked_ops lints in problem.rs/protected.rs; repository-pinned 1.85.1 strict Clippy passes.",
+    "python_versions_checked": [
+      "3.9",
+      "3.13"
+    ]
+  },
+  "interpretation": [
+    "Exact edge-flux residuals reject both stored local iterates; evaluator rounding cannot explain the misses.",
+    "Each final repair epoch has one update. Its exact anchor-plus-rounded-product sum passes the unchanged captured target; flattening reproduces the original failing vector bit for bit.",
+    "Whole-trajectory re-summing also changes old rounding errors to which subsequent residual replacements already responded. Its worse residuals are not evidence against a live compensated recurrence.",
+    "The unflattened passing vectors are diagnostics only. No acceptable flattened fix, universal binary64 floor, coefficient forward-error bound, production regression failure, or cross-platform vector identity is established."
+  ],
+  "temporary_artifacts_removed": true,
+  "temporary_runner_sha256": "0abb97b31baf8135c963445278ce17a21199e250b352b2ff05fa8cb16f69a86d"
+}

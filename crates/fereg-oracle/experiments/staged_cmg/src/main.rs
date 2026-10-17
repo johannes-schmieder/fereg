@@ -1,3 +1,5 @@
+#[cfg(feature = "accuracy-capture")]
+mod accuracy_capture;
 mod builder;
 mod guarded;
 mod local;

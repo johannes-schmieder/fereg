@@ -48,6 +48,8 @@ pub struct PcgState {
     pub trace: u64,
     pub apply_seconds: f64,
     tariff: Tariff,
+    #[cfg(feature = "accuracy-capture")]
+    capture: Option<crate::accuracy_capture::Capture>,
 }
 impl PcgState {
     pub fn new(
@@ -78,6 +80,8 @@ impl PcgState {
             trace: 14695981039346656037,
             apply_seconds: 0.,
             tariff,
+            #[cfg(feature = "accuracy-capture")]
+            capture: crate::accuracy_capture::Capture::from_env(p.n, start)?,
         };
         s.target = TOL * s.bnorm;
         if s.bnorm == 0. {
@@ -175,6 +179,28 @@ impl PcgState {
         format!("{reason}_iteration_{}_repairs_{}_recursive_{:.17e}_true_{:.17e}_bnorm_{:.17e}_target_{:.17e}",
             self.iterations,self.repairs,norm(&self.r),norm(&self.ap),self.bnorm,self.target)
     }
+    #[cfg(feature = "accuracy-capture")]
+    fn capture_failure(&self, p: &Problem, b: &[f64]) -> Result<(), String> {
+        if let Some(capture) = self.capture.as_ref() {
+            capture.write(
+                p,
+                crate::accuracy_capture::Failure {
+                    rhs: b,
+                    x: &self.x,
+                    recursive: &self.r,
+                    truth: &self.truth,
+                    direction: &self.d,
+                    product: &self.ap,
+                    bnorm: self.bnorm,
+                    target: self.target,
+                    iterations: self.iterations,
+                    repairs: self.repairs,
+                    trace: self.trace,
+                },
+            )?;
+        }
+        Ok(())
+    }
     /// Routing telemetry only; the norm is already computed by the recurrence.
     pub fn progress(&self) -> (f64, usize) {
         (self.recursive_norm, self.repairs)
@@ -194,6 +220,10 @@ impl PcgState {
             return Err("nonpositive_operator_curvature".into());
         }
         let alpha = self.rz / pap;
+        #[cfg(feature = "accuracy-capture")]
+        if let Some(capture) = self.capture.as_mut() {
+            capture.record(alpha, &self.d, &self.x, self.repairs)?;
+        }
         for i in 0..p.n {
             self.x[i] += alpha * self.d[i];
             self.r[i] -= alpha * self.ap[i];
@@ -215,6 +245,8 @@ impl PcgState {
             if apparent {
                 self.repairs += 1;
                 if self.repairs > 2 {
+                    #[cfg(feature = "accuracy-capture")]
+                    self.capture_failure(p, b)?;
                     return Err("residual_replacement_limit".into());
                 }
                 self.r.copy_from_slice(&self.truth);

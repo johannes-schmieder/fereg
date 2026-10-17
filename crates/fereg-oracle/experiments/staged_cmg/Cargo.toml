@@ -6,6 +6,9 @@ publish = false
 
 [workspace]
 
+[features]
+accuracy-capture = []
+
 [dependencies]
 cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "73e2e43d046250e00319c45863ca609808e52c99", features = ["experimental-components"] }
 
