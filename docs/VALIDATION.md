@@ -66,6 +66,98 @@ excess bound remains conditional on block independence. D3's schedule seed is
 2026101732. All observations and failures are retained. This experiment does
 not promote public Auto or establish Mac performance.
 
+Implementation `e8d17208` passes source integration and 504 benchmark tests:
+490 in the initial run and fourteen in the two modules rerun after supplying
+task-private pinned dependencies. The universal private Mac plugin passes
+binary and actual ABI checks. All 73 public replays are exact against `fe498eb5`
+with independent scientific witnesses. Licensed single-runtime, OLS transaction
+and compact-cell fixtures pass; the latter also checks S2/S equality of
+published coefficients, covariance, residuals and saved effects at workers 1/4
+in Fast/Low modes. Independent Astra extra-high reviews cover the proof/cache,
+runtime and protocol. The protocol review added exact S2/S equality in the
+timing allocation itself. Normal installed-package admission fails because
+distribution artifacts remain unchanged; these private checks do not qualify a
+release. The Linux artifact passes binary audit and compute-node ABI checks.
+
+### Structural early-refusal results
+
+The [retained D3 evidence](../bench/results/admission-cells-20261017.json)
+preserves all 1,312 observations, schedules, scientific signatures, individual
+solver timers, 64 diagnostic payloads, source/input identities, accounting and
+capture hashes. No observation was excluded or replaced. The same-artifact,
+same-allocation comparisons against Auto are:
+
+| Arm versus Auto | Material gains | Within allowance | Regressions |
+|---|---:|---:|---:|
+| Original cells | 15 | 7 | 2 |
+| S | 18 | 6 | 0 |
+| S2 | 18 | 4 | 2 |
+
+**S2's early-refusal mechanism works, but S2 fails the full gate and is not the
+stronger overall candidate in this panel.** These are twelve-block paired
+classifications using `max(5%,1 ms)`, not untouched confirmation. Earlier rounds
+used other allocations; their gain counts are not a causal before/after test.
+Against S, S2 has one material gain (disconnected/four-worker), 21 settings
+within allowance and two regressions.
+
+Both hubs settings refuse at 49,820 cells, above the proven tariff limit 49,797
+for maximum RHS width four and Unit weights. S constructs all 54,200 cells.
+S2 retains no partial kernel and selects the observation operator for both
+actual widths. Its median construction time falls from S's 2.634 to 1.213 ms
+at one worker and from 2.539 to 1.095 ms at four: reductions of 54% and 57%.
+Both satisfy all three refused-builder limits. These traces come from the
+reviewed bound implementation, rather than an independent trace-level proof.
+The paired complete-fit ratios against S are only 0.9612 and 0.9786, both within
+the material-change allowance. Halving this setup component does not halve the
+regression's total cost.
+
+The two total-time regressions against Auto are dense/four-worker (paired
+median ratio 1.0569; median allowance excess +0.192 ms) and high-degree-weak/
+four-worker (1.0518; +0.076 ms). These narrowly cross the frozen threshold and
+remain failures. Against S, the regressions are high-degree-weak/four-worker
+(1.0758; +1.192 ms) and dynamic-weights/four-worker (1.0574; +0.188 ms).
+Paired summaries must not be replaced by ratios of marginal medians.
+
+Five of eight builder settings pass. The three accepted-kernel failures are
+high-degree-weak at one/four workers and repeated/four-worker. Their S2/S
+construction ratios are 1.330, 2.152 and 1.504, versus the <=1.1 limit. The
+individual two-repeat traces vary substantially: high-degree-weak/four-worker
+S2 is 0.617 and 2.023 ms while S is 0.608 and 0.619 ms; repeated/four-worker
+S2 is 0.946 and 2.036 ms. These sparse diagnostics cannot identify a stable
+intrinsic overhead or establish that the failures are noise. No additional
+samples or retrospective gate change were used.
+
+Science job `8156276` completed on `scc-gr4` in 223 accounting seconds with
+`failed=0`, `exit_status=0` and scheduler `maxvmem=566.328M`. Its 26 smoke/
+control calls precede 192 numerical records and 216 exact prior-artifact pairs
+(432 calls): 650 total native calls. All nine cell-study control arms are exact
+against the prior S artifact; S2/S science and solver signatures are exact at
+each worker count, with independent witnesses and discrete agreement.
+
+Discovery job `8156374` completed on `scc-yk4` in 388 accounting seconds with
+`failed=0`, `exit_status=0`, scheduler `maxvmem=555.316M`, and the completion
+marker for 1,312 calls. Reservation, every-call coverage and sampled isolation
+were replayed across 54 process samples and 32 scheduler censuses; maximum
+process/scheduler gaps are 5.050/19.907 seconds and no
+known competing computation was observed. This does not prove continuous
+absence of all interference. S2/S exactness also holds throughout this timing
+allocation. C3 inputs and its execution driver were sealed before the first D3
+call; **C3 has zero candidate calls and no submitted job** because D3 failed.
+
+Independent Astra extra-high review recomputed the block classifications,
+builder gates and schedule coverage; reconstructed 1,962 raw JSON scientific
+fingerprints; checked all timing/log fields, exact S2/S signatures, control
+bindings, accounting, isolation and C3 chronology; and found no blocking issue.
+It also verified the retained capture's semantic equality. The reviewer did
+not independently recompute numerical oracle errors or rehash raw binary
+output columns. The lead rehashed those bound artifacts on SCC; compact
+attestations are not a replacement numerical dataset.
+
+S remains the stronger research baseline. The next separately planned study
+should explain accepted-path and four-worker complete-fit costs, with adequate
+timing replication, rather than infer a cause from two builder traces. Public
+Auto is unchanged. There is no broad nonregression or Mac speed claim.
+
 ## First-occurrence cell prototype scope (2026-10-17)
 
 Fable 5.1 Extra reviewed `2dfc0e86` and selected a new private `cells_s` arm:
