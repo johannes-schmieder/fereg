@@ -71,9 +71,81 @@ fixtures. The ordinary installed-package check correctly rejects the private
 runtime because distribution artifacts were not replaced. Independent Astra
 reviews found no remaining implementation or protocol blocker after fixing a
 timer-source error before the experiment: the gate uses scored first-solver
-times, never traced diagnostic timings. The Linux artifact has built and passed
-its binary audit; SCC science and discovery outcomes are recorded below when
-complete. No timing advantage is inferred from these correctness checks.
+times, never traced diagnostic timings. The Linux artifact passed its binary audit and actual-plugin ABI test. No timing
+advantage is inferred from these correctness checks.
+
+Implementation `7376c102` completed D4 but **failed selection**. Its Linux plugin
+SHA256 is `d4bec520f1d75f61ce607d0dfa3a4a7339e84b587bb1c46235c0ed7952ef8dd0`;
+the frozen executable-source manifest SHA256 is
+`128cfad769a90a854c4498706292ca8e59d6a8aa1fa37a25eac6d1494f2bee2d`.
+Science job `8157214` completed on `scc-gr4`: 240 candidate solves, 240 exact
+parent comparisons (480 native calls), plus ten smoke solves and ten smoke
+parent comparisons. Measurement job `8157279` completed all 1,920 calls on
+`scc-zj4`, reserving 28 cores and using one/four native workers. Both scheduler
+records have `failed=0`, `exit_status=0`. The raw-output and isolation audit and
+compact retained evidence are recorded in
+[the D4 results](../bench/results/engine-cells-20261017.json), with losslessly
+encoded [diagnostics](../bench/results/engine-cells-diagnostics-20261017.json).
+Audit job `8157391` also finished with both scheduler statuses zero. It reparsed
+all 2,670 native outputs and compared saved fingerprints, solver rows, times and
+traces. The isolation replay checked 76 process snapshots and 34 scheduler
+censuses, found no known competing compute and retained every observation.
+This sampled evidence does not prove continuously interference-free execution.
+
+| Comparison | Material gains | Within allowance | Regressions |
+| --- | ---: | ---: | ---: |
+| E + ownership versus Auto | 17 | 6 | 1 |
+| E + ownership versus S | 2 | 16 | 6 |
+| Auto + ownership versus Auto | 4 | 20 | 0 |
+
+These are revealed discovery classifications from paired blocks using the frozen
+`max(5%,1 ms)` allowance, not confirmation bounds. They use paired differences
+and ratios, not ratios of the arms' marginal medians. The Auto regression is
+inactive-zero/four-worker: median paired ratio 1.0922, with 0.617 ms median
+excess beyond the allowance. Regressions against S occur at easy/one-worker,
+easy/four-worker, hubs/four-worker, nonmovers/four-worker, weak/four-worker and
+dynamic-weights/four-worker. The two gains against S are high-degree-weak/four-
+worker and wide/one-worker. Thus the failure is broader than narrowly missing
+the required eighteen gains against Auto.
+
+Ten of twenty applicable first-solver gates fail. All four demanding parallel
+targets fail their required 20% improvement:
+
+| Four-worker family | S first solve (ms) | E + ownership (ms) |
+| --- | ---: | ---: |
+| Weak connectivity | 3.737 | 6.169 |
+| High-degree weak connectivity | 8.935 | 10.140 |
+| Nonmovers | 3.060 | 5.565 |
+| Dynamic weights | 4.355 | 7.601 |
+
+These are medians of the twelve scored first-solver timers. Direct kernel and
+twin construction time is charged to setup and excluded from this solve timer;
+extra construction time alone cannot explain the failures. E also changes RHS
+and reconstruction work, so these results do not isolate synchronization cost
+or show that parallel cell application can never help. The three traced repetitions show installed twins in all four demanding targets.
+Weak, high-degree-weak and nonmovers retain S's 48, 53 and 50 first-projection
+iterations respectively; dynamic weights increases from 59 to 60. Median traced
+operator time rises from 1.032 to 3.791 ms for nonmovers, 2.410 to 5.795 ms for
+dynamic weights and 6.060 to 8.233 ms for high-degree-weak. Weak's corresponding
+operator times are nearly equal (4.281 versus 4.305 ms). These observations
+locate an operator-path cost in several cases, but three traced repetitions do
+not replace scored timings or distinguish scheduling, synchronization, cache
+behavior and kernel implementation. The larger first-solve slowdowns cannot
+all be attributed to iteration-count changes. The `auto_cells_e lanes=1` trace
+records the serial admission tariff, not the number of execution lanes.
+Independent Astra review reconstructed the retained observations, paired
+comparisons, exactness checks, confirmation chronology and every mechanism gate;
+no evidence or protocol blocker remains. Fresh numerical-oracle evaluation
+still requires the raw columns retained on SCC.
+
+Ownership alone preserves exact Auto scientific fields and solver signatures;
+the combined arm likewise preserves exact E science. Its four observed gains
+and zero regressions make ownership the more promising component of this round,
+but it was not the predeclared finalist. C4 remains sealed with zero candidate
+calls. Neither ownership alone nor a post hoc S-plus-ownership combination may
+inherit C4 admission from this failed candidate. A separate frozen experiment
+would be needed. Public Auto and installed distribution artifacts remain
+unchanged; this run establishes no Mac speed claim or broadly qualified option.
 
 ## Structural early-refusal prototype scope (2026-10-17)
 
