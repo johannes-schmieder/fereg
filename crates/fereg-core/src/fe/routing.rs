@@ -41,6 +41,7 @@ pub(super) enum RoutingAblation {
     CellsDeferred,
     CellsM,
     CellsMLanes,
+    CellsS,
     Direct,
 }
 
@@ -70,6 +71,7 @@ impl std::fmt::Display for RoutingPreset {
             Some(RoutingAblation::CellsDeferred) => f.write_str("routing_cells_deferred"),
             Some(RoutingAblation::CellsM) => f.write_str("routing_cells_m"),
             Some(RoutingAblation::CellsMLanes) => f.write_str("routing_cells_m_lanes"),
+            Some(RoutingAblation::CellsS) => f.write_str("routing_cells_s"),
             Some(RoutingAblation::Direct) => f.write_str("routing_direct"),
         }
     }
@@ -102,6 +104,7 @@ impl RoutingPreset {
             "cells_deferred" => RoutingAblation::CellsDeferred,
             "cells_m" => RoutingAblation::CellsM,
             "cells_m_lanes" => RoutingAblation::CellsMLanes,
+            "cells_s" => RoutingAblation::CellsS,
             "direct" => RoutingAblation::Direct,
             _ => return Err(invalid_argument("invalid solver-routing kernel experiment")),
         };

@@ -6,8 +6,10 @@
 
 mod compact;
 mod membership;
+mod occurrence;
 pub(crate) use compact::build_v2;
 pub(crate) use membership::build_membership;
+pub(crate) use occurrence::build_occurrence;
 
 use crate::error::{allocation, invalid_argument, invalid_data, FeregError, Result};
 use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
@@ -558,6 +560,37 @@ mod tests {
                                             build_membership(design, side, weights, 7.0, limits())
                                                 .unwrap();
                                         let kernel = new.kernel.unwrap();
+                                        let occurrence =
+                                            build_occurrence(design, side, weights, 7.0, limits())
+                                                .unwrap();
+                                        let occurrence = occurrence.kernel.unwrap();
+                                        let pairs = |kernel: &CellSchur| {
+                                            let mut rows: Vec<_> = kernel
+                                                .cells
+                                                .iter()
+                                                .map(|c| (c.worker, c.firm, c.weight.to_bits()))
+                                                .collect();
+                                            rows.sort_unstable();
+                                            rows
+                                        };
+                                        assert_eq!(pairs(&original), pairs(&occurrence));
+                                        assert_eq!(original.offsets, occurrence.offsets);
+                                        assert_eq!(
+                                            original
+                                                .firm_weights
+                                                .iter()
+                                                .map(|v| v.to_bits())
+                                                .collect::<Vec<_>>(),
+                                            occurrence
+                                                .firm_weights
+                                                .iter()
+                                                .map(|v| v.to_bits())
+                                                .collect::<Vec<_>>()
+                                        );
+                                        assert_eq!(
+                                            occurrence.cells.capacity(),
+                                            occurrence.cells.len()
+                                        );
                                         equal_banks(&original, &kernel);
                                         assert_eq!(kernel.cells.capacity(), kernel.cells.len());
                                         assert!(
@@ -628,140 +661,259 @@ mod tests {
     }
 
     #[test]
-    fn repeated_weighted_cells_match_independent_rectangle_conductance() {
-        let left = [0, 0, 0, 1, 1, 1, 2, 2];
-        let right = [0, 0, 1, 0, 1, 1, 2, 2];
-        let weights = [2.0, 1.0, 3.0, 4.0, 5.0, 2.0, 7.0, 1.0];
-        with_design(&left, &right, 3, 3, |design| {
-            let setup = build(
+    fn occurrence_first_order_charges_and_joint_memory_boundaries() {
+        let left = [1, 0, 0, 1, 0, 1, 0, 1];
+        let right = [2, 1, 2, 0, 1, 2, 0, 1];
+        let weights = [1., 1e-100, 3., 2., 1., 1e100, 7., 11.];
+        with_design(&left, &right, 2, 3, |design| {
+            let full = build_occurrence(
                 design,
                 0,
                 BorrowedMapWeights::Provided(&weights),
-                7.0,
+                1e100,
                 limits(),
             )
             .unwrap();
-            let peak = setup.peak.bytes().unwrap();
-            let kernel = setup.kernel.unwrap();
-            // Parallel conductances of two independently eliminated stars.
-            let h = (3.0 * 3.0 / 6.0 + 4.0 * 7.0 / 11.0) / 7.0;
-            assert!((kernel.diagonal()[0] - h).abs() < 2e-15);
-            assert!((kernel.diagonal()[1] - h).abs() < 2e-15);
-            // Exactly-zero Schur diagonal keeps a positive D_f preconditioner;
-            // the corresponding operator block remains zero.
-            assert_eq!(kernel.diagonal()[2], 8.0 / 7.0);
-            assert!(kernel.retained_bytes() <= u128::from(peak));
-            let input = [1.0, 2.0, 99.0, -2.0, 4.0, 99.0, 3.0, -7.0, 99.0];
-            let mut output = [99.0; 9];
-            let mut scratch = [99.0; 9];
-            kernel
-                .apply(&input, &mut output, &mut scratch, 2, 3)
-                .unwrap();
-            for rhs in 0..2 {
-                let expected = h * (input[rhs] - input[3 + rhs]);
-                assert!((output[rhs] - expected).abs() < 4e-15);
-                assert!((output[3 + rhs] + expected).abs() < 4e-15);
-                assert!(output[6 + rhs].abs() < 4e-15);
-            }
-            assert_eq!([output[2], output[5], output[8]], [99.0; 3]);
-            let second = build(
-                design,
-                0,
-                BorrowedMapWeights::Provided(&weights),
-                7.0,
-                limits(),
-            )
-            .unwrap();
-            assert_eq!(second.work_used, setup.work_used);
+            let kernel = full.kernel.as_ref().unwrap();
             assert_eq!(
-                second
-                    .kernel
-                    .unwrap()
-                    .diagonal()
-                    .iter()
-                    .map(|x| x.to_bits())
-                    .collect::<Vec<_>>(),
                 kernel
-                    .diagonal()
+                    .cells
                     .iter()
-                    .map(|x| x.to_bits())
-                    .collect::<Vec<_>>()
+                    .map(|c| (c.worker, c.firm))
+                    .collect::<Vec<_>>(),
+                vec![(0, 1), (0, 2), (0, 0), (1, 2), (1, 0), (1, 1)]
             );
+            // Sum the implementation's operation classes independently: row
+            // aggregation, cell finalization, level banks, allocations/preflight.
+            assert_eq!(full.work_used, 32 * 8 + 64 * 6 + 44 * 2 + 32 * 3 + 312);
+            for budget in [
+                0,
+                127,
+                128,
+                full.work_used / 2,
+                full.work_used - 1,
+                full.work_used,
+            ] {
+                let got = build_occurrence(
+                    design,
+                    0,
+                    BorrowedMapWeights::Provided(&weights),
+                    1e100,
+                    KernelLimits {
+                        work_budget: budget,
+                        ..limits()
+                    },
+                )
+                .unwrap();
+                assert_eq!(got.kernel.is_some(), budget >= full.work_used);
+                assert!(got.work_used <= budget);
+                if got.kernel.is_none() {
+                    assert_eq!(got.refusal, Some(KernelRefusal::WorkBudget));
+                }
+            }
+            let bytes = u128::from(full.peak.bytes().unwrap());
+            assert!(kernel.retained_bytes() <= bytes);
+            for extra in [0, 1, 2] {
+                let got = build_occurrence(
+                    design,
+                    0,
+                    BorrowedMapWeights::Unit,
+                    1.,
+                    KernelLimits {
+                        retained_live_bytes: 512,
+                        memory: Some(FeSolverMemoryBudget {
+                            execution_bytes: 128,
+                            usable_bytes: 512 + 128 + bytes - 1 + extra,
+                        }),
+                        ..limits()
+                    },
+                )
+                .unwrap();
+                assert_eq!(got.kernel.is_some(), extra >= 1);
+                if extra == 0 {
+                    assert_eq!(got.refusal, Some(KernelRefusal::MemoryBudget));
+                }
+            }
         });
     }
 
     #[test]
-    fn cell_operator_matches_independent_dense_observation_elimination() {
-        let left = [2, 0, 1, 0, 2, 1, 0, 1, 2, 0, 2, 1];
-        let right = [0, 1, 3, 0, 2, 1, 1, 3, 3, 2, 0, 0];
-        let weights = [1.0, 2.0, 4.0, 3.0, 1.0, 5.0, 2.0, 1.0, 7.0, 3.0, 2.0, 4.0];
-        with_design(&left, &right, 3, 4, |design| {
-            for side in [0, 1] {
-                let kernel = build(
+    fn occurrence_firm_totals_follow_cells_not_worker_major_rows() {
+        let left = [1, 0, 0, 1];
+        let right = [0, 0, 0, 1];
+        let weights = [1., 2f64.powi(-53), 2f64.powi(-53), 1.];
+        with_design(&left, &right, 2, 2, |design| {
+            let kernel = build_occurrence(
+                design,
+                0,
+                BorrowedMapWeights::Provided(&weights),
+                1.,
+                limits(),
+            )
+            .unwrap()
+            .kernel
+            .unwrap();
+            // Row-order incumbent firm total is 1. Cell aggregation groups the
+            // two half-ulp rows before adding worker 1's contribution.
+            let row_total = weights[..3].iter().fold(0., |sum, w| sum + w);
+            assert_eq!(row_total, 1.);
+            assert_eq!(kernel.firm_weights[0], 1. + f64::EPSILON);
+            let old = build(
+                design,
+                0,
+                BorrowedMapWeights::Provided(&weights),
+                1.,
+                limits(),
+            )
+            .unwrap()
+            .kernel
+            .unwrap();
+            assert_eq!(kernel.firm_weights, old.firm_weights);
+        });
+    }
+
+    #[test]
+    fn repeated_weighted_cells_match_independent_rectangle_conductance() {
+        for builder in [build, build_occurrence] {
+            let left = [0, 0, 0, 1, 1, 1, 2, 2];
+            let right = [0, 0, 1, 0, 1, 1, 2, 2];
+            let weights = [2.0, 1.0, 3.0, 4.0, 5.0, 2.0, 7.0, 1.0];
+            with_design(&left, &right, 3, 3, |design| {
+                let setup = builder(
                     design,
-                    side,
+                    0,
                     BorrowedMapWeights::Provided(&weights),
                     7.0,
                     limits(),
                 )
-                .unwrap()
-                .kernel
                 .unwrap();
-                let (workers, firms, p, q) = if side == 0 {
-                    (&left, &right, 3, 4)
-                } else {
-                    (&right, &left, 4, 3)
-                };
-                let mut dw = vec![0.0; p];
-                let mut dense = vec![0.0; q * q];
-                for row in 0..weights.len() {
-                    dw[workers[row] as usize] += weights[row] / 7.0;
-                    dense[firms[row] as usize * q + firms[row] as usize] += weights[row] / 7.0;
+                let peak = setup.peak.bytes().unwrap();
+                let kernel = setup.kernel.unwrap();
+                // Parallel conductances of two independently eliminated stars.
+                let h = (3.0 * 3.0 / 6.0 + 4.0 * 7.0 / 11.0) / 7.0;
+                assert!((kernel.diagonal()[0] - h).abs() < 2e-15);
+                assert!((kernel.diagonal()[1] - h).abs() < 2e-15);
+                // Exactly-zero Schur diagonal keeps a positive D_f preconditioner;
+                // the corresponding operator block remains zero.
+                assert_eq!(kernel.diagonal()[2], 8.0 / 7.0);
+                assert!(kernel.retained_bytes() <= u128::from(peak));
+                let input = [1.0, 2.0, 99.0, -2.0, 4.0, 99.0, 3.0, -7.0, 99.0];
+                let mut output = [99.0; 9];
+                let mut scratch = [99.0; 9];
+                kernel
+                    .apply(&input, &mut output, &mut scratch, 2, 3)
+                    .unwrap();
+                for rhs in 0..2 {
+                    let expected = h * (input[rhs] - input[3 + rhs]);
+                    assert!((output[rhs] - expected).abs() < 4e-15);
+                    assert!((output[3 + rhs] + expected).abs() < 4e-15);
+                    assert!(output[6 + rhs].abs() < 4e-15);
                 }
-                // Direct observation-pair expansion: no compressed cells,
-                // sorted key, CSR row, or diagonal-complement implementation.
-                for i in 0..weights.len() {
-                    for j in 0..weights.len() {
-                        if workers[i] == workers[j] {
-                            dense[firms[i] as usize * q + firms[j] as usize] -=
-                                (weights[i] / 7.0) * (weights[j] / 7.0) / dw[workers[i] as usize];
+                assert_eq!([output[2], output[5], output[8]], [99.0; 3]);
+                let second = builder(
+                    design,
+                    0,
+                    BorrowedMapWeights::Provided(&weights),
+                    7.0,
+                    limits(),
+                )
+                .unwrap();
+                assert_eq!(second.work_used, setup.work_used);
+                assert_eq!(
+                    second
+                        .kernel
+                        .unwrap()
+                        .diagonal()
+                        .iter()
+                        .map(|x| x.to_bits())
+                        .collect::<Vec<_>>(),
+                    kernel
+                        .diagonal()
+                        .iter()
+                        .map(|x| x.to_bits())
+                        .collect::<Vec<_>>()
+                );
+            });
+        }
+    }
+
+    #[test]
+    fn cell_operator_matches_independent_dense_observation_elimination() {
+        for builder in [build, build_occurrence] {
+            let left = [2, 0, 1, 0, 2, 1, 0, 1, 2, 0, 2, 1];
+            let right = [0, 1, 3, 0, 2, 1, 1, 3, 3, 2, 0, 0];
+            let weights = [1.0, 2.0, 4.0, 3.0, 1.0, 5.0, 2.0, 1.0, 7.0, 3.0, 2.0, 4.0];
+            with_design(&left, &right, 3, 4, |design| {
+                for side in [0, 1] {
+                    let kernel = builder(
+                        design,
+                        side,
+                        BorrowedMapWeights::Provided(&weights),
+                        7.0,
+                        limits(),
+                    )
+                    .unwrap()
+                    .kernel
+                    .unwrap();
+                    let (workers, firms, p, q) = if side == 0 {
+                        (&left, &right, 3, 4)
+                    } else {
+                        (&right, &left, 4, 3)
+                    };
+                    let mut dw = vec![0.0; p];
+                    let mut dense = vec![0.0; q * q];
+                    for row in 0..weights.len() {
+                        dw[workers[row] as usize] += weights[row] / 7.0;
+                        dense[firms[row] as usize * q + firms[row] as usize] += weights[row] / 7.0;
+                    }
+                    // Direct observation-pair expansion: no compressed cells,
+                    // sorted key, CSR row, or diagonal-complement implementation.
+                    for i in 0..weights.len() {
+                        for j in 0..weights.len() {
+                            if workers[i] == workers[j] {
+                                dense[firms[i] as usize * q + firms[j] as usize] -=
+                                    (weights[i] / 7.0) * (weights[j] / 7.0)
+                                        / dw[workers[i] as usize];
+                            }
                         }
                     }
+                    let input: Vec<_> = (0..q).map(|i| (i as f64 - 1.5) * 0.7).collect();
+                    let mut actual = vec![0.0; q];
+                    let mut scratch = vec![0.0; p];
+                    kernel
+                        .apply(&input, &mut actual, &mut scratch, 1, 1)
+                        .unwrap();
+                    for i in 0..q {
+                        let expected = (0..q).map(|j| dense[i * q + j] * input[j]).sum::<f64>();
+                        assert!((actual[i] - expected).abs() < 5e-15);
+                        assert!((kernel.diagonal()[i] - dense[i * q + i]).abs() < 5e-15);
+                    }
                 }
-                let input: Vec<_> = (0..q).map(|i| (i as f64 - 1.5) * 0.7).collect();
-                let mut actual = vec![0.0; q];
-                let mut scratch = vec![0.0; p];
-                kernel
-                    .apply(&input, &mut actual, &mut scratch, 1, 1)
-                    .unwrap();
-                for i in 0..q {
-                    let expected = (0..q).map(|j| dense[i * q + j] * input[j]).sum::<f64>();
-                    assert!((actual[i] - expected).abs() < 5e-15);
-                    assert!((kernel.diagonal()[i] - dense[i * q + i]).abs() < 5e-15);
-                }
-            }
-        });
+            });
+        }
     }
 
     #[test]
     fn diagonal_retains_tiny_positive_complements_without_subtraction() {
-        with_design(&[0, 0], &[0, 1], 1, 2, |design| {
-            for tiny in [1e-100, 1e-300, f64::from_bits(1)] {
-                let weights = [1.0, tiny];
-                let kernel = build(
-                    design,
-                    0,
-                    BorrowedMapWeights::Provided(&weights),
-                    1.0,
-                    limits(),
-                )
-                .unwrap()
-                .kernel
-                .unwrap();
-                assert_eq!(kernel.diagonal()[0].to_bits(), tiny.to_bits());
-                assert_eq!(kernel.diagonal()[1].to_bits(), tiny.to_bits());
-            }
-        });
+        for builder in [build, build_occurrence] {
+            with_design(&[0, 0], &[0, 1], 1, 2, |design| {
+                for tiny in [1e-100, 1e-300, f64::from_bits(1)] {
+                    let weights = [1.0, tiny];
+                    let kernel = builder(
+                        design,
+                        0,
+                        BorrowedMapWeights::Provided(&weights),
+                        1.0,
+                        limits(),
+                    )
+                    .unwrap()
+                    .kernel
+                    .unwrap();
+                    assert_eq!(kernel.diagonal()[0].to_bits(), tiny.to_bits());
+                    assert_eq!(kernel.diagonal()[1].to_bits(), tiny.to_bits());
+                }
+            });
+        }
     }
 
     #[test]
@@ -1114,6 +1266,11 @@ mod tests {
                 .kernel
                 .unwrap();
             crate::interrupt::request_cancellation();
+            let occurrence_error =
+                build_occurrence(design, 0, BorrowedMapWeights::Unit, 1., limits())
+                    .err()
+                    .unwrap();
+            assert_eq!(occurrence_error.code, crate::error::ErrorCode::Interrupted);
             let membership_error =
                 build_membership(design, 0, BorrowedMapWeights::Unit, 1., limits())
                     .err()

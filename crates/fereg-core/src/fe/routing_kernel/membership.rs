@@ -57,7 +57,7 @@ pub(crate) fn build_membership(
     })
 }
 
-fn capacity<T>(work: &mut Work, count: usize) -> Attempt<Vec<T>> {
+pub(super) fn capacity<T>(work: &mut Work, count: usize) -> Attempt<Vec<T>> {
     let bank = work.capacity(count)?;
     if bank.capacity() > count {
         return Err(allocation("membership cell capacity exceeds admission").into());
@@ -65,7 +65,7 @@ fn capacity<T>(work: &mut Work, count: usize) -> Attempt<Vec<T>> {
     Ok(bank)
 }
 
-fn filled<T: Copy>(work: &mut Work, count: usize, value: T) -> Attempt<Vec<T>> {
+pub(super) fn filled<T: Copy>(work: &mut Work, count: usize, value: T) -> Attempt<Vec<T>> {
     let mut bank = capacity(work, count)?;
     work.tiles(count, 4, |range| {
         bank.resize(range.end, value);
@@ -180,7 +180,11 @@ fn construct(
         Ok(())
     })?;
     drop(cells);
-    let cells = compact;
+    finish(compact, p, q, work)
+}
+
+// Preserve reduction order supplied by the builder; no canonicalization here.
+pub(super) fn finish(cells: Vec<Cell>, p: usize, q: usize, work: &mut Work) -> Attempt<CellSchur> {
     let mut offsets = filled(work, p + 1, 0usize)?;
     let mut worker_weights = filled(work, p, 0.0)?;
     let mut firm_weights = filled(work, q, 0.0)?;

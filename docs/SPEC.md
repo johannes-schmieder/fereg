@@ -309,6 +309,25 @@ weighted rectangle witnesses, fixed-worker repeatability, discrete agreement,
 and exact public/prior-arm replay remain required. This experiment does not
 change public Auto or qualify performance on another platform.
 
+The separate private `routing_cells_s` experiment removes sorting: each worker's
+source-ordered membership uses bounded marker/slot banks to aggregate duplicate
+firms, retaining distinct cells in first-occurrence order. Individual normalized
+pair weights, worker offsets and firm totals equal the original canonical
+banks bitwise. Worker totals and the diagonal reduce completed cells in their
+new order and may differ. Firm totals are not claimed equal to observation-order
+totals; they retain the original completed-cell reduction across workers.
+The original cell application, D_f preconditioner and M's serial per-batch
+operation tariff remain unchanged. Only this injected two-categorical-FE OLS
+arm adds continuous/iteration scope; prior arms and public routes remain exact.
+Independent weighted rectangle, dense observation-elimination, original-design
+certification, repeatability and discrete-decision witnesses are prerequisites.
+Markers and absolute slots use usize, with fallible capacity-checked banks.
+Actual tiled setup work is charged against the remaining full phase allowance;
+no unknown cell count is used for an upfront exact-work claim. Memory admission
+covers marker overlap, exact-capacity compaction and suffix finalization.
+Break and allocation errors stay fatal; optional refusal publishes no kernel.
+No default promotion or performance claim follows from implementing this arm.
+
 Declared routing scope: only explicitly injected OLS routes may change
 coefficients, covariance, fit statistics, residuals, FE coordinates and solver
 iteration signatures within §20 tolerances. Sample, rank, omission, original

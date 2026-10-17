@@ -2433,6 +2433,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                             | super::routing::RoutingAblation::CellsV2Df
                             | super::routing::RoutingAblation::CellsM
                             | super::routing::RoutingAblation::CellsMLanes
+                            | super::routing::RoutingAblation::CellsS
                     )
                 )
             {
@@ -2451,38 +2452,47 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                             | super::routing::RoutingAblation::CellsMLanes
                     )
                 );
-                let built = if membership {
-                    super::routing_kernel::build_membership(
-                        &self.design,
-                        graph.left_effect,
-                        raw_weights,
-                        weights.raw_scale,
-                        limits,
-                    )?
-                } else if matches!(
-                    route.preset.kernel(),
-                    Some(
-                        super::routing::RoutingAblation::CellsV2
-                            | super::routing::RoutingAblation::CellsV2Df
-                    )
-                ) {
-                    super::routing_kernel::build_v2(
-                        &self.design,
-                        graph.left_effect,
-                        raw_weights,
-                        weights.raw_scale,
-                        self.max_rhs,
-                        limits,
-                    )?
-                } else {
-                    super::routing_kernel::build(
-                        &self.design,
-                        graph.left_effect,
-                        raw_weights,
-                        weights.raw_scale,
-                        limits,
-                    )?
-                };
+                let built =
+                    if route.preset.kernel() == Some(super::routing::RoutingAblation::CellsS) {
+                        super::routing_kernel::build_occurrence(
+                            &self.design,
+                            graph.left_effect,
+                            raw_weights,
+                            weights.raw_scale,
+                            limits,
+                        )?
+                    } else if membership {
+                        super::routing_kernel::build_membership(
+                            &self.design,
+                            graph.left_effect,
+                            raw_weights,
+                            weights.raw_scale,
+                            limits,
+                        )?
+                    } else if matches!(
+                        route.preset.kernel(),
+                        Some(
+                            super::routing::RoutingAblation::CellsV2
+                                | super::routing::RoutingAblation::CellsV2Df
+                        )
+                    ) {
+                        super::routing_kernel::build_v2(
+                            &self.design,
+                            graph.left_effect,
+                            raw_weights,
+                            weights.raw_scale,
+                            self.max_rhs,
+                            limits,
+                        )?
+                    } else {
+                        super::routing_kernel::build(
+                            &self.design,
+                            graph.left_effect,
+                            raw_weights,
+                            weights.raw_scale,
+                            limits,
+                        )?
+                    };
                 let builder_seconds = started.elapsed().as_secs_f64();
                 route.setup.charge(built.work_used)?;
                 route.peak = route.peak.max(built.peak);
@@ -2516,6 +2526,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 Some(
                     super::routing::RoutingAblation::CellsM
                         | super::routing::RoutingAblation::CellsMLanes
+                        | super::routing::RoutingAblation::CellsS
                 )
             ) {
                 let decision_started = Instant::now();
@@ -2556,7 +2567,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                         .is_some_and(|kernel| prices.operator_pays(kernel.cell_count()));
                 if crate::diagnostics::solver_trace_enabled() {
                     crate::diagnostics::emit_solver_trace(&format!(
-                        "FEREG_SOLVER_TRACE|phase=auto_cells_m|preset={}|cells={}|rhs={rhs_count}|lanes={lanes}|used_operator={}",
+                        "FEREG_SOLVER_TRACE|phase={}|preset={}|cells={}|rhs={rhs_count}|lanes={lanes}|used_operator={}",
+                        if route.preset.kernel() == Some(super::routing::RoutingAblation::CellsS) { "auto_cells_s" } else { "auto_cells_m" },
                         route.preset, graph.kernel.as_ref().map_or(0, |kernel| kernel.cell_count()),
                         u8::from(graph.use_cell_operator)));
                 }

@@ -16,6 +16,77 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## First-occurrence cell prototype scope (2026-10-17)
+
+Fable 5.1 Extra reviewed `2dfc0e86` and selected a new private `cells_s` arm:
+aggregate each worker's duplicate firms directly in source membership order,
+without sorting. A bounded Astra extra-high review corrected the proposed
+firm-total equality, marker/index widths and work accounting. The lead's
+implementation shares M's unchanged finalization loop. Individual pair weights,
+offsets and firm totals equal the original builder; worker totals, diagonal and
+operator reduction order have declared continuous/iteration scope only for S.
+There is no claim that fixed ordering alone ensures scientific agreement.
+Original-observation certificates and independent witnesses remain mandatory.
+
+The builder uses usize markers/slots, drops both before exact-C compaction,
+and reserves the maximum of `16n+16q`, `32n`, and `24n+8`, plus
+`8(2p+2q+1)+4096` bytes on the supported 64-bit targets. Every actual operation
+is charged through existing bounded tiles; successful work totals
+`32n+64C+44p+32q+312`. C is only known afterward. It receives the remaining
+full 32W0 allowance, with no restart reserve. The original cell application,
+D_f, M's L=1 tariff and 128-unit per-batch decision charge remain unchanged.
+Refusal publishes no partial kernel; sunk charges remain; allocation/Break
+are fatal. A kernel persists across Low/final batches; no owner layout changes.
+Public and every prior arm require exact scientific results and signatures.
+
+A separate diagnostic artifact instruments the unchanged parent with procfs
+thread run/wait counters, switches, CPU observations and read overhead at native
+and absorption boundaries. It runs Auto/M on the frozen easy case, twelve calls
+per arm at one worker and 24 at four, with rotating order, zero warmups, four
+uninstrumented exact controls, a ten-minute budget and no replacements. Slow
+means complete native time >10.5 ms. With at least three four-worker slow calls,
+>=80% carrying >=2 ms total runqueue wait or an involuntary switch during
+absorption selects five physical CPUs for all subsequent D2/C2 calls;
+otherwise four remain. This is a predeclared scheduler association, not proof
+of cause. Frequency or run-time differences alone remain unresolved; no warm
+interval is added. Instrumented times never enter the scored panels. A small
+compute-node smoke precedes the isolated diagnostic; failure blocks its use.
+
+Frozen D2 uses the twelve revealed families, workers 1/4, Auto/original cells/M/S,
+one warmup and twelve balanced rotating blocks: 96 warmups, 1152 scored complete
+native calls and 64 post-panel traces. S is the only finalist. The unchanged
+max(5%,1 ms) paired-median rule must yield zero regressions and at least sixteen
+gains across all 24 settings. In every traced setting, S's median per-fit builder
+time must be <=0.35 times original cells and <=1.5 ms. These two-repeat diagnostic
+medians test a large mechanism claim and do not establish precise small effects.
+Independent science, exact fixed-worker repeats, discrete agreement and exact
+paired prior-artifact controls are prerequisites. Missing/failed observations
+fail the gate; no extensions, exclusions, alternate finalists or retuning.
+There is no local hardware-instruction gate: no maintained measurement harness
+is available, and work tariffs are not instruction counts.
+
+Untouched C2 is frozen before the first D2 candidate call, using the eight C1
+shapes (short2, long40, weak40, hubs d60, dense d30, repeated, wide, Low) with new
+data/schedule seeds and new artifact/tool bindings. All unchanged oracle bounds
+apply. It compares Auto/S at workers 1/4 in twelve ABBA/BAAB blocks and runs only
+if all D2 gates pass, on a distinct physical host. The rank-10-of-12 allowance
+excess gate remains explicitly conditional on block independence; a second
+allocation does not make within-host blocks independent. No SCC result alone
+promotes Auto or establishes Mac performance. A failed mechanism or total-time
+gate closes this candidate; census-first remains a possible separately planned
+future experiment, not an automatic fallback finalist in this panel.
+
+The implementation passes source-only integration, fifteen focused kernel tests,
+the positive partial-budget refusal/reuse witness, 73 exact public real-plugin
+replays against the parent, universal Mac binary/ABI checks, and the licensed
+`single_runtime`, OLS transaction and compact-cell fixtures. The benchmark suite
+passes 479 tests initially; two modules initially lack `psutil`, then their
+fourteen tests pass with task-private pinned dependencies. The final occurrence
+and confirmation tests also pass. Normal installed-package admission remains
+blocked by the deliberately unchanged distribution artifact; source integration
+does not authorize promotion. Bounded independent Astra reviews cover the
+runtime and experiment evidence chain.
+
 ## Membership-cell prototype scope (2026-10-17)
 
 Fable 5.1 Extra reviewed the retained deferred and factor studies at `ed0fbafb`

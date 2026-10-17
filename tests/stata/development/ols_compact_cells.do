@@ -20,7 +20,7 @@ matrix reference_v = e(V)
 scalar reference_df_r = e(df_r)
 predict double reference_residual, residuals
 
-foreach arm in cells_v2 cells_v2_df cells_deferred cells_m cells_m_lanes {
+foreach arm in cells_v2 cells_v2_df cells_deferred cells_m cells_m_lanes cells_s {
     foreach mode in fast low {
         foreach threads in 1 4 {
             forvalues repetition = 1/2 {
@@ -63,7 +63,7 @@ foreach arm in cells_v2 cells_v2_df cells_deferred cells_m cells_m_lanes {
 quietly regress y x1 x2
 matrix prior_b = e(b)
 generate byte prior_sample = e(sample)
-foreach arm in cells_v2 cells_v2_df cells_deferred cells_m cells_m_lanes {
+foreach arm in cells_v2 cells_v2_df cells_deferred cells_m cells_m_lanes cells_s {
     capture noisily _fereg_estimate_ols_test y x1 x2, absorb(sw=worker sf=firm) ///
         solver(lsmr) inject(routing_`arm') residual(failed)
     assert _rc == 198

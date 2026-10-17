@@ -20,6 +20,7 @@ import statistics
 import time
 
 import membership_confirmation as m
+import occurrence_confirmation as occurrence
 
 c = m.campaign
 KIND = m.KIND + '_execution_v1'
@@ -29,19 +30,31 @@ ISOLATION_FILES = ['affinity', 'job_environment', 'parallel_environment', 'proce
                    'queue_configuration', 'resource_quota', 'scheduler']
 
 
+def confirmation_module(plan):
+    return occurrence if plan.get('kind') == occurrence.KIND else m
+
+
+def execution_kind(plan):
+    return confirmation_module(plan).KIND + '_execution_v1'
+
+
 def unsealed(path):
     return c.routing.unseal(c.read(path))
 
 
-def source_hashes():
-    return {name: c.digest(ROOT / name) for name in SOURCES}
+def source_hashes(module=m):
+    sources = [*SOURCES]
+    if module is occurrence:
+        sources.append('bench/tests/test_occurrence_confirmation_run.py')
+    return {name: c.digest(ROOT / name) for name in sources}
 
 
-def freeze(plan_sha256, output, *, discovery_unopened):
+def freeze(plan_sha256, output, *, discovery_unopened, profile="membership"):
+    module = {"membership": m, "occurrence": occurrence}[profile]
     c.require(discovery_unopened is True and re.fullmatch('[0-9a-f]{64}', plan_sha256) is not None,
               'freeze requires the C1 plan identity and unopened D1 outcomes attestation')
-    value = {'kind': KIND + '_driver', 'plan_sha256': plan_sha256, 'sources': source_hashes(),
-             'preparation_source_sha256': c.digest(Path(m.__file__)),
+    value = {'kind': module.KIND + '_execution_v1_driver', 'plan_sha256': plan_sha256, 'sources': source_hashes(module),
+             'preparation_source_sha256': c.digest(Path(module.__file__)),
              'frozen_wall_ns': time.time_ns(), 'created_utc': datetime.now(timezone.utc).isoformat(),
              'discovery_outcomes_unopened': True}
     c.save(output, c.routing.seal(value))
@@ -49,9 +62,10 @@ def freeze(plan_sha256, output, *, discovery_unopened):
 
 
 def validate_driver(plan, driver):
-    c.require(driver.get('kind') == KIND + '_driver'
+    m = confirmation_module(plan)
+    c.require(driver.get('kind') == execution_kind(plan) + '_driver'
               and driver.get('plan_sha256') == c.routing.identity(plan)
-              and driver.get('sources') == source_hashes()
+              and driver.get('sources') == source_hashes(m)
               and driver.get('preparation_source_sha256') == c.digest(Path(m.__file__))
               and driver.get('discovery_outcomes_unopened') is True
               and type(driver.get('frozen_wall_ns')) is int and driver['frozen_wall_ns'] > 0,
@@ -79,7 +93,7 @@ def wall_window(receipt):
 def accounting(raw, receipt, *, science=False):
     host = ({'hostname': receipt['host'], 'job_id': receipt['job_id'], 'slots': receipt['slots']}
             if science else receipt['host'])
-    slots, pe = (4, 'omp') if science else (28, 'omp28')
+    slots, pe = (receipt.get('native_affinity_cores', 4), 'omp') if science else (28, 'omp28')
     values = c.scc.fields(c.scc.output(raw, ['qacct', '-j', host['job_id']]))
     c.require(values['jobnumber'] == host['job_id'] and values['project'] == 'welfgr'
               and c.scc.hostname(values['hostname']) == c.scc.hostname(host['hostname'])
@@ -96,7 +110,7 @@ def accounting(raw, receipt, *, science=False):
 
 
 def isolation_review(discovery, measurement, review, accounting_ref):
-    c.require(review.get('kind') == c.MEMBERSHIP_KIND + '_isolation_review'
+    c.require(review.get('kind') == discovery['kind'] + '_isolation_review'
               and review.get('status') == 'passed'
               and review.get('plan_sha256') == c.routing.identity(discovery)
               and review.get('measurement_sha256') == c.routing.identity(measurement)
@@ -117,6 +131,7 @@ def isolation_review(discovery, measurement, review, accounting_ref):
 
 def admission(plan, driver, evidence):
     """Recompute all prerequisites; a saved eligible label alone never authorizes C1."""
+    m = confirmation_module(plan)
     m.validate(plan)
     validate_driver(plan, driver)
     names = {'smoke', 'science', 'measurement', 'science_accounting', 'measurement_accounting', 'isolation_review'}
@@ -124,23 +139,26 @@ def admission(plan, driver, evidence):
     paths = {name: c.checked(item) for name, item in evidence.items()}
     discovery = unsealed(c.checked(plan['discovery_plan']))
     smoke, science, measurement = [unsealed(paths[name]) for name in ['smoke', 'science', 'measurement']]
-    c.require(smoke.get('kind') == c.MEMBERSHIP_KIND + '_science' and smoke.get('status') == 'passed'
+    c.require(smoke.get('kind') == discovery['kind'] + '_science' and smoke.get('status') == 'passed'
               and smoke.get('smoke') is True and smoke.get('plan_sha256') == c.routing.identity(discovery)
               and all(smoke.get(key) == science[key] for key in ['job_id', 'host', 'slots']),
               'complete smoke receipt from the D1 scientific prerequisites job required')
     check_record_files(native_rows(smoke), smoke['files'])
-    gate = c.membership_gate(discovery, science, measurement)
-    c.require(gate['status'] == 'eligible' and gate['finalist'] == 'cells_m', 'D1 gate blocks C1 candidate calls')
+    gate = (c.occurrence_gate if m is occurrence else c.membership_gate)(discovery, science, measurement)
+    c.require(gate['status'] == 'eligible' and gate['finalist'] == m.ARMS[1], 'D1 gate blocks C1 candidate calls')
     earliest = min(wall_window(receipt)[0] for receipt in [smoke, science, measurement])
     c.require(plan['prepared_wall_ns'] < earliest, 'C1 was not frozen before the first D1 native call')
+    if m is occurrence:
+        c.require(driver['frozen_wall_ns'] < earliest, 'C2 driver was not frozen before the first D2 native call')
     for name, receipt, is_science in [('science_accounting', science, True),
                                       ('measurement_accounting', measurement, False)]:
         accounting(c.read(paths[name]), receipt, science=is_science)
     accounting(c.read(paths['science_accounting']), smoke, science=True)
     isolation_review(discovery, measurement, unsealed(paths['isolation_review']), evidence['measurement_accounting'])
-    return {'kind': KIND + '_admission', 'plan_sha256': c.routing.identity(plan),
+    return {'kind': execution_kind(plan) + '_admission', 'plan_sha256': c.routing.identity(plan),
             'driver_sha256': c.routing.identity(driver), 'gate_sha256': c.routing.identity(gate),
-            'evidence': evidence, 'status': 'admitted', 'earliest_d1_native_wall_ns': earliest}
+            'evidence': evidence, 'status': 'admitted', 'earliest_d1_native_wall_ns': earliest,
+            **({'discovery_host': measurement['host']['hostname']} if m is occurrence else {})}
 
 
 def validate_admission(plan, driver, admitted):
@@ -167,11 +185,13 @@ def check_record_files(records, files):
 
 
 def science_order(plan):
+    m = confirmation_module(plan)
     return [(cell['id'], arm, repeat) for cell in plan['cells'] for arm in m.ARMS
             for repeat in range(m.LIMITS['science_repeats'])]
 
 
 def check_science_records(plan, receipt):
+    m = confirmation_module(plan)
     rows = receipt['records']
     expected = science_order(plan)
     c.require(len(rows) == m.EXECUTION['scientific_calls']
@@ -194,7 +214,7 @@ def check_science_records(plan, receipt):
 
 
 def validate_science(plan, driver, admitted, receipt):
-    c.require(receipt.get('kind') == KIND + '_science' and receipt.get('status') == 'passed'
+    c.require(receipt.get('kind') == execution_kind(plan) + '_science' and receipt.get('status') == 'passed'
               and receipt.get('plan_sha256') == c.routing.identity(plan)
               and receipt.get('driver_sha256') == c.routing.identity(driver)
               and receipt.get('admission_sha256') == c.routing.identity(admitted),
@@ -204,10 +224,13 @@ def validate_science(plan, driver, admitted, receipt):
 
 
 def science(plan, driver, admitted, output):
+    m = confirmation_module(plan)
     validate_admission(plan, driver, admitted)
     check_library_limits()
     slots = int(os.environ.get('NSLOTS', '0'))
-    c.require(os.environ.get('JOB_ID') and slots == 4, 'C1 science requires its four-slot compute allocation')
+    cores = plan.get('native_affinity_cores', 4)
+    c.require(os.environ.get('JOB_ID') and slots == cores, 'confirmation science requires its frozen compute allocation')
+    cpus = c.science_affinity({'kind': c.OCCURRENCE_KIND, 'native_affinity_cores': cores}) if m is occurrence else None
     output.mkdir(parents=True, exist_ok=False)
     started = time.monotonic()
     rows, fingerprints, first_worker, baselines = [], {}, {}, {}
@@ -222,7 +245,7 @@ def science(plan, driver, admitted, output):
                     left = m.LIMITS['science_budget_s'] - (time.monotonic() - started)
                     c.require(left > 0, 'C1 science budget exhausted')
                     active = c.native(plan, cell, arm, output, f"science-{cell['id']}-{arm}-{repeat}",
-                                      traced=repeat == 0, timeout=min(m.LIMITS['call_timeout_s'], left))
+                                      traced=repeat == 0, cpus=cpus, timeout=min(m.LIMITS['call_timeout_s'], left))
                     active.update(phase='science', repeat=repeat)
                     rows.append(active)
                     raw, result, binary = c.parse_run(active, meta)
@@ -252,16 +275,17 @@ def science(plan, driver, admitted, output):
         failure = str(error)
         if active is not None and active['status'] == 'executed':
             active.update(status='failed', error=failure)
-    value = {'kind': KIND + '_science', 'status': 'failed' if failure else 'passed', 'failure': failure,
+    value = {'kind': execution_kind(plan) + '_science', 'status': 'failed' if failure else 'passed', 'failure': failure,
              'plan_sha256': c.routing.identity(plan), 'driver_sha256': c.routing.identity(driver),
              'admission_sha256': c.routing.identity(admitted), 'host': socket.gethostname(),
-             'job_id': os.environ['JOB_ID'], 'slots': slots, 'records': rows, 'fingerprints': fingerprints,
+             'job_id': os.environ['JOB_ID'], 'slots': slots, 'native_affinity_cores': cores, 'records': rows, 'fingerprints': fingerprints,
              'files': bound_files(output), 'seconds': time.monotonic() - started}
     c.save(output / 'science.json', c.routing.seal(value))
     return value
 
 
 def measurement_order(plan):
+    m = confirmation_module(plan)
     warmups = [(f"warmup-{cell['id']}-{arm}", cell['id'], arm, 'warmup', None, None)
                for cell in plan['cells'] for arm in m.ARMS]
     scored = [(f"block-{block}-{slot['cell']}-p{position}-{arm}", slot['cell'], arm, 'measure', block, position)
@@ -274,17 +298,18 @@ def row_identity(row):
     return row['label'], row['cell'], row['arm'], row['phase'], row.get('block'), row.get('position')
 
 
-def block_score(block, cell, rows):
-    times = {arm: [row['seconds'] for row in rows if row['arm'] == arm] for arm in m.ARMS}
+def block_score(block, cell, rows, arms=m.ARMS):
+    times = {arm: [row['seconds'] for row in rows if row['arm'] == arm] for arm in arms}
     c.require(all(len(values) == 2 and all(math.isfinite(value) and value > 0 for value in values)
                   for values in times.values()), 'invalid C1 complete-solve block times')
-    baseline, candidate = [math.exp(sum(math.log(value) for value in times[arm]) / 2) for arm in m.ARMS]
+    baseline, candidate = [math.exp(sum(math.log(value) for value in times[arm]) / 2) for arm in arms]
     return {'block': block, 'cell': cell, 'baseline_seconds': baseline, 'candidate_seconds': candidate,
             'excess_seconds': candidate - baseline - max(.05 * baseline, .001), 'ratio': candidate / baseline}
 
 
 def summarize(plan, rows):
     """Only complete, valid four-call units contribute; missing units cannot pass."""
+    m = confirmation_module(plan)
     expected = measurement_order(plan)
     c.require(len(rows) <= len(expected) and [row_identity(row) for row in rows] == expected[:len(rows)],
               'C1 measurement order/position changed')
@@ -292,7 +317,7 @@ def summarize(plan, rows):
     for row in rows:
         if row['phase'] == 'measure':
             groups.setdefault((row['block'], row['cell']), []).append(row)
-    scores = [block_score(block, cid, group) for (block, cid), group in groups.items()
+    scores = [block_score(block, cid, group, m.ARMS) for (block, cid), group in groups.items()
               if len(group) == 4 and all(row['status'] == 'passed' for row in group)]
     summaries = []
     for cell in plan['cells']:
@@ -308,6 +333,7 @@ def summarize(plan, rows):
 
 
 def validate_measurement_records(plan, rows, fingerprints):
+    m = confirmation_module(plan)
     c.require(len(rows) == m.EXECUTION['warmup_calls'] + m.EXECUTION['scored_calls']
               and [row_identity(row) for row in rows] == measurement_order(plan),
               'incomplete C1 measurement calls or changed order')
@@ -320,11 +346,15 @@ def validate_measurement_records(plan, rows, fingerprints):
 
 
 def measure(plan, driver, admitted, prerequisite, output):
+    m = confirmation_module(plan)
     validate_admission(plan, driver, admitted)
     validate_science(plan, driver, admitted, prerequisite)
     check_library_limits()
     host = c.scc.discovery.host()
     c.require(host['slots'] == 28, 'C1 measurement requires its 28-slot isolated allocation')
+    if m is occurrence:
+        c.require(c.scc.hostname(host['hostname']) != c.scc.hostname(admitted['discovery_host']),
+                  'C2 requires a distinct physical host from D2')
     output.mkdir(parents=True, exist_ok=False)
     records, fingerprints, resources = [], {}, {}
     failure, observer, before, queue, started, ended = None, None, None, None, None, None
@@ -333,7 +363,7 @@ def measure(plan, driver, admitted, prerequisite, output):
         before, snapshot = c.scc.configuration(output, host, 'before')
         queue = c.scc.check_configuration(before, host, os.getpid())
         c.scc.check_scheduler_snapshot(snapshot, host, queue)
-        cpus = sorted(host['affinity'])[:4]
+        cpus = sorted(host['affinity'])[:plan.get('native_affinity_cores', 4)]
         observer = c.Observers(output, host, queue)
         observer.start()
         observed_started = time.monotonic_ns()
@@ -373,7 +403,7 @@ def measure(plan, driver, admitted, prerequisite, output):
                               'C1 measured result changed same-allocation fixed-worker science')
                     row.update(result, status='passed')
                     complete.append(row)
-                c.scc.append(output / 'blocks.jsonl', block_score(block, cell['id'], complete))
+                c.scc.append(output / 'blocks.jsonl', block_score(block, cell['id'], complete, m.ARMS))
             observer.census(f'block-{block}-after')
         ended = time.monotonic_ns()
         c.require((ended - started) / 1e9 <= m.LIMITS['measurement_budget_s'], 'C1 measurement budget exhausted')
@@ -405,10 +435,10 @@ def measure(plan, driver, admitted, prerequisite, output):
         validate_science(plan, driver, admitted, prerequisite)
     except Exception as error:
         failure = failure or str(error)
-    value = {'kind': KIND + '_measurement', 'status': 'failed' if failure else 'complete', 'failure': failure,
+    value = {'kind': execution_kind(plan) + '_measurement', 'status': 'failed' if failure else 'complete', 'failure': failure,
              'plan_sha256': c.routing.identity(plan), 'driver_sha256': c.routing.identity(driver),
              'admission_sha256': c.routing.identity(admitted), 'science_sha256': c.routing.identity(prerequisite),
-             'host': host, 'collection_pid': os.getpid(), 'native_affinity': sorted(host['affinity'])[:4],
+             'host': host, 'collection_pid': os.getpid(), 'native_affinity': sorted(host['affinity'])[:plan.get('native_affinity_cores', 4)],
              'started_monotonic_ns': started, 'completed_monotonic_ns': ended,
              'records': records, 'fingerprints': fingerprints, 'summary': summarize(plan, records),
              'files': bound_files(output), 'accounting': 'pending external C1 qacct and isolation review',
@@ -422,6 +452,7 @@ def main():
     sub = parser.add_subparsers(dest='command', required=True)
     frozen = sub.add_parser('freeze')
     frozen.add_argument('--plan-sha256', required=True)
+    frozen.add_argument('--profile', choices=['membership','occurrence'], default='membership')
     frozen.add_argument('--discovery-unopened', action='store_true', required=True)
     frozen.add_argument('--output', type=Path, required=True)
     admitted = sub.add_parser('admit')
@@ -436,7 +467,7 @@ def main():
             stage.add_argument('--science', type=Path, required=True)
     args = parser.parse_args()
     if args.command == 'freeze':
-        freeze(args.plan_sha256, args.output, discovery_unopened=args.discovery_unopened)
+        freeze(args.plan_sha256, args.output, discovery_unopened=args.discovery_unopened, profile=args.profile)
     elif args.command == 'admit':
         evidence = {name: c.ref(path) for name, path in [
             ('smoke', args.d1_smoke), ('science', args.d1_science), ('measurement', args.d1_measurement),

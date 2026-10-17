@@ -313,7 +313,7 @@ class ConfirmationMeasurement(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'order/position'):
             run.summarize(p, [rows[1], rows[0], *rows[2:]])
         for upper, expected in [(0., 'passed'), (.001, 'failed')]:
-            def score(block, cid, group):
+            def score(block, cid, group, arms=m.ARMS):
                 return {'block': block, 'cell': cid, 'ratio': 1.,
                         'excess_seconds': -1. if block < 9 else upper}
             with patch.object(run, 'block_score', side_effect=score):

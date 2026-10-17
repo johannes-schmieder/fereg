@@ -1469,6 +1469,7 @@ fn routing_initial_certificate_does_not_spend_or_prepare() {
     for preset in [
         RoutingPreset::ablation("cells_m").unwrap(),
         RoutingPreset::ablation("cells_m_lanes").unwrap(),
+        RoutingPreset::ablation("cells_s").unwrap(),
         RoutingPreset::new(4, 1).unwrap(),
         RoutingPreset::ablation("cells_v2").unwrap(),
         RoutingPreset::ablation("cells_v2_df").unwrap(),
@@ -1972,5 +1973,132 @@ fn membership_cells_reselects_mixed_batch_width_without_rebuilding() {
         } else {
             kernel = current;
         }
+    }
+}
+
+#[test]
+fn occurrence_cells_science_reuse_mixed_batches_and_refusal() {
+    let witness = PairedGraph::with_repeats(1);
+    for workers in [1, 4] {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+            .install(|| {
+                let mut owner =
+                    ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                owner.retain_coefficients = true;
+                owner.request_auto_routing(RoutingPreset::ablation("cells_s").unwrap(), None, 0);
+                let mut pointer = None;
+                for (positions, refine) in
+                    [(&[0][..], false), (&[0, 1, 2][..], false), (&[1][..], true)]
+                {
+                    let fit = owner
+                        .absorb_ols(
+                            BorrowedMapWeights::Provided(&witness.weights),
+                            witness.columns(positions).into(),
+                            config(),
+                            refine,
+                        )
+                        .unwrap();
+                    witness.check(&fit, positions);
+                    let graph = owner.two_fe_pcg.as_ref().unwrap();
+                    assert_eq!(graph.use_cell_operator, positions.len() == 3);
+                    let current = graph.kernel.as_ref().map(std::ptr::from_ref);
+                    assert!(current.is_some());
+                    if pointer.is_some() {
+                        assert_eq!(pointer, current);
+                    } else {
+                        pointer = current;
+                    }
+                    let setup = &owner.auto_route.as_ref().unwrap().setup;
+                    assert!(setup.used <= setup.limit);
+                }
+                for memory in [false, true] {
+                    let mut owner =
+                        ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                    owner.request_auto_routing(
+                        RoutingPreset::ablation("cells_s").unwrap(),
+                        None,
+                        0,
+                    );
+                    let route = owner.auto_route.as_mut().unwrap();
+                    if memory {
+                        route.request.budget = Some(FeSolverMemoryBudget {
+                            execution_bytes: 0,
+                            usable_bytes: 0,
+                        });
+                    } else {
+                        route.setup.begin(config().tolerance, false, Some(0));
+                    }
+                    let fit = owner
+                        .absorb_ols(
+                            BorrowedMapWeights::Provided(&witness.weights),
+                            witness.input.clone().into(),
+                            config(),
+                            false,
+                        )
+                        .unwrap();
+                    let mut original =
+                        ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                    let reference = original
+                        .absorb_ols(
+                            BorrowedMapWeights::Provided(&witness.weights),
+                            witness.input.clone().into(),
+                            config(),
+                            false,
+                        )
+                        .unwrap();
+                    assert_same_bits(
+                        fit.residualized().as_slice(),
+                        reference.residualized().as_slice(),
+                    );
+                    assert_eq!(fit.report().iterations, reference.report().iterations);
+                    assert!(owner.two_fe_pcg.as_ref().unwrap().kernel.is_none());
+                }
+            })
+            .unwrap();
+    }
+}
+
+#[test]
+fn occurrence_partial_refusal_retains_charge_without_same_phase_retry() {
+    let witness = PairedGraph::new();
+    let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+    owner.request_auto_routing(RoutingPreset::ablation("cells_s").unwrap(), None, 0);
+    let route = owner.auto_route.as_mut().unwrap();
+    route.setup.begin(config().tolerance, false, Some(64));
+    let allowance = route.setup.limit;
+    let mut charged = None;
+    for _ in 0..2 {
+        let fit = owner
+            .absorb_ols(
+                BorrowedMapWeights::Provided(&witness.weights),
+                witness.input.clone().into(),
+                config(),
+                false,
+            )
+            .unwrap();
+        let mut original = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+        let reference = original
+            .absorb_ols(
+                BorrowedMapWeights::Provided(&witness.weights),
+                witness.input.clone().into(),
+                config(),
+                false,
+            )
+            .unwrap();
+        assert_same_bits(
+            fit.residualized().as_slice(),
+            reference.residualized().as_slice(),
+        );
+        assert_eq!(fit.report().iterations, reference.report().iterations);
+        assert!(owner.two_fe_pcg.as_ref().unwrap().kernel.is_none());
+        let setup = &owner.auto_route.as_ref().unwrap().setup;
+        assert!(setup.attempted && setup.used > 128 && setup.used <= allowance);
+        if let Some(prior) = charged {
+            assert_eq!(
+                setup.used,
+                prior + if allowance - prior >= 128 { 128 } else { 0 }
+            );
+        }
+        charged = Some(setup.used);
     }
 }

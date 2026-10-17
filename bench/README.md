@@ -1204,3 +1204,22 @@ mandatory. The October17 discovery failed its prerequisites, so C1 was not run.
 Focused tests: `python3 -m unittest discover -s bench/tests
 -p test_membership_confirmation_run.py`. The source is an execution adapter;
 changing it never changes the separately frozen data, schedule or analysis.
+
+## Private first-occurrence cells
+
+`compact_cells.py prepare-occurrence` freezes the S builder study against the
+original four-arm inputs after a verified parent scheduler diagnostic.
+`prepare_scheduler_probe.py` creates that separately instrumented parent source;
+`occurrence_diagnostics.py` collects and validates its raw call, build, scheduler,
+process and accounting evidence. Its times are diagnostic only.
+
+Before any D2 candidate call, `occurrence_confirmation.py` prepares fresh C2
+inputs and independent witnesses, and `membership_confirmation_run.py freeze
+--profile occurrence` freezes the shared confirmation runner. The existing
+`science`, `smoke`, and `measure` commands execute D2. The fixed S gate is exposed
+as `compact_cells.occurrence_gate`; confirmation admission recomputes it and
+requires successful accounting plus a bound external isolation review. C2 uses
+the runner's existing `admit`, `science`, and `measure` commands, and requires a
+physical host different from D2. Failed gates never select a different arm.
+See [the frozen scope and evidence](../docs/VALIDATION.md#first-occurrence-cell-prototype-scope-2026-10-17)
+for budgets, numerical scope, thresholds and platform limits.
