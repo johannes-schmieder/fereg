@@ -12529,7 +12529,7 @@
           "asset": "fereg-0.5.0-build-instructions.md",
           "archive_unchanged": true,
           "requirement": "The frozen archive abbreviated command omits Rust path remaps needed by the maintained raw-byte path audit. The companion supplies the actual successful offline recipe; plain unadorned build command is not claimed passing.",
-          "checks": "Exact companion copy, Bash syntax and local links pass; independent gpt-6-astra high technical recipe review GO after qualified→validated wording correction and fail-fast shell hardening. No fresh build or byte-reproducibility claim."
+          "checks": "Exact companion copy, Bash syntax and local links pass; independent gpt-6-astra high technical recipe review GO after qualified\u2192validated wording correction and fail-fast shell hardening. No fresh build or byte-reproducibility claim."
         },
         "independent_milestone_review": {
           "model": "gpt-6-astra",
@@ -12634,7 +12634,7 @@
       ],
       "source_sha256": "d68c529e98c14f90bbe872cecfc9d957888c961b5e0771c1cdfa2de2a6c994e9",
       "pdf_sha256": "99ce95328c5bb0845280d127bc94d6648cdcc4b475c94bc128cc999cc0dcd4d9",
-      "review": "Prior independent Astra source/math and native reviews of pages23–26 remain valid. Page27 reports the completed fresh SCC NO-GO and RHS limitation, with independent high-effort fact/math review and final raw evidence review9319bcc143e8c32a97f5935f9ae3005ac8f5d9fae09f50efe75789c58be77559. Built-in compilation passes. Lead visually checked latest cover and page27; pages2–26 source and extracted text are unchanged after header/footer and whitespace normalization. No new full Pro review is claimed.",
+      "review": "Prior independent Astra source/math and native reviews of pages23\u201326 remain valid. Page27 reports the completed fresh SCC NO-GO and RHS limitation, with independent high-effort fact/math review and final raw evidence review9319bcc143e8c32a97f5935f9ae3005ac8f5d9fae09f50efe75789c58be77559. Built-in compilation passes. Lead visually checked latest cover and page27; pages2\u201326 source and extracted text are unchanged after header/footer and whitespace normalization. No new full Pro review is claimed.",
       "status": "Functional evidence remains valid, but the fresh three-node portfolio screen closes NO-GO. PublicAuto unchanged; no new MacB, activation or C.",
       "layout_checks": "27pages with no cover spill; final leaf header/footer date/status verified. Initial strict extracted-space comparison flagged word-joining differences; whitespace-insensitive content comparison and exact earlier source-body prefix pass. New final leaf and cover visually verified."
     }
@@ -12667,7 +12667,7 @@
       "interpretation": "No new jobs submitted. SSH availability is distinct from scheduler responsiveness.",
       "follow_up_client_diagnosis": {
         "capture_sha256": "58df315e9b703d83cb0b81eeb885b69940d7dc704044d6be4023b6b67dbda174",
-        "time_utc": "2026-10-16T02:12:55.744Z–02:13:18.211Z",
+        "time_utc": "2026-10-16T02:12:55.744Z\u201302:13:18.211Z",
         "queries": 2,
         "per_query_cap_seconds": 10,
         "result": "Login and nonlogin shells resolve the same qstat/qconf clients and SGE_ROOT; client help succeeds, both owner qstat calls time out with empty outputs. No observed client/module environment difference explains the blocker; SSH works, cause unproven.",
@@ -12814,7 +12814,7 @@
       "superseded_source_sha256": "e2a9191f7b3505f883135de5566e89a3666e757d0af9530b6fe09deb3a5a01a8"
     },
     "scheduler_transport_diagnosis": {
-      "time_utc": "2026-10-16T03:04:36.716Z–03:05:37.266Z",
+      "time_utc": "2026-10-16T03:04:36.716Z\u201303:05:37.266Z",
       "SSH_host": "scc1",
       "configured_master": "sccsvc.bu.edu:536",
       "one_TCP_connection": "passed0.000120s",
@@ -12858,7 +12858,7 @@
     },
     "SCC_live_tool_inventory": {
       "status": "read_only_success",
-      "time_utc": "2026-10-16T03:18:01.326978Z–03:18:08.760381Z",
+      "time_utc": "2026-10-16T03:18:01.326978Z\u201303:18:08.760381Z",
       "capture_sha256": "75c0469b3e4b4c66d2f944939fcccc0f4e14518082635336b0f65d17ec84c6df",
       "elapsed_seconds": 7.433115917,
       "Rust_Cargo": "1.85.1",
@@ -14026,7 +14026,7 @@
       "latex_builtin_compiler": "success",
       "PDF_pages": 27,
       "PDF_visual_QA": "cover and new final leaf pass; unchanged earlier page layouts reused",
-      "earlier_document_content": "pages2–26 exact source prefix and extracted-content equality after header/footer/whitespace normalization",
+      "earlier_document_content": "pages2\u201326 exact source prefix and extracted-content equality after header/footer/whitespace normalization",
       "independent_fact_math_review": "gpt-6-astra high GO; final review9319 and all42 ratios/counts/scope checked",
       "raw_review_metadata_retained_on_SCC": true
     }
@@ -23942,7 +23942,7 @@
         "setup_work": 92029272
       }
     },
-    "interpretation": "Every paired block favors the candidate, with observed complete-fit reductions about3–6.6%. Retain the minimal annotations and stop this hypothesis diagnostic. No additional annotation tuning/sampling follows.",
+    "interpretation": "Every paired block favors the candidate, with observed complete-fit reductions about3\u20136.6%. Retain the minimal annotations and stop this hypothesis diagnostic. No additional annotation tuning/sampling follows.",
     "limits": [
       "Two blocks per cell on two revealed families are descriptive, not a confidence bound or broad nonregression qualification.",
       "Endpoint host observations preserve ordinary desktop/indexing noise without exclusion, not uninterrupted whole-call isolation.",
@@ -23954,7 +23954,7 @@
       "reasoning_effort": "high",
       "verdict": "GO_completed_exact_descriptive_diagnostic",
       "recommendation": {
-        "basis": "Exact science/work/control behavior, focused cancellation/admission witnesses, full source integration and inspected caller code generation agree. Both complete-fit blocks improve in every tested cell, with roughly3–6.6% observed reductions and no selected exclusions.",
+        "basis": "Exact science/work/control behavior, focused cancellation/admission witnesses, full source integration and inspected caller code generation agree. Both complete-fit blocks improve in every tested cell, with roughly3\u20136.6% observed reductions and no selected exclusions.",
         "decision": "Retain the two annotations as the smallest supported engineering change; no further annotation tuning or additional diagnostic sampling is needed for this hypothesis.",
         "do_not_infer": "Do not multiply these ratios into historical SCC outcomes, reopen failed campaigns, admit B/C or activate public routing. No universal speedup or confidence bound is established.",
         "integration_boundary": "Any integration remains an arithmetic-preserving code change with no routing/policy promotion. Keep the declared workstream performance boundary separate; the two-block descriptive panel does not satisfy broad controlled Mac nonregression or discovery/selection/confirmation."
@@ -25336,7 +25336,7 @@
     }
   },
   "portfolio_integrated_qualification_20261017": {
-    "status": "discovery_running_results_pending",
+    "status": "closed_discovery_baseline_only_no_mac_admission",
     "campaign": "portfolio-integrated-20261017",
     "source_commit": "691cef5cbc9ebc0ef9a82ddf52f49903fa7bbef2",
     "baseline_source_commit": "46aa78f67b102373675b7c72196dba1fbfb7d337",
@@ -25371,7 +25371,7 @@
       "binder_sha256": "27d9be04a8c2d6532b9282ce03055a9693ba9cec92205ba792e1f5d1c1531b92",
       "assembler_sha256": "8d887dc88e0fb055951484535c93e42f263abb1f2d0369d70697a4ba70351983"
     },
-    "scope": "Build, ABI, source-contract, binding, seal and held-job/release reviews passed. Discovery released; terminal accounting, fresh allocation science, isolation, timings, shortlist and Mac B/C remain pending. Public Auto unchanged; old campaigns remain closed NO-GO.",
+    "scope": "Completed integrated Linux discovery with successful terminal accounting, retained-science and strict-isolation validation, exact original aggregate replay and baseline-only stopping outcome. Public Auto unchanged; no Mac B/C admission or release-performance claim. All old failures remain preserved.",
     "assembly": {
       "job_id": "8156079",
       "failed": 0,
@@ -25523,6 +25523,485 @@
       "reviewer": "gpt-6-astra high",
       "scope": "Parsed qacct field padding trimmed while raw retained. Exact accepted IDs; canonical Python required because ambient Python3.6 rejects capture_output before qstat. First failure retained; corrected actual check passes lifecycle only. Query bounds and acceptance unchanged.",
       "first_failed_capture_sha256": "acfc278144631597d606ecde7d34a35ed8074d91dcd9e2cea4663626a826ddd2"
+    },
+    "terminal": {
+      "monitor_deleted": true,
+      "accounting": [
+        {
+          "job_id": "8156167",
+          "jobname": "fereg_pi_A1_S1",
+          "hostname": "scc-wo4.scc.bu.edu",
+          "owner": "johannes",
+          "project": "welfgr",
+          "pe": "omp28",
+          "slots": 28,
+          "failed": 0,
+          "exit_status": 0,
+          "qsub_time_utc": "Sat Oct 17 14:02:16 2026",
+          "start_time_utc": "Sat Oct 17 14:07:20 2026",
+          "end_time_utc": "Sat Oct 17 15:46:23 2026",
+          "wall_s": 5943,
+          "maxvmem": "1.827G",
+          "accounting_sha256": "89a365d51d81084a50581481d8bd8c7e324e7e6d1dcd3676322e8aa374af5966"
+        },
+        {
+          "job_id": "8156168",
+          "jobname": "fereg_pi_A1_S2",
+          "hostname": "scc-zj4.scc.bu.edu",
+          "owner": "johannes",
+          "project": "welfgr",
+          "pe": "omp28",
+          "slots": 28,
+          "failed": 0,
+          "exit_status": 0,
+          "qsub_time_utc": "Sat Oct 17 14:02:17 2026",
+          "start_time_utc": "Sat Oct 17 14:07:20 2026",
+          "end_time_utc": "Sat Oct 17 14:50:44 2026",
+          "wall_s": 2604,
+          "maxvmem": "1.677G",
+          "accounting_sha256": "d8eea20739ee4968e30b80b95f82306c5f3aab4a32abdb02ad3e4f353445f83c"
+        },
+        {
+          "job_id": "8156169",
+          "jobname": "fereg_pi_A2_S1",
+          "hostname": "scc-yj3.scc.bu.edu",
+          "owner": "johannes",
+          "project": "welfgr",
+          "pe": "omp28",
+          "slots": 28,
+          "failed": 0,
+          "exit_status": 0,
+          "qsub_time_utc": "Sat Oct 17 14:02:17 2026",
+          "start_time_utc": "Sat Oct 17 14:07:20 2026",
+          "end_time_utc": "Sat Oct 17 15:12:39 2026",
+          "wall_s": 3919,
+          "maxvmem": "1.764G",
+          "accounting_sha256": "a8e2686f01a32cbe30ac688571f07ee5e67af91588569ab6e836b407fe27cf92"
+        },
+        {
+          "job_id": "8156170",
+          "jobname": "fereg_pi_A2_S2",
+          "hostname": "scc-tq3.scc.bu.edu",
+          "owner": "johannes",
+          "project": "welfgr",
+          "pe": "omp28",
+          "slots": 28,
+          "failed": 0,
+          "exit_status": 0,
+          "qsub_time_utc": "Sat Oct 17 14:02:17 2026",
+          "start_time_utc": "Sat Oct 17 14:07:20 2026",
+          "end_time_utc": "Sat Oct 17 14:49:21 2026",
+          "wall_s": 2521,
+          "maxvmem": "2.146G",
+          "accounting_sha256": "b1ea6d179c315c5771a6de8e5c661601108cfd96181f7ec4ba0c90c5741f7150"
+        },
+        {
+          "job_id": "8156171",
+          "jobname": "fereg_pi_A3_S1",
+          "hostname": "scc-tq4.scc.bu.edu",
+          "owner": "johannes",
+          "project": "welfgr",
+          "pe": "omp28",
+          "slots": 28,
+          "failed": 0,
+          "exit_status": 0,
+          "qsub_time_utc": "Sat Oct 17 14:02:17 2026",
+          "start_time_utc": "Sat Oct 17 14:07:20 2026",
+          "end_time_utc": "Sat Oct 17 15:12:37 2026",
+          "wall_s": 3917,
+          "maxvmem": "1.827G",
+          "accounting_sha256": "ce06603e4b7be7dc406a56635180ec6d296c21325f65364d027bf9a89825144e"
+        },
+        {
+          "job_id": "8156172",
+          "jobname": "fereg_pi_A3_S2",
+          "hostname": "scc-tj4.scc.bu.edu",
+          "owner": "johannes",
+          "project": "welfgr",
+          "pe": "omp28",
+          "slots": 28,
+          "failed": 0,
+          "exit_status": 0,
+          "qsub_time_utc": "Sat Oct 17 14:02:17 2026",
+          "start_time_utc": "Sat Oct 17 14:07:20 2026",
+          "end_time_utc": "Sat Oct 17 14:49:17 2026",
+          "wall_s": 2517,
+          "maxvmem": "1.608G",
+          "accounting_sha256": "1c9bf41289d51c2b1c12c1f0f3f186299219a2d435a43644743a8fb1bfcf1be5"
+        },
+        {
+          "job_id": "8156173",
+          "jobname": "fereg_pi_final",
+          "hostname": "scc-gd4.scc.bu.edu",
+          "owner": "johannes",
+          "project": "welfgr",
+          "pe": "NONE",
+          "slots": 1,
+          "failed": 0,
+          "exit_status": 0,
+          "qsub_time_utc": "Sat Oct 17 14:02:18 2026",
+          "start_time_utc": "Sat Oct 17 15:48:59 2026",
+          "end_time_utc": "Sat Oct 17 15:56:01 2026",
+          "wall_s": 422,
+          "maxvmem": "857.406M",
+          "accounting_sha256": "153f83e0efdad0e24458b1451c3a2c4bd158ce9c684cd30c182c5741e1888fa1"
+        }
+      ],
+      "collector_allocation_seconds": 21421,
+      "allocation_cap_seconds": 43200,
+      "completion_sha256": "9fc378c29de306f18d608ef1d826116d480919e7954068fd9fae25b9a8f84389",
+      "result_file_sha256": "af4ab1ebbc3983e6a08dc7a253237b3607a211039a62785b19030ae1e991d626",
+      "result_canonical_sha256": "d3b46b67ef907a1bd9526bfbb24bfb1d071569c8f4d7e857ad99b04cdf0dec95",
+      "collection_files": 458,
+      "collection_bytes": 411772526,
+      "collection_inventory_sha256": "96de99661eb60c30fd88c083bbfe6513f3fd9850813acf3ad20606cb734a3ed1",
+      "local_mapping_sha256": "ed879c85841c763e002b650c2eb5c03a222a93ee5ba4f40fcb665ea3e77692cd",
+      "science": {
+        "retained_proofs": 126,
+        "passing_pairs": 1026,
+        "optional_unavailable_first_calls": 54,
+        "optional_failure_kinds": {
+          "timeout": 40,
+          "iteration_exhausted": 14
+        },
+        "native_dispatches": 7236,
+        "native_dispatch_cap": 7560,
+        "reuse_only_timing_prerequisite_rows": 54,
+        "repeatability": "exact at fixed worker count and seed",
+        "cross_host_availability_and_model_decisions": "stable",
+        "scope": "Independent replay validates retained proofs/fingerprints/model and route/resource attestations. Successful numerical arrays and transient native logs were deleted by the frozen producer; no fresh numerical oracle recomputation is claimed.",
+        "measured_observations": 3078,
+        "successful_native_calls": 7182,
+        "retained_failure_files_rehashed": 82
+      },
+      "original_isolation_validators_passed": 6,
+      "original_aggregate_replay": "exact equality of every result value",
+      "independent_ranking_replay": "exact",
+      "shortlist": [
+        "baseline"
+      ],
+      "heuristic_rejection": {
+        "reasons": [
+          "available_internal_comparator"
+        ],
+        "baseline_violations": 0,
+        "worst_available_internal_normalized": 1.8672314014237716
+      },
+      "baseline_aggregate_comparisons": 42,
+      "geomean_candidate_baseline_ratio": 0.9311810952685852,
+      "geomean_candidate_baseline_ratio_by_workers": {
+        "1": 0.914858724154717,
+        "4": 0.9477946805248609
+      },
+      "candidate_baseline_ratios": {
+        "no-fe-t1": 0.9982748454027046,
+        "no-fe-t4": 1.013015476587703,
+        "one-fe-t1": 1.0076193772993354,
+        "one-fe-t4": 0.932241007645342,
+        "slopes-t1": 0.9982576254672316,
+        "slopes-t4": 0.9934163874986692,
+        "low-saved-t1": 0.986968145811584,
+        "low-saved-t4": 0.9846149829975984,
+        "dense-t1": 1.0006459026240249,
+        "dense-t4": 1.0091074209476874,
+        "small-retained-t1": 0.9885252594392141,
+        "small-retained-t4": 1.0082002515114938,
+        "small-third-t1": 0.8851576106448266,
+        "small-third-t4": 0.8312385748230188,
+        "four-fe-t1": 0.8744368573450365,
+        "four-fe-t4": 0.8392343484247895,
+        "eight-fe-t1": 0.8787930161868837,
+        "eight-fe-t4": 0.8582015995712821,
+        "weighted-t1": 0.9958122604612748,
+        "weighted-t4": 0.9992368622722105,
+        "weak-t1": 0.6257404797727634,
+        "weak-t4": 0.8435120916607397,
+        "repeated-cells-t1": 0.9891048220535592,
+        "repeated-cells-t4": 0.9863776377329533,
+        "wide-rhs-t1": 0.9959105445761356,
+        "wide-rhs-t4": 1.0095762513797018,
+        "high-degree-mixed-t1": 0.9958039878832754,
+        "high-degree-mixed-t4": 0.9976484111421241,
+        "high-degree-weak-t1": 0.745664150415785,
+        "high-degree-weak-t4": 1.0384988314069186,
+        "high-degree-stress-t1": 0.9946854583875784,
+        "high-degree-stress-t4": 1.006804902440981,
+        "sixteen-fe-t1": 0.9002945718660882,
+        "sixteen-fe-t4": 0.8974302927726158,
+        "disconnected-t1": 0.9923567278353652,
+        "disconnected-t4": 0.9662079760937928,
+        "near-confounded-third-t1": 0.9206800968400176,
+        "near-confounded-third-t4": 0.8698028351641481,
+        "weight-dynamic-t1": 0.6167897369002475,
+        "weight-dynamic-t4": 0.85915478229249,
+        "inactive-columns-t1": 1.006242929406057,
+        "inactive-columns-t4": 1.0161096469320499
+      },
+      "failed_internal_comparisons": [
+        {
+          "cell": "small-third-t4",
+          "reference": "map",
+          "median_ratio": 1.2323293307239789,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "four-fe-t4",
+          "reference": "map",
+          "median_ratio": 1.229017650849028,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "weak-t1",
+          "reference": "cmgschur-k0",
+          "median_ratio": 1.3032387917007897,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "weak-t1",
+          "reference": "cmgschur-k1",
+          "median_ratio": 1.3466883405093117,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "weak-t1",
+          "reference": "cmgschur-k2",
+          "median_ratio": 1.3734462802847542,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "weak-t4",
+          "reference": "cmgschur-k1",
+          "median_ratio": 1.2106999316483933,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "weak-t4",
+          "reference": "cmgschur-k2",
+          "median_ratio": 1.227632500549347,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "high-degree-weak-t1",
+          "reference": "cmgschur-k1",
+          "median_ratio": 1.3016600439262285,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "high-degree-weak-t1",
+          "reference": "cmgschur-k2",
+          "median_ratio": 1.2980764528229785,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "reference": "cmgschur-k1",
+          "median_ratio": 1.2537717483506885,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "reference": "cmgschur-k2",
+          "median_ratio": 1.2220260386614663,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "weight-dynamic-t1",
+          "reference": "cmgschur-k0",
+          "median_ratio": 1.2109302723052295,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "weight-dynamic-t1",
+          "reference": "cmgschur-k1",
+          "median_ratio": 1.292210417663984,
+          "upper_allowance": 1.2
+        },
+        {
+          "cell": "weight-dynamic-t1",
+          "reference": "cmgschur-k2",
+          "median_ratio": 1.3095379633229876,
+          "upper_allowance": 1.2
+        }
+      ],
+      "failed_internal_cells": 7,
+      "descriptive_within_host_scaling": {
+        "high-degree-weak": [
+          {
+            "job_id": "8156167",
+            "hostname": "scc-wo4",
+            "median_seconds_t1": 1.43166772,
+            "median_seconds_t4": 0.997817464,
+            "speedup": 1.434799220952501
+          },
+          {
+            "job_id": "8156169",
+            "hostname": "scc-yj3",
+            "median_seconds_t1": 0.686802121,
+            "median_seconds_t4": 0.448794949,
+            "speedup": 1.5303249792145055
+          },
+          {
+            "job_id": "8156171",
+            "hostname": "scc-tq4",
+            "median_seconds_t1": 0.672989627,
+            "median_seconds_t4": 0.414600033,
+            "speedup": 1.6232261780837822
+          }
+        ],
+        "four-fe": [
+          {
+            "job_id": "8156167",
+            "hostname": "scc-wo4",
+            "median_seconds_t1": 1.081976244,
+            "median_seconds_t4": 0.607704895,
+            "speedup": 1.7804303583896588
+          },
+          {
+            "job_id": "8156169",
+            "hostname": "scc-yj3",
+            "median_seconds_t1": 0.476329352,
+            "median_seconds_t4": 0.261197659,
+            "speedup": 1.8236356092303259
+          },
+          {
+            "job_id": "8156171",
+            "hostname": "scc-tq4",
+            "median_seconds_t1": 0.479271585,
+            "median_seconds_t4": 0.24117618,
+            "speedup": 1.9872260394869843
+          }
+        ],
+        "weak": [
+          {
+            "job_id": "8156168",
+            "hostname": "scc-zj4",
+            "median_seconds_t1": 0.128309304,
+            "median_seconds_t4": 0.104673376,
+            "speedup": 1.225806493525154
+          },
+          {
+            "job_id": "8156170",
+            "hostname": "scc-tq3",
+            "median_seconds_t1": 0.109603774,
+            "median_seconds_t4": 0.070007885,
+            "speedup": 1.565591847261205
+          },
+          {
+            "job_id": "8156172",
+            "hostname": "scc-tj4",
+            "median_seconds_t1": 0.109141586,
+            "median_seconds_t4": 0.071157725,
+            "speedup": 1.5337981364637499
+          }
+        ],
+        "wide-rhs": [
+          {
+            "job_id": "8156168",
+            "hostname": "scc-zj4",
+            "median_seconds_t1": 0.248385801,
+            "median_seconds_t4": 0.149862577,
+            "speedup": 1.657423794333925
+          },
+          {
+            "job_id": "8156170",
+            "hostname": "scc-tq3",
+            "median_seconds_t1": 0.235608287,
+            "median_seconds_t4": 0.130368194,
+            "speedup": 1.8072528257927698
+          },
+          {
+            "job_id": "8156172",
+            "hostname": "scc-tj4",
+            "median_seconds_t1": 0.235228339,
+            "median_seconds_t4": 0.130525811,
+            "speedup": 1.802159566738873
+          }
+        ]
+      },
+      "scaling_statistic": "median of 3 registered NATIVE_SECONDS at 1 worker divided by median at 4 on the same host; 3 hosts/family, fixed producer order, descriptive without confidence bounds",
+      "interpretation_review_sha256": "ccc4d19c212a3d90daaaae54a667667418641bab55e4ef5d215e569a4a460019",
+      "reviewer": "gpt-6-astra high",
+      "inference_limits": [
+        "42 aggregate baseline comparisons pass; this is not a per-host pass claim",
+        "Three independent hosts per cell, not nine timing slots",
+        "Normalized excess1.867231 means time ratio1.373446 against the20% internal allowance",
+        "No isolated causal attribution to gate inlining or transfer to Mac",
+        "No replacements, partial aggregate, Mac B/C admission or public Auto activation"
+      ],
+      "next_scope": "Source-only diagnosis of initial incumbent iterations/handoff versus hierarchy construction/application; remaining compatible RHSs provide an amortization horizon, not guaranteed savings or additional quota.",
+      "selected_per_host_paired_ratios": [
+        {
+          "cell": "high-degree-weak-t4",
+          "reference": "baseline",
+          "ratios": [
+            1.0425084283837183,
+            1.075656053437852,
+            1.0140536177946076
+          ],
+          "interpretation": "Aggregate passes; one host exceeds 1.05."
+        },
+        {
+          "cell": "weak-t1",
+          "reference": "cmgschur-k2",
+          "ratios": [
+            1.3315203529965427,
+            1.3788688504236586,
+            1.3966759500611365
+          ],
+          "interpretation": "All three host paired medians exceed 1.20."
+        },
+        {
+          "cell": "small-third-t4",
+          "reference": "map",
+          "ratios": [
+            1.2367423335489014,
+            1.2489254835309056,
+            1.222298091396289
+          ],
+          "interpretation": "All three host paired medians exceed 1.20."
+        },
+        {
+          "cell": "four-fe-t4",
+          "reference": "map",
+          "ratios": [
+            1.1568896735005318,
+            1.2484651298309053,
+            1.2446329386027728
+          ],
+          "interpretation": "Two of three host paired medians exceed 1.20."
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "reference": "cmgschur-k1",
+          "ratios": [
+            1.263435385889535,
+            1.1958878608022026,
+            1.2444670424886797
+          ],
+          "interpretation": "Two of three host paired medians exceed 1.20."
+        }
+      ],
+      "raw_review_sha256": "7e032b0f239d658af2fd2d567332b8413854a4720fd75199593eee31fc7ada01",
+      "raw_review_status": "GO_valid_NO_GO_evidence",
+      "isolation": {
+        "process_snapshots": 4254,
+        "scheduler_envelopes": 362,
+        "scheduler_commands": 724,
+        "scheduler_query_retries": 0,
+        "all_scheduler_commands_success": true,
+        "observer_errors": 0,
+        "observed_compute_overlap": [],
+        "scope": "Original validators rederive reservation from before/after PE, RQS, queue/host configuration, job environment, affinity and scheduler census, plus PID/lstart process ancestry. Slots alone are not proof. This validates the declared sampled-observation contract, not continuous visibility between samples."
+      },
+      "independent_raw_closure": {
+        "inventory_files": 458,
+        "inventory_bytes": 411772526,
+        "frozen_bindings": 389,
+        "local_frozen_bindings_rehashed": 381,
+        "external_setup_attested_tool_identities": 8,
+        "scope": "Exact frozen P validator sources were loaded from the source snapshot. All logical path identities are preserved. The eight external Linux tools/numerical binaries were not copied or freshly rehashed locally; their exact original setup-attested bindings remain explicit.",
+        "replay_adaptation": "Only filesystem I/O mapping and isolation subprocess transport are adapted. The exact frozen host.validate function runs in the local process instead of invoking its validate-stdin subprocess. Original source, proof, science, resource, availability, isolation and aggregate validations remain active. No finalizer output function is called."
+      }
     }
   }
 }

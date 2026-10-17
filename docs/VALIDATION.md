@@ -1651,13 +1651,62 @@ Collectors `8156167`–`8156172` and dependent finalizer `8156173` are accepted.
 Independent review checks all 31 dispatch records, nine bound inputs and seven
 actual job identities, resources, arguments and dependencies. Exactly one release
 of the six user holds succeeds after fresh target-hold and source checks.
-Only lifecycle status is inspected while any job remains active.
-At 14:08 UTC all six collectors are running, each with 28 slots on a different
-node; the finalizer remains dependency-held. Placement alone does not establish
-isolation, and no intermediate scientific or timing result has been inspected.
-The six-node, three-round design, original scientific tolerances, zero-replacement
-rule and baseline-only stopping screen remain fixed. Old failures remain closed;
-no Mac B/C or public Auto change follows. Exact artifact, accounting, review,
+Only lifecycle status was inspected while any job remained active. All seven
+jobs now have complete failed=0/exit=0 accounting. Collector wall times are
+5,943/2,604/3,919/2,521/3,917/2,517 seconds, totaling 21,421 against the fixed
+43,200-second allocation budget; finalization takes 422 seconds. The monitor was
+deleted after terminal accounting. All six original isolation validators and
+the full original aggregate replay pass independently; the replay reproduces
+every result value exactly. Fresh science includes 1,026 passing pairs with
+exact local repeats and 54 retained optional unavailabilities across three
+rounds. Cross-host availability and model discrete decisions remain stable.
+Independent Astra high review checks 4,254 process snapshots and 724 successful
+scheduler commands, with no observer errors or observed competing compute.
+This establishes the declared sampled isolation contract, not continuous
+visibility between samples.
+Review rechecks all 126 retained scientific proofs, fingerprints and resource
+attestations. The frozen producer deleted successful arrays and transient native
+logs, so this is validation of retained proof evidence, not fresh numerical oracle
+recomputation. The 7,236 distinct native dispatches remain within the 7,560 cap;
+54 timing prerequisite rows reuse earlier unavailable proofs without new calls.
+
+**The completed discovery returns baseline only.** All 42 aggregate incumbent
+comparisons pass their original allowances. The geometric-mean candidate/incumbent
+time ratio is 0.931181: 0.914859 at one worker and 0.947795 at four. These are
+descriptive comparisons with the incumbent, not scaling factors or confidence
+bounds. Selected ratios are:
+
+| Family | One worker | Four workers |
+| --- | ---: | ---: |
+| Weak | 0.625740 | 0.843512 |
+| High-degree weak | 0.745664 | 1.038499 |
+| Small third FE | 0.885158 | 0.831239 |
+| Four FE | 0.874437 | 0.839234 |
+| Eight FE | 0.878793 | 0.858202 |
+| Sixteen FE | 0.900295 | 0.897430 |
+| Dynamic weights | 0.616790 | 0.859155 |
+| Wide RHS | 0.995911 | 1.009576 |
+
+The fixed internal-comparator screen rejects 14 comparison edges across seven
+cells. The worst is weak/one-worker against explicit CMG k2: time ratio 1.373446
+against allowance 1.20, hence normalized excess `(1.373446-1)/0.20=1.867231`.
+This is a 37.3% time penalty, not an 86.7% penalty. Gaps also remain against MAP
+for small-third/four-FE at four workers and against explicit CMG on other weak
+cases. The aggregate high-degree weak/four-worker incumbent comparison passes,
+but its three host-level ratios are 1.043, 1.076 and 1.014; this is not a pass
+on every host. Weak/one-worker loses to CMG k2 on all three hosts.
+
+Within each host, dividing the candidate's median one-worker time by its median
+four-worker time gives 1.226–1.566 for weak, 1.435–1.623 for high-degree weak,
+1.657–1.807 for wide RHS and 1.780–1.987 for four FE. Each median uses three
+measurements under the fixed producer order. These are descriptive scaling
+observations, with three independent hosts per cell and no confidence claim;
+the nine timing slots are not nine independent replications.
+
+The trial is closed NO-GO under the unchanged screen. No measurement replacement,
+partial aggregate, new Mac B/C admission or public Auto change follows. Older
+campaigns remain closed; differences between campaigns do not isolate the causal
+effect of gate inlining. Exact artifact, accounting, review,
 launcher and dispatch hashes are in the
 [compact results](../bench/results/solver-routing-controlled-20261014.json).
 

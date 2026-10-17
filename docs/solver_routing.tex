@@ -2511,64 +2511,71 @@ Actual ARM64 assembly bypasses repeated checks on credited steps and reduces bot
 \clearpage
 \end{compactleaf}
 
-% PAGE 39 / fresh integrated-candidate qualification.
+% PAGE 39 / terminal integrated-candidate discovery.
 \begin{compactleaf}
 \smallbody
-\sect{38 / CURRENT QUALIFICATION}{A fresh six-node comparison}
-\tagline{Build and plan checks pass; performance qualification remains pending.}
-The new campaign freezes source \code{691cef5c} against baseline \code{46aa78f6}.
-It retains synchronous CMG construction, gate inlining and strict unseeded LSMR.
-The discarded batch-application and heap-credit prototypes are absent. Public
-Auto remains the incumbent throughout qualification.
+\sect{38 / CURRENT QUALIFICATION}{A valid run; the route still falls short}
+\tagline{Fresh Linux discovery passes science and isolation; the fixed screen returns baseline only.}
+Source \code{691cef5c} retains synchronous CMG construction, gate inlining and
+strict unseeded LSMR against baseline \code{46aa78f6}. All six collectors and the
+finalizer complete with failed=0/exit=0. The original science and isolation
+validators pass independently; replay reproduces the entire aggregate exactly.
+The 1,026 passing science pairs repeat exactly; 54 optional unavailabilities are
+retained. The monitor is deleted. No replacement or partial aggregate is used.
+Review rechecks 126 retained proofs and their fingerprints; the frozen producer
+deleted successful arrays, so no fresh numerical oracle recomputation is claimed.
 
-\sub{What has passed}
-Setup job \code{8155921} completes with failed=0/exit=0 in 416 seconds on four
-slots. Both same-profile Linux binaries pass audit, actual-plugin ABI/self-test
-and input/output guards. All 218 benchmark-tool tests and six harness mocks pass.
-Independent Astra high review checks sixteen substantive commands, twenty-five
-Git probes, exact source and test-overlay identities, the two binaries and the
-timing harness. This establishes the build and source contracts; allocation-local
-solver science, isolation and timing are separate prerequisites.
+\sub{The candidate now protects the incumbent in the aggregate}
+All 42 aggregate incumbent comparisons pass their original allowances. The
+geometric-mean candidate/incumbent time ratio is 0.931: 0.915 at one worker and
+0.948 at four. These descriptive ratios do not establish confidence bounds or
+attribute the difference from earlier campaigns to gate inlining.
 
-The build records \code{scc-gr4}, while accounting records
-\code{scc-gr4.scc.bu.edu}. A separately reviewed consumer accepts only this exact
-SCC short-name/FQDN relationship, then delegates every other check to the original
-validator. All 27 pure tests pass. The original producer, configuration,
-artifacts and raw accounting remain unchanged; this requires no rebuild.
+\begin{tabularx}{\linewidth}{@{}Xrr@{}}
+\toprule
+\textbf{Candidate / incumbent time} & \textbf{1 worker} & \textbf{4 workers}\\
+\midrule
+Weak graph & 0.626 & 0.844\\
+High-degree weak & 0.746 & 1.038\\
+Small third FE & 0.885 & 0.831\\
+Four FE & 0.874 & 0.839\\
+Eight FE & 0.879 & 0.858\\
+Sixteen FE & 0.900 & 0.897\\
+Dynamic weights & 0.617 & 0.859\\
+Wide RHS & 0.996 & 1.010\\
+\bottomrule
+\end{tabularx}
 
-\sub{The experiment is sealed}
-Assembly \code{8156079} and binding \code{8156092} pass with zero exit status in
-49 and 79 seconds. The original seal \code{8156129} fails before outputs because
-its launcher selects a Python symlink. A separately reviewed correction selects
-the exact already-bound interpreter; continuation \code{8156149} passes in 80
-seconds. No build or solver is rerun. All 389 plan bindings close under independent
-Astra high review; these stages perform no solver measurements.
-
-Collectors \code{8156167}--\code{8156172} started together on six different nodes
-after independent review; finalizer \code{8156173} waits for them. Placement alone
-does not establish isolation. The panel requires six distinct isolated
-28-core nodes, three host
-repetitions per cell, 42 cells at one/four workers, the original scientific
-tolerances and fixed call/allocation budgets. It allows no replacement or partial
-aggregate. Old timing, science and optional availability are not imported.
+\sub{Why the fixed screen rejects it}
+Fourteen comparisons across seven cells exceed the internal-solver allowance.
+The worst is weak/one-worker versus explicit CMG k2: ratio 1.373 against 1.20.
+Its normalized excess is $(1.373446-1)/0.20=1.867231$, meaning 37.3\% slower,
+not 86.7\%. MAP also beats the route beyond the allowance on small-third and
+four-FE at four workers. An average gain cannot override these requirements.
 
 \begin{note}\smallbody
-\textbf{Decision boundary.} Complete fresh science, repeatability, stable decisions,
-isolation and raw aggregate review must pass first. A baseline violation or a
-worst internal normalized excess above one returns baseline only. Only a surviving new
-shortlist admits fresh Mac B12 and untouched C24. The earlier failed discoveries
-and Mac B remain closed NO-GO.
+\textbf{Replication matters.} High-degree weak/four-worker incumbent ratios are
+1.043, 1.076 and 1.014 across hosts: the aggregate passes, but one host exceeds
+1.05. Weak/one-worker loses to CMG k2 on all three hosts. Each cell has three
+independent hosts, not nine independent timing slots.
 \end{note}
-\textbf{RHS interpretation.} First-batch width and physical stride size the fixed work allowance;
-hierarchy reuse amortizes setup. The route does not yet explicitly compare setup,
-transition and extra certification costs with savings over remaining compatible
-columns. The matched 1/4/16-RHS regression adds correctness and reuse coverage,
-not a wide-active-RHS payback rule. This panel makes no claim beyond four workers;
-earlier Mac microdiagnostic gains cannot be multiplied into old Linux results.
-\anchor{Candidate Linux \code{3947fbe7}; baseline \code{2400f8d8}; harness
-\code{d49630f6}; setup completion \code{7c2686c2}; independent raw review
-\code{c1b0d36b}; sealed plan \code{ea8251ec}. Full hashes and exact scope: compact controlled-results JSON and
-\code{docs/VALIDATION.md}.}
+
+\sub{What multiple workers and RHSs establish}
+Within-host median one-worker time divided by four-worker time ranges from
+1.23--1.57 for weak graphs, 1.44--1.62 for high-degree weak, 1.66--1.81 for wide
+RHS and 1.78--1.99 for four FE. These use three measurements per worker under a
+fixed order; they are descriptive scaling observations, not a scaling guarantee.
+
+Hierarchy reuse works, but remaining RHSs do not yet enter an explicit setup,
+transition and certification payback calculation. A payback veto alone need not
+close the observed gap to an already faster explicit CMG route. The unresolved
+question is the cost of initial incumbent iterations and handoff versus hierarchy
+construction and application. No new experiment or extra work quota follows.
+\textbf{Decision: close this trial NO-GO.} Fresh Mac B12/C24 remains blocked;
+public Auto and all earlier failed outcomes remain unchanged.
+\anchor{Candidate \code{3947fbe7}; baseline \code{2400f8d8}; sealed plan
+\code{ea8251ec}; terminal result \code{af4ab1eb}; raw review \code{7e032b0f}. Full accounting, original failures,
+raw review and exact scope: compact controlled-results JSON and \code{docs/VALIDATION.md}.}
 \clearpage
 \end{compactleaf}
 
