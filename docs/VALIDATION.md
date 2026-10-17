@@ -1421,6 +1421,20 @@ readiness is unverified; no new job or collection has started. One read-only
 30-minute readiness monitor is capped at sixteen probes and stops by
 2026-10-17 09:30 UTC. Recovery still requires a fresh reviewed source check and
 actual Linux success; the monitor does not waive either gate.
+The first scheduled probe subsequently recovered at 01:56 UTC: exact source
+identity and full porcelain status, including untracked files, passed with no
+locale submission claim or output. The monitor was deleted. Independent Astra
+review cleared a separately recorded submission continuation, and SCC accepted
+job `8152429` at 02:01 UTC. Its scope remains the affected-locale witness and six
+mock tests, reusing unchanged builds. It completed successfully on `scc-pi2`
+with four slots in 138 seconds: failed=0/exit=0, the affected-locale witness
+passes and all six mock tests pass. The completion marker and every expected
+output are present. Independent Astra raw review clears the unchanged builds
+and source-level resource/sampling contracts, verifying 234 local references
+and distinguishing ten remote tool/build-manifest references checked by the
+producer. Fresh allocation science remains pending. Scheduled pure assembly
+`8152811` will create admission/config files for separate review before binding
+and sealing. No solver measurement or Rust rebuild occurred.
 
 Prospective Mac qualification tools now recognize the six-allocation schema and
 the exact unseeded candidate. They rederive the complete discovery context,

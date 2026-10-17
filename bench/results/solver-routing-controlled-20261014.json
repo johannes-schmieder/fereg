@@ -21985,6 +21985,65 @@
         "No explicit estimate of payback over remaining RHS; the matched cold-single/reused-single/wide trio is still missing from performance coverage.",
         "Future comparison must retain priming cost and target-action cost separately on identical topology and RHS bytes. Cross-layout scientific agreement is required, not unjustified bitwise or iteration identity."
       ]
+    },
+    "source_readiness_recovery": {
+      "observed_utc": "2026-10-17T01:56:20.403153Z",
+      "probe_count": 1,
+      "readiness_sha256": "5637cf605a5c1687ed83411c9d31212882bda4d254f6c7ae0d1410f086dd2b63",
+      "exact_source_clean": true,
+      "full_untracked_porcelain_check_s": 0.41550631501013413,
+      "locale_submission_claim_and_outputs_absent": true,
+      "monitor_deleted_before_continuation": true,
+      "fresh_submission_script_sha256": "dce3125e06b2be00249f79dd4d4658e8ab952817fafcd3590ef8b7b7a6a18860",
+      "independent_review_sha256": "94dc1f8b7e5c0b02a9271c5b8740202add488727a6018268cc98975d1401a1e7",
+      "accepted_submission_sha256": "303e0aa0c996d2efa70ea0a14d885bcb9c6babc794eac8d4d87b4b58657fd597",
+      "job_id": "8152429",
+      "accepted_utc": "2026-10-17T02:01:00.597992Z",
+      "scope": "Separate once-only reviewed continuation. Original failed preflight, frozen source, helper/config bytes and all prior failed jobs remain unchanged. No rebuild or solver measurement."
+    },
+    "actual_locale_retest": {
+      "job_id": "8152429",
+      "failed": 0,
+      "exit_status": 0,
+      "hostname": "scc-pi2",
+      "slots": 4,
+      "granted_pe": "omp",
+      "start_utc": "2026-10-17T02:02:33Z",
+      "end_utc": "2026-10-17T02:04:51Z",
+      "wallclock_s": 138,
+      "maxvmem": "551.098M",
+      "accounting_sha256": "5da7ab88f8779783637046df8738ad775d570907dad520d1d0725709f5164acd",
+      "terminal_output_sha256": "65c936ef4f3c98db0815bf10d0833a4396d553511ab9b64c4bd8a22e3c540946",
+      "completion_sha256": "c8ae490f77252a14de468c900e865de70786fed5427744da2bf56b3089180507",
+      "locale_witness_command_sha256": "4f1c6b4a57bc766f0b0e2670396dc7ac332b9bb4bcad59b7e69323b91e0a7878",
+      "mock_command_sha256": "fd1300096dc94353c6631963ba0e2659818a743d12b22e874a553f63fda0412c",
+      "mock_stderr_sha256": "317e9c05de09178a9adccc5fb54d8f04fc9eea166084e39696afcd89d9dc6316",
+      "mock_tests_passed": 6,
+      "mock_suite_s": 1.58,
+      "missing_expected_files": 0,
+      "independent_raw_review": {
+        "reviewer": "gpt-6-astra high",
+        "status": "GO_code_contract_and_sample1_primitive",
+        "sha256": "5533e107d39c02b89c193f98de56be2b71ebdc4d7cbbd92dc11afb9daed53158",
+        "evidence_references": 244,
+        "independently_hashed_local_references": 234,
+        "remote_only_tool_and_build_manifest_refs_verified_by_producer": 10,
+        "fresh_allocation_science": false
+      },
+      "scope": "Affected locale pattern witness and all six mock tests pass against exact isolated fixture. Original builds, 218 focused tests and ABI evidence retained; all prior failed jobs remain failed. No Rust rebuild or solver measurements."
+    },
+    "scheduled_pure_admission": {
+      "job_id": "8152811",
+      "wrapper_sha256": "d9b12945b2e1d894a335fa88713655435c4d1635130a17d7bd482fb6f94c7479",
+      "source_review_sha256": "81951c0d423f5b203ed1c6404399b543477dff98324f6a03683201b45a448778",
+      "submission_sha256": "6875dd8f3a57d09bc1b8863b8b52a9ddb48c33e89a810c832b2a2363b09c3bd5",
+      "slots": 4,
+      "walltime_cap_s": 300,
+      "process_cap_s": 240,
+      "kill_grace_s": 20,
+      "native_calls": 0,
+      "status": "submitted_pending_terminal_validation",
+      "scope": "Actual descriptors/configs require pure assembly success and review before separate input binder and seal."
     }
   }
 }
