@@ -231,7 +231,10 @@ fn check_case(design: &Design, config: PreparedOlsFitConfig) -> CertifiedPrepare
         .unwrap()
     };
     let result = run();
-    let prefix_limit = if matches!(config.absorb.routing, Some(p) if p == RoutingPreset::portfolio_unseeded()
+    // Uninjected public Auto uses the unseeded many-FE policy in these
+    // categorical Auto-preconditioned cases.
+    let prefix_limit = if config.absorb.routing.is_none()
+        || matches!(config.absorb.routing, Some(p) if p == RoutingPreset::portfolio_unseeded()
         || p == RoutingPreset::incremental_many() || p == RoutingPreset::incremental_two())
     {
         0
@@ -406,6 +409,7 @@ fn incremental_families_match_dense_qr_and_existing_portfolio_exactly() {
         (2, Low, true, RoutingPreset::incremental_two()),
         (3, Fast, false, RoutingPreset::incremental_many()),
         (5, Low, true, RoutingPreset::incremental_many()),
+        (16, Fast, false, RoutingPreset::incremental_many()),
     ] {
         let design = design(effects, 3, deficient, false);
         let mut previous: Option<CertifiedPreparedOlsRobust> = None;
@@ -418,6 +422,13 @@ fn incremental_families_match_dense_qr_and_existing_portfolio_exactly() {
             exact_fit(actual.fit(), expected.fit());
             assert_eq!(actual.covariance(), expected.covariance());
             assert_eq!(actual.dof(), expected.dof());
+            if preset == RoutingPreset::incremental_many() {
+                options.absorb.routing = None;
+                let public = check_case(&design, options);
+                exact_fit(actual.fit(), public.fit());
+                assert_eq!(actual.covariance(), public.covariance());
+                assert_eq!(actual.dof(), public.dof());
+            }
             if let Some(previous) = previous {
                 same_discrete_reports(
                     actual.fit().absorption_report(),

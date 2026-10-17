@@ -21,7 +21,7 @@ were deleted; hashes and summaries are the remaining record.
 Branch `codex/auto-routing` implements the prospective
 [incremental qualification](SPEC.md#incremental-auto-qualification-2026-10-17).
 Runtime commit `811769d38adfdd5213270af801ed8b30fe2efc31` adds hidden
-many-FE and two-FE selectors. Both public defaults remain disabled. The new
+many-FE and two-FE selectors, initially with both public defaults disabled. The new
 schema protects original and accepted Auto; explicit-solver observations are
 diagnostic. Historical campaign outcomes retain their original meaning.
 
@@ -123,8 +123,86 @@ repair ran no solver calls and changed no frozen source or timing observation.
 The shortlist contains incumbent and incremental-many. The separately reviewed
 historical A/A pilot supports the fixed B12/C24 design with its existing
 independence/common-median limitation; its observations are not pooled into the
-new panels. Fresh Mac selection, exact hidden/public A/B equivalence and untouched
-Mac confirmation remain required. Two-FE qualification remains a separate stage.
+new panels. This result admitted the Mac selection below; exact hidden/public A/B
+equivalence and untouched Mac confirmation remain required. Two-FE qualification
+remains a separate stage.
+
+## Mac many-FE selection and provisional activation, 2026-10-17
+
+The fixed Mac B12 panel selects `incremental-many`. All 84 challenger comparisons
+against original and incumbent Auto pass the per-cell `max(5%, 1 ms)` criterion;
+the incumbent's 42 comparisons also pass. The affected-family geometric mean
+candidate/incumbent ratio is **0.878078**, about 12.2% lower runtime. This is
+developmental selection, with conditional marginal bounds, not confirmation or
+simultaneous/selected-winner coverage.
+
+Fresh B science first passed all 126 protected outcomes in 252 native calls.
+The full prerequisite panel made 786 calls: 768 successful, six optional-solver
+timeouts and twelve optional iteration-budget failures. Eighteen linked
+`not_run` rows are not additional attempts. Independent review checked all
+42 proofs and 321 file bindings, 384 exact repeat/signature pairs, 64 exact
+outside-family comparisons, 136 resource records and complete CMG/IT worker
+groups. The phase-aware oracle wrapper reuses the unchanged bounded mathematics;
+its first A-only CLI rejection is retained, without a native or mathematical
+rerun. Successful native arrays were deleted by the producer; the review checks
+retained assertions, fingerprints and witness certificates, not deleted arrays.
+
+Timing completed all 3,150 planned calls: 126 warmups and 504 six-call mirrored
+blocks. The frozen host policy excludes six shared blocks for observed `codex`
+process activity, leaving 498 eligible blocks with 10–12 blocks per comparison.
+Every observation remains retained; there were no replacements, retries or
+continuations. The observer recorded 800 snapshots with maximum gap 5.16738
+seconds. The raw record does not uniquely attribute activity to individual
+lifecycle polls. Independent arithmetic reproduces all 126 comparison bounds
+and the selection. Shared comparison edges are not independent blocks; sampled
+isolation and common-median/independence assumptions remain limitations. The
+maximum observed absolute lag-one excess correlation is approximately 0.643.
+
+| Retained identity | SHA-256 |
+| --- | --- |
+| B scientific records | `01feb743eb05781b015ba945403cab7d01b150bb25c0ac65e7c41838c55f33d4` |
+| Independent B science review | `caeee49cdc109b182b0c4b438b1cc6f4080b5164e72429bacd469fe657206aca` |
+| Frozen B timing manifest | `98b3f351789b7b952b669f12aba04277a5163848fd46cbfa85be15b4981fbde3` |
+| B timing records | `eb092491904576b044e3b7611f7b8aa7ca2235e3ce64a79c85633ba344debdfd` |
+| B host receipt | `483e10cbc2082158f05dca81b7bf2c69e7445d6d8966e0b40f1fc31289119928` |
+| B decision, logical identity | `c196126cacb12be19df507ed152f62cb5667f357269de00306c7f22eca6d5845` |
+| Independent B timing review | `f863c43155705609b23d43f23501f0d99ef9d6019e4219600f3da8b88daa1567` |
+
+Only the many-FE invocation flag is provisionally enabled on `codex/auto-routing`
+for a private public-invocation artifact. Two-FE remains disabled; kernels,
+eligibility and build inputs are unchanged. Fresh source/native/transaction
+checks and exact hidden/public A/B equivalence must pass before C access.
+The untouched C24 panel remains necessary for acceptance; failure or inconclusive
+confirmation restores the prior default. Main and release packages are unchanged.
+
+The first source run stopped at a worker-thread-local routing marker (`4`
+instead of `16`). The isolated test passed. Independent source review identifies
+shared Rayon workers as a plausible instrumentation interference mechanism;
+the actual interfering schedule was not captured. Serial execution passed the
+core tests, then exposed three obsolete oracle assertions requiring Auto's old
+MAP route. Historical geometry-led MAP witnesses now explicitly request diagonal
+preconditioning, outside the new Auto/Auto scope, while public Auto is checked
+against the selected hidden policy with independent QR, exact science/signatures,
+covariance and DoF at three, five and sixteen effects. Twelve focused oracle tests
+pass. The corresponding Stata witnesses preserve their numerical assertions;
+the strict route permits a MAP report only for a certified zero-update final
+residual. All previous failures remain recorded. The only changed production
+token is the many-FE default flag; all 58 artifact inputs remain identical.
+The final `RUST_TEST_THREADS=1 ./scripts/run_tests.sh --source-only` passes:
+Python, Clippy, full Rust workspace, FFI and isolated allocator audits, portable
+checks, complexity and mock-bridge guards. Native build and licensed Stata checks
+remain separate prerequisites; installed release-package admission was not run.
+The passing source log SHA-256 is
+`8607aead9702dae51d3d6c3b49b103f2cb69e853455f2c7ac54abb8447f1e258`.
+
+SHA-256 identities: initial failed source log
+`59ca4c6ea840ff97b6c3d70165385ec6dd97600869b2da26d050e0d11c970906`;
+serial old-route failure
+`82344e7653d51a1dfcb559adc52b1593e53bbc2e48f625c3fc42a1c536a344ae`;
+focused migrated oracle log
+`befd213629cf92089b8dd1227e3872f6cf3fcdabbf9836a9acecafbaab493403`;
+independent test migration review
+`bc6fe6201e01d4929a29dc51971c8dc7bb53055eb31b28cccb5eb58195c4f0df`.
 
 ## Main-branch GitHub installation, 2026-10-14
 

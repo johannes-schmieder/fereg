@@ -24,11 +24,21 @@ foreach pool in 1 5 10 {
     assert e(N) == 1400
     assert e(rank) == 10
     assert e(df_r) == reference_df_r
+    * Provisional many-FE Auto: row 1 aggregates the initial RHS batches;
+    * row 2 is final-residual projection, not a second RHS batch.
     assert e(fereg_solver)[1,1] == 1
-    assert e(fereg_solver)[1,2] == 2
-    assert e(fereg_solver)[1,11] == 1
-    assert e(fereg_solver)[2,2] == 3
+    assert e(fereg_solver)[1,2] == 3
+    assert e(fereg_solver)[1,4] == 2
+    assert e(fereg_solver)[1,11] == 0
+    assert e(fereg_solver)[1,15] == 0
+    assert e(fereg_solver)[2,1] == 1
+    * An already-certified residual returns the unchanged zero-update Map
+    * report before iterative dispatch. Positive-work Map is not accepted.
+    assert e(fereg_solver)[2,2] == 3 | ///
+        (e(fereg_solver)[2,2] == 2 & e(fereg_solver)[2,3] == 0)
+    assert e(fereg_solver)[2,4] == 2
     assert e(fereg_solver)[2,11] == 0
+    assert e(fereg_solver)[2,15] == 0
     forvalues j = 1/10 {
         assert abs(e(b)[1,`j'] - reference_b[1,`j']) <= 1e-10
         forvalues k = 1/10 {
