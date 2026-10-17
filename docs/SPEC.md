@@ -328,6 +328,25 @@ covers marker overlap, exact-capacity compaction and suffix finalization.
 Break and allocation errors stay fatal; optional refusal publishes no kernel.
 No default promotion or performance claim follows from implementing this arm.
 
+The separate private `routing_cells_s2` arm adds structural early refusal to
+S, using its unchanged serial per-batch tariff. Checked u128 endpoint bounds
+at RHS widths one and the immutable owner maximum prove when no allowed batch
+can use a cell kernel. Indeterminate arithmetic retains the S construction path;
+the proof does not mistake the existing u64 tariff cap for nonpayment. The
+nonempty-level lower bound can refuse before allocation; the growing cell count
+can refuse after each charged marker tile, before compaction/finalization.
+Accepted kernel banks remain bitwise S's. Extra policy work is charged, so tight
+resource refusals retain the declared private continuous/iteration scope rather
+than an unconditional S-equivalence claim. Public and prior arms remain exact.
+A separate small structural-refusal cache persists across accuracy phases;
+Unit-only refusal is reconsidered under Provided weights without resetting sunk
+work, while Provided-tariff refusal covers either weight kind. Work/memory/
+numerical refusals do not become permanent structural knowledge. The cache must
+preserve prior workspace/owner size and alignment. Existing memory bounds,
+original-observation certificates, fatal allocation/Break, saved effects and
+per-action routing remain authoritative. Independent limit, accepted-bank,
+refusal/reuse, weight-transition and resource-boundary witnesses are required.
+
 Declared routing scope: only explicitly injected OLS routes may change
 coefficients, covariance, fit statistics, residuals, FE coordinates and solver
 iteration signatures within §20 tolerances. Sample, rank, omission, original

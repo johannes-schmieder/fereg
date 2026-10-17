@@ -9,7 +9,7 @@ mod membership;
 mod occurrence;
 pub(crate) use compact::build_v2;
 pub(crate) use membership::build_membership;
-pub(crate) use occurrence::build_occurrence;
+pub(crate) use occurrence::{build_occurrence, build_occurrence_gated};
 
 use crate::error::{allocation, invalid_argument, invalid_data, FeregError, Result};
 use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
@@ -28,6 +28,7 @@ pub(crate) enum KernelRefusal {
     WorkBudget,
     MemoryBudget,
     Numerical,
+    Unprofitable { cells: usize, limit: usize },
 }
 
 pub(crate) struct OptionalSetup {
@@ -738,6 +739,190 @@ mod tests {
     }
 
     #[test]
+    fn occurrence_gate_matches_independent_affine_costs_and_overflow_is_not_refusal() {
+        let mut seed = 731u64;
+        for _ in 0..800 {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+            let n = 1 + (seed % 160) as usize;
+            let p = 1 + ((seed >> 9) % n as u64) as usize;
+            let q = 1 + ((seed >> 21) % n as u64) as usize;
+            let max_rhs = 1 + ((seed >> 35) % 12) as usize;
+            for weighted in [false, true] {
+                let limit = occurrence::cell_limit(n, p, q, max_rhs, weighted).unwrap();
+                for c in 1..=n {
+                    let pays = (1..=max_rhs).any(|r| {
+                        c * (10 * r + 16) + p * (4 * r + 8) + q * (6 * r + 8) + 128
+                            < n * (10 * r + if weighted { 8 } else { 4 })
+                    });
+                    assert_eq!(c <= limit, pays, "n={n} p={p} q={q} r={max_rhs} c={c}");
+                }
+            }
+        }
+        assert_eq!(occurrence::cell_limit(1, 1, 1, 1, false), Some(0));
+        assert_eq!(occurrence::cell_limit(100, 2, 2, 0, false), None);
+        assert_eq!(
+            occurrence::cell_limit(usize::MAX, 1, 1, usize::MAX, false),
+            None
+        );
+        // A u64 overflow at the largest width must not hide a paying width one.
+        let n = (u64::MAX / 16) as usize;
+        let c = n / 2;
+        assert!((c as u128) * 56 + 24 + 32 + 128 > u64::MAX as u128);
+        assert!((c as u128) * 26 + 12 + 14 + 128 < (n as u128) * 14);
+        assert!(occurrence::cell_limit(n, 1, 1, 4, false).unwrap() >= c);
+    }
+
+    #[test]
+    fn occurrence_gated_banks_and_exact_work_memory_boundaries() {
+        let left: Vec<u32> = (0..1024).map(|i| (i % 2) as u32).collect();
+        let right: Vec<u32> = (0..1024).map(|i| ((i / 2) % 2) as u32).collect();
+        let weights: Vec<f64> = (0..1024)
+            .map(|i| if i % 3 == 0 { 1e-100 } else { 1e100 })
+            .collect();
+        with_design(&left, &right, 2, 2, |design| {
+            let plain = build_occurrence(
+                design,
+                0,
+                BorrowedMapWeights::Provided(&weights),
+                1e100,
+                limits(),
+            )
+            .unwrap();
+            let gated = build_occurrence_gated(
+                design,
+                0,
+                BorrowedMapWeights::Provided(&weights),
+                1e100,
+                limits(),
+                4,
+            )
+            .unwrap();
+            let (a, b) = (plain.kernel.unwrap(), gated.kernel.as_ref().unwrap());
+            assert_eq!(
+                a.cells
+                    .iter()
+                    .map(|x| (x.worker, x.firm, x.weight.to_bits()))
+                    .collect::<Vec<_>>(),
+                b.cells
+                    .iter()
+                    .map(|x| (x.worker, x.firm, x.weight.to_bits()))
+                    .collect::<Vec<_>>()
+            );
+            assert_eq!(a.offsets, b.offsets);
+            for (x, y) in [
+                (&a.worker_weights, &b.worker_weights),
+                (&a.firm_weights, &b.firm_weights),
+                (&a.diagonal, &b.diagonal),
+            ] {
+                assert_eq!(
+                    x.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                    y.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+                );
+            }
+            assert_eq!(gated.work_used, plain.work_used + 128 + 8 * 32);
+            assert_eq!(gated.peak.bytes(), plain.peak.bytes());
+            for budget in [0, 127, 255, gated.work_used - 1, gated.work_used] {
+                let got = build_occurrence_gated(
+                    design,
+                    0,
+                    BorrowedMapWeights::Unit,
+                    1.,
+                    KernelLimits {
+                        work_budget: budget,
+                        ..limits()
+                    },
+                    4,
+                )
+                .unwrap();
+                assert_eq!(got.kernel.is_some(), budget == gated.work_used);
+                assert!(got.work_used <= budget);
+            }
+            let bytes = u128::from(gated.peak.bytes().unwrap());
+            for extra in [0, 1, 2] {
+                let got = build_occurrence_gated(
+                    design,
+                    0,
+                    BorrowedMapWeights::Unit,
+                    1.,
+                    KernelLimits {
+                        retained_live_bytes: 512,
+                        memory: Some(FeSolverMemoryBudget {
+                            execution_bytes: 128,
+                            usable_bytes: 512 + 128 + bytes - 1 + extra,
+                        }),
+                        ..limits()
+                    },
+                    4,
+                )
+                .unwrap();
+                assert_eq!(got.kernel.is_some(), extra >= 1);
+                if extra == 0 {
+                    assert_eq!(got.refusal, Some(KernelRefusal::MemoryBudget));
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn occurrence_gated_prepass_and_partial_tile_refusal_have_exact_charges() {
+        with_design(&[0], &[0], 1, 1, |design| {
+            let got = build_occurrence_gated(
+                design,
+                0,
+                BorrowedMapWeights::Unit,
+                1.,
+                KernelLimits {
+                    memory: Some(FeSolverMemoryBudget {
+                        execution_bytes: 0,
+                        usable_bytes: 0,
+                    }),
+                    ..limits()
+                },
+                1,
+            )
+            .unwrap();
+            assert_eq!(got.work_used, 256);
+            assert_eq!(got.peak.bytes(), Some(0));
+            assert_eq!(
+                got.refusal,
+                Some(KernelRefusal::Unprofitable { cells: 1, limit: 0 })
+            );
+        });
+        let left: Vec<u32> = (0..1024).map(|i| (i / 32) as u32).collect();
+        let right: Vec<u32> = (0..1024).map(|i| (i % 32) as u32).collect();
+        with_design(&left, &right, 32, 32, |design| {
+            for budget in [26759, 26760, u64::MAX] {
+                let got = build_occurrence_gated(
+                    design,
+                    0,
+                    BorrowedMapWeights::Unit,
+                    1.,
+                    KernelLimits {
+                        work_budget: budget,
+                        ..limits()
+                    },
+                    4,
+                )
+                .unwrap();
+                assert!(got.kernel.is_none());
+                assert!(got.work_used <= budget);
+                if budget >= 26760 {
+                    assert_eq!(got.work_used, 26760);
+                    assert_eq!(
+                        got.refusal,
+                        Some(KernelRefusal::Unprofitable {
+                            cells: 800,
+                            limit: 770
+                        })
+                    );
+                } else {
+                    assert_eq!(got.refusal, Some(KernelRefusal::WorkBudget));
+                }
+            }
+        });
+    }
+
+    #[test]
     fn occurrence_firm_totals_follow_cells_not_worker_major_rows() {
         let left = [1, 0, 0, 1];
         let right = [0, 0, 0, 1];
@@ -1271,6 +1456,11 @@ mod tests {
                     .err()
                     .unwrap();
             assert_eq!(occurrence_error.code, crate::error::ErrorCode::Interrupted);
+            let gated_error =
+                build_occurrence_gated(design, 0, BorrowedMapWeights::Unit, 1., limits(), 1)
+                    .err()
+                    .unwrap();
+            assert_eq!(gated_error.code, crate::error::ErrorCode::Interrupted);
             let membership_error =
                 build_membership(design, 0, BorrowedMapWeights::Unit, 1., limits())
                     .err()

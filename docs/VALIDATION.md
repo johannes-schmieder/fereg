@@ -16,6 +16,56 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Structural early-refusal prototype scope (2026-10-17)
+
+Fable 5.1 Extra reviewed `fe498eb5` and selected one new private arm, S2
+(`routing_cells_s2`). It retains S's first-occurrence aggregation and per-batch
+L=1 tariff. Before allocation it computes a conservative maximum profitable
+cell count over RHS widths one through the immutable owner maximum, using
+checked u128 endpoint arithmetic. Overflow leaves construction enabled; the
+proof deliberately ignores the u64 tariff cap. A nonempty-level lower bound
+can refuse immediately. Otherwise the existing 32-row marker tiles stop when
+the growing count exceeds the bound, before compaction and finalization.
+This is a general dimension/tariff test, with no workload-name routing.
+
+Accepted cell banks remain bitwise S's. The policy adds 128 work units before
+construction and eight per marker tile: successful setup is S's charged work
+plus `128+8T`, with T the sum of worker membership lengths rounded up to
+32-row tiles. A refusal before allocation costs 256 total units (the existing
+128 plus the additional policy charge). Partial construction retains all sunk
+charges and publishes no kernel. A separate three-state structural cache
+survives accuracy phases: Unit-only refusal is reconsidered for Provided
+weights, preserving charged work; Provided refusal covers either kind.
+Memory/work/numerical refusals are not cached as structural knowledge. The
+cache fits existing owner padding, checked against prior graph, Option and
+owner layouts. Allocation and Break remain fatal. Extra work can change a
+resource-boundary route, so private continuous/iteration scope applies there;
+all prior arms and public Auto remain exact. The frozen panel additionally
+requires exact S2/S scientific results and solver signatures.
+
+D3 freezes the twelve revealed families, workers 1/4, and Auto/original cells/S/S2:
+96 warmups, 1,152 scored calls in twelve balanced rotating blocks, followed by
+64 diagnostic calls (1,312 total). Only S2 can advance. Independent numerical
+witnesses, fixed-worker exact repeats, discrete agreement, and exact paired
+controls for all nine earlier arms are prerequisites. S2 must show at least
+sixteen gains and zero regressions against Auto, and zero regressions against
+S, under the unchanged paired `max(5%,1 ms)` rule. In each of eight traced
+settings, a structurally refused S2 builder must have median time <=0.6 times
+S, <=1.5 ms and <=0.35 times original cells. An accepted S2 builder must be
+<=1.1 times S. These two-repeat mechanism diagnostics are strict selection
+gates, not precise estimates of small effects. Missing records or any failed
+gate stop advancement; no replacement observations, extensions or retuning.
+Work tariffs are not measured instructions or a wall-time decomposition.
+
+C3 uses the same eight untouched-confirmation shapes as C1/C2, with new data
+seed 2026101734 and schedule seed 2026101733. Inputs, oracle bounds, artifact
+and execution bindings are sealed before the first D3 candidate call. It
+compares Auto/S2 at workers 1/4 in twelve ABBA/BAAB blocks, on a physical host
+distinct from D3, only after every D3 gate passes. Its rank-10-of-12 allowance
+excess bound remains conditional on block independence. D3's schedule seed is
+2026101732. All observations and failures are retained. This experiment does
+not promote public Auto or establish Mac performance.
+
 ## First-occurrence cell prototype scope (2026-10-17)
 
 Fable 5.1 Extra reviewed `2dfc0e86` and selected a new private `cells_s` arm:

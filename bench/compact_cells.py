@@ -59,9 +59,13 @@ MEMBERSHIP_LIMITS = {**FACTOR_LIMITS, 'seed': 2026101702, 'blocks': 12}
 OCCURRENCE_KIND = 'compact_cells_occurrence_study_v1'
 OCCURRENCE_ARMS = ['baseline', 'cells', 'cells_m', 'cells_s']
 OCCURRENCE_LIMITS = {**MEMBERSHIP_LIMITS, 'seed': 2026101722}
-FOLLOWUP_KINDS = {FACTOR_KIND, DEFERRED_KIND, MEMBERSHIP_KIND, OCCURRENCE_KIND}
-PAIRED_CONTROL_KINDS = {DEFERRED_KIND, MEMBERSHIP_KIND, OCCURRENCE_KIND}
-MIXED_BATCH_KINDS = {MEMBERSHIP_KIND, OCCURRENCE_KIND}
+ADMISSION_KIND = 'compact_cells_admission_study_v1'
+ADMISSION_ARMS = ['baseline', 'cells', 'cells_s', 'cells_s2']
+ADMISSION_CONTROLS = [*ARMS, 'cells_v2_df', 'cells_deferred', 'cells_m', 'cells_m_lanes', 'cells_s']
+ADMISSION_LIMITS = {**MEMBERSHIP_LIMITS, 'seed': 2026101732}
+FOLLOWUP_KINDS = {FACTOR_KIND, DEFERRED_KIND, MEMBERSHIP_KIND, OCCURRENCE_KIND, ADMISSION_KIND}
+PAIRED_CONTROL_KINDS = {DEFERRED_KIND, MEMBERSHIP_KIND, OCCURRENCE_KIND, ADMISSION_KIND}
+MIXED_BATCH_KINDS = {MEMBERSHIP_KIND, OCCURRENCE_KIND, ADMISSION_KIND}
 LIVE_HOST_LOAD_FIELDS = frozenset({
     'cpu', 'load_avg', 'load_short', 'load_medium', 'load_long',
     'np_load_avg', 'np_load_short', 'np_load_medium', 'np_load_long',
@@ -106,7 +110,8 @@ def contract(plan):
     return {KIND: (ARMS, LIMITS), FACTOR_KIND: (FACTOR_ARMS, FACTOR_LIMITS),
             DEFERRED_KIND: (DEFERRED_ARMS, DEFERRED_LIMITS),
             MEMBERSHIP_KIND: (MEMBERSHIP_ARMS, MEMBERSHIP_LIMITS),
-            OCCURRENCE_KIND: (OCCURRENCE_ARMS, OCCURRENCE_LIMITS)}[kind]
+            OCCURRENCE_KIND: (OCCURRENCE_ARMS, OCCURRENCE_LIMITS),
+            ADMISSION_KIND: (ADMISSION_ARMS, ADMISSION_LIMITS)}[kind]
 
 
 def host_fields(record):
@@ -179,7 +184,8 @@ def tool_files():
                  ['compact_cells.py', 'compact_cells_scc.sh', 'scc_routing_host.py',
                   'routing_discovery.py', 'block_host.py', 'tests/test_compact_cells.py',
                   'occurrence_diagnostics.py', 'scheduler_probe.rs', 'tests/test_occurrence_diagnostics.py',
-                  'prepare_scheduler_probe.py', 'tests/test_occurrence_cells.py'])
+                  'prepare_scheduler_probe.py', 'tests/test_occurrence_cells.py',
+                  'admission_confirmation.py', 'tests/test_admission_cells.py'])
     return sorted(files)
 
 
@@ -290,7 +296,8 @@ def validate_contract(plan):
             and plan['blocks'] == schedule(expected, arms=arms, limits=limits),
             'case coverage or frozen order changed')
     for cell in plan['cells']:
-        inputs = set(arms) | set(ARMS) if plan['kind'] in FOLLOWUP_KINDS else set(arms)
+        inputs = (set(ADMISSION_CONTROLS) | set(arms) if plan['kind'] == ADMISSION_KIND else
+                  set(arms) | set(ARMS) if plan['kind'] in FOLLOWUP_KINDS else set(arms))
         require(cell['id'] == f"{cell['family']}-t{cell['threads']}"
                 and set(cell['inputs']) == inputs, 'incomplete arm/cell coverage')
 
@@ -342,7 +349,7 @@ def prepare_membership(root, parent_path, harness, plugin):
 def prepare_followup(root, parent_path, harness, plugin, kind, new_arm, *, extra=None):
     arms, limits = contract({'kind': kind})
     new_arms = [new_arm] if isinstance(new_arm, str) else new_arm
-    require(set(new_arms) == set(arms) - set(ARMS) and len(new_arms) == len(set(new_arms)),
+    require(set(new_arms) == (set(arms) | (set(ADMISSION_CONTROLS) if kind == ADMISSION_KIND else set())) - set(ARMS) and len(new_arms) == len(set(new_arms)),
             'follow-up must prepare exactly its new arms')
     parent_binding = ref(parent_path)
     parent = routing.unseal(read(parent_path))
@@ -377,10 +384,13 @@ def prepare_followup(root, parent_path, harness, plugin, kind, new_arm, *, extra
             'frozen_files': identities, 'root': str(root), 'created_utc': datetime.now(timezone.utc).isoformat(),
             'prepared_wall_ns': time.time_ns(), **(extra or {})}
     if extra:
-        require(kind == OCCURRENCE_KIND, 'extra bindings are occurrence-only')
-        item = extra['scheduler_diagnostic_admission']
-        plan['frozen_files'][item['path']] = item['sha256']
-        plan['frozen_files'].update(occurrence_control_bindings(plan))
+        require(kind in {OCCURRENCE_KIND, ADMISSION_KIND}, 'unsupported extra bindings')
+        if kind == OCCURRENCE_KIND:
+            item = extra['scheduler_diagnostic_admission']
+            plan['frozen_files'][item['path']] = item['sha256']
+            plan['frozen_files'].update(occurrence_control_bindings(plan))
+        else:
+            plan['frozen_files'].update(admission_control_bindings(plan))
     validate(plan)
     save(root / 'plan.json', routing.seal(plan))
     return plan
@@ -421,7 +431,7 @@ def occurrence_control_bindings(plan):
 
 
 def science_affinity(plan):
-    if plan.get('kind') != OCCURRENCE_KIND:
+    if plan.get('kind') not in {OCCURRENCE_KIND, ADMISSION_KIND}:
         return None
     cores = affinity_cores(plan)
     require(int(os.environ.get('NSLOTS', '0')) == cores, 'science requires frozen affinity slot count')
@@ -431,11 +441,37 @@ def science_affinity(plan):
 
 
 def control_arms(plan):
+    if plan.get('kind') == ADMISSION_KIND:
+        return ADMISSION_CONTROLS
     return [*ARMS, 'cells_m', 'cells_m_lanes'] if plan.get('kind') == OCCURRENCE_KIND else ARMS
 
 
 def control_parent(plan, original, arm):
+    if plan.get("kind") == ADMISSION_KIND:
+        return routing.unseal(read(checked(plan["prior_occurrence_plan"])))
     return occurrence_parent(plan) if arm in ['cells_m', 'cells_m_lanes'] else original
+
+
+def admission_control_bindings(plan):
+    item = plan['prior_occurrence_plan']
+    prior = routing.unseal(read(checked(item)))
+    validate_contract(prior)
+    require(prior['kind'] == OCCURRENCE_KIND and prior['harness'] == plan['harness'],
+            'S2 requires the frozen S artifact and unchanged harness')
+    original = routing.unseal(read(checked(plan['parent_plan'])))
+    require(len(prior['cells']) == len(original['cells']), 'S parent coverage differs')
+    for cell, old in zip(prior['cells'], original['cells']):
+        require({**cell, 'inputs': {a:cell['inputs'][a] for a in ARMS}} == old,
+                'S parent data/model differs')
+    items = [item, prior['plugin'], prior['harness']]
+    for value in items: checked(value)
+    return {value['path']: value['sha256'] for value in items}
+
+
+def prepare_admission(root, parent_path, harness, plugin, prior_path):
+    return prepare_followup(root, parent_path, harness, plugin, ADMISSION_KIND,
+        [a for a in [*ADMISSION_CONTROLS, 'cells_s2'] if a not in ARMS],
+        extra={'prior_occurrence_plan':ref(prior_path), 'native_affinity_cores':4})
 
 
 def prepare_occurrence(root, parent_path, harness, plugin, admission_path):
@@ -447,11 +483,14 @@ def prepare_occurrence(root, parent_path, harness, plugin, admission_path):
 
 
 def affinity_cores(plan):
-    return plan['native_affinity_cores'] if plan.get('kind') == OCCURRENCE_KIND else 4
+    return plan['native_affinity_cores'] if plan.get('kind') in {OCCURRENCE_KIND, ADMISSION_KIND} else 4
 
 
 def validate(plan):
     validate_contract(plan)
+    if plan['kind'] == ADMISSION_KIND:
+        require(plan['native_affinity_cores'] == 4 and all(plan['frozen_files'].get(path) == sha
+                for path,sha in admission_control_bindings(plan).items()), 'unbound S2 prior artifact or affinity')
     if plan['kind'] == OCCURRENCE_KIND:
         require(all(plan['frozen_files'].get(path)==sha for path,sha in occurrence_control_bindings(plan).items()),
                 'unbound prior membership control dependency')
@@ -529,7 +568,7 @@ def deferred_parent_controls(plan, parent, selected, output, started, controls):
         meta = read(cell['metadata']['path'])
         for arm in control_arms(plan):
             reference = control_parent(plan, parent, arm)
-            request = next(c for c in reference['cells'] if c['id'] == cell['id']) if arm in ['cells_m', 'cells_m_lanes'] else cell
+            request = next(c for c in reference['cells'] if c['id'] == cell['id']) if arm in ['cells_m', 'cells_m_lanes'] and plan.get('kind') != ADMISSION_KIND else cell
             pair = {'cell': cell['id'], 'arm': arm, 'status': 'executed'}
             controls.append(pair)
             active = None
@@ -638,7 +677,7 @@ def science(plan, output, *, smoke=False):
     bound = [ref(p) for p in output.iterdir() if p.is_file()]
     receipt = {'kind': plan.get('kind', KIND) + '_science', 'status': status, 'failure': failure, 'smoke': smoke,
                'plan_sha256': routing.identity(plan), 'host': socket.gethostname(),
-               'job_id': os.environ['JOB_ID'], 'slots': slots, **({'native_affinity_cores': affinity_cores(plan)} if plan.get('kind') == OCCURRENCE_KIND else {}), 'fingerprints': fingerprints,
+               'job_id': os.environ['JOB_ID'], 'slots': slots, **({'native_affinity_cores': affinity_cores(plan)} if plan.get('kind') in {OCCURRENCE_KIND, ADMISSION_KIND} else {}), 'fingerprints': fingerprints,
                'records': records, 'files': bound, 'seconds': time.monotonic() - start}
     if parent is not None:
         receipt.update(parent_controls=controls, parent_control_count=len(controls),
@@ -665,6 +704,10 @@ def validate_science(plan, receipt):
                     for r in rows) and 'resources' in rows[0], 'incomplete repeat/resource prerequisite')
     if plan.get('kind') in MIXED_BATCH_KINDS:
         validate_membership_science(plan, receipt)
+    if plan.get('kind') == ADMISSION_KIND:
+        require(all(receipt['fingerprints'][cell['id']+'/cells_s2'] ==
+                    receipt['fingerprints'][cell['id']+'/cells_s'] for cell in plan['cells']),
+                'S2 changed S science or solver signatures on the frozen panel')
     for item in receipt['files']:
         checked(item)
     if plan.get('kind') in FOLLOWUP_KINDS:
@@ -1157,6 +1200,56 @@ def occurrence_gate(plan, science_receipt, measurement):
                      finalist='cells_s', gains_required=16, ratio_limit=.35, seconds_limit=.0015)
 
 
+def admission_gate(plan, science_receipt, measurement):
+    gate = cell_gate(plan, science_receipt, measurement, kind=ADMISSION_KIND,
+                    finalist='cells_s2', gains_required=16, ratio_limit=math.inf)
+    rows = measurement['records']
+    warmups = {(r['cell'], r['arm']): r['science_sha256'] for r in rows if r['phase'] == 'warmup'}
+    require(all(warmups[(cell['id'], 'cells_s2')] == warmups[(cell['id'], 'cells_s')]
+                for cell in plan['cells']), 'S2 changed S science on the measurement host')
+    prior = summarize(rows, arms=ADMISSION_ARMS, reference='cells_s', candidates=['cells_s2'])
+    require(len(prior) == len(plan['cells']) and all(x['paired_blocks'] == ADMISSION_LIMITS['blocks'] for x in prior),
+            'incomplete S2 versus S comparisons')
+    gate['comparisons_vs_s'] = prior
+    builders = []
+    for old in gate['builder_comparisons']:
+        cid = old['cell']; totals = {}; outcomes = []
+        for arm in ['cells', 'cells_s', 'cells_s2']:
+            selected = [r for r in rows if (r['cell'],r['arm'],r['phase']) == (cid,arm,'diagnostic')]
+            require(len(selected) == ADMISSION_LIMITS['diagnostic_repeats'], 'missing S2 diagnostics')
+            totals[arm] = []
+            for row in selected:
+                traces = row['phase_diagnostics']['solver_trace']
+                builds = [t for t in traces if t.get('phase') == 'auto_kernel_route']
+                require(builds and all(t['preset'] == 'routing_'+arm for t in builds), 'wrong builder attribution')
+                values = [float(t['builder_seconds']) for t in builds]
+                require(all(math.isfinite(v) and v >= 0 for v in values), 'invalid S2 builder time')
+                totals[arm].append(sum(values))
+                if arm == 'cells_s2':
+                    installed = len(builds)==1 and builds[0].get('installed') == '1'
+                    refused = len(builds)==1 and builds[0].get('installed') == '0' and builds[0].get('refusal','').startswith('Some(Unprofitable')
+                    require(installed or refused, 'S2 mechanism requires one build or structural refusal')
+                    if refused:
+                        proofs = [t for t in traces if t.get('phase') == 'auto_cells_refusal']
+                        require(len(proofs)==1 and int(proofs[0]['cells'])>int(proofs[0]['limit']), 'missing structural refusal proof')
+                        decisions=[t for t in traces if t.get('phase')=='auto_cells_s2']
+                        require(decisions and all(t['used_operator']=='0' for t in decisions), 'refused cells were applied')
+                    outcomes.append('refused' if refused else 'accepted')
+        require(len(set(outcomes)) == 1, 'S2 refusal decision differs across repeats')
+        original, reference, candidate = [statistics.median(totals[a]) for a in ['cells','cells_s','cells_s2']]
+        refused = outcomes[0] == 'refused'
+        passed = reference>0 and original>0 and (candidate <= .6*reference and candidate <= .0015 and candidate <= .35*original
+                 if refused else candidate <= 1.1*reference)
+        builders.append({'cell':cid,'outcome':outcomes[0],'per_fit_seconds':totals,
+                         'original_median_seconds':original,'s_median_seconds':reference,'candidate_median_seconds':candidate,
+                         'ratio_vs_s':candidate/reference if reference>0 else None,
+                         'ratio_vs_original':candidate/original if original>0 else None,'passed':passed})
+    gate['builder_comparisons'] = builders
+    gate['regressions_vs_s'] = sum(x['median_allowance_excess_seconds'] > 0 for x in prior)
+    gate['status'] = 'eligible' if gate['regressions']==gate['regressions_vs_s']==0 and gate['material_gains']>=16 and all(x['passed'] for x in builders) else 'ineligible'
+    return gate
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest='command', required=True)
@@ -1170,7 +1263,9 @@ def main():
                                  help='reuse the frozen original parent; prepare the two membership requests')
     occurrence = subs.add_parser('prepare-occurrence')
     occurrence.add_argument('--diagnostic-admission', type=Path, required=True)
-    for sub in [factor, deferred, membership, occurrence]:
+    admission = subs.add_parser('prepare-admission')
+    admission.add_argument('--prior-occurrence-plan', type=Path, required=True)
+    for sub in [factor, deferred, membership, occurrence, admission]:
         for name in ['root', 'parent-plan', 'harness', 'plugin']:
             sub.add_argument('--' + name, type=Path, required=True)
     for mode in ['science', 'smoke', 'measure']:
@@ -1195,6 +1290,8 @@ def main():
         prepare_factor(args.root, args.parent_plan, args.harness, args.plugin)
     elif args.command == 'prepare-deferred':
         prepare_deferred(args.root, args.parent_plan, args.harness, args.plugin)
+    elif args.command == 'prepare-admission':
+        prepare_admission(args.root, args.parent_plan, args.harness, args.plugin, args.prior_occurrence_plan)
     elif args.command == 'prepare-occurrence':
         prepare_occurrence(args.root, args.parent_plan, args.harness, args.plugin, args.diagnostic_admission)
     elif args.command == 'prepare-membership':

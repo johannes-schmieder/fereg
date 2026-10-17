@@ -1223,3 +1223,18 @@ the runner's existing `admit`, `science`, and `measure` commands, and requires a
 physical host different from D2. Failed gates never select a different arm.
 See [the frozen scope and evidence](../docs/VALIDATION.md#first-occurrence-cell-prototype-scope-2026-10-17)
 for budgets, numerical scope, thresholds and platform limits.
+
+## Private structural early-refusal cells
+
+`compact_cells.py prepare-admission --parent-plan ORIGINAL_PLAN --prior-occurrence-plan S_PLAN
+--harness HARNESS --plugin PLUGIN --root INPUT_ROOT` freezes D3 with Auto,
+original cells, S and S2. Science additionally checks all nine older arms against
+the S artifact and requires exact S2/S fingerprints. The existing smoke, science
+and measure commands handle this contract. `compact_cells.admission_gate`
+validates complete captures and both total-time and accepted/refused builder gates.
+
+`admission_confirmation.py` prepares fresh C3 inputs;
+`membership_confirmation_run.py freeze --profile admission` seals execution
+before the first D3 native call. The shared runner admits C3 only after all D3
+gates and enforces a distinct measurement host. Neither earlier C1 nor C2 is
+opened or relabeled. See [the frozen S2 scope](../docs/VALIDATION.md#structural-early-refusal-prototype-scope-2026-10-17).

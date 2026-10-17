@@ -21,6 +21,7 @@ import time
 
 import membership_confirmation as m
 import occurrence_confirmation as occurrence
+import admission_confirmation as admission_profile
 
 c = m.campaign
 KIND = m.KIND + '_execution_v1'
@@ -31,7 +32,7 @@ ISOLATION_FILES = ['affinity', 'job_environment', 'parallel_environment', 'proce
 
 
 def confirmation_module(plan):
-    return occurrence if plan.get('kind') == occurrence.KIND else m
+    return {occurrence.KIND:occurrence, admission_profile.KIND:admission_profile}.get(plan.get('kind'), m)
 
 
 def execution_kind(plan):
@@ -44,13 +45,15 @@ def unsealed(path):
 
 def source_hashes(module=m):
     sources = [*SOURCES]
-    if module is occurrence:
+    if module in (occurrence, admission_profile):
         sources.append('bench/tests/test_occurrence_confirmation_run.py')
+    if module is admission_profile:
+        sources.extend(['bench/tests/test_admission_confirmation.py', 'bench/tests/test_admission_cells.py'])
     return {name: c.digest(ROOT / name) for name in sources}
 
 
 def freeze(plan_sha256, output, *, discovery_unopened, profile="membership"):
-    module = {"membership": m, "occurrence": occurrence}[profile]
+    module = {"membership": m, "occurrence": occurrence, "admission":admission_profile}[profile]
     c.require(discovery_unopened is True and re.fullmatch('[0-9a-f]{64}', plan_sha256) is not None,
               'freeze requires the C1 plan identity and unopened D1 outcomes attestation')
     value = {'kind': module.KIND + '_execution_v1_driver', 'plan_sha256': plan_sha256, 'sources': source_hashes(module),
@@ -144,11 +147,11 @@ def admission(plan, driver, evidence):
               and all(smoke.get(key) == science[key] for key in ['job_id', 'host', 'slots']),
               'complete smoke receipt from the D1 scientific prerequisites job required')
     check_record_files(native_rows(smoke), smoke['files'])
-    gate = (c.occurrence_gate if m is occurrence else c.membership_gate)(discovery, science, measurement)
+    gate = (c.admission_gate if m is admission_profile else c.occurrence_gate if m in (occurrence, admission_profile) else c.membership_gate)(discovery, science, measurement)
     c.require(gate['status'] == 'eligible' and gate['finalist'] == m.ARMS[1], 'D1 gate blocks C1 candidate calls')
     earliest = min(wall_window(receipt)[0] for receipt in [smoke, science, measurement])
     c.require(plan['prepared_wall_ns'] < earliest, 'C1 was not frozen before the first D1 native call')
-    if m is occurrence:
+    if m in (occurrence, admission_profile):
         c.require(driver['frozen_wall_ns'] < earliest, 'C2 driver was not frozen before the first D2 native call')
     for name, receipt, is_science in [('science_accounting', science, True),
                                       ('measurement_accounting', measurement, False)]:
@@ -158,7 +161,7 @@ def admission(plan, driver, evidence):
     return {'kind': execution_kind(plan) + '_admission', 'plan_sha256': c.routing.identity(plan),
             'driver_sha256': c.routing.identity(driver), 'gate_sha256': c.routing.identity(gate),
             'evidence': evidence, 'status': 'admitted', 'earliest_d1_native_wall_ns': earliest,
-            **({'discovery_host': measurement['host']['hostname']} if m is occurrence else {})}
+            **({'discovery_host': measurement['host']['hostname']} if m in (occurrence, admission_profile) else {})}
 
 
 def validate_admission(plan, driver, admitted):
@@ -230,7 +233,7 @@ def science(plan, driver, admitted, output):
     slots = int(os.environ.get('NSLOTS', '0'))
     cores = plan.get('native_affinity_cores', 4)
     c.require(os.environ.get('JOB_ID') and slots == cores, 'confirmation science requires its frozen compute allocation')
-    cpus = c.science_affinity({'kind': c.OCCURRENCE_KIND, 'native_affinity_cores': cores}) if m is occurrence else None
+    cpus = c.science_affinity({'kind': c.OCCURRENCE_KIND, 'native_affinity_cores': cores}) if m in (occurrence, admission_profile) else None
     output.mkdir(parents=True, exist_ok=False)
     started = time.monotonic()
     rows, fingerprints, first_worker, baselines = [], {}, {}, {}
@@ -352,7 +355,7 @@ def measure(plan, driver, admitted, prerequisite, output):
     check_library_limits()
     host = c.scc.discovery.host()
     c.require(host['slots'] == 28, 'C1 measurement requires its 28-slot isolated allocation')
-    if m is occurrence:
+    if m in (occurrence, admission_profile):
         c.require(c.scc.hostname(host['hostname']) != c.scc.hostname(admitted['discovery_host']),
                   'C2 requires a distinct physical host from D2')
     output.mkdir(parents=True, exist_ok=False)
@@ -452,7 +455,7 @@ def main():
     sub = parser.add_subparsers(dest='command', required=True)
     frozen = sub.add_parser('freeze')
     frozen.add_argument('--plan-sha256', required=True)
-    frozen.add_argument('--profile', choices=['membership','occurrence'], default='membership')
+    frozen.add_argument('--profile', choices=['membership','occurrence','admission'], default='membership')
     frozen.add_argument('--discovery-unopened', action='store_true', required=True)
     frozen.add_argument('--output', type=Path, required=True)
     admitted = sub.add_parser('admit')
