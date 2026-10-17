@@ -7,9 +7,11 @@
 mod compact;
 mod membership;
 mod occurrence;
+mod twin;
 pub(crate) use compact::build_v2;
 pub(crate) use membership::build_membership;
 pub(crate) use occurrence::{build_occurrence, build_occurrence_gated};
+pub(crate) use twin::build_engine;
 
 use crate::error::{allocation, invalid_argument, invalid_data, FeregError, Result};
 use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
@@ -55,11 +57,15 @@ pub(crate) struct CellSchur {
 
 impl CellSchur {
     pub(crate) fn cell_count(&self) -> usize {
-        self.cells.len()
+        if self.two_pass() {
+            self.offsets[self.worker_weights.len()]
+        } else {
+            self.cells.len()
+        }
     }
 
     pub(super) fn compact(&self) -> bool {
-        self.offsets.len() > self.worker_weights.len() + 1
+        self.offsets.len() > self.worker_weights.len() + 1 && !self.two_pass()
     }
 
     /// True Schur diagonal, with exactly-zero entries replaced by D_f solely
@@ -498,6 +504,260 @@ mod tests {
             retained_live_bytes: 0,
             memory: None,
         }
+    }
+
+    fn engine(
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: BorrowedMapWeights<'_>,
+        limits: KernelLimits,
+    ) -> OptionalSetup {
+        build_engine(
+            design,
+            0,
+            weights,
+            1.,
+            limits,
+            super::super::RoutingPreset::ablation("cells_e").unwrap(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn twin_operator_exact_s_and_grouped_contractions_have_observation_witnesses() {
+        let left: Vec<u32> = (0..192).map(|i| (i % 7) as u32).collect();
+        let right: Vec<u32> = (0..192).map(|i| ((i * 13 + i / 11) % 5) as u32).collect();
+        let weights: Vec<f64> = (0..192).map(|i| 10f64.powi((i % 13) - 6)).collect();
+        with_design(&left, &right, 7, 5, |design| {
+            let original = build_occurrence(
+                design,
+                0,
+                BorrowedMapWeights::Provided(&weights),
+                1.,
+                limits(),
+            )
+            .unwrap()
+            .kernel
+            .unwrap();
+            let built = engine(design, BorrowedMapWeights::Provided(&weights), limits());
+            let twin = built.kernel.unwrap();
+            assert!(twin.two_pass() && !twin.compact());
+            assert_eq!(twin.cell_count(), original.cell_count());
+            assert!(u128::from(built.peak.bytes().unwrap()) >= twin.retained_bytes());
+            let width = 131;
+            let rhs = width - 1;
+            let input: Vec<f64> = (0..5 * width)
+                .map(|i| ((i * 23 % 101) as f64 - 50.) / 64.)
+                .collect();
+            let mut expected = vec![99.; input.len()];
+            let mut old_scratch = vec![99.; 7 * width];
+            original
+                .apply(&input, &mut expected, &mut old_scratch, rhs, width)
+                .unwrap();
+            let means: Vec<f64> = (0..7 * width).map(|i| (i % 29) as f64 / 32.).collect();
+            let mut totals = vec![0.; 7];
+            for (&w, &worker) in weights.iter().zip(&left) {
+                totals[worker as usize] += w;
+            }
+            let mut baseline = None;
+            for threads in [1, 2, 4, 4] {
+                crate::ThreadTeam::new(crate::ThreadConfig::from_requested(threads, true).unwrap())
+                    .install(|| {
+                        let mut actual = vec![99.; input.len()];
+                        let mut scratch = vec![99.; 7 * width];
+                        twin.apply_two_pass(&input, &mut actual, &mut scratch, rhs, width)
+                            .unwrap();
+                        assert_eq!(
+                            actual.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                            expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+                        );
+                        assert_eq!(scratch, old_scratch);
+                        let mut grouped_rhs = vec![0.; 5 * width];
+                        twin.subtract_left_means(&means, &mut grouped_rhs, rhs, width)
+                            .unwrap();
+                        twin.reconstruct_left(&input, &means, &totals, &mut scratch, rhs, width)
+                            .unwrap();
+                        let mut row_rhs = vec![0.; 5 * width];
+                        let mut row_sums = vec![0.; 7 * width];
+                        for row in 0..left.len() {
+                            for r in 0..rhs {
+                                row_rhs[right[row] as usize * width + r] -=
+                                    weights[row] * means[left[row] as usize * width + r];
+                                row_sums[left[row] as usize * width + r] +=
+                                    weights[row] * input[right[row] as usize * width + r];
+                            }
+                        }
+                        for (a, b) in grouped_rhs.iter().zip(&row_rhs) {
+                            assert!((a - b).abs() <= 1e-13 * b.abs().max(1.));
+                        }
+                        for worker in 0..7 {
+                            for r in 0..rhs {
+                                let b = means[worker * width + r]
+                                    - row_sums[worker * width + r] / totals[worker];
+                                assert!(
+                                    (scratch[worker * width + r] - b).abs()
+                                        <= 1e-13 * b.abs().max(1.)
+                                );
+                            }
+                            assert_eq!(scratch[worker * width + rhs], 99.);
+                        }
+                        let state = (grouped_rhs, scratch);
+                        if let Some(previous) = &baseline {
+                            assert_eq!(&state, previous);
+                        } else {
+                            baseline = Some(state);
+                        }
+                    })
+                    .unwrap();
+            }
+        });
+    }
+
+    #[test]
+    fn twin_empty_layout_and_invalid_values_are_checked() {
+        let twin = CellSchur {
+            cells: vec![],
+            offsets: vec![0, 0, 0, 0],
+            worker_weights: vec![0.],
+            firm_weights: vec![0.],
+            diagonal: vec![0.],
+        };
+        assert!(twin.two_pass() && !twin.compact());
+        assert_eq!(twin.cell_count(), 0);
+        twin.apply_two_pass(&[1.], &mut [0.], &mut [0.], 1, 1)
+            .unwrap();
+        assert!(twin
+            .apply_two_pass(&[1.], &mut [0.], &mut [0.], 1, 0)
+            .is_err());
+        assert!(twin
+            .apply_two_pass(&[f64::INFINITY], &mut [0.], &mut [0.], 1, 1)
+            .is_err());
+        with_design(&[0, 0], &[0, 1], 1, 2, |design| {
+            let twin = engine(design, BorrowedMapWeights::Unit, limits())
+                .kernel
+                .unwrap();
+            assert!(twin
+                .apply_two_pass(&[f64::NAN, 1.], &mut [0.; 2], &mut [0.], 1, 1)
+                .is_err());
+            assert!(twin
+                .subtract_left_means(&[f64::INFINITY], &mut [0.; 2], 1, 1)
+                .is_err());
+            assert!(twin
+                .reconstruct_left(&[1., 1.], &[0.], &[0.], &mut [0.], 1, 1)
+                .is_err());
+        });
+    }
+
+    #[test]
+    fn twin_large_groups_and_four_planned_lanes_preserve_s() {
+        let left: Vec<u32> = (0..40000).map(|i| (i / 4) as u32).collect();
+        let right: Vec<u32> = (0..40000).map(|i| ((i / 4 + i % 4) % 200) as u32).collect();
+        with_design(&left, &right, 10000, 200, |design| {
+            let old = build_occurrence(design, 0, BorrowedMapWeights::Unit, 1., limits())
+                .unwrap()
+                .kernel
+                .unwrap();
+            let twin = engine(design, BorrowedMapWeights::Unit, limits())
+                .kernel
+                .unwrap();
+            let work = twin.cell_count() as u128 * 4 * 4;
+            assert_eq!(crate::parallel::StagePlan::new(work, 200, 4).lanes, 4);
+            let input: Vec<f64> = (0..800)
+                .map(|i| ((i * 13 % 53) as f64 - 26.) / 8.)
+                .collect();
+            let mut expected = vec![0.; 800];
+            let mut scratch = vec![0.; 40000];
+            old.apply(&input, &mut expected, &mut scratch, 4, 4)
+                .unwrap();
+            for workers in [1, 2, 4, 4] {
+                let mut got = vec![0.; 800];
+                crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                    .install(|| {
+                        twin.apply_two_pass(&input, &mut got, &mut scratch, 4, 4)
+                            .unwrap();
+                    })
+                    .unwrap();
+                assert_eq!(got, expected);
+            }
+        });
+        // A single group crosses multiple bounded cancellation tiles.
+        let p = vec![0; 4097];
+        let q: Vec<u32> = (0..4097).collect();
+        with_design(&p, &q, 1, 4097, |design| {
+            let twin = engine(design, BorrowedMapWeights::Unit, limits())
+                .kernel
+                .unwrap();
+            let input: Vec<f64> = q.iter().map(|&q| q as f64).collect();
+            let mut output = vec![0.; q.len()];
+            twin.apply_two_pass(&input, &mut output, &mut [0.], 1, 1)
+                .unwrap();
+            assert!(output
+                .iter()
+                .enumerate()
+                .all(|(i, &v)| v == i as f64 - 2048.));
+        });
+    }
+
+    #[test]
+    fn twin_transactional_work_and_memory_refusals_preserve_s_banks() {
+        let left: Vec<u32> = (0..64).map(|i| (i / 8) as u32).collect();
+        let right: Vec<u32> = (0..64).map(|i| (i % 8) as u32).collect();
+        with_design(&left, &right, 8, 8, |design| {
+            let plain =
+                build_occurrence(design, 0, BorrowedMapWeights::Unit, 1., limits()).unwrap();
+            let original = plain.kernel.unwrap();
+            let full = engine(design, BorrowedMapWeights::Unit, limits());
+            assert_eq!(
+                full.work_used - plain.work_used,
+                36 * 64 + 8 * 8 + 12 * 8 + 204
+            );
+            for remaining in [
+                0,
+                127,
+                full.work_used - plain.work_used + 127,
+                full.work_used - plain.work_used + 128,
+            ] {
+                let got = engine(
+                    design,
+                    BorrowedMapWeights::Unit,
+                    KernelLimits {
+                        work_budget: plain.work_used + remaining,
+                        ..limits()
+                    },
+                );
+                let kernel = got.kernel.unwrap();
+                assert!(got.work_used <= plain.work_used + remaining);
+                if remaining < full.work_used - plain.work_used + 128 {
+                    assert!(!kernel.two_pass());
+                    equal_banks(&kernel, &original);
+                    assert_eq!(got.refusal, Some(KernelRefusal::WorkBudget));
+                } else {
+                    assert!(kernel.two_pass());
+                }
+            }
+            let peak = u128::from(full.peak.bytes().unwrap());
+            assert!(peak > u128::from(plain.peak.bytes().unwrap()));
+            for delta in [0, 1, 2] {
+                let got = engine(
+                    design,
+                    BorrowedMapWeights::Unit,
+                    KernelLimits {
+                        retained_live_bytes: 512,
+                        memory: Some(FeSolverMemoryBudget {
+                            execution_bytes: 128,
+                            usable_bytes: 512 + 128 + peak - 1 + delta,
+                        }),
+                        ..limits()
+                    },
+                );
+                let kernel = got.kernel.unwrap();
+                if delta == 0 {
+                    equal_banks(&kernel, &original);
+                    assert_eq!(got.refusal, Some(KernelRefusal::MemoryBudget));
+                } else {
+                    assert!(kernel.two_pass());
+                }
+            }
+        });
     }
 
     fn equal_banks(a: &CellSchur, b: &CellSchur) {
@@ -1450,7 +1710,28 @@ mod tests {
                 .unwrap()
                 .kernel
                 .unwrap();
+            let twin = engine(design, BorrowedMapWeights::Unit, limits())
+                .kernel
+                .unwrap();
             crate::interrupt::request_cancellation();
+            let preset = super::super::RoutingPreset::ablation("cells_e").unwrap();
+            assert_eq!(
+                build_engine(design, 0, BorrowedMapWeights::Unit, 1., limits(), preset)
+                    .err()
+                    .unwrap()
+                    .code,
+                crate::error::ErrorCode::Interrupted
+            );
+            for error in [
+                twin.apply_two_pass(&[0., 1.], &mut [0.; 2], &mut [0.], 1, 1)
+                    .unwrap_err(),
+                twin.subtract_left_means(&[0.], &mut [0.; 2], 1, 1)
+                    .unwrap_err(),
+                twin.reconstruct_left(&[0., 1.], &[0.], &[2.], &mut [0.], 1, 1)
+                    .unwrap_err(),
+            ] {
+                assert_eq!(error.code, crate::error::ErrorCode::Interrupted);
+            }
             let occurrence_error =
                 build_occurrence(design, 0, BorrowedMapWeights::Unit, 1., limits())
                     .err()

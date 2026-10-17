@@ -328,6 +328,33 @@ covers marker overlap, exact-capacity compaction and suffix finalization.
 Break and allocation errors stay fatal; optional refusal publishes no kernel.
 No default promotion or performance claim follows from implementing this arm.
 
+The private `routing_cells_e` experiment extends S with a stable firm-major
+cell copy in the existing five banks. The copy is built transactionally under
+joint memory and setup-work admission, including old/new overlap and cursors.
+Optional refusal keeps S's completed banks; sunk work remains charged and the
+immediate 128-unit pricing decision is reserved. The existing serial tariff,
+D_f preconditioner and all original-observation certificates remain unchanged.
+When that tariff selects cells and the twin is installed, parallel worker and
+firm contractions preserve S's per-output operator arithmetic. Cell-grouped
+RHS subtraction and left reconstruction instead replace observation products;
+reconstruction retains the original observation-order worker denominator.
+Only these injected OLS projections add continuous-result/iteration scope;
+sample, rank, omissions and other discrete decisions must agree. Break remains
+bounded within large groups; allocation and cancellation errors remain fatal.
+Independent weighted observation witnesses and fixed-worker exact repeats are
+required; an optional kernel is never itself a certificate.
+
+`routing_fit_owned` independently keeps Auto's FE route and changes eligible
+Fast inference ownership: it computes the packed path's exact means without
+copying an N-by-K score matrix, then transfers the already projected matrix
+into the existing selected-column score owner after the finite solve. It omits
+only speculative raw moments proven unused by that path, retaining conservative
+admission charges. Norm/max reductions, all scientific fields and solver
+signatures must remain exact. Low and ineligible requests retain the old path.
+`routing_cells_e_final` combines this ownership change with E. The two changes
+are separately attributed before any public promotion; implementing them does
+not establish a timing claim.
+
 The separate private `routing_cells_s2` arm adds structural early refusal to
 S, using its unchanged serial per-batch tariff. Checked u128 endpoint bounds
 at RHS widths one and the immutable owner maximum prove when no allowed batch

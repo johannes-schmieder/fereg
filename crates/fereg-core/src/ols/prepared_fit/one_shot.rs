@@ -237,6 +237,7 @@ fn dense_finite_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     reservation: &mut R,
     retain_fast_score_cache: bool,
     max_fast_score_cache_bytes: usize,
+    config: PreparedOlsFitConfig,
 ) -> Result<()> {
     let ProjectedStorage::Dense(dense) = &mut inputs.storage else {
         return Ok(());
@@ -245,7 +246,13 @@ fn dense_finite_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let reference_mean_scales = &dense.raw.reference_mean_scales;
     let cached_norms = std::mem::take(&mut dense.cached_norms);
     let generated_columns = prepared.fit_model().columns.len();
-    let fast_score_cache = if retain_fast_score_cache {
+    let own_packed_scores = retain_fast_score_cache
+        && config
+            .absorb
+            .routing
+            .is_some_and(crate::fe::RoutingPreset::owns_fast_scores)
+        && fast_score_cache_fits(prepared, max_fast_score_cache_bytes)?;
+    let fast_score_cache = if retain_fast_score_cache && !own_packed_scores {
         build_fast_score_cache(
             prepared,
             within,
@@ -498,7 +505,13 @@ fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                 prepared,
                 dense.within.take().expect("projected dense owner"),
                 &qr,
-                dense.raw.strided_score_means.as_deref(),
+                match dense.raw.strided_score_means.as_deref() {
+                    Some(means) => SelectedScoreMeans::Strided(means),
+                    None => SelectedScoreMeans::Packed {
+                        weights: frame.weights(),
+                        reference_scales: &dense.raw.reference_mean_scales,
+                    },
+                },
                 reservation,
             )?);
         }
@@ -724,6 +737,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         reservation,
         retain_fast_score_cache,
         max_fast_score_cache_bytes,
+        config,
     )?;
     crate::interrupt::checkpoint()?;
     let mut qr = solve_one_shot(

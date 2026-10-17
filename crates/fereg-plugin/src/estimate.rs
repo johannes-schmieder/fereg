@@ -502,7 +502,22 @@ fn prepare_loaded_ols_with_moments<T: Send>(
                 .map_or(ceiling, |limit| ceiling.min(limit.saturating_sub(external))),
         )
     });
-    let result = if let Some(bytes) = moment_bytes {
+    // This pre-preparation width includes any absorbed intercept, so it is a
+    // conservative upper bound on the packed score cache after compaction.
+    // Keep the incumbent admission, membership and release-ceiling charges:
+    // the private arm only avoids computing moments that its fit cannot use.
+    let skip_unused_moments = action.fit.execution.mode == PreparedOlsExecutionMode::Fast
+        && action
+            .fit
+            .absorb
+            .routing
+            .is_some_and(RoutingPreset::owns_fast_scores)
+        && matches!(action.vce, OlsVceKind::Robust | OlsVceKind::Clustered)
+        && nrows
+            .checked_mul(action.generated_columns)
+            .and_then(|elements| elements.checked_mul(std::mem::size_of::<f64>()))
+            .is_some_and(|bytes| bytes <= 32 * 1024 * 1024);
+    let result = if let Some(bytes) = moment_bytes.filter(|_| !skip_unused_moments) {
         action.loaded_fit_workspace_bytes += bytes as u128;
         let request = &action.request;
         ThreadTeam::new(action.fit.execution.threads).install(|| {
@@ -517,6 +532,7 @@ fn prepare_loaded_ols_with_moments<T: Send>(
             prepared.map(|prepared| (prepared, rows))
         })?
     } else {
+        action.loaded_fit_workspace_bytes += moment_bytes.unwrap_or(0) as u128;
         let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
             prepare(&action.request, loaded, membership_scratch, release_ceiling)
         })?;

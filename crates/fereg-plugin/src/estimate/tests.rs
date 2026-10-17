@@ -4656,3 +4656,139 @@ fn fe_release_ceiling_covers_concurrent_moments_and_exact_loaded_rhs_capacity() 
         );
     }
 }
+
+#[test]
+fn owned_packed_scores_skip_only_unused_moments_with_unchanged_admission() {
+    let (args, mut spi) = saved_output_fixture();
+    spi.nobs = 16_387;
+    spi.numeric_rows_enabled = true;
+    spi.data.clear();
+    for row in 1..=spi.nobs {
+        for (variable, value) in [
+            (1, 1.0),
+            (2, 2.0 + (row as f64).sin()),
+            (3, (row as f64).cos()),
+            (4, (row % 97) as f64),
+            (5, 1.0),
+        ] {
+            spi.data.insert((variable, row), (value, false));
+        }
+    }
+    for vce in [OlsVceKind::Iid, OlsVceKind::Robust, OlsVceKind::Clustered] {
+        let mut spec = EstimateActionSpec::parse(&args).unwrap();
+        spec.threads = 4;
+        spec.candidate_all = true;
+        spec.vce = vce;
+        if vce == OlsVceKind::Clustered {
+            spec.account_cluster_nesting = true;
+            spec.cluster_term_count = 1;
+            spec.cluster_component_count = 1;
+            spec.cluster_labels = vec!["g".to_owned()];
+            spi.matrices.insert("CT".to_owned(), vec![vec![1.0, 1.0]]);
+            spi.matrices
+                .insert("CC".to_owned(), vec![vec![1.0, 1.0, 2.0]]);
+        }
+        let unrestricted = spec
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
+        let loaded = load_ols_input(&unrestricted.request, true, false, &mut spi).unwrap();
+        let original = prepare_model_owned(
+            &unrestricted.request,
+            &unrestricted.clusters,
+            loaded.clone(),
+            false,
+        )
+        .unwrap();
+        let rhs = original
+            .build_rhs()
+            .unwrap()
+            .into_values()
+            .as_slice()
+            .to_vec();
+        let moment_bytes =
+            LoadedOlsRows::moment_workspace_bytes(spi.nobs, unrestricted.generated_columns + 1)
+                .unwrap() as u128;
+        let cap = spi.nobs as u128 * 8;
+        let limited = unrestricted
+            .preparation_memory
+            .preparation_peak_bytes(
+                unrestricted.metadata_owner_bytes + (rhs.len() + 41) as u128 * 8 + moment_bytes,
+            )
+            .unwrap()
+            .max(
+                unrestricted.memory_plan.selected_bytes()
+                    + unrestricted.publication_memory.peak_bytes(),
+            )
+            + cap / 2;
+        for available in [None, Some(512 * 1024 * 1024 + limited)] {
+            let mut run = |routing: Option<RoutingPreset>| {
+                let mut action = spec
+                    .decode_with_memory_limit(&mut spi, || Ok(available))
+                    .unwrap();
+                action.fit.absorb.routing = routing;
+                let mut raw_rows = rhs.clone();
+                raw_rows.reserve_exact(41);
+                let rhs_bytes = raw_rows.capacity() as u128 * 8;
+                action.loaded_fit_workspace_bytes = rhs_bytes;
+                let clusters = action.clusters.clone();
+                let ((prepared, scratch, ceiling), rows) = prepare_loaded_ols_with_moments(
+                    loaded.clone(),
+                    Some(raw_rows),
+                    &mut action,
+                    |request, loaded, scratch, ceiling| {
+                        let prepared =
+                            fereg_core::ols::prepare_model_owned_with_load_columns_and_release(
+                                request, &clusters, loaded, false, None, scratch, ceiling,
+                            )?;
+                        Ok((prepared, scratch, ceiling))
+                    },
+                )
+                .unwrap();
+                // The capsule intentionally keeps core moment ownership private.
+                // Its existing Debug representation observes actual construction
+                // here without adding a shipped test-only inspection API.
+                let capsule = format!("{:?}", rows.expect("loaded row capsule"));
+                let has_moments = capsule.contains("moments: Some(Ok(RawMomentCache");
+                assert!(has_moments || capsule.contains("moments: None"));
+                let expect_moments =
+                    vce == OlsVceKind::Iid || !routing.is_some_and(RoutingPreset::owns_fast_scores);
+                assert_eq!(
+                    has_moments, expect_moments,
+                    "vce={vce:?}, routing={routing:?}"
+                );
+                assert_eq!(action.loaded_fit_workspace_bytes, rhs_bytes + moment_bytes);
+                assert!(scratch > 0);
+                let preparation_peak = action.preparation_memory.preparation_peak_bytes(0).unwrap();
+                action
+                    .admit_prepared_parent(
+                        prepared.execution_admission_bytes(),
+                        prepared.owned_buffer_bytes(),
+                    )
+                    .unwrap();
+                (prepared, action, scratch, ceiling, preparation_peak)
+            };
+            let (baseline, baseline_action, scratch, ceiling, peak) = run(None);
+            for arm in ["cells_e", "fit_owned", "cells_e_final"] {
+                let (prepared, action, actual_scratch, actual_ceiling, actual_peak) =
+                    run(Some(RoutingPreset::ablation(arm).unwrap()));
+                assert_eq!(prepared, baseline);
+                assert_eq!(actual_scratch, scratch);
+                assert_eq!(actual_ceiling, ceiling);
+                assert_eq!(actual_peak, peak);
+                assert_eq!(
+                    action.loaded_fit_workspace_bytes,
+                    baseline_action.loaded_fit_workspace_bytes
+                );
+                assert_eq!(action.memory_plan, baseline_action.memory_plan);
+                assert_eq!(
+                    action.execution_parent_bytes,
+                    baseline_action.execution_parent_bytes
+                );
+                assert_eq!(
+                    action.fit.absorb.solver_memory_budget,
+                    baseline_action.fit.absorb.solver_memory_budget
+                );
+            }
+        }
+    }
+}

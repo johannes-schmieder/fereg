@@ -43,6 +43,9 @@ pub(super) enum RoutingAblation {
     CellsMLanes,
     CellsS,
     CellsS2,
+    CellsE,
+    FitOwned,
+    CellsEFinal,
     Direct,
 }
 
@@ -74,6 +77,9 @@ impl std::fmt::Display for RoutingPreset {
             Some(RoutingAblation::CellsMLanes) => f.write_str("routing_cells_m_lanes"),
             Some(RoutingAblation::CellsS) => f.write_str("routing_cells_s"),
             Some(RoutingAblation::CellsS2) => f.write_str("routing_cells_s2"),
+            Some(RoutingAblation::CellsE) => f.write_str("routing_cells_e"),
+            Some(RoutingAblation::FitOwned) => f.write_str("routing_fit_owned"),
+            Some(RoutingAblation::CellsEFinal) => f.write_str("routing_cells_e_final"),
             Some(RoutingAblation::Direct) => f.write_str("routing_direct"),
         }
     }
@@ -108,6 +114,9 @@ impl RoutingPreset {
             "cells_m_lanes" => RoutingAblation::CellsMLanes,
             "cells_s" => RoutingAblation::CellsS,
             "cells_s2" => RoutingAblation::CellsS2,
+            "cells_e" => RoutingAblation::CellsE,
+            "fit_owned" => RoutingAblation::FitOwned,
+            "cells_e_final" => RoutingAblation::CellsEFinal,
             "direct" => RoutingAblation::Direct,
             _ => return Err(invalid_argument("invalid solver-routing kernel experiment")),
         };
@@ -199,8 +208,25 @@ impl RoutingPreset {
         self.overlap
     }
 
+    /// Private exact full-fit ownership experiment, without public syntax.
+    #[doc(hidden)]
+    pub fn owns_fast_scores(self) -> bool {
+        matches!(
+            self.ablation,
+            Some(RoutingAblation::FitOwned | RoutingAblation::CellsEFinal)
+        )
+    }
+
+    pub(crate) fn changes_fe(self) -> bool {
+        self.ablation != Some(RoutingAblation::FitOwned)
+    }
+
     pub(super) fn kernel(self) -> Option<RoutingAblation> {
-        self.ablation
+        match self.ablation {
+            Some(RoutingAblation::CellsEFinal) => Some(RoutingAblation::CellsE),
+            Some(RoutingAblation::FitOwned) => None,
+            arm => arm,
+        }
     }
 
     pub(crate) fn checkpoint(self) -> usize {

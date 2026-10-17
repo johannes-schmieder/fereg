@@ -294,6 +294,7 @@ impl<'a> FeSession<'a> {
                         owner.general_routing = config
                             .absorb
                             .routing
+                            .filter(|preset| preset.changes_fe())
                             .filter(|preset| preset.kernel().is_none())
                             .map(super::borrowed_map::routing_lsmr::GeneralRoutingState::new);
                     }
@@ -380,7 +381,7 @@ impl<'a> FeSession<'a> {
         p.retain_coefficients = config.absorb.retain_coefficients;
         if cmg_schur {
             self.prepare_cmg_schur(&mut p, bytes, config)?;
-        } else if let Some(preset) = config.absorb.routing {
+        } else if let Some(preset) = config.absorb.routing.filter(|preset| preset.changes_fe()) {
             let parents = bytes
                 .checked_add(p.max_rhs() as u128 * 8)
                 .ok_or_else(|| allocation("routing parent admission overflows"))?;
@@ -911,7 +912,9 @@ impl<'a> FeSession<'a> {
             report.solver_workspace_peak.max(self.peak)
         };
         report.setup_seconds += std::mem::take(&mut self.setup_seconds);
-        if config.routing.is_some() && crate::diagnostics::solver_trace_enabled() {
+        if config.routing.is_some_and(|preset| preset.changes_fe())
+            && crate::diagnostics::solver_trace_enabled()
+        {
             let (setup_work, setup_limit) = self.categorical.as_ref().map_or_else(
                 || {
                     self.general_routing

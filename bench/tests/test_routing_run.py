@@ -959,6 +959,8 @@ class RoutingProducer(unittest.TestCase):
             self.data.tofile(target.with_suffix('.json.columns'))
             trace = (TRACE.replace('preset=routing_h4_k0', 'preset=' + arm)
                      if traced and arm.startswith('routing_') and not (failure == 'missing-trace' and arm == 'routing_h4_k0') else '')
+            if traced and arm in {'routing_cells_e', 'routing_cells_e_final'}:
+                trace = (f'FEREG_SOLVER_TRACE|phase=auto_cells_e|preset={arm}|cells=8|rhs=2|lanes=1|used_operator=1\n') + trace
             if failure == 'optional-resource-overrun' and arm == 'it':
                 trace += TRACE.replace('setup_work=12', 'setup_work=33')
             log.write_text('NATIVE_SECONDS=0.1\n' + trace)

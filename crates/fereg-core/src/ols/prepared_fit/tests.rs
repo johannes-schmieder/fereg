@@ -9589,3 +9589,278 @@ fn low_prefix_report_merge_preserves_concrete_routes_and_real_fallback_in_any_or
     explicit.requested_solver = FeSolverKind::IronsTuck;
     assert!(merge_solve_report(&mut explicit, lsmr).is_err());
 }
+
+fn normalize_owned_score_fit(mut fit: CertifiedPreparedOlsFit) -> CertifiedPreparedOlsFit {
+    fit.absorption_report.certification_seconds = 0.0;
+    fit.residual_absorption_report.certification_seconds = 0.0;
+    without_solve_timings(fit)
+}
+
+#[test]
+fn owned_packed_scores_preserve_exact_fit_means_and_dynamic_weights() {
+    let rows = 32_771;
+    let x: Vec<_> = (0..rows).map(|r| (r as f64 * 0.137).sin()).collect();
+    let z: Vec<_> = (0..rows).map(|r| (r as f64 * 0.193).cos()).collect();
+    let groups: Vec<_> = (0..rows).map(|r| (r % 31) as f64).collect();
+    let y: Vec<_> = (0..rows)
+        .map(|r| groups[r] + 1.3 * x[r] - 0.7 * z[r] + (r as f64 * 0.217).sin() * 0.01)
+        .collect();
+    let next_y: Vec<_> = y
+        .iter()
+        .enumerate()
+        .map(|(r, y)| y + (r as f64).sin() * 0.03)
+        .collect();
+    let weights: Vec<_> = (0..rows).map(|r| (r % 17 + 1) as f64).collect();
+    // The duplicated regressor and syntax omission exercise means selected in
+    // the certified finite order, rather than the original generated order.
+    let regressors = [x.clone(), z.clone(), x, z];
+    let data = prepared(
+        &y,
+        &regressors,
+        &[false, true, false, false],
+        Some(&groups),
+        true,
+        TestWeights::Unit,
+    );
+    let owned = crate::fe::RoutingPreset::ablation("fit_owned").unwrap();
+    for weight in [
+        TestWeights::Unit,
+        TestWeights::Analytic(&weights),
+        TestWeights::Probability(&weights),
+        TestWeights::Frequency(&weights),
+    ] {
+        let weighted = prepared(
+            &next_y,
+            &regressors,
+            &[false, true, false, false],
+            Some(&groups),
+            true,
+            weight,
+        );
+        let canonical = LinearSolveFrame::from_prepared_ols(&weighted).unwrap();
+        let frame = LinearSolveFrame::from_parts(
+            &next_y,
+            canonical.raw_weights(),
+            canonical.bread_weight_scale(),
+        )
+        .unwrap();
+        for threads in [1, 4] {
+            let mut config = PreparedOlsFitConfig::default();
+            config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
+            ThreadTeam::new(config.execution.threads)
+                .install(|| {
+                    let run = |routing, limit| {
+                        let mut config = config;
+                        config.absorb.routing = routing;
+                        let mut reservation = InjectedReservation::default();
+                        let fit = fit_with_controls_internal_mode_with_frame(
+                            &data,
+                            frame,
+                            config,
+                            &mut reservation,
+                            FitPerturbations::default(),
+                            true,
+                            limit,
+                            None,
+                            None,
+                            None,
+                        )
+                        .unwrap();
+                        (normalize_owned_score_fit(fit), reservation)
+                    };
+                    let (mut packed, packed_reservations) = run(None, MAX_FAST_SCORE_CACHE_BYTES);
+                    let (mut selected, selected_reservations) =
+                        run(Some(owned), MAX_FAST_SCORE_CACHE_BYTES);
+                    let PreparedOlsFastScoreCache::Packed {
+                        generated_columns,
+                        within,
+                        means,
+                    } = packed
+                        .fast_score_cache
+                        .take()
+                        .unwrap()
+                        .into_kept(packed.kept_generated_columns(), &mut SystemFitReservation)
+                        .unwrap()
+                    else {
+                        panic!("packed incumbent")
+                    };
+                    let PreparedOlsFastScoreCache::Selected {
+                        generated_columns: selected_columns,
+                        within: selected_within,
+                        means: selected_means,
+                    } = selected.fast_score_cache.take().unwrap()
+                    else {
+                        panic!("owned selected rows")
+                    };
+                    assert_eq!(packed, selected);
+                    assert_eq!(generated_columns, selected_columns);
+                    assert_eq!(
+                        means.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                        selected_means
+                            .iter()
+                            .map(|x| x.to_bits())
+                            .collect::<Vec<_>>()
+                    );
+                    assert_eq!(selected_within.ncols(), data.model.columns.len() + 1);
+                    for row in 0..rows {
+                        for (position, &generated) in selected_columns.iter().enumerate() {
+                            assert_eq!(
+                                within[(row, position)].to_bits(),
+                                selected_within[(row, generated + 1)].to_bits()
+                            );
+                        }
+                    }
+                    let cache_allocation = "unable to reserve prepared OLS fast score cache values";
+                    assert!(packed_reservations
+                        .records
+                        .iter()
+                        .any(|(_, label)| *label == cache_allocation));
+                    assert!(!selected_reservations
+                        .records
+                        .iter()
+                        .any(|(_, label)| *label == cache_allocation));
+                    // An ineligible private call retains the original raw-moment
+                    // selected path, including its exact scientific result.
+                    let (ordinary_strided, _) = run(None, 0);
+                    let (owned_strided, _) = run(Some(owned), 0);
+                    assert_eq!(ordinary_strided, owned_strided);
+                })
+                .unwrap();
+        }
+    }
+}
+
+#[test]
+fn owned_packed_scores_preserve_exact_robust_and_clustered_inference() {
+    use crate::ols::{
+        fit_prepared_model_clustered_with_loaded_moments,
+        fit_prepared_model_robust_with_loaded_moments, PreparedOlsClusteredConfig,
+        PreparedOlsRobustConfig,
+    };
+    let (mut request, original) = super::super::prepared_clusters::tests::fixture();
+    request.ols.include_intercept = true;
+    let mut loaded = original.clone();
+    loaded.candidate = original
+        .candidate
+        .iter()
+        .copied()
+        .collect::<Vec<_>>()
+        .repeat(1024)
+        .into();
+    loaded.outcome.values = original.outcome.values.repeat(1024);
+    loaded.outcome.missing = original.outcome.missing.repeat(1024);
+    for ((_, target), (_, source)) in loaded
+        .numeric_sources
+        .iter_mut()
+        .zip(&original.numeric_sources)
+    {
+        target.values = source.values.repeat(1024);
+        target.missing = source.missing.repeat(1024);
+    }
+    let data = prepare_model(&request.ols, &request.clusters, &loaded, false).unwrap();
+    for threads in [1, 4] {
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let mut fit = PreparedOlsFitConfig::default();
+            fit.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
+            fit.execution.mode = mode;
+            let mut owned_fit = fit;
+            owned_fit.absorb.routing =
+                Some(crate::fe::RoutingPreset::ablation("fit_owned").unwrap());
+            let mut packed = fit_prepared_model_clustered_with_loaded_moments(
+                &data,
+                PreparedOlsClusteredConfig {
+                    fit,
+                    ..Default::default()
+                },
+                None,
+            )
+            .unwrap();
+            let mut owned = fit_prepared_model_clustered_with_loaded_moments(
+                &data,
+                PreparedOlsClusteredConfig {
+                    fit: owned_fit,
+                    ..Default::default()
+                },
+                None,
+            )
+            .unwrap();
+            packed.fit = normalize_owned_score_fit(packed.fit);
+            owned.fit = normalize_owned_score_fit(owned.fit);
+            assert_eq!(packed, owned);
+            let mut packed = fit_prepared_model_robust_with_loaded_moments(
+                data.ols(),
+                PreparedOlsRobustConfig {
+                    fit,
+                    ..Default::default()
+                },
+                None,
+            )
+            .unwrap();
+            let mut owned = fit_prepared_model_robust_with_loaded_moments(
+                data.ols(),
+                PreparedOlsRobustConfig {
+                    fit: owned_fit,
+                    ..Default::default()
+                },
+                None,
+            )
+            .unwrap();
+            packed.fit = normalize_owned_score_fit(packed.fit);
+            owned.fit = normalize_owned_score_fit(owned.fit);
+            assert_eq!(packed, owned);
+        }
+    }
+}
+
+#[test]
+fn owned_packed_scores_fail_closed_and_charge_retained_capacity() {
+    let data = prepared(
+        &[1.0, 3.0, 2.0, 5.0, 4.0, 6.0],
+        &[vec![0.0, 1.0, 0.0, 1.0, 0.0, 1.0]],
+        &[false],
+        Some(&[0.0, 0.0, 1.0, 1.0, 2.0, 2.0]),
+        true,
+        TestWeights::Unit,
+    );
+    let mut config = PreparedOlsFitConfig::default();
+    config.absorb.routing = Some(crate::fe::RoutingPreset::ablation("fit_owned").unwrap());
+    let run = |reservation: &mut InjectedReservation| {
+        fit_with_controls_internal_mode(
+            &data,
+            config,
+            reservation,
+            FitPerturbations::default(),
+            true,
+            MAX_FAST_SCORE_CACHE_BYTES,
+        )
+    };
+    let mut successful = InjectedReservation::default();
+    let mut fit = run(&mut successful).unwrap();
+    let charged = fit.owned_buffer_bytes();
+    let PreparedOlsFastScoreCache::Selected {
+        generated_columns,
+        within,
+        means,
+    } = fit.fast_score_cache.take().unwrap()
+    else {
+        panic!("owned selected score cache")
+    };
+    assert_eq!(within.ncols(), data.model.columns.len() + 1);
+    assert!(within.storage_capacity() > within.nrows() * generated_columns.len());
+    assert_eq!(
+        charged - fit.owned_buffer_bytes(),
+        within.storage_capacity() as u128 * 8
+            + generated_columns.capacity() as u128 * std::mem::size_of::<usize>() as u128
+            + means.capacity() as u128 * 8
+    );
+    for fail_at in 1..=successful.calls {
+        let mut refusal = InjectedReservation {
+            fail_at: Some(fail_at),
+            ..Default::default()
+        };
+        assert_eq!(run(&mut refusal).unwrap_err().code, ErrorCode::Allocation);
+    }
+}

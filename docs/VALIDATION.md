@@ -16,6 +16,65 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Twin cell engine and Fast ownership prototype (2026-10-17)
+
+The next private candidate is `routing_cells_e_final`: S's builder and serial
+operator-admission tariff, a transactional firm-major twin for parallel cell
+application and cell-grouped RHS/reconstruction, plus exact Fast score ownership.
+The separate `routing_cells_e` and `routing_fit_owned` arms attribute those
+changes. Public Auto and all ten prior arms remain controls; S2's early refusal
+is not part of this candidate. Scientific scope is declared in
+[SPEC](SPEC.md): E may change continuous results and iteration counts, while
+ownership alone must preserve every scientific field and solver signature.
+Original-observation certificates, independent weighted witnesses, deterministic
+repeats and exact model decisions remain prerequisites. This is a prototype,
+not a public solver or a performance claim.
+
+Fable 5.1 Extra proposed the cell engine; bounded Astra review identified the
+full-fit ownership opportunity and verified the arithmetic and admission seams.
+An initial final-residual seeding suggestion was rejected after checking the
+actual one-shot path: Fast already uses its within residual. Existing phase
+timers overlap and do not support an additive decomposition of full-fit time.
+The ownership hypothesis removes unused speculative moments and the packed
+score copy, but later selected-column access may offset those savings.
+
+Before any new native measurement, freeze D4 and its untouched C4 confirmation
+plan, artifact/source/tool identities, execution driver, independent witnesses
+and order. D4 reuses the twelve revealed families at one/four workers, with
+Auto, S, E, Auto+ownership and the combined finalist: one warmup, twelve rotating
+balanced complete-call blocks, then three traced repetitions of all settings.
+This is 120 warmups, 1,440 scored calls and 360 diagnostics; no exclusions,
+replacements or extensions. Descriptive paired allowance remains max(5%,1ms).
+The finalist must have at least eighteen gains and no regressions versus Auto,
+at least three gains and no regressions versus S; Auto+ownership must have no
+regressions and exact Auto science. For cell-using settings, the scored first
+solver-row time must be at most 80% of S at four workers when S's traced first
+projection takes at least 32 iterations; elsewhere it must be within S plus
+max(5%,0.3ms). Classification must be stable across the three diagnostics.
+Non-solver differences are attribution observations only.
+
+C4 regenerates the eight previous confirmation shapes and adds a 600,000-row
+short-degree shape and a 480,000-row weak-connectivity shape. Every existing
+oracle cap, including sparse Schur work and modeled memory, must pass during
+preparation; failure stops without resizing, substitutions or cap changes.
+Only an eligible D4 can start C4. Its twenty settings compare Auto/finalist in
+twelve balanced ABBA/BAAB blocks on a different isolated SCC host. Every setting
+must pass the rank-10-of-12 one-sided allowance-excess bound, conditional on the
+stated block-independence assumptions. Mac correctness is checked separately;
+SCC timing cannot establish Mac performance or authorize a default promotion.
+
+The implementation passes the full source-integration suite, all 521 benchmark
+tests (two import failures repaired with task-private dependencies), universal
+Mac binary/ABI checks, all 73 public replay cases with zero exact differences,
+and licensed Stata single-runtime, OLS transaction and independent compact-cell
+fixtures. The ordinary installed-package check correctly rejects the private
+runtime because distribution artifacts were not replaced. Independent Astra
+reviews found no remaining implementation or protocol blocker after fixing a
+timer-source error before the experiment: the gate uses scored first-solver
+times, never traced diagnostic timings. The Linux artifact has built and passed
+its binary audit; SCC science and discovery outcomes are recorded below when
+complete. No timing advantage is inferred from these correctness checks.
+
 ## Structural early-refusal prototype scope (2026-10-17)
 
 Fable 5.1 Extra reviewed `fe498eb5` and selected one new private arm, S2

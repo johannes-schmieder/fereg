@@ -628,9 +628,61 @@ def check_oracle(raw, columns, meta):
             del data
 
 
+def engine_trace_diagnostics(log, requested):
+    """Validate mixed-batch engine choices and optional twin-build fallback."""
+    traces, actions, pending = [], [], []
+    preset = 'routing_' + requested
+    for line in log.splitlines():
+        if not line.startswith('FEREG_SOLVER_TRACE|'):
+            continue
+        fields = {}
+        for part in line.split('|')[1:]:
+            key, separator, value = part.partition('=')
+            if not separator or not key or not value or key in fields:
+                raise ValueError('malformed engine trace')
+            fields[key] = value
+        if fields.get('phase') in {'auto_cells_e', 'auto_cells_twin'}:
+            if fields.get('preset') != preset:
+                raise ValueError('engine trace preset does not match request')
+            traces.append(fields)
+            if fields['phase'] == 'auto_cells_e':
+                pending.append(fields)
+        if fields.get('phase') == 'routing_action':
+            if fields.get('preset') != preset or fields.get('certified') != '1':
+                raise ValueError('engine action does not attest its preset/certificate')
+            if requested != 'fit_owned' and not pending and fields.get('iterations') != '0':
+                raise ValueError('missing engine decision for nonzero-iteration action')
+            actions.append(fields)
+            pending = []
+    if actions and pending:
+        raise ValueError('engine decision lacks its terminal action')
+    if requested == 'fit_owned':
+        if traces:
+            raise ValueError('Auto+B cannot select the engine operator')
+        return []
+    decisions = [t for t in traces if t['phase'] == 'auto_cells_e']
+    if not decisions and not actions:
+        raise ValueError('missing mixed-batch engine decisions or zero-iteration action')
+    for decision in decisions:
+        if (int(decision['cells']) < 0 or int(decision['rhs']) <= 0 or decision.get('lanes') != '1'
+                or decision.get('used_operator') not in {'0', '1'}
+                or (decision['used_operator'] == '1' and int(decision['cells']) == 0)):
+            raise ValueError('invalid mixed-batch engine decision')
+    stages = [t for t in traces if t['phase'] == 'auto_cells_twin']
+    if len(stages) > 1:
+        raise ValueError('repeated twin stage construction')
+    for stage in stages:
+        if (stage.get('installed') not in {'0', '1'} or int(stage['peak_bytes']) < 0
+                or int(stage['work']) < 0
+                or (stage['installed'] == '1') != (stage.get('refusal') == 'None')):
+            raise ValueError('invalid optional twin stage/fallback')
+    return traces
+
+
 def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None):
-    candidate = requested not in {None, 'baseline'}
-    expected = ({'injection': routing.ABLATIONS[requested]} if requested in routing.ABLATIONS else
+    candidate = requested not in {None, 'baseline', 'fit_owned'}
+    expected = (None if requested == 'fit_owned' else
+                {'injection': routing.ABLATIONS[requested]} if requested in routing.ABLATIONS else
                 routing.policy(requested) if candidate else None)
     if (requested == routing.PORTFOLIO_UNSEEDED and expected_preset is not None
             and expected_preset != expected['injection']):
@@ -671,7 +723,9 @@ def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None
         raise ValueError('candidate has no actual routing_action or bound exact-no-FE witness')
     checks = {'iteration_caps': 'passed', 'memory_caps': 'passed',
               'setup_caps': 'passed' if candidate else 'not_applicable'}
-    return {'action_resources': actions, 'resource_checks': checks, 'route_trace': route,
+    engine_trace = engine_trace_diagnostics(log, requested) if requested in {'cells_e', 'fit_owned', 'cells_e_final'} else None
+    return {**({'engine_trace': engine_trace} if engine_trace is not None else {}),
+            'action_resources': actions, 'resource_checks': checks, 'route_trace': route,
             'resource_basis': 'actual traced prerequisite' if actions else
                               'bound exact-no-FE witness' if candidate else 'bound legacy resource witness'}
 

@@ -2457,6 +2457,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                             | super::routing::RoutingAblation::CellsMLanes
                             | super::routing::RoutingAblation::CellsS
                             | super::routing::RoutingAblation::CellsS2
+                            | super::routing::RoutingAblation::CellsE
                     )
                 )
             {
@@ -2483,6 +2484,15 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                         weights.raw_scale,
                         limits,
                         self.max_rhs,
+                    )?
+                } else if route.preset.kernel() == Some(super::routing::RoutingAblation::CellsE) {
+                    super::routing_kernel::build_engine(
+                        &self.design,
+                        graph.left_effect,
+                        raw_weights,
+                        weights.raw_scale,
+                        limits,
+                        route.preset,
                     )?
                 } else if route.preset.kernel() == Some(super::routing::RoutingAblation::CellsS) {
                     super::routing_kernel::build_occurrence(
@@ -2573,6 +2583,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                         | super::routing::RoutingAblation::CellsMLanes
                         | super::routing::RoutingAblation::CellsS
                         | super::routing::RoutingAblation::CellsS2
+                        | super::routing::RoutingAblation::CellsE
                 )
             ) {
                 let decision_started = Instant::now();
@@ -2614,7 +2625,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 if crate::diagnostics::solver_trace_enabled() {
                     crate::diagnostics::emit_solver_trace(&format!(
                         "FEREG_SOLVER_TRACE|phase={}|preset={}|cells={}|rhs={rhs_count}|lanes={lanes}|used_operator={}",
-                        if gated { "auto_cells_s2" } else if route.preset.kernel() == Some(super::routing::RoutingAblation::CellsS) { "auto_cells_s" } else { "auto_cells_m" },
+                        if gated { "auto_cells_s2" } else if route.preset.kernel() == Some(super::routing::RoutingAblation::CellsE) { "auto_cells_e" } else if route.preset.kernel() == Some(super::routing::RoutingAblation::CellsS) { "auto_cells_s" } else { "auto_cells_m" },
                         route.preset, graph.kernel.as_ref().map_or(0, |kernel| kernel.cell_count()),
                         u8::from(graph.use_cell_operator)));
                 }
@@ -3221,21 +3232,29 @@ fn absorb_two_fe_pcg_reusing(
                     }
                 });
             let left_rhs = &graph.left_rhs;
-            graph
-                .residual
-                .par_chunks_mut(stride)
-                .enumerate()
-                .try_for_each(|(level, sum)| -> Result<()> {
-                    subtract_two_fe_left_projection(
-                        right.level_index().checked_members(level)?,
-                        left_codes,
-                        weights,
-                        stride,
-                        left_rhs,
-                        &mut sum[..rhs_count],
-                    );
-                    Ok(())
-                })?;
+            if let Some(kernel) = graph
+                .kernel
+                .as_ref()
+                .filter(|kernel| graph.use_cell_operator && kernel.two_pass())
+            {
+                kernel.subtract_left_means(left_rhs, &mut graph.residual, rhs_count, stride)?;
+            } else {
+                graph
+                    .residual
+                    .par_chunks_mut(stride)
+                    .enumerate()
+                    .try_for_each(|(level, sum)| -> Result<()> {
+                        subtract_two_fe_left_projection(
+                            right.level_index().checked_members(level)?,
+                            left_codes,
+                            weights,
+                            stride,
+                            left_rhs,
+                            &mut sum[..rhs_count],
+                        );
+                        Ok(())
+                    })?;
+            }
             if scale_components {
                 // A positive scalar per disconnected block leaves the projected
                 // solution unchanged, while keeping low-mass blocks visible to CG.
@@ -3974,6 +3993,17 @@ impl TwoFePcgWorkspace {
         let rhs_count = activity.len();
         if self.use_cell_operator {
             if let Some(kernel) = &mut self.kernel {
+                if kernel.two_pass() {
+                    return kernel
+                        .apply_two_pass(
+                            &self.direction,
+                            &mut self.operator,
+                            &mut self.left_work,
+                            rhs_count,
+                            stride,
+                        )
+                        .map(|()| true);
+                }
                 if kernel.compact() {
                     return kernel.apply_compact(
                         &self.direction,
@@ -4295,26 +4325,41 @@ fn reconstruct_two_fe_pcg_candidate(
     let solution = &graph.solution;
     let left_weights = &graph.left_weights;
     let left_rhs = &graph.left_rhs;
-    graph
-        .left_work
-        .par_chunks_mut(stride)
-        .enumerate()
-        .try_for_each(|(level, sum)| -> Result<()> {
-            sum.fill(0.0);
-            for &row in left.level_index().checked_members(level)? {
-                let weight = weights.normalized(row);
-                let right_level = right_codes[row] as usize;
-                let source = &solution[right_level * stride..right_level * stride + rhs_count];
-                for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
-                    *out += weight * value;
+    if let Some(kernel) = graph
+        .kernel
+        .as_ref()
+        .filter(|kernel| graph.use_cell_operator && kernel.two_pass())
+    {
+        kernel.reconstruct_left(
+            solution,
+            left_rhs,
+            left_weights,
+            &mut graph.left_work,
+            rhs_count,
+            stride,
+        )?;
+    } else {
+        graph
+            .left_work
+            .par_chunks_mut(stride)
+            .enumerate()
+            .try_for_each(|(level, sum)| -> Result<()> {
+                sum.fill(0.0);
+                for &row in left.level_index().checked_members(level)? {
+                    let weight = weights.normalized(row);
+                    let right_level = right_codes[row] as usize;
+                    let source = &solution[right_level * stride..right_level * stride + rhs_count];
+                    for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
+                        *out += weight * value;
+                    }
                 }
-            }
-            let source = &left_rhs[level * stride..level * stride + rhs_count];
-            for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
-                *out = value - *out / left_weights[level];
-            }
-            Ok(())
-        })?;
+                let source = &left_rhs[level * stride..level * stride + rhs_count];
+                for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
+                    *out = value - *out / left_weights[level];
+                }
+                Ok(())
+            })?;
+    }
     let left_work = &graph.left_work;
     values
         .as_mut_slice()
