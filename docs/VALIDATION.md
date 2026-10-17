@@ -1412,7 +1412,15 @@ explicit ASCII digit lists reject it. This establishes a test-harness portabilit
 defect, not a solver failure. All three failures and the successful Rust builds
 and ABI checks remain retained. Locale-independent admission and a focused Linux
 retest are still required; there is no setup completion marker.
-No collection has started in `portfolio-unseeded-20261016`.
+The explicit-ASCII shell repair passes six local tests and independent Astra
+review. The complete continuation passes 15 focused validation tests; its
+admission assembler passes four. Submission stops before deployment or `qsub`
+when full Git source status exceeds 90 seconds. A bounded diagnosis also times
+out on tracked-only status and complete untracked-file enumeration. Source
+readiness is unverified; no new job or collection has started. One read-only
+30-minute readiness monitor is capped at sixteen probes and stops by
+2026-10-17 09:30 UTC. Recovery still requires a fresh reviewed source check and
+actual Linux success; the monitor does not waive either gate.
 
 Prospective Mac qualification tools now recognize the six-allocation schema and
 the exact unseeded candidate. They rederive the complete discovery context,

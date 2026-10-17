@@ -21945,6 +21945,46 @@
       },
       "latex_source_compile": "passed_builtin_compiler",
       "scope": "No actual plugin execution or estimator changes from this repair. Existing valid build/ABI evidence retained."
+    },
+    "reviewed_locale_continuation": {
+      "producer_sha256": "a22ce9ea1da6a7a6f6cdff0afca81e7ea20f668e8ed3cdcaded74fbbbbee29a2",
+      "helper_map_sha256": "dd89a75c7c2595b7de3a39b6f5b1cc9e7e581b953b5ca897590c8d1a0967108a",
+      "config_sha256": "4fc8580854c405ab484a0a838b00326f7c428066b2389f954ed2d0ce61774f66",
+      "source_review_sha256": "37063e117a0c2c051920e44fd5cbc6a698e298f18bbce28c44d4f5ece150531b",
+      "focused_tests": 15,
+      "focused_log_sha256": "564f2a1e9587eb997bdb76981b9d57ac5699f2d86ed15c620401215c7b0f2499",
+      "assembler_tests": 4,
+      "assembler_review_sha256": "c9dc0c73b31bc6d25155ea06bfcb74220be278dcb417e08113e8bdfe3a1a17e4",
+      "actual_linux_retest": "not_submitted",
+      "native_calls": 0
+    },
+    "source_preflight_failure": {
+      "submission_capture_sha256": "be688daa8af31f816c023e730b91324ef71a5336f62cc309ab99f17a4f9bdb9c",
+      "returncode": 1,
+      "elapsed_s": 143.123353667,
+      "cause": "Full Git source status exceeded90s before deployment claim or qsub.",
+      "source_claim_absent_after_failure": true,
+      "bounded_diagnostic_sha256": "78205b27050ec8ca6bc631ec47ba731ed900935c36ee565bde931e9cf2126d54",
+      "diagnostic_checks": 3,
+      "per_command_timeout_s": 20,
+      "diagnostic_result": "Git configuration query, tracked-only status and complete nonignored-untracked listing all timed out. No complete source inventory; no readiness claim. Config query regexp was overescaped, so no inference about Git configuration values.",
+      "new_job_submitted": false,
+      "monitor": {
+        "interval_minutes": 30,
+        "max_probes": 16,
+        "deadline_utc": "2026-10-17T09:30:00Z",
+        "scope": "Read-only source readiness; delete on readiness or cutoff. Fresh reviewed preflight remains required before submission."
+      }
+    },
+    "RHS_source_audit": {
+      "reviewer": "gpt-6-astra high",
+      "scope": "Current source inspection only, no new measurements or production edits.",
+      "findings": [
+        "Setup ledger starts at first nontrivial action reaching routing, with live RHS and physical storage width; later Low chunks do not renew it.",
+        "Installed hierarchy persists across compatible chunks and final accuracy, but inner bounded CMG cycles remain scalar/serial.",
+        "No explicit estimate of payback over remaining RHS; the matched cold-single/reused-single/wide trio is still missing from performance coverage.",
+        "Future comparison must retain priming cost and target-action cost separately on identical topology and RHS bytes. Cross-layout scientific agreement is required, not unjustified bitwise or iteration identity."
+      ]
     }
   }
 }
