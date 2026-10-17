@@ -25336,7 +25336,7 @@
     }
   },
   "portfolio_integrated_qualification_20261017": {
-    "status": "actual_Linux_setup_passed_discovery_pending",
+    "status": "discovery_running_results_pending",
     "campaign": "portfolio-integrated-20261017",
     "source_commit": "691cef5cbc9ebc0ef9a82ddf52f49903fa7bbef2",
     "baseline_source_commit": "46aa78f67b102373675b7c72196dba1fbfb7d337",
@@ -25371,6 +25371,158 @@
       "binder_sha256": "27d9be04a8c2d6532b9282ce03055a9693ba9cec92205ba792e1f5d1c1531b92",
       "assembler_sha256": "8d887dc88e0fb055951484535c93e42f263abb1f2d0369d70697a4ba70351983"
     },
-    "scope": "Build, ABI and source-contract evidence only. Fresh allocation science, isolation, performance, shortlist and Mac B/C remain pending; public Auto unchanged. Old campaigns remain closed NO-GO."
+    "scope": "Build, ABI, source-contract, binding, seal and held-job/release reviews passed. Discovery released; terminal accounting, fresh allocation science, isolation, timings, shortlist and Mac B/C remain pending. Public Auto unchanged; old campaigns remain closed NO-GO.",
+    "assembly": {
+      "job_id": "8156079",
+      "failed": 0,
+      "exit_status": 0,
+      "wall_s": 49,
+      "slots": 4,
+      "pe": "omp",
+      "accounting_sha256": "627182322d3fb393e2028206582911b7d1ae085bf39692ecd41af46c423c51b0",
+      "review_sha256": "2436e4224a7d291abf91ee184a04d1d29486008f77b57f71ab6ebc2e302b4e5b",
+      "outputs": {
+        "admission/resource-admission.json": "0a72105567243fe7f83dba7b8a1372e451d98156d707131cb7fdddfe6213c1c9",
+        "admission/sample1-admission.json": "ed97abfaaa502ac7c07969d0e2aaf1bbf063bcac999257bb1d2d6b5cb6763783",
+        "binding-config.json": "73c7e81a0fc562380bf8355bef4ff410ea7b5d297eb9a102178287d80cc433ad",
+        "seal-setup-config.json": "b80943dc0dedba1ec52fa932b07496b14ffed77ef6fc054e270c0569c9ce6a02"
+      },
+      "native_calls": 0
+    },
+    "binder": {
+      "job_id": "8156092",
+      "failed": 0,
+      "exit_status": 0,
+      "wall_s": 79,
+      "slots": 4,
+      "pe": "omp",
+      "accounting_sha256": "48b4a7e30fb787feb4b1dcb3213ca4fb6114fa8c488ac801df26edac2876da49",
+      "review_sha256": "8f4eb448136c8b82910a7dccf42d0fb63fe9c58ce8a2e759c76472e86799c6f9",
+      "completion_sha256": "6a5bc23839730f7e9d3ed9c41fefc9bd8d4371f41ee186af01db5df6a25b9c9a",
+      "files": 46,
+      "A_cells": 42,
+      "native_calls": 0
+    },
+    "seal_launcher_correction": {
+      "original_job": "8156129",
+      "failed": 0,
+      "exit_status": 1,
+      "wall_s": 13,
+      "accounting_sha256": "7697c7d9c7fbefb561ee5173640a3c92bbd5a15186f110093f5f326ba0f60931",
+      "log_sha256": "9432757d1e1d55eab8d684539293339eb37db9b41d2da13887c19d9804c1379a",
+      "diagnostic_sha256": "1b9f049f3c02bdc5a7ee692bf4377f3ff8433eeffac1d27f72bf1eaa13e215ed",
+      "review_sha256": "3f199a5522ecaeda2e12b4e8a7747cfa05b92dd41bbdfb836e98e9cc30ada269",
+      "canonical_python_sha256": "f62d663ae97a6edcd3070f1437627f3cb34829a87826abd6969d1f795d44f0c4",
+      "scope": "Failure before sealing outputs because module python3 is a symlink. New preserved-original launchers use already-bound canonical Python3.12 and explicit C/UTC; dispatcher changes only launcher names/hashes. Original producer/config/binaries/binder unchanged. No rebuild or solver rerun.",
+      "pure_tests": 13,
+      "shell_syntax_checks": 3,
+      "files": {
+        "collector-canonical.sge": "32fbbed9041d0510a5bf6f175d014e1c6fea2536510c690ce60b0ee81ae4fd15",
+        "dispatch-canonical.py": "e1081c5d0c7d8cf11af9cbf16d94030c5218047931f8b000c1081a0b51f35dcd",
+        "finalizer-canonical.sge": "67d9928d38fa228ff3cbcf853455771fecbd17bf9c07021b3b2c5b768ab3365d",
+        "seal-setup-canonical.sge": "d6bae7373b32fc9933150c58791e6370dcb6625d7046f9cb418a676c24fa02a6",
+        "test_dispatch_canonical.py": "e8a4cc7d459e47c656130cc94a67ea6e2c0043b58c7e0f4a1c59c997c87b2f8e"
+      }
+    },
+    "seal": {
+      "job_id": "8156149",
+      "failed": 0,
+      "exit_status": 0,
+      "wall_s": 80,
+      "slots": 1,
+      "pe": "NONE",
+      "hostname": "scc-ei3.scc.bu.edu",
+      "accounting_sha256": "2ad3b9fa1eeaa6164da5417fe2f7a87c64dca83b95547cfc33e4a74fe16ac4db",
+      "completion_sha256": "a088821577ec48d941b3d973b60d320b479f3efbce681ffd9684e883269872e8",
+      "review_sha256": "b8f3febc00b30f22acc2a571ba24d10fce62d692bdad7b636947f06e4d936407",
+      "plan_file_sha256": "cbe0bed02a5d5a459e4f4f87c618199d7c7762a27d1b587b51cfb78d9a53d477",
+      "plan_canonical_sha256": "ea8251ec69b9cb1ecf42902e1125749e19c646eb0a88e1f45d16738cf5a5057b",
+      "schema": 3,
+      "frozen_bindings": 389,
+      "independent_local_files_rehashed": 381,
+      "independent_local_bytes_rehashed": 876180112,
+      "setup_attested_tools": 8,
+      "native_calls": 0
+    },
+    "discovery": {
+      "collector_job_ids": [
+        "8156167",
+        "8156168",
+        "8156169",
+        "8156170",
+        "8156171",
+        "8156172"
+      ],
+      "finalizer_job_id": "8156173",
+      "submission_sha256": "cdd94ae486964138cfc4c43a432031edcc20c48c3fbb77a0d3e72c5cda706979",
+      "dispatch_state_sha256": "00f12269350ef7066ecab598a367a7170e64e58e0d633595b6f002dfe74fa48d",
+      "hold_review_sha256": "237770fa3364dce61df5f488e3bb1a6b40d964312e036cb47e4ec4aa00ca3506",
+      "collect_config_sha256": "6eaa74a5b684c50ff98c82c56c93d7baf2cf91bde2ee6cd5456d0340e48a0c12",
+      "finalize_config_sha256": "63eb2c7d6144829609177813ac5ef2697b239883c7527a38a1a3c84e29b3a981",
+      "release_sha256": "29d88d3290a89d64461ccbe012485fbc046c168166b0bf86a5fd4d55b0a9a1af",
+      "release_intent_sha256": "14b3c3b0d63b92f8115ecb7874cbfdf391ea246bf133269f2818005bfe435414",
+      "release_capture_sha256": "eb3bc3b9a05523ae097dc1e100272d74b7ec7f9327fcc528aef3389c374e818e",
+      "release_count": 1,
+      "raw_dispatch_files_reviewed": 31,
+      "dispatch_bindings": 9,
+      "independent_review": "gpt-6-astra high GO actual seal, held dispatch and one release after fresh target holds/source/bindings",
+      "design": {
+        "rounds": 3,
+        "fixed_shards": 2,
+        "distinct_hosts_required": 6,
+        "reserved_cores_per_host": 28,
+        "cells_per_round": 42,
+        "arm_cell_slots_per_round": 360,
+        "workers": [
+          1,
+          4
+        ],
+        "per_shard_allocation_seconds": [
+          7280,
+          7120
+        ],
+        "per_shard_call_caps": [
+          1274,
+          1246
+        ],
+        "total_native_call_cap": 7560,
+        "total_allocation_seconds": 43200,
+        "measurement_replacements": 0,
+        "partial_aggregate_allowed": false
+      },
+      "acceptance": "All7 exact complete successful accounting, complete fresh science/repeats/stable discrete decisions and availability, strict isolation, full replayed aggregate and independent raw Astra review. Baseline violation or worst internal normalized excess above1 yields baseline-only STOP; no intermediate results inspection.",
+      "observed_lifecycle": {
+        "observed_utc": "2026-10-17T14:08:11.172179+00:00",
+        "start_utc": "2026-10-17T14:07:19Z",
+        "collector_states": [
+          "r",
+          "r",
+          "r",
+          "r",
+          "r",
+          "r"
+        ],
+        "hosts_in_job_order": [
+          "scc-wo4",
+          "scc-zj4",
+          "scc-yj3",
+          "scc-tq3",
+          "scc-tq4",
+          "scc-tj4"
+        ],
+        "slots_per_collector": 28,
+        "finalizer_state": "hqw",
+        "scope": "Distinct placement alone does not prove isolation; no intermediate results inspected."
+      }
+    },
+    "RHS_scope": "First submitted width and physical stride size fixed work allowance; hierarchy reuse supported. No explicit remaining-compatible-column payback comparison yet. Correctness regression at1/4/16 RHS is not wide-active-RHS performance qualification.",
+    "lifecycle_reader": {
+      "helper_sha256": "0add1e6922bc6e2093ce9ed285423ac08856c70d25fcc5c4078e7ee8b8c3ed8a",
+      "tests_sha256": "89eadc7fc3f25eb62d55112ee62280f8612ab8fd5518be8553f662197d3f58fa",
+      "pure_tests": 12,
+      "reviewer": "gpt-6-astra high",
+      "scope": "Parsed qacct field padding trimmed while raw retained. Exact accepted IDs; canonical Python required because ambient Python3.6 rejects capture_output before qstat. First failure retained; corrected actual check passes lifecycle only. Query bounds and acceptance unchanged.",
+      "first_failed_capture_sha256": "acfc278144631597d606ecde7d34a35ed8074d91dcd9e2cea4663626a826ddd2"
+    }
   }
 }

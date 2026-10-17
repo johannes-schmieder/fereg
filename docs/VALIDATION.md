@@ -1613,7 +1613,7 @@ source/build/review hashes and these limitations.
 | Forty-call result | `642fc517cae5dc0ecd42e223cd82d303eb506b67bd275ae13bd342874644f21b` |
 | Independent raw review | `4f37f6282428233c9973acfbb57fe6ac996ad78b168f5c373c6b171d4839bc60` |
 
-### Integrated candidate Linux setup, 2026-10-17
+### Integrated candidate Linux qualification, 2026-10-17
 
 The new campaign freezes source `691cef5c` against baseline `46aa78f6`.
 It keeps the simpler CMG gate-inlining implementation and strict unseeded LSMR;
@@ -1635,12 +1635,39 @@ relationship and delegates every other check to the unchanged producer validator
 All 27 pure tests pass. Original setup, configuration, binaries and raw accounting
 remain unchanged; no rebuild or solver retry is used.
 
-Evidence assembly, input binding and plan sealing precede new discovery. No new
-benchmark is submitted at this checkpoint. The six-node, three-round design,
-original scientific tolerances, zero-replacement rule and baseline-only stopping
-screen remain fixed. Old failures remain closed; no Mac B/C or public Auto change
-follows. Exact artifact, accounting, review and consumer hashes are in the
+Evidence assembly `8156079` passes in 49 seconds and pure input binding `8156092`
+passes in 79 seconds, both with failed=0/exit=0. The binder admits 42 A cells and
+46 metadata files without solver calls. Original seal `8156129` fails before
+outputs because its launcher selects a Python symlink and the unchanged producer
+requires the exact executable. Separately reviewed launchers use the already-bound
+Python 3.12 binary and explicit C/UTC; 13 mock/structural tests and three shell
+syntax checks pass. The original launcher and failure remain preserved. Pure seal
+continuation `8156149` passes with failed=0/exit=0 in 80 seconds, serial NONE/1.
+
+Independent Astra high review closes all 389 frozen bindings: 381 local files
+rehashed with zero mismatches and eight unchanged setup-attested tool/library
+identities. The actual plan is schema 3, canonical `ea8251ec`, file `cbe0bed0`.
+Collectors `8156167`–`8156172` and dependent finalizer `8156173` are accepted.
+Independent review checks all 31 dispatch records, nine bound inputs and seven
+actual job identities, resources, arguments and dependencies. Exactly one release
+of the six user holds succeeds after fresh target-hold and source checks.
+Only lifecycle status is inspected while any job remains active.
+At 14:08 UTC all six collectors are running, each with 28 slots on a different
+node; the finalizer remains dependency-held. Placement alone does not establish
+isolation, and no intermediate scientific or timing result has been inspected.
+The six-node, three-round design, original scientific tolerances, zero-replacement
+rule and baseline-only stopping screen remain fixed. Old failures remain closed;
+no Mac B/C or public Auto change follows. Exact artifact, accounting, review,
+launcher and dispatch hashes are in the
 [compact results](../bench/results/solver-routing-controlled-20261014.json).
+
+The first submitted RHS width and physical stride determine the fixed work allowance and
+an installed CMG hierarchy can be reused. The route does not yet explicitly
+compare construction, transition and extra certification cost with expected
+savings over remaining compatible columns. Future columns provide a possible
+amortization horizon, not evidence of savings or additional work allowance. This
+panel evaluates one/four-worker performance; the separate matched-RHS regression
+establishes correctness and reuse, not wide-active-RHS payback.
 
 ### Matched independent RHS coverage, 2026-10-17
 
