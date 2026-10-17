@@ -1613,6 +1613,85 @@ source/build/review hashes and these limitations.
 | Forty-call result | `642fc517cae5dc0ecd42e223cd82d303eb506b67bd275ae13bd342874644f21b` |
 | Independent raw review | `4f37f6282428233c9973acfbb57fe6ac996ad78b168f5c373c6b171d4839bc60` |
 
+### Serial CMG batch application diagnostic, 2026-10-17
+
+A private prototype used the actual submitted RHS count to select a serial
+batch workspace of at most four columns, after constructing the unchanged
+hierarchy. Single-RHS calls kept the scalar path. The installed width stayed
+fixed across reuse; live-column compaction did not change the arithmetic path.
+Admission covered the scalar and batch workspaces, widened banks, component
+scratch and initial application work. A selected construction failure had no
+scalar retry or work refund. This affected private resource charges and
+near-cap refusal behavior, not model semantics, tolerances, h16, sampling or
+public Auto. The prototype added 160 production lines and two dispatch sites.
+
+Upstream CMG `d1cd681d1065a6440d8c4359ddf8f10e43f93e73` supplies the reviewed
+controlled batch-workspace API. Its scalar migration witness preserves all
+3,763 boundaries exactly. The fereg prototype passes 1,947 Rust executions,
+312 Python tests and seven portable checks in the source-only suite, plus
+focused batch/admission/cancellation witnesses. Its private universal plugin
+passes audit and ABI/load checks. These checks do not establish performance
+or installed-package admission.
+
+The fixed diagnostic compared cold-single, reused-single and cold-three-RHS
+projections on the same small analytic graph at one/four workers, followed by
+complete fits on the revealed high-degree weak A input. It used 24 core
+processes (32 actual projections) and eight plugin fits, two observations per
+artifact/cell, no warmups, retries, replacements or exclusions. Instrumented
+core and release-plugin results remain separate.
+
+| Observation | 1 worker | 4 workers |
+| --- | ---: | ---: |
+| Cold three-RHS application ratio, candidate/parent | 1.07038 | 0.99828 |
+| Cold three-RHS complete projection ratio | 0.99558 | 1.02458 |
+| High-degree weak complete native-fit ratio | 1.02317 | 0.97254 |
+| Parent native-fit median, ms | 352.951 | 209.939 |
+| Candidate native-fit median, ms | 361.130 | 204.173 |
+
+Application accounts for only about 1.4%/2.4% of the parent's small wide
+projection time. The measured application change therefore offers little
+end-to-end opportunity on this fixture. Reused calls perform no new hierarchy
+setup in either arm. The three-RHS candidate really installs width three,
+versus scalar width one in the parent; one input column is already orthogonal,
+so three submitted columns do not mean three difficult active columns.
+
+The original run stopped after successful call 00 because its Python reader
+incorrectly required a populated optional residual-norm cache. The Rust
+projection certificate and analytic witnesses had passed. A separately
+declared and independently reviewed amendment accepted an empty cache, while
+requiring supplied entries to have the original shape and finite nonnegative
+values. It revalidated and reused call 00 and ran only unstarted calls 01–31,
+within the original conservative deadline, in 20.353 seconds. The original
+failed result remains failed. The first reused-single/one-worker block has a
+795.330-second interruption, retained explicitly; no original-protocol pass
+or paired nonregression inference is claimed.
+
+Independent Astra high review verifies the complete amended evidence and
+recomputes its original numerical witnesses. All 32 processes complete cleanly;
+same-worker repeats, cross-arm scientific bits and cross-worker decisions pass.
+Extra batch initialization work is retained as declared. Ordinary desktop
+activity is retained; endpoint snapshots do not establish continuous isolation.
+
+**Decision:** archive the fereg batch experiment and restore its exact eight-file
+parent, including dependency pin and complexity inventory. The separately
+published upstream API remains available. The small, mixed timing changes do
+not justify the added fereg code and admission surface. Benefits for much wider
+active RHS sets remain untested, not disproved. Do not extend this completed
+panel to seek a win or derive a width/core threshold from it. Public Auto,
+closed SCC outcomes and Mac B/C status are unchanged.
+
+A subsequent source/assembly audit finds that synchronous census already
+caches canonical rows, avoiding a second sort during emission. Its comparator
+is inlined. Replacing positive-weight `total_cmp` with bit comparison would
+remove only four ALU instructions per weight tie-break, without removing calls,
+the sift frame, swaps or work gates; no new timing exercise is justified by
+that observation. More substantial construction changes require an explicitly
+declared resource/cancellation contract, preserving independent science.
+
+Complete source, build, protocol, amendment, output and review hashes and all
+descriptive observations are recorded in the compact controlled-results JSON.
+This is a closed engineering diagnostic, not routing qualification.
+
 ### CMG construction CPU profiles, 2026-10-17
 
 The first `/usr/bin/sample` design stopped at its non-estimation feasibility

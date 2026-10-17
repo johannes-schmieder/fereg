@@ -23986,5 +23986,774 @@
       "result": "642fc517cae5dc0ecd42e223cd82d303eb506b67bd275ae13bd342874644f21b",
       "raw_review": "4f37f6282428233c9973acfbb57fe6ac996ad78b168f5c373c6b171d4839bc60"
     }
+  },
+  "cmg_serial_batch_diagnostic_20261017": {
+    "status": "closed_amended_engineering_diagnostic; fereg prototype not adopted; exact eight-file parent restored",
+    "parent_source": "71edcb888892495a46cada305e74e2704ae981be",
+    "upstream_commit": "d1cd681d1065a6440d8c4359ddf8f10e43f93e73",
+    "upstream_disposition": "Reviewed controlled batch-workspace API remains published; fereg returns to its parent CMG pin.",
+    "parent_plugin_sha256": "c39553f948a9250019376e6c24a8d8cee2208f59d711c4f8fc66c5c22a646384",
+    "candidate_plugin_sha256": "996d0ad84add1b7d242262f07d9d9a9bda0c5f787edb5ae9b26a16d95bc41ebb",
+    "candidate_runtime_sha256": "71c2e84c224ccec6140778c649aa77bae4b43f4cf47d701d1cfc120843fae7e0",
+    "prototype_scope": [
+      "Selection is confined to synchronous private portfolio, using actual submitted RHS count capped at four; width is frozen. Controlled, overlap, reduced and original single-RHS paths remain scalar, without a new batch requirements charge.",
+      "Graph/cache/hierarchy construction and admission remain unchanged. Batch storage is selected only afterward; its simultaneous peak includes retained scalar workspace, complete batch workspace, widened caller banks, owner and both old/new component scratch. Actual old/new inline owner size and alignment agree; observed size is 1312 bytes.",
+      "Requirements work is metered and sunk. Selection reserves the complete upstream repeated-query/constructor allowance, four local capacity/fill operations, admission/finalization, and first startup within existing builder allowance. The owner alone charges startup/restart once. No scalar retry or work refund follows a selected batch construction failure.",
+      "Same-hierarchy arithmetic targets exact per-RHS bits. Existing serial kernel operations are unchanged; live-prefix clearing and original single-RHS dispatch prevent stale capacity reads. Multi-RHS compacted-one and short-tail tiles remain batch.",
+      "Positive-live startup uses the conservative existing scalar-cycle bound per submitted RHS, plus wrapper charges. Empty tiles never invoke upstream batch validation. Existing Break gates remain; a serial application tile may span at most four lanes between cycle checkpoints.",
+      "No model, tolerance, checkpoint, sampling, acceptance, quota or public routing change. Extra batch initialization/storage legitimately changes private resource ordinals, setup charges and possible near-cap refusal; global route equality at tight caps is not claimed.",
+      "Dependency manifests and both lockfiles change only the CMG pin. The scoped complexity ratchet accounts for 160 added core production lines and two dispatch candidates; no exclusions/minification introduced."
+    ],
+    "restored_files": {
+      "Cargo.lock": {
+        "before": "79bc3d566867792352ac4252282bed58547801c85cc80619b56d53ab908fac16",
+        "after": "049fedf1f20aa92bc40c5e3a33d09f09a7142d23bc4a73f337cc9362b1d97f1d"
+      },
+      "crates/fereg-core/Cargo.toml": {
+        "before": "72fd4cefd70290cdd2fa65f2912842934647be93b18942471ee67bb9ac4106a7",
+        "after": "ac81b763550573d2c317520d76dad0f5ee6d04922cc5f193dd146a73ca2122b2"
+      },
+      "crates/fereg-core/src/fe/borrowed_map.rs": {
+        "before": "15e794b1b2cc3c0da7ab9df9df032e6040ab40fbd2008aaef8cef3a3a7e09f64",
+        "after": "966da9a7c55f49bdfe4f08eaf1fe447f6579dbfe77d19b9e102bfd6dcbcfed77"
+      },
+      "crates/fereg-core/src/fe/borrowed_map/routing_tests.rs": {
+        "before": "86ef65abeb1d71c39ab94384e3cb3b5a7d5dc1a9542bb76aa3ec6520d469ace7",
+        "after": "fcc37d102249f739ad5a77dc5b01ad84772b93db3dfca789f84a947ebe95a929"
+      },
+      "crates/fereg-core/src/fe/cmg_schur.rs": {
+        "before": "1b9ffcaa519046faa2a26dab845d0da4d611bfdb4a9e36a7ac01c4e261ed8e5f",
+        "after": "826e1339bcda99056769cea5ad7c59673b609f4727f19274e2c81edea14e1e5a"
+      },
+      "crates/fereg-core/src/fe/cmg_schur/bounded.rs": {
+        "before": "3f0b52fb387123550ca9cc5b3beefc7f560c55b728c63584381890bdfaf92de4",
+        "after": "a766a851f69ad289f5bacfc1b9edfe19e27963461b62693c00ccf5912471fee7"
+      },
+      "fuzz/Cargo.lock": {
+        "before": "bf30c33ec16b4d24adbe55586a372f46b65beaf515f18d4db8c32f5bda9734cc",
+        "after": "038ae84d0e35e7a1ab8b588c5f0b7659c7f836621df2f501d9e2b61c8f119842"
+      },
+      "tests/reference/complexity.json": {
+        "before": "911bd812de1c4ea8a8365cd253bda95ccdb257c870ac072a94a2a5d7f27bf2c1",
+        "after": "16b8001a7f1afdcdfb8387c246108f4e7b1e0ac54aca5e0252803bf4a120b83e"
+      }
+    },
+    "checks": {
+      "focused_cmg": {
+        "top_level_passed": 39,
+        "isolated_child_passed": 3
+      },
+      "focused_routing": {
+        "top_level_passed": 20,
+        "isolated_child_passed": 2
+      },
+      "source_integration": {
+        "command": [
+          "./scripts/run_tests.sh",
+          "--source-only"
+        ],
+        "returncode": 0,
+        "elapsed_s": 220.14739995799027,
+        "rust_test_summaries": 88,
+        "rust_test_executions_passed": 1947,
+        "python_tests_passed": 312,
+        "portable_tool_tests_passed": 7,
+        "strict_clippy": "passed",
+        "complexity": "passed",
+        "mock_spi_numeric_guards": "passed",
+        "cleanup_escalated": false
+      },
+      "owner_bytes": {
+        "parent": 1312,
+        "candidate": 1312
+      }
+    },
+    "upstream_checks": {
+      "focused_tests": 8,
+      "default_tests": 118,
+      "all_feature_tests": 227,
+      "strict_clippy_fmt": "passed",
+      "scalar_migration_boundaries": 3763,
+      "scalar_migration_bytes": 463217,
+      "scalar_migration_sha256": "ac79ddb1babd3d2da4b910e3576c63b0b594b0b7792746b727aca0f98419597a"
+    },
+    "build": {
+      "universal_audit": "passed",
+      "actual_plugin_ABI_load": "passed",
+      "installed_package_admission": false,
+      "linux_mock_audit": "unavailable on Mac",
+      "workflow_s": 173.677564,
+      "observed_core_profile": "ci; separate from release-plugin fit results",
+      "observed_parent_sha256": "e70cf7f0d6a98f40443983785b99378f77d7bf3e4f5cbb8f5e0c9101afcca049",
+      "observed_candidate_sha256": "d9d11a07894a207226323afb8738030ef4abac76cb14a694112cb23612e3c958"
+    },
+    "protocol": {
+      "core_layouts": [
+        "cold-single",
+        "reused-single",
+        "cold-wide (three submitted RHS; third already orthogonal)"
+      ],
+      "workers": [
+        1,
+        4
+      ],
+      "core_sequence_processes": 24,
+      "core_projections": 32,
+      "whole_fit_calls": 8,
+      "whole_fit_case": "revealed A high-degree-weak",
+      "observations_per_arm_cell": 2,
+      "fixed_schedule_seed": 2026101702,
+      "warmups": 0,
+      "call_limit_s": 120,
+      "original_inclusive_limit_s": 1800,
+      "cleanup_reserve_s": 30,
+      "retries": 0,
+      "replacements": 0,
+      "exclusions": 0,
+      "qualification": false
+    },
+    "amendment": {
+      "absolute_completion_cutoff_utc": "2026-10-17T11:45:27.217485+00:00",
+      "absolute_work_cutoff_utc": "2026-10-17T11:44:57.217485+00:00",
+      "cutoff_derivation": "call-00 started_utc - entire original execution elapsed_s + 1800 seconds; conservative earlier endpoint, not a renewed budget",
+      "declared_utc": "2026-10-17T11:18:24.212771+00:00",
+      "further_continuations": 0,
+      "interpretation": "Engineering diagnostic under a disclosed amendment. Preserve the entire gap and every observation. Mark reused-single/worker1 first block as interrupted. No original-protocol pass, paired nonregression inference, qualification, public Auto promotion or B/C admission.",
+      "new_process_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "preserve_original_verdict": "failed; never relabel as original-protocol success",
+      "reason": "The direct reusable FE result permits an absent residual_norms vector. The frozen Python reader incorrectly required a populated vector; the retained Rust test and both original mathematical witnesses passed.",
+      "representation_correction": "Accept absent residual norms []; when supplied require exactly the RHS count, finite nonnegative values. Retain exact raw bits; do not synthesize data or alter any numerical tolerance."
+    },
+    "actual": {
+      "immutable_unique_refs": 423,
+      "original_plan_bindings": 298,
+      "scheduled_processes": 32,
+      "core_sequence_processes": 24,
+      "core_projections": 32,
+      "whole_fits": 8,
+      "process_replacements": 0,
+      "process_retries": 0,
+      "exclusions": 0,
+      "clean_process_exit0_and_cleanup": 32,
+      "per_process_cap_s": 120,
+      "original_failure": "ValueError: residual norm shape mismatch after successful call00",
+      "original_call00_rerun": false,
+      "interrupted_first_block": true,
+      "first_block_gap_s": 795.329849,
+      "fixed_work_cutoff_utc": "2026-10-17T11:44:57.217485+00:00",
+      "minimum_dispatch_allowance_s": 955.027536,
+      "last_process_completion_utc": "2026-10-17T11:29:03.314460+00:00",
+      "continuation_elapsed_s": 20.35264704201836,
+      "continuation_completed_utc": "2026-10-17T11:29:03.997287+00:00"
+    },
+    "science": {
+      "method": "Rehashed frozen plan/amendment/raw refs; replayed the corrected read-only CoreChecks and FitChecks against all raw streams and original A oracles; independently recomputed paired-graph residual/reconstruction/FE-contrast maxima directly from retained binary64 arrays.",
+      "analytic": {
+        "maximum_errors": {
+          "residual": 1.4111156687590665e-11,
+          "reconstruction": 1.7763568394002505e-15,
+          "fe_contrast": 2.5066615449986784e-11
+        },
+        "scalar_residual_values_checked": 430080,
+        "optional_norm_lengths": [
+          0
+        ]
+      },
+      "unchanged_tolerances": {
+        "residual": 1e-09,
+        "reconstruction": 2e-12,
+        "fe_contrast": 1e-08
+      },
+      "certificates": "All original Rust certificates passed; original selected tests report one passed and no failures.",
+      "repeats": "Exact same-arm fixed-worker arrays/reports/counters/ledgers; exact cross-arm scientific bits/reports; one-RHS cross-arm resource/work counters exact. Whole-fit original models, columns, science and solver signatures exact on each worker.",
+      "cross_workers": "Core discrete decisions exact and independent analytic truth passed on both workers. Whole-fit independent oracle/scientific comparison and discrete solver signatures passed on workers 1/4.",
+      "counter_and_ledger": "All expected setup/application stages present, no hidden stage errors, positive application coverage. Parent/scalar/reused batch width1; candidate cold-wide width3. Reused target has zero new setup and identical ledger; every ledger used<=limit and limit=8*restart_reserve.",
+      "work_changes": {
+        "core_cold_wide_parent": 5840840,
+        "core_cold_wide_candidate": 5850264,
+        "core_extra": 9424,
+        "whole_fit_primary_parent": 791553688,
+        "whole_fit_primary_candidate": 791842152,
+        "whole_fit_extra": 288464,
+        "whole_fit_final_reuse_setup": 0
+      },
+      "memory_limit": "Core fixture reports sentinel u64::MAX workspace peak, so it provides no finite empirical allocation comparison. Whole-fit reported peak is the same 105805894 bytes, which does not establish equal retained batch storage; source/accounting review establishes the additional admitted workspace."
+    },
+    "observations": [
+      {
+        "candidate_parent_median_ratios": {
+          "apply_ns": 0.9776135752554322,
+          "projection_ns": 0.9996170194543368,
+          "sequence_projection_ns": 0.9996170194543368,
+          "setup_ns": 0.9998234779879853
+        },
+        "layer": "core",
+        "layout": "cold-single",
+        "observations": {
+          "candidate": {
+            "apply_ns": [
+              24126,
+              24959
+            ],
+            "projection_ns": [
+              2821125,
+              2944583
+            ],
+            "sequence_projection_ns": [
+              2821125,
+              2944583
+            ],
+            "setup_ns": [
+              349500,
+              364166
+            ]
+          },
+          "parent": {
+            "apply_ns": [
+              23666,
+              26543
+            ],
+            "projection_ns": [
+              2842375,
+              2925542
+            ],
+            "sequence_projection_ns": [
+              2842375,
+              2925542
+            ],
+            "setup_ns": [
+              364958,
+              348834
+            ]
+          }
+        },
+        "qualification": false,
+        "workers": 1
+      },
+      {
+        "candidate_parent_median_ratios": {
+          "apply_ns": 0.9657293497363796,
+          "projection_ns": 0.9703571850082625,
+          "sequence_projection_ns": 0.9703571850082625,
+          "setup_ns": 0.9134569259503379
+        },
+        "layer": "core",
+        "layout": "cold-single",
+        "observations": {
+          "candidate": {
+            "apply_ns": [
+              26127,
+              26625
+            ],
+            "projection_ns": [
+              2923958,
+              2691500
+            ],
+            "sequence_projection_ns": [
+              2923958,
+              2691500
+            ],
+            "setup_ns": [
+              377542,
+              355583
+            ]
+          },
+          "parent": {
+            "apply_ns": [
+              23914,
+              30710
+            ],
+            "projection_ns": [
+              2944667,
+              2842334
+            ],
+            "sequence_projection_ns": [
+              2944667,
+              2842334
+            ],
+            "setup_ns": [
+              436583,
+              366000
+            ]
+          }
+        },
+        "qualification": false,
+        "workers": 4
+      },
+      {
+        "candidate_parent_median_ratios": {
+          "apply_ns": 1.0703775984562758,
+          "projection_ns": 0.9955822466431916,
+          "sequence_projection_ns": 0.9955822466431916,
+          "setup_ns": 1.014778552688251
+        },
+        "layer": "core",
+        "layout": "cold-wide",
+        "observations": {
+          "candidate": {
+            "apply_ns": [
+              49667,
+              47960
+            ],
+            "projection_ns": [
+              3341333,
+              3090875
+            ],
+            "sequence_projection_ns": [
+              3341333,
+              3090875
+            ],
+            "setup_ns": [
+              387459,
+              359417
+            ]
+          },
+          "parent": {
+            "apply_ns": [
+              45542,
+              45666
+            ],
+            "projection_ns": [
+              3127084,
+              3333666
+            ],
+            "sequence_projection_ns": [
+              3127084,
+              3333666
+            ],
+            "setup_ns": [
+              364958,
+              371041
+            ]
+          }
+        },
+        "qualification": false,
+        "workers": 1
+      },
+      {
+        "candidate_parent_median_ratios": {
+          "apply_ns": 0.9982819915290275,
+          "projection_ns": 1.024580161012279,
+          "sequence_projection_ns": 1.024580161012279,
+          "setup_ns": 1.0377433690597464
+        },
+        "layer": "core",
+        "layout": "cold-wide",
+        "observations": {
+          "candidate": {
+            "apply_ns": [
+              57209,
+              60167
+            ],
+            "projection_ns": [
+              2555459,
+              2377041
+            ],
+            "sequence_projection_ns": [
+              2555459,
+              2377041
+            ],
+            "setup_ns": [
+              364000,
+              380667
+            ]
+          },
+          "parent": {
+            "apply_ns": [
+              58248,
+              59330
+            ],
+            "projection_ns": [
+              2427709,
+              2386458
+            ],
+            "sequence_projection_ns": [
+              2427709,
+              2386458
+            ],
+            "setup_ns": [
+              350417,
+              367166
+            ]
+          }
+        },
+        "qualification": false,
+        "workers": 4
+      },
+      {
+        "candidate_parent_median_ratios": {
+          "apply_ns": 0.9835646519926573,
+          "projection_ns": 0.9641130407354945,
+          "sequence_projection_ns": 1.0241404250761492,
+          "setup_ns": null
+        },
+        "layer": "core",
+        "layout": "reused-single",
+        "observations": {
+          "candidate": {
+            "apply_ns": [
+              32416,
+              24915
+            ],
+            "projection_ns": [
+              1821292,
+              1492083
+            ],
+            "sequence_projection_ns": [
+              6214542,
+              4389749
+            ],
+            "setup_ns": [
+              0,
+              0
+            ]
+          },
+          "parent": {
+            "apply_ns": [
+              34997,
+              23292
+            ],
+            "projection_ns": [
+              1978042,
+              1458666
+            ],
+            "sequence_projection_ns": [
+              5952417,
+              4401916
+            ],
+            "setup_ns": [
+              0,
+              0
+            ]
+          }
+        },
+        "qualification": false,
+        "workers": 1
+      },
+      {
+        "candidate_parent_median_ratios": {
+          "apply_ns": 0.8139513181429349,
+          "projection_ns": 0.9665119974346764,
+          "sequence_projection_ns": 0.9710689215009886,
+          "setup_ns": null
+        },
+        "layer": "core",
+        "layout": "reused-single",
+        "observations": {
+          "candidate": {
+            "apply_ns": [
+              25914,
+              26419
+            ],
+            "projection_ns": [
+              1376042,
+              1451167
+            ],
+            "sequence_projection_ns": [
+              4348458,
+              4200792
+            ],
+            "setup_ns": [
+              0,
+              0
+            ]
+          },
+          "parent": {
+            "apply_ns": [
+              32124,
+              32171
+            ],
+            "projection_ns": [
+              1499292,
+              1425875
+            ],
+            "sequence_projection_ns": [
+              4529125,
+              4274833
+            ],
+            "setup_ns": [
+              0,
+              0
+            ]
+          }
+        },
+        "qualification": false,
+        "workers": 4
+      },
+      {
+        "candidate_parent_median_ratios": {
+          "native_seconds": 1.0231717717190205
+        },
+        "layer": "fit",
+        "layout": "high-degree-weak",
+        "observations": {
+          "candidate": {
+            "native_seconds": [
+              0.362808,
+              0.359451
+            ]
+          },
+          "parent": {
+            "native_seconds": [
+              0.35378,
+              0.352122
+            ]
+          }
+        },
+        "qualification": false,
+        "workers": 1
+      },
+      {
+        "candidate_parent_median_ratios": {
+          "native_seconds": 0.9725372608233821
+        },
+        "layer": "fit",
+        "layout": "high-degree-weak",
+        "observations": {
+          "candidate": {
+            "native_seconds": [
+              0.202657,
+              0.20569
+            ]
+          },
+          "parent": {
+            "native_seconds": [
+              0.20829,
+              0.211588
+            ]
+          }
+        },
+        "qualification": false,
+        "workers": 4
+      }
+    ],
+    "parent_application_shares": [
+      {
+        "layer": "core",
+        "layout": "cold-single",
+        "workers": 1,
+        "candidate_parent_median_ratios": {
+          "apply_ns": 0.9776135752554322,
+          "projection_ns": 0.9996170194543368,
+          "sequence_projection_ns": 0.9996170194543368,
+          "setup_ns": 0.9998234779879853
+        },
+        "parent_apply_share": 0.008704875607606697
+      },
+      {
+        "layer": "core",
+        "layout": "cold-single",
+        "workers": 4,
+        "candidate_parent_median_ratios": {
+          "apply_ns": 0.9657293497363796,
+          "projection_ns": 0.9703571850082625,
+          "sequence_projection_ns": 0.9703571850082625,
+          "setup_ns": 0.9134569259503379
+        },
+        "parent_apply_share": 0.009439085979076209
+      },
+      {
+        "layer": "core",
+        "layout": "cold-wide",
+        "workers": 1,
+        "candidate_parent_median_ratios": {
+          "apply_ns": 1.0703775984562758,
+          "projection_ns": 0.9955822466431916,
+          "sequence_projection_ns": 0.9955822466431916,
+          "setup_ns": 1.014778552688251
+        },
+        "parent_apply_share": 0.014117246449715591
+      },
+      {
+        "layer": "core",
+        "layout": "cold-wide",
+        "workers": 4,
+        "candidate_parent_median_ratios": {
+          "apply_ns": 0.9982819915290275,
+          "projection_ns": 1.024580161012279,
+          "sequence_projection_ns": 1.024580161012279,
+          "setup_ns": 1.0377433690597464
+        },
+        "parent_apply_share": 0.024423332219260362
+      },
+      {
+        "layer": "core",
+        "layout": "reused-single",
+        "workers": 1,
+        "candidate_parent_median_ratios": {
+          "apply_ns": 0.9835646519926573,
+          "projection_ns": 0.9641130407354945,
+          "sequence_projection_ns": 1.0241404250761492,
+          "setup_ns": null
+        },
+        "parent_apply_share": 0.016960707747064922
+      },
+      {
+        "layer": "core",
+        "layout": "reused-single",
+        "workers": 4,
+        "candidate_parent_median_ratios": {
+          "apply_ns": 0.8139513181429349,
+          "projection_ns": 0.9665119974346764,
+          "sequence_projection_ns": 0.9710689215009886,
+          "setup_ns": null
+        },
+        "parent_apply_share": 0.021979941658031833
+      },
+      {
+        "layer": "fit",
+        "layout": "high-degree-weak",
+        "workers": 1,
+        "candidate_parent_median_ratios": {
+          "native_seconds": 1.0231717717190205
+        }
+      },
+      {
+        "layer": "fit",
+        "layout": "high-degree-weak",
+        "workers": 4,
+        "candidate_parent_median_ratios": {
+          "native_seconds": 0.9725372608233821
+        }
+      }
+    ],
+    "host_observations": {
+      "snapshots": 64,
+      "load1_range": [
+        1.70263671875,
+        2.263671875
+      ],
+      "largest_aggregate_snapshot_cpu_deltas_seconds": [
+        [
+          "WindowServer",
+          2.250000000014552
+        ],
+        [
+          "mds_stores",
+          0.8599999999860302
+        ],
+        [
+          "Google Chrome He",
+          0.7800000000017722
+        ],
+        [
+          "mdworker_shared",
+          0.76
+        ],
+        [
+          "XprotectService",
+          0.7000000000002728
+        ],
+        [
+          "Codex (Renderer)",
+          0.6100000000005821
+        ],
+        [
+          "python3.12",
+          0.38999999999999935
+        ],
+        [
+          "mds",
+          0.37000000000261934
+        ]
+      ],
+      "interpretation": "Background WindowServer, indexing, browser and security activity is visible. Coarse before/after process snapshots are context, not a complete quiescence proof or independent CPU samples; no observation was excluded or corrected."
+    },
+    "independent_review": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high",
+      "status": "passed_under_disclosed_amendment",
+      "blocking_scientific_findings": [],
+      "engineering_recommendation": {
+        "decision": "archive_fereg_prototype_and_restore_exact_eight_file_gate_parent",
+        "baseline": "71edcb888892495a46cada305e74e2704ae981be",
+        "upstream": "Leave the published controlled-batch API available upstream; restore fereg's prior dependency pin with its exact parent runtime/ratchet files.",
+        "rationale": [
+          "The intended cold-wide batch path actually ran, but apply median ratios are 1.0703776 at 1 worker and 0.9982820 at 4 workers. The roughly 3.21 microsecond first difference is not a material regression claim; there is simply no demonstrated application gain.",
+          "On this deliberately small analytic hierarchy, parent application is only 1.4117%/2.4423% of total projection time. Even eliminating that entire measured phase would have a small end-to-end ceiling on these cases.",
+          "Whole high-degree-weak median ratios 1.0231718/0.9725373 have mixed direction and only two observations per arm. They establish neither a reliable speed gain nor a statistically qualified nonregression result.",
+          "Correct science is demonstrated, but 160 extra production lines, additional retained workspace/initialization, new admission distinctions and maintenance obligations have no useful demonstrated payoff on this fixed panel. Returning to the simpler gate parent is the proportionate engineering choice."
+        ],
+        "limits": [
+          "This does not prove batching can never help larger hierarchies or more simultaneously active RHS lanes. The core three-column fixture includes an already orthogonal third column; broader active-width benefit remains untested.",
+          "Do not enlarge the panel after these results to seek a win, and do not authorize any further native calls from this diagnostic.",
+          "Revert is a recommendation only: this reviewer changed no production source, dependency pins, binaries, original evidence or documentation."
+        ]
+      }
+    },
+    "preserved_failures": [
+      "Initial full source integration stopped on two Clippy findings; equivalent test comparison and enum-local allocation-preserving lint rationale repaired them before final full source-only PASS.",
+      "Initial observed-build helper compiled parent successfully then rejected an unrelated existing CMG_BATCH_ test constant. A separately reviewed marker-only repair reused that exact parent and compiled only the unstarted candidate.",
+      "Initial actual diagnostic plan omitted a schedule-reference size required by exact build binding; no diagnostic ran until separately reviewed metadata-only correction.",
+      "Original diagnostic stopped after successful process00 because the reader required a populated optional norm cache. Its failed status and raw call remain exact. Separately reviewed correction revalidated call00 and dispatched only unstarted1..31 within the unchanged original deadline."
+    ],
+    "source_audit": {
+      "decision": "no new micro-optimization or timing exercise",
+      "census": "Canonical row cache already avoids a second per-worker census sort during emission; sampling weight sort has a separate purpose.",
+      "comparator": "Already inlined in Work::sort::sift. Positive-f64 bit ordering would remove four ALU instructions only at weight tie-breaks; no call/frame/swap/gate removal.",
+      "limitation": "Pre-inlining local-sift samples cover the complete sift, not comparator work, and do not quantify a current gain. Material sorter/accounting changes require separately declared resource/control scope."
+    },
+    "disposition": "Both independent engineering recommendations favor archiving this fereg prototype. Restored all eight exact source preimages including dependency pin and complexity ratchet; prior gate-inlining improvement remains. No new native call, broader panel, threshold or routing promotion follows from this diagnostic.",
+    "limits": [
+      "Original protocol remains failed; completed status applies only to the disclosed amendment. First block gap795.329849 seconds is retained.",
+      "Two observations per arm/cell are descriptive, not confidence bounds, qualified nonregression or release performance. Instrumented core and release fit metrics are not pooled.",
+      "Larger hierarchies and much wider active RHS sets remain untested, not disproved.",
+      "Public Auto remains incumbent; no SCC shortlist, Mac B/C admission, Linux result or reopening of closed campaigns."
+    ],
+    "sha256": {
+      "source-repaired.patch": "e76e3f59b09a8d93a3031e7f498f6176e15707a142c28444043c361bf9945bf5",
+      "source-review.json": "de7331bb77fb31df576cecf3e7be55bc3efb375a0f3db8f3c71722cc78676bfb",
+      "upstream-source-review.json": "b7f9fd2ef4fc558ddb5770345f045bf0179e1df6fb20977ecc26138d94a83d9b",
+      "build/complete.json": "c970239b10a4dd9c922c8caabc10b84bfadbbe06ac76f12a28925c5b8d329f52",
+      "build-review.json": "e653f3bfbfdb59ba11c5e8d6af3ec2f57315caf4434865778836369ca01eb2c7",
+      "actual-observed-build-review.json": "80ca01479fd66aa2637f9d22e8689ec018f18071e3d86939fd5ae81294bfff06",
+      "observer-repair-review.json": "b1bc103137b514d79cdc9f888924d677cfad36ba81ed3dbdab407e3bd2e3e8d2",
+      "observed-build/failure.json": "0d609d84c68a30d86adaaf592ef20d8371533e178f9e3ce6584d4e6e99f73f00",
+      "observed-build-continuation/complete.json": "39a63076ef331c03789f2ac514f0806ecfa9e3682f5141874169215fcfebb18e",
+      "diagnostic-plan.json": "28963887ba4354be1be642519af30a0e02428b8de156afdf35f3fa8f6a969eb4",
+      "diagnostic-plan-repaired.json": "0a60ff58f35c6169daa08ade0ea3134a7ec83a12244005b32d61e8e958b2749f",
+      "diagnostic-plan-review.json": "b69f6e25d5e4aeff95ad43c340a982bcf86b79538a241fbd0944a6e16d293df6",
+      "diagnostic-schedule.json": "1ebbdd02eba1cc4e00557b59862d8a8ecc79c787b1959851c575649df9611230",
+      "diagnostic-execution/result.json": "d78f64f91df34d519236c943fca6bb99f64c799f88bd05e17561b62ef0ede13e",
+      "diagnostic-amendment.json": "fd3fd10163df465174d2efd6c0bc38d54bfcc9295e5f5fbbad09cbcf041a8ec0",
+      "diagnostic-amendment-review.json": "a2380a6dae40ec284146386609d9f0627a541a5e7fbaf1a7a4ddc78ea5292c7c",
+      "diagnostic-reader-corrected.py": "309d5ad0f03ff710595185e8d970b667b116d6f6533ed7a3ea9535d915a56c99",
+      "diagnostic-continue.py": "7a47b67a9a53ee3160c73d025c9a552fea83df15bb58817d070439567473f164",
+      "reader-correction-evidence.json": "0b4ff8bee9d31ed77eff716ff34f9173c87c46f6e305db6e70848fb19a35b6f7",
+      "diagnostic-continuation/result.json": "eb8a9cbba894a2da548bee2cd2bd5bfc4c7ee66a5332864b36e186bb7a59c58b",
+      "diagnostic-raw-review.json": "3812ba1fdbd574b79743ca2d37b85dff445213a8c9b67abd66a49bc74b020398"
+    }
   }
 }
