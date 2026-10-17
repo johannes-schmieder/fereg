@@ -1469,3 +1469,164 @@ mismatch; later runtime/ABI checks did not run. Production identity is unchanged
 from `d1f303a7` (192 runtime modules, 58 artifact inputs). No production rebuild
 or GitHub CI was performed. Local temporary captures are removed after the
 compact evidence is committed; raw evidence remains in the SCC campaign.
+
+
+### Fable review: proposed representation-first follow-up (not implemented)
+
+A requested Claude Fable 5.1 review at browser effort `Extra`, completed on
+2026-10-16, inspected this experiment at `ac103846`, production snapshot
+`020eab1e9559fd68f619a4ec73fb04fcb6d1136f`, production routing ablations and
+CMG production pin `3422b040`. A focused follow-up corrected overstatements
+about precision floors, regression RHS construction, timing gates and reduction
+scope. The full consultation remains in Johannes's Claude conversation titled
+“Prototype review and implementation plan.” The proposal below incorporates
+those corrections and the lead's source checks; it is neither implemented nor
+a promotion decision and does not reopen any failed campaign.
+
+**Recommendation.** Build one developer-only two-FE categorical OLS arm,
+provisionally `routing_cells_v2`: a reusable canonical worker-firm cell bank,
+a parallel operator over that bank, the true Schur diagonal, and exclusion of
+non-movers from the Schur operator. Keep all observations for estimation,
+reconstruction, degrees of freedom and certification. Non-mover exclusion here
+is an algebraic operator identity, not sample removal. Start with these changes
+alone. Exact firm reduction, forecasting, CMG construction, direct-factor
+expansion, parallel solver races and PPML frame reuse are later proposals.
+
+The opportunity is different from changing the iteration-48 deadline. Production
+Auto's ordinary two-FE recurrence applies the operator over observation rows and
+uses firm weight totals for diagonal preconditioning. This standalone prototype
+already aggregates worker-firm cells and uses the true Schur diagonal, so its
+`diagonal` control is not production Auto. At the pinned production snapshot,
+`schur_diagonal` deliberately keeps firm totals for the existing `routing_cells`
+arm; `routing_diagonal` isolates the diagonal while retaining the observation
+operator. Their benefits have not been shown to add together. The old cell
+implementation is serial and checks interrupts inside its cell loops; its
+builder also charges work per element. These are concrete implementation costs
+to address, without claiming they explain every observed regression.
+
+Prior exploratory native ablations motivate a trial but do not qualify a win:
+the contaminated Mac panel showed large one-worker gains on several weak and
+weighted cases, alongside four-worker cell regressions on dense/small-retained/
+weighted cases. The public real-data census records repeated links and many
+non-movers, but its input samples are not all verified estimation samples.
+Compression ratios are not speedup predictions. The completed prototype panels
+establish neither superiority over production Auto nor a bound on whole-command
+regret. A larger modeled memory allowance alone cannot establish such a bound.
+
+**MVP implementation sequence.**
+
+1. Freeze an isolated implementation base and declare eligible two-FE OLS
+   arithmetic changes before edits. Public Auto, explicit solvers, PPML, slopes
+   and three-or-more-FE routes remain exact controls. Use existing developer
+   injection plumbing; do not add public solver options.
+2. Extend `fe/routing_kernel.rs` to build deterministic worker-major cells from
+   existing membership indices, with a firm-major view for parallel gathers.
+   Reuse current compensated weight aggregation. Count non-mover cancellation
+   consistently in both the operator's diagonal term and off-diagonal term;
+   dropping only the worker correction would change the operator. Preserve
+   original weight normalization and factor slots. Retain the existing
+   zero-diagonal preconditioner fallback; it is not a rank decision. Per-worker
+   sorting is not
+   universally linear: price/bound its actual algorithm and large-degree cases.
+3. Parallelize the two gathers using the existing executor and disjoint group
+   outputs, with fixed accumulation order within each group and no atomics in
+   the numerical reductions. Pack RHSs and retire completed lanes as the
+   incumbent does. Move cancellation and checked work charges to bounded tiles;
+   bound tile work using degree and active RHS width, not a row count alone.
+   Keep temporary storage and any duplicate/transposed cell banks in admission.
+4. Build lazily after the incumbent's initial acceptance/rejection screen and
+   before recurrence initialization. Reuse the bank within the immutable
+   sample/topology/weight session. Admitted optional refusal leaves the original
+   operator and preconditioner untouched; cancellation, allocation failure,
+   invalid input and fatal errors retain their established error/rollback
+   semantics. Charge all incurred setup, including unsuccessful work. Keep the
+   existing optional-work allowance; do not treat generous memory as unlimited
+   work. No mid-recurrence switching is needed in this MVP.
+5. Keep original-observation acceptance, correction and MAP fallback unchanged.
+   Budget refusal is tested independently of timing. Zero-iteration accepted
+   actions avoid the bank build. Few-iteration actions can still lose its setup
+   cost; report that cost and reject an unsuccessful candidate rather than
+   inventing a post-hoc family/size threshold. A measured, general payback rule
+   would require a separately frozen successor if this MVP fails.
+
+The mathematical witness is the unchanged Schur system. With worker and firm
+incidence matrices `D_w`, `D_f`, positive normalized weights `W`, and
+`M_w = I - D_w (D_w' W D_w)^-1 D_w' W`, it is
+`S = D_f' W M_w D_f`, `b = D_f' W M_w y`. Repeated worker-firm observations
+contribute through their summed weights. Test cell/observation operator and
+energy agreement, the true diagonal, non-mover cancellation, disconnected
+components and weighted dense-dummy OLS independently. Arithmetic regrouping
+may change eligible low bits; fixed-worker repeats must be exact, discrete
+scientific decisions stable across workers, and unaffected routes exact.
+Test packed/retired RHSs, Low chunks, saved effects, memory boundaries, partial
+build refusal, Break, error rollback and one-substantive-native-call behavior.
+
+**First claim-bearing experiment.** Use the actual native absorption/estimation
+entrypoint, comparing uninjected Auto, cells-only with the incumbent diagonal,
+true-diagonal-only with the observation operator, and the combined MVP. Preserve
+the earlier standalone forecast solver as a kernel reference, not an end-to-end
+baseline. Attribute builder and operator costs separately, but include both,
+certification and discarded work in primary complete-call timings. Use revealed
+cases covering weak/high-degree weak, dense, repeated links, hubs/fringe,
+disconnected designs, weights/dynamic range, easy and zero-iteration solves,
+RHS widths/orders and Low mode, at one and four workers initially.
+
+Freeze one artifact, sample, warmups, balanced randomized blocks, per-call and
+campaign budgets, and stop rules before measurement. Keep every failure and
+unfavorable observation. Discovery can use six complete balanced blocks to
+report paired ratios, allowance excess and tail costs; a descriptive median
+pass is not a confidence-qualified nonregression result. Retain max(5%, 1 ms)
+against production Auto and the existing scientific/qualification rules. A
+20% reduction on compression-rich families is a proposed benefit target, not
+a measured result or a gate that permits losses elsewhere. Stop a failing
+candidate; do not sample or retune until it passes. Selection needs independent
+sessions with a prospectively fixed confidence procedure and budget. A new
+candidate requires newly frozen confirmation; do not borrow another policy's
+B/C holdouts. Focused Mac and complete Stata-command confirmation follow SCC
+discovery. Real-data execution/access needs its existing project authorization.
+
+**Parallel accuracy diagnostic, with unchanged certificates.** Re-evaluate the
+actual failed 6144/8192 iterates in high precision using the exact stored inputs.
+The earlier decimal witness establishes failure of one particular stored Mac
+iterate, not nonexistence of an acceptable binary64 solution. RMS rounding
+estimates and Sterbenz's lemma do not prove a universal floor. Separate update
+accumulation from operator/residual-evaluation changes in controlled variants;
+evaluate plain and split iterates independently, then flatten every proposed
+returned vector and re-evaluate it. A successful flattened candidate proves
+existence; repeated failed candidates do not prove impossibility.
+
+Use ordinary-scale regression outcomes on the weak topology as well as a
+manufactured adversarial regression. Setting observation `y = cut` does not
+reproduce firm-space `b = cut`. A mathematical construction is `y = D_f x* -
+D_w a`, where `S x* = b_target` and `a` is a worker anchor; the realized RHS
+must still be checked from the stored, rounded observations and weights.
+Production's original-design reference norms remain authoritative, so identical
+failure is not assumed. A split iterate is a diagnostic, not permission to
+accept a failing flattened result. Changing the consumed/saved output contract
+or certificate semantics requires Johannes's separate scientific decision.
+
+**Conditional increments.** If the cell MVP earns its setup cost, census exact
+firm degree-one/two elimination before implementing it. The saturated
+incidence degree bound can miss eligible firms with repeated neighbors; it is
+not a complete cascade census. An implementation must replace every affected
+worker contribution, retain surviving neighbor-neighbor terms exactly once,
+add the series conductance, transform the RHS, reconstruct eliminated firms,
+and preserve component gauges. A core-first permutation alone is insufficient.
+Independent clique/dense witnesses and reconstruction tests precede timing.
+Simple removed-cell counts are not a demonstrated work/time payback bound.
+
+Only then evaluate a separately frozen forecast-gated single CMG commitment
+from the shared cell representation, reusing current production retained-star
+and bounded-builder improvements rather than importing the older experimental
+constructor pin blindly. Coordinate upstream construction work with the main
+workstream. A larger direct terminal may later use the existing factor/work
+admission screen; generous memory does not make factorization computationally
+cheap. Three-or-more FEs and PPML need their own subsequent scoped experiments.
+The immediate deliverable remains the cell MVP plus independent accuracy
+witnesses, not this entire sequence at once.
+
+Review-input SHA-256 hashes (generated from the pinned sources and evidence,
+with original source line numbers; temporary local copies removed afterward):
+- `audited-evidence-summary.json`: `830f49b0f813ba6c66c0519054d3dc17b35c3e3ee8a805fe7df577b629c3762e`
+- `current-main-incumbent-and-routing.txt`: `dfa8989c1cc237fda1d018fcac69bf1c59c5d69288581b94b721238ddc426580`
+- `prototype-source-and-history.txt`: `4152228e0195abae4b9a194bd0b4aa63ce2cbc9a5afa6adce01e3dfa35b9d28a`
