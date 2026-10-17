@@ -4225,6 +4225,8 @@ fn hidden_routing_presets_survive_framed_requests_and_reach_absorb_config() {
                 "cells_v2",
                 "cells_v2_df",
                 "cells_deferred",
+                "cells_m",
+                "cells_m_lanes",
                 "direct",
             ]
             .into_iter()
@@ -4341,6 +4343,8 @@ fn invalid_hidden_routing_requests_fail_before_reads_or_publication() {
         requests.push((solver, vec!["inject=routing_cells_v2"]));
         requests.push((solver, vec!["inject=routing_cells_v2_df"]));
         requests.push((solver, vec!["inject=routing_cells_deferred"]));
+        requests.push((solver, vec!["inject=routing_cells_m"]));
+        requests.push((solver, vec!["inject=routing_cells_m_lanes"]));
         requests.push((solver, vec!["inject=routing_diagonal"]));
         requests.push((solver, vec!["inject=routing_prefix_none"]));
         requests.push((solver, vec!["inject=routing_prefix_map4"]));

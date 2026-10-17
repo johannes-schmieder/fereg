@@ -5,7 +5,9 @@
 //! The caller retains the original observation operator for certification.
 
 mod compact;
+mod membership;
 pub(crate) use compact::build_v2;
+pub(crate) use membership::build_membership;
 
 use crate::error::{allocation, invalid_argument, invalid_data, FeregError, Result};
 use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
@@ -49,6 +51,10 @@ pub(crate) struct CellSchur {
 }
 
 impl CellSchur {
+    pub(crate) fn cell_count(&self) -> usize {
+        self.cells.len()
+    }
+
     pub(super) fn compact(&self) -> bool {
         self.offsets.len() > self.worker_weights.len() + 1
     }
@@ -183,6 +189,34 @@ impl Work {
             result.push(value);
         }
         Ok(result)
+    }
+}
+
+impl Work {
+    // Charge before a bounded tile. Unlike per-element checkpoints, the tile
+    // boundary amortizes cancellation/work overhead without hiding a long sort.
+    fn tiles(
+        &mut self,
+        count: usize,
+        cost: u16,
+        mut action: impl FnMut(std::ops::Range<usize>) -> Attempt<()>,
+    ) -> Attempt<()> {
+        let width = usize::from(1024 / cost);
+        for first in (0..count).step_by(width) {
+            let end = (first + width).min(count);
+            self.charge(((end - first) as u16) * cost)?;
+            action(first..end)?;
+        }
+        Ok(())
+    }
+
+    fn bank<T: Copy>(&mut self, count: usize, value: T) -> Attempt<Vec<T>> {
+        let mut bank = self.capacity(count)?;
+        self.tiles(count, 4, |range| {
+            bank.resize(range.end, value);
+            Ok(())
+        })?;
+        Ok(bank)
     }
 }
 
@@ -461,6 +495,136 @@ mod tests {
             retained_live_bytes: 0,
             memory: None,
         }
+    }
+
+    fn equal_banks(a: &CellSchur, b: &CellSchur) {
+        assert_eq!(a.cells.len(), b.cells.len());
+        for (a, b) in a.cells.iter().zip(&b.cells) {
+            assert_eq!(
+                (a.worker, a.firm, a.weight.to_bits()),
+                (b.worker, b.firm, b.weight.to_bits())
+            );
+        }
+        assert_eq!(a.offsets, b.offsets);
+        for (a, b) in [
+            (&a.worker_weights, &b.worker_weights),
+            (&a.firm_weights, &b.firm_weights),
+            (&a.diagonal, &b.diagonal),
+        ] {
+            assert_eq!(
+                a.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                b.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    fn membership_builder_preserves_all_original_bank_bits() {
+        for workers in [1, 4] {
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    for n in [1, 2, 127, 4097] {
+                        let left: Vec<_> = (0..n)
+                            .map(|i| {
+                                if i < 7 || i % 5 == 0 {
+                                    (i % 7) as u32
+                                } else {
+                                    0
+                                }
+                            })
+                            .collect();
+                        let right: Vec<_> = (0..n)
+                            .map(|i| ((i * 31 + i / 3) % n.min(19)) as u32)
+                            .collect();
+                        let weights: Vec<_> = (0..n)
+                            .map(|i| [1.0, 1e-100, 3.0, 1e100, 2.0][i % 5])
+                            .collect();
+                        with_design(
+                            &left,
+                            &right,
+                            (*left.iter().max().unwrap() + 1) as usize,
+                            (*right.iter().max().unwrap() + 1) as usize,
+                            |design| {
+                                for side in [0, 1] {
+                                    for weights in [
+                                        BorrowedMapWeights::Unit,
+                                        BorrowedMapWeights::Provided(&weights),
+                                    ] {
+                                        let original = build(design, side, weights, 7.0, limits())
+                                            .unwrap()
+                                            .kernel
+                                            .unwrap();
+                                        let new =
+                                            build_membership(design, side, weights, 7.0, limits())
+                                                .unwrap();
+                                        let kernel = new.kernel.unwrap();
+                                        equal_banks(&original, &kernel);
+                                        assert_eq!(kernel.cells.capacity(), kernel.cells.len());
+                                        assert!(
+                                            kernel.retained_bytes()
+                                                <= u128::from(new.peak.bytes().unwrap())
+                                        );
+                                    }
+                                }
+                            },
+                        );
+                    }
+                })
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn membership_builder_work_and_joint_memory_boundaries() {
+        let left: Vec<_> = (0..1025).map(|i| (i % 2) as u32).collect();
+        let right: Vec<_> = (0..1025).map(|i| (i % 13) as u32).collect();
+        with_design(&left, &right, 2, 13, |design| {
+            let full = build_membership(design, 0, BorrowedMapWeights::Unit, 1., limits()).unwrap();
+            for budget in [
+                0,
+                127,
+                full.work_used / 2,
+                full.work_used - 1,
+                full.work_used,
+                full.work_used + 1,
+            ] {
+                let got = build_membership(
+                    design,
+                    0,
+                    BorrowedMapWeights::Unit,
+                    1.,
+                    KernelLimits {
+                        work_budget: budget,
+                        ..limits()
+                    },
+                )
+                .unwrap();
+                assert_eq!(got.kernel.is_some(), budget >= full.work_used);
+                assert!(got.work_used <= budget);
+            }
+            let bytes = u128::from(full.peak.bytes().unwrap());
+            for extra in [0, 1, 2] {
+                let got = build_membership(
+                    design,
+                    0,
+                    BorrowedMapWeights::Unit,
+                    1.,
+                    KernelLimits {
+                        retained_live_bytes: 512,
+                        memory: Some(FeSolverMemoryBudget {
+                            execution_bytes: 128,
+                            usable_bytes: 512 + 128 + bytes - 1 + extra,
+                        }),
+                        ..limits()
+                    },
+                )
+                .unwrap();
+                assert_eq!(got.kernel.is_some(), extra >= 1);
+                if extra == 0 {
+                    assert_eq!(got.refusal, Some(KernelRefusal::MemoryBudget));
+                }
+            }
+        });
     }
 
     #[test]
@@ -950,6 +1114,11 @@ mod tests {
                 .kernel
                 .unwrap();
             crate::interrupt::request_cancellation();
+            let membership_error =
+                build_membership(design, 0, BorrowedMapWeights::Unit, 1., limits())
+                    .err()
+                    .unwrap();
+            assert_eq!(membership_error.code, crate::error::ErrorCode::Interrupted);
             let build_error = build_v2(design, 0, BorrowedMapWeights::Unit, 1., 1, limits())
                 .err()
                 .unwrap();

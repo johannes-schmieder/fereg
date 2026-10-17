@@ -16,6 +16,62 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Membership-cell prototype scope (2026-10-17)
+
+Fable 5.1 Extra reviewed the retained deferred and factor studies at `ed0fbafb`
+and recommended a membership-based builder for the original serial cell
+operator. An independent Astra extra-high design review confirmed stable
+membership ordering and corrected the scratch/compaction memory envelope.
+The experiment remains private; public Auto and prior private arms retain exact
+scientific results. Setup attribution and broad speed gains remain hypotheses.
+
+The main arm `cells_m` and attribution-only `cells_m_lanes` preserve all five
+original cell-bank contents bitwise, including normalization, equal-pair source
+row order, totals and diagonal arithmetic. The new builder uses a bounded
+stable firm-only merge sort within row-ordered memberships. It retains exactly
+C cell slots. Sorting peaks at 16n+16d bytes; compaction, after scratch is dropped,
+at 16n+16C; finalization at 24C plus level banks and eight bytes. Admission
+reserves 32n plus all level banks, eight extra bytes and 4096 descriptor bytes;
+actual capacities cannot exceed admitted counts. Allocation and Break are fatal.
+
+Like immediate original cells, construction receives the remaining full 32W0
+accuracy-phase setup allowance, without a restart reservation. Each active
+batch decision charges 128 units; inability to admit it chooses observations.
+Refusal preserves sunk work and the original operator. A retained kernel is not
+rebuilt on Low/final reuse. The batch rule is fixed before recurrence initialization:
+`C*(10r+16)+p*(4r+8)+q*(6r+8)+128 < n*(10r+(weighted?8:4))/L`,
+where r is supplied batch width and L is one for the main arm, or maximum planned
+left/right StagePlan lanes for the control. Overflow/equality declines cells.
+There is no restart, convergence forecast, future-RHS credit or family label.
+The tariff does not guarantee setup payback. Mixed batch choices have the
+existing injected continuous/iteration scope, with independent certificates;
+whole-fit equality to one control is not assumed.
+
+Frozen discovery D1 reuses the original 12 families and workers 1/4 with four
+arms (Auto, original cells, main M, lanes control), one warmup and twelve seeded
+rotating blocks: 96 warmups, 1152 scored complete native calls and 64 post-panel
+traced diagnostic calls. All outcomes are retained; no replacements, exclusions
+or continuation. Science requires independent witnesses, fixed-worker exact
+repeatability, discrete agreement, and paired exact prior-arm controls. Timed
+failures or incomplete pairs fail the gate. The main arm alone is eligible for
+confirmation if all 24 settings have twelve valid pairs, no paired-median
+regression beyond max(5%,1 ms) versus Auto and at least twelve gains. In each
+of the eight traced family/worker settings, the median of two per-fit sums of
+`auto_kernel_route.builder_seconds` must be below half the original-cell median.
+These trace-only equal-boundary timers are separate from primary untraced times.
+D1 estimates are descriptive, not a qualification result.
+
+Untouched C1 is prepared before D1 candidate calls: eight new seeded cases
+(short two-period, long/weak forty-period, high-degree hubs/dense, repeated,
+wide and Low), workers 1/4, Auto versus the predetermined main M only. Inputs,
+independent witnesses and twelve randomized ABBA/BAAB blocks are frozen; no
+candidate calls occur unless D1 passes. It retains the standing max(5%,1 ms)
+allowance-excess upper order-statistic gate (rank 10 of twelve blocks at alpha
+.025), with complete solves and explicit independence caveats. Oracle bounds
+are unchanged. One invalid prerequisite stops the dependent campaign; there is
+no alternate finalist or favorable resampling. Neither SCC panel establishes
+Mac release performance or permits default promotion.
+
 ## Deferred original-cell prototype, 2026-10-17
 
 The private `routing_cells_deferred` arm starts from `a1c95cce`. Only this

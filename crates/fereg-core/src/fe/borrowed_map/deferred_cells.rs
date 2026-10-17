@@ -9,13 +9,13 @@ fn work_sum(terms: &[(u128, u128)], fixed: u128) -> Option<u64> {
     u64::try_from(sum).ok()
 }
 
-struct Prices {
-    n: u128,
-    p: u128,
-    q: u128,
-    r: u128,
-    lanes: u128,
-    weighted: bool,
+pub(super) struct Prices {
+    pub(super) n: u128,
+    pub(super) p: u128,
+    pub(super) q: u128,
+    pub(super) r: u128,
+    pub(super) lanes: u128,
+    pub(super) weighted: bool,
 }
 
 impl Prices {
@@ -40,25 +40,33 @@ impl Prices {
         work_sum(&[(self.q, 16 * self.r)], 64)
     }
 
+    fn operator_costs(&self, cells: usize) -> Option<(u128, u64)> {
+        let rhs_cost = self.r.checked_mul(10)?;
+        let observation = self
+            .n
+            .checked_mul(rhs_cost.checked_add(if self.weighted { 8 } else { 4 })?)
+            .map(|work| work / self.lanes.max(1))?;
+        let cell = work_sum(
+            &[
+                (cells as u128, rhs_cost.checked_add(16)?),
+                (self.p, self.r.checked_mul(4)?.checked_add(8)?),
+                (self.q, self.r.checked_mul(6)?.checked_add(8)?),
+            ],
+            128,
+        )?;
+        Some((observation, cell))
+    }
+
+    pub(super) fn operator_pays(&self, cells: usize) -> bool {
+        self.operator_costs(cells)
+            .is_some_and(|(observation, cell)| observation > u128::from(cell))
+    }
+
     fn pays(&self, cells: usize, remaining: usize, sunk: u64, restart: u64) -> bool {
         let Some(build) = self.build(cells) else {
             return false;
         };
-        let Some(observation) = self
-            .n
-            .checked_mul(10 * self.r + if self.weighted { 8 } else { 4 })
-            .map(|work| work / self.lanes.max(1))
-        else {
-            return false;
-        };
-        let Some(cell) = work_sum(
-            &[
-                (cells as u128, 10 * self.r + 16),
-                (self.p, 4 * self.r + 8),
-                (self.q, 6 * self.r + 8),
-            ],
-            128,
-        ) else {
+        let Some((observation, cell)) = self.operator_costs(cells) else {
             return false;
         };
         observation
@@ -324,6 +332,43 @@ impl AutoSchurRoute {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn immediate_price_is_strict_checked_and_lane_aware() {
+        let price = Prices {
+            n: 9,
+            p: 0,
+            q: 0,
+            r: 1,
+            lanes: 1,
+            weighted: false,
+        };
+        assert!(!price.operator_pays(0)); // 126 < fixed 128.
+        assert!(Prices { n: 10, ..price }.operator_pays(0));
+        assert!(!Prices {
+            n: 10,
+            lanes: 2,
+            ..price
+        }
+        .operator_pays(0));
+        assert!(!Prices {
+            n: 64,
+            r: 0,
+            lanes: 2,
+            ..price
+        }
+        .operator_pays(0)); // equality.
+        assert!(!Prices {
+            n: u128::MAX,
+            ..price
+        }
+        .operator_pays(1));
+        assert!(!Prices {
+            r: u128::MAX,
+            ..price
+        }
+        .operator_pays(1));
+    }
 
     #[test]
     fn forecast_is_bounded_and_rejects_invalid_progress() {

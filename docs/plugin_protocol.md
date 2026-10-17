@@ -65,6 +65,8 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_cells_v2` | OLS | Tests a reusable parallel compact-cell operator, true diagonal and non-mover cancellation with unchanged original-observation certificates |
 | `inject=routing_cells_v2_df` | OLS | Holds V2 setup and operator fixed while using incumbent observation-order firm totals as the preconditioner |
 | `inject=routing_cells_deferred` | OLS | Defers the original cell operator using a bounded deterministic convergence forecast and exact cell census |
+| `inject=routing_cells_m` | OLS | Builds original cell banks from level memberships and selects each batch with a fixed serial operation tariff |
+| `inject=routing_cells_m_lanes` | OLS | Same membership builder with planned parallel lanes credited to the observation operator |
 | `inject=routing_direct` | OLS | Tests a bounded componentwise direct Schur factorization on eligible two-FE systems |
 | `inject=it_coefficients` | OLS | Tests compact coefficient-space acceleration on eligible categorical systems; requires `solver=it` |
 | `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |

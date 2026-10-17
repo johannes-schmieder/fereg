@@ -1368,6 +1368,8 @@ fn ppml_topology_injection_is_explicit_and_does_not_accept_routing_presets() {
         "routing_cells_v2",
         "routing_cells_v2_df",
         "routing_cells_deferred",
+        "routing_cells_m",
+        "routing_cells_m_lanes",
         "ppml_topology_bad",
     ] {
         let mut rejected = args.clone();

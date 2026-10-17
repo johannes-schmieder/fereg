@@ -17,6 +17,10 @@ impl PairedGraph {
     const COMPONENT_LEVELS: usize = 32;
 
     fn new() -> Self {
+        Self::with_repeats(32)
+    }
+
+    fn with_repeats(repeats: usize) -> Self {
         let mut codes = [Vec::new(), Vec::new()];
         let mut weights = Vec::new();
         let mut columns = vec![Vec::new(); 3];
@@ -31,7 +35,7 @@ impl PairedGraph {
                     let second = component * Self::COMPONENT_LEVELS
                         + (worker + neighbor) % Self::COMPONENT_LEVELS;
                     let weight = (1 + (first * 3 + second) % 7) as f64 / 8.;
-                    for repeat in 0..32 {
+                    for repeat in 0..repeats {
                         for sign in [-1., 1.] {
                             let noise = sign * (1 + (first + second + repeat) % 11) as f64 / 16.;
                             codes[0].push(first as u32);
@@ -1463,6 +1467,8 @@ fn routing_and_portfolio_native_caps_around_checkpoint_never_extend_the_action()
 #[test]
 fn routing_initial_certificate_does_not_spend_or_prepare() {
     for preset in [
+        RoutingPreset::ablation("cells_m").unwrap(),
+        RoutingPreset::ablation("cells_m_lanes").unwrap(),
         RoutingPreset::new(4, 1).unwrap(),
         RoutingPreset::ablation("cells_v2").unwrap(),
         RoutingPreset::ablation("cells_v2_df").unwrap(),
@@ -1815,4 +1821,156 @@ fn deferred_cells_low_chunks_share_scans_and_the_first_allowance() {
     assert_eq!(route.setup.used, 3 * first);
     assert!(!observe(&mut owner, 8, &mut None));
     assert_eq!(owner.auto_route.as_ref().unwrap().setup.used, 3 * first);
+}
+
+#[test]
+fn membership_cells_live_exact_reuse_and_refusal() {
+    let witness = PairedGraph::new();
+    for workers in [1, 4] {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+            .install(|| {
+                let mut original =
+                    ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                original.retain_coefficients = true;
+                original.request_auto_routing(RoutingPreset::ablation("cells").unwrap(), None, 0);
+                let reference = original
+                    .absorb_ols(
+                        BorrowedMapWeights::Provided(&witness.weights),
+                        witness.input.clone().into(),
+                        config(),
+                        false,
+                    )
+                    .unwrap();
+                for arm in ["cells_m", "cells_m_lanes"] {
+                    let mut owner =
+                        ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                    owner.retain_coefficients = true;
+                    owner.request_auto_routing(RoutingPreset::ablation(arm).unwrap(), None, 0);
+                    let fit = owner
+                        .absorb_ols(
+                            BorrowedMapWeights::Provided(&witness.weights),
+                            witness.input.clone().into(),
+                            config(),
+                            false,
+                        )
+                        .unwrap();
+                    witness.check(&fit, &[0, 1, 2]);
+                    assert!(owner.two_fe_pcg.as_ref().unwrap().use_cell_operator);
+                    assert_same_bits(
+                        fit.residualized().as_slice(),
+                        reference.residualized().as_slice(),
+                    );
+                    assert_eq!(fit.report().iterations, reference.report().iterations);
+                    assert_eq!(fit.coefficients, reference.coefficients);
+                    let kernel = owner
+                        .two_fe_pcg
+                        .as_ref()
+                        .unwrap()
+                        .kernel
+                        .as_ref()
+                        .map(std::ptr::from_ref);
+                    assert!(kernel.is_some());
+                    let first = owner.auto_route.as_ref().unwrap().setup.used;
+                    for refine in [false, true] {
+                        let fit = owner
+                            .absorb_ols(
+                                BorrowedMapWeights::Provided(&witness.weights),
+                                witness.columns(&[1]).into(),
+                                config(),
+                                refine,
+                            )
+                            .unwrap();
+                        witness.check(&fit, &[1]);
+                        assert_eq!(
+                            owner
+                                .two_fe_pcg
+                                .as_ref()
+                                .unwrap()
+                                .kernel
+                                .as_ref()
+                                .map(std::ptr::from_ref),
+                            kernel
+                        );
+                        let setup = &owner.auto_route.as_ref().unwrap().setup;
+                        assert!(setup.used <= setup.limit);
+                        if !refine {
+                            assert_eq!(setup.used, first + 128);
+                        }
+                    }
+                }
+                let mut incumbent =
+                    ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                let reference = incumbent
+                    .absorb_ols(
+                        BorrowedMapWeights::Provided(&witness.weights),
+                        witness.input.clone().into(),
+                        config(),
+                        false,
+                    )
+                    .unwrap();
+                for memory in [false, true] {
+                    let mut owner =
+                        ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                    owner.request_auto_routing(
+                        RoutingPreset::ablation("cells_m").unwrap(),
+                        None,
+                        0,
+                    );
+                    let route = owner.auto_route.as_mut().unwrap();
+                    if memory {
+                        route.request.budget = Some(FeSolverMemoryBudget {
+                            execution_bytes: 0,
+                            usable_bytes: 0,
+                        });
+                    } else {
+                        route.setup.begin(config().tolerance, false, Some(0));
+                    }
+                    let fit = owner
+                        .absorb_ols(
+                            BorrowedMapWeights::Provided(&witness.weights),
+                            witness.input.clone().into(),
+                            config(),
+                            false,
+                        )
+                        .unwrap();
+                    assert_same_bits(
+                        fit.residualized().as_slice(),
+                        reference.residualized().as_slice(),
+                    );
+                    assert_eq!(fit.report().iterations, reference.report().iterations);
+                    assert!(!owner.two_fe_pcg.as_ref().unwrap().use_cell_operator);
+                    assert!(owner.two_fe_pcg.as_ref().unwrap().kernel.is_none());
+                }
+            })
+            .unwrap();
+    }
+}
+
+#[test]
+fn membership_cells_reselects_mixed_batch_width_without_rebuilding() {
+    let witness = PairedGraph::with_repeats(1);
+    let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+    owner.retain_coefficients = true;
+    owner.request_auto_routing(RoutingPreset::ablation("cells_m").unwrap(), None, 0);
+    let mut kernel = None;
+    for positions in [&[0, 1, 2][..], &[0][..], &[0, 1, 2][..]] {
+        let fit = owner
+            .absorb_ols(
+                BorrowedMapWeights::Provided(&witness.weights),
+                witness.columns(positions).into(),
+                config(),
+                false,
+            )
+            .unwrap();
+        witness.check(&fit, positions);
+        let graph = owner.two_fe_pcg.as_ref().unwrap();
+        assert_eq!(graph.use_cell_operator, positions.len() == 3);
+        let current = graph.kernel.as_ref().map(std::ptr::from_ref);
+        assert!(current.is_some());
+        if kernel.is_some() {
+            assert_eq!(kernel, current);
+        } else {
+            kernel = current;
+        }
+    }
 }

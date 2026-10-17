@@ -53,7 +53,11 @@ FACTOR_LIMITS = {**LIMITS, 'seed': 2026101604, 'data_seed': LIMITS['seed'],
 DEFERRED_KIND = 'compact_cells_deferred_study_v1'
 DEFERRED_ARMS = ['baseline', 'cells', 'cells_deferred']
 DEFERRED_LIMITS = {**FACTOR_LIMITS, 'seed': 2026101701}
-FOLLOWUP_KINDS = {FACTOR_KIND, DEFERRED_KIND}
+MEMBERSHIP_KIND = 'compact_cells_membership_study_v1'
+MEMBERSHIP_ARMS = ['baseline', 'cells', 'cells_m', 'cells_m_lanes']
+MEMBERSHIP_LIMITS = {**FACTOR_LIMITS, 'seed': 2026101702, 'blocks': 12}
+FOLLOWUP_KINDS = {FACTOR_KIND, DEFERRED_KIND, MEMBERSHIP_KIND}
+PAIRED_CONTROL_KINDS = {DEFERRED_KIND, MEMBERSHIP_KIND}
 LIVE_HOST_LOAD_FIELDS = frozenset({
     'cpu', 'load_avg', 'load_short', 'load_medium', 'load_long',
     'np_load_avg', 'np_load_short', 'np_load_medium', 'np_load_long',
@@ -96,7 +100,8 @@ def contract(plan):
     kind = plan.get('kind', KIND)
     require(kind in {KIND, *FOLLOWUP_KINDS}, 'unknown campaign kind')
     return {KIND: (ARMS, LIMITS), FACTOR_KIND: (FACTOR_ARMS, FACTOR_LIMITS),
-            DEFERRED_KIND: (DEFERRED_ARMS, DEFERRED_LIMITS)}[kind]
+            DEFERRED_KIND: (DEFERRED_ARMS, DEFERRED_LIMITS),
+            MEMBERSHIP_KIND: (MEMBERSHIP_ARMS, MEMBERSHIP_LIMITS)}[kind]
 
 
 def host_fields(record):
@@ -172,7 +177,7 @@ def tool_files():
 
 
 def schedule(cell_ids, *, arms=None, limits=None):
-    """Six complete blocks; each cell has a seeded Latin rotation over arms.
+    """Fixed complete blocks; each cell has a seeded Latin rotation over arms.
 
     The first len(arms) blocks balance every arm at every position; remaining
     blocks preserve a maximum position-count difference of one. Cell order is
@@ -278,7 +283,7 @@ def validate_contract(plan):
             and plan['blocks'] == schedule(expected, arms=arms, limits=limits),
             'case coverage or frozen order changed')
     for cell in plan['cells']:
-        inputs = set(arms) | set(ARMS) if plan['kind'] == DEFERRED_KIND else set(arms)
+        inputs = set(arms) | set(ARMS) if plan['kind'] in FOLLOWUP_KINDS else set(arms)
         require(cell['id'] == f"{cell['family']}-t{cell['threads']}"
                 and set(cell['inputs']) == inputs, 'incomplete arm/cell coverage')
 
@@ -322,8 +327,16 @@ def prepare_deferred(root, parent_path, harness, plugin):
     return prepare_followup(root, parent_path, harness, plugin, DEFERRED_KIND, 'cells_deferred')
 
 
+def prepare_membership(root, parent_path, harness, plugin):
+    return prepare_followup(root, parent_path, harness, plugin, MEMBERSHIP_KIND,
+                            ['cells_m', 'cells_m_lanes'])
+
+
 def prepare_followup(root, parent_path, harness, plugin, kind, new_arm):
     arms, limits = contract({'kind': kind})
+    new_arms = [new_arm] if isinstance(new_arm, str) else new_arm
+    require(set(new_arms) == set(arms) - set(ARMS) and len(new_arms) == len(set(new_arms)),
+            'follow-up must prepare exactly its new arms')
     parent_binding = ref(parent_path)
     parent = routing.unseal(read(parent_path))
     dependencies = parent_dependencies(parent)
@@ -332,14 +345,16 @@ def prepare_followup(root, parent_path, harness, plugin, kind, new_arm):
     frozen = [ref(path) for path in [harness, plugin, *tool_files()]]
     cells_out = []
     for cell in parent['cells']:
-        target = root / f"{cell['id']}-{new_arm}.case"
-        routing.prepare(checked(cell['inputs']['baseline']), target, new_arm, cell['threads'])
+        inputs = dict(cell['inputs'])
         meta = read(cell['metadata']['path'])
-        require(routing_cases.inspect_case(target)['body_sha256'] == meta['body_sha256'],
-                'follow-up request preparation changed frozen data/model body')
-        new_input = ref(target)
-        frozen.append(new_input)
-        cells_out.append({**cell, 'inputs': {**cell['inputs'], new_arm: new_input}})
+        for arm in new_arms:
+            target = root / f"{cell['id']}-{arm}.case"
+            routing.prepare(checked(cell['inputs']['baseline']), target, arm, cell['threads'])
+            require(routing_cases.inspect_case(target)['body_sha256'] == meta['body_sha256'],
+                    'follow-up request preparation changed frozen data/model body')
+            inputs[arm] = ref(target)
+            frozen.append(inputs[arm])
+        cells_out.append({**cell, 'inputs': inputs})
     frozen.append(parent_binding)
     identities = dict(dependencies)
     for item in frozen:
@@ -422,9 +437,9 @@ def deferred_parent_controls(plan, parent, selected, output, started, controls):
     """Compare all four original arms directly, including the two unscored arms.
 
     Each of 96 comparisons has one fresh parent and one fresh candidate call.
-    These records are independent of the three-arm scientific prerequisites.
+    These records are independent of the scored-arm scientific prerequisites.
     """
-    limits = DEFERRED_LIMITS
+    _, limits = contract(plan)
     for cell in selected:
         meta = read(cell['metadata']['path'])
         for arm in ARMS:
@@ -466,7 +481,7 @@ def science(plan, output, *, smoke=False):
     parent = routing.unseal(read(plan['parent_plan']['path'])) if plan.get('kind') in FOLLOWUP_KINDS else None
     status, failure = 'passed', None
     try:
-        if plan.get('kind') == DEFERRED_KIND:
+        if plan.get('kind') in PAIRED_CONTROL_KINDS:
             deferred_parent_controls(plan, parent, selected, output, start, controls)
         for cell in selected:
             meta = read(cell['metadata']['path'])
@@ -495,12 +510,15 @@ def science(plan, output, *, smoke=False):
                     active_row = row
                     raw, result, binary = parse_run(row, meta)
                     routing_oracle.check_reference(witness, raw, binary, meta)
+                    if plan.get('kind') == MEMBERSHIP_KIND:
+                        row.update(repeat=repeat, oracle_status='passed',
+                                   model_discrete_sha256=routing_run.model_discrete_sha256(raw))
                     key = cell['id'] + '/' + arm
                     if previous is not None:
                         require(previous == result['science_sha256'], 'fixed-worker repeat differs: ' + key)
                     previous = result['science_sha256']
                     if repeat == 0:
-                        if plan.get('kind') == DEFERRED_KIND and arm in ARMS:
+                        if plan.get('kind') in PAIRED_CONTROL_KINDS and arm in ARMS:
                             candidate_control = next(pair['candidate'] for pair in controls
                                                      if pair['cell'] == cell['id'] and pair['arm'] == arm)
                             require(candidate_control['science_sha256'] == result['science_sha256'],
@@ -537,7 +555,7 @@ def science(plan, output, *, smoke=False):
     if parent is not None:
         receipt.update(parent_controls=controls, parent_control_count=len(controls),
                        parent_control_status='passed' if status == 'passed' else 'failed')
-        if plan.get('kind') == DEFERRED_KIND:
+        if plan.get('kind') in PAIRED_CONTROL_KINDS:
             receipt['parent_control_native_calls'] = sum(role in pair for pair in controls
                                                         for role in ['parent', 'candidate'])
     save(output / 'science.json', routing.seal(receipt))
@@ -557,6 +575,8 @@ def validate_science(plan, receipt):
             require(len(rows) == limits['science_repeats'] and all(r['status'] == 'executed'
                     and r.get('science_sha256') == receipt['fingerprints'][cell['id'] + '/' + arm]
                     for r in rows) and 'resources' in rows[0], 'incomplete repeat/resource prerequisite')
+    if plan.get('kind') == MEMBERSHIP_KIND:
+        validate_membership_science(plan, receipt)
     for item in receipt['files']:
         checked(item)
     if plan.get('kind') in FOLLOWUP_KINDS:
@@ -565,14 +585,14 @@ def validate_science(plan, receipt):
                 and receipt['parent_control_count'] == len(controls) == len(plan['cells']) * len(ARMS),
                 'incomplete parent artifact controls')
         parent = routing.unseal(read(plan['parent_plan']['path']))
-        if plan.get('kind') == DEFERRED_KIND:
+        if plan.get('kind') in PAIRED_CONTROL_KINDS:
             require(receipt['parent_control_native_calls'] == 2 * len(controls),
                     'incomplete parent/candidate control calls')
         for cell in plan['cells']:
             for arm in ARMS:
                 rows = [r for r in controls if r['cell'] == cell['id'] and r['arm'] == arm]
                 require(len(rows) == 1 and rows[0]['status'] == 'passed', 'incomplete parent artifact controls')
-                if plan.get('kind') == DEFERRED_KIND:
+                if plan.get('kind') in PAIRED_CONTROL_KINDS:
                     pair = rows[0]
                     for role, plugin in [('parent', parent['plugin']), ('candidate', plan['plugin'])]:
                         row = pair[role]
@@ -588,6 +608,33 @@ def validate_science(plan, receipt):
                     require(rows[0]['plugin'] == parent['plugin'] and rows[0]['phase'] == 'parent_control'
                             and rows[0]['science_sha256'] == receipt['fingerprints'][cell['id'] + '/' + arm],
                             'parent artifact control changed science or solver signature')
+
+
+def validate_membership_science(plan, receipt):
+    """Retain complete oracle/repeat evidence and exact model decisions.
+
+    New-arm whole-fit hashes may differ from Auto/cells because each batch can
+    select its own operator. The existing scientific comparator and independent
+    oracle still apply, without widening either numerical envelope.
+    """
+    arms, limits = contract(plan)
+    rows = receipt['records']
+    expected = {(cell['id'], arm, repeat) for cell in plan['cells'] for arm in arms
+                for repeat in range(limits['science_repeats'])}
+    require(len(rows) == len(expected) and
+            {(row['cell'], row['arm'], row.get('repeat')) for row in rows} == expected,
+            'incomplete membership science records')
+    decisions = {}
+    for row in rows:
+        require(row['label'] == f"{row['cell']}-{row['arm']}-{row['repeat']}"
+                and row.get('oracle_status') == 'passed'
+                and isinstance(row.get('model_discrete_sha256'), str)
+                and re.fullmatch(r'[0-9a-f]{64}', row['model_discrete_sha256']) is not None,
+                'missing membership oracle/discrete evidence')
+        family = next(cell['family'] for cell in plan['cells'] if cell['id'] == row['cell'])
+        previous = decisions.setdefault(family, row['model_discrete_sha256'])
+        require(row['model_discrete_sha256'] == previous,
+                'membership cross-arm/worker model-discrete decisions differ')
 
 
 class Observers:
@@ -834,7 +881,7 @@ def measure(plan, receipt, output):
                 records.append(row)
                 result = check_prerequisite(row, cell, receipt, traced=plan.get('kind') not in FOLLOWUP_KINDS)
                 fingerprints[cell['id'] + '/' + arm] = result['science_sha256']
-                if plan.get('kind') == DEFERRED_KIND:
+                if plan.get('kind') in PAIRED_CONTROL_KINDS:
                     resource_bindings[cell['id'] + '/' + arm] = row['resources']
                 row.update(result, status='passed')
         require(time.monotonic() - warmup_started <= limits['warmup_budget_s'], 'warmup budget exhausted')
@@ -849,7 +896,7 @@ def measure(plan, receipt, output):
                 row = native(plan, cell, arm, output, f"block-{index}-{cell['id']}-{arm}", cpus=cpus,
                              timeout=min(limits['call_timeout_s'], remaining))
                 row.update(phase='measure', block=index)
-                if plan.get('kind') == DEFERRED_KIND:
+                if plan.get('kind') in PAIRED_CONTROL_KINDS:
                     row['resources'] = resource_bindings[cell['id'] + '/' + arm]
                 records.append(row)
                 # Verification between complete calls stops the campaign at its
@@ -911,8 +958,100 @@ def measure(plan, receipt, output):
     if plan.get('kind') == DEFERRED_KIND:
         value['deferred_comparisons'] = summarize(records, arms=arms, reference='cells',
                                                   candidates=['cells_deferred'])
+    if plan.get('kind') == MEMBERSHIP_KIND:
+        value['membership_comparisons'] = summarize(records, arms=arms, reference='cells',
+                                                    candidates=['cells_m', 'cells_m_lanes'])
     save(output / 'measurement.json', routing.seal(value))
     return value
+
+
+def membership_gate(plan, science_receipt, measurement):
+    """Evaluate the frozen descriptive D1 gate for the predetermined M arm.
+
+    Every setting needs all twelve pairs. Gains exceed the symmetric frozen
+    max(5%, 1 ms) allowance; regressions exceed the ordinary upper allowance.
+    Lane attribution never supplies a fallback finalist.
+    """
+    require(plan.get('kind') == MEMBERSHIP_KIND, 'membership gate requires its discovery plan')
+    validate(plan)
+    validate_science(plan, science_receipt)
+    require(measurement.get('kind') == MEMBERSHIP_KIND + '_measurement'
+            and measurement.get('status') == 'complete'
+            and measurement.get('plan_sha256') == routing.identity(plan)
+            and measurement.get('science_sha256') == routing.identity(science_receipt),
+            'complete bound membership measurement required')
+    arms, limits = contract(plan)
+    cells = {cell['id']: cell for cell in plan['cells']}
+    expected = {(f"warmup-{cid}-{arm}", cid, arm, 'warmup') for cid in cells for arm in arms}
+    expected.update((f"block-{block}-{cid}-{arm}", cid, arm, 'measure')
+                    for block in range(limits['blocks']) for cid in cells for arm in arms)
+    expected.update((f"diagnostic-{cid}-{arm}-{repeat}", cid, arm, 'diagnostic')
+                    for cid, cell in cells.items() if cell['family'] in limits['diagnostic_families']
+                    for arm in arms for repeat in range(limits['diagnostic_repeats']))
+    rows = measurement['records']
+    require(len(rows) == len(expected) and
+            {(row['label'], row['cell'], row['arm'], row['phase']) for row in rows} == expected,
+            'incomplete membership measurement records')
+    warmups = {(row['cell'], row['arm']): row for row in rows if row['phase'] == 'warmup'}
+    for row in rows:
+        require(row['status'] == 'passed' and math.isfinite(row['seconds']) and row['seconds'] > 0
+                and row['science_sha256'] == warmups[(row['cell'], row['arm'])]['science_sha256'],
+                'invalid membership measurement science/time')
+        if row['phase'] == 'measure':
+            require(type(row.get('block')) is int
+                    and row['label'] == f"block-{row['block']}-{row['cell']}-{row['arm']}",
+                    'invalid membership measurement block')
+        if row['phase'] == 'diagnostic':
+            require(type(row.get('repeat')) is int
+                    and row['label'] == f"diagnostic-{row['cell']}-{row['arm']}-{row['repeat']}",
+                    'invalid membership diagnostic repeat')
+    for item in measurement['files']:
+        checked(item)
+    comparisons = summarize(rows, arms=arms, candidates=['cells_m'])
+    require(len(comparisons) == len(cells)
+            and all(row['paired_blocks'] == limits['blocks'] for row in comparisons),
+            'incomplete membership paired settings')
+    for row in comparisons:
+        row['median_gain_excess_seconds'] = statistics.median(
+            pair['candidate_seconds'] - pair['baseline_seconds']
+            + max(.05 * pair['baseline_seconds'], .001) for pair in row['pairs'])
+        row['material_gain'] = row['median_gain_excess_seconds'] < 0
+        row['regression'] = row['median_allowance_excess_seconds'] > 0
+    builder = []
+    for cid, cell in cells.items():
+        if cell['family'] not in limits['diagnostic_families']:
+            continue
+        totals = {}
+        for arm in ['cells', 'cells_m']:
+            totals[arm] = []
+            for row in rows:
+                if (row['cell'], row['arm'], row['phase']) != (cid, arm, 'diagnostic'):
+                    continue
+                traces = [trace for trace in row['phase_diagnostics']['solver_trace']
+                          if trace.get('phase') == 'auto_kernel_route']
+                require(traces and all(trace.get('preset') == 'routing_' + arm for trace in traces),
+                        'missing membership builder trace')
+                times = [float(trace['builder_seconds']) for trace in traces]
+                require(all(math.isfinite(value) and value >= 0 for value in times),
+                        'invalid membership builder time')
+                totals[arm].append(sum(times))
+        require(all(len(values) == limits['diagnostic_repeats'] for values in totals.values()),
+                'incomplete membership builder diagnostics')
+        original, candidate = [statistics.median(totals[arm]) for arm in ['cells', 'cells_m']]
+        builder.append({'cell': cid, 'per_fit_seconds': totals,
+                        'original_median_seconds': original, 'candidate_median_seconds': candidate,
+                        'ratio': candidate / original if original > 0 else None,
+                        'passed': original > 0 and candidate < .5 * original})
+    gains = sum(row['material_gain'] for row in comparisons)
+    regressions = sum(row['regression'] for row in comparisons)
+    return {'kind': MEMBERSHIP_KIND + '_gate', 'plan_sha256': routing.identity(plan),
+            'science_sha256': routing.identity(science_receipt),
+            'measurement_sha256': routing.identity(measurement), 'finalist': 'cells_m',
+            'status': 'eligible' if regressions == 0 and gains >= 12 and all(row['passed'] for row in builder)
+                      else 'ineligible',
+            'material_gains': gains, 'regressions': regressions,
+            'comparisons': comparisons, 'builder_comparisons': builder,
+            'claim': 'descriptive discovery gate only; untouched confirmation remains required'}
 
 
 def main():
@@ -924,7 +1063,9 @@ def main():
     factor = subs.add_parser('prepare-factor', help='reuse a frozen four-arm parent; prepare only the D_f request')
     deferred = subs.add_parser('prepare-deferred',
                                help='reuse the frozen original four-arm parent; prepare only the deferred request')
-    for sub in [factor, deferred]:
+    membership = subs.add_parser('prepare-membership',
+                                 help='reuse the frozen original parent; prepare the two membership requests')
+    for sub in [factor, deferred, membership]:
         for name in ['root', 'parent-plan', 'harness', 'plugin']:
             sub.add_argument('--' + name, type=Path, required=True)
     for mode in ['science', 'smoke', 'measure']:
@@ -933,14 +1074,24 @@ def main():
         sub.add_argument('--output', type=Path, required=True)
         if mode == 'measure':
             sub.add_argument('--science', type=Path, required=True)
+    gate = subs.add_parser('membership-gate', help='evaluate retained D1 evidence for the fixed M finalist')
+    for name in ['plan', 'science', 'measurement', 'output']:
+        gate.add_argument('--' + name, type=Path, required=True)
     args = parser.parse_args()
-    if args.command == 'prepare':
+    if args.command == 'membership-gate':
+        result = membership_gate(*(routing.unseal(read(path)) for path in
+                                   [args.plan, args.science, args.measurement]))
+        save(args.output, routing.seal(result))
+        require(result['status'] == 'eligible', 'membership discovery gate did not pass')
+    elif args.command == 'prepare':
         prepare(args.root, args.generator.resolve(strict=True), args.harness.resolve(strict=True),
                 args.plugin.resolve(strict=True))
     elif args.command == 'prepare-factor':
         prepare_factor(args.root, args.parent_plan, args.harness, args.plugin)
     elif args.command == 'prepare-deferred':
         prepare_deferred(args.root, args.parent_plan, args.harness, args.plugin)
+    elif args.command == 'prepare-membership':
+        prepare_membership(args.root, args.parent_plan, args.harness, args.plugin)
     else:
         plan = routing.unseal(read(args.plan))
         result = (measure(plan, routing.unseal(read(args.science)), args.output) if args.command == 'measure'
@@ -948,7 +1099,7 @@ def main():
         require(result['status'] in {'passed', 'complete'}, result.get('failure') or 'campaign failed')
         if 'parent_control_status' in result:
             count = (f"comparisons={result['parent_control_count']} calls={result['parent_control_native_calls']}"
-                     if plan['kind'] == DEFERRED_KIND else f"calls={result['parent_control_count']}")
+                     if plan['kind'] in PAIRED_CONTROL_KINDS else f"calls={result['parent_control_count']}")
             print(f"COMPACT_CELLS_PARENT_CONTROLS status={result['parent_control_status']} {count}",
                   flush=True)
     print(f'COMPACT_CELLS_SUCCESS stage={args.command}', flush=True)

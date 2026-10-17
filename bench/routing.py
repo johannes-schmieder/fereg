@@ -24,7 +24,7 @@ from time_exact import compare
 
 CHECKPOINTS = (4, 8, 16, 32)
 ABLATIONS = {name: 'routing_' + name for name in
-             ['diagonal', 'cells', 'cells_v2', 'cells_v2_df', 'cells_deferred', 'direct']}
+             ['diagonal', 'cells', 'cells_v2', 'cells_v2_df', 'cells_deferred', 'cells_m', 'cells_m_lanes', 'direct']}
 PREFIXES = {'prefix-none': ('none', 0), 'prefix-map4': ('map4', 4), 'prefix-it4': ('it4', 8)}
 PORTFOLIO_V1 = 'portfolio-v1'
 PORTFOLIO_UNSEEDED = 'portfolio-unseeded'

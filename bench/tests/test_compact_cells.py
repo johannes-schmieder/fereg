@@ -932,6 +932,346 @@ class DeferredStudyContract(unittest.TestCase):
         self.assertEqual(controls[0]['status'], 'failed')
 
 
+class MembershipStudyContract(unittest.TestCase):
+    result = staticmethod(FactorStudyContract.result)
+    trace = staticmethod(FactorStudyContract.trace)
+    cells = staticmethod(DeferredStudyContract.cells)
+
+    def test_fixed_four_arm_contract_has_twelve_balanced_blocks(self):
+        self.assertEqual(campaign.contract({'kind': campaign.MEMBERSHIP_KIND}),
+                         (campaign.MEMBERSHIP_ARMS, campaign.MEMBERSHIP_LIMITS))
+        self.assertEqual(campaign.MEMBERSHIP_ARMS, ['baseline', 'cells', 'cells_m', 'cells_m_lanes'])
+        limits = campaign.MEMBERSHIP_LIMITS
+        self.assertEqual(limits, {**campaign.FACTOR_LIMITS, 'seed': 2026101702, 'blocks': 12})
+        self.assertEqual(limits['workers'], [1, 4])
+        self.assertEqual(limits['warmups'], 1)
+        self.assertEqual(limits['science_repeats'], 2)
+        self.assertEqual(limits['diagnostic_repeats'], 2)
+        ids = [cell['id'] for cell in self.cells()]
+        blocks = campaign.schedule(ids, arms=campaign.MEMBERSHIP_ARMS, limits=limits)
+        self.assertEqual(blocks, campaign.schedule(ids, arms=campaign.MEMBERSHIP_ARMS, limits=limits))
+        self.assertEqual([len(block) for block in blocks], [96] * 12)
+        for cid in ids:
+            positions = {arm: [0] * 4 for arm in campaign.MEMBERSHIP_ARMS}
+            for block in blocks:
+                for index, row in enumerate(r for r in block if r['cell'] == cid):
+                    positions[row['arm']][index] += 1
+            self.assertTrue(all(counts == [3] * 4 for counts in positions.values()))
+        plan = {'kind': campaign.MEMBERSHIP_KIND, 'arms': campaign.MEMBERSHIP_ARMS,
+                'limits': limits, 'families': campaign.FAMILIES, 'library_limits': campaign.LIBRARY_LIMITS,
+                'blocks': blocks, 'cells': [{**c, 'inputs': dict.fromkeys(set(campaign.ARMS) |
+                    set(campaign.MEMBERSHIP_ARMS), {})} for c in self.cells()]}
+        campaign.validate_contract(plan)
+        for field in limits:
+            with self.subTest(limit=field):
+                changed = copy.deepcopy(plan)
+                changed['limits'][field] = None
+                with self.assertRaisesRegex(ValueError, 'contract changed'):
+                    campaign.validate_contract(changed)
+        for arm in set(campaign.ARMS) | set(campaign.MEMBERSHIP_ARMS):
+            changed = copy.deepcopy(plan)
+            del changed['cells'][0]['inputs'][arm]
+            with self.assertRaisesRegex(ValueError, 'incomplete arm/cell coverage'):
+                campaign.validate_contract(changed)
+        changed = copy.deepcopy(plan)
+        changed['cells'][0]['inputs']['cells_deferred'] = {}
+        with self.assertRaisesRegex(ValueError, 'incomplete arm/cell coverage'):
+            campaign.validate_contract(changed)
+        changed = copy.deepcopy(plan)
+        changed['blocks'].pop()
+        with self.assertRaisesRegex(ValueError, 'case coverage or frozen order changed'):
+            campaign.validate_contract(changed)
+
+    def test_prepare_reuses_original_twelve_families_and_creates_only_two_new_requests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            parent, parent_path, tool = FactorStudyContract.parent_fixture(root)
+            original = {p: p.read_bytes() for p in parent_path.parent.iterdir()}
+            harness, plugin = root / 'new-harness', root / 'new-plugin'
+            harness.write_text('new harness')
+            plugin.write_text('new plugin')
+            def reference(path, *_):
+                return {'_arrays_path': path.with_name(path.name.replace('.oracle.json', '.npz'))}, {}
+            def prepare(source, target, arm, workers):
+                self.assertIn(arm, ['cells_m', 'cells_m_lanes'])
+                target.write_bytes(source.read_bytes() + b'|' + arm.encode())
+            def inspect(path):
+                return {'body_sha256': hashlib.sha256(path.read_bytes().split(b'|')[0]).hexdigest()}
+            with patch.object(campaign, 'tool_files', return_value=[tool]), \
+                 patch.object(campaign.routing_oracle, 'load_reference', side_effect=reference), \
+                 patch.object(campaign.routing, 'prepare', side_effect=prepare) as preparation, \
+                 patch.object(campaign.routing_cases, 'inspect_case', side_effect=inspect), \
+                 patch.object(campaign, 'columns', side_effect=AssertionError('must not generate data')), \
+                 patch.object(campaign.routing_oracle, 'write_reference', side_effect=AssertionError('must not solve oracle')):
+                plan = campaign.prepare_membership(root / 'membership', parent_path, harness, plugin)
+                self.assertEqual(preparation.call_count, 48)
+                self.assertEqual(len(list((root / 'membership').iterdir())), 49)
+                self.assertEqual(plan['parent_plan_sha256'], campaign.routing.identity(parent))
+                for old, new in zip(parent['cells'], plan['cells']):
+                    self.assertEqual({**new, 'inputs': {a: new['inputs'][a] for a in campaign.ARMS}}, old)
+                campaign.validate(plan)
+                self.assertEqual(original, {p: p.read_bytes() for p in original})
+                for kind in campaign.FOLLOWUP_KINDS:
+                    with self.assertRaisesRegex(ValueError, 'original four-arm parent'):
+                        campaign.parent_dependencies({**parent, 'kind': kind})
+
+    def test_real_membership_request_and_existing_resource_parser_attest_each_preset(self):
+        for arm in ['cells_m', 'cells_m_lanes']:
+            with self.subTest(arm=arm), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source, target = root / 'source.case', root / 'target.case'
+                source.write_bytes(case_bytes([b'estimate-ols', b'threads=1', b'solver=auto',
+                                              b'preconditioner=auto', b'tolerance=1e-10']))
+                campaign.routing.prepare(source, target, arm, 4)
+                with target.open('rb') as stream:
+                    _, arguments = case_header(stream)
+                    self.assertEqual(stream.read(), b'body\n9\nthreads=1\n')
+                fields = dict(a.decode().split('=', 1) for a in arguments[1:])
+                self.assertEqual(fields, {'threads': '4', 'solver': 'auto', 'preconditioner': 'auto',
+                                          'tolerance': '1e-10', 'inject': 'routing_' + arm})
+                log = (f'FEREG_SOLVER_TRACE|phase=auto_kernel_route|preset=routing_{arm}|'
+                       'work=16|limit=200|installed=1|refusal=None|builder_seconds=0.01\n'
+                       'FEREG_SOLVER_TRACE|phase=auto_cells_m|cells=8|rhs=3|lanes=1|used_operator=0\n'
+                       'FEREG_SOLVER_TRACE|phase=auto_cells_m|cells=8|rhs=1|lanes=0|used_operator=1\n'
+                       f'FEREG_SOLVER_TRACE|phase=routing_action|preset=routing_{arm}|'
+                       'final=0|certified=1|iterations=20|native_limit=100|setup_work=16|'
+                       'setup_limit=200|memory_bytes=64|memory_limit=1024\n')
+                resources = campaign.routing_run.resource_diagnostics(log, arm, False, {})
+                self.assertEqual(resources['action_resources'][0]['preset'], 'routing_' + arm)
+                diagnostics = campaign.phase_diagnostics(log + self.trace(.1, .2), self.result())
+                self.assertEqual(diagnostics['solver_trace'][0]['phase'], 'auto_kernel_route')
+                self.assertEqual(diagnostics['solver_trace'][1:3], [
+                    {'phase': 'auto_cells_m', 'cells': '8', 'rhs': '3', 'lanes': '1', 'used_operator': '0'},
+                    {'phase': 'auto_cells_m', 'cells': '8', 'rhs': '1', 'lanes': '0', 'used_operator': '1'}])
+                for bad in [log.replace(f'preset=routing_{arm}', 'preset=routing_cells'),
+                            log.replace('certified=1', 'certified=0'),
+                            log.replace('setup_work=16', 'setup_work=201'), log.splitlines()[0]]:
+                    with self.assertRaises(ValueError):
+                        campaign.routing_run.resource_diagnostics(bad, arm, False, {})
+
+    def test_science_accepts_distinct_new_arm_fits_but_enforces_all_prerequisites(self):
+        for mode in ['complete', 'smoke', 'old-arm-change', 'new-arm-repeat', 'oracle-failure', 'cross-worker']:
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                plan = {'kind': campaign.MEMBERSHIP_KIND, 'cells': self.cells(),
+                        'parent_plan': {'path': 'parent'}, 'plugin': {'path': 'new'}}
+                parent = {'plugin': {'path': 'old'}}
+                def read(path):
+                    return campaign.routing.seal(parent) if path == 'parent' else {'case_sha256': 'a', 'body_sha256': 'b'}
+                def native(plan, cell, arm, output, label, **options):
+                    self.assertEqual(plan['plugin']['path'], 'old' if label.startswith('parent-control-') else 'new')
+                    self.assertEqual(bool(options.get('traced')), '-control-' not in label and label.endswith('-0'))
+                    return {'cell': cell['id'], 'arm': arm, 'label': label, 'log': 'log', 'status': 'executed',
+                            'threads': cell['threads']}
+                def parse(row, meta):
+                    result = {**self.result(), 'science_sha256': row['arm'] + str(row['threads'])}
+                    if mode == 'old-arm-change' and row['arm'] == 'cells_v2' and row['label'].startswith('candidate-control-'):
+                        result['science_sha256'] = 'changed'
+                    if mode == 'new-arm-repeat' and row['arm'] == 'cells_m' and row['label'].endswith('-1'):
+                        result['science_sha256'] = 'changed'
+                    return {'arm': row['arm'], 'threads': row['threads']}, result, Path('columns')
+                def oracle(witness, raw, *args):
+                    if mode == 'oracle-failure' and raw['arm'] == 'cells_m':
+                        raise ValueError('independent oracle mismatch')
+                def compare(left, right, *args):
+                    if mode == 'cross-worker' and right['arm'] == 'cells_m' and left['threads'] != right['threads']:
+                        raise ValueError('discrete scientific decision changed')
+                with patch.dict(os.environ, {'JOB_ID': '1', 'NSLOTS': '4'}), \
+                     patch.object(campaign, 'validate'), patch.object(campaign, 'read', side_effect=read), \
+                     patch.object(campaign, 'native', side_effect=native) as run, \
+                     patch.object(campaign, 'parse_run', side_effect=parse), \
+                     patch.object(campaign.routing_oracle, 'load_reference', return_value=({}, {})), \
+                     patch.object(campaign.routing_oracle, 'check_reference', side_effect=oracle) as oracle_check, \
+                     patch.object(campaign.cmgschur, 'scientific_comparison', side_effect=compare) as comparison, \
+                     patch.object(campaign.routing_run, 'model_discrete_sha256', return_value='a' * 64), \
+                     patch.object(campaign.routing_run, 'resource_diagnostics', return_value={}), \
+                     patch.object(Path, 'read_text', return_value=''):
+                    receipt = campaign.science(plan, Path(directory) / 'science', smoke=mode == 'smoke')
+                    if mode in {'complete', 'smoke'}:
+                        self.assertEqual(receipt['status'], 'passed', receipt['failure'])
+                        self.assertEqual(run.call_count, 384 if mode == 'complete' else 16)
+                        self.assertEqual(len(receipt['records']), 192 if mode == 'complete' else 8)
+                        self.assertEqual(oracle_check.call_count, len(receipt['records']))
+                        self.assertEqual(comparison.call_count, 144 if mode == 'complete' else 4)
+                        self.assertEqual(receipt['parent_control_count'], 96 if mode == 'complete' else 4)
+                        self.assertEqual(receipt['parent_control_native_calls'], 192 if mode == 'complete' else 8)
+                        self.assertEqual({r['arm'] for r in receipt['parent_controls']}, set(campaign.ARMS))
+                        if mode == 'smoke':
+                            with self.assertRaisesRegex(ValueError, 'complete frozen science'):
+                                campaign.validate_science(plan, receipt)
+                            continue
+                        campaign.validate_science(plan, receipt)
+                        for mutation in ['extra', 'repeat', 'oracle', 'discrete', 'control-count', 'control-identity', 'old-unscored']:
+                            changed = copy.deepcopy(receipt)
+                            if mutation == 'extra':
+                                changed['records'].append({**changed['records'][0], 'arm': 'unknown'})
+                            elif mutation == 'repeat':
+                                changed['records'][1]['repeat'] = 0
+                            elif mutation == 'oracle':
+                                changed['records'][0]['oracle_status'] = 'failed'
+                            elif mutation == 'discrete':
+                                changed['records'][-1]['model_discrete_sha256'] = 'b' * 64
+                            elif mutation == 'control-count':
+                                changed['parent_control_native_calls'] -= 1
+                            elif mutation == 'control-identity':
+                                changed['parent_controls'][0]['parent']['plugin'] = {'path': 'new'}
+                            else:
+                                pair = next(r for r in changed['parent_controls'] if r['arm'] == 'diagonal')
+                                pair['candidate']['science_sha256'] = 'changed'
+                            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                                campaign.validate_science(plan, changed)
+                    else:
+                        self.assertEqual(receipt['status'], 'failed')
+                        self.assertEqual(run.call_count, {'old-arm-change': 8, 'new-arm-repeat': 198,
+                                                         'oracle-failure': 197, 'cross-worker': 205}[mode])
+                        if mode == 'old-arm-change':
+                            self.assertEqual(receipt['records'], [])
+
+    def test_measurement_has_96_warmups_1152_scores_and_64_separate_diagnostics(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cells = self.cells()
+            plan = {'kind': campaign.MEMBERSHIP_KIND, 'cells': cells,
+                    'blocks': campaign.schedule([c['id'] for c in cells], arms=campaign.MEMBERSHIP_ARMS,
+                                                limits=campaign.MEMBERSHIP_LIMITS)}
+            calls = []
+            def native(plan, cell, arm, output, label, **options):
+                calls.append(label)
+                self.assertEqual(bool(options.get('traced')), label.startswith('diagnostic-'))
+                self.assertEqual(bool(options.get('phase_timing')), label.startswith('diagnostic-'))
+                return {'cell': cell['id'], 'arm': arm, 'label': label, 'log': 'log', 'status': 'executed'}
+            def prerequisite(row, cell, receipt, *, traced):
+                self.assertEqual(traced, row['phase'] == 'diagnostic')
+                row['resources'] = {'prerequisite_science_sha256': 'same', 'resource_basis': 'bound science'}
+                return self.result()
+            with ExitStack() as stack:
+                for owner, name, options in [
+                    (campaign, 'validate', {}), (campaign, 'validate_science', {}),
+                    (campaign, 'native', {'side_effect': native}),
+                    (campaign, 'check_prerequisite', {'side_effect': prerequisite}),
+                    (campaign, 'parse_run', {'return_value': ({}, self.result(), Path('columns'))}),
+                    (campaign, 'read', {'return_value': {}}),
+                    (campaign, 'Observers', {'return_value': Mock(errors=[])}),
+                    (campaign, 'check_stable_configuration', {}),
+                    (campaign.scc.discovery, 'host', {'return_value': {'affinity': list(range(28))}}),
+                    (campaign.scc, 'configuration', {'return_value': ({}, {})}),
+                    (campaign.scc, 'check_configuration', {'return_value': 'queue'}),
+                    (campaign.scc, 'check_scheduler_snapshot', {}),
+                    (Path, 'read_text', {'return_value': self.trace(.1, .2)}),
+                ]:
+                    stack.enter_context(patch.object(owner, name, **options))
+                stack.enter_context(patch.dict(os.environ, campaign.LIBRARY_LIMITS))
+                result = campaign.measure(plan, {}, Path(directory) / 'measure')
+            self.assertEqual(result['status'], 'complete', result['failure'])
+            self.assertEqual(len(calls), 1312)
+            self.assertTrue(all(label.startswith('warmup-') for label in calls[:96]))
+            self.assertTrue(all(label.startswith('block-') for label in calls[96:1248]))
+            self.assertTrue(all(label.startswith('diagnostic-') for label in calls[1248:]))
+            diagnostics = [r for r in result['records'] if r['phase'] == 'diagnostic']
+            self.assertEqual({(r['cell'], r['arm'], r['repeat']) for r in diagnostics},
+                             {(f'{family}-t{workers}', arm, repeat)
+                              for family in campaign.MEMBERSHIP_LIMITS['diagnostic_families']
+                              for workers in [1, 4] for arm in campaign.MEMBERSHIP_ARMS for repeat in [0, 1]})
+            self.assertEqual(len(result['summaries']), 72)
+            self.assertEqual(len(result['membership_comparisons']), 48)
+            self.assertTrue(all(row['paired_blocks'] == 12 and row['reference'] == 'cells'
+                                for row in result['membership_comparisons']))
+            self.assertTrue(all(row['resources']['prerequisite_science_sha256'] == 'same'
+                                for row in result['records']))
+            failed = copy.deepcopy(result['records'])
+            next(r for r in failed if r['phase'] == 'measure')['status'] = 'failed'
+            summary = campaign.summarize(failed, arms=campaign.MEMBERSHIP_ARMS)
+            self.assertEqual(sum(row['paired_blocks'] == 11 for row in summary), 3)
+            self.assertEqual(sum(row['paired_blocks'] == 12 for row in summary), 69)
+
+
+class MembershipDiscoveryGate(unittest.TestCase):
+    @staticmethod
+    def evidence():
+        cells = DeferredStudyContract.cells()
+        plan = {'kind': campaign.MEMBERSHIP_KIND, 'cells': cells}
+        science = {'bound': 'science'}
+        rows = []
+        for cell in cells:
+            for arm in campaign.MEMBERSHIP_ARMS:
+                def row(label, phase, **extra):
+                    return {'cell': cell['id'], 'arm': arm, 'label': label, 'phase': phase,
+                            'status': 'passed', 'seconds': .8 if arm == 'cells_m' else 1.,
+                            'science_sha256': cell['id'] + arm, **extra}
+                rows.append(row(f"warmup-{cell['id']}-{arm}", 'warmup'))
+                for block in range(12):
+                    rows.append(row(f"block-{block}-{cell['id']}-{arm}", 'measure', block=block))
+                if cell['family'] in campaign.MEMBERSHIP_LIMITS['diagnostic_families']:
+                    for repeat in range(2):
+                        traces = [{'phase': 'auto_kernel_route', 'preset': 'routing_' + arm,
+                                   'builder_seconds': str(value)} for value in
+                                  ([.1, .2] if arm == 'cells_m' else [.4, .6])]
+                        rows.append(row(f"diagnostic-{cell['id']}-{arm}-{repeat}", 'diagnostic',
+                                        repeat=repeat, phase_diagnostics={'solver_trace': traces}))
+        return plan, science, {'kind': campaign.MEMBERSHIP_KIND + '_measurement', 'status': 'complete',
+            'plan_sha256': campaign.routing.identity(plan), 'science_sha256': campaign.routing.identity(science),
+            'records': rows, 'files': []}
+
+    def test_gate_checks_every_setting_and_sums_builder_time_per_fit_before_median(self):
+        plan, science, measurement = self.evidence()
+        with patch.object(campaign, 'validate'), patch.object(campaign, 'validate_science'):
+            result = campaign.membership_gate(plan, science, measurement)
+        self.assertEqual(result['status'], 'eligible')
+        self.assertEqual((result['material_gains'], result['regressions']), (24, 0))
+        self.assertEqual(result['finalist'], 'cells_m')
+        self.assertEqual(len(result['comparisons']), 24)
+        self.assertEqual(len(result['builder_comparisons']), 8)
+        self.assertTrue(all(abs(row['ratio'] - .3) < 1e-15 for row in result['builder_comparisons']))
+
+    def test_gate_rejects_incomplete_failed_or_changed_evidence(self):
+        for mutation in ['missing', 'duplicate', 'failure', 'hash', 'block', 'repeat', 'science', 'builder-missing', 'builder-nan']:
+            plan, science, measurement = self.evidence()
+            rows = measurement['records']
+            if mutation == 'missing':
+                rows.pop()
+            elif mutation == 'duplicate':
+                rows.append(rows[0])
+            elif mutation == 'failure':
+                rows[-1]['status'] = 'failed'
+            elif mutation == 'hash':
+                measurement['science_sha256'] = 'changed'
+            elif mutation == 'block':
+                next(row for row in rows if row['phase'] == 'measure')['block'] = 12
+            elif mutation == 'repeat':
+                next(row for row in rows if row['phase'] == 'diagnostic')['repeat'] = 3
+            elif mutation == 'science':
+                rows[-1]['science_sha256'] = 'changed'
+            else:
+                diagnostic = next(row for row in rows if row['phase'] == 'diagnostic' and row['arm'] == 'cells_m')
+                trace = diagnostic['phase_diagnostics']['solver_trace']
+                if mutation == 'builder-missing':
+                    trace.clear()
+                else:
+                    trace[0]['builder_seconds'] = 'nan'
+            with self.subTest(mutation=mutation), patch.object(campaign, 'validate'), \
+                 patch.object(campaign, 'validate_science'), self.assertRaises(ValueError):
+                campaign.membership_gate(plan, science, measurement)
+
+    def test_gate_never_substitutes_lane_arm_and_requires_each_builder_ratio_strictly_below_half(self):
+        for mode in ['regression', 'too-few-gains', 'builder-tie', 'zero-original']:
+            plan, science, measurement = self.evidence()
+            for row in measurement['records']:
+                if row['arm'] == 'cells_m' and row['phase'] == 'measure':
+                    if mode == 'regression' and row['cell'] == 'weak-t1':
+                        row['seconds'] = 1.051
+                    elif mode == 'too-few-gains':
+                        row['seconds'] = 1.
+                if row['phase'] == 'diagnostic' and row['cell'] == 'dense-t1':
+                    trace = row['phase_diagnostics']['solver_trace']
+                    if mode == 'builder-tie' and row['arm'] == 'cells_m':
+                        trace[0]['builder_seconds'], trace[1]['builder_seconds'] = '.2', '.3'
+                    elif mode == 'zero-original' and row['arm'] == 'cells':
+                        trace[0]['builder_seconds'] = trace[1]['builder_seconds'] = '0'
+            with self.subTest(mode=mode), patch.object(campaign, 'validate'), \
+                 patch.object(campaign, 'validate_science'):
+                result = campaign.membership_gate(plan, science, measurement)
+            self.assertEqual(result['status'], 'ineligible')
+            self.assertEqual(result['finalist'], 'cells_m')
+
+
 class StableConfiguration(unittest.TestCase):
     @staticmethod
     def boundary():

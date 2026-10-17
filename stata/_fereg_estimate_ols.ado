@@ -105,7 +105,7 @@ program define _fereg_estimate_ols, eclass
     }
 
     local inject = lower(strtrim(`"`inject'"'))
-    local routing_injection = regexm(`"`inject'"', "^routing_(h(4|8|16|32)_k(0|1|2)|overlap_h(8|16|32)_k(0|1|2)|overlap_break|prefix_(none|map4|it4)|diagonal|cells|cells_v2|cells_v2_df|cells_deferred|direct)$")
+    local routing_injection = regexm(`"`inject'"', "^routing_(h(4|8|16|32)_k(0|1|2)|overlap_h(8|16|32)_k(0|1|2)|overlap_break|prefix_(none|map4|it4)|diagonal|cells|cells_v2|cells_v2_df|cells_deferred|cells_m|cells_m_lanes|direct)$")
     local it_injection = `"`inject'"' == "it_coefficients"
     if `"`inject'"' != "" & !`routing_injection' & !`it_injection' & !inlist(`"`inject'"', ///
         "posthold", "postplugin", "poststripe", "postereturn", ///

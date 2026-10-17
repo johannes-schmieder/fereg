@@ -2431,6 +2431,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                             | super::routing::RoutingAblation::Cells
                             | super::routing::RoutingAblation::CellsV2
                             | super::routing::RoutingAblation::CellsV2Df
+                            | super::routing::RoutingAblation::CellsM
+                            | super::routing::RoutingAblation::CellsMLanes
                     )
                 )
             {
@@ -2442,7 +2444,22 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     retained_live_bytes: 0,
                     memory: route.request.budget,
                 };
-                let built = if matches!(
+                let membership = matches!(
+                    route.preset.kernel(),
+                    Some(
+                        super::routing::RoutingAblation::CellsM
+                            | super::routing::RoutingAblation::CellsMLanes
+                    )
+                );
+                let built = if membership {
+                    super::routing_kernel::build_membership(
+                        &self.design,
+                        graph.left_effect,
+                        raw_weights,
+                        weights.raw_scale,
+                        limits,
+                    )?
+                } else if matches!(
                     route.preset.kernel(),
                     Some(
                         super::routing::RoutingAblation::CellsV2
@@ -2466,11 +2483,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                         limits,
                     )?
                 };
+                let builder_seconds = started.elapsed().as_secs_f64();
                 route.setup.charge(built.work_used)?;
                 route.peak = route.peak.max(built.peak);
                 if crate::diagnostics::solver_trace_enabled() {
                     crate::diagnostics::emit_solver_trace(&format!(
-                        "FEREG_SOLVER_TRACE|phase=auto_kernel_route|preset={}|work={}|limit={}|installed={}|refusal={:?}",
+                        "FEREG_SOLVER_TRACE|phase=auto_kernel_route|preset={}|work={}|limit={}|installed={}|refusal={:?}|builder_seconds={builder_seconds:.17e}",
                         route.preset,
                         built.work_used,
                         route.setup.limit,
@@ -2488,6 +2506,61 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     )
                 );
                 let elapsed = started.elapsed();
+                setup_seconds += elapsed.as_secs_f64();
+                solve_started += elapsed;
+            }
+            // One choice per fresh projection action, including Low batches and
+            // final accuracy phases. Never switch a live recurrence here.
+            if matches!(
+                route.preset.kernel(),
+                Some(
+                    super::routing::RoutingAblation::CellsM
+                        | super::routing::RoutingAblation::CellsMLanes
+                )
+            ) {
+                let decision_started = Instant::now();
+                let decision_admitted = route.setup.limit.saturating_sub(route.setup.used) >= 128;
+                if decision_admitted {
+                    crate::interrupt::checkpoint()?;
+                    route.setup.charge(128)?;
+                }
+                let lanes = if route.preset.kernel()
+                    == Some(super::routing::RoutingAblation::CellsMLanes)
+                {
+                    [graph.left_weights.len(), graph.right_weights.len()]
+                        .into_iter()
+                        .map(|levels| {
+                            crate::parallel::StagePlan::current(
+                                self.design.nobs() as u128 * rhs_count as u128,
+                                levels,
+                            )
+                            .lanes
+                        })
+                        .max()
+                        .unwrap_or(1)
+                } else {
+                    1
+                };
+                let prices = deferred_cells::Prices {
+                    n: self.design.nobs() as u128,
+                    p: graph.left_weights.len() as u128,
+                    q: graph.right_weights.len() as u128,
+                    r: rhs_count as u128,
+                    lanes: lanes as u128,
+                    weighted: weights.values.is_some(),
+                };
+                graph.use_cell_operator = decision_admitted
+                    && graph
+                        .kernel
+                        .as_ref()
+                        .is_some_and(|kernel| prices.operator_pays(kernel.cell_count()));
+                if crate::diagnostics::solver_trace_enabled() {
+                    crate::diagnostics::emit_solver_trace(&format!(
+                        "FEREG_SOLVER_TRACE|phase=auto_cells_m|preset={}|cells={}|rhs={rhs_count}|lanes={lanes}|used_operator={}",
+                        route.preset, graph.kernel.as_ref().map_or(0, |kernel| kernel.cell_count()),
+                        u8::from(graph.use_cell_operator)));
+                }
+                let elapsed = decision_started.elapsed();
                 setup_seconds += elapsed.as_secs_f64();
                 solve_started += elapsed;
             }

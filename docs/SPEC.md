@@ -287,7 +287,27 @@ leaves the current recurrence untouched; installation reconstructs and restarts
 from its current iterate under the unchanged original-design certificate and
 native iteration cap. It preserves D_f, work/memory admission and fatal Break.
 No elapsed time or problem-family label enters the decision. The frozen scope
-and discovery protocol are recorded in [validation](VALIDATION.md#deferred-original-cell-prototype-scope-2026-10-17).
+and discovery protocol are recorded in [validation](VALIDATION.md#deferred-original-cell-prototype-2026-10-17).
+
+The private `routing_cells_m` and `routing_cells_m_lanes` experiments build
+original cell banks from row-ordered level memberships using stable firm-only
+sorting. Cell values, aggregation order, the original serial application and
+`D_f` preconditioner are preserved. The new builder changes allocation and
+bounded work accounting; all five completed banks must equal the original
+builder bit for bit. Per projection batch, a fixed structural operation tariff
+chooses the installed cell or observation operator; the lanes control divides
+observation cost by planned worker lanes, while the main arm uses one lane.
+This tariff is a hypothesis, not a wall-time or overhead guarantee. No timing,
+convergence forecast, restart, or future-batch credit enters this choice.
+Optional setup shares the existing accuracy-phase allowance and joint memory
+admission; refusal retains the incumbent and fatal Break propagates. A built
+kernel may be reused across Low batches and final accuracy phases. Mixed batch
+choices need not produce an entire fit identical to either control. Only these
+injected OLS arms add continuous/iteration scope under the existing strict
+original-observation certificates. Independent dense elimination/FE moments,
+weighted rectangle witnesses, fixed-worker repeatability, discrete agreement,
+and exact public/prior-arm replay remain required. This experiment does not
+change public Auto or qualify performance on another platform.
 
 Declared routing scope: only explicitly injected OLS routes may change
 coefficients, covariance, fit statistics, residuals, FE coordinates and solver

@@ -4,34 +4,6 @@ use super::*;
 use crate::linalg::neumaier_add;
 use crate::parallel::StagePlan;
 
-impl Work {
-    // Charge before a bounded tile. Unlike per-element checkpoints, the tile
-    // boundary amortizes cancellation/work overhead without hiding a long sort.
-    fn tiles(
-        &mut self,
-        count: usize,
-        cost: u16,
-        mut action: impl FnMut(std::ops::Range<usize>) -> Attempt<()>,
-    ) -> Attempt<()> {
-        let width = usize::from(1024 / cost);
-        for first in (0..count).step_by(width) {
-            let end = (first + width).min(count);
-            self.charge(((end - first) as u16) * cost)?;
-            action(first..end)?;
-        }
-        Ok(())
-    }
-
-    fn bank<T: Copy>(&mut self, count: usize, value: T) -> Attempt<Vec<T>> {
-        let mut bank = self.capacity(count)?;
-        self.tiles(count, 4, |range| {
-            bank.resize(range.end, value);
-            Ok(())
-        })?;
-        Ok(bank)
-    }
-}
-
 /// Parents have already been charged to budget.execution_bytes by the session.
 /// All private banks (including retained capacities and peak sorting scratch)
 /// coexist in this conservative admission. Denial publishes no partial kernel.
