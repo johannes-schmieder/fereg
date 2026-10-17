@@ -292,9 +292,12 @@ def parent_dependencies(parent):
         source = meta_path.with_suffix('.case')
         bindings.extend([cell['metadata'], cell['witness'], *cell['inputs'].values(),
                          {'path': str(source), 'sha256': meta['case_sha256']}])
-        _, witness_files = routing_oracle.load_reference(checked(cell['witness']),
-                                                        meta['case_sha256'], meta['body_sha256'])
-        bindings.extend({'path': str(path), 'sha256': sha} for path, sha in witness_files.items())
+        witness, _ = routing_oracle.load_reference(checked(cell['witness']),
+                                                  meta['case_sha256'], meta['body_sha256'])
+        # The loader also returns CURRENT producer/parser paths. It validates
+        # their bytes against the witness; tool_files binds those paths in the
+        # new closure. Only witness artifacts belong to the parent closure.
+        bindings.append(ref(witness['_arrays_path']))
         for item in cell['inputs'].values():
             require(routing_cases.inspect_case(checked(item))['body_sha256'] == meta['body_sha256'],
                     'parent request changed data/model body')

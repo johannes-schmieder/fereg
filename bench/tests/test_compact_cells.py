@@ -379,7 +379,8 @@ class FactorStudyContract(unittest.TestCase):
 
             def reference(path, *_):
                 arrays = path.with_name(path.name.replace('.oracle.json', '.npz'))
-                return {}, {p: campaign.digest(p) for p in [path, arrays]}
+                return {'_arrays_path': arrays}, {p: campaign.digest(p) for p in
+                    [path, arrays, Path(campaign.routing_oracle.__file__), campaign.routing_oracle.PARSER_SOURCE]}
 
             def prepare(source, target, arm, workers):
                 self.assertEqual(arm, 'cells_v2_df')
@@ -411,6 +412,73 @@ class FactorStudyContract(unittest.TestCase):
                 changed.write_text('changed')
                 with self.assertRaisesRegex(ValueError, 'frozen file changed'):
                     campaign.validate(plan)
+
+    def test_cross_checkout_parent_uses_real_loader_and_retains_artifact_guards(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            parent, parent_path, _ = self.parent_fixture(root)
+            oracle, np = campaign.routing_oracle, campaign.np
+            current_tools = [Path(oracle.__file__).resolve(), oracle.PARSER_SOURCE.resolve()]
+            old_tools = parent_path.parent / 'bench'
+            old_tools.mkdir()
+            for tool in current_tools:
+                old = old_tools / tool.name
+                old.write_bytes(tool.read_bytes())
+                parent['frozen_files'][str(old)] = campaign.digest(old)
+                self.assertNotIn(str(tool), parent['frozen_files'])
+                self.assertIn(tool, campaign.tool_files())
+            grid = np.meshgrid(np.arange(5), np.arange(4), np.arange(3), indexing='ij')
+            factors = [values.ravel() for values in grid]
+            rng = np.random.default_rng(177)
+            x = rng.standard_normal((60, 3))
+            y = x @ np.array([.7, -.2, .4]) + np.sin(factors[0]) + rng.normal(size=60) * .2
+            reference, arrays = oracle.solve(y, x, factors, np.ones(60))
+            for family in campaign.FAMILIES:
+                path, archive = [parent_path.parent / (family + suffix) for suffix in ['.oracle.json', '.npz']]
+                meta = campaign.read(path.with_name(family + '.json'))
+                np.savez_compressed(archive, **arrays)
+                bound = {**reference, **meta, 'arrays': {'file': archive.name, 'sha256': campaign.digest(archive)},
+                         'producer_sha256': campaign.digest(current_tools[0]),
+                         'parser_sha256': campaign.digest(current_tools[1])}
+                path.write_text(json.dumps(bound))
+                for artifact in [path, archive]:
+                    parent['frozen_files'][str(artifact)] = campaign.digest(artifact)
+                for cell in parent['cells']:
+                    if cell['family'] == family:
+                        cell['witness'] = campaign.ref(path)
+            parent_path.write_text(json.dumps(campaign.routing.seal(parent)))
+            original_files = {p: p.read_bytes() for p in parent_path.parent.rglob('*') if p.is_file()}
+            def inspect(path):
+                return {'body_sha256': hashlib.sha256(path.read_bytes().split(b'|')[0]).hexdigest()}
+            first = parent['cells'][0]
+            path = Path(first['witness']['path'])
+            archive = path.with_name('weak.npz')
+            meta = campaign.read(first['metadata']['path'])
+            _, real_bindings = oracle.load_reference(path, meta['case_sha256'], meta['body_sha256'])
+            self.assertTrue(all(tool in real_bindings for tool in current_tools))
+            with patch.object(campaign.routing_cases, 'inspect_case', side_effect=inspect):
+                bindings = campaign.parent_dependencies(parent)
+                self.assertTrue(all(str(tool) not in bindings for tool in current_tools))
+                self.assertEqual(bindings[str(archive)], campaign.digest(archive))
+                self.assertEqual(bindings[str(path)], campaign.digest(path))
+                self.assertEqual(original_files, {p: p.read_bytes() for p in original_files})
+                for artifact, message in [(path, 'frozen file changed'), (archive, 'oracle arrays changed')]:
+                    artifact.write_bytes(original_files[artifact] + b'changed')
+                    with self.assertRaisesRegex(ValueError, message):
+                        campaign.parent_dependencies(parent)
+                    artifact.write_bytes(original_files[artifact])
+                for key in ['producer_sha256', 'parser_sha256']:
+                    invalid = campaign.read(path)
+                    invalid[key] = '0' * 64
+                    path.write_text(json.dumps(invalid))
+                    changed_parent = copy.deepcopy(parent)
+                    for cell in changed_parent['cells']:
+                        if cell['family'] == 'weak':
+                            cell['witness'] = campaign.ref(path)
+                    changed_parent['frozen_files'][str(path)] = campaign.digest(path)
+                    with self.assertRaisesRegex(ValueError, 'oracle reference identity mismatch'):
+                        campaign.parent_dependencies(changed_parent)
+                    path.write_bytes(original_files[path])
 
     def test_native_trace_isolation_including_host_environment(self):
         with tempfile.TemporaryDirectory() as directory:
