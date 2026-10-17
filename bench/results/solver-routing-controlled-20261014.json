@@ -21884,8 +21884,7 @@
       "estimation_panel_calls": 0,
       "scope": "Requires valid complete schema3 discovery, exact B context and prospective C declaration before B target access; shared Linuxsample1 bytes remain unchanged with separate Mac resource/source/build binding. Actual filled prerequisites require independent review."
     }
-  }
-,
+  },
   "portfolio_setup_continuations_20261017": {
     "source_commit": "020eab1e9559fd68f619a4ec73fb04fcb6d1136f",
     "runtime_and_builds_unchanged": true,
@@ -23122,6 +23121,278 @@
       },
       "aggregate_collector_wallclock_s": 22678.0,
       "aggregate_collector_cap_s": 43200
+    }
+  },
+  "cmg_static_dispatch_diagnostic_20261017": {
+    "status": "reviewed_complete_descriptive_diagnostic_no_material_gain_demonstrated",
+    "decision": "Do not adopt downstream adapter or dependency pin; retain private experiment and published generic upstream API. Profile actual construction work before another optimization.",
+    "public_auto": "unchanged",
+    "qualification": false,
+    "fresh_mac_B_C_admitted": false,
+    "source": {
+      "parent_runtime_commit": "020eab1e9559fd68f619a4ec73fb04fcb6d1136f",
+      "private_source_parent": "f66c8d26e4a308d5472ce0c5573559429bbc8386",
+      "patch_sha256": "16f762f1d5d88a21aa1d2668431e42d52f187f6c5af3cf5ced105a9a68204ca0",
+      "candidate_runtime_sha256": "6e324cd4e3a24e525c33848ac9651860b5b29e8625e5ef6d68e87f221afc248f",
+      "main_runtime_restored": true,
+      "cmg_parent": "3422b0408023769f08f33391b90a613745601e7d",
+      "published_cmg_candidate": "b4ca4ad3fd5d7d783be7feaef5cb62a81019017d",
+      "scope": "Generic graph meter plus concrete callback bridge; hierarchy dynamic dispatch, arithmetic, control boundaries, budgets, errors and public routing preserved."
+    },
+    "artifacts": {
+      "parent_plugin_sha256": "2c85d8901df9059fcbe747dea5ef6a1e67d6eaf21d600e890219f909b21bc71f",
+      "candidate_plugin_sha256": "993358c636f5c9a46ea94117bca9f3bb31a80cc605c368f029e64d27f3ee7fab",
+      "harness_sha256": "e50ef580caca89663d5af70a7eb471ea75a77b59568c604608bd0e8c09342d14"
+    },
+    "checks": {
+      "upstream_default_tests": 118,
+      "upstream_all_feature_tests": 223,
+      "controlled_witness_bytes": 77090,
+      "controlled_witness_boundaries": 611,
+      "controlled_witness_sha256": "34b6fadefd1e01c9100c51eccfcbe3454932d932aaeaa7f99aca2aa537c95e93",
+      "controlled_witness_test_sha256": "b7d8da5d011783cdf1077d58d18f8c8a809d3c42ecedb8f6e9f53a50ce6c3a7d",
+      "private_native_build_audit_ABI": "passed",
+      "source_only_rust_test_executions": 1935,
+      "source_only_python_tests": 312,
+      "portable_checks": 7,
+      "runner_mock_tests": 11,
+      "installed_package_admission": false,
+      "linux_mock_audit": "unavailable_on_Mac"
+    },
+    "mechanism": {
+      "parent": "Actual graph meter uses vtable lookup and blr callback.",
+      "candidate": "Specialized graph meter directly calls Work::gate; zero indirect calls in inspected specialized graph/meter ranges. Dynamic hierarchy meter retains indirect callback.",
+      "limitation": "This confirms dispatch specialization, not its elapsed cost or removal of genuine work checks. Recorded Rust/profile/tool shims match parent; historical Xcode backend hashes were not recorded."
+    },
+    "protocol": {
+      "revealed_A_families": [
+        "weak",
+        "high-degree-weak"
+      ],
+      "workers": [
+        1,
+        4
+      ],
+      "policy": "portfolio-unseeded checkpoint16/sample1",
+      "traced_prerequisites_and_warmups": 8,
+      "clean_calls": 32,
+      "balanced_blocks_per_cell": 2,
+      "orientation": "one ABBA and one BAAB per cell",
+      "maximum_native_calls": 40,
+      "per_call_s": 120,
+      "inclusive_s": 1800,
+      "cleanup_reserve_s": 30,
+      "retries": 0,
+      "replacements": 0,
+      "exclusions": 0
+    },
+    "actual": {
+      "status": "passed",
+      "calls": 40,
+      "elapsed_s": 37.50830650003627,
+      "original_oracle_checks": 40,
+      "exact_outputs_and_signatures": true,
+      "exact_setup_work_and_routes": true,
+      "cross_worker_science_and_model_decisions": true,
+      "bindings_rechecked": 46,
+      "raw_artifacts_rechecked": 200,
+      "resource_traces": 8,
+      "host_snapshots": 80,
+      "host_errors": 0
+    },
+    "paired_observations": [
+      {
+        "block": 0,
+        "cell": "weak-t1",
+        "geometric_mean_s": {
+          "candidate": 0.061130451315199695,
+          "parent": 0.05900737309862218
+        },
+        "native_total_s": {
+          "candidate": 0.12229100000000001,
+          "parent": 0.118016
+        },
+        "orientation": "ABBA",
+        "ratio": 1.0359798802266473,
+        "total_difference_s": 0.004275000000000015
+      },
+      {
+        "block": 1,
+        "cell": "weak-t1",
+        "geometric_mean_s": {
+          "candidate": 0.059481438516565815,
+          "parent": 0.059518490908288306
+        },
+        "native_total_s": {
+          "candidate": 0.118966,
+          "parent": 0.11904300000000001
+        },
+        "orientation": "BAAB",
+        "ratio": 0.9993774641937817,
+        "total_difference_s": -7.700000000000762e-05
+      },
+      {
+        "block": 0,
+        "cell": "weak-t4",
+        "geometric_mean_s": {
+          "candidate": 0.03341724518867466,
+          "parent": 0.03328880247170209
+        },
+        "native_total_s": {
+          "candidate": 0.066835,
+          "parent": 0.066579
+        },
+        "orientation": "BAAB",
+        "ratio": 1.0038584360936909,
+        "total_difference_s": 0.0002560000000000062
+      },
+      {
+        "block": 1,
+        "cell": "weak-t4",
+        "geometric_mean_s": {
+          "candidate": 0.033166999864322956,
+          "parent": 0.03334683562198969
+        },
+        "native_total_s": {
+          "candidate": 0.066334,
+          "parent": 0.066695
+        },
+        "orientation": "ABBA",
+        "ratio": 0.9946071117600093,
+        "total_difference_s": -0.0003610000000000002
+      },
+      {
+        "block": 0,
+        "cell": "high-degree-weak-t1",
+        "geometric_mean_s": {
+          "candidate": 0.362905665969822,
+          "parent": 0.37202199946239733
+        },
+        "native_total_s": {
+          "candidate": 0.725814,
+          "parent": 0.7440439999999999
+        },
+        "orientation": "ABBA",
+        "ratio": 0.9754951763450839,
+        "total_difference_s": -0.01822999999999997
+      },
+      {
+        "block": 1,
+        "cell": "high-degree-weak-t1",
+        "geometric_mean_s": {
+          "candidate": 0.36282851719510695,
+          "parent": 0.3647319342517186
+        },
+        "native_total_s": {
+          "candidate": 0.725659,
+          "parent": 0.729464
+        },
+        "orientation": "BAAB",
+        "ratio": 0.9947813260154564,
+        "total_difference_s": -0.0038049999999999473
+      },
+      {
+        "block": 0,
+        "cell": "high-degree-weak-t4",
+        "geometric_mean_s": {
+          "candidate": 0.21625183019572342,
+          "parent": 0.21829119644181716
+        },
+        "native_total_s": {
+          "candidate": 0.432504,
+          "parent": 0.436605
+        },
+        "orientation": "BAAB",
+        "ratio": 0.9906575882154858,
+        "total_difference_s": -0.004101000000000021
+      },
+      {
+        "block": 1,
+        "cell": "high-degree-weak-t4",
+        "geometric_mean_s": {
+          "candidate": 0.21851723861059563,
+          "parent": 0.21644641321352498
+        },
+        "native_total_s": {
+          "candidate": 0.43705700000000003,
+          "parent": 0.432894
+        },
+        "orientation": "ABBA",
+        "ratio": 1.009567381442481,
+        "total_difference_s": 0.004163000000000028
+      }
+    ],
+    "paired_cell_summaries": [
+      {
+        "block_ratios": [
+          1.0359798802266473,
+          0.9993774641937817
+        ],
+        "cell": "weak-t1",
+        "geometric_mean_block_ratio": 1.0175141009620872
+      },
+      {
+        "block_ratios": [
+          1.0038584360936909,
+          0.9946071117600093
+        ],
+        "cell": "weak-t4",
+        "geometric_mean_block_ratio": 0.9992220672798743
+      },
+      {
+        "block_ratios": [
+          0.9754951763450839,
+          0.9947813260154564
+        ],
+        "cell": "high-degree-weak-t1",
+        "geometric_mean_block_ratio": 0.9850910541905474
+      },
+      {
+        "block_ratios": [
+          0.9906575882154858,
+          1.009567381442481
+        ],
+        "cell": "high-degree-weak-t4",
+        "geometric_mean_block_ratio": 1.0000677913225842
+      }
+    ],
+    "interpretation": "No demonstrated material complete-fit gain; high-degree-four-worker neutral. Does not resolve prior closed SCC rejection and cannot be multiplied into old SCC ratios.",
+    "limits": [
+      "Two balanced blocks per cell are descriptive, not statistical equivalence or nonregression.",
+      "Endpoint host snapshots retain OS activity and identify no separate build/test/estimation workload; they do not establish uninterrupted whole-call isolation.",
+      "No new routing shortlist, B/C admission, public activation or release claim; do not combine these Mac ratios multiplicatively with the closed SCC outcome."
+    ],
+    "preserved_failures": [
+      "First source suite stopped at stale fuzz CMG lock; only matching CMG lock reference updated and full source suite passed.",
+      "Initial host-observer interruption raised TimeoutError, caught by snapshot; repaired before native execution using KeyboardInterrupt and real snapshot-boundary mock regression."
+    ],
+    "next_diagnostic": "Separately reviewed eight-capture function-level profile of established parent: upgrading versus explicit CMG-k1, high-degree-weak at1/4workers, two captures per cell. Start-barrier and setup coverage mandatory; missing capture is inconclusive with no replacement. Not yet executed.",
+    "sha256": {
+      "build.py": "7d22161676f6489ebcb808ff9ab6042dcdc58004ebcad7040149e5f5b7c97155",
+      "build/before.json": "34d4a40b03640cefee02b51e4a48c6830d9c94068b75f1f954d9e6055a913fef",
+      "build/complete.json": "4c405d53d72faf8ba4bf1699c016ddec3db5a3a8873ce67a1fd94d5982731507",
+      "build/source.patch": "16f762f1d5d88a21aa1d2668431e42d52f187f6c5af3cf5ced105a9a68204ca0",
+      "build/native-build.command.json": "1b1c58017fcc4dfdc9fe065f1cc080a5173116a22087d90cd1705e3edf2985eb",
+      "build/native-build.stdout": "3dfab98d72837af965796f0328bb0cc6e274eee70697ade59a1a684daef37f62",
+      "build/native-build.stderr": "163914f707a542ba651a7995033de507420dabfbcd77c2030165193feb435166",
+      "source-checks.json": "5263ab43a22029ae4594035dba1b212553530dcc0045d69a72b6105789fd3c71",
+      "source-checks.log": "1eaffe3f5cc702e8ab7ce5c424e941d3a6326b73453a5fe3a964a430f4392c29",
+      "source-checks-final.log": "871a0cf961f6054fe5ab32144b10fbaef1603846405a2388ad2b47ea8228455f",
+      "source-review.json": "41d45501f66ca27e79b1a7f9cb03472b6c82be257f02726e15d4ac6470ef6520",
+      "run.py": "346d154bf24ca08f51b6df3647bf5364ce5cf2d756dfada133aacaf72f9dde30",
+      "test_run.py": "576bccbd06dcf652e5ac60bf69b1706e9692de5393f9f867bc794e863f2682e8",
+      "focused-tests-signal.log": "65060acf2225689fee6416a4613a1cb0a6f5787d8614d68edb18af3522bcac9a",
+      "proposal.json": "6e1877041db49e0e3f40319a8cf71e3bfe28664a97a54949335477bbff120c9a",
+      "actual-admission.json": "c2d04944e810711abfd05960518f0cc62e68518a76b692678ec17a4774a02fd8",
+      "actual-plan-review.json": "7040cd66109830fd46e879318aec2c5ef74e68b4630518d405d66b7b7a5a3a0d",
+      "plan.json": "7434b2b0a30fa788bf8dda8872ef95fe26630ccd20932547d570730eda0151f0",
+      "native-claim.json": "36e4716eb9fb3f5d58c9082bb95b4fb3556723d77c9706052b608495d922f70a",
+      "result.json": "e145a8c95f02a11476ed1842ca06600a7098f6845f06e81eb667e5b95705d770",
+      "raw-review.json": "12e6c1444e7158564eb222232bbcc8527ddc3e48d518e0a9f2414c6a10e6f393",
+      "candidate-specialized-gate.asm": "a6faf87ebaa8526dcb5d35f2960fbd989e0d00d87b8d931f59b73c0693e10be5",
+      "candidate-dynamic-gate.asm": "16afdc9f2bddd9b29400c4a0865bbaec9966b85b03f111cacc34ec93ff905e7c",
+      "candidate-specialized-graph.asm": "4f00ce122ae3ad6f39a9f35dbf961a272e49ff648e75035508e3db59784f3633",
+      "candidate-bounded-graph.asm": "1936ca41418bc06b9a08c21afb406af2f500b79f8baf4734656f34968a4216c1"
     }
   }
 }

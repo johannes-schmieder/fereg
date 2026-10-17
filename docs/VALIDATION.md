@@ -1499,11 +1499,59 @@ different executor-based construction path. On high-degree weak, the candidate
 charges identical setup work at one/four workers and its first setup remains
 about 160 ms in the first host's traced prerequisites; final hierarchy reuse
 charges zero setup work. These observations do not isolate callback cost.
-The reviewed next engineering direction is static specialization of the
-bounded upstream meter dispatch, preserving arithmetic, every boundary and
-failure semantics. Its benefit is unmeasured: a finite causal diagnostic must
-precede another broad campaign. No family-specific or worker-count threshold
-is inferred from this screen.
+The subsequent static-dispatch diagnostic below preserves arithmetic, every
+boundary and failure semantics, but demonstrates no material complete-fit gain.
+No family-specific or worker-count threshold is inferred from this screen.
+
+### Bounded CMG static-dispatch diagnostic, 2026-10-17
+
+A private candidate specializes the upstream graph-construction meter and uses
+a concrete fereg callback adapter. The actual ARM64 graph path calls
+`Work::gate` directly; the retained parent has an indirect callback at that
+boundary. Hierarchy construction keeps its dynamic meter. Upstream CMG commit
+`b4ca4ad3fd5d7d783be7feaef5cb62a81019017d` passes 118 default and 223 all-feature
+tests. Parent and candidate produce the same 77,090-byte controlled-construction
+witness, covering 611 boundaries plus refusals and invalid inputs.
+
+The private fereg candidate passes its universal native audit/ABI and explicit
+source-only integration suite: 1,935 Rust test executions, 312 Python tests and
+seven portable checks. The first source-suite attempt exposed the stale fuzz
+lockfile; that failure is retained. The corrected candidate passes the complete
+suite. Installed-package admission and release qualification were not performed.
+
+The fixed Mac diagnostic executes all 40 calls in 37.508 seconds: eight traced
+prerequisites/warmups followed by one ABBA and one BAAB block per cell. Every
+call retains the original independent numerical targets, exact scientific
+bits and solver signatures. Setup work, route and iteration traces are exact;
+all four cells install CMG at the unchanged checkpoint. Independent Astra high
+review rechecks all 200 raw artifacts, all 40 oracle evaluations, 46 bindings,
+eight resource traces, 80 host snapshots and every paired-summary field.
+
+| Revealed A cell | First block ratio | Second block ratio |
+| --- | ---: | ---: |
+| Weak, one worker | 1.03598 | 0.99938 |
+| Weak, four workers | 1.00386 | 0.99461 |
+| High-degree weak, one worker | 0.97550 | 0.99478 |
+| High-degree weak, four workers | 0.99066 | 1.00957 |
+
+Ratios are candidate/parent geometric means within each balanced block. All
+observations remain included, with no retry or exclusion. Endpoint snapshots
+record ordinary desktop activity and no identified competing build, test or
+estimation workload; they do not prove uninterrupted whole-call isolation.
+Two blocks per cell do not establish statistical equivalence or nonregression.
+The high-degree four-worker result is essentially neutral, so this intervention
+does not resolve the closed SCC rejection. The fereg adapter and dependency
+pin were removed from main; the private experiment and published upstream API
+remain available. Public Auto and the incumbent artifact are unchanged.
+
+The next bounded diagnostic profiles the established parent under automatic
+upgrading and explicit CMG-k1. Historical substage clocks implicate census/local
+sorting and genuine work checks as well as global canonicalization; the static
+experiment isolates only indirect dispatch. An owned start barrier and actual
+sample coverage must establish that profiling catches construction. No new
+timing panel, solver threshold, SCC campaign or B/C admission follows from this
+negative diagnostic. Full artifact, protocol, output and review hashes are in
+the compact controlled-results evidence; no release speed claim is made.
 
 The original retained campaign is
 `/projectnb/welfgr/fereg/runs/portfolio-unseeded-20261016/`; the compact evidence
