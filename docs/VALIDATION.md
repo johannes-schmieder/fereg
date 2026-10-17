@@ -18,7 +18,7 @@ were deleted; hashes and summaries are the remaining record.
 
 ## S plus exact Fast ownership prototype (2026-10-17)
 
-The fixed next candidate is `routing_cells_s_owned`, combining S's unchanged FE
+The private candidate `routing_cells_s_owned` combines S's unchanged FE
 path with the exact Fast ownership optimization. It excludes E's twin engine
 and S2's early refusal. Public Auto and all thirteen earlier private/control
 arms must preserve their scientific results; the new arm must preserve S's
@@ -66,6 +66,62 @@ one/four workers, Fast/Low memory, score-cache refusal and cell admission refusa
 The ordinary installed-package entrypoint rejects the unshipped private runtime;
 source-only integration passes and distribution artifacts remain unchanged.
 These correctness checks do not establish a timing advantage.
+
+Implementation `f0c8011a` completed D5 but **failed the frozen selection gate**.
+Its Linux plugin SHA256 is
+`fefb8309a7110bf7c3ab0d7415d5dd33c53bcf831299703b54c37e46d01f62fa`;
+the executable-source manifest SHA256 is
+`3d220fa0d3ef92e9f75372e10718d667ebc89560a0e41567a04723d809f5e980`.
+Science job `8160616` completed on `scc-gr4`: 192 candidate solves and 312
+exact historical comparisons (624 native calls), plus eight candidate smoke
+solves and thirteen smoke historical comparisons (26 native calls). Measurement
+job `8160617` completed all 1,536 calls on `scc-wo4`, reserving 28 cores and
+using one/four native workers. Audit job `8160621` reparsed all 2,386 native
+outputs and verified their bound fingerprints, solver rows, timings and traces.
+All three jobs have scheduler `failed=0`, `exit_status=0`; application markers,
+scientific certificates and completeness checks pass. Auto/ownership and
+S/S+ownership remain exact throughout science and every timing phase.
+
+The [retained D5 results](../bench/results/s-owned-cells-20261017.json) preserve
+all timing observations and scientific signatures; the [lossless diagnostics](../bench/results/s-owned-cells-diagnostics-20261017.json)
+preserve all 288 traced observations. Raw numerical columns were audited on
+SCC and hashed; these compact packets are not a retained numerical dataset.
+The isolation replay checked 108 process snapshots and 36 scheduler censuses,
+with no known competing compute or exclusions. This sampled evidence does not
+prove continuously interference-free execution. The only operational repair
+was changing a submission wrapper from system Python 3.6 to the existing 3.10
+environment before any submission; no scientific attempt was repeated.
+Independent Astra review reconstructed the frozen call order, paired summaries,
+exactness groups, historical controls and diagnostics, and found no remaining
+evidence or protocol blocker. This review accepts the failed selection result;
+it does not authorize confirmation.
+
+| Comparison | Material gains | Within allowance | Regressions |
+| --- | ---: | ---: | ---: |
+| S + ownership versus Auto | 16 | 8 | 0 |
+| S + ownership versus S | 4 | 20 | 0 |
+| Auto + ownership versus Auto | 1 | 22 | 1 |
+
+These are descriptive classifications from the frozen twelve paired discovery
+blocks and `max(5%,1 ms)` allowance, not confirmed nonregression bounds. The
+candidate misses the eighteen-gain Auto target, and ownership alone violates
+its zero-regression requirement. The four gains over S all use four workers:
+dense, repeated observations, dynamic weights and wide regression. Median
+paired ratios are respectively 0.9366, 0.9414, 0.9446 and 0.9353, with paired
+savings of 3.306, 5.261, 2.918 and 4.874 ms. These are ratios and differences of
+paired observations, not ratios of marginal medians.
+
+The ownership-alone regression is inactive-zero/four-worker: median paired
+ratio 1.0743, paired cost +2.398 ms, and median excess +0.778 ms beyond the
+allowance. Its cause is not identified by this experiment. The S combination
+is within the allowance in that setting, but does not rescue the failed
+control prerequisite. Old D4 ownership results cannot override this run.
+
+This is useful incremental evidence for combining S with exact ownership;
+it does not establish broad superiority, universal ownership nonregression or
+a new public default. C5, including its 600,000- and 480,000-row shapes, remains
+sealed and unrun. There are no exclusions, extensions, alternative finalists
+or additional timing attempts. No Mac performance claim follows from D5.
 
 ## Twin cell engine and Fast ownership prototype (2026-10-17)
 
