@@ -1613,6 +1613,35 @@ source/build/review hashes and these limitations.
 | Forty-call result | `642fc517cae5dc0ecd42e223cd82d303eb506b67bd275ae13bd342874644f21b` |
 | Independent raw review | `4f37f6282428233c9973acfbb57fe6ac996ad78b168f5c373c6b171d4839bc60` |
 
+### Integrated candidate Linux setup, 2026-10-17
+
+The new campaign freezes source `691cef5c` against baseline `46aa78f6`.
+It keeps the simpler CMG gate-inlining implementation and strict unseeded LSMR;
+the discarded batching and heap-credit prototypes are absent. Setup job
+`8155921` passes with failed=0/exit=0, four slots and 416 seconds on `scc-gr4`.
+Both same-profile Linux ELF artifacts pass audit, actual-plugin ABI/self-test,
+and input/output guards. The 218 benchmark-tool tests and six harness mocks pass.
+
+Independent Astra high review checks all sixteen substantive commands, twenty-five
+Git probes, source/overlay identities, both binaries and the harness. Its 167
+references include 159 corresponding local files rehashed independently and eight
+remote tool/numerical identities retained from the producer's evidence. This is
+build and source-contract admission; fresh allocation science and isolation
+remain pending.
+
+The build names the host `scc-gr4`; accounting uses `scc-gr4.scc.bu.edu`.
+A separately reviewed consumer adapter accepts only that exact SCC short/FQDN
+relationship and delegates every other check to the unchanged producer validator.
+All 27 pure tests pass. Original setup, configuration, binaries and raw accounting
+remain unchanged; no rebuild or solver retry is used.
+
+Evidence assembly, input binding and plan sealing precede new discovery. No new
+benchmark is submitted at this checkpoint. The six-node, three-round design,
+original scientific tolerances, zero-replacement rule and baseline-only stopping
+screen remain fixed. Old failures remain closed; no Mac B/C or public Auto change
+follows. Exact artifact, accounting, review and consumer hashes are in the
+[compact results](../bench/results/solver-routing-controlled-20261014.json).
+
 ### Matched independent RHS coverage, 2026-10-17
 
 The maintained routing regression now uses sixteen independent residual columns

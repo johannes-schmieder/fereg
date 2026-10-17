@@ -25334,5 +25334,43 @@
       "source-integration.stderr": "39e07262146ed075052619c7169b81bb04c2c891c958d98cd9580ae3284dd74d",
       "routing_tests.rs": "c9fb7098e6e64d2dfc05844bb8a44cdb7b597581cd96ca3f329b1145d41bc5ea"
     }
+  },
+  "portfolio_integrated_qualification_20261017": {
+    "status": "actual_Linux_setup_passed_discovery_pending",
+    "campaign": "portfolio-integrated-20261017",
+    "source_commit": "691cef5cbc9ebc0ef9a82ddf52f49903fa7bbef2",
+    "baseline_source_commit": "46aa78f67b102373675b7c72196dba1fbfb7d337",
+    "setup": {
+      "job_id": "8155921",
+      "failed": 0,
+      "exit_status": 0,
+      "wall_s": 416,
+      "slots": 4,
+      "pe": "omp",
+      "hostname": "scc-gr4.scc.bu.edu",
+      "commands": 16,
+      "git_probes": 25,
+      "bench_tests": 218,
+      "mock_tests": 6,
+      "native_audit_ABI_guards": "passed_both_same_profile_Linux_artifacts",
+      "completion_sha256": "7c2686c285cc74d5f43c2fa6d88b2d21f72c6e2dc056abe01fbb983b97511026",
+      "accounting_sha256": "9a909ffaf3a0dd8cbfa52718b2f3f605d1822bc4387ac83cba86acf76b7cd322",
+      "candidate_sha256": "3947fbe7fd6a89befa57e6e6301811acfeefca4a2f8fd16b93e649cb3ea853e8",
+      "baseline_sha256": "2400f8d8748fc953c50e60939c39ebc46a6776bd56e7bacf48301066a46f8c79",
+      "harness_sha256": "d49630f61b3f3c502d34abf1e61b4ec73fa5b69e65c8af8dc26ff47a4e40786a",
+      "raw_review_sha256": "c1b0d36bd25c489c6a1d8fa21c7eece966342137266bf9a6865f56378745b055",
+      "reviewer": "gpt-6-astra high",
+      "closure_references": 167,
+      "closure_scope": "159 corresponding local files rehashed;8 remote tool/numerical identities retained from producer evidence"
+    },
+    "consumer_interpretation": {
+      "scope": "Only exact SCC short-name/FQDN aliases; original build and raw accounting unchanged; every other producer validation delegated unchanged. No rebuild or solver rerun.",
+      "pure_tests": 27,
+      "independent_review": "gpt-6-astra high GO",
+      "jobs_sha256": "362212833ade0fa643b839db4db46c554992ff772c90cb9cd035b18ff9ef7888",
+      "binder_sha256": "27d9be04a8c2d6532b9282ce03055a9693ba9cec92205ba792e1f5d1c1531b92",
+      "assembler_sha256": "8d887dc88e0fb055951484535c93e42f263abb1f2d0369d70697a4ba70351983"
+    },
+    "scope": "Build, ABI and source-contract evidence only. Fresh allocation science, isolation, performance, shortlist and Mac B/C remain pending; public Auto unchanged. Old campaigns remain closed NO-GO."
   }
 }
