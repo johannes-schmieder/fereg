@@ -10,9 +10,11 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+import math
 import os
 from pathlib import Path
 import random
+import re
 import socket
 import statistics
 import subprocess
@@ -43,6 +45,15 @@ LIMITS = {'seed': 2026101603, 'workers': [1, 4], 'blocks': 6, 'warmups': 1,
           'exclusions': 'none; preserve every outcome and ordinary OS observation'}
 LIBRARY_LIMITS = dict(scc.discovery.LIBRARY_LIMITS)
 KIND = 'compact_cells_native_discovery_v1'
+LIVE_HOST_LOAD_FIELDS = frozenset({
+    'cpu', 'load_avg', 'load_short', 'load_medium', 'load_long',
+    'np_load_avg', 'np_load_short', 'np_load_medium', 'np_load_long',
+    'mem_free', 'mem_used', 'swap_free', 'swap_used', 'virtual_free', 'virtual_used', 'scratch_free',
+})
+STRUCTURAL_HOST_LOAD_FIELDS = frozenset({
+    'arch', 'num_proc', 'mem_total', 'swap_total', 'virtual_total',
+    'm_topology', 'm_topology_inuse', 'm_socket', 'm_core',
+})
 
 
 def require(condition, message):
@@ -69,6 +80,70 @@ def checked(value):
     path = Path(value['path']).resolve(strict=True)
     require(digest(path) == value['sha256'], 'frozen file changed: ' + str(path))
     return path
+
+
+def host_fields(record):
+    """Parse qconf host policy strictly, retaining live telemetry separately."""
+    argv = record.get('argv')
+    require(isinstance(argv, list) and len(argv) == 3 and argv[:2] == ['qconf', '-se']
+            and isinstance(argv[2], str) and argv[2] and isinstance(record.get('stderr'), str),
+            'invalid host configuration command metadata')
+    text = scc.output(record, argv).replace('\\\n', '')
+    require('\\' not in text, 'malformed host configuration continuation')
+    fields = {}
+    for line in text.splitlines():
+        if not line.strip() or line.lstrip().startswith('#'):
+            continue
+        parts = line.split(None, 1)
+        require(len(parts) == 2 and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', parts[0]) is not None
+                and parts[1].strip(), 'malformed host configuration field')
+        key, value = parts[0], ' '.join(parts[1].split())
+        require(key not in fields, 'duplicate host configuration field: ' + key)
+        fields[key] = value
+
+    def entries(value):
+        if value == 'NONE':
+            return {}
+        result = {}
+        for item in value.split(','):
+            pair = [part.strip() for part in item.split('=')]
+            require(len(pair) == 2 and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', pair[0]) is not None
+                    and pair[1] and not any(c.isspace() for c in pair[1]),
+                    'malformed host configuration key/value')
+            key, entry = pair
+            require(key not in result, 'duplicate host configuration key: ' + key)
+            result[key] = entry
+        return result
+
+    require('load_values' in fields and 'complex_values' in fields, 'missing host load/configuration values')
+    loads = entries(fields.pop('load_values'))
+    fields['complex_values'] = entries(fields['complex_values'])
+    require(STRUCTURAL_HOST_LOAD_FIELDS <= loads.keys(), 'missing structural host load values')
+    for key in LIVE_HOST_LOAD_FIELDS & loads.keys():
+        match = re.fullmatch(r'([+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)([bBkKmMgGtTpPeE]?)', loads[key])
+        require(match is not None and math.isfinite(float(match[1]))
+                and (not match[2] or key.endswith(('_free', '_used'))),
+                'malformed live host telemetry: ' + key)
+    return fields, loads
+
+
+def check_stable_configuration(before, after):
+    """Allow only declared load_values telemetry to vary; never alter raw rows."""
+    for key in ['job_environment', 'parallel_environment', 'resource_quota']:
+        require(before[key] == after[key], 'configuration changed: ' + key)
+    left, right = before['queue_configuration'], after['queue_configuration']
+    require(set(left) == set(right) == {'complexes', 'host', 'queue'}, 'malformed queue configuration record')
+    for key in ['complexes', 'queue']:
+        require(left[key] == right[key], 'configuration changed: ' + key)
+    require({k: v for k, v in left['host'].items() if k != 'stdout'}
+            == {k: v for k, v in right['host'].items() if k != 'stdout'},
+            'host configuration command metadata changed')
+    left_fields, left_loads = host_fields(left['host'])
+    right_fields, right_loads = host_fields(right['host'])
+    require(left_fields == right_fields and left_loads.keys() == right_loads.keys()
+            and {k: v for k, v in left_loads.items() if k not in LIVE_HOST_LOAD_FIELDS}
+            == {k: v for k, v in right_loads.items() if k not in LIVE_HOST_LOAD_FIELDS},
+            'structural host configuration changed')
 
 
 def tool_files():
@@ -479,8 +554,7 @@ def measure(plan, receipt, output):
                 after, snapshot = scc.configuration(output, host, 'after')
                 require(scc.check_configuration(after, host, os.getpid()) == queue, 'allocation changed')
                 scc.check_scheduler_snapshot(snapshot, host, queue)
-                for key in ['job_environment', 'parallel_environment', 'resource_quota', 'queue_configuration']:
-                    require(before[key] == after[key], 'configuration changed: ' + key)
+                check_stable_configuration(before, after)
                 if observer and observed_started is not None:
                     observer.validate(started if started is not None else observed_started, ended)
             except Exception as error:

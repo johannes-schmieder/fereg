@@ -1,5 +1,6 @@
 """Contract tests for bounded compact-cell discovery; no native builds or jobs."""
 import json
+import copy
 from contextlib import ExitStack
 import os
 from pathlib import Path
@@ -160,6 +161,7 @@ class CompactCellsContract(unittest.TestCase):
                 (campaign, 'parse_run', {'side_effect': parse}),
                 (campaign, 'read', {'return_value': {}}),
                 (campaign, 'Observers', {}),
+                (campaign, 'check_stable_configuration', {}),
                 (campaign.scc.discovery, 'host', {'return_value': host}),
                 (campaign.scc, 'configuration', {'side_effect': configuration}),
                 (campaign.scc, 'check_configuration', {'return_value': 'queue'}),
@@ -301,6 +303,118 @@ class CompactCellsContract(unittest.TestCase):
             with patch.object(campaign.scc, 'check_scheduler'):
                 with self.assertRaisesRegex(ValueError, 'unparsed ps row'):
                     observer.validate(2, 4)
+
+
+class StableConfiguration(unittest.TestCase):
+    @staticmethod
+    def boundary():
+        loads = {'arch': 'linux-x64', 'num_proc': '28', 'mem_total': '192000M',
+                 'swap_total': '8000M', 'virtual_total': '200000M',
+                 'm_topology': 'SCCCCCCCCCCCCCCSCCCCCCCCCCCCCC',
+                 'm_topology_inuse': 'SCCCCCCCCCCCCCCSCCCCCCCCCCCCCC',
+                 'm_socket': '2', 'm_core': '28', 'sensor_policy': 'fixed'}
+        loads.update({key: '1M' if key.endswith(('_free', '_used')) else '0.000000'
+                      for key in sorted(campaign.LIVE_HOST_LOAD_FIELDS)})
+        text = ('hostname scc-test.scc.bu.edu\nload_scaling NONE\n'
+                'complex_values cpu_arch=skylake,scratch_free=876G\n'
+                'load_values ' + ','.join(f'{k}={v}' for k, v in loads.items())
+                + '\nprocessors 28\nuser_lists NONE\nprojects NONE\n')
+        command = {'argv': ['qconf', '-se', 'scc-test'], 'stdout': text, 'stderr': '',
+                   'returncode': 0, 'locale': 'C', 'timezone': 'UTC'}
+        return {'job_environment': {'NSLOTS': '28', 'PE': 'omp28'},
+                'parallel_environment': {'stdout': 'allocation_rule $pe_slots'},
+                'resource_quota': {'stdout': 'limit hosts {*} to slots=$num_proc'},
+                'queue_configuration': {'complexes': {'stdout': 'slots s INT <= YES YES'},
+                                        'queue': {'stdout': 'slots 28'}, 'host': command}}
+
+    @staticmethod
+    def replace_host(boundary, before, after):
+        record = boundary['queue_configuration']['host']
+        record['stdout'] = record['stdout'].replace(before, after)
+
+    def test_all_declared_live_values_can_change_without_mutating_raw_evidence(self):
+        before = self.boundary()
+        after = copy.deepcopy(before)
+        for key in campaign.LIVE_HOST_LOAD_FIELDS:
+            self.replace_host(after, key + ('=1M' if key.endswith(('_free', '_used')) else '=0.000000'),
+                              key + ('=54321.25G' if key.endswith(('_free', '_used')) else '=12.500000'))
+        original = copy.deepcopy((before, after))
+        campaign.check_stable_configuration(before, after)
+        self.assertEqual((before, after), original)
+
+    def test_every_structural_load_value_and_unknown_sensor_remain_exact(self):
+        before = self.boundary()
+        _, loads = campaign.host_fields(before['queue_configuration']['host'])
+        for key in [*campaign.STRUCTURAL_HOST_LOAD_FIELDS, 'sensor_policy']:
+            with self.subTest(key=key):
+                after = copy.deepcopy(before)
+                self.replace_host(after, f'{key}={loads[key]}', f'{key}=changed')
+                with self.assertRaisesRegex(ValueError, 'structural host configuration changed'):
+                    campaign.check_stable_configuration(before, after)
+        after = copy.deepcopy(before)
+        self.replace_host(after, ',cpu=0.000000', '')
+        with self.assertRaisesRegex(ValueError, 'structural host configuration changed'):
+            campaign.check_stable_configuration(before, after)
+
+    def test_environment_pe_quota_queue_complexes_and_host_policy_stay_exact(self):
+        before = self.boundary()
+        for key in ['job_environment', 'parallel_environment', 'resource_quota']:
+            with self.subTest(key=key):
+                after = copy.deepcopy(before)
+                after[key]['mutated'] = True
+                with self.assertRaisesRegex(ValueError, 'configuration changed'):
+                    campaign.check_stable_configuration(before, after)
+        for key in ['queue', 'complexes']:
+            with self.subTest(key=key):
+                after = copy.deepcopy(before)
+                after['queue_configuration'][key]['stdout'] += ' policy mutation'
+                with self.assertRaisesRegex(ValueError, 'configuration changed'):
+                    campaign.check_stable_configuration(before, after)
+        for old, new in [('processors 28', 'processors 56'), ('projects NONE', 'projects other'),
+                         ('load_scaling NONE', 'load_scaling cpu=2'), ('scratch_free=876G', 'scratch_free=900G')]:
+            with self.subTest(policy=old):
+                after = copy.deepcopy(before)
+                self.replace_host(after, old, new)
+                with self.assertRaisesRegex(ValueError, 'structural host configuration changed'):
+                    campaign.check_stable_configuration(before, after)
+
+    def test_host_command_metadata_must_remain_exact(self):
+        before = self.boundary()
+        for key, value in [('argv', ['qconf', '-se', 'other-host']), ('stderr', 'warning'),
+                           ('returncode', 1), ('locale', 'other'), ('timezone', 'other')]:
+            with self.subTest(key=key):
+                after = copy.deepcopy(before)
+                after['queue_configuration']['host'][key] = value
+                with self.assertRaisesRegex(ValueError, 'command metadata changed'):
+                    campaign.check_stable_configuration(before, after)
+
+    def test_malformed_or_duplicate_fields_fail_even_if_both_boundaries_match(self):
+        mutations = [('cpu=0.000000', 'cpu=NaN'), ('mem_free=1M', 'mem_free=bad'),
+                     ('cpu=0.000000', 'cpu=1M'), ('cpu=0.000000', 'cpu=1e309'),
+                     ('cpu=0.000000', 'cpu=0.0,cpu=0.0'), ('arch=linux-x64', 'arch'),
+                     ('arch=linux-x64', '=linux-x64'), ('arch=linux-x64', 'arch=a=b'),
+                     ('arch=linux-x64', 'arch='), ('arch=linux-x64', 'arch=bad value'),
+                     ('processors 28', 'processors 28\nprocessors 28'),
+                     ('processors 28', 'malformed_line'),
+                     ('cpu_arch=skylake', 'cpu_arch=skylake,cpu_arch=skylake')]
+        for old, new in mutations:
+            with self.subTest(mutation=new):
+                boundary = self.boundary()
+                self.replace_host(boundary, old, new)
+                with self.assertRaises(ValueError):
+                    campaign.check_stable_configuration(boundary, copy.deepcopy(boundary))
+
+    def test_host_wrapping_and_key_order_are_semantic_not_byte_comparisons(self):
+        before = self.boundary()
+        after = copy.deepcopy(before)
+        record = after['queue_configuration']['host']
+        lines = record['stdout'].splitlines()
+        load = next(line for line in lines if line.startswith('load_values '))
+        entries = load.split(None, 1)[1].split(',')
+        separator = ', ' + chr(92) + '\n    '
+        rewritten = 'load_values ' + separator.join(reversed(entries))
+        record['stdout'] = record['stdout'].replace(load, rewritten)
+        campaign.check_stable_configuration(before, after)
 
 
 if __name__ == '__main__':

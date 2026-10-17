@@ -1031,7 +1031,9 @@ non-movers, hubs, disconnected components, dynamic weights, wide RHSs, exact
 initial orthogonality, Low mode, and easy solves; every input has at most
 100,000 rows. Worker counts are one and four.
 
-Prepare on a compute node using already-built `replay_large`, the native timing
+Run from the deployed repository root. Put `INPUT_ROOT` below that checkout’s
+`target/tmp/solver-routing/`: the canonical serializer refuses files outside
+`target/`. Prepare on a compute node using already-built `replay_large`, the native timing
 harness, and plugin. The native harness must admit 100,000 rows and at least
 3,000,000 cells. Preparation computes the existing independent SciPy Schur
 witness for every family, then freezes all inputs, prepared arm requests,
@@ -1046,14 +1048,14 @@ placeholders (create scheduler log directories before submission):
 
 ```sh
 qsub -P welfgr -pe omp 4 -l h_rt=01:00:00,mem_per_core=3G \
-  bench/compact_cells_scc.sh prepare --root CAMPAIGN/input \
+  bench/compact_cells_scc.sh prepare --root INPUT_ROOT \
   --generator REPLAY_LARGE --harness NATIVE_HARNESS --plugin PLUGIN
 qsub -P welfgr -pe omp 2 -l h_rt=00:15:00,mem_per_core=3G \
-  bench/compact_cells_scc.sh smoke --plan CAMPAIGN/input/plan.json --output CAMPAIGN/smoke
+  bench/compact_cells_scc.sh smoke --plan INPUT_ROOT/plan.json --output CAMPAIGN/smoke
 qsub -P welfgr -pe omp 4 -l h_rt=01:00:00,mem_per_core=3G \
-  bench/compact_cells_scc.sh science --plan CAMPAIGN/input/plan.json --output CAMPAIGN/science
+  bench/compact_cells_scc.sh science --plan INPUT_ROOT/plan.json --output CAMPAIGN/science
 qsub -P welfgr -pe omp28 28 -l num_proc=28,h_rt=01:15:00,mem_per_core=3G \
-  bench/compact_cells_scc.sh measure --plan CAMPAIGN/input/plan.json \
+  bench/compact_cells_scc.sh measure --plan INPUT_ROOT/plan.json \
   --science CAMPAIGN/science/science.json --output CAMPAIGN/measurement
 ```
 
@@ -1097,3 +1099,13 @@ scheduler record is replayed under the existing 75-second coverage bound;
 process records must bracket measurement with no gap above 15 seconds (the
 five-second cadence plus bounded command time and scheduling margin). These
 checks concern missing observation coverage, not the amount of OS activity.
+
+Stable configuration comparison preserves host capacity/topology, resource
+policies, queue definitions, PE allocation, quota and command metadata. An
+explicit allowlist of live load/CPU/free-memory readings may change; raw
+readings remain retained. Malformed or duplicate fields fail closed. If a
+proven observer defect requires an operational repair, preserve the failed
+attempt and original source/plan, record old/new tool identities, and verify
+runtime, data, witnesses, schedule and budgets unchanged before one bounded
+fresh attempt. A new tool manifest requires a fresh scientific prerequisite;
+never relabel a failed measurement or copy its prerequisite identity.
