@@ -1506,7 +1506,14 @@ class RoutingProducer(unittest.TestCase):
         self.assertEqual(out['discovery_partition'],descriptor)
         validator = {'path':str(Path(discovery.__file__).resolve()),'sha256':digest(Path(discovery.__file__))}
         self.assertEqual(out['discovery_partition_validator'],validator)
-        self.assertEqual(len(routing_run.tool_identities()),13)
+        bound_tools = {path.name for path in routing_run.tool_identities()}
+        self.assertEqual(bound_tools, {
+            'routing.py', 'routing_run.py', 'routing_cases.py', 'routing_oracle.py',
+            'routing_block_deployment.py', 'routing_blocks.py', 'routing_deployment.py',
+            'cmgschur.py', 'cmgschur_cases.py', 'native.py', 'native_io.py', 'time_exact.py',
+            'replay_plugins.py', 'replay_psd.py', 'replay_bias_reference.py',
+            'replay_ols_reference.py',
+        })
         link = out['qualified_wrappers'][self.cell['id']]
         self.witness = self.root / 'output' / link['path']
         wrapper = json.loads(self.witness.read_text())

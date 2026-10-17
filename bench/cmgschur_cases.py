@@ -29,8 +29,8 @@ HIGH_DEGREE_SIZES = {'sampled-oracle': (60, 40, 50),
 def scratch(path):
     path = path.resolve()
     if not any(path.is_relative_to((ROOT / 'target/tmp' / task).resolve())
-               for task in ['cmgschur', 'cmgschur-opt', 'cmgschur-sampled', 'solver-routing']):
-        raise ValueError('output must be under target/tmp/{cmgschur,cmgschur-opt,cmgschur-sampled,solver-routing}')
+               for task in ['cmgschur', 'cmgschur-opt', 'cmgschur-sampled', 'solver-routing', 'auto-routing']):
+        raise ValueError('output must be under a declared CMG/solver-routing/auto-routing task in target/tmp')
     return path
 
 

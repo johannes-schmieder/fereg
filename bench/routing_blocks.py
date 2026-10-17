@@ -56,7 +56,7 @@ def read(bound, *, sealed=False):
     return routing.unseal(value) if sealed else value
 
 
-def design_valid(design, *, attempts=12):
+def design_valid(design, *, attempts=12, incremental=False):
     require(set(design) == {'attempts', 'warmups', 'seed', 'timeout_s', 'budget_s',
                            'session_id', 'analysis_unit', 'alpha'}, 'freeze every Mac block design field')
     require(type(design['attempts']) is int and design['attempts'] == attempts,
@@ -67,6 +67,9 @@ def design_valid(design, *, attempts=12):
     require(isinstance(design['session_id'], str) and design['session_id']
             and design['analysis_unit'] == 'block'
             and design['alpha'] == {'numerator': 1, 'denominator': 40}, 'invalid block analysis contract')
+    if incremental:
+        require(design['budget_s'] == (14400 if attempts == 12 else 28800),
+                'incremental B/C require fixed four/eight-hour budgets')
     for key, limit in [('timeout_s', 120), ('budget_s', 86400)]:
         require(type(design[key]) in (int, float) and math.isfinite(design[key])
                 and 0 < design[key] <= limit, 'invalid prospective ' + key)
@@ -143,9 +146,11 @@ def portfolio_discovery_valid(plan, summary):
     schema = plan['schema']
     partitioned = schema == 3
     metadata = parallel.metadata(plan)
-    require(summary.get('kind') == discovery.PORTFOLIO_KIND + '_shortlist'
+    incremental = metadata['spec'].get('experiment_kind') == 'incremental'
+    kind = discovery.INCREMENTAL_KIND if incremental else discovery.PORTFOLIO_KIND
+    require(summary.get('kind') == kind + '_shortlist'
             and type(summary.get('schema')) is int and summary['schema'] == schema
-            and summary.get('experiment_kind') == 'portfolio'
+            and summary.get('experiment_kind') == ('incremental' if incremental else 'portfolio')
             and summary.get('protocol_source') == parallel.KIND
             and summary.get('status') == 'discovery_only' and summary.get('promotion') is False
             and summary.get('plan_sha256') == routing.identity(plan), 'invalid closed portfolio discovery result')
@@ -200,10 +205,12 @@ def portfolio_discovery_valid(plan, summary):
         require(shard not in discrete or discrete[shard] == signature,
                 'portfolio cross-host discrete decisions changed within a shard')
         discrete[shard] = signature
-    require(accounted <= parallel.PORTFOLIO_DESIGN['maximum_allocation_budget_s'],
+    campaign_design = parallel.INCREMENTAL_DESIGN if incremental else parallel.PORTFOLIO_DESIGN
+    require(accounted <= campaign_design['maximum_allocation_budget_s'],
             'portfolio campaign exceeded its accounted budget')
-    screen = parallel.portfolio_screen(summary.get('ranking', []),
-                                       candidate=routing.portfolio_candidate(metadata['spec']))
+    screen = (parallel.incremental_screen(summary.get('ranking', []), metadata['spec']) if incremental else
+              parallel.portfolio_screen(summary.get('ranking', []),
+                                        candidate=routing.portfolio_candidate(metadata['spec'])))
     require(all(key in summary and summary[key] == value for key, value in screen.items()),
             'portfolio shortlist differs from its frozen heuristic screen')
     return metadata
@@ -239,7 +246,17 @@ def declare(inputs, design):
     review = read(inputs['discovery_review'])
     pilot = read(inputs['pilot_review'])
     portfolio = manifest.get('experiment_kind') == 'portfolio'
-    if portfolio:
+    incremental = manifest.get('experiment_kind') == 'incremental'
+    if incremental:
+        design_valid(design, incremental=True)
+        if manifest['incremental']['family'] == 'two':
+            import routing_block_deployment
+            terminal = routing.unseal(manifest['incremental']['preceding_stage'])
+            # SCC discovery retention is fully replayed on SCC before export.
+            # Mac can replay its own B/C closure, never inaccessible SCC paths.
+            routing_block_deployment.validate_terminal(terminal,
+                portable=set(terminal['inputs']) == {'discovery', 'operational_review'})
+    if portfolio or incremental:
         metadata = portfolio_discovery_valid(plan, summary)
         linux_parent, linux = metadata['parent'], metadata['spec']
     elif plan.get('kind') == discovery.KIND + '_plan':
@@ -253,7 +270,7 @@ def declare(inputs, design):
         linux_parent, linux = metadata['parent'], metadata['spec']
     require(manifest.get('experiment_kind', 'routing') == linux.get('experiment_kind', 'routing'),
             'Mac handoff cannot cross experiment kinds')
-    require(summary.get('kind') == (discovery.PORTFOLIO_KIND if portfolio else discovery.KIND) + '_shortlist'
+    require(summary.get('kind') == (discovery.INCREMENTAL_KIND if incremental else discovery.PORTFOLIO_KIND if portfolio else discovery.KIND) + '_shortlist'
             and summary.get('status') == 'discovery_only' and summary.get('promotion') is False
             and summary.get('plan_sha256') == routing.identity(plan), 'invalid discovery-only shortlist')
     shortlist = summary.get('shortlist', [])
@@ -261,7 +278,15 @@ def declare(inputs, design):
     require(1 <= len(shortlist) <= 4 and len(set(shortlist)) == len(shortlist)
             and {row['arm'] for row in ranking} == set(linux['candidates'])
             and len(ranking) == len(linux['candidates'])
-            and (portfolio or shortlist == [row['arm'] for row in ranking[:4]]), 'shortlist differs from complete discovery ranking')
+            and (portfolio or incremental or shortlist == [row['arm'] for row in ranking[:4]]), 'shortlist differs from complete discovery ranking')
+    if incremental:
+        require(shortlist in (['incumbent'], ['incumbent', routing.incremental_candidate(linux)]),
+                'incremental discovery must retain incumbent and only its eligible family challenger')
+        require(manifest['incremental'] == linux['incremental'], 'incremental stage provenance changed')
+        require(manifest.get('sampled_qualification') == linux.get('sampled_qualification'),
+                'incremental sample-1 scientific evidence binding changed')
+        require(review.get('model_metadata_amendment') is None,
+                'incremental metadata requires a fresh correct declaration')
     if portfolio:
         require(routing.portfolio_candidate(linux) in shortlist, 'portfolio discovery rejected the sole candidate; no Mac B')
         require(manifest.get('sampled_qualification') == linux.get('sampled_qualification'),
@@ -281,13 +306,14 @@ def declare(inputs, design):
             'Mac and Linux candidates lack matching production source identity')
     for platform_manifest, parent in [(manifest, None), (linux, linux_parent)]:
         source = platform_manifest.get('candidate_source_identity', {})
-        candidate_arms = [arm for arm in platform_manifest['candidates'] if arm != 'baseline']
+        candidate_arms = [arm for arm in platform_manifest['candidates']
+                          if arm not in (platform_manifest['protections'] if incremental else ['baseline'])]
         hashes = {platform_manifest['arms'][arm]['sha256'] for arm in candidate_arms}
         require(len(hashes) == 1 and all(routing.sha(value) for value in hashes),
                 'candidate arms require one platform artifact')
-        if portfolio:
+        if portfolio or incremental:
             require(routing.sha(source.get('artifact_inputs_sha256')), 'portfolio artifact inputs are unbound')
-        if portfolio or parent is None or 'plugin_sha256' in source:
+        if portfolio or incremental or parent is None or 'plugin_sha256' in source:
             require(routing.sha(source.get('plugin_sha256')) and hashes == {source['plugin_sha256']},
                     'candidate production source is not bound to its platform artifact')
         else:
@@ -323,7 +349,7 @@ def declare(inputs, design):
     require(isinstance(raw, list) and raw, 'retain remote validation raw evidence bindings')
     for bound in raw:
         require(checked(bound).stat().st_size > 0, 'empty discovery evidence')
-    if portfolio:
+    if portfolio or incremental:
         portfolio_review_valid(review, validation, plan, summary)
     model_metadata_valid(manifest, linux, review)
     require(pilot.get('kind') == KIND + '_pilot_review' and pilot.get('status') == 'passed'
@@ -332,6 +358,7 @@ def declare(inputs, design):
     for bound in pilot['evidence']:
         checked(bound)
     return {'schema': 1, 'kind': KIND, 'stage': 'B', 'status': 'prospective',
+            **({'experiment_kind': 'incremental', 'incremental': copy.deepcopy(manifest['incremental'])} if incremental else {}),
             'inputs': copy.deepcopy(inputs), 'design': copy.deepcopy(design),
             'manifest_sha256': routing.identity(manifest), 'candidates': shortlist,
             'cells': copy.deepcopy(manifest['panels']['B']),
@@ -400,7 +427,7 @@ def qualification(context_bound, records_bound):
     records = read(records_bound)
     import routing_science_completion as completion
     if isinstance(records.get('value'), dict) and records['value'].get('kind') == completion.KIND:
-        require(manifest.get('experiment_kind') != 'portfolio',
+        require(manifest.get('experiment_kind') not in {'portfolio', 'incremental'},
                 'portfolio requires fresh Mac science, never legacy completion evidence')
         return completion.load_completion(context_bound, records_bound)
     require(records.get('kind') != completion.KIND and not
@@ -474,7 +501,8 @@ def comparison_coverage(context_bound, records_bound):
                 [row for row in records['records'] if row['cell'] == cid])
         for arm in [*context['protections'], *cell['comparators']]:
             state = outcomes[cid][arm]['status']
-            require(state == 'passed' or (arm not in context['protections'] and state == 'unavailable'),
+            optional = {'unavailable', 'invalid'} if manifest.get('experiment_kind') == 'incremental' else {'unavailable'}
+            require(state == 'passed' or (arm not in context['protections'] and state in optional),
                     'required or unresolved reference blocks Mac selection')
     candidates = [arm for arm in context['candidates']
                   if all(outcomes[cell['id']][arm]['status'] == 'passed' for cell in context['cells'])]
@@ -486,7 +514,10 @@ def comparison_coverage(context_bound, records_bound):
                 comparisons.append({'cell': cell['id'], 'candidate': candidate, 'reference': ref,
                     'reference_role': 'protected' if ref in context['protections'] else 'internal',
                     'status': 'identity' if candidate == ref else
-                              'timed' if outcomes[cell['id']][ref]['status'] == 'passed' else 'unavailable'})
+                              'diagnostic' if manifest.get('experiment_kind') == 'incremental'
+                                  and ref not in context['protections']
+                                  and outcomes[cell['id']][ref]['status'] == 'passed' else
+                              'timed' if outcomes[cell['id']][ref]['status'] == 'passed' else outcomes[cell['id']][ref]['status']})
     return {'candidates': candidates, 'excluded_candidates': [arm for arm in context['candidates'] if arm not in candidates],
             'comparisons': comparisons, 'outcomes': outcomes}
 
@@ -544,7 +575,7 @@ def timing_spec(config, *, paired=False):
 def decide(config, timing_manifest, records, monitor_receipt):
     """Recompute one conditional B selection; never activate or inspect C."""
     import time_blocks
-    context, _ = load_context(config['context'])
+    context, manifest = load_context(config['context'])
     require(context['kind'] == KIND and context['stage'] == 'B', 'B selection cannot consume activation or C evidence')
     expected = timing_spec(config)
     frozen, _ = time_blocks.load_manifest(checked(timing_manifest))
@@ -562,6 +593,7 @@ def decide(config, timing_manifest, records, monitor_receipt):
                 'analysis contains duplicated, changed or unexpected comparison coverage')
         summaries[key] = row
     valid = not analysis['missing_monitor_evidence'] and not analysis['scientific_or_execution_failure']
+    incremental = manifest.get('experiment_kind') == 'incremental'
     ranking = []
     for candidate in coverage['candidates']:
         comparisons, worst, passed = [], None, valid
@@ -571,7 +603,7 @@ def decide(config, timing_manifest, records, monitor_receipt):
             detail = dict(edge)
             if edge['status'] == 'identity':
                 detail['pass'] = True
-            elif edge['status'] == 'unavailable':
+            elif edge['status'] in {'unavailable', 'invalid', 'diagnostic'}:
                 detail.update({'runtime_identified': False, 'pass': None})
             else:
                 summary = summaries.get((edge['cell'], candidate, edge['reference']))
@@ -584,13 +616,34 @@ def decide(config, timing_manifest, records, monitor_receipt):
                     and upper is not None and math.isfinite(upper) and upper <= 1)
                 detail.update(runtime_identified=summary is not None, analysis=summary)
                 detail['pass'] = ok
-                passed &= ok
+                if not incremental or edge['reference_role'] == 'protected':
+                    passed &= ok
                 if edge['reference_role'] == 'internal' and upper is not None:
                     worst = upper if worst is None else max(worst, upper)
             comparisons.append(detail)
         ranking.append({'arm': candidate, 'pass': bool(passed),
                         'worst_internal_normalized_upper': worst, 'comparisons': comparisons})
-    ranking.sort(key=lambda row: (not row['pass'], math.inf if row['worst_internal_normalized_upper'] is None
+    if incremental:
+        affected = [cell['id'] for cell in context['cells']
+                    if routing.incremental_eligible(cell, manifest['incremental']['family'])]
+        require(affected, 'incremental ranking has no affected family cells')
+        for row in ranking:
+            ratios = []
+            for cid in affected:
+                summary = summaries.get((cid, row['arm'], 'incumbent'))
+                ratio = 1.0 if row['arm'] == 'incumbent' else (
+                    (summary.get('ratio_median_interval_descriptive') or {}).get('median') if summary else None)
+                if type(ratio) not in (int, float) or not math.isfinite(ratio) or ratio <= 0:
+                    row['pass'] = False
+                    break
+                ratios.append(ratio)
+            row['affected_family_geometric_mean_ratio'] = (
+                math.exp(sum(map(math.log, ratios)) / len(ratios)) if len(ratios) == len(affected) else None)
+        ranking.sort(key=lambda row: (not row['pass'],
+            row['affected_family_geometric_mean_ratio'] if row['affected_family_geometric_mean_ratio'] is not None else math.inf,
+            row['arm'] != 'incumbent'))
+    else:
+        ranking.sort(key=lambda row: (not row['pass'], math.inf if row['worst_internal_normalized_upper'] is None
                                   else row['worst_internal_normalized_upper'], routing.conservative(row['arm'])))
     finalist = next((row['arm'] for row in ranking if row['pass']), None)
     return routing.seal({'schema': 1, 'kind': KIND + '_B_decision',

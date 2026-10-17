@@ -42,6 +42,7 @@ from time_exact import sha256_file as digest
 
 KIND = 'routing_scc_discovery'
 PORTFOLIO_KIND = 'routing_scc_portfolio_discovery'
+INCREMENTAL_KIND = 'routing_scc_incremental_discovery'
 GRID = ['baseline', *[f'h{h}-k{k}' for k in routing.TREES for h in routing.CHECKPOINTS]]
 DESIGN = {'rounds': 3, 'measured_slots': 9, 'warmups_per_round': 1,
           'per_call_timeout_s': 120.0, 'prerequisite_budget_s': 14400.0,
@@ -89,6 +90,10 @@ def load(path):
 
 def validate_spec(spec, *, portfolio=False, candidate=None):
     routing.validate_manifest(spec)
+    if spec.get('experiment_kind') == 'incremental':
+        routing.incremental_candidate(spec)
+        require(len(spec['panels']['A']) == 42, 'incremental requires full 42-cell A coverage')
+        return
     require(spec.get('experiment_kind', 'routing') == ('portfolio' if portfolio else 'routing')
             and spec.get('purpose') != 'ablation_only', 'discovery requires the routing tournament')
     require(spec['candidates'] == (['baseline', candidate or routing.PORTFOLIO_V1] if portfolio else GRID)
@@ -115,8 +120,9 @@ def partitions(spec):
     groups = [families[:10], families[10:]]
     slots = [sum(len(set(spec['candidates'] + spec['protections'] + c['comparators']))
                  for c in cells if c['family'] in group) for group in groups]
-    require(sum(slots) == 360, 'partition must retain the complete 360-slot comparator frontier')
-    budgets = [14400 * slots[0] // 360]
+    total_slots = 402 if spec.get('experiment_kind') == 'incremental' else 360
+    require(sum(slots) == total_slots, 'partition must retain the complete 360-slot comparator frontier')
+    budgets = [14400 * slots[0] // total_slots]
     budgets.append(14400 - budgets[0])
     return [{'shard': index + 1, 'parent_manifest_sha256': routing.identity(spec),
              'families': group, 'cell_ids': [c['id'] for c in cells if c['family'] in group],
@@ -143,7 +149,7 @@ def execution_spec(plan):
         return spec
     contract = plan.get('round_contract', {})
     part = plan['discovery_partition']
-    require(plan.get('kind') == PORTFOLIO_KIND + '_plan'
+    require(plan.get('kind') in {PORTFOLIO_KIND + '_plan', INCREMENTAL_KIND + '_plan'}
             and routing.identity(plan.get('scheduler_query_policy')) == routing.identity(SCHEDULER_QUERY_POLICY)
             and set(contract) == {'parallel_plan_sha256', 'logical_round', 'shard', 'attempt', 'partition_sha256'}
             and routing.sha(contract['parallel_plan_sha256'])
@@ -184,6 +190,8 @@ def freeze(config):
     require(config.get('source_checks'), 'freeze completed source-check evidence')
     paths = {str(p.resolve()): h for p, h in routing_run.tool_identities().items()}
     for path in [__file__, Path(__file__).parent / 'tests/test_routing_discovery.py',
+                 *([Path(__file__).parent / 'tests/test_routing_incremental.py']
+                   if spec.get('experiment_kind') == 'incremental' else []),
                  Path(__file__).parent / 'block_host.py',
                  config['manifest'], config['harness'], config['receipt_generator'], *config['source_checks']]:
         ref = reference(path)
@@ -221,7 +229,7 @@ def freeze(config):
                 paths.update({str(p): h for p, h in bound.items()})
     root = routing.scratch(Path(config['output_root']))
     require(not root.exists(), 'freeze a fresh campaign output root')
-    return {'kind': (PORTFOLIO_KIND if portfolio else KIND) + '_plan', 'schema': 1, 'design': DESIGN, 'tournament': routing.seal(spec),
+    return {'kind': (INCREMENTAL_KIND if spec.get('experiment_kind') == 'incremental' else PORTFOLIO_KIND if portfolio else KIND) + '_plan', 'schema': 1, 'design': DESIGN, 'tournament': routing.seal(spec),
             'output_root': str(root), 'library_limits': LIBRARY_LIMITS,
             'harness': str(Path(config['harness']).resolve()),
             **{key: {k: str(Path(v).resolve()) for k, v in config[key].items()}
@@ -233,7 +241,7 @@ def freeze(config):
 
 
 def validate_plan(plan):
-    require(plan.get('kind') in {KIND + '_plan', PORTFOLIO_KIND + '_plan'} and plan.get('design') == DESIGN
+    require(plan.get('kind') in {KIND + '_plan', PORTFOLIO_KIND + '_plan', INCREMENTAL_KIND + '_plan'} and plan.get('design') == DESIGN
             and plan.get('library_limits') == LIBRARY_LIMITS, 'wrong discovery plan')
     scheduler_query_policy(plan)
     spec = routing.unseal(plan['tournament'])
@@ -251,7 +259,7 @@ def scheduler_query_policy(plan):
     if 'scheduler_query_policy' not in plan:
         return None
     contract = plan.get('round_contract', {})
-    require(plan.get('kind') == PORTFOLIO_KIND + '_plan'
+    require(plan.get('kind') in {PORTFOLIO_KIND + '_plan', INCREMENTAL_KIND + '_plan'}
             and routing.identity(plan['scheduler_query_policy']) == routing.identity(SCHEDULER_QUERY_POLICY)
             and isinstance(contract, dict)
             and set(contract) == ({'parallel_plan_sha256', 'logical_round', 'shard', 'attempt', 'partition_sha256'}
@@ -297,7 +305,7 @@ def prerequisite_status(spec, records):
             [r for r in records['records'] if r['cell'] == cid])
         for arm, outcome in result.items():
             require(outcome['status'] == 'passed' or
-                    (routing.arm_role(spec, arm) == 'optional_comparator' and outcome['status'] == 'unavailable'),
+                    (routing.arm_role(spec, arm) == 'optional_comparator' and outcome['status'] in ({'unavailable', 'invalid'} if spec.get('experiment_kind') == 'incremental' else {'unavailable'})),
                     'prerequisite failure blocks discovery: ' + cid + '/' + arm)
             outcomes[cid, arm] = outcome
     return outcomes
@@ -337,6 +345,16 @@ def fingerprints(records, outcomes):
     return found
 
 
+def critical_outcomes(spec, outcomes):
+    if spec.get('experiment_kind') != 'incremental':
+        return outcomes
+    require(all(value['status'] in {'passed', 'unavailable', 'invalid'}
+                for key, value in outcomes.items() if routing.arm_role(spec, key[1]) == 'optional_comparator'),
+            'unresolved comparator or shared validator failure')
+    return {key: value for key, value in outcomes.items()
+            if routing.arm_role(spec, key[1]) != 'optional_comparator'}
+
+
 def round_data(plan, spec, records, expected_outcomes, expected_fingerprints):
     validate_partition_records(plan, records)
     require(records.get('platform', '').startswith('Linux') and records.get('tool_sha256') == plan['producer_tools'],
@@ -345,17 +363,21 @@ def round_data(plan, spec, records, expected_outcomes, expected_fingerprints):
             and records.get('repetitions') == 3 and records.get('timeout_s') == 120.0
             and records.get('budget_s') == execution_budget(plan), 'round measurement contract changed')
     times, outcomes, _ = routing.observations(spec, 'A', spec['candidates'], records, None)
-    require({k: v['status'] for k, v in outcomes.items()}
-            == {k: v['status'] for k, v in expected_outcomes.items()},
+    require({k: v['status'] for k, v in critical_outcomes(spec, outcomes).items()}
+            == {k: v['status'] for k, v in critical_outcomes(spec, expected_outcomes).items()},
             'new outcome stops discovery without retry')
     for row in records['prerequisites']:
         key = row['cell'], row['arm']
-        if outcomes[key]['status'] == 'unavailable':
+        if expected_outcomes[key]['status'] in {'unavailable', 'invalid'}:
             origin = {k: v for k, v in row.items() if k not in {'observation_source', 'prior_proof'}}
             require(row.get('observation_source') == 'prior_prerequisite'
                     and routing.observation_identity(origin) in expected_outcomes[key]['failure_sha256'],
                     'optional unavailability must carry the original Linux failure, never retry')
-    require(fingerprints(records, outcomes) == expected_fingerprints, 'cross-round exact fingerprint changed')
+    current_fingerprints = fingerprints(records, outcomes)
+    expected = ({key: value for key, value in expected_fingerprints.items()
+                 if outcomes[key]['status'] == 'passed'} if spec.get('experiment_kind') == 'incremental'
+                else expected_fingerprints)
+    require(current_fingerprints == expected, 'cross-round exact fingerprint changed')
     return times
 
 
@@ -454,6 +476,8 @@ def score(spec, times, outcomes):
     """Legacy A point-estimate criterion for arbitrary complete paired-slot vectors.
     Deliberately excludes bootstrap machinery and all B/C selection semantics.
     """
+    if spec.get('experiment_kind') == 'incremental':
+        return routing.incremental_ranking(spec, 'A', spec['candidates'], times, outcomes)
     ranking = []
     for arm in spec['candidates']:
         violations, worst, ratios, comparisons = 0, None, [], []
@@ -534,9 +558,73 @@ def validate_prerequisite_identity(plan, records):
             'fresh Linux prerequisite identities required; Mac evidence cannot carry')
 
 
+def failed_campaign(plan, attempts):
+    """Retain a closed failed A campaign without deriving any timing claim."""
+    import routing_parallel
+    spec = routing_parallel.validate_plan(plan)
+    require(spec.get('experiment_kind') == 'incremental' and plan.get('schema') == 3,
+            'failed terminal evidence requires incremental partitioned discovery')
+    require(isinstance(attempts, list) and attempts and len(attempts) <= 6,
+            'retain bounded actual allocation evidence')
+    actual_directories = set(Path(plan['output_root']).glob('round-*/shard-*/attempt-*'))
+    supplied_directories = {Path(bound['path']).parent.parent for bound in attempts}
+    require(actual_directories == supplied_directories,
+            'failed terminal must account for every started allocation directory')
+    seen, failures = set(), []
+    for bound in attempts:
+        path = checked(bound)
+        value = load(path)
+        labels = [(n, shard) for n in (1, 2, 3) for shard in (1, 2)
+                  if path == Path(plan['output_root']) / f'round-{n}/shard-{shard}/attempt-1/collection/collection.json']
+        require(len(labels) == 1 and labels[0] not in seen, 'failed collection is not a unique frozen allocation')
+        seen.add(labels[0])
+        n, shard = labels[0]
+        view = routing_parallel.round_view(plan, n, 1, shard)
+        require(value.get('plan_sha256') == routing.identity(view)
+                and value.get('round_contract') == view['round_contract'], 'failed allocation binding changed')
+        if value.get('status') == 'incomplete':
+            require(value.get('error') or value.get('supervisor_error') or value.get('observer_failure_seen')
+                    or value.get('supervisor_interrupted') or value.get('producer_returncode') not in (None, 0),
+                    'incomplete allocation lacks actual failure evidence')
+            failures.append({'logical_round': n, 'shard': shard, 'collection_sha256': routing.identity(value)})
+    require(failures, 'a failed terminal cannot discard a complete potentially qualifying campaign')
+    return {'schema': 1, 'kind': INCREMENTAL_KIND + '_failed_campaign',
+            'plan_sha256': routing.identity(plan), 'status': 'failed', 'attempts': attempts,
+            'failures': failures, 'promotion': False, 'claim': 'failure only; no timing or science qualification'}
+
+
+def terminal_basis(inputs):
+    """Origin-host raw replay plus independent review; only retains incumbent."""
+    import routing_parallel
+    require(set(inputs) == {'manifest', 'plan', 'result', 'review'},
+            'discovery terminal requires manifest, plan, result and independent review bindings')
+    spec, plan, result = (load(checked(inputs[key])) for key in ('manifest', 'plan', 'result'))
+    require(routing_parallel.validate_plan(plan) == spec and spec.get('experiment_kind') == 'incremental',
+            'discovery terminal does not bind its complete incremental manifest')
+    if result.get('kind') == INCREMENTAL_KIND + '_shortlist':
+        actual = routing_parallel.aggregate(plan, None, result['collection']['attempts'])
+        require(result == actual and routing.incremental_candidate(spec) not in result.get('shortlist', []),
+                'discovery retained terminal requires the rederived rejected challenger')
+    else:
+        require(result == failed_campaign(plan, result.get('attempts')),
+                'failed discovery terminal differs from actual failed allocations')
+    review = routing.read_json(checked(inputs['review']))
+    require(review.get('kind') == INCREMENTAL_KIND + '_terminal_review'
+            and review.get('status') == 'passed' and review.get('outcome') == 'retained'
+            and review.get('manifest_sha256') == routing.identity(spec)
+            and review.get('plan_sha256') == routing.identity(plan)
+            and review.get('result_sha256') == routing.identity(result)
+            and review.get('all_allocations_terminal') is True and review.get('outstanding_jobs') == []
+            and isinstance(review.get('evidence'), list) and review['evidence'],
+            'retained discovery requires independent review of exact failed/rejected raw evidence')
+    for evidence in review['evidence']:
+        checked(evidence)
+    return spec, result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['freeze', 'prerequisites', 'collect', 'aggregate'])
+    parser.add_argument('command', choices=['freeze', 'prerequisites', 'collect', 'aggregate', 'failed-campaign'])
     parser.add_argument('--plan', type=Path, required=True, help='config JSON for freeze; sealed plan otherwise')
     parser.add_argument('--proof', type=Path)
     parser.add_argument('--collection', type=Path)
@@ -548,7 +636,10 @@ def main():
         write(output, freeze(routing.read_json(args.plan)))
         return 0
     plan = load(args.plan)
-    if args.command == 'prerequisites':
+    if args.command == 'failed-campaign':
+        result = failed_campaign(plan, routing.read_json(args.collection))
+        write(output, result)
+    elif args.command == 'prerequisites':
         result = prerequisites(plan, output)
     elif args.command == 'collect':
         result = collect(plan, load(args.proof), output)

@@ -28,8 +28,9 @@ PREFIXES = {'prefix-none': ('none', 0), 'prefix-map4': ('map4', 4), 'prefix-it4'
 PORTFOLIO_V1 = 'portfolio-v1'
 PORTFOLIO_UNSEEDED = 'portfolio-unseeded'
 PORTFOLIOS = (PORTFOLIO_V1, PORTFOLIO_UNSEEDED)
+INCREMENTAL = ('incremental-many', 'incremental-two')
 COMPACT_IT = 'it-coefficients'
-EXPERIMENT_KINDS = {'routing', 'prefix', 'overlap', 'portfolio'}
+EXPERIMENT_KINDS = {'routing', 'prefix', 'overlap', 'portfolio', 'incremental'}
 PREFIX_COVERAGE = {'small-third', 'near-confounded-third', 'four-fe', 'eight-fe', 'sixteen-fe'}
 TREES = (0, 1, 2)
 REPETITIONS = {'A': 3, 'B': 7, 'C': 7}
@@ -53,6 +54,58 @@ FAILURE_POLICY = {
     'per_call_timeout_s': 120.0,
     'aggregate_budget_s': 14400.0,
 }
+
+
+INCREMENTAL_FAILURE_POLICY = {**FAILURE_POLICY, 'version': 'incremental-v1',
+    'optional_invalid_science_or_unresolved': 'proven comparator science invalidity is diagnostic only; validator/resource/infrastructure defects block',
+    'candidate_failure': 'excludes candidate; no passing claim'}
+
+
+def incremental_candidate(manifest):
+    candidates = manifest.get('candidates', [])
+    if (manifest.get('experiment_kind') != 'incremental' or len(candidates) != 2
+            or candidates[0] != 'incumbent' or candidates[1] not in INCREMENTAL):
+        raise ValueError('incremental requires incumbent and exactly one family challenger')
+    return candidates[1]
+
+
+def incremental_eligible(cell, family):
+    family = family.removeprefix('incremental-')
+    if family not in {'many', 'two'}:
+        raise ValueError('unknown incremental family')
+    count = cell.get('absorbed_terms')
+    return (cell.get('categorical_intercepts') is True and type(count) is int
+            and (count >= 3 if family == 'many' else count == 2))
+
+
+def worker_diagnostic_invalid(row, manifest):
+    failure = row.get('failure', {})
+    check = failure.get('worker_comparison', {})
+    members = check.get('members', [])
+    complete = [member for member in members if member.get('complete') is True]
+    return (manifest.get('experiment_kind') == 'incremental'
+            and arm_role(manifest, row['arm']) == 'optional_comparator'
+            and row.get('status') == 'blocked' and row.get('prior_status') == 'passed'
+            and failure.get('kind') == 'comparator_worker_science_invalid'
+            and verified_record(row, manifest) and sha(check.get('identity'))
+            and check.get('status') == 'blocked' and len(complete) >= 2
+            and len({m.get('threads') for m in complete}) >= 2
+            and all(m.get('identity') == check['identity'] and m.get('arm') == row['arm']
+                    and isinstance(m.get('signature'), list) for m in complete)
+            and any(m.get('cell') == row['cell'] for m in complete)
+            and any(m['signature'] != complete[0]['signature'] for m in complete))
+
+
+def diagnostic_invalid(row, manifest):
+    if worker_diagnostic_invalid(row, manifest):
+        return True
+    failure = row.get('failure', {})
+    return (manifest.get('experiment_kind') == 'incremental'
+            and arm_role(manifest, row['arm']) == 'optional_comparator'
+            and row.get('status') == 'blocked' and failure.get('kind') == 'comparator_science_invalid'
+            and failure.get('dispatched') is True and failure.get('process_completed') is True
+            and all(sha(failure.get(key)) for key in ('result_sha256', 'log_sha256', 'prepared_sha256'))
+            and failure['prepared_sha256'] == row.get('prepared_sha256'))
 
 
 def arm_role(manifest, arm):
@@ -105,7 +158,10 @@ def observation_identity(row):
 def verified_record(row, manifest):
     checks = row.get('resource_checks', {})
     setup_ok = checks.get('setup_caps') == 'passed' or (checks.get('setup_caps') == 'not_applicable'
-                and (row['arm'] not in manifest['candidates'] or row['arm'] == 'baseline'))
+                and (row['arm'] not in manifest['candidates'] or row['arm'] == 'baseline'
+                     or (manifest.get('experiment_kind') == 'incremental'
+                         and arm_role(manifest, row['arm']) == 'required_reference'
+                         and manifest['arms'][row['arm']].get('policy') is None)))
     verified = (row.get('certificate_pass') is True and row.get('science_pass') is True
                 and sha(row.get('science_sha256')) and sha(row.get('witness_sha256'))
                 and checks.get('iteration_caps') == 'passed'
@@ -120,6 +176,10 @@ def verified_record(row, manifest):
 
 def arm_outcome(manifest, rows, prerequisite=None):
     """All rows remain accountable; a partial timing sample never yields a mean."""
+    cohort = ([prerequisite] if prerequisite else []) + rows
+    if cohort and all(row is not None and worker_diagnostic_invalid(row, manifest) for row in cohort):
+        return {'status': 'invalid', 'reason': 'comparator cross-worker scientific mismatch; no timing claim',
+                'failure_sha256': [observation_identity(row) for row in cohort], 'runtime_identified': False}
     if any(row is None for row in rows):
         return {'status': 'blocked', 'reason': 'missing observations'}
     if prerequisite and prerequisite.get('status') == 'passed':
@@ -148,6 +208,9 @@ def arm_outcome(manifest, rows, prerequisite=None):
     if len({row['witness_sha256'] for row in passed}) > 1:
         return {'status': 'blocked', 'reason': 'scientific witness changed'}
     if failures:
+        if all(diagnostic_invalid(row, manifest) for row in failures):
+            return {'status': 'invalid', 'reason': 'comparator scientific mismatch; no timing claim',
+                    'failure_sha256': [observation_identity(row) for row in failures], 'runtime_identified': False}
         if all(terminal_failure(row, manifest) for row in failures):
             return {'status': 'unavailable', 'reason': 'observed terminal failure; all-success reliability gate failed',
                     'failure_sha256': [observation_identity(row) for row in failures],
@@ -188,6 +251,9 @@ def sha(value):
 def policy(arm):
     if arm == 'baseline':
         return None
+    if arm in INCREMENTAL:
+        return {**policy(PORTFOLIO_UNSEEDED), 'family': arm.removeprefix('incremental-'),
+                'injection': 'routing_' + arm.replace('-', '_')}
     if arm == PORTFOLIO_V1:
         return {'prefix': 'map4', 'steps': 4, 'map_sweeps': 4, 'prefix_min_terms': 3,
                 'replace_existing_prefix': True, 'optional_cmg_handoff': False,
@@ -223,7 +289,7 @@ def policy(arm):
 def policy_name(value):
     if value is None:
         return 'baseline'
-    choices = [*PORTFOLIOS, *PREFIXES, *(f'h{h}-k{k}' for h in CHECKPOINTS for k in TREES),
+    choices = [*INCREMENTAL, *PORTFOLIOS, *PREFIXES, *(f'h{h}-k{k}' for h in CHECKPOINTS for k in TREES),
                *(f'overlap-h{h}-k{k}' for h in CHECKPOINTS[1:] for k in TREES)]
     for name in choices:
         if (identity(policy(name)) == identity(value) if name in PORTFOLIOS else policy(name) == value):
@@ -277,8 +343,10 @@ def conservative(arm):
         return (int(arm == 'overlap'), 0, 0, 0)
     if arm in PREFIXES:
         return (1, list(PREFIXES).index(arm), 0, 0)
-    if arm in PORTFOLIOS:
+    if arm in (*PORTFOLIOS, *INCREMENTAL):
         return (1, 0, 0, 0)
+    if arm == 'incumbent':
+        return (0, 0, 0, 0)
     p = policy(arm)
     return (0, 0, 0, 0) if p is None else (1, p['trees'] != 0, -p['checkpoint'], p['trees'])
 
@@ -336,19 +404,20 @@ def validate_manifest(manifest):
     kind = manifest.get('experiment_kind', 'routing')
     if kind not in EXPERIMENT_KINDS or (ablation and kind != 'routing'):
         raise ValueError('declare one isolated experiment kind; no Cartesian combinations')
-    if manifest.get('schema') != 2 or manifest.get('warmups') != 1:
+    incremental = kind == 'incremental'
+    if manifest.get('schema') != (3 if incremental else 2) or manifest.get('warmups') != 1:
         raise ValueError('require schema 2 and exactly one warmup')
-    if manifest.get('failure_policy') != FAILURE_POLICY:
+    if manifest.get('failure_policy') != (INCREMENTAL_FAILURE_POLICY if incremental else FAILURE_POLICY):
         raise ValueError('require the frozen availability policy and call/panel bounds')
     if manifest.get('repetitions') != REPETITIONS:
         raise ValueError('fixed A/B/C repetitions are 3/7/7')
     arms = manifest['arms']
     candidates = manifest['candidates']
     protections = manifest['protections']
-    if not candidates or len(candidates) != len(set(candidates)) or ('baseline' not in candidates and kind != 'overlap'):
+    if not candidates or len(candidates) != len(set(candidates)) or ('baseline' not in candidates and kind not in {'overlap', 'incremental'}):
         raise ValueError('unique candidates must include immutable baseline')
     if protections not in ([['baseline', 'serial']] if kind == 'overlap' else
-                           [['baseline', 'incumbent']] if kind == 'prefix' else
+                           [['baseline', 'incumbent']] if kind in {'prefix', 'incremental'} else
                            [['baseline'], ['baseline', 'incumbent']]):
         raise ValueError('protect baseline and optionally the stage incumbent')
     if any(a not in arms for a in [*candidates, *protections]):
@@ -381,23 +450,23 @@ def validate_manifest(manifest):
     if not isinstance(sampled, dict) or any(k not in {'1', '2'} or not sha(v) for k, v in sampled.items()):
         raise ValueError('sampled qualification maps counts 1/2 to scientific evidence hashes')
     counts.update(map(int, sampled))
-    if kind == 'portfolio' and set(sampled) != {'1'}:
+    if kind in {'portfolio', 'incremental'} and set(sampled) != {'1'}:
         raise ValueError('portfolio requires exactly the sample-1 scientific qualification binding')
     if (ablation or kind == 'prefix') and sampled:
         raise ValueError('this isolated experiment does not declare sampled policy candidates')
-    expected = ({'baseline'} if ablation else {'baseline', *PREFIXES} if kind == 'prefix' else
+    expected = ({'incumbent', incremental_candidate(manifest)} if incremental else {'baseline'} if ablation else {'baseline', *PREFIXES} if kind == 'prefix' else
                 {'baseline', portfolio_candidate(manifest)} if kind == 'portfolio' else
                 {'serial', 'overlap'} if kind == 'overlap' else
                 {'baseline', *(f'h{h}-k{k}' for h in CHECKPOINTS for k in counts)})
     if set(candidates) != expected:
         raise ValueError('freeze exactly baseline and one portfolio policy as the candidate set' if kind == 'portfolio'
                          else 'freeze the full four-checkpoint grid for each qualified tree count')
-    candidate_hashes = {arms[a]['sha256'] for a in candidates if a != 'baseline'}
+    candidate_hashes = {arms[a]['sha256'] for a in candidates if a not in {'baseline', 'incumbent'}}
     if not ablation and len(candidate_hashes) != 1:
         raise ValueError('policy candidates must share one frozen artifact')
     for arm in candidates:
         expected_policy = (arms['serial']['policy'] if kind == 'overlap' and arm == 'serial' else
-                           policy('overlap-' + policy_name(arms['serial']['policy'])) if kind == 'overlap' else policy(arm))
+                           policy('overlap-' + policy_name(arms['serial']['policy'])) if kind == 'overlap' else None if incremental and arm == 'incumbent' else policy(arm))
         if (identity(arms[arm].get('policy')) != identity(expected_policy) if arm in PORTFOLIOS
                 else arms[arm].get('policy') != expected_policy):
             raise ValueError(f'{arm}: policy and sanctioned injection must match')
@@ -413,6 +482,28 @@ def validate_manifest(manifest):
             raise ValueError('serial qualification manifest must also appear in the freshness chain')
     elif 'serial_qualification' in manifest:
         raise ValueError('serial qualification belongs only to the isolated overlap experiment')
+    if incremental:
+        declaration = manifest.get('incremental', {})
+        family = incremental_candidate(manifest).removeprefix('incremental-')
+        if (declaration.get('family') != family or declaration.get('original_revision') != 'f35f3a4d'
+                or re.fullmatch('[0-9a-f]{40}', declaration.get('incumbent_revision', '')) is None
+                or declaration.get('sequence') != (1 if family == 'many' else 2)
+                or arms['incumbent'].get('policy') is not None):
+            raise ValueError('incremental requires original baseline, accepted public incumbent and ordered family declaration')
+        if family == 'two':
+            import routing_block_deployment
+            if 'preceding_stage' not in declaration:
+                raise ValueError('two-FE requires preceding stage')
+            preceding = unseal(declaration['preceding_stage'])
+            routing_block_deployment.validate_terminal(preceding, portable=True)
+            preceding_manifest = unseal(preceding['prior_manifest'])
+            if identity(preceding_manifest) not in {identity(unseal(item)) for item in prior}:
+                raise ValueError('two-FE must retain preceding full A/B/C manifest in freshness chain')
+            if (preceding.get('stage_family') != 'many'
+                    or preceding.get('incumbent_revision') != declaration['incumbent_revision']
+                    or preceding.get('incumbent_source_identity') != declaration.get('incumbent_source_identity')
+                    or arms['incumbent']['sha256'] not in preceding.get('incumbent_artifacts', {}).values()):
+                raise ValueError('two-FE requires the terminal preceding many-FE stage and accepted incumbent')
     seen_hashes, seen_bodies = set(), set()
     for stage, cells in manifest['panels'].items():
         if not cells or len({c['id'] for c in cells}) != len(cells):
@@ -436,6 +527,8 @@ def validate_manifest(manifest):
             comparators = cell['comparators']
             if len(comparators) != len(set(comparators)) or any(a not in arms or a in candidates or a in protections for a in comparators):
                 raise ValueError('declare unique eligible explicit comparator arms')
+        if incremental and not any(incremental_eligible(c, incremental_candidate(manifest)) for c in cells):
+            raise ValueError('incremental panel has no affected family cells')
         if earlier_bodies & stage_bodies:
             raise ValueError('later experiment reuses a prior frozen input/model body')
         if kind == 'overlap' and not any(c['threads'] >= 2 for c in cells):
@@ -445,7 +538,7 @@ def validate_manifest(manifest):
         seen_hashes.update(stage_hashes)
         seen_bodies.update(stage_bodies)
         required_coverage = (PREFIX_COVERAGE if kind == 'prefix' else
-                             PORTFOLIO_COVERAGE if kind == 'portfolio' else
+                             PORTFOLIO_COVERAGE if kind in {'portfolio', 'incremental'} else
                              COVERAGE | (SAMPLED_COVERAGE if sampled else set()))
         if not ablation and not required_coverage <= tags:
             raise ValueError(f'{stage}: missing coverage {sorted(required_coverage - tags)}')
@@ -534,8 +627,12 @@ def evaluate(manifest, stage, records, previous=None):
     if manifest.get('purpose') == 'ablation_only':
         raise ValueError('ablation manifest cannot select or promote routing policy')
     validate_manifest(manifest)
+    if manifest.get('experiment_kind') == 'incremental' and stage != 'A':
+        raise ValueError('incremental B/C require the frozen Mac block protocol; legacy selection is disabled')
     candidates = required_candidates(manifest, stage, previous)
     times, outcomes, failures = observations(manifest, stage, candidates, records, previous)
+    if manifest.get('experiment_kind') == 'incremental':
+        return incremental_evaluate(manifest, stage, candidates, records, previous, times, outcomes, failures)
     blockers = [r for r in failures if r['role'] == 'required_reference'
                 or (r['role'] == 'optional_comparator' and r['status'] != 'unavailable')]
     ranking = []
@@ -606,6 +703,66 @@ def evaluate(manifest, stage, records, previous=None):
         result.update(status='qualified' if passed else 'not_qualified', frozen_policy=candidates[0],
                       promoted=candidates[0] if passed else None,
                       stopping_rule='single frozen holdout; no runner-up and no automatic continuation')
+    return result
+
+
+
+def incremental_ranking(manifest, stage, candidates, times, outcomes, *, confidence=False):
+    """Protected Auto gates; equal cell weight over the affected family only."""
+    challenger = incremental_candidate(manifest)
+    cells = manifest['panels'][stage]
+    blockers = [key for key, value in outcomes.items() if value['status'] != 'passed'
+                and (arm_role(manifest, key[1]) == 'required_reference'
+                     or (arm_role(manifest, key[1]) == 'optional_comparator'
+                         and value['status'] not in {'unavailable', 'invalid'}))]
+    ranking = []
+    for arm in candidates:
+        valid = not blockers and all(outcomes[c['id'], arm]['status'] == 'passed' for c in cells)
+        ratios, comparisons, violations = [], [], 0
+        for cell in cells:
+            cid, t = cell['id'], times[cell['id'], arm]
+            if incremental_eligible(cell, challenger):
+                current = times[cid, 'incumbent']
+                if t and current:
+                    ratios.append(statistics.median(c / b for c, b in zip(t, current)))
+            for ref in dict.fromkeys(manifest['protections'] + cell['comparators']):
+                protected, base = ref in manifest['protections'], times[cid, ref]
+                info = {'cell': cid, 'reference': ref, 'protection': protected}
+                if t is None or base is None:
+                    detail = {'status': outcomes[cid, ref]['status'], 'runtime_identified': False,
+                              'pass': False if protected else None}
+                else:
+                    if len(t) != len(base) or not t:
+                        raise ValueError('unpaired incremental observations')
+                    detail = (compare(base, t, relative_allowance=.05) if confidence and protected else
+                              {'median_ratio': statistics.median(c / b for c, b in zip(t, base)),
+                               'upper_allowance': 1 + max(.05, .001 / statistics.median(base))})
+                    bound = detail['bootstrap95'][1] if confidence and protected else detail['median_ratio']
+                    detail.update(status='compared' if protected else 'diagnostic', runtime_identified=True,
+                                  **{'pass': bound <= detail['upper_allowance'] if protected else None})
+                if protected and detail['pass'] is not True:
+                    violations += 1
+                comparisons.append({**info, **detail})
+        geometric = math.exp(statistics.mean(map(math.log, ratios))) if ratios and valid else None
+        ranking.append({'arm': arm, 'baseline_violations': violations,
+                        'worst_internal_normalized': None, 'geomean_incumbent_ratio': geometric,
+                        'pass': bool(valid and violations == 0), 'data_valid': bool(valid), 'comparisons': comparisons})
+    ranking.sort(key=lambda r: (not r['pass'], r['geomean_incumbent_ratio'] if r['geomean_incumbent_ratio'] is not None else math.inf,
+                                r['arm'] != 'incumbent'))
+    return ranking
+
+
+def incremental_evaluate(manifest, stage, candidates, records, previous, times, outcomes, failures):
+    ranking = incremental_ranking(manifest, stage, candidates, times, outcomes, confidence=stage != 'A')
+    result = {'schema': 3, 'experiment_kind': 'incremental', 'incremental': manifest['incremental'],
+              'manifest_sha256': identity(manifest), 'stage': stage, 'records_sha256': identity(records),
+              'selection_sha256': identity(previous) if previous else None,
+              'failure_policy': manifest['failure_policy'], 'failures': failures, 'ranking': ranking,
+              'blocking_references': [r for r in failures if r['role'] == 'required_reference'
+                  or (r['role'] == 'optional_comparator' and r['status'] not in {'invalid', 'unavailable'})]}
+    if stage == 'A':
+        shortlist = [r['arm'] for r in ranking if r['pass']]
+        result.update(status='shortlisted' if shortlist else 'no_qualifying_policy', shortlist=shortlist)
     return result
 
 

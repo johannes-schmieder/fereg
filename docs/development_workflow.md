@@ -39,6 +39,28 @@ Keep the installed runtime unchanged while testing private patches. Main must pa
 the default entrypoint with matching installed artifacts before a distribution
 change is committed; source-only success never authorizes publication or promotion.
 
+The incremental Auto workstream uses `codex/auto-routing`. Its prospective
+manifest is schema 3 with `experiment_kind=incremental`; historical routing
+manifests keep their original evaluation. `routing_incremental_many` and
+`routing_incremental_two` are hidden OLS qualification requests. Both public
+defaults stay disabled until their separate qualification stages pass.
+The original uninjected baseline is `f35f3a4d`. Later stages also protect the
+most recently accepted branch Auto, and public activation separately protects
+the selected hidden artifact. Explicit solver results describe opportunities;
+their timings do not enter admission or selection.
+
+[`bench/routing_stage.py`](../bench/routing_stage.py) prepares distinct, fixed
+A/B/C inputs for each family, builds independent A references, and binds reviewed
+source/build/scientific evidence to the SCC discovery coordinator. Its
+[`routing_imports`](../crates/fereg-oracle/examples/routing_imports.rs) generator
+supplies fresh no-FE, one-FE, slope and saved-effect inputs with independent
+dense references. Run all private output under `target/tmp/auto-routing/`.
+Preparation is not qualification: fresh allocation-local native science,
+isolation checks, reviewed discovery, Mac B12 selection, exact hidden/public
+equivalence and untouched Mac C24 confirmation remain mandatory. The Mac
+panels time protected Auto comparisons only; the SCC explicit frontier remains
+diagnostic. See the [prospective scientific scope](SPEC.md#incremental-auto-qualification-2026-10-17).
+
 GitHub testing is paused. Mac remains the default qualification host; Johannes
 additionally requested bounded Linux and Windows build checks on 2026-10-07.
 Existing GitHub build definitions remain inactive.

@@ -56,8 +56,17 @@ def read_bound(ref, *, json=False):
 def origin(envelope, *, block_context=None):
     value = routing.unseal(envelope)
     routing.validate_manifest(value)
-    require(value.get('experiment_kind', 'routing') in {'routing', 'portfolio'}
+    require(value.get('experiment_kind', 'routing') in {'routing', 'portfolio', 'incremental'}
             and value.get('purpose') != 'ablation_only', 'deployment requires serial routing or the exact portfolio')
+    incremental = value.get('experiment_kind') == 'incremental'
+    if incremental:
+        require(block_context is not None, 'incremental activation requires its validated Mac block context')
+        import routing_blocks as blocks
+        context, original = blocks.load_context(block_context)
+        require(context.get('stage') == 'B' and context.get('experiment_kind') == 'incremental'
+                and original == value, 'incremental activation requires its original B context')
+        require(value['candidates'] == ['incumbent', routing.incremental_candidate(value)],
+                'incremental activation changed family candidates')
     if value.get('experiment_kind') == 'portfolio':
         candidate = routing.PORTFOLIO_V1
         if block_context is not None:
@@ -71,15 +80,15 @@ def origin(envelope, *, block_context=None):
                     'new portfolio activation requires schema-3 discovery')
         require(value['candidates'] == ['baseline', candidate],
                 'portfolio deployment requires its exact closed candidate order')
-    require(PUBLIC not in value['arms'] and not any('incumbent' in cell['comparators']
+    require(PUBLIC not in value['arms'] and 'selected-hidden' not in value['arms'] and not any('incumbent' in cell['comparators']
             for cell in value['panels']['C']), 'reserved deployment arm collides with an original comparator')
     # Replacing a duplicate baseline loses no protected behavior. A distinct
     # incumbent needs a separately reviewed extension, never silent removal.
-    if 'incumbent' in value['protections']:
+    if 'incumbent' in value['protections'] and not incremental:
         require(value['arms']['incumbent'] == value['arms']['baseline'],
                 'cannot replace a distinct original protected incumbent')
     source = value.get('candidate_source_identity', {})
-    candidates = {value['arms'][arm]['sha256'] for arm in value['candidates'] if arm != 'baseline'}
+    candidates = {value['arms'][arm]['sha256'] for arm in value['candidates'] if arm not in (value['protections'] if incremental else ['baseline'])}
     require(all(routing.sha(source.get(key)) for key in
                 ['plugin_sha256', 'production_tokens_sha256', 'artifact_inputs_sha256'])
             and candidates == {source['plugin_sha256']}, 'original candidate source/artifact identity is incomplete')
@@ -135,6 +144,9 @@ def activation_evidence_for_contract(packet, declaration, manifest, selected, *,
     plugin = read_bound(packet['public_plugin'])
     require(plugin['sha256'] != hidden and plugin['sha256'] != manifest['arms']['baseline']['sha256'],
             'public activation requires its new frozen artifact')
+    if manifest.get('experiment_kind') == 'incremental':
+        require(plugin['sha256'] != manifest['arms']['incumbent']['sha256'],
+                'incremental activation cannot reuse the prior public artifact')
     source = read_bound(packet['public_source'], json=True)
     require(source.get('plugin_sha256') == plugin['sha256'] and all(routing.sha(source.get(key)) for key in
             ['production_tokens_sha256', 'artifact_inputs_sha256', 'full_tests_log_sha256', 'native_build_log_sha256']),
@@ -184,7 +196,7 @@ def activation_evidence_for_contract(packet, declaration, manifest, selected, *,
     if not equivalence:
         return plugin
     equivalent = values['equivalence']
-    require(equivalent.get('invocations') == {'hidden': {'solver': 'auto', 'injection': routing.policy(selected)['injection']},
+    require(equivalent.get('invocations') == {'hidden': {'solver': 'auto', 'injection': manifest['arms'][selected]['policy']['injection']},
             'public': contract['public_invocation']}, 'equivalence must compare hidden policy with uninjected public Auto')
     expected = {(cell['stage'], cell['id']): cell for cell in declaration['non_c_cells']}
     rows = equivalent.get('cells', [])

@@ -168,8 +168,42 @@ def cross_request_scope(reference, raw, arm, meta=None):
     return scope
 
 
-def comparison_policy(manifest, arm):
+def incremental_effective_policy(manifest, arm):
+    if manifest.get('experiment_kind') != 'incremental':
+        return None
+    config = manifest['arms'][arm]
+    selected = config.get('effective_policy', config.get('policy'))
+    for candidate in routing.INCREMENTAL:
+        if routing.identity(selected) == routing.identity(routing.policy(candidate)):
+            return selected
+    return None
+
+
+def incremental_exact_outside(manifest, arm, meta, incumbent, raw, incumbent_columns, columns):
+    selected = incremental_effective_policy(manifest, arm)
+    if selected is not None and not routing.incremental_eligible(meta, selected['family']):
+        if incumbent is None:
+            raise ValueError('outside-family exact replay lacks accepted incumbent')
+        if (differences(exact_view(incumbent, False), exact_view(raw, False))
+                or digest(incumbent_columns) != digest(columns)):
+            raise ValueError('incremental changed outside-family science or solver signature')
+
+
+def comparison_policy(manifest, arm, meta=None):
     """Only the prospective portfolio candidate owns the new diagnostic scope."""
+    if manifest.get('experiment_kind') == 'incremental':
+        selected = incremental_effective_policy(manifest, arm)
+        if selected is not None and routing.incremental_eligible(meta or {}, selected['family']):
+            return routing.policy(routing.PORTFOLIO_UNSEEDED)
+        # A second-family request retains the accepted first family outside its
+        # own mask. The separate exact-incumbent check still owns those cells.
+        declaration = manifest.get('incremental', {})
+        previous = routing.unseal(declaration['preceding_stage']) if 'preceding_stage' in declaration else {}
+        if (arm in {*manifest['candidates'], *manifest['protections']} and arm != 'baseline'
+                and previous.get('status') == 'accepted'
+                and routing.incremental_eligible(meta or {}, previous['stage_family'])):
+            return routing.policy(routing.PORTFOLIO_UNSEEDED)
+        return None
     import routing_block_deployment
     if manifest.get('kind') == routing_block_deployment.KIND and arm in {'public-auto', 'incumbent'}:
         public = manifest['arms'].get('public-auto', {})
@@ -514,7 +548,8 @@ def tool_identities():
                 ['replay_plugins.py', 'replay_psd.py', 'replay_bias_reference.py']]
     checkers.append(ROOT / 'crates/fereg-oracle/python/replay_ols_reference.py')
     producers = [Path(__file__).with_name(name) for name in
-                 ['routing.py', 'routing_run.py', 'routing_cases.py', 'routing_oracle.py', 'cmgschur.py',
+                 ['routing.py', 'routing_run.py', 'routing_cases.py', 'routing_oracle.py', 'routing_block_deployment.py',
+                  'routing_blocks.py', 'routing_deployment.py', 'cmgschur.py',
                   'cmgschur_cases.py', 'native.py', 'native_io.py', 'time_exact.py']]
     return {path: digest(path) for path in [*producers, *checkers]}
 
@@ -606,8 +641,27 @@ def prerequisite_outcomes(manifest, arms, prerequisites, repeats):
 
 def proof_admissible(manifest, outcomes):
     return all(outcome['status'] == 'passed' if routing.arm_role(manifest, arm) == 'required_reference'
-               else outcome['status'] in {'passed', 'unavailable'} if routing.arm_role(manifest, arm) == 'optional_comparator'
+               else outcome['status'] in ({'passed', 'unavailable', 'invalid'} if manifest.get('experiment_kind') == 'incremental' else {'passed', 'unavailable'}) if routing.arm_role(manifest, arm) == 'optional_comparator'
                else True for arm, outcome in outcomes.items())
+
+
+def native_comparator_scientific_mismatch(message):
+    return message in {'RREC did not certify completion', 'RCERT did not certify completion',
+                       'requested solver identity mismatch', 'explicit solver was not used'}
+
+
+def comparator_scientific_mismatch(message):
+    """Narrow assertion whitelist; malformed witnesses and validator defects block."""
+    return (': tolerance failure (maximum absolute difference ' in message
+            or message.endswith(': discrete scientific decision changed')
+            or message.endswith(': presence flags changed')
+            or message.endswith(': input/sample/drop decision changed')
+            or message.endswith(': missingness/excluded-row output changed')
+            or (message.startswith('independent oracle ') and message.endswith(' mismatch'))
+            or message.startswith('independent replay oracle: ')
+            or message.startswith('scoped replay changed an unaffected field: ')
+            or message in {'timed call differs from traced prerequisite science or solver signature',
+                           'native science differs from independently checked prerequisite cohort'})
 
 
 def check_oracle(raw, columns, meta):
@@ -688,7 +742,8 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
     evidence_manifest = manifest
     if discovery_partition is not None:
         if (stage != 'A' or previous is not None or ablation_only or qualification_context is not None
-                or routing.portfolio_candidate(manifest) != routing.PORTFOLIO_UNSEEDED):
+                or (manifest.get('experiment_kind') != 'incremental'
+                    and routing.portfolio_candidate(manifest) != routing.PORTFOLIO_UNSEEDED)):
             raise ValueError('discovery partition requires private unseeded A with no selection or qualification')
     if qualification_context is None:
         routing.validate_manifest(manifest)
@@ -909,6 +964,13 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                                        result_sha256=digest(target))
                 except (ValueError, OSError):
                     pass
+        if (manifest.get('experiment_kind') == 'incremental'
+                and routing.arm_role(manifest, row['arm']) == 'optional_comparator'
+                and isinstance(error, ValueError)
+                and (native_comparator_scientific_mismatch(str(error)) if native
+                     else comparator_scientific_mismatch(str(error)))
+                and target.exists() and row.get('process_completed')):
+            failure.update(kind='comparator_science_invalid', result_sha256=digest(target))
         # Even a legitimate exhaustion/timeout cannot excuse an observed cap
         # violation. Legacy arms may lack counters; never invent them on failure.
         failure['action_resources'] = []
@@ -953,6 +1015,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                 save()
                 continue
             reference, reference_columns = None, output / 'reference.columns'
+            incumbent_reference, incumbent_columns = None, output / 'incumbent.columns'
             prepared, fingerprints, verified, failed = {}, {}, {}, {}
             for arm_index, arm in enumerate(required[cid]):
                 source = output / f'input-{cell_index}-{arm_index}.case'
@@ -1024,10 +1087,18 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                     check_oracle(raw, columns, meta)
                     if reference is not None:
                         compatibility(reference, raw, reference_columns, columns, meta, reader,
-                                      selected_policy=comparison_policy(manifest, arm))
+                                      selected_policy=comparison_policy(manifest, arm, meta))
+                    incremental_exact_outside(manifest, arm, meta, incumbent_reference, raw,
+                                              incumbent_columns, columns)
                     effective, preset = resource_policy(manifest, arm)
+                    outside_family = (effective in routing.INCREMENTAL
+                                      and not routing.incremental_eligible(meta, effective))
+                    if outside_family:
+                        effective = 'baseline'
                     actual = resource_diagnostics(log.read_text(), effective,
                         meta['absorbed_terms'] == 0, science[cid], expected_preset=preset)
+                    if outside_family:
+                        actual['resource_checks']['setup_caps'] = 'passed'
                     fingerprints[arm] = detail['science_sha256']
                     verified[arm] = {**actual, 'diagnostic_sha256': routing.identity(actual),
                                      'witness_sha256': digest(witnesses[cid])}
@@ -1036,12 +1107,15 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                     if discovery_partition is not None:
                         prerequisite['model_discrete_sha256'] = model_discrete_sha256(raw)
                     prerequisite.update(status='passed', certificate_pass=True, science_pass=True, science_sha256=fingerprints[arm], **verified[arm])
-                    if manifest.get('experiment_kind') == 'portfolio':
+                    if manifest.get('experiment_kind') in {'portfolio', 'incremental'}:
                         prerequisite['solver_rows'] = detail['solver_rows']
                     if reader == 'cmg':
                         prerequisite['cmg_worker_signature'] = cmg_diagnostic_signature(detail['solver_rows'])
                     if reader == 'it' and generic_it_metadata(meta):
                         prerequisite['generic_it_worker_signature'] = generic_it_diagnostic_signature(detail['solver_rows'])
+                    if arm == 'incumbent' and manifest.get('experiment_kind') == 'incremental':
+                        incumbent_reference = raw
+                        shutil.copyfile(columns, incumbent_columns)
                     if arm == 'baseline':
                         reference = raw
                         columns.rename(reference_columns)
@@ -1085,11 +1159,13 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                             raise ValueError('timed call differs from traced prerequisite science or solver signature')
                         check_oracle(raw, columns, meta)
                         compatibility(reference, raw, reference_columns, columns, meta, reader,
-                                      selected_policy=comparison_policy(manifest, arm))
+                                      selected_policy=comparison_policy(manifest, arm, meta))
+                        incremental_exact_outside(manifest, arm, meta, incumbent_reference, raw,
+                                                  incumbent_columns, columns)
                         if discovery_partition is not None:
                             row['model_discrete_sha256'] = model_discrete_sha256(raw)
                         row.update(status='passed', certificate_pass=True, science_pass=True, **verified[arm])
-                        if manifest.get('experiment_kind') == 'portfolio':
+                        if manifest.get('experiment_kind') in {'portfolio', 'incremental'}:
                             row['solver_rows'] = detail['solver_rows']
                         if manifest.get('purpose') == 'activation_equivalence':
                             row['solver_signature_sha256'] = routing.identity(exact_view(raw, False)['matrices']['RSOLVER'])
@@ -1133,6 +1209,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                              'repeat_checks': rows,
                              'scope': 'two planned scientific calls per arm; successful arms pass exact repeat, independent truth, baseline compatibility and resources; terminal failures retain availability only; no performance evidence'}
                     pending_publications.append((cell_index, cid, proof, science[cid], meta['absorbed_terms'] == 0))
+                incumbent_columns.unlink(missing_ok=True)
                 reference_columns.unlink(missing_ok=True)
                 for source, _ in prepared.values():
                     source.unlink()
@@ -1155,6 +1232,7 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                     if values else {'median_seconds': None, 'runtime_identified': False})
                 summary['arms'][arm]['outcome'] = outcome
             result['summary'].append(summary)
+            incumbent_columns.unlink(missing_ok=True)
             reference_columns.unlink(missing_ok=True)
             for source, _ in prepared.values():
                 source.unlink()
@@ -1168,14 +1246,24 @@ def run(manifest, stage, previous, harness, plugins, cases, witnesses, output,
                 row.update(status='blocked', prior_status='passed',
                            error=('generic IT' if (row['cell'], row['arm']) in it_blocked else 'CMG') + ' diagnostics differ across comparable worker counts',
                            failure={'kind': 'cross_worker_discrete_mismatch'})
+                if (manifest.get('experiment_kind') == 'incremental'
+                        and routing.arm_role(manifest, row['arm']) == 'optional_comparator'):
+                    check = next(check for check in [*result['cmg_worker_checks'], *result['generic_it_worker_checks']]
+                                 if check['status'] == 'blocked' and any(
+                                     m['cell'] == row['cell'] and m['arm'] == row['arm'] for m in check['members']))
+                    row['failure'] = {'kind': 'comparator_worker_science_invalid', 'worker_comparison': check}
         for summary in result['summary']:
             for arm in summary['arms']:
                 if (summary['cell'], arm) in blocked:
                     summary['arms'][arm] = {'median_seconds': None, 'runtime_identified': False,
                                            'outcome': {'status': 'blocked', 'reason': ('generic IT' if (summary['cell'], arm) in it_blocked else 'CMG') + ' cross-worker diagnostic mismatch'}}
         for cell_index, cid, proof, external, no_fe in pending_publications:
-            if any(cell == cid for cell, _ in blocked):
+            if any(cell == cid and (manifest.get('experiment_kind') != 'incremental'
+                                    or routing.arm_role(manifest, arm) != 'optional_comparator')
+                   for cell, arm in blocked):
                 continue
+            proof['arm_outcomes'] = prerequisite_outcomes(manifest, list(proof['arms']),
+                                                         proof['prerequisites'], proof['repeat_checks'])
             proof['cmg_worker_checks'] = [check for check in result['cmg_worker_checks']
                                          if any(member['cell'] == cid for member in check['members'])]
             proof['generic_it_worker_checks'] = [check for check in result['generic_it_worker_checks']

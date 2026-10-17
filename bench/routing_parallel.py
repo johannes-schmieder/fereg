@@ -82,6 +82,13 @@ PARTITION_DESIGN = {
     'stopping': 'all six first allocations must pass before global scoring; no retry, replacement, reassignment or partial aggregation',
     'heuristic_screen': 'only after all six terminal valid allocations: reject portfolio-unseeded if baseline_violations > 0 or worst available internal normalized comparison > 1; equality passes; at least one finite internal comparison required; retain complete ranking; descriptive only',
 }
+INCREMENTAL_DESIGN = {
+    **PARTITION_DESIGN,
+    'inclusive_allocation_budget_s': 'floor(14400*M1/402), then remainder for shard 2; cleanup reserve included',
+    'maximum_native_calls_per_allocation': '7 * shard arm_slots; sum arm_slots = 402 per round',
+    'maximum_native_calls_campaign': 8442,
+    'heuristic_screen': 'only protected original and accepted Auto gate; rank passing choices by equal-weight affected-family geometric mean relative to accepted Auto; incumbent wins ties; explicit solvers diagnostic only',
+}
 require = discovery.require
 write = discovery.write
 load = discovery.load
@@ -155,14 +162,17 @@ def metadata(plan):
 
 def _portfolio_metadata(plan):
     partitioned = plan.get('schema') == 3
+    parent = routing.unseal(plan['parent'])
+    incremental = parent.get('kind') == discovery.INCREMENTAL_KIND + '_plan'
     require(set(plan) == {'kind', 'schema', 'design', 'parent', 'parent_sha256', 'parent_plan',
                          'output_root', 'producer_tools', 'receipt_generator', 'frozen_files'} | ({'partitions'} if partitioned else set())
             and plan['kind'] == KIND + '_plan' and type(plan['schema']) is int
-            and routing.identity(plan['design']) in ({routing.identity(PARTITION_DESIGN)} if partitioned else
+            and routing.identity(plan['design']) in ({routing.identity(INCREMENTAL_DESIGN if incremental else PARTITION_DESIGN)} if partitioned else
                                                     {routing.identity(PORTFOLIO_DESIGN), routing.identity(PORTFOLIO_QUERY_DESIGN)}),
             'wrong closed portfolio plan')
     parent = routing.unseal(plan['parent'])
-    require(parent.get('kind') == discovery.PORTFOLIO_KIND + '_plan'
+    require(parent.get('kind') == (discovery.INCREMENTAL_KIND if incremental else discovery.PORTFOLIO_KIND) + '_plan'
+            and (not incremental or partitioned)
             and parent.get('design') == discovery.DESIGN
             and 'scheduler_query_policy' not in parent
             and 'discovery_partition' not in parent and 'round_contract' not in parent
@@ -175,7 +185,7 @@ def _portfolio_metadata(plan):
         require(routing.identity(plan['partitions']) == routing.identity(discovery.partitions(spec)),
                 'partition coverage, order, budgets or frontier changed')
     require(7 * sum(len(set(spec['candidates'] + spec['protections'] + cell['comparators']))
-                    for cell in spec['panels']['A']) <= PORTFOLIO_DESIGN['maximum_native_calls_per_allocation'],
+                    for cell in spec['panels']['A']) <= (2814 if incremental else PORTFOLIO_DESIGN['maximum_native_calls_per_allocation']),
             'closed portfolio exceeds the frozen native-call budget')
     require(isinstance(plan['output_root'], str) and Path(plan['output_root']).is_absolute()
             and plan['output_root'] != parent['output_root'], 'fresh output root required')
@@ -227,6 +237,8 @@ def validate_plan(plan):
     require(plan['receipt_generator'] == reference(isolation_host.__file__), 'wrong current receipt generator')
     if plan['schema'] in (2, 3):
         tests = ['test_routing_parallel.py']
+        if value['spec'].get('experiment_kind') == 'incremental':
+            tests += ['test_routing_incremental.py']
         if 'scheduler_query_policy' in plan['design']:
             tests += ['test_scc_routing_host.py', 'test_routing_discovery.py']
         for name in tests:
@@ -269,6 +281,8 @@ def freeze(config):
         require(config.get('source_checks'), 'freeze completed portfolio source-check evidence')
         frozen = dict(parent['frozen_files'])
         tests = ['test_routing_parallel.py']
+        if parent.get('kind') == discovery.INCREMENTAL_KIND + '_plan':
+            tests += ['test_routing_incremental.py']
         if policy is not None:
             tests += ['test_scc_routing_host.py', 'test_routing_discovery.py']
         for ref in [parent_ref, *[reference(Path(__file__).parent / 'tests' / name) for name in tests],
@@ -278,7 +292,7 @@ def freeze(config):
             require(path not in frozen or frozen[path] == sha, 'fresh portfolio source closure differs')
             frozen[path] = sha
         result = {'kind': KIND + '_plan', 'schema': config['schema'],
-                  'design': copy.deepcopy(PARTITION_DESIGN if config['schema'] == 3 else
+                  'design': copy.deepcopy(INCREMENTAL_DESIGN if parent.get('kind') == discovery.INCREMENTAL_KIND + '_plan' else PARTITION_DESIGN if config['schema'] == 3 else
                                           PORTFOLIO_QUERY_DESIGN if policy is not None else PORTFOLIO_DESIGN),
                   'parent': routing.seal(parent), 'parent_sha256': routing.identity(parent), 'parent_plan': parent_ref,
                   'output_root': str(root), 'producer_tools': parent['producer_tools'],
@@ -759,7 +773,7 @@ def aggregate(plan, proof, attempts):
             if values is None:
                 require(key not in combined or combined[key] is None, 'availability changed')
                 combined[key] = None
-            else:
+            elif key not in combined or combined[key] is not None:
                 combined.setdefault(key, []).extend(values)
     require(all(v is None or len(v) == 9 for v in combined.values()), 'nine paired slots required')
     ranking = discovery.score(spec, combined, outcomes)
@@ -802,6 +816,7 @@ def _discrete_science(records, outcomes):
 def _partition_science(spec, records, outcomes):
     """Scientific decisions are worker invariant; resource-dependent routes need not be."""
     models, routes = {}, {}
+    outcomes = discovery.critical_outcomes(spec, outcomes)
     for key, outcome in sorted(outcomes.items()):
         if outcome['status'] != 'passed':
             continue
@@ -873,16 +888,26 @@ def _inspect_portfolio(plan, spec, logical_round, attempt, shard=None):
             <= collection['joint_started_monotonic_ns'] + discovery.execution_budget(view) * 1e9,
             'joint science/round/cleanup allocation budget exceeded')
     original = routing.read_json(checked(local['records']))
-    discrete = _discrete_science(original, outcomes)
+    discrete = _discrete_science(original, discovery.critical_outcomes(spec, outcomes))
     scientific = _partition_science(spec, original, outcomes) if plan['schema'] == 3 else {}
     if plan['schema'] == 3:
-        require(_discrete_science(timed, outcomes) == discrete
+        require(_discrete_science(timed, discovery.critical_outcomes(spec, outcomes)) == discrete
                 and _partition_science(spec, timed, outcomes) == scientific,
                 'timing records changed local scientific or routing decision signatures')
     return {'kind': KIND + '_attempt', **view['round_contract'], 'status': 'complete',
             'collection': reference(collection_path), 'isolation': reference(receipt_path), 'prerequisites': local_ref,
             'accounted_wallclock_s': wallclock,
             'science_discrete_sha256': discrete, **scientific}
+
+
+def incremental_screen(ranking, spec):
+    challenger = routing.incremental_candidate(spec)
+    require(isinstance(ranking, list) and len(ranking) == 2
+            and {r.get('arm') for r in ranking} == {'incumbent', challenger}, 'complete incremental ranking required')
+    passing = [r['arm'] for r in ranking if r.get('pass') is True and r.get('data_valid') is True]
+    return {'shortlist': ['incumbent', challenger] if challenger in passing and 'incumbent' in passing
+            else ['incumbent'] if 'incumbent' in passing else [],
+            'heuristic_rejection': None if challenger in passing else {'reasons': ['protected_auto_or_science']}}
 
 
 def portfolio_screen(ranking, candidate=routing.PORTFOLIO_V1):
@@ -932,7 +957,7 @@ def _aggregate_portfolio(plan, spec, attempts):
         for key, values in data.items():
             if values is None:
                 combined[key] = None
-            else:
+            elif key not in combined or combined[key] is not None:
                 combined.setdefault(key, []).extend(values)
         reports.append(report)
     require(all(value is None or len(value) == 9 for value in combined.values()), 'nine locally paired slots required')
@@ -958,6 +983,7 @@ def _aggregate_partitions(plan, spec, attempts):
     require(sorted(p.name for p in root.glob('round-*')) == ['round-1', 'round-2', 'round-3'],
             'all logical round outputs must be retained')
     reports, hosts, jobs, combined, full_outcomes, signatures, statuses = [], set(), set(), {}, {}, {}, {}
+    diagnostic_signatures, invalid_diagnostics = {}, set()
     for (n, shard, attempt), supplied in zip(labels, attempts):
         require(sorted(p.name for p in (root / f'round-{n}').glob('shard-*')) == ['shard-1', 'shard-2']
                 and sorted(p.name for p in (root / f'round-{n}/shard-{shard}').glob('attempt-*')) == ['attempt-1'],
@@ -974,20 +1000,50 @@ def _aggregate_partitions(plan, spec, attempts):
         subset = discovery.execution_spec(view)
         local = load(checked(report['prerequisites']))
         _, outcomes, exact = _prerequisite(view, subset, local)
-        current = {key: value['status'] for key, value in outcomes.items()}
+        current = {key: value['status'] for key, value in discovery.critical_outcomes(spec, outcomes).items()}
         require(shard not in statuses or current == statuses[shard], 'cross-host subset availability changed')
         current_signature = (report['science_discrete_sha256'], report['model_discrete_sha256'])
         require(shard not in signatures or current_signature == signatures[shard],
                 'cross-host subset discrete decisions changed')
         statuses[shard], signatures[shard] = current, current_signature
-        full_outcomes.update(outcomes)
-        data = discovery.round_data(view, subset, routing.read_json(checked(collection['rounds'][0])), outcomes, exact)
+        timed = routing.read_json(checked(collection['rounds'][0]))
+        _, timing_outcomes, _ = routing.observations(subset, 'A', subset['candidates'], timed, None)
+        if spec.get('experiment_kind') == 'incremental':
+            models = {}
+            for key, outcome in timing_outcomes.items():
+                if routing.arm_role(spec, key[1]) != 'optional_comparator' or outcome['status'] != 'passed':
+                    continue
+                row = next(r for r in timed['prerequisites'] if (r['cell'], r['arm']) == key)
+                solver, model = row.get('solver_rows'), row.get('model_discrete_sha256')
+                require(routing.sha(model) and isinstance(solver, list) and len(solver) == 2
+                        and all(isinstance(values, list) and len(values) == 16 for values in solver),
+                        'diagnostic scientific comparison lacks validated output shape')
+                decisions = [[values[i] for i in (0, 1, 3, 10, 11, 12, 13, 14)] for values in solver]
+                signature = routing.identity({'model': model, 'decisions': decisions})
+                if key in diagnostic_signatures and diagnostic_signatures[key] != signature:
+                    invalid_diagnostics.add(key)
+                diagnostic_signatures.setdefault(key, signature)
+                models[key] = model
+            for family in {cell['family'] for cell in subset['panels']['A']}:
+                pair = [cell for cell in subset['panels']['A'] if cell['family'] == family]
+                for arm in pair[0]['comparators']:
+                    left, right = (pair[0]['id'], arm), (pair[1]['id'], arm)
+                    if left in models and right in models and models[left] != models[right]:
+                        invalid_diagnostics.update((left, right))
+        for key, value in timing_outcomes.items():
+            if key not in full_outcomes or full_outcomes[key]['status'] == 'passed':
+                full_outcomes[key] = value
+        data = discovery.round_data(view, subset, timed, outcomes, exact)
         for key, values in data.items():
             if values is None:
                 combined[key] = None
-            else:
+            elif key not in combined or combined[key] is not None:
                 combined.setdefault(key, []).extend(values)
         reports.append(report)
+    for key in invalid_diagnostics:
+        combined[key] = None
+        full_outcomes[key] = {'status': 'invalid', 'reason': 'comparator discrete science differs across hosts or workers',
+                              'runtime_identified': False}
     expected = {(c['id'], a) for c in spec['panels']['A']
                 for a in set(spec['candidates'] + spec['protections'] + c['comparators'])}
     require(set(combined) == set(full_outcomes) == expected
@@ -998,12 +1054,15 @@ def _aggregate_partitions(plan, spec, attempts):
     ranking = discovery.score(spec, combined, full_outcomes)
     envelope = {'kind': KIND + '_collection', 'schema': 3, 'plan_sha256': routing.identity(plan), 'attempts': reports}
     receipts = [r['isolation'] for r in reports]
-    return {'kind': discovery.PORTFOLIO_KIND + '_shortlist', 'schema': 3, 'experiment_kind': 'portfolio',
+    return {'kind': (discovery.INCREMENTAL_KIND if spec.get('experiment_kind') == 'incremental' else discovery.PORTFOLIO_KIND) + '_shortlist', 'schema': 3, 'experiment_kind': spec['experiment_kind'],
             'plan_sha256': routing.identity(plan), 'collection_sha256': routing.identity(envelope),
             'isolation_sha256': routing.identity(receipts), 'collection': envelope, 'isolation': receipts,
             'status': 'discovery_only', 'claim': PARTITION_DESIGN['inference'], 'promotion': False,
             'protocol_source': KIND, 'ranking': ranking,
-            **portfolio_screen(ranking, candidate=routing.PORTFOLIO_UNSEEDED)}
+            **({'diagnostic_invalidity': [{'cell': cell, 'arm': arm} for cell, arm in sorted(invalid_diagnostics)]}
+               if spec.get('experiment_kind') == 'incremental' else {}),
+            **(incremental_screen(ranking, spec) if spec.get('experiment_kind') == 'incremental'
+               else portfolio_screen(ranking, candidate=routing.PORTFOLIO_UNSEEDED))}
 
 
 def main():

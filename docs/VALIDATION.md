@@ -16,6 +16,46 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Incremental Auto implementation checks, 2026-10-17
+
+Branch `codex/auto-routing` implements the prospective
+[incremental qualification](SPEC.md#incremental-auto-qualification-2026-10-17).
+Runtime commit `811769d38adfdd5213270af801ed8b30fe2efc31` adds hidden
+many-FE and two-FE selectors. Both public defaults remain disabled. The new
+schema protects original and accepted Auto; explicit-solver observations are
+diagnostic. Historical campaign outcomes retain their original meaning.
+
+The full `./scripts/run_tests.sh --source-only` passes, including 312 Python
+source tests, Rust tests, Clippy, allocator/complexity checks and bridge guards.
+It does not admit the installed package. The 294-test routing suite initially
+passed 293 tests; its remaining assertion expected 13 frozen tool files instead
+of the current 16. After replacing the count with exact dependency names, all
+84 producer tests pass. The other 210 routing tests and 19 case/tool tests pass.
+Independent high-effort review found no remaining material source/protocol defect.
+
+Private universal Mac baseline/candidate builds pass binary audits and actual
+ABI/load/panic-containment tests. The baseline's first unremapped build failed
+path-privacy audit; rebuilding with the documented path remaps passes. Ninety-six
+actual candidate calls cover no-FE, one-FE, slopes, two-FE Low/saved effects,
+three-FE and four-FE models at one/four workers: independent scientific witnesses,
+exact fixed-worker repeats and hidden-selector equivalence all pass. Twelve
+additional original-artifact calls exactly reproduce uninjected candidate Auto.
+Three Stata/MP 19 fixtures pass OLS/PPML transaction rollback and mixed-solver
+science; OLS, optional-builder and PPML Break tests pass separately.
+
+| Retained identity | SHA-256 |
+| --- | --- |
+| Original private Mac plugin (`f35f3a4d`) | `66ce3976dba2cb6b26ec8307040aff298e0525b63387e9c46e8f4ed9132fffb2` |
+| Candidate private Mac plugin (`811769d3`) | `6dcb932890bcd4ad4033b151667bb0ee06eb25a25c418cab53fa87ec981bef95` |
+| Source-suite capture | `683c8097cf0715a9018532833d818d8ec2ce36cabdb3706730af975552296825` |
+| Native selector scientific summary | `922898a96e10a652f445f5e89d7c6644810e665c37d41681e0458b36a4f1568a` |
+| Exact original-Auto summary | `bc613c0a2d5e668504b10a2441fe62214f2944c38111dc807589a12d23e07925` |
+| Combined implementation-check summary | `790a314b3ea1c9aeb18ef79d70199200033b5b8b2be722947b978d38832fcc23` |
+
+These checks establish implementation correctness within the stated scope, not
+an Auto speed improvement. Fresh isolated SCC discovery and separate Mac B12/C24
+qualification remain required before either public default is accepted.
+
 ## Main-branch GitHub installation, 2026-10-14
 
 The root package installs the maintained Stata files and a universal macOS
