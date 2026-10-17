@@ -44,11 +44,81 @@ stops at installed-plugin/source binding; the installed package stays unchanged.
 The private Mac candidate passes ABI/panic containment, 73 exact public replay
 cases against `347959b0`, and three licensed Stata fixtures covering weighted
 independent OLS, Fast/Low, saved effects, one/four workers, repeats and rollback.
-Thirty-four compact harness, 40 routing and 84 routing-run tests pass. Independent
-Astra reviews approve the runtime and final harness. Review caught and repaired
+The final tools pass 35 compact harness, 40 routing, 84 routing-run and nine oracle
+tests. Independent Astra reviews approve the runtime and final harness. Review
+caught and repaired
 an untraced-warmup resource check before submission: those warmups now bind the
 validated traced prerequisite explicitly, while diagnostics require live traces.
 No local timings are used as performance evidence.
+
+The factor study is complete. The [retained numerical record](../bench/results/compact-cell-factor-20261017.json)
+contains all 920 native observations, phase diagnostics, artifact/input identities,
+scientific fingerprints, accounting and capture hashes. Runtime implementation
+`166ce19e` and tool repair `68a812e1` are pushed on the isolated prototype branch.
+SCC job `8153337` passes ten smoke calls plus four parent smoke controls, then
+240 scientific calls and 96 exact parent-artifact controls, with `failed=0`,
+`exit_status=0`, 132 seconds and `2.178G` maximum virtual memory. Original request
+and scientific fingerprints also match the prior committed campaign.
+
+SCC job `8153344` completes 120 warmups, 720 scored calls and 80 diagnostics on
+`scc-xa3` (Broadwell E5-2680 v4), with `failed=0`, `exit_status=0`, 212 seconds and
+`552.246M` maximum virtual memory. All scored/diagnostic scientific fingerprints
+match their warmups; all 120 warmups also match the scientific prerequisite.
+Independent review reproduces all 144 direct-comparison summaries and 864 pairs.
+The complete 28-physical-core allocation, global slot quota, single-host PE and
+four-core native affinity pass validation. Eighteen scheduler censuses and 31
+process samples cover the run; no competing computation is observed. Ordinary
+NFS kernel activity remains included. No observation is excluded or replaced.
+
+For the new V2-with-D_f arm, median paired differences relative to the reference's
+`max(5%, 1 ms)` allowance give the following **descriptive** classifications across
+24 family/worker settings. These are not confidence bounds or promotion passes.
+
+| Reference | Material median gains | Within allowance | Material median regressions |
+|---|---:|---:|---:|
+| Auto | 11 | 11 | 2 |
+| V2 with true diagonal | 2 | 20 | 2 |
+| Original cells with D_f | 0 | 20 | 4 |
+
+Against V2, D_f improves high-degree-weak/four-worker by 9.9% and dense/four-worker
+by 5.9%, but worsens ordinary weak by 9.7%/11.3% at one/four workers. High-degree
+weak changes from 45/37 projection/final iterations to 53/18; ordinary weak
+changes from 38/17 to 48/40. Combined iteration totals are not equivalent work
+because the two solves have different RHS workloads. Hub regressions against
+Auto remain 20.7%/10.4%. Direct paired medians are nontransitive; retain each
+contrast rather than dividing separately summarized ratios.
+
+Diagnostics locate a remaining implementation cost. With one worker,
+high-degree-weak operator time is about 14.3 ms for V2/D_f, 14.8 ms for V2 and
+7.0 ms for original cells. Serial hubs use 5/4 iterations in every arm, yet the
+V2/D_f operator takes about 8.7 ms versus Auto's 5.3 ms, with aggregate FE setup
+about 6.6 ms versus 1.0 ms. All 160 observed Schur invocations pass in one cycle,
+without correction/fallback marks. These two traced repetitions per setting,
+in fixed order after scoring, localize cost; they do not establish timing ranks
+or a complete cost decomposition. Scores use the harness's complete native-call
+`NATIVE_SECONDS` (receipt `seconds`), not the distinct internal `native_s` timer;
+the raw receipt's inherited `timing_field` label is misleading and is preserved.
+
+The next bounded prototype should defer admission of the **original cell
+operator**: start with the incumbent, then use deterministic residual progress
+and conservative work estimates to admit construction only when remaining
+operator savings can repay setup. Preserve the certified continuation and all
+work/memory/iteration limits. Avoid wall-clock routing, which would compromise
+fixed-worker repeatability. Original cells with a true diagonal is a separate
+missing factor worth testing later. The present evidence does not justify
+expanding V2 or changing public Auto. It covers twelve synthetic OLS families
+with two categorical effects, up to 100,000 rows, one/four workers and one SCC allocation;
+held-out confirmation, broader regression coverage and Mac timing remain absent.
+
+Two operational failures remain retained. The first source archive omitted
+vendored rayon-core and failed before compilation; a complete archive repaired
+that deployment omission. Preparation job `8153323` then stopped before any
+scientific calls because current oracle-tool paths were incorrectly required in
+the historical parent manifest (`failed=0`, `exit_status=1`, 15 seconds). The
+reviewed tool repair separates frozen witness artifacts from current tool paths
+while preserving producer/parser hashes and all witness checks. Real-loader
+cross-checkout and tampering tests pass. The repair leaves all 193 runtime
+modules and 58 artifact inputs unchanged; prior runtime evidence remains valid.
 
 ## Compact-cell prototype scope, 2026-10-16
 
