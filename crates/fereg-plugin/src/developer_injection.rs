@@ -46,6 +46,19 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             }
             (Some(RoutingPreset::portfolio_v1()), false)
         }
+        "routing_incremental_many" | "routing_incremental_two" => {
+            if solver != FeSolverKind::Auto {
+                return Err(syntax("hidden routing injection requires solver(auto)"));
+            }
+            (
+                Some(if stage == "routing_incremental_many" {
+                    RoutingPreset::incremental_many()
+                } else {
+                    RoutingPreset::incremental_two()
+                }),
+                false,
+            )
+        }
         "routing_portfolio_unseeded" => {
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
@@ -166,6 +179,38 @@ fn internal(message: String) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn incremental_routing_requires_exact_auto_names_without_break_token() {
+        for preset in [
+            RoutingPreset::incremental_many(),
+            RoutingPreset::incremental_two(),
+        ] {
+            let name = preset.to_string();
+            assert_eq!(
+                parse_ols(&name, FeSolverKind::Auto, "").unwrap().routing,
+                Some(preset)
+            );
+            for solver in [
+                FeSolverKind::Map,
+                FeSolverKind::Lsmr,
+                FeSolverKind::Cmg,
+                FeSolverKind::CmgSchur,
+                FeSolverKind::Cg,
+                FeSolverKind::IronsTuck,
+                FeSolverKind::Squarem,
+            ] {
+                assert!(parse_ols(&name, solver, "").is_err());
+            }
+            assert!(parse_ols(
+                &name,
+                FeSolverKind::Auto,
+                "0123456789abcdef0123456789abcdef"
+            )
+            .is_err());
+            assert!(parse_ols(&format!("{name}_v1"), FeSolverKind::Auto, "").is_err());
+        }
+    }
 
     #[test]
     fn portfolio_unseeded_accepts_only_the_exact_private_auto_control() {

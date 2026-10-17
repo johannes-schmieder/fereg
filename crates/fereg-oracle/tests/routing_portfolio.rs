@@ -231,7 +231,9 @@ fn check_case(design: &Design, config: PreparedOlsFitConfig) -> CertifiedPrepare
         .unwrap()
     };
     let result = run();
-    let prefix_limit = if config.absorb.routing == Some(RoutingPreset::portfolio_unseeded()) {
+    let prefix_limit = if matches!(config.absorb.routing, Some(p) if p == RoutingPreset::portfolio_unseeded()
+        || p == RoutingPreset::incremental_many() || p == RoutingPreset::incremental_two())
+    {
         0
     } else {
         4
@@ -393,5 +395,84 @@ fn portfolio_routing_leaves_zero_one_and_slope_models_exact_and_rejects_explicit
         assert!(error
             .message
             .contains("routing qualification requires automatic solver selection"));
+    }
+}
+
+#[test]
+fn incremental_families_match_dense_qr_and_existing_portfolio_exactly() {
+    use PreparedOlsExecutionMode::{Fast, Low};
+    for (effects, mode, deficient, preset) in [
+        (2, Fast, false, RoutingPreset::incremental_two()),
+        (2, Low, true, RoutingPreset::incremental_two()),
+        (3, Fast, false, RoutingPreset::incremental_many()),
+        (5, Low, true, RoutingPreset::incremental_many()),
+    ] {
+        let design = design(effects, 3, deficient, false);
+        let mut previous: Option<CertifiedPreparedOlsRobust> = None;
+        for workers in [1, 4] {
+            let mut options = config(mode, workers);
+            options.absorb.routing = Some(preset);
+            let actual = check_case(&design, options);
+            options.absorb.routing = Some(RoutingPreset::portfolio_unseeded());
+            let expected = check_case(&design, options);
+            exact_fit(actual.fit(), expected.fit());
+            assert_eq!(actual.covariance(), expected.covariance());
+            assert_eq!(actual.dof(), expected.dof());
+            if let Some(previous) = previous {
+                same_discrete_reports(
+                    actual.fit().absorption_report(),
+                    previous.fit().absorption_report(),
+                );
+                same_discrete_reports(
+                    actual.fit().residual_absorption_report(),
+                    previous.fit().residual_absorption_report(),
+                );
+                assert_eq!(actual.dof(), previous.dof());
+            }
+            previous = Some(actual);
+        }
+    }
+}
+
+#[test]
+fn incremental_families_preserve_ineligible_science_and_memory_exactly() {
+    use PreparedOlsExecutionMode::{Fast, Low};
+    for preset in [
+        RoutingPreset::incremental_many(),
+        RoutingPreset::incremental_two(),
+    ] {
+        for (effects, slopes, preconditioner) in [
+            (0, false, LsmrPreconditioner::Auto),
+            (1, false, LsmrPreconditioner::Auto),
+            (3, true, LsmrPreconditioner::Auto),
+            (2, false, LsmrPreconditioner::Off),
+            (3, false, LsmrPreconditioner::Diagonal),
+            (3, false, LsmrPreconditioner::Schwarz),
+            (
+                if preset == RoutingPreset::incremental_many() {
+                    2
+                } else {
+                    5
+                },
+                false,
+                LsmrPreconditioner::Auto,
+            ),
+        ] {
+            let design = design(effects, 3, false, slopes);
+            for mode in [Fast, Low] {
+                let mut options = config(mode, 1);
+                options.absorb.lsmr.preconditioner = preconditioner;
+                options.absorb.routing = None;
+                let (expected, rows) = support::native_fit(&design, options, false).unwrap();
+                options.absorb.routing = Some(preset);
+                let (actual, actual_rows) = support::native_fit(&design, options, false).unwrap();
+                assert_eq!(rows, actual_rows);
+                exact_fit(&actual, &expected);
+                assert_eq!(
+                    actual.solver_workspace_peak(),
+                    expected.solver_workspace_peak()
+                );
+            }
+        }
     }
 }

@@ -4236,7 +4236,11 @@ fn hidden_routing_presets_survive_framed_requests_and_reach_absorb_config() {
             ]
             .into_iter()
             .map(RoutingPreset::prefix),
-        );
+        )
+        .chain([
+            RoutingPreset::incremental_many(),
+            RoutingPreset::incremental_two(),
+        ]);
     for preset in presets {
         let (mut args, mut spi) = fixture(OlsVceKind::Iid);
         args.push(format!("inject={preset}"));

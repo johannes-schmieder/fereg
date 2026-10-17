@@ -9589,3 +9589,124 @@ fn low_prefix_report_merge_preserves_concrete_routes_and_real_fallback_in_any_or
     explicit.requested_solver = FeSolverKind::IronsTuck;
     assert!(merge_solve_report(&mut explicit, lsmr).is_err());
 }
+
+fn assert_incremental_fit_exact(
+    actual: &CertifiedPreparedOlsFit,
+    expected: &CertifiedPreparedOlsFit,
+) {
+    let a = actual;
+    let b = expected;
+    assert_eq!(a.coefficients(), b.coefficients());
+    assert_eq!(a.kept_generated_columns(), b.kept_generated_columns());
+    assert_eq!(a.dropped_generated_columns(), b.dropped_generated_columns());
+    assert_eq!(
+        a.residuals()
+            .iter()
+            .map(|v| v.to_bits())
+            .collect::<Vec<_>>(),
+        b.residuals()
+            .iter()
+            .map(|v| v.to_bits())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(a.bread(), b.bread());
+    assert_eq!(a.rank_certificate(), b.rank_certificate());
+    assert_eq!(a.score_certificate(), b.score_certificate());
+    for (left, right) in [
+        (a.absorption_report(), b.absorption_report()),
+        (
+            a.residual_absorption_report(),
+            b.residual_absorption_report(),
+        ),
+    ] {
+        let strip_timing = |report: &SolveReport| {
+            let mut report = report.clone();
+            report.setup_seconds = 0.;
+            report.solve_seconds = 0.;
+            report.certification_seconds = 0.;
+            report
+        };
+        assert_eq!(strip_timing(left), strip_timing(right));
+    }
+}
+
+#[test]
+fn incremental_family_fits_match_portfolio_or_incumbent_with_analytic_witnesses() {
+    use crate::fe::{LsmrPreconditioner, RoutingPreset};
+    // Within each identical FE cell, x and the error are orthogonal sign
+    // patterns. This gives beta=2 and the stated residual without a solver.
+    let n = 256;
+    let x: Vec<_> = (0..n).map(|r| [-1., -1., 1., 1.][r % 4]).collect();
+    let error: Vec<_> = (0..n)
+        .map(|r| [-0.125, 0.125, -0.125, 0.125][r % 4])
+        .collect();
+    let effects: Vec<Vec<_>> = [3, 5, 7]
+        .into_iter()
+        .map(|m| (0..n).map(|r| ((r / 4) % m) as f64).collect())
+        .collect();
+    for count in 0..=3 {
+        let y: Vec<_> = (0..n)
+            .map(|r| {
+                2. * x[r]
+                    + error[r]
+                    + effects[..count]
+                        .iter()
+                        .enumerate()
+                        .map(|(i, g)| (i + 1) as f64 * g[r])
+                        .sum::<f64>()
+            })
+            .collect();
+        let data = if count == 0 {
+            prepared(
+                &y,
+                std::slice::from_ref(&x),
+                &[false],
+                None,
+                true,
+                TestWeights::Unit,
+            )
+        } else {
+            prepared_multiway_categorical(&y, std::slice::from_ref(&x), &effects[..count])
+        };
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            for workers in [1, 2] {
+                for preconditioner in [
+                    LsmrPreconditioner::Auto,
+                    LsmrPreconditioner::Off,
+                    LsmrPreconditioner::Diagonal,
+                    LsmrPreconditioner::Schwarz,
+                ] {
+                    let mut config = PreparedOlsFitConfig::default();
+                    config.execution.mode = mode;
+                    config.execution.poolsize = 1;
+                    config.execution.threads = ThreadConfig::from_requested(workers, true).unwrap();
+                    config.absorb.lsmr.preconditioner = preconditioner;
+                    for (preset, eligible) in [
+                        (RoutingPreset::incremental_many(), count >= 3),
+                        (RoutingPreset::incremental_two(), count == 2),
+                    ] {
+                        config.absorb.routing =
+                            if eligible && preconditioner == LsmrPreconditioner::Auto {
+                                Some(RoutingPreset::portfolio_unseeded())
+                            } else {
+                                None
+                            };
+                        let expected = fit_prepared_model_coefficients(&data, config).unwrap();
+                        config.absorb.routing = Some(preset);
+                        let actual = fit_prepared_model_coefficients(&data, config).unwrap();
+                        let repeated = fit_prepared_model_coefficients(&data, config).unwrap();
+                        assert_incremental_fit_exact(&actual, &expected);
+                        assert_incremental_fit_exact(&actual, &repeated);
+                        assert_close(actual.coefficients()[0].value.unwrap(), 2., 1e-10);
+                        for (&actual, &expected) in actual.residuals().iter().zip(&error) {
+                            assert_close(actual, expected, 1e-10);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

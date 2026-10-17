@@ -1362,7 +1362,13 @@ fn ppml_topology_injection_is_explicit_and_does_not_accept_routing_presets() {
             .unwrap()
             .inject_topology_sharing
     );
-    for unsupported in ["routing_h4_k0", "routing_cells", "ppml_topology_bad"] {
+    for unsupported in [
+        "routing_h4_k0",
+        "routing_cells",
+        "ppml_topology_bad",
+        "routing_incremental_many",
+        "routing_incremental_two",
+    ] {
         let mut rejected = args.clone();
         rejected.push(format!("inject={unsupported}"));
         assert!(EstimatePpmlSpec::parse(&rejected).is_err());

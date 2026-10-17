@@ -30,6 +30,8 @@ enum PrefixPlan {
     Isolated(CategoricalPrefix),
     PortfolioV1,
     PortfolioUnseeded,
+    IncrementalMany,
+    IncrementalTwo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,6 +53,8 @@ impl std::fmt::Display for RoutingPreset {
                 PrefixPlan::Isolated(CategoricalPrefix::CompactIt4) => "routing_prefix_it4",
                 PrefixPlan::PortfolioV1 => "routing_portfolio_v1",
                 PrefixPlan::PortfolioUnseeded => "routing_portfolio_unseeded",
+                PrefixPlan::IncrementalMany => "routing_incremental_many",
+                PrefixPlan::IncrementalTwo => "routing_incremental_two",
             });
         }
         if self.overlap {
@@ -142,6 +146,41 @@ impl RoutingPreset {
         }
     }
 
+    /// Isolated qualification of strict unseeded LSMR for three or more FEs.
+    pub fn incremental_many() -> Self {
+        Self {
+            prefix: Some(PrefixPlan::IncrementalMany),
+            ..Self::portfolio_unseeded()
+        }
+    }
+
+    /// Isolated qualification of the existing two-FE direct-or-h16/k1 policy.
+    pub fn incremental_two() -> Self {
+        Self {
+            prefix: Some(PrefixPlan::IncrementalTwo),
+            ..Self::portfolio_unseeded()
+        }
+    }
+
+    /// Resolve family selectors before allocating any optional preparation.
+    /// None means the qualified incumbent; all older experiments pass through.
+    pub(crate) fn resolve_ols(
+        self,
+        solver: super::FeSolverKind,
+        preconditioner: super::LsmrPreconditioner,
+        categorical_effects: Option<usize>,
+    ) -> Option<Self> {
+        let eligible = match self.prefix {
+            Some(PrefixPlan::IncrementalMany) => categorical_effects.is_some_and(|n| n >= 3),
+            Some(PrefixPlan::IncrementalTwo) => categorical_effects == Some(2),
+            _ => return Some(self),
+        };
+        (eligible
+            && solver == super::FeSolverKind::Auto
+            && preconditioner == super::LsmrPreconditioner::Auto)
+            .then(Self::portfolio_unseeded)
+    }
+
     pub(crate) fn portfolio(self) -> bool {
         matches!(
             self.prefix,
@@ -169,7 +208,9 @@ impl RoutingPreset {
         self.prefix.map(|prefix| match prefix {
             PrefixPlan::Isolated(prefix) => prefix,
             PrefixPlan::PortfolioV1 => CategoricalPrefix::Map4,
-            PrefixPlan::PortfolioUnseeded => CategoricalPrefix::None,
+            PrefixPlan::PortfolioUnseeded
+            | PrefixPlan::IncrementalMany
+            | PrefixPlan::IncrementalTwo => CategoricalPrefix::None,
         })
     }
 
@@ -326,6 +367,55 @@ impl SetupLedger {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn incremental_selectors_resolve_only_their_auto_categorical_family() {
+        use super::super::{FeSolverKind, LsmrPreconditioner};
+        for (preset, name, many) in [
+            (
+                RoutingPreset::incremental_many(),
+                "routing_incremental_many",
+                true,
+            ),
+            (
+                RoutingPreset::incremental_two(),
+                "routing_incremental_two",
+                false,
+            ),
+        ] {
+            assert_eq!(preset.to_string(), name);
+            for effects in [None, Some(0), Some(1), Some(2), Some(3), Some(7)] {
+                for solver in [
+                    FeSolverKind::Auto,
+                    FeSolverKind::Map,
+                    FeSolverKind::Lsmr,
+                    FeSolverKind::Cmg,
+                    FeSolverKind::CmgSchur,
+                    FeSolverKind::Cg,
+                    FeSolverKind::IronsTuck,
+                    FeSolverKind::Squarem,
+                ] {
+                    for preconditioner in [
+                        LsmrPreconditioner::Auto,
+                        LsmrPreconditioner::Off,
+                        LsmrPreconditioner::Diagonal,
+                        LsmrPreconditioner::Schwarz,
+                    ] {
+                        let eligible = solver == FeSolverKind::Auto
+                            && preconditioner == LsmrPreconditioner::Auto
+                            && effects.is_some_and(|n| if many { n >= 3 } else { n == 2 });
+                        assert_eq!(
+                            preset.resolve_ols(solver, preconditioner, effects),
+                            eligible.then(RoutingPreset::portfolio_unseeded)
+                        );
+                        // Historical hidden experiments keep their existing contract.
+                        let old = RoutingPreset::portfolio_unseeded();
+                        assert_eq!(old.resolve_ols(solver, preconditioner, effects), Some(old));
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn chunks_share_setup_but_new_accuracy_gets_own_allowance() {

@@ -30,6 +30,28 @@ pub(crate) struct FeSession<'a> {
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
 }
 
+/// Select invocation identity before canonical portfolio construction. Refused
+/// hidden families fall back to the accepted default, including the other family.
+fn select_ols_routing(
+    config: super::AbsorbConfig,
+    effects: Option<usize>,
+    defaults: [bool; 2],
+) -> Option<super::RoutingPreset> {
+    let eligible = |preset: &super::RoutingPreset| {
+        preset
+            .resolve_ols(config.solver, config.lsmr.preconditioner, effects)
+            .is_some()
+    };
+    config.routing.filter(eligible).or_else(|| {
+        match effects {
+            Some(3..) if defaults[0] => Some(super::RoutingPreset::incremental_many()),
+            Some(2) if defaults[1] => Some(super::RoutingPreset::incremental_two()),
+            _ => None,
+        }
+        .filter(eligible)
+    })
+}
+
 impl<'a> FeSession<'a> {
     pub(crate) fn general(projector: ReusableMapAbsorber) -> Self {
         Self {
@@ -225,7 +247,7 @@ impl<'a> FeSession<'a> {
     pub(crate) fn for_ols_rhs<P: crate::ols::prepared_fit_view::PreparedOlsFitView + ?Sized>(
         prepared: &'a P,
         weights: BorrowedMapWeights<'a>,
-        config: crate::ols::PreparedOlsFitConfig,
+        mut config: crate::ols::PreparedOlsFitConfig,
         rhs: usize,
     ) -> Result<Self> {
         config.absorb.validate_cmg_schur_options()?;
@@ -248,6 +270,23 @@ impl<'a> FeSession<'a> {
         } else {
             prepared.fit_borrowed_intercept_map_design()?
         };
+        // Qualification changes only this invocation wiring. Each family can
+        // be activated independently after its frozen confirmation passes.
+        const DEFAULT_MANY: bool = false;
+        const DEFAULT_TWO: bool = false;
+        let effects = borrowed.as_ref().map(|design| design.effects().len());
+        let routing = select_ols_routing(config.absorb, effects, [DEFAULT_MANY, DEFAULT_TWO]);
+        owner.absorb_config = Some(super::AbsorbConfig {
+            routing,
+            ..config.absorb
+        });
+        config.absorb.routing = routing.and_then(|preset| {
+            preset.resolve_ols(
+                config.absorb.solver,
+                config.absorb.lsmr.preconditioner,
+                effects,
+            )
+        });
         if let Some(design) = borrowed {
             if cmg_schur
                 && (design.effects().len() != 2
@@ -860,6 +899,7 @@ impl<'a> FeSession<'a> {
         let admission = config;
         if let Some(stored) = self.absorb_config {
             config.solver_memory_budget = stored.solver_memory_budget;
+            config.routing = stored.routing;
         }
         if final_residual {
             self.finish_routing_preparation()?;
@@ -1376,5 +1416,59 @@ mod tests {
             .unwrap()
             .is_none());
         assert_eq!(session.peak.bytes(), Some(576));
+    }
+}
+
+#[cfg(test)]
+mod routing_selection_tests {
+    use super::*;
+    use crate::fe::{AbsorbConfig, FeSolverKind, LsmrPreconditioner, RoutingPreset};
+
+    #[test]
+    fn incremental_effective_identity_retains_accepted_family_on_fallback() {
+        let many = RoutingPreset::incremental_many();
+        let two = RoutingPreset::incremental_two();
+        for defaults in [[false, false], [true, false], [false, true], [true, true]] {
+            for effects in [None, Some(0), Some(1), Some(2), Some(3), Some(8)] {
+                let incumbent = match effects {
+                    Some(3..) if defaults[0] => Some(many),
+                    Some(2) if defaults[1] => Some(two),
+                    _ => None,
+                };
+                for requested in [None, Some(many), Some(two)] {
+                    let mut config = AbsorbConfig {
+                        routing: requested,
+                        ..AbsorbConfig::default()
+                    };
+                    let selected = match (requested, effects) {
+                        (Some(p), Some(n)) if (p == many && n >= 3) || (p == two && n == 2) => {
+                            Some(p)
+                        }
+                        _ => incumbent,
+                    };
+                    assert_eq!(select_ols_routing(config, effects, defaults), selected);
+                    for preconditioner in [
+                        LsmrPreconditioner::Off,
+                        LsmrPreconditioner::Diagonal,
+                        LsmrPreconditioner::Schwarz,
+                    ] {
+                        config.lsmr.preconditioner = preconditioner;
+                        assert_eq!(select_ols_routing(config, effects, defaults), None);
+                    }
+                    config.lsmr.preconditioner = LsmrPreconditioner::Auto;
+                    config.solver = FeSolverKind::Lsmr;
+                    assert_eq!(select_ols_routing(config, effects, defaults), None);
+                }
+                let historical = RoutingPreset::portfolio_v1();
+                let config = AbsorbConfig {
+                    routing: Some(historical),
+                    ..AbsorbConfig::default()
+                };
+                assert_eq!(
+                    select_ols_routing(config, effects, defaults),
+                    Some(historical)
+                );
+            }
+        }
     }
 }

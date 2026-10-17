@@ -65,6 +65,8 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_direct` | OLS | Tests a bounded componentwise direct Schur factorization on eligible two-FE systems |
 | `inject=it_coefficients` | OLS | Tests compact coefficient-space acceleration on eligible categorical systems; requires `solver=it` |
 | `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |
+| `inject=routing_incremental_many` | OLS | Qualifies strict unseeded LSMR with retained preparation for at least three categorical intercept FEs, using the existing unseeded portfolio |
+| `inject=routing_incremental_two` | OLS | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |
 | `inject=routing_overlap_h{8\|16\|32}_k{0\|1\|2}` | OLS | Tests deterministic preparation on one worker of the existing team, with fixed grants and handoff checkpoint; one-worker requests retain serial preparation |
 | `inject=routing_overlap_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the h8/k1 overlap arm and waits for Break only after a charged builder operation has executed; requires at least two workers |
 | `inject=ppml_topology` | PPML | Shares admitted categorical checkpoint component indexing after acceptance; weighted numerical data is recomputed in every frame |
@@ -75,6 +77,14 @@ Each routing name is a complete literal token, for example
 solver conflicts fail before observation reads or publication. Omitted or empty
 `inject` retains the qualified automatic policy; these arms do not enable a new
 public default or change request/result versions or result dimensions.
+
+The incremental selectors require Auto preconditioning to change computation.
+Outside the selected categorical intercept family, including slopes and explicit
+preconditioners, they retain the incumbent without optional routing preparation.
+Finite controls do not count as FEs. Both selectors resolve to the existing
+`routing_portfolio_unseeded` machinery on eligible topology; its certificates,
+limits, memory admission and cancellation remain unchanged. Public defaults
+remain incumbent pending independent family qualification.
 
 The separate coefficient-IT injection requires explicit `solver=it` and rejects
 `break_marker_token`. Ordinary explicit IT keeps its incumbent observation-space
