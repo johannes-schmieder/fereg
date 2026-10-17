@@ -1,0 +1,66 @@
+{
+  "artifacts": {
+    "mac_baseline": "fe5d2b3316d530f35ac532094325db3fbd05e2f867947c6327a5a2f527b882d8",
+    "mac_candidate": "da3b22ac6069b6cbe32644e3fa65baa1bcde5abd2fedd7d7ab640aebad37008d"
+  },
+  "base_commit": "d39492608437ce59b2a83e03adbcd567e4093250",
+  "benchmark_tools": {
+    "dependency_repair": "task-private psutil 7.2.2 and reportlab 5.0.1; all 14 tests in the two affected modules pass",
+    "first_targeted_retry": "6 passed, two errors due missing reportlab",
+    "initial_suite": "418 tests passed; two import failures for missing psutil",
+    "private_harness": "17 final tests passed; shell syntax and independent Astra review passed"
+  },
+  "installed_package_entrypoint": {
+    "passed": false,
+    "reason": "private source differs from installed plugin; installed artifact not replaced"
+  },
+  "kind": "compact_cells_local_validation",
+  "linux_build": {
+    "generator_sha256": "46dd85b761d2493c91b934f7558962d7e5b2364cac61b5a384fa7772dd9d6080",
+    "harness_sha256": "b58527c837dd03b724feb493401573cde17d065b4f8045898ed97240cca78932",
+    "highest_glibc": "2.28",
+    "initial_audit_failure": "system Python lacks assignment-expression syntax; reran only audit/harness link with verified Python 3.10",
+    "passed": true,
+    "plugin_sha256": "63b93f348226c25d9c37b418e5d0ca5cffa8706042fa402f8c6e99adaa25760f",
+    "unresolved_symbols": []
+  },
+  "mac_candidate_abi": "passed including injected panic containment",
+  "mac_candidate_object_checks": "arm64 headers/dependencies/exports/resolution passed; source paths retained and universal-release audit not qualified",
+  "performance_claim": "none; Linux discovery pending; no controlled Mac timing",
+  "replay": {
+    "cases": 73,
+    "exact_differences": 0,
+    "independent_science_errors": 0,
+    "passed": true
+  },
+  "retained_evidence_hashes": {
+    "actual-abi.log": "2260be29b42e8e3716d555cebf2439a7097d1db8557bf6b920e2c10524d318a8",
+    "bench-campaign-final.log": "2acb3484a5d416a9d7c4a3290910ecd85beb26fa4cfb4a01499efbd5d5e82896",
+    "bench-campaign-repair.log": "52a843fd91ed36c41d8f6fc6266390c8b3a0f2f1971cb9fb7338b06c0310c970",
+    "bench-source-manifest.json": "a1ca0c6f9eb1a9b887818cced5e93ceb89ab67d3950d8f6fc1a34478c1379073",
+    "bench-tests.log": "0ccce91662fd110481f03dd87f598b957fcfff57810811e198f49ad06ec96e96",
+    "compact-harness-tests.log": "692c9a75ca5478de835917b00e556e1e2a4f2ad2b8c0f9e98e34a69ea32c7599",
+    "default-tests.log": "c680f42bc70e963026a611c409109f7ab0dc34c1ad78ba139351c31188d34ab3",
+    "replay.log": "8c76f0b92ae16f5837b10ff00f45f4f052c31e49941dd5fca124808217cdbefc",
+    "runtime-source-manifest.json": "d01cf06e3dd8e1a406d9f30b4598504592e20d8ee9d11279ce618dff038891ea",
+    "source-tests-final.log": "e2944c0c6b58bc78dbf27c269f53867cd42be98fbb93f719dc0cc3174796eb1d",
+    "source-tests.log": "e9db4da62e7c46d534c06d9f35a40725ac9d19ad082aba769197a78b5fff5c12",
+    "stata-summary.json": "5fecf81542175d968348236e070b6cd785865941f28f3fe08a88fcff2ccc73a6"
+  },
+  "source_integration": {
+    "command": "scripts/run_tests.sh --source-only",
+    "initial_stale_complexity_positions": "failed_then_refreshed; no runtime change",
+    "passed": true,
+    "python_skipped": 13,
+    "python_tests": 260
+  },
+  "stata": {
+    "passed": [
+      "ols_compact_cells",
+      "estimate_ols_eclass_transaction",
+      "single_runtime"
+    ],
+    "private_arm_scope": "weighted dense dummies, Fast/Low, 1/4 workers, fixed-worker repeats, saved FE and failed-request rollback"
+  },
+  "status": "local_functional_pass_scc_pending"
+}

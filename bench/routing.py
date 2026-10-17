@@ -23,7 +23,7 @@ from native_io import case_header
 from time_exact import compare
 
 CHECKPOINTS = (4, 8, 16, 32)
-ABLATIONS = {name: 'routing_' + name for name in ['diagonal', 'cells', 'direct']}
+ABLATIONS = {name: 'routing_' + name for name in ['diagonal', 'cells', 'cells_v2', 'direct']}
 PREFIXES = {'prefix-none': ('none', 0), 'prefix-map4': ('map4', 4), 'prefix-it4': ('it4', 8)}
 PORTFOLIO_V1 = 'portfolio-v1'
 PORTFOLIO_UNSEEDED = 'portfolio-unseeded'

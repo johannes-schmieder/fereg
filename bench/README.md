@@ -818,9 +818,9 @@ starts another panel. The frozen bounds are 120 seconds per call and four hours 
 the declared panel; CLI values must match the manifest.
 
 For independent kernel experiments, add explicit comparator arms with solver
-values `diagonal`, `cells` or `direct` and use `routing_run.py --ablation-only` on
+values `diagonal`, `cells`, `cells_v2` or `direct` and use `routing_run.py --ablation-only` on
 panel A. This prepares `routing_diagonal`, `routing_cells` and `routing_direct`
-injections, collecting only baseline/protection/comparator arms. All science,
+injections (plus `routing_cells_v2` for the compact parallel prototype), collecting only baseline/protection/comparator arms. All science,
 resource and repeat guards still apply. The output retains every arm, including
 failed and unresolved calls, and reports runtime comparisons only for
 complete joint-success cells against the baseline.
@@ -1019,3 +1019,81 @@ path alone does not establish them.
 This schema is deliberately rejected by the existing producer. Public C
 execution hooks require separate implementation and verification after an
 eligible B winner exists; declaring the schema does not activate the solver.
+
+### Compact-cell native discovery
+
+[`compact_cells.py`](compact_cells.py) is a separate bounded experiment for the
+private `routing_cells_v2` backend. It compares one identical plugin artifact
+under uninjected Auto, the original cells arm, diagonal-only, and cells-v2.
+There is no policy tournament or public promotion. Twelve fixed synthetic
+families cover weak and high-degree weak graphs, dense links, repeated links,
+non-movers, hubs, disconnected components, dynamic weights, wide RHSs, exact
+initial orthogonality, Low mode, and easy solves; every input has at most
+100,000 rows. Worker counts are one and four.
+
+Prepare on a compute node using already-built `replay_large`, the native timing
+harness, and plugin. The native harness must admit 100,000 rows and at least
+3,000,000 cells. Preparation computes the existing independent SciPy Schur
+witness for every family, then freezes all inputs, prepared arm requests,
+witness arrays, tools, generator, harness, and plugin hashes. The science stage
+uses two complete native calls for every arm/worker/case, unchanged scientific
+tolerances, exact repeats, cross-arm and cross-worker numerical/discrete checks,
+and traced resource admission. A two-slot smoke runs only the first one-worker
+case through all four arms and cannot authorize measurement.
+
+Example commands, with absolute deployment paths substituted for uppercase
+placeholders (create scheduler log directories before submission):
+
+```sh
+qsub -P welfgr -pe omp 4 -l h_rt=01:00:00,mem_per_core=3G \
+  bench/compact_cells_scc.sh prepare --root CAMPAIGN/input \
+  --generator REPLAY_LARGE --harness NATIVE_HARNESS --plugin PLUGIN
+qsub -P welfgr -pe omp 2 -l h_rt=00:15:00,mem_per_core=3G \
+  bench/compact_cells_scc.sh smoke --plan CAMPAIGN/input/plan.json --output CAMPAIGN/smoke
+qsub -P welfgr -pe omp 4 -l h_rt=01:00:00,mem_per_core=3G \
+  bench/compact_cells_scc.sh science --plan CAMPAIGN/input/plan.json --output CAMPAIGN/science
+qsub -P welfgr -pe omp28 28 -l num_proc=28,h_rt=01:15:00,mem_per_core=3G \
+  bench/compact_cells_scc.sh measure --plan CAMPAIGN/input/plan.json \
+  --science CAMPAIGN/science/science.json --output CAMPAIGN/measurement
+```
+
+Submit each dependent stage only after its prerequisite has succeeded; SGE
+`hold_jid` alone is not a success check. The wrapper loads `miniconda/25.3.1`,
+uses `SCC_MINICONDA_BIN` by default, and limits numerical libraries to one thread.
+Set `FEREG_BENCH_PYTHON` to an existing absolute NumPy/SciPy interpreter when the
+module base lacks those packages; record its package versions in the preparation log. Its
+toolchain environment uses the established shared fereg Cargo/rustup roots.
+It performs no build or installation. Python needs the existing NumPy/SciPy
+environment. For local tests use
+`python3 -m unittest discover -s bench/tests -p test_compact_cells.py`.
+Successful stage logs end with `COMPACT_CELLS_SUCCESS stage=prepare`, `smoke`,
+`science`, or `measure`; require this marker together with successful scheduler
+accounting and the corresponding frozen receipt.
+
+Measurement validates the complete 28-physical-core reservation using the
+existing SCC configuration, PE, quota, affinity and scheduler validators; slots
+alone do not establish isolation. Both worker settings use `taskset` on the
+same first four physical cores. One fixed warmup per request runs in that
+allocation, followed by six complete randomized rotating blocks, seed
+2026101603. The first four blocks balance all arm positions exactly; over six,
+position counts differ by at most one. Each call is bounded at 120 seconds;
+warmups and measurement each have separate 1,800-second budgets. Exact measured
+repeats compare against the same-allocation warmup; cross-host prerequisites
+use the existing numerical/discrete checks. No oracle solves occur in this job.
+
+The first error, scientific failure, timeout, identity change or budget
+exhaustion stops the run without replacement or resampling. Raw outcomes and
+outputs remain available, including partial blocks. Complete paired-block
+summaries report median ratios, tail ratios, and excess over `max(5%, 1 ms)`;
+they never imply an inferential pass. Partial blocks do not produce ratios.
+Timestamped process samples, bounded scheduler checks between blocks and every
+60 seconds, and start/end configuration evidence are retained. Ordinary OS
+activity is recorded, with no automatic noise exclusions. Review raw competing
+compute observations and require successful external `qacct` accounting before
+treating even these descriptive results as isolated SCC evidence. Linux
+discovery establishes no Mac performance claim.
+Malformed observer output or a missing boundary fails closed. The complete
+scheduler record is replayed under the existing 75-second coverage bound;
+process records must bracket measurement with no gap above 15 seconds (the
+five-second cadence plus bounded command time and scheduling margin). These
+checks concern missing observation coverage, not the amount of OS activity.

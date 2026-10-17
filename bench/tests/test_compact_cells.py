@@ -1,0 +1,307 @@
+"""Contract tests for bounded compact-cell discovery; no native builds or jobs."""
+import json
+from contextlib import ExitStack
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+import xml.etree.ElementTree as ET
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import compact_cells as campaign
+
+
+class CompactCellsContract(unittest.TestCase):
+    def test_six_complete_balanced_deterministic_blocks(self):
+        ids = [f'{f}-t{w}' for f in campaign.FAMILIES for w in [1, 4]]
+        blocks = campaign.schedule(ids)
+        self.assertEqual(blocks, campaign.schedule(ids))
+        self.assertEqual(len(blocks), 6)
+        for block in blocks:
+            self.assertEqual(len(block), 96)
+            self.assertEqual({(r['cell'], r['arm']) for r in block},
+                             {(cid, arm) for cid in ids for arm in campaign.ARMS})
+        for cid in ids:
+            positions = {arm: [0] * 4 for arm in campaign.ARMS}
+            for block in blocks:
+                for index, row in enumerate(r for r in block if r['cell'] == cid):
+                    positions[row['arm']][index] += 1
+            self.assertTrue(all(max(counts) - min(counts) == 1 for counts in positions.values()))
+        self.assertNotEqual([r['cell'] for r in blocks[0]], [r['cell'] for r in blocks[1]])
+
+    def test_bounded_revealed_shapes_include_weighted_and_zero(self):
+        for family in campaign.FAMILIES:
+            values, weights, intercept = campaign.columns(family)
+            self.assertTrue(0 < len(values[0]) <= 100000)
+            self.assertTrue(all(len(v) == len(values[0]) for v in values))
+            if family == 'weight-dynamic':
+                self.assertGreater(weights.max() / weights.min(), 1e6)
+            if family == 'inactive-zero':
+                self.assertFalse(intercept)
+                for value in values[:-2]:
+                    self.assertTrue((value[::2] == -value[1::2]).all())
+            if family in {'wide', 'low'}:
+                self.assertEqual(len(values), 19)
+
+    def test_refuses_changed_frozen_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'input'
+            path.write_text('a')
+            bound = campaign.ref(path)
+            self.assertEqual(campaign.checked(bound), path.resolve())
+            path.write_text('b')
+            with self.assertRaisesRegex(ValueError, 'frozen file changed'):
+                campaign.checked(bound)
+
+    def test_native_timeout_is_retained_and_has_fixed_affinity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plan = {'plugin': {'path': '/plugin'}, 'harness': {'path': '/harness'}}
+            cell = {'id': 'weak-t1', 'inputs': {'cells_v2': {'path': '/input'}}}
+            with patch.object(campaign.subprocess, 'run', side_effect=subprocess.TimeoutExpired('x', 120)) as run:
+                row = campaign.native(plan, cell, 'cells_v2', root, 'trial', cpus=[0, 1, 2, 3])
+            self.assertEqual(row['status'], 'timeout')
+            self.assertEqual(run.call_args.args[0][:3], ['taskset', '-c', '0,1,2,3'])
+            self.assertEqual(run.call_args.kwargs['timeout'], 120)
+            recorded = json.loads((root / 'outcomes.jsonl').read_text())
+            self.assertEqual(recorded['status'], 'timeout')
+            self.assertTrue((root / 'trial.log').is_file())
+
+    def test_summary_retains_unfavorable_blocks_without_minimum_selection(self):
+        rows = []
+        for block, candidate in enumerate([1., 2., 4., 8., 16., 32.]):
+            for arm in campaign.ARMS:
+                rows.append({'cell': 'weak-t1', 'block': block, 'arm': arm,
+                             'phase': 'measure', 'status': 'passed',
+                             'seconds': 1. if arm == 'baseline' else candidate})
+        result = campaign.summarize(rows)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]['paired_blocks'], 6)
+        self.assertEqual(result[0]['median_ratio'], 6.)
+        self.assertEqual(result[0]['maximum_ratio'], 32.)
+        rows[-1]['status'] = 'failed'
+        result = campaign.summarize(rows)
+        self.assertTrue(all(r['paired_blocks'] == 5 for r in result))
+        self.assertEqual(rows[-1]['status'], 'failed')
+
+    def test_smoke_cannot_authorize_measurement(self):
+        plan = {'cells': []}
+        receipt = {'kind': campaign.KIND + '_science', 'status': 'passed', 'smoke': True,
+                   'plan_sha256': campaign.routing.identity(plan), 'fingerprints': {}, 'files': []}
+        with self.assertRaisesRegex(ValueError, 'complete frozen science'):
+            campaign.validate_science(plan, receipt)
+
+    def test_science_stops_at_first_failed_repeat_without_retry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'science'
+            cell = {'id': 'weak-t1', 'family': 'weak', 'threads': 1,
+                    'metadata': {'path': 'meta'}, 'witness': {'path': 'witness'}}
+            plan = {'cells': [cell]}
+            rows = [{'cell': 'weak-t1', 'arm': 'baseline', 'label': str(i),
+                     'target': 'target', 'log': 'log', 'status': 'executed'} for i in range(2)]
+            meta = {'case_sha256': 'a', 'body_sha256': 'b'}
+            results = [({}, {'science_sha256': str(i)}, Path('columns')) for i in range(2)]
+            with patch.dict(campaign.os.environ, {'JOB_ID': '1', 'NSLOTS': '2'}), \
+                 patch.object(campaign, 'validate'), patch.object(campaign, 'read', return_value=meta), \
+                 patch.object(campaign.routing_oracle, 'load_reference', return_value=({}, {})), \
+                 patch.object(campaign.routing_oracle, 'check_reference'), \
+                 patch.object(campaign.cmgschur, 'scientific_comparison'), \
+                 patch.object(campaign.routing_run, 'resource_diagnostics', return_value={}), \
+                 patch.object(Path, 'read_text', return_value=''), \
+                 patch.object(campaign, 'native', side_effect=rows) as native, \
+                 patch.object(campaign, 'parse_run', side_effect=results):
+                result = campaign.science(plan, output, smoke=True)
+            self.assertEqual(native.call_count, 2)
+            self.assertEqual(result['status'], 'failed')
+            self.assertIn('fixed-worker repeat differs', result['failure'])
+            self.assertEqual(len(result['records']), 2)
+
+    def test_public_baseline_and_private_arms_are_fixed(self):
+        self.assertEqual(campaign.ARMS, ['baseline', 'cells', 'diagonal', 'cells_v2'])
+        self.assertEqual(campaign.LIMITS['measurement_budget_s'], 1800)
+        self.assertEqual(campaign.LIMITS['seed'], 2026101603)
+        self.assertEqual(campaign.LIMITS['workers'], [1, 4])
+        self.assertEqual(campaign.LIMITS['call_timeout_s'], 120)
+        self.assertTrue(all(value == '1' for value in campaign.LIBRARY_LIMITS.values()))
+
+    def mock_measure(self, output, *, budget=False, warmup_budget=False, bad_boundary=None, fail_science=True):
+        cell = {'id': 'weak-t1', 'metadata': {'path': 'meta'}}
+        plan = {'cells': [cell], 'blocks': [[{'cell': 'weak-t1', 'arm': a} for a in campaign.ARMS]]}
+        receipt = {'records': [{'cell': 'weak-t1', 'arm': a, 'label': 'science'} for a in campaign.ARMS]}
+        host = {'affinity': list(range(28)), 'hostname': 'test', 'job_id': '1'}
+        config = {k: {} for k in ['job_environment', 'parallel_environment', 'resource_quota',
+                                 'queue_configuration']}
+        calls, boundaries = [], []
+
+        def native(plan, cell, arm, directory, label, **kwargs):
+            calls.append(label)
+            return {'cell': cell['id'], 'arm': arm, 'label': label, 'log': 'log',
+                    'status': 'executed'}
+
+        def parse(row, meta):
+            # Warmup may validly differ from a separate CPU's prerequisite;
+            # the first measured mismatch must stop before any second call.
+            fingerprint = 'warmup' if row['label'].startswith('warmup') or not fail_science else 'different'
+            return {}, {'science_sha256': fingerprint, 'seconds': .1}, Path('columns')
+
+        def configuration(directory, machine, stage):
+            boundaries.append(stage)
+            if stage == bad_boundary:
+                raise ET.ParseError('malformed scheduler XML')
+            return config, {}
+
+        with ExitStack() as stack:
+            for owner, name, options in [
+                (campaign, 'validate', {}), (campaign, 'validate_science', {}),
+                (campaign, 'native', {'side_effect': native}),
+                (campaign, 'parse_run', {'side_effect': parse}),
+                (campaign, 'read', {'return_value': {}}),
+                (campaign, 'Observers', {}),
+                (campaign.scc.discovery, 'host', {'return_value': host}),
+                (campaign.scc, 'configuration', {'side_effect': configuration}),
+                (campaign.scc, 'check_configuration', {'return_value': 'queue'}),
+                (campaign.scc, 'check_scheduler_snapshot', {}),
+                (campaign.cmgschur, 'scientific_comparison', {}),
+                (campaign.routing_run, 'resource_diagnostics', {'return_value': {}}),
+                (Path, 'read_text', {'return_value': ''}),
+            ]:
+                mocked = stack.enter_context(patch.object(owner, name, **options))
+                if name == 'Observers':
+                    mocked.return_value.errors = []
+            stack.enter_context(patch.dict(campaign.os.environ, campaign.LIBRARY_LIMITS))
+            if budget:
+                stack.enter_context(patch.object(campaign.time, 'monotonic_ns',
+                                                side_effect=[0, 0, 1801_000_000_000, 1801_000_000_000]))
+            if warmup_budget:
+                stack.enter_context(patch.object(campaign.time, 'monotonic', side_effect=[0, 0, 0, 0, 0, 1801]))
+            result = campaign.measure(plan, receipt, output)
+        return result, calls, boundaries
+
+    def test_measurement_science_failure_stops_and_retains_end_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, calls, boundaries = self.mock_measure(Path(directory) / 'measure')
+            self.assertEqual(len(calls), 5)  # Four warmups, then one failed measurement.
+            self.assertEqual(result['status'], 'failed')
+            self.assertIn('same-allocation', result['failure'])
+            self.assertEqual(result['records'][-1]['status'], 'failed')
+            self.assertEqual(boundaries, ['before', 'after'])
+            self.assertEqual(result['summaries'], [])
+
+    def test_measurement_budget_exhaustion_does_not_launch_a_call(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, calls, boundaries = self.mock_measure(Path(directory) / 'measure', budget=True)
+            self.assertEqual(len(calls), 4)
+            self.assertEqual(result['status'], 'failed')
+            self.assertEqual(result['failure'], 'measurement budget exhausted')
+            self.assertEqual(boundaries, ['before', 'after'])
+
+    def test_final_warmup_validation_overrun_blocks_measurement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, calls, _ = self.mock_measure(Path(directory) / 'measure', warmup_budget=True)
+            self.assertEqual(len(calls), 4)
+            self.assertEqual(result['status'], 'failed')
+            self.assertEqual(result['failure'], 'warmup budget exhausted')
+            self.assertTrue(all(row['phase'] == 'warmup' for row in result['records']))
+
+    def test_final_science_validation_overrun_fails_prerequisite(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cell = {'id': 'weak-t1', 'family': 'weak', 'threads': 1,
+                    'metadata': {'path': 'meta'}, 'witness': {'path': 'witness'}}
+            plan = {'cells': [cell]}
+            rows = [{'cell': 'weak-t1', 'arm': 'baseline', 'label': str(i),
+                     'target': 'target', 'log': 'log', 'status': 'executed'} for i in range(2)]
+            with patch.dict(campaign.os.environ, {'JOB_ID': '1', 'NSLOTS': '2'}), \
+                 patch.object(campaign, 'ARMS', ['baseline']), patch.object(campaign, 'validate'), \
+                 patch.object(campaign, 'read', return_value={'case_sha256': 'a', 'body_sha256': 'b'}), \
+                 patch.object(campaign.routing_oracle, 'load_reference', return_value=({}, {})), \
+                 patch.object(campaign.routing_oracle, 'check_reference'), \
+                 patch.object(campaign.cmgschur, 'scientific_comparison'), \
+                 patch.object(campaign.routing_run, 'resource_diagnostics', return_value={}), \
+                 patch.object(Path, 'read_text', return_value=''), \
+                 patch.object(campaign, 'native', side_effect=rows), \
+                 patch.object(campaign, 'parse_run', return_value=({}, {'science_sha256': 'same'}, Path('columns'))), \
+                 patch.object(campaign.time, 'monotonic', side_effect=[0, 0, 0, 1801, 1801]):
+                result = campaign.science(plan, Path(directory) / 'science', smoke=True)
+            self.assertEqual(result['status'], 'failed')
+            self.assertEqual(result['failure'], 'science budget exhausted')
+            self.assertTrue(all(row['status'] == 'executed' for row in result['records']))
+
+    def test_terminal_marker_requires_success(self):
+        for status in ['passed', 'failed']:
+            with patch.object(sys, 'argv', ['compact_cells.py', 'smoke', '--plan', '/plan', '--output', '/output']), \
+                 patch.object(campaign, 'read', return_value=campaign.routing.seal({})), \
+                 patch.object(campaign, 'science', return_value={'status': status}), \
+                 patch('builtins.print') as output:
+                if status == 'passed':
+                    campaign.main()
+                    output.assert_called_once_with('COMPACT_CELLS_SUCCESS stage=smoke', flush=True)
+                else:
+                    with self.assertRaisesRegex(ValueError, 'campaign failed'):
+                        campaign.main()
+                    output.assert_not_called()
+
+    def test_background_malformed_xml_and_missing_fields_fail_closed(self):
+        for error in [ET.ParseError('broken XML'), KeyError('missing job field')]:
+            with self.subTest(error=type(error).__name__), tempfile.TemporaryDirectory() as directory:
+                observer = campaign.Observers(Path(directory), {}, 'queue')
+                with patch.object(observer.stop, 'wait', return_value=False), \
+                     patch.object(observer, 'census', side_effect=error):
+                    observer.loop(60, lambda: observer.census('periodic'))
+                self.assertEqual(observer.errors, [str(error)])
+                record = json.loads((Path(directory) / 'observer-errors.jsonl').read_text())
+                self.assertEqual(record['type'], type(error).__name__)
+                with self.assertRaisesRegex(ValueError, 'isolation observer failed'):
+                    observer.validate(1, 2)
+
+    def test_malformed_boundary_xml_writes_failure_receipt(self):
+        for boundary in ['before', 'after']:
+            with self.subTest(boundary=boundary), tempfile.TemporaryDirectory() as directory:
+                result, _, _ = self.mock_measure(Path(directory) / 'measure', bad_boundary=boundary,
+                                                  fail_science=False)
+                self.assertEqual(result['status'], 'failed')
+                self.assertEqual(result['failure'], 'malformed scheduler XML')
+                self.assertTrue((Path(directory) / 'measure/measurement.json').is_file())
+
+    def test_process_coverage_requires_valid_bracketing_samples_without_gaps(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def sample(at):
+                commands = {}
+                for key, fields in [('ps', campaign.scc.PS_FIELDS), ('args', campaign.scc.PS_ARGS)]:
+                    body = (f'{os.getpid()} 1 Fri Oct 16 10:00:00 2026 S 00:00:01 0.0 123 python\n'
+                            if key == 'ps' else f'{os.getpid()} Fri Oct 16 10:00:00 2026 python compact_cells.py\n')
+                    commands[key] = {'argv': ['ps', '-axo', fields], 'returncode': 0, 'locale': 'C',
+                                     'timezone': 'UTC', 'stdout': body}
+                return {'kind': 'snapshot', 'monotonic_ns': at, 'finished_monotonic_ns': at + 1,
+                        'wall_time_ns': at, **commands}
+            observer = campaign.Observers(root, {}, 'queue')
+            path = root / 'processes.jsonl'
+            for at in [1_000_000_000, 5_000_000_000]:
+                campaign.scc.append(path, sample(at))
+            with patch.object(campaign.scc, 'check_scheduler'):
+                observer.validate(2_000_000_000, 4_000_000_000)
+                with self.assertRaisesRegex(ValueError, 'bracket'):
+                    observer.validate(2_000_000_000, 6_000_000_000)
+                campaign.scc.append(path, sample(25_000_000_000))
+                with self.assertRaisesRegex(ValueError, 'coverage gap'):
+                    observer.validate(2_000_000_000, 24_000_000_000)
+
+    def test_malformed_successful_process_output_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            observer = campaign.Observers(root, {}, 'queue')
+            for at in [1, 5]:
+                campaign.scc.append(root / 'processes.jsonl', {
+                    'kind': 'snapshot', 'monotonic_ns': at, 'finished_monotonic_ns': at + 1,
+                    'wall_time_ns': at, 'ps': {'argv': ['ps', '-axo', campaign.scc.PS_FIELDS],
+                    'returncode': 0, 'locale': 'C', 'timezone': 'UTC', 'stdout': 'not a parseable ps row'}})
+            with patch.object(campaign.scc, 'check_scheduler'):
+                with self.assertRaisesRegex(ValueError, 'unparsed ps row'):
+                    observer.validate(2, 4)
+
+
+if __name__ == '__main__':
+    unittest.main()

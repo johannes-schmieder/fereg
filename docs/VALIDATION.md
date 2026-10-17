@@ -16,6 +16,55 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Compact-cell prototype scope, 2026-10-16
+
+The private `routing_cells_v2` experiment starts from `d39492608437` in an
+isolated worktree. It applies only to injected automatic OLS with exactly two
+categorical effects. Canonical compensated worker-firm cells, a parallel
+anchor-difference Schur operator, algebraic exclusion of non-movers from that
+operator, and the true diagonal may change eligible coefficients, covariance,
+fit statistics, residuals, FE coordinates and iteration counts within SPEC.
+Sample, rank, omission and other discrete decisions remain unchanged. Public
+Auto, explicit solvers, PPML, slopes and other FE counts remain exact controls.
+Original-observation certificates, correction and fallback remain authoritative;
+no tolerance, output contract, recurrence cap or optional-work allowance changes.
+
+Independent witnesses cover observation-pair Schur expansion/energy, weighted
+dense-dummy OLS, tiny diagonal complements, non-movers, disconnected designs,
+packed/retired RHSs and saved effects. Fixed-worker repeats must be exact, with
+scientific agreement and stable decisions across workers. Admission includes
+both cell views, sorting/diagonal scratch and the existing parent budget;
+work/memory refusal, cancellation, allocation failure and zero-iteration reuse
+are checked separately from timing. Discovery compares complete native calls
+with uninjected Auto and the existing cells/diagonal ablations. A frozen finite
+SCC experiment precedes any performance conclusion; this scope authorizes no
+public promotion or Mac speed claim.
+
+The implementation is a hidden OLS arm in the production FE path, with a
+worker-major cell view and a firm-major index view. It packs active RHS lanes,
+retains deterministic within-firm accumulation, and reuses admitted setup in
+Low-mode batches. Strongest-cell anchoring handles highly unequal weights;
+nonrepresentable intermediate differences trigger the existing certified
+continuation. The original five-vector owner layout is preserved so uninjected
+memory admission stays unchanged.
+
+Local validation passes: the source-only repository integration suite (260
+Python tests with 13 skips, strict Clippy, Rust/scientific/allocator and portable
+bridge checks), 73 real-plugin replay cases with zero exact differences against
+`d39492608437`, and three Stata/MP fixtures covering weighted dense-dummy
+agreement, Fast/Low, one/four workers, exact repeats, saved effects and rollback.
+The private arm64 plugin passes the native ABI/panic harness and object-level
+header, dependency, export and resolution checks. It retains source paths and
+is not a universal distribution artifact. The ordinary entrypoint correctly
+stops at the installed-plugin/source binding; the installed package is unchanged.
+An initial source-only run stopped at stale complexity positions, then passed
+after inventory refresh without another runtime edit. Seventeen final compact
+harness tests pass; the broader benchmark sweep passed 418 tests but two modules
+could not import optional dependencies. After task-private dependency setup,
+all 14 tests in those modules pass. Architectural and harness reviews found no
+remaining blockers. SCC scientific prerequisites and isolated discovery remain
+pending; no timing claim follows from these functional checks.
+
 ## Main-branch GitHub installation, 2026-10-14
 
 The root package installs the maintained Stata files and a universal macOS

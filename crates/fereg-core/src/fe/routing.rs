@@ -36,6 +36,7 @@ enum PrefixPlan {
 pub(super) enum RoutingAblation {
     Diagonal,
     Cells,
+    CellsV2,
     Direct,
 }
 
@@ -60,6 +61,7 @@ impl std::fmt::Display for RoutingPreset {
             None => write!(f, "routing_h{}_k{}", self.checkpoint, self.samples),
             Some(RoutingAblation::Diagonal) => f.write_str("routing_diagonal"),
             Some(RoutingAblation::Cells) => f.write_str("routing_cells"),
+            Some(RoutingAblation::CellsV2) => f.write_str("routing_cells_v2"),
             Some(RoutingAblation::Direct) => f.write_str("routing_direct"),
         }
     }
@@ -87,6 +89,7 @@ impl RoutingPreset {
         let ablation = match name {
             "diagonal" => RoutingAblation::Diagonal,
             "cells" => RoutingAblation::Cells,
+            "cells_v2" => RoutingAblation::CellsV2,
             "direct" => RoutingAblation::Direct,
             _ => return Err(invalid_argument("invalid solver-routing kernel experiment")),
         };

@@ -4,6 +4,9 @@
 //! Sample, original factor slots, rank and omission decisions are untouched.
 //! The caller retains the original observation operator for certification.
 
+mod compact;
+pub(crate) use compact::build_v2;
+
 use crate::error::{allocation, invalid_argument, invalid_data, FeregError, Result};
 use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
 
@@ -46,6 +49,10 @@ pub(crate) struct CellSchur {
 }
 
 impl CellSchur {
+    pub(super) fn compact(&self) -> bool {
+        self.offsets.len() > self.worker_weights.len() + 1
+    }
+
     /// True Schur diagonal, with exactly-zero entries replaced by D_f solely
     /// for preconditioning. This is never a numerical-rank classification.
     pub fn diagonal(&self) -> &[f64] {
@@ -649,6 +656,350 @@ mod tests {
             assert_eq!(refused.peak.bytes(), Some(0));
             assert_eq!(left, [0, 0, 1, 1]);
             assert_eq!(right, [0, 1, 0, 1]);
+        });
+    }
+    #[test]
+    fn compact_cells_match_observation_pairs_energy_and_retire_lanes() {
+        let left = [2, 0, 1, 0, 2, 1, 0, 1, 2, 0, 2, 1, 3, 3];
+        let right = [0, 1, 3, 0, 2, 1, 1, 3, 3, 2, 0, 0, 4, 4];
+        let weights = [1., 2., 4., 3., 1., 5., 2., 1., 7., 3., 2., 4., 3., 7.];
+        with_design(&left, &right, 4, 5, |design| {
+            for side in [0, 1] {
+                let (workers, firms, p, q) = if side == 0 {
+                    (&left, &right, 4, 5)
+                } else {
+                    (&right, &left, 5, 4)
+                };
+                let mut dense = vec![0.; q * q];
+                let mut dw = vec![0.; p];
+                for i in 0..weights.len() {
+                    dw[workers[i] as usize] += weights[i] / 7.;
+                }
+                for i in 0..weights.len() {
+                    let f = firms[i] as usize;
+                    dense[f * q + f] += weights[i] / 7.;
+                    for j in 0..weights.len() {
+                        if workers[i] == workers[j] {
+                            dense[f * q + firms[j] as usize] -=
+                                (weights[i] / 7.) * (weights[j] / 7.) / dw[workers[i] as usize];
+                        }
+                    }
+                }
+                let width = 131; // crosses the RHS tile and includes padded lanes
+                let input: Vec<_> = (0..q * width)
+                    .map(|i| ((i * 23 % 101) as f64 - 50.) / 8.)
+                    .collect();
+                let mut activity = vec![1.; width - 1];
+                for i in (0..activity.len()).step_by(3) {
+                    activity[i] = 0.;
+                }
+                let mut reference = None;
+                for threads in [1, 4, 4] {
+                    let mut kernel = build_v2(
+                        design,
+                        side,
+                        BorrowedMapWeights::Provided(&weights),
+                        7.,
+                        width,
+                        limits(),
+                    )
+                    .unwrap()
+                    .kernel
+                    .unwrap();
+                    let mut actual = vec![99.; q * width];
+                    let mut scratch = vec![99.; p * width];
+                    crate::ThreadTeam::new(
+                        crate::ThreadConfig::from_requested(threads, true).unwrap(),
+                    )
+                    .install(|| {
+                        kernel
+                            .apply_compact(&input, &mut actual, &mut scratch, &activity, width)
+                            .unwrap()
+                    })
+                    .unwrap();
+                    for f in 0..q {
+                        for r in 0..activity.len() {
+                            let expected = if activity[r] == 0. {
+                                0.
+                            } else {
+                                (0..q)
+                                    .map(|g| dense[f * q + g] * input[g * width + r])
+                                    .sum::<f64>()
+                            };
+                            assert!((actual[f * width + r] - expected).abs() < 3e-14);
+                        }
+                        assert_eq!(actual[f * width + width - 1], 99.);
+                    }
+                    if let Some(reference) = &reference {
+                        assert_eq!(&actual, reference);
+                    } else {
+                        reference = Some(actual.clone());
+                    }
+                    let r = 1;
+                    let mut means = vec![0.; p];
+                    for i in 0..weights.len() {
+                        means[workers[i] as usize] +=
+                            weights[i] / 7. * input[firms[i] as usize * width + r];
+                    }
+                    for w in 0..p {
+                        means[w] /= dw[w];
+                    }
+                    let energy: f64 = (0..weights.len())
+                        .map(|i| {
+                            weights[i] / 7.
+                                * (input[firms[i] as usize * width + r]
+                                    - means[workers[i] as usize])
+                                    .powi(2)
+                        })
+                        .sum();
+                    let product: f64 = (0..q)
+                        .map(|f| input[f * width + r] * actual[f * width + r])
+                        .sum();
+                    assert!((energy - product).abs() < 1e-12);
+                    assert!(kernel.cells.iter().all(|cell| if side == 0 {
+                        cell.worker != 3
+                    } else {
+                        cell.worker != 4
+                    }));
+                    let constant = vec![1e100; q * width];
+                    kernel
+                        .apply_compact(&constant, &mut actual, &mut scratch, &activity, width)
+                        .unwrap();
+                    for f in 0..q {
+                        assert!(actual[f * width..f * width + activity.len()]
+                            .iter()
+                            .all(|&x| x == 0.));
+                    }
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn compact_cells_bound_work_memory_and_tiny_diagonals() {
+        with_design(&[0, 0, 1, 1], &[0, 1, 2, 2], 2, 3, |design| {
+            for tiny in [1e-100, 1e-300, f64::from_bits(1)] {
+                let weights = [1., tiny, 1., 1.];
+                let full = build_v2(
+                    design,
+                    0,
+                    BorrowedMapWeights::Provided(&weights),
+                    1.,
+                    3,
+                    limits(),
+                )
+                .unwrap();
+                let bytes = u128::from(full.peak.bytes().unwrap());
+                let kernel = full.kernel.unwrap();
+                assert_eq!(kernel.diagonal(), &[tiny, tiny, 2.]);
+                assert!(kernel.retained_bytes() <= bytes);
+                for work_budget in [0, 127, full.work_used / 2, full.work_used - 1] {
+                    let stop = build_v2(
+                        design,
+                        0,
+                        BorrowedMapWeights::Provided(&weights),
+                        1.,
+                        3,
+                        KernelLimits {
+                            work_budget,
+                            ..limits()
+                        },
+                    )
+                    .unwrap();
+                    assert!(stop.kernel.is_none());
+                    assert_eq!(stop.refusal, Some(KernelRefusal::WorkBudget));
+                    assert!(stop.work_used <= work_budget);
+                }
+                for (available, installed) in [(bytes - 1, false), (bytes, true)] {
+                    let built = build_v2(
+                        design,
+                        0,
+                        BorrowedMapWeights::Provided(&weights),
+                        1.,
+                        3,
+                        KernelLimits {
+                            retained_live_bytes: 512,
+                            memory: Some(FeSolverMemoryBudget {
+                                execution_bytes: 128,
+                                usable_bytes: 128 + 512 + available,
+                            }),
+                            ..limits()
+                        },
+                    )
+                    .unwrap();
+                    assert_eq!(built.kernel.is_some(), installed);
+                }
+            }
+            assert_eq!(
+                build_v2(
+                    design,
+                    0,
+                    BorrowedMapWeights::Provided(&[1., 0., 1., 1.]),
+                    1.,
+                    3,
+                    limits()
+                )
+                .err()
+                .unwrap()
+                .code,
+                crate::error::ErrorCode::InvalidData
+            );
+        });
+    }
+
+    #[test]
+    fn compact_gathers_run_parallel_and_repeat_exactly() {
+        let left: Vec<_> = (0..40000).map(|i| (i / 4) as u32).collect();
+        let right: Vec<_> = (0..40000).map(|i| ((i / 4 + i % 4) % 200) as u32).collect();
+        with_design(&left, &right, 10000, 200, |design| {
+            let mut reference = None;
+            for workers in [1, 4, 4] {
+                let full = build_v2(design, 0, BorrowedMapWeights::Unit, 1., 4, limits()).unwrap();
+                let mut kernel = full.kernel.unwrap();
+                assert!(kernel.retained_bytes() <= u128::from(full.peak.bytes().unwrap()));
+                let input: Vec<_> = (0..800)
+                    .map(|i| ((i * 13 % 53) as f64 - 26.) / 8.)
+                    .collect();
+                let mut output = vec![99.; 800];
+                let mut scratch = vec![99.; 40000];
+                crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                    .install(|| {
+                        kernel
+                            .apply_compact(&input, &mut output, &mut scratch, &[0., 1., 0., -1.], 4)
+                            .unwrap()
+                    })
+                    .unwrap();
+                if let Some(ref prior) = reference {
+                    assert_eq!(&output, prior);
+                } else {
+                    reference = Some(output);
+                }
+            }
+        });
+    }
+    #[test]
+    fn compact_dominant_anchor_preserves_tiny_two_cell_conductance() {
+        with_design(&[0, 0], &[0, 1], 1, 2, |design| {
+            for tiny in [2.0_f64.powi(-54), 1e-100, 1e-300] {
+                for weights in [[tiny, 1.], [1., tiny]] {
+                    let mut kernel = build_v2(
+                        design,
+                        0,
+                        BorrowedMapWeights::Provided(&weights),
+                        1.,
+                        2,
+                        limits(),
+                    )
+                    .unwrap()
+                    .kernel
+                    .unwrap();
+                    let mut output = [99.; 4];
+                    kernel
+                        .apply_compact(&[0., 1., 1., 0.], &mut output, &mut [0.; 2], &[1., 1.], 2)
+                        .unwrap();
+                    assert_eq!(output, [-tiny, tiny, tiny, -tiny]);
+                    assert_eq!(kernel.diagonal(), &[tiny, tiny]);
+                }
+            }
+        });
+    }
+    #[test]
+    fn compact_extreme_weighted_differences_remain_finite() {
+        with_design(&[0, 0, 1], &[0, 1, 2], 2, 3, |design| {
+            let weights = [1e-320, 1e-320, 1.];
+            let mut kernel = build_v2(
+                design,
+                0,
+                BorrowedMapWeights::Provided(&weights),
+                1.,
+                1,
+                limits(),
+            )
+            .unwrap()
+            .kernel
+            .unwrap();
+            let mut output = [99.; 3];
+            kernel
+                .apply_compact(&[1e308, -1e308, 1.], &mut output, &mut [0.; 2], &[1.], 1)
+                .unwrap();
+            let expected = weights[0] * 1e308;
+            assert!((output[0] / expected - 1.).abs() < 1e-14);
+            assert!((output[1] / expected + 1.).abs() < 1e-14);
+            assert_eq!(output[2], 0.);
+        });
+        assert_eq!(
+            std::mem::size_of::<CellSchur>(),
+            5 * std::mem::size_of::<Vec<f64>>(),
+            "incumbent owner layout remains unchanged"
+        );
+    }
+
+    #[test]
+    fn compact_builder_and_application_propagate_break_and_allocation() {
+        const CHILD: &str = "FEREG_COMPACT_BREAK_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap()).env(CHILD, "1")
+                .args(["fe::routing_kernel::tests::compact_builder_and_application_propagate_break_and_allocation", "--exact", "--test-threads=1"])
+                .status().unwrap();
+            assert!(status.success());
+            return;
+        }
+        with_design(&[0, 0], &[0, 1], 1, 2, |design| {
+            let mut kernel = build_v2(design, 0, BorrowedMapWeights::Unit, 1., 1, limits())
+                .unwrap()
+                .kernel
+                .unwrap();
+            crate::interrupt::request_cancellation();
+            let build_error = build_v2(design, 0, BorrowedMapWeights::Unit, 1., 1, limits())
+                .err()
+                .unwrap();
+            let apply_error = kernel
+                .apply_compact(&[1., -1.], &mut [0.; 2], &mut [0.], &[1.], 1)
+                .unwrap_err();
+            crate::interrupt::reset_cancellation();
+            assert_eq!(build_error.code, crate::error::ErrorCode::Interrupted);
+            assert_eq!(apply_error.code, crate::error::ErrorCode::Interrupted);
+            let mut work = Work {
+                limit: u64::MAX,
+                used: 0,
+            };
+            match work.capacity::<Cell>(usize::MAX).err().unwrap() {
+                Stop::Fatal(error) => assert_eq!(error.code, crate::error::ErrorCode::Allocation),
+                Stop::Refused(_) => panic!("allocation failure was swallowed"),
+            }
+        });
+    }
+    #[test]
+    fn compact_unrepresentable_shift_is_recurrence_breakdown_not_fatal_error() {
+        let workers = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+        let firms = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let mut weights = [1e-320; 11];
+        weights[10] = 1.;
+        with_design(&workers, &firms, 2, 11, |design| {
+            let mut kernel = build_v2(
+                design,
+                0,
+                BorrowedMapWeights::Provided(&weights),
+                1.,
+                1,
+                limits(),
+            )
+            .unwrap()
+            .kernel
+            .unwrap();
+            let mut input = [-1e308; 11];
+            input[0] = 1e308;
+            assert!(!kernel
+                .apply_compact(&input, &mut [0.; 11], &mut [0.; 2], &[1.], 1)
+                .unwrap());
+            input[0] = f64::INFINITY;
+            assert_eq!(
+                kernel
+                    .apply_compact(&input, &mut [0.; 11], &mut [0.; 2], &[1.], 1)
+                    .unwrap_err()
+                    .code,
+                crate::error::ErrorCode::InvalidData
+            );
         });
     }
 }

@@ -871,7 +871,7 @@ fn rejected_original_certificate_preserves_overlap_epoch_and_h() {
 #[test]
 fn routing_diagonal_and_cells_live_callers_certify_saved_effects_and_reuse_setup() {
     let witness = PairedGraph::new();
-    for arm in ["diagonal", "cells"] {
+    for arm in ["diagonal", "cells", "cells_v2"] {
         for workers in [1, 4] {
             crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
                 .install(|| {
@@ -890,7 +890,7 @@ fn routing_diagonal_and_cells_live_callers_certify_saved_effects_and_reuse_setup
                     witness.check(&first, &[0, 1, 2]);
                     let graph = owner.two_fe_pcg.as_ref().unwrap();
                     assert!(graph.cmg_schur.is_none());
-                    assert_eq!(graph.use_cell_operator, arm == "cells");
+                    assert_eq!(graph.use_cell_operator, matches!(arm, "cells" | "cells_v2"));
                     assert!(graph.ppml_operator_rhs_count > 0);
                     let kernel = std::ptr::from_ref(graph.kernel.as_ref().unwrap());
                     let setup = &owner.auto_route.as_ref().unwrap().setup;
@@ -911,7 +911,7 @@ fn routing_diagonal_and_cells_live_callers_certify_saved_effects_and_reuse_setup
                     witness.check(&second, &[1]);
                     let graph = owner.two_fe_pcg.as_ref().unwrap();
                     assert_eq!(std::ptr::from_ref(graph.kernel.as_ref().unwrap()), kernel);
-                    assert_eq!(graph.use_cell_operator, arm == "cells");
+                    assert_eq!(graph.use_cell_operator, matches!(arm, "cells" | "cells_v2"));
                     let setup = &owner.auto_route.as_ref().unwrap().setup;
                     assert_eq!((setup.limit, setup.used), charged);
                 })
@@ -933,7 +933,7 @@ fn routing_kernel_and_direct_live_refusals_preserve_incumbent_bits_and_budget() 
             false,
         )
         .unwrap();
-    for arm in ["diagonal", "cells", "direct"] {
+    for arm in ["diagonal", "cells", "cells_v2", "direct"] {
         for memory_refusal in [false, true] {
             let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
             owner.retain_coefficients = true;
@@ -1387,24 +1387,30 @@ fn routing_and_portfolio_native_caps_around_checkpoint_never_extend_the_action()
 
 #[test]
 fn routing_initial_certificate_does_not_spend_or_prepare() {
-    let witness = PairedGraph::new();
-    let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
-    request(&mut owner, 1);
-    let fit = owner
-        .absorb_ols(
-            BorrowedMapWeights::Provided(&witness.weights),
-            witness.residual.clone().into(),
-            config(),
-            false,
-        )
-        .unwrap();
-    assert!(fit.report().certified());
-    assert_eq!(fit.report().iterations, 0);
-    assert_eq!(fit.residualized(), &witness.residual);
-    let route = owner.auto_route.as_ref().unwrap();
-    assert!(!route.setup.attempted);
-    assert_eq!(route.setup.used, 0);
-    assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
+    for preset in [
+        RoutingPreset::new(4, 1).unwrap(),
+        RoutingPreset::ablation("cells_v2").unwrap(),
+    ] {
+        let witness = PairedGraph::new();
+        let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+        owner.request_auto_routing(preset, None, 0);
+        let fit = owner
+            .absorb_ols(
+                BorrowedMapWeights::Provided(&witness.weights),
+                witness.residual.clone().into(),
+                config(),
+                false,
+            )
+            .unwrap();
+        assert!(fit.report().certified());
+        assert_eq!(fit.report().iterations, 0);
+        assert_eq!(fit.residualized(), &witness.residual);
+        let route = owner.auto_route.as_ref().unwrap();
+        assert!(!route.setup.attempted);
+        assert_eq!(route.setup.used, 0);
+        assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
+        assert!(owner.two_fe_pcg.as_ref().unwrap().kernel.is_none());
+    }
 }
 
 #[test]

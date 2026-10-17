@@ -2428,22 +2428,37 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     Some(
                         super::routing::RoutingAblation::Diagonal
                             | super::routing::RoutingAblation::Cells
+                            | super::routing::RoutingAblation::CellsV2
                     )
                 )
             {
                 route.setup.attempted = true;
                 let started = Instant::now();
-                let built = super::routing_kernel::build(
-                    &self.design,
-                    graph.left_effect,
-                    raw_weights,
-                    weights.raw_scale,
-                    super::routing_kernel::KernelLimits {
-                        work_budget: route.setup.limit.saturating_sub(route.setup.used),
-                        retained_live_bytes: 0,
-                        memory: route.request.budget,
-                    },
-                )?;
+                // Session admission already includes all parent owner/batch banks.
+                let limits = super::routing_kernel::KernelLimits {
+                    work_budget: route.setup.limit.saturating_sub(route.setup.used),
+                    retained_live_bytes: 0,
+                    memory: route.request.budget,
+                };
+                let built =
+                    if route.preset.kernel() == Some(super::routing::RoutingAblation::CellsV2) {
+                        super::routing_kernel::build_v2(
+                            &self.design,
+                            graph.left_effect,
+                            raw_weights,
+                            weights.raw_scale,
+                            self.max_rhs,
+                            limits,
+                        )?
+                    } else {
+                        super::routing_kernel::build(
+                            &self.design,
+                            graph.left_effect,
+                            raw_weights,
+                            weights.raw_scale,
+                            limits,
+                        )?
+                    };
                 route.setup.charge(built.work_used)?;
                 route.peak = route.peak.max(built.peak);
                 if crate::diagnostics::solver_trace_enabled() {
@@ -2457,8 +2472,13 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     ));
                 }
                 graph.kernel = built.kernel;
-                graph.use_cell_operator =
-                    route.preset.kernel() == Some(super::routing::RoutingAblation::Cells);
+                graph.use_cell_operator = matches!(
+                    route.preset.kernel(),
+                    Some(
+                        super::routing::RoutingAblation::Cells
+                            | super::routing::RoutingAblation::CellsV2
+                    )
+                );
                 let elapsed = started.elapsed();
                 setup_seconds += elapsed.as_secs_f64();
                 solve_started += elapsed;
@@ -3167,7 +3187,11 @@ fn absorb_two_fe_pcg_reusing(
         while !reconstruct && iterations < pcg_iteration_limit {
             crate::interrupt::checkpoint()?;
             let op_start = Instant::now();
-            graph.apply_schur(design, weights, rhs_count, stride)?;
+            if !graph.apply_schur(design, weights, &active_rhs_state[..rhs_count], stride)? {
+                operator_seconds += op_start.elapsed().as_secs_f64();
+                breakdown = true;
+                break;
+            }
             // Count actual operator lanes, including converged zeros. Only the
             // PPML owner exposes this scalar as a later-call routing hint.
             graph.ppml_operator_rhs_count = graph
@@ -3779,18 +3803,30 @@ impl TwoFePcgWorkspace {
         &mut self,
         design: &BorrowedInterceptFeDesign<'_>,
         weights: ValidatedWeights<'_>,
-        rhs_count: usize,
+        activity: &[f64],
         stride: usize,
-    ) -> Result<()> {
+    ) -> Result<bool> {
+        let rhs_count = activity.len();
         if self.use_cell_operator {
-            if let Some(kernel) = &self.kernel {
-                return kernel.apply(
-                    &self.direction,
-                    &mut self.operator,
-                    &mut self.left_work,
-                    rhs_count,
-                    stride,
-                );
+            if let Some(kernel) = &mut self.kernel {
+                if kernel.compact() {
+                    return kernel.apply_compact(
+                        &self.direction,
+                        &mut self.operator,
+                        &mut self.left_work,
+                        activity,
+                        stride,
+                    );
+                }
+                return kernel
+                    .apply(
+                        &self.direction,
+                        &mut self.operator,
+                        &mut self.left_work,
+                        rhs_count,
+                        stride,
+                    )
+                    .map(|()| true);
             }
         }
         if crate::parallel::StagePlan::current(
@@ -3805,7 +3841,9 @@ impl TwoFePcgWorkspace {
         .lanes
             > 1
         {
-            return self.apply_schur_parallel(design, weights, rhs_count, stride);
+            return self
+                .apply_schur_parallel(design, weights, rhs_count, stride)
+                .map(|()| true);
         }
         self.left_work.fill(0.0);
         self.operator.fill(0.0);
@@ -3860,7 +3898,7 @@ impl TwoFePcgWorkspace {
                 "two-FE categorical MAP PCG operator product is nonfinite",
             ))
         } else {
-            Ok(())
+            Ok(true)
         }
     }
 
@@ -3957,7 +3995,7 @@ fn schur_diagonal<'a>(
     kernel: Option<&'a super::routing_kernel::CellSchur>,
     cells: bool,
 ) -> &'a [f64] {
-    if cells {
+    if cells && !kernel.is_some_and(|k| k.compact()) {
         weights
     } else {
         kernel.map_or(weights, |k| k.diagonal())

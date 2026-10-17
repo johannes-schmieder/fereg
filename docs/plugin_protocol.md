@@ -62,6 +62,7 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_h{4\|8\|16\|32}_k{0\|1\|2}` | OLS | Selects one of 12 automatic-routing arms: the incumbent reaches iteration `h` before a bounded optional CMG build; `k` is the high-degree worker tree sample count (zero retains the hybrid graph) |
 | `inject=routing_diagonal` | OLS | Tests the current-weight Schur diagonal on eligible two-FE systems, retaining the observation operator |
 | `inject=routing_cells` | OLS | Tests an operator over aggregated worker/firm cells, retaining the incumbent diagonal preconditioner |
+| `inject=routing_cells_v2` | OLS | Tests a reusable parallel compact-cell operator, true diagonal and non-mover cancellation with unchanged original-observation certificates |
 | `inject=routing_direct` | OLS | Tests a bounded componentwise direct Schur factorization on eligible two-FE systems |
 | `inject=it_coefficients` | OLS | Tests compact coefficient-space acceleration on eligible categorical systems; requires `solver=it` |
 | `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |

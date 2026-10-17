@@ -2996,7 +2996,7 @@ fn weighted_graph_operator_and_projection_match_independent_paths() {
                     .unwrap()
                     .install(|| {
                         graph
-                            .apply_schur(&design(), weights, rhs_count, stride)
+                            .apply_schur(&design(), weights, &vec![1.0; rhs_count], stride)
                             .unwrap();
                     });
                 let expected_left = graph.left_work.clone();
@@ -3242,7 +3242,7 @@ fn large_two_fe_schur_operator_is_bit_stable_across_threads() {
                     *direction = ((17 * index % 101) as f64 - 50.0) / 37.0;
                 }
                 graph
-                    .apply_schur(&design, weights, rhs, stride)
+                    .apply_schur(&design, weights, &vec![1.0; rhs], stride)
                     .expect("Schur operator");
                 graph
             })
@@ -3326,7 +3326,9 @@ fn schur_rhs_tiles_match_exact_weighted_bipartite_operator() {
                                 let k = ((rhs % 7) as f64 - 3.0) / 8.0;
                                 graph.direction[rhs] = if weighted { 9.0 * k } else { 6.0 * k };
                             }
-                            graph.apply_schur(&design, weights, width, stride).unwrap();
+                            graph
+                                .apply_schur(&design, weights, &vec![1.0; width], stride)
+                                .unwrap();
                             // Complete 2x2 incidence has a rank-one Schur block.
                             // The chosen dyadic directions give left means 3*k
                             // and exact S*d = [a*k, -a*k], independently of code.

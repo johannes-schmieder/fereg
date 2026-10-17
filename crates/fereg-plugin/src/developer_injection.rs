@@ -63,7 +63,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             };
             (Some(RoutingPreset::prefix(prefix)), false)
         }
-        "routing_diagonal" | "routing_cells" | "routing_direct" => {
+        "routing_diagonal" | "routing_cells" | "routing_cells_v2" | "routing_direct" => {
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
             }
