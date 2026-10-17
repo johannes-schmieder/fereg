@@ -1,6 +1,7 @@
 """Contract tests for bounded compact-cell discovery; no native builds or jobs."""
 import json
 import copy
+import hashlib
 from contextlib import ExitStack
 import os
 from pathlib import Path
@@ -9,7 +10,7 @@ import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import compact_cells as campaign
@@ -303,6 +304,331 @@ class CompactCellsContract(unittest.TestCase):
             with patch.object(campaign.scc, 'check_scheduler'):
                 with self.assertRaisesRegex(ValueError, 'unparsed ps row'):
                     observer.validate(2, 4)
+
+
+class FactorStudyContract(unittest.TestCase):
+    def test_five_arm_order_and_fixed_diagnostic_counts(self):
+        ids = [f'{f}-t{w}' for f in campaign.FAMILIES for w in [1, 4]]
+        blocks = campaign.schedule(ids, arms=campaign.FACTOR_ARMS, limits=campaign.FACTOR_LIMITS)
+        self.assertEqual(blocks, campaign.schedule(ids, arms=campaign.FACTOR_ARMS, limits=campaign.FACTOR_LIMITS))
+        self.assertEqual([len(block) for block in blocks], [120] * 6)
+        for cid in ids:
+            positions = {arm: [0] * 5 for arm in campaign.FACTOR_ARMS}
+            for block in blocks:
+                rows = [r for r in block if r['cell'] == cid]
+                self.assertEqual({r['arm'] for r in rows}, set(campaign.FACTOR_ARMS))
+                for index, row in enumerate(rows):
+                    positions[row['arm']][index] += 1
+            self.assertTrue(all(sorted(counts) == [1, 1, 1, 1, 2] for counts in positions.values()))
+        self.assertNotEqual(campaign.FACTOR_LIMITS['seed'], campaign.LIMITS['seed'])
+        self.assertEqual(campaign.FACTOR_LIMITS['data_seed'], campaign.LIMITS['seed'])
+        self.assertEqual(campaign.FACTOR_LIMITS['diagnostic_repeats'], 2)
+        self.assertEqual(campaign.FACTOR_LIMITS['diagnostic_families'],
+                         ['dense', 'repeated', 'hubs', 'high-degree-weak'])
+        self.assertEqual(campaign.FACTOR_LIMITS['diagnostic_budget_s'], 1800)
+
+    @staticmethod
+    def parent_fixture(root):
+        old = root / 'parent'
+        old.mkdir()
+        frozen, cells = [], []
+        executables = {}
+        for name in ['generator', 'harness', 'plugin']:
+            path = old / name
+            path.write_text('original-' + name)
+            executables[name] = campaign.ref(path)
+            frozen.append(executables[name])
+        for family in campaign.FAMILIES:
+            source = old / (family + '.case')
+            source.write_text(family)
+            metadata, witness, arrays = [old / (family + suffix) for suffix in ['.json', '.oracle.json', '.npz']]
+            campaign.save(metadata, {'case_sha256': campaign.digest(source),
+                                     'body_sha256': campaign.digest(source)})
+            witness.write_text('{}')
+            arrays.write_text('frozen-independent-witness-' + family)
+            frozen.extend(campaign.ref(p) for p in [source, metadata, witness, arrays])
+            for workers in [1, 4]:
+                cid, inputs = f'{family}-t{workers}', {}
+                for arm in campaign.ARMS:
+                    path = old / f'{cid}-{arm}.case'
+                    path.write_text(f'{family}|{arm}|{workers}')
+                    inputs[arm] = campaign.ref(path)
+                    frozen.append(inputs[arm])
+                cells.append({'id': cid, 'family': family, 'threads': workers,
+                              'metadata': campaign.ref(metadata), 'witness': campaign.ref(witness), 'inputs': inputs})
+        tool = root / 'tool.py'
+        tool.write_text('historical tool')
+        frozen.append(campaign.ref(tool))
+        parent = {'kind': campaign.KIND, 'limits': campaign.LIMITS, 'arms': campaign.ARMS,
+                  'families': campaign.FAMILIES, 'library_limits': campaign.LIBRARY_LIMITS,
+                  **executables, 'cells': cells, 'blocks': campaign.schedule([c['id'] for c in cells]),
+                  'frozen_files': {r['path']: r['sha256'] for r in frozen}}
+        path = old / 'plan.json'
+        campaign.save(path, campaign.routing.seal(parent))
+        tool.write_text('new tool closure')
+        return parent, path, tool
+
+    def test_factor_prepare_reuses_parent_bytes_and_only_creates_new_requests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            parent, parent_path, tool = self.parent_fixture(root)
+            before = {str(p): p.read_bytes() for p in parent_path.parent.iterdir()}
+            harness, plugin = root / 'new-harness', root / 'new-plugin'
+            harness.write_text('new harness')
+            plugin.write_text('new plugin')
+
+            def reference(path, *_):
+                arrays = path.with_name(path.name.replace('.oracle.json', '.npz'))
+                return {}, {p: campaign.digest(p) for p in [path, arrays]}
+
+            def prepare(source, target, arm, workers):
+                self.assertEqual(arm, 'cells_v2_df')
+                target.write_bytes(source.read_bytes() + b'|new-df-request')
+
+            def inspect(path):
+                return {'body_sha256': hashlib.sha256(path.read_bytes().split(b'|')[0]).hexdigest()}
+
+            with patch.object(campaign, 'tool_files', return_value=[tool]), \
+                 patch.object(campaign.routing_oracle, 'load_reference', side_effect=reference), \
+                 patch.object(campaign.routing, 'prepare', side_effect=prepare) as preparation, \
+                 patch.object(campaign.routing_cases, 'inspect_case', side_effect=inspect), \
+                 patch.object(campaign, 'columns', side_effect=AssertionError('must not generate data')), \
+                 patch.object(campaign.routing_oracle, 'write_reference', side_effect=AssertionError('must not solve oracle')):
+                plan = campaign.prepare_factor(root / 'factor', parent_path, harness, plugin)
+                self.assertEqual(preparation.call_count, 24)
+                self.assertEqual(len(list((root / 'factor').iterdir())), 25)
+                self.assertEqual(plan['parent_plan_sha256'], campaign.routing.identity(parent))
+                self.assertEqual(plan['frozen_files'][str(tool.resolve())], campaign.digest(tool))
+                for old, new in zip(parent['cells'], plan['cells']):
+                    self.assertEqual({a: new['inputs'][a] for a in campaign.ARMS}, old['inputs'])
+                    self.assertEqual(new['witness'], old['witness'])
+                    self.assertEqual(new['metadata'], old['metadata'])
+                campaign.validate(plan)
+                for key in ['plugin', 'harness', 'generator']:
+                    self.assertIn(parent[key]['path'], plan['parent_dependencies'])
+                self.assertEqual(before, {str(p): p.read_bytes() for p in parent_path.parent.iterdir()})
+                changed = Path(parent['cells'][0]['inputs']['cells']['path'])
+                changed.write_text('changed')
+                with self.assertRaisesRegex(ValueError, 'frozen file changed'):
+                    campaign.validate(plan)
+
+    def test_native_trace_isolation_including_host_environment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plan = {'plugin': {'path': '/plugin'}, 'harness': {'path': '/harness'}}
+            cell = {'id': 'dense-t1', 'inputs': {'cells_v2_df': {'path': '/input'}}}
+            with patch.dict(os.environ, {key: 'inherited' for key in campaign.routing_run.CLEARED_ENV}), \
+                 patch.object(campaign.subprocess, 'run', return_value=Mock(returncode=0)) as run:
+                for label, options in [('scored', {}), ('diagnostic', {'traced': True, 'phase_timing': True}),
+                                       ('scored-after', {})]:
+                    campaign.native(plan, cell, 'cells_v2_df', root, label, **options)
+                    command = run.call_args.args[0]
+                    for key in campaign.routing_run.CLEARED_ENV:
+                        self.assertIn(['-u', key], [command[i:i+2] for i in range(len(command)-1)])
+                    self.assertEqual('FEREG_PHASE_TIMING=1' in command, label == 'diagnostic')
+                    self.assertEqual('FEREG_SOLVER_TRACE=1' in command, label == 'diagnostic')
+                    self.assertEqual(command[-5:], ['/harness', '/plugin', '--replay', '/input', str(root / (label + '.json'))])
+
+    @staticmethod
+    def result(iterations=4, fallback=0):
+        row = [0.] * 16
+        row[2], row[8], row[9], row[10] = iterations, .1, .2, fallback
+        return {'seconds': 1., 'science_sha256': 'same', 'solver_rows': [row, list(row)]}
+
+    @staticmethod
+    def trace(operator, recurrence, *, iterations=4, passed='true'):
+        return (f'FEREG_PHASE|schur|init=0.01|operator={operator}|recurrence={recurrence}'
+                f'|reconstruct=0.02|certificate=0.03|iterations={iterations}|passed={passed}\n')
+
+    def test_cumulative_corrections_and_invocation_resets(self):
+        log = (self.trace(.2, .3, passed='false')
+               + 'FEREG_SOLVER_TRACE|phase=two_fe_pcg_correction|iterations=4|recurrence_tolerance=1e-12\n'
+               + self.trace(.4, .5, iterations=6) + self.trace(.1, .2, iterations=2))
+        parsed = campaign.phase_diagnostics(log, self.result())
+        self.assertEqual([r['cycles'] for r in parsed['schur_invocations']], [2, 1])
+        self.assertAlmostEqual(parsed['schur_observed_seconds']['operator'], .5)
+        self.assertAlmostEqual(parsed['schur_observed_seconds']['recurrence'], .7)
+        self.assertAlmostEqual(parsed['schur_observed_seconds']['init'], .03)
+        self.assertAlmostEqual(parsed['schur_observed_seconds']['certificate'], .09)
+        self.assertEqual(parsed['rsolver_setup_seconds'], [.1, .1])
+        for bad in [log.replace('operator=0.4', 'operator=0.1'), log.replace('recurrence=0.5', 'recurrence=0.1'),
+                    log.replace('iterations=6', 'iterations=3')]:
+            with self.assertRaisesRegex(ValueError, 'nonmonotonic'):
+                campaign.phase_diagnostics(bad, self.result())
+
+    def test_missing_zero_and_failed_trace_are_not_zero_phase_cost(self):
+        for iterations, expected in [(0, 'absent_zero_iterations'), (4, 'absent_nonzero_iterations')]:
+            parsed = campaign.phase_diagnostics('', self.result(iterations))
+            self.assertEqual(parsed['status'], 'missing')
+            self.assertEqual(parsed['schur_status'], expected)
+            self.assertIsNone(parsed['schur_observed_seconds'])
+        parsed = campaign.phase_diagnostics(self.trace(.1, .2, passed='false'), self.result(fallback=1))
+        self.assertEqual(parsed['schur_status'], 'partial')
+        self.assertIn('fallback work may be untraced', parsed['coverage'])
+
+    def test_diagnostics_have_exact_fixed_count_and_stop_at_first_failure(self):
+        cells = [{'id': f'{f}-t{w}', 'family': f, 'threads': w}
+                 for f in campaign.FAMILIES for w in [1, 4]]
+        plan = {'kind': campaign.FACTOR_KIND, 'cells': cells}
+        fingerprints = {c['id'] + '/' + a: 'same' for c in cells for a in campaign.FACTOR_ARMS}
+        def native(plan, cell, arm, output, label, **kwargs):
+            self.assertTrue(kwargs['traced'] and kwargs['phase_timing'])
+            return {'cell': cell['id'], 'arm': arm, 'label': label, 'log': 'log', 'status': 'executed'}
+        with patch.object(campaign, 'native', side_effect=native) as run, \
+             patch.object(campaign, 'check_prerequisite', return_value=self.result()) as science, \
+             patch.object(Path, 'read_text', return_value=self.trace(.1, .2)):
+            rows = []
+            campaign.collect_diagnostics(plan, {}, Path('/unused'), [0, 1, 2, 3], Mock(errors=[]), fingerprints, rows)
+            self.assertEqual(run.call_count, 80)
+            self.assertTrue(all(r['status'] == 'passed' and r['phase'] == 'diagnostic' for r in rows))
+            self.assertEqual({r['cell'].rsplit('-t', 1)[0] for r in rows}, set(campaign.FACTOR_LIMITS['diagnostic_families']))
+            run.reset_mock()
+            science.side_effect = ValueError('failed independent science')
+            rows = []
+            with self.assertRaisesRegex(ValueError, 'failed independent science'):
+                campaign.collect_diagnostics(plan, {}, Path('/unused'), [], Mock(errors=[]), fingerprints, rows)
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(len(rows), 1)
+
+    def test_factor_pair_summaries_require_complete_five_arm_blocks(self):
+        rows = [{'phase': 'measure', 'cell': 'dense-t1', 'block': 0, 'status': 'passed', 'arm': arm,
+                 'seconds': index + 1.} for index, arm in enumerate(campaign.FACTOR_ARMS)]
+        result = campaign.summarize(rows, arms=campaign.FACTOR_ARMS, reference='cells_v2', candidates=['cells_v2_df'])
+        self.assertEqual(result[0]['median_ratio'], 1.25)
+        self.assertEqual(result[0]['reference'], 'cells_v2')
+        self.assertEqual(campaign.summarize(rows[:-1], arms=campaign.FACTOR_ARMS), [])
+
+    def test_factor_science_counts_exact_parent_controls_and_stops_on_difference(self):
+        for different in [False, True]:
+            with self.subTest(different=different), tempfile.TemporaryDirectory() as directory:
+                cells = [{'id': f'{f}-t{w}', 'family': f, 'threads': w,
+                          'metadata': {'path': 'meta'}, 'witness': {'path': 'witness'}}
+                         for f in campaign.FAMILIES for w in [1, 4]]
+                plan = {'kind': campaign.FACTOR_KIND, 'cells': cells,
+                        'parent_plan': {'path': 'parent'}, 'plugin': {'path': 'new'}}
+                parent = {'plugin': {'path': 'old'}}
+                def read(path):
+                    return campaign.routing.seal(parent) if path == 'parent' else {'case_sha256': 'a', 'body_sha256': 'b'}
+                def native(plan, cell, arm, output, label, **kwargs):
+                    self.assertEqual(plan['plugin']['path'], 'old' if label.startswith('parent-control') else 'new')
+                    return {'cell': cell['id'], 'arm': arm, 'label': label, 'log': 'log', 'status': 'executed'}
+                def parse(row, meta):
+                    result = self.result()
+                    if different and row['label'].startswith('parent-control'):
+                        result['science_sha256'] = 'different'
+                    return {}, result, Path('columns')
+                with patch.dict(os.environ, {'JOB_ID': '1', 'NSLOTS': '4'}), \
+                     patch.object(campaign, 'validate'), patch.object(campaign, 'read', side_effect=read), \
+                     patch.object(campaign, 'native', side_effect=native) as run, \
+                     patch.object(campaign, 'parse_run', side_effect=parse), \
+                     patch.object(campaign.routing_oracle, 'load_reference', return_value=({}, {})), \
+                     patch.object(campaign.routing_oracle, 'check_reference'), \
+                     patch.object(campaign.cmgschur, 'scientific_comparison'), \
+                     patch.object(campaign.routing_run, 'resource_diagnostics', return_value={}), \
+                     patch.object(Path, 'read_text', return_value=''):
+                    receipt = campaign.science(plan, Path(directory) / 'science')
+                    if different:
+                        self.assertEqual(run.call_count, 2)
+                        self.assertEqual(receipt['status'], 'failed')
+                        self.assertIn('parent/candidate control', receipt['failure'])
+                        self.assertEqual(receipt['records'][-1]['status'], 'failed')
+                    else:
+                        self.assertEqual(run.call_count, 336)
+                        self.assertEqual(receipt['status'], 'passed')
+                        self.assertEqual(len(receipt['records']), 240)
+                        self.assertEqual(receipt['parent_control_count'], 96)
+                        campaign.validate_science(plan, receipt)
+                        receipt['parent_controls'].pop()
+                        with self.assertRaisesRegex(ValueError, 'incomplete parent artifact controls'):
+                            campaign.validate_science(plan, receipt)
+
+    def test_factor_measurement_finishes_scored_blocks_before_diagnostics(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cells = [{'id': f'{f}-t{w}', 'family': f, 'threads': w, 'metadata': {'path': 'meta'}}
+                     for f in campaign.FAMILIES for w in [1, 4]]
+            plan = {'kind': campaign.FACTOR_KIND, 'cells': cells,
+                    'blocks': campaign.schedule([c['id'] for c in cells], arms=campaign.FACTOR_ARMS,
+                                                limits=campaign.FACTOR_LIMITS)}
+            calls = []
+            def native(plan, cell, arm, output, label, **options):
+                calls.append(label)
+                self.assertEqual(bool(options.get('traced')), label.startswith('diagnostic-'))
+                self.assertEqual(bool(options.get('phase_timing')), label.startswith('diagnostic-'))
+                return {'cell': cell['id'], 'arm': arm, 'label': label, 'log': 'log', 'status': 'executed'}
+            with ExitStack() as stack:
+                for owner, name, options in [
+                    (campaign, 'validate', {}), (campaign, 'validate_science', {}),
+                    (campaign, 'native', {'side_effect': native}),
+                    (campaign, 'check_prerequisite', {'return_value': self.result()}),
+                    (campaign, 'parse_run', {'return_value': ({}, self.result(), Path('columns'))}),
+                    (campaign, 'read', {'return_value': {}}),
+                    (campaign, 'Observers', {'return_value': Mock(errors=[])}),
+                    (campaign, 'check_stable_configuration', {}),
+                    (campaign.scc.discovery, 'host', {'return_value': {'affinity': list(range(28))}}),
+                    (campaign.scc, 'configuration', {'return_value': ({}, {})}),
+                    (campaign.scc, 'check_configuration', {'return_value': 'queue'}),
+                    (campaign.scc, 'check_scheduler_snapshot', {}),
+                    (Path, 'read_text', {'return_value': self.trace(.1, .2)}),
+                ]:
+                    stack.enter_context(patch.object(owner, name, **options))
+                stack.enter_context(patch.dict(os.environ, campaign.LIBRARY_LIMITS))
+                result = campaign.measure(plan, {}, Path(directory) / 'measure')
+            self.assertEqual(result['status'], 'complete', result['failure'])
+            self.assertEqual(len(calls), 920)
+            self.assertTrue(all(label.startswith('warmup-') for label in calls[:120]))
+            self.assertTrue(all(label.startswith('block-') for label in calls[120:840]))
+            self.assertTrue(all(label.startswith('diagnostic-') for label in calls[840:]))
+            self.assertEqual(len(result['summaries']), 96)
+            self.assertEqual(len(result['factor_comparisons']), 48)
+            self.assertTrue(all(row['paired_blocks'] == 6 for row in result['summaries']))
+
+    def test_diagnostic_deadline_blocks_dispatch_and_missing_trace_stops(self):
+        plan = {'kind': campaign.FACTOR_KIND, 'cells': [{'id': 'dense-t1', 'family': 'dense'}]}
+        with patch.object(campaign.time, 'monotonic', side_effect=[0, 1801]), \
+             patch.object(campaign, 'native') as native:
+            with self.assertRaisesRegex(ValueError, 'diagnostic budget exhausted'):
+                campaign.collect_diagnostics(plan, {}, Path('/unused'), [], Mock(errors=[]), {}, [])
+            native.assert_not_called()
+        rows = []
+        with patch.object(campaign, 'native', return_value={'log': 'log', 'status': 'executed'}) as native, \
+             patch.object(campaign, 'check_prerequisite', return_value=self.result()), \
+             patch.object(Path, 'read_text', return_value=''):
+            with self.assertRaisesRegex(ValueError, 'missing diagnostic phase trace'):
+                campaign.collect_diagnostics(plan, {}, Path('/unused'), [], Mock(errors=[]),
+                                             {'dense-t1/baseline': 'same'}, rows)
+            self.assertEqual(native.call_count, 1)
+            self.assertEqual(rows[0]['phase_diagnostics']['status'], 'missing')
+
+    def test_untraced_warmup_binds_real_traced_prerequisite_resources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            metadata, traced_log, untraced_log = root / 'meta.json', root / 'science.log', root / 'warmup.log'
+            campaign.save(metadata, {})
+            traced_log.write_text('FEREG_SOLVER_TRACE|phase=routing_action|preset=routing_cells_v2_df|'
+                                  'final=0|certified=1|iterations=5|native_limit=100|setup_work=6|'
+                                  'setup_limit=200|memory_bytes=64|memory_limit=1024\n')
+            untraced_log.write_text('NATIVE_SECONDS=1.0\n')
+            arm = 'cells_v2_df'
+            resources = campaign.routing_run.resource_diagnostics(traced_log.read_text(), arm, False, {})
+            original = {'cell': 'dense-t1', 'arm': arm, 'log': str(traced_log),
+                        'science_sha256': 'same', 'resources': resources}
+            receipt = {'records': [original]}
+            cell = {'id': 'dense-t1', 'metadata': {'path': str(metadata)}}
+            row = {'cell': cell['id'], 'arm': arm, 'log': str(untraced_log)}
+            with patch.object(campaign, 'parse_run', return_value=({}, self.result(), Path('columns'))), \
+                 patch.object(campaign.cmgschur, 'scientific_comparison') as science:
+                campaign.check_prerequisite(row, cell, receipt, traced=False)
+                science.assert_called_once()
+                self.assertEqual(row['resources']['action_resources'], resources['action_resources'])
+                self.assertEqual(row['resources']['prerequisite_log'], campaign.ref(traced_log))
+                self.assertEqual(row['resources']['prerequisite_science_sha256'], 'same')
+                self.assertIn('current call untraced', row['resources']['resource_basis'])
+                self.assertEqual(original['resources'], resources)
+                with self.assertRaisesRegex(ValueError, 'no actual routing_action'):
+                    campaign.check_prerequisite(row, cell, receipt, traced=True)
+                original['resources'] = {}
+                with self.assertRaisesRegex(ValueError, 'prerequisite resource evidence changed'):
+                    campaign.check_prerequisite(row, cell, receipt, traced=False)
 
 
 class StableConfiguration(unittest.TestCase):

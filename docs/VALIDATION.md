@@ -16,6 +16,40 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Compact-cell preconditioner factor study, 2026-10-17
+
+The private `routing_cells_v2_df` arm holds V2 construction, storage, operator,
+work admission and memory accounting fixed, including the true-diagonal setup
+cost, while using the incumbent observation-order `graph.right_weights` as its
+preconditioner. Only the new injected two-categorical-FE OLS arm may change
+continuous scientific fields and iteration counts within SPEC; public behavior
+and all four existing study arms remain exact controls. The original certificate,
+correction, fallback and discrete decisions remain unchanged. Existing weighted
+independent witnesses, saved-effect/Fast/Low checks, fixed-worker repeats and
+cross-worker agreement apply. A same-host comparison against the parent artifact
+checks all original arms before scored timings.
+
+The finite discovery reuses the parent's frozen twelve datasets and witnesses:
+one warmup and six blocks for five arms at one/four workers (120 warmups, 720
+measurements). Separate traced diagnostics cover high-degree-weak, dense, repeated
+and hubs, two repetitions at each worker count and arm (80 calls). Diagnostics
+follow the scored panel and do not rank candidates. Ordered phase records retain
+correction boundaries and incomplete attribution. Comparisons against V2 isolate
+preconditioner choice; comparisons against old cells include the whole V2 bundle.
+No public routing change or Mac performance conclusion is authorized by this study.
+
+Local source integration passes, including the scoped complexity ratchet
+(18 additional production lines across core/plugin). The ordinary entrypoint
+stops at installed-plugin/source binding; the installed package stays unchanged.
+The private Mac candidate passes ABI/panic containment, 73 exact public replay
+cases against `347959b0`, and three licensed Stata fixtures covering weighted
+independent OLS, Fast/Low, saved effects, one/four workers, repeats and rollback.
+Thirty-four compact harness, 40 routing and 84 routing-run tests pass. Independent
+Astra reviews approve the runtime and final harness. Review caught and repaired
+an untraced-warmup resource check before submission: those warmups now bind the
+validated traced prerequisite explicitly, while diagnostics require live traces.
+No local timings are used as performance evidence.
+
 ## Compact-cell prototype scope, 2026-10-16
 
 The private `routing_cells_v2` experiment starts from `d39492608437` in an

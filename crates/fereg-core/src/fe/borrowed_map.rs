@@ -2429,6 +2429,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                         super::routing::RoutingAblation::Diagonal
                             | super::routing::RoutingAblation::Cells
                             | super::routing::RoutingAblation::CellsV2
+                            | super::routing::RoutingAblation::CellsV2Df
                     )
                 )
             {
@@ -2440,25 +2441,30 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     retained_live_bytes: 0,
                     memory: route.request.budget,
                 };
-                let built =
-                    if route.preset.kernel() == Some(super::routing::RoutingAblation::CellsV2) {
-                        super::routing_kernel::build_v2(
-                            &self.design,
-                            graph.left_effect,
-                            raw_weights,
-                            weights.raw_scale,
-                            self.max_rhs,
-                            limits,
-                        )?
-                    } else {
-                        super::routing_kernel::build(
-                            &self.design,
-                            graph.left_effect,
-                            raw_weights,
-                            weights.raw_scale,
-                            limits,
-                        )?
-                    };
+                let built = if matches!(
+                    route.preset.kernel(),
+                    Some(
+                        super::routing::RoutingAblation::CellsV2
+                            | super::routing::RoutingAblation::CellsV2Df
+                    )
+                ) {
+                    super::routing_kernel::build_v2(
+                        &self.design,
+                        graph.left_effect,
+                        raw_weights,
+                        weights.raw_scale,
+                        self.max_rhs,
+                        limits,
+                    )?
+                } else {
+                    super::routing_kernel::build(
+                        &self.design,
+                        graph.left_effect,
+                        raw_weights,
+                        weights.raw_scale,
+                        limits,
+                    )?
+                };
                 route.setup.charge(built.work_used)?;
                 route.peak = route.peak.max(built.peak);
                 if crate::diagnostics::solver_trace_enabled() {
@@ -2477,6 +2483,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     Some(
                         super::routing::RoutingAblation::Cells
                             | super::routing::RoutingAblation::CellsV2
+                            | super::routing::RoutingAblation::CellsV2Df
                     )
                 );
                 let elapsed = started.elapsed();
@@ -2947,6 +2954,12 @@ fn absorb_two_fe_pcg_reusing(
     mut auto_route: Option<&mut AutoSchurRoute>,
 ) -> Result<SchurAttempt> {
     let trace = crate::diagnostics::phase_timing_enabled();
+    // Keep V2 setup and its operator identical in the D_f factor arm. D_f is
+    // the incumbent observation-order total, not the compact cell aggregate.
+    let use_true_diagonal = matches!(
+        auto_route.as_ref().and_then(|route| route.preset.kernel()),
+        Some(super::routing::RoutingAblation::Diagonal | super::routing::RoutingAblation::CellsV2)
+    );
     let mut operator_seconds = 0.0;
     let mut recurrence_seconds = 0.0;
     let rhs_count = values.ncols();
@@ -3126,7 +3139,7 @@ fn absorb_two_fe_pcg_reusing(
                         schur_diagonal(
                             &graph.right_weights,
                             graph.kernel.as_ref(),
-                            graph.use_cell_operator
+                            use_true_diagonal
                         ),
                         scale_components.then_some(graph.component_scales.as_slice()),
                         stride,
@@ -3282,7 +3295,7 @@ fn absorb_two_fe_pcg_reusing(
                             schur_diagonal(
                                 &graph.right_weights,
                                 graph.kernel.as_ref(),
-                                graph.use_cell_operator
+                                use_true_diagonal
                             ),
                             scale_components.then_some(graph.component_scales.as_slice()),
                             stride,
@@ -3310,7 +3323,7 @@ fn absorb_two_fe_pcg_reusing(
                         schur_diagonal(
                             &graph.right_weights,
                             graph.kernel.as_ref(),
-                            graph.use_cell_operator
+                            use_true_diagonal
                         ),
                         scale_components.then_some(graph.component_scales.as_slice()),
                         stride,
@@ -3423,7 +3436,7 @@ fn absorb_two_fe_pcg_reusing(
                 let right_weights = schur_diagonal(
                     &graph.right_weights,
                     graph.kernel.as_ref(),
-                    graph.use_cell_operator,
+                    use_true_diagonal,
                 );
                 let component_scales = &graph.component_scales;
                 let residual = &graph.residual;
@@ -3456,7 +3469,7 @@ fn absorb_two_fe_pcg_reusing(
                         schur_diagonal(
                             &graph.right_weights,
                             graph.kernel.as_ref(),
-                            graph.use_cell_operator
+                            use_true_diagonal
                         ),
                         scale_components.then_some(graph.component_scales.as_slice()),
                         stride,
@@ -3993,12 +4006,12 @@ impl TwoFePcgWorkspace {
 fn schur_diagonal<'a>(
     weights: &'a [f64],
     kernel: Option<&'a super::routing_kernel::CellSchur>,
-    cells: bool,
+    use_true_diagonal: bool,
 ) -> &'a [f64] {
-    if cells && !kernel.is_some_and(|k| k.compact()) {
-        weights
-    } else {
+    if use_true_diagonal {
         kernel.map_or(weights, |k| k.diagonal())
+    } else {
+        weights
     }
 }
 

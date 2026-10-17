@@ -1109,3 +1109,66 @@ attempt and original source/plan, record old/new tool identities, and verify
 runtime, data, witnesses, schedule and budgets unchanged before one bounded
 fresh attempt. A new tool manifest requires a fresh scientific prerequisite;
 never relabel a failed measurement or copy its prerequisite identity.
+
+The separate `prepare-factor` command freezes a five-arm follow-up with the
+additional private `cells_v2_df` request. This arm builds the same V2 compact
+operator, including its true-diagonal setup, and uses the incumbent `D_f`
+preconditioner. The original four-arm commands and seed remain unchanged.
+Use a fresh input directory and a new plugin artifact; keep the parent plan,
+datasets, witnesses, requests and executables at their original paths:
+
+```sh
+qsub -P welfgr -pe omp 4 -l h_rt=00:30:00,mem_per_core=3G \
+  bench/compact_cells_scc.sh prepare-factor --parent-plan PARENT_INPUT_ROOT/plan.json \
+  --root FACTOR_INPUT_ROOT --harness NATIVE_HARNESS --plugin FACTOR_PLUGIN
+```
+
+Preparation binds the parent plan hash, checks and reuses its twelve datasets,
+independent witness arrays and all 96 existing requests, and writes only the
+24 new requests plus the new plan. It binds the current tool closure and new
+artifact separately; historical tool hashes remain in the unchanged parent
+plan. It neither regenerates data nor recomputes witnesses. The data seed is
+still 2026101603. Run `smoke`, `science` and `measure` with the factor plan as
+above, using fresh output directories. Allow `h_rt=02:00:00` for factor
+measurement to cover its three separate 1,800-second phases and boundary
+checks; the per-call deadline remains 120 seconds.
+
+Factor science performs 240 candidate calls (two per arm/cell) and 96 fixed
+same-host parent-plugin controls (one per original arm/cell), all within its
+1,800-second science budget. Controls use the current harness and exact parent
+requests; each must match the first corresponding candidate call's scientific
+fingerprint, including solver signatures. They have separate retained records
+and the success marker `COMPACT_CELLS_PARENT_CONTROLS status=passed calls=96`.
+The factor smoke has ten candidate calls and four controls and cannot authorize
+measurement. Any control failure stops the study without replacements.
+
+Factor measurement uses 120 warmups and 720 scored calls: six rotating blocks
+over all five arms, the same twelve families and one/four workers, with frozen
+schedule seed 2026101604. The first five blocks balance every arm position;
+the sixth gives position counts differing by at most one. In addition to
+comparisons against baseline, paired summaries compare `cells_v2_df` with V2
+and with original cells. All summaries remain descriptive, with no promotion.
+Only after the scored panel completes, a fixed diagnostic stage runs dense,
+repeated, hubs and high-degree-weak, in that order, for both worker counts and
+all five arms, twice each (80 calls). Its separate 1,800-second budget and the
+same scientific warmup checks apply. Factor warmups and scored calls explicitly
+clear solver and phase tracing; diagnostic calls enable both `FEREG_SOLVER_TRACE=1` and
+`FEREG_PHASE_TIMING=1`. Diagnostic timings never enter scored summaries.
+Untraced factor warmups compare science to the traced prerequisite and retain
+that prerequisite's resource checks with its log hash and scientific fingerprint;
+they do not claim new traced resource observations. Diagnostics validate their
+own routing-action resource traces.
+
+Diagnostics retain complete native time, the existing RSOLVER setup/solve
+times, all phase records, solver traces and scientific fingerprints. Schur
+operator and recurrence timers are cumulative within one invocation: the
+parser checks monotonicity over explicitly traced correction cycles and uses
+the final counter, while summing init/reconstruction/certificate per cycle.
+Counters reset between invocations. Missing records, zero-iteration absence
+and partial failed/fallback traces remain distinct. These records do not fully
+account for failed attempts, route restarts or fallback work, and their totals
+must not be treated as an exhaustive decomposition of native time. Missing
+phase tracing fails the diagnostic stage; a failed or partial Schur record
+remains an explicit limitation on attribution even when the native result
+passes science. The original isolation, retention and stop rules also cover
+this diagnostic stage.

@@ -871,7 +871,7 @@ fn rejected_original_certificate_preserves_overlap_epoch_and_h() {
 #[test]
 fn routing_diagonal_and_cells_live_callers_certify_saved_effects_and_reuse_setup() {
     let witness = PairedGraph::new();
-    for arm in ["diagonal", "cells", "cells_v2"] {
+    for arm in ["diagonal", "cells", "cells_v2", "cells_v2_df"] {
         for workers in [1, 4] {
             crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
                 .install(|| {
@@ -890,7 +890,10 @@ fn routing_diagonal_and_cells_live_callers_certify_saved_effects_and_reuse_setup
                     witness.check(&first, &[0, 1, 2]);
                     let graph = owner.two_fe_pcg.as_ref().unwrap();
                     assert!(graph.cmg_schur.is_none());
-                    assert_eq!(graph.use_cell_operator, matches!(arm, "cells" | "cells_v2"));
+                    assert_eq!(
+                        graph.use_cell_operator,
+                        matches!(arm, "cells" | "cells_v2" | "cells_v2_df")
+                    );
                     assert!(graph.ppml_operator_rhs_count > 0);
                     let kernel = std::ptr::from_ref(graph.kernel.as_ref().unwrap());
                     let setup = &owner.auto_route.as_ref().unwrap().setup;
@@ -911,12 +914,67 @@ fn routing_diagonal_and_cells_live_callers_certify_saved_effects_and_reuse_setup
                     witness.check(&second, &[1]);
                     let graph = owner.two_fe_pcg.as_ref().unwrap();
                     assert_eq!(std::ptr::from_ref(graph.kernel.as_ref().unwrap()), kernel);
-                    assert_eq!(graph.use_cell_operator, matches!(arm, "cells" | "cells_v2"));
+                    assert_eq!(
+                        graph.use_cell_operator,
+                        matches!(arm, "cells" | "cells_v2" | "cells_v2_df")
+                    );
                     let setup = &owner.auto_route.as_ref().unwrap().setup;
                     assert_eq!((setup.limit, setup.used), charged);
                 })
                 .unwrap();
         }
+    }
+}
+
+#[test]
+fn routing_v2_factor_preserves_setup_and_operator_with_distinct_preconditioners() {
+    let witness = PairedGraph::new();
+    for workers in [1, 4] {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+            .install(|| {
+                let mut snapshots = Vec::new();
+                for arm in ["cells_v2", "cells_v2_df"] {
+                    let mut owner =
+                        ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                    owner.retain_coefficients = true;
+                    owner.request_auto_routing(RoutingPreset::ablation(arm).unwrap(), None, 0);
+                    let fit = owner
+                        .absorb_ols(
+                            BorrowedMapWeights::Provided(&witness.weights),
+                            witness.input.clone().into(),
+                            config(),
+                            false,
+                        )
+                        .unwrap();
+                    witness.check(&fit, &[0, 1, 2]);
+                    let graph = owner.two_fe_pcg.as_mut().unwrap();
+                    let kernel = graph.kernel.as_mut().unwrap();
+                    assert!(kernel.compact());
+                    assert_ne!(kernel.diagonal(), graph.right_weights);
+                    // Both arms retain the same true diagonal even when unused.
+                    // Probe the admitted operator with a retired middle lane.
+                    let input: Vec<_> = (0..graph.right_weights.len() * 3)
+                        .map(|i| ((i * 17 % 53) as f64 - 26.) / 8.)
+                        .collect();
+                    let mut output = vec![0.; input.len()];
+                    let mut scratch = vec![0.; graph.left_weights.len() * 3];
+                    assert!(kernel
+                        .apply_compact(&input, &mut output, &mut scratch, &[1., 0., 1.], 3)
+                        .unwrap());
+                    let setup = &owner.auto_route.as_ref().unwrap().setup;
+                    snapshots.push((
+                        setup.used,
+                        setup.limit,
+                        owner.auto_route.as_ref().unwrap().peak,
+                        kernel.retained_bytes(),
+                        kernel.diagonal().to_vec(),
+                        graph.right_weights.clone(),
+                        output,
+                    ));
+                }
+                assert_eq!(snapshots[0], snapshots[1]);
+            })
+            .unwrap();
     }
 }
 
@@ -933,7 +991,7 @@ fn routing_kernel_and_direct_live_refusals_preserve_incumbent_bits_and_budget() 
             false,
         )
         .unwrap();
-    for arm in ["diagonal", "cells", "cells_v2", "direct"] {
+    for arm in ["diagonal", "cells", "cells_v2", "cells_v2_df", "direct"] {
         for memory_refusal in [false, true] {
             let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
             owner.retain_coefficients = true;
@@ -1390,6 +1448,7 @@ fn routing_initial_certificate_does_not_spend_or_prepare() {
     for preset in [
         RoutingPreset::new(4, 1).unwrap(),
         RoutingPreset::ablation("cells_v2").unwrap(),
+        RoutingPreset::ablation("cells_v2_df").unwrap(),
     ] {
         let witness = PairedGraph::new();
         let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();

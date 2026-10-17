@@ -20,40 +20,42 @@ matrix reference_v = e(V)
 scalar reference_df_r = e(df_r)
 predict double reference_residual, residuals
 
-foreach mode in fast low {
-    foreach threads in 1 4 {
-        forvalues repetition = 1/2 {
-            quietly _fereg_estimate_ols_test y x1 x2, aweight(weight) ///
-                absorb(sw=worker sf=firm) solver(auto) inject(routing_cells_v2) ///
-                memory(`mode') poolsize(1) threads(`threads') ///
-                vce(robust) tolerance(1e-10) residual(resid)
-            assert e(df_r) == reference_df_r
-            assert e(sample) == 1
-            forvalues j = 1/2 {
-                assert abs(e(b)[1,`j'] - reference_b[1,`j']) <= 1e-10
-                forvalues k = 1/2 {
-                    assert abs(e(V)[`j',`k'] - reference_v[`j',`k']) <= 1e-10
+foreach arm in cells_v2 cells_v2_df {
+    foreach mode in fast low {
+        foreach threads in 1 4 {
+            forvalues repetition = 1/2 {
+                quietly _fereg_estimate_ols_test y x1 x2, aweight(weight) ///
+                    absorb(sw=worker sf=firm) solver(auto) inject(routing_`arm') ///
+                    memory(`mode') poolsize(1) threads(`threads') ///
+                    vce(robust) tolerance(1e-10) residual(resid)
+                assert e(df_r) == reference_df_r
+                assert e(sample) == 1
+                forvalues j = 1/2 {
+                    assert abs(e(b)[1,`j'] - reference_b[1,`j']) <= 1e-10
+                    forvalues k = 1/2 {
+                        assert abs(e(V)[`j',`k'] - reference_v[`j',`k']) <= 1e-10
+                    }
                 }
+                predict double finite, xb
+                assert abs(resid-reference_residual) <= 1e-9
+                assert abs(y-finite-sw-sf-resid) <= 1e-9
+                if `repetition' == 1 {
+                    matrix repeat_b = e(b)
+                    matrix repeat_v = e(V)
+                    generate double repeat_resid = resid
+                    generate double repeat_sw = sw
+                    generate double repeat_sf = sf
+                }
+                else {
+                    assert mreldif(e(b), repeat_b) == 0
+                    assert mreldif(e(V), repeat_v) == 0
+                    assert resid == repeat_resid
+                    assert sw == repeat_sw
+                    assert sf == repeat_sf
+                    drop repeat_resid repeat_sw repeat_sf
+                }
+                drop resid sw sf finite
             }
-            predict double finite, xb
-            assert abs(resid-reference_residual) <= 1e-9
-            assert abs(y-finite-sw-sf-resid) <= 1e-9
-            if `repetition' == 1 {
-                matrix repeat_b = e(b)
-                matrix repeat_v = e(V)
-                generate double repeat_resid = resid
-                generate double repeat_sw = sw
-                generate double repeat_sf = sf
-            }
-            else {
-                assert mreldif(e(b), repeat_b) == 0
-                assert mreldif(e(V), repeat_v) == 0
-                assert resid == repeat_resid
-                assert sw == repeat_sw
-                assert sf == repeat_sf
-                drop repeat_resid repeat_sw repeat_sf
-            }
-            drop resid sw sf finite
         }
     }
 }
@@ -61,13 +63,15 @@ foreach mode in fast low {
 quietly regress y x1 x2
 matrix prior_b = e(b)
 generate byte prior_sample = e(sample)
-capture noisily _fereg_estimate_ols_test y x1 x2, absorb(sw=worker sf=firm) ///
-    solver(lsmr) inject(routing_cells_v2) residual(failed)
-assert _rc == 198
-assert mreldif(e(b), prior_b) == 0
-assert e(sample) == prior_sample
-confirm new variable failed
-confirm new variable sw
-confirm new variable sf
+foreach arm in cells_v2 cells_v2_df {
+    capture noisily _fereg_estimate_ols_test y x1 x2, absorb(sw=worker sf=firm) ///
+        solver(lsmr) inject(routing_`arm') residual(failed)
+    assert _rc == 198
+    assert mreldif(e(b), prior_b) == 0
+    assert e(sample) == prior_sample
+    confirm new variable failed
+    confirm new variable sw
+    confirm new variable sf
+}
 di as result "COMPACT_CELLS_STATA_PASS"
 di as result "END_FIXTURE|ols_compact_cells|rc=0"

@@ -4219,7 +4219,7 @@ fn hidden_routing_presets_survive_framed_requests_and_reach_absorb_config() {
                 .map(move |samples| RoutingPreset::new(checkpoint, samples).unwrap())
         })
         .chain(
-            ["diagonal", "cells", "cells_v2", "direct"]
+            ["diagonal", "cells", "cells_v2", "cells_v2_df", "direct"]
                 .into_iter()
                 .map(|name| RoutingPreset::ablation(name).unwrap()),
         )
@@ -4332,6 +4332,7 @@ fn invalid_hidden_routing_requests_fail_before_reads_or_publication() {
         requests.push((solver, vec!["inject=routing_direct"]));
         requests.push((solver, vec!["inject=routing_cells"]));
         requests.push((solver, vec!["inject=routing_cells_v2"]));
+        requests.push((solver, vec!["inject=routing_cells_v2_df"]));
         requests.push((solver, vec!["inject=routing_diagonal"]));
         requests.push((solver, vec!["inject=routing_prefix_none"]));
         requests.push((solver, vec!["inject=routing_prefix_map4"]));

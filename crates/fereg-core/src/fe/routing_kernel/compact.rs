@@ -1,5 +1,5 @@
 //! Private compact-cell arm. Original-observation certification remains outside
-//! this module. Arithmetic regrouping is confined to routing_cells_v2.
+//! this module. Arithmetic regrouping is confined to the two routing_cells_v2 arms.
 use super::*;
 use crate::linalg::neumaier_add;
 use crate::parallel::StagePlan;

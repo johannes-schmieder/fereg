@@ -45,6 +45,11 @@ LIMITS = {'seed': 2026101603, 'workers': [1, 4], 'blocks': 6, 'warmups': 1,
           'exclusions': 'none; preserve every outcome and ordinary OS observation'}
 LIBRARY_LIMITS = dict(scc.discovery.LIBRARY_LIMITS)
 KIND = 'compact_cells_native_discovery_v1'
+FACTOR_KIND = 'compact_cells_factor_study_v1'
+FACTOR_ARMS = [*ARMS, 'cells_v2_df']
+FACTOR_LIMITS = {**LIMITS, 'seed': 2026101604, 'data_seed': LIMITS['seed'],
+                 'parent_control_repeats': 1, 'diagnostic_budget_s': 1800, 'diagnostic_repeats': 2,
+                 'diagnostic_families': ['dense', 'repeated', 'hubs', 'high-degree-weak']}
 LIVE_HOST_LOAD_FIELDS = frozenset({
     'cpu', 'load_avg', 'load_short', 'load_medium', 'load_long',
     'np_load_avg', 'np_load_short', 'np_load_medium', 'np_load_long',
@@ -80,6 +85,13 @@ def checked(value):
     path = Path(value['path']).resolve(strict=True)
     require(digest(path) == value['sha256'], 'frozen file changed: ' + str(path))
     return path
+
+
+def contract(plan):
+    """Select a fixed protocol without changing the original campaign globals."""
+    kind = plan.get('kind', KIND)
+    require(kind in {KIND, FACTOR_KIND}, 'unknown campaign kind')
+    return (FACTOR_ARMS, FACTOR_LIMITS) if kind == FACTOR_KIND else (ARMS, LIMITS)
 
 
 def host_fields(record):
@@ -154,19 +166,20 @@ def tool_files():
     return sorted(files)
 
 
-def schedule(cell_ids):
+def schedule(cell_ids, *, arms=None, limits=None):
     """Six complete blocks; each cell has a seeded Latin rotation over arms.
 
-    The first four blocks balance every arm at every position; the remaining
-    two preserve a maximum position-count difference of one. Cell order is
+    The first len(arms) blocks balance every arm at every position; remaining
+    blocks preserve a maximum position-count difference of one. Cell order is
     independently shuffled in every block. Outcomes cannot alter this order.
     """
-    rng = random.Random(LIMITS['seed'])
+    arms, limits = ARMS if arms is None else arms, LIMITS if limits is None else limits
+    rng = random.Random(limits['seed'])
     initial = {}
     for cid in cell_ids:
-        initial[cid] = rng.sample(ARMS, len(ARMS))
+        initial[cid] = rng.sample(arms, len(arms))
     blocks = []
-    for block in range(LIMITS['blocks']):
+    for block in range(limits['blocks']):
         ids = rng.sample(list(cell_ids), len(cell_ids))
         slots = []
         for cid in ids:
@@ -250,30 +263,115 @@ def prepare(root, generator, harness, plugin):
     return plan
 
 
-def validate(plan):
-    require(plan['kind'] == KIND and plan['limits'] == LIMITS and plan['arms'] == ARMS
+def validate_contract(plan):
+    arms, limits = contract(plan)
+    require(plan['limits'] == limits and plan['arms'] == arms
             and plan['families'] == FAMILIES and plan['library_limits'] == LIBRARY_LIMITS,
             'campaign contract changed')
-    expected = [f'{f}-t{w}' for f in FAMILIES for w in LIMITS['workers']]
-    require([c['id'] for c in plan['cells']] == expected and plan['blocks'] == schedule(expected),
+    expected = [f'{f}-t{w}' for f in FAMILIES for w in limits['workers']]
+    require([c['id'] for c in plan['cells']] == expected
+            and plan['blocks'] == schedule(expected, arms=arms, limits=limits),
             'case coverage or frozen order changed')
+    for cell in plan['cells']:
+        require(cell['id'] == f"{cell['family']}-t{cell['threads']}"
+                and set(cell['inputs']) == set(arms), 'incomplete arm/cell coverage')
+
+
+def parent_dependencies(parent):
+    """Verify retained data/artifacts; historical tools remain bound by the parent.
+
+    A follow-up necessarily changes its tools. Never rewrite the old plan or
+    rebind its old tool hashes to the new producer closure.
+    """
+    require(parent['kind'] == KIND, 'factor study requires the original four-arm parent')
+    validate_contract(parent)
+    bindings = [parent[key] for key in ['generator', 'harness', 'plugin']]
+    for cell in parent['cells']:
+        meta_path = checked(cell['metadata'])
+        meta = read(meta_path)
+        source = meta_path.with_suffix('.case')
+        bindings.extend([cell['metadata'], cell['witness'], *cell['inputs'].values(),
+                         {'path': str(source), 'sha256': meta['case_sha256']}])
+        _, witness_files = routing_oracle.load_reference(checked(cell['witness']),
+                                                        meta['case_sha256'], meta['body_sha256'])
+        bindings.extend({'path': str(path), 'sha256': sha} for path, sha in witness_files.items())
+        for item in cell['inputs'].values():
+            require(routing_cases.inspect_case(checked(item))['body_sha256'] == meta['body_sha256'],
+                    'parent request changed data/model body')
+    result = {item['path']: item['sha256'] for item in bindings}
+    for path, sha in result.items():
+        require(parent['frozen_files'].get(path) == sha, 'unbound parent dependency')
+        checked({'path': path, 'sha256': sha})
+    return result
+
+
+def prepare_factor(root, parent_path, harness, plugin):
+    parent_binding = ref(parent_path)
+    parent = routing.unseal(read(parent_path))
+    dependencies = parent_dependencies(parent)
+    root = Path(root).resolve()
+    root.mkdir(parents=True, exist_ok=False)
+    frozen = [ref(path) for path in [harness, plugin, *tool_files()]]
+    cells_out = []
+    for cell in parent['cells']:
+        target = root / f"{cell['id']}-cells_v2_df.case"
+        routing.prepare(checked(cell['inputs']['baseline']), target, 'cells_v2_df', cell['threads'])
+        meta = read(cell['metadata']['path'])
+        require(routing_cases.inspect_case(target)['body_sha256'] == meta['body_sha256'],
+                'factor request preparation changed frozen data/model body')
+        new_input = ref(target)
+        frozen.append(new_input)
+        cells_out.append({**cell, 'inputs': {**cell['inputs'], 'cells_v2_df': new_input}})
+    frozen.append(parent_binding)
+    identities = dict(dependencies)
+    for item in frozen:
+        require(item['path'] not in identities or identities[item['path']] == item['sha256'],
+                'new artifact/tool would replace a parent dependency')
+        identities[item['path']] = item['sha256']
+    plan = {'kind': FACTOR_KIND, 'limits': FACTOR_LIMITS, 'arms': FACTOR_ARMS,
+            'families': FAMILIES, 'library_limits': LIBRARY_LIMITS,
+            'parent_plan': parent_binding, 'parent_plan_sha256': routing.identity(parent),
+            'parent_dependencies': dependencies, 'generator': parent['generator'],
+            'harness': ref(harness), 'plugin': ref(plugin), 'cells': cells_out,
+            'blocks': schedule([c['id'] for c in cells_out], arms=FACTOR_ARMS, limits=FACTOR_LIMITS),
+            'frozen_files': identities, 'root': str(root), 'created_utc': datetime.now(timezone.utc).isoformat()}
+    validate(plan)
+    save(root / 'plan.json', routing.seal(plan))
+    return plan
+
+
+def validate(plan):
+    validate_contract(plan)
+    if plan['kind'] == FACTOR_KIND:
+        parent = routing.unseal(read(checked(plan['parent_plan'])))
+        require(routing.identity(parent) == plan['parent_plan_sha256']
+                and parent_dependencies(parent) == plan['parent_dependencies'], 'parent binding changed')
+        require(plan['generator'] == parent['generator'], 'parent generator binding changed')
+        for cell, original in zip(plan['cells'], parent['cells']):
+            require({**cell, 'inputs': {a: cell['inputs'][a] for a in ARMS}} == original,
+                    'factor study changed parent cases or original arm requests')
+        for item in [plan['parent_plan'], *({'path': p, 'sha256': s}
+                    for p, s in plan['parent_dependencies'].items())]:
+            require(plan['frozen_files'].get(item['path']) == item['sha256'], 'unbound parent dependency')
     for path, sha in plan['frozen_files'].items():
         checked({'path': path, 'sha256': sha})
     for path in tool_files():
         require(plan['frozen_files'].get(str(path.resolve())) == digest(path), 'unbound current tool')
     for cell in plan['cells']:
-        require(set(cell['inputs']) == set(ARMS), 'incomplete arm coverage')
         for item in [cell['metadata'], cell['witness'], *cell['inputs'].values()]:
             require(plan['frozen_files'].get(item['path']) == item['sha256'], 'unbound case dependency')
     for key in ['plugin', 'harness', 'generator']:
         require(plan['frozen_files'].get(plan[key]['path']) == plan[key]['sha256'], 'unbound executable')
 
 
-def native(plan, cell, arm, directory, label, *, traced=False, cpus=None, timeout=120):
+def native(plan, cell, arm, directory, label, *, traced=False, phase_timing=False, cpus=None, timeout=120):
     target = directory / (label + '.json')
     log = target.with_suffix('.log')
     command = routing_run.native_command(Path(plan['harness']['path']), Path(plan['plugin']['path']),
                                          Path(cell['inputs'][arm]['path']), target, cell, traced)
+    require(not phase_timing or traced, 'phase diagnostics require solver tracing')
+    if phase_timing:
+        command.insert(-5, 'FEREG_PHASE_TIMING=1')
     if cpus is not None:
         command = ['taskset', '-c', ','.join(map(str, cpus)), *command]
     start = time.monotonic_ns()
@@ -304,26 +402,42 @@ def parse_run(row, meta):
 
 def science(plan, output, *, smoke=False):
     validate(plan)
+    arms, limits = contract(plan)
     slots = int(os.environ.get('NSLOTS', '0'))
     require(os.environ.get('JOB_ID') and slots >= (2 if smoke else 4), 'science requires a compute allocation')
     output.mkdir(parents=True, exist_ok=False)
     selected = [plan['cells'][0]] if smoke else plan['cells']
     start = time.monotonic()
     fingerprints, records, baseline, worker_one = {}, [], {}, {}
+    controls, active_row = [], None
+    parent = routing.unseal(read(plan['parent_plan']['path'])) if plan.get('kind') == FACTOR_KIND else None
     status, failure = 'passed', None
     try:
         for cell in selected:
             meta = read(cell['metadata']['path'])
             witness, _ = routing_oracle.load_reference(Path(cell['witness']['path']),
                                                         meta['case_sha256'], meta['body_sha256'])
-            for arm in ARMS:
+            for arm in arms:
                 previous = None
-                for repeat in range(LIMITS['science_repeats']):
-                    left = LIMITS['science_budget_s'] - (time.monotonic() - start)
+                control_fingerprint = None
+                if parent is not None and arm in ARMS:
+                    left = limits['science_budget_s'] - (time.monotonic() - start)
+                    require(left > 0, 'science budget exhausted')
+                    active_row = native({**plan, 'plugin': parent['plugin']}, cell, arm, output,
+                                        f"parent-control-{cell['id']}-{arm}",
+                                        timeout=min(limits['call_timeout_s'], left))
+                    active_row.update(phase='parent_control', plugin=parent['plugin'])
+                    controls.append(active_row)
+                    _, control, _ = parse_run(active_row, meta)
+                    control_fingerprint = control['science_sha256']
+                    active_row.update(control)
+                for repeat in range(limits['science_repeats']):
+                    left = limits['science_budget_s'] - (time.monotonic() - start)
                     require(left > 0, 'science budget exhausted')
                     row = native(plan, cell, arm, output, f"{cell['id']}-{arm}-{repeat}",
-                                 traced=repeat == 0, timeout=min(LIMITS['call_timeout_s'], left))
+                                 traced=repeat == 0, timeout=min(limits['call_timeout_s'], left))
                     records.append(row)
+                    active_row = row
                     raw, result, binary = parse_run(row, meta)
                     routing_oracle.check_reference(witness, raw, binary, meta)
                     key = cell['id'] + '/' + arm
@@ -331,6 +445,10 @@ def science(plan, output, *, smoke=False):
                         require(previous == result['science_sha256'], 'fixed-worker repeat differs: ' + key)
                     previous = result['science_sha256']
                     if repeat == 0:
+                        if control_fingerprint is not None:
+                            require(control_fingerprint == result['science_sha256'],
+                                    'parent/candidate control science or solver signature differs: ' + key)
+                            controls[-1]['status'] = 'passed'
                         row['resources'] = routing_run.resource_diagnostics(Path(row['log']).read_text(), arm,
                                                                             False, {})
                         if arm == 'baseline':
@@ -346,34 +464,51 @@ def science(plan, output, *, smoke=False):
                     fingerprints[key] = result['science_sha256']
                     row['science_sha256'] = result['science_sha256']
         validate(plan)
-        require(time.monotonic() - start <= LIMITS['science_budget_s'], 'science budget exhausted')
+        require(time.monotonic() - start <= limits['science_budget_s'], 'science budget exhausted')
     except (ValueError, OSError, KeyError, subprocess.SubprocessError) as error:
         status, failure = 'failed', str(error)
-        if records and records[-1]['status'] == 'executed' and 'science_sha256' not in records[-1]:
-            records[-1].update(status='failed', error=failure)
+        if active_row is not None and active_row['status'] == 'executed' and 'science_sha256' not in active_row:
+            active_row.update(status='failed', error=failure)
     bound = [ref(p) for p in output.iterdir() if p.is_file()]
-    receipt = {'kind': KIND + '_science', 'status': status, 'failure': failure, 'smoke': smoke,
+    receipt = {'kind': plan.get('kind', KIND) + '_science', 'status': status, 'failure': failure, 'smoke': smoke,
                'plan_sha256': routing.identity(plan), 'host': socket.gethostname(),
                'job_id': os.environ['JOB_ID'], 'slots': slots, 'fingerprints': fingerprints,
                'records': records, 'files': bound, 'seconds': time.monotonic() - start}
+    if parent is not None:
+        receipt.update(parent_controls=controls, parent_control_count=len(controls),
+                       parent_control_status='passed' if status == 'passed' else 'failed')
     save(output / 'science.json', routing.seal(receipt))
     return receipt
 
 
 def validate_science(plan, receipt):
-    require(receipt['kind'] == KIND + '_science' and receipt['status'] == 'passed'
+    arms, limits = contract(plan)
+    require(receipt['kind'] == plan.get('kind', KIND) + '_science' and receipt['status'] == 'passed'
             and receipt['smoke'] is False and receipt['plan_sha256'] == routing.identity(plan),
             'complete frozen science prerequisite required')
-    require(set(receipt['fingerprints']) == {c['id'] + '/' + a for c in plan['cells'] for a in ARMS},
+    require(set(receipt['fingerprints']) == {c['id'] + '/' + a for c in plan['cells'] for a in arms},
             'missing scientific prerequisite')
     for cell in plan['cells']:
-        for arm in ARMS:
+        for arm in arms:
             rows = [r for r in receipt['records'] if r['cell'] == cell['id'] and r['arm'] == arm]
-            require(len(rows) == LIMITS['science_repeats'] and all(r['status'] == 'executed'
+            require(len(rows) == limits['science_repeats'] and all(r['status'] == 'executed'
                     and r.get('science_sha256') == receipt['fingerprints'][cell['id'] + '/' + arm]
                     for r in rows) and 'resources' in rows[0], 'incomplete repeat/resource prerequisite')
     for item in receipt['files']:
         checked(item)
+    if plan.get('kind') == FACTOR_KIND:
+        controls = receipt['parent_controls']
+        require(receipt['parent_control_status'] == 'passed'
+                and receipt['parent_control_count'] == len(controls) == len(plan['cells']) * len(ARMS),
+                'incomplete parent artifact controls')
+        parent = routing.unseal(read(plan['parent_plan']['path']))
+        for cell in plan['cells']:
+            for arm in ARMS:
+                rows = [r for r in controls if r['cell'] == cell['id'] and r['arm'] == arm]
+                require(len(rows) == 1 and rows[0]['status'] == 'passed'
+                        and rows[0]['plugin'] == parent['plugin'] and rows[0]['phase'] == 'parent_control'
+                        and rows[0]['science_sha256'] == receipt['fingerprints'][cell['id'] + '/' + arm],
+                        'parent artifact control changed science or solver signature')
 
 
 class Observers:
@@ -450,23 +585,26 @@ class Observers:
                 'process samples do not bracket the measurement window')
 
 
-def summarize(rows):
+def summarize(rows, *, arms=None, reference='baseline', candidates=None):
     """Only complete paired blocks; all failures remain explicit, never excluded."""
+    selected = ARMS if arms is None else arms
+    candidates = [a for a in selected if a != reference] if candidates is None else candidates
     groups = {}
     for row in rows:
         if row.get('phase') == 'measure':
             groups.setdefault((row['cell'], row['block']), {})[row['arm']] = row
     pairs = {}
     for (cid, block), arms in groups.items():
-        if set(arms) != set(ARMS) or any(r.get('status') != 'passed' for r in arms.values()):
+        if set(arms) != set(selected) or any(r.get('status') != 'passed' for r in arms.values()):
             continue
-        baseline = arms['baseline']['seconds']
-        for arm in ARMS[1:]:
+        baseline = arms[reference]['seconds']
+        for arm in candidates:
             candidate = arms[arm]['seconds']
             pairs.setdefault((cid, arm), []).append({'block': block, 'baseline_seconds': baseline,
                 'candidate_seconds': candidate, 'ratio': candidate / baseline,
                 'allowance_excess_seconds': candidate - baseline - max(.05 * baseline, .001)})
-    return [{'cell': cid, 'arm': arm, 'paired_blocks': len(values), 'pairs': values,
+    return [{'cell': cid, 'arm': arm, **({'reference': reference} if reference != 'baseline' else {}),
+             'paired_blocks': len(values), 'pairs': values,
              'median_ratio': statistics.median(v['ratio'] for v in values),
              'maximum_ratio': max(v['ratio'] for v in values),
              'median_allowance_excess_seconds': statistics.median(v['allowance_excess_seconds'] for v in values),
@@ -474,15 +612,124 @@ def summarize(rows):
             for (cid, arm), values in sorted(pairs.items())]
 
 
+def phase_diagnostics(log, result):
+    """Retain phase records and account for cumulative Schur correction timers.
+
+    A correction trace joins the next certificate record to its invocation.
+    Otherwise a Schur record starts a new invocation, including after a failed
+    attempt/fallback. No inference about untraced work follows from these sums.
+    """
+    phases, solver_trace, invocations = [], [], []
+    correction = None
+    for line in log.splitlines():
+        if not line.startswith(('FEREG_PHASE|', 'FEREG_SOLVER_TRACE|')):
+            continue
+        parts = line.split('|')
+        fields = {}
+        for part in parts[2:] if parts[0] == 'FEREG_PHASE' else parts[1:]:
+            key, separator, value = part.partition('=')
+            require(separator and key and value and key not in fields, 'malformed phase/solver trace')
+            fields[key] = value
+        if parts[0] == 'FEREG_SOLVER_TRACE':
+            solver_trace.append(fields)
+            if fields.get('phase') == 'two_fe_pcg_correction':
+                require(correction is None and invocations and not invocations[-1]['passed'],
+                        'correction trace lacks its failed certificate')
+                correction = int(fields['iterations'])
+            continue
+        phases.append({'phase': parts[1], 'fields': fields})
+        if parts[1] != 'schur':
+            continue
+        times = {key: float(fields[key]) for key in
+                 ['init', 'operator', 'recurrence', 'reconstruct', 'certificate']}
+        require(all(math.isfinite(v) and v >= 0 for v in times.values()), 'invalid Schur phase time')
+        iterations = int(fields['iterations'])
+        require(iterations >= 0 and fields['passed'] in {'true', 'false'}, 'invalid Schur phase state')
+        if correction is None:
+            invocations.append({'cycles': 0, 'iterations': 0, 'passed': False,
+                                **dict.fromkeys(times, 0.)})
+        invocation = invocations[-1]
+        if correction is not None:
+            require(correction == invocation['iterations'] and iterations >= correction
+                    and all(times[k] >= invocation[k] for k in ['operator', 'recurrence']),
+                    'nonmonotonic cumulative Schur correction timers/iterations')
+        for key in ['init', 'reconstruct', 'certificate']:
+            invocation[key] += times[key]
+        # The latest record is the cumulative total for this invocation, not
+        # another increment. Across invocations counters are free to reset.
+        invocation.update({key: times[key] for key in ['operator', 'recurrence']})
+        invocation.update(cycles=invocation['cycles'] + 1, iterations=iterations,
+                          passed=fields['passed'] == 'true')
+        correction = None
+    rows = result['solver_rows']
+    require(len(rows) == 2 and all(len(row) == 16 for row in rows), 'invalid diagnostic solver rows')
+    zero = all(row[2] == 0 for row in rows)
+    partial = correction is not None or any(not row['passed'] for row in invocations) or any(row[10] for row in rows)
+    schur_status = ('partial' if partial else 'recorded') if invocations else (
+                   'absent_zero_iterations' if zero else 'absent_nonzero_iterations')
+    return {'status': 'recorded' if phases else 'missing', 'phase_records': phases,
+            'solver_trace': solver_trace, 'schur_status': schur_status,
+            'schur_invocations': invocations,
+            'schur_observed_seconds': {key: sum(row[key] for row in invocations)
+                                      for key in ['init', 'operator', 'recurrence', 'reconstruct', 'certificate']}
+                                      if invocations else None,
+            'native_seconds': result['seconds'], 'rsolver_setup_seconds': [row[8] for row in rows],
+            'rsolver_solve_seconds': [row[9] for row in rows],
+            'coverage': 'observed certificate records only; failed attempts, route restarts, and fallback work may be untraced'}
+
+
+def check_prerequisite(row, cell, receipt, *, traced=True):
+    meta = read(cell['metadata']['path'])
+    raw, result, binary = parse_run(row, meta)
+    original = next(r for r in receipt['records'] if r['cell'] == cell['id'] and r['arm'] == row['arm'])
+    reference, _, reference_columns = parse_run(original, meta)
+    cmgschur.scientific_comparison(reference, raw, reference_columns, binary, meta)
+    resource_log = Path(row['log'] if traced else original['log'])
+    resources = routing_run.resource_diagnostics(resource_log.read_text(), row['arm'], False, {})
+    if not traced:
+        require(resources == original['resources'], 'traced prerequisite resource evidence changed')
+        resources = {**resources, 'resource_basis': 'bound traced science prerequisite; current call untraced',
+                     'prerequisite_log': ref(resource_log),
+                     'prerequisite_science_sha256': original['science_sha256']}
+    row['resources'] = resources
+    return result
+
+
+def collect_diagnostics(plan, receipt, output, cpus, observer, fingerprints, records):
+    arms, limits = contract(plan)
+    started = time.monotonic()
+    selected = [cell for family in limits['diagnostic_families'] for cell in plan['cells']
+                if cell['family'] == family]
+    requests = ((cell, arm, repeat) for cell in selected for arm in arms
+                for repeat in range(limits['diagnostic_repeats']))
+    for cell, arm, repeat in requests:
+        require(not observer.errors, 'isolation observer failed')
+        remaining = limits['diagnostic_budget_s'] - (time.monotonic() - started)
+        require(remaining > 0, 'diagnostic budget exhausted')
+        row = native(plan, cell, arm, output, f"diagnostic-{cell['id']}-{arm}-{repeat}", cpus=cpus,
+                     traced=True, phase_timing=True, timeout=min(limits['call_timeout_s'], remaining))
+        row.update(phase='diagnostic', repeat=repeat)
+        records.append(row)
+        result = check_prerequisite(row, cell, receipt, traced=True)
+        row.update(result)
+        require(result['science_sha256'] == fingerprints[cell['id'] + '/' + arm],
+                'diagnostic result changed same-allocation fixed-worker science')
+        row['phase_diagnostics'] = phase_diagnostics(Path(row['log']).read_text(), result)
+        require(row['phase_diagnostics']['status'] == 'recorded', 'missing diagnostic phase trace')
+        row['status'] = 'passed'
+    require(time.monotonic() - started <= limits['diagnostic_budget_s'], 'diagnostic budget exhausted')
+
+
 def measure(plan, receipt, output):
     validate(plan)
     validate_science(plan, receipt)
+    arms, limits = contract(plan)
     require({k: os.environ.get(k) for k in LIBRARY_LIMITS} == LIBRARY_LIMITS,
             'set frozen library thread limits before starting measurement')
     host = scc.discovery.host()
     output.mkdir(parents=True, exist_ok=False)
     records, failure, observer, started, ended = [], None, None, None, None
-    before, queue, observed_started = None, None, None
+    before, queue, observed_started, observed_ended = None, None, None, None
     fingerprints = {}
     try:
         before, snapshot = scc.configuration(output, host, 'before')
@@ -497,33 +744,29 @@ def measure(plan, receipt, output):
         # One fixed warmup per exact request, in this same allocation/affinity.
         warmup_started = time.monotonic()
         for cell in plan['cells']:
-            for arm in ARMS:
+            for arm in arms:
                 require(not observer.errors, 'isolation observer failed')
-                remaining = LIMITS['warmup_budget_s'] - (time.monotonic() - warmup_started)
+                remaining = limits['warmup_budget_s'] - (time.monotonic() - warmup_started)
                 require(remaining > 0, 'warmup budget exhausted')
                 row = native(plan, cell, arm, output, f"warmup-{cell['id']}-{arm}", cpus=cpus,
-                             traced=True, timeout=min(LIMITS['call_timeout_s'], remaining))
+                             traced=plan.get('kind') != FACTOR_KIND,
+                             timeout=min(limits['call_timeout_s'], remaining))
                 row.update(phase='warmup')
                 records.append(row)
-                meta = read(cell['metadata']['path'])
-                raw, result, binary = parse_run(row, meta)
-                original = next(r for r in receipt['records'] if r['cell'] == cell['id'] and r['arm'] == arm)
-                reference, _, reference_columns = parse_run(original, meta)
-                cmgschur.scientific_comparison(reference, raw, reference_columns, binary, meta)
-                row['resources'] = routing_run.resource_diagnostics(Path(row['log']).read_text(), arm, False, {})
+                result = check_prerequisite(row, cell, receipt, traced=plan.get('kind') != FACTOR_KIND)
                 fingerprints[cell['id'] + '/' + arm] = result['science_sha256']
                 row.update(result, status='passed')
-        require(time.monotonic() - warmup_started <= LIMITS['warmup_budget_s'], 'warmup budget exhausted')
+        require(time.monotonic() - warmup_started <= limits['warmup_budget_s'], 'warmup budget exhausted')
         started = time.monotonic_ns()
         for index, block in enumerate(plan['blocks']):
             observer.census(f'block-{index}-before')
             for slot in block:
                 require(not observer.errors, 'isolation observer failed')
-                remaining = LIMITS['measurement_budget_s'] - (time.monotonic_ns() - started) / 1e9
+                remaining = limits['measurement_budget_s'] - (time.monotonic_ns() - started) / 1e9
                 require(remaining > 0, 'measurement budget exhausted')
                 cell, arm = by_id[slot['cell']], slot['arm']
                 row = native(plan, cell, arm, output, f"block-{index}-{cell['id']}-{arm}", cpus=cpus,
-                             timeout=min(LIMITS['call_timeout_s'], remaining))
+                             timeout=min(limits['call_timeout_s'], remaining))
                 row.update(phase='measure', block=index)
                 records.append(row)
                 # Verification between complete calls stops the campaign at its
@@ -534,13 +777,19 @@ def measure(plan, receipt, output):
                 row.update(result, status='passed')
             observer.census(f'block-{index}-after')
         ended = time.monotonic_ns()
-        require((ended - started) / 1e9 <= LIMITS['measurement_budget_s'], 'measurement budget exhausted')
+        require((ended - started) / 1e9 <= limits['measurement_budget_s'], 'measurement budget exhausted')
+        if plan.get('kind') == FACTOR_KIND:
+            observer.census('diagnostics-before')
+            collect_diagnostics(plan, receipt, output, cpus, observer, fingerprints, records)
+            observer.census('diagnostics-after')
+            observed_ended = time.monotonic_ns()
     except Exception as error:
         failure = str(error)
         if records and records[-1]['status'] == 'executed':
             records[-1].update(status='failed', error=failure)
     finally:
         ended = ended or time.monotonic_ns()
+        observed_ended = observed_ended or (time.monotonic_ns() if plan.get('kind') == FACTOR_KIND else ended)
         # Join before appending final scheduler state; periodic and boundary
         # snapshots must retain their physical chronological order.
         if observer:
@@ -556,7 +805,7 @@ def measure(plan, receipt, output):
                 scc.check_scheduler_snapshot(snapshot, host, queue)
                 check_stable_configuration(before, after)
                 if observer and observed_started is not None:
-                    observer.validate(started if started is not None else observed_started, ended)
+                    observer.validate(started if started is not None else observed_started, observed_ended)
             except Exception as error:
                 failure = failure or str(error)
     try:
@@ -564,14 +813,18 @@ def measure(plan, receipt, output):
         validate_science(plan, receipt)
     except (ValueError, OSError) as error:
         failure = failure or str(error)
-    value = {'kind': KIND + '_measurement', 'plan_sha256': routing.identity(plan),
+    value = {'kind': plan.get('kind', KIND) + '_measurement', 'plan_sha256': routing.identity(plan),
              'science_sha256': routing.identity(receipt), 'status': 'failed' if failure else 'complete',
              'failure': failure, 'host': host, 'collection_pid': os.getpid(),
              'native_affinity': sorted(host['affinity'])[:4], 'started_monotonic_ns': started,
-             'completed_monotonic_ns': ended, 'records': records, 'summaries': summarize(records),
+             'completed_monotonic_ns': ended, 'records': records, 'summaries': summarize(records, arms=arms),
              'files': [ref(p) for p in output.iterdir() if p.is_file()],
-             'claim': LIMITS['inference'], 'accounting': 'pending external qacct validation',
+             'claim': limits['inference'], 'accounting': 'pending external qacct validation',
              'process_evidence': 'raw observations retained; competing-compute review required; no exclusions'}
+    if plan.get('kind') == FACTOR_KIND:
+        value['factor_comparisons'] = [summary for reference in ['cells_v2', 'cells']
+                                      for summary in summarize(records, arms=arms, reference=reference,
+                                                               candidates=['cells_v2_df'])]
     save(output / 'measurement.json', routing.seal(value))
     return value
 
@@ -582,6 +835,9 @@ def main():
     prep = subs.add_parser('prepare')
     for name in ['root', 'generator', 'harness', 'plugin']:
         prep.add_argument('--' + name, type=Path, required=True)
+    factor = subs.add_parser('prepare-factor', help='reuse a frozen four-arm parent; prepare only the D_f request')
+    for name in ['root', 'parent-plan', 'harness', 'plugin']:
+        factor.add_argument('--' + name, type=Path, required=True)
     for mode in ['science', 'smoke', 'measure']:
         sub = subs.add_parser(mode)
         sub.add_argument('--plan', type=Path, required=True)
@@ -592,11 +848,16 @@ def main():
     if args.command == 'prepare':
         prepare(args.root, args.generator.resolve(strict=True), args.harness.resolve(strict=True),
                 args.plugin.resolve(strict=True))
+    elif args.command == 'prepare-factor':
+        prepare_factor(args.root, args.parent_plan, args.harness, args.plugin)
     else:
         plan = routing.unseal(read(args.plan))
         result = (measure(plan, routing.unseal(read(args.science)), args.output) if args.command == 'measure'
                   else science(plan, args.output, smoke=args.command == 'smoke'))
         require(result['status'] in {'passed', 'complete'}, result.get('failure') or 'campaign failed')
+        if 'parent_control_status' in result:
+            print(f"COMPACT_CELLS_PARENT_CONTROLS status={result['parent_control_status']} calls={result['parent_control_count']}",
+                  flush=True)
     print(f'COMPACT_CELLS_SUCCESS stage={args.command}', flush=True)
 
 
