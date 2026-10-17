@@ -53,13 +53,23 @@ def read_bound(ref, *, json=False):
     return routing.read_json(path) if json else ref
 
 
-def origin(envelope):
+def origin(envelope, *, block_context=None):
     value = routing.unseal(envelope)
     routing.validate_manifest(value)
     require(value.get('experiment_kind', 'routing') in {'routing', 'portfolio'}
             and value.get('purpose') != 'ablation_only', 'deployment requires serial routing or the exact portfolio')
     if value.get('experiment_kind') == 'portfolio':
-        require(value['candidates'] == ['baseline', routing.PORTFOLIO_V1],
+        candidate = routing.PORTFOLIO_V1
+        if block_context is not None:
+            import routing_blocks as blocks
+            context, original = blocks.load_context(block_context)
+            require(context.get('kind') == blocks.KIND and context.get('stage') == 'B'
+                    and original == value, 'deployment opt-in requires the validated original B context')
+            candidate = routing.portfolio_candidate(value)
+            plan = blocks.read(context['inputs']['discovery_plan'], sealed=True)
+            require(candidate == routing.PORTFOLIO_V1 or plan.get('schema') == 3,
+                    'new portfolio activation requires schema-3 discovery')
+        require(value['candidates'] == ['baseline', candidate],
                 'portfolio deployment requires its exact closed candidate order')
     require(PUBLIC not in value['arms'] and not any('incumbent' in cell['comparators']
             for cell in value['panels']['C']), 'reserved deployment arm collides with an original comparator')

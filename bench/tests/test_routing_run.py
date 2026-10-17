@@ -303,8 +303,13 @@ class PortfolioAutoScope(unittest.TestCase):
                 self.compare(changed, reference=before, meta=meta)
 
     def test_activated_portfolio_policy_is_bound_to_c_and_keeps_equivalence_exact(self):
+        for candidate in routing.PORTFOLIOS:
+            with self.subTest(candidate=candidate):
+                self.check_activated_portfolio_policy(candidate)
+
+    def check_activated_portfolio_policy(self, candidate):
         import routing_block_deployment as deployment
-        selected = routing.policy(routing.PORTFOLIO_V1)
+        selected = routing.policy(candidate)
         spec = {'kind': deployment.KIND, 'purpose': 'public_default_holdout', 'panels': {'C': []},
             'candidates': ['public-auto'], 'protections': ['baseline', 'incumbent'], 'arms': {
                 'baseline': {'policy': None},
@@ -325,6 +330,10 @@ class PortfolioAutoScope(unittest.TestCase):
             bad = copy.deepcopy(spec); bad['arms'][arm][key] = value
             with self.subTest(arm=arm, key=key), self.assertRaises(ValueError):
                 routing_run.comparison_policy(bad, 'public-auto')
+        substituted = copy.deepcopy(spec)
+        other = next(name for name in routing.PORTFOLIOS if name != candidate)
+        substituted['arms']['public-auto']['effective_policy'] = routing.policy(other)
+        with self.assertRaises(ValueError): routing_run.comparison_policy(substituted, 'public-auto')
         equivalent = copy.deepcopy(spec)
         equivalent.update(kind=deployment.EQUIVALENCE, purpose='activation_equivalence', panels={'A': []})
         for arm in ['public-auto', 'incumbent']:
@@ -418,11 +427,12 @@ class UnseededPortfolioScope(unittest.TestCase):
             raw = self.raw(); raw['matrices'][table]['bits'][index] = bits(2.)
             with self.subTest(table=table),self.assertRaises(ValueError): self.compare(raw)
 
-    def test_new_policy_does_not_gain_public_activation_allowance(self):
+    def test_new_policy_cannot_gain_public_scope_from_policy_fields_alone(self):
         import routing_block_deployment as deployment
         selected = routing.policy(routing.PORTFOLIO_UNSEEDED)
         spec = {'kind':deployment.KIND,'arms':{'public-auto':{'effective_policy':selected},'incumbent':{'policy':selected}}}
-        for arm in ('public-auto','incumbent'): self.assertIsNone(routing_run.comparison_policy(spec,arm))
+        for arm in ('public-auto','incumbent'):
+            with self.assertRaises(ValueError): routing_run.comparison_policy(spec,arm)
 
     def test_exact_unseeded_preset_and_two_fe_resource_caps(self):
         action = TRACE.replace('routing_h4_k0','routing_portfolio_unseeded')

@@ -132,7 +132,12 @@ class PublicBlocks(unittest.TestCase):
                 'harness': self.binary('harness', 'harness'), 'monitor': None, 'cells': cells}
 
     def test_portfolio_declaration_keeps_separate_24_block_c_and_binds_parallel_source(self):
-        spec, _, _, _, inputs = self.b.portfolio_inputs()
+        for schema in (2, 3):
+            with self.subTest(schema=schema):
+                self.check_portfolio_declaration(schema)
+
+    def check_portfolio_declaration(self, schema):
+        spec, _, _, _, inputs = self.b.portfolio_inputs(schema)
         context = blocks.declare(inputs, self.b.design)
         bound = self.write(routing.seal(context))
         before = copy.deepcopy(spec['panels']['C'])

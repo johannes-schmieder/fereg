@@ -21661,5 +21661,229 @@
     },
     "admission": "Source-only evidence. Actual same-profile Linux builds, ABI/guards, terminal accounting, admission descriptors and sealed full six-host evidence remain prerequisites. No speed qualification or activation.",
     "source_review_sha256": "b1bec941f23ab79d71f1967eee162daea58ccf95028bc01c1eeb09467e8c0774"
+  },
+  "portfolio_prequalification_builds_20261017": {
+    "source_commit": "020eab1e9559fd68f619a4ec73fb04fcb6d1136f",
+    "baseline_source_commit": "46aa78f67b102373675b7c72196dba1fbfb7d337",
+    "runtime_sha256": "2b7fcf7d5b2993def99f52c1ca6eb7dfab356392085364e7bd496eba24491ce7",
+    "scope": "Private build and prospective qualification-tool evidence. No new discovery, fresh Mac science, timing selection, public activation or release admission.",
+    "mac_handoff": {
+      "source_sha256": {
+        "bench/routing_block_deployment.py": "f1410fe4441c179a14542ca07c3d66992edf8f7b8492401f7a1d9a6af5f84f9a",
+        "bench/routing_blocks.py": "f3eb91ef837ca4341561986f8e2b53e7927964805829e43b11d74377a564e87b",
+        "bench/routing_deployment.py": "bdd82bbd56a378c7358e489da7a1ec918770bd04c2854a9b2b14e9217d72a0ac",
+        "bench/routing_run.py": "e7b67f12cdcd89136947c70f44ade7ab4e9b3386f4a11def5fd9b55d40aafc50",
+        "bench/tests/test_routing_blocks.py": "32a1dc74d830aef98209d8cbf1ddf2f44fd7564d274fee9b07d1815bcdf6d939",
+        "bench/tests/test_routing_run.py": "324053fed18c930c10c78e692c94245a813665ad8f42a7f222559d8b9a46e781"
+      },
+      "independent_review_sha256": "d30396a9acf5c37325e134690553c1486db2becfb4b9df046af1e8cad2314ead",
+      "final_focused_tests": 90,
+      "final_elapsed_s": 14.521,
+      "final_log_sha256": "987bfd1ed5c4d06391eae3cdcb026defaa94b7556538c77b6c61c9e0a01d7400",
+      "preserved_first_run": {
+        "tests": 135,
+        "passed": 134,
+        "errors": 1,
+        "cause": "NaN identity computation was outside expected ValueError assertion; fixture repaired without production changes.",
+        "log_sha256": "e24f0f87a2254e9b996795494ade7f3c9a3255df5314df6accb74db161a845e6"
+      },
+      "production_equal_to_P": {
+        "modules": 192,
+        "artifact_inputs": 58
+      },
+      "actual_B_C_access": false
+    },
+    "mac_build_pair": {
+      "pair_sha256": "4122346b37361ec76d187bb271f7e5bcd7cdf9263298cc615854f050f47f4dd3",
+      "independent_review_sha256": "9df05bab296bf8e082db35d8e7d69a0d46c921bfa3f43582a311dab8113e672c",
+      "candidate_sha256": "2c85d8901df9059fcbe747dea5ef6a1e67d6eaf21d600e890219f909b21bc71f",
+      "baseline_sha256": "b49d0471666dcbb347d36d36ff2129512841f257d702ac76071df6930659b8ff",
+      "candidate_record_sha256": "94dcc64f5abe8610ca28ac565ae5fbac0c2bde9bdb7fcc6ec954adb274718dc6",
+      "baseline_record_sha256": "0612c4d7eb59d3954272b7f847334203501f0678e9509f2db9ec330c0f930e47",
+      "universal_headers": [
+        "x86_64",
+        "arm64"
+      ],
+      "host_ABI": "passed",
+      "ABI_workers": 4,
+      "build_workers": 4,
+      "library_threads": 1,
+      "same_toolchain_profile": true,
+      "source_files_rehashed": {
+        "candidate": 902,
+        "baseline": 870
+      },
+      "dependency_files_rehashed": {
+        "candidate": 2596,
+        "baseline": 2594
+      },
+      "baseline_overlay": "Exactly two reviewed ABI test files; runtime unchanged; original files retained.",
+      "baseline_debug_paths": 21,
+      "candidate_debug_paths": 0,
+      "baseline_scope": "Private comparator only; original build script retained debug-map metadata. No current distribution/raw-path admission.",
+      "estimation_panel_calls": 0,
+      "protected_install_artifacts_unchanged": true
+    },
+    "linux_setup": {
+      "campaign": "/projectnb/welfgr/fereg/runs/portfolio-unseeded-20261016",
+      "job_id": "8151673",
+      "hostname": "scc-ei3",
+      "slots": 4,
+      "granted_pe": "omp",
+      "failed": 0,
+      "exit_status": 1,
+      "wallclock_s": 431,
+      "start_utc": "2026-10-17T00:09:10Z",
+      "end_utc": "2026-10-17T00:16:21Z",
+      "accounting_record_sha256": "6ddf06626fd3fe8793a9802c702995a73355818b34f4118e2554d22a1cad0259",
+      "terminal_artifact_record_sha256": "3b159e4fd5e880b5e3d3cf45ab1df785a54960022115d602251a816c16393806",
+      "artifacts": {
+        "baseline_linux.plugin": {
+          "sha256": "4b2e084f6b9fc3dbecfce9a0d1e425c3666ceced12fadeeaa94d39cb518ff815",
+          "bytes": 15549392,
+          "magic_hex": "7f454c46"
+        },
+        "candidate_linux.plugin": {
+          "sha256": "d1047710029fcc0fdc73094b2e8fd42cef7291343831813e29e123d5baff5c79",
+          "bytes": 15571200,
+          "magic_hex": "7f454c46"
+        },
+        "timing-harness": {
+          "sha256": "807b9c9f3551382a722ba5ed37732d76e499e454bea76b818c5cdcf168085a23",
+          "bytes": 46656,
+          "magic_hex": "7f454c46"
+        }
+      },
+      "phases": {
+        "baseline-build": {
+          "command_sha256": "a1e60088660aab72f0dcf8c099c7a90856979379f7d18504b7f130660b29584e",
+          "returncode": 0,
+          "elapsed_s": 135.34743170905858,
+          "stdout_sha256": "d9697781e4f6606dc0cc04557a1a6f0b33a25fda06d950f8bd40cb981978fdc7",
+          "stderr_sha256": "8db6468ae58c2bb7faaac7484a7fa0a0a66032e55dcf76ab070fa3ae084a915e"
+        },
+        "baseline-fetch": {
+          "command_sha256": "ff299e4259139ce99877d162aee61d94403b85e32ecaf9fb6674ad43f9b7aee1",
+          "returncode": 0,
+          "elapsed_s": 0.31688433000817895,
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate-build": {
+          "command_sha256": "a858db29ad51c60e1364eaa6f5ec960e4ea3f55c5c8916947b6ecd9b9b294b85",
+          "returncode": 0,
+          "elapsed_s": 141.05545358895324,
+          "stdout_sha256": "b1cf192cbf4f3f863d36c9867988ca5d41493be18211d2a6199a5104a757eb7b",
+          "stderr_sha256": "a24bbf97f39d85bbf32a1d500ae1d58be0482c73d4ab15cf1440d3cacd676f03"
+        },
+        "candidate-fetch": {
+          "command_sha256": "a6e9a5059c669c54cbc61f59ca1aad5c9b27a47d397a0496aa2964a962e57eb7",
+          "returncode": 0,
+          "elapsed_s": 1.4689826590474695,
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "harness": {
+          "command_sha256": "6c89144d858625c247991755fe7043737f7be16bb59b872b07ba358fefd24584",
+          "returncode": 0,
+          "elapsed_s": 0.6175993210636079,
+          "stdout_sha256": "37f485c3bc7e3914366d2ce07ab8abf21d1cb34884590772109276ce05ccaf8d",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "test_actual_plugin_threads": {
+          "command_sha256": "d23762dad6b73270f41f14afb2aa0172216bfa993f74b32a02da3c186197ee48",
+          "returncode": 5,
+          "elapsed_s": 0.31722075503785163,
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "60a81ca3b054fff871591b1ec88a72affd0992e889f7c34ec4e51c46c4381e5f"
+        },
+        "test_routing": {
+          "command_sha256": "bb1d5e2b8e44da9ca64d917f9c127145d7e6d0afaca89143ab6fe82f01ee0aa4",
+          "returncode": 0,
+          "elapsed_s": 6.9300223449245095,
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "fbba8a2dbeb615e0f3b8e9099b4195a64a6d1e18bf53ecf252e954e9f3992a44"
+        },
+        "test_routing_discovery": {
+          "command_sha256": "ac54b793be12e0f01a28b2dda42d28e6144c2bb6e9d39829a79f7828c79d66c7",
+          "returncode": 0,
+          "elapsed_s": 2.2221294039627537,
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "bee77ff57cf1cda3cdb5cf35c4a609628c5d217e59fe1a95868e6885297e73b6"
+        },
+        "test_routing_parallel": {
+          "command_sha256": "6febec973c53889db3b30b2d96488e68f7ccf6e24062b69481025bb96bef872b",
+          "returncode": 0,
+          "elapsed_s": 15.154744507977739,
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "c29d1a162ebafdb0d88f0234933f1fd278cc8354b302beebf4ec0b725ee76fbf"
+        },
+        "test_routing_run": {
+          "command_sha256": "352956a7b43935137e15e54ae2ba8abd291caddc9b3170b5c1752505776ed33e",
+          "returncode": 0,
+          "elapsed_s": 7.935426575015299,
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "62747791561e6c017ef23f5692b06d1d35e9a4e6e73e448cf21b7bd39e875f96"
+        },
+        "test_scc_routing_host": {
+          "command_sha256": "dc77ce1e8118eaa9d93e1bcc9eab8fc67f62782194a5641f8b1c55faae75349a",
+          "returncode": 0,
+          "elapsed_s": 1.1186501109041274,
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "9399ac14325a6353b3d6dbc6d5380f9f5555d5fcffa7635b2cc92ee2083dde6b"
+        }
+      },
+      "successful_benchmark_tests": 218,
+      "actual_build_ABI_and_numeric_guards": "Both passed before final mock compile failed.",
+      "original_completion_exists": false,
+      "failure": "GCC12.2 at -O0 inferred negative int range for verbose snprintf into16-byte test buffer; -Werror=format-truncation rejected mock driver before any of six tests ran.",
+      "recovery": "Pending bounded test-only continuation; successful builds and original failure preserved."
+    },
+    "harness_repair": {
+      "scope": "Only two ABI test argument buffers16 to32; supported1..32 worker arguments unchanged. No runtime or frozen P edit.",
+      "patch_sha256": "1c0ad10c2b6e0aebb32c97b9463cc6784137081dac3387439bcba909aefb35df",
+      "preimage_sha256": "b77af675ef4aabe07af2fb7841b6b788315b512ceacdccb77f1686738bf27049",
+      "repaired_C_sha256": "ad7d3512288b17353fb223e3100ae53f4fac4177606fa79abd26b574180fc78e",
+      "local_mock_tests": 6,
+      "local_mock_elapsed_s": 1.28,
+      "Linux_retest": "pending",
+      "actual_Mac_ABI_rechecks": {
+        "candidate": {
+          "record_sha256": "2933041dc2e1231372c6b8a92eb0e1a44fc4fc5bd1de14bfa387445d29f44204",
+          "returncode": 0,
+          "elapsed_s": 0.586946583003737,
+          "plugin_sha256": "2c85d8901df9059fcbe747dea5ef6a1e67d6eaf21d600e890219f909b21bc71f",
+          "test_threads": 4,
+          "stdout_sha256": "f657751314fa0bf9e1233c2d6de62d2be75a0a701c5b59ed81ae46d0fe7c645d",
+          "stderr_sha256": "9a5fc147da2f38f3fd67829dd0597adbc5743c2a419ea34c7d787b268893c95a"
+        },
+        "baseline": {
+          "record_sha256": "91949834a2ccb347dbb58ef61c6609b12fa100346b39791643dfc88439c52ae9",
+          "returncode": 0,
+          "elapsed_s": 0.47021883400157094,
+          "plugin_sha256": "b49d0471666dcbb347d36d36ff2129512841f257d702ac76071df6930659b8ff",
+          "test_threads": 4,
+          "stdout_sha256": "f657751314fa0bf9e1233c2d6de62d2be75a0a701c5b59ed81ae46d0fe7c645d",
+          "stderr_sha256": "9a5fc147da2f38f3fd67829dd0597adbc5743c2a419ea34c7d787b268893c95a"
+        }
+      }
+    },
+    "coverage_limit": "A covers21 families at1/4workers and a wide RHS case, but has no matched cold-single-RHS/reused-single-RHS/wide batch comparison on one topology. Low memory uses chunks and is not a poolsize1 experiment. No general RHS/core payback claim.",
+    "prospective_Mac_witness_helper": {
+      "files_sha256": {
+        "prepare_witnesses.py": "7cb0341bb3aaa782c443d08d704bc9eb65db33bbcb68f0b520257bb8b62f872d",
+        "api_calls.py": "905394ad37d9cf3dc63ab1238cbfb6c290959ad32f90b6a5c8e92aad7b5e55df",
+        "helper-proposal.md": "dcdd5110ba5ef220ed9c847b3e9f984ce4f3cd66288bc67c4e6b237d2a199d5a",
+        "helper-source-review.json": "3abc4b5fe3cd2272f079cbb857b547a7ff8be13c0ff7a96573de12bcda24829d"
+      },
+      "synthetic_tests": 23,
+      "test_log_sha256": "341bc60f1be57a47ea74e78acaa8598a0ec6b428bcc7139169c96d9b0a791e82",
+      "status": "independently_reviewed_source_only",
+      "actual_configuration": false,
+      "B_C_payload_access": false,
+      "estimation_panel_calls": 0,
+      "scope": "Requires valid complete schema3 discovery, exact B context and prospective C declaration before B target access; shared Linuxsample1 bytes remain unchanged with separate Mac resource/source/build binding. Actual filled prerequisites require independent review."
+    }
   }
+
 }

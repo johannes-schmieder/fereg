@@ -111,6 +111,17 @@ class DeploymentGate(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 deployment.origin(routing.seal(bad))
 
+    def test_legacy_origin_and_declaration_cannot_self_enable_unseeded(self):
+        spec = portfolio_manifest(routing.PORTFOLIO_UNSEEDED)
+        spec['candidate_source_identity'] = {'plugin_sha256': h('candidate'),
+            'production_tokens_sha256': h('production'), 'artifact_inputs_sha256': h('inputs')}
+        for key, value in [(None, None), ('allow_unseeded', True), ('schema', 3)]:
+            candidate = copy.deepcopy(spec)
+            if key is not None: candidate[key] = value
+            for invoke in (deployment.origin, deployment.declare):
+                with self.subTest(field=key, invoke=invoke.__name__), self.assertRaises(ValueError):
+                    invoke(routing.seal(candidate))
+
     def test_exact_public_holdout_preserves_original_contract_and_hidden_protection(self):
         value = self.derive()
         self.assertEqual(value['panels'], {'C': self.spec['panels']['C']})

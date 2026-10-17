@@ -120,10 +120,12 @@ class BlockContext(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 blocks.declare({**self.inputs, 'discovery_review': self.write(review)}, self.design)
 
-    def portfolio_inputs(self):
+    def portfolio_inputs(self, schema=2):
         import routing_parallel as parallel
-        spec = portfolio_manifest()
-        for stage in ['A', 'B']:
+        from test_routing_discovery import partition42
+        spec = partition42() if schema == 3 else portfolio_manifest()
+        candidate = routing.portfolio_candidate(spec)
+        for stage in (['B'] if schema == 3 else ['A', 'B']):
             cell = spec['panels'][stage][0]
             spec['panels'][stage] = [{**cell, 'id': f'{stage}-portfolio-{i}',
                 'case_sha256': h(f'{stage}-portfolio-case-{i}'),
@@ -135,31 +137,39 @@ class BlockContext(unittest.TestCase):
             'library_limits': discovery.LIBRARY_LIMITS, 'producer_tools': {'producer.py': h('producer')},
             'frozen_files': {}, 'output_root': str(self.root / 'discovery')}
         parent_ref, collector = self.write(routing.seal(parent)), self.write({'collector': 'frozen'})
-        plan = {'kind': parallel.KIND + '_plan', 'schema': 2, 'design': parallel.PORTFOLIO_DESIGN,
+        plan = {'kind': parallel.KIND + '_plan', 'schema': schema,
+            'design': parallel.PARTITION_DESIGN if schema == 3 else parallel.PORTFOLIO_DESIGN,
             'parent': routing.seal(parent), 'parent_sha256': routing.identity(parent), 'parent_plan': parent_ref,
             'output_root': str(self.root / 'portfolio-rounds'), 'producer_tools': parent['producer_tools'],
             'receipt_generator': collector,
             'frozen_files': {ref['path']: ref['sha256'] for ref in [parent_ref, collector]}}
+        if schema == 3:
+            plan['partitions'] = discovery.partitions(spec)
         reports = []
-        for n in [1, 2, 3]:
-            root = Path(plan['output_root']) / f'round-{n}' / 'attempt-1'
-            refs = {key: {'path': str(root / relative), 'sha256': h(f'{n}-{key}')}
+        labels = [(n, shard) for n in (1, 2, 3) for shard in ((1, 2) if schema == 3 else (None,))]
+        for n, shard in labels:
+            root = Path(plan['output_root']) / f'round-{n}'
+            root = root / f'shard-{shard}' / 'attempt-1' if schema == 3 else root / 'attempt-1'
+            refs = {key: {'path': str(root / relative), 'sha256': h(f'{n}-{shard}-{key}')}
                     for key, relative in [('collection', 'collection/collection.json'),
                         ('isolation', 'isolation/receipt.json'), ('prerequisites', 'prerequisites/prerequisites.json')]}
             reports.append({'kind': parallel.KIND + '_attempt', 'parallel_plan_sha256': routing.identity(plan),
                 'logical_round': n, 'attempt': 1, 'status': 'complete', **refs,
-                'science_discrete_sha256': h('stable-discrete'), 'accounted_wallclock_s': 100.})
-        collection = {'kind': parallel.KIND + '_collection', 'schema': 2,
+                'science_discrete_sha256': h(f'stable-discrete-{shard}'), 'accounted_wallclock_s': 100.})
+            if schema == 3:
+                reports[-1].update(shard=shard, partition_sha256=routing.identity(plan['partitions'][shard-1]),
+                    model_discrete_sha256=h(f'stable-model-{shard}'), worker_route_differences=[])
+        collection = {'kind': parallel.KIND + '_collection', 'schema': schema,
                       'plan_sha256': routing.identity(plan), 'attempts': reports}
         receipts = [report['isolation'] for report in reports]
         ranking = [{'arm': a, 'baseline_violations': 0, 'worst_internal_normalized': .5}
-                   for a in [routing.PORTFOLIO_V1, 'baseline']]
-        summary = {'kind': discovery.PORTFOLIO_KIND + '_shortlist', 'schema': 2,
+                   for a in [candidate, 'baseline']]
+        summary = {'kind': discovery.PORTFOLIO_KIND + '_shortlist', 'schema': schema,
             'experiment_kind': 'portfolio', 'protocol_source': parallel.KIND,
             'status': 'discovery_only', 'promotion': False, 'plan_sha256': routing.identity(plan),
             'collection': collection, 'isolation': receipts, 'collection_sha256': routing.identity(collection),
             'isolation_sha256': routing.identity(receipts), 'ranking': ranking,
-            **parallel.portfolio_screen(ranking)}
+            **parallel.portfolio_screen(ranking, candidate=candidate)}
         raw = self.write({'raw': 'complete local science, scheduler and timing observations'})
         shared = {'status': 'passed', 'plan_sha256': routing.identity(plan),
                   'result_sha256': routing.identity(summary), 'collection_sha256': summary['collection_sha256'],
@@ -174,8 +184,97 @@ class BlockContext(unittest.TestCase):
             'discovery_review': self.write(review)}
         return spec, plan, summary, review, inputs
 
+    def test_partitioned_handoff_rederives_context_and_binds_independent_review(self):
+        import routing_block_deployment as deployment
+        import routing_deployment as activation
+        spec, plan, summary, review, inputs = self.portfolio_inputs(3)
+        with patch.object(runner, 'inspect_case') as inspect:
+            context = blocks.declare(inputs, self.design)
+            bound = self.write(routing.seal(context))
+            self.assertEqual(blocks.load_context(bound), (context, spec))
+            self.assertEqual(context['candidates'], summary['shortlist'])
+            self.assertIn(review['independent_raw_review'], blocks.context_bindings(bound, context))
+            declared = deployment.declare(bound, {**self.design, 'attempts': 24})
+            self.assertEqual(declared['original_manifest_sha256'], routing.identity(spec))
+            self.assertEqual(activation.origin(routing.seal(spec), block_context=bound), spec)
+            with self.assertRaises(ValueError): activation.origin(routing.seal(spec))
+            with self.assertRaises(ValueError): activation.declare(routing.seal(spec))
+            for stage in ('A', 'C'):
+                with self.assertRaises(ValueError): blocks.prerequisite_context(spec, stage, None, bound)
+            with self.assertRaises(ValueError):
+                activation.origin(routing.seal(spec), block_context=self.context_ref)
+            forged = self.write(routing.seal({**context, 'candidates': ['baseline']}))
+            with self.assertRaises(ValueError): deployment.declare(forged, {**self.design, 'attempts': 24})
+            inspect.assert_not_called()
+        self.assertEqual([part['inclusive_allocation_budget_s'] for part in plan['partitions']], [7280, 7120])
+
+    def test_partitioned_handoff_rejects_incomplete_reordered_or_forged_allocations(self):
+        _, plan, summary, _, _ = self.portfolio_inputs(3)
+        for change in ('missing', 'reorder', 'shard', 'bool', 'descriptor', 'budget', 'nan',
+                       'route-signature', 'model-signature', 'borrowed-proof', 'extra', 'receipt'):
+            bad = copy.deepcopy(summary)
+            reports = bad['collection']['attempts']
+            if change == 'missing': reports.pop()
+            elif change == 'reorder': reports[0], reports[1] = reports[1], reports[0]
+            elif change == 'shard': reports[0]['shard'] = 2
+            elif change == 'bool': reports[0]['shard'] = True
+            elif change == 'descriptor': reports[0]['partition_sha256'] = h('other')
+            elif change == 'budget': reports[1]['accounted_wallclock_s'] = 7121
+            elif change == 'nan': reports[0]['accounted_wallclock_s'] = float('nan')
+            elif change == 'route-signature': reports[2]['science_discrete_sha256'] = h('other')
+            elif change == 'model-signature': reports[2]['model_discrete_sha256'] = h('other')
+            elif change == 'borrowed-proof': reports[1]['prerequisites'] = reports[0]['prerequisites']
+            elif change == 'extra': reports[0]['retry'] = 1
+            else: bad['isolation'].reverse()
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                bad['collection_sha256'] = routing.identity(bad['collection'])
+                bad['isolation_sha256'] = routing.identity(bad['isolation'])
+                blocks.portfolio_discovery_valid(plan, bad)
+        for change in ('schema', 'partition-budget', 'policy'):
+            bad = copy.deepcopy(plan)
+            if change == 'schema': bad['schema'] = 2
+            elif change == 'partition-budget': bad['partitions'][0]['inclusive_allocation_budget_s'] = 14400
+            else:
+                parent = routing.unseal(bad['parent'])
+                spec = routing.unseal(parent['tournament'])
+                spec['arms'][routing.PORTFOLIO_UNSEEDED]['policy'] = routing.policy(routing.PORTFOLIO_V1)
+                parent['tournament'] = routing.seal(spec)
+                bad.update(parent=routing.seal(parent), parent_sha256=routing.identity(parent))
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                blocks.portfolio_discovery_valid(bad, summary)
+
+    def test_partitioned_handoff_requires_reviewed_full_replay_and_rejects_baseline_only(self):
+        import routing_parallel as parallel
+        _, plan, summary, review, inputs = self.portfolio_inputs(3)
+        for change in ('missing', 'stale', 'partial-proofs', 'remote-result', 'mutated-review'):
+            bad = copy.deepcopy(review)
+            if change == 'missing': bad.pop('independent_raw_review')
+            elif change == 'remote-result':
+                remote = blocks.read(bad['remote_validation'])
+                remote['recomputed_result']['collection']['attempts'].pop()
+                bad['remote_validation'] = self.write(remote)
+            elif change == 'mutated-review':
+                Path(bad['independent_raw_review']['path']).write_text('{}')
+            else:
+                independent = blocks.read(bad['independent_raw_review'])
+                if change == 'stale': independent['result_sha256'] = h('other')
+                else: independent['prerequisites'].pop()
+                bad['independent_raw_review'] = self.write(independent)
+            with self.subTest(change=change), self.assertRaises((ValueError, KeyError)):
+                blocks.declare({**inputs, 'discovery_review': self.write(bad)}, self.design)
+        summary['ranking'][0]['baseline_violations'] = 1
+        summary.update(parallel.portfolio_screen(summary['ranking'], candidate=routing.PORTFOLIO_UNSEEDED))
+        blocks.portfolio_discovery_valid(plan, summary)
+        with self.assertRaisesRegex(ValueError, 'no Mac B'):
+            blocks.declare({**inputs, 'discovery_result': self.write(routing.seal(summary))}, self.design)
+
     def test_portfolio_closed_handoff_requires_fresh_mac_science_and_no_body_access(self):
-        spec, _, summary, _, inputs = self.portfolio_inputs()
+        for schema in (2, 3):
+            with self.subTest(schema=schema):
+                self.check_portfolio_fresh_mac_science(schema)
+
+    def check_portfolio_fresh_mac_science(self, schema):
+        spec, _, summary, _, inputs = self.portfolio_inputs(schema)
         with patch.object(runner, 'inspect_case') as inspect:
             context = blocks.declare(inputs, self.design)
             inspect.assert_not_called()

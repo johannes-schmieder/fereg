@@ -137,11 +137,14 @@ def model_metadata_valid(manifest, linux, review):
 def portfolio_discovery_valid(plan, summary):
     """Check portable closed-campaign evidence; remote replay verifies its bytes."""
     import routing_parallel as parallel
-    require(plan.get('schema') == 2 and plan.get('kind') == parallel.KIND + '_plan',
-            'portfolio requires its fresh schema-2 parallel discovery plan')
+    require(type(plan.get('schema')) is int and plan['schema'] in (2, 3)
+            and plan.get('kind') == parallel.KIND + '_plan',
+            'portfolio requires its fresh closed parallel discovery plan')
+    schema = plan['schema']
+    partitioned = schema == 3
     metadata = parallel.metadata(plan)
     require(summary.get('kind') == discovery.PORTFOLIO_KIND + '_shortlist'
-            and type(summary.get('schema')) is int and summary['schema'] == 2
+            and type(summary.get('schema')) is int and summary['schema'] == schema
             and summary.get('experiment_kind') == 'portfolio'
             and summary.get('protocol_source') == parallel.KIND
             and summary.get('status') == 'discovery_only' and summary.get('promotion') is False
@@ -150,41 +153,57 @@ def portfolio_discovery_valid(plan, summary):
     require(isinstance(collection, dict)
             and set(collection) == {'kind', 'schema', 'plan_sha256', 'attempts'}
             and collection['kind'] == parallel.KIND + '_collection'
-            and type(collection['schema']) is int and collection['schema'] == 2
+            and type(collection['schema']) is int and collection['schema'] == schema
             and collection['plan_sha256'] == routing.identity(plan)
             and summary.get('collection_sha256') == routing.identity(collection)
-            and isinstance(receipts, list) and len(receipts) == 3
+            and isinstance(receipts, list) and len(receipts) == (6 if partitioned else 3)
             and summary.get('isolation_sha256') == routing.identity(receipts),
             'portfolio collection/isolation binding changed')
     reports = collection['attempts']
-    require(isinstance(reports, list) and len(reports) == 3, 'portfolio needs three complete local science rounds')
-    discrete, accounted = set(), 0.0
-    for n, report in enumerate(reports, 1):
+    labels = [(n, shard) for n in (1, 2, 3) for shard in ((1, 2) if partitioned else (None,))]
+    require(isinstance(reports, list) and len(reports) == len(labels),
+            'portfolio needs every complete allocation in round/shard order')
+    discrete, accounted = {}, 0.0
+    for index, ((n, shard), report) in enumerate(zip(labels, reports)):
+        extra = {'shard', 'partition_sha256', 'model_discrete_sha256', 'worker_route_differences'} if partitioned else set()
         require(isinstance(report, dict) and set(report) == {'kind', 'parallel_plan_sha256',
                 'logical_round', 'attempt', 'status', 'collection', 'isolation', 'prerequisites',
-                'science_discrete_sha256', 'accounted_wallclock_s'}
+                'science_discrete_sha256', 'accounted_wallclock_s'} | extra
                 and report['kind'] == parallel.KIND + '_attempt' and report['status'] == 'complete'
                 and report['parallel_plan_sha256'] == routing.identity(plan)
                 and type(report['logical_round']) is int and report['logical_round'] == n
                 and type(report['attempt']) is int and report['attempt'] == 1
                 and routing.sha(report['science_discrete_sha256']), 'invalid portfolio local round')
+        budget = parallel.PORTFOLIO_DESIGN['inclusive_allocation_budget_s']
+        if partitioned:
+            part = plan['partitions'][shard - 1]
+            require(type(report['shard']) is int and report['shard'] == shard
+                    and report['partition_sha256'] == routing.identity(part)
+                    and routing.sha(report['model_discrete_sha256'])
+                    and isinstance(report['worker_route_differences'], list),
+                    'partition descriptor or scientific signature changed')
+            budget = part['inclusive_allocation_budget_s']
         elapsed = report['accounted_wallclock_s']
         require(type(elapsed) in (int, float) and math.isfinite(elapsed)
-                and 0 < elapsed <= parallel.PORTFOLIO_DESIGN['inclusive_allocation_budget_s'],
+                and 0 < elapsed <= budget,
                 'portfolio allocation exceeded its accounted budget')
         accounted += elapsed
-        root = Path(plan['output_root']) / f'round-{n}' / 'attempt-1'
+        root = Path(plan['output_root']) / f'round-{n}'
+        root = root / f'shard-{shard}' / 'attempt-1' if partitioned else root / 'attempt-1'
         for key, relative in [('collection', 'collection/collection.json'),
                               ('isolation', 'isolation/receipt.json'),
                               ('prerequisites', 'prerequisites/prerequisites.json')]:
             parallel.binding_shape(report[key])
             require(Path(report[key]['path']) == root / relative, 'portfolio proof/receipt is not allocation-local')
-        require(report['isolation'] == receipts[n - 1], 'portfolio local isolation list changed')
-        discrete.add(report['science_discrete_sha256'])
-    require(len(discrete) == 1, 'portfolio cross-host discrete decisions changed')
+        require(report['isolation'] == receipts[index], 'portfolio local isolation list changed')
+        signature = (report['science_discrete_sha256'], report.get('model_discrete_sha256'))
+        require(shard not in discrete or discrete[shard] == signature,
+                'portfolio cross-host discrete decisions changed within a shard')
+        discrete[shard] = signature
     require(accounted <= parallel.PORTFOLIO_DESIGN['maximum_allocation_budget_s'],
             'portfolio campaign exceeded its accounted budget')
-    screen = parallel.portfolio_screen(summary.get('ranking', []))
+    screen = parallel.portfolio_screen(summary.get('ranking', []),
+                                       candidate=routing.portfolio_candidate(metadata['spec']))
     require(all(key in summary and summary[key] == value for key, value in screen.items()),
             'portfolio shortlist differs from its frozen heuristic screen')
     return metadata
@@ -206,7 +225,7 @@ def portfolio_review_valid(review, validation, plan, summary):
             'portfolio independent review must retain its raw evidence')
     require(independent.get('prerequisites') ==
             [report['prerequisites'] for report in summary['collection']['attempts']],
-            'portfolio independent review did not inspect all three local proofs')
+            'portfolio independent review did not inspect every allocation-local proof')
 
 
 def declare(inputs, design):
@@ -244,7 +263,7 @@ def declare(inputs, design):
             and len(ranking) == len(linux['candidates'])
             and (portfolio or shortlist == [row['arm'] for row in ranking[:4]]), 'shortlist differs from complete discovery ranking')
     if portfolio:
-        require(routing.PORTFOLIO_V1 in shortlist, 'portfolio discovery rejected the sole candidate; no Mac B')
+        require(routing.portfolio_candidate(linux) in shortlist, 'portfolio discovery rejected the sole candidate; no Mac B')
         require(manifest.get('sampled_qualification') == linux.get('sampled_qualification'),
                 'Mac portfolio changed its sample-1 scientific evidence binding')
         require(review.get('model_metadata_amendment') is None,
@@ -354,7 +373,7 @@ def context_bindings(bound, context):
             values.append(reference(routing_window.__file__))
     review = read(context['inputs']['discovery_review'])
     values += [review['remote_validation'], *review['raw_evidence']]
-    if plan.get('schema') == 2:
+    if plan.get('schema') in (2, 3):
         values.append(review['independent_raw_review'])
     values += read(context['inputs']['pilot_review'])['evidence']
     for value in values:

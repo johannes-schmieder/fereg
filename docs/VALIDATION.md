@@ -1382,13 +1382,52 @@ checksum worker request; library environment variables alone cannot enforce
 that cap. Fresh guarded Mac B12 and untouched C24 remain conditional on a valid,
 independently reviewed new shortlist.
 
-A separate prospective Mac handoff helper passes independent source review and
-16 pure tests. After full discovery/B-context and untouched-C-declaration gates,
-it can reuse already certified fresh B references, checking exact paths and
-hashes before parsing. It keeps the shared Linux sampling descriptor unchanged
-while separately binding the Mac artifact through all three source identities.
-This is source-only preparation: no B/C numerical payload, reference target or
-native execution was accessed for this review.
+The frozen source is now `020eab1e9559fd68f619a4ec73fb04fcb6d1136f`.
+Private universal Mac builds of that source and baseline `46aa78f6` pass their
+audits and four-worker host ABI checks with identical compiler and release
+profiles. Independent Astra review verifies the source/dependency closure,
+the baseline's two test-only harness overlays and unchanged installed artifacts.
+The candidate plugin is `2c85d890`; the fresh baseline is `b49d0471`.
+The baseline retains 21 debug-path occurrences under its original build script;
+it is a private comparator, without current distribution admission. Neither
+build has run the new scientific or timing panel.
+
+Linux setup `8151673` built both plugins and the timing harness, passed both
+ABI/numeric-guard checks and 218 focused benchmark tests, then failed its final
+mock-C compilation. GCC 12.2 at `-O0` conservatively allows negative integers
+in a formatted test argument and rejects a potentially truncated 16-byte
+buffer. Accounting is failed=0/exit=1, 431 seconds on `scc-ei3` with four slots;
+there is no completion marker. The narrow test-only repair enlarges two buffers
+to 32 bytes, preserving all supported worker arguments and compiler warnings.
+Its six local mock tests and actual four-worker ABI checks against both private
+Mac plugins pass. The original failed setup and successful builds
+remain intact; a separately reviewed Linux continuation is still required.
+No collection has started in `portfolio-unseeded-20261016`.
+
+Prospective Mac qualification tools now recognize the six-allocation schema and
+the exact unseeded candidate. They rederive the complete discovery context,
+reject a baseline-only outcome, and keep fresh Mac science, B12 selection,
+public activation/equivalence and untouched C24 gates. Independent Astra review
+and 90 final focused tests pass. An earlier 135-test run had one new NaN-fixture
+assertion error; the repaired test retains rejection, and production bytes did
+not change between runs. Runtime production and artifact inputs still equal
+the frozen source. These checks do not admit B or C early.
+
+The revealed A panel includes a wide-RHS case, but no matched comparison of
+cold one-RHS, reused one-RHS and wide batches on the same topology. Low-memory
+chunking is not a poolsize-one experiment. This panel can assess broad routing
+and one-to-four-worker scaling, but cannot establish a general RHS payback rule.
+Full hashes, preserved failures and scope are in the compact evidence linked below.
+
+The prospective Mac witness helper now binds this compiled candidate and private
+build pair, with independent source review and 23 synthetic tests. The earlier
+16-test helper remains unchanged in its closed campaign. After complete
+discovery/B-context and untouched-C-declaration checks, the new helper can reuse
+certified B references, checking exact paths and hashes before parsing. It keeps
+the shared Linux sampling descriptor byte-identical and separately requires
+current Mac resource/source/build admission. This is source-only preparation:
+no actual configuration, B/C numerical payload, reference target or native
+execution was accessed for this review.
 
 Retained SCC raw evidence and sealed products remain in the campaign
 `/projectnb/welfgr/fereg/runs/solver-routing-20261014/`.

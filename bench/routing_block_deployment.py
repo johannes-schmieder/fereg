@@ -33,7 +33,7 @@ def declare(b_context, design):
     """Prospective amendment; accepts no selected winner or C observations."""
     context, manifest = blocks.load_context(b_context)
     blocks.require(context['stage'] == 'B', 'declaration requires the prospective Mac B context')
-    activation.origin(routing.seal(manifest))
+    activation.origin(routing.seal(manifest), block_context=b_context)
     blocks.design_valid(design, attempts=24)
     import time_blocks
     sources = [*time_blocks.source_bindings(), blocks.reference(blocks.__file__),

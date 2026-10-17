@@ -384,7 +384,7 @@ static int test_thread_limit(const char *value, int *threads)
 
 static int check_selftest_verbose(stata_call_function call, int threads)
 {
-    char worker_argument[16];
+    char worker_argument[32];
     char *arguments[] = {
         "selftest", "ado=0.5.0", "protocol_major=1", "protocol_minor=6",
         "stata=18.0", worker_argument, "verbose=1"
@@ -406,7 +406,7 @@ static int check_selftest_verbose(stata_call_function call, int threads)
 
 static int check_selftest(stata_call_function call, int threads)
 {
-    char worker_argument[16];
+    char worker_argument[32];
     char *arguments[] = {
         "selftest",
         "ado=0.5.0",

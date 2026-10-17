@@ -175,7 +175,8 @@ def comparison_policy(manifest, arm):
         public = manifest['arms'].get('public-auto', {})
         incumbent = manifest['arms'].get('incumbent', {})
         selected = public.get('effective_policy')
-        if routing.identity(selected) != routing.identity(routing.policy(routing.PORTFOLIO_V1)):
+        if not any(routing.identity(selected) == routing.identity(routing.policy(candidate))
+                   for candidate in routing.PORTFOLIOS):
             return None
         # run() first rederives this activated context from B and the exact
         # public/hidden equivalence evidence. Equivalence contexts themselves
