@@ -87,6 +87,105 @@ blocked by the deliberately unchanged distribution artifact; source integration
 does not authorize promotion. Bounded independent Astra reviews cover the
 runtime and experiment evidence chain.
 
+### First-occurrence results
+
+Implementation `53c031b7` completed the frozen D2 panel. The
+[retained discovery evidence](../bench/results/occurrence-cells-20261017.json)
+preserves all 1,312 observations, their scientific signatures and individual
+phase timers, all 64 subsequent diagnostic payloads, schedules, input/artifact
+identities, scientific checks, accounting and capture hashes. Redundant pair
+arrays are reconstructable from the retained observations and block identities.
+No observation was excluded, replaced or added after the fixed panel. The
+[separate scheduler evidence](../bench/results/occurrence-scheduler-20261017.json)
+retains the instrumented parent diagnostic and its limitations.
+
+**S passes the total-time discovery screen but fails the full gate.** In this
+same allocation and artifact, the comparisons against Auto are:
+
+| Arm versus Auto | Material gains | Within allowance | Regressions |
+|---|---:|---:|---:|
+| Original cells | 12 | 9 | 3 |
+| Previous membership builder M | 14 | 8 | 2 |
+| First-occurrence builder S | 16 | 8 | 0 |
+
+These classifications use twelve complete paired blocks per setting and the
+frozen `max(5%, 1 ms)` allowance. They describe this revealed discovery panel;
+they are not untouched confirmation or a universal nonregression result. S's
+median paired time ratios on weak connectivity are 0.616 at one worker and
+0.644 at four, and on nonmovers 0.668 and 0.694. All observed cases remain in
+the record, including easy/four-worker's broad ranges: S 5.63–17.45 ms and Auto
+7.12–17.02 ms. Ratios of marginal medians differ from paired summaries and must
+not replace them. Earlier rounds ran in different allocations; the table is
+not a causal comparison of historical panels.
+
+All eight traced S construction medians are smaller than the original builder,
+but only six satisfy both frozen limits:
+
+| Setting | S construction (ms) | S / original | Both limits pass |
+|---|---:|---:|---|
+| High-degree weak, one worker | 0.771 | 0.211 | Yes |
+| High-degree weak, four workers | 0.743 | 0.297 | Yes |
+| Dense, one worker | 0.948 | 0.276 | Yes |
+| Dense, four workers | 0.571 | 0.250 | Yes |
+| Repeated, one worker | 0.619 | 0.118 | Yes |
+| Repeated, four workers | 0.577 | 0.103 | Yes |
+| Hubs, one worker | 2.395 | 0.419 | No |
+| Hubs, four workers | 1.962 | 0.370 | No |
+
+Hubs exceeds both the <=0.35 ratio and <=1.5 ms limits at both worker counts.
+Every relevant hubs trace constructs 54,200 cells, then selects the observation
+operator for both supplied RHS widths, four and one. S's hubs scientific
+fingerprints equal Auto's at each worker count. Construction therefore remains
+avoidable setup in these cases, although two traced repetitions do not explain
+every untraced timing difference or precisely estimate small effects. S and M
+have the same iteration counts elsewhere except dynamic weights: its projection
+count changes from M's 60 to S's 59 at both worker counts. Faster construction
+supports the mechanism, but does not account for every possible layout,
+reduction-order or iteration effect.
+
+The next justified research direction is a separately frozen general admission
+or early-refusal policy that avoids substantial construction when no planned
+batch can repay it, while preserving S's useful path. The implementation and
+cost of such a rule remain open; no benchmark-name routing, retrospective gate
+change, additional finalist or favorable resampling is justified by this panel.
+C2's new input and execution plans were sealed before the first D2 native call,
+but **C2 has zero candidate calls and no submitted job** because D2 failed.
+Public Auto is unchanged; there is no promotion or Mac performance claim.
+
+The completed science job `8155917` has scheduler `failed=0`, `exit_status=0`:
+20 smoke/control calls, then 192 independent-witness scientific records and 144
+exact prior-artifact pairs (288 calls), for 500 native calls in total. Fixed-worker
+repeats are exact; model/discrete hashes agree across arms and worker counts.
+The six prior arms include Auto, original cells, diagonal, V2, M and M_lanes.
+Independent Astra review recomputed all retained observation fields, schedules,
+classifications and builder comparisons and verified the scientific hash and
+control consistency. Raw numerical column artifacts were validated and rehashed
+on SCC; the reviewer inspected oracle/comparison code but did not independently
+recompute numerical oracle errors without those columns. Compact attestations
+are not a substitute numerical dataset.
+
+D2 job `8155939` ran on `scc-zj4` with 28 reserved physical cores and native
+CPU affinity restricted to four physical CPUs, with one/four runtime workers.
+It completed in 347 accounting seconds with `failed=0`, `exit_status=0` and
+`OCCURRENCE_DISCOVERY_COMPLETE 1312`: 96 warmups, 1,152 scored calls and 64
+post-panel traces. Reservation and observer coverage were replayed for every
+call. The 53 process snapshots and 32 scheduler censuses had maximum gaps of
+5.050 and 19.196 seconds; no competing computation was observed. Sampled
+isolation does not establish continuous absence of all interference.
+
+The parent diagnostic first failed before any native call because its deployed
+Python import closure was incomplete (`8155890`, exit 1). The distinct repaired
+smoke `8155898` passed. Full diagnostic `8155914` on `scc-wo4` passed with 72
+instrumented calls and four uninstrumented exact controls. All 48 four-worker
+instrumented calls exceeded 10.5 ms, but only six met the scheduler-association
+condition, so the fixed rule retained four physical CPUs. This does not show
+four CPUs are optimal or exclude scheduling as a cause. Probe reads themselves
+had medians around 3.7 ms at one worker and 5.8 ms at four; single controls before
+the series cannot identify overhead causally. Sequential procfs reads and summed
+thread counters do not form a disjoint wall-time decomposition. Frequency,
+caches, scheduling and the original easy/four-worker variability remain
+unresolved; no diagnostic timing entered the scored panel.
+
 ## Membership-cell prototype scope (2026-10-17)
 
 Fable 5.1 Extra reviewed the retained deferred and factor studies at `ed0fbafb`
