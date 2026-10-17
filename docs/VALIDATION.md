@@ -53,8 +53,78 @@ science; OLS, optional-builder and PPML Break tests pass separately.
 | Combined implementation-check summary | `790a314b3ea1c9aeb18ef79d70199200033b5b8b2be722947b978d38832fcc23` |
 
 These checks establish implementation correctness within the stated scope, not
-an Auto speed improvement. Fresh isolated SCC discovery and separate Mac B12/C24
-qualification remain required before either public default is accepted.
+an Auto speed improvement. The following SCC discovery result admits separate
+Mac B12/C24 qualification; neither public default has been accepted.
+
+## Incremental many-FE discovery, 2026-10-17
+
+The hidden many-FE candidate passes the prospective SCC discovery screen across
+all 42 cells, with zero violations against original and accepted Auto under
+the per-cell `max(5%, 1 ms)` allowance. Both references use the original
+`f35f3a4d` artifact in this first stage, with separate observations. The
+equal-weight geometric mean candidate/incumbent ratio over the ten affected
+cells is **0.869634**. These are discovery point estimates, not Mac qualification
+or confidence bounds treating within-allocation blocks as independent hosts.
+
+| Affected family | Candidate/incumbent, 1 worker | Candidate/incumbent, 4 workers |
+| --- | ---: | ---: |
+| Small third FE | 0.8785 | 0.8235 |
+| Four FE | 0.8692 | 0.8350 |
+| Eight FE | 0.8817 | 0.8546 |
+| Sixteen FE | 0.9005 | 0.8741 |
+| Near-confounded third FE | 0.9205 | 0.8630 |
+
+Explicit solvers identify remaining opportunities: on the small-third and
+four-FE cases at four workers, MAP is about 18–19% faster than the candidate.
+Those observations neither veto nor rank Auto. All protected arms pass science;
+optional frontier arms retain 36 timeouts and 18 iteration-budget exhaustions.
+The campaign made 8,118 actual native calls: 8,064 successful and 54 failed.
+The 54 unavailable rows copied into timing records refer to those same failures,
+not additional attempts. No producer was retried, replaced or reassigned.
+
+Setup job `8161659` and native smoke job `8161732` pass application checks and
+SGE accounting (`failed=0`, `exit_status=0`). The Linux builds pass binary and
+actual ABI/load/panic checks; the smoke covers 96 native calls. Producers
+`8161766`–`8161771` each reserve 28 slots on distinct preassigned hosts
+`scc-xa1`–`scc-xa4`, `scc-xb1` and `scc-xb2`. All six complete with both accounting
+codes zero, consuming 21,176 allocation seconds within the frozen 43,200-second
+total budget. Each cell has three independent host allocations. Finalizer
+`8162365` passes all six maintained allocation validators and the full aggregate.
+
+Independent review reproduces the exact aggregate from the frozen evidence and
+checks 580 bound files, 126 allocation-local scientific proofs, 2,646 required
+solver-signature records and 96 exact outside-family comparisons. The sampled
+isolation contract passes with 4,226 process snapshots, 360 scheduler query
+groups and maximum process-sample gap 5.00123 seconds. Slots alone are not the
+isolation evidence. Successful numerical arrays and transient native logs were
+deleted by the frozen producer: review validates the retained independent-oracle
+assertions and proofs, rather than recomputing numerical witnesses from deleted
+arrays. Sampling does not establish continuous visibility between observations.
+
+The first audit reader (`8162383`) failed after the maintained aggregate replay
+passed because its summary expected event kind `sample` instead of `snapshot`.
+A separate script changes only that comparison; twelve actual snapshots across
+all six allocations pass its focused check. Corrected audit `8162407` completes
+with both accounting codes zero. The original failure remains recorded; this
+repair ran no solver calls and changed no frozen source or timing observation.
+
+| Retained identity | SHA-256 |
+| --- | --- |
+| Original private Linux plugin | `70c0f8ebf49b857ded10e3393584c7f608b5b08a0ca0425cda63ba032e6150e3` |
+| Candidate private Linux plugin | `be003cc22208919b93c89851347ac2eac2806ae4f2a75cf2cbdc3ebd72e9d364` |
+| Linux build summary | `52950d4f858a590c0f20b7ebc156ecb1896f4e1995b7eb1b0dc4738ff939d0db` |
+| Linux native smoke summary | `f8702f84ed4de4f67f219542b28af424dabf708b18f95ed8b0e56689307462cd` |
+| Frozen plan, logical identity | `40d0ef51e3de15565460ca5586ea8016de7d8fcf2eacb970dcd24d3c5e92a8d5` |
+| Full aggregate, logical identity | `6bbf29e69cbe40214da8c999b4709d39d92516c6b6096186a5fa448663762fcb` |
+| Independent audit | `84822b507594f001c90f047f50b7ca25c48947a0784cb0906caf5b6f31116979` |
+| Independent raw-evidence review | `9920cedb96cb643d14cb6bee9f8eae90815922729850af58f72397799158bcfc` |
+| Discovery handoff review | `0f4400b392bef4d247a57377bea88ae607ae7f68ece65f6a4e9574b4e83fb3a2` |
+
+The shortlist contains incumbent and incremental-many. The separately reviewed
+historical A/A pilot supports the fixed B12/C24 design with its existing
+independence/common-median limitation; its observations are not pooled into the
+new panels. Fresh Mac selection, exact hidden/public A/B equivalence and untouched
+Mac confirmation remain required. Two-FE qualification remains a separate stage.
 
 ## Main-branch GitHub installation, 2026-10-14
 
