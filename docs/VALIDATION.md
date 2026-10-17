@@ -16,7 +16,7 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
-## Deferred original-cell prototype scope, 2026-10-17
+## Deferred original-cell prototype, 2026-10-17
 
 The private `routing_cells_deferred` arm starts from `a1c95cce`. Only this
 injected two-categorical-effect OLS arm may change continuous scientific fields
@@ -59,14 +59,14 @@ The payback model is a deterministic heuristic, not a wall-time guarantee. It
 credits neither inactive-lane retirement nor faster convergence from switching
 an algebraically equivalent operator, and discounts observation work by its
 planned worker count. The forecast and all tariffs are fixed before timing.
-Discovery will compare Auto, always-built original cells and deferred cells on
+Discovery compared Auto, immediately admitted original cells and deferred cells on
 the retained twelve families at one/four workers: 72 warmups, 432 scored solves,
-and 48 separate traced diagnostics. Scientific prerequisites are 144 new-arm
-panel calls plus 96 independent paired old-arm comparisons (192 native calls).
-Use one isolated SCC allocation, six balanced blocks, fixed budgets, no excluded
-observations or outcome-driven extensions. This experiment cannot promote a
-public default; untouched confirmation and focused Mac qualification remain
-separate prerequisites. No timing evidence exists for this candidate yet.
+and 48 separate traced diagnostics. Scientific prerequisites are 144 three-arm
+scientific calls plus 96 independent paired old-arm comparisons (192 native calls).
+The measurement used one isolated SCC allocation, six balanced blocks, fixed
+budgets, no excluded observations or outcome-driven extensions. This experiment
+cannot promote a public default; untouched confirmation and focused Mac
+qualification remain separate prerequisites.
 
 Local validation passes: source-only integration (260 Python tests, 13 skips,
 Rust/scientific tests, Clippy, allocator audits, portable/native bridge checks),
@@ -79,7 +79,94 @@ and isolated fatal Break. The installed-package entrypoint stops at its expected
 source/plugin binding; the installed package remains unchanged. Independent
 Astra plan/runtime/harness reviews pass. The scoped ratchet increase is 331 core
 production lines and one plugin line. Harness tests pass: 41 compact, 40 routing
-and 84 routing-run. These checks establish no performance claim.
+and 84 routing-run. These checks alone establish no performance claim.
+
+Implementation `fbebecf8` completed the frozen SCC discovery. Science job
+`8155294` passed in 116 seconds; measurement job `8155309` passed in 159 seconds
+on `scc-zj4`. Both have `failed=0`, `exit_status=0`, expected application markers
+and complete outputs. Node isolation was checked independently through physical
+core topology, single-host PE and global slot quota, 17 scheduler censuses and
+25 process snapshots; native calls were pinned to CPUs 0–3 and used one/four
+workers within the 28-core reservation. No competing compute was observed.
+Ordinary NFS kernel activity remains in the results; five-second snapshots
+cannot exclude all shorter activity. All 144 scientific calls, 96 paired old-arm
+comparisons (192 native calls), and smoke checks passed. All 552 measurement observations
+(72 warmups, 432 scored, 48 separate traced diagnostics) reproduce their bound
+scientific fingerprints and timing-excluded solver signatures. The
+[retained numerical evidence](../bench/results/deferred-cells-20261017.json)
+contains every observation and pair, all 24 trace-enabled science decisions,
+resource checks, identities and accounting. Science repeat zero is traced;
+repeat one is untraced. Independent Astra review checked the retained numerical
+record against copied receipts, native JSON and decision logs. Large binary
+column sidecars and measurement logs remained on SCC; their sealed digest
+bindings were checked without a second local byte-level rehash. Public Auto
+is unchanged.
+
+The new arm installed cells in exactly two of the 24 family/worker settings:
+serial high-degree weak and serial non-movers. Both improved over Auto in all
+six paired blocks by more than the `max(5%, 1 ms)` allowance. Their median paired
+time ratios were 0.813 and 0.845, with observed paired savings of 9.09–19.70 ms
+and 4.80–6.26 ms respectively. These are useful positive discovery results for
+bounded switching. They do not establish broad routing quality: the remaining
+22 settings retained Auto's exact scientific fingerprint, and many declined
+settings would have benefited from constructing the original cells immediately.
+
+Selected complete native-call medians, in milliseconds (each arm's median;
+these are not the median of paired ratios):
+
+| Family/workers | Auto | Immediate cells | Deferred cells |
+|---|---:|---:|---:|
+| High-degree weak / 1 | 66.12 | 45.23 | 53.68 |
+| Non-movers / 1 | 37.02 | 26.41 | 31.26 |
+| Weak / 1 | 45.02 | 29.19 | 44.76 |
+| Dynamic weights / 1 | 48.98 | 35.37 | 49.46 |
+| Non-movers / 4 | 26.00 | 18.21 | 27.64 |
+| Hubs / 4 | 49.70 | 55.05 | 48.27 |
+| Easy / 4 | 9.29 | 10.54 | 15.31 |
+
+Across all 24 settings, descriptive paired-median classifications against Auto
+are 4 gains, 18 within allowance and 2 regressions for deferred cells, versus
+12 gains, 8 within and 4 regressions for immediate cells. Against immediate
+cells, deferred has 3 gains, 8 within and 13 regressions. The extra apparent
+deferred gains (`weak-t4`, `disconnected-t4`) occurred without installation and
+are not evidence of a successful upgrade. The two deferred regressions also
+declined installation: `easy-t4` has median paired ratio 1.474 and difference
++4.41 ms; `nonmovers-t4` has ratio 1.070 and difference +1.74 ms. Keep both.
+The easy case is highly variable: paired differences range from -8.08 to +8.96 ms
+and ratios from 0.476 to 2.343; four blocks exceed the regression allowance and
+two exceed the gain allowance. Non-movers has paired differences from -4.00 to
++2.56 ms. This finite panel does not establish the cause or persistent size of
+these costs, and does not clear a nonregression claim.
+
+The decisions identify three concrete shortcomings. First, the weak and
+dynamic-weight readiness proxies rise from iteration 8 to 16, so the local
+logarithmic forecast refuses useful compression. PCG readiness need not fall
+monotonically, and a two-point slope is not a robust measure of remaining work.
+Second, repeated and wide cases finish individual solves before the h16
+checkpoint; Low chunks also often finish before it. A late upgrade cannot
+recover their immediate-cell gains, and this policy deliberately credits no
+future RHS reuse. Third, the four-lane work discount rejects the four-worker
+non-mover case even though immediate cells save substantial time there. Nominal
+lane counts do not supply a calibrated wall-time cost model.
+
+Even the two successful admissions lose materially to immediate cells. The
+reconstruct/restart discards accumulated conjugate directions: high-degree weak
+projection/final iteration counts change from 53/18 to 64/43, and non-movers
+from 50/0 to 66/0. The complete solves still beat Auto, but switching has real
+costs beyond the builder. This comparison does not isolate the contributions
+of lost conjugacy, changed arithmetic and later correction cycles. Separate phase diagnostics retain incomplete
+attribution explicitly; unprinted restart/correction work must not be inferred
+by summing only the observed operator records.
+
+The evidence supports retaining the original compact representation and a safe
+bounded handoff. It does not support this admission rule as a public default.
+The next design question is how cheaply to choose the initial representation,
+then reserve delayed upgrades for genuinely unresolved cases. That requires a
+general compression/cost model, realistic worker scaling and explicit reuse and
+restart costs, with a new frozen selection protocol and untouched confirmation.
+Do not tune this policy against these observations and call the same panel
+confirmation. This is twelve synthetic two-FE OLS families at up to 100,000 rows,
+not evidence for PPML, arbitrary FE structures, large-scale behavior or Mac speed.
 
 ## Compact-cell preconditioner factor study, 2026-10-17
 
