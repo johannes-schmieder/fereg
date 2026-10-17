@@ -24755,5 +24755,509 @@
       "diagnostic-continuation/result.json": "eb8a9cbba894a2da548bee2cd2bd5bfc4c7ee66a5332864b36e186bb7a59c58b",
       "diagnostic-raw-review.json": "3812ba1fdbd574b79743ca2d37b85dff445213a8c9b67abd66a49bc74b020398"
     }
+  },
+  "cmg_sort_credit_diagnostic_20261017": {
+    "status": "completed_descriptive_diagnostic_prototype_discarded",
+    "production_decision": "Restored the exact two-file 016cb804 parent; gate inlining remains. No public routing change or qualification.",
+    "scope": {
+      "candidate": "Private synchronous portfolio local heap-sort permission credits, eligible only with the synchronous census flag, bounded terminal policy and no external controller. First step uses original gate, then at most15 remaining-budget/ordinal-bounded credits; each executed step debits64 work and1 ordinal before unchanged heap body.",
+      "exact": "All non-cancelled arithmetic, comparisons, swaps, work charges, ordinals, refusal prefixes, graph/hierarchy and controller callbacks.",
+      "changed": "Cancellation polling only in eligible private scope: at most16 steps/1024 charged computational units between polls, not a wall-time bound.",
+      "complexity": "Prototype +15 core production lines; no additional dynamic payload. Restored inventory is exact parent."
+    },
+    "artifacts": {
+      "base": "016cb804e0f734f1e53d709fd8bf8b3dcb4db019",
+      "parent_plugin": "c39553f948a9250019376e6c24a8d8cee2208f59d711c4f8fc66c5c22a646384",
+      "candidate_plugin": "e61bbb29ab3008d33f2e08d9ab558bf72d867a17f08e50604cba52cb4c019d6e",
+      "candidate_runtime": "79ad8c929ad2a23388e2b17a119090a70eb2cb3f1f47fd69d967276a4456be39",
+      "restored_files": {
+        "crates/fereg-core/src/fe/cmg_schur/bounded.rs": {
+          "before": "3f0b52fb387123550ca9cc5b3beefc7f560c55b728c63584381890bdfaf92de4",
+          "after": "7dedd9bd05e16f556253514a0d8ae3f15e97568a17936609175deb9006bf353e"
+        },
+        "tests/reference/complexity.json": {
+          "before": "911bd812de1c4ea8a8365cd253bda95ccdb257c870ac072a94a2a5d7f27bf2c1",
+          "after": "4b306b51853e6e244a73729c5dac147ed32ab2d6c2058f05b53a491fb852163e"
+        }
+      }
+    },
+    "checks": {
+      "focused_cmg": 35,
+      "isolated_cmg_children": 3,
+      "focused_routing": 20,
+      "isolated_routing_children": 2,
+      "strict_core_clippy": "passed",
+      "fmt_diff_complexity": "passed",
+      "source_integration": {
+        "rust_test_executions": 1942,
+        "python_tests": 312,
+        "portable_tests": 7,
+        "elapsed_s": 219.3991787090199,
+        "installed_package_admission": false
+      },
+      "actual_build": {
+        "elapsed_s": 165.0083034579875,
+        "universal_audit_ABI_load": "passed"
+      },
+      "assembly": {
+        "mechanism": "Credited inner steps bypass repeated cancellation/budget/ordinal checks and debit before unchanged heap body; refill and controlled gates remain.",
+        "sift_frame_bytes": [
+          208,
+          192
+        ],
+        "sift_text_bytes_before": [
+          908,
+          892
+        ],
+        "sift_text_bytes_after": [
+          996,
+          988
+        ],
+        "arm64_text_growth_bytes": 208,
+        "claim": "Code generation mechanism only; no predicted speed gain."
+      }
+    },
+    "protocol": {
+      "kind": "cmg_sort_credit_diagnostic_v1",
+      "seed": 2026101703,
+      "cells": 4,
+      "families": [
+        "weak",
+        "high-degree-weak"
+      ],
+      "workers": [
+        1,
+        4
+      ],
+      "traced_prerequisite_warmup_calls": 8,
+      "clean_calls": 32,
+      "total_calls": 40,
+      "balanced_blocks_per_cell": 2,
+      "orientations": [
+        "ABBA",
+        "BAAB"
+      ],
+      "call_limit_s": 120,
+      "inclusive_budget_s": 1800,
+      "cleanup_reserve_s": 30,
+      "retries": 0,
+      "replacements": 0,
+      "exclusions": 0,
+      "scope": "Previously revealed A inputs only; no B/C or SCC measurement."
+    },
+    "result": {
+      "status": "passed",
+      "elapsed_s": 39.730429374962114,
+      "failure": null,
+      "cell_ratios": [
+        {
+          "cell": "weak-t1",
+          "block_ratios": [
+            0.9986629642264514,
+            1.0317014252219652
+          ],
+          "geometric_mean_ratio": 1.0150477838549388
+        },
+        {
+          "cell": "weak-t4",
+          "block_ratios": [
+            0.9624098568445394,
+            0.9974194022880494
+          ],
+          "geometric_mean_ratio": 0.9797582682325308
+        },
+        {
+          "cell": "high-degree-weak-t1",
+          "block_ratios": [
+            0.9595275197594897,
+            0.9789883448209814
+          ],
+          "geometric_mean_ratio": 0.9692090890925056
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "block_ratios": [
+            1.0170234630734931,
+            1.0671711950940999
+          ],
+          "geometric_mean_ratio": 1.041795634722511
+        }
+      ],
+      "blocks": [
+        {
+          "cell": "weak-t1",
+          "block": 0,
+          "orientation": "ABBA",
+          "native_seconds": {
+            "parent": [
+              0.059462,
+              0.058556
+            ],
+            "candidate": [
+              0.059054,
+              0.058803
+            ]
+          },
+          "geometric_mean_s": {
+            "parent": 0.059007261180298816,
+            "candidate": 0.058928366361201634
+          },
+          "candidate_parent_ratio": 0.9986629642264514,
+          "geometric_mean_difference_s": -7.889481909718193e-05
+        },
+        {
+          "cell": "weak-t1",
+          "block": 1,
+          "orientation": "BAAB",
+          "native_seconds": {
+            "parent": [
+              0.058207,
+              0.059437
+            ],
+            "candidate": [
+              0.059324,
+              0.062074
+            ]
+          },
+          "geometric_mean_s": {
+            "parent": 0.058818784916045315,
+            "candidate": 0.06068342422770818
+          },
+          "candidate_parent_ratio": 1.0317014252219652,
+          "geometric_mean_difference_s": 0.0018646393116628635
+        },
+        {
+          "cell": "weak-t4",
+          "block": 0,
+          "orientation": "BAAB",
+          "native_seconds": {
+            "parent": [
+              0.036783,
+              0.034793
+            ],
+            "candidate": [
+              0.03516,
+              0.033714
+            ]
+          },
+          "geometric_mean_s": {
+            "parent": 0.03577416552485886,
+            "candidate": 0.03442940952151227
+          },
+          "candidate_parent_ratio": 0.9624098568445394,
+          "geometric_mean_difference_s": -0.0013447560033465894
+        },
+        {
+          "cell": "weak-t4",
+          "block": 1,
+          "orientation": "ABBA",
+          "native_seconds": {
+            "parent": [
+              0.033147,
+              0.032427
+            ],
+            "candidate": [
+              0.032506,
+              0.032896
+            ]
+          },
+          "geometric_mean_s": {
+            "parent": 0.03278502354734552,
+            "candidate": 0.03270041859059299
+          },
+          "candidate_parent_ratio": 0.9974194022880494,
+          "geometric_mean_difference_s": -8.460495675252644e-05
+        },
+        {
+          "cell": "high-degree-weak-t1",
+          "block": 0,
+          "orientation": "ABBA",
+          "native_seconds": {
+            "parent": [
+              0.375709,
+              0.381095
+            ],
+            "candidate": [
+              0.363291,
+              0.362865
+            ]
+          },
+          "geometric_mean_s": {
+            "parent": 0.37839241714785987,
+            "candidate": 0.36307793752168416
+          },
+          "candidate_parent_ratio": 0.9595275197594897,
+          "geometric_mean_difference_s": -0.015314479626175714
+        },
+        {
+          "cell": "high-degree-weak-t1",
+          "block": 1,
+          "orientation": "BAAB",
+          "native_seconds": {
+            "parent": [
+              0.360275,
+              0.380499
+            ],
+            "candidate": [
+              0.364579,
+              0.360372
+            ]
+          },
+          "geometric_mean_s": {
+            "parent": 0.37024893953257987,
+            "candidate": 0.362469396484724
+          },
+          "candidate_parent_ratio": 0.9789883448209814,
+          "geometric_mean_difference_s": -0.007779543047855886
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "block": 0,
+          "orientation": "BAAB",
+          "native_seconds": {
+            "parent": [
+              0.214162,
+              0.225691
+            ],
+            "candidate": [
+              0.216214,
+              0.231225
+            ]
+          },
+          "geometric_mean_s": {
+            "parent": 0.2198509402799997,
+            "candidate": 0.22359356464352903
+          },
+          "candidate_parent_ratio": 1.0170234630734931,
+          "geometric_mean_difference_s": 0.0037426243635293177
+        },
+        {
+          "cell": "high-degree-weak-t4",
+          "block": 1,
+          "orientation": "ABBA",
+          "native_seconds": {
+            "parent": [
+              0.206934,
+              0.205961
+            ],
+            "candidate": [
+              0.216245,
+              0.22446
+            ]
+          },
+          "geometric_mean_s": {
+            "parent": 0.20644692677296023,
+            "candidate": 0.2203142135678041
+          },
+          "candidate_parent_ratio": 1.0671711950940999,
+          "geometric_mean_difference_s": 0.013867286794843864
+        }
+      ],
+      "traces": {
+        "weak-t1": {
+          "actions": [
+            {
+              "final": "0",
+              "iterations_limit": 16000,
+              "iterations_used": 22,
+              "preset": "routing_portfolio_unseeded",
+              "setup_work_limit": 168968192,
+              "setup_work_used": 92029272
+            },
+            {
+              "final": "1",
+              "iterations_limit": 16000,
+              "iterations_used": 8,
+              "preset": "routing_portfolio_unseeded",
+              "setup_work_limit": 67970048,
+              "setup_work_used": 0
+            }
+          ],
+          "routes": [
+            {
+              "checkpoint": "16",
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1",
+              "setup_limit": "168968192",
+              "setup_work": "92029272"
+            }
+          ]
+        },
+        "weak-t4": {
+          "actions": [
+            {
+              "final": "0",
+              "iterations_limit": 16000,
+              "iterations_used": 22,
+              "preset": "routing_portfolio_unseeded",
+              "setup_work_limit": 168968192,
+              "setup_work_used": 92029272
+            },
+            {
+              "final": "1",
+              "iterations_limit": 16000,
+              "iterations_used": 8,
+              "preset": "routing_portfolio_unseeded",
+              "setup_work_limit": 67970048,
+              "setup_work_used": 0
+            }
+          ],
+          "routes": [
+            {
+              "checkpoint": "16",
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1",
+              "setup_limit": "168968192",
+              "setup_work": "92029272"
+            }
+          ]
+        },
+        "high-degree-weak-t1": {
+          "actions": [
+            {
+              "final": "0",
+              "iterations_limit": 16000,
+              "iterations_used": 21,
+              "preset": "routing_portfolio_unseeded",
+              "setup_work_limit": 977928192,
+              "setup_work_used": 791553688
+            },
+            {
+              "final": "1",
+              "iterations_limit": 16000,
+              "iterations_used": 7,
+              "preset": "routing_portfolio_unseeded",
+              "setup_work_limit": 391938048,
+              "setup_work_used": 0
+            }
+          ],
+          "routes": [
+            {
+              "checkpoint": "16",
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1",
+              "setup_limit": "977928192",
+              "setup_work": "791553688"
+            }
+          ]
+        },
+        "high-degree-weak-t4": {
+          "actions": [
+            {
+              "final": "0",
+              "iterations_limit": 16000,
+              "iterations_used": 21,
+              "preset": "routing_portfolio_unseeded",
+              "setup_work_limit": 977928192,
+              "setup_work_used": 791553688
+            },
+            {
+              "final": "1",
+              "iterations_limit": 16000,
+              "iterations_used": 7,
+              "preset": "routing_portfolio_unseeded",
+              "setup_work_limit": 391938048,
+              "setup_work_used": 0
+            }
+          ],
+          "routes": [
+            {
+              "checkpoint": "16",
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1",
+              "setup_limit": "977928192",
+              "setup_work": "791553688"
+            }
+          ]
+        }
+      }
+    },
+    "independent_raw_review": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high",
+      "status": "GO_completed_exact_descriptive_diagnostic",
+      "qualification": false,
+      "blocking_scientific_findings": [],
+      "scientific_checks": [
+        "Replayed frozen Science.check in schedule order and required every recomputed field to equal the recorded result.",
+        "Separately read every raw output again and directly checked all forty against the original independent A oracle, columns and original factor/model metadata; the thirty-two clean calls are not accepted solely by trusting recorded hashes.",
+        "Fixed-worker exact output bits, output columns and solver signatures match across both arms and all five calls per arm/cell. Only declared clocks and observed memory are excluded from scientific exactness.",
+        "Eight traced prerequisites have identical charged work, routes and iteration signatures across arms, and all original memory/setup/native caps pass. Clean calls emit no solver/phase instrumentation and match their prerequisites exactly.",
+        "Cross-worker independent scientific comparison and discrete solver checks pass for both arms and families. Observed maximum output difference is zero.",
+        "Weak primary/final iterations22/8, high-degree-weak21/7; primary setup92029272 and791553688 respectively, final reuse setup0, all unchanged between arms and workers."
+      ],
+      "lifecycle_checks": [
+        "All forty requests match the frozen schedule and exact selected plugin/harness/input/output argv. Exactly forty command files, one native claim and forty recorded calls; no retries, replacements or exclusions.",
+        "Every child exits0 with null primary/cleanup errors, no deferred signals or cleanup escalation. Per-call120-second limit and sequential nonoverlapping UTC command intervals pass. Total39.730429s is within original1800-second inclusive budget with30-second reserve.",
+        "All149 frozen plan bindings and350 unique referenced files rehashed. Original result, plan, calls and host observations were not modified.",
+        "Paired summary independently recalculated using sqrt(t1*t2) per arm, with exact block orientation and two calls per arm. Ratios agree within rounding; the original summarizer also reproduces the entire recorded summary exactly."
+      ],
+      "host_interpretation": "All eighty snapshots are present without observer errors. No cargo/rustc/rustdoc or run_tests.sh process was observed. Browser, WindowServer, Codex, indexing and other desktop activity remains visible; aggregate matched-PID endpoint CPU deltas are contextual and neither a complete isolation proof nor an independent time-sampling series. Short-lived activity can be missed. No observation is excluded, corrected or causally attributed to host noise.",
+      "engineering_recommendation": {
+        "decision": "archive_prototype_and_restore_exact_two_file_parent",
+        "base": "016cb804e0f734f1e53d709fd8bf8b3dcb4db019",
+        "files": [
+          "crates/fereg-core/src/fe/cmg_schur/bounded.rs",
+          "tests/reference/complexity.json"
+        ],
+        "rationale": [
+          "The intended permission-credit machine-code path is established separately, and exact science/work evidence passes, but this fixed panel does not show a consistently useful complete-fit payoff.",
+          "High-degree-weak at one worker improves by about4.05% and2.10%; at four workers the candidate is slower in both reversed orientations by about1.70% and6.72% (approximately3.74ms and13.87ms in geometric means). Weak results range from about3.76% faster to3.17% slower, with two nearly neutral blocks.",
+          "The candidate adds fifteen production lines plus a new asynchronous cancellation-polling contract and its maintenance witnesses. The mixed end-to-end evidence is insufficient to justify retaining that added scope over the simpler reviewed gate parent.",
+          "Restoring the two exact preimages retains the earlier gate-inlining improvement and all prior closed outcomes. Keep the failed-benefit experiment's source/build/raw evidence and compact findings."
+        ],
+        "limitations": [
+          "This is an engineering recommendation, not a statistically qualified nonregression verdict, confidence bound or proof that permission credit causes the four-worker slowdown. Two blocks and ordinary host activity do not establish those claims.",
+          "A single block exceeding a5% descriptive ratio is not by itself the formal performance gate; no threshold or family/worker routing exception is derived.",
+          "Do not reopen, extend or selectively resample this fixed diagnostic to seek a pass. No further native/profiling/timing calls follow from this review.",
+          "No public Auto, B/C admission, SCC reopening, release qualification or general speedup claim."
+        ]
+      },
+      "hash_verified_unique_refs": 350,
+      "plan_bindings": 149,
+      "direct_original_oracle_checks": 40,
+      "maximum_cross_worker_output_difference": 0,
+      "host_snapshots": 80,
+      "host_errors": []
+    },
+    "preserved_failure": "Initial focused test incorrectly required terminal-policy budget=unlimited_used-1 to refuse. Existing terminal preflight may select cheaper coarsening. Corrected only that new expectation to compare old/new outcomes and hierarchy at each allowance; no production or tolerance repair. Original failed log remains accounted for.",
+    "limits": [
+      "Two blocks per cell are descriptive only; no confidence interval, formal nonregression failure/pass or causal slowdown claim.",
+      "All desktop/browser/indexing activity remains; endpoint snapshots do not establish continuous isolation. No result excluded or timing corrected.",
+      "Do not multiply Mac ratios into old SCC outcomes. No new SCC shortlist, Mac B/C admission or public Auto activation.",
+      "Close this microexperiment without expanded sampling or a worker-specific routing exception; proceed with the simpler integrated candidate and matched active-RHS coverage."
+    ],
+    "sha256": {
+      "source.patch": "67ba43671e43b860690359edab953114dcaa6d10697deb135d20a1e78d23e9bd",
+      "source-review.json": "75d30afdaa10185200214d37239f65f79e9d5e46e5bca1f820d149aa38505c42",
+      "source-integration.json": "61721d7743cc066371cec563da0ec0de60f7e66bfa69cfbf8b7781f8b316ebcc",
+      "logs/source-integration.command.json": "7915045db8fb716687aa7894c038b6aedfab85f8e0286943a899d6881473a430",
+      "build.py": "6248ae221571a81e86030edf891a86552168de0f1cdf9008c9b42f28a29113ae",
+      "build/complete.json": "aeea0cfbbd7693058d4e45cdc5d11457c3cba11de199ce4b44d2d12dd9245228",
+      "build/before.json": "a18a25abe4bea10dfa4e254d073e2c5f378183588a87a67c0cb8e610fd84f838",
+      "actual-build-review.json": "b39e6371fd182840faf575bce87cff6bfeb57b76209c4e82ec07d5ee0215c9c2",
+      "assembly-review.json": "a5bb4ed86e86c0752061ffb7998e7ba9d4d122c0b2fa820bdc0d9a3de385dea3",
+      "run.py": "77231ee106a1e5f905813c88dbb657c94c93546f5c15ef12b4c4522c382b00e7",
+      "diagnostic-helper-source-review.json": "2440fb0eb7cb13995a49a7fc1f77e1290dbf28809eaf640dd477cb446cd216e4",
+      "actual-admission.json": "b0ea60f92c03e732911f36e62a3ed395214b3048ab1e9f8422f7d5696272d237",
+      "proposal.json": "0e504376f1ee7fc3f22b67d4c984e031dc7fcb6783d7a2956ad18cf1ad564522",
+      "plan.json": "4cd65c10aaccaec3f3a303461b50a23a6fb10649930f2fb08a48a7358a35ef83",
+      "plan-review.json": "570b8b454d434e41ad0f3a979350412d5daa2957c34cfc55fcc0023b011671cf",
+      "result.json": "fb366c8075429f0b44869323b5d298ab3e130709ed9ccc40b1008035916b24f5",
+      "raw-review.json": "c4bd78b5a9c26a2549e25a9b20e0c6623509c5484c77c9062161d842ce66b497",
+      "cmg-tests.log": "aafd5271652359de57ff9b5f987e600f9690b432058358eee0b945dee3342910"
+    }
   }
 }

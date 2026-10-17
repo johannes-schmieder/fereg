@@ -1613,6 +1613,65 @@ source/build/review hashes and these limitations.
 | Forty-call result | `642fc517cae5dc0ecd42e223cd82d303eb506b67bd275ae13bd342874644f21b` |
 | Independent raw review | `4f37f6282428233c9973acfbb57fe6ac996ad78b168f5c373c6b171d4839bc60` |
 
+### Local heap-step credit diagnostic, 2026-10-17
+
+A separate private prototype grouped cancellation checks within a local heap
+sift. Eligibility required synchronous census mode, the bounded terminal policy and no
+external controller. After the original first-step gate, permission covered at
+most 15 further steps, capped by remaining work and ordinal capacity. Each
+executed step still charged 64 units and one ordinal before the unchanged
+comparison/swap body. Unused permission was discarded without charging it.
+The declared change was cancellation polling, bounded by 16 steps/1,024 charged
+computational units, not elapsed time. Controlled callbacks, successful work,
+scientific bits and non-cancelled refusal prefixes stayed exact.
+
+Independent Astra high source review and boundary witnesses pass. The source-only
+suite passes 1,942 Rust executions, 312 Python tests and seven portable checks;
+the private universal build passes audit and ABI/load checks. Actual ARM64 code
+bypasses the intended checks on credited steps; both local sift frames shrink
+from 208 to 192 bytes, while total text grows by 208 bytes. This establishes the
+mechanism, not a speed gain. The only failed focused check was a new test's
+incorrect assumption that a tighter terminal-policy budget must refuse; that
+policy can choose cheaper coarsening. The corrected test compares exact old/new
+outcomes at each allowance. No production or tolerance repair was needed.
+
+The separately frozen diagnostic ran exactly 40 calls: eight traced
+prerequisites/warmups followed by two balanced ABBA/BAAB blocks per cell, on
+revealed weak and high-degree weak A inputs at one/four workers. All calls
+completed in 39.730 seconds, within the original 1,800-second budget and
+120-second call limits. No retry, replacement or exclusion occurred.
+
+| Complete native-time ratio, candidate/parent | Block 1 | Block 2 | Geometric mean |
+| --- | ---: | ---: | ---: |
+| Weak, 1 worker | 0.99866 | 1.03170 | 1.01505 |
+| Weak, 4 workers | 0.96241 | 0.99742 | 0.97976 |
+| High-degree weak, 1 worker | 0.95953 | 0.97899 | 0.96921 |
+| High-degree weak, 4 workers | 1.01702 | 1.06717 | 1.04180 |
+
+Independent raw review checks all 40 outputs directly against the original
+oracles, exact science/signatures/repeats, work/resource traces and cross-worker
+results. All 149 plan bindings, 350 unique references and owned process outcomes
+verify. Eighty endpoint snapshots retain desktop/browser/indexing activity;
+they do not prove continuous isolation. All observations remain in the compact
+controlled-results record.
+
+**Decision:** discard this prototype and restore the exact `bounded.rs` and
+complexity inventory from `016cb804`. The high-degree/four-worker case is slower
+in both orientations, and the mixed evidence does not justify the additional
+cancellation contract and 15 production lines. This is engineering triage, not
+a statistically established regression or a formal nonregression verdict.
+Do not add a worker-specific exception or expand the completed panel. The
+earlier gate-inlining implementation remains. Public Auto, closed SCC outcomes
+and Mac B remain unchanged; integrated qualification is still pending.
+
+| Evidence | SHA-256 |
+| --- | --- |
+| Prototype patch | `67ba43671e43b860690359edab953114dcaa6d10697deb135d20a1e78d23e9bd` |
+| Candidate plugin | `e61bbb29ab3008d33f2e08d9ab558bf72d867a17f08e50604cba52cb4c019d6e` |
+| Fixed plan | `4cd65c10aaccaec3f3a303461b50a23a6fb10649930f2fb08a48a7358a35ef83` |
+| Forty-call result | `fb366c8075429f0b44869323b5d298ab3e130709ed9ccc40b1008035916b24f5` |
+| Independent raw review | `c4bd78b5a9c26a2549e25a9b20e0c6623509c5484c77c9062161d842ce66b497` |
+
 ### Serial CMG batch application diagnostic, 2026-10-17
 
 A private prototype used the actual submitted RHS count to select a serial
