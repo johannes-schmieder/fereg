@@ -184,9 +184,10 @@ MAP route. Historical geometry-led MAP witnesses now explicitly request diagonal
 preconditioning, outside the new Auto/Auto scope, while public Auto is checked
 against the selected hidden policy with independent QR, exact science/signatures,
 covariance and DoF at three, five and sixteen effects. Twelve focused oracle tests
-pass. The corresponding Stata witnesses preserve their numerical assertions;
-the strict route permits a MAP report only for a certified zero-update final
-residual. All previous failures remain recorded. The only changed production
+pass. The corresponding Stata witnesses preserve their numerical assertions.
+Strict unseeded routing retains original-input MAP fallback after an uncertified
+LSMR attempt; it does not promise fallback-free execution. All previous failures
+remain recorded. The only changed production
 token is the many-FE default flag; all 58 artifact inputs remain identical.
 The final `RUST_TEST_THREADS=1 ./scripts/run_tests.sh --source-only` passes:
 Python, Clippy, full Rust workspace, FFI and isolated allocator audits, portable
@@ -203,6 +204,43 @@ focused migrated oracle log
 `befd213629cf92089b8dd1227e3872f6cf3fcdabbf9836a9acecafbaab493403`;
 independent test migration review
 `bc6fe6201e01d4929a29dc51971c8dc7bb53055eb31b28cccb5eb58195c4f0df`.
+
+The private universal build from `a3f19059` passes the binary privacy/export/
+dependency audit and actual ABI/load/panic-containment checks on Apple Silicon.
+Its plugin SHA-256 is
+`5b2a34707e4e71e8d88c71152414940bd59a823e246e58be979a78fd10fcb95e`,
+build log `820ec2609c6de3de3b9745aca5269341d6943a0f5dc74dfe378541a42a57a1fc`,
+and source archive
+`bb35c7be8d69780e21553d8da58bdabd0923ed204aba071f3405c6853edf60a2`.
+Building both Darwin slices is not an Intel-host Stata qualification.
+
+All 96 actual-plugin native smoke calls pass independent science, exact repeats
+and selector comparisons. Six of the seven mapped Stata fixtures passed on the
+first run. The mixed-report migration incorrectly required LSMR without fallback;
+one bounded diagnostic confirmed the fixture's original certified MAP fallback
+with zero pilot iterations. Restoring its original precise MAP/fallback and final
+LSMR assertions, retaining every numerical check and adding zero-pilot and
+certificate checks, passes the complete fixture. The initial failure and diagnostic
+remain recorded; no runtime or plugin change was needed. The six already-passing
+fixtures were not repeated. All four real Ctrl-C checks pass: OLS, the positive-work
+optional builder, PPML, and a three-FE adaptation of the existing OLS fixture.
+The adaptation adds a nondegenerate third effect (dummy rank 18 to 19; including
+the regressor gives rank 20 in 24 observations) while retaining both native and
+post-plugin checkpoints and every rollback assertion. This does not establish
+interruption inside LSMR iterations; unchanged solver cancellation tests cover
+that layer. Exact hidden/public A/B equivalence remains pending.
+
+| Actual public-artifact checks | SHA-256 |
+| --- | --- |
+| Native 96-call science summary | `24c9c04801178148c5535deb5a7f398c4235d44986541f60ed261c6b2340a0b4` |
+| Initial Stata summary, six pass and one retained assertion failure | `ea0770e1952ff02500949c21b87a4228cf06de2121ecc0036e768100d62cd35a` |
+| Corrected complete mixed-report fixture | `ae2e03fdd17a7a96380b8ead5d588a3677c683318d31f2e134f5c258a8824d8b` |
+| Four Break outcomes | `2662f368df67770940a39e0e01f6eeb3cf630fa03ff4df701cf35bc619060b2c` |
+| Corrected independent migration review | `0ac933bd88b3053bc4524b72a2e7e7a6f33d466090728cf44a4dd78bd2f423b8` |
+
+The fixture-only correction reuses the passing full source and native build
+evidence: all 192 production modules and 58 artifact inputs equal `a3f19059`.
+The changed Stata fixture passed its focused execution without changing a tolerance.
 
 ## Main-branch GitHub installation, 2026-10-14
 
