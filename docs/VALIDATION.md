@@ -58,12 +58,100 @@ header, dependency, export and resolution checks. It retains source paths and
 is not a universal distribution artifact. The ordinary entrypoint correctly
 stops at the installed-plugin/source binding; the installed package is unchanged.
 An initial source-only run stopped at stale complexity positions, then passed
-after inventory refresh without another runtime edit. Seventeen final compact
+after inventory refresh without another runtime edit. Twenty-three final compact
 harness tests pass; the broader benchmark sweep passed 418 tests but two modules
 could not import optional dependencies. After task-private dependency setup,
 all 14 tests in those modules pass. Architectural and harness reviews found no
-remaining blockers. SCC scientific prerequisites and isolated discovery remain
-pending; no timing claim follows from these functional checks.
+remaining blockers. SCC job `8152292` completes all eight smoke calls and all
+192 scientific calls (12 families, four arms, one/four workers, two repeats).
+Independent references, cross-arm/cross-worker numerical and discrete checks,
+fixed-worker exact repeats and resource counters all pass. Accounting reports
+`failed=0`, `exit_status=0`, 96 seconds and `419.965M` maximum virtual memory.
+All four arms also pass a paired local smoke against the same frozen weak input
+and reference; these Mac timings are unused. The already-orthogonal case needs
+zero iterations and zero optional cell setup at either worker count.
+
+The first SCC preparation attempt (`8152145`) stopped at the serializer's
+`target/` path guard before generating data. The next (`8152146`) prepared all
+inputs/references but replay rejected an ABI-only environment flag before
+entering estimation. Both failed attempts are retained; only launcher paths and
+environment were repaired. The same frozen plan and samples were reused.
+The first isolated panel (`8152303`) completed all 672 calls with scientific
+agreement but remains rejected (`failed=0`, `exit_status=1`): the observer
+incorrectly compared live load and free-memory telemetry as fixed scheduler
+configuration. Independent review found stable allocation/topology/policy,
+complete scheduler/process coverage and no observed competing computation.
+All outcomes are retained as failed evidence. A separately frozen operational
+amendment changes only the observer and its regression tests; runtime, inputs,
+references, schedule and budgets remain identical. Twenty-three focused tests
+and independent review pass. The fresh science prerequisite (`8152401`) passes
+all 192 calls with clean accounting. Its input/reference and executable hashes
+match the original experiment; the amended tool manifest is recorded explicitly.
+
+The repaired isolated panel (`8152430`) completes 96 warmups and 576 measured
+calls across six complete blocks on `scc-wo4` (Broadwell E5-2680 v4).
+Accounting reports `failed=0`, `exit_status=0`, 280 seconds and `552.578M`
+maximum virtual memory. The 28-core reservation, physical topology, global
+quota, sole-job scheduler censuses and fixed four-core affinity pass independent
+checks. All 17 scheduler censuses and 49 process snapshots provide the required
+coverage; no competing computation is observed. Ordinary OS activity and every
+block remain included. All measured scientific fingerprints exactly match the
+same-allocation fixed-worker warmups. Solves use one or four workers; the full
+reservation establishes isolation, not 28-worker execution.
+
+These are descriptive complete-native-call comparisons from one allocation,
+not confidence-based qualification. Across 24 case/worker combinations, V2 has
+13 median savings above `max(5%, 1 ms)`, seven within that allowance and four
+median regressions beyond it versus task-start Auto. Against the original cells
+backend, V2 has only four such improvements, 18 within allowance and two
+regressions. Every ratio below is the median of six paired block ratios, not a
+ratio of independently computed medians. Below one favors V2. Individual
+block ratios are noisier: the largest V2/Auto ratio is 1.344 on disconnected
+four-worker input, whose paired median is 0.994. No observation is removed.
+
+| Family | V2 / Auto, 1 worker | V2 / Auto, 4 workers | V2 / cells, 1 worker | V2 / cells, 4 workers |
+| --- | ---: | ---: | ---: | ---: |
+| weak | 0.576 | 0.823 | 0.984 | 0.976 |
+| high-degree-weak | 0.803 | 1.006 | 1.229 | 0.969 |
+| dense | 1.005 | 1.092 | 1.033 | 0.926 |
+| repeated | 0.818 | 1.126 | 0.986 | 1.005 |
+| nonmovers | 0.569 | 0.859 | 0.936 | 1.003 |
+| hubs | 1.194 | 1.177 | 1.114 | 0.933 |
+| disconnected | 0.873 | 0.994 | 0.994 | 0.886 |
+| weight-dynamic | 0.664 | 0.860 | 1.034 | 1.049 |
+| wide | 0.888 | 0.977 | 1.015 | 0.965 |
+| inactive-zero | 0.999 | 0.969 | 0.995 | 0.993 |
+| low | 0.908 | 0.965 | 1.001 | 0.981 |
+| easy | 0.909 | 0.898 | 0.985 | 0.964 |
+
+The useful gains against Auto are real observations on this panel, but 12 of
+V2's 13 substantive median improvements already occur with the earlier cells
+backend. V2's extra engineering does not
+yet produce broad dominance. Its material regressions against Auto are dense
+links at four workers (9.2%), repeated links at four workers (12.6%), and hubs
+at one/four workers (19.4%/17.7%). Against original cells, high-degree weak at
+one worker regresses 22.9%, and hubs at one worker 11.4%.
+
+Retained warmup diagnostics suggest two different costs to investigate, without
+turning those single traced calls into performance qualification. Dense/repeated
+cases pay setup for already short solves. High-degree weak changes iteration
+behavior under the true diagonal: the two FE passes use 45/37 iterations,
+versus 53/18 for original cells. Hubs retain five/four iterations; V2's traced
+FE solve-phase time exceeds Auto at both worker settings, while against
+original cells it is slower at one worker and faster at four. These timers do
+not isolate operator work from the other solve-phase costs. Thus a universally
+enabled true diagonal or parallel cell operator is not justified. The next useful engineering step is to separate
+preconditioner choice from compact storage, measure setup/operator/certification
+costs on the failing families, and admit optional setup only when a general
+cost model can repay it. Preserve the certified incumbent continuation and
+untouched confirmation samples; do not add family-specific routing exceptions.
+
+Public Auto remains unchanged. This small synthetic Linux discovery panel does
+not establish a general regression-command win, large-data scaling, a Mac
+speedup, or a remedy for the separate stored-iterate precision plateau.
+Compact test identities, every accepted and rejected timing, paired summaries,
+scientific fingerprints and observer hashes are retained in the
+[prototype evidence](../bench/results/compact-cells-20261016.json).
 
 ## Main-branch GitHub installation, 2026-10-14
 
