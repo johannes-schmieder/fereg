@@ -44,6 +44,7 @@ pub(super) struct Work<'a> {
 }
 
 impl Work<'_> {
+    #[inline(always)]
     fn gate(&mut self, phase: &'static str, operation: BuildOperation) -> Attempt<()> {
         crate::interrupt::checkpoint()?;
         let units = match operation {
@@ -86,6 +87,7 @@ impl Work<'_> {
         Ok(())
     }
 
+    #[inline(always)]
     pub(super) fn charge(&mut self, units: u16) -> Attempt<()> {
         self.gate("fereg.cmg.prepare", BuildOperation::Work { units })
     }
@@ -1240,6 +1242,103 @@ fn graph(
 #[cfg(test)]
 mod control_tests {
     use super::*;
+
+    #[test]
+    fn gate_rejections_preserve_state_and_admission_order() {
+        let calls = std::cell::Cell::new(0);
+        let decision = std::cell::Cell::new(BuildDecision::Continue);
+        let mut control = |boundary: cmg::BuildBoundary| {
+            calls.set(calls.get() + 1);
+            assert_eq!(boundary.chunk_id, 7);
+            assert_eq!(boundary.charged_work, 2);
+            decision.get()
+        };
+        let mut work = Work {
+            budget: 4,
+            used: 2,
+            ordinal: u64::MAX,
+            control: Some(&mut control),
+        };
+        for units in [0, 1025] {
+            assert!(matches!(work.charge(units), Err(AttemptError::Fatal(error))
+                if error.code == crate::error::ErrorCode::InvalidData
+                    && error.message == "invalid bounded CMG work chunk"));
+        }
+        // Budget refusal precedes ordinal overflow, without reaching the controller.
+        assert!(matches!(
+            work.charge(3),
+            Err(AttemptError::Refused(BuildRefusal::WorkBudget))
+        ));
+        assert!(matches!(work.charge(1), Err(AttemptError::Fatal(error))
+            if error.message == "bounded CMG operation ordinal overflows"));
+        assert_eq!((work.used, work.ordinal, calls.get()), (2, u64::MAX, 0));
+
+        work.ordinal = 7;
+        decision.set(BuildDecision::StopUnused);
+        assert!(matches!(
+            work.charge(2),
+            Err(AttemptError::Refused(BuildRefusal::Unused))
+        ));
+        decision.set(BuildDecision::Interrupted);
+        assert!(matches!(work.charge(2), Err(AttemptError::Fatal(error))
+            if error.code == crate::error::ErrorCode::Interrupted));
+        assert_eq!((work.used, work.ordinal, calls.get()), (2, 7, 2));
+        decision.set(BuildDecision::Continue);
+        assert!(work.charge(2).is_ok());
+        assert_eq!((work.used, work.ordinal, calls.get()), (4, 8, 3));
+        assert!(matches!(
+            work.charge(1),
+            Err(AttemptError::Refused(BuildRefusal::WorkBudget))
+        ));
+        assert_eq!((work.used, work.ordinal, calls.get()), (4, 8, 3));
+    }
+
+    #[test]
+    fn gate_cancellation_precedence_isolated() {
+        const CHILD: &str = "FEREG_CMG_GATE_CANCELLATION_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .env(CHILD, "1")
+                .args([
+                    "fe::cmg_schur::bounded::control_tests::gate_cancellation_precedence_isolated",
+                    "--exact",
+                    "--test-threads=1",
+                ])
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        let calls = std::cell::Cell::new(0);
+        let mut control = |_| {
+            calls.set(calls.get() + 1);
+            crate::interrupt::request_cancellation();
+            BuildDecision::Continue
+        };
+        let mut work = Work {
+            budget: 0,
+            used: 0,
+            ordinal: u64::MAX,
+            control: Some(&mut control),
+        };
+        crate::interrupt::request_cancellation();
+        for units in [0, 1, 1025] {
+            assert!(matches!(work.charge(units), Err(AttemptError::Fatal(error))
+                if error.code == crate::error::ErrorCode::Interrupted));
+        }
+        assert_eq!((work.used, work.ordinal, calls.get()), (0, u64::MAX, 0));
+        crate::interrupt::reset_cancellation();
+        work.budget = 1;
+        work.ordinal = 0;
+        // A controller-triggered cancellation does not retroactively reject an
+        // admitted operation. The next original checkpoint observes it first.
+        assert!(work.charge(1).is_ok());
+        assert_eq!((work.used, work.ordinal, calls.get()), (1, 1, 1));
+        assert!(matches!(work.charge(1), Err(AttemptError::Fatal(error))
+            if error.code == crate::error::ErrorCode::Interrupted));
+        assert_eq!((work.used, work.ordinal, calls.get()), (1, 1, 1));
+        crate::interrupt::reset_cancellation();
+    }
 
     fn candidate(control: &mut dyn cmg::BuildControl) -> Result<(BoundedCmgBuild, f64)> {
         CmgSchurPreconditioner::try_build_reduced_bounded_controlled(

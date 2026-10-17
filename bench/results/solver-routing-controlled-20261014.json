@@ -12529,7 +12529,7 @@
           "asset": "fereg-0.5.0-build-instructions.md",
           "archive_unchanged": true,
           "requirement": "The frozen archive abbreviated command omits Rust path remaps needed by the maintained raw-byte path audit. The companion supplies the actual successful offline recipe; plain unadorned build command is not claimed passing.",
-          "checks": "Exact companion copy, Bash syntax and local links pass; independent gpt-6-astra high technical recipe review GO after qualified\u2192validated wording correction and fail-fast shell hardening. No fresh build or byte-reproducibility claim."
+          "checks": "Exact companion copy, Bash syntax and local links pass; independent gpt-6-astra high technical recipe review GO after qualified→validated wording correction and fail-fast shell hardening. No fresh build or byte-reproducibility claim."
         },
         "independent_milestone_review": {
           "model": "gpt-6-astra",
@@ -12634,7 +12634,7 @@
       ],
       "source_sha256": "d68c529e98c14f90bbe872cecfc9d957888c961b5e0771c1cdfa2de2a6c994e9",
       "pdf_sha256": "99ce95328c5bb0845280d127bc94d6648cdcc4b475c94bc128cc999cc0dcd4d9",
-      "review": "Prior independent Astra source/math and native reviews of pages23\u201326 remain valid. Page27 reports the completed fresh SCC NO-GO and RHS limitation, with independent high-effort fact/math review and final raw evidence review9319bcc143e8c32a97f5935f9ae3005ac8f5d9fae09f50efe75789c58be77559. Built-in compilation passes. Lead visually checked latest cover and page27; pages2\u201326 source and extracted text are unchanged after header/footer and whitespace normalization. No new full Pro review is claimed.",
+      "review": "Prior independent Astra source/math and native reviews of pages23–26 remain valid. Page27 reports the completed fresh SCC NO-GO and RHS limitation, with independent high-effort fact/math review and final raw evidence review9319bcc143e8c32a97f5935f9ae3005ac8f5d9fae09f50efe75789c58be77559. Built-in compilation passes. Lead visually checked latest cover and page27; pages2–26 source and extracted text are unchanged after header/footer and whitespace normalization. No new full Pro review is claimed.",
       "status": "Functional evidence remains valid, but the fresh three-node portfolio screen closes NO-GO. PublicAuto unchanged; no new MacB, activation or C.",
       "layout_checks": "27pages with no cover spill; final leaf header/footer date/status verified. Initial strict extracted-space comparison flagged word-joining differences; whitespace-insensitive content comparison and exact earlier source-body prefix pass. New final leaf and cover visually verified."
     }
@@ -12667,7 +12667,7 @@
       "interpretation": "No new jobs submitted. SSH availability is distinct from scheduler responsiveness.",
       "follow_up_client_diagnosis": {
         "capture_sha256": "58df315e9b703d83cb0b81eeb885b69940d7dc704044d6be4023b6b67dbda174",
-        "time_utc": "2026-10-16T02:12:55.744Z\u201302:13:18.211Z",
+        "time_utc": "2026-10-16T02:12:55.744Z–02:13:18.211Z",
         "queries": 2,
         "per_query_cap_seconds": 10,
         "result": "Login and nonlogin shells resolve the same qstat/qconf clients and SGE_ROOT; client help succeeds, both owner qstat calls time out with empty outputs. No observed client/module environment difference explains the blocker; SSH works, cause unproven.",
@@ -12814,7 +12814,7 @@
       "superseded_source_sha256": "e2a9191f7b3505f883135de5566e89a3666e757d0af9530b6fe09deb3a5a01a8"
     },
     "scheduler_transport_diagnosis": {
-      "time_utc": "2026-10-16T03:04:36.716Z\u201303:05:37.266Z",
+      "time_utc": "2026-10-16T03:04:36.716Z–03:05:37.266Z",
       "SSH_host": "scc1",
       "configured_master": "sccsvc.bu.edu:536",
       "one_TCP_connection": "passed0.000120s",
@@ -12858,7 +12858,7 @@
     },
     "SCC_live_tool_inventory": {
       "status": "read_only_success",
-      "time_utc": "2026-10-16T03:18:01.326978Z\u201303:18:08.760381Z",
+      "time_utc": "2026-10-16T03:18:01.326978Z–03:18:08.760381Z",
       "capture_sha256": "75c0469b3e4b4c66d2f944939fcccc0f4e14518082635336b0f65d17ec84c6df",
       "elapsed_seconds": 7.433115917,
       "Rust_Cargo": "1.85.1",
@@ -14026,7 +14026,7 @@
       "latex_builtin_compiler": "success",
       "PDF_pages": 27,
       "PDF_visual_QA": "cover and new final leaf pass; unchanged earlier page layouts reused",
-      "earlier_document_content": "pages2\u201326 exact source prefix and extracted-content equality after header/footer/whitespace normalization",
+      "earlier_document_content": "pages2–26 exact source prefix and extracted-content equality after header/footer/whitespace normalization",
       "independent_fact_math_review": "gpt-6-astra high GO; final review9319 and all42 ratios/counts/scope checked",
       "raw_review_metadata_retained_on_SCC": true
     }
@@ -23680,6 +23680,311 @@
       "owned_target_and_recorder_processes": 16,
       "exports": 16,
       "source_annotations_prototype": "GO only for unchanged gate/charge semantics; actual optimized assembly and enclosing performance remain untested"
+    }
+  },
+  "cmg_gate_inlining_diagnostic_20261017": {
+    "status": "completed_exact_descriptive_diagnostic; retain two annotations within experimental workstream; no routing promotion",
+    "base_source": "96465b0dedcfefaac63061fa17c9e226c274f0f9",
+    "parent_source": "020eab1e9559fd68f619a4ec73fb04fcb6d1136f",
+    "parent_plugin_sha256": "2c85d8901df9059fcbe747dea5ef6a1e67d6eaf21d600e890219f909b21bc71f",
+    "production_change": [
+      "inline(always) on bounded Work::gate",
+      "inline(always) on bounded Work::charge"
+    ],
+    "unchanged": [
+      "arithmetic and sorting order",
+      "all cancellation checkpoints",
+      "work charges and budget checks",
+      "ordinal/controller/commit ordering",
+      "sampling, h16 and memory/refusal rules",
+      "public Auto policy"
+    ],
+    "assembly": {
+      "arm64_text_increase_bytes": 20920,
+      "arm64_text_increase_percent": 0.3591,
+      "mechanism": "Repeated local gate calls disappear in both sift loops and census; checks, optional callback and commits remain. Larger enclosing frames and remaining spills are retained; upstream dynamic meter is unchanged."
+    },
+    "checks": {
+      "focused_bounded_tests": 12,
+      "isolated_child_tests": 1,
+      "source_only_rust_executions": 1938,
+      "python_tests": 312,
+      "portable_checks": 7,
+      "build_tool_tests": 4,
+      "diagnostic_tool_tests": 14,
+      "native_build_abi": "pass: universal audit and actual-plugin load; 18 clean lifecycle commands",
+      "installed_package_admission": false,
+      "linux_mock_audit": "unavailable on Mac",
+      "complexity": "two added production lines only; no limit/exemption change",
+      "complete_build_workflow_s": 166.6641265
+    },
+    "protocol": {
+      "families": [
+        "weak",
+        "high-degree-weak"
+      ],
+      "workers": [
+        1,
+        4
+      ],
+      "traced_prerequisite_warmups": 8,
+      "clean_calls": 32,
+      "calls": 40,
+      "per_cell_blocks": 2,
+      "orientations": [
+        "ABBA",
+        "BAAB"
+      ],
+      "call_cap_s": 120,
+      "inclusive_cap_s": 1800,
+      "cleanup_reserve_s": 30,
+      "retries": 0,
+      "replacements": 0,
+      "exclusions": 0,
+      "qualification": false
+    },
+    "actual": {
+      "elapsed_s": 37.47250237502158,
+      "calls": 40,
+      "passed": 40,
+      "failed": 0,
+      "bindings_checked": 97,
+      "raw_artifacts_checked": 200,
+      "independent_oracle_rechecks": 40,
+      "exact_science_checks": 40,
+      "traced_resource_checks": 8,
+      "host_snapshots": 80,
+      "host_process_rows": 108158,
+      "host_observation_errors": 0
+    },
+    "cells": [
+      {
+        "cell": "weak-t1",
+        "block_ratios": [
+          0.9702117488700687,
+          0.9665348772349961
+        ],
+        "geometric_mean_ratio": 0.9683715679356156,
+        "parent_geometric_mean_s": 0.058975511055834776,
+        "candidate_geometric_mean_s": 0.05711020811094295
+      },
+      {
+        "cell": "weak-t4",
+        "block_ratios": [
+          0.9448450121862758,
+          0.9570418708220396
+        ],
+        "geometric_mean_ratio": 0.9509238865964121,
+        "parent_geometric_mean_s": 0.03313108090776734,
+        "candidate_geometric_mean_s": 0.03150513622395431
+      },
+      {
+        "cell": "high-degree-weak-t1",
+        "block_ratios": [
+          0.9556278146868038,
+          0.9491509180811812
+        ],
+        "geometric_mean_ratio": 0.95238386045433,
+        "parent_geometric_mean_s": 0.3662449352103251,
+        "candidate_geometric_mean_s": 0.34880576526745544
+      },
+      {
+        "cell": "high-degree-weak-t4",
+        "block_ratios": [
+          0.9335088871201571,
+          0.9360723901241698
+        ],
+        "geometric_mean_ratio": 0.9347897598758339,
+        "parent_geometric_mean_s": 0.21570608968005628,
+        "candidate_geometric_mean_s": 0.2016398437757749
+      }
+    ],
+    "blocks": [
+      {
+        "block": 0,
+        "cell": "weak-t1",
+        "geometric_mean_s": {
+          "candidate": 0.057079479394962954,
+          "parent": 0.05883198122620042
+        },
+        "native_total_s": {
+          "candidate": 0.114159,
+          "parent": 0.11766399999999999
+        },
+        "orientation": "ABBA",
+        "ratio": 0.9702117488700687,
+        "total_difference_s": -0.0035049999999999942
+      },
+      {
+        "block": 1,
+        "cell": "weak-t1",
+        "geometric_mean_s": {
+          "candidate": 0.05714095336971549,
+          "parent": 0.05911939104896125
+        },
+        "native_total_s": {
+          "candidate": 0.114282,
+          "parent": 0.11823900000000001
+        },
+        "orientation": "BAAB",
+        "ratio": 0.9665348772349961,
+        "total_difference_s": -0.003957000000000016
+      },
+      {
+        "block": 0,
+        "cell": "weak-t4",
+        "geometric_mean_s": {
+          "candidate": 0.031423,
+          "parent": 0.03325730632507691
+        },
+        "native_total_s": {
+          "candidate": 0.062846,
+          "parent": 0.06651499999999999
+        },
+        "orientation": "BAAB",
+        "ratio": 0.9448450121862758,
+        "total_difference_s": -0.0036689999999999917
+      },
+      {
+        "block": 1,
+        "cell": "weak-t4",
+        "geometric_mean_s": {
+          "candidate": 0.031587487142854524,
+          "parent": 0.03300533456882386
+        },
+        "native_total_s": {
+          "candidate": 0.063175,
+          "parent": 0.066011
+        },
+        "orientation": "ABBA",
+        "ratio": 0.9570418708220396,
+        "total_difference_s": -0.002836000000000005
+      },
+      {
+        "block": 0,
+        "cell": "high-degree-weak-t1",
+        "geometric_mean_s": {
+          "candidate": 0.3484604149225562,
+          "parent": 0.3646403019744252
+        },
+        "native_total_s": {
+          "candidate": 0.696921,
+          "parent": 0.72929
+        },
+        "orientation": "ABBA",
+        "ratio": 0.9556278146868038,
+        "total_difference_s": -0.03236899999999998
+      },
+      {
+        "block": 1,
+        "cell": "high-degree-weak-t1",
+        "geometric_mean_s": {
+          "candidate": 0.34915145788038743,
+          "parent": 0.36785662978258254
+        },
+        "native_total_s": {
+          "candidate": 0.698303,
+          "parent": 0.73578
+        },
+        "orientation": "BAAB",
+        "ratio": 0.9491509180811812,
+        "total_difference_s": -0.03747699999999998
+      },
+      {
+        "block": 0,
+        "cell": "high-degree-weak-t4",
+        "geometric_mean_s": {
+          "candidate": 0.2010944852550661,
+          "parent": 0.2154178583938667
+        },
+        "native_total_s": {
+          "candidate": 0.40219000000000005,
+          "parent": 0.430836
+        },
+        "orientation": "BAAB",
+        "ratio": 0.9335088871201571,
+        "total_difference_s": -0.02864599999999995
+      },
+      {
+        "block": 1,
+        "cell": "high-degree-weak-t4",
+        "geometric_mean_s": {
+          "candidate": 0.20218668128242276,
+          "parent": 0.21599470662263925
+        },
+        "native_total_s": {
+          "candidate": 0.404374,
+          "parent": 0.43199
+        },
+        "orientation": "ABBA",
+        "ratio": 0.9360723901241698,
+        "total_difference_s": -0.027615999999999974
+      }
+    ],
+    "resource_facts": {
+      "all_traced_routes": {
+        "checkpoint": 16,
+        "final_action_new_setup_work": 0,
+        "installed": true,
+        "same_across_arms_and_workers": true,
+        "samples": 1
+      },
+      "high-degree-weak": {
+        "final_iterations": 7,
+        "main_iterations": 21,
+        "setup_limit": 977928192,
+        "setup_work": 791553688
+      },
+      "weak": {
+        "final_iterations": 8,
+        "main_iterations": 22,
+        "setup_limit": 168968192,
+        "setup_work": 92029272
+      }
+    },
+    "interpretation": "Every paired block favors the candidate, with observed complete-fit reductions about3–6.6%. Retain the minimal annotations and stop this hypothesis diagnostic. No additional annotation tuning/sampling follows.",
+    "limits": [
+      "Two blocks per cell on two revealed families are descriptive, not a confidence bound or broad nonregression qualification.",
+      "Endpoint host observations preserve ordinary desktop/indexing noise without exclusion, not uninterrupted whole-call isolation.",
+      "No Linux, new SCC, B/C or public routing claim. Never multiply these Mac ratios into old SCC results.",
+      "Full workstream qualification remains pending; all old failed campaigns and B remain closed."
+    ],
+    "independent_review": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high",
+      "verdict": "GO_completed_exact_descriptive_diagnostic",
+      "recommendation": {
+        "basis": "Exact science/work/control behavior, focused cancellation/admission witnesses, full source integration and inspected caller code generation agree. Both complete-fit blocks improve in every tested cell, with roughly3–6.6% observed reductions and no selected exclusions.",
+        "decision": "Retain the two annotations as the smallest supported engineering change; no further annotation tuning or additional diagnostic sampling is needed for this hypothesis.",
+        "do_not_infer": "Do not multiply these ratios into historical SCC outcomes, reopen failed campaigns, admit B/C or activate public routing. No universal speedup or confidence bound is established.",
+        "integration_boundary": "Any integration remains an arithmetic-preserving code change with no routing/policy promotion. Keep the declared workstream performance boundary separate; the two-block descriptive panel does not satisfy broad controlled Mac nonregression or discovery/selection/confirmation."
+      }
+    },
+    "sha256": {
+      "patch": "df9be06d90fa3d6cdb3b20bb0d3eaf8480c30e2dc49925949fae79b8496067b4",
+      "source_review": "0215807b0efd5e05a39e9e575db325303f74721aee2d017be92bbedf565a60b6",
+      "build_helper": "9eb6444692e6b088e9876c25b9bb86b07c7ed502bbdf2d9877219a409f518156",
+      "build_tests": "ec8cb00bc3fc0e37818899c7d5ac4f56357da5f2c37814bcd74a7a27150deab5",
+      "build_test_output": "6ce592343ff248496069c0b48c83c649b5d3d0d4f09f78c2446719248d073b6a",
+      "build_complete": "83b1083efea94b3918a31357178abc6c09b2a459c2d1817288503d6b3a935565",
+      "build_source_snapshot": "146298f4037772e133a4ea6320cd66740071e0cf8f38baec32e38cad9697f83e",
+      "candidate": "c39553f948a9250019376e6c24a8d8cee2208f59d711c4f8fc66c5c22a646384",
+      "unstripped_candidate": "7c7524cba66ab6fc0f28d5849f27f980a10e97eb6ca1784c522380150e56deb0",
+      "assembly_review": "d72b3842b885bc0944c45eeba86df609822b222d2249e7000f19d132bf86b801",
+      "focused_science": "e7e9a81ba35096517d60f87057b045457c4404ecac78fc9fecb4949382b833b2",
+      "source_checks": "6e435f4aa3f135b9b108540918a24e3d5d46fcb48ba0378f0094c2fd9d95355c",
+      "source_integration": "3cde05b873720e985c3db79b209fedcbd0becda1d15ab73353d7eaeb99c97069",
+      "runner": "6dac7ea9df76800549d6c4422cfe0c3b29a940eb41542370b94f7c09bc6035d3",
+      "runner_tests": "78faa766772911a0c0cf9214c0543bb1c1ff7ea751ee9fefbfb3e9f576c88f8d",
+      "runner_test_output": "5928ed525bf4976aa782665e0e98e7a8508cc122d85e6ffa790d4e789bbe1e54",
+      "runner_source_review": "2482928757c6816825209082f9f4d08eec28465b0ad11646263ee569cafbfe5f",
+      "proposal": "277b1d29fe2178e3ba145cea14e387afba3a549025776f07210f2108fd65cbc2",
+      "admission": "9046ef3944f619f96012d152f31a2188342449c87261e75627b2c78948e8f2cd",
+      "plan": "5715b049c443838f692127a17bb3681a810d7458ea741a51c09c151c103d2dba",
+      "plan_review": "12237dd48b6ff639e898e04ae09c1157f9ee9864d885a13e3e05df222b85e07a",
+      "claim": "79898a5a792488a3194d8a1cbc06e76cc36de6a7f941cb997d700de7d72f20a3",
+      "result": "642fc517cae5dc0ecd42e223cd82d303eb506b67bd275ae13bd342874644f21b",
+      "raw_review": "4f37f6282428233c9973acfbb57fe6ac996ad78b168f5c373c6b171d4839bc60"
     }
   }
 }

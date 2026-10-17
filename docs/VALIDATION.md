@@ -1551,6 +1551,68 @@ the static experiment isolates only indirect dispatch. Full artifact, protocol,
 output and review hashes are in the compact controlled-results evidence; no
 release speed claim is made.
 
+### Local CMG work-gate inlining, 2026-10-17
+
+Two `inline(always)` annotations on the bounded builder's local work gate and
+charge wrapper remove repeated out-of-line calls from the two hot sift loops
+and census. Actual ARM64 assembly preserves cancellation, validation, budget,
+ordinal, optional-controller and commit ordering. Arithmetic, sorting, work
+tariffs, sampling, h16, memory admission and refusal boundaries are unchanged.
+The upstream dynamic meter remains. Enclosing frames grow and some spills
+remain; ARM64 text grows by 20,920 bytes (about 0.36%).
+
+The fixed Mac comparison uses the same revealed weak/high-degree weak cases
+and one/four workers as the preceding static-dispatch diagnostic. Eight traced
+prerequisites/warmups precede 32 clean calls, one ABBA and one BAAB block per
+cell. All 40 calls finish in 37.473 seconds, within the fixed 120-second call
+and 1,800-second inclusive limits. No retry, replacement or exclusion occurs.
+
+| Revealed case / workers | Block 1 ratio | Block 2 ratio | Geometric mean ratio | Parent → candidate native, ms |
+| --- | ---: | ---: | ---: | ---: |
+| Weak / 1 | 0.97021 | 0.96653 | 0.96837 | 58.976 → 57.110 |
+| Weak / 4 | 0.94485 | 0.95704 | 0.95092 | 33.131 → 31.505 |
+| High-degree weak / 1 | 0.95563 | 0.94915 | 0.95238 | 366.245 → 348.806 |
+| High-degree weak / 4 | 0.93351 | 0.93607 | 0.93479 | 215.706 → 201.640 |
+
+Ratios are candidate/parent; displayed native times are geometric means of
+the four clean observations per artifact/cell. Both blocks favor the candidate
+in every cell, with observed reductions of about 3–6.6%. Two blocks per cell
+are descriptive, not a confidence bound, broad nonregression qualification or
+release-performance claim. These Mac ratios cannot be multiplied into earlier
+Linux outcomes.
+
+Independent Astra high review rehashes all 97 bindings and 200 raw artifacts,
+recomputes the original numerical witnesses on all 40 retained outputs, and
+verifies exact science, repeats, solver signatures and eight traced resource
+checks. Setup charges, h16/k1 installation and iteration counts stay exact;
+the final action charges no new setup. All 40 owned captures finish cleanly.
+Eighty endpoint snapshots retain ordinary desktop/indexing noise without
+exclusion; they cannot establish continuous whole-call isolation.
+
+Focused admission-order and isolated cancellation witnesses pass. The full
+source-only suite passes 1,938 Rust executions, 312 Python tests and seven
+portable checks; the private universal build passes binary audit and actual
+plugin ABI/load checks. Four build-tool and 14 diagnostic-tool tests pass.
+The complexity inventory adds only the two production annotation lines and
+changes no limit or exemption. Installed-package admission was not performed;
+the Linux mock audit remains unavailable on Mac.
+
+Retain the two annotations within the experimental workstream and close this
+diagnostic without further annotation tuning or sampling. Full workstream
+qualification remains pending. Public Auto stays incumbent; no new SCC
+shortlist, Mac B/C admission or reopening of any old failed campaign follows.
+The compact evidence records the complete protocol, all block observations,
+source/build/review hashes and these limitations.
+
+| Inlining diagnostic binding | SHA-256 |
+| --- | --- |
+| Exact source patch | `df9be06d90fa3d6cdb3b20bb0d3eaf8480c30e2dc49925949fae79b8496067b4` |
+| Candidate plugin | `c39553f948a9250019376e6c24a8d8cee2208f59d711c4f8fc66c5c22a646384` |
+| Assembly review | `d72b3842b885bc0944c45eeba86df609822b222d2249e7000f19d132bf86b801` |
+| Fixed plan | `5715b049c443838f692127a17bb3681a810d7458ea741a51c09c151c103d2dba` |
+| Forty-call result | `642fc517cae5dc0ecd42e223cd82d303eb506b67bd275ae13bd342874644f21b` |
+| Independent raw review | `4f37f6282428233c9973acfbb57fe6ac996ad78b168f5c373c6b171d4839bc60` |
+
 ### CMG construction CPU profiles, 2026-10-17
 
 The first `/usr/bin/sample` design stopped at its non-estimation feasibility
@@ -1585,13 +1647,12 @@ frame percentages. All 2,893 rows remain retained, including 20 missing-stack,
 workers are not elapsed time; adjacent samples and two captures do not supply
 independent timing replications or a speedup confidence interval.
 
-The next finite prototype adds only inlining annotations to the local work gate
-and charge wrapper. Inspect actual optimized hot-loop assembly before measuring:
-the repeated out-of-line gate call and its frame/result traffic should disappear,
-while cancellation, budget, ordinal, controller and commit ordering remain exact.
-Keep sorting, arithmetic, tariffs and refusal boundaries unchanged. The observed
-36.5% is not a forecast of removable work. No checkpoint/RHS threshold, new SCC
-campaign, Mac B/C admission or public Auto activation follows from this profile.
+These profiles motivated the completed local gate-inlining diagnostic above.
+Actual optimized hot-loop assembly confirms removal of repeated local calls,
+while the finite paired comparison supplies separate complete-fit observations.
+The observed 36.5% was not a forecast of removable work. No checkpoint/RHS
+threshold, new SCC campaign, Mac B/C admission or public Auto activation follows
+from this profile.
 
 The original retained campaign is
 `/projectnb/welfgr/fereg/runs/portfolio-unseeded-20261016/`; the compact evidence

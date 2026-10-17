@@ -2384,7 +2384,7 @@ Explicit CMG-k1 / 4 & 21 / 22 & 0 / 0\\
 Among the 255 automatic setup samples, 93 end in \code{Work::gate} (36.5\%), 48 in local sift routines, 42 in upstream sift routines, 20 in callback wrappers and 52 elsewhere. These are disjoint leaf categories within setup ancestry. The explicit route uses a different construction path; its lower sample count does not establish interchangeable numerical or resource semantics.
 
 \begin{note}\smallbody
-\textbf{Next experiment.} Add only inlining annotations to the local gate and charge wrapper. Check actual optimized hot loops before measurement: repeated out-of-line calls and their per-charge frame/result traffic should disappear, while cancellation, budget, ordinal, controller and commit ordering remain exact. Keep sorting, arithmetic, tariffs, memory admission and refusal boundaries unchanged. A disappearing symbol alone is not evidence of less work; 36.5\% is not a predicted speedup.
+\textbf{Completed follow-up.} The next page tests two inlining annotations on the local gate and charge wrapper. Actual optimized hot loops remove repeated local calls and their per-charge frame/result traffic, while cancellation, budget, ordinal, controller and commit ordering stay exact. Sorting, arithmetic, tariffs, memory admission and refusal boundaries are unchanged. A disappearing symbol alone is not evidence of less work; 36.5\% was not a predicted speedup.
 \end{note}
 
 \sub{Capture mechanism and evidence limits}
@@ -2396,6 +2396,45 @@ The subsequent eight solver captures finish in 83.979 seconds and pass the origi
 \textbf{Interpretation.} One-millisecond CPU weights from multiple workers are not elapsed time. Adjacent samples and two captures do not provide independent timing replications or a speedup confidence interval. The fixed artifact, revealed A input and original science are unchanged. These observations select a small engineering experiment; they do not admit Mac B/C, activate public Auto or reopen a closed SCC campaign.
 \end{binding}
 \anchor{Parent unstripped artifact \code{65418e85}; Xcode plan \code{664bc13e}; source review \code{8fa51f7e}. Complete hashes, preserved failures and scope: compact controlled-results JSON and \code{docs/VALIDATION.md}.}
+\clearpage
+\end{compactleaf}
+
+% PAGE 36 / completed local gate inlining diagnostic.
+\begin{compactleaf}
+\smallbody
+\sect{35 / CONSTRUCTION IMPROVEMENT}{Inlining removes a small serial cost}
+\tagline{Forty exact Mac calls; all eight paired blocks improve; broad qualification remains pending.}
+Two annotations inline the local \code{Work::gate} and \code{Work::charge}. Actual ARM64 assembly removes repeated gate calls from both local sift loops and census. Every cancellation check, budget and ordinal rule, optional callback and commit remains. Sorting, arithmetic, sampling, h16 and refusal semantics stay fixed. The upstream dynamic meter is unchanged.
+
+\sub{Complete native-time ratios: candidate / parent}
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Revealed A case} & \textbf{Block 1} & \textbf{Block 2} & \textbf{Geometric mean}\\
+\midrule
+Weak, 1 worker & 0.97021 & 0.96653 & 0.96837\\
+Weak, 4 workers & 0.94485 & 0.95704 & 0.95092\\
+High-degree weak, 1 worker & 0.95563 & 0.94915 & 0.95238\\
+High-degree weak, 4 workers & 0.93351 & 0.93607 & 0.93479\\
+\bottomrule
+\end{tabular}
+\end{center}
+Each cell has one ABBA and one BAAB block after traced prerequisites/warmups. All 40 calls finish in 37.473 seconds; all observations remain, with no retries, replacements or exclusions. High-degree weak geometric-mean native time falls from 366.245 to 348.806 ms with one worker, and 215.706 to 201.640 ms with four. The larger proportional four-worker effect is consistent with reducing a serial setup cost; it does not prove a general core-scaling rule.
+
+\sub{Exact science and control behavior}
+Independent Astra high review recomputes the original numerical witnesses for all 40 outputs and verifies exact science, solver signatures, setup charges, routes and iterations. All 97 bindings, 200 raw artifacts and eight resource traces pass. Focused admission-order and isolated cancellation tests preserve failure precedence. The full source-only suite passes 1,938 Rust executions, 312 Python tests and seven portable checks; universal binary audit and actual-plugin ABI/load pass.
+
+\begin{note}\smallbody
+\textbf{Decision.} Retain the two annotations as a development improvement and close this diagnostic. ARM64 code grows by about 0.36\%; larger enclosing frames and some spills remain. Two blocks per cell support a small engineering step, not a confidence bound, broad nonregression claim or release qualification. Public Auto stays unchanged; old SCC outcomes and Mac B remain closed.
+\end{note}
+
+\sub{RHS application is the next separate question}
+The bounded route reuses a hierarchy but currently applies it one RHS at a time. A bounded batch workspace on that same hierarchy is a concrete way to investigate RHS amortization while retaining the upgrade checkpoint. It needs complete memory/work admission and matched cold-single, reused-single and wide-batch evidence. Knowing more future columns alone does not prove that earlier construction will pay off; many may solve cheaply.
+
+\begin{binding}\tinybody
+\textbf{Limits.} Eighty endpoint process snapshots retain ordinary desktop/indexing activity without exclusion; they do not prove continuous whole-call isolation. No installed-package admission, Linux result, fresh SCC shortlist or Mac B/C result follows. Never multiply these Mac ratios into earlier SCC measurements. Full workstream qualification remains pending.
+\end{binding}
+\anchor{Parent plugin \code{2c85d890}; candidate \code{c39553f9}; plan \code{5715b049}; result \code{642fc517}; raw review \code{4f37f628}. Full hashes and protocol: compact controlled-results JSON and \code{docs/VALIDATION.md}.}
 \clearpage
 \end{compactleaf}
 

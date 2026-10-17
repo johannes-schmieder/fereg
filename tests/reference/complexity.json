@@ -2,16 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 106373,
-      "before": 106348,
+      "after": 106375,
+      "before": 106373,
       "metric": "fereg-core/production_lines",
-      "reason": "Add one sanctioned private strict-unseeded routing control to isolate MAP-prefix value. The enum variant, constructor, family predicate and exact Auto-only injection reuse V1 two-FE and general solver ownership without new layouts, arithmetic, budgets or public routing. Independent source review and focused QR, exact unaffected-path, no-pilot, resource-layout and cross-worker witnesses cover the scope. The same reviewed candidate makes the synchronous external BuildControl optional, skipping only the no-op callback while retaining interrupt, validation, ordinal, budget and charge ordering; controlled and overlap callbacks remain. This contributes ten production lines and exact builder/refusal/native replay checks."
-    },
-    {
-      "after": 15271,
-      "before": 15265,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Add one sanctioned private strict-unseeded routing control to isolate MAP-prefix value. The enum variant, constructor, family predicate and exact Auto-only injection reuse V1 two-FE and general solver ownership without new layouts, arithmetic, budgets or public routing. Independent source review and focused QR, exact unaffected-path, no-pilot, resource-layout and cross-worker witnesses cover the scope."
+      "reason": "Two inline(always) annotations on the existing bounded CMG gate and charge wrapper target measured call/frame overhead. No gate logic, arithmetic, sorting, work tariff, cancellation point, external-controller boundary or refusal ordering changes. Isolated cancellation and admission-order regressions supplement existing exact builder/budget/cache witnesses; optimized code generation and performance remain separate checks."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -3568,136 +3562,136 @@
         "dispatch_candidates": [
           {
             "condition": "units > self . budget - self . used",
-            "line": 56
+            "line": 57
           },
           {
             "condition": "let Some ( budget ) = memory . budget",
-            "line": 213
+            "line": 215
           },
           {
             "condition": "n_retained == 0 || n_eliminated == 0 || ! ( 4.. = 6 ) . contains ( & degree ) || n_eliminated . checked_add ( 1 ) != Some ( row_ptr . len ( ) ) || row_ptr . first ( ) != Some ( & 0 ) || row_ptr . last ( ) . copied ( ) . map ( | n | n as usize ) != Some ( columns . len ( ) ) || columns . len ( ) != weights . len ( )",
-            "line": 271
+            "line": 273
           },
           {
             "condition": "pair [ 0 ] >= pair [ 1 ] || pair [ 1 ] as usize > columns . len ( )",
-            "line": 298
+            "line": 300
           },
           {
             "condition": "components . sizes . len ( ) != 1",
-            "line": 313
+            "line": 315
           },
           {
             "condition": "self . parallel . is_some ( ) || rhs . len ( ) != self . components . labels . len ( ) || scratch . len ( ) < rhs . len ( ) || ! weight_scale . is_finite ( ) || weight_scale <= 0.0",
-            "line": 351
+            "line": 353
           },
           {
             "condition": "design . effects ( ) . len ( ) != 2 || left_effect > 1 || rhs_capacity == 0",
-            "line": 414
+            "line": 416
           },
           {
             "condition": "! ( 4.. = 6 ) . contains ( & degree ) || firms . len ( ) != membership . nobs ( ) || matches ! ( weights , BorrowedMapWeights :: Provided ( w ) if w . len ( ) != firms . len ( ) )",
-            "line": 486
-          },
-          {
-            "condition": "w . len ( ) != firms . len ( ) )",
             "line": 488
           },
           {
+            "condition": "w . len ( ) != firms . len ( ) )",
+            "line": 490
+          },
+          {
             "condition": "weights",
-            "line": 749
+            "line": 751
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 953
+            "line": 955
           },
           {
             "condition": "self . cells . len ( ) > cutoff",
-            "line": 1056
+            "line": 1058
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1078
+            "line": 1080
           },
           {
             "condition": "let BorrowedMapWeights :: Provided ( values ) = weights",
-            "line": 1105
+            "line": 1107
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1109
+            "line": 1111
           },
           {
             "condition": "edges . len ( ) != counts . input_edges",
-            "line": 1206
+            "line": 1208
           }
         ],
         "functions": {
           "admit#1": {
-            "line": 203,
+            "line": 205,
             "lines": 21
           },
           "admitted_cache_bytes#1": {
-            "line": 911,
+            "line": 913,
             "lines": 23
           },
           "apply_reduced_in_place#1": {
-            "line": 345,
+            "line": 347,
             "lines": 47
           },
           "bank#1": {
-            "line": 844,
+            "line": 846,
             "lines": 3
           },
           "build_observations_bounded#1": {
-            "line": 472,
+            "line": 474,
             "lines": 69
           },
           "cache_envelope#1": {
-            "line": 836,
+            "line": 838,
             "lines": 74
           },
           "capacity#1": {
-            "line": 139,
+            "line": 141,
             "lines": 10
           },
           "census_bounded#1": {
-            "line": 991,
+            "line": 993,
             "lines": 48
           },
           "charge#1": {
-            "line": 89,
+            "line": 91,
             "lines": 3
           },
           "cmg#1": {
-            "line": 93,
+            "line": 95,
             "lines": 45
           },
           "component_options#1": {
-            "line": 774,
+            "line": 776,
             "lines": 7
           },
           "emit_edges_bounded#1": {
-            "line": 1040,
+            "line": 1042,
             "lines": 51
           },
           "entry#1": {
-            "line": 738,
+            "line": 740,
             "lines": 28
           },
           "filled#1": {
-            "line": 150,
+            "line": 152,
             "lines": 8
           },
           "find_root#1": {
-            "line": 693,
+            "line": 695,
             "lines": 10
           },
           "finish#1": {
-            "line": 543,
+            "line": 545,
             "lines": 95
           },
           "firm_count#1": {
-            "line": 727,
+            "line": 729,
             "lines": 5
           },
           "from#1": {
@@ -3705,79 +3699,79 @@
             "lines": 3
           },
           "gate#1": {
-            "line": 47,
+            "line": 48,
             "lines": 41
           },
           "graph#1": {
-            "line": 1093,
+            "line": 1095,
             "lines": 146
           },
           "graph_storage_bound#1": {
-            "line": 685,
+            "line": 687,
             "lines": 7
           },
           "load#1": {
-            "line": 807,
+            "line": 809,
             "lines": 19
           },
           "load_bounded#1": {
-            "line": 943,
+            "line": 945,
             "lines": 47
           },
           "new#1": {
-            "line": 790,
+            "line": 792,
             "lines": 6
           },
           "parts#1": {
-            "line": 643,
+            "line": 645,
             "lines": 13
           },
           "restore_scale#1": {
-            "line": 642,
+            "line": 644,
             "lines": 40
           },
           "row_count#1": {
-            "line": 732,
+            "line": 734,
             "lines": 6
           },
           "sift#1": {
-            "line": 166,
+            "line": 168,
             "lines": 24
           },
           "sort#1": {
-            "line": 161,
+            "line": 163,
             "lines": 40
           },
           "store#1": {
-            "line": 797,
+            "line": 799,
             "lines": 9
           },
           "try_build_bounded#1": {
-            "line": 401,
+            "line": 403,
             "lines": 40
           },
           "try_build_observations_bounded_controlled#1": {
-            "line": 445,
+            "line": 447,
             "lines": 25
           },
           "try_build_reduced_bounded#1": {
-            "line": 231,
+            "line": 233,
             "lines": 24
           },
           "try_build_reduced_bounded_controlled#1": {
-            "line": 258,
+            "line": 260,
             "lines": 84
           },
           "weights#1": {
-            "line": 766,
+            "line": 768,
             "lines": 6
           },
           "worker_count#1": {
-            "line": 721,
+            "line": 723,
             "lines": 6
           }
         },
-        "production_lines": 1146
+        "production_lines": 1148
       },
       "crates/fereg-core/src/fe/cmg_schur/sampling.rs": {
         "chunk_candidates": [],
@@ -23097,7 +23091,7 @@
         "dispatch_candidates": 1382,
         "files_over_1500": 15,
         "functions_over_150": 60,
-        "production_lines": 106373
+        "production_lines": 106375
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -23109,5 +23103,5 @@
     },
     "schema": 1
   },
-  "reason": "Thread an explicit portfolio-only CMG terminal-affordability option through the existing private builder. Capture the actual post-admission remaining work for the reviewed upstream factor screen; keep legacy controlled/reduced/overlap calls and callback charging unchanged. Preserve route/ledger layouts, numerical and memory gates, and the 32W0 setup and 4W0 restart bounds. Independent bound, action, exact disabled-path, resource and interruption witnesses cover the scope; no new oversized file or function."
+  "reason": "Preserve the runtime inventory while allowing only the two reviewed bounded-CMG inlining annotations."
 }
