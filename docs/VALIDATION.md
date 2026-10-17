@@ -1432,9 +1432,29 @@ passes and all six mock tests pass. The completion marker and every expected
 output are present. Independent Astra raw review clears the unchanged builds
 and source-level resource/sampling contracts, verifying 234 local references
 and distinguishing ten remote tool/build-manifest references checked by the
-producer. Fresh allocation science remains pending. Scheduled pure assembly
-`8152811` will create admission/config files for separate review before binding
-and sealing. No solver measurement or Rust rebuild occurred.
+producer. Fresh allocation science remains pending. Initial pure assembly
+`8152811` failed before publishing any file because its raw review referenced
+a retained capture omitted from transfer. A full 244-reference audit found
+exactly that missing file and no changed references. After copying its exact
+bytes, separately reviewed continuation `8153140` passed failed=0/exit=0 in
+124 seconds and created all four admission/config files. Independent review clears
+all four files and their unchanged 246-reference evidence set. Pure input binder
+`8153173` then passes failed=0/exit=0 in 125 seconds, preparing 42 A cells with
+46 verified metadata files and zero solver calls. Independent binding review
+clears the unchanged pure seal. Job `8153203` then passes failed=0/exit=0 in
+126 seconds on a serial single-slot allocation and freezes 447 file bindings.
+Independent Astra review verifies both canonical plans, all 447 bindings,
+the fixed partitions and actual dispatch configuration. The held dispatcher
+submits collectors `8153231`–`8153236` in round/shard order and dependent
+finalizer `8153237`. Separate raw review verifies all seven job identities,
+resources, arguments and dependencies, 31 claim/config records and nine
+dispatch bindings. One `qrls` releases only the six collectors after fresh
+user-hold checks. At 02:50:47 UTC they are queued without user holds; the
+finalizer remains dependent. Full terminal accounting, fresh allocation
+science, strict isolation and reviewed aggregate results are still required.
+There are no new timing results or accepted shortlist yet. These records are retained under
+`/projectnb/welfgr/fereg/runs/portfolio-unseeded-20261016/`; the compact evidence
+records their hashes. No solver measurement or Rust rebuild occurred.
 
 Prospective Mac qualification tools now recognize the six-allocation schema and
 the exact unseeded candidate. They rederive the complete discovery context,

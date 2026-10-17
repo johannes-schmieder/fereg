@@ -22044,6 +22044,177 @@
       "native_calls": 0,
       "status": "submitted_pending_terminal_validation",
       "scope": "Actual descriptors/configs require pure assembly success and review before separate input binder and seal."
+    },
+    "pure_admission_evidence_completion": {
+      "original_assembly": {
+        "job_id": "8152811",
+        "failed": 0,
+        "exit_status": 1,
+        "slots": 4,
+        "wallclock_s": 32,
+        "accounting_sha256": "76dacb7face3bac2e4a663ba9f03f7237780bd4e9b5b2c2813aeaeb819eef676",
+        "log_sha256": "825fa07b0cf962696f7b9aaea33b02be510563c4ba58436e9abfbbf1e113820f",
+        "outputs_created": 0,
+        "cause": "Raw review referenced retained terminal-output capture not included in transfer. Shared recovery validation passed before missing-file failure."
+      },
+      "finite_audit": {
+        "sha256": "478ef08f43e4c8bd35969ee5be23e2bcce27e5310bea26d3c4049f5fba608c9b",
+        "references": 244,
+        "matched_existing": 243,
+        "missing": 1,
+        "mismatched": 0,
+        "missing_file_sha256": "65c936ef4f3c98db0815bf10d0833a4396d553511ab9b64c4bd8a22e3c540946"
+      },
+      "review_sha256": "4fa11a63b24ff17a001409f41849f2a9284825dfa331e2b3592bc92ae30c5106",
+      "submission_script_sha256": "cc26dc24310448c930b4aa608b34bf47a8886618482b4f0231aa3cab204dffc6",
+      "submission_sha256": "6abc0c68f74af4e4fa81748e12aa6bed2022073af4cef02f1bd10fa083aad4af",
+      "job_id": "8153140",
+      "status": "accepted_pending_terminal_validation",
+      "all_244_hashes_verified_before_qsub": true,
+      "scope": "One create-once evidence transfer and pure assembler continuation. Unchanged assembler, raw review, source, builds and all prior failures; no native/build/test calls.",
+      "terminal_result": {
+        "failed": 0,
+        "exit_status": 0,
+        "slots": 4,
+        "hostname": "scc-pi3",
+        "wallclock_s": 124,
+        "start_utc": "2026-10-17T02:20:27Z",
+        "end_utc": "2026-10-17T02:22:31Z",
+        "accounting_sha256": "a5d11b67a97de7589083ef772321cb35f80abf4c76b46762eef9997856358e6e",
+        "terminal_output_sha256": "1e94d8550bc1738518ee2537c87c0d5f949278f34b587add679f15c784de2706",
+        "application_log_sha256": "78ff677dbfb17a03263e306b8fcacdc6ea10c2446600375f81ee363663640b6a",
+        "output_hashes": {
+          "admission/resource-admission-locale.json": "7cec6e50bb8c2f4c5ce7a371de877e1636180aca13197d7cef472b9f653cd688",
+          "admission/sample1-admission-locale.json": "d1e4fbda2315366cea6cc8235990b75d3bfc55e1900e5c6c3637917fbb237efb",
+          "binding-config-locale.json": "1fc279d80dc6d180bd559f8d962f5a6f1ddea9c90c7504edacd3778354f3c865",
+          "seal-setup-config-locale.json": "adea237f4b49450e960bb85bf85c85f04d43377189b3661c49777266ad1a1484"
+        },
+        "fresh_allocation_science": "pending"
+      }
+    },
+    "actual_admission_review": {
+      "sha256": "93676dad80a3b516eec0a81145f7e51b48c1959961cc91883fceccfa8399b470",
+      "reviewer": "gpt-6-astra high",
+      "status": "GO_for_pure_input_binder",
+      "identical_evidence_references": 246,
+      "fresh_allocation_science": "pending"
+    },
+    "pure_input_binding": {
+      "job_id": "8153173",
+      "failed": 0,
+      "exit_status": 0,
+      "slots": 4,
+      "hostname": "scc-ei3",
+      "wallclock_s": 125,
+      "start_utc": "2026-10-17T02:28:18Z",
+      "end_utc": "2026-10-17T02:30:23Z",
+      "submission_sha256": "cf5d728b371daf898c918dfef605bba3978bc683399d92551e4b66681f1af5d4",
+      "accounting_sha256": "160402befac952c96ebf963f442dc251e707fc7267a43c03fe66b29ca5585bc8",
+      "terminal_output_sha256": "bae6d836488ab07bc270dfba65846e4bd81d88f85aea0b5614ce00f50b491d0f",
+      "completion_sha256": "d29f2756eb793f302474ec007f4fcc7466f7d3e96ddd60aafe862b5086f712c3",
+      "application_log_sha256": "3cc1080de0f1118cba77020e90dabfa74170225faa0745ff995480d68af4549f",
+      "metadata_files": 46,
+      "ready_A_cells": 42,
+      "arm_cell_slots": 360,
+      "native_plugin_calls": 0,
+      "manifest_canonical_sha256": "d5d215b4b6cb89c9b5a676463be7c1e24dd3faaa563d38d5e3a85b12c97958d2",
+      "scope": "Original portable input/reference certificate only. Materialized A metadata, actual Linux artifact/resource identities; numerical allocation science and measurements remain pending.",
+      "independent_review_sha256": "f0710d6f946a3227e082df0dbe7ecec9760f16c978ffc8298b7197729b19313f"
+    },
+    "pure_seal": {
+      "job_id": "8153203",
+      "status_at_submission": "accepted_pending_terminal_validation",
+      "native_solver_calls": 0,
+      "submission_sha256": "c623e3b869721e99be6ddedc1b4630c90d66933d152ecbc5ba62c58e8d702353",
+      "submit_source_sha256": "4b9ebf211ef2eb52e282dd9522c6d247a5574907f0209cf15e08b7b47386faa5",
+      "binding_review_sha256": "f0710d6f946a3227e082df0dbe7ecec9760f16c978ffc8298b7197729b19313f",
+      "required_next": "Terminal accounting0/0, complete sealed plans and independent actual plan/config review before any held collector dispatch.",
+      "terminal_result": {
+        "failed": 0,
+        "exit_status": 0,
+        "wallclock_s": 126,
+        "hostname": "scc-gd4.scc.bu.edu",
+        "slots": 1,
+        "granted_pe": "NONE",
+        "accounting_sha256": "554ba60af75913ef4ef30b60ea4703571434869fd4a88def5028df2c34786f31",
+        "terminal_capture_sha256": "e352042ab4a7a7a363727a6d0abffb237248455ce8ffe48d0b091005d51bccba",
+        "completion_sha256": "6397517aa2131aca813952262d98470524ce39a21e27273d98b7c27ff8b355a2",
+        "parallel_plan_file_sha256": "5fdc0693725c857e5e5abe3a3f72d123c849bc7a916e96793ceeb1174ec0d872",
+        "parallel_plan_canonical_sha256": "99a7cd4d2abc90ff5c61e161189467406f4ed6454db600a2bf0fc68797168a80",
+        "discovery_plan_file_sha256": "6a3300072522c4774eea40aab2daf6e41d26f7c82a2e8c9773444524d72a8501",
+        "frozen_files": 447,
+        "native_solver_calls": 0,
+        "claim": "sealed_for_independent_review_only"
+      },
+      "independent_review_sha256": "818044a22a8bd2eb6b466e8c737336e859f675aeb4390e9d23a6ff56a9c3404d"
+    },
+    "held_dispatch_transport_source_review": {
+      "source_sha256": "7eb3fa1b91316bd92ced6fa9fc64aaade41c7d998e033cf0913ee6644aca49e2",
+      "review_sha256": "24d180b0f17c6dfa1d97a7bdc553b28b95022f46784e7c864304dd0ae2dd3594",
+      "scope": "source_only; actual metadata and terminal seal remain required; interrupted submission UNKNOWN, no automatic repeat"
+    },
+    "held_dispatch_actual_review": {
+      "status": "GO_for_one_held_only_dispatch_pending_actual_job_review_and_release",
+      "review_sha256": "bcf27908cb2e4afa377d502d4eafb8651a224e7cac1d014978cf272c57114f60",
+      "config_sha256": "dd275af0bfceb1fe6cdc28eea6c52e10e89f3ce0356e937091096d1650a32933",
+      "readiness_sha256": "eb97d314eb0ceb36c2c7ff040db4e93901c70c41572ed822534787b852212eb8",
+      "source_sha256": "63d2f12f4554579f0fb06e16a2636eb86d9247691d221835033031825768ffce",
+      "prior_readiness_preserved": true,
+      "transport_change": "Only readiness basename changed from the source-reviewed transport; no policy or cap changes."
+    },
+    "held_discovery_submission": {
+      "collector_job_ids": [
+        "8153231",
+        "8153232",
+        "8153233",
+        "8153234",
+        "8153235",
+        "8153236"
+      ],
+      "finalizer_job_id": "8153237",
+      "labels": [
+        "A1-S1",
+        "A1-S2",
+        "A2-S1",
+        "A2-S2",
+        "A3-S1",
+        "A3-S2"
+      ],
+      "submission_sha256": "0daf0692ab61bf37e8106d99453bf02c013decb6542cc96ae3ef42374a3bd295",
+      "claim_complete_sha256": "71e0af0c78956b13cc53c363ac8c7e5b77a04f4640ed67377e69c4106d164f39",
+      "finalize_config_sha256": "a6a01c992015ccebad18aa5f7cea05a11ac8c36dc3c60f8897d5062f0dc731da",
+      "actual_dispatch_state_sha256": "2c96a1610dbdc1dd65a4c81006e21e01321e93565be34892745e2c3b28a77269",
+      "observed_utc": "2026-10-17T02:47:55.939654+00:00",
+      "status_at_capture": "six collectors user-held; finalizer dependent on all six; hold review pending",
+      "raw_claim_and_config_files": 31,
+      "verified_dispatch_bindings": 9,
+      "collector_slots": 28,
+      "collector_pe": "omp28",
+      "shard_budgets_s": [
+        7280,
+        7120
+      ],
+      "finalizer_slots": 1,
+      "finalizer_budget_s": 7200,
+      "no_measurement_started_at_capture": true
+    },
+    "discovery_release": {
+      "status": "released_once; queued_at_first_post_release_snapshot",
+      "actual_hold_review_sha256": "544410a88e3b16b6209ec920582753e4ebe9acc63cd47604000336ee253b45f9",
+      "release_helper_sha256": "5a7d28ac8aaddd403ba499ddcfc5d29cd423fa7e8169db42d89a15af13ea62be",
+      "release_response_sha256": "0c18ec4999b2cf57a792c895dab7697c991cc5a98f15d530c613e24d635f7685",
+      "release_argv": [
+        "qrls",
+        "-h",
+        "u",
+        "8153231,8153232,8153233,8153234,8153235,8153236"
+      ],
+      "qrls_returncode": 0,
+      "all_six_modifications_confirmed": true,
+      "post_release_observed_utc": "2026-10-17T02:50:47.449334+00:00",
+      "collectors_state": "qw",
+      "finalizer_state": "hqw dependent on all six",
+      "scope": "No discovery result, shortlist, Mac B/C admission or public activation is established. No intermediate measurements may be inspected while any job is active. No measurement retry, replacement or partial aggregate is authorized."
     }
   }
 }
