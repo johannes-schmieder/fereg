@@ -1,7 +1,8 @@
 # Development
 
 Scientific behavior is defined by [SPEC](SPEC.md); ownership and boundaries by
-[ARCHITECTURE](ARCHITECTURE.md). Work on main in coherent commits and use
+[ARCHITECTURE](ARCHITECTURE.md). Work in coherent commits on the branch specified
+by [AGENTS.md](../AGENTS.md) and use
 independent oracles to establish correctness. The repository has one runtime.
 
 ## Local checks

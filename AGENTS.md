@@ -46,7 +46,11 @@ and mathematical solver families; never add benchmark-specific routing fences.
 
 ## Development and validation
 
-Work on main in coherent, reviewable commits. Migrate consumers and remove
+The incremental Auto-routing workstream authorized on 2026-10-17 develops in
+this checkout on `codex/auto-routing`, starting at `f35f3a4d`. Commit and push
+that branch; do not reset main, merge to main, or update release packages as
+part of this workstream. Other work retains the normal main-branch convention.
+Use coherent, reviewable commits. Migrate consumers and remove
 superseded implementations together. Push completed authorized work after checks;
 never force-push or rewrite history. Report failed or missing checks honestly.
 Use bounded Astra assistance for difficult problems and an independent high-effort
@@ -56,6 +60,18 @@ tool workloads on the measured host. Ordinary OS/desktop activity is recorded
 measurement noise, not an automatic reason to abort a panel. Independent
 analysis on separate infrastructure may continue
 without accessing or changing the measured artifacts or consuming host resources.
+
+Johannes's 2026-10-17 incremental-routing decision makes explicit solver timings
+diagnostic opportunity comparisons, not promotion gates. New versioned campaigns
+protect the original uninjected Auto at `f35f3a4d` and the last accepted branch
+Auto with the existing per-workload max(5%, 1 ms) allowance. Qualify the existing
+many-FE and two-FE improvements separately, in that order, with separate untouched
+confirmations; either can advance without the other. Restrict new activation to
+OLS `solver(auto)` and `preconditioner(auto)` on categorical intercept designs.
+Preserve historical protocol decisions and scientific/resource/transaction gates.
+Activate passing defaults only on this branch. Finish this increment with bounded
+CMG/RHS/overlap cost diagnosis and a successor proposal; it does not authorize an
+unreviewed predictive payback algorithm or increased speculative work budgets.
 
 Runtime changes require `./scripts/run_tests.sh` and mapped scientific/transaction
 checks. Build/package changes require focused tooling and native build/ABI checks.

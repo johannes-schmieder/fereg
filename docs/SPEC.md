@@ -175,7 +175,50 @@ individual performance cells.
 Preserve requested/used solver, work accounting and existing reason diagnostics;
 unsupported explicit requests must not silently become auto.
 
-The prospective deployment amendment permits one narrow public-default
+### Incremental Auto qualification (2026-10-17)
+
+The `codex/auto-routing` workstream qualifies two independent OLS candidates:
+at least three categorical intercept FEs use strict unseeded LSMR with retained
+preparation; exactly two categorical intercept FEs use the existing portfolio's
+direct-or-h16/k1 synchronous CMG policy. Finite controls do not add FE dimensions.
+Both new family selectors require Auto solver and Auto preconditioning. Zero/one
+FE, slopes, explicit solver or preconditioner choices and PPML retain their
+existing behavior. Hidden family selectors outside their eligible family retain
+the currently accepted Auto path. Existing hidden experiments keep their contracts.
+
+Declared scientific scope is confined to the selected eligible OLS family:
+coefficients, covariance, fit statistics, residuals, FE coordinates and numerical
+solver signatures may change within section 20 tolerances. Sample, rank,
+omissions, original factor slots/base flags and other discrete model decisions
+remain unchanged. The selected family's existing kernels, strict certificates,
+iteration/setup caps, memory admission, cancellation and fallbacks are unchanged.
+Independent dense-QR and analytic projection witnesses, scoped native replay,
+exact fixed-worker repeats, cross-worker science and transaction checks precede
+performance interpretation. Outside-family scientific results/signatures remain
+exact; within-family selectors must reproduce the existing hidden portfolio,
+apart from declared routing identity labels.
+
+New versioned campaigns preserve all historical outcomes. Only protected Auto
+comparisons govern performance acceptance: the original uninjected `f35f3a4d`
+baseline and the last accepted branch Auto each retain max(5%, 1 ms) protection
+on every declared workload. Explicit solver timing and availability describe
+opportunity gaps, never promotion eligibility or ranking. Invalid comparator
+science has no timing claim; a shared-validation defect blocks affected evidence.
+Eligible choices rank by the equal-weight geometric mean of timing ratios over
+the affected family, with the incumbent winning ties. Scientific, resource and
+transaction prerequisites remain mandatory.
+
+Qualify many-FE first and two-FE second, using independent stage artifacts and
+distinct selection/untouched-confirmation inputs. Public activation changes only
+the selected family's invocation wiring on the development branch. Before C
+access, fresh A/B checks must establish exact scientific and numerical-signature
+equivalence to the selected hidden invocation. Confirmation also protects that
+hidden artifact against activation overhead. Failure or inconclusive confirmation
+retains the last accepted default, without selecting another policy from those
+C results; the other independently declared stage may continue. No merge to main,
+release packaging, predictive payback rule or speculative-budget increase follows.
+
+The earlier prospective deployment amendment permits one narrow public-default
 transition after the finite A/B experiment selects one nonbaseline serial
 `(h,k)` policy. It must be declared before any timing. Only the OLS Auto
 invocation wiring may change; kernels, prefixes, overlap, sampling policy and
