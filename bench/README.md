@@ -1172,3 +1172,35 @@ phase tracing fails the diagnostic stage; a failed or partial Schur record
 remains an explicit limitation on attribution even when the native result
 passes science. The original isolation, retention and stop rules also cover
 this diagnostic stage.
+
+## Membership-cell discovery and conditional confirmation
+
+`compact_cells.py prepare-membership` preserves the original twelve-family
+dataset and prepares Auto, original cells, `cells_m` and the attribution-only
+`cells_m_lanes`. `membership_confirmation.py` prepares eight untouched new
+case families and their witnesses before any discovery candidate case call.
+The frozen protocol and completed failed gate are recorded in
+[validation](../docs/VALIDATION.md#membership-cell-results) and
+[all retained observations](results/membership-cells-20261017.json).
+
+`compact_cells.py membership-gate --plan D1_PLAN --science D1_SCIENCE
+--measurement D1_MEASUREMENT --output GATE` recomputes the fixed main-candidate
+gate, retaining an ineligible result before returning nonzero. There is no
+alternate finalist or outcome-driven continuation.
+
+[`membership_confirmation_run.py`](membership_confirmation_run.py) implements
+the conditional C1 execution contract. Its `freeze` command binds portable
+runner/test hashes and the existing C1 plan identity before opening D1 timing
+outcomes. `admit` requires `--plan`, `--driver`, `--d1-smoke`, `--d1-science`,
+`--d1-measurement`, `--science-accounting`, `--measurement-accounting`,
+`--isolation-review`, and `--output`. It revalidates the D1 gate, UTC scheduler
+accounting, smoke-inclusive freeze chronology and a bound external isolation
+review. `science` then runs 64 independent-witness/repeat calls in four slots;
+`measure` uses 28 verified isolated slots for 32 warmups and 768 complete calls.
+Both require `--plan`, `--driver`, `--admission`, and `--output`; measurement also
+requires `--science`. Final C1 accounting and external isolation review remain
+mandatory. The October17 discovery failed its prerequisites, so C1 was not run.
+
+Focused tests: `python3 -m unittest discover -s bench/tests
+-p test_membership_confirmation_run.py`. The source is an execution adapter;
+changing it never changes the separately frozen data, schedule or analysis.

@@ -72,6 +72,139 @@ are unchanged. One invalid prerequisite stops the dependent campaign; there is
 no alternate finalist or favorable resampling. Neither SCC panel establishes
 Mac release performance or permits default promotion.
 
+### Membership-cell results
+
+Implementation `f080339e` completed the frozen discovery. The
+[retained result](../bench/results/membership-cells-20261017.json) preserves every
+one of the 1312 observations, all paired summaries, scientific signatures,
+64 diagnostic payloads, input/artifact identities, accounting and capture hashes.
+Repeated scientific solver fields are stored once and referenced by each
+observation; both phase timers remain individual observations. No observations
+were excluded, replaced or added after the fixed panel.
+
+The main M arm **fails the frozen discovery gate**. It has 16 material gains,
+five settings within the allowance and three regressions against Auto. Every
+setting has twelve complete paired blocks. The three paired-median regressions
+are easy/four-worker (+47.9%), hubs/one-worker (+8.5%) and hubs/four-worker
+(+16.2%). Their median excess beyond `max(5%, 1 ms)` is respectively 3.31,
+2.20 and 5.79 ms. These are descriptive discovery outcomes; there is no
+qualification claim from twelve rotating blocks.
+
+| Arm versus Auto | Material gains | Within allowance | Regressions |
+|---|---:|---:|---:|
+| Original cells | 14 | 8 | 2 |
+| Membership cells M | 16 | 5 | 3 |
+| Lane-discount control | 15 | 8 | 1 |
+
+M versus original cells has three material paired-median gains and 21 settings
+within the allowance. Those gains are disconnected/four-worker, high-degree
+weak/four-worker and inactive-zero/four-worker; the last has zero solver
+iterations and no construction, so it is not evidence for the new builder.
+The lane control was attribution-only and cannot become a replacement finalist
+after seeing these outcomes. Its easy/four-worker route and solver signature
+are identical to M's despite substantially different observed timings.
+
+Selected untraced complete native-call medians, in milliseconds, and the median
+of the twelve paired M/Auto ratios (which need not equal the ratio of medians):
+
+| Family/workers | Auto | Original cells | M | Paired M/Auto |
+|---|---:|---:|---:|---:|
+| Weak / 1 | 44.12 | 29.40 | 28.76 | 0.659 |
+| High-degree weak / 1 | 65.19 | 45.55 | 45.09 | 0.692 |
+| Dynamic weights / 1 | 49.53 | 34.27 | 33.85 | 0.680 |
+| Repeated / 1 | 88.65 | 72.64 | 70.88 | 0.792 |
+| Dense / 1 | 38.66 | 37.11 | 36.57 | 0.947 |
+| Hubs / 1 | 62.53 | 65.09 | 67.66 | 1.085 |
+| Hubs / 4 | 50.94 | 58.43 | 59.06 | 1.162 |
+| Easy / 4 | 7.74 | 10.44 | 12.98 | 1.479 |
+
+The second gate also fails: **none of the eight traced settings has M builder
+time below half original cells**. The M/original per-fit construction ratios
+are 0.654/0.539 for repeated at one/four workers, 1.138/0.942 for dense,
+1.019/1.168 for hubs, and 0.762/1.763 for high-degree weak. Two diagnostic
+repetitions per setting support limited attribution; they cannot establish a
+stable ordering of small setup differences. The proposed universal setup
+reduction did not materialize in this panel.
+
+Hubs provides a concrete mechanism: M constructs 54,200 cells and then selects
+the observation operator for both the four-RHS projection and one-RHS final
+batch. Its measured construction medians are 6.17 and 7.02 ms at one/four
+workers. Original-cell construction is 6.05 and 6.01 ms. Paying that cost and
+then declining the representation explains an avoidable component of overhead;
+it does not identify every millisecond of the total regression. The lane
+control also pays construction before declining dense and high-degree weak
+at four workers, where M uses cells. This is evidence for making the admission
+decision before construction, rather than strengthening the current tariff
+only after the cost has been incurred.
+
+Easy/four-worker remains unresolved. Original cells, M and the lane control
+have the same scientific signature; M and its control both use one planned
+lane and choose cells for both batches. M's complete calls range from about
+6.15 to 14.73 ms, with variation in internal setup and solve timings as well.
+No observed competing compute justifies exclusion or a claim that a particular
+scheduler, frequency or cache mechanism caused it. The unfavorable observations
+remain in the result and block confirmation.
+
+Untouched C1 was prepared before D1's first native case call, including smoke.
+Its eight new seeded cases, independent witnesses, schedules and analysis remain
+unused: **zero C1 candidate calls**. A separately reviewed execution adapter was
+frozen before the timing outcomes were opened; its eight focused tests pass.
+The failed D1 prerequisites block its execution. Public Auto remains unchanged.
+A useful next experiment would decide whether construction can pay using a
+cheap bounded structural census, while separately diagnosing the small
+four-worker variability. Neither an unmeasured census policy nor the favorable
+lane-control cells are promoted by this experiment.
+
+Local evidence passes: source-only integration (260 Python tests, 13 skips,
+Rust scientific/workspace checks, Clippy, allocator audits, portable and native
+bridge checks), private Mac ABI/panic containment, all 73 public replay cases
+exactly, and three licensed Stata fixtures. The private fixture covers all five
+newer arms, Fast/Low, one/four workers, fixed repeats, saved effects, independent
+dense OLS/robust VCE and rollback. An initial hidden-token frontend omission
+caused `r(198)` and was fixed without changing the native binary; the affected
+fixture then passed. Focused tests cover bitwise banks, capacity, work/memory
+boundaries, analytical projections, reuse/refusal, zero-iteration return and a
+three-RHS cells / one-RHS observations / three-RHS cells sequence without
+rebuilding. The scoped ratchet grows by 334 core production lines and two
+plugin lines. The installed-package entrypoint retains its expected
+source/plugin binding stop; the installed public package was not replaced or
+qualified. Independent Astra design, runtime, harness and final results reviews
+pass. The results audit reconstructs all 1312 observations losslessly and
+checks all 64 diagnostics, 120 summaries/classifications, 144 paired controls
+and 49 capture hashes. Per-batch routing/trace time was correctly attributed
+to setup before the native artifact freeze; dedicated builder timers remain
+separate from other setup work.
+
+SCC job `8155623` passed the scientific prerequisites in 198 seconds on
+`scc-gr4`: eight smoke candidate calls, four smoke paired controls, 192 main
+candidate calls, 96 original-arm exact comparisons (192 calls), and 48 additional
+exact comparisons (96 calls) with the more recent V2-D_f/deferred binary.
+All independent witnesses, fixed-worker repeats, cross-worker scientific and
+discrete checks and resource checks passed. M equals original cells in 22 of 24
+settings and Auto in four (two inactive-zero settings overlap both controls).
+The only two differences from original cells are hubs/one and four workers,
+which equal Auto. This is a scientific routing result, not a speed claim.
+The first submission, `8155604`, failed before candidate cases because deployment
+omitted a Python script dependency (`replay_plugins`); its exit status one and
+seven-second wall time are retained. Correcting that deployment omission left
+the frozen runtime and case definitions unchanged.
+
+Measurement job `8155634` completed in 324 seconds on `scc-zj4`, with
+`failed=0`, `exit_status=0`, the expected application marker and all 96 warmups,
+1152 scored calls and 64 post-panel diagnostics. The same-allocation scientific
+fingerprints repeat exactly. Physical topology, single-host PE, global slot
+quota and CPU affinity independently establish the 28-core reservation; native
+calls used one/four workers on CPUs 0–3. All 32 scheduler censuses and 53 process
+snapshots passed, with maximum gaps 19.39 and 5.05 seconds respectively, covering
+warmups through diagnostics. No competing computation was observed. Small
+ordinary kernel/daemon activity remains; sampled observations cannot rule out
+all shorter activity. Both successful jobs have validated UTC accounting;
+measurement peak virtual memory was reported by SGE as `554.191M`. The remote
+final gate rehashed all bound files. Copied science JSON/logs and isolation
+records were independently rehashed locally; large binary columns and
+measurement logs were not copied for a second local rehash. SCC results establish
+no Mac performance claim.
+
 ## Deferred original-cell prototype, 2026-10-17
 
 The private `routing_cells_deferred` arm starts from `a1c95cce`. Only this
