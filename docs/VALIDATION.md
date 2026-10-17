@@ -1544,14 +1544,54 @@ does not resolve the closed SCC rejection. The fereg adapter and dependency
 pin were removed from main; the private experiment and published upstream API
 remain available. Public Auto and the incumbent artifact are unchanged.
 
-The next bounded diagnostic profiles the established parent under automatic
-upgrading and explicit CMG-k1. Historical substage clocks implicate census/local
-sorting and genuine work checks as well as global canonicalization; the static
-experiment isolates only indirect dispatch. An owned start barrier and actual
-sample coverage must establish that profiling catches construction. No new
-timing panel, solver threshold, SCC campaign or B/C admission follows from this
-negative diagnostic. Full artifact, protocol, output and review hashes are in
-the compact controlled-results evidence; no release speed claim is made.
+The subsequent bounded diagnostic profiles the established parent under
+automatic upgrading and explicit CMG-k1. Historical substage clocks implicate
+census/local sorting and genuine work checks as well as global canonicalization;
+the static experiment isolates only indirect dispatch. Full artifact, protocol,
+output and review hashes are in the compact controlled-results evidence; no
+release speed claim is made.
+
+### CMG construction CPU profiles, 2026-10-17
+
+The first `/usr/bin/sample` design stopped at its non-estimation feasibility
+gate: its dummy body was sampled, but the required start-barrier frame was not.
+Its eight solver captures never ran. The initial harness include-layout failure
+and corrected build are also preserved. A separate Xcode Time Profiler design
+first passed one non-estimation probe: the recorder's actual Darwin notification
+arrived before release of the stopped target, and the trace contained 2,000
+symbolized body samples plus one retained missing-stack sample. This establishes
+recording readiness and observed coverage, not first-instruction completeness.
+
+The separately reviewed eight-call diagnostic then completed in 83.979 seconds.
+It uses the unchanged parent ARM64 artifact, high-degree weak A input, automatic
+upgrading and explicit CMG-k1, at one/four workers with two captures each. Every
+call passes the original numerical witnesses, exact fixed-worker repeats and
+same-route cross-worker scientific/discrete checks. Every trace contains
+symbolized setup frames from the bound plugin UUID. No replacement ran.
+
+| Route / workers | Setup samples, captures 1 / 2 | Work-gate leaf samples, captures 1 / 2 |
+| --- | ---: | ---: |
+| Automatic upgrade / 1 | 65 / 63 | 26 / 18 |
+| Automatic upgrade / 4 | 63 / 64 | 25 / 24 |
+| Explicit CMG-k1 / 1 | 23 / 23 | 0 / 0 |
+| Explicit CMG-k1 / 4 | 21 / 22 | 0 / 0 |
+
+Across the four automatic captures, 93 of 255 observed setup samples have
+`Work::gate` as the leaf (36.5%). Local sift routines account for 48, upstream
+sift routines for 42, callback wrappers for 20 and other leaves for 52. These
+are disjoint leaf categories within setup ancestry, not sums of inclusive
+frame percentages. All 2,893 rows remain retained, including 20 missing-stack,
+14 blocked and three rows containing unresolved frames. CPU weights across
+workers are not elapsed time; adjacent samples and two captures do not supply
+independent timing replications or a speedup confidence interval.
+
+The next finite prototype adds only inlining annotations to the local work gate
+and charge wrapper. Inspect actual optimized hot-loop assembly before measuring:
+the repeated out-of-line gate call and its frame/result traffic should disappear,
+while cancellation, budget, ordinal, controller and commit ordering remain exact.
+Keep sorting, arithmetic, tariffs and refusal boundaries unchanged. The observed
+36.5% is not a forecast of removable work. No checkpoint/RHS threshold, new SCC
+campaign, Mac B/C admission or public Auto activation follows from this profile.
 
 The original retained campaign is
 `/projectnb/welfgr/fereg/runs/portfolio-unseeded-20261016/`; the compact evidence
@@ -1580,9 +1620,9 @@ solves a different RHS and retains the same hierarchy and setup ledger. Both
 priming and target results pass the independent residual, reconstruction and
 gauge witnesses, exact fixed-worker repeats and cross-worker discrete-decision
 checks. Wider first actions receive the existing width-based allowance; later
-actions do not renew it. The focused test, independent Astra high source review
-and complete source-only suite pass (1,935 Rust executions, 312 Python tests and
-seven portable checks). Production identity is unchanged across 192 runtime
+actions at the same accuracy do not renew it. The focused test, independent Astra
+high source review and complete source-only suite pass (1,935 Rust executions,
+312 Python tests and seven portable checks). Production identity is unchanged across 192 runtime
 modules and 58 artifact inputs. Suite output SHA-256 is
 `10e9ea5e2c2711dfb7e1b276f87c936fd8c49645cc22da0dc0cfdc9f5c615853`.
 Installed-package admission was not performed, and the Linux mock audit remains

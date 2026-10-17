@@ -2352,12 +2352,50 @@ Independent Astra high review checks all 40 retained outputs against their origi
 \end{note}
 
 \sub{Profile the work itself before the next optimization}
-The next bounded comparison uses the established parent with automatic upgrading and explicit CMG-k1 on the same high-degree graph, at one and four workers. It targets census/local sorting, work checks and global canonicalization. Sampling must observe an owned start barrier before estimation and capture symbolized setup frames; a missed capture is inconclusive and is not replaced. Separate blocked stacks from CPU work, and do not treat sample counts as independent timing measurements.
+The following page profiles the established parent with automatic upgrading and explicit CMG-k1 on the same high-degree graph, at one and four workers. It targets census/local sorting, work checks and global canonicalization. The original sample-based design stopped at its failed dummy barrier gate before any solver capture. A separate, reviewed Xcode recording-start mechanism produced the completed profiles. Neither design supplies release-performance evidence.
 
 \begin{binding}\tinybody
 \textbf{Evidence boundary.} Independent review rechecks all 46 bindings, 200 raw artifacts, eight resource traces and 80 host snapshots without error. Endpoint observations retain desktop activity and identify no competing build, test or estimation workload, but cannot prove uninterrupted whole-call isolation. The stale fuzz-lock failure and the diagnostic-runner signal-handling repair remain recorded. No installed-package admission or release-performance claim is made. These Mac ratios cannot be multiplied into the closed SCC results.
 \end{binding}
 \anchor{Parent plugin \code{2c85d890}; private candidate \code{993358c6}; upstream CMG \code{b4ca4ad3}; plan \code{7434b2b0}; result \code{e145a8c9}; raw review \code{12e6c144}. Full hashes and protocol: compact controlled-results JSON and \code{docs/VALIDATION.md}.}
+\clearpage
+\end{compactleaf}
+
+% PAGE 35 / completed construction profiling.
+\begin{compactleaf}
+\smallbody
+\sect{34 / CONSTRUCTION PROFILES}{The local work gate is a measured cost}
+\tagline{Eight unchanged-parent captures; exact science; a narrow inlining prototype is justified.}
+The automatic route spends substantial sampled CPU work in its local budget and cancellation gate. Removing one upstream indirect callback was neutral; this profile identifies the work inside and around the gate as a separate target. The parent gate has a \code{0x70}-byte stack frame and normal-path save/restore machinery.
+
+\sub{Observed setup and exclusive gate samples}
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Route / workers} & \textbf{Setup, captures 1 / 2} & \textbf{Gate leaf, captures 1 / 2}\\
+\midrule
+Automatic upgrade / 1 & 65 / 63 & 26 / 18\\
+Automatic upgrade / 4 & 63 / 64 & 25 / 24\\
+Explicit CMG-k1 / 1 & 23 / 23 & 0 / 0\\
+Explicit CMG-k1 / 4 & 21 / 22 & 0 / 0\\
+\bottomrule
+\end{tabular}
+\end{center}
+Among the 255 automatic setup samples, 93 end in \code{Work::gate} (36.5\%), 48 in local sift routines, 42 in upstream sift routines, 20 in callback wrappers and 52 elsewhere. These are disjoint leaf categories within setup ancestry. The explicit route uses a different construction path; its lower sample count does not establish interchangeable numerical or resource semantics.
+
+\begin{note}\smallbody
+\textbf{Next experiment.} Add only inlining annotations to the local gate and charge wrapper. Check actual optimized hot loops before measurement: repeated out-of-line calls and their per-charge frame/result traffic should disappear, while cancellation, budget, ordinal, controller and commit ordering remain exact. Keep sorting, arithmetic, tariffs, memory admission and refusal boundaries unchanged. A disappearing symbol alone is not evidence of less work; 36.5\% is not a predicted speedup.
+\end{note}
+
+\sub{Capture mechanism and evidence limits}
+The first \code{/usr/bin/sample} dummy captured its body but missed the required barrier frame; its solver run remained unopened. A separate Xcode probe observed the actual recording-start notification before releasing its stopped target and retained 2,000 body samples plus one missing stack. This proves readiness and observed coverage, not that every first instruction was sampled.
+
+The subsequent eight solver captures finish in 83.979 seconds and pass the original independent numerical witnesses, exact fixed-worker repeats and same-route cross-worker checks. PID, executable, plugin UUID and symbolized setup coverage are checked. All 2,893 rows remain retained: 20 have missing stacks, 14 are classified blocked, and three contain unresolved frames. No failed or missing capture was replaced.
+
+\begin{binding}\tinybody
+\textbf{Interpretation.} One-millisecond CPU weights from multiple workers are not elapsed time. Adjacent samples and two captures do not provide independent timing replications or a speedup confidence interval. The fixed artifact, revealed A input and original science are unchanged. These observations select a small engineering experiment; they do not admit Mac B/C, activate public Auto or reopen a closed SCC campaign.
+\end{binding}
+\anchor{Parent unstripped artifact \code{65418e85}; Xcode plan \code{664bc13e}; source review \code{8fa51f7e}. Complete hashes, preserved failures and scope: compact controlled-results JSON and \code{docs/VALIDATION.md}.}
 \clearpage
 \end{compactleaf}
 

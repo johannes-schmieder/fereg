@@ -23394,5 +23394,292 @@
       "candidate-specialized-graph.asm": "4f00ce122ae3ad6f39a9f35dbf961a272e49ff648e75035508e3db59784f3633",
       "candidate-bounded-graph.asm": "1936ca41418bc06b9a08c21afb406af2f500b79f8baf4734656f34968a4216c1"
     }
+  },
+  "cmg_construction_cpu_profiles_20261017": {
+    "status": "complete_original_science_and_profile_coverage_pass",
+    "parent_source": "020eab1e9559fd68f619a4ec73fb04fcb6d1136f",
+    "parent_unstripped_sha256": "65418e856275b1e1be9bc54407a4ab27c172e5befc05ab995a1d789a1ad21c30",
+    "plugin_uuid": "E50BF927-D29C-372A-B882-F11B2B6BA417",
+    "preserved_failures": [
+      "Initial harness compile failed on flattened relative ABI header layout; corrected only layout before any probe/native call.",
+      "Original /usr/bin/sample dummy had 1,467 body observations and zero required barrier frames: closed before any solver call; no repeat.",
+      "First new-runner mock attempt patched a separately loaded probe module; notification registration failed in sandbox before any process, recorder or native call launched. Failed log retained; corrected 12 tests passed."
+    ],
+    "xctrace_feasibility": {
+      "native_calls": 0,
+      "body_rows": 2000,
+      "missing_stack_rows": 1,
+      "actual_recording_start_before_single_owned_resume": true,
+      "first_instruction_coverage_claim": false
+    },
+    "protocol": {
+      "routes": [
+        "unseeded_h16_k1",
+        "explicit_cmg_k1"
+      ],
+      "family": "revealed_A_high_degree_weak",
+      "workers": [
+        1,
+        4
+      ],
+      "repeats": 2,
+      "maximum_calls": 8,
+      "retries": 0,
+      "replacements": 0,
+      "per_call_inclusive_s": 120,
+      "entry_s": 1200,
+      "recording_active_cap_s": 60,
+      "export_cap_s": 15
+    },
+    "actual": {
+      "calls": 8,
+      "elapsed_s": 83.97877262497786,
+      "original_independent_science": true,
+      "fixed_worker_exact_repeats": true,
+      "same_route_cross_worker_science_and_decisions": true,
+      "sample_rows": 2893,
+      "running_rows": 2859,
+      "missing_stack_rows": 20,
+      "blocked_rows": 14,
+      "running_with_unresolved_frames": 3,
+      "setup_samples_automatic": 255,
+      "setup_samples_explicit": 89,
+      "gate_leaf_samples_automatic": 93
+    },
+    "captures": [
+      {
+        "index": 0,
+        "cell": "unseeded-t1",
+        "repeat": 0,
+        "counts": {
+          "missing_stack_rows": 3,
+          "missing_stack_weight_ns": 3000000,
+          "rows": 390,
+          "running_rows": 387,
+          "running_weight_ns": 387000000,
+          "weight_ns": 390000000,
+          "with_setup_rows": 65,
+          "with_setup_weight_ns": 65000000
+        },
+        "setup_leaf_counts": {
+          "gate": 26,
+          "local_sift": 15,
+          "upstream_sift": 12,
+          "callback": 5,
+          "other": 7
+        }
+      },
+      {
+        "index": 1,
+        "cell": "unseeded-t4",
+        "repeat": 0,
+        "counts": {
+          "blocked_rows": 1,
+          "blocked_weight_ns": 1000000,
+          "missing_stack_rows": 2,
+          "missing_stack_weight_ns": 2000000,
+          "rows": 462,
+          "running_rows": 459,
+          "running_weight_ns": 459000000,
+          "weight_ns": 462000000,
+          "with_setup_rows": 63,
+          "with_setup_weight_ns": 63000000,
+          "with_unresolved_frames_rows": 1,
+          "with_unresolved_frames_weight_ns": 1000000
+        },
+        "setup_leaf_counts": {
+          "gate": 25,
+          "local_sift": 8,
+          "upstream_sift": 8,
+          "callback": 5,
+          "other": 17
+        }
+      },
+      {
+        "index": 2,
+        "cell": "explicit-k1-t1",
+        "repeat": 0,
+        "counts": {
+          "missing_stack_rows": 2,
+          "missing_stack_weight_ns": 2000000,
+          "rows": 279,
+          "running_rows": 277,
+          "running_weight_ns": 277000000,
+          "weight_ns": 279000000,
+          "with_setup_rows": 23,
+          "with_setup_weight_ns": 23000000
+        },
+        "setup_leaf_counts": {
+          "gate": 0,
+          "local_sift": 0,
+          "upstream_sift": 0,
+          "callback": 0,
+          "other": 23
+        }
+      },
+      {
+        "index": 3,
+        "cell": "explicit-k1-t4",
+        "repeat": 0,
+        "counts": {
+          "blocked_rows": 5,
+          "blocked_weight_ns": 5000000,
+          "missing_stack_rows": 3,
+          "missing_stack_weight_ns": 3000000,
+          "rows": 337,
+          "running_rows": 329,
+          "running_weight_ns": 329000000,
+          "weight_ns": 337000000,
+          "with_setup_rows": 21,
+          "with_setup_weight_ns": 21000000
+        },
+        "setup_leaf_counts": {
+          "gate": 0,
+          "local_sift": 0,
+          "upstream_sift": 0,
+          "callback": 0,
+          "other": 21
+        }
+      },
+      {
+        "index": 4,
+        "cell": "explicit-k1-t4",
+        "repeat": 1,
+        "counts": {
+          "blocked_rows": 6,
+          "blocked_weight_ns": 6000000,
+          "missing_stack_rows": 3,
+          "missing_stack_weight_ns": 3000000,
+          "rows": 321,
+          "running_rows": 312,
+          "running_weight_ns": 312000000,
+          "weight_ns": 321000000,
+          "with_setup_rows": 22,
+          "with_setup_weight_ns": 22000000
+        },
+        "setup_leaf_counts": {
+          "gate": 0,
+          "local_sift": 0,
+          "upstream_sift": 0,
+          "callback": 0,
+          "other": 22
+        }
+      },
+      {
+        "index": 5,
+        "cell": "explicit-k1-t1",
+        "repeat": 1,
+        "counts": {
+          "missing_stack_rows": 2,
+          "missing_stack_weight_ns": 2000000,
+          "rows": 280,
+          "running_rows": 278,
+          "running_weight_ns": 278000000,
+          "weight_ns": 280000000,
+          "with_setup_rows": 23,
+          "with_setup_weight_ns": 23000000,
+          "with_unresolved_frames_rows": 1,
+          "with_unresolved_frames_weight_ns": 1000000
+        },
+        "setup_leaf_counts": {
+          "gate": 0,
+          "local_sift": 0,
+          "upstream_sift": 0,
+          "callback": 0,
+          "other": 23
+        }
+      },
+      {
+        "index": 6,
+        "cell": "unseeded-t4",
+        "repeat": 1,
+        "counts": {
+          "blocked_rows": 2,
+          "blocked_weight_ns": 2000000,
+          "missing_stack_rows": 3,
+          "missing_stack_weight_ns": 3000000,
+          "rows": 434,
+          "running_rows": 429,
+          "running_weight_ns": 429000000,
+          "weight_ns": 434000000,
+          "with_setup_rows": 64,
+          "with_setup_weight_ns": 64000000,
+          "with_unresolved_frames_rows": 1,
+          "with_unresolved_frames_weight_ns": 1000000
+        },
+        "setup_leaf_counts": {
+          "gate": 24,
+          "local_sift": 10,
+          "upstream_sift": 11,
+          "callback": 5,
+          "other": 14
+        }
+      },
+      {
+        "index": 7,
+        "cell": "unseeded-t1",
+        "repeat": 1,
+        "counts": {
+          "missing_stack_rows": 2,
+          "missing_stack_weight_ns": 2000000,
+          "rows": 390,
+          "running_rows": 388,
+          "running_weight_ns": 388000000,
+          "weight_ns": 390000000,
+          "with_setup_rows": 63,
+          "with_setup_weight_ns": 63000000
+        },
+        "setup_leaf_counts": {
+          "gate": 18,
+          "local_sift": 15,
+          "upstream_sift": 11,
+          "callback": 5,
+          "other": 14
+        }
+      }
+    ],
+    "interpretation": "Automatic setup has 93/255 (36.5%) exclusive gate leaves, 48 local sift, 42 upstream sift, 20 callback and 52 other. Supports a finite annotation-only gate/charge inlining prototype with assembly and exact-boundary witnesses; not a predicted speedup.",
+    "limits": [
+      "One-millisecond CPU weights across workers are not elapsed time.",
+      "Adjacent samples/two captures are not independent timing replications.",
+      "Positive setup frames and recording notification do not prove first-instruction completeness.",
+      "No thresholds, SCC rerun, B/C admission, public activation or release claim."
+    ],
+    "sha256": {
+      "proposal-layout.json": "70a591a2c1fbc3c17e65eb9c901fdfa2e3a1190c64eba6ad54bfcc60bb4050c1",
+      "run.py": "1c6a768d3b29e2e235e6b7361e4c999bb571c26227ed1c3eafa5bac647506815",
+      "layout-review.json": "9309bea92e810f9d1447c70f4d92125a7fe7223c7c3df20b0edbff5c22ba4629",
+      "harness-build-layout/complete.json": "c475a269c5c2d9eccdf248bcd640fa98ba7f54eb2cb0dd5ed12d41f5d95139ee",
+      "dummy-validation/dummy.capture.json": "621448616bd04d056707151c8c7123dcb008dafcc7090096cd4352c223feca8d",
+      "dummy-feasibility-review.json": "6d0c3e4a21127ffabebd0202347244f3b5d5f2f25aff4c781a3371a7a0efcad7",
+      "parent-local-gate.asm": "745171df7fd31ab881653247b5e4305f2fcf0bfafc343897f3587b00f194d62c",
+      "xctrace/probe.py": "87f533e7d91108551651632cb80300b608bfe0b5b2698844d479a2cd1cb9081b",
+      "xctrace/proposal.json": "46ec024ce53707657e4506e96835bd8a781b09c828552ea248c5a63f322c7318",
+      "xctrace/source-review.json": "ad281ae713abc981208af3bae5febf48448cc81711453f0532cc956031cb6fc1",
+      "xctrace/dummy-probe/result.json": "9c3aae702585d1c1c9d43778efc70bd9dbec98e6f6e4522b7935f1e2672e33e2",
+      "xctrace/actual-dummy-review.json": "3fb4b39eac43779c2278f001b8aef1b9c51c68066402f6929c3f39d3a59f3ac6",
+      "xctrace/body-export/body.stdout": "3682a5c743d1d6f1ccfdbb3f02027a59436cc561e7019cf30272131b302d4652",
+      "xctrace/profiles.py": "2809d2e3290bca021f075afbc5834c1885ead46bc99c515494d3ce3c69485324",
+      "xctrace/trace_reader.py": "df62b4ac93e14c38ed46a3a20858b9b792d79396e821526bf47888bf0b0ec764",
+      "xctrace/test_profiles.py": "2ddfd201098969e949eb2469625e604ca963fe7be9bb1f5b16d9e82fd23443ce",
+      "xctrace/profiles-tests-ready.log": "43110e220876eec29390a38248e243ed41acb71f4197ce02eff95292f1a15d25",
+      "xctrace/profiles-proposal.json": "664bc13ef3fb8980848d4e0216ba0e00c731d62d97902edb7d85d0679591252b",
+      "xctrace/profiles-review.json": "8fa51f7eaf2707e5c193807764cecf59d86e6f2bdecd683abfb2c2dbd53ac55f",
+      "xctrace/profiles/summary.json": "5beae7ed59255292e1468c86d64839f24295e78e8b9cc16fe55d16aeaf3c4bf5",
+      "xctrace/raw-review.json": "65b671c80c5bc304d1d4a86eaaf6bb1953cc50f5511235b022d8f35ccd6cb729",
+      "xctrace/attribution.json": "3eb0efb59d15a3db7b5a1d8353ba37cd3f1fe8207d39e0902dcf031f38f176dd",
+      "xctrace/profiles-tests.log": "3a445660665b07df3beb18f6c3f812ebc673070d30e3f3f3aa0a9d32b6442056"
+    },
+    "independent_review": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high",
+      "status": "GO_valid_completed_descriptive_profiles",
+      "physical_bindings": 272,
+      "captured_artifact_hashes": 1547,
+      "offline_original_oracle_rechecks": 8,
+      "owned_target_and_recorder_processes": 16,
+      "exports": 16,
+      "source_annotations_prototype": "GO only for unchanged gate/charge semantics; actual optimized assembly and enclosing performance remain untested"
+    }
   }
 }
