@@ -14,6 +14,8 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import compact_cells as campaign
+from native_io import case_header
+from test_native import case_bytes
 
 
 class CompactCellsContract(unittest.TestCase):
@@ -697,6 +699,237 @@ class FactorStudyContract(unittest.TestCase):
                 original['resources'] = {}
                 with self.assertRaisesRegex(ValueError, 'prerequisite resource evidence changed'):
                     campaign.check_prerequisite(row, cell, receipt, traced=False)
+
+
+class DeferredStudyContract(unittest.TestCase):
+    result = staticmethod(FactorStudyContract.result)
+    trace = staticmethod(FactorStudyContract.trace)
+
+    @staticmethod
+    def cells():
+        return [{'id': f'{f}-t{w}', 'family': f, 'threads': w,
+                 'metadata': {'path': 'meta'}, 'witness': {'path': 'witness'}}
+                for f in campaign.FAMILIES for w in [1, 4]]
+
+    def test_fixed_three_arm_contract_has_exactly_balanced_positions(self):
+        self.assertEqual(campaign.contract({'kind': campaign.DEFERRED_KIND}),
+                         (campaign.DEFERRED_ARMS, campaign.DEFERRED_LIMITS))
+        self.assertEqual(campaign.DEFERRED_ARMS, ['baseline', 'cells', 'cells_deferred'])
+        self.assertEqual(campaign.DEFERRED_LIMITS['seed'], 2026101701)
+        self.assertEqual(campaign.DEFERRED_LIMITS['data_seed'], campaign.LIMITS['seed'])
+        ids = [c['id'] for c in self.cells()]
+        blocks = campaign.schedule(ids, arms=campaign.DEFERRED_ARMS, limits=campaign.DEFERRED_LIMITS)
+        self.assertEqual(blocks, campaign.schedule(ids, arms=campaign.DEFERRED_ARMS,
+                                                  limits=campaign.DEFERRED_LIMITS))
+        self.assertEqual([len(block) for block in blocks], [72] * 6)
+        for cid in ids:
+            positions = {arm: [0] * 3 for arm in campaign.DEFERRED_ARMS}
+            for block in blocks:
+                for index, row in enumerate(r for r in block if r['cell'] == cid):
+                    positions[row['arm']][index] += 1
+            self.assertTrue(all(counts == [2, 2, 2] for counts in positions.values()))
+
+    def test_deferred_prepare_reuses_only_original_parent_and_binds_unscored_controls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            parent, parent_path, tool = FactorStudyContract.parent_fixture(root)
+            original = {p: p.read_bytes() for p in parent_path.parent.iterdir()}
+            harness, plugin = root / 'new-harness', root / 'new-plugin'
+            harness.write_text('new harness')
+            plugin.write_text('new plugin')
+            def reference(path, *_):
+                return {'_arrays_path': path.with_name(path.name.replace('.oracle.json', '.npz'))}, {
+                    Path(campaign.routing_oracle.__file__): 'current-tool-must-not-be-a-parent-dependency'}
+            def prepare(source, target, arm, workers):
+                self.assertEqual(arm, 'cells_deferred')
+                target.write_bytes(source.read_bytes() + b'|new-deferred-request')
+            def inspect(path):
+                return {'body_sha256': hashlib.sha256(path.read_bytes().split(b'|')[0]).hexdigest()}
+            with patch.object(campaign, 'tool_files', return_value=[tool]), \
+                 patch.object(campaign.routing_oracle, 'load_reference', side_effect=reference), \
+                 patch.object(campaign.routing, 'prepare', side_effect=prepare) as preparation, \
+                 patch.object(campaign.routing_cases, 'inspect_case', side_effect=inspect), \
+                 patch.object(campaign, 'columns', side_effect=AssertionError('must not generate data')), \
+                 patch.object(campaign.routing_oracle, 'write_reference', side_effect=AssertionError('must not solve oracle')):
+                plan = campaign.prepare_deferred(root / 'deferred', parent_path, harness, plugin)
+                self.assertEqual(preparation.call_count, 24)
+                self.assertEqual(len(list((root / 'deferred').iterdir())), 25)
+                self.assertEqual(plan['arms'], campaign.DEFERRED_ARMS)
+                self.assertEqual(plan['parent_plan_sha256'], campaign.routing.identity(parent))
+                self.assertNotIn(str(Path(campaign.routing_oracle.__file__)), plan['parent_dependencies'])
+                for old, new in zip(parent['cells'], plan['cells']):
+                    self.assertEqual({**new, 'inputs': {a: new['inputs'][a] for a in campaign.ARMS}}, old)
+                campaign.validate(plan)
+                self.assertEqual(original, {p: p.read_bytes() for p in original})
+                for mutation in ['seed', 'diagonal', 'cells_v2']:
+                    changed = copy.deepcopy(plan)
+                    if mutation == 'seed':
+                        changed['limits']['seed'] += 1
+                    else:
+                        del changed['cells'][0]['inputs'][mutation]
+                    with self.assertRaises(ValueError):
+                        campaign.validate_contract(changed)
+                with self.assertRaisesRegex(ValueError, 'original four-arm parent'):
+                    campaign.parent_dependencies({**parent, 'kind': campaign.FACTOR_KIND})
+
+    def test_real_request_header_and_resource_parser_require_deferred_preset(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source.case'
+            source.write_bytes(case_bytes([b'estimate-ols', b'threads=1', b'solver=auto',
+                                          b'preconditioner=auto', b'tolerance=1e-10']))
+            target = root / 'deferred.case'
+            campaign.routing.prepare(source, target, 'cells_deferred', 4)
+            with target.open('rb') as stream:
+                _, arguments = case_header(stream)
+                self.assertEqual(stream.read(), b'body\n9\nthreads=1\n')
+            fields = dict(a.decode().split('=', 1) for a in arguments[1:])
+            self.assertEqual(fields, {'threads': '4', 'solver': 'auto', 'preconditioner': 'auto',
+                                      'tolerance': '1e-10', 'inject': 'routing_cells_deferred'})
+            with self.assertRaisesRegex(ValueError, 'already contains'):
+                campaign.routing.prepare(target, root / 'stacked.case', 'cells_deferred', 4)
+        log = ('FEREG_SOLVER_TRACE|phase=auto_cells_deferred|iterations=8|proxy=0.9|forecast=20|'
+               'setup_work=6|setup_limit=200|installed=1|reason=amortized\n'
+               'FEREG_SOLVER_TRACE|phase=routing_action|preset=routing_cells_deferred|'
+               'final=0|certified=1|iterations=20|native_limit=100|setup_work=6|'
+               'setup_limit=200|memory_bytes=64|memory_limit=1024\n')
+        resource = campaign.routing_run.resource_diagnostics(log, 'cells_deferred', False, {})
+        self.assertEqual(resource['action_resources'][0]['preset'], 'routing_cells_deferred')
+        diagnostics = campaign.phase_diagnostics(log + self.trace(.1, .2), self.result())
+        self.assertEqual(diagnostics['solver_trace'][0]['phase'], 'auto_cells_deferred')
+        self.assertEqual(diagnostics['solver_trace'][0]['reason'], 'amortized')
+        for bad in [log.replace('preset=routing_cells_deferred', 'preset=routing_cells'),
+                    log.replace('certified=1', 'certified=0'), log.replace('setup_work=6', 'setup_work=201'),
+                    log.splitlines()[0]]:
+            with self.assertRaises(ValueError):
+                campaign.routing_run.resource_diagnostics(bad, 'cells_deferred', False, {})
+
+    def test_science_runs_independent_four_arm_pairs_and_three_arm_repeats(self):
+        for mode in ['complete', 'smoke', 'different-diagonal', 'different-science', 'candidate-timeout']:
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                plan = {'kind': campaign.DEFERRED_KIND, 'cells': self.cells(),
+                        'parent_plan': {'path': 'parent'}, 'plugin': {'path': 'new'}}
+                parent = {'plugin': {'path': 'old'}}
+                def read(path):
+                    return campaign.routing.seal(parent) if path == 'parent' else {'case_sha256': 'a', 'body_sha256': 'b'}
+                def native(plan, cell, arm, output, label, **options):
+                    control = '-control-' in label
+                    self.assertEqual(plan['plugin']['path'], 'old' if label.startswith('parent-control-') else 'new')
+                    self.assertFalse(options.get('phase_timing', False))
+                    self.assertEqual(bool(options.get('traced')), not control and label.endswith('-0'))
+                    status = 'timeout' if mode == 'candidate-timeout' and label.startswith('candidate-control-') else 'executed'
+                    return {'cell': cell['id'], 'arm': arm, 'label': label, 'log': 'log', 'status': status}
+                def parse(row, meta):
+                    campaign.require(row['status'] == 'executed', 'native failure: ' + row['label'])
+                    result = self.result()
+                    if mode == 'different-diagonal' and row['arm'] == 'diagonal' and row['label'].startswith('candidate-control-'):
+                        result['science_sha256'] = 'different'
+                    if mode == 'different-science' and '-control-' not in row['label']:
+                        result['science_sha256'] = 'different'
+                    return {}, result, Path('columns')
+                with patch.dict(os.environ, {'JOB_ID': '1', 'NSLOTS': '4'}), \
+                     patch.object(campaign, 'validate'), patch.object(campaign, 'read', side_effect=read), \
+                     patch.object(campaign, 'native', side_effect=native) as run, \
+                     patch.object(campaign, 'parse_run', side_effect=parse), \
+                     patch.object(campaign.routing_oracle, 'load_reference', return_value=({}, {})), \
+                     patch.object(campaign.routing_oracle, 'check_reference'), \
+                     patch.object(campaign.cmgschur, 'scientific_comparison'), \
+                     patch.object(campaign.routing_run, 'resource_diagnostics', return_value={}), \
+                     patch.object(Path, 'read_text', return_value=''):
+                    receipt = campaign.science(plan, Path(directory) / 'science', smoke=mode == 'smoke')
+                    if mode in {'complete', 'smoke'}:
+                        self.assertEqual(receipt['status'], 'passed', receipt['failure'])
+                        self.assertEqual(run.call_count, 336 if mode == 'complete' else 14)
+                        self.assertEqual(len(receipt['records']), 144 if mode == 'complete' else 6)
+                        self.assertEqual(receipt['parent_control_count'], 96 if mode == 'complete' else 4)
+                        self.assertEqual(receipt['parent_control_native_calls'], 192 if mode == 'complete' else 8)
+                        self.assertEqual({r['arm'] for r in receipt['records']}, set(campaign.DEFERRED_ARMS))
+                        self.assertEqual({r['arm'] for r in receipt['parent_controls']}, set(campaign.ARMS))
+                        if mode == 'smoke':
+                            with self.assertRaisesRegex(ValueError, 'complete frozen science'):
+                                campaign.validate_science(plan, receipt)
+                        else:
+                            campaign.validate_science(plan, receipt)
+                            changed = copy.deepcopy(receipt)
+                            baseline = next(p for p in changed['parent_controls'] if p['arm'] == 'baseline')
+                            for role in ['parent', 'candidate']:
+                                baseline[role]['science_sha256'] = 'changed-control-only'
+                            with self.assertRaisesRegex(ValueError, 'control/science fixed-worker repeat differs'):
+                                campaign.validate_science(plan, changed)
+                            diagonal = next(p for p in receipt['parent_controls'] if p['arm'] == 'diagonal')
+                            diagonal['candidate']['science_sha256'] = 'changed-unscored-control'
+                            with self.assertRaisesRegex(ValueError, 'control changed science'):
+                                campaign.validate_science(plan, receipt)
+                    else:
+                        self.assertEqual(receipt['status'], 'failed')
+                        if mode == 'different-science':
+                            self.assertEqual(run.call_count, 193)
+                            self.assertEqual(len(receipt['records']), 1)
+                            self.assertEqual(receipt['records'][0]['status'], 'failed')
+                            self.assertIn('control/science fixed-worker repeat differs', receipt['failure'])
+                        else:
+                            self.assertEqual(receipt['records'], [])
+                            self.assertEqual(run.call_count, 6 if mode == 'different-diagonal' else 2)
+                            pair = receipt['parent_controls'][-1]
+                            self.assertEqual(pair['status'], 'failed')
+                            self.assertEqual(pair['candidate']['status'], 'failed' if mode == 'different-diagonal' else 'timeout')
+
+    def test_measurement_binds_resources_and_runs_48_diagnostics_only_after_432_scores(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cells = self.cells()
+            plan = {'kind': campaign.DEFERRED_KIND, 'cells': cells,
+                    'blocks': campaign.schedule([c['id'] for c in cells], arms=campaign.DEFERRED_ARMS,
+                                                limits=campaign.DEFERRED_LIMITS)}
+            calls = []
+            def native(plan, cell, arm, output, label, **options):
+                calls.append(label)
+                self.assertEqual(bool(options.get('traced')), label.startswith('diagnostic-'))
+                self.assertEqual(bool(options.get('phase_timing')), label.startswith('diagnostic-'))
+                return {'cell': cell['id'], 'arm': arm, 'label': label, 'log': 'log', 'status': 'executed'}
+            def prerequisite(row, cell, receipt, *, traced):
+                self.assertEqual(traced, row['phase'] == 'diagnostic')
+                row['resources'] = {'prerequisite_science_sha256': 'same', 'resource_basis': 'bound science'}
+                return self.result()
+            with ExitStack() as stack:
+                for owner, name, options in [
+                    (campaign, 'validate', {}), (campaign, 'validate_science', {}),
+                    (campaign, 'native', {'side_effect': native}),
+                    (campaign, 'check_prerequisite', {'side_effect': prerequisite}),
+                    (campaign, 'parse_run', {'return_value': ({}, self.result(), Path('columns'))}),
+                    (campaign, 'read', {'return_value': {}}),
+                    (campaign, 'Observers', {'return_value': Mock(errors=[])}),
+                    (campaign, 'check_stable_configuration', {}),
+                    (campaign.scc.discovery, 'host', {'return_value': {'affinity': list(range(28))}}),
+                    (campaign.scc, 'configuration', {'return_value': ({}, {})}),
+                    (campaign.scc, 'check_configuration', {'return_value': 'queue'}),
+                    (campaign.scc, 'check_scheduler_snapshot', {}),
+                    (Path, 'read_text', {'return_value': self.trace(.1, .2)}),
+                ]:
+                    stack.enter_context(patch.object(owner, name, **options))
+                stack.enter_context(patch.dict(os.environ, campaign.LIBRARY_LIMITS))
+                result = campaign.measure(plan, {}, Path(directory) / 'measure')
+            self.assertEqual(result['status'], 'complete', result['failure'])
+            self.assertEqual(len(calls), 552)
+            self.assertTrue(all(label.startswith('warmup-') for label in calls[:72]))
+            self.assertTrue(all(label.startswith('block-') for label in calls[72:504]))
+            self.assertTrue(all(label.startswith('diagnostic-') for label in calls[504:]))
+            self.assertEqual(len(result['summaries']), 48)
+            self.assertEqual(len(result['deferred_comparisons']), 24)
+            self.assertTrue(all(row['paired_blocks'] == 6 and row['reference'] == 'cells'
+                                for row in result['deferred_comparisons']))
+            self.assertTrue(all(row['resources']['prerequisite_science_sha256'] == 'same'
+                                for row in result['records']))
+
+    def test_control_deadline_prevents_dispatch_and_retains_failure(self):
+        controls = []
+        with patch.object(campaign.time, 'monotonic', return_value=1801), \
+             patch.object(campaign, 'read', return_value={}), patch.object(campaign, 'native') as native:
+            with self.assertRaisesRegex(ValueError, 'science budget exhausted'):
+                campaign.deferred_parent_controls({'plugin': {}}, {'plugin': {}}, self.cells(),
+                                                  Path('/unused'), 0, controls)
+        native.assert_not_called()
+        self.assertEqual(len(controls), 1)
+        self.assertEqual(controls[0]['status'], 'failed')
 
 
 class StableConfiguration(unittest.TestCase):

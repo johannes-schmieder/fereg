@@ -278,6 +278,17 @@ implementation boundaries are [routing work accounting](../crates/fereg-core/src
 [two-FE kernels](../crates/fereg-core/src/fe/routing_kernel.rs) and
 [direct proposals](../crates/fereg-core/src/fe/routing_direct.rs).
 
+The separate private `routing_cells_deferred` experiment starts the incumbent
+and observes its normalized readiness proxy at iterations 8 and 16 of the same
+recurrence. One deterministic forecast/payback decision may admit an exact cell
+census and then the original cell kernel. All optional scans, census, build and
+four-W0 reconstruction/restart reserve share the original setup cap. Refusal
+leaves the current recurrence untouched; installation reconstructs and restarts
+from its current iterate under the unchanged original-design certificate and
+native iteration cap. It preserves D_f, work/memory admission and fatal Break.
+No elapsed time or problem-family label enters the decision. The frozen scope
+and discovery protocol are recorded in [validation](VALIDATION.md#deferred-original-cell-prototype-scope-2026-10-17).
+
 Declared routing scope: only explicitly injected OLS routes may change
 coefficients, covariance, fit statistics, residuals, FE coordinates and solver
 iteration signatures within §20 tolerances. Sample, rank, omission, original

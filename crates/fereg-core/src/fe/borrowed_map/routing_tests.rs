@@ -1391,9 +1391,22 @@ fn routing_and_portfolio_native_caps_around_checkpoint_never_extend_the_action()
         RoutingPreset::new(16, 1).unwrap(),
         RoutingPreset::new(32, 1).unwrap(),
         RoutingPreset::portfolio_v1(),
+        RoutingPreset::ablation("cells_deferred").unwrap(),
     ] {
-        let checkpoint = preset.checkpoint();
-        for cap in [checkpoint - 1, checkpoint, checkpoint + 1] {
+        let checkpoint =
+            if preset.kernel() == Some(super::super::routing::RoutingAblation::CellsDeferred) {
+                16
+            } else {
+                preset.checkpoint()
+            };
+        let deferred =
+            preset.kernel() == Some(super::super::routing::RoutingAblation::CellsDeferred);
+        let mut caps = vec![checkpoint - 1, checkpoint, checkpoint + 1];
+        if deferred {
+            // MAP reserves floor(cap/4): these give actual PCG limits 15/16/17.
+            caps.extend([20, 21, 22]);
+        }
+        for cap in caps {
             let limited = MapConfig {
                 max_iterations: cap,
                 ..config()
@@ -1414,7 +1427,11 @@ fn routing_and_portfolio_native_caps_around_checkpoint_never_extend_the_action()
                 limited,
                 false,
             );
-            assert!(!owner.auto_route.as_ref().unwrap().setup.attempted);
+            assert_eq!(
+                owner.auto_route.as_ref().unwrap().setup.attempted,
+                deferred && cap == 22
+            );
+            assert!(owner.two_fe_pcg.as_ref().unwrap().kernel.is_none());
             assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
             let operators = owner.two_fe_pcg.as_ref().unwrap().ppml_operator_rhs_count;
             assert!(operators <= cap as u128 * 3);
@@ -1449,6 +1466,7 @@ fn routing_initial_certificate_does_not_spend_or_prepare() {
         RoutingPreset::new(4, 1).unwrap(),
         RoutingPreset::ablation("cells_v2").unwrap(),
         RoutingPreset::ablation("cells_v2_df").unwrap(),
+        RoutingPreset::ablation("cells_deferred").unwrap(),
     ] {
         let witness = PairedGraph::new();
         let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
@@ -1589,4 +1607,212 @@ fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_ledger(
         ),
         hierarchy,
     );
+}
+
+#[test]
+fn deferred_cells_live_admission_reuses_certified_saved_effects() {
+    let witness = PairedGraph::new();
+    let mut first_worker: Option<Vec<f64>> = None;
+    for workers in [1, 4] {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+            .install(|| {
+                let mut repeat: Option<Vec<f64>> = None;
+                for _ in 0..2 {
+                    let mut owner =
+                        ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                    owner.retain_coefficients = true;
+                    owner.request_auto_routing(
+                        RoutingPreset::ablation("cells_deferred").unwrap(),
+                        None,
+                        0,
+                    );
+                    let fit = owner
+                        .absorb_ols(
+                            BorrowedMapWeights::Provided(&witness.weights),
+                            witness.input.clone().into(),
+                            config(),
+                            false,
+                        )
+                        .unwrap();
+                    witness.check(&fit, &[0, 1, 2]);
+                    let graph = owner.two_fe_pcg.as_ref().unwrap();
+                    assert!(graph.cmg_schur.is_none());
+                    if workers == 1 {
+                        assert!(
+                            graph.kernel.is_some(),
+                            "unforced serial admission on an analytical witness"
+                        );
+                    }
+                    let kernel = graph.kernel.as_ref().map(std::ptr::from_ref);
+                    let route = owner.auto_route.as_ref().unwrap();
+                    assert!(route.setup.attempted);
+                    assert!(route.setup.used > 0 && route.setup.used <= route.setup.limit);
+                    let charged = (route.setup.limit, route.setup.used);
+                    if let Some(ref old) = repeat {
+                        assert_same_bits(fit.residualized().as_slice(), old);
+                    }
+                    repeat = Some(fit.residualized().as_slice().to_vec());
+                    if let Some(ref old) = first_worker {
+                        for (a, b) in fit.residualized().as_slice().iter().zip(old) {
+                            assert!((a - b).abs() < 1e-9);
+                        }
+                    } else {
+                        first_worker = Some(fit.residualized().as_slice().to_vec());
+                    }
+                    let narrow = owner
+                        .absorb_ols(
+                            BorrowedMapWeights::Provided(&witness.weights),
+                            witness.columns(&[1]).into(),
+                            config(),
+                            false,
+                        )
+                        .unwrap();
+                    witness.check(&narrow, &[1]);
+                    let graph = owner.two_fe_pcg.as_ref().unwrap();
+                    assert_eq!(graph.kernel.as_ref().map(std::ptr::from_ref), kernel);
+                    let route = owner.auto_route.as_ref().unwrap();
+                    assert_eq!((route.setup.limit, route.setup.used), charged);
+                }
+            })
+            .unwrap();
+    }
+}
+
+#[test]
+fn deferred_cells_refusal_preserves_incumbent_and_sunk_work() {
+    let witness = PairedGraph::new();
+    let mut incumbent = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+    incumbent.retain_coefficients = true;
+    let reference = incumbent
+        .absorb_ols(
+            BorrowedMapWeights::Provided(&witness.weights),
+            witness.input.clone().into(),
+            config(),
+            false,
+        )
+        .unwrap();
+    for memory_refusal in [false, true] {
+        let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+        owner.retain_coefficients = true;
+        owner.request_auto_routing(RoutingPreset::ablation("cells_deferred").unwrap(), None, 0);
+        let route = owner.auto_route.as_mut().unwrap();
+        if memory_refusal {
+            route.request.budget = Some(FeSolverMemoryBudget {
+                execution_bytes: 0,
+                usable_bytes: 0,
+            });
+        } else {
+            route.setup.begin(config().tolerance, false, Some(0));
+        }
+        let fit = owner
+            .absorb_ols(
+                BorrowedMapWeights::Provided(&witness.weights),
+                witness.input.clone().into(),
+                config(),
+                false,
+            )
+            .unwrap();
+        assert_same_bits(
+            fit.residualized().as_slice(),
+            reference.residualized().as_slice(),
+        );
+        assert_eq!(fit.coefficients, reference.coefficients);
+        assert_eq!(fit.report().certificate, reference.report().certificate);
+        assert_eq!(fit.report().iterations, reference.report().iterations);
+        let route = owner.auto_route.as_ref().unwrap();
+        assert!(route.setup.attempted);
+        assert!(route.setup.used <= route.setup.limit);
+        if memory_refusal {
+            assert!(route.setup.used > 0);
+        }
+        assert!(owner.two_fe_pcg.as_ref().unwrap().kernel.is_none());
+    }
+}
+
+#[test]
+fn deferred_cells_correction_does_not_reuse_old_progress() {
+    let witness = PairedGraph::new();
+    let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+    owner.request_auto_routing(RoutingPreset::ablation("cells_deferred").unwrap(), None, 0);
+    // Force the existing original-design certificate after the h8 observation.
+    // Its real failure starts a new correction; the old forecast is invalid.
+    TWO_FE_CERTIFICATE_AT.set(12);
+    let fit = owner
+        .absorb_ols(
+            BorrowedMapWeights::Provided(&witness.weights),
+            witness.input.clone().into(),
+            config(),
+            false,
+        )
+        .unwrap();
+    assert!(fit.report().certified());
+    assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
+    assert!(owner.two_fe_pcg.as_ref().unwrap().kernel.is_none());
+    assert_eq!(TWO_FE_CERTIFICATE_AT.get(), 0);
+}
+
+#[test]
+fn deferred_cells_low_chunks_share_scans_and_the_first_allowance() {
+    fn observe(
+        owner: &mut ReusableCategoricalMapAbsorber<'_>,
+        iteration: usize,
+        previous: &mut Option<f64>,
+    ) -> bool {
+        let mut setup_seconds = 0.;
+        let mut started = Instant::now();
+        owner
+            .auto_route
+            .as_mut()
+            .unwrap()
+            .deferred_cells_checkpoint(
+                &owner.design,
+                validate_weights(BorrowedMapWeights::Unit, owner.design.nobs()).unwrap(),
+                owner.two_fe_pcg.as_mut().unwrap(),
+                &owner.workspace,
+                3,
+                3,
+                iteration,
+                100,
+                config().tolerance,
+                previous,
+                &mut setup_seconds,
+                &mut started,
+            )
+            .unwrap()
+    }
+    let witness = PairedGraph::new();
+    let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+    owner.request_auto_routing(RoutingPreset::ablation("cells_deferred").unwrap(), None, 0);
+    owner
+        .auto_route
+        .as_mut()
+        .unwrap()
+        .begin(config().tolerance, false, Some(100_000))
+        .unwrap();
+    owner.two_fe_pcg.as_mut().unwrap().right_weights.fill(1.);
+    owner.two_fe_pcg.as_mut().unwrap().residual.fill(1.);
+    owner.workspace.reference_norms.fill(1.);
+    let mut prior = None;
+    assert!(!observe(&mut owner, 8, &mut prior));
+    assert!(prior.is_some());
+    let first = owner.auto_route.as_ref().unwrap().setup.used;
+    let allowance = owner.auto_route.as_ref().unwrap().setup.limit;
+    assert!(first > 0);
+    owner
+        .auto_route
+        .as_mut()
+        .unwrap()
+        .begin(config().tolerance, false, Some(1_000_000))
+        .unwrap();
+    let mut next_chunk = None;
+    assert!(!observe(&mut owner, 8, &mut next_chunk));
+    assert_eq!(owner.auto_route.as_ref().unwrap().setup.used, 2 * first);
+    assert_eq!(owner.auto_route.as_ref().unwrap().setup.limit, allowance);
+    // A later correction lacking its own h8 observation declines permanently.
+    assert!(!observe(&mut owner, 16, &mut None));
+    let route = owner.auto_route.as_ref().unwrap();
+    assert!(route.setup.attempted);
+    assert_eq!(route.setup.used, 3 * first);
+    assert!(!observe(&mut owner, 8, &mut None));
+    assert_eq!(owner.auto_route.as_ref().unwrap().setup.used, 3 * first);
 }

@@ -15,6 +15,7 @@ use super::map::ReusableMapCapacities;
 use super::routing::PortfolioChoice;
 
 mod categorical_prefix;
+mod deferred_cells;
 mod irons_tuck;
 mod lsmr_norms;
 pub(crate) use irons_tuck::absorb_borrowed_intercept_irons_tuck_certified;
@@ -3196,6 +3197,8 @@ fn absorb_two_fe_pcg_reusing(
         }
         let mut reconstruct = active_rhs == 0;
         let mut route_restart = false;
+        // A correction must never extrapolate progress from a prior recurrence.
+        let mut deferred_proxy = None;
         let initialization_seconds = phase_start.elapsed().as_secs_f64();
         while !reconstruct && iterations < pcg_iteration_limit {
             crate::interrupt::checkpoint()?;
@@ -3485,6 +3488,24 @@ fn absorb_two_fe_pcg_reusing(
             if let Some(route) = auto_route.as_deref_mut().filter(|_| !cmg_schur) {
                 // A ready recurrence leaves this loop for its original-design
                 // certificate before reaching the grant decision.
+                if route.deferred_cells_checkpoint(
+                    design,
+                    weights,
+                    graph,
+                    certificate_workspace,
+                    rhs_count,
+                    stride,
+                    iterations,
+                    pcg_iteration_limit,
+                    recurrence_tolerance,
+                    &mut deferred_proxy,
+                    &mut setup_seconds,
+                    &mut solve_started,
+                )? {
+                    route_restart = true;
+                    reconstruct = true;
+                    break;
+                }
                 if let Some(preconditioner) = route.checkpoint(
                     design,
                     weights,

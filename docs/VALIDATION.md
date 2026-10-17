@@ -16,6 +16,71 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Deferred original-cell prototype scope, 2026-10-17
+
+The private `routing_cells_deferred` arm starts from `a1c95cce`. Only this
+injected two-categorical-effect OLS arm may change continuous scientific fields
+and iteration signatures within SPEC. Public Auto, all prior private arms,
+explicit solvers, PPML and other FE routes remain exact controls. Sample, rank,
+omission, original factor slots and other discrete decisions remain unchanged.
+Independent paired-cell analytical projections, weighted dense-dummy OLS and
+existing original-observation certificates witness the changed arithmetic.
+Saved effects, Fast/Low reuse, fixed-worker repeats, cross-worker agreement,
+optional refusal and atomic Break/rollback remain mandatory.
+
+The single candidate observes the existing recurrence's maximum normalized
+readiness proxy at iterations 8 and 16, within the same correction cycle. At 16
+it halves the logarithmic remaining-iteration forecast and caps it by the
+remaining native budget. Nonfinite, noncontracting or missing progress declines.
+One optimistic structural payback check precedes an exact integer cell census;
+a second check uses that count before the unchanged original cell builder.
+Census scratch is bounded, dropped before sorting, and included in peak memory.
+All scans, census, construction and the existing four-iteration handoff reserve
+count against the unchanged first-batch `32 W0` allowance. One decision is shared
+across Low chunks in the same accuracy phase; no future-RHS savings are credited.
+An installed kernel uses the original D_f and existing reconstruct/restart path.
+Refusal preserves the live recurrence; Break and allocation failure remain fatal.
+
+The frozen proxy is the maximum original-readiness normalized group moment.
+For finite `e8 > e16 > t`, remaining work uses
+`R = floor(4 * (ln(e16)-ln(t))/(ln(e8)-ln(e16)))`, capped by the remaining
+PCG iterations. With rows `n`, left/right levels `p/q`, current RHS count `r`
+and maximum planned observation lanes `L`, builder work is exactly
+`B(C)=292n+68C+28p+24q+19032`; census reserves `16n+16p+4q+256` and each proxy
+scan reserves `16qr+64`. Priced per-iteration savings are
+`S(C)=floor(n*(10r+(weighted?8:4))/L)-[C*(10r+16)+p*(4r+8)+q*(6r+8)+128]`.
+Require positive `S` and `R*S >= B(C)+4W0+all policy charges`, first using
+`C=max(p,q)` before census and then the exact count. Existing setup and memory
+admission apply independently. Logs retain finite proxies and the decision; a
+zero trace proxy is a sentinel when missing or nonfinite, not necessarily a
+measured zero.
+
+The payback model is a deterministic heuristic, not a wall-time guarantee. It
+credits neither inactive-lane retirement nor faster convergence from switching
+an algebraically equivalent operator, and discounts observation work by its
+planned worker count. The forecast and all tariffs are fixed before timing.
+Discovery will compare Auto, always-built original cells and deferred cells on
+the retained twelve families at one/four workers: 72 warmups, 432 scored solves,
+and 48 separate traced diagnostics. Scientific prerequisites are 144 new-arm
+panel calls plus 96 independent paired old-arm comparisons (192 native calls).
+Use one isolated SCC allocation, six balanced blocks, fixed budgets, no excluded
+observations or outcome-driven extensions. This experiment cannot promote a
+public default; untouched confirmation and focused Mac qualification remain
+separate prerequisites. No timing evidence exists for this candidate yet.
+
+Local validation passes: source-only integration (260 Python tests, 13 skips,
+Rust/scientific tests, Clippy, allocator audits, portable/native bridge checks),
+private Mac ABI/panic containment, all 73 public replay cases exactly against
+`a1c95cce`, and three licensed Stata fixtures including the new arm's saved-FE,
+Fast/Low and rollback checks. Focused tests cover unforced cell installation,
+independent census counts, exact builder charges, refused/current-iterate bits,
+correction-cycle reset, cumulative Low charges, the actual h16 native-cap boundary
+and isolated fatal Break. The installed-package entrypoint stops at its expected
+source/plugin binding; the installed package remains unchanged. Independent
+Astra plan/runtime/harness reviews pass. The scoped ratchet increase is 331 core
+production lines and one plugin line. Harness tests pass: 41 compact, 40 routing
+and 84 routing-run. These checks establish no performance claim.
+
 ## Compact-cell preconditioner factor study, 2026-10-17
 
 The private `routing_cells_v2_df` arm holds V2 construction, storage, operator,

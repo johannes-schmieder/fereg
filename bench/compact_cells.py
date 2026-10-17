@@ -50,6 +50,10 @@ FACTOR_ARMS = [*ARMS, 'cells_v2_df']
 FACTOR_LIMITS = {**LIMITS, 'seed': 2026101604, 'data_seed': LIMITS['seed'],
                  'parent_control_repeats': 1, 'diagnostic_budget_s': 1800, 'diagnostic_repeats': 2,
                  'diagnostic_families': ['dense', 'repeated', 'hubs', 'high-degree-weak']}
+DEFERRED_KIND = 'compact_cells_deferred_study_v1'
+DEFERRED_ARMS = ['baseline', 'cells', 'cells_deferred']
+DEFERRED_LIMITS = {**FACTOR_LIMITS, 'seed': 2026101701}
+FOLLOWUP_KINDS = {FACTOR_KIND, DEFERRED_KIND}
 LIVE_HOST_LOAD_FIELDS = frozenset({
     'cpu', 'load_avg', 'load_short', 'load_medium', 'load_long',
     'np_load_avg', 'np_load_short', 'np_load_medium', 'np_load_long',
@@ -90,8 +94,9 @@ def checked(value):
 def contract(plan):
     """Select a fixed protocol without changing the original campaign globals."""
     kind = plan.get('kind', KIND)
-    require(kind in {KIND, FACTOR_KIND}, 'unknown campaign kind')
-    return (FACTOR_ARMS, FACTOR_LIMITS) if kind == FACTOR_KIND else (ARMS, LIMITS)
+    require(kind in {KIND, *FOLLOWUP_KINDS}, 'unknown campaign kind')
+    return {KIND: (ARMS, LIMITS), FACTOR_KIND: (FACTOR_ARMS, FACTOR_LIMITS),
+            DEFERRED_KIND: (DEFERRED_ARMS, DEFERRED_LIMITS)}[kind]
 
 
 def host_fields(record):
@@ -273,8 +278,9 @@ def validate_contract(plan):
             and plan['blocks'] == schedule(expected, arms=arms, limits=limits),
             'case coverage or frozen order changed')
     for cell in plan['cells']:
+        inputs = set(arms) | set(ARMS) if plan['kind'] == DEFERRED_KIND else set(arms)
         require(cell['id'] == f"{cell['family']}-t{cell['threads']}"
-                and set(cell['inputs']) == set(arms), 'incomplete arm/cell coverage')
+                and set(cell['inputs']) == inputs, 'incomplete arm/cell coverage')
 
 
 def parent_dependencies(parent):
@@ -283,7 +289,7 @@ def parent_dependencies(parent):
     A follow-up necessarily changes its tools. Never rewrite the old plan or
     rebind its old tool hashes to the new producer closure.
     """
-    require(parent['kind'] == KIND, 'factor study requires the original four-arm parent')
+    require(parent['kind'] == KIND, 'follow-up study requires the original four-arm parent')
     validate_contract(parent)
     bindings = [parent[key] for key in ['generator', 'harness', 'plugin']]
     for cell in parent['cells']:
@@ -309,6 +315,15 @@ def parent_dependencies(parent):
 
 
 def prepare_factor(root, parent_path, harness, plugin):
+    return prepare_followup(root, parent_path, harness, plugin, FACTOR_KIND, 'cells_v2_df')
+
+
+def prepare_deferred(root, parent_path, harness, plugin):
+    return prepare_followup(root, parent_path, harness, plugin, DEFERRED_KIND, 'cells_deferred')
+
+
+def prepare_followup(root, parent_path, harness, plugin, kind, new_arm):
+    arms, limits = contract({'kind': kind})
     parent_binding = ref(parent_path)
     parent = routing.unseal(read(parent_path))
     dependencies = parent_dependencies(parent)
@@ -317,26 +332,26 @@ def prepare_factor(root, parent_path, harness, plugin):
     frozen = [ref(path) for path in [harness, plugin, *tool_files()]]
     cells_out = []
     for cell in parent['cells']:
-        target = root / f"{cell['id']}-cells_v2_df.case"
-        routing.prepare(checked(cell['inputs']['baseline']), target, 'cells_v2_df', cell['threads'])
+        target = root / f"{cell['id']}-{new_arm}.case"
+        routing.prepare(checked(cell['inputs']['baseline']), target, new_arm, cell['threads'])
         meta = read(cell['metadata']['path'])
         require(routing_cases.inspect_case(target)['body_sha256'] == meta['body_sha256'],
-                'factor request preparation changed frozen data/model body')
+                'follow-up request preparation changed frozen data/model body')
         new_input = ref(target)
         frozen.append(new_input)
-        cells_out.append({**cell, 'inputs': {**cell['inputs'], 'cells_v2_df': new_input}})
+        cells_out.append({**cell, 'inputs': {**cell['inputs'], new_arm: new_input}})
     frozen.append(parent_binding)
     identities = dict(dependencies)
     for item in frozen:
         require(item['path'] not in identities or identities[item['path']] == item['sha256'],
                 'new artifact/tool would replace a parent dependency')
         identities[item['path']] = item['sha256']
-    plan = {'kind': FACTOR_KIND, 'limits': FACTOR_LIMITS, 'arms': FACTOR_ARMS,
+    plan = {'kind': kind, 'limits': limits, 'arms': arms,
             'families': FAMILIES, 'library_limits': LIBRARY_LIMITS,
             'parent_plan': parent_binding, 'parent_plan_sha256': routing.identity(parent),
             'parent_dependencies': dependencies, 'generator': parent['generator'],
             'harness': ref(harness), 'plugin': ref(plugin), 'cells': cells_out,
-            'blocks': schedule([c['id'] for c in cells_out], arms=FACTOR_ARMS, limits=FACTOR_LIMITS),
+            'blocks': schedule([c['id'] for c in cells_out], arms=arms, limits=limits),
             'frozen_files': identities, 'root': str(root), 'created_utc': datetime.now(timezone.utc).isoformat()}
     validate(plan)
     save(root / 'plan.json', routing.seal(plan))
@@ -345,14 +360,14 @@ def prepare_factor(root, parent_path, harness, plugin):
 
 def validate(plan):
     validate_contract(plan)
-    if plan['kind'] == FACTOR_KIND:
+    if plan['kind'] in FOLLOWUP_KINDS:
         parent = routing.unseal(read(checked(plan['parent_plan'])))
         require(routing.identity(parent) == plan['parent_plan_sha256']
                 and parent_dependencies(parent) == plan['parent_dependencies'], 'parent binding changed')
         require(plan['generator'] == parent['generator'], 'parent generator binding changed')
         for cell, original in zip(plan['cells'], parent['cells']):
             require({**cell, 'inputs': {a: cell['inputs'][a] for a in ARMS}} == original,
-                    'factor study changed parent cases or original arm requests')
+                    'follow-up study changed parent cases or original arm requests')
         for item in [plan['parent_plan'], *({'path': p, 'sha256': s}
                     for p, s in plan['parent_dependencies'].items())]:
             require(plan['frozen_files'].get(item['path']) == item['sha256'], 'unbound parent dependency')
@@ -403,6 +418,41 @@ def parse_run(row, meta):
     return raw, result, target.with_suffix('.json.columns')
 
 
+def deferred_parent_controls(plan, parent, selected, output, started, controls):
+    """Compare all four original arms directly, including the two unscored arms.
+
+    Each of 96 comparisons has one fresh parent and one fresh candidate call.
+    These records are independent of the three-arm scientific prerequisites.
+    """
+    limits = DEFERRED_LIMITS
+    for cell in selected:
+        meta = read(cell['metadata']['path'])
+        for arm in ARMS:
+            pair = {'cell': cell['id'], 'arm': arm, 'status': 'executed'}
+            controls.append(pair)
+            active = None
+            try:
+                for role, plugin in [('parent', parent['plugin']), ('candidate', plan['plugin'])]:
+                    left = limits['science_budget_s'] - (time.monotonic() - started)
+                    require(left > 0, 'science budget exhausted')
+                    active = native({**plan, 'plugin': plugin}, cell, arm, output,
+                                    f"{role}-control-{cell['id']}-{arm}",
+                                    timeout=min(limits['call_timeout_s'], left))
+                    active.update(phase=role + '_control', plugin=plugin)
+                    pair[role] = active
+                    _, result, _ = parse_run(active, meta)
+                    active.update(result)
+                require(pair['parent']['science_sha256'] == pair['candidate']['science_sha256'],
+                        'parent/candidate control science or solver signature differs: '
+                        + cell['id'] + '/' + arm)
+                pair['status'] = pair['parent']['status'] = pair['candidate']['status'] = 'passed'
+            except Exception as error:
+                pair.update(status='failed', error=str(error))
+                if active is not None and active['status'] == 'executed':
+                    active.update(status='failed', error=str(error))
+                raise
+
+
 def science(plan, output, *, smoke=False):
     validate(plan)
     arms, limits = contract(plan)
@@ -413,9 +463,11 @@ def science(plan, output, *, smoke=False):
     start = time.monotonic()
     fingerprints, records, baseline, worker_one = {}, [], {}, {}
     controls, active_row = [], None
-    parent = routing.unseal(read(plan['parent_plan']['path'])) if plan.get('kind') == FACTOR_KIND else None
+    parent = routing.unseal(read(plan['parent_plan']['path'])) if plan.get('kind') in FOLLOWUP_KINDS else None
     status, failure = 'passed', None
     try:
+        if plan.get('kind') == DEFERRED_KIND:
+            deferred_parent_controls(plan, parent, selected, output, start, controls)
         for cell in selected:
             meta = read(cell['metadata']['path'])
             witness, _ = routing_oracle.load_reference(Path(cell['witness']['path']),
@@ -423,7 +475,7 @@ def science(plan, output, *, smoke=False):
             for arm in arms:
                 previous = None
                 control_fingerprint = None
-                if parent is not None and arm in ARMS:
+                if plan.get('kind') == FACTOR_KIND and arm in ARMS:
                     left = limits['science_budget_s'] - (time.monotonic() - start)
                     require(left > 0, 'science budget exhausted')
                     active_row = native({**plan, 'plugin': parent['plugin']}, cell, arm, output,
@@ -448,6 +500,11 @@ def science(plan, output, *, smoke=False):
                         require(previous == result['science_sha256'], 'fixed-worker repeat differs: ' + key)
                     previous = result['science_sha256']
                     if repeat == 0:
+                        if plan.get('kind') == DEFERRED_KIND and arm in ARMS:
+                            candidate_control = next(pair['candidate'] for pair in controls
+                                                     if pair['cell'] == cell['id'] and pair['arm'] == arm)
+                            require(candidate_control['science_sha256'] == result['science_sha256'],
+                                    'candidate control/science fixed-worker repeat differs: ' + key)
                         if control_fingerprint is not None:
                             require(control_fingerprint == result['science_sha256'],
                                     'parent/candidate control science or solver signature differs: ' + key)
@@ -480,6 +537,9 @@ def science(plan, output, *, smoke=False):
     if parent is not None:
         receipt.update(parent_controls=controls, parent_control_count=len(controls),
                        parent_control_status='passed' if status == 'passed' else 'failed')
+        if plan.get('kind') == DEFERRED_KIND:
+            receipt['parent_control_native_calls'] = sum(role in pair for pair in controls
+                                                        for role in ['parent', 'candidate'])
     save(output / 'science.json', routing.seal(receipt))
     return receipt
 
@@ -499,19 +559,35 @@ def validate_science(plan, receipt):
                     for r in rows) and 'resources' in rows[0], 'incomplete repeat/resource prerequisite')
     for item in receipt['files']:
         checked(item)
-    if plan.get('kind') == FACTOR_KIND:
+    if plan.get('kind') in FOLLOWUP_KINDS:
         controls = receipt['parent_controls']
         require(receipt['parent_control_status'] == 'passed'
                 and receipt['parent_control_count'] == len(controls) == len(plan['cells']) * len(ARMS),
                 'incomplete parent artifact controls')
         parent = routing.unseal(read(plan['parent_plan']['path']))
+        if plan.get('kind') == DEFERRED_KIND:
+            require(receipt['parent_control_native_calls'] == 2 * len(controls),
+                    'incomplete parent/candidate control calls')
         for cell in plan['cells']:
             for arm in ARMS:
                 rows = [r for r in controls if r['cell'] == cell['id'] and r['arm'] == arm]
-                require(len(rows) == 1 and rows[0]['status'] == 'passed'
-                        and rows[0]['plugin'] == parent['plugin'] and rows[0]['phase'] == 'parent_control'
-                        and rows[0]['science_sha256'] == receipt['fingerprints'][cell['id'] + '/' + arm],
-                        'parent artifact control changed science or solver signature')
+                require(len(rows) == 1 and rows[0]['status'] == 'passed', 'incomplete parent artifact controls')
+                if plan.get('kind') == DEFERRED_KIND:
+                    pair = rows[0]
+                    for role, plugin in [('parent', parent['plugin']), ('candidate', plan['plugin'])]:
+                        row = pair[role]
+                        require(row['status'] == 'passed' and row['cell'] == cell['id'] and row['arm'] == arm
+                                and row['phase'] == role + '_control' and row['plugin'] == plugin,
+                                'invalid parent/candidate control identity')
+                    require(pair['parent']['science_sha256'] == pair['candidate']['science_sha256'],
+                            'parent artifact control changed science or solver signature')
+                    if arm in arms:
+                        require(pair['candidate']['science_sha256'] == receipt['fingerprints'][cell['id'] + '/' + arm],
+                                'candidate control/science fixed-worker repeat differs')
+                else:
+                    require(rows[0]['plugin'] == parent['plugin'] and rows[0]['phase'] == 'parent_control'
+                            and rows[0]['science_sha256'] == receipt['fingerprints'][cell['id'] + '/' + arm],
+                            'parent artifact control changed science or solver signature')
 
 
 class Observers:
@@ -733,7 +809,7 @@ def measure(plan, receipt, output):
     output.mkdir(parents=True, exist_ok=False)
     records, failure, observer, started, ended = [], None, None, None, None
     before, queue, observed_started, observed_ended = None, None, None, None
-    fingerprints = {}
+    fingerprints, resource_bindings = {}, {}
     try:
         before, snapshot = scc.configuration(output, host, 'before')
         queue = scc.check_configuration(before, host, os.getpid())
@@ -752,12 +828,14 @@ def measure(plan, receipt, output):
                 remaining = limits['warmup_budget_s'] - (time.monotonic() - warmup_started)
                 require(remaining > 0, 'warmup budget exhausted')
                 row = native(plan, cell, arm, output, f"warmup-{cell['id']}-{arm}", cpus=cpus,
-                             traced=plan.get('kind') != FACTOR_KIND,
+                             traced=plan.get('kind') not in FOLLOWUP_KINDS,
                              timeout=min(limits['call_timeout_s'], remaining))
                 row.update(phase='warmup')
                 records.append(row)
-                result = check_prerequisite(row, cell, receipt, traced=plan.get('kind') != FACTOR_KIND)
+                result = check_prerequisite(row, cell, receipt, traced=plan.get('kind') not in FOLLOWUP_KINDS)
                 fingerprints[cell['id'] + '/' + arm] = result['science_sha256']
+                if plan.get('kind') == DEFERRED_KIND:
+                    resource_bindings[cell['id'] + '/' + arm] = row['resources']
                 row.update(result, status='passed')
         require(time.monotonic() - warmup_started <= limits['warmup_budget_s'], 'warmup budget exhausted')
         started = time.monotonic_ns()
@@ -771,6 +849,8 @@ def measure(plan, receipt, output):
                 row = native(plan, cell, arm, output, f"block-{index}-{cell['id']}-{arm}", cpus=cpus,
                              timeout=min(limits['call_timeout_s'], remaining))
                 row.update(phase='measure', block=index)
+                if plan.get('kind') == DEFERRED_KIND:
+                    row['resources'] = resource_bindings[cell['id'] + '/' + arm]
                 records.append(row)
                 # Verification between complete calls stops the campaign at its
                 # first scientific failure. This never runs an oracle solve.
@@ -781,7 +861,7 @@ def measure(plan, receipt, output):
             observer.census(f'block-{index}-after')
         ended = time.monotonic_ns()
         require((ended - started) / 1e9 <= limits['measurement_budget_s'], 'measurement budget exhausted')
-        if plan.get('kind') == FACTOR_KIND:
+        if plan.get('kind') in FOLLOWUP_KINDS:
             observer.census('diagnostics-before')
             collect_diagnostics(plan, receipt, output, cpus, observer, fingerprints, records)
             observer.census('diagnostics-after')
@@ -792,7 +872,7 @@ def measure(plan, receipt, output):
             records[-1].update(status='failed', error=failure)
     finally:
         ended = ended or time.monotonic_ns()
-        observed_ended = observed_ended or (time.monotonic_ns() if plan.get('kind') == FACTOR_KIND else ended)
+        observed_ended = observed_ended or (time.monotonic_ns() if plan.get('kind') in FOLLOWUP_KINDS else ended)
         # Join before appending final scheduler state; periodic and boundary
         # snapshots must retain their physical chronological order.
         if observer:
@@ -828,6 +908,9 @@ def measure(plan, receipt, output):
         value['factor_comparisons'] = [summary for reference in ['cells_v2', 'cells']
                                       for summary in summarize(records, arms=arms, reference=reference,
                                                                candidates=['cells_v2_df'])]
+    if plan.get('kind') == DEFERRED_KIND:
+        value['deferred_comparisons'] = summarize(records, arms=arms, reference='cells',
+                                                  candidates=['cells_deferred'])
     save(output / 'measurement.json', routing.seal(value))
     return value
 
@@ -839,8 +922,11 @@ def main():
     for name in ['root', 'generator', 'harness', 'plugin']:
         prep.add_argument('--' + name, type=Path, required=True)
     factor = subs.add_parser('prepare-factor', help='reuse a frozen four-arm parent; prepare only the D_f request')
-    for name in ['root', 'parent-plan', 'harness', 'plugin']:
-        factor.add_argument('--' + name, type=Path, required=True)
+    deferred = subs.add_parser('prepare-deferred',
+                               help='reuse the frozen original four-arm parent; prepare only the deferred request')
+    for sub in [factor, deferred]:
+        for name in ['root', 'parent-plan', 'harness', 'plugin']:
+            sub.add_argument('--' + name, type=Path, required=True)
     for mode in ['science', 'smoke', 'measure']:
         sub = subs.add_parser(mode)
         sub.add_argument('--plan', type=Path, required=True)
@@ -853,13 +939,17 @@ def main():
                 args.plugin.resolve(strict=True))
     elif args.command == 'prepare-factor':
         prepare_factor(args.root, args.parent_plan, args.harness, args.plugin)
+    elif args.command == 'prepare-deferred':
+        prepare_deferred(args.root, args.parent_plan, args.harness, args.plugin)
     else:
         plan = routing.unseal(read(args.plan))
         result = (measure(plan, routing.unseal(read(args.science)), args.output) if args.command == 'measure'
                   else science(plan, args.output, smoke=args.command == 'smoke'))
         require(result['status'] in {'passed', 'complete'}, result.get('failure') or 'campaign failed')
         if 'parent_control_status' in result:
-            print(f"COMPACT_CELLS_PARENT_CONTROLS status={result['parent_control_status']} calls={result['parent_control_count']}",
+            count = (f"comparisons={result['parent_control_count']} calls={result['parent_control_native_calls']}"
+                     if plan['kind'] == DEFERRED_KIND else f"calls={result['parent_control_count']}")
+            print(f"COMPACT_CELLS_PARENT_CONTROLS status={result['parent_control_status']} {count}",
                   flush=True)
     print(f'COMPACT_CELLS_SUCCESS stage={args.command}', flush=True)
 
