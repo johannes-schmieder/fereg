@@ -21885,5 +21885,66 @@
       "scope": "Requires valid complete schema3 discovery, exact B context and prospective C declaration before B target access; shared Linuxsample1 bytes remain unchanged with separate Mac resource/source/build binding. Actual filled prerequisites require independent review."
     }
   }
-
+,
+  "portfolio_setup_continuations_20261017": {
+    "source_commit": "020eab1e9559fd68f619a4ec73fb04fcb6d1136f",
+    "runtime_and_builds_unchanged": true,
+    "original_setup_job": "8151673",
+    "scope": "Test harness operational continuation only. No new solver measurements or scientific admission. Original failed build-stage record remains unchanged.",
+    "failed_continuations": [
+      {
+        "job_id": "8151852",
+        "failed": 0,
+        "exit_status": 1,
+        "slots": 4,
+        "hostname": "scc-ei3",
+        "wallclock_s": 31,
+        "mock_tests_run": 0,
+        "cause": "Isolated fixture omitted replay.h and nested replay_io.h.",
+        "accounting_sha256": "bbd181c7477e2d1924356eb92dbb2ed1fddc655df28be08e64bd0807d2928078",
+        "terminal_output_sha256": "554a196d9cbc56adf063fde3ff4ffbc44aac5381fd18190620fd30c7b475662b",
+        "completion_exists": false
+      },
+      {
+        "job_id": "8151966",
+        "failed": 0,
+        "exit_status": 1,
+        "slots": 4,
+        "hostname": "scc-ei3",
+        "wallclock_s": 34,
+        "mock_tests_run": 6,
+        "mock_tests_failed": 1,
+        "cause": "Shell range admitted Arabic-Indic four and returned127 from deliberately nonexistent compiler instead of admission error2.",
+        "accounting_sha256": "25a14fb5eb51d88369e2f0b38a783c8368c53f5d601e62fc41746efd237b06af",
+        "terminal_output_sha256": "bb379bebb412d3d843f87096d8a2e0162f2b40065051bd8c0e2dff219b494602",
+        "command_sha256": "5f12bcefd241cf754dcb175c0f8758c3126a09e36896eed0f36c4403bcc76b44",
+        "stderr_sha256": "baa61bf34fe4d4d36b3a01c7b726a866ddae8be79a16cc69e22235e9a80147b8",
+        "completion_exists": false
+      }
+    ],
+    "locale_diagnostic": {
+      "sha256": "8a2778616f7d875c14347fc377a7c56eaa9120ad59f3b2022c66637ce38e1fab",
+      "bash": "4.4.20",
+      "affected_locale": "en_US.UTF-8",
+      "old_range_accepts_arabic_digit": true,
+      "explicit_ascii_lists_reject": true,
+      "C_and_C_UTF8_ranges_reject": true,
+      "scope": "Read-only shell-pattern mechanism check; failed job locale itself was not captured."
+    },
+    "status": "pending_locale_independent_harness_retest",
+    "local_portability_fix": {
+      "shell_sha256": "8170ebeeb9b39de522455debf71cd46427ec581a5e884f1f845ebd1978934cba",
+      "tests_sha256": "4e6a6cb05ff9b82f3257a02908276a4e37cf3cf11a5151dbf9e75a5df59ab83b",
+      "focused_log_sha256": "e75060cb63339fe794e44a3fdd9fc05b683624418c97684fa12f72d5a9e6df9f",
+      "tests": 6,
+      "elapsed_s": 1.557,
+      "independent_source_review": "gpt-6-astra high: GO for literal ASCII guard and expanded locale/Unicode tests; required affected Linux locale witness remains pending.",
+      "production_equal_to_P": {
+        "runtime_modules": 192,
+        "artifact_inputs": 58
+      },
+      "latex_source_compile": "passed_builtin_compiler",
+      "scope": "No actual plugin execution or estimator changes from this repair. Existing valid build/ABI evidence retained."
+    }
+  }
 }

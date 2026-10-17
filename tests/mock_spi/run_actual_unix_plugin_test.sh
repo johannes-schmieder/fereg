@@ -7,7 +7,7 @@ fi
 # Cap actual ABI selftest requests, not just the compiler or BLAS environment.
 # Unset preserves the local 32-worker check; verbose uses min(2, cap).
 case "${FEREG_TEST_THREADS-32}" in
-  [1-9]|[12][0-9]|3[0-2]) ;;
+  [123456789]|[12][0123456789]|3[012]) ;;
   *)
     printf 'FEREG_TEST_THREADS must be an integer from 1 to 32 without leading zeros\n' >&2
     exit 2

@@ -1401,7 +1401,17 @@ there is no completion marker. The narrow test-only repair enlarges two buffers
 to 32 bytes, preserving all supported worker arguments and compiler warnings.
 Its six local mock tests and actual four-worker ABI checks against both private
 Mac plugins pass. The original failed setup and successful builds
-remain intact; a separately reviewed Linux continuation is still required.
+remain intact. The separate continuation `8151852` then exited failed=0/exit=1
+in 31 seconds before running any mock tests: its isolated fixture omitted
+`replay.h` and the nested `replay_io.h` dependency. The complete fixture passed
+six local tests, but Linux continuation `8151966` exited failed=0/exit=1 in
+34 seconds after running all six: the shell worker-count guard accepted an
+Arabic digit and reached the deliberately nonexistent compiler. A separate
+read-only Bash 4.4.20 check reproduces range acceptance under `en_US.UTF-8`;
+explicit ASCII digit lists reject it. This establishes a test-harness portability
+defect, not a solver failure. All three failures and the successful Rust builds
+and ABI checks remain retained. Locale-independent admission and a focused Linux
+retest are still required; there is no setup completion marker.
 No collection has started in `portfolio-unseeded-20261016`.
 
 Prospective Mac qualification tools now recognize the six-allocation schema and

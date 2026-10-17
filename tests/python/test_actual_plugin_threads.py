@@ -14,7 +14,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 INVALID = ("", "0", "00", "01", "33", "99", "100", "-1", "+4", " 4", "4 ",
-           "4\n", "4.0", "4x", "1e1", "٤", "9" * 1000)
+           "4\n", "4.0", "4x", "1e1", "٤", "1٤", "3١", "４", "9" * 1000)
 
 
 @unittest.skipUnless(sys.platform in ("darwin", "linux"), "Unix actual-plugin harness only")
@@ -120,15 +120,22 @@ int main(int argc, char *argv[])
 
     def test_shell_rejects_invalid_cap_before_compilation(self):
         script = ROOT / "tests/mock_spi/run_actual_unix_plugin_test.sh"
-        for value in INVALID:
-            with self.subTest(value=value):
-                env = self.environment(value)
-                env["CC"] = "/nonexistent-test-compiler"
-                result = subprocess.run(["bash", str(script), "/nonexistent-dir/plugin"],
-                                        env=env, capture_output=True, text=True, timeout=5)
-                self.assertEqual(result.returncode, 2)
-                self.assertIn("FEREG_TEST_THREADS must", result.stderr)
-                self.assertNotIn("No such file", result.stderr)
+        installed = subprocess.run(["locale", "-a"], capture_output=True, text=True,
+                                   timeout=5, check=True).stdout.splitlines()
+        utf8 = sorted(name for name in installed
+                      if name.lower().replace("-", "") in {"c.utf8", "en_us.utf8", "ar_eg.utf8"})
+        for language in (None, "C", *utf8):
+            for value in INVALID:
+                with self.subTest(locale=language or "inherited", value=value):
+                    env = self.environment(value)
+                    env["CC"] = "/nonexistent-test-compiler"
+                    if language is not None:
+                        env["LC_ALL"] = language
+                    result = subprocess.run(["bash", str(script), "/nonexistent-dir/plugin"],
+                                            env=env, capture_output=True, text=True, timeout=5)
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertIn("FEREG_TEST_THREADS must", result.stderr)
+                    self.assertNotIn("No such file", result.stderr)
 
     def test_shell_passes_cap_to_harness_and_preserves_unset_default(self):
         mock_root = self.directory / "shell"
