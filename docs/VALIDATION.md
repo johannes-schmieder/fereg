@@ -1573,6 +1573,21 @@ The revealed A panel includes a wide-RHS case, but no matched comparison of
 cold one-RHS, reused one-RHS and wide batches on the same topology. Low-memory
 chunking is not a poolsize-one experiment. This panel can assess broad routing
 and one-to-four-worker scaling, but cannot establish a general RHS payback rule.
+
+A separate matched regression now checks those three RHS layouts on the same
+analytic graph, weights and target, at one/four workers. The reused case first
+solves a different RHS and retains the same hierarchy and setup ledger. Both
+priming and target results pass the independent residual, reconstruction and
+gauge witnesses, exact fixed-worker repeats and cross-worker discrete-decision
+checks. Wider first actions receive the existing width-based allowance; later
+actions do not renew it. The focused test, independent Astra high source review
+and complete source-only suite pass (1,935 Rust executions, 312 Python tests and
+seven portable checks). Production identity is unchanged across 192 runtime
+modules and 58 artifact inputs. Suite output SHA-256 is
+`10e9ea5e2c2711dfb7e1b276f87c936fd8c49645cc22da0dc0cfdc9f5c615853`.
+Installed-package admission was not performed, and the Linux mock audit remains
+unavailable on Mac. This adds correctness coverage only: it neither measures RHS
+amortization nor changes the first-action allowance or upgrade policy.
 Full hashes, preserved failures and scope are in the compact evidence linked below.
 
 The prospective Mac witness helper now binds this compiled candidate and private

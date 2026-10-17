@@ -1259,6 +1259,152 @@ fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths(
 }
 
 #[test]
+fn portfolio_matched_cold_reused_and_wide_rhs_preserve_science_and_repeats() {
+    let witness = PairedGraph::new();
+    // The first RHS is the same target in all three cases. Only its batching
+    // and whether a different RHS has already paid for setup are changed.
+    for (positions, primed) in [(&[0][..], false), (&[0][..], true), (&[0, 1, 2][..], false)] {
+        let mut across_workers: Option<Vec<CertifiedBorrowedMap>> = None;
+        for workers in [1, 4] {
+            let run = || {
+                crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                    .install(|| {
+                        let mut owner =
+                            ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers)
+                                .unwrap();
+                        owner.retain_coefficients = true;
+                        owner.request_auto_routing(RoutingPreset::portfolio_unseeded(), None, 0);
+                        let mut results = Vec::new();
+                        let mut prior_setup = None;
+                        if primed {
+                            let first = owner
+                                .absorb_ols(
+                                    BorrowedMapWeights::Provided(&witness.weights),
+                                    witness.columns(&[1]).into(),
+                                    config(),
+                                    false,
+                                )
+                                .unwrap();
+                            witness.check(&first, &[1]);
+                            let route = owner.auto_route.as_ref().unwrap();
+                            let hierarchy = owner
+                                .two_fe_pcg
+                                .as_ref()
+                                .unwrap()
+                                .cmg_schur
+                                .as_ref()
+                                .unwrap();
+                            prior_setup = Some((
+                                route.setup.limit,
+                                route.setup.used,
+                                route.setup.restart_reserve,
+                                std::ptr::from_ref(hierarchy.as_ref()),
+                            ));
+                            results.push(first);
+                        }
+                        let target = owner
+                            .absorb_ols(
+                                BorrowedMapWeights::Provided(&witness.weights),
+                                witness.columns(positions).into(),
+                                config(),
+                                false,
+                            )
+                            .unwrap();
+                        witness.check(&target, positions);
+                        let route = owner.auto_route.as_ref().unwrap();
+                        let hierarchy = owner
+                            .two_fe_pcg
+                            .as_ref()
+                            .unwrap()
+                            .cmg_schur
+                            .as_ref()
+                            .unwrap();
+                        let work = schur_iteration_work(
+                            witness.weights.len(),
+                            PairedGraph::LEVELS,
+                            PairedGraph::LEVELS,
+                            if primed { 1 } else { positions.len() },
+                            3,
+                        )
+                        .unwrap();
+                        assert!(route.setup.attempted);
+                        assert_eq!(
+                            route.setup.portfolio_choice(),
+                            PortfolioChoice::IncumbentCmg
+                        );
+                        assert_eq!(route.setup.limit, 32 * work);
+                        assert_eq!(route.setup.restart_reserve, 4 * work);
+                        assert!(route.setup.used > 0 && route.setup.used <= route.setup.limit);
+                        let setup = (
+                            route.setup.limit,
+                            route.setup.used,
+                            route.setup.restart_reserve,
+                        );
+                        if let Some((limit, used, reserve, pointer)) = prior_setup {
+                            assert_eq!(setup, (limit, used, reserve));
+                            assert_eq!(std::ptr::from_ref(hierarchy.as_ref()), pointer);
+                        }
+                        results.push(target);
+                        for result in &mut results {
+                            assert!(result.report.iterations <= config().max_iterations);
+                            // Timings are not a repeatability target. Retain every
+                            // scientific diagnostic and the original certificate.
+                            result.report.setup_seconds = 0.;
+                            result.report.solve_seconds = 0.;
+                            result.report.certification_seconds = 0.;
+                        }
+                        (results, setup)
+                    })
+                    .unwrap()
+            };
+            let actual = run();
+            let replay = run();
+            assert_eq!(actual, replay);
+            for (actual, replay) in actual.0.iter().zip(&replay.0) {
+                assert_same_bits(
+                    actual.residualized().as_slice(),
+                    replay.residualized().as_slice(),
+                );
+                assert_same_bits(
+                    &actual.coefficients.as_ref().unwrap().values,
+                    &replay.coefficients.as_ref().unwrap().values,
+                );
+            }
+            if let Some(previous) = across_workers.as_ref() {
+                assert_eq!(actual.0.len(), previous.len());
+                for (actual, previous) in actual.0.iter().zip(previous) {
+                    let discrete = |report: &SolveReport| {
+                        (
+                            report.requested_solver,
+                            report.used_solver,
+                            report.stop_reason,
+                            report.fallback_used,
+                            report.requested_preconditioner,
+                            report.used_preconditioner,
+                            report.checkpoint_retries,
+                            report.pilot_iterations,
+                            report.warnings.clone(),
+                        )
+                    };
+                    assert_eq!(discrete(actual.report()), discrete(previous.report()));
+                    for (&actual, &expected) in actual
+                        .residualized()
+                        .as_slice()
+                        .iter()
+                        .zip(previous.residualized().as_slice())
+                    {
+                        assert!((actual - expected).abs() < 1e-9);
+                    }
+                }
+            }
+            // Across workers and across batch layouts, the analytic witness is
+            // authoritative; neither iteration counts nor rounding must match.
+            across_workers = Some(actual.0);
+        }
+    }
+}
+
+#[test]
 fn routing_and_portfolio_quota_or_memory_refusal_preserve_the_exact_incumbent() {
     let witness = PairedGraph::new();
     let mut incumbent = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
