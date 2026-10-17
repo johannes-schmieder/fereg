@@ -103,6 +103,15 @@ impl PairedGraph {
     }
 
     fn check(&self, result: &CertifiedBorrowedMap, positions: &[usize]) {
+        self.check_signals(result, positions, [Self::left, Self::right]);
+    }
+
+    fn check_signals(
+        &self,
+        result: &CertifiedBorrowedMap,
+        positions: &[usize],
+        signals: [fn(usize, usize) -> f64; 2],
+    ) {
         assert!(result.report().certified());
         assert_eq!(result.residualized().nrows(), self.weights.len());
         assert_eq!(result.residualized().ncols(), positions.len());
@@ -124,10 +133,7 @@ impl PairedGraph {
             for component in 0..2 {
                 let anchor = component * Self::COMPONENT_LEVELS;
                 for level in anchor..anchor + Self::COMPONENT_LEVELS {
-                    for (effect, truth) in [
-                        (0, Self::left as fn(usize, usize) -> f64),
-                        (1, Self::right as fn(usize, usize) -> f64),
-                    ] {
+                    for (effect, truth) in signals.iter().enumerate() {
                         let start = base + coefficients.effect_offsets[effect];
                         let contrast = coefficients.values[start + level]
                             - coefficients.values[start + anchor];
@@ -136,6 +142,76 @@ impl PairedGraph {
                 }
             }
         }
+    }
+
+    fn independent_left(level: usize, rhs: usize) -> f64 {
+        Self::left(level, 0)
+            + if rhs == 0 {
+                0.
+            } else {
+                (((level * (2 * rhs + 1) + 3 * rhs) % 17) as f64 - 8.) / 64.
+            }
+    }
+
+    fn independent_right(level: usize, rhs: usize) -> f64 {
+        Self::right(level, 0)
+            + if rhs == 0 {
+                0.
+            } else {
+                (((level * (2 * rhs + 3) + 5 * rhs) % 19) as f64 - 9.) / 128.
+            }
+    }
+
+    fn independent_columns() -> Self {
+        let mut witness = Self::new();
+        let walsh = |rhs: usize, repeat: usize| {
+            if (rhs & repeat).count_ones() % 2 == 0 {
+                1.
+            } else {
+                -1.
+            }
+        };
+        let mut columns = vec![Vec::new(); 16];
+        let mut residuals = vec![Vec::new(); 16];
+        for rhs in 0..16 {
+            for row in 0..witness.input.nrows() {
+                // Every cell keeps its original 32 opposite pairs and weight.
+                // Walsh row zero is constant, so the first RHS is unchanged.
+                let repeat = (row / 2) % 32;
+                let residual = witness.residual[(row, 0)] * walsh(rhs, repeat);
+                let input = residual
+                    + Self::independent_left(witness.codes[0][row] as usize, rhs)
+                    + Self::independent_right(witness.codes[1][row] as usize, rhs);
+                if rhs == 0 {
+                    assert_eq!(residual.to_bits(), witness.residual[(row, 0)].to_bits());
+                    assert_eq!(input.to_bits(), witness.input[(row, 0)].to_bits());
+                }
+                residuals[rhs].push(residual);
+                columns[rhs].push(input);
+            }
+            // The 16 Walsh vectors are independent over 32 repeats. Multiplying
+            // each row by the original strictly positive dyadic magnitude is
+            // invertible, so these residual columns remain independent.
+            for other in 0..16 {
+                let product: f64 = (0..32).map(|t| walsh(rhs, t) * walsh(other, t)).sum();
+                assert_eq!(product, if rhs == other { 32. } else { 0. });
+            }
+            for pair in residuals[rhs].chunks_exact(2) {
+                assert_eq!(pair[0] + pair[1], 0.);
+            }
+            // Each submitted column initially has nonzero FE moments. This
+            // does not claim that every lane remains active at installation.
+            for effect in 0..2 {
+                let mut moments = [0.; Self::LEVELS];
+                for (row, &value) in columns[rhs].iter().enumerate() {
+                    moments[witness.codes[effect][row] as usize] += witness.weights[row] * value;
+                }
+                assert!(moments.iter().any(|&value| value != 0.));
+            }
+        }
+        witness.input = DenseMatrix::from_columns(&columns).unwrap();
+        witness.residual = DenseMatrix::from_columns(&residuals).unwrap();
+        witness
     }
 }
 
@@ -1402,6 +1478,176 @@ fn portfolio_matched_cold_reused_and_wide_rhs_preserve_science_and_repeats() {
             across_workers = Some(actual.0);
         }
     }
+}
+
+fn independent_rhs_sequence(
+    witness: &PairedGraph,
+    workers: usize,
+    positions: &[usize],
+    primed: bool,
+) -> (Vec<CertifiedBorrowedMap>, (u64, u64, u64)) {
+    crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+        .install(|| {
+            let mut owner =
+                ReusableCategoricalMapAbsorber::new(witness.design(), 16, workers).unwrap();
+            owner.retain_coefficients = true;
+            owner.request_auto_routing(RoutingPreset::portfolio_unseeded(), None, 0);
+            let mut projections = Vec::new();
+            if primed {
+                projections.push(&[1][..]);
+            }
+            projections.push(positions);
+            let work = schur_iteration_work(
+                witness.weights.len(),
+                PairedGraph::LEVELS,
+                PairedGraph::LEVELS,
+                projections[0].len(),
+                16,
+            )
+            .unwrap();
+            let mut results = Vec::new();
+            let mut installed = None;
+            for (projection, columns) in projections.into_iter().enumerate() {
+                TWO_FE_ROUTING_BUILD_AT.set(0);
+                TWO_FE_ROUTING_LAUNCH_AT.set(0);
+                let mut fit = owner
+                    .absorb_ols(
+                        BorrowedMapWeights::Provided(&witness.weights),
+                        witness.columns(columns).into(),
+                        config(),
+                        false,
+                    )
+                    .unwrap();
+                witness.check_signals(
+                    &fit,
+                    columns,
+                    [
+                        PairedGraph::independent_left,
+                        PairedGraph::independent_right,
+                    ],
+                );
+                let route = owner.auto_route.as_ref().unwrap();
+                let hierarchy = owner.two_fe_pcg.as_ref().unwrap().cmg_schur.as_ref();
+                assert!(
+                    hierarchy.is_some(),
+                    "workers={workers}, columns={columns:?}"
+                );
+                assert!(route.setup.attempted);
+                assert_eq!(
+                    route.setup.portfolio_choice(),
+                    PortfolioChoice::IncumbentCmg
+                );
+                // Same capacity, intentionally different first submitted widths:
+                // the original first compatible 32W0/4W0 ledger is never renewed.
+                let setup = (
+                    route.setup.limit,
+                    route.setup.used,
+                    route.setup.restart_reserve,
+                );
+                assert_eq!(setup.0, 32 * work);
+                assert_eq!(setup.2, 4 * work);
+                assert!(setup.1 > 0 && setup.1 <= setup.0);
+                let pointer = std::ptr::from_ref(hierarchy.unwrap().as_ref());
+                if let Some(prior) = installed {
+                    assert_eq!((setup, pointer), prior);
+                    assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 0);
+                } else {
+                    assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 16);
+                }
+                assert_eq!(TWO_FE_ROUTING_LAUNCH_AT.get(), 0);
+                assert!(!fit.report.fallback_used);
+                // A retained hierarchy is applied at recurrence initialization.
+                // Progress after cold installation (or on reuse) therefore
+                // proves at least one CMG application, not sixteen active lanes.
+                assert!(fit.report.iterations > if projection == 0 { 16 } else { 0 });
+                assert!(fit.report.iterations <= config().max_iterations);
+                installed = Some((setup, pointer));
+                fit.report.setup_seconds = 0.;
+                fit.report.solve_seconds = 0.;
+                fit.report.certification_seconds = 0.;
+                results.push(fit);
+            }
+            (results, installed.unwrap().0)
+        })
+        .unwrap()
+}
+
+fn assert_independent_rhs_workers(
+    actual: &[CertifiedBorrowedMap],
+    expected: &[CertifiedBorrowedMap],
+) {
+    assert_eq!(actual.len(), expected.len());
+    for (actual, expected) in actual.iter().zip(expected) {
+        let discrete = |report: &SolveReport| {
+            (
+                report.requested_solver,
+                report.used_solver,
+                report.stop_reason,
+                report.fallback_used,
+                report.requested_preconditioner,
+                report.used_preconditioner,
+                report.checkpoint_retries,
+                report.pilot_iterations,
+                report.warnings.clone(),
+            )
+        };
+        assert_eq!(discrete(actual.report()), discrete(expected.report()));
+        let a = actual.coefficients.as_ref().unwrap();
+        let b = expected.coefficients.as_ref().unwrap();
+        assert_eq!(a.level_counts, b.level_counts);
+        assert_eq!(a.effect_offsets, b.effect_offsets);
+        assert_eq!(a.coefficients_per_rhs, b.coefficients_per_rhs);
+        for (&a, &b) in actual
+            .residualized()
+            .as_slice()
+            .iter()
+            .zip(expected.residualized().as_slice())
+        {
+            assert!((a - b).abs() < 1e-9);
+        }
+        // The independent per-component contrast checks above remain the FE
+        // witness; gauge choices need not be compared across worker counts.
+    }
+}
+
+#[test]
+fn portfolio_sixteen_independent_rhs_cover_matched_cold_and_reused_routes() {
+    let witness = PairedGraph::independent_columns();
+    let sixteen: Vec<_> = (0..16).collect();
+    let sequences = [
+        (&[0][..], false),
+        (&[0][..], true),
+        (&[0, 1, 2, 3][..], false),
+        (sixteen.as_slice(), false),
+        (sixteen.as_slice(), true),
+    ];
+    let mut owners = 0;
+    let mut projections = 0;
+    for (positions, primed) in sequences {
+        let mut across_workers: Option<Vec<CertifiedBorrowedMap>> = None;
+        for workers in [1, 4] {
+            let actual = independent_rhs_sequence(&witness, workers, positions, primed);
+            let replay = independent_rhs_sequence(&witness, workers, positions, primed);
+            owners += 2;
+            projections += actual.0.len() + replay.0.len();
+            assert_eq!(actual, replay);
+            for (actual, replay) in actual.0.iter().zip(&replay.0) {
+                assert_same_bits(
+                    actual.residualized().as_slice(),
+                    replay.residualized().as_slice(),
+                );
+                assert_same_bits(
+                    &actual.coefficients.as_ref().unwrap().values,
+                    &replay.coefficients.as_ref().unwrap().values,
+                );
+            }
+            if let Some(previous) = across_workers.as_ref() {
+                assert_independent_rhs_workers(&actual.0, previous);
+            }
+            across_workers = Some(actual.0);
+        }
+    }
+    assert_eq!((owners, projections), (20, 28));
 }
 
 #[test]

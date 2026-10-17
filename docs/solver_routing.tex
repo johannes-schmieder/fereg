@@ -2464,7 +2464,7 @@ The matched small graph covers cold-single, reused-single and cold-three-RHS cal
 \end{note}
 
 \sub{Reuse and batching answer different questions}
-Hierarchy reuse already amortizes construction over subsequent columns. This experiment targets application cost after construction; it does not test when to upgrade. Earlier construction pays only when expected remaining solve savings exceed setup and transition costs. Submitted width alone is insufficient: easy or already-converged columns contribute little remaining work. No new width/core threshold follows from this result.
+Hierarchy reuse amortizes construction over subsequent columns; batching targets application cost. Earlier construction pays only when remaining solve savings exceed setup and transition costs. A subsequent fixed analytic regression passes twenty owners and twenty-eight projections at widths 1, 4 and 16, including narrow-first setup followed by wide reuse. Sixteen independent Walsh residual columns preserve exact paired orthogonality. CMG application, hierarchy reuse and the first-width allowance are checked at one/four workers. This adds correctness coverage, not evidence that all sixteen lanes remain active at handoff or a width/core payback rule.
 
 \begin{binding}\tinybody
 \textbf{Evidence and amendment.} The source-only suite passes 1,947 Rust executions, 312 Python tests and seven portable checks; universal audit and ABI/load pass. All 32 diagnostic processes, 32 core projections and eight complete-fit oracle checks are accounted for. The first process succeeded, but its reader rejected an allowed empty norm cache. A separately reviewed correction reused that output and ran only unstarted calls within the original deadline. The original result remains failed; the 795.330-second first-block interruption remains visible. Exact scientific checks pass. Two observations per artifact/cell, ordinary desktop noise and the interrupted block support descriptive engineering evidence only, with no confidence bound, qualification, Mac B/C admission or public Auto change.
@@ -2501,7 +2501,7 @@ The comparison/swap sequence, successful work and ordinals, non-cancelled refusa
 Actual ARM64 assembly bypasses repeated checks on credited steps and reduces both sift frames from 208 to 192 bytes; total text grows by 208 bytes. The full source-only suite passes 1,942 Rust executions, 312 Python tests and seven portable checks. Universal binary audit and actual-plugin ABI/load pass. These facts demonstrate implementation correctness and the intended code generation, not useful end-to-end improvement.
 
 \begin{note}\smallbody
-\textbf{Decision.} Restore the exact two-file parent and keep gate inlining. Mixed gains do not justify the new cancellation contract and fifteen production lines. This is engineering triage, not a formal nonregression failure or a causal slowdown claim. Close the small construction/application experiments; next establish matched RHS coverage and evaluate the simpler integrated candidate. No worker-specific exception follows.
+\textbf{Decision.} Restore the exact two-file parent and keep gate inlining. Mixed gains do not justify the new cancellation contract and fifteen production lines. This is engineering triage, not a formal nonregression failure or a causal slowdown claim. Close the small construction/application experiments; matched RHS coverage now passes, while evaluation of the simpler integrated candidate remains pending. No worker-specific exception follows.
 \end{note}
 
 \begin{binding}\tinybody

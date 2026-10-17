@@ -25259,5 +25259,80 @@
       "raw-review.json": "c4bd78b5a9c26a2549e25a9b20e0c6623509c5484c77c9062161d842ce66b497",
       "cmg-tests.log": "aafd5271652359de57ff9b5f987e600f9690b432058358eee0b945dee3342910"
     }
+  },
+  "matched_independent_rhs_coverage_20261017": {
+    "status": "passed_correctness_and_route_coverage_only",
+    "production_parent": "565cda64",
+    "production_identity": {
+      "runtime_modules": 192,
+      "artifact_inputs": 58,
+      "unchanged": true
+    },
+    "fixture": {
+      "graph": "Existing64level paired weighted two-component PairedGraph; original row order and first RHS preserved",
+      "residual_columns": 16,
+      "walsh_sign": "(-1)^popcount(rhs & repeat), repeat0..31",
+      "independent_witness": "Equal-weight opposite residual pairs; positive-row Walsh matrix times nonzero dyadic diagonal has rank16",
+      "formulas_frozen_before_first_run": true
+    },
+    "matrix": {
+      "workers": [
+        1,
+        4
+      ],
+      "workspace_capacity": 16,
+      "exact_repeats": 2,
+      "sequences": [
+        "cold[0]",
+        "prime[1]then[0]",
+        "cold[0,1,2,3]",
+        "cold[0..15]",
+        "prime[1]then[0..15]"
+      ],
+      "owner_sequences": 20,
+      "projections_including_primes": 28
+    },
+    "verified": [
+      "Original analytic residual/reconstruction/saved-FE contrasts/certificates for every prime and target",
+      "Initially nonorthogonal FE signals in all16columns",
+      "Actual CMG installation and positive post-install or reuse recurrence progress",
+      "Exact retained hierarchy identity and setup ledger across compatible reuse",
+      "First submitted width determines32W0 allowance and4W0 restart reserve despite capacity16; no renewal",
+      "Exact fixed-worker science; cross-worker scientific agreement and stable discrete decisions"
+    ],
+    "limitations": [
+      "Aggregate coverage does not prove all16RHS remain active at CMG handoff",
+      "No new timing, performance, SCCshortlist, MacB/C admission or publicAutochange"
+    ],
+    "checks": {
+      "focused_test": "passed on first run without tuning",
+      "independent_review": {
+        "model": "gpt-6-astra",
+        "effort": "high",
+        "verdict": "GO"
+      },
+      "source_integration": {
+        "command": [
+          "./scripts/run_tests.sh",
+          "--source-only"
+        ],
+        "returncode": 0,
+        "elapsed_s": 217.52929837501142,
+        "rust_test_executions_passed": 1939,
+        "python_tests_passed": 312,
+        "portable_tests_passed": 7,
+        "installed_package_admission": "not_performed",
+        "linux_mock_audit": "unavailable_on_Mac"
+      }
+    },
+    "sha256": {
+      "source.patch": "ca816f154aa8114bfd5f95354c4536574dcbb1b8320c61e2eecf1693755112d3",
+      "focused-test.log": "fe67208eb0dcefdf6b9dd54e60df32b8f0fc43651f00fc311d959a667ad7705c",
+      "source-review.json": "14fee42c5f207c8e7f5e40c73baf206d9797b207b352a729490ed5f07482488c",
+      "source-integration.command.json": "5f5310c435100f6abc76b7114b3c9c4945be7ab160038e04756264aa2d62b4dd",
+      "source-integration.stdout": "ba480e758bf5a4da2bb9d3b0024c13bb7cfd44894aa155ea5ab17507c265fd29",
+      "source-integration.stderr": "39e07262146ed075052619c7169b81bb04c2c891c958d98cd9580ae3284dd74d",
+      "routing_tests.rs": "c9fb7098e6e64d2dfc05844bb8a44cdb7b597581cd96ca3f329b1145d41bc5ea"
+    }
   }
 }

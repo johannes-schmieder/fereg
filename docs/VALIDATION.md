@@ -1613,6 +1613,36 @@ source/build/review hashes and these limitations.
 | Forty-call result | `642fc517cae5dc0ecd42e223cd82d303eb506b67bd275ae13bd342874644f21b` |
 | Independent raw review | `4f37f6282428233c9973acfbb57fe6ac996ad78b168f5c373c6b171d4839bc60` |
 
+### Matched independent RHS coverage, 2026-10-17
+
+The maintained routing regression now uses sixteen independent residual columns
+on the same paired, weighted, two-component graph. Fixed dyadic FE signals and
+Walsh residual patterns preserve the original first column exactly; equal-weight
+opposite pairs give an independent analytic projection for every column. The
+formulas and five layouts were fixed before the first passing test, without
+tuning after observing coverage.
+
+At one and four workers, two exact repeats cover cold widths 1, 4 and 16,
+reused width 1, and width 16 after a one-column priming solve: twenty owners and
+twenty-eight projections. Every prime and target passes the original residual,
+reconstruction, saved-FE contrast and certificate checks. Installation markers
+and subsequent recurrence progress establish CMG application; retained hierarchy
+identity and setup work remain exact on reuse. Capacity is always sixteen, while
+the first submitted width determines the unchanged 32W0 allowance and 4W0 restart
+reserve. Later wide requests do not renew that allowance.
+
+Independent Astra high review passes. Fixed-worker scientific bits repeat exactly;
+cross-worker science and discrete decisions agree. This is correctness and route
+coverage, not evidence that all sixteen columns remain active at handoff or that
+wide solves are faster. Production tokens and artifact inputs are unchanged.
+Public Auto remains incumbent; no SCC shortlist or Mac B/C admission follows.
+Source, patch and first-test hashes are retained in the
+[compact results](../bench/results/solver-routing-controlled-20261014.json).
+The integration run passes 1,939 Rust executions, 312 Python tests and seven
+portable checks, including strict lint, FFI allocation, mock-SPI and numeric
+guards. It uses the documented source-only entrypoint; installed-package
+admission is not performed and the Linux mock audit is unavailable on this Mac.
+
 ### Local heap-step credit diagnostic, 2026-10-17
 
 A separate private prototype grouped cancellation checks within a local heap
