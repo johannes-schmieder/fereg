@@ -9864,3 +9864,85 @@ fn owned_packed_scores_fail_closed_and_charge_retained_capacity() {
         assert_eq!(run(&mut refusal).unwrap_err().code, ErrorCode::Allocation);
     }
 }
+
+#[test]
+fn s_owned_preserves_two_fe_robust_fit_across_weights_and_memory_modes() {
+    use crate::ols::{fit_prepared_model_robust_with_loaded_moments, PreparedOlsRobustConfig};
+    let n = 16_385;
+    let x: Vec<_> = (0..n).map(|r| (r as f64 * 0.137).sin()).collect();
+    let z: Vec<_> = (0..n).map(|r| (r as f64 * 0.193).cos()).collect();
+    let effects = [
+        (0..n).map(|r| (r % 41) as f64).collect::<Vec<_>>(),
+        (0..n).map(|r| ((r / 41) % 37) as f64).collect::<Vec<_>>(),
+    ];
+    let y: Vec<_> = (0..n)
+        .map(|r| {
+            1.3 * x[r] - 0.7 * z[r]
+                + effects[0][r]
+                + effects[1][r]
+                + 0.01 * (r as f64 * 0.217).sin()
+        })
+        .collect();
+    let weights: Vec<_> = (0..n).map(|r| (r % 17 + 1) as f64).collect();
+    let columns = [x.clone(), z, x, vec![0.0; n]];
+    for weight in [
+        TestWeights::Unit,
+        TestWeights::Analytic(&weights),
+        TestWeights::Probability(&weights),
+        TestWeights::Frequency(&weights),
+    ] {
+        let data = prepared_multiway_categorical_weights(&y, &columns, &effects, weight);
+        for threads in [1, 4] {
+            for mode in [
+                PreparedOlsExecutionMode::Fast,
+                PreparedOlsExecutionMode::Low,
+            ] {
+                let run = |arm| {
+                    let mut fit = PreparedOlsFitConfig::default();
+                    fit.execution.mode = mode;
+                    fit.execution.poolsize = 1;
+                    fit.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
+                    fit.absorb.routing = Some(crate::fe::RoutingPreset::ablation(arm).unwrap());
+                    let mut result = fit_prepared_model_robust_with_loaded_moments(
+                        &data,
+                        PreparedOlsRobustConfig {
+                            fit,
+                            ..Default::default()
+                        },
+                        None,
+                    )
+                    .unwrap();
+                    result.fit = normalize_owned_score_fit(result.fit);
+                    result
+                };
+                let reference = run("cells_s");
+                assert_eq!(reference, run("cells_s_owned"));
+                assert_eq!(reference, run("cells_s_owned"));
+                if mode == PreparedOlsExecutionMode::Fast {
+                    let uncached = |arm| {
+                        let mut config = PreparedOlsFitConfig::default();
+                        config.execution.threads =
+                            ThreadConfig::from_requested(threads, true).unwrap();
+                        config.absorb.routing =
+                            Some(crate::fe::RoutingPreset::ablation(arm).unwrap());
+                        ThreadTeam::new(config.execution.threads)
+                            .install(|| {
+                                fit_with_controls_internal_mode(
+                                    &data,
+                                    config,
+                                    &mut SystemFitReservation,
+                                    FitPerturbations::default(),
+                                    true,
+                                    0,
+                                )
+                                .map(normalize_owned_score_fit)
+                            })
+                            .unwrap()
+                            .unwrap()
+                    };
+                    assert_eq!(uncached("cells_s"), uncached("cells_s_owned"));
+                }
+            }
+        }
+    }
+}

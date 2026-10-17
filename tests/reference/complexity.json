@@ -2,52 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 108257,
-      "before": 107849,
+      "after": 108265,
+      "before": 108257,
       "metric": "fereg-core/production_lines",
-      "reason": "Private E adds a capacity-checked transactional firm transpose, bounded deterministic parallel contractions and scoped cell RHS/reconstruction. Independent observation witnesses, exact S matvecs, resource/Break checks and prior-artifact replay cover the FE change. The independently attributed Fast ownership arm removes unused moment work and a score copy while preserving packed reductions, existing admission and exact science; public Auto remains unchanged."
+      "reason": "The private S-plus-ownership arm adds only parser/display/injection and existing policy composition: kernel maps to S and the existing exact ownership opt-in. No new FE or score algorithm. Exact two-FE weighted Fast/Low tests, original-observation witnesses, native parent controls and repeatability cover the scope."
     },
     {
-      "after": 1426,
-      "before": 1422,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Private E adds a capacity-checked transactional firm transpose, bounded deterministic parallel contractions and scoped cell RHS/reconstruction. Independent observation witnesses, exact S matvecs, resource/Break checks and prior-artifact replay cover the FE change. The independently attributed Fast ownership arm removes unused moment work and a score copy while preserving packed reductions, existing admission and exact science; public Auto remains unchanged."
-    },
-    {
-      "after": 15295,
-      "before": 15280,
+      "after": 15296,
+      "before": 15295,
       "metric": "fereg-plugin/production_lines",
-      "reason": "Private E adds a capacity-checked transactional firm transpose, bounded deterministic parallel contractions and scoped cell RHS/reconstruction. Independent observation witnesses, exact S matvecs, resource/Break checks and prior-artifact replay cover the FE change. The independently attributed Fast ownership arm removes unused moment work and a score copy while preserving packed reductions, existing admission and exact science; public Auto remains unchanged."
-    },
-    {
-      "after": 8613,
-      "before": 8568,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Private E adds a capacity-checked transactional firm transpose, bounded deterministic parallel contractions and scoped cell RHS/reconstruction. Independent observation witnesses, exact S matvecs, resource/Break checks and prior-artifact replay cover the FE change. The independently attributed Fast ownership arm removes unused moment work and a score copy while preserving packed reductions, existing admission and exact science; public Auto remains unchanged."
-    },
-    {
-      "after": 567,
-      "before": 556,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb#1",
-      "reason": "Private E adds a capacity-checked transactional firm transpose, bounded deterministic parallel contractions and scoped cell RHS/reconstruction. Independent observation witnesses, exact S matvecs, resource/Break checks and prior-artifact replay cover the FE change. The independently attributed Fast ownership arm removes unused moment work and a score copy while preserving packed reductions, existing admission and exact science; public Auto remains unchanged."
-    },
-    {
-      "after": 819,
-      "before": 811,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb_two_fe_pcg_reusing#1",
-      "reason": "Private E adds a capacity-checked transactional firm transpose, bounded deterministic parallel contractions and scoped cell RHS/reconstruction. Independent observation witnesses, exact S matvecs, resource/Break checks and prior-artifact replay cover the FE change. The independently attributed Fast ownership arm removes unused moment work and a score copy while preserving packed reductions, existing admission and exact science; public Auto remains unchanged."
-    },
-    {
-      "after": 4285,
-      "before": 4231,
-      "metric": "file/crates/fereg-core/src/ols/prepared_fit.rs",
-      "reason": "Private E adds a capacity-checked transactional firm transpose, bounded deterministic parallel contractions and scoped cell RHS/reconstruction. Independent observation witnesses, exact S matvecs, resource/Break checks and prior-artifact replay cover the FE change. The independently attributed Fast ownership arm removes unused moment work and a score copy while preserving packed reductions, existing admission and exact science; public Auto remains unchanged."
-    },
-    {
-      "after": 3344,
-      "before": 3332,
-      "metric": "file/crates/fereg-plugin/src/estimate.rs",
-      "reason": "Private E adds a capacity-checked transactional firm transpose, bounded deterministic parallel contractions and scoped cell RHS/reconstruction. Independent observation witnesses, exact S matvecs, resource/Break checks and prior-artifact replay cover the FE change. The independently attributed Fast ownership arm removes unused moment work and a score copy while preserving packed reductions, existing admission and exact science; public Auto remains unchanged."
+      "reason": "The private S-plus-ownership arm adds only parser/display/injection and existing policy composition: kernel maps to S and the existing exact ownership opt-in. No new FE or score algorithm. Exact two-FE weighted Fast/Low tests, original-observation witnesses, native parent controls and repeatability cover the scope."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -5362,115 +5326,115 @@
         "dispatch_candidates": [],
         "functions": {
           "ablation#1": {
-            "line": 106,
-            "lines": 26
+            "line": 108,
+            "lines": 27
           },
           "begin#1": {
-            "line": 333,
+            "line": 341,
             "lines": 21
           },
           "breaks_builder#1": {
-            "line": 194,
+            "line": 197,
             "lines": 3
           },
           "builder_allowance#1": {
-            "line": 355,
+            "line": 363,
             "lines": 5
           },
           "categorical_prefix#1": {
-            "line": 198,
+            "line": 201,
             "lines": 7
           },
           "changes_fe#1": {
-            "line": 220,
+            "line": 227,
             "lines": 3
           },
           "charge#1": {
-            "line": 361,
+            "line": 369,
             "lines": 10
           },
           "checkpoint#1": {
-            "line": 232,
+            "line": 240,
             "lines": 3
           },
           "fmt#1": {
-            "line": 53,
-            "lines": 33
+            "line": 54,
+            "lines": 34
           },
           "general_pair_checkpoint#1": {
-            "line": 238,
+            "line": 246,
             "lines": 7
           },
           "kernel#1": {
-            "line": 224,
-            "lines": 7
+            "line": 231,
+            "lines": 8
           },
           "matches_accuracy#1": {
-            "line": 308,
+            "line": 316,
             "lines": 5
           },
           "new#1": {
-            "line": 89,
+            "line": 91,
             "lines": 15
           },
           "new#2": {
-            "line": 323,
+            "line": 331,
             "lines": 9
           },
           "overlap#1": {
-            "line": 133,
+            "line": 136,
             "lines": 10
           },
           "overlap_break#1": {
-            "line": 187,
+            "line": 190,
             "lines": 5
           },
           "overlaps#1": {
-            "line": 207,
+            "line": 210,
             "lines": 3
           },
           "owns_fast_scores#1": {
-            "line": 213,
-            "lines": 6
+            "line": 216,
+            "lines": 10
           },
           "portfolio#1": {
-            "line": 175,
+            "line": 178,
             "lines": 6
           },
           "portfolio_choice#1": {
-            "line": 314,
+            "line": 322,
             "lines": 4
           },
           "portfolio_unseeded#1": {
-            "line": 168,
+            "line": 171,
             "lines": 6
           },
           "portfolio_v1#1": {
-            "line": 157,
+            "line": 160,
             "lines": 8
           },
           "prefix#1": {
-            "line": 144,
+            "line": 147,
             "lines": 10
           },
           "samples#1": {
-            "line": 245,
+            "line": 253,
             "lines": 3
           },
           "schur_iteration_work#1": {
-            "line": 252,
+            "line": 260,
             "lines": 34
           },
           "select_portfolio#1": {
-            "line": 319,
+            "line": 327,
             "lines": 3
           },
           "strict_categorical_prefix#1": {
-            "line": 182,
+            "line": 185,
             "lines": 3
           }
         },
-        "production_lines": 304
+        "production_lines": 312
       },
       "crates/fereg-core/src/fe/routing_direct.rs": {
         "chunk_candidates": [],
@@ -20646,32 +20610,32 @@
         "dispatch_candidates": [
           {
             "condition": "! token . is_empty ( ) && ( token . len ( ) != 32 || ! token . bytes ( ) . all ( | byte | byte . is_ascii_digit ( ) || ( b <char> ..= b <char> ) . contains ( & byte ) ) )",
-            "line": 143
+            "line": 144
           }
         ],
         "functions": {
           "create_native_break_marker#1": {
-            "line": 162,
+            "line": 163,
             "lines": 11
           },
           "internal#1": {
-            "line": 174,
+            "line": 175,
             "lines": 3
           },
           "native_break_marker_path#1": {
-            "line": 156,
+            "line": 157,
             "lines": 3
           },
           "parse_ols#1": {
             "line": 24,
-            "lines": 109
+            "lines": 110
           },
           "validate_break_marker_token#1": {
-            "line": 136,
+            "line": 137,
             "lines": 19
           }
         },
-        "production_lines": 156
+        "production_lines": 157
       },
       "crates/fereg-plugin/src/dispatch.rs": {
         "chunk_candidates": [],
@@ -23529,14 +23493,14 @@
         "dispatch_candidates": 1426,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 108257
+        "production_lines": 108265
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
         "dispatch_candidates": 142,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 15295
+        "production_lines": 15296
       }
     },
     "schema": 1

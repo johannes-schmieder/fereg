@@ -68,9 +68,14 @@ ENGINE_ARMS = ['baseline', 'cells_s', 'cells_e', 'fit_owned', 'cells_e_final']
 ENGINE_CONTROLS = [*ADMISSION_CONTROLS, 'cells_s2']
 ENGINE_LIMITS = {**MEMBERSHIP_LIMITS, 'seed': 2026101742,
                  'diagnostic_repeats': 3, 'diagnostic_families': FAMILIES}
-FOLLOWUP_KINDS = {FACTOR_KIND, DEFERRED_KIND, MEMBERSHIP_KIND, OCCURRENCE_KIND, ADMISSION_KIND, ENGINE_KIND}
-PAIRED_CONTROL_KINDS = {DEFERRED_KIND, MEMBERSHIP_KIND, OCCURRENCE_KIND, ADMISSION_KIND, ENGINE_KIND}
-MIXED_BATCH_KINDS = {MEMBERSHIP_KIND, OCCURRENCE_KIND, ADMISSION_KIND, ENGINE_KIND}
+S_OWNED_KIND = 'compact_cells_s_owned_study_v1'
+S_OWNED_ARMS = ['baseline', 'cells_s', 'fit_owned', 'cells_s_owned']
+S_OWNED_CONTROLS = [*ENGINE_CONTROLS, 'cells_e', 'fit_owned', 'cells_e_final']
+S_OWNED_LIMITS = {**ENGINE_LIMITS, 'seed': 2026101752}
+FOLLOWUP_KINDS = {FACTOR_KIND, DEFERRED_KIND, MEMBERSHIP_KIND, OCCURRENCE_KIND, ADMISSION_KIND, ENGINE_KIND, S_OWNED_KIND}
+PAIRED_CONTROL_KINDS = {DEFERRED_KIND, MEMBERSHIP_KIND, OCCURRENCE_KIND, ADMISSION_KIND, ENGINE_KIND, S_OWNED_KIND}
+MIXED_BATCH_KINDS = {MEMBERSHIP_KIND, OCCURRENCE_KIND, ADMISSION_KIND, ENGINE_KIND, S_OWNED_KIND}
+OWNERSHIP_KINDS = {ENGINE_KIND, S_OWNED_KIND}
 LIVE_HOST_LOAD_FIELDS = frozenset({
     'cpu', 'load_avg', 'load_short', 'load_medium', 'load_long',
     'np_load_avg', 'np_load_short', 'np_load_medium', 'np_load_long',
@@ -117,7 +122,8 @@ def contract(plan):
             MEMBERSHIP_KIND: (MEMBERSHIP_ARMS, MEMBERSHIP_LIMITS),
             OCCURRENCE_KIND: (OCCURRENCE_ARMS, OCCURRENCE_LIMITS),
             ADMISSION_KIND: (ADMISSION_ARMS, ADMISSION_LIMITS),
-            ENGINE_KIND: (ENGINE_ARMS, ENGINE_LIMITS)}[kind]
+            ENGINE_KIND: (ENGINE_ARMS, ENGINE_LIMITS),
+            S_OWNED_KIND: (S_OWNED_ARMS, S_OWNED_LIMITS)}[kind]
 
 
 def host_fields(record):
@@ -193,7 +199,8 @@ def tool_files():
                   'prepare_scheduler_probe.py', 'tests/test_occurrence_cells.py',
                   'admission_confirmation.py', 'tests/test_admission_cells.py',
                   'engine_confirmation.py', 'tests/test_engine_cells.py',
-                  'tests/test_engine_confirmation.py'])
+                  'tests/test_engine_confirmation.py', 's_owned_confirmation.py',
+                  'tests/test_s_owned_cells.py', 'tests/test_s_owned_confirmation.py'])
     return sorted(files)
 
 
@@ -304,7 +311,8 @@ def validate_contract(plan):
             and plan['blocks'] == schedule(expected, arms=arms, limits=limits),
             'case coverage or frozen order changed')
     for cell in plan['cells']:
-        inputs = (set(ENGINE_CONTROLS) | set(arms) if plan['kind'] == ENGINE_KIND else
+        inputs = (set(S_OWNED_CONTROLS) | set(arms) if plan['kind'] == S_OWNED_KIND else
+                  set(ENGINE_CONTROLS) | set(arms) if plan['kind'] == ENGINE_KIND else
                   set(ADMISSION_CONTROLS) | set(arms) if plan['kind'] == ADMISSION_KIND else
                   set(arms) | set(ARMS) if plan['kind'] in FOLLOWUP_KINDS else set(arms))
         require(cell['id'] == f"{cell['family']}-t{cell['threads']}"
@@ -358,7 +366,9 @@ def prepare_membership(root, parent_path, harness, plugin):
 def prepare_followup(root, parent_path, harness, plugin, kind, new_arm, *, extra=None):
     arms, limits = contract({'kind': kind})
     new_arms = [new_arm] if isinstance(new_arm, str) else new_arm
-    require(set(new_arms) == (set(arms) | (set(ENGINE_CONTROLS) if kind == ENGINE_KIND else set(ADMISSION_CONTROLS) if kind == ADMISSION_KIND else set())) - set(ARMS) and len(new_arms) == len(set(new_arms)),
+    controls = (S_OWNED_CONTROLS if kind == S_OWNED_KIND else ENGINE_CONTROLS if kind == ENGINE_KIND
+                else ADMISSION_CONTROLS if kind == ADMISSION_KIND else [])
+    require(set(new_arms) == (set(arms) | set(controls)) - set(ARMS) and len(new_arms) == len(set(new_arms)),
             'follow-up must prepare exactly its new arms')
     parent_binding = ref(parent_path)
     parent = routing.unseal(read(parent_path))
@@ -393,15 +403,17 @@ def prepare_followup(root, parent_path, harness, plugin, kind, new_arm, *, extra
             'frozen_files': identities, 'root': str(root), 'created_utc': datetime.now(timezone.utc).isoformat(),
             'prepared_wall_ns': time.time_ns(), **(extra or {})}
     if extra:
-        require(kind in {OCCURRENCE_KIND, ADMISSION_KIND, ENGINE_KIND}, 'unsupported extra bindings')
+        require(kind in {OCCURRENCE_KIND, ADMISSION_KIND, *OWNERSHIP_KINDS}, 'unsupported extra bindings')
         if kind == OCCURRENCE_KIND:
             item = extra['scheduler_diagnostic_admission']
             plan['frozen_files'][item['path']] = item['sha256']
             plan['frozen_files'].update(occurrence_control_bindings(plan))
         elif kind == ADMISSION_KIND:
             plan['frozen_files'].update(admission_control_bindings(plan))
-        else:
+        elif kind == ENGINE_KIND:
             plan['frozen_files'].update(engine_control_bindings(plan))
+        else:
+            plan['frozen_files'].update(s_owned_control_bindings(plan))
     validate(plan)
     save(root / 'plan.json', routing.seal(plan))
     return plan
@@ -442,7 +454,7 @@ def occurrence_control_bindings(plan):
 
 
 def science_affinity(plan):
-    if plan.get('kind') not in {OCCURRENCE_KIND, ADMISSION_KIND, ENGINE_KIND}:
+    if plan.get('kind') not in {OCCURRENCE_KIND, ADMISSION_KIND, *OWNERSHIP_KINDS}:
         return None
     cores = affinity_cores(plan)
     require(int(os.environ.get('NSLOTS', '0')) == cores, 'science requires frozen affinity slot count')
@@ -452,6 +464,8 @@ def science_affinity(plan):
 
 
 def control_arms(plan):
+    if plan.get('kind') == S_OWNED_KIND:
+        return S_OWNED_CONTROLS
     if plan.get('kind') == ENGINE_KIND:
         return ENGINE_CONTROLS
     if plan.get('kind') == ADMISSION_KIND:
@@ -460,6 +474,8 @@ def control_arms(plan):
 
 
 def control_parent(plan, original, arm):
+    if plan.get('kind') == S_OWNED_KIND:
+        return routing.unseal(read(checked(plan['prior_engine_plan'])))
     if plan.get("kind") == ENGINE_KIND:
         return routing.unseal(read(checked(plan["prior_admission_plan"])))
     if plan.get("kind") == ADMISSION_KIND:
@@ -498,27 +514,31 @@ def validate_engine_request(path, arm, threads):
 
 
 def engine_control_bindings(plan):
-    item = plan['prior_admission_plan']
+    return prior_control_bindings(plan, 'prior_admission_plan', ADMISSION_KIND, ENGINE_CONTROLS, 'S2')
+
+
+def prior_control_bindings(plan, field, prior_kind, controls, label):
+    item = plan[field]
     prior = routing.unseal(read(checked(item)))
     validate_contract(prior)
-    require(prior['kind'] == ADMISSION_KIND and prior['harness'] == plan['harness'],
-            'engine requires the frozen S2 artifact and unchanged harness')
+    require(prior['kind'] == prior_kind and prior['harness'] == plan['harness'],
+            f'ownership requires the frozen {label} artifact and unchanged harness')
     original = routing.unseal(read(checked(plan['parent_plan'])))
-    require(len(prior['cells']) == len(original['cells']), 'S2 parent coverage differs')
+    require(len(prior['cells']) == len(original['cells']), label + ' parent coverage differs')
     items = [item, prior['plugin'], prior['harness']]
     for cell, old in zip(prior['cells'], original['cells']):
         require({**cell, 'inputs': {a: cell['inputs'][a] for a in ARMS}} == old,
-                'S2 parent data/model differs')
-        for arm in ENGINE_CONTROLS:
+                label + ' parent data/model differs')
+        for arm in controls:
             request = cell['inputs'][arm]
             require(prior['frozen_files'].get(request['path']) == request['sha256'],
-                    'unbound prior S2 control request')
+                    f'unbound prior {label} control request')
             validate_engine_request(checked(request), arm, cell['threads'])
             items.append(request)
     for value in items:
         checked(value)
     require(all(prior['frozen_files'].get(value['path']) == value['sha256']
-                for value in items[1:]), 'unbound prior S2 artifact')
+                for value in items[1:]), 'unbound prior ' + label + ' artifact')
     return {value['path']: value['sha256'] for value in items}
 
 
@@ -526,6 +546,24 @@ def prepare_engine(root, parent_path, harness, plugin, prior_path):
     return prepare_followup(root, parent_path, harness, plugin, ENGINE_KIND,
         [arm for arm in dict.fromkeys([*ENGINE_CONTROLS, *ENGINE_ARMS]) if arm not in ARMS],
         extra={'prior_admission_plan': ref(prior_path), 'native_affinity_cores': 4})
+
+
+def s_owned_control_bindings(plan):
+    """Bind every pre-D5 arm to the unchanged D4 artifact, without a D4 gate."""
+    bindings = prior_control_bindings(plan, 'prior_engine_plan', ENGINE_KIND, S_OWNED_CONTROLS, 'D4')
+    prior = routing.unseal(read(checked(plan['prior_engine_plan'])))
+    require(len(plan['cells']) == len(prior['cells']), 'D5 prior-request coverage differs')
+    for cell, previous in zip(plan['cells'], prior['cells']):
+        require(cell['id'] == previous['id'] and all(
+            cell['inputs'][arm]['sha256'] == previous['inputs'][arm]['sha256'] for arm in S_OWNED_CONTROLS),
+            'D5 historical requests differ from frozen D4 bytes')
+    return bindings
+
+
+def prepare_s_owned(root, parent_path, harness, plugin, prior_path):
+    return prepare_followup(root, parent_path, harness, plugin, S_OWNED_KIND,
+        [arm for arm in dict.fromkeys([*S_OWNED_CONTROLS, *S_OWNED_ARMS]) if arm not in ARMS],
+        extra={'prior_engine_plan': ref(prior_path), 'native_affinity_cores': 4})
 
 
 def prepare_admission(root, parent_path, harness, plugin, prior_path):
@@ -543,11 +581,14 @@ def prepare_occurrence(root, parent_path, harness, plugin, admission_path):
 
 
 def affinity_cores(plan):
-    return plan['native_affinity_cores'] if plan.get('kind') in {OCCURRENCE_KIND, ADMISSION_KIND, ENGINE_KIND} else 4
+    return plan['native_affinity_cores'] if plan.get('kind') in {OCCURRENCE_KIND, ADMISSION_KIND, *OWNERSHIP_KINDS} else 4
 
 
 def validate(plan):
     validate_contract(plan)
+    if plan['kind'] == S_OWNED_KIND:
+        require(plan['native_affinity_cores'] == 4 and all(plan['frozen_files'].get(path) == sha
+                for path, sha in s_owned_control_bindings(plan).items()), 'unbound S ownership prior artifact or affinity')
     if plan['kind'] == ENGINE_KIND:
         require(plan['native_affinity_cores'] == 4 and all(plan['frozen_files'].get(path) == sha
                 for path, sha in engine_control_bindings(plan).items()), 'unbound engine prior artifact or affinity')
@@ -577,7 +618,7 @@ def validate(plan):
     for path in tool_files():
         require(plan['frozen_files'].get(str(path.resolve())) == digest(path), 'unbound current tool')
     for cell in plan['cells']:
-        if plan['kind'] == ENGINE_KIND:
+        if plan['kind'] in OWNERSHIP_KINDS:
             for arm, item in cell['inputs'].items():
                 validate_engine_request(checked(item), arm, cell['threads'])
         for item in [cell['metadata'], cell['witness'], *cell['inputs'].values()]:
@@ -634,7 +675,7 @@ def deferred_parent_controls(plan, parent, selected, output, started, controls):
         meta = read(cell['metadata']['path'])
         for arm in control_arms(plan):
             reference = control_parent(plan, parent, arm)
-            request = next(c for c in reference['cells'] if c['id'] == cell['id']) if arm in ['cells_m', 'cells_m_lanes'] and plan.get('kind') not in {ADMISSION_KIND, ENGINE_KIND} else cell
+            request = next(c for c in reference['cells'] if c['id'] == cell['id']) if arm in ['cells_m', 'cells_m_lanes'] and plan.get('kind') not in {ADMISSION_KIND, *OWNERSHIP_KINDS} else cell
             pair = {'cell': cell['id'], 'arm': arm, 'status': 'executed'}
             controls.append(pair)
             active = None
@@ -662,24 +703,37 @@ def deferred_parent_controls(plan, parent, selected, output, started, controls):
 
 def engine_confirmation_bindings(plan, confirmation_path, driver_path):
     import engine_confirmation as confirmation
+    if plan.get('kind') == S_OWNED_KIND:
+        import s_owned_confirmation as confirmation
     import membership_confirmation_run as execution
+    discovery_name, confirmation_name = ('D5', 'C5') if plan.get('kind') == S_OWNED_KIND else ('D4', 'C4')
     require(confirmation_path is not None and driver_path is not None,
-            'engine candidate calls require the frozen C4 plan and driver')
+            f'ownership candidate calls require the frozen {confirmation_name} plan and driver')
     bindings = {'plan': ref(confirmation_path), 'driver': ref(driver_path)}
     frozen = routing.unseal(read(checked(bindings['plan'])))
     driver = routing.unseal(read(checked(bindings['driver'])))
     confirmation.validate(frozen)
     execution.validate_driver(frozen, driver)
-    require(frozen['discovery_plan_sha256'] == routing.identity(plan), 'C4 belongs to another D4 plan')
+    require(frozen['discovery_plan_sha256'] == routing.identity(plan),
+            f'{confirmation_name} belongs to another {discovery_name} plan')
     require(max(frozen['prepared_wall_ns'], driver['frozen_wall_ns']) < time.time_ns(),
-            'C4 freeze chronology is invalid')
+            confirmation_name + ' freeze chronology is invalid')
     return bindings
 
 
-def engine_exactness(fingerprints, cells):
+def ownership_pairs(plan):
+    if plan.get('kind') == ENGINE_KIND:
+        return [('baseline', 'fit_owned'), ('cells_e', 'cells_e_final')]
+    if plan.get('kind') == S_OWNED_KIND:
+        return [('baseline', 'fit_owned'), ('cells_s', 'cells_s_owned')]
+    return []
+
+
+def engine_exactness(fingerprints, cells, *, pairs=None):
+    pairs = ownership_pairs({'kind': ENGINE_KIND}) if pairs is None else pairs
     for cell in cells:
         cid = cell['id']
-        for left, right in [('baseline', 'fit_owned'), ('cells_e', 'cells_e_final')]:
+        for left, right in pairs:
             require(fingerprints[cid + '/' + left] == fingerprints[cid + '/' + right],
                     'engine B ownership changed exact science or solver signatures: ' + cid + '/' + right)
 
@@ -687,7 +741,7 @@ def engine_exactness(fingerprints, cells):
 def science(plan, output, *, smoke=False, confirmation_plan=None, confirmation_driver=None):
     validate(plan)
     confirmation = (engine_confirmation_bindings(plan, confirmation_plan, confirmation_driver)
-                    if plan.get('kind') == ENGINE_KIND else None)
+                    if plan.get('kind') in OWNERSHIP_KINDS else None)
     arms, limits = contract(plan)
     slots = int(os.environ.get('NSLOTS', '0'))
     require(os.environ.get('JOB_ID') and slots >= (2 if smoke else 4), 'science requires a compute allocation')
@@ -758,8 +812,9 @@ def science(plan, output, *, smoke=False, confirmation_plan=None, confirmation_d
                         else:
                             base, base_columns = worker_one[family_key]
                             cmgschur.scientific_comparison(base, raw, base_columns, binary, meta)
-                    if plan.get('kind') == ENGINE_KIND and arm in {'fit_owned', 'cells_e_final'}:
-                        reference_arm = 'baseline' if arm == 'fit_owned' else 'cells_e'
+                    exact = {right: left for left, right in ownership_pairs(plan)}
+                    if arm in exact:
+                        reference_arm = exact[arm]
                         require(fingerprints[cell['id'] + '/' + reference_arm] == result['science_sha256'],
                                 'engine B ownership changed exact science or solver signatures: ' + key)
                     fingerprints[key] = result['science_sha256']
@@ -773,7 +828,7 @@ def science(plan, output, *, smoke=False, confirmation_plan=None, confirmation_d
     bound = [ref(p) for p in output.iterdir() if p.is_file()]
     receipt = {'kind': plan.get('kind', KIND) + '_science', 'status': status, 'failure': failure, 'smoke': smoke,
                'plan_sha256': routing.identity(plan), 'host': socket.gethostname(),
-               'job_id': os.environ['JOB_ID'], 'slots': slots, **({'native_affinity_cores': affinity_cores(plan)} if plan.get('kind') in {OCCURRENCE_KIND, ADMISSION_KIND, ENGINE_KIND} else {}), 'fingerprints': fingerprints,
+               'job_id': os.environ['JOB_ID'], 'slots': slots, **({'native_affinity_cores': affinity_cores(plan)} if plan.get('kind') in {OCCURRENCE_KIND, ADMISSION_KIND, *OWNERSHIP_KINDS} else {}), 'fingerprints': fingerprints,
                'records': records, 'files': bound, 'seconds': time.monotonic() - start}
     if confirmation is not None:
         receipt['confirmation'] = confirmation
@@ -787,48 +842,50 @@ def science(plan, output, *, smoke=False, confirmation_plan=None, confirmation_d
     return receipt
 
 
-def validate_science(plan, receipt):
+def validate_science(plan, receipt, *, smoke=False):
     arms, limits = contract(plan)
+    require(not smoke or plan.get('kind') == S_OWNED_KIND, 'selected science validation requires D5')
+    cells = plan['cells'][:1] if smoke else plan['cells']
     require(receipt['kind'] == plan.get('kind', KIND) + '_science' and receipt['status'] == 'passed'
-            and receipt['smoke'] is False and receipt['plan_sha256'] == routing.identity(plan),
+            and receipt['smoke'] is smoke and receipt['plan_sha256'] == routing.identity(plan),
             'complete frozen science prerequisite required')
-    require(set(receipt['fingerprints']) == {c['id'] + '/' + a for c in plan['cells'] for a in arms},
+    require(set(receipt['fingerprints']) == {c['id'] + '/' + a for c in cells for a in arms},
             'missing scientific prerequisite')
-    for cell in plan['cells']:
+    for cell in cells:
         for arm in arms:
             rows = [r for r in receipt['records'] if r['cell'] == cell['id'] and r['arm'] == arm]
             require(len(rows) == limits['science_repeats'] and all(r['status'] == 'executed'
                     and r.get('science_sha256') == receipt['fingerprints'][cell['id'] + '/' + arm]
                     for r in rows) and 'resources' in rows[0], 'incomplete repeat/resource prerequisite')
     if plan.get('kind') in MIXED_BATCH_KINDS:
-        validate_membership_science(plan, receipt)
-    if plan.get('kind') == ENGINE_KIND:
+        validate_membership_science({**plan, 'cells': cells}, receipt)
+    if plan.get('kind') in OWNERSHIP_KINDS:
         require([(r['cell'], r['arm'], r.get('repeat')) for r in receipt['records']] ==
-                [(cell['id'], arm, repeat) for cell in plan['cells'] for arm in arms
+                [(cell['id'], arm, repeat) for cell in cells for arm in arms
                  for repeat in range(limits['science_repeats'])], 'engine science order changed')
         require([(r['cell'], r['arm']) for r in receipt['parent_controls']] ==
-                [(cell['id'], arm) for cell in plan['cells'] for arm in ENGINE_CONTROLS],
+                [(cell['id'], arm) for cell in cells for arm in control_arms(plan)],
                 'engine prior-control order changed')
-        engine_exactness(receipt['fingerprints'], plan['cells'])
+        engine_exactness(receipt['fingerprints'], cells, pairs=ownership_pairs(plan))
         binding = receipt.get('confirmation', {})
         require(engine_confirmation_bindings(plan, binding.get('plan', {}).get('path'),
-                binding.get('driver', {}).get('path')) == binding, 'C4 prerequisite binding changed')
+                binding.get('driver', {}).get('path')) == binding, 'confirmation prerequisite binding changed')
     if plan.get('kind') == ADMISSION_KIND:
         require(all(receipt['fingerprints'][cell['id']+'/cells_s2'] ==
-                    receipt['fingerprints'][cell['id']+'/cells_s'] for cell in plan['cells']),
+                    receipt['fingerprints'][cell['id']+'/cells_s'] for cell in cells),
                 'S2 changed S science or solver signatures on the frozen panel')
     for item in receipt['files']:
         checked(item)
     if plan.get('kind') in FOLLOWUP_KINDS:
         controls = receipt['parent_controls']
         require(receipt['parent_control_status'] == 'passed'
-                and receipt['parent_control_count'] == len(controls) == len(plan['cells']) * len(control_arms(plan)),
+                and receipt['parent_control_count'] == len(controls) == len(cells) * len(control_arms(plan)),
                 'incomplete parent artifact controls')
         parent = routing.unseal(read(plan['parent_plan']['path']))
         if plan.get('kind') in PAIRED_CONTROL_KINDS:
             require(receipt['parent_control_native_calls'] == 2 * len(controls),
                     'incomplete parent/candidate control calls')
-        for cell in plan['cells']:
+        for cell in cells:
             for arm in control_arms(plan):
                 reference = control_parent(plan, parent, arm)
                 rows = [r for r in controls if r['cell'] == cell['id'] and r['arm'] == arm]
@@ -1122,12 +1179,14 @@ def measure(plan, receipt, output):
                 records.append(row)
                 result = check_prerequisite(row, cell, receipt, traced=plan.get('kind') not in FOLLOWUP_KINDS)
                 fingerprints[cell['id'] + '/' + arm] = result['science_sha256']
+                if plan.get('kind') == S_OWNED_KIND:
+                    engine_exactness(fingerprints, [cell], pairs=[pair for pair in ownership_pairs(plan) if pair[1] == arm])
                 if plan.get('kind') in PAIRED_CONTROL_KINDS:
                     resource_bindings[cell['id'] + '/' + arm] = row['resources']
                 row.update(result, status='passed')
         require(time.monotonic() - warmup_started <= limits['warmup_budget_s'], 'warmup budget exhausted')
-        if plan.get('kind') == ENGINE_KIND:
-            engine_exactness(fingerprints, plan['cells'])
+        if plan.get('kind') in OWNERSHIP_KINDS:
+            engine_exactness(fingerprints, plan['cells'], pairs=ownership_pairs(plan))
         started = time.monotonic_ns()
         for index, block in enumerate(plan['blocks']):
             observer.census(f'block-{index}-before')
@@ -1395,12 +1454,11 @@ def engine_projection_uses_cells(traces, arm):
     return any(decision['used_operator'] == '1' for decision in decisions)
 
 
-def engine_gate(plan, science_receipt, measurement):
-    """D4's one fixed A+B finalist; all observations and both B exactness pairs."""
-    require(plan.get('kind') == ENGINE_KIND, 'engine gate requires D4')
+def ownership_measurement(plan, science_receipt, measurement):
+    """Validate the full ordered panel and both exact ownership pairs."""
     validate(plan)
     validate_science(plan, science_receipt)
-    require(measurement.get('kind') == ENGINE_KIND + '_measurement'
+    require(measurement.get('kind') == plan['kind'] + '_measurement'
             and measurement.get('status') == 'complete'
             and measurement.get('plan_sha256') == routing.identity(plan)
             and measurement.get('science_sha256') == routing.identity(science_receipt),
@@ -1409,19 +1467,24 @@ def engine_gate(plan, science_receipt, measurement):
     actual = [(r['label'], r['cell'], r['arm'], r['phase'], r.get('block'), r.get('repeat')) for r in rows]
     require(actual == engine_measurement_order(plan), 'engine measurement coverage/order changed')
     fingerprints = {r['cell'] + '/' + r['arm']: r['science_sha256'] for r in rows if r['phase'] == 'warmup'}
-    engine_exactness(fingerprints, plan['cells'])
+    engine_exactness(fingerprints, plan['cells'], pairs=ownership_pairs(plan))
     for row in rows:
         require(row['status'] == 'passed' and math.isfinite(row['seconds']) and row['seconds'] > 0
                 and row['science_sha256'] == fingerprints[row['cell'] + '/' + row['arm']],
                 'invalid engine measurement science/time')
     for item in measurement['files']:
         checked(item)
+    return rows
+
+
+def ownership_comparisons(plan, rows, finalist):
+    arms, limits = contract(plan)
     comparisons = {}
-    for name, reference, candidate in [('finalist_vs_auto', 'baseline', 'cells_e_final'),
-                                      ('finalist_vs_s', 'cells_s', 'cells_e_final'),
+    for name, reference, candidate in [('finalist_vs_auto', 'baseline', finalist),
+                                      ('finalist_vs_s', 'cells_s', finalist),
                                       ('owned_vs_auto', 'baseline', 'fit_owned')]:
-        values = summarize(rows, arms=ENGINE_ARMS, reference=reference, candidates=[candidate])
-        require(len(values) == len(plan['cells']) and all(v['paired_blocks'] == 12 for v in values),
+        values = summarize(rows, arms=arms, reference=reference, candidates=[candidate])
+        require(len(values) == len(plan['cells']) and all(v['paired_blocks'] == limits['blocks'] for v in values),
                 'incomplete engine paired settings')
         for value in values:
             value['material_gain'] = statistics.median(
@@ -1429,6 +1492,14 @@ def engine_gate(plan, science_receipt, measurement):
                 for pair in value['pairs']) < 0
             value['regression'] = value['median_allowance_excess_seconds'] > 0
         comparisons[name] = values
+    return comparisons
+
+
+def engine_gate(plan, science_receipt, measurement):
+    """D4's one fixed A+B finalist; all observations and both B exactness pairs."""
+    require(plan.get('kind') == ENGINE_KIND, 'engine gate requires D4')
+    rows = ownership_measurement(plan, science_receipt, measurement)
+    comparisons = ownership_comparisons(plan, rows, 'cells_e_final')
     timers = []
     for cell in plan['cells']:
         cid = cell['id']
@@ -1482,6 +1553,27 @@ def engine_gate(plan, science_receipt, measurement):
             'non_solver_difference': 'diagnostic only; native minus first-solver time is not an additive phase decomposition'}
 
 
+def s_owned_gate(plan, science_receipt, measurement):
+    """D5 selects only S plus exact Fast ownership; no inherited E mechanism gate."""
+    require(plan.get('kind') == S_OWNED_KIND, 'S ownership gate requires D5')
+    rows = ownership_measurement(plan, science_receipt, measurement)
+    comparisons = ownership_comparisons(plan, rows, 'cells_s_owned')
+    counts = {name: {'material_gains': sum(v['material_gain'] for v in values),
+                     'regressions': sum(v['regression'] for v in values)} for name, values in comparisons.items()}
+    families = {cell['id']: cell['family'] for cell in plan['cells']}
+    incremental = sorted({families[row['cell']] for row in comparisons['finalist_vs_s'] if row['material_gain']})
+    passed = (counts['finalist_vs_auto']['material_gains'] >= 18
+              and counts['finalist_vs_s']['material_gains'] >= 2 and len(incremental) >= 2
+              and all(value['regressions'] == 0 for value in counts.values()))
+    return {'kind': S_OWNED_KIND + '_gate', 'status': 'eligible' if passed else 'ineligible',
+            'finalist': 'cells_s_owned', 'plan_sha256': routing.identity(plan),
+            'science_sha256': routing.identity(science_receipt), 'measurement_sha256': routing.identity(measurement),
+            'comparisons': comparisons, 'counts': counts, 'incremental_gain_families': incremental,
+            'exact_ownership_science': 'passed', 'extensions': 'none', 'exclusions': [],
+            'timers': 'diagnostic attribution only; unchanged FE has no mechanism speed threshold',
+            'claim': 'descriptive discovery selection only; fresh untouched confirmation remains required'}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest='command', required=True)
@@ -1499,7 +1591,9 @@ def main():
     admission.add_argument('--prior-occurrence-plan', type=Path, required=True)
     engine = subs.add_parser('prepare-engine')
     engine.add_argument('--prior-admission-plan', type=Path, required=True)
-    for sub in [factor, deferred, membership, occurrence, admission, engine]:
+    s_owned = subs.add_parser('prepare-s-owned')
+    s_owned.add_argument('--prior-engine-plan', type=Path, required=True)
+    for sub in [factor, deferred, membership, occurrence, admission, engine, s_owned]:
         for name in ['root', 'parent-plan', 'harness', 'plugin']:
             sub.add_argument('--' + name, type=Path, required=True)
     for mode in ['science', 'smoke', 'measure']:
@@ -1513,12 +1607,14 @@ def main():
             sub.add_argument('--confirmation-driver', type=Path)
     gate = subs.add_parser('membership-gate', help='evaluate retained D1 evidence for the fixed M finalist')
     engine_gate_parser = subs.add_parser('engine-gate', help='evaluate the fixed D4 A+B finalist')
-    for gate_parser in [gate, engine_gate_parser]:
+    s_owned_gate_parser = subs.add_parser('s-owned-gate', help='evaluate the fixed D5 S plus ownership finalist')
+    for gate_parser in [gate, engine_gate_parser, s_owned_gate_parser]:
         for name in ['plan', 'science', 'measurement', 'output']:
             gate_parser.add_argument('--' + name, type=Path, required=True)
     args = parser.parse_args()
-    if args.command in {'membership-gate', 'engine-gate'}:
-        gate_function = engine_gate if args.command == 'engine-gate' else membership_gate
+    if args.command in {'membership-gate', 'engine-gate', 's-owned-gate'}:
+        gate_function = {'engine-gate': engine_gate, 'membership-gate': membership_gate,
+                         's-owned-gate': s_owned_gate}[args.command]
         result = gate_function(*(routing.unseal(read(path)) for path in
                                    [args.plan, args.science, args.measurement]))
         save(args.output, routing.seal(result))
@@ -1532,6 +1628,8 @@ def main():
         prepare_deferred(args.root, args.parent_plan, args.harness, args.plugin)
     elif args.command == 'prepare-engine':
         prepare_engine(args.root, args.parent_plan, args.harness, args.plugin, args.prior_admission_plan)
+    elif args.command == 'prepare-s-owned':
+        prepare_s_owned(args.root, args.parent_plan, args.harness, args.plugin, args.prior_engine_plan)
     elif args.command == 'prepare-admission':
         prepare_admission(args.root, args.parent_plan, args.harness, args.plugin, args.prior_occurrence_plan)
     elif args.command == 'prepare-occurrence':

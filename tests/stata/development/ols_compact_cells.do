@@ -20,7 +20,7 @@ matrix reference_v = e(V)
 scalar reference_df_r = e(df_r)
 predict double reference_residual, residuals
 
-foreach arm in cells_v2 cells_v2_df cells_deferred cells_m cells_m_lanes cells_s cells_s2 cells_e fit_owned cells_e_final {
+foreach arm in cells_v2 cells_v2_df cells_deferred cells_m cells_m_lanes cells_s cells_s2 cells_e fit_owned cells_e_final cells_s_owned {
     foreach mode in fast low {
         foreach threads in 1 4 {
             forvalues repetition = 1/2 {
@@ -80,11 +80,32 @@ foreach mode in fast low {
         drop s_resid s2_resid s_worker s2_worker s_firm s2_firm
     }
 }
+* S ownership preserves S's published results exactly at each worker count.
+foreach mode in fast low {
+    foreach threads in 1 4 {
+        quietly _fereg_estimate_ols_test y x1 x2, aweight(weight) ///
+            absorb(s_worker=worker s_firm=firm) solver(auto) inject(routing_cells_s) ///
+            memory(`mode') poolsize(1) threads(`threads') vce(robust) ///
+            tolerance(1e-10) residual(s_resid)
+        matrix s_b = e(b)
+        matrix s_v = e(V)
+        quietly _fereg_estimate_ols_test y x1 x2, aweight(weight) ///
+            absorb(so_worker=worker so_firm=firm) solver(auto) inject(routing_cells_s_owned) ///
+            memory(`mode') poolsize(1) threads(`threads') vce(robust) ///
+            tolerance(1e-10) residual(so_resid)
+        assert mreldif(e(b), s_b) == 0
+        assert mreldif(e(V), s_v) == 0
+        assert s_resid == so_resid
+        assert s_worker == so_worker
+        assert s_firm == so_firm
+        drop s_resid so_resid s_worker so_worker s_firm so_firm
+    }
+}
 * A failed private request preserves the prior result and all staged columns.
 quietly regress y x1 x2
 matrix prior_b = e(b)
 generate byte prior_sample = e(sample)
-foreach arm in cells_v2 cells_v2_df cells_deferred cells_m cells_m_lanes cells_s cells_s2 cells_e fit_owned cells_e_final {
+foreach arm in cells_v2 cells_v2_df cells_deferred cells_m cells_m_lanes cells_s cells_s2 cells_e fit_owned cells_e_final cells_s_owned {
     capture noisily _fereg_estimate_ols_test y x1 x2, absorb(sw=worker sf=firm) ///
         solver(lsmr) inject(routing_`arm') residual(failed)
     assert _rc == 198

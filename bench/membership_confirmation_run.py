@@ -23,6 +23,7 @@ import membership_confirmation as m
 import occurrence_confirmation as occurrence
 import admission_confirmation as admission_profile
 import engine_confirmation as engine
+import s_owned_confirmation as s_owned
 
 c = m.campaign
 KIND = m.KIND + '_execution_v1'
@@ -30,10 +31,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ['bench/membership_confirmation_run.py', 'bench/tests/test_membership_confirmation_run.py']
 ISOLATION_FILES = ['affinity', 'job_environment', 'parallel_environment', 'processes',
                    'queue_configuration', 'resource_quota', 'scheduler']
+LATER_PROFILES = (occurrence, admission_profile, engine, s_owned)
 
 
 def confirmation_module(plan):
-    return {occurrence.KIND:occurrence, admission_profile.KIND:admission_profile, engine.KIND:engine}.get(plan.get('kind'), m)
+    return {module.KIND: module for module in LATER_PROFILES}.get(plan.get('kind'), m)
 
 
 def execution_kind(plan):
@@ -46,17 +48,20 @@ def unsealed(path):
 
 def source_hashes(module=m):
     sources = [*SOURCES]
-    if module in (occurrence, admission_profile, engine):
+    if module in LATER_PROFILES:
         sources.append('bench/tests/test_occurrence_confirmation_run.py')
     if module is admission_profile:
         sources.extend(['bench/tests/test_admission_confirmation.py', 'bench/tests/test_admission_cells.py'])
     if module is engine:
         sources.extend(['bench/tests/test_engine_confirmation.py', 'bench/tests/test_engine_cells.py'])
+    if module is s_owned:
+        sources.extend(['bench/tests/test_s_owned_confirmation.py', 'bench/tests/test_s_owned_cells.py'])
     return {name: c.digest(ROOT / name) for name in sources}
 
 
 def freeze(plan_sha256, output, *, discovery_unopened, profile="membership"):
-    module = {"membership": m, "occurrence": occurrence, "admission":admission_profile, "engine":engine}[profile]
+    module = {"membership": m, "occurrence": occurrence, "admission":admission_profile,
+              "engine":engine, "s_owned":s_owned}[profile]
     c.require(discovery_unopened is True and re.fullmatch('[0-9a-f]{64}', plan_sha256) is not None,
               'freeze requires the C1 plan identity and unopened D1 outcomes attestation')
     value = {'kind': module.KIND + '_execution_v1_driver', 'plan_sha256': plan_sha256, 'sources': source_hashes(module),
@@ -150,11 +155,16 @@ def admission(plan, driver, evidence):
               and all(smoke.get(key) == science[key] for key in ['job_id', 'host', 'slots']),
               'complete smoke receipt from the D1 scientific prerequisites job required')
     check_record_files(native_rows(smoke), smoke['files'])
-    gate = (c.engine_gate if m is engine else c.admission_gate if m is admission_profile else c.occurrence_gate if m in (occurrence, admission_profile, engine) else c.membership_gate)(discovery, science, measurement)
-    c.require(gate['status'] == 'eligible' and gate['finalist'] == m.ARMS[1], 'D1 gate blocks C1 candidate calls')
+    if m is s_owned:
+        c.validate_science(discovery, smoke, smoke=True)
+    gate_function = {engine: c.engine_gate, admission_profile: c.admission_gate,
+                     occurrence: c.occurrence_gate, s_owned: c.s_owned_gate}.get(m, c.membership_gate)
+    gate = gate_function(discovery, science, measurement)
+    c.require(gate['status'] == 'eligible' and gate['finalist'] == getattr(m, 'FINALIST', m.ARMS[1]),
+              'discovery gate blocks confirmation candidate calls')
     earliest = min(wall_window(receipt)[0] for receipt in [smoke, science, measurement])
     c.require(plan['prepared_wall_ns'] < earliest, 'C1 was not frozen before the first D1 native call')
-    if m in (occurrence, admission_profile, engine):
+    if m in LATER_PROFILES:
         c.require(driver['frozen_wall_ns'] < earliest, 'C2 driver was not frozen before the first D2 native call')
     for name, receipt, is_science in [('science_accounting', science, True),
                                       ('measurement_accounting', measurement, False)]:
@@ -164,7 +174,7 @@ def admission(plan, driver, evidence):
     return {'kind': execution_kind(plan) + '_admission', 'plan_sha256': c.routing.identity(plan),
             'driver_sha256': c.routing.identity(driver), 'gate_sha256': c.routing.identity(gate),
             'evidence': evidence, 'status': 'admitted', 'earliest_d1_native_wall_ns': earliest,
-            **({'discovery_host': measurement['host']['hostname']} if m in (occurrence, admission_profile, engine) else {})}
+            **({'discovery_host': measurement['host']['hostname']} if m in LATER_PROFILES else {})}
 
 
 def validate_admission(plan, driver, admitted):
@@ -217,6 +227,7 @@ def check_science_records(plan, receipt):
         c.require(discrete.setdefault(families[row['cell']], row['model_discrete_sha256'])
                   == row['model_discrete_sha256'], 'C1 cross-arm/worker model-discrete decisions differ')
     c.require(receipt['fingerprints'] == fingerprints, 'C1 scientific fingerprint coverage changed')
+    c.engine_exactness(fingerprints, plan['cells'], pairs=getattr(m, 'EXACT_PAIRS', []))
 
 
 def validate_science(plan, driver, admitted, receipt):
@@ -236,7 +247,7 @@ def science(plan, driver, admitted, output):
     slots = int(os.environ.get('NSLOTS', '0'))
     cores = plan.get('native_affinity_cores', 4)
     c.require(os.environ.get('JOB_ID') and slots == cores, 'confirmation science requires its frozen compute allocation')
-    cpus = c.science_affinity({'kind': c.OCCURRENCE_KIND, 'native_affinity_cores': cores}) if m in (occurrence, admission_profile, engine) else None
+    cpus = c.science_affinity({'kind': c.OCCURRENCE_KIND, 'native_affinity_cores': cores}) if m in LATER_PROFILES else None
     output.mkdir(parents=True, exist_ok=False)
     started = time.monotonic()
     rows, fingerprints, first_worker, baselines = [], {}, {}, {}
@@ -259,6 +270,10 @@ def science(plan, driver, admitted, output):
                     key = cell['id'] + '/' + arm
                     c.require(fingerprints.setdefault(key, result['science_sha256']) == result['science_sha256'],
                               'C1 fixed-worker repeat differs: ' + key)
+                    for reference, candidate in getattr(m, 'EXACT_PAIRS', []):
+                        if arm == candidate:
+                            c.require(fingerprints[cell['id'] + '/' + reference] == result['science_sha256'],
+                                      'confirmation ownership changed exact science or solver signatures: ' + key)
                     active.update(oracle_status='passed', science_sha256=result['science_sha256'],
                                   model_discrete_sha256=c.routing_run.model_discrete_sha256(raw))
                     if repeat == 0:
@@ -313,6 +328,16 @@ def block_score(block, cell, rows, arms=m.ARMS):
             'excess_seconds': candidate - baseline - max(.05 * baseline, .001), 'ratio': candidate / baseline}
 
 
+def block_scores(plan, block, cell, rows):
+    module = confirmation_module(plan)
+    pairs = getattr(module, 'COMPARISONS', [tuple(module.ARMS)])
+    scores = [block_score(block, cell, rows, pair) for pair in pairs]
+    if hasattr(module, 'COMPARISONS'):
+        for score, (reference, _) in zip(scores, pairs):
+            score['reference'] = reference
+    return scores
+
+
 def summarize(plan, rows):
     """Only complete, valid four-call units contribute; missing units cannot pass."""
     m = confirmation_module(plan)
@@ -323,16 +348,18 @@ def summarize(plan, rows):
     for row in rows:
         if row['phase'] == 'measure':
             groups.setdefault((row['block'], row['cell']), []).append(row)
-    scores = [block_score(block, cid, group, m.ARMS) for (block, cid), group in groups.items()
-              if len(group) == 4 and all(row['status'] == 'passed' for row in group)]
+    scores = [score for (block, cid), group in groups.items()
+              if len(group) == 2 * len(m.ARMS) and all(row['status'] == 'passed' for row in group)
+              for score in block_scores(plan, block, cid, group)]
     summaries = []
     for cell in plan['cells']:
-        values = [score for score in scores if score['cell'] == cell['id']]
-        upper = sorted(score['excess_seconds'] for score in values)[9] if len(values) == 12 else None
-        summaries.append({'cell': cell['id'], 'complete_blocks': len(values),
-                          'upper_median_excess_seconds': upper,
-                          'median_ratio': statistics.median(score['ratio'] for score in values) if values else None,
-                          'passed': upper is not None and upper <= 0})
+        for reference in ([pair[0] for pair in m.COMPARISONS] if hasattr(m, 'COMPARISONS') else [None]):
+            values = [score for score in scores if score['cell'] == cell['id'] and score.get('reference') == reference]
+            upper = sorted(score['excess_seconds'] for score in values)[9] if len(values) == 12 else None
+            summaries.append({'cell': cell['id'], **({'reference': reference} if reference is not None else {}),
+                              'complete_blocks': len(values), 'upper_median_excess_seconds': upper,
+                              'median_ratio': statistics.median(score['ratio'] for score in values) if values else None,
+                              'passed': upper is not None and upper <= 0})
     complete = len(rows) == len(expected) and all(row['status'] == 'passed' for row in rows)
     return {'status': ('passed' if all(row['passed'] for row in summaries) else 'failed') if complete else 'incomplete',
             'analysis': m.ANALYSIS, 'block_scores': scores, 'settings': summaries}
@@ -345,6 +372,7 @@ def validate_measurement_records(plan, rows, fingerprints):
               'incomplete C1 measurement calls or changed order')
     c.require(set(fingerprints) == {cell['id'] + '/' + arm for cell in plan['cells'] for arm in m.ARMS},
               'incomplete C1 same-allocation fingerprints')
+    c.engine_exactness(fingerprints, plan['cells'], pairs=getattr(m, 'EXACT_PAIRS', []))
     for row in rows:
         c.require(row['status'] == 'passed' and math.isfinite(row['seconds']) and row['seconds'] > 0
                   and row['science_sha256'] == fingerprints[row['cell'] + '/' + row['arm']]
@@ -358,7 +386,7 @@ def measure(plan, driver, admitted, prerequisite, output):
     check_library_limits()
     host = c.scc.discovery.host()
     c.require(host['slots'] == 28, 'C1 measurement requires its 28-slot isolated allocation')
-    if m in (occurrence, admission_profile, engine):
+    if m in LATER_PROFILES:
         c.require(c.scc.hostname(host['hostname']) != c.scc.hostname(admitted['discovery_host']),
                   'C2 requires a distinct physical host from D2')
     output.mkdir(parents=True, exist_ok=False)
@@ -386,8 +414,10 @@ def measure(plan, driver, admitted, prerequisite, output):
                 result = c.check_prerequisite(row, cell, prerequisite, traced=False)
                 key = cell['id'] + '/' + arm
                 fingerprints[key], resources[key] = result['science_sha256'], row['resources']
+                c.engine_exactness(fingerprints, [cell], pairs=[pair for pair in getattr(m, 'EXACT_PAIRS', []) if pair[1] == arm])
                 row.update(result, status='passed')
         c.require(time.monotonic() - warmup_started <= m.LIMITS['warmup_budget_s'], 'C1 warmup budget exhausted')
+        c.engine_exactness(fingerprints, plan['cells'], pairs=getattr(m, 'EXACT_PAIRS', []))
         cells = {cell['id']: cell for cell in plan['cells']}
         started = time.monotonic_ns()
         for block, slots in enumerate(plan['blocks']):
@@ -409,7 +439,8 @@ def measure(plan, driver, admitted, prerequisite, output):
                               'C1 measured result changed same-allocation fixed-worker science')
                     row.update(result, status='passed')
                     complete.append(row)
-                c.scc.append(output / 'blocks.jsonl', block_score(block, cell['id'], complete, m.ARMS))
+                for score in block_scores(plan, block, cell['id'], complete):
+                    c.scc.append(output / 'blocks.jsonl', score)
             observer.census(f'block-{block}-after')
         ended = time.monotonic_ns()
         c.require((ended - started) / 1e9 <= m.LIMITS['measurement_budget_s'], 'C1 measurement budget exhausted')
@@ -458,7 +489,7 @@ def main():
     sub = parser.add_subparsers(dest='command', required=True)
     frozen = sub.add_parser('freeze')
     frozen.add_argument('--plan-sha256', required=True)
-    frozen.add_argument('--profile', choices=['membership','occurrence','admission','engine'], default='membership')
+    frozen.add_argument('--profile', choices=['membership','occurrence','admission','engine','s_owned'], default='membership')
     frozen.add_argument('--discovery-unopened', action='store_true', required=True)
     frozen.add_argument('--output', type=Path, required=True)
     admitted = sub.add_parser('admit')

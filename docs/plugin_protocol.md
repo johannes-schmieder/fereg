@@ -70,6 +70,7 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_cells_e` | OLS | S with an optional stable firm transpose and cell-grouped RHS/reconstruction |
 | `inject=routing_fit_owned` | OLS | Auto with exact packed means and transferred projected-score ownership |
 | `inject=routing_cells_e_final` | OLS | Combines the E engine and exact Fast ownership experiment |
+| `inject=routing_cells_s_owned` | OLS | S with exact Fast score ownership; no twin engine or early refusal |
 | `inject=routing_cells_s2` | OLS | Adds charged structural early refusal to S; caches only proven nonpayment and preserves accepted banks |
 | `inject=routing_cells_m_lanes` | OLS | Same membership builder with planned parallel lanes credited to the observation operator |
 | `inject=routing_direct` | OLS | Tests a bounded componentwise direct Schur factorization on eligible two-FE systems |

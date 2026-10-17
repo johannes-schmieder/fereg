@@ -1981,7 +1981,7 @@ fn membership_cells_reselects_mixed_batch_width_without_rebuilding() {
 #[test]
 fn occurrence_cells_science_reuse_mixed_batches_and_refusal() {
     let witness = PairedGraph::with_repeats(1);
-    for arm in ["cells_s", "cells_e", "cells_e_final"] {
+    for arm in ["cells_s", "cells_s_owned", "cells_e", "cells_e_final"] {
         for workers in [1, 4] {
             crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
                 .install(|| {
@@ -2006,8 +2006,10 @@ fn occurrence_cells_science_reuse_mixed_batches_and_refusal() {
                         assert_eq!(graph.use_cell_operator, positions.len() == 3);
                         let current = graph.kernel.as_ref().map(std::ptr::from_ref);
                         assert!(current.is_some());
-                        if arm != "cells_s" {
+                        if matches!(arm, "cells_e" | "cells_e_final") {
                             assert!(graph.kernel.as_ref().unwrap().two_pass());
+                        } else {
+                            assert!(!graph.kernel.as_ref().unwrap().two_pass());
                         }
                         if pointer.is_some() {
                             assert_eq!(pointer, current);
@@ -2080,7 +2082,7 @@ fn twin_stage_two_work_refusal_retains_selected_s_and_science() {
     )
     .unwrap();
     let mut expected = None;
-    for arm in ["cells_s", "cells_e", "cells_e_final"] {
+    for arm in ["cells_s", "cells_s_owned", "cells_e", "cells_e_final"] {
         let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
         owner.retain_coefficients = true;
         owner.request_auto_routing(RoutingPreset::ablation(arm).unwrap(), None, 0);

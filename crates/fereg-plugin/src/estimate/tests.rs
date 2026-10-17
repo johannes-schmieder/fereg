@@ -4768,7 +4768,7 @@ fn owned_packed_scores_skip_only_unused_moments_with_unchanged_admission() {
                 (prepared, action, scratch, ceiling, preparation_peak)
             };
             let (baseline, baseline_action, scratch, ceiling, peak) = run(None);
-            for arm in ["cells_e", "fit_owned", "cells_e_final"] {
+            for arm in ["cells_e", "fit_owned", "cells_e_final", "cells_s_owned"] {
                 let (prepared, action, actual_scratch, actual_ceiling, actual_peak) =
                     run(Some(RoutingPreset::ablation(arm).unwrap()));
                 assert_eq!(prepared, baseline);

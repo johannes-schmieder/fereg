@@ -16,6 +16,57 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## S plus exact Fast ownership prototype (2026-10-17)
+
+The fixed next candidate is `routing_cells_s_owned`, combining S's unchanged FE
+path with the exact Fast ownership optimization. It excludes E's twin engine
+and S2's early refusal. Public Auto and all thirteen earlier private/control
+arms must preserve their scientific results; the new arm must preserve S's
+scientific fields and solver signatures exactly. Independent witnesses and
+original-observation certificates remain required. This is a private experiment.
+
+D5 freezes Auto, S, Auto+ownership and S+ownership on the twelve revealed
+families at one/four workers. Seed `2026101752` defines twelve balanced rotating
+blocks: 96 warmups, 1,152 scored complete calls and 288 diagnostics. Science
+adds 192 candidate calls and 624 calls comparing thirteen prior arms against
+the frozen D4 artifact; smoke adds eight candidate and 26 control calls. The
+candidate must have at least eighteen material gains and no regressions versus
+Auto, no regressions versus S, and at least two gains versus S spanning two
+families. Auto+ownership must have no regressions versus Auto. Both ownership
+pairs remain exact in science and every timing phase. Gains/regressions use the
+unchanged paired `max(5%,1 ms)` allowance. The two-family increment requirement
+is a minimal breadth screen, not a confirmation claim. First-solver timers are
+diagnostic; the rejected E engine's 20% improvement gate does not apply.
+
+C5 regenerates the ten C4 shapes, including 600,000 and 480,000 rows, with seed
+`2026101754`; all existing oracle caps remain unchanged. Its twenty settings
+compare Auto, S and the fixed S+ownership finalist. Schedule seed `2026101753`
+sets twelve mirrored six-call blocks per setting, with each of the six arm
+permutations appearing twice: `(a,b,c,c,b,a)`. There are 60 warmups, 120 science
+calls and 1,440 scored calls. Each arm's two complete calls form a geometric
+mean; both Auto and S comparator scores must pass the rank-10-of-12 upper median
+allowance-excess bound in every setting. S/S+ownership remains exact throughout.
+This all-pass nonregression decision is conditional on the declared block
+assumptions, not forty simultaneous confidence intervals or proof of speedup.
+Gains remain descriptive. It runs on a distinct isolated SCC host only after
+D5 passes its frozen gate, accounting and independent evidence review.
+
+D5, C5, their independent witnesses, exact artifacts and execution driver are
+frozen before the first campaign native call. Keep the 120-second call cap and
+1,800-second phase budgets, with no exclusions, replacements, extensions,
+alternative finalists or resampling. Failure leaves C5 unrun. D4's rejected
+candidate cannot authorize this new experiment, and the old C4 remains sealed.
+SCC evidence cannot establish Mac performance or promote a public default.
+
+The full source-integration suite, universal Mac binary audit and actual-plugin
+ABI checks pass. All 73 public OLS/PPML replay cases remain exact against the
+parent, and licensed Stata single-runtime, OLS transaction and compact-cell
+scientific fixtures pass. Focused tests cover S/S+ownership across weight kinds,
+one/four workers, Fast/Low memory, score-cache refusal and cell admission refusal.
+The ordinary installed-package entrypoint rejects the unshipped private runtime;
+source-only integration passes and distribution artifacts remain unchanged.
+These correctness checks do not establish a timing advantage.
+
 ## Twin cell engine and Fast ownership prototype (2026-10-17)
 
 The next private candidate is `routing_cells_e_final`: S's builder and serial

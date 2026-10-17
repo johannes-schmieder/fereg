@@ -355,6 +355,16 @@ signatures must remain exact. Low and ineligible requests retain the old path.
 are separately attributed before any public promotion; implementing them does
 not establish a timing claim.
 
+The private `routing_cells_s_owned` arm composes S with the same exact Fast
+ownership optimization. Its FE kernel maps directly to S: no twin construction,
+cell-grouped RHS/reconstruction, early refusal, new resource policy or changed
+solver arithmetic. Every scientific field and solver signature must equal S
+at fixed worker count and seed, including Low and ineligible Fast fallbacks.
+Public routes and all prior private arms remain exact controls. Independent
+weighted full-fit witnesses, original-observation certificates, deterministic
+repeats and transaction checks remain prerequisites. This composition changes
+ownership only and does not authorize public promotion.
+
 The separate private `routing_cells_s2` arm adds structural early refusal to
 S, using its unchanged serial per-batch tariff. Checked u128 endpoint bounds
 at RHS widths one and the immutable owner maximum prove when no allowed batch

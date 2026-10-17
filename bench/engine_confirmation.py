@@ -11,12 +11,15 @@ import argparse
 from datetime import datetime, timezone
 from pathlib import Path
 import random
+import sys
 import time
 
 import compact_cells as campaign
 
 KIND = 'compact_cells_engine_confirmation_v1'
 ARMS = ['baseline', 'cells_e_final']
+DISCOVERY_KIND = campaign.ENGINE_KIND
+TEST_FILE = 'test_engine_confirmation.py'
 CASES = [
     {'family': 'short2', 'generator': 'synthetic', 'shape': 'short', 'workers': 3000, 'firms': 300, 'periods': 2},
     {'family': 'long40', 'generator': 'synthetic', 'shape': 'long', 'workers': 3000, 'firms': 300, 'periods': 40},
@@ -57,9 +60,10 @@ ORACLE_CAPS = {name: getattr(campaign.routing_oracle, name) for name in
                ['MAX_ROWS', 'MAX_RETAINED', 'MAX_X', 'MAX_FE', 'MAX_BYTES', 'MAX_SCHUR_WORK', 'MAX_WEIGHT_RATIO']}
 
 
-def tool_files():
-    return sorted({*campaign.tool_files(), Path(__file__).resolve(),
-                   Path(__file__).with_name('tests') / 'test_engine_confirmation.py'})
+def tool_files(*, profile=None):
+    profile = sys.modules[__name__] if profile is None else profile
+    return sorted({*campaign.tool_files(), Path(profile.__file__).resolve(),
+                   Path(__file__).with_name('tests') / profile.TEST_FILE})
 
 
 def schedule(cell_ids):
@@ -76,15 +80,16 @@ def schedule(cell_ids):
     return blocks
 
 
-def columns(spec):
-    seed = LIMITS['data_seed'] + CASES.index(spec)
+def columns(spec, *, profile=None):
+    profile = sys.modules[__name__] if profile is None else profile
+    seed = profile.LIMITS['data_seed'] + profile.CASES.index(spec)
     values = getattr(campaign.cases, spec['generator'])(
         spec['shape'], spec['workers'], spec['firms'], spec['periods'], seed)
     if spec['family'] == 'repeated':
         values = [campaign.np.repeat(value, 4) for value in values]
     campaign.require(len(values[0]) == spec['workers'] * spec['periods'] * (4 if spec['family'] == 'repeated' else 1),
                      'confirmation generator changed the frozen shape')
-    oracle_capacity(values[0], campaign.np.column_stack(values[1:-2]), values[-2:])
+    profile.oracle_capacity(values[0], campaign.np.column_stack(values[1:-2]), values[-2:])
     return values
 
 
@@ -130,26 +135,28 @@ def source_capacity(source):
                            keep_singletons=data['keep_singletons'])
 
 
-def validate_contract(plan):
-    campaign.require(plan['kind'] == KIND and plan['arms'] == ARMS and plan['cases'] == CASES
-                     and plan['limits'] == LIMITS and plan['oracle_caps'] == ORACLE_CAPS
+def validate_contract(plan, *, profile=None):
+    profile = sys.modules[__name__] if profile is None else profile
+    campaign.require(plan['kind'] == profile.KIND and plan['arms'] == profile.ARMS and plan['cases'] == profile.CASES
+                     and plan['limits'] == profile.LIMITS and plan['oracle_caps'] == profile.ORACLE_CAPS
                      and plan['library_limits'] == campaign.LIBRARY_LIMITS
-                     and plan['analysis'] == ANALYSIS and plan['execution'] == EXECUTION,
+                     and plan['analysis'] == profile.ANALYSIS and plan['execution'] == profile.EXECUTION,
                      'confirmation contract changed')
-    expected = [f"{spec['family']}-t{workers}" for spec in CASES for workers in LIMITS['workers']]
+    expected = [f"{spec['family']}-t{workers}" for spec in profile.CASES for workers in profile.LIMITS['workers']]
     campaign.require([cell['id'] for cell in plan['cells']] == expected
-                     and plan['blocks'] == schedule(expected), 'confirmation coverage/order changed')
+                     and plan['blocks'] == profile.schedule(expected), 'confirmation coverage/order changed')
     for cell in plan['cells']:
         campaign.require(cell['id'] == f"{cell['family']}-t{cell['threads']}"
-                         and set(cell['inputs']) == set(ARMS), 'confirmation arm/cell coverage changed')
+                         and set(cell['inputs']) == set(profile.ARMS), 'confirmation arm/cell coverage changed')
     campaign.require(type(plan['prepared_wall_ns']) is int and plan['prepared_wall_ns'] > 0,
                      'confirmation freeze time missing')
 
 
-def validate(plan):
-    validate_contract(plan)
+def validate(plan, *, profile=None):
+    profile = sys.modules[__name__] if profile is None else profile
+    profile.validate_contract(plan)
     discovery = campaign.routing.unseal(campaign.read(campaign.checked(plan['discovery_plan'])))
-    campaign.require(discovery['kind'] == campaign.ENGINE_KIND
+    campaign.require(discovery['kind'] == profile.DISCOVERY_KIND
                      and campaign.routing.identity(discovery) == plan['discovery_plan_sha256'],
                      'confirmation discovery binding changed')
     campaign.validate(discovery)
@@ -159,13 +166,13 @@ def validate(plan):
     for path, sha in plan['frozen_files'].items():
         campaign.checked({'path': path, 'sha256': sha})
     bindings = [plan['discovery_plan'], *(plan[key] for key in ['generator', 'harness', 'plugin'])]
-    for path in tool_files():
+    for path in profile.tool_files():
         campaign.require(plan['frozen_files'].get(str(path.resolve())) == campaign.digest(path),
                          'unbound confirmation tool')
     for cell in plan['cells']:
         bindings.extend([cell['source'], cell['metadata'], cell['witness'], *cell['inputs'].values()])
         meta = campaign.read(campaign.checked(cell['metadata']))
-        campaign.require(source_capacity(campaign.checked(cell['source'])) == meta['oracle_capacity'],
+        campaign.require(profile.source_capacity(campaign.checked(cell['source'])) == meta['oracle_capacity'],
                          'C4 actual-input oracle capacity binding changed')
         campaign.require(cell['source']['sha256'] == meta['case_sha256'], 'confirmation source binding changed')
         _, witness_bindings = campaign.routing_oracle.load_reference(campaign.checked(cell['witness']),
@@ -180,21 +187,22 @@ def validate(plan):
                          'unbound confirmation dependency')
 
 
-def prepare(root, discovery_path):
+def prepare(root, discovery_path, *, profile=None):
+    profile = sys.modules[__name__] if profile is None else profile
     discovery_binding = campaign.ref(discovery_path)
     discovery = campaign.routing.unseal(campaign.read(discovery_path))
-    campaign.require(discovery['kind'] == campaign.ENGINE_KIND,
+    campaign.require(discovery['kind'] == profile.DISCOVERY_KIND,
                      'confirmation requires the engine discovery plan')
     campaign.validate(discovery)
     root = Path(root).resolve()
     root.mkdir(parents=True, exist_ok=False)
     frozen = [discovery_binding, *(discovery[key] for key in ['generator', 'harness', 'plugin']),
-              *(campaign.ref(path) for path in tool_files())]
+              *(campaign.ref(path) for path in profile.tool_files())]
     cells = []
-    for spec in CASES:
+    for spec in profile.CASES:
         family = spec['family']
         source = root / (family + '.case')
-        values = columns(spec)
+        values = profile.columns(spec)
         campaign.cases.write_case(Path(discovery['generator']['path']), source, values)
         if family == 'low':
             normal = source.with_suffix('.normal.case')
@@ -202,7 +210,7 @@ def prepare(root, discovery_path):
             campaign.routing_cases.copy_import(normal, source, low=True)
             normal.unlink()
         meta = campaign.routing_cases.inspect_case(source, family)
-        meta.update(family=family, case_sha256=campaign.digest(source), oracle_capacity=source_capacity(source),
+        meta.update(family=family, case_sha256=campaign.digest(source), oracle_capacity=profile.source_capacity(source),
                     **campaign.cases.graph_summary(values))
         metadata = source.with_suffix('.json')
         campaign.save(metadata, meta)
@@ -210,10 +218,10 @@ def prepare(root, discovery_path):
         campaign.routing_oracle.write_reference(source, witness)
         _, bindings = campaign.routing_oracle.load_reference(witness, meta['case_sha256'], meta['body_sha256'])
         frozen.extend(campaign.ref(path) for path in [source, metadata, *bindings])
-        for workers in LIMITS['workers']:
+        for workers in profile.LIMITS['workers']:
             cid = f'{family}-t{workers}'
             inputs = {}
-            for arm in ARMS:
+            for arm in profile.ARMS:
                 target = root / f'{cid}-{arm}.case'
                 campaign.routing.prepare(source, target, arm, workers)
                 campaign.require(campaign.routing_cases.inspect_case(target)['body_sha256'] == meta['body_sha256'],
@@ -222,16 +230,16 @@ def prepare(root, discovery_path):
                 frozen.append(inputs[arm])
             cells.append({'id': cid, 'family': family, 'threads': workers, 'source': campaign.ref(source),
                           'metadata': campaign.ref(metadata), 'witness': campaign.ref(witness), 'inputs': inputs})
-    plan = {'kind': KIND, 'arms': ARMS, 'cases': CASES, 'limits': LIMITS, 'oracle_caps': ORACLE_CAPS,
-            'library_limits': campaign.LIBRARY_LIMITS, 'analysis': ANALYSIS, 'execution': EXECUTION,
+    plan = {'kind': profile.KIND, 'arms': profile.ARMS, 'cases': profile.CASES, 'limits': profile.LIMITS, 'oracle_caps': profile.ORACLE_CAPS,
+            'library_limits': campaign.LIBRARY_LIMITS, 'analysis': profile.ANALYSIS, 'execution': profile.EXECUTION,
             'discovery_plan': discovery_binding, 'native_affinity_cores': discovery['native_affinity_cores'],
             'discovery_plan_sha256': campaign.routing.identity(discovery),
             **{key: discovery[key] for key in ['generator', 'harness', 'plugin']},
-            'cells': cells, 'blocks': schedule([cell['id'] for cell in cells]),
+            'cells': cells, 'blocks': profile.schedule([cell['id'] for cell in cells]),
             'frozen_files': {item['path']: item['sha256'] for item in frozen},
             'prepared_wall_ns': time.time_ns(), 'created_utc': datetime.now(timezone.utc).isoformat(),
             'root': str(root)}
-    validate(plan)
+    profile.validate(plan)
     campaign.save(root / 'plan.json', campaign.routing.seal(plan))
     return plan
 

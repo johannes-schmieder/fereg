@@ -46,6 +46,7 @@ pub(super) enum RoutingAblation {
     CellsE,
     FitOwned,
     CellsEFinal,
+    CellsSOwned,
     Direct,
 }
 
@@ -80,6 +81,7 @@ impl std::fmt::Display for RoutingPreset {
             Some(RoutingAblation::CellsE) => f.write_str("routing_cells_e"),
             Some(RoutingAblation::FitOwned) => f.write_str("routing_fit_owned"),
             Some(RoutingAblation::CellsEFinal) => f.write_str("routing_cells_e_final"),
+            Some(RoutingAblation::CellsSOwned) => f.write_str("routing_cells_s_owned"),
             Some(RoutingAblation::Direct) => f.write_str("routing_direct"),
         }
     }
@@ -117,6 +119,7 @@ impl RoutingPreset {
             "cells_e" => RoutingAblation::CellsE,
             "fit_owned" => RoutingAblation::FitOwned,
             "cells_e_final" => RoutingAblation::CellsEFinal,
+            "cells_s_owned" => RoutingAblation::CellsSOwned,
             "direct" => RoutingAblation::Direct,
             _ => return Err(invalid_argument("invalid solver-routing kernel experiment")),
         };
@@ -213,7 +216,11 @@ impl RoutingPreset {
     pub fn owns_fast_scores(self) -> bool {
         matches!(
             self.ablation,
-            Some(RoutingAblation::FitOwned | RoutingAblation::CellsEFinal)
+            Some(
+                RoutingAblation::FitOwned
+                    | RoutingAblation::CellsEFinal
+                    | RoutingAblation::CellsSOwned
+            )
         )
     }
 
@@ -224,6 +231,7 @@ impl RoutingPreset {
     pub(super) fn kernel(self) -> Option<RoutingAblation> {
         match self.ablation {
             Some(RoutingAblation::CellsEFinal) => Some(RoutingAblation::CellsE),
+            Some(RoutingAblation::CellsSOwned) => Some(RoutingAblation::CellsS),
             Some(RoutingAblation::FitOwned) => None,
             arm => arm,
         }
