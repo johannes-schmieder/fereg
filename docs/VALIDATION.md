@@ -24,8 +24,9 @@ out before native science. The provisional activation was rolled back; see the
 failed-confirmation record below. Two-FE remains independently eligible for its
 own later qualification, but Johannes's subsequent priority correction requires
 finishing the existing many-FE finalist first. The documented harness timeout
-is being repaired and validated on exposed evidence before a separately reviewed,
-genuinely fresh confirmation. No new holdout has yet been generated.
+has been repaired and independently validated on exposed evidence. A separately
+reviewed declaration and fresh 42-cell panel now pass input validation; the same
+finalist still requires fresh scientific and timing confirmation.
 
 Branch `codex/auto-routing` implements the prospective
 [incremental qualification](SPEC.md#incremental-auto-qualification-2026-10-17).
@@ -552,6 +553,39 @@ artifact, C24 design, tolerances and work limits; both defaults remain disabled.
 | Successful supervisor outcome | `7cdd7da4877eb3d8662e4e29ef65e4a91d57e694e433b81e478085b00ea26815` |
 | Independent raw review | `43024b4ae420ad3b07f7451a576f08478d96fc0c7586e34c528c44535a7f7491` |
 | Final prospective repair review | `1ea6548583f9bb8c6227921c48740fadcc745eea17df7fb6c3151daec3f67465` |
+
+### Fresh many-FE confirmation inputs, 2026-10-18
+
+The once-only declaration completed in 485.05 seconds under its 900-second
+bound, before any fresh generation. Independent review verified the sealed
+proposal, repair approval, chronology and all 4,903 files and 4,904 aliases in
+its read closure. It preserves the selected candidate, private public artifact,
+24 blocks, one warmup, alpha 1/40 and all original scientific and timing bounds.
+The new input and timing seeds are 2026101801 and 2026101802.
+
+The single generation operation then completed in 516.78 seconds under the
+same 900-second outer bound, including admission reconstruction. Its two owned
+commands exited zero in 0.15 and 9.13 seconds, within their 120/300-second
+bounds; no cleanup signals or survivors remained. Six full byte checks covered
+4,905 files and 4,906 aliases. Independent review rehashed that closure and all
+21 distinct case files and numeric bodies. All 42 cell descriptors and worker
+groupings match the original design, with no case or body identity shared with
+any prior many-FE or two-FE A/B/C panel, including recursive history. The two-FE
+B/C bodies were not accessed.
+
+These are input and provenance checks, with zero estimator or timing calls.
+The rebuilt-generator limitations above remain. Fresh independent witnesses,
+science, resource checks and controlled confirmation are still required; both
+public defaults remain disabled.
+
+| Fresh preparation identity | SHA-256 |
+| --- | --- |
+| Sealed declaration | `fbe1307c9b6721f0ae0c497376f10141407f794e7a9009086e295be66bd57d31` |
+| Independent declaration review | `fa069ef030ad51a58a78aac7952ab475d27e5db01f11a40f12ed3ef02f98a76d` |
+| Actual generation record | `4033ffe4df0ff2cddbeb7d14b189457b4345d478d86c394a88718df3d9e8f790` |
+| Successful generation outcome | `90dc8270470c106f0a744eef7dc0c0c047a51666e7f93afedd5fadcb60913b8c` |
+| Fresh panel | `3214d41b18602d1e2ee51061ca341cdaec760e0388e5239152279f41222b35fc` |
+| Independent generation review | `58c3983863f1eff332838955140728832aa0402a06492174e0da572a49930602` |
 
 ## Main-branch GitHub installation, 2026-10-14
 
