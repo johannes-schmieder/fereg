@@ -3,12 +3,18 @@
 Johannes accepted the integrated runtime on 2026-10-07. That is architectural
 acceptance, not a performance pass: the final timing campaign closed incomplete
 and historical timing was mixed. The Mac is the qualification host. Linux and
-Windows evidence so far comes from bounded build, load and mapped-fixture checks,
+Windows evidence at that acceptance came from bounded build, load and mapped-fixture checks,
 which do not establish full platform scientific or performance qualification.
 Johannes's 2026-10-14 decision additionally authorizes isolated SCC algorithm
 discovery and Linux performance measurements; those do not establish Mac speed.
 GitHub testing is paused. Native distribution permissions were confirmed on 2026-10-13;
 the [licensing decision](licensing.md) records the distribution terms.
+
+The many-FE candidate now passes the 2026-10-18 compact Linux qualification and
+practical Mac recovery, including independent review of actual retained science,
+timing and operational evidence. Each platform passes all 126 protected comparisons.
+The development-branch activation and its integration checks are recorded below;
+two-FE remains held, and release packages are unchanged.
 
 This page keeps accepted evidence, open failures and standing caveats. The full
 narrative ledger, with every run identifier, archive and receipt digest,
@@ -395,8 +401,84 @@ and independent plan review is
 The [compact result](../bench/results/incremental-many-20261018-compact.json)
 retains the selected cells, original indices, policies, budgets, source vectors,
 test hash and review hashes. Its historical Linux and Mac outcome fields remain
-unchanged; the recovery section records reviewed preparation, not a passing
-qualification. Public defaults remain disabled and two-FE remains held.
+unchanged. The following terminal result completes this reviewed recovery.
+
+### Mac recovery result and many-FE activation
+
+The recovery completed in 828.192790 seconds within its 12,747-second budget.
+All sixteen fresh cells passed with 2,352 native calls, no retry, no discarded
+attempt and no scientific or operational failure. Together with the 26 retained
+cells, the applicable evidence contains 994 mirrored blocks and 6,090 calls.
+All historical calls remain accounted for: cumulative actual use is 6,290 calls
+and 2,480.769208 seconds, below the declared caps. The failed first segment and
+partial sixteen-FE attempt remain excluded from acceptance.
+
+The maintained report was run once and passes all 126 protected Mac comparisons.
+The nearest upper allowance excess is -0.000798512 seconds (about 0.80 ms inside
+the permitted margin). Dense-t1 retains ten blocks and upper order-statistic rank
+nine; other cells have 24 blocks and rank eighteen. Ordinary desktop activity was
+recorded across 183 process samples, with a maximum gap of 5.224443 seconds and no
+observer errors or substantial competing-compute hits. Terminal process inspection
+found no owned runner or native harness. This is a sampled check, not proof of an
+otherwise idle machine or exhaustive historical descendant accounting.
+
+Independent review reconstructed every paired bound and matched the report
+exactly. It checked 126 retained first-call heads/arrays, 96 stored independent
+routing-oracle comparisons, 24 local-reference comparisons, 63 cross-worker
+pairs, 20 resource traces and all 6,090 accepted call fingerprints, solver rows
+and execution orders. It rehashed the 242 flat bound files, 17 execution modules
+and 96 fresh snapshot files. The unchanged Linux report and independent review
+remain passed: 36 tasks on twelve distinct assigned isolated hosts, 7,560 calls
+and 126 protected comparisons. Linux remains the primary performance evidence;
+no cross-platform timing or bitwise claim is made.
+
+The compact result retains every accepted qualification time and execution order,
+paired summaries, source identities and review counts. It records the actual raw
+result hash `068ca9dd422e4b0dd3d2a3b51e5f1ff51898ac2772694a4576f1148a425952a9`,
+maintained report hash
+`c5e3dbaf08ec2432bfed8b30918131013452064293b165279f0c74ceda08e621`
+and independent review hash
+`e3b8065c291d4eeb34ebf4704f5660ee2560a675980eea6a3c25dcd3d57ed447`.
+The qualification timer is the harness `NATIVE_SECONDS` value stored as
+`call.seconds`; `native_s` is retained separately as diagnostic timing. The
+compact export preserves the exact timer used by the qualification report.
+The first-call review does not recreate deleted timed arrays. Inactive-column
+witnesses and the historical generator limitations remain as previously recorded.
+Order-statistic coverage remains conditional on independent scores with a common
+median, without simultaneous coverage across comparisons.
+
+Activation changes only `DEFAULT_MANY` to true; `DEFAULT_TWO` remains false.
+All 192 runtime production modules and 58 artifact inputs match the qualified
+private public-many revision `a3f19059662836645c2ac37db9aca456d220f904`.
+Thus the actual native build/ABI/privacy, 96-call science, seven mapped Stata
+fixtures and four Break checks recorded under provisional activation remain
+applicable. The four activation-aware Rust/Stata fixtures are restored from the
+corrected, reviewed revision `8941355a`, retaining every numerical tolerance and
+the certified MAP fallback. MAP-specific oracle fixtures explicitly select
+diagonal preconditioning; public Auto has separate exact hidden-policy and QR
+checks. No new candidate or performance sampling is introduced.
+
+The default integration command was attempted and failed its installed-package
+runtime binding: the release plugin remains unchanged while this branch selects
+the qualified many-FE behavior. That failure is retained. Source integration and
+the final source-bound handoff are recorded separately. The first source run
+exposed three historical MAP-route assertions before restoration of the four
+reviewed consumers; its failure is also retained. The final serial
+`./scripts/run_tests.sh --source-only` passes in 141.61 seconds: 312 Python tests,
+1,946 Rust test executions including isolated child/audit processes, seven
+portable Python checks, Clippy, FFI/allocator, complexity, bridge and numeric
+guards. Its log SHA-256 is
+`5f8b74406bca01dc41865d7a0d053eff2608c060b7e8f666fa556a58b02a4e0b`.
+The Linux linker audit is skipped on Mac, and this work does not admit or publish
+the installed release package.
+
+Final independent activation review passes, including exact restoration of the
+four test consumers, final source-suite evidence and reconstruction of all 126
+Mac bounds solely from the compact record's qualification times. Review SHA-256:
+`8ee441268beca010f61ef45f4ae1c5835152922289c314cd19dbc5f2334dce0a`.
+Many-FE is enabled only on `codex/auto-routing`; two-FE remains disabled and held.
+The committed compact results and hashes are the retained evidence. Temporary
+task artifacts and raw captures are removed after committing these summaries.
 
 ## Incremental Auto implementation checks, 2026-10-17
 

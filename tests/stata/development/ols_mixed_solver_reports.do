@@ -24,11 +24,19 @@ foreach pool in 1 5 10 {
     assert e(N) == 1400
     assert e(rank) == 10
     assert e(df_r) == reference_df_r
+    * Row 1 aggregates initial RHS batches, including certified MAP fallback;
+    * strict unseeded Auto removes the pilot, not the original-input fallback.
     assert e(fereg_solver)[1,1] == 1
     assert e(fereg_solver)[1,2] == 2
+    assert e(fereg_solver)[1,4] == 2
     assert e(fereg_solver)[1,11] == 1
+    assert e(fereg_solver)[1,15] == 0
+    assert e(fereg_solver)[2,1] == 1
+    * Row 2 is this fixture's final-residual projection.
     assert e(fereg_solver)[2,2] == 3
+    assert e(fereg_solver)[2,4] == 2
     assert e(fereg_solver)[2,11] == 0
+    assert e(fereg_solver)[2,15] == 0
     forvalues j = 1/10 {
         assert abs(e(b)[1,`j'] - reference_b[1,`j']) <= 1e-10
         forvalues k = 1/10 {
