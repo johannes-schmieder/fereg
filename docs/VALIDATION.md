@@ -242,6 +242,52 @@ The fixture-only correction reuses the passing full source and native build
 evidence: all 192 production modules and 58 artifact inputs equal `a3f19059`.
 The changed Stata fixture passed its focused execution without changing a tolerance.
 
+### Activation review and exact A equivalence
+
+Independent activation review re-read the 96 retained native outputs and checked
+their independent witnesses, 48 exact repeat/signature pairs, 36 outside-family
+comparisons, 24 worker groups and 44 resource actions. Typed source/correctness
+admission passes. The full maintained activation validator reproduces the frozen
+B decision before admitting the original A/B equivalence contexts. The failed
+initial aggregate remains failed; the reviewed passing aggregate binds the six
+original Stata passes, corrected mixed fixture and four Break passes. Break
+transcripts were deleted by the unchanged runner; compact sentinels remain.
+
+The A equivalence phase completed its single planned attempt: 42 cells, 84
+artifact/cell outcomes and 168 successful native calls. Maintained qualification
+and independent review pass. All four hidden/public and repeat scientific and
+solver fingerprints match within every cell, including ten eligible many-FE
+and 32 outside-family cells. Review independently reconstructs 84 retained repeat
+solver signatures and 42 cross-worker solver-discrete comparisons. Twenty traced
+prerequisites provide 40 resource actions within their limits; repeats inherit
+that resource evidence. There were no failures, retries or replacements, and no
+owned processes remained after completion. This is scientific equivalence, not
+new timing evidence. B equivalence and untouched C24 remain required.
+
+Before this attempt, source review identified repeated full B reanalysis inside
+the oracle child's 125-second process limit. A separately reviewed parent
+admission adapter runs the unchanged validators once, records the files they
+actually read, and verifies those bytes around each bounded oracle child. It
+preserves the 120-second mathematical alarm, native budgets and original tools.
+Six focused tests pass. A's handoff contains 3,713 entries for 3,711 unique files,
+including all 3,150 B call logs and observer events/observations. The exact
+admitted configuration is retained separately from its later mutable pointer.
+All 16 independent oracle certificates and child-success logs pass review.
+The original producer deleted successful native arrays and trace logs, so this
+review cannot freshly recompute full output-to-oracle numerical comparisons or
+model-discrete worker agreement from those deleted outputs. It checks retained
+proofs and certificates, with narrower independent solver-signature checks.
+
+| Additional retained identity | SHA-256 |
+| --- | --- |
+| Independent public activation review | `49e00e005e358274ae26b850f8305ad96b883855265e9f15d3a14bc166717c24` |
+| Partial activation packet | `bac2690efc503b9941f99228996e44e94fc807b56967387798cb9b8c9f8fdaf3` |
+| Reviewed parent-admission adapter and supervisor | `abd9145bde0504f9597eae4da3d6af8ed8cd0cd5c463bd1207a7b542a7a929e8` |
+| A equivalence scientific records | `5763ff257ba5231642ff6a87e40ac93aaf7492d6378a182f2beb182caa30bf33` |
+| A admission handoff | `22bcb3f91400ff23eed92fe2ba5082ddc040dcc55c767c4f2441c2f18a016a25` |
+| A terminal outcome | `16ff9ea3325e890a8ef1e4cd4a7351314dc31e71ee5b407f58841e083d45363b` |
+| Independent A equivalence review | `f84dceed282103a1ed10ac06f9d6f44429158a190a5838e7df2161ad61a5f8b3` |
+
 ## Main-branch GitHub installation, 2026-10-14
 
 The root package installs the maintained Stata files and a universal macOS
