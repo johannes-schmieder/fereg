@@ -25,8 +25,9 @@ failed-confirmation record below. Two-FE remains independently eligible for its
 own later qualification, but Johannes's subsequent priority correction requires
 finishing the existing many-FE finalist first. The documented harness timeout
 has been repaired and independently validated on exposed evidence. A separately
-reviewed declaration and fresh 42-cell panel now pass input validation; the same
-finalist still requires fresh scientific and timing confirmation.
+reviewed declaration and fresh 42-cell panel now pass input validation. Fresh
+admission and independent witness preparation also pass; the same finalist still
+requires native scientific and timing confirmation.
 
 Branch `codex/auto-routing` implements the prospective
 [incremental qualification](SPEC.md#incremental-auto-qualification-2026-10-17).
@@ -586,6 +587,45 @@ public defaults remain disabled.
 | Successful generation outcome | `90dc8270470c106f0a744eef7dc0c0c047a51666e7f93afedd5fadcb60913b8c` |
 | Fresh panel | `3214d41b18602d1e2ee51061ca341cdaec760e0388e5239152279f41222b35fc` |
 | Independent generation review | `58c3983863f1eff332838955140728832aa0402a06492174e0da572a49930602` |
+
+### Fresh admission and independent witnesses, 2026-10-18
+
+The single fresh admission completed in 897.78 seconds under its 1,800-second
+bound. Independent review reconstructed the exact context from the original C
+context and the declared fresh cells, design and version marker. Artifacts,
+models, protections and the original four admission inputs remain unchanged.
+All 4,591 combined dependency files and 4,592 aliases passed independent byte
+and stat checks. The supervisor and child exited zero without cleanup signals
+or surviving owned processes.
+
+Witness preparation then completed in 372.02 seconds under its 2,100-second
+bound. All 42 ready wrappers bind the exact context, artifacts, resource contract
+and shared dependencies. Sixteen independent oracle bodies cover 32 cells;
+their retained rank, numerical and resource certificates and array hashes pass.
+Four imported local references cover eight more cells with exact output and
+saved-variable mappings, finite values and valid shapes. The two inactive-column
+cells retain the unchanged executable oracle that runs during native science.
+The parent completed 33 full byte checks, each oracle worker two, and the outer
+supervisor two. Independent review rehashed all 5,056 combined dependency files
+and 5,057 aliases and checked every worker/parent receipt and fixed bound. No
+owned processes remained and no cleanup signal was needed.
+
+These stages made no native estimator or timing calls. The oracle review checks
+retained certificates and array identities; it does not claim a second oracle
+solve or native scientific agreement. Both defaults remain disabled. Native
+science and its independent review must pass before the single C24 timing panel.
+No scientific tolerance, confidence standard, artifact or budget changed.
+
+| Admission and witness evidence | SHA-256 |
+| --- | --- |
+| Fresh derived context | `6b7cebb61255abafdfd1ec5e0810bdcf7831129d6f46507b3b22b41dce122f7a` |
+| Independent admission review | `e4d1806682f82c90874c41367de46d834807576cc6c6f6c9f6ebde476beeb0c1` |
+| Successful witness supervisor outcome | `c2695b94b9783a53792a38c3e3bd00761881876ac7bf96c53efb9221ad27e470` |
+| Actual witness report | `1b55b8a4c70d5aac15c742f2cbc18fb4927322cdca8830ed97871a16b9246152` |
+| Sealed oracle handoff | `9b2d2bb795261827086aaf7a5db65a6861435a5d9f9cf8d38aee0db60b05d5d7` |
+| Lead witness validation | `18c93dcc47637536b2432796cbc01170f89e07ef2487cf966a70e8c6476bc98a` |
+| Independent witness review | `0023e42723ee038935288c32f74cdf5b538c7d353ec3fb7a3d476641085c293d` |
+| Independent local-reference addendum | `121a11a1e0571b074f8913e6d0d1ffd79e33b1feb55a16692eb57406bb3a8271` |
 
 ## Main-branch GitHub installation, 2026-10-14
 
