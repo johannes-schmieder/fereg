@@ -70,6 +70,39 @@ source/build/export evidence. Prospective local callers use its scoped
 bind the extension, review and bootstrap in source/monitor dependencies.
 Ordinary terminal inputs still delegate unchanged. Portable export validation
 does not replace local raw replay, and this path cannot accept a default.
+The existing retained receipt records the first attempt's outcome; Johannes's
+subsequent priority correction requires completing the many-FE finalist before
+advancing two-FE. It does not authorize treating an operational harness timeout
+as a scientific rejection.
+
+For this documented pre-native witness failure, repair and profile admission and
+dependency validation on already exposed evidence before generating new holdout
+inputs. Use a separate versioned confirmation declaration and explicit bootstrap;
+preserve the original B decision, A/B activation evidence, C declaration, accessed
+C data and failed outcome. The new declaration binds the same candidate and
+private public artifact, an independently reviewed harness, complete earlier
+panel identities, a fresh seed/session and bounded setup. Retain C24, one warmup,
+120-second calls, the 14,400-second scientific and 28,800-second timing budgets,
+alpha 1/40 and per-workload max(5%, 1 ms) protections for original Auto, accepted
+Auto and selected hidden. The branch default stays disabled until confirmation
+passes. Exact operation-local metadata/hash reuse must detect drift and preserve
+full byte checks, semantic validation and independent witnesses; it cannot cache
+scientific or timing decisions. A repeated tooling failure must be diagnosed and
+surfaced as a blocker, without another automatic version or a move to two-FE.
+Scientific or performance failure/inconclusiveness requires Johannes's direction.
+
+The repair uses [`routing_validation.py`](../bench/routing_validation.py) for
+scoped metadata and immutable-dependency verification, and
+[`routing_confirmation.py`](../bench/routing_confirmation.py) for the separately
+reviewed confirmation declaration and freshness history. The supervised entrypoint
+[`routing_confirmation_run.py`](../bench/routing_confirmation_run.py) first
+validates the complete old C admission and all 42 original B wrappers in its
+`exposed` action. Its execution actions then enforce the declared order, exact
+producer sources, successful predecessor outcomes and scientific review before
+timing. Preserve the designated Python virtual-environment invocation as well as
+the interpreter's canonical byte identity. The frozen historical producers and
+their evidence remain unchanged; this driver does not generate an approval or
+activate a default.
 
 GitHub testing is paused. Mac remains the default qualification host; Johannes
 additionally requested bounded Linux and Windows build checks on 2026-10-07.

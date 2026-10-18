@@ -66,7 +66,15 @@ diagnostic opportunity comparisons, not promotion gates. New versioned campaigns
 protect the original uninjected Auto at `f35f3a4d` and the last accepted branch
 Auto with the existing per-workload max(5%, 1 ms) allowance. Qualify the existing
 many-FE and two-FE improvements separately, in that order, with separate untouched
-confirmations; either can advance without the other. Restrict new activation to
+confirmations. Johannes's subsequent priority correction requires completing the
+existing many-FE finalist before advancing two-FE. Its first C witness attempt
+failed operationally before native science or timing; preserve that failure and
+repair the harness, then use a reviewed, versioned confirmation with genuinely
+fresh inputs. Do not retry or relabel the accessed old C panel. A further tooling
+failure is an engineering blocker to diagnose and surface, not permission to
+abandon many-FE. Scientific failure or inconclusive performance retains the
+incumbent and requires Johannes's direction. Keep the public default disabled
+until valid confirmation passes. Restrict new activation to
 OLS `solver(auto)` and `preconditioner(auto)` on categorical intercept designs.
 Preserve historical protocol decisions and scientific/resource/transaction gates.
 Activate passing defaults only on this branch. Finish this increment with bounded

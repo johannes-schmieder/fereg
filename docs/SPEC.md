@@ -215,8 +215,35 @@ access, fresh A/B checks must establish exact scientific and numerical-signature
 equivalence to the selected hidden invocation. Confirmation also protects that
 hidden artifact against activation overhead. Failure or inconclusive confirmation
 retains the last accepted default, without selecting another policy from those
-C results; the other independently declared stage may continue. No merge to main,
-release packaging, predictive payback rule or speculative-budget increase follows.
+C results. Johannes's subsequent continuation decision requires finishing the
+existing many-FE finalist before advancing two-FE. The first many-FE C attempt
+failed in witness/admission hashing before any native science or timing. That
+attempt remains failed and its accessed inputs cannot serve as an untouched
+holdout. A separately versioned confirmation may follow an independently reviewed
+repair of this documented harness failure, using genuinely fresh inputs and the
+same selected candidate, private public artifact, protections, tolerances,
+confidence standard and bounded native work.
+
+Before generating that new holdout, measure the actual overhead and validate the
+repaired harness on already exposed evidence. Exact metadata and immutable-file
+hash reuse may remove redundant validation; it must retain the complete read
+closure, file and alias identity checks, full byte checks before execution and
+after the operation, original semantic validators and independent numerical
+witnesses. Scientific, resource, transaction, per-call and observer checks cannot
+be replaced by cached results. Freeze repaired sources, independent review,
+freshness history, setup bounds and stopping rules prospectively. Preserve every
+historical outcome and do not pool or reuse the failed C observations as new
+confirmation evidence.
+
+Keep the working public many-FE default disabled until valid confirmation passes.
+A further harness failure is a documented engineering blocker requiring diagnosis
+and direction, not automatic permission for another confirmation or for moving
+to two-FE. A failed scientific criterion or inconclusive/failed performance gate
+retains the incumbent and requires Johannes's direction; no alternate winner,
+retuning, unfavorable-observation deletion or sampling until success is allowed.
+Two-FE resumes only after many-FE has a validated outcome, applicable checks,
+committed evidence and pushed source/default changes. No merge to main, release
+packaging, predictive payback rule or speculative-budget increase follows.
 
 The earlier prospective deployment amendment permits one narrow public-default
 transition after the finite A/B experiment selects one nonbaseline serial

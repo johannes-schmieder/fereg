@@ -22,7 +22,10 @@ Current branch state: both public incremental defaults are disabled. The many-FE
 candidate passed discovery and B selection, but its C witness preparation timed
 out before native science. The provisional activation was rolled back; see the
 failed-confirmation record below. Two-FE remains independently eligible for its
-own qualification after the reviewed terminal handoff.
+own later qualification, but Johannes's subsequent priority correction requires
+finishing the existing many-FE finalist first. The documented harness timeout
+is being repaired and validated on exposed evidence before a separately reviewed,
+genuinely fresh confirmation. No new holdout has yet been generated.
 
 Branch `codex/auto-routing` implements the prospective
 [incremental qualification](SPEC.md#incremental-auto-qualification-2026-10-17).
@@ -414,8 +417,10 @@ audit. It also recomputes all original/current production and artifact-input
 inventories. The retained incumbent remains `f35f3a4d`; the branch's disabled
 hidden-candidate additions have their separate preactivation identity. Actual
 terminal generation, local raw replay and portable validation pass in 12.17
-seconds without B reanalysis or native calls. This closes the many-FE stage as
-retained and permits independent two-FE qualification. A prospective two-FE
+seconds without B reanalysis or native calls. This closed the first many-FE attempt
+as retained under the then-current handoff. Johannes subsequently required
+completion of the many-FE finalist before two-FE advances, as described below.
+A prospective two-FE
 driver must explicitly bind/install the failure extension for local admission;
 portable validation alone is only an export-attestation check.
 
@@ -425,6 +430,63 @@ portable validation alone is only an export-attestation check.
 | Independent source/rollback inventory audit | `35b39a0185119afc52289faba6cc4fd3a59c1b0cdf1c7e73792693c76b3951b9` |
 | Independent retained-incumbent export | `a81c78929d468a612176ed34b1fb79b63e047fc527c8559a94269474d61f1ce3` |
 | Many-FE terminal, logical identity | `a3a635318c29c8709ae53083ef9257d0dae370787095233006dd68cd9ccb5009` |
+
+### Measured validation-overhead repair, 2026-10-18
+
+The failed C attempt remains failed, with its accessed inputs and all partial
+outputs preserved. Johannes authorized repairing the measured harness cost and
+independently validating it on exposed evidence before generating a fresh
+confirmation of the same finalist. The private public plugin, scientific scope,
+Auto protections, C24 design, confidence standard and native budgets remain
+unchanged. The branch's public default stays disabled until confirmation passes.
+A further operational failure requires diagnosis and direction; it does not
+automatically start another confirmation or advance two-FE.
+
+The two-FE setup job `8164867` completed before the stop request took effect:
+56 seconds, four slots on `scc-gd4`, scheduler `failed=0`/`exit_status=0`, with
+setup and native-smoke outputs retained. No discovery producer was submitted,
+and two-FE B/C bodies remain untouched. Its qualification is deferred until the
+many-FE outcome, applicable checks, documentation and source are complete.
+
+Bounded profiling on old evidence identifies repeated hashing as a material
+cost. One original partial-activation validation made 163,290 digest calls over
+3,702 distinct files, reading 341.735 GB in 198.42 seconds; 150.69 seconds were
+inside hashing. These numbers include profiler instrumentation. One old ready
+wrapper alone read 5.608 GB in 779 digest calls, taking 2.84 seconds.
+
+The new operation-local validator reuses exact metadata results only at four
+named entrypoints and verified immutable dependency hashes. It preserves original
+semantic validators, captures regular-file reads and aliases, checks identity on
+reuse, and fully rehashes bytes at execution boundaries and completion. Eighteen
+focused tests pass. Independent source review approved the utility, versioned
+confirmation extension and supervised driver. The final routing integration
+suite passes all 372 tests in 188.54 seconds, including actual bounded dummy
+process success and timeout/descendant cleanup. Thirteen preparation tests pass;
+review caught and closed interruption-during-cleanup and output-path escape
+issues before any preparation execution. Full exposed-harness validation remains
+required before fresh generation. These tooling changes leave all 192 runtime
+production modules and 58 artifact inputs unchanged.
+
+That initial repaired profile passed in 37.49 seconds, including a second exact
+metadata hit and full before/after byte checks. It hashed 18.314 GB across 3,710
+closure files. Both returned values have the exact original canonical identity
+`642f05f689174b5ef642852ddb67060b0ad1b3422d654d8b8618b7225b92a080`.
+This diagnoses and reduces validation overhead; it is not a solver timing or
+fresh-confirmation result. No new native or oracle calls were made.
+
+| Repair evidence | SHA-256 |
+| --- | --- |
+| Original admission profile | `3cf70f1c12f251f6a5408ffb5f486d5adcae958ecf5f7aad43c841f2d270b633` |
+| Original ready-wrapper hash profile | `2e1117ea21042a048321801b22291242ac0d44e76c7c56f0b7ba2b1000185eb7` |
+| Repaired initial admission profile | `56fa079f0573f1665b81867ee94aeb5c79dc4110e1708ec59c5419e32f60d966` |
+| Utility source review for that profile | `753100510f142522d681c3a8a1a36874e7189def0774c34516656e152c3393a0` |
+| Independent repaired-profile review | `85f16656b864ea8b8606b7868072505aeb657884a26ea2529769469a7a316aeb` |
+| Confirmation extension source review | `2896831a08b89692de968d04803dfc9add4244702a749321ac0651d7dda14190` |
+| Supervised driver source review | `72e42e26ab7d3465ff1c96d2eac3ebb901de0a4bd7c00e733997461db148c40c` |
+| Preparation source review | `dc89c567f9bee66a58535b9aaa114c5f58388a75f4a4d1e401ba50f396974e76` |
+| Final routing integration summary | `a888e49a7bf7bffa5366cb1cbc4a92b0d27df5dce86c93314d829f717e92d7af` |
+| Deferred two-FE handoff | `651dbc39aa48380e9de14d728dad46bb4a03863268b88de8eb04ae9382b77f5a` |
+| Two-FE setup accounting | `6decdfbb081209cb6a999f74e23ac0265e899cfce235ab6e1caa55c75ebecfee` |
 
 ## Main-branch GitHub installation, 2026-10-14
 
