@@ -488,6 +488,46 @@ fresh-confirmation result. No new native or oracle calls were made.
 | Deferred two-FE handoff | `651dbc39aa48380e9de14d728dad46bb4a03863268b88de8eb04ae9382b77f5a` |
 | Two-FE setup accounting | `6decdfbb081209cb6a999f74e23ac0265e899cfce235ab6e1caa55c75ebecfee` |
 
+### Rebuilt input generators and exposed-A verification
+
+The original native input-generator executables were absent when preparing the
+repaired workflow. Bounded restoration builds did not recover their recorded
+hashes. The current-source and exact `f125c0b3` archive builds produced identical
+replacement binaries; a separate original-core build also failed to recover
+the originals. These are rebuilt artifacts, not restored historical binaries.
+The earlier uncommitted imports-generator source and whole-core build-cache
+identity cannot be established from the retained evidence.
+
+Source review traced the actual RNG, design, wire serialization, core metadata
+types and independent expected-value mathematics. Those output-reachable paths
+are unchanged; estimator routing is not called by the generators. One bounded
+diagnostic then regenerated only exposed A using its original seed. It completed
+in 15.70 seconds without native estimation. All 42 case/body/descriptor identities
+and eight emitted scientific-reference files match exactly. Of 55 compared
+files, 38 match byte-for-byte and 17 metadata files differ solely in their
+recorded generator hash. Every raw difference remains explicit. Forty-eight
+existing independent A-oracle files were verified unchanged, not regenerated.
+
+Independent review rechecked the raw comparisons and all 847 closure files and
+848 aliases. The prospective generator mapping requires this exact evidence,
+preserves both historical and rebuilt identities, and rejects unexplained
+scientific or metadata differences. The ordinary exact-generator requirement
+remains the default. Twenty-four focused tests and all 375 routing integration
+tests pass; the latter took 189.77 seconds and included actual bounded process
+cleanup. This establishes tooling provenance on exposed inputs, not fresh
+confirmation or a solver-performance result. Both public defaults remain off.
+
+| Generator evidence | SHA-256 |
+| --- | --- |
+| Rebuilt case generator | `477fa714226a81ecd586ea957b2c9f86e05e073d6ef31cab6f4c2d19fd076250` |
+| Rebuilt imports generator | `ab2fb6b8577c5769a120170997d87fb62df259bc47217018c11d2169ac432bad` |
+| Bounded restoration summary | `7ae8cffdcd7f40cf7933aed3845148c2f08c8a53cdf3261e6ef32c485a914a62` |
+| Exposed-A diagnostic outcome | `8400494899984cf36d1d3eb6e110021bd2f1f0e79924af2bca4515cac517e23f` |
+| Independent raw audit | `78b28d4851d397397a694a94f8833a50d07b79bf523784010bb2fdd082211882` |
+| Generator mapping review | `dcc9fae9c8ad94c6e7d17bdb193203aa64b8d7f19ac876da4d466c938ab67fd2` |
+| Optional provenance-gate source review | `3a89ed5bbdcb52c83e9d553c8116af61767c38b55a7ca1e8cdb95f8022675d4b` |
+| Final 375-test integration summary | `d10ca181ce79fd35228b9caf42700cbb8e6f55fec9484ecc8f5d0d866f9d1b61` |
+
 ## Main-branch GitHub installation, 2026-10-14
 
 The root package installs the maintained Stata files and a universal macOS

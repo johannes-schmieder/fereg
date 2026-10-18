@@ -305,4 +305,137 @@ class FreshConfirmation(unittest.TestCase):
             with self.assertRaises(ValueError):confirmation.validate_terminal(bad,portable=True)
 
 
+    def rebuild_fixture(self):
+        config=copy.deepcopy(self.config)
+        history=blocks.read(config['history']['many_inputs'])
+        mapping={role:{'historical':{'path':'/unavailable/original/'+role,'sha256':h('old-'+role)},
+                       'actual':self.write({'rebuilt':role})} for role in ('case_generator','imports_generator')}
+        for role,value in mapping.items():
+            history['generator_sha256'][value['historical']['path']]=value['historical']['sha256']
+            config['sources'][role]=value['actual']
+        config['history']['many_inputs']=self.write(history)
+        comparison={'kind':'routing_exposed_A_generator_reachable_source_comparison_v1',
+            'status':'passed_reachable_source_comparison','scope':'output_reachable_generator_code',
+            'generators':mapping,'panel_generator':config['sources']['panel_generator'],
+            'non_reachable_runtime_equality_required':False,
+            'coverage':{key:True for key in ('core_metadata_type_serialization','rng_design_wire','independent_expected_math')},
+            'closure':[self.source],'provenance':[self.source]}
+        rows={'imports-a':[],'a':[]}; differences=[]
+        self.serial+=1; area=self.root/f'rebuild-{self.serial}'
+        def pair(group,name,old,new=None):
+            bound=[]
+            for side,content in [('old',old),('new',old if new is None else new)]:
+                path=area/side/group/name;path.parent.mkdir(parents=True,exist_ok=True)
+                path.write_text(content if isinstance(content,str) else json.dumps(content))
+                bound.append(blocks.reference(path))
+            row={'file':name,'original':bound[0],'generated':bound[1],'exact_bytes':bound[0]['sha256']==bound[1]['sha256']}
+            if not row['exact_bytes']:
+                row['json_difference_paths']=['$.generator_sha256'];differences.append(group+'/'+name)
+            rows[group].append(row)
+        for i in range(8):pair('imports-a',f'import-{i}.json',{'science':i})
+        for i in range(21):
+            pair('a',f'A-{i}.case',f'A-case-{i}')
+            old={'generator_sha256':mapping['case_generator']['historical']['sha256'],'science':i}
+            new={**old,'generator_sha256':config['sources']['case_generator']['sha256']} if i<17 else old
+            pair('a',f'A-{i}.json',old,new)
+        for i in range(4):pair('a',f'import-{i}.reference.json',{'reference':i})
+        pair('a','panel.json',{'schema':1,'panel':'A','seed':history['seeds']['A'],'cells':self.original['panels']['A']})
+        proposal={'sources':{'generator':config['sources']['case_generator'],'imports':config['sources']['imports_generator'],
+                'source:bench/routing_cases.py':config['sources']['panel_generator']},
+            'panels':config['history']['many_inputs'],'a_panel':rows['a'][-1]['original'],
+            'seed':history['seeds']['A'],'bounds':{'imports':120,'panel':300,'outer':900},
+            'commands':[['synthetic-imports'],['synthetic-panel']],
+            'inventory':{key:[row['file'] for row in value] for key,value in rows.items()}}
+        verification={'poisoned':None,'full_byte_checks':2,'closure':[self.source],
+                      'path_aliases':{self.source['path']:self.source['path']}}
+        diagnostic={'kind':'routing_exposed_A_generator_diagnostic_v1_outcome','status':'complete_with_byte_differences',
+            'diagnostic_only':True,'admission':False,'original_artifact_restored':False,'all_emitted_bytes_exact':False,
+            'all_42_cases_and_bodies_exact':True,'all_42_descriptors_exact':True,'imported_scientific_reference_bytes_exact':True,
+            'cells':[{'id':c['id'],'descriptor_exact':True,'case_exact':True,'body_exact':True} for c in self.original['panels']['A']],
+            'comparisons':rows,'independent_oracle_references':{'status':
+                'existing bytes verified unchanged; NOT regenerated or compared to new oracle outputs','bindings':{'oracle':self.source}},
+            'commands':[{'argv':argv,'name':name,'timeout_s':seconds,'status':'complete','process_result':{'exit_code':0},
+                         'ownership':{'identities':{'1':'birth'}}} for argv,name,seconds in
+                        zip(proposal['commands'],['imports','panel'],[120,300])],
+            'completed_unix':70.,'verification':verification}
+        supervisor={'status':'complete_diagnostic_not_admitted','budget_s':900,'process_result':{'exit_code':0},
+                    'ownership':{'identities':{'1':'birth'}},'completed_unix':75.,'verification':verification}
+        review={'kind':confirmation.KIND+'_generator_rebuild_review','status':'passed','many_inputs':config['history']['many_inputs'],
+            'generators':mapping,'panel_generator':config['sources']['panel_generator'],'caveat':confirmation.GENERATOR_CAVEAT,
+            'completed_unix':80.,'metadata_difference_files':differences,'evidence':[self.source]}
+        return config,history,comparison,proposal,diagnostic,supervisor,review
+
+    def bind_rebuild(self, parts):
+        config,history,comparison,proposal,diagnostic,supervisor,review=copy.deepcopy(parts)
+        proposal_ref=self.write(proposal)
+        prospective=self.write({'kind':'routing_exposed_A_generator_diagnostic_v1_review','status':'passed',
+            'proposal':proposal_ref,'sources':proposal['sources'],'commands':proposal['commands'],'diagnostic_only':True})
+        diagnostic.update(proposal=proposal_ref,review=prospective)
+        diagnostic_ref=self.write(diagnostic)
+        supervisor.update(outcome=diagnostic_ref,proposal=proposal_ref,review=prospective)
+        review.update(source_comparison=self.write(comparison),diagnostic=diagnostic_ref,diagnostic_supervisor=self.write(supervisor))
+        config['sources']['generator_rebuild_review']=self.write(review)
+        def references(value):
+            if isinstance(value,dict):
+                if set(value)=={'path','sha256'} and Path(value['path']).exists():
+                    config['sources']['rebuild_'+str(len(config['sources']))]=value
+                else:
+                    for child in value.values():references(child)
+            elif isinstance(value,list):
+                for child in value:references(child)
+        for value in [comparison,proposal,diagnostic,supervisor,review]:references(value)
+        return config,history
+
+    def test_reviewed_rebuild_mapping_keeps_historical_identity_and_all_raw_differences(self):
+        parts=self.rebuild_fixture();config,history=self.bind_rebuild(parts)
+        actual,_=confirmation.history_metadata(config,self.original)
+        self.assertEqual(actual['many_inputs'],history)
+        refs=confirmation.rebuilt_generator_dependencies(config,self.original,history)
+        for row in parts[4]['comparisons']['a']:
+            self.assertIn(row['original'],refs);self.assertIn(row['generated'],refs)
+        self.assertEqual(parts[4]['status'],'complete_with_byte_differences')
+        self.assertFalse(parts[4]['all_emitted_bytes_exact'])
+        strict=copy.deepcopy(config);strict['sources'].pop('generator_rebuild_review')
+        with self.assertRaisesRegex(ValueError,'original generator'):confirmation.history_metadata(strict,self.original)
+
+    def test_generator_rebuild_rejects_missing_science_files_scope_or_source_proof(self):
+        base=self.rebuild_fixture()
+        for mutation in ('missing-cell','duplicate-cell','false-body','false-science','missing-file','duplicate-file',
+                         'wrong-file','failed-scope','missing-core','historical-mapping','panel-generator','unknown-cache',
+                         'missing-provenance','missing-oracles','failed-byte-check','future-review','unreviewed-difference'):
+            parts=copy.deepcopy(base);cfg,history,comparison,proposal,diag,supervisor,review=parts
+            if mutation=='missing-cell':diag['cells'].pop()
+            elif mutation=='duplicate-cell':diag['cells'][0]=diag['cells'][1]
+            elif mutation=='false-body':diag['cells'][0]['body_exact']=False
+            elif mutation=='false-science':diag['imported_scientific_reference_bytes_exact']=False
+            elif mutation=='missing-file':diag['comparisons']['a'].pop()
+            elif mutation=='duplicate-file':diag['comparisons']['a'][0]=diag['comparisons']['a'][1]
+            elif mutation=='wrong-file':diag['comparisons']['a'][0]['file']='other.case'
+            elif mutation=='failed-scope':comparison['scope']='whole solver equality'
+            elif mutation=='missing-core':comparison['coverage']['core_metadata_type_serialization']=False
+            elif mutation=='historical-mapping':review['generators']['case_generator']['historical']['sha256']=h('wrong')
+            elif mutation=='panel-generator':review['panel_generator']=self.write({'new':'panel'})
+            elif mutation=='unknown-cache':review['caveat']='original restored'
+            elif mutation=='missing-provenance':comparison['provenance']=[]
+            elif mutation=='missing-oracles':diag['independent_oracle_references']['bindings']={}
+            elif mutation=='failed-byte-check':diag['verification']['full_byte_checks']=1
+            elif mutation=='future-review':review['completed_unix']=101.
+            else:review['metadata_difference_files'].pop()
+            config,_=self.bind_rebuild(parts)
+            with self.subTest(mutation=mutation),self.assertRaises(ValueError):confirmation.history_metadata(config,self.original)
+
+    def test_generator_rebuild_detects_raw_science_difference_and_missing_final_dependency(self):
+        parts=self.rebuild_fixture();config,history=self.bind_rebuild(parts)
+        generated=parts[4]['comparisons']['a'][1]['generated']
+        missing=copy.deepcopy(config)
+        missing['sources']={key:ref for key,ref in missing['sources'].items() if ref!=generated}
+        with self.assertRaisesRegex(ValueError,'final source vector'):confirmation.history_metadata(missing,self.original)
+        # Python considers False == 0; scientific JSON identities must not.
+        raw=json.loads(Path(generated['path']).read_text());raw['science']=False
+        Path(generated['path']).write_text(json.dumps(raw))
+        parts[4]['comparisons']['a'][1]['generated']=blocks.reference(generated['path'])
+        changed,_=self.bind_rebuild(parts)
+        with self.assertRaisesRegex(ValueError,'beyond the reviewed'):confirmation.history_metadata(changed,self.original)
+
+
 if __name__ == '__main__': unittest.main()

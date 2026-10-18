@@ -235,6 +235,16 @@ freshness history, setup bounds and stopping rules prospectively. Preserve every
 historical outcome and do not pool or reuse the failed C observations as new
 confirmation evidence.
 
+If original input-generator executables are unavailable, a prospective rebuild
+mapping requires independent review of unchanged output-reachable generation,
+serialization and reference mathematics, plus exact reproduction of exposed A
+case bytes, numeric bodies and scientific references. Preserve the original
+artifact identities and every raw metadata difference; changed generator-hash
+fields are provenance differences, not restored binary identity. Bind the actual
+rebuilt executables and immutable build sources before new holdout generation.
+Any unexplained output or reachable-source change blocks this reconstruction;
+it cannot change a model, seed recipe, solver artifact or qualification gate.
+
 Keep the working public many-FE default disabled until valid confirmation passes.
 A further harness failure is a documented engineering blocker requiring diagnosis
 and direction, not automatic permission for another confirmation or for moving

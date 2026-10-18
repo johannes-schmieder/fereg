@@ -104,6 +104,14 @@ the interpreter's canonical byte identity. The frozen historical producers and
 their evidence remain unchanged; this driver does not generate an approval or
 activate a default.
 
+Generator reconstruction must use immutable task-owned executable copies and
+the actual archived build sources, so later Cargo checks cannot erase historical
+dependencies. Retain missing-original hashes and unsuccessful recovery attempts.
+A separately reviewed mapping may bind rebuilt hashes only after auditing all
+output-reachable code, including core metadata serialization, and reproducing
+exposed A inputs and scientific references exactly. Keep raw sidecar provenance
+differences visible; do not normalize them into an original-artifact pass.
+
 GitHub testing is paused. Mac remains the default qualification host; Johannes
 additionally requested bounded Linux and Windows build checks on 2026-10-07.
 Existing GitHub build definitions remain inactive.
