@@ -58,6 +58,54 @@ Check-capture identities: source integration `f45dd7e3f19f92a1177b8d220ad79dcc6a
 native tooling-smoke summary `0b9e682b363138c3429f79265c7638d300d995ad676837626aab12b6a7b2cf16`. These identify the deleted captures;
 the summaries above are the retained evidence.
 
+### Resumed many-FE qualification preparation
+
+Johannes subsequently authorized execution with this compact suite. The existing
+candidate and 21 current inputs are reused; two-FE remains on hold. Preflight
+found that execution/checking code was not bound by the manifest and that the
+run budget did not cover all preparation and postprocessing. The runner now binds
+17 maintained modules, checks file aliases and metadata during execution, and
+enforces the whole-run deadline through final output writes. Native cleanup
+blocks repeated signals until its child is killed and reaped. Passive observation
+retains ordinary CPU, RSS and activity summaries without changing noise policy.
+
+All 161 benchmark-tool tests pass, including deadline interruption, owned dummy
+child/descendant cleanup with an active observer thread, source drift and alias
+retargeting. Independent high-effort source review passes. The task-local
+environment initially lacked report/test dependencies; after installing them,
+the final complete suite passed in 9.631 seconds. Shell syntax and `git diff --check`
+pass. The test capture hash is
+`47296e567bc8ed78243172ec375a85b6f4693e0ae646cf93134d37a42fa2a41b`.
+Native production and artifact inputs are unchanged, so the valid source,
+scientific and transaction evidence above is reused.
+
+Before any qualification observations, the fixed design is 24 mirrored blocks
+on Mac and two blocks on each of 12 distinct SCC hosts, with three workload
+shards per host. Both retain all 42 cells, one warmup per distinct execution arm,
+120 seconds per native call, the max(5%, 1 ms) allowance and one-sided alpha
+1/40 bounds. The whole-run limits are 14,400 seconds on Mac and 3,600 seconds
+per SCC shard. Original and incumbent share identical execution calls; the
+hidden/public comparison remains protected. This schedules 6,174 Mac and 7,560
+Linux calls. SCC hosts are fixed prospectively by the first twelve eligible,
+idle hosts in a lexicographic census, with queue selection unrestricted;
+physical hosts remain the Linux uncertainty units. There is no automatic
+replacement or increase in the sample budget.
+
+The private Linux candidate was built from `a3f190596628` with Rust 1.85.1,
+GCC 12.2.0 and the locked release profile. Its ELF audit, GLIBC 2.28 ceiling,
+actual ABI/load/panic containment and both numeric input/output guards pass.
+The binary SHA-256 is
+`7fae1f99a4a7697540abc451a6203900ca82e2f4fb61d8ce850739178ec4954d`.
+Setup jobs `8167455` and `8167462` failed before compilation because of the
+wrapper's working directory and archive ownership/mode comparison respectively.
+Job `8167540` completed the native checks in its 127-second allocation, then
+exited 1 on a syntax error in the summary writer. These jobs remain failed.
+The summary was recovered from the actual logs and verified binaries without
+rebuilding or repeating native calls; its hash is
+`4b3411f0f9209018b94fff74501c2799ea14fa8cc1f24d5e3f102f42bfccdd5d`.
+A successful compute-node compact-suite smoke remains required before the full
+round. These build checks establish no performance result.
+
 ## Incremental Auto implementation checks, 2026-10-17
 
 Before the suite replacement above, both public incremental defaults were disabled. The many-FE

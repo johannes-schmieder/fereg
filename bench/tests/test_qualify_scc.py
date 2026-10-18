@@ -70,6 +70,19 @@ class ReservationTests(unittest.TestCase):
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_ordinary_activity_is_compact_descriptive_and_excludes_owned(self):
+        first = {'pid': 1, 'start': 'a', 'cpu_seconds': 1., 'cpu_percent': 3., 'rss_kib': 100, 'state': 'R'}
+        current = [{**first, 'cpu_seconds': 1.2}, {**first, 'pid': 2, 'state': 'S'},
+                   {**first, 'pid': 3, 'cpu_percent': 90., 'rss_kib': 10000}]
+        value = scc.ordinary_activity(current, {'processes': [first]}, {(3, 'a')})
+        self.assertEqual(value['processes'], 2)
+        self.assertEqual(value['runnable_processes'], 1)
+        self.assertEqual(value['cpu_percent_sum'], 6.)
+        self.assertEqual(value['rss_kib_sum'], 200)
+        self.assertEqual(value['matched_processes'], 1)
+        self.assertAlmostEqual(value['cpu_delta_seconds'], .2)
+        self.assertEqual(value['active_delta_processes'], 1)
+
     def monitor(self, directory):
         monitor = scc.HostMonitor(directory, 2, process_interval=.01, census_interval=.01)
         def sample(kind):

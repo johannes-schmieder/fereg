@@ -8,9 +8,10 @@ Failures require discussion and never select another candidate or launch work.
 from __future__ import annotations
 
 import argparse
-from contextlib import nullcontext
+from contextlib import contextmanager
 from fractions import Fraction
 import json
+import importlib
 import math
 import os
 from pathlib import Path
@@ -21,6 +22,7 @@ import signal
 import socket
 import statistics
 import sys
+import threading
 import time
 
 import numpy as np
@@ -43,6 +45,92 @@ ENVIRONMENT = ('FEREG_SOLVER_TRACE', 'FEREG_SOLVER_TRACE_FILE', 'FEREG_PHASE_TIM
 THREAD_ENV = ('OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS',
               'VECLIB_MAXIMUM_THREADS', 'NUMEXPR_NUM_THREADS')
 ALPHA = Fraction(1, 40)
+SOURCE_MODULES = ('qualify_scc', 'block_host', 'native', 'native_io', 'routing',
+                  'routing_cases', 'routing_oracle', 'routing_science', 'cmgschur',
+                  'cmgschur_cases', 'time_exact', 'replay_plugins', 'replay_psd',
+                  'replay_bias_reference', 'replay_cmg_polish', 'replay_ols_reference')
+
+
+def execution_sources():
+    """Only maintained execution/check code, not an environment or history walk."""
+    return {'qualify': Path(__file__).resolve(), **{name: Path(importlib.import_module(name).__file__).resolve()
+                                                for name in SOURCE_MODULES}}
+
+
+def verify_sources(expected):
+    paths = execution_sources()
+    require(set(expected) == set(paths), 'execution source coverage changed; make a new plan')
+    identities = {}
+    for name, path in paths.items():
+        before = stamp(path)
+        require(digest(path) == expected[name] and stamp(path) == before,
+                'execution source identity mismatch: ' + name)
+        identities[path] = before
+    return identities
+
+
+class BudgetExpired(TimeoutError):
+    pass
+
+
+class Deadline:
+    """Main-thread interrupt, with uninterrupted owned-process cleanup on failure."""
+    def __init__(self, seconds, started):
+        self.seconds, self.started = seconds, started
+        self.expired = False
+
+    def check(self):
+        left = self.seconds - (time.monotonic() - self.started)
+        if self.expired or left <= 0:
+            self.expired = True
+            raise BudgetExpired('fixed shard wall-clock budget exhausted')
+        return left
+
+    def cleanup(self):
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        for sig in self.handlers:
+            signal.signal(sig, signal.SIG_IGN)
+
+    def interrupt(self, sig, _frame):
+        self.cleanup()  # Never interrupt native kill/reap or observer shutdown twice.
+        if sig == signal.SIGALRM:
+            self.expired = True
+            raise BudgetExpired('fixed shard wall-clock budget exhausted')
+        raise KeyboardInterrupt('qualification interrupted')
+
+    def arm(self):
+        left = self.check()
+        for sig in self.handlers:
+            signal.signal(sig, self.interrupt)
+        signal.setitimer(signal.ITIMER_REAL, left)
+
+    def __enter__(self):
+        require(threading.current_thread() is threading.main_thread(), 'run requires the main thread')
+        require(signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), 'run requires an unused real-time timer')
+        self.handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGALRM, signal.SIGINT, signal.SIGTERM)}
+        self.arm()
+        return self
+
+    def __exit__(self, *_):
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        for sig, handler in self.handlers.items():
+            signal.signal(sig, handler)
+
+    @contextmanager
+    def observing(self, host):
+        host.__enter__()
+        try:
+            yield host
+        except BaseException:
+            self.cleanup()
+            host.__exit__(*sys.exc_info())
+            raise
+        else:
+            # Observer commands already have fixed timeouts. Let them reap their
+            # children, then reject any shutdown which exhausted the run budget.
+            self.cleanup()
+            host.__exit__(None, None, None)
+            self.arm()
 
 
 def require(condition, message):
@@ -64,7 +152,7 @@ def read(path):
 
 def stamp(path):
     stat = path.stat()
-    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
+    return stat.st_dev, stat.st_ino, stat.st_mode, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
 
 
 def resolve(manifest_path, path):
@@ -168,7 +256,8 @@ def plan(config_path, output):
                 and sorted(workers) == [1, 4], 'routing qualification requires all 42 workload cells')
         require(value['blocks'] % 2 == 0 and value['blocks'] >= (6 if value['platform'] == 'Darwin' else 2),
                 'qualification requires balanced blocks and enough independent measurements')
-    value.update(schema=1, files=files, warmups=1)
+    value.update(schema=1, files=files, warmups=1,
+                 execution_sources={name: digest(path) for name, path in execution_sources().items()})
     output.parent.mkdir(parents=True, exist_ok=True)
     write(output, value)
     return value
@@ -312,8 +401,15 @@ def compare_saved(left, right, meta):
 
 
 def run(manifest_path, output, shard=0, replica=0, resume=False, execute=run_process):
-    manifest_path, output = Path(manifest_path).resolve(), Path(output).resolve()
+    require(threading.current_thread() is threading.main_thread(), 'run requires the main thread')
+    started = time.monotonic()
     manifest = read(manifest_path)
+    with Deadline(manifest['budget_s'], started) as deadline:
+        return _run(manifest_path, output, manifest, deadline, shard, replica, resume, execute)
+
+
+def _run(manifest_path, output, manifest, deadline, shard, replica, resume, execute):
+    manifest_path, output = Path(manifest_path).resolve(), Path(output).resolve()
     require(manifest['schema'] == 1 and manifest['platform'] == platform.system(), 'wrong manifest/host platform')
     require(0 <= shard < manifest['shards'] and 0 <= replica < manifest['replicas'], 'invalid shard/replica')
     require(output.is_relative_to((ROOT / 'target/tmp').resolve()), 'outputs belong under target/tmp/<task>')
@@ -342,36 +438,39 @@ def run(manifest_path, output, shard=0, replica=0, resume=False, execute=run_pro
         require(not resume, 'nothing to resume')
         directory.mkdir(exist_ok=False)
     require(len(result['failures']) < 10, 'ten unsuccessful repairs: discuss with Johannes')
-    started = time.monotonic()
-    files = {resolve(manifest_path, name): sha for name, sha in manifest['files'].items()}
+    started = deadline.started
+    bindings, files = {}, {}
     identities = {}
     host = None
     phase = 'setup'
 
     def check_files():
+        deadline.check()
+        require(all(resolve(manifest_path, name) == path for name, path in bindings.items()),
+                'an input alias changed during the job')
         require(all(stamp(p) == saved for p, saved in identities.items()), 'an input changed during the job')
 
     def remaining():
-        left = manifest['budget_s'] - (time.monotonic() - started)
-        if left <= 0:
-            raise TimeoutError('fixed shard wall-clock budget exhausted')
-        return min(left, manifest['timeout_s'])
+        return min(deadline.check(), manifest['timeout_s'])
 
     def persist():
         result['elapsed_s'] = time.monotonic() - started
         write(path, result)
 
     try:
+        bindings = {name: resolve(manifest_path, name) for name in manifest['files']}
+        files = {bindings[name]: sha for name, sha in manifest['files'].items()}
+        identities.update(verify_sources(manifest['execution_sources']))
+        result['execution_sources'] = manifest['execution_sources']
         for filename, expected in files.items():
             before = stamp(filename)
             require(digest(filename) == expected and stamp(filename) == before, 'input identity mismatch: ' + str(filename))
             identities[filename] = before
         result['verified_input_files'] = len(files)
-        result['runner_sha256'] = digest(Path(__file__))
         from qualify_scc import HostMonitor, MacMonitor
         monitor = HostMonitor if manifest['platform'] == 'Linux' else MacMonitor
         host = monitor(directory / f"host-{len(result['failures'])}", max(manifest['threads']))
-        with host if host is not None else nullcontext():
+        with deadline.observing(host):
             for index, item in enumerate(manifest['cases']):
                 if index % manifest['shards'] != shard:
                     continue
@@ -426,6 +525,7 @@ def run(manifest_path, output, shard=0, replica=0, resume=False, execute=run_pro
                         timeout = remaining()
                         phase = 'native'
                         resources = execute(command, log, timeout)
+                        deadline.check()
                         phase = 'science'
                         raw, columns, detail = read_native(target, log, meta, role not in snapshots)
                         requested = requests[role]['solver']
@@ -492,16 +592,24 @@ def run(manifest_path, output, shard=0, replica=0, resume=False, execute=run_pro
         if host is not None:
             result['host'] = host.report()
             require(result['host']['isolation_ok'], 'host observation did not complete')
+        check_files()
         result['status'] = 'complete'
+        result['budget_compliant'] = True
+        persist()
+        check_files()  # Includes the final output write, even if a C call delayed the alarm.
     except BaseException as error:
+        deadline.cleanup()
         result['status'] = 'blocked'
-        result['failures'].append({'kind': 'scientific' if phase == 'science' else
+        expired = deadline.expired or time.monotonic() - started >= manifest['budget_s']
+        result['budget_compliant'] = not expired
+        result['failures'].append({'kind': 'budget' if expired else 'scientific' if phase == 'science' else
                                   'native' if phase == 'native' else 'operational',
                                   'error': repr(error), 'time': time.time()})
         result['next_action'] = 'Diagnose and repair; discuss unresolved failure with Johannes. Keep candidate and defaults; do not advance.'
         if host is not None:
             result['host'] = host.report()
-    persist()
+        result['cleanup_overrun_s'] = max(0, time.monotonic() - started - manifest['budget_s'])
+        persist()
     return result
 
 
@@ -521,6 +629,11 @@ def accounting(text, host):
 def report(manifest_path, output, accounting_dir=None):
     manifest, output = read(manifest_path), Path(output)
     results, errors, comparisons, workers, snapshots, metadata_cache = [], [], {}, {}, {}, {}
+    source_stamps = {}
+    try:
+        source_stamps = verify_sources(manifest['execution_sources'])
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        errors.append('execution sources: ' + str(error))
     aliases = artifact_aliases(manifest)
     cases = {item['id']: (index, item) for index, item in enumerate(manifest['cases'])}
     for replica in range(manifest['replicas']):
@@ -531,6 +644,9 @@ def report(manifest_path, output, accounting_dir=None):
                 require(result['manifest_sha256'] == routing.identity(manifest)
                         and (result['replica'], result['shard']) == (replica, shard)
                         and result['status'] == 'complete', 'missing, changed or failed shard')
+                require(result.get('execution_sources') == manifest['execution_sources'], 'unverified execution sources')
+                require(result.get('budget_compliant') is True
+                        and 0 <= result['elapsed_s'] < manifest['budget_s'], 'unverified run budget')
                 require(result['host']['isolation_ok'], 'missing host observation')
                 if manifest['platform'] == 'Linux':
                     host = result['host']['host']
@@ -600,6 +716,11 @@ def report(manifest_path, output, accounting_dir=None):
             'regression' if bound['lower'] is not None and bound['lower'] > 0 else 'inconclusive')
         rows.append({'case': cell, 'reference': role, 'status': state, 'excess_seconds': bound,
                      'median_ratio': statistics.median(v['ratio'] for _, v in values)})
+    try:
+        require(all(stamp(path) == saved for path, saved in source_stamps.items()),
+                'execution sources changed during report')
+    except (OSError, ValueError) as error:
+        errors.append(str(error))
     complete = not errors and bool(rows)
     passed = complete and all(row['status'] == 'passed' for row in rows)
     summary = {'schema': 1, 'manifest_sha256': routing.identity(manifest), 'platform': manifest['platform'],

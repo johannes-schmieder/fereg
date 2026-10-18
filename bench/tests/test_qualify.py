@@ -1,9 +1,13 @@
 """Regression guards for the single-round runner; no native benchmark campaign."""
 import copy
 import json
+import os
 from pathlib import Path
 import sys
+import signal
 import tempfile
+import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -97,6 +101,218 @@ class Qualification(unittest.TestCase):
             self.assertEqual(qualify.run(self.manifest, self.output, execute=self.execute)['status'], 'complete')
         self.assertEqual(hashed.count(self.plugin), 1)
         self.assertFalse(any(p.suffix == '.case' and p != self.source for p in hashed))
+
+    def test_execution_modules_are_bound_verified_once_and_required_by_report(self):
+        manifest = self.plan()
+        self.assertEqual(set(manifest['execution_sources']), {'qualify', *qualify.SOURCE_MODULES})
+        hashed, actual = [], qualify.digest
+        def count(path):
+            hashed.append(Path(path))
+            return actual(path)
+        with patch.object(qualify, 'digest', side_effect=count):
+            record = qualify.run(self.manifest, self.output, execute=self.execute)
+        for path in qualify.execution_sources().values():
+            self.assertEqual(hashed.count(path), 1)
+        self.assertEqual(record['execution_sources'], manifest['execution_sources'])
+        record['execution_sources'].pop('routing_science')
+        qualify.write(self.output / 'run-0-0/results.json', record)
+        self.assertEqual(qualify.report(self.manifest, self.output)['status'], 'needs_discussion')
+
+    def test_source_mismatch_and_drift_block_without_mutating_real_modules(self):
+        source = self.root / 'checker.py'
+        source.write_text('original')
+        with patch.object(qualify, 'execution_sources', return_value={'checker': source}):
+            self.plan()
+            source.write_text('changed!')
+            record = qualify.run(self.manifest, self.output, execute=self.execute)
+            self.assertIn('source identity', record['failures'][-1]['error'])
+            self.assertFalse(self.calls)
+        # A separate output permits a fresh synthetic job, not a campaign retry.
+        self.manifest.unlink()
+        self.output = self.root / 'target/tmp/other'
+        with patch.object(qualify, 'execution_sources', return_value={'checker': source}):
+            self.plan()
+            def mutate(*args):
+                result = self.execute(*args)
+                source.write_text('drift!!!')
+                return result
+            record = qualify.run(self.manifest, self.output, execute=mutate)
+            self.assertEqual(record['status'], 'blocked')
+            self.assertEqual(len(self.calls), 1)
+
+    def test_deadline_interrupts_metadata_and_is_not_resumable(self):
+        self.config['budget_s'] = 1
+        self.plan()
+        with patch.object(qualify, 'metadata', side_effect=lambda *_: time.sleep(2)):
+            record = qualify.run(self.manifest, self.output, execute=self.execute)
+        self.assertEqual(record['failures'][-1]['kind'], 'budget')
+        self.assertFalse(record['budget_compliant'])
+        self.assertFalse(self.calls)
+        with self.assertRaisesRegex(ValueError, 'operational blocker'):
+            qualify.run(self.manifest, self.output, resume=True, execute=self.execute)
+
+    def test_delayed_final_write_cannot_publish_success(self):
+        self.config['budget_s'] = 1
+        self.plan()
+        original = qualify.write
+        def slow_write(path, value):
+            original(path, value)
+            if value.get('status') == 'complete' and Path(path).name == 'results.json':
+                time.sleep(2)
+        with patch.object(qualify, 'write', side_effect=slow_write):
+            record = qualify.run(self.manifest, self.output, execute=self.execute)
+        self.assertEqual(record['failures'][-1]['kind'], 'budget')
+        self.assertEqual(qualify.read(self.output / 'run-0-0/results.json')['status'], 'blocked')
+
+    def test_science_stages_cannot_overrun_even_if_alarm_delivery_is_delayed(self):
+        self.config['budget_s'] = 1
+        self.plan()
+        def delayed(*_):
+            # Models a C-extension operation which returns after the deadline.
+            signal.signal(signal.SIGALRM, signal.SIG_IGN)
+            time.sleep(1.05)
+        self.oracle.side_effect = delayed
+        record = qualify.run(self.manifest, self.output, execute=self.execute)
+        self.assertEqual(record['failures'][-1]['kind'], 'budget')
+        self.assertEqual(len(self.calls), 1)
+
+    def test_report_rejects_over_budget_or_unbound_checking_sources(self):
+        record = self.run_round()
+        path = self.output / 'run-0-0/results.json'
+        record['elapsed_s'] = self.config['budget_s'] + .01
+        qualify.write(path, record)
+        self.assertIn('unverified run budget', str(qualify.report(self.manifest, self.output)['errors']))
+        manifest = qualify.read(self.manifest)
+        manifest['execution_sources']['routing_oracle'] = '0' * 64
+        qualify.write(self.manifest, manifest)
+        self.assertIn('source identity', str(qualify.report(self.manifest, self.output)['errors']))
+
+    def test_observer_shutdown_overrun_fails_after_cleanup(self):
+        self.config['budget_s'] = 1
+        self.plan()
+        stopped = []
+        class SlowMonitor(Monitor):
+            def __exit__(self, *_):
+                time.sleep(1.05)
+                stopped.append(True)
+        with patch('qualify_scc.MacMonitor', SlowMonitor):
+            record = qualify.run(self.manifest, self.output, execute=self.execute)
+        self.assertEqual(stopped, [True])
+        self.assertEqual(record['failures'][-1]['kind'], 'budget')
+        self.assertGreater(record['cleanup_overrun_s'], 0)
+
+    def test_non_main_thread_rejected_before_output_mutation(self):
+        self.plan()
+        errors = []
+        def invoke():
+            try:
+                qualify.run(self.manifest, self.output, execute=self.execute)
+            except ValueError as error:
+                errors.append(str(error))
+        thread = threading.Thread(target=invoke)
+        thread.start()
+        thread.join(2)
+        self.assertEqual(errors, ['run requires the main thread'])
+        self.assertFalse(self.output.exists())
+
+    def test_alarm_kills_owned_process_group_reaps_child_and_restores_handlers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log, marker = Path(tmp) / 'child.log', Path(tmp) / 'survivor'
+            handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGALRM, signal.SIGINT, signal.SIGTERM)}
+            code = ('import os,time,pathlib; print(os.getpid(),flush=True); child=os.fork(); '
+                    'time.sleep(.6 if child==0 else 20); '
+                    f'pathlib.Path({str(marker)!r}).write_text("survived")')
+            with patch.object(os, 'killpg', wraps=os.killpg) as kill:
+                with self.assertRaises(qualify.BudgetExpired):
+                    with qualify.Deadline(.2, time.monotonic()):
+                        qualify.run_process([sys.executable, '-c', code], log, 5)
+                kill.assert_called_once_with(int(log.read_text().strip()), signal.SIGKILL)
+            with self.assertRaises(ChildProcessError):
+                os.waitpid(int(log.read_text().strip()), os.WNOHANG)
+            time.sleep(.65)
+            self.assertFalse(marker.exists(), 'owned descendant survived deadline cleanup')
+            self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0., 0.))
+            self.assertEqual(handlers, {sig: signal.getsignal(sig) for sig in handlers})
+
+    def test_alarm_during_native_timeout_cleanup_waits_for_reap(self):
+        log = self.root / 'timeout.log'
+        original_wait, reaped = os.wait4, []
+        def wait(pid, options):
+            if options == 0:
+                os.kill(os.getpid(), signal.SIGALRM)
+                value = original_wait(pid, options)
+                reaped.append(pid)
+                return value
+            return original_wait(pid, options)
+        with patch.object(os, 'wait4', side_effect=wait):
+            with self.assertRaises(TimeoutError) as failure:
+                with qualify.Deadline(2, time.monotonic()):
+                    qualify.run_process([sys.executable, '-c', 'import time; time.sleep(5)'], log, .05)
+        self.assertIs(type(failure.exception), TimeoutError)
+        self.assertEqual(len(reaped), 1)
+        with self.assertRaises(ChildProcessError):
+            os.waitpid(reaped[0], os.WNOHANG)
+
+    def test_alarm_delivered_to_observer_during_cleanup_cannot_interrupt_reap(self):
+        stop = threading.Event()
+        observer = threading.Thread(target=stop.wait)
+        observer.start()
+        kill, wait = os.killpg, os.wait4
+        owned, reaped, failures = [], [], []
+        def during_kill(pid, sig):
+            owned.append(pid)
+            signal.pthread_kill(observer.ident, signal.SIGALRM)
+            time.sleep(.01)  # Dispatch Python's pending handler before wait4.
+            kill(pid, sig)
+        def during_wait(pid, options):
+            value = wait(pid, options)
+            if options == 0:
+                reaped.append(pid)
+            return value
+        try:
+            with patch.object(os, 'killpg', side_effect=during_kill), patch.object(os, 'wait4', side_effect=during_wait):
+                with qualify.Deadline(2, time.monotonic()) as deadline:
+                    try:
+                        qualify.run_process([sys.executable, '-c', 'import time; time.sleep(5)'],
+                                            self.root / 'observer-timeout.log', .05)
+                    except TimeoutError as error:
+                        failures.append(error)
+                    self.assertTrue(all(signal.getsignal(sig) == deadline.interrupt for sig in deadline.handlers))
+            self.assertEqual(reaped, owned)
+            self.assertEqual(len(failures), 1)
+            self.assertIs(type(failures[0]), TimeoutError)
+        finally:
+            stop.set()
+            observer.join(1)
+            # Clean even the deliberately reproduced pre-fix leak.
+            for pid in owned:
+                if pid not in reaped:
+                    try:
+                        kill(pid, signal.SIGKILL)
+                        wait(pid, 0)
+                    except (ProcessLookupError, ChildProcessError):
+                        pass
+
+    def test_manifest_alias_retarget_blocks_even_when_original_target_is_unchanged(self):
+        self.plan()
+        alternate = self.root / 'alternate'
+        alternate.write_bytes(self.plugin.read_bytes())
+        alias = self.root / 'alias'
+        alias.symlink_to(self.plugin)
+        manifest = qualify.read(self.manifest)
+        manifest['files']['alias'] = manifest['files'].pop('plugin')
+        for artifact in manifest['artifacts'].values():
+            artifact['path'] = 'alias'
+        qualify.write(self.manifest, manifest)
+        def retarget(*args):
+            value = self.execute(*args)
+            alias.unlink()
+            alias.symlink_to(alternate)
+            return value
+        record = qualify.run(self.manifest, self.output, execute=retarget)
+        self.assertEqual(record['status'], 'blocked')
+        self.assertIn('alias changed', record['failures'][-1]['error'])
+        self.assertEqual(len(self.calls), 1)
 
     def test_rejects_changed_artifact_before_native_calls(self):
         self.plan()

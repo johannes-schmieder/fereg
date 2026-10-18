@@ -62,6 +62,19 @@ def short_host(name):
     return name.split('.')[0]
 
 
+def ordinary_activity(processes, previous, owned):
+    """Descriptive non-owned activity; never an admission/exclusion rule."""
+    prior = {block_host.identity(p): p for p in previous['processes']} if previous else {}
+    others = [p for p in processes if block_host.identity(p) not in owned]
+    deltas = [max(0., p['cpu_seconds'] - prior[block_host.identity(p)]['cpu_seconds'])
+              for p in others if block_host.identity(p) in prior]
+    return {'processes': len(others), 'runnable_processes': sum('R' in p['state'] for p in others),
+            'cpu_percent_sum': sum(p['cpu_percent'] for p in others),
+            'rss_kib_sum': sum(p['rss_kib'] for p in others),
+            'cpu_delta_seconds': sum(deltas), 'matched_processes': len(deltas),
+            'active_delta_processes': sum(d >= block_host.POLICY['active_cpu_seconds'] for d in deltas)}
+
+
 def validate_reservation(raw, host, required_threads):
     """Slots plus the all-queue consumable quota establish the reservation."""
     n = host['slots']
@@ -178,10 +191,12 @@ class HostMonitor:
             policy['executables'] += ['actual_plugin_loader_test', 'actual_plugin_l']
             hits = block_host.process_activity(([self.previous] if self.previous else []) + [raw], self.owned, policy)
             raw['competing_compute'] = hits
+            activity = ordinary_activity(processes, self.previous, self.owned)
             self.previous = raw
             self._record('process', {key: raw[key] for key in
                          ('monotonic_ns', 'finished_monotonic_ns', 'competing_compute')} |
-                         {'observed_processes': len(processes), 'owned_processes': len(self.owned)})
+                         {'observed_processes': len(processes), 'owned_processes': len(self.owned),
+                          'ordinary_activity': activity})
             require(not hits, 'known competing compute observed')
         finish = time.monotonic_ns()
         previous = self.samples.get(kind)

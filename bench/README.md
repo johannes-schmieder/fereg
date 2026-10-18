@@ -484,14 +484,24 @@ python3 bench/qualify.py report target/tmp/TASK/plan.json --output target/tmp/TA
 ```
 
 `plan` hashes each actual binary, harness, fixture and numerical-reference file
-once and performs no native calls. Each `run` verifies those files once at startup
-and uses lightweight drift checks during execution. The runner records its own
-identity without recursively checking old selections, Python environments,
+once and performs no native calls. It also binds the maintained runner, observer
+and scientific checking modules. Each `run` verifies those files once at startup
+and uses lightweight drift checks during execution; `report` requires matching
+source identities and verifies its checking modules. This does not recursively
+check old selections, Python environments,
 generator executables or receipt chains. A traced warmup checks independent
 numerical truth, typed scope certificates and setup/iteration/memory contracts.
 Every timed call must reproduce that artifact/cell's exact complete output
 fingerprint. Cross-worker comparisons require scientific agreement and stable
 discrete decisions. All checks run outside the complete native-call timer.
+
+The fixed run budget includes input verification, oracle and cross-worker checks,
+output writes and observer shutdown. A main-thread deadline interrupts overdue
+work and reaps owned native children; bounded observer cleanup finishes safely.
+Cleanup overhead is recorded separately on failure. Budget exhaustion is terminal
+and cannot be resumed as an operational repair. A delayed interrupt can never
+make an over-budget run complete. Ordinary non-owned process CPU/RSS/activity
+summaries are retained as noise observations without adding exclusion rules.
 
 Prepare a new full input set only when needed; unchanged current inputs and valid
 science may be reused after an operational repair. [`routing_cases.py`](routing_cases.py)

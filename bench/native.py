@@ -11,6 +11,7 @@ import platform
 import signal
 import statistics
 import subprocess
+import threading
 import time
 
 from native_io import (ROOT, cachegrind_counts, case_header, diagnostics, digest,
@@ -80,9 +81,30 @@ def run_process(command, log, timeout):
                     raise TimeoutError(f'process exceeded {timeout}s; see {log}')
                 time.sleep(0.01)
         except BaseException:
-            os.killpg(process.pid, signal.SIGKILL)
-            _, status, _ = os.wait4(process.pid, 0)
-            process.returncode = os.waitstatus_to_exitcode(status)
+            # A whole-run alarm or repeated cancellation must not interrupt
+            # this owned child's kill/reap sequence. A thread-local mask alone
+            # cannot prevent Python dispatch from an unmasked observer thread.
+            signals = (signal.SIGALRM, signal.SIGINT, signal.SIGTERM)
+            handlers = ({sig: signal.getsignal(sig) for sig in signals}
+                        if threading.current_thread() is threading.main_thread() else {})
+            mask = signal.pthread_sigmask(signal.SIG_BLOCK, signals)
+            try:
+                for sig in handlers:
+                    signal.signal(sig, signal.SIG_IGN)
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                try:
+                    _, status, _ = os.wait4(process.pid, 0)
+                    process.returncode = os.waitstatus_to_exitcode(status)
+                except ChildProcessError:
+                    # The interrupt may have arrived immediately after wait4.
+                    process.returncode = -signal.SIGKILL
+            finally:
+                for sig, handler in handlers.items():
+                    signal.signal(sig, handler)
+                signal.pthread_sigmask(signal.SIG_SETMASK, mask)
             raise
     wall = time.perf_counter() - start
     if process.returncode:
