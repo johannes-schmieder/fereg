@@ -318,6 +318,43 @@ public many-FE flag remains provisional pending untouched C24 confirmation.
 | Independent activation-guard check | `8cf8a5eeaf4a1996f54e5d9b0908c222529a3232ecde7dd9dc9f7bd63bcd49ab` |
 | Complete activation packet | `3119bb2b3832462e2ceac7132892952d0f65f0b9a4e0d2217c8da3f8441c469b` |
 
+### Prospective confirmation metadata repair
+
+Before C access, source review found that the original confirmation workflow
+would repeat full B analysis 852 times during timing freeze, 630 during
+collection admission and 1,482 during the final decision. These are source-level
+call counts, not measurements of C or its runtime. A separately reviewed
+task-local wrapper reuses successful context/activation metadata for identical
+arguments within one process. The four original metadata functions still run
+on each new argument tuple; qualification, mathematical witnesses, individual
+native checks, host classification and C analysis remain unchanged.
+
+The wrapper returns independent copies, propagates nested read dependencies,
+checks file identities on reuse and hashes full dependencies before/after each
+operation and immediately before timing begins. Drift poisons the operation.
+The unchanged passive observer wraps the actual collector; successful inner
+records cannot bypass a failed metadata postflight or observer completion.
+The frozen input declarations, artifacts, 120-second call cap, 28,800-second C
+timing budget, 24-block design and performance/scientific thresholds are unchanged.
+
+Fifteen focused tests pass. One final metadata-only B smoke completed in 176.23
+seconds: one original activation validation and two exact reused results,
+caller-mutation isolation, three full byte checks and 3,711 bound files including
+the external Python executable. No native calls or C body reads were made.
+The initial launcher then stopped before admission because its file-reference
+helper received a string instead of a `Path`; the corrected launcher and actual
+helper regression test passed renewed independent review. The failed preflight
+and earlier review remain recorded. The unchanged memoizer/driver reuse the
+valid B smoke; this does not establish C correctness, timing or acceptance.
+
+| Metadata-repair identity | SHA-256 |
+| --- | --- |
+| Exact metadata wrapper | `74719e1f96bdb6adaff4f2bc09ebcfe584508cb7edb175223f6d00cd8404e95e` |
+| Confirmation driver | `5514a67866e40f3bdd85386b2b798c4dae9c086ad9c19f2cd5eea061782f01f4` |
+| Corrected owned supervisor | `652f82e73f8310d5049f1fca3dd3ad060bb1cd4dbce938677971705e031a2164` |
+| Final B metadata smoke | `5cc7748b11a4c91ca0411916a286a350ea704cd0b5130695a8ef3632c8d604a4` |
+| Independent revised source review | `f0f3317e8ad9017677657c3242b727f26b78f679a37623c0faeb26058ea2ceed` |
+
 ## Main-branch GitHub installation, 2026-10-14
 
 The root package installs the maintained Stata files and a universal macOS
