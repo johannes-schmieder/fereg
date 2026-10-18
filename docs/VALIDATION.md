@@ -399,10 +399,32 @@ observation; incomplete C confirmation does not establish a speed regression.
 | Rollback source-suite capture | `becab2ad92e9d6408df84a915a7208be68e42469821fdff209992c78c57da6d5` |
 
 The existing terminal exporter handles completed timing decisions, but not a
-failure before timing starts. A separate retained-only handoff is being reviewed
-before independent two-FE qualification can begin. It must preserve the actual
-failure, prior incumbent source/build identities and all frozen selector files;
-it cannot manufacture a timing decision or admit this candidate.
+failure before timing starts. The separately reviewed
+[`routing_failure`](../bench/routing_failure.py) extension now validates this
+retained-only outcome without changing frozen selector files or manufacturing a
+timing decision. It checks the actual failed start/outcome, complete owned-process
+census, partial outputs, absent science/timing, admitted metadata and full file
+closure, original source/build evidence and independent export review. Sixteen
+focused tests pass, including rejection of changed external dependencies,
+incomplete cleanup, unexpected native/timing output and attempted acceptance.
+
+Independent export review verifies the original Mac plugin/build log and Linux
+build log, successful setup accounting (`8161659`) and prior compute-node byte
+audit. It also recomputes all original/current production and artifact-input
+inventories. The retained incumbent remains `f35f3a4d`; the branch's disabled
+hidden-candidate additions have their separate preactivation identity. Actual
+terminal generation, local raw replay and portable validation pass in 12.17
+seconds without B reanalysis or native calls. This closes the many-FE stage as
+retained and permits independent two-FE qualification. A prospective two-FE
+driver must explicitly bind/install the failure extension for local admission;
+portable validation alone is only an export-attestation check.
+
+| Retained terminal identity | SHA-256 |
+| --- | --- |
+| Failure-extension source review | `54da45252c3f93d8a82ef72881e3a00becbed344c3d6bbd0e736aa3478d87087` |
+| Independent source/rollback inventory audit | `35b39a0185119afc52289faba6cc4fd3a59c1b0cdf1c7e73792693c76b3951b9` |
+| Independent retained-incumbent export | `a81c78929d468a612176ed34b1fb79b63e047fc527c8559a94269474d61f1ce3` |
+| Many-FE terminal, logical identity | `a3a635318c29c8709ae53083ef9257d0dae370787095233006dd68cd9ccb5009` |
 
 ## Main-branch GitHub installation, 2026-10-14
 

@@ -61,6 +61,16 @@ equivalence and untouched Mac C24 confirmation remain mandatory. The Mac
 panels time protected Auto comparisons only; the SCC explicit frontier remains
 diagnostic. See the [prospective scientific scope](SPEC.md#incremental-auto-qualification-2026-10-17).
 
+A bounded C witness failure before native science retains the incumbent through
+[`routing_failure.py`](../bench/routing_failure.py). This separate extension
+preserves frozen selectors and requires the actual failure, owned cleanup,
+partial outputs, absent native/timing outputs and independently reviewed
+source/build/export evidence. Prospective local callers use its scoped
+`install()` dispatch before loading a preceding-stage context, and explicitly
+bind the extension, review and bootstrap in source/monitor dependencies.
+Ordinary terminal inputs still delegate unchanged. Portable export validation
+does not replace local raw replay, and this path cannot accept a default.
+
 GitHub testing is paused. Mac remains the default qualification host; Johannes
 additionally requested bounded Linux and Windows build checks on 2026-10-07.
 Existing GitHub build definitions remain inactive.
