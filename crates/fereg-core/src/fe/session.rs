@@ -270,9 +270,9 @@ impl<'a> FeSession<'a> {
         } else {
             prepared.fit_borrowed_intercept_map_design()?
         };
-        // Qualification changes only this invocation wiring. Each family is
-        // tested independently; acceptance requires untouched confirmation.
-        const DEFAULT_MANY: bool = true;
+        // Qualification changes only this invocation wiring. Each family can
+        // be activated independently after its frozen confirmation passes.
+        const DEFAULT_MANY: bool = false;
         const DEFAULT_TWO: bool = false;
         let effects = borrowed.as_ref().map(|design| design.effects().len());
         let routing = select_ols_routing(config.absorb, effects, [DEFAULT_MANY, DEFAULT_TWO]);

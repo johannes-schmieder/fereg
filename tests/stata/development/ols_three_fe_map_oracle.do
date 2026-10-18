@@ -11,8 +11,7 @@ forvalues j=1/3 {
 }
 generate double y = .7*x1-.3*x2+.1*x3+g1/8-g2/10+g3/5+rnormal()
 
-* Explicit diagonal preconditioning retains the geometry-led MAP policy.
-* Full dummy QR is independent of that FE projection.
+* Full dummy QR is independent of the automatic FE projection.
 quietly regress y x1-x3 i.g1 i.g2 i.g3, vce(robust)
 matrix oracle_b = e(b)
 matrix oracle_v = e(V)
@@ -22,8 +21,7 @@ predict double oracle_residual, residuals
 foreach mode in fast low {
     foreach t in 1 4 {
         quietly fereg y x1-x3, absorb(s1=g1 s2=g2 s3=g3) ///
-            preconditioner(diagonal) memory(`mode') poolsize(1) threads(`t') ///
-            vce(robust) residuals(resid)
+            memory(`mode') poolsize(1) threads(`t') vce(robust) residuals(resid)
         assert e(N) == 4000
         assert e(rank) == 3
         assert e(df_r) == oracle_df

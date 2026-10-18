@@ -18,6 +18,12 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Incremental Auto implementation checks, 2026-10-17
 
+Current branch state: both public incremental defaults are disabled. The many-FE
+candidate passed discovery and B selection, but its C witness preparation timed
+out before native science. The provisional activation was rolled back; see the
+failed-confirmation record below. Two-FE remains independently eligible for its
+own qualification after the reviewed terminal handoff.
+
 Branch `codex/auto-routing` implements the prospective
 [incremental qualification](SPEC.md#incremental-auto-qualification-2026-10-17).
 Runtime commit `811769d38adfdd5213270af801ed8b30fe2efc31` adds hidden
@@ -354,6 +360,49 @@ valid B smoke; this does not establish C correctness, timing or acceptance.
 | Corrected owned supervisor | `652f82e73f8310d5049f1fca3dd3ad060bb1cd4dbce938677971705e031a2164` |
 | Final B metadata smoke | `5cc7748b11a4c91ca0411916a286a350ea704cd0b5130695a8ef3632c8d604a4` |
 | Independent revised source review | `f0f3317e8ad9017677657c3242b727f26b78f679a37623c0faeb26058ea2ceed` |
+
+### Many-FE confirmation stopped before native science, 2026-10-18
+
+C admission passed independent review, including 3,719 actual-read file bindings
+and the unchanged 42-cell, 24-block design. The subsequent single witness attempt
+hit its fixed 2,100-second outer limit after 2,100.637 seconds. The interrupt
+occurred in dependency hashing while validating a prepared wrapper. Four
+independent oracle references passed their certificates, and 16 of 42 ready
+wrappers had been written. Full witness preparation did not finish. No C native
+science call or timing call ran; this is an operational qualification failure,
+not an observed solver or numerical failure.
+
+Independent review rehashed 3,935 retained files, checked all 28 partial output
+files and verified the four available oracle certificates. The supervisor sent
+one SIGINT to its owned witness process; cleanup completed with no survivors.
+A separate process-birth census confirmed those processes were gone. Partial
+outputs and the original failure remain unchanged. C inputs were accessed, so
+this attempt cannot be replaced, continued or treated as an untouched holdout.
+There is no C scientific or performance pass and no accepted many-FE default.
+
+An ordinary rollback restores `DEFAULT_MANY=false` and the incumbent Rust/Stata
+test expectations; `DEFAULT_TWO` remains false. The additional hidden 16-FE QR
+witness remains. Production identity matches preactivation `7b164ca8` across
+192 runtime modules and 58 artifact inputs. The serial source-only integration
+suite passes in 200.61 seconds, including Rust, Python, Clippy, allocation,
+complexity and bridge checks. Prior native/ABI, exact original-Auto, mapped Stata
+and Break evidence for the identical preactivation production inputs is reused.
+No release artifact changed. The earlier B improvement remains a developmental
+observation; incomplete C confirmation does not establish a speed regression.
+
+| Failure/rollback identity | SHA-256 |
+| --- | --- |
+| C admission independent review | `885a4cdcd727b2d504a63c2fc51f2f61cc4afb6b4d7c9c4af4d6bc5ecf180c90` |
+| Failed C supervisor outcome | `101cbe6347587065c76c2777b73c96f92792833012124e2fd6e8a2a274f8c2bc` |
+| Independent raw failure review | `90d598aa444d01caf121a1143fdd98291f44b8501433084766805a59cce407c7` |
+| Current owned-process census and failure validation | `41fcce9f77cffbdc918b2b7e99228144dbfb524aaf9eeaf8011965bd60f46d92` |
+| Rollback source-suite capture | `becab2ad92e9d6408df84a915a7208be68e42469821fdff209992c78c57da6d5` |
+
+The existing terminal exporter handles completed timing decisions, but not a
+failure before timing starts. A separate retained-only handoff is being reviewed
+before independent two-FE qualification can begin. It must preserve the actual
+failure, prior incumbent source/build identities and all frozen selector files;
+it cannot manufacture a timing decision or admit this candidate.
 
 ## Main-branch GitHub installation, 2026-10-14
 

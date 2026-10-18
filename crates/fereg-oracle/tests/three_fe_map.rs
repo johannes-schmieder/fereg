@@ -1,10 +1,7 @@
 #![deny(clippy::too_many_lines)]
 //! Independent H2 witnesses through the public prepared-OLS fit entry point.
-//! Explicit diagonal preconditioning retains the geometry-led MAP policy;
-//! Auto/Auto routing has separate strict-policy witnesses in routing_portfolio.
 mod support;
 
-use fereg_core::fe::LsmrPreconditioner;
 use fereg_core::{
     CertifiedPreparedOlsFit, FeSolverKind, PreparedOlsExecutionMode, PreparedOlsFitConfig,
     ThreadConfig,
@@ -102,7 +99,6 @@ fn config(mode: PreparedOlsExecutionMode, workers: usize, retain: bool) -> Prepa
     config.execution.poolsize = 1;
     config.execution.threads = threads;
     config.absorb.lsmr.threads = threads;
-    config.absorb.lsmr.preconditioner = LsmrPreconditioner::Diagonal;
     config.absorb.retain_coefficients = retain;
     config.allow_final_fe_recovery = true;
     config.final_residual_tolerance = Some(1e-14);
