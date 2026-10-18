@@ -752,6 +752,313 @@
     "schema": 1,
     "status": "smoke_complete"
   },
+  "linux_submission": {
+    "jobs": [
+      {
+        "host": "scc-tj3.scc.bu.edu",
+        "job_id": 8168720,
+        "replica": 0,
+        "tasks": [
+          {
+            "host": "scc-tj3.scc.bu.edu",
+            "replica": 0,
+            "shard": 0,
+            "task": 1
+          },
+          {
+            "host": "scc-tj3.scc.bu.edu",
+            "replica": 0,
+            "shard": 1,
+            "task": 2
+          },
+          {
+            "host": "scc-tj3.scc.bu.edu",
+            "replica": 0,
+            "shard": 2,
+            "task": 3
+          }
+        ]
+      },
+      {
+        "host": "scc-tj4.scc.bu.edu",
+        "job_id": 8168721,
+        "replica": 1,
+        "tasks": [
+          {
+            "host": "scc-tj4.scc.bu.edu",
+            "replica": 1,
+            "shard": 0,
+            "task": 4
+          },
+          {
+            "host": "scc-tj4.scc.bu.edu",
+            "replica": 1,
+            "shard": 1,
+            "task": 5
+          },
+          {
+            "host": "scc-tj4.scc.bu.edu",
+            "replica": 1,
+            "shard": 2,
+            "task": 6
+          }
+        ]
+      },
+      {
+        "host": "scc-tn3.scc.bu.edu",
+        "job_id": 8168722,
+        "replica": 2,
+        "tasks": [
+          {
+            "host": "scc-tn3.scc.bu.edu",
+            "replica": 2,
+            "shard": 0,
+            "task": 7
+          },
+          {
+            "host": "scc-tn3.scc.bu.edu",
+            "replica": 2,
+            "shard": 1,
+            "task": 8
+          },
+          {
+            "host": "scc-tn3.scc.bu.edu",
+            "replica": 2,
+            "shard": 2,
+            "task": 9
+          }
+        ]
+      },
+      {
+        "host": "scc-tn4.scc.bu.edu",
+        "job_id": 8168723,
+        "replica": 3,
+        "tasks": [
+          {
+            "host": "scc-tn4.scc.bu.edu",
+            "replica": 3,
+            "shard": 0,
+            "task": 10
+          },
+          {
+            "host": "scc-tn4.scc.bu.edu",
+            "replica": 3,
+            "shard": 1,
+            "task": 11
+          },
+          {
+            "host": "scc-tn4.scc.bu.edu",
+            "replica": 3,
+            "shard": 2,
+            "task": 12
+          }
+        ]
+      },
+      {
+        "host": "scc-tq3.scc.bu.edu",
+        "job_id": 8168724,
+        "replica": 4,
+        "tasks": [
+          {
+            "host": "scc-tq3.scc.bu.edu",
+            "replica": 4,
+            "shard": 0,
+            "task": 13
+          },
+          {
+            "host": "scc-tq3.scc.bu.edu",
+            "replica": 4,
+            "shard": 1,
+            "task": 14
+          },
+          {
+            "host": "scc-tq3.scc.bu.edu",
+            "replica": 4,
+            "shard": 2,
+            "task": 15
+          }
+        ]
+      },
+      {
+        "host": "scc-tq4.scc.bu.edu",
+        "job_id": 8168725,
+        "replica": 5,
+        "tasks": [
+          {
+            "host": "scc-tq4.scc.bu.edu",
+            "replica": 5,
+            "shard": 0,
+            "task": 16
+          },
+          {
+            "host": "scc-tq4.scc.bu.edu",
+            "replica": 5,
+            "shard": 1,
+            "task": 17
+          },
+          {
+            "host": "scc-tq4.scc.bu.edu",
+            "replica": 5,
+            "shard": 2,
+            "task": 18
+          }
+        ]
+      },
+      {
+        "host": "scc-tr2.scc.bu.edu",
+        "job_id": 8168726,
+        "replica": 6,
+        "tasks": [
+          {
+            "host": "scc-tr2.scc.bu.edu",
+            "replica": 6,
+            "shard": 0,
+            "task": 19
+          },
+          {
+            "host": "scc-tr2.scc.bu.edu",
+            "replica": 6,
+            "shard": 1,
+            "task": 20
+          },
+          {
+            "host": "scc-tr2.scc.bu.edu",
+            "replica": 6,
+            "shard": 2,
+            "task": 21
+          }
+        ]
+      },
+      {
+        "host": "scc-ul1.scc.bu.edu",
+        "job_id": 8168727,
+        "replica": 7,
+        "tasks": [
+          {
+            "host": "scc-ul1.scc.bu.edu",
+            "replica": 7,
+            "shard": 0,
+            "task": 22
+          },
+          {
+            "host": "scc-ul1.scc.bu.edu",
+            "replica": 7,
+            "shard": 1,
+            "task": 23
+          },
+          {
+            "host": "scc-ul1.scc.bu.edu",
+            "replica": 7,
+            "shard": 2,
+            "task": 24
+          }
+        ]
+      },
+      {
+        "host": "scc-ul2.scc.bu.edu",
+        "job_id": 8168728,
+        "replica": 8,
+        "tasks": [
+          {
+            "host": "scc-ul2.scc.bu.edu",
+            "replica": 8,
+            "shard": 0,
+            "task": 25
+          },
+          {
+            "host": "scc-ul2.scc.bu.edu",
+            "replica": 8,
+            "shard": 1,
+            "task": 26
+          },
+          {
+            "host": "scc-ul2.scc.bu.edu",
+            "replica": 8,
+            "shard": 2,
+            "task": 27
+          }
+        ]
+      },
+      {
+        "host": "scc-ul3.scc.bu.edu",
+        "job_id": 8168729,
+        "replica": 9,
+        "tasks": [
+          {
+            "host": "scc-ul3.scc.bu.edu",
+            "replica": 9,
+            "shard": 0,
+            "task": 28
+          },
+          {
+            "host": "scc-ul3.scc.bu.edu",
+            "replica": 9,
+            "shard": 1,
+            "task": 29
+          },
+          {
+            "host": "scc-ul3.scc.bu.edu",
+            "replica": 9,
+            "shard": 2,
+            "task": 30
+          }
+        ]
+      },
+      {
+        "host": "scc-ul4.scc.bu.edu",
+        "job_id": 8168730,
+        "replica": 10,
+        "tasks": [
+          {
+            "host": "scc-ul4.scc.bu.edu",
+            "replica": 10,
+            "shard": 0,
+            "task": 31
+          },
+          {
+            "host": "scc-ul4.scc.bu.edu",
+            "replica": 10,
+            "shard": 1,
+            "task": 32
+          },
+          {
+            "host": "scc-ul4.scc.bu.edu",
+            "replica": 10,
+            "shard": 2,
+            "task": 33
+          }
+        ]
+      },
+      {
+        "host": "scc-um1.scc.bu.edu",
+        "job_id": 8168731,
+        "replica": 11,
+        "tasks": [
+          {
+            "host": "scc-um1.scc.bu.edu",
+            "replica": 11,
+            "shard": 0,
+            "task": 34
+          },
+          {
+            "host": "scc-um1.scc.bu.edu",
+            "replica": 11,
+            "shard": 1,
+            "task": 35
+          },
+          {
+            "host": "scc-um1.scc.bu.edu",
+            "replica": 11,
+            "shard": 2,
+            "task": 36
+          }
+        ]
+      }
+    ],
+    "setup_failure": "Launcher first stopped on existing smoke log directory before any qsub command or native work. Absence of submission receipt, output directory and matching qstat jobs was verified; only the directory check was corrected. Every qualification task was submitted once.",
+    "sha256": "e223f5f7a4254f7b1ae8c337f13516a6040a45c77cf459bf3c2375ba529c1385",
+    "status": "all_36_tasks_submitted_once"
+  },
   "linux_transfer_validation": {
     "bytes": 879626876,
     "checks": "all bytes, before/after file stat and alias closure; no estimator or oracle calls",

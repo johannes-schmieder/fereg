@@ -541,6 +541,12 @@ glibc 2.28 audit, ABI/panic and numeric guards. Maintained-runner smoke job
 allocation evidence and scheduler accounting (failed=0/exit=0, 26 seconds).
 The smoke is tooling evidence, not performance qualification.
 
+Full Linux qualification was submitted once as arrays `8168720`–`8168731`,
+36 tasks on the twelve frozen hosts. The submission wrapper first stopped on
+the existing smoke log directory before issuing any `qsub` command. Its failure
+was retained, absence of qualification jobs/output verified, and only that
+directory check corrected. This did not repeat any measured work.
+
 Actual full qualification results, allocation isolation and independent raw
 scientific/timing/operational review remain required before two-FE activation.
 Successful timed arrays/logs are deleted by the unchanged producer; retained
