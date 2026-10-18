@@ -39,78 +39,61 @@ Keep the installed runtime unchanged while testing private patches. Main must pa
 the default entrypoint with matching installed artifacts before a distribution
 change is committed; source-only success never authorizes publication or promotion.
 
-The incremental Auto workstream uses `codex/auto-routing`. Its prospective
-manifest is schema 3 with `experiment_kind=incremental`; historical routing
-manifests keep their original evaluation. `routing_incremental_many` and
-`routing_incremental_two` are hidden OLS qualification requests. Both public
-defaults stay disabled until their separate qualification stages pass.
-The original uninjected baseline is `f35f3a4d`. Later stages also protect the
-most recently accepted branch Auto, and public activation separately protects
-the selected hidden artifact. Explicit solver results describe opportunities;
-their timings do not enter admission or selection.
+## Compact candidate qualification
 
-[`bench/routing_stage.py`](../bench/routing_stage.py) prepares distinct, fixed
-A/B/C inputs for each family, builds independent A references, and binds reviewed
-source/build/scientific evidence to the SCC discovery coordinator. Its
-[`routing_imports`](../crates/fereg-oracle/examples/routing_imports.rs) generator
-supplies fresh no-FE, one-FE, slope and saved-effect inputs with independent
-dense references. Run all private output under `target/tmp/auto-routing/`.
-Preparation is not qualification: fresh allocation-local native science,
-isolation checks, reviewed discovery, Mac B12 selection, exact hidden/public
-equivalence and untouched Mac C24 confirmation remain mandatory. The Mac
-panels time protected Auto comparisons only; the SCC explicit frontier remains
-diagnostic. See the [prospective scientific scope](SPEC.md#incremental-auto-qualification-2026-10-17).
+Johannes's 2026-10-18 decision replaces mandatory A/B/C stages and recursive
+historical proof validation with one fixed-candidate round. The maintained
+entrypoint is [`bench/qualify.py`](../bench/qualify.py): `plan` fixes actual
+artifacts, input/reference files, worker counts and budgets; `run` collects one
+shard/replica; `report` combines completed work. See the [configuration and
+commands](../bench/README.md#fixed-candidate-qualification). A smoke run checks the
+tooling and cannot qualify a candidate. Do not restart old campaigns to use the
+new entrypoint, or repeatedly resample until a pass.
 
-A bounded C witness failure before native science retains the incumbent through
-[`routing_failure.py`](../bench/routing_failure.py). This separate extension
-preserves frozen selectors and requires the actual failure, owned cleanup,
-partial outputs, absent native/timing outputs and independently reviewed
-source/build/export evidence. Prospective local callers use its scoped
-`install()` dispatch before loading a preceding-stage context, and explicitly
-bind the extension, review and bootstrap in source/monitor dependencies.
-Ordinary terminal inputs still delegate unchanged. Portable export validation
-does not replace local raw replay, and this path cannot accept a default.
-The existing retained receipt records the first attempt's outcome; Johannes's
-subsequent priority correction requires completing the many-FE finalist before
-advancing two-FE. It does not authorize treating an operational harness timeout
-as a scientific rejection.
+Record source revisions and build settings with the actual binary and harness
+hashes. The plan hashes each input and numerical reference once; each job
+verifies these files once before execution and checks for drift during work.
+There is no dependency on old selections, receipts, generator executables or
+Python-environment history. Independent reference mathematics and current native
+outputs still require their normal checks. Reuse valid evidence when production
+artifacts and affected scope are unchanged.
 
-For this documented pre-native witness failure, repair and profile admission and
-dependency validation on already exposed evidence before generating new holdout
-inputs. Use a separate versioned confirmation declaration and explicit bootstrap;
-preserve the original B decision, A/B activation evidence, C declaration, accessed
-C data and failed outcome. The new declaration binds the same candidate and
-private public artifact, an independently reviewed harness, complete earlier
-panel identities, a fresh seed/session and bounded setup. Retain C24, one warmup,
-120-second calls, the 14,400-second scientific and 28,800-second timing budgets,
-alpha 1/40 and per-workload max(5%, 1 ms) protections for original Auto, accepted
-Auto and selected hidden. The branch default stays disabled until confirmation
-passes. Exact operation-local metadata/hash reuse must detect drift and preserve
-full byte checks, semantic validation and independent witnesses; it cannot cache
-scientific or timing decisions. A repeated tooling failure must be diagnosed and
-surfaced as a blocker, without another automatic version or a move to two-FE.
-Scientific or performance failure/inconclusiveness requires Johannes's direction.
+Keep the existing 21 routing families at one and four workers (42 cells).
+Compare the candidate with original Auto and the last accepted Auto; share calls
+when the actual binary and prepared request are identical. If activating public
+Auto, also require exact agreement with the selected hidden invocation. Explicit
+solver frontiers are optional investigations, not part of every round. The
+mapped runtime, scientific and transaction tests still cover OLS/PPML features,
+explicit requests, memory controls, cancellation and rollback.
 
-The repair uses [`routing_validation.py`](../bench/routing_validation.py) for
-scoped metadata and immutable-dependency verification, and
-[`routing_confirmation.py`](../bench/routing_confirmation.py) for the separately
-reviewed confirmation declaration and freshness history. The supervised entrypoint
-[`routing_confirmation_run.py`](../bench/routing_confirmation_run.py) first
-validates the complete old C admission and all 42 original B wrappers in its
-`exposed` action. Its execution actions then enforce the declared order, exact
-producer sources, successful predecessor outcomes and scientific review before
-timing. Preserve the designated Python virtual-environment invocation as well as
-the interpreter's canonical byte identity. The frozen historical producers and
-their evidence remain unchanged; this driver does not generate an approval or
-activate a default.
+Run Linux shards in parallel through [`bench/qualify.sge`](../bench/qualify.sge).
+All arms of a comparison share the same verified isolated whole-node allocation;
+slot count alone is insufficient. Collect terminal scheduler accounting, and
+aggregate Linux uncertainty at the physical-host level rather than treating
+many solves on one node as independent observations. Use focused serial Mac
+measurements and integration checks for Mac behavior. Linux evidence cannot
+establish a Mac performance claim. The controlled timing rule below retains
+max(5%, 1 ms), balanced complete-solve blocks and the existing confidence standard.
 
-Generator reconstruction must use immutable task-owned executable copies and
-the actual archived build sources, so later Cargo checks cannot erase historical
-dependencies. Retain missing-original hashes and unsuccessful recovery attempts.
-A separately reviewed mapping may bind rebuilt hashes only after auditing all
-output-reachable code, including core metadata serialization, and reproducing
-exposed A inputs and scientific references exactly. Keep raw sidecar provenance
-differences visible; do not normalize them into an original-artifact pass.
+The incremental Auto workstream remains on `codex/auto-routing`, protecting the
+original uninjected baseline `f35f3a4d`. Finish the existing many-FE candidate
+before two-FE. Both public defaults remain disabled until their applicable
+qualification passes. Activation is limited to OLS Auto/Auto categorical
+intercept designs; exact hidden/public equivalence, independent numerical
+witnesses and the [declared scientific scope](SPEC.md#incremental-auto-qualification-2026-10-17)
+remain required.
+
+Preserve the historical many-FE failures as failures. The first witness attempt
+failed before native science; the later repaired attempt completed native
+science but timing setup failed before timed calls. Its valid science and current
+inputs may be reused: a timing-setup repair does not require regenerating them
+or replaying A/B. The report records missing or failed work honestly. Diagnose
+operational failures and attempt bounded repairs, retaining completed evidence.
+Resume only untouched work under the same plan; retain a partially timed failure
+for discussion rather than starting another attempt. If repairs do not resolve
+a blocker, science fails or timing remains inconclusive, discuss it with Johannes
+before abandoning the candidate or moving to the next step. No tool selects a
+replacement, launches another round or activates a default automatically.
 
 GitHub testing is paused. Mac remains the default qualification host; Johannes
 additionally requested bounded Linux and Windows build checks on 2026-10-07.
@@ -212,11 +195,13 @@ Staging validates the source/object hashes. There is no runtime compilation fall
 ## Outputs and performance
 
 Use `target/` for one current build/test cache and `dist/` for the current plugin.
-Task outputs (candidate plugins, A/B builds, worktrees, data, logs, profiles) go
+Task outputs (candidate plugins, comparison builds, worktrees, data, logs, profiles) go
 under `target/tmp/<task>/` and are deleted when the task is reported, after
 recording hashes and summaries; `scripts/clean_target.sh` lists everything else
 in `target/` except Cargo's cache and `target/replay-baseline/`, and `--apply`
-removes it. Keep large generated inputs and outputs out of Git.
+removes it. Keep large generated inputs and outputs out of Git. During an unfinished
+workstream keep only its current artifacts, inputs and applicable evidence;
+remove superseded build trees, archives, logs and harness copies.
 The compact benchmark entrypoint is documented in [bench](../bench/README.md).
 
 Use the following evidence tiers, with identified artifacts, predeclared workloads,
@@ -245,8 +230,8 @@ measurement budgets and stopping rules:
 - Workstream boundaries: arithmetic-preserving commits within one workstream
   share one wall-time nonregression check at its end rather than one per commit.
   Complete production edits, focused correctness checks and targeted profiling
-  before starting the full panel. C/D is one such combined workstream; its
-  subpoints do not each require a full timing campaign.
+  before starting the qualification round; individual commits do not each
+  require a full timing campaign.
 - Declared ulp-scope changes: affected fields named in the replay
   `--affected-scope`, all other fields and discrete decisions exact, independent
   witnesses on the affected fields and instruction counts within noise. They
@@ -276,9 +261,10 @@ solver timeout or changed artifact is not an OS-noise exclusion.
 For a reference/candidate comparison, use balanced randomized ABBA/BAAB blocks
 of complete native estimations, including setup. Freeze inputs, artifacts,
 worker counts, warmups, cache policy, order seed, block/attempt count and wall
-budget before timing. Shuffle workload order across rounds. For a finite
-multi-arm discovery screen, a prospectively declared balanced rotating order is
-also permitted; discovery scores do not substitute for finalist confirmation.
+budget before timing. With several protected references, execute one randomized
+arm permutation and its reverse, balancing orientations across blocks. Shared
+reference calls are recorded once. A separate discovery experiment may inform
+which candidate to freeze, but is not a required stage of qualification.
 All arms retain the same scientific and resource checks. Checkpoint complete
 blocks so an unrelated later interruption does not erase earlier valid work.
 
@@ -306,19 +292,17 @@ labeled as such, not presented as exact guarantees.
 A small fixed A/A pilot on representative costs and worker counts can diagnose
 order effects, dependence and attainable precision before candidate timing.
 It cannot establish independence or common medians from a small sample.
-Use it to freeze a practical measurement budget, not to widen the allowance.
-Separate discovery, shortlist selection and untouched finalist confirmation.
-Choose one finalist before opening its confirmation results. Ties favor the
-predeclared simpler/incumbent policy. No fallback winner or repeated sampling
-until success is permitted after confirmation. An unresolved required comparison
-leaves promotion inconclusive; it does not silently pass or create a
-benchmark-specific routing exception.
+Use it to choose a practical measurement budget, not to widen the allowance.
+Freeze one candidate before the qualification round. No fallback winner or
+repeated sampling until success is permitted. An unresolved required comparison
+leaves promotion inconclusive and requires discussion with Johannes; it does
+not silently pass or create a benchmark-specific routing exception.
 
 Use verified isolated SCC allocations for broad algorithm discovery, scaling
 and Linux performance evidence. Candidate and reference share the same node,
 CPU placement, physical-core/SMT policy, library thread limits and input bytes.
 Record allocation and host identity; requesting slots alone does not prove
-whole-node isolation. Mac selection and confirmation cover the relevant workload
+whole-node isolation. Focused Mac qualification covers the relevant workload
 families and worker counts, particularly concurrent builder/solver routes.
 Linux results do not establish Mac speed or justify automatic promotion of the
 Linux winner. This protocol changes performance measurement only; scientific
@@ -329,22 +313,13 @@ retroactively apply this protocol to rescue them. Reuse valid scientific and
 performance evidence when its artifacts and affected scope remain applicable;
 a newly changed public-default artifact still requires its mapped checks.
 
-The following continuation rule applies to historical campaigns or a new
-campaign that explicitly declares such a continuation before its confirmation
-data. A fixed terminal confirmation cannot invoke it after seeing its outcome.
-For an unchanged candidate, baseline, harness and frozen inputs, an inconclusive
-cell may receive one bounded continuation without rerunning already-passing
-cells. Predeclare eligibility, additional paired repetitions, host conditions,
-total budget and the final analysis rule; preferably include them in the initial
-timing plan. Retain all valid original and additional pairs, their pairing and
-run identities, and analyze them together. Preserve the max(5%, 1 ms) allowance
-and the confidence standard, accounting for any outcome-dependent selection or
-repeated looks. A naive rerun until a bootstrap interval passes is not a valid
-continuation. The existing timing tool reports individual runs; a combined claim
-needs an explicit analysis implementing the declared rule, rather than replacing
-the original summary with the most favorable run. A predeclared fixed larger
-panel remains an alternative. If the artifact or measurement inputs change,
-reassess evidence validity and qualify the affected behavior on the new artifact.
+The current runner has one fixed budget and no automatic timing continuation.
+An operational repair may resume untouched work under the same unchanged plan
+while retaining already completed cases. Do not replace partial or unfavorable
+measurements with a new attempt. Changing artifacts or measurement inputs requires
+reassessing evidence validity; unresolved cases go to Johannes with the actual
+failure or uncertainty. Historical continuations keep their recorded scope and
+outcome and impose no obligation to rerun those campaigns.
 
 Johannes's 2026-10-11 clarification makes performance coverage proportional to
 measured cost. For FMA work, inspect complete executed library-call totals and

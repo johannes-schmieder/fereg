@@ -198,77 +198,48 @@ performance interpretation. Outside-family scientific results/signatures remain
 exact; within-family selectors must reproduce the existing hidden portfolio,
 apart from declared routing identity labels.
 
-New versioned campaigns preserve all historical outcomes. Only protected Auto
-comparisons govern performance acceptance: the original uninjected `f35f3a4d`
-baseline and the last accepted branch Auto each retain max(5%, 1 ms) protection
-on every declared workload. Explicit solver timing and availability describe
-opportunity gaps, never promotion eligibility or ranking. Invalid comparator
-science has no timing claim; a shared-validation defect blocks affected evidence.
-Eligible choices rank by the equal-weight geometric mean of timing ratios over
-the affected family, with the incumbent winning ties. Scientific, resource and
-transaction prerequisites remain mandatory.
+Johannes's 2026-10-18 validation decision replaces mandatory A/B/C routing
+stages and recursive history validation with one fixed-candidate qualification
+round. Preserve historical outcomes without making them executable prerequisites.
+The round retains all 21 routing families at one and four workers, with bounded
+parallel SCC work and focused Mac timing/integration. Independent numerical
+witnesses, exact/scoped comparisons, fixed-worker repeats, cross-worker agreement,
+resource admission and transaction checks remain mandatory. Explicit solver
+availability and timings describe opportunities; their scientific feature tests
+remain required, but a full explicit-solver timing frontier is optional.
 
-Qualify many-FE first and two-FE second, using independent stage artifacts and
-distinct selection/untouched-confirmation inputs. Public activation changes only
-the selected family's invocation wiring on the development branch. Before C
-access, fresh A/B checks must establish exact scientific and numerical-signature
-equivalence to the selected hidden invocation. Confirmation also protects that
-hidden artifact against activation overhead. Failure or inconclusive confirmation
-retains the last accepted default, without selecting another policy from those
-C results. Johannes's subsequent continuation decision requires finishing the
-existing many-FE finalist before advancing two-FE. The first many-FE C attempt
-failed in witness/admission hashing before any native science or timing. That
-attempt remains failed and its accessed inputs cannot serve as an untouched
-holdout. A separately versioned confirmation may follow an independently reviewed
-repair of this documented harness failure, using genuinely fresh inputs and the
-same selected candidate, private public artifact, protections, tolerances,
-confidence standard and bounded native work.
+Only protected Auto comparisons govern performance acceptance: original
+uninjected `f35f3a4d` and the last accepted branch Auto each retain max(5%, 1 ms)
+protection on every workload. A public-default candidate additionally reproduces
+the selected hidden invocation's scientific bits and numerical signatures and
+protects it against activation overhead. Identify actual artifacts, build settings,
+fixtures and references once in the plan, verify them once per job, and detect
+file drift during execution. Do not recursively replay old admission decisions,
+rebuild old generators or hash unrelated dependency histories.
 
-Before generating that new holdout, measure the actual overhead and validate the
-repaired harness on already exposed evidence. Exact metadata and immutable-file
-hash reuse may remove redundant validation; it must retain the complete read
-closure, file and alias identity checks, full byte checks before execution and
-after the operation, original semantic validators and independent numerical
-witnesses. Scientific, resource, transaction, per-call and observer checks cannot
-be replaced by cached results. Freeze repaired sources, independent review,
-freshness history, setup bounds and stopping rules prospectively. Preserve every
-historical outcome and do not pool or reuse the failed C observations as new
-confirmation evidence.
+All comparison arms run within the same isolated SCC allocation. Balanced
+complete-solve blocks, fixed warmups and budgets, per-call scientific checks and
+the one-sided alpha 1/40 order-statistic bound preserve the existing timing
+standard. Linux replication is aggregated by physical host; repeated blocks on
+one node do not constitute independent nodes. Mac behavior and performance still
+require applicable Mac checks. See the [development protocol](development_workflow.md#controlled-timing-protocol-approved-2026-10-14)
+and [runner](../bench/README.md#fixed-candidate-qualification).
 
-If original input-generator executables are unavailable, a prospective rebuild
-mapping requires independent review of unchanged output-reachable generation,
-serialization and reference mathematics, plus exact reproduction of exposed A
-case bytes, numeric bodies and scientific references. Preserve the original
-artifact identities and every raw metadata difference; changed generator-hash
-fields are provenance differences, not restored binary identity. Bind the actual
-rebuilt executables and immutable build sources before new holdout generation.
-Any unexplained output or reachable-source change blocks this reconstruction;
-it cannot change a model, seed recipe, solver artifact or qualification gate.
+Qualify many-FE before two-FE. Both public defaults remain disabled until valid
+qualification passes. Public activation changes only the selected family's
+invocation wiring on the development branch. The first many-FE witness attempt
+failed before native science; the later repaired attempt passed native science
+but failed during timing setup before timed calls. Those outcomes remain visible.
+Valid completed science and unchanged current inputs may be reused after an
+operational repair without generating another holdout or replaying A/B.
 
-Keep the working public many-FE default disabled until valid confirmation passes.
-A further harness failure is a documented engineering blocker requiring diagnosis
-and direction, not automatic permission for another confirmation or for moving
-to two-FE. A failed scientific criterion or inconclusive/failed performance gate
-retains the incumbent and requires Johannes's direction; no alternate winner,
-retuning, unfavorable-observation deletion or sampling until success is allowed.
-Two-FE resumes only after many-FE has a validated outcome, applicable checks,
-committed evidence and pushed source/default changes. No merge to main, release
+A harness failure calls for diagnosis and bounded repair. If it remains unresolved,
+or science fails or timing is inconclusive, retain the incumbent and discuss the
+evidence with Johannes before abandoning the candidate, changing the protocol or
+advancing to the next step. No alternate winner, retuning, unfavorable-observation
+deletion or sampling until success is allowed. The tool emits one report and
+never starts another campaign or activates a default. No merge to main, release
 packaging, predictive payback rule or speculative-budget increase follows.
-
-The earlier prospective deployment amendment permits one narrow public-default
-transition after the finite A/B experiment selects one nonbaseline serial
-`(h,k)` policy. It must be declared before any timing. Only the OLS Auto
-invocation wiring may change; kernels, prefixes, overlap, sampling policy and
-thresholds remain fixed. Explicit solver/preconditioner requests, PPML and
-unsupported routes retain their existing behavior. Fresh non-holdout science,
-transaction checks and exact scientific/signature equivalence to the selected
-hidden policy must qualify the new artifact before any C input is opened.
-The derived C manifest preserves the original inputs, comparisons, statistical
-rules and budgets, and protects the selected hidden artifact as its incumbent.
-C tests the frozen, uninjected public invocation once. Failure or inconclusive
-evidence retains the old default, with no runner-up or retuning; success permits
-that already-tested artifact without further production changes. This
-amendment does not itself activate routing or establish a performance result.
 
 Hidden OLS `inject=routing_h{4|8|16|32}_k{0|1|2}` selects a fixed iteration
 checkpoint and high-degree CMG sample count. Eligible two-FE problems start the

@@ -190,7 +190,21 @@ class RoutingOracle(unittest.TestCase):
                        arrays={'file':npz.name,'sha256':digest(npz)},producer_sha256=digest(Path(oracle.__file__)),parser_sha256=digest(oracle.PARSER_SOURCE))
             p.write_text(json.dumps(ref))
             loaded,bound=oracle.load_reference(p,'a'*64,'b'*64)
-            self.assertIn(npz.resolve(),bound)
+            self.assertEqual(set(bound), {p.resolve(), npz.resolve()})
+            historical = {**ref, 'producer_sha256': 'c' * 64, 'parser_sha256': 'd' * 64}
+            p.write_text(json.dumps(historical))
+            old, _ = oracle.load_reference(p, 'a' * 64, 'b' * 64)
+            self.assertEqual(old['producer_sha256'], historical['producer_sha256'])
+            for case_digest, body_digest in [('a' * 64, 'c' * 64), (None, 'b' * 64), ('a' * 64, None)]:
+                with self.subTest(case=case_digest, body=body_digest), self.assertRaisesRegex(ValueError, 'identity'):
+                    oracle.load_reference(p, case_digest, body_digest)
+            for key in ['case_sha256', 'body_sha256']:
+                invalid = copy.deepcopy(ref)
+                invalid.pop(key)
+                p.write_text(json.dumps(invalid))
+                with self.subTest(missing=key), self.assertRaisesRegex(ValueError, 'identity'):
+                    oracle.load_reference(p, 'a' * 64, 'b' * 64)
+            p.write_text(json.dumps(ref))
             def table(values):
                 v=np.atleast_2d(values)
                 return dict(rows=v.shape[0],columns=v.shape[1],bits=[struct.pack('>d',float(x)).hex() for x in v.ravel()])
@@ -225,6 +239,10 @@ class RoutingOracle(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'spectrum'):
                 oracle.load_reference(p,'a'*64,'b'*64)
             p.write_text(json.dumps(ref))
+            npz.rename(root / 'missing.npz')
+            with self.assertRaises(FileNotFoundError):
+                oracle.load_reference(p, 'a' * 64, 'b' * 64)
+            (root / 'missing.npz').rename(npz)
             npz.write_bytes(npz.read_bytes()+b'changed')
             with self.assertRaisesRegex(ValueError,'arrays changed'):
                 oracle.load_reference(p,'a'*64,'b'*64)

@@ -61,25 +61,34 @@ measurement noise, not an automatic reason to abort a panel. Independent
 analysis on separate infrastructure may continue
 without accessing or changing the measured artifacts or consuming host resources.
 
-Johannes's 2026-10-17 incremental-routing decision makes explicit solver timings
-diagnostic opportunity comparisons, not promotion gates. New versioned campaigns
-protect the original uninjected Auto at `f35f3a4d` and the last accepted branch
-Auto with the existing per-workload max(5%, 1 ms) allowance. Qualify the existing
-many-FE and two-FE improvements separately, in that order, with separate untouched
-confirmations. Johannes's subsequent priority correction requires completing the
-existing many-FE finalist before advancing two-FE. Its first C witness attempt
-failed operationally before native science or timing; preserve that failure and
-repair the harness, then use a reviewed, versioned confirmation with genuinely
-fresh inputs. Do not retry or relabel the accessed old C panel. A further tooling
-failure is an engineering blocker to diagnose and surface, not permission to
-abandon many-FE. Scientific failure or inconclusive performance retains the
-incumbent and requires Johannes's direction. Keep the public default disabled
-until valid confirmation passes. Restrict new activation to
-OLS `solver(auto)` and `preconditioner(auto)` on categorical intercept designs.
-Preserve historical protocol decisions and scientific/resource/transaction gates.
-Activate passing defaults only on this branch. Finish this increment with bounded
-CMG/RHS/overlap cost diagnosis and a successor proposal; it does not authorize an
-unreviewed predictive payback algorithm or increased speculative work budgets.
+Johannes's 2026-10-18 validation decision replaces the mandatory A/B/C routing
+campaign and recursive historical proof checks with one fixed-candidate
+qualification round through `bench/qualify.py`. Keep the suite compact: one
+manifest, parallel SCC shards, a fixed budget and one report. Record revisions,
+build settings and hashes of the actual binaries, harness, inputs and references;
+verify them once per job and use lightweight drift checks during execution.
+Do not add receipt chains, repeated history walks or automatic sampling ladders.
+
+Protect the original uninjected Auto at `f35f3a4d` and the last accepted branch
+Auto on every workload with max(5%, 1 ms). Retain the 42-cell routing coverage,
+independent numerical witnesses, exact/scoped science, fixed-worker repeatability,
+cross-worker agreement and scientific/resource/transaction gates. Explicit solver
+timings are optional diagnostics; supported explicit solvers and PPML remain
+covered by the feature tests. Public activation requires exact scientific and
+solver-signature agreement with the selected hidden invocation. Keep the public
+default disabled until applicable qualification passes; activation is confined
+to this branch and OLS `solver(auto)` with `preconditioner(auto)` on categorical
+intercept designs.
+
+Finish the existing many-FE finalist before advancing two-FE. Historical failed
+attempts stay failed; retain valid completed science and unchanged current inputs
+when repairing timing setup. A harness failure requires diagnosis and a bounded
+repair, not abandonment of the candidate. If repairs do not resolve it, or science
+fails or timing is inconclusive, stop dependent work and discuss the evidence
+with Johannes before abandoning the candidate, changing the protocol or advancing
+to the next step. Never silently select a replacement or sample until success.
+Finish the increment with bounded CMG/RHS/overlap cost diagnosis and a successor
+proposal; predictive payback rules and larger speculative budgets are not authorized.
 
 Runtime changes require `./scripts/run_tests.sh` and mapped scientific/transaction
 checks. Build/package changes require focused tooling and native build/ABI checks.
@@ -94,7 +103,7 @@ record the reproducer and findings and ask Johannes for direction.
 GitHub testing remains paused by Johannes's 2026-10-05 instruction. Mac remains
 the qualification host for Mac behavior and performance. His 2026-10-14 decision
 authorizes isolated SCC benchmarking as primary evidence for algorithm discovery,
-scaling and Linux performance, followed by focused Mac selection/confirmation.
+scaling and Linux performance, followed by focused Mac timing and integration.
 Verify node isolation and compare artifacts within the same allocation; slots
 alone do not establish exclusivity. Bounded Linux and Windows build/load checks
 remain authorized. No platform claim follows from another host's checks. See
@@ -128,9 +137,9 @@ blocks only under predeclared external-evidence rules and bounded attempts.
 Never remove observations because of unfavorable timings or use minima to pass
 qualification. Scientific failures and solver timeouts retain their declared
 failure semantics. Keep max(5%, 1 ms), exact/scoped science and prior valid
-evidence; old excluded attempts remain excluded. Freeze discovery/selection and
-untouched confirmation separately; an inconclusive finalist does not replace
-the public incumbent. See `docs/development_workflow.md` for the protocol.
+evidence; old excluded attempts remain excluded. Freeze one candidate and its
+qualification budget before collecting results; an inconclusive candidate does
+not replace the public incumbent. See `docs/development_workflow.md` for the protocol.
 Johannes's 2026-10-09 decision adds two tiers. A commit whose runtime production
 tokens and artifact inputs equal its parent's
 (`scripts/check_complexity.py --compare-production REV`) is an unchanged artifact
@@ -143,11 +152,10 @@ fields, instruction counts within noise) reuses prior timing evidence.
 
 Johannes's 2026-10-11 clarification: finish production edits, focused checks and
 targeted profiling before starting the full timing panel on a stable candidate.
-For an unchanged artifact, a predeclared bounded continuation may target only
-inconclusive cells; retain and combine all applicable observations, preserve
-the timing allowance and confidence standard, and account for repeated looks.
-Do not sample repeatedly until a pass. A changed artifact requires reassessing
-which evidence remains valid. See `docs/development_workflow.md` for the protocol.
+The current qualification round has one fixed measurement budget. An operational
+repair may resume only untouched work while retaining valid completed evidence;
+it does not authorize another timing attempt or a larger sample. A changed
+artifact requires reassessing which evidence remains valid. See `docs/development_workflow.md` for the protocol.
 Performance coverage targets material measured costs: negligible residual library
 FMA calls outside hot loops are not by themselves a failure. Quantify residual
 cost and preserve exactness/certification; this supersedes a literal zero-call
@@ -163,7 +171,7 @@ Keep source, compact fixtures, current documentation and maintained test/benchma
 tools. `target/` keeps only Cargo's build cache and the current replay baseline
 (`target/replay-baseline/`); repository scripts may write their fixed default
 outputs there and overwrite them each run. Put every other task output
-(candidate plugins, A/B builds and extra Cargo target directories, worktrees,
+(candidate plugins, comparison builds and extra Cargo target directories, worktrees,
 generated data, logs, profiles) under one `target/tmp/<task>/` directory, never
 one directory per run or tag, and delete it before reporting the task done,
 after its hashes and summaries are in commits or committed documents. Committed
@@ -172,6 +180,9 @@ documents never cite ignored paths as retained evidence.
 of a session when no other task is using `target/`, and whenever `target/`
 exceeds 15 GB. Johannes authorized deleting completed captures and caches;
 historical committed source/documents remain in Git, ignored raw data does not.
+During an unfinished workstream retain only the current inputs, artifacts and
+applicable evidence needed to resume; delete superseded harnesses, duplicate
+build trees, archives and completed captures after recording compact summaries.
 
 Retain the runtime complexity ratchet at `tests/reference/complexity.json`;
 explain scoped increases and lower it for reductions. Do not minify or move code

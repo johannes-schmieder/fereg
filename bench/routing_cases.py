@@ -18,10 +18,9 @@ import numpy as np
 import subprocess
 
 from cmgschur_cases import (HIGH_DEGREE_SIZES, additional_case, graph_summary, high_degree_case,
-                            scratch, synthetic, write_case)
+                            synthetic, write_case)
 from native_io import ROOT, case_header, digest
 
-SEEDS = {'A': 2026101301, 'B': 2026101302, 'C': 2026101303}
 REQUIRED_IMPORTS = ('no-fe', 'one-fe', 'slopes')
 NATIVE_CASES = {
     'dense': {'rows': 100000, 'levels': '500,100', 'regressors': 5, 'weights': 'unit'},
@@ -37,23 +36,14 @@ SYNTHETIC_CASES = {'weak': ('weak', 5000, 500, 20),
 EXTENDED_CASES = ('sixteen-fe', 'disconnected', 'near-confounded-third', 'weight-dynamic', 'inactive-columns')
 SAMPLED_CASES = {'high-degree-mixed': 'd30-mixed', 'high-degree-weak': 'd30-weak',
                  'high-degree-stress': 'd60-stress'}
+SMALL_HIGH_DEGREE = {'d30-mixed': (42, 40, 31), 'd30-weak': (320, 300, 31), 'd60-stress': (82, 80, 61)}
 
 
-def comparators(metadata, sampled=False, compact_it=False):
-    """Declare mathematical eligibility; separate evidence must qualify each arm."""
-    count = metadata['absorbed_terms']
-    compact = ['it-coefficients'] if compact_it and count >= 1 and metadata.get('categorical_intercepts') else []
-    if count < 2 and metadata['family'] != 'slopes':
-        return compact
-    base = ['lsmr', 'map', 'it', *compact]
-    # Imported saved effects can include slopes or exceed CMG's nuisance-width
-    # support. More specific comparator eligibility needs separate inspection.
-    if metadata['family'] in {'slopes', 'low-saved'} or count > 3:
-        return base
-    if count == 3:
-        return [*base, 'cmg']
-    schur = [f'cmgschur-k{k}' for k in (0, 1, 2)] if sampled else ['cmgschur']
-    return ['diagonal', *base, 'cmg', *schur]
+def scratch(path):
+    path = path.resolve()
+    if not path.is_relative_to((ROOT / 'target/tmp').resolve()) or path == (ROOT / 'target/tmp').resolve():
+        raise ValueError('output must be under one task directory in target/tmp')
+    return path
 
 
 def extended_columns(family, seed, workers=5000, firms=500, periods=20):
@@ -108,7 +98,7 @@ def inspect_case(path, family=None):
         for block in iter(lambda: stream.read(1 << 20), b''):
             body_hash.update(block)
     if args[0] != b'estimate-ols':
-        raise ValueError('initial routing panel is OLS only')
+        raise ValueError('routing inputs must use OLS')
     fields = dict(a.decode().split('=', 1) for a in args[1:])
     saved = []
     encoded = fields.get('output_saved_channels', '.')
@@ -245,18 +235,15 @@ def inactive_case_oracle(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--panel', choices=SEEDS, required=True)
-    parser.add_argument('--seed', type=int, help='predeclared unsigned 64-bit seed for a fresh experiment; defaults to the original panel seed')
+    parser.add_argument('--seed', type=int, required=True, help='unsigned 64-bit generation seed')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--generator', type=Path, default=ROOT / 'target/ci/examples/replay_large')
     parser.add_argument('--source', action='append', default=[], help='family=path for each required import')
     parser.add_argument('--threads', nargs='+', type=int, default=[1, 4])
-    parser.add_argument('--extended', action='store_true', help='append bounded difficult/saved/Low-memory coverage')
-    parser.add_argument('--low-saved', type=Path, help='independent native replay input with saved effects')
-    parser.add_argument('--sampled', action='store_true', help='append three high-degree sampling stress families')
-    parser.add_argument('--compact-it', action='store_true', help='declare the distinct compact-IT comparator on eligible categorical cells')
+    parser.add_argument('--low-saved', type=Path, required=True, help='independent native replay input with saved effects')
+    parser.add_argument('--small', action='store_true', help='small generated fixtures for tooling smoke checks, not performance qualification')
     args = parser.parse_args()
-    if args.seed is not None and not 0 <= args.seed <= (1 << 64) - 1:
+    if not 0 <= args.seed <= (1 << 64) - 1:
         parser.error('--seed must be an unsigned 64-bit integer')
     try:
         imported = sources(args.source)
@@ -264,21 +251,17 @@ def main():
         parser.error(str(error))
     if not args.threads or len(set(args.threads)) != len(args.threads) or any(not 1 <= t <= 1024 for t in args.threads):
         parser.error('require distinct workers in 1..1024')
-    if args.extended != (args.low_saved is not None):
-        parser.error('--extended requires --low-saved and vice versa')
-    if args.low_saved:
-        imported['low-saved'] = args.low_saved.resolve(strict=True)
+    imported['low-saved'] = args.low_saved.resolve(strict=True)
     generator = args.generator.resolve(strict=True)
     generator_hash = digest(generator)
     imported_hashes = {name: digest(path) for name, path in imported.items()}
     output = scratch(args.output)
     output.mkdir(parents=True, exist_ok=False)
-    seed = SEEDS[args.panel] if args.seed is None else args.seed
+    seed = args.seed
     cells = []
-    for family in [*imported, *NATIVE_CASES, *SYNTHETIC_CASES,
-                   *(SAMPLED_CASES if args.sampled else {}), *(EXTENDED_CASES if args.extended else ())]:
-        path = output / f'{args.panel.lower()}-{family}.case'
-        metadata = {'schema': 1, 'panel': args.panel, 'family': family, 'coverage': [family],
+    for family in [*imported, *NATIVE_CASES, *SYNTHETIC_CASES, *SAMPLED_CASES, *EXTENDED_CASES]:
+        path = output / f'{family}.case'
+        metadata = {'schema': 1, 'family': family, 'coverage': [family], 'small': args.small,
                     'evidence': 'unqualified input; separate scientific witnesses required'}
         if family in imported:
             copy_import(imported[family], path, low=family == 'low-saved')
@@ -294,6 +277,8 @@ def main():
             spec = (NATIVE_CASES[family] if family in NATIVE_CASES else
                     {'rows': 100000, 'levels': '5000,500,100,50,40,30,20,10,9,8,7,6,5,4,3,2',
                      'regressors': 5, 'weights': 'unit'})
+            if args.small:
+                spec = {**spec, 'rows': 1200, 'levels': ','.join(str(min(int(n), 20)) for n in spec['levels'].split(','))}
             command = [str(generator), '--output', str(path), '--seed', str(seed), '--solver', 'auto',
                        '--vce', 'robust', '--graph', 'random-mobility', '--tolerance', '1e-8']
             for key, value in spec.items():
@@ -301,16 +286,19 @@ def main():
             subprocess.run(command, check=True, timeout=120, stdout=subprocess.DEVNULL)
             metadata.update(generator_sha256=generator_hash, seed=seed, generator_options=spec)
         elif family in EXTENDED_CASES:
-            columns, weights, count, intercept = extended_columns(family, seed)
+            columns, weights, count, intercept = extended_columns(family, seed, **({'workers': 60, 'firms': 20} if args.small else {}))
             write_case(generator, path, columns, include_intercept=intercept, effect_count=count, weights=weights)
             metadata.update(generator_sha256=generator_hash, seed=seed, include_intercept=intercept,
                             effect_count=count, weight_kind='unit' if weights is None else 'pw')
         else:
             if family in SAMPLED_CASES:
                 kind = SAMPLED_CASES[family]
-                columns = high_degree_case(kind, *HIGH_DEGREE_SIZES[kind], seed=seed)
+                sizes = SMALL_HIGH_DEGREE[kind] if args.small else HIGH_DEGREE_SIZES[kind]
+                columns = high_degree_case(kind, *sizes, seed=seed)
             else:
                 kind, workers, firms, periods = SYNTHETIC_CASES[family]
+                if args.small:
+                    workers, firms = 60, 20
                 function = additional_case if kind == 'wide' else synthetic
                 columns = function(kind, workers, firms, periods, seed=seed)
             write_case(generator, path, columns)
@@ -331,12 +319,11 @@ def main():
                           'body_sha256': metadata['body_sha256'],
                           'family': family, 'coverage': [family], 'threads': threads,
                           'absorbed_terms': metadata['absorbed_terms'],
-                          'categorical_intercepts': metadata['categorical_intercepts'],
-                          'comparators': comparators(metadata, args.sampled, args.compact_it), 'case_file': path.name})
+                          'categorical_intercepts': metadata['categorical_intercepts'], 'case_file': path.name})
     if digest(generator) != generator_hash:
         raise ValueError('generator changed while preparing panel')
-    (output / 'panel.json').write_text(json.dumps({'schema': 1, 'panel': args.panel, 'seed': seed,
-        'cells': cells, 'compact_it_comparator': args.compact_it, 'stopping_rule': 'one fixed sparse panel; no Cartesian expansion'}, indent=2) + '\n')
+    (output / 'panel.json').write_text(json.dumps({'schema': 1, 'seed': seed, 'small': args.small,
+        'cells': cells}, indent=2) + '\n')
     print(f'{len(cells)} declared cells prepared; no scientific qualification or timings performed')
 
 

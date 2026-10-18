@@ -16,9 +16,51 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Compact validation suite, 2026-10-18
+
+Johannes authorized replacing the mandatory A/B/C harness with one fixed-candidate
+qualification round, cleaning up obsolete files, then stopping. The maintained
+entrypoint is `bench/qualify.py` (`plan`, `run`, `report`) with parallel SCC array
+support and focused Mac host observation. It keeps all 42 routing cells,
+independent numerical witnesses, exact unaffected outputs and repeats, typed
+route/resource checks, original/incumbent protection and hidden/public equality.
+Supported explicit solvers and PPML remain covered by the mapped feature suite.
+Historical campaigns and their failures remain history, not executable prerequisites.
+Unresolved failures require discussion before abandonment or advancement.
+
+The replacement passes 148 benchmark-tool tests and independent high-effort
+architecture review. `./scripts/run_tests.sh --source-only` passes, including
+312 Python source tests, Rust/Clippy, allocator, portable and bridge checks.
+Production identity is unchanged against `281c0a6c`: 192 runtime modules and
+58 artifact inputs. Installed-package admission and the Linux mock-plugin audit
+are not established by this Mac source-only check; prior unchanged-runtime
+scientific/transaction evidence remains valid.
+
+A bounded real-binary tooling smoke passed 60 calls across no-FE and four-FE
+fixtures at one/four workers in 14.63 seconds. It compared original/incumbent,
+hidden many-FE and provisional public many-FE artifacts, checked independent
+numerical truth, exact repeats and hidden/public equivalence, and successfully
+aggregated the compact outputs. The first launch stopped before native calls
+because the sandbox denied process observation; resuming with that observation
+available passed. This is a tooling result, not a new performance qualification.
+The full 42-cell configuration also passes preparation without native calls.
+
+Obsolete coordinator code, protocol-only tests, copied source trees, archives,
+logs and repeated captures were removed. Local cleanup removed 20,798,961,766
+bytes and retained an 889,130,544-byte capsule for the unfinished many-FE workstream:
+three verified Mac artifacts, the current 21 inputs, independent references and
+compact prior science. The new task's temporary checks are removed after recording
+these results. No SCC campaign, candidate qualification, default activation or
+two-FE work was launched. Both public defaults remain disabled; the existing
+many-FE candidate and valid completed science are retained. Work stops here.
+
+Check-capture identities: source integration `f45dd7e3f19f92a1177b8d220ad79dcc6af039ae61838550719c386b84ae8c50`;
+native tooling-smoke summary `0b9e682b363138c3429f79265c7638d300d995ad676837626aab12b6a7b2cf16`. These identify the deleted captures;
+the summaries above are the retained evidence.
+
 ## Incremental Auto implementation checks, 2026-10-17
 
-Current branch state: both public incremental defaults are disabled. The many-FE
+Before the suite replacement above, both public incremental defaults were disabled. The many-FE
 candidate passed discovery and B selection, but its C witness preparation timed
 out before native science. The provisional activation was rolled back; see the
 failed-confirmation record below. Two-FE remains independently eligible for its
@@ -29,8 +71,9 @@ reviewed declaration and fresh 42-cell panel now pass input validation. Fresh
 admission, independent witness preparation, native science, scientific
 postflight and independent scientific review pass. Its timing freeze then hit
 the fixed 1,800-second bound before producing a manifest. This second operational
-failure blocks collection and activation; the same finalist is retained pending
-Johannes's direction, with no automatic retry or advance to two-FE.
+failure blocks collection and activation; the same finalist was retained pending
+Johannes's direction, with no automatic retry or advance to two-FE. His subsequent
+compact-suite decision and completed tooling checks are recorded above.
 
 Branch `codex/auto-routing` implements the prospective
 [incremental qualification](SPEC.md#incremental-auto-qualification-2026-10-17).
@@ -408,7 +451,7 @@ observation; incomplete C confirmation does not establish a speed regression.
 
 The existing terminal exporter handles completed timing decisions, but not a
 failure before timing starts. The separately reviewed
-[`routing_failure`](../bench/routing_failure.py) extension now validates this
+`routing_failure` extension (subsequently retired with the old harness) validated this
 retained-only outcome without changing frozen selector files or manufacturing a
 timing decision. It checks the actual failed start/outcome, complete owned-process
 census, partial outputs, absent science/timing, admitted metadata and full file

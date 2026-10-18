@@ -1,0 +1,31 @@
+#!/bin/bash -l
+#$ -cwd
+#$ -j y
+#$ -P welfgr
+#$ -pe omp28 28
+#$ -l num_proc=28
+#$ -l h_rt=04:00:00
+#$ -l mem_per_core=3G
+set -euo pipefail
+if [[ $# != 2 ]]; then
+    echo 'Usage: qsub -t 1-N bench/qualify.sge MANIFEST OUTPUT_ROOT' >&2
+    exit 2
+fi
+module purge
+module load python3/3.12.4
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+export LC_ALL=C PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+read -r replica shard < <(python3 - "$1" "${SGE_TASK_ID:?array task required}" <<'PY'
+import json, sys
+manifest = json.load(open(sys.argv[1]))
+shards = manifest['shards']
+count = len(shards) if isinstance(shards, list) else shards
+replicas = manifest['replicas']
+task = int(sys.argv[2]) - 1
+if type(count) is not int or count < 1 or type(replicas) is not int or replicas < 1 or not 0 <= task < count * replicas:
+    raise SystemExit('array task outside declared shards/replicas')
+print(task // count, task % count)
+PY
+)
+python3 bench/qualify.py run "$1" --output "$2" --shard "$shard" --replica "$replica"
+# Collect qacct for each job/task after completion; run qualify.py report separately.
