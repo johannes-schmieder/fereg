@@ -317,8 +317,8 @@ cannot distinguish incidental tool-runtime activity from substantive competing
 work, yet its single hit aborts the whole run. A future protocol would need
 positive workload evidence and a prospectively reviewed rule for affected whole
 blocks; exempting every `node_repl` process would hide real tool work. This does
-not authorize a policy change, retrospective exclusion, another continuation or
-new sampling. Johannes's direction is required before further measurement.
+not itself authorize a policy change, retrospective exclusion, another continuation
+or new sampling. The later direction recorded below supersedes that stop condition.
 The [compact result](../bench/results/incremental-many-20261018-compact.json)
 retains this failure summary alongside the earlier Mac failure and valid Linux
 result. Current raw captures remain needed for the unresolved workstream; their
@@ -326,6 +326,77 @@ hashes identify the reviewed inputs rather than promising permanent retention.
 This terminal update changes only documentation and compact result metadata.
 JSON consistency, unchanged historical-result checks, added documentation
 references and `git diff --check` pass; valid executable/runtime checks are reused.
+
+### Practical Mac recovery, 2026-10-18
+
+Johannes subsequently directed practical Mac qualification with retries of specific
+tests affected by interference and identified Linux as the more important test.
+The completed Linux qualification remains the primary performance evidence and is
+reused unchanged. Mac keeps its own scientific and performance comparisons; no
+Linux result establishes Mac performance. Both failed Mac segments remain failed.
+
+The recovery retains the 26 completed cells whose full measurement spans have
+clear, sealed evidence under the previous stricter observer. These supply 610
+mirrored blocks, including the ten remaining original blocks for `dense-t1`.
+The entire partial `sixteen-fe-t1` attempt is excluded from acceptance. That cell
+and the fifteen unstarted cells receive their original 24-block schedule, fixed
+warmups, artifacts, inputs, seed and scientific tolerances. The flat plan binds
+the immediate failed plan, results, observations, independent scientific review
+and retained snapshots, with separate prior and current execution-source hashes.
+It does not reconstruct older confirmation or continuation chains.
+
+The new Mac screen records smaller known-tool activity as noise and flags at
+least one CPU-second within a valid interval of at most 7.5 seconds, or a known
+compute process runnable at 20% CPU or more. Ordinary desktop activity remains
+recorded noise. Each cell receives a synchronous tail observation; a flag
+overlapping its whole measurement span discards that entire attempt. One retry
+per affected cell is permitted after two clear sampled intervals within 120
+seconds, with at most four retried cells across the run. Persistent interference,
+an affected replacement or exhausted caps stops the run while retaining completed
+cells. Scientific disagreement, native failure, observation faults and input drift
+cannot be treated as interference retries. Retry science must agree exactly at
+the same worker count, including across discarded and accepted attempts.
+
+The sixteen fresh cells require 2,352 native calls before any retry. The new-call
+ceiling is 2,940, and the cumulative ceiling is 6,878 including all 3,938 historical
+calls. The remaining 12,747-second deadline preserves the original cumulative
+four-hour budget and includes quiet waits, preparation, checks, shutdown and
+final writes. Acceptance is assessed once, with the existing max(5%, 1 ms)
+allowance and conditional one-sided .025 bounds. A regression or inconclusive
+bound never requests more sampling. The first externally eligible attempt is
+used, regardless of which attempt was faster.
+
+This is a practical sampled interference screen. It can miss brief work, and
+smaller activity may still affect timings. Tail sampling changes CPU-delta
+intervals and may conservatively attribute post-solve activity to the cell;
+macOS CPU percentages can reflect earlier activity. Recorded classifier hits
+and activity summaries do not permit independent reclassification of every
+process. Block independence and a common median remain assumptions, without a
+simultaneous-coverage claim. Retained first-call arrays and repeat fingerprints
+support review; deleted timed arrays cannot be independently replayed.
+
+The maintained recovery path passes 182 benchmark-tool tests in 10.725 seconds,
+including local retry success, persistent interference, quiet-wait evidence,
+science-failure precedence, exact science across retries, drift and report
+tampering guards. Independent source review and exact plan review pass. Plan
+review and lead validation independently verify the 242 directly bound files
+(1,287,049,146 bytes): 82 original input/artifact files, 156 retained snapshot
+files and four immediate evidence references, plus 17 execution modules.
+Production identity is unchanged from `12395be2`: all 192 runtime modules and
+58 artifact inputs match, so valid runtime/native/transaction evidence is reused.
+No new native measurement occurred during this preparation.
+
+The recovery plan SHA-256 is
+`83473bb969671fc4390585566fd94d14ce3b7dcd8f3bc267c7f7ad5f94d8f621`.
+Independent source review is
+`dda8703d392e61da4351498b8a80787b6e3a1e1cd4aeff8758b2b5e3564f0530`,
+and independent plan review is
+`f174075b67d29d05e59cb305655694b8908a2cdf70de98275a166b8dcfac340b`.
+The [compact result](../bench/results/incremental-many-20261018-compact.json)
+retains the selected cells, original indices, policies, budgets, source vectors,
+test hash and review hashes. Its historical Linux and Mac outcome fields remain
+unchanged; the recovery section records reviewed preparation, not a passing
+qualification. Public defaults remain disabled and two-FE remains held.
 
 ## Incremental Auto implementation checks, 2026-10-17
 

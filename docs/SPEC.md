@@ -225,6 +225,15 @@ one node do not constitute independent nodes. Mac behavior and performance still
 require applicable Mac checks. See the [development protocol](development_workflow.md#controlled-timing-protocol-approved-2026-10-14)
 and [runner](../bench/README.md#fixed-candidate-qualification).
 
+Johannes's later 2026-10-18 clarification makes Linux the primary performance
+evidence and permits bounded Mac retries of individual tests affected by recorded
+interference. A completely quiet desktop is unnecessary. Preserve valid completed
+cells and keep all rejected attempts visible; freeze activity-based eligibility,
+per-cell and total retry limits before execution. Neither scientific/native
+failure nor unfavorable timing may trigger these retries. Scientific tolerances,
+protected timing allowances and the conditional uncertainty statement remain
+unchanged; a Linux pass does not become a Mac-specific speed claim.
+
 Qualify many-FE before two-FE. Both public defaults remain disabled until valid
 qualification passes. Public activation changes only the selected family's
 invocation wiring on the development branch. The first many-FE witness attempt

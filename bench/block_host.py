@@ -36,6 +36,11 @@ POLICY = {
 MAC_POLICY = {**POLICY, "name": "mac-desktop-roles-v2",
               "desktop_services": ["codex-app-server"]}
 
+# A practical prospective Mac screen. Smaller known-tool activity remains
+# recorded noise; neither threshold proves the absence of timing interference.
+MAC_RECOVERY_POLICY = {**MAC_POLICY, "name": "mac-cell-recovery-v1",
+                       "active_cpu_seconds": 1.0, "runnable_cpu_percent": 20.0}
+
 
 def desktop_role(command, executable=None):
     """Recognize a first subcommand, never an arbitrary argv substring."""

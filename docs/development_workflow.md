@@ -89,23 +89,41 @@ science but timing setup failed before timed calls. Its valid science and curren
 inputs may be reused: a timing-setup repair does not require regenerating them
 or replaying A/B. The report records missing or failed work honestly. Diagnose
 operational failures and attempt bounded repairs, retaining completed evidence.
-Resume only untouched work under the same plan; retain a partially timed failure
-for discussion rather than starting another attempt. If repairs do not resolve
+Ordinary resume uses only untouched work under the same plan; the reviewed Mac
+recovery below additionally permits local interference retries. If repairs do not resolve
 a blocker, science fails or timing remains inconclusive, discuss it with Johannes
 before abandoning the candidate or moving to the next step. No tool selects a
 replacement, launches another round or activates a default automatically.
 
-Johannes's subsequent direction to make Mac qualification work without a quiet
-desktop permits a prospective observer repair: recognize the verified Codex
-app-server role as ordinary recorded activity while continuing to detect active
-tool children, builds, tests and estimators. Keep balanced mirrored timings and
-the same uncertainty gate; never remove slow observations. A single reviewed
-`continue-plan` amendment may use only untouched slots after an operational
-failure, retaining the failed segment separately and debiting its execution time
-and calls. The partial slot is consumed, not completed or replaced. See the
-[Mac noise and continuation rules](../bench/README.md#results-repair-and-cleanup).
-This does not authorize a fresh full replacement panel, repeated extensions or
-advancing two-FE.
+Johannes's latest 2026-10-18 direction makes Linux the primary performance test
+and permits rerunning individual Mac tests that encounter interference. Preserve
+complete cells whose original scientific and observation evidence is valid;
+discard the entire affected partial cell and measure only it and unfinished
+cells. Historical runs retain their failed status. A flat recovery manifest binds
+the immediate source plan, results, raw observations and retained scientific
+snapshots, without replaying older continuation chains.
+
+The Mac recovery observer retains ordinary desktop activity and small known-tool
+bursts as noise. It flags at least one CPU-second within a valid sample interval
+of at most 7.5 seconds, or a known competing process runnable at 20% CPU or more.
+These are practical sampled screens, not proof of no interference; synchronous
+cell-tail samples can split CPU-delta intervals, and macOS CPU percentages can
+reflect earlier activity. All timings are retained. Seal each complete cell with
+a tail observation, then invalidate only an attempt whose measurement span
+overlaps flagged activity. Require two clear sampled intervals within a bounded
+120-second wait before its single retry. Allow at most four retried cells in the
+recovery. Persistent activity, exhausted caps or observation faults stop new work
+while preserving completed evidence. Scientific/native failures and unfavorable
+or inconclusive performance do not trigger retries. The existing max(5%, 1 ms)
+allowance, uncertainty gate and scientific checks remain unchanged.
+
+The current recovery retains 26 complete cells and runs the affected cell plus
+15 unstarted cells. Its maximum is 2,940 new calls, including warmups and four
+possible retries, and 6,878 cumulative calls including both failed segments.
+The 12,747-second execution budget keeps cumulative execution within the original
+four hours. There is one final performance assessment, not repeated looks until
+success. See the [Mac recovery rules](../bench/README.md#results-repair-and-cleanup).
+Two-FE remains held; no main merge or release-package changes are authorized.
 
 GitHub testing is paused. Mac remains the default qualification host; Johannes
 additionally requested bounded Linux and Windows build checks on 2026-10-07.

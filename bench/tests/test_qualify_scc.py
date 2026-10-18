@@ -70,6 +70,80 @@ class ReservationTests(unittest.TestCase):
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_recovery_records_small_tool_activity_and_does_not_stop_on_cell_interference(self):
+        def process(pid, executable, cpu, percent=0, state='S'):
+            return {'pid':pid, 'ppid':1, 'start':'Sun Oct 18 09:38:37 2026', 'state':state,
+                    'cpu_seconds':cpu, 'cpu_percent':percent, 'rss_kib':100,
+                    'executable':executable, 'executable_raw':executable, 'command':executable}
+        root = process(os.getpid(), 'Python', 1.)
+        tool = process(987654, 'node_repl', .03)
+        with tempfile.TemporaryDirectory() as tmp:
+            monitor = scc.MacMonitor(tmp, 4, recovery=True)
+            for second, p in [(1, tool), (6, {**tool, 'cpu_seconds':.1}),
+                              (11, {**tool, 'cpu_seconds':2.1})]:
+                raw = {'monotonic_ns':second*10**9, 'finished_monotonic_ns':second*10**9+1,
+                       'processes':[root,p]}
+                with patch.object(scc.block_host, 'snapshot', return_value=raw):
+                    monitor._sample('process')
+            rows = [json.loads(s) for s in Path(tmp, 'host-observations.jsonl').read_text().splitlines()]
+            self.assertEqual(rows[1]['competing_compute'], [])
+            self.assertAlmostEqual(rows[1]['known_tool_activity'][0]['cpu_delta_seconds'], .07)
+            self.assertEqual(len(rows[2]['competing_compute']), 1)
+            self.assertEqual(len(monitor.interference), 1)
+            self.assertEqual(monitor.errors, [])
+            self.assertTrue(monitor.report()['cell_eligibility_required'])
+            self.assertEqual(monitor.report()['process_policy']['name'], 'mac-cell-recovery-v1')
+
+    def test_cell_seal_localizes_intervals_and_fails_on_missing_observation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            monitor = scc.MacMonitor(tmp, 4, recovery=True)
+            monitor.interference = [{'start_monotonic_ns':10, 'end_monotonic_ns':20, 'pid':123},
+                                    {'start_monotonic_ns':40, 'end_monotonic_ns':40, 'pid':456}]
+            def sample(_):
+                monitor.previous = {'monotonic_ns':50}
+            with patch.object(monitor, 'check'), patch.object(monitor, '_sample', side_effect=sample) as tail:
+                self.assertEqual(monitor.interference_between(21, 39), [])
+                self.assertEqual([h['pid'] for h in monitor.interference_between(19, 30)], [123])
+                self.assertEqual([h['pid'] for h in monitor.interference_between(30, 40)], [456])
+                self.assertEqual(tail.call_count, 3)
+            with patch.object(monitor, 'check'), patch.object(monitor, '_sample', side_effect=scc.OperationalError('ps failed')):
+                with self.assertRaisesRegex(scc.OperationalError, 'ps failed'):
+                    monitor.interference_between(30, 40)
+            self.assertEqual(monitor.errors, ['ps failed'])
+
+    def test_retry_wait_includes_tail_activity_and_is_bounded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            monitor = scc.MacMonitor(tmp, 4, recovery=True)
+            clock = [1.]
+            def wait(seconds):
+                clock[0] += seconds
+                return False
+            def sample(_):
+                # Runnable activity appears at the tail, just after seal time.
+                endpoint = int(clock[0]*1e9)+1
+                monitor.previous = {'monotonic_ns':endpoint}
+                monitor.interference.append({'start_monotonic_ns':endpoint,'end_monotonic_ns':endpoint})
+            with patch.object(scc.time, 'monotonic', side_effect=lambda:clock[0]), \
+                 patch.object(scc.time, 'monotonic_ns', side_effect=lambda:int(clock[0]*1e9)), \
+                 patch.object(monitor.stop, 'wait', side_effect=wait), patch.object(monitor, 'check'), \
+                 patch.object(monitor, '_sample', side_effect=sample):
+                with self.assertRaises(scc.QuietTimeout):
+                    monitor.await_quiet(15)
+            self.assertEqual(clock[0], 16)
+            clock[0], monitor.interference = 1., []
+            def clean(_):
+                monitor.previous = {'monotonic_ns':int(clock[0]*1e9)}
+            with patch.object(scc.time, 'monotonic', side_effect=lambda:clock[0]), \
+                 patch.object(scc.time, 'monotonic_ns', side_effect=lambda:int(clock[0]*1e9)), \
+                 patch.object(monitor.stop, 'wait', side_effect=wait), patch.object(monitor, 'check'), \
+                 patch.object(monitor, '_sample', side_effect=clean):
+                receipt = monitor.await_quiet(15)
+            self.assertEqual(clock[0], 11)
+            self.assertEqual(receipt, {'started_monotonic_ns': 1_000_000_000,
+                'finished_monotonic_ns': 11_000_000_000,
+                'clean_intervals': [{'start_monotonic_ns': 1_000_000_000, 'end_monotonic_ns': 6_000_000_000},
+                                    {'start_monotonic_ns': 6_000_000_000, 'end_monotonic_ns': 11_000_000_000}]})
+
     def test_mac_records_app_server_noise_and_keeps_build_detection(self):
         def process(pid, parent, executable, command):
             return {'pid': pid, 'ppid': parent, 'start': 'Sun Oct 18 07:29:42 2026',

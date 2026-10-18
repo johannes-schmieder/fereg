@@ -69,6 +69,16 @@ build settings and hashes of the actual binaries, harness, inputs and references
 verify them once per job and use lightweight drift checks during execution.
 Do not add receipt chains, repeated history walks or automatic sampling ladders.
 
+Johannes's later 2026-10-18 direction makes Linux the primary performance test
+and requires practical Mac qualification on an active desktop. Recover complete
+Mac cells with valid artifact, scientific and observation evidence; rerun only
+tests affected by externally observed interference, within fixed per-cell and
+total retry caps. Ordinary desktop noise stays in the measurements. Do not
+restart the whole battery, retry a scientific/native failure, or use a slow or
+inconclusive result to trigger more sampling. Retain failed attempts and all
+their observations; historical run failures remain failures. Freeze the recovery
+schedule, observer policy and budgets before execution, then assess it once.
+
 Protect the original uninjected Auto at `f35f3a4d` and the last accepted branch
 Auto on every workload with max(5%, 1 ms). Retain the 42-cell routing coverage,
 independent numerical witnesses, exact/scoped science, fixed-worker repeatability,
@@ -152,9 +162,10 @@ fields, instruction counts within noise) reuses prior timing evidence.
 
 Johannes's 2026-10-11 clarification: finish production edits, focused checks and
 targeted profiling before starting the full timing panel on a stable candidate.
-The current qualification round has one fixed measurement budget. An operational
-repair may resume only untouched work while retaining valid completed evidence;
-it does not authorize another timing attempt or a larger sample. A changed
+The current qualification round has one fixed measurement budget. The later
+Mac recovery decision above additionally permits bounded retries of specifically
+interfered tests while retaining valid completed evidence. It does not permit
+sampling until a performance pass. A changed
 artifact requires reassessing which evidence remains valid. See `docs/development_workflow.md` for the protocol.
 Performance coverage targets material measured costs: negligible residual library
 FMA calls outside hot loops are not by themselves a failure. Quantify residual

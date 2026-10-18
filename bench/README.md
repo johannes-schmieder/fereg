@@ -564,14 +564,19 @@ observer records ordinary CPU/RSS activity, including a verified `codex app-serv
 role, without rejecting observations because of that activity. The role requires
 the OS executable identity and an unambiguous first subcommand; an argument that
 merely mentions `app-server` does not qualify. The server is not an owned process:
-its active tool children, `codex exec`, builds, tests and estimators still block
-the run. Unknown desktop activity remains recorded noise. Missing observations,
+its tool children, `codex exec`, builds, tests and estimators remain classified.
+The prospective Mac recovery policy flags substantial sampled activity: at least
+one CPU-second in a valid interval no longer than 7.5 seconds, or a known process
+runnable at 20% CPU or more. Lesser activity stays recorded noise, including the
+earlier 70 ms tool-runtime burst. A flag affects only its overlapping cell attempt.
+The older strict plans keep their original policy and failed outcomes.
+Unknown desktop activity remains recorded noise. Missing observations,
 artifact drift, native failures and scientific failures retain their failure
 semantics. Python executable-name matching handles macOS's capitalized name,
 but still requires a known test module or repository script. The SCC reservation
 and competing-compute thresholds are unchanged.
 
-Every mirrored block keeps all its timings, including slow observations. Balanced
+Every attempt keeps all its timings, including slow observations. Balanced
 randomized order reduces order effects; the confidence bound, rather than a CPU
 quietness threshold, determines whether noisy results support nonregression.
 Mirroring does not prove independence or remove session-wide effects. Report
@@ -593,8 +598,9 @@ Diagnose operational failures and attempt bounded repairs. `run --resume` is
 limited to unchanged plans on the same host. Completed Mac cells can be reused
 only with valid original host observations; SCC continuation after completed
 timing cells requires discussion and reviewed accounting.
-A partially timed failure cannot be replaced with a new attempt. Preserve actual
-failure details, and discuss an unresolved repair with Johannes before abandoning
+Ordinary resume does not replace a partially timed failure. The later user-approved
+Mac recovery below permits a bounded retry of a specifically interfered cell.
+Preserve actual failure details, and discuss an unresolved repair before abandoning
 the candidate or changing the next step. Already valid science and unchanged
 current inputs are reusable; a timing-setup failure does not require replaying
 old A/B stages or generating new inputs.
@@ -619,6 +625,51 @@ python3 bench/qualify.py run REMAINDER_PLAN.json --output target/tmp/TASK/mac-re
 
 The new plan stays beside the original plan so relative input bindings do not
 change. The output directory is new; the original failed output is immutable.
+
+Johannes subsequently authorized practical Mac recovery with local retries and
+Linux as the primary performance test. This supersedes the earlier restriction
+to one untouched-slot continuation. Preserve completed cells under their original
+source, science and per-cell observation evidence; the historical run remains
+failed. A flat recovery manifest directly binds the immediate plan, result, raw
+host observations and retained scientific snapshots. It does not follow older
+continuation references. An affected partial cell is discarded as a whole and
+rerun with the same candidate, inputs, warmups, balanced orders and sample count.
+Unstarted cells run normally; the entire battery is never restarted.
+
+```sh
+python3 bench/qualify.py recovery-plan REMAINDER_PLAN.json REMAINDER_RUN/run-0-0/results.json \
+  --host REMAINDER_RUN/run-0-0/host-0/host-observations.jsonl \
+  --review INDEPENDENT_FAILURE_REVIEW.json --output RECOVERY_PLAN.json
+python3 bench/qualify.py run RECOVERY_PLAN.json --output target/tmp/TASK/mac-recovery
+python3 bench/qualify.py report RECOVERY_PLAN.json --output target/tmp/TASK/mac-recovery
+```
+
+Create the recovery plan beside the immediate prior plan, review it before any
+native call, and run the report once after terminal validation. The independent
+failure review must bind the exact prior plan, result and observation file; its
+scientific checks and limitations remain part of the new plan.
+
+New Mac interference events are recorded without aborting the entire job.
+Before accepting a cell, synchronously observe its tail and check its whole span
+from first warmup through last timed call. Overlap with an external activity flag
+invalidates that attempt regardless of its scores. It may run once more after two
+clear sampled intervals, waiting at most 120 seconds. Freeze at most one retry
+per cell and four retried cells total. Count every native call, including warmups
+and discarded attempts, against the frozen cap; the whole-run deadline includes
+waits, preparation, science, observer shutdown and final writes. Stop on persistent
+interference or exhausted caps. Observation faults, drift, native timeouts and
+scientific failures keep their original failure semantics and cannot be retried
+as interference. Regression or inconclusive performance never triggers sampling.
+
+The CPU screen is deliberately practical. Small activity can still influence
+timings, a tail sample can conservatively attribute post-solve activity to the
+cell, and sampling can miss brief work. Forced tail samples split CPU-delta
+intervals; macOS `%CPU` can reflect earlier activity. Retain these limitations,
+one session per eligible cell, and conditional independence/common-median bounds.
+The first externally eligible attempt supplies the cell's observations; do not
+choose whichever attempt is faster. Report retained cells, every discarded
+attempt, retries and all actual call/time accounting. Reuse the completed Linux
+report without rerunning it against subsequently changed checker sources.
 
 All output belongs under one `target/tmp/TASK/` directory. The runner retains
 compact results and first-call output snapshots, removing repeated successful

@@ -20,6 +20,20 @@ def sample(second, processes):
             "load_average": [0.5, 0.5, 0.5]}
 
 class ProcessEvidence(unittest.TestCase):
+    def test_mac_recovery_keeps_small_runtime_activity_but_detects_substantial_work(self):
+        first = process(command='node_repl', cpu=.03)
+        small = {**first, 'cpu_seconds': .1}
+        samples = [sample(1, [first]), sample(6, [small])]
+        self.assertEqual(len(host.process_activity(samples, [], host.MAC_POLICY)), 1)
+        self.assertEqual(host.process_activity(samples, [], host.MAC_RECOVERY_POLICY), [])
+        large = {**first, 'cpu_seconds': 1.03}
+        hit, = host.process_activity([samples[0], sample(6, [large])], [], host.MAC_RECOVERY_POLICY)
+        self.assertEqual(hit['cpu_delta_seconds'], 1.)
+        running = process(command='cargo test', percent=20, state='R')
+        self.assertEqual(len(host.process_activity([sample(6, [running])], [], host.MAC_RECOVERY_POLICY)), 1)
+        self.assertEqual(host.POLICY['active_cpu_seconds'], .05)
+        self.assertEqual(host.MAC_POLICY['active_cpu_seconds'], .05)
+
     def test_mac_desktop_role_is_exact_and_does_not_exempt_cli_work(self):
         server = '/Applications/ChatGPT.app/codex -c features.code_mode_host=true app-server --analytics-default-enabled'
         role = host.desktop_role(server, 'codex')

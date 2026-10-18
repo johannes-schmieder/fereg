@@ -28,6 +28,56 @@ class Monitor:
     def report(self): return {'isolation_ok': True}
 
 
+class RecoveryMonitor(Monitor):
+    hits = []
+    quiet_failure = False
+
+    def __init__(self, directory, *args, recovery=False):
+        super().__init__(directory, *args)
+        from block_host import MAC_RECOVERY_POLICY
+        self.process_policy = copy.deepcopy(MAC_RECOVERY_POLICY)
+        self.process_policy['executables'] += ['actual_plugin_loader_test', 'actual_plugin_l']
+        self.pending_hits = list(type(self).hits)
+        self.events = []
+
+    def sample(self, hits=()):
+        now = time.monotonic_ns()
+        self.events.append({'kind': 'process', 'monotonic_ns': now, 'finished_monotonic_ns': now,
+                            'competing_compute': list(hits)})
+        (self.directory / 'host-observations.jsonl').write_text(''.join(json.dumps(r)+'\n' for r in self.events))
+
+    def __enter__(self):
+        super().__enter__()
+        self.sample()
+        return self
+
+    def __exit__(self, *_): self.sample()
+
+    def interference_between(self, start, end):
+        hits = [{'start_monotonic_ns': start, 'end_monotonic_ns': end, 'category': 'test-compute'}] if (
+                self.pending_hits.pop(0) if self.pending_hits else False) else []
+        self.sample(hits)
+        return hits
+
+    def await_quiet(self, deadline_seconds=120):
+        if self.quiet_failure:
+            from qualify_scc import QuietTimeout
+            raise QuietTimeout('synthetic noisy desktop')
+        start = time.monotonic_ns()
+        self.sample()
+        middle = self.events[-1]['monotonic_ns']
+        self.sample()
+        end = self.events[-1]['monotonic_ns']
+        return {'started_monotonic_ns': start, 'finished_monotonic_ns': time.monotonic_ns(),
+                'clean_intervals': [{'start_monotonic_ns': start, 'end_monotonic_ns': middle},
+                                    {'start_monotonic_ns': middle, 'end_monotonic_ns': end}]}
+
+    def report(self):
+        return {'isolation_ok': True, 'host': {'hostname': qualify.socket.gethostname(), 'platform': 'Darwin'},
+                'process_policy': self.process_policy, 'cell_eligibility_required': True,
+                'observations': 'host-observations.jsonl', 'errors': []}
+
+
 class Qualification(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
@@ -593,6 +643,146 @@ class Qualification(unittest.TestCase):
         self.assertEqual(record['status'], 'blocked')
         self.assertEqual(len(self.calls), 1)
         self.assertIn('changed', record['failures'][-1]['error'])
+
+    def recovery_fixture(self):
+        prior = self.run_round()
+        first, second = prior['cases'][:2]
+        prior['cases'] = [first, second]
+        start, end = qualify.cell_records(first, qualify.read(self.manifest), 0, range(2))
+        next_start = second['warmups'][0]['started_monotonic_ns']
+        next_end = second['blocks'][0]['calls'][-1]['finished_monotonic_ns']
+        events = [{'kind': 'process', 'monotonic_ns': t, 'finished_monotonic_ns': t, 'competing_compute': []}
+                  for t in (start-1, end+1, next_start, next_end+1)]
+        events[-1]['competing_compute'] = [{'start_monotonic_ns': next_start, 'end_monotonic_ns': next_end,
+                                           'category': 'old-strict-hit'}]
+        second['blocks'] = [second['blocks'][0], {**second['blocks'][1], 'status': 'running', 'calls': []}]
+        second['status'] = 'running'
+        prior.update(status='blocked', failures=[{'kind': 'operational', 'error': 'known competing compute observed'}],
+                     elapsed_s=1., budget_compliant=True, cleanup_overrun_s=0,
+                     host={'host': {'hostname': qualify.socket.gethostname(), 'platform': 'Darwin'},
+                           'observations': 'host-observations.jsonl', 'isolation_ok': False})
+        path = self.output / 'run-0-0/results.json'
+        raw_host = path.parent / 'host-0/host-observations.jsonl'
+        qualify.write(path, prior)
+        raw_host.write_text(''.join(json.dumps(r)+'\n' for r in events))
+        review_path = self.root / 'independent-review.json'
+        qualify.write(review_path, {'kind': 'compact_mac_remainder_independent_failure_review', 'status': 'passed_failure_review',
+                      'completed_cells': 1, 'limits': ['Synthetic scientific evidence for tooling tests only.'],
+                      **{k: {'path': str(p.relative_to(self.root)), 'sha256': qualify.digest(p)} for k, p in
+                         (('plan', self.manifest), ('results', path), ('observer', raw_host))}})
+        new_path = self.root / 'recovery.json'
+        plan = qualify.recovery_plan(self.manifest, path, raw_host, review_path, new_path)
+        self.output = self.root / 'target/tmp/recovery'
+        self.calls.clear()
+        return plan, new_path, path, raw_host
+
+    def test_recovery_reuses_clean_cell_and_retries_only_interfered_cell(self):
+        plan, path, prior, raw_host = self.recovery_fixture()
+        historical = (prior.read_bytes(), raw_host.read_bytes())
+        self.assertEqual(plan['recovery']['reused_cells'], ['fixture-t1'])
+        self.assertEqual(plan['recovery']['fresh_cells'], ['fixture-t4'])
+        self.assertEqual((plan['recovery']['baseline_calls'], plan['recovery']['new_call_cap']), (5, 10))
+        with patch('qualify_scc.MacMonitor', RecoveryMonitor), patch.object(RecoveryMonitor, 'hits', [True, False]):
+            record = qualify.run(path, self.output, execute=self.execute)
+        self.assertEqual(record['status'], 'complete', record)
+        self.assertEqual(len(self.calls), 10)
+        self.assertEqual(record['retry_cells'], ['fixture-t4'])
+        self.assertEqual(len(record['discarded_attempts']), 1)
+        self.assertTrue(record['cases'][0]['reused'])
+        self.assertEqual(record['cases'][1]['attempt'], 1)
+        report = qualify.report(path, self.output)
+        self.assertEqual(report['status'], 'smoke_complete', report)
+        self.assertEqual(report['recovery']['new_calls'], 10)
+        self.assertEqual(historical, (prior.read_bytes(), raw_host.read_bytes()))
+        results = self.output / 'run-0-0/results.json'
+        for mutate in (lambda r: r['cases'][1]['eligibility'].update(interference=[{}]),
+                       lambda r: r['discarded_attempts'][0]['eligibility'].update(interference=[]),
+                       lambda r: r['discarded_attempts'][0]['warmups'][0].update(fingerprint='b'*64),
+                       lambda r: r['discarded_attempts'][0]['references'].clear(),
+                       lambda r: r['cases'][1]['quiet_wait'].update(finished_monotonic_ns=1),
+                       lambda r: r['cases'][1]['quiet_wait']['clean_intervals'].pop(),
+                       lambda r: r['host'].update(errors=['observer failed']),
+                       lambda r: r.update(native_calls_started=11),
+                       lambda r: r['cases'][0]['blocks'][0]['calls'][0].update(seconds=9)):
+            changed = copy.deepcopy(record)
+            mutate(changed)
+            qualify.write(results, changed)
+            self.assertEqual(qualify.report(path, self.output)['status'], 'needs_discussion')
+        qualify.write(results, record)
+        rejected_ref = self.output / 'run-0-0' / next(iter(record['discarded_attempts'][0]['references'].values()))
+        rejected_ref.with_suffix('.npz').write_bytes(b'changed rejected scientific output')
+        self.assertEqual(qualify.report(path, self.output)['status'], 'needs_discussion')
+
+    def test_recovery_stops_on_second_hit_or_failed_quiet_gate(self):
+        _, path, _, _ = self.recovery_fixture()
+        for quiet, hits, count in ((False, [True, True], 10), (True, [True], 5)):
+            self.output = self.root / f'target/tmp/recovery-{quiet}'
+            self.calls.clear()
+            with patch('qualify_scc.MacMonitor', RecoveryMonitor), patch.object(RecoveryMonitor, 'hits', hits), \
+                    patch.object(RecoveryMonitor, 'quiet_failure', quiet):
+                record = qualify.run(path, self.output, execute=self.execute)
+            self.assertEqual(record['status'], 'blocked')
+            self.assertEqual(len(self.calls), count)
+            self.assertEqual([c['id'] for c in record['cases']], ['fixture-t1'])
+            self.assertTrue(record['discarded_attempts'])
+
+    def test_recovery_global_four_retry_cap_stops_fifth_affected_cell(self):
+        self.config['cases'] += [{**self.config['cases'][0], 'id': f'extra{i}'} for i in range(2)]
+        plan, path, _, _ = self.recovery_fixture()
+        self.assertEqual(len(plan['recovery']['fresh_cells']), 5)
+        self.assertEqual(plan['recovery']['new_call_cap'], 45)
+        with patch('qualify_scc.MacMonitor', RecoveryMonitor), patch.object(RecoveryMonitor, 'hits', [True, False]*4+[True]):
+            record = qualify.run(path, self.output, execute=self.execute)
+        self.assertEqual(record['status'], 'blocked')
+        self.assertEqual(len(record['retry_cells']), 4)
+        self.assertEqual(len(record['discarded_attempts']), 5)
+        self.assertEqual(len(self.calls), 45)
+        self.assertEqual(len(record['cases']), 5)  # One reused plus four completed new cells.
+
+    def test_recovery_never_retries_scientific_or_native_failures(self):
+        _, path, _, _ = self.recovery_fixture()
+        self.oracle.side_effect = ValueError('independent science failed')
+        with patch('qualify_scc.MacMonitor', RecoveryMonitor), patch.object(RecoveryMonitor, 'hits', [True]):
+            record = qualify.run(path, self.output, execute=self.execute)
+        self.assertEqual(record['failures'][-1]['kind'], 'scientific')
+        self.assertEqual(len(self.calls), 1)
+        self.assertFalse(record['retry_cells'])
+
+    def test_recovery_requires_exact_same_worker_science_across_attempts(self):
+        _, path, _, _ = self.recovery_fixture()
+        def drift(*args):
+            if len(self.calls) == 5:
+                self.data[1, 0] += 1e-12  # Within numerical tolerance, but not an exact repeat.
+            return self.execute(*args)
+        with patch('qualify_scc.MacMonitor', RecoveryMonitor), patch.object(RecoveryMonitor, 'hits', [True, False]):
+            record = qualify.run(path, self.output, execute=drift)
+        self.assertEqual(record['status'], 'blocked')
+        self.assertEqual(record['failures'][-1]['kind'], 'scientific')
+        self.assertIn('retry science changed', record['failures'][-1]['error'])
+        self.assertEqual(len(self.calls), 6)
+
+    def test_recovery_report_checks_all_inputs_and_global_raw_observer_errors(self):
+        _, path, _, _ = self.recovery_fixture()
+        with patch('qualify_scc.MacMonitor', RecoveryMonitor):
+            record = qualify.run(path, self.output, execute=self.execute)
+        raw = self.output / 'run-0-0/host-0/host-observations.jsonl'
+        with raw.open('a') as stream:
+            stream.write(json.dumps({'kind': 'error', 'monotonic_ns': time.monotonic_ns(), 'error': 'late observer failure'})+'\n')
+        record['host_observations_sha256'] = qualify.digest(raw)
+        qualify.write(self.output / 'run-0-0/results.json', record)
+        report = qualify.report(path, self.output)
+        self.assertIn('observer fault', str(report['errors']))
+        self.plugin.write_bytes(b'changed artifact')
+        self.assertIn('identity mismatch', str(qualify.report(path, self.output)['errors']))
+
+    def test_recovery_host_span_requires_tail_and_no_gaps_or_faults(self):
+        sample = lambda t: {'kind': 'process', 'monotonic_ns': t, 'finished_monotonic_ns': t, 'competing_compute': []}
+        events = [sample(1), sample(100), sample(200)]
+        self.assertFalse(qualify.span_evidence(events, 10, 150)['interference'])
+        for bad in (events[:-1], [sample(1), sample(10_000_000_000)],
+                    [*events, {'kind': 'error', 'monotonic_ns': 50, 'error': 'observer failed'}]):
+            with self.assertRaises(ValueError):
+                qualify.span_evidence(bad, 10, 150)
 
 
 class Statistics(unittest.TestCase):

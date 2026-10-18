@@ -23,6 +23,10 @@ class OperationalError(RuntimeError):
     """Missing or invalid host evidence; no scientific or performance verdict."""
 
 
+class QuietTimeout(OperationalError):
+    """Known activity persisted through the bounded wait before a local retry."""
+
+
 def require(condition, message):
     if not condition:
         raise OperationalError(message)
@@ -139,6 +143,8 @@ class HostMonitor:
         self.started = self.finished = None
         self.recording = False
         self.ending = None
+        self.local_recovery = False
+        self.interference = []
         self.process_policy = copy.deepcopy(block_host.POLICY)
         self.process_policy['executables'] += ['actual_plugin_loader_test', 'actual_plugin_l']
 
@@ -191,6 +197,16 @@ class HostMonitor:
                         changed = True
             policy = self.process_policy
             hits = block_host.process_activity(([self.previous] if self.previous else []) + [raw], self.owned, policy)
+            small_activity = []
+            if self.local_recovery:
+                # process_activity also visits the previous endpoint. That point
+                # was already recorded and must not be attributed to a new cell.
+                hits = [h for h in hits if h['end_monotonic_ns'] == raw['monotonic_ns']]
+                small_activity = [h for h in block_host.process_activity(
+                    ([self.previous] if self.previous else []) + [raw], self.owned, block_host.MAC_POLICY)
+                    if h['end_monotonic_ns'] == raw['monotonic_ns']]
+                with self.lock:
+                    self.interference.extend(copy.deepcopy(hits))
             raw['competing_compute'] = hits
             activity = ordinary_activity(processes, self.previous, self.owned)
             services = []
@@ -204,8 +220,9 @@ class HostMonitor:
             self._record('process', {key: raw[key] for key in
                          ('monotonic_ns', 'finished_monotonic_ns', 'competing_compute')} |
                           {'observed_processes': len(processes), 'owned_processes': len(self.owned),
-                          'ordinary_activity': activity, 'desktop_services': services})
-            require(not hits, 'known competing compute observed')
+                          'ordinary_activity': activity, 'desktop_services': services} |
+                          ({'known_tool_activity': small_activity} if self.local_recovery else {}))
+            require(self.local_recovery or not hits, 'known competing compute observed')
         finish = time.monotonic_ns()
         previous = self.samples.get(kind)
         gap = self.intervals[kind] + (15 if kind == 'census' else 2.5)
@@ -295,20 +312,28 @@ class HostMonitor:
                         'stale ' + kind + ' observer')
 
     def report(self):
-        return {'schema': 1, 'host': copy.deepcopy(self.host), 'started_monotonic_ns': self.started,
+        result = {'schema': 1, 'host': copy.deepcopy(self.host), 'started_monotonic_ns': self.started,
                 'finished_monotonic_ns': self.finished, 'measurement_end_monotonic_ns': self.ending, 'samples': copy.deepcopy(self.samples),
                 'errors': list(self.errors), 'isolation_ok': bool(self.started and self.finished and not self.errors),
                 'process_policy': copy.deepcopy(self.process_policy),
                 'observations': 'host-observations.jsonl', 'accounting_required': 'job_id' in self.host,
                 'scope': 'Sampled known competing compute; ordinary OS activity retained. SCC also requires a whole-node reservation.'}
+        if self.local_recovery:
+            with self.lock:
+                result['interference'] = copy.deepcopy(self.interference)
+            result['cell_eligibility_required'] = True
+            result['scope'] = ('Sampled Mac activity with per-cell eligibility; isolation_ok only establishes '
+                               'observer completion. Ordinary and lesser known-tool activity is retained noise.')
+        return result
 
 
 class MacMonitor(HostMonitor):
     """Focused Mac observation shares the SCC process/lifecycle implementation."""
-    def __init__(self, output_dir, required_threads, **kwargs):
+    def __init__(self, output_dir, required_threads, *, recovery=False, **kwargs):
         super().__init__(output_dir, required_threads, **kwargs)
         self.intervals.pop('census')
-        self.process_policy = copy.deepcopy(block_host.MAC_POLICY)
+        self.local_recovery = recovery
+        self.process_policy = copy.deepcopy(block_host.MAC_RECOVERY_POLICY if recovery else block_host.MAC_POLICY)
         self.process_policy['executables'] += ['actual_plugin_loader_test', 'actual_plugin_l']
 
     def _admit(self):
@@ -318,3 +343,46 @@ class MacMonitor(HostMonitor):
 
     def _reservation(self):
         require(os.cpu_count() == self.host['cpus'], 'Mac CPU availability changed')
+
+    def interference_between(self, start_ns, end_ns):
+        """Seal a cell with a tail sample; eligibility never depends on its timings."""
+        require(self.local_recovery, 'cell eligibility requires the recovery observer')
+        require(type(start_ns) is type(end_ns) is int and 0 < start_ns <= end_ns,
+                'invalid cell observation interval')
+        self.check()
+        try:
+            self._sample('process')
+            require(self.previous['monotonic_ns'] >= end_ns, 'cell tail was not observed')
+        except Exception as error:
+            self._error(error)
+            raise
+        self.check()
+        with self.lock:
+            return copy.deepcopy([h for h in self.interference
+                                  if h['start_monotonic_ns'] <= end_ns and h['end_monotonic_ns'] >= start_ns])
+
+    def await_quiet(self, deadline_seconds=120):
+        """Wait for two clear sampled intervals, bounded by the runner deadline too."""
+        require(self.local_recovery and 0 < deadline_seconds <= 120, 'invalid retry wait')
+        end = time.monotonic() + deadline_seconds
+        started = boundary = time.monotonic_ns()
+        clean = []
+        while time.monotonic() < end:
+            self.check()
+            if self.stop.wait(min(self.intervals['process'], max(0, end-time.monotonic()))):
+                raise OperationalError('observer stopped during retry wait')
+            finish = time.monotonic_ns()
+            self.interference_between(boundary, finish)
+            with self.lock:
+                # Include runnable activity at the new tail endpoint, even
+                # though that endpoint is later than the requested seal time.
+                hits = [h for h in self.interference if h['end_monotonic_ns'] >= boundary]
+            tail = self.previous['monotonic_ns']
+            clean = [] if hits else [*clean, {'start_monotonic_ns': boundary, 'end_monotonic_ns': tail}]
+            if time.monotonic() > end:
+                break
+            if len(clean) == 2:
+                return {'started_monotonic_ns': started, 'finished_monotonic_ns': time.monotonic_ns(),
+                        'clean_intervals': clean}
+            boundary = tail
+        raise QuietTimeout('known activity did not clear within the retry wait')
