@@ -431,6 +431,169 @@ class Qualification(unittest.TestCase):
             qualify.compare_artifacts(manifest, {**self.meta, 'absorbed_terms': 4},
                                       {'candidate': second, 'hidden': first})
 
+    def failed_prior(self, blocks=8, started=2):
+        self.config['blocks'] = blocks
+        self.plan()
+        old = qualify.read(self.manifest)
+        aliases = qualify.artifact_aliases(old)
+        arms = list(dict.fromkeys(aliases.values()))
+        detail = lambda role: {'execution': role, 'fingerprint': 'a'*64, 'seconds': .01}
+        schedule = qualify.orders(arms, blocks, old['seed'])
+        rows = [{'index': i, 'order': schedule[i], 'status': 'complete' if i < started-1 else 'running',
+                 'calls': [detail(r) for r in schedule[i]] if i < started-1 else []} for i in range(started)]
+        previous = {'manifest_sha256': qualify.routing.identity(old), 'status': 'blocked', 'shard': 0, 'replica': 0,
+                    'platform': 'Darwin', 'hostname': qualify.socket.gethostname(), 'elapsed_s': 2.25,
+                    'budget_compliant': True, 'cleanup_overrun_s': 0,
+                    'failures': [{'kind': 'operational'}], 'execution_sources': old['execution_sources'],
+                    'host': {'host': {'hostname': qualify.socket.gethostname(), 'platform': 'Darwin'},
+                             'started_monotonic_ns': 1, 'finished_monotonic_ns': 2, 'isolation_ok': False},
+                    'cases': [{'id': 'fixture-t1', 'family': 'no-fe', 'aliases': aliases, 'host_attempt': 0,
+                               'status': 'running', 'warmups': [detail(r) for r in arms], 'blocks': rows}]}
+        path = self.root / 'failed.json'
+        qualify.write(path, previous)
+        return old, previous, path
+
+    def test_continuation_debits_partial_block_preserves_order_and_uses_only_new_calls(self):
+        old, previous, prior_path = self.failed_prior()
+        before = [p.read_bytes() for p in (self.manifest, prior_path)]
+        new_path = self.root / 'continued.json'
+        new = qualify.continuation_plan(self.manifest, prior_path, new_path)
+        state = new['continuation']
+        self.assertEqual(state['block_indices'], {'fixture-t1': list(range(2, 8)), 'fixture-t4': list(range(8))})
+        self.assertEqual((state['prior_calls'], state['warmup_calls'], state['timed_calls']), (3, 2, 28))
+        self.assertEqual(new['budget_s'], 27)
+        self.assertEqual((new['seed'], new['blocks'], new['files'], new['cases'], new['artifacts']),
+                         (old['seed'], old['blocks'], old['files'], old['cases'], old['artifacts']))
+        record = qualify.run(new_path, self.output, execute=self.execute)
+        self.assertEqual(record['status'], 'complete', record)
+        self.assertEqual(len(self.calls), 30)
+        self.assertEqual([r['index'] for r in record['cases'][0]['blocks']], list(range(2, 8)))
+        expected = qualify.orders(list(dict.fromkeys(qualify.artifact_aliases(old).values())), 8, old['seed'])
+        self.assertEqual([r['order'] for r in record['cases'][0]['blocks']], expected[2:])
+        report = qualify.report(new_path, self.output)
+        self.assertEqual(report['status'], 'smoke_complete', report)
+        self.assertEqual(report['native_calls'], 30)
+        self.assertEqual(report['continuation']['prior_calls'], 3)
+        self.assertEqual(report['continuation']['planned_total_calls'], 33)
+        self.assertEqual(report['continuation']['prior_complete_blocks'], 1)
+        self.assertEqual(report['continuation']['prior_partial_blocks'], 1)
+        self.assertFalse(report['continuation']['prior_observations_used'])
+        self.assertAlmostEqual(report['continuation']['cumulative_elapsed_s'], 2.25+record['elapsed_s'])
+        self.assertEqual(before, [p.read_bytes() for p in (self.manifest, prior_path)])
+        result_path = self.output / 'run-0-0/results.json'
+        for mutate in (lambda r: r['cases'][0]['blocks'][0].update(index=0),
+                       lambda r: r.update(hostname='other-host'),
+                       lambda r: r['cases'][0]['blocks'][0]['calls'][0].update(started_monotonic_ns=0)):
+            changed = copy.deepcopy(record)
+            mutate(changed)
+            qualify.write(result_path, changed)
+            self.assertEqual(qualify.report(new_path, self.output)['status'], 'needs_discussion')
+
+    def test_continuation_keeps_old_source_vector_but_binds_current_code(self):
+        old, previous, prior_path = self.failed_prior()
+        old['execution_sources']['qualify'] = 'b'*64
+        previous['execution_sources'] = copy.deepcopy(old['execution_sources'])
+        previous['manifest_sha256'] = qualify.routing.identity(old)
+        qualify.write(self.manifest, old)
+        qualify.write(prior_path, previous)
+        new = qualify.continuation_plan(self.manifest, prior_path, self.root / 'new.json')
+        self.assertEqual(new['continuation']['prior_execution_sources'], old['execution_sources'])
+        self.assertEqual(new['execution_sources']['qualify'], qualify.digest(Path(qualify.__file__)))
+        self.plugin.write_bytes(b'changed input')
+        with self.assertRaisesRegex(ValueError, 'input identity'):
+            qualify.continuation_plan(self.manifest, prior_path, self.root / 'other.json')
+
+    def test_continuation_rejects_bad_prior_failures_coverage_calls_and_budgets(self):
+        old, previous, _ = self.failed_prior()
+        for mutate in (lambda o, p: o.update(continuation={}), lambda o, p: o.update(platform='Linux'),
+                       lambda o, p: p.update(manifest_sha256='bad'), lambda o, p: p.update(status='complete'),
+                       lambda o, p: p['failures'][0].update(kind='scientific'),
+                       lambda o, p: p['failures'][0].update(kind='native'),
+                       lambda o, p: p['failures'][0].update(kind='budget'),
+                       lambda o, p: p.update(elapsed_s=30),
+                       lambda o, p: p.update(budget_compliant=False), lambda o, p: p.update(cleanup_overrun_s=.01),
+                       lambda o, p: p['host']['host'].update(hostname='other'),
+                       lambda o, p: p.update(execution_sources={}),
+                       lambda o, p: p['cases'].append(copy.deepcopy(p['cases'][0])),
+                       lambda o, p: p['cases'][0].update(id='fixture-t4'),
+                       lambda o, p: p['cases'][0]['blocks'][0].update(index=1),
+                       lambda o, p: p['cases'][0]['blocks'][-1].update(status='complete'),
+                       lambda o, p: p['cases'][0]['warmups'].clear(),
+                       lambda o, p: p['cases'][0]['blocks'][0]['calls'].append({'execution': 'bad'})):
+            a, b = copy.deepcopy(old), copy.deepcopy(previous)
+            mutate(a, b)
+            with self.subTest(mutate=mutate), self.assertRaises((ValueError, KeyError)):
+                qualify.continuation_accounting(a, b)
+        full = copy.deepcopy(previous)
+        row = full['cases'][0]['blocks'][-1]
+        row['calls'] = [dict(full['cases'][0]['warmups'][0]) for _ in row['order']]
+        with self.assertRaisesRegex(ValueError, 'native-call budget'):
+            qualify.continuation_accounting(old, full)
+        short = copy.deepcopy(old)
+        short['blocks'] = 6
+        previous['manifest_sha256'] = qualify.routing.identity(short)
+        with self.assertRaisesRegex(ValueError, 'six untouched'):
+            qualify.continuation_accounting(short, previous)
+
+    def test_continuation_flat_evidence_and_plan_tampering_fail_closed(self):
+        _, _, prior = self.failed_prior()
+        path = self.root / 'next.json'
+        new = qualify.continuation_plan(self.manifest, prior, path)
+        for mutate in (lambda m: m['continuation']['block_indices']['fixture-t1'].insert(0, 0),
+                       lambda m: m.update(budget_s=m['budget_s']+1),
+                       lambda m: m['artifacts']['candidate'].update(revision='different')):
+            value = copy.deepcopy(new)
+            mutate(value)
+            with self.assertRaisesRegex(ValueError, 'continuation'):
+                qualify.validate_continuation(value, path)
+        with self.assertRaisesRegex(ValueError, 'original serial Mac'):
+            qualify.continuation_plan(path, prior, self.root / 'second.json')
+        prior.write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'evidence changed'):
+            qualify.validate_continuation(new, path)
+
+    def test_full_continuation_accounting_is_83_plus_6090_without_timing_selection(self):
+        old, previous, _ = self.failed_prior(blocks=24, started=14)
+        old.update(coverage='routing', budget_s=14400)
+        old['cases'] = [{**old['cases'][0], 'id': 'fixture' if i == 0 else f'case{i}', 'family': family}
+                        for i, family in enumerate(sorted(qualify.FAMILIES))]
+        for i, (role, artifact) in enumerate(old['artifacts'].items()):
+            artifact['path'] = role+'.plugin'
+            old['files'][artifact['path']] = str(i)*64
+        aliases = qualify.artifact_aliases(old)
+        arms = list(dict.fromkeys(aliases.values()))
+        detail = lambda role: {'execution': role, 'fingerprint': 'a'*64, 'seconds': .01}
+        cell = previous['cases'][0]
+        cell.update(family=old['cases'][0]['family'], aliases=aliases, warmups=[detail(r) for r in arms])
+        schedule = qualify.orders(arms, 24, old['seed'])
+        for i, row in enumerate(cell['blocks']):
+            row.update(order=schedule[i], calls=[detail(r) for r in (schedule[i] if i < 13 else schedule[i][:2])])
+        previous.update(manifest_sha256=qualify.routing.identity(old), elapsed_s=20.5)
+        state = qualify.continuation_accounting(old, previous)
+        self.assertEqual((state['prior_calls'], state['warmup_calls']+state['timed_calls'],
+                          state['original_call_cap'], state['budget_s']), (83, 6090, 6174, 14379))
+        self.assertEqual(state['block_indices']['fixture-t1'], list(range(14, 24)))
+        self.assertTrue(all(len(v) == 24 for k, v in state['block_indices'].items() if k != 'fixture-t1'))
+        for call in [*cell['warmups'], *(c for row in cell['blocks'] for c in row['calls'])]:
+            call['seconds'] = 1000000 if call['execution'] == 'candidate' else .000001
+        self.assertEqual(state, qualify.continuation_accounting(old, previous))
+        cell['blocks'].pop()
+        with self.assertRaisesRegex(ValueError, 'orientation pair'):
+            qualify.continuation_accounting(old, previous)
+
+    def test_continuation_evidence_drift_during_run_blocks_after_first_call(self):
+        _, _, prior = self.failed_prior()
+        path = self.root / 'next.json'
+        qualify.continuation_plan(self.manifest, prior, path)
+        def mutate(*args):
+            value = self.execute(*args)
+            prior.write_text('{}')
+            return value
+        record = qualify.run(path, self.output, execute=mutate)
+        self.assertEqual(record['status'], 'blocked')
+        self.assertEqual(len(self.calls), 1)
+        self.assertIn('changed', record['failures'][-1]['error'])
+
 
 class Statistics(unittest.TestCase):
     def test_mirrored_blocks_are_balanced_and_reproducible(self):

@@ -139,6 +139,8 @@ class HostMonitor:
         self.started = self.finished = None
         self.recording = False
         self.ending = None
+        self.process_policy = copy.deepcopy(block_host.POLICY)
+        self.process_policy['executables'] += ['actual_plugin_loader_test', 'actual_plugin_l']
 
     def _record(self, kind, value):
         with self.lock:
@@ -187,16 +189,22 @@ class HostMonitor:
                     if parent and block_host.identity(parent) in self.owned and key not in self.owned:
                         self.owned.add(key)
                         changed = True
-            policy = copy.deepcopy(block_host.POLICY)
-            policy['executables'] += ['actual_plugin_loader_test', 'actual_plugin_l']
+            policy = self.process_policy
             hits = block_host.process_activity(([self.previous] if self.previous else []) + [raw], self.owned, policy)
             raw['competing_compute'] = hits
             activity = ordinary_activity(processes, self.previous, self.owned)
+            services = []
+            for process in processes:
+                if block_host.identity(process) in self.owned or process['executable'] != 'codex':
+                    continue
+                role = block_host.desktop_role(process['command'], process['executable'])
+                if role and role['role'] in policy.get('desktop_services', []):
+                    services.append(block_host.process_evidence(process) | role)
             self.previous = raw
             self._record('process', {key: raw[key] for key in
                          ('monotonic_ns', 'finished_monotonic_ns', 'competing_compute')} |
-                         {'observed_processes': len(processes), 'owned_processes': len(self.owned),
-                          'ordinary_activity': activity})
+                          {'observed_processes': len(processes), 'owned_processes': len(self.owned),
+                          'ordinary_activity': activity, 'desktop_services': services})
             require(not hits, 'known competing compute observed')
         finish = time.monotonic_ns()
         previous = self.samples.get(kind)
@@ -290,6 +298,7 @@ class HostMonitor:
         return {'schema': 1, 'host': copy.deepcopy(self.host), 'started_monotonic_ns': self.started,
                 'finished_monotonic_ns': self.finished, 'measurement_end_monotonic_ns': self.ending, 'samples': copy.deepcopy(self.samples),
                 'errors': list(self.errors), 'isolation_ok': bool(self.started and self.finished and not self.errors),
+                'process_policy': copy.deepcopy(self.process_policy),
                 'observations': 'host-observations.jsonl', 'accounting_required': 'job_id' in self.host,
                 'scope': 'Sampled known competing compute; ordinary OS activity retained. SCC also requires a whole-node reservation.'}
 
@@ -299,6 +308,8 @@ class MacMonitor(HostMonitor):
     def __init__(self, output_dir, required_threads, **kwargs):
         super().__init__(output_dir, required_threads, **kwargs)
         self.intervals.pop('census')
+        self.process_policy = copy.deepcopy(block_host.MAC_POLICY)
+        self.process_policy['executables'] += ['actual_plugin_loader_test', 'actual_plugin_l']
 
     def _admit(self):
         require(sys.platform == 'darwin', 'Mac monitor requires Darwin')

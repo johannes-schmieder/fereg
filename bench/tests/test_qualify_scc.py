@@ -70,6 +70,34 @@ class ReservationTests(unittest.TestCase):
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_mac_records_app_server_noise_and_keeps_build_detection(self):
+        def process(pid, parent, executable, command):
+            return {'pid': pid, 'ppid': parent, 'start': 'Sun Oct 18 07:29:42 2026',
+                    'state': 'R', 'cpu_seconds': 1., 'cpu_percent': 50., 'rss_kib': 100,
+                    'executable': executable, 'executable_raw': executable, 'command': command}
+        root = process(os.getpid(), 1, 'python3', 'python3 bench/qualify.py')
+        server = process(987654, 1, 'codex', 'codex -c setting=private-value app-server')
+        with tempfile.TemporaryDirectory() as tmp:
+            monitor = scc.MacMonitor(tmp, 4)
+            def observe(processes):
+                raw = {'monotonic_ns': scc.time.monotonic_ns(), 'finished_monotonic_ns': scc.time.monotonic_ns(),
+                       'processes': processes}
+                with patch.object(scc.block_host, 'snapshot', return_value=raw):
+                    monitor._sample('process')
+            observe([root, server])
+            records = Path(tmp, 'host-observations.jsonl').read_text()
+            row = json.loads(records)
+            self.assertEqual(row['competing_compute'], [])
+            self.assertEqual(row['desktop_services'][0]['role'], 'codex-app-server')
+            self.assertEqual(row['ordinary_activity']['cpu_percent_sum'], 50.)
+            self.assertNotIn('private-value', records)
+            self.assertEqual(monitor.report()['process_policy']['name'], 'mac-desktop-roles-v2')
+            build = process(987655, server['pid'], 'cargo', 'cargo test')
+            with self.assertRaisesRegex(scc.OperationalError, 'competing compute'):
+                observe([root, server, build])
+            row = json.loads(Path(tmp, 'host-observations.jsonl').read_text().splitlines()[-1])
+            self.assertEqual(row['competing_compute'][0]['process']['ppid'], server['pid'])
+
     def test_ordinary_activity_is_compact_descriptive_and_excludes_owned(self):
         first = {'pid': 1, 'start': 'a', 'cpu_seconds': 1., 'cpu_percent': 3., 'rss_kib': 100, 'state': 'R'}
         current = [{**first, 'cpu_seconds': 1.2}, {**first, 'pid': 2, 'state': 'S'},

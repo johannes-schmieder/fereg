@@ -559,6 +559,28 @@ Mac uses serial mirrored blocks with recorded host activity. These bounds assume
 independent unit scores with a common median and make no simultaneous-coverage
 claim. Ratios describe effect size; minima cannot establish acceptance.
 
+Mac qualification does not require a completely quiet desktop. The passive
+observer records ordinary CPU/RSS activity, including a verified `codex app-server`
+role, without rejecting observations because of that activity. The role requires
+the OS executable identity and an unambiguous first subcommand; an argument that
+merely mentions `app-server` does not qualify. The server is not an owned process:
+its active tool children, `codex exec`, builds, tests and estimators still block
+the run. Unknown desktop activity remains recorded noise. Missing observations,
+artifact drift, native failures and scientific failures retain their failure
+semantics. Python executable-name matching handles macOS's capitalized name,
+but still requires a known test module or repository script. The SCC reservation
+and competing-compute thresholds are unchanged.
+
+Every mirrored block keeps all its timings, including slow observations. Balanced
+randomized order reduces order effects; the confidence bound, rather than a CPU
+quietness threshold, determines whether noisy results support nonregression.
+Mirroring does not prove independence or remove session-wide effects. Report
+serial dependence and the conditional coverage assumption honestly; inconclusive
+evidence cannot trigger more samples. Process evidence retains PID/birth,
+executable, relevant parsed desktop role, activity and an argv hash, not arbitrary
+argument values. This supports the recorded role decision without claiming a
+complete audit of unsampled processes.
+
 ### Results, repair and cleanup
 
 `summary.json` combines coverage, protected comparisons, uncertainty and failures.
@@ -576,6 +598,27 @@ failure details, and discuss an unresolved repair with Johannes before abandonin
 the candidate or changing the next step. Already valid science and unchanged
 current inputs are reusable; a timing-setup failure does not require replaying
 old A/B stages or generating new inputs.
+
+After a reviewed operational repair and direction to continue, `continue-plan`
+can freeze one Mac continuation using only untouched block slots. It binds the
+immediate failed plan/result, consumes every started slot (including a partial
+block), preserves original orders and all artifact/input bindings, and refreshes
+execution-source identities. It never admits old failed observations into the
+new acceptance calculation. Fresh session warmups count against the original
+total call cap; elapsed execution is deducted from the original wall budget.
+It rejects recursive continuations, native/scientific failures, insufficient
+untouched blocks and any increased total call budget. This is a prospective
+amendment, not ordinary `run --resume` or a new full panel. Review the exact
+remaining schedule before launching it; evaluate it once after completion.
+
+```sh
+python3 bench/qualify.py continue-plan PLAN.json RUN/run-0-0/results.json \
+  --output REMAINDER_PLAN.json
+python3 bench/qualify.py run REMAINDER_PLAN.json --output target/tmp/TASK/mac-remainder
+```
+
+The new plan stays beside the original plan so relative input bindings do not
+change. The output directory is new; the original failed output is immutable.
 
 All output belongs under one `target/tmp/TASK/` directory. The runner retains
 compact results and first-call output snapshots, removing repeated successful

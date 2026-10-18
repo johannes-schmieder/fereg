@@ -1,6 +1,7 @@
 """Passive process classification for native qualification host monitoring."""
 
 from functools import lru_cache
+import hashlib
 import math
 import os
 from pathlib import Path
@@ -28,6 +29,42 @@ POLICY = {
     "rust_test_path": "target/(debug|release|ci)/deps/[^/ ]+-[0-9a-f]{8,}$",
     "unknown_activity": "retain",
 }
+
+# The desktop coordinator also uses the lowercase CLI executable name. Its
+# housekeeping CPU is not evidence that a local agent tool is doing computation.
+# This role exception is prospective and Mac-only; descendants are never exempt.
+MAC_POLICY = {**POLICY, "name": "mac-desktop-roles-v2",
+              "desktop_services": ["codex-app-server"]}
+
+
+def desktop_role(command, executable=None):
+    """Recognize a first subcommand, never an arbitrary argv substring."""
+    if executable != "codex":
+        return None
+    try:
+        argv = shlex.split(command or "")
+    except ValueError:
+        return None
+    if not argv or Path(argv[0]).name != "codex":
+        return None
+    index = 1
+    while index + 1 < len(argv) and argv[index] in {"-c", "--config"}:
+        if "=" not in argv[index + 1]:
+            return None
+        index += 2
+    if index < len(argv) and argv[index] == "app-server":
+        return {"role": "codex-app-server", "program": argv[0],
+                "subcommand": "app-server", "leading_config_options": (index - 1) // 2}
+    return None
+
+
+def process_evidence(process):
+    """Keep identity and metrics without copying possibly secret argv values."""
+    return {key: process.get(key) for key in
+            ("pid", "ppid", "start", "executable", "executable_raw", "state",
+             "cpu_seconds", "cpu_percent", "rss_kib")} | {
+        "command_sha256": hashlib.sha256(process["command"].encode()).hexdigest()
+        if process.get("command") is not None else None}
 
 
 def require(condition, message):
@@ -101,6 +138,10 @@ def snapshot(reason):
 
 def known_compute(command, policy, executable=None):
     """Explicit executable/script classification; GUI apps and unknown Python stay noise."""
+    if policy.get("desktop_services"):
+        role = desktop_role(command, executable)
+        if role and role["role"] in policy["desktop_services"]:
+            return None
     if executable in policy["executables"]:
         return executable
     try:
@@ -114,7 +155,7 @@ def known_compute(command, policy, executable=None):
         return executable
     if re.search(policy["rust_test_path"], argv[0]):
         return "rust-test"
-    if re.fullmatch(r"python(?:\d+(?:\.\d+)*)?", executable):
+    if re.fullmatch(r"python(?:\d+(?:\.\d+)*)?", executable, re.IGNORECASE):
         if len(argv) > 2 and argv[1] == "-m" and argv[2] in policy["python_modules"]:
             return "python-module:" + argv[2]
         script = next((arg for arg in argv[1:] if not arg.startswith("-")), "")
@@ -166,7 +207,9 @@ def process_activity(samples, roots, policy):
                 evidence.append({"start_monotonic_ns": previous_time if accumulating else now,
                                  "end_monotonic_ns": now, "pid": key[0], "start": key[1],
                                  "category": category, "cpu_delta_seconds": delta,
-                                 "cpu_percent": process["cpu_percent"], "state": process["state"]})
+                                 "cpu_percent": process["cpu_percent"], "state": process["state"],
+                                 "process": process_evidence(process),
+                                 "previous_process": process_evidence(previous) if previous else None})
         prior = {identity(p): p for p in processes}
         previous_time = now
     return evidence

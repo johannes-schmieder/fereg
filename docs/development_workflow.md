@@ -95,6 +95,18 @@ a blocker, science fails or timing remains inconclusive, discuss it with Johanne
 before abandoning the candidate or moving to the next step. No tool selects a
 replacement, launches another round or activates a default automatically.
 
+Johannes's subsequent direction to make Mac qualification work without a quiet
+desktop permits a prospective observer repair: recognize the verified Codex
+app-server role as ordinary recorded activity while continuing to detect active
+tool children, builds, tests and estimators. Keep balanced mirrored timings and
+the same uncertainty gate; never remove slow observations. A single reviewed
+`continue-plan` amendment may use only untouched slots after an operational
+failure, retaining the failed segment separately and debiting its execution time
+and calls. The partial slot is consumed, not completed or replaced. See the
+[Mac noise and continuation rules](../bench/README.md#results-repair-and-cleanup).
+This does not authorize a fresh full replacement panel, repeated extensions or
+advancing two-FE.
+
 GitHub testing is paused. Mac remains the default qualification host; Johannes
 additionally requested bounded Linux and Windows build checks on 2026-10-07.
 Existing GitHub build definitions remain inactive.

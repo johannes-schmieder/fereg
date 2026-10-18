@@ -200,6 +200,63 @@ Only documentation and this compact result changed after collection. JSON
 consistency, local documentation references and `git diff --check` pass;
 unchanged-runtime test evidence above is reused.
 
+### Mac observer repair and untouched continuation
+
+Johannes then directed that Mac qualification work without a completely quiet
+desktop. The revised Mac observer recognizes the OS-confirmed `codex app-server`
+role as ordinary activity and retains its identity, parsed role, CPU/RSS metrics
+and argument hash. It does not exempt `codex exec`, active tool children, builds,
+tests or estimators. A live preflight identified macOS's capitalized `Python`
+executable name; exact Python-name matching now handles that case while keeping
+module/repository-script classification narrow. Unknown desktop activity remains
+recorded noise; SCC reservation and competing-compute thresholds are unchanged. The earlier failed
+attempt is not reclassified. Native calls now record their monotonic boundaries
+so subsequent activity evidence can be placed relative to the calls.
+
+Independent protocol review supports one prospective continuation using only
+untouched slots: `dense-t1` keeps original indices 14–23 and the other 41 cells
+keep all 24 original indices. All 14 started slots from the failed segment,
+including its partial slot, stay outside acceptance; their observations remain
+in the failure evidence. The original seed, balanced orders, candidate, inputs,
+references, science and max(5%, 1 ms) rule are unchanged. With ten blocks the
+alpha 1/40 upper bound is the ninth ordered score (binomial tail 11/1024),
+so the first cell has less precision. There is one final assessment, no interim
+acceptance or automatic extension. Independence/common-median assumptions remain
+conditional; randomization and mirroring do not prove away session effects.
+
+The continuation requires 5,964 timed calls and 126 fresh-session warmups.
+Together with the 83 historical calls, that is 6,173 calls against the original
+6,174-call cap. The three repeated first-cell warmups are explicit conditioning
+for the resumed segment, not additional timing samples. Deducting the old
+20.903 seconds and rounding down leaves a 14,379-second execution budget;
+the 120-second native bound remains unchanged. The single flat amendment binds
+the immediate old plan/result and refreshed checker sources, rejects consumed
+slots and recursive continuations, and preserves the old files. It adds no
+native artifacts or generated inputs. The valid completed Linux report and
+independent review remain the Linux evidence. Both defaults remain disabled
+and two-FE remains held.
+
+All 171 benchmark-tool tests pass in 9.475 seconds, including the recorded
+app-server threshold regression, active tool-child detection, immutable failed
+evidence, consumed-slot rejection, original call/time caps, unfavorable-old-timing
+invariance, source/input drift and continuation report tampering. The test capture
+hash is `5aa24f69ead39a43b3a3acc5ff01b4fedeb8fd6be2a593f1a30e970e7ff4aef7`;
+the result above is the retained test summary. Native runtime and artifact inputs
+are unchanged, so their valid prior scientific/transaction evidence is reused.
+
+The final prospective plan SHA-256 is
+`6462878236ca45381b7e9e3452f03d5dec31b6d01c7f1b721360f62acc6a94b6`.
+Before any native launch, the unused preflight plan
+`aab1d066975efb6f686877de99e98f3b01590a42b894bdc937f4720a2ae38946`
+was rebound solely to the capitalized-Python checker fix. This changed no
+inputs, artifacts, sampling slots or budgets. The original failed Mac plan,
+results and the completed Linux evidence remain unchanged.
+Independent final source/plan review passes and rechecks all 82 input/artifact
+files (888,103,391 bytes), all 17 current execution modules, the exact 994 untouched
+blocks and cumulative budgets. Its hash is
+`91e0ab2af6b80454ada7baaad5c3963cd433d623b3f6bf29e3406c624168a86e`.
+Lead plan checks and new documentation-link checks also pass.
+
 ## Incremental Auto implementation checks, 2026-10-17
 
 Before the suite replacement above, both public incremental defaults were disabled. The many-FE

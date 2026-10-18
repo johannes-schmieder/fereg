@@ -20,6 +20,46 @@ def sample(second, processes):
             "load_average": [0.5, 0.5, 0.5]}
 
 class ProcessEvidence(unittest.TestCase):
+    def test_mac_desktop_role_is_exact_and_does_not_exempt_cli_work(self):
+        server = '/Applications/ChatGPT.app/codex -c features.code_mode_host=true app-server --analytics-default-enabled'
+        role = host.desktop_role(server, 'codex')
+        self.assertEqual(role['subcommand'], 'app-server')
+        self.assertEqual(role['leading_config_options'], 1)
+        self.assertIsNone(host.known_compute(server, host.MAC_POLICY, 'codex'))
+        self.assertEqual(host.known_compute(server, host.POLICY, 'codex'), 'codex')
+        self.assertEqual(host.known_compute(server, host.MAC_POLICY), 'codex')
+        for command in ['codex exec app-server', 'codex -c key=app-server exec',
+                        'codex --unknown app-server', 'codex -c app-server',
+                        'codex "broken', None, 'other app-server']:
+            with self.subTest(command=command):
+                self.assertIsNone(host.desktop_role(command, 'codex'))
+                self.assertEqual(host.known_compute(command, host.MAC_POLICY, 'codex'), 'codex')
+        self.assertEqual(host.known_compute(server, host.MAC_POLICY, 'cargo'), 'cargo')
+        self.assertIsNotNone(host.desktop_role('"/Applications/App With Spaces/codex" --config x=y app-server', 'codex'))
+
+    def test_mac_server_cpu_is_noise_but_its_active_tool_child_is_not_exempt(self):
+        server = process(pid=10, command='codex -c features.code_mode_host=true app-server', cpu=1)
+        active = {**server, 'cpu_seconds': 1.0500000000010914, 'cpu_percent': 4.4}
+        child = process(pid=11, parent=10, command='node_repl --session=a', percent=2, state='R')
+        samples = [sample(1, [server]), sample(6, [active, child])]
+        hits = host.process_activity(samples, [], host.MAC_POLICY)
+        self.assertEqual([hit['pid'] for hit in hits], [11])
+        self.assertEqual(hits[0]['process']['ppid'], 10)
+        self.assertNotIn('command', hits[0]['process'])
+        self.assertEqual(len(hits[0]['process']['command_sha256']), 64)
+        # The old policy still fails on the recorded housekeeping threshold.
+        self.assertEqual([hit['pid'] for hit in host.process_activity(samples, [], host.POLICY)], [10, 11])
+        cli_reuse = {**active, 'start': 'new-birth', 'command': 'codex exec task', 'state': 'R', 'cpu_percent': 2}
+        self.assertEqual([h['pid'] for h in host.process_activity([sample(7, [cli_reuse])], [], host.MAC_POLICY)], [10])
+
+    def test_mac_python_executable_case_preserves_repository_work_detection(self):
+        for command, category in [('python3 bench/qualify.py run', 'python-repository-script'),
+                                  ('python3 -m unittest tests', 'python-module:unittest'),
+                                  ('python3 desktop_helper.py', None)]:
+            p = process(command=command, executable='Python', state='R', percent=50)
+            hits = host.process_activity([sample(1, [p])], [], host.MAC_POLICY)
+            self.assertEqual([h['category'] for h in hits], [] if category is None else [category])
+
     def test_ps_fields_and_cpu_clock_are_parsed_without_cpu_admission(self):
         row = " 42 1 Wed Oct 14 13:15:59 2026 R+ 1-02:03:04.50 999.0 123 cargo\n"
         parsed = host.parse_ps(row)[0]

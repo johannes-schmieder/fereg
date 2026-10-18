@@ -8,6 +8,7 @@ Failures require discussion and never select another candidate or launch work.
 from __future__ import annotations
 
 import argparse
+import copy
 from contextlib import contextmanager
 from fractions import Fraction
 import json
@@ -280,6 +281,121 @@ def metadata(manifest, item, manifest_path):
     return meta
 
 
+def continuation_accounting(old, previous):
+    """Debit started slots, never select or reuse previous timing observations."""
+    require('continuation' not in old and old['platform'] == 'Darwin'
+            and old['schema'] == old['shards'] == old['replicas'] == old['warmups'] == 1,
+            'requires an original serial Mac plan')
+    require(type(old['blocks']) is int and 6 <= old['blocks'] <= 24 and old['blocks'] % 2 == 0
+            and type(old['budget_s']) is int and 1 <= old['budget_s'] <= 14400
+            and type(old['timeout_s']) is int and 1 <= old['timeout_s'] <= 120, 'invalid original fixed budgets')
+    require(previous['manifest_sha256'] == routing.identity(old) and previous['status'] == 'blocked'
+            and previous['shard'] == previous['replica'] == 0 and previous['platform'] == 'Darwin'
+            and not previous.get('previous_hosts') and len(previous['failures']) == 1
+            and previous['failures'][0]['kind'] == 'operational', 'requires one operational failure')
+    require(previous.get('budget_compliant') is True and previous.get('cleanup_overrun_s') == 0,
+            'prior run did not comply with its budget')
+    require(previous['execution_sources'] == old['execution_sources']
+            and set(old['execution_sources']) == set(execution_sources())
+            and all(routing.sha(s) for s in old['execution_sources'].values()), 'prior source vector mismatch')
+    host = previous['host']
+    require(previous['hostname'] == host['host']['hostname'] and host['host']['platform'] == 'Darwin'
+            and 0 < host['started_monotonic_ns'] <= host['finished_monotonic_ns'], 'invalid prior host')
+    elapsed = previous['elapsed_s']
+    require(math.isfinite(elapsed) and 0 <= elapsed < old['budget_s'], 'prior budget exhausted')
+    aliases = artifact_aliases(old)
+    arms = list(dict.fromkeys(aliases.values()))
+    cells = [(f"{item['id']}-t{t}", i, item['family']) for i, item in enumerate(old['cases']) for t in old['threads']]
+    require(len({c[0] for c in cells}) == len(cells), 'duplicate planned cells')
+    if old['coverage'] == 'routing':
+        require(len(cells) == 42 and {c['family'] for c in old['cases']} == FAMILIES
+                and sorted(old['threads']) == [1, 4], 'continuation requires all 42 cells')
+    prior = previous['cases']
+    require([c['id'] for c in prior] == [c[0] for c in cells[:len(prior)]]
+            and len(prior) <= len(cells), 'missing, duplicate or reordered prior cells')
+    starts, calls = dict.fromkeys((c[0] for c in cells), 0), 0
+    for n, cell in enumerate(prior):
+        cid, index, family = cells[n]
+        require(cell['family'] == family and cell['aliases'] == aliases and cell['host_attempt'] == 0
+                and cell['status'] in {'complete', 'running'}
+                and (n == len(prior)-1 or cell['status'] == 'complete'), 'invalid prior cell')
+        warmups = cell['warmups']
+        require([c['execution'] for c in warmups] == arms[:len(warmups)] and len(warmups) <= len(arms),
+                'missing, duplicate or reordered warmups')
+        rows = cell['blocks']
+        require(len(rows) <= old['blocks'] and (not rows or len(warmups) == len(arms))
+                and (cell['status'] != 'complete' or len(rows) == old['blocks']), 'missing prior blocks')
+        expected = orders(arms, old['blocks'], old['seed'] + index)
+        fingerprints = {c['execution']: c['fingerprint'] for c in warmups}
+        for b, row in enumerate(rows):
+            require(row['index'] == b and row['order'] == expected[b]
+                    and [c['execution'] for c in row['calls']] == expected[b][:len(row['calls'])]
+                    and len(row['calls']) <= len(expected[b]) and row['status'] in {'complete', 'running'}
+                    and (row['status'] == 'complete' or b == len(rows)-1 and cell['status'] == 'running')
+                    and (row['status'] != 'complete' or len(row['calls']) == len(expected[b]))
+                    and all(c['fingerprint'] == fingerprints[c['execution']] for c in row['calls']),
+                    'missing, duplicate or reordered prior calls/blocks')
+        starts[cid] = len(rows)
+        calls += len(warmups) + sum(len(r['calls']) for r in rows)
+    indices = {cid: list(range(start, old['blocks'])) for cid, start in starts.items()}
+    require(all(start % 2 == 0 for start in starts.values()), 'started slots leave an unbalanced orientation pair')
+    require(all(len(v) >= 6 for v in indices.values()), 'fewer than six untouched blocks remain')
+    warmups, timed = len(cells)*len(arms), sum(map(len, indices.values()))*2*len(arms)
+    cap = len(cells)*len(arms)*(1+2*old['blocks'])
+    require(calls+warmups+timed <= cap, 'continuation would increase original native-call budget')
+    budget = math.floor(old['budget_s']-elapsed)
+    require(budget >= 1, 'no whole seconds remain')
+    return {'hostname': previous['hostname'], 'prior_execution_sources': old['execution_sources'],
+            'prior_elapsed_s': elapsed, 'prior_calls': calls, 'starting_slots': starts, 'block_indices': indices,
+            'prior_complete_blocks': sum(r['status'] == 'complete' for c in prior for r in c['blocks']),
+            'prior_partial_blocks': sum(r['status'] == 'running' for c in prior for r in c['blocks']),
+            'warmup_calls': warmups, 'timed_calls': timed, 'original_call_cap': cap, 'budget_s': budget}
+
+
+def continuation_plan(old_path, result_path, output, publish=True):
+    old_path, result_path, output = map(lambda p: Path(p).resolve(), (old_path, result_path, output))
+    require(not publish or not output.exists(), 'continuation plan already exists')
+    old, previous = read(old_path), read(result_path)
+    state = continuation_accounting(old, previous)
+    # Keep unchanged relative bindings; relocation is unnecessary for one local round.
+    require(output.parent == old_path.parent, 'continuation plan must share the original plan directory')
+    if publish:
+        require(state['hostname'] == socket.gethostname(), 'continuation requires the original host')
+        for name, expected in old['files'].items():
+            path = resolve(old_path, name)
+            before = stamp(path)
+            require(digest(path) == expected and stamp(path) == before, 'input identity mismatch: '+name)
+    value = copy.deepcopy(old)
+    value.update(budget_s=state['budget_s'])
+    if publish:
+        value['execution_sources'] = {name: digest(path) for name, path in execution_sources().items()}
+    value['continuation'] = {**state, 'prior_plan': {'path': old_path.name, 'sha256': digest(old_path)},
+                             'prior_result': {'path': os.path.relpath(result_path, output.parent), 'sha256': digest(result_path)}}
+    if publish:
+        write(output, value)
+    return value
+
+
+def validate_continuation(manifest, path):
+    if 'continuation' in manifest:
+        state = manifest['continuation']
+        prior = [resolve(path, state[key]['path']) for key in ('prior_plan', 'prior_result')]
+        require(all(digest(p) == state[key]['sha256'] for p, key in zip(prior, ('prior_plan', 'prior_result'))),
+                'prior continuation evidence changed')
+        expected = continuation_plan(*prior, path, publish=False)
+        expected['execution_sources'] = manifest['execution_sources']  # Independently verified once by run/report.
+        require(manifest == expected, 'continuation schedule, inputs, sources or budget changed')
+
+
+def continuation_bindings(manifest, path):
+    state = manifest.get('continuation')
+    return {state[key]['path']: resolve(path, state[key]['path']) for key in ('prior_plan', 'prior_result')} if state else {}
+
+
+def block_indices(manifest, cell_id):
+    return manifest['continuation']['block_indices'][cell_id] if 'continuation' in manifest else range(manifest['blocks'])
+
+
 def read_native(target, log, meta, check_reference=True):
     raw = read(target)
     require(raw.pop('columns') == [], 'native harness must write binary columns')
@@ -412,6 +528,8 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
     manifest_path, output = Path(manifest_path).resolve(), Path(output).resolve()
     require(manifest['schema'] == 1 and manifest['platform'] == platform.system(), 'wrong manifest/host platform')
     require(0 <= shard < manifest['shards'] and 0 <= replica < manifest['replicas'], 'invalid shard/replica')
+    require('continuation' not in manifest or not resume and manifest['continuation']['hostname'] == socket.gethostname(),
+            'continuation requires a fresh session on the original host')
     require(output.is_relative_to((ROOT / 'target/tmp').resolve()), 'outputs belong under target/tmp/<task>')
     output.mkdir(parents=True, exist_ok=True)
     directory = output / f'run-{replica}-{shard}'
@@ -458,7 +576,10 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
         write(path, result)
 
     try:
-        bindings = {name: resolve(manifest_path, name) for name in manifest['files']}
+        bindings = continuation_bindings(manifest, manifest_path)
+        identities.update({p: stamp(p) for p in bindings.values()})
+        validate_continuation(manifest, manifest_path)
+        bindings.update({name: resolve(manifest_path, name) for name in manifest['files']})
         files = {bindings[name]: sha for name, sha in manifest['files'].items()}
         identities.update(verify_sources(manifest['execution_sources']))
         result['execution_sources'] = manifest['execution_sources']
@@ -524,7 +645,9 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                                    str(resolve(manifest_path, artifact['path'])), '--replay', str(prepared[role]), str(target)]
                         timeout = remaining()
                         phase = 'native'
+                        native_started = time.monotonic_ns()
                         resources = execute(command, log, timeout)
+                        native_finished = time.monotonic_ns()
                         deadline.check()
                         phase = 'science'
                         raw, columns, detail = read_native(target, log, meta, role not in snapshots)
@@ -539,7 +662,8 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                                 family = next(f for f in artifact['families'] if affected(meta, [f]))
                                 detail.update(science.resource_diagnostics(log.read_text(), 'incremental-' + family,
                                               False, {}, expected_preset='routing_incremental_' + family))
-                        detail.update(execution=role, maxrss_bytes=resources['maxrss_bytes'])
+                        detail.update(execution=role, maxrss_bytes=resources['maxrss_bytes'],
+                                      started_monotonic_ns=native_started, finished_monotonic_ns=native_finished)
                         phase = 'setup'
                         return raw, columns, detail
 
@@ -565,6 +689,8 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                                           for role, alias in aliases.items()}
                     cell['reference_files'] = {role: saved[alias] for role, alias in aliases.items()}
                     for block, order in enumerate(orders(list(prepared), manifest['blocks'], manifest['seed'] + index + replica * 1009)):
+                        if block not in block_indices(manifest, cell_id):
+                            continue
                         phase = 'setup'
                         row = {'index': block, 'order': order, 'calls': [], 'status': 'running'}
                         cell['blocks'].append(row)
@@ -630,8 +756,12 @@ def report(manifest_path, output, accounting_dir=None):
     manifest, output = read(manifest_path), Path(output)
     results, errors, comparisons, workers, snapshots, metadata_cache = [], [], {}, {}, {}, {}
     source_stamps = {}
+    prior_bindings = {}
     try:
-        source_stamps = verify_sources(manifest['execution_sources'])
+        prior_bindings = continuation_bindings(manifest, manifest_path)
+        source_stamps.update({p: stamp(p) for p in prior_bindings.values()})
+        validate_continuation(manifest, manifest_path)
+        source_stamps.update(verify_sources(manifest['execution_sources']))
     except (OSError, ValueError, KeyError, TypeError) as error:
         errors.append('execution sources: ' + str(error))
     aliases = artifact_aliases(manifest)
@@ -645,6 +775,8 @@ def report(manifest_path, output, accounting_dir=None):
                         and (result['replica'], result['shard']) == (replica, shard)
                         and result['status'] == 'complete', 'missing, changed or failed shard')
                 require(result.get('execution_sources') == manifest['execution_sources'], 'unverified execution sources')
+                require('continuation' not in manifest or result['hostname'] == manifest['continuation']['hostname'],
+                        'continuation host changed')
                 require(result.get('budget_compliant') is True
                         and 0 <= result['elapsed_s'] < manifest['budget_s'], 'unverified run budget')
                 require(result['host']['isolation_ok'], 'missing host observation')
@@ -658,8 +790,10 @@ def report(manifest_path, output, accounting_dir=None):
                             if i % manifest['shards'] == shard for t in manifest['threads']}
                 require(len(result['cases']) == len(expected) and {c['id'] for c in result['cases']} == expected,
                         'incomplete or duplicate workload coverage')
+                last_finished = 0
                 for cell in result['cases']:
-                    require(cell['status'] == 'complete' and len(cell['blocks']) == manifest['blocks'], 'incomplete cell')
+                    indices = list(block_indices(manifest, cell['id']))
+                    require(cell['status'] == 'complete' and [r['index'] for r in cell['blocks']] == indices, 'incomplete cell')
                     hosts = [*result.get('previous_hosts', []), result['host']]
                     require(0 <= cell['host_attempt'] < len(hosts) and hosts[cell['host_attempt']]
                             and hosts[cell['host_attempt']]['isolation_ok'], 'reused cell lacks valid host evidence')
@@ -672,6 +806,11 @@ def report(manifest_path, output, accounting_dir=None):
                     warmups = {c['execution']: c['fingerprint'] for c in cell['warmups']}
                     require(len(cell['warmups']) == len(set(aliases.values())) and set(warmups) == set(aliases.values()),
                             'missing/duplicate warmup')
+                    for call in [*cell['warmups'], *(c for row in cell['blocks'] for c in row['calls'])]:
+                        start, finish = call['started_monotonic_ns'], call['finished_monotonic_ns']
+                        require(type(start) is type(finish) is int and 0 < start and last_finished <= start <= finish,
+                                'native execution intervals overlap or are invalid')
+                        last_finished = finish
                     expected_orders = orders(list(dict.fromkeys(aliases.values())), manifest['blocks'],
                                              manifest['seed'] + index + replica * 1009)
                     require(key not in workers or workers[key] == cell['worker_signatures'], 'cross-host/worker discrete mismatch')
@@ -689,7 +828,7 @@ def report(manifest_path, output, accounting_dir=None):
                             meta = metadata_cache[key]
                             compare_saved(snapshots[key, role], current, meta)
                         snapshots[key, role] = current
-                    for block, row in enumerate(cell['blocks']):
+                    for block, row in zip(indices, cell['blocks']):
                         require(row['status'] == 'complete' and row['index'] == block
                                 and [c['execution'] for c in row['calls']] == row['order'] == expected_orders[block],
                                 'incomplete/reordered block')
@@ -719,6 +858,7 @@ def report(manifest_path, output, accounting_dir=None):
     try:
         require(all(stamp(path) == saved for path, saved in source_stamps.items()),
                 'execution sources changed during report')
+        require(all(resolve(manifest_path, name) == p for name, p in prior_bindings.items()), 'prior evidence alias changed')
     except (OSError, ValueError) as error:
         errors.append(str(error))
     complete = not errors and bool(rows)
@@ -732,6 +872,14 @@ def report(manifest_path, output, accounting_dir=None):
                'coverage': 'One-sided .025 bounds conditional on independent unit scores with a common median; no simultaneous interval claim.',
                'next_action': 'Review platform-specific evidence; no automatic activation or successor.' if passed else
                               'Discuss failed, missing or inconclusive evidence with Johannes; keep candidate and defaults.'}
+    if 'continuation' in manifest:
+        state = manifest['continuation']
+        summary['continuation'] = {k: state[k] for k in ('prior_plan', 'prior_result', 'prior_calls', 'prior_elapsed_s',
+                                  'prior_complete_blocks', 'prior_partial_blocks', 'warmup_calls', 'timed_calls', 'original_call_cap')}
+        summary['continuation'].update(prior_status='blocked', prior_observations_used=False,
+            planned_new_calls=state['warmup_calls']+state['timed_calls'],
+            planned_total_calls=state['prior_calls']+state['warmup_calls']+state['timed_calls'],
+            cumulative_elapsed_s=state['prior_elapsed_s']+results[0]['elapsed_s'] if len(results) == 1 else None)
     write(output / 'summary.json', summary)
     return summary
 
@@ -742,6 +890,10 @@ def main():
     prepare = commands.add_parser('plan')
     prepare.add_argument('config', type=Path)
     prepare.add_argument('--output', type=Path, required=True)
+    continuation = commands.add_parser('continue-plan')
+    continuation.add_argument('manifest', type=Path)
+    continuation.add_argument('results', type=Path)
+    continuation.add_argument('--output', type=Path, required=True)
     for name in ('run', 'report'):
         command = commands.add_parser(name)
         command.add_argument('manifest', type=Path)
@@ -753,6 +905,10 @@ def main():
         else:
             command.add_argument('--accounting', type=Path)
     args = parser.parse_args()
+    if args.action == 'continue-plan':
+        continuation_plan(args.manifest, args.results, args.output)
+        print('Planned untouched Mac blocks within the original budgets; no native calls.')
+        return 0
     if args.action == 'plan':
         result = plan(args.config, args.output)
         print(f"Planned {len(result['cases']) * len(result['threads'])} cells; no native calls.")
