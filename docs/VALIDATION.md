@@ -257,6 +257,76 @@ blocks and cumulative budgets. Its hash is
 `91e0ab2af6b80454ada7baaad5c3963cd433d623b3f6bf29e3406c624168a86e`.
 Lead plan checks and new documentation-link checks also pass.
 
+### Mac continuation outcome, 2026-10-18
+
+The single continuation exited with status 1 after 1,631.673 seconds, within its
+14,379-second budget, when the frozen observer detected a `node_repl` process.
+It completed 26 cells and reached `sixteen-fe-t1`, retaining 81 warmups and 3,774
+timed calls: 3,855 completed calls in total, with 629 complete mirrored blocks.
+The next block, index 19 in that partial cell, was opened but contains no calls.
+Together with the earlier 83 calls, the two failed segments consumed 3,938 calls
+and 1,652.576 seconds. The maintained continuation report ran once and returns
+`needs_discussion`, with no accepted comparisons or calls. That acceptance count
+does not erase the actual observations. The monitor was deleted before terminal
+validation. Both public defaults remain disabled, Linux's completed qualification
+remains unchanged, and two-FE stays held. No second continuation was launched.
+
+The revised app-server recognition worked: those services remained recorded
+ordinary activity. The new trigger was PID 27393, born at 09:38:37 on October 18,
+with parent PID 37146. Its CPU clock rose from 0.03 to 0.10 seconds across a
+5.004377-second sample interval; both endpoint states were sleeping. The later
+identity check found the same process running the app's `cua_node/bin/node_repl`
+executable, still sleeping at 0.10 seconds of total CPU. The retained command hash
+is `471edcb4491f55a20b811896ecea829f23d1ff9a05b1dc70b8ccbedf119b4c4b`.
+This meets the frozen 0.05-second rule for a known tool executable. It establishes
+sampled activity of that runtime, but does not identify its workload, distinguish
+startup from tool execution, or quantify its effect on the measurements.
+
+There is one classifier hit in 328 retained process samples, with a maximum
+sample-start gap of 5.165 seconds. The hit's interval overlaps the outer subprocess
+intervals of all six calls in `sixteen-fe-t1` block 18; exact overlap with the
+internal native stopwatch is not recorded. The observer recorded its error during the final call.
+That call completed and was reaped before the next block's pre-call host check
+raised. Observer shutdown completed without a budget overrun. A current census
+found no qualification runner or native harness. Individual native PID/birth
+identities were not retained, so this is not an exhaustive historical descendant
+audit. Lead terminal validation rehashed all 82 input/artifact files
+(888,103,391 bytes) and 17 execution modules, checked the immediate prior-plan
+and failed-result bindings, retained reference hashes, declared call order,
+nonoverlapping call boundaries and every recorded repeat fingerprint. No source,
+input, artifact, threshold or observation was changed to reinterpret the failure.
+
+Independent failure review passes and reproduces the bindings and operational
+diagnosis. It checks all 81 retained first-call output snapshots, 57 comparisons
+against stored routing-oracle outputs, 18 stored local-reference comparisons,
+39 cross-worker pairs, 14 eligible resource traces and the three surviving full
+column fingerprints. All 3,774 timed repeats retain their first-call fingerprints.
+Only thirteen families reached both worker counts; fifteen cells were unstarted.
+The inactive-column oracle was not rerun: its six retained certificates and
+cross-worker outputs were checked. Deleted timed arrays cannot be independently
+replayed. These checks support the observed scientific prefix, not complete Mac
+qualification. The independent review SHA-256 is
+`42065aa20dacbbd9cbc8e52eeefa8e943ee28547e95a8404b4fa65e284f48e22`;
+the terminal result SHA-256 is
+`beb24768f054db752bd8f7f32861ac20a03c09ae40c591ba422c21880863b9f1`,
+and the maintained summary SHA-256 is
+`4a85b8043004c14e829b0f79be8209d1c3d7a4775479dd5eff2ade5f653dc610`.
+
+The bounded diagnosis is that the remaining process-name/low-CPU rule still
+cannot distinguish incidental tool-runtime activity from substantive competing
+work, yet its single hit aborts the whole run. A future protocol would need
+positive workload evidence and a prospectively reviewed rule for affected whole
+blocks; exempting every `node_repl` process would hide real tool work. This does
+not authorize a policy change, retrospective exclusion, another continuation or
+new sampling. Johannes's direction is required before further measurement.
+The [compact result](../bench/results/incremental-many-20261018-compact.json)
+retains this failure summary alongside the earlier Mac failure and valid Linux
+result. Current raw captures remain needed for the unresolved workstream; their
+hashes identify the reviewed inputs rather than promising permanent retention.
+This terminal update changes only documentation and compact result metadata.
+JSON consistency, unchanged historical-result checks, added documentation
+references and `git diff --check` pass; valid executable/runtime checks are reused.
+
 ## Incremental Auto implementation checks, 2026-10-17
 
 Before the suite replacement above, both public incremental defaults were disabled. The many-FE

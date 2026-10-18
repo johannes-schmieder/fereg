@@ -1,6 +1,6 @@
 {
   "branch": "codex/auto-routing",
-  "continuation": "No rerun, resampling, activation, successor or two-FE advancement. Discuss partial Mac timing and prospective observer repair with Johannes.",
+  "continuation": "The single reviewed Mac continuation failed operationally. No second continuation, resampling, activation, successor or two-FE advancement; Johannes must direct any further measurement.",
   "date": "2026-10-18",
   "decision": "retain_incumbent_mac_incomplete",
   "execution_revision": "d6d744ca",
@@ -3573,6 +3573,352 @@
       "process_state": "S"
     },
     "warmups": 3
+  },
+  "mac_remainder": {
+    "accepted_report_calls": 0,
+    "accepted_report_comparisons": 0,
+    "application_result_sha256": "beb24768f054db752bd8f7f32861ac20a03c09ae40c591ba422c21880863b9f1",
+    "automatic_resume_allowed": false,
+    "budget_compliant": true,
+    "budget_s": 14379,
+    "cell_coverage": [
+      {
+        "cell": "dense-t1",
+        "completed_blocks": 10,
+        "first_started_index": 14,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "dense-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "disconnected-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "disconnected-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "eight-fe-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "eight-fe-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "four-fe-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "four-fe-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "high-degree-mixed-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "high-degree-mixed-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "high-degree-stress-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "high-degree-stress-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "high-degree-weak-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "high-degree-weak-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "inactive-columns-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "inactive-columns-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "low-saved-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "low-saved-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "near-confounded-third-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "near-confounded-third-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "no-fe-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "no-fe-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "one-fe-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "one-fe-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "repeated-cells-t1",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "repeated-cells-t4",
+        "completed_blocks": 24,
+        "first_started_index": 0,
+        "last_started_index": 23,
+        "status": "complete"
+      },
+      {
+        "cell": "sixteen-fe-t1",
+        "completed_blocks": 19,
+        "first_started_index": 0,
+        "last_started_index": 19,
+        "status": "running"
+      }
+    ],
+    "cleanup": {
+      "current_native_harness_matches": 0,
+      "full_historical_pid_birth_ledger_retained": false,
+      "native_return_reaped_before_next_host_check": true,
+      "observer_shutdown_complete": true,
+      "runner_absent": true
+    },
+    "cleanup_overrun_s": 0,
+    "completed_calls": 3855,
+    "counts": {
+      "blocks_complete": 629,
+      "blocks_running": 1,
+      "cells_complete": 26,
+      "cells_running": 1,
+      "timed_calls": 3774,
+      "warmups": 81
+    },
+    "cumulative_completed_calls": 3938,
+    "cumulative_elapsed_s": 1652.5764178337995,
+    "diagnosis": "The frozen known-tool executable and 0.05 CPU-second rule is mechanically satisfied, but cannot distinguish runtime startup/housekeeping from a substantive workload. A single sampled hit aborts the whole attempt.",
+    "elapsed_s": 1631.6730462498963,
+    "execution_revision": "bfe5ebd1ad3daeffbc453010b6aadfbaad993fb9",
+    "execution_sources": {
+      "block_host": "ed78d8c87736f163ed39a65edaf74ba6875533f029d26519b829cc32fea66940",
+      "cmgschur": "c69ef5e0cb2c5694f1e7b975c24f098a9a363d84d1ded7d4821a9aa5f46ff026",
+      "cmgschur_cases": "2b866b8b5f66ffd88b0e298e94ccdf7ea86c5b39e5e33d89f5f97df2f656c842",
+      "native": "b3b80bd029f1b5566bef8ec325c5a9ae587b7ae1eabed21fa3ee0ab809f04233",
+      "native_io": "5a3ac828c7f0c7c3cd5af963e7192f5b598c2ca817767a1ef1b49d05196f3a03",
+      "qualify": "c73f1d452194b9d6cdbcced9548fd78821ed4401fab5de242a482a874df0d704",
+      "qualify_scc": "ab60c411d2b0f27e39a2cfe24d74927d53d716fe0a2f4bb1432438460ae38fbc",
+      "replay_bias_reference": "32f31f26512c350980bc6c76dbf4ea2a56818b03fa0af39d9b5165d9e50d57ff",
+      "replay_cmg_polish": "fea5b0bc6a32199dad2baecd5d9f262410400b6c01e0c4fa0e5923fdcb2bc501",
+      "replay_ols_reference": "9f543e9558e3f2198b7f2995eb93b5b4fcebb3d24f08bd1f61c3eb6f80927fd0",
+      "replay_plugins": "d9ad2e3e6e4f83d3992ac757fc2cf432b7ec9c5bf9a0130b7bcc3b99bcd38fa8",
+      "replay_psd": "6eec58705ef0ffa50d177b7ae51f126e5954827a39f67b4578d018119339bef8",
+      "routing": "5f52c90cc8a926236b8a7462e765a6757eef5a1fb99b56d46a463bb72eedfe7d",
+      "routing_cases": "ef96114acf7f8d6912a09bc9248045d4b8dc4b5a03209392493a6f6b19e83ab0",
+      "routing_oracle": "f12b01e117b4c510b467f9b0bce077ad5d476023f0ae1a04fbddc0f8f96131cf",
+      "routing_science": "697cdca3fe326dffdc15bd0dc4c548469cbf2db4efeece5b32efac71ba29c422",
+      "time_exact": "f686e037d3a65c2d9ba6cb79e9cb3ad07316768bc9d5b44d928d98c6dbf6caba"
+    },
+    "exit_status": 1,
+    "expected_cells": 42,
+    "expected_comparisons": 126,
+    "expected_new_calls": 6090,
+    "failure": "known competing compute observed",
+    "failure_kind": "operational",
+    "host_observations_sha256": "87e9a905ee7a9697a1d0772f2680325d1e772849b4ce7ba8f1dd40cfc76f3e5f",
+    "host_summary_sha256": "d8c6d393869ab9640199264e6f97c0125cb83d7f09ed41af0cd706263479a37c",
+    "independent_review": {
+      "counts": {
+        "complete_blocks": 629,
+        "cross_worker_pairs": 39,
+        "empty_started_blocks": 1,
+        "local_reference_snapshots": 18,
+        "resource_trace_checks": 14,
+        "retained_full_columns": 3,
+        "routing_oracle_snapshots": 57,
+        "snapshots": 81,
+        "timed_calls": 3774,
+        "warmups": 81
+      },
+      "input_and_source_bindings": {
+        "end_stat_alias_checks": true,
+        "file_bytes": 888103391,
+        "files": 82,
+        "prior_hashes_verified": true,
+        "sources": 17
+      },
+      "limits": [
+        "The trigger identity and 0.07 CPU seconds do not identify its actual workload, originating task, or material performance interference. Sampling overlap concerns outer subprocess intervals, not exact native stopwatch intervals.",
+        "Completed timed full arrays and full warmup input-column arrays for completed worker pairs were deleted by the unchanged producer. Repeat checks use recorded fingerprints; this is not independent full-array replay of all calls.",
+        "Inactive-column executable oracle was not rerun; its six retained snapshot certificates, scoped equality, repeat fingerprints and cross-worker outputs were checked.",
+        "Only 13 families have both-worker coverage; sixteen-fe has only t1 and 15 cells were unstarted. No complete Mac qualification claim follows.",
+        "No per-call PID/birth ledger survives; the separate lead current-process census supplements source evidence of wait4 completion and does not establish exhaustive historical descendant accounting."
+      ],
+      "retained_snapshot_inventory_identity": "6b4a228cbecb75368b48e07a8ea759618ed2c05cf3fb752deb528fef2ba73a7d",
+      "sha256": "42065aa20dacbbd9cbc8e52eeefa8e943ee28547e95a8404b4fa65e284f48e22",
+      "snapshot_file_count": 162,
+      "statements": [
+        "Frozen executable classification and CPU-delta threshold mechanically explain the operational failure; app-server roles were recorded as ordinary desktop activity.",
+        "The final incumbent call of block 18 returned before the next empty block 19 was rejected by host.check. No native call in block 19 is recorded.",
+        "Both failed attempts remain failed; this audit accepts no timing comparison and does not authorize another continuation.",
+        "First-call retained output bits and native certificates, public/hidden equality, cross-worker discrete and numerical agreement, stored independent oracle coefficients/covariance/FE/DoF/row outputs, local stored references, and eligible resource traces passed the checks enumerated above."
+      ],
+      "status": "passed_failure_review"
+    },
+    "lead_validation_sha256": "0b87803b72d157898126044be43715f2b101e2206b86e4995d477e1417db7bdf",
+    "limitations": [
+      "Trigger identifies a tool runtime and sampled CPU activity, not its actual workload or measured impact.",
+      "Full timed output arrays/logs were deleted by the maintained producer; retained first-call arrays and repeat fingerprints remain.",
+      "No per-call PID/birth ledger or exhaustive historical descendant census is retained.",
+      "Incomplete and operationally blocked attempt cannot establish the 126 required performance comparisons; no observations reclassified or resampled."
+    ],
+    "maintained_summary_sha256": "4a85b8043004c14e829b0f79be8209d1c3d7a4775479dd5eff2ade5f653dc610",
+    "observer": {
+      "app_server_role_recognized": true,
+      "classifier_hits": 1,
+      "max_start_gap_s": 5.165406959,
+      "policy": "mac-desktop-roles-v2",
+      "raw_process_samples": 328,
+      "reported_successful_samples": 327,
+      "trigger": {
+        "actual_workload_known": false,
+        "birth_local": "Sun Oct 18 09:38:37 2026",
+        "command_sha256": "471edcb4491f55a20b811896ecea829f23d1ff9a05b1dc70b8ccbedf119b4c4b",
+        "cpu_seconds_after": 0.1,
+        "cpu_seconds_before": 0.03,
+        "delta_cpu_seconds": 0.07,
+        "endpoint_states": [
+          "S",
+          "S"
+        ],
+        "executable": "node_repl",
+        "later_same_identity_cpu_seconds": 0.1,
+        "later_state": "S",
+        "material_interference_established": false,
+        "overlap_scope": "outer subprocess intervals, not exact internal native stopwatch boundaries",
+        "overlapped_block": 18,
+        "overlapped_call_count": 6,
+        "overlapped_cell": "sixteen-fe-t1",
+        "parent_pid": 37146,
+        "pid": 27393,
+        "program_role": "app cua_node runtime",
+        "sample_interval_s": 5.004377209
+      }
+    },
+    "original_budget_s": 14400,
+    "original_call_cap": 6174,
+    "plan_file_sha256": "6462878236ca45381b7e9e3452f03d5dec31b6d01c7f1b721360f62acc6a94b6",
+    "plan_review_sha256": "91e0ab2af6b80454ada7baaad5c3963cd433d623b3f6bf29e3406c624168a86e",
+    "prospective_direction": "Review positive workload evidence and affected-whole-block handling before any further measurement. Do not exempt every node_repl, reinterpret failed data, or resample automatically.",
+    "report_errors": [
+      "replica 0, shard 0: missing, changed or failed shard"
+    ],
+    "report_status": "needs_discussion",
+    "source_and_input_validation": {
+      "call_order_and_boundaries_valid": true,
+      "current_bytes_match_frozen_plan": true,
+      "execution_modules": 17,
+      "immediate_prior_plan_and_result_unchanged": true,
+      "input_artifact_bytes": 888103391,
+      "input_artifact_files": 82,
+      "recorded_repeat_fingerprints_match": true
+    },
+    "status": "blocked",
+    "terminal_process_census_sha256": "d7fc86232d2046abb2f6be809eaea3ebb9f030df95ad3a704e2ee9136ef67eb4"
   },
   "plan_file_sha256": {
     "linux": "11d8abd07fa351730b8f38b5586882ce65e8c4a047f4a8fde79cdd7cb9749c81",
