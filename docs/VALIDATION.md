@@ -26,8 +26,9 @@ own later qualification, but Johannes's subsequent priority correction requires
 finishing the existing many-FE finalist first. The documented harness timeout
 has been repaired and independently validated on exposed evidence. A separately
 reviewed declaration and fresh 42-cell panel now pass input validation. Fresh
-admission and independent witness preparation also pass; the same finalist still
-requires native scientific and timing confirmation.
+admission, independent witness preparation, native science, scientific
+postflight and independent scientific review pass. The same finalist's timing
+confirmation remains required.
 
 Branch `codex/auto-routing` implements the prospective
 [incremental qualification](SPEC.md#incremental-auto-qualification-2026-10-17).
@@ -626,6 +627,58 @@ No scientific tolerance, confidence standard, artifact or budget changed.
 | Lead witness validation | `18c93dcc47637536b2432796cbc01170f89e07ef2487cf966a70e8c6476bc98a` |
 | Independent witness review | `0023e42723ee038935288c32f74cdf5b538c7d353ec3fb7a3d476641085c293d` |
 | Independent local-reference addendum | `121a11a1e0571b074f8913e6d0d1ffd79e33b1feb55a16692eb57406bb3a8271` |
+
+### Fresh native science and postflight, 2026-10-18
+
+The single native-science operation completed in 2,712.10 seconds under its
+15,000-second outer bound; the native phase used 2,474.64 seconds of its unchanged
+14,400-second budget. All protected outcomes pass. Of 444 prerequisites, 426
+pass and have successful fixed-worker repeats with identical scientific,
+diagnostic, prepared-input and witness fingerprints. Eighteen optional
+MAP/Irons–Tuck cases remain unavailable: twelve exhaust their iteration budgets
+and six reach the fixed 120-second timeout. Their linked `not_run` repeat rows
+are not additional attempts. The panel made 870 native calls: 852 successful
+and 18 failed. The CMG/Irons–Tuck worker checks group those existing records and
+add no calls. No failed case was retried or replaced.
+
+The unchanged qualification, comparison-coverage and scientific/resource
+postflight completed in 189.15 seconds under its 1,800-second bound. It checks all
+42 wrappers and accounts for 402 comparison edges: 126 protected edges admitted
+to timing, 258 diagnostic edges and 18 unavailable diagnostic edges. Lead byte,
+stat and alias audits pass across 5,025 files/5,026 aliases for science and
+5,067 files/5,068 aliases for postflight. Each child and supervisor completed two
+full byte checks without poison. All recorded owned process identities are
+absent, both operations exit zero and neither requires cleanup signals.
+
+Independent raw review passes all 42 proof seals and their records, resource
+bounds, failure artifacts and comparison coverage. All 336 protected calls
+pass; 426 repeat pairs have exact retained fingerprints, 213 comparable worker
+pairs have identical discrete solver decisions, all 42 public/hidden fingerprint
+comparisons match, and 128 outside-family exact checks pass. The reviewer
+rehashed 5,155 files and 5,156 aliases without drift and independently confirmed
+that all 512 unique recorded science/postflight process identities were absent.
+
+Successful native raw arrays and transient result/log files were deleted by
+the unchanged producer. Review therefore checks retained fingerprints, solver
+rows, proof seals and executed checker identities; it cannot independently
+replay every array comparison or inspect unavailable RCERT payloads. The
+inactive-column oracle retains its identity and passed checks in sealed proofs,
+not separately retained numerical values. Neither a native call nor an oracle
+solve was repeated for review. Both public defaults remain disabled, and no
+timing or performance conclusion follows from these scientific checks.
+
+| Science and postflight evidence | SHA-256 |
+| --- | --- |
+| Actual C scientific records | `392c6bdabea7b067217bc89df763b5bf0a75cae51933fb674cf13869bc5afc10` |
+| Successful science supervisor outcome | `37c5236c79b7a5e71f54015add9ded1457a0c0200807d1a0c8a9dcfb961ad01c` |
+| Science child outcome | `da75b8d7f6a663396857c6512c42a7c19f28c3fdc96746a7961eae303469a486` |
+| Lead science validation | `3597f46dfad731781b541e51537cb1decc988cbb8d40302d09466aed30977a1b` |
+| Successful postflight supervisor outcome | `773be8c2a78d3ba5542adc1b0a8e9b68e8363401bb941c86bd57dba2c60bff4b` |
+| Postflight child outcome | `5abc338c02b67425675fecd3ccf8ccc00688cbb3bc167557c4ec3e21bc1fd9ea` |
+| Actual postflight report | `3564a1b838314de5d3d5f0e25771edc0f92f1a63767aaec34e6c29177756e639` |
+| Lead postflight validation | `77583e5dd97e8a23ec9b7d1475acc275de05d4b1c5e3f13b260d8efd1eab2ff7` |
+| Independent raw scientific review | `000dc5467252a8943551a9f64b7907c29a7f522f8bfa049b65febfdc37824432` |
+| Typed scientific review for timing admission | `e01f0ab514ebe2e5adfdaa0e72c00baee2d8832800aad00da2e216b894ffebc2` |
 
 ## Main-branch GitHub installation, 2026-10-14
 
