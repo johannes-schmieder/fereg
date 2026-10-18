@@ -528,6 +528,31 @@ confirmation or a solver-performance result. Both public defaults remain off.
 | Optional provenance-gate source review | `3a89ed5bbdcb52c83e9d553c8116af61767c38b55a7ca1e8cdb95f8022675d4b` |
 | Final 375-test integration summary | `d10ca181ce79fd35228b9caf42700cbb8e6f55fec9484ecc8f5d0d866f9d1b61` |
 
+The complete exposed-evidence validation subsequently passed in 506.40 seconds
+under its 1,800-second outer bound. It reconstructed the original C admission
+from the unchanged four inputs, reproduced the canonical partial-activation
+result exactly, and verified all 42 existing B wrappers. The child performed
+two full byte checks over 4,835 files, reading 23.266 GB in actual hashes with
+542,528 immutable-digest reuses. This complete operation includes more work than
+the earlier partial-admission profile; their elapsed times are not a paired
+performance comparison. There were no native or generator calls.
+
+Independent review rehashed all 4,837 files and checked all 4,838 aliases across
+the child and supervisor records, with unchanged stat identities and no drift.
+Complete and partial activation metadata retain distinct keys; the six required
+validation checks pass. The owned child exited zero, no cleanup signals were
+needed, and both recorded processes were absent afterward. The exact repair
+proposal passed independent review before declaration or fresh generation.
+The remaining confirmation still uses the same finalist and private public
+artifact, C24 design, tolerances and work limits; both defaults remain disabled.
+
+| Complete exposed validation | SHA-256 |
+| --- | --- |
+| Actual validation report | `2666133146b0c7e5aaa0b0c1fa4cf13e2b5a3f7cb6a4f8995dff7cdac4bb1562` |
+| Successful supervisor outcome | `7cdd7da4877eb3d8662e4e29ef65e4a91d57e694e433b81e478085b00ea26815` |
+| Independent raw review | `43024b4ae420ad3b07f7451a576f08478d96fc0c7586e34c528c44535a7f7491` |
+| Final prospective repair review | `1ea6548583f9bb8c6227921c48740fadcc745eea17df7fb6c3151daec3f67465` |
+
 ## Main-branch GitHub installation, 2026-10-14
 
 The root package installs the maintained Stata files and a universal macOS
