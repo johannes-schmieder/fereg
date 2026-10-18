@@ -13,9 +13,12 @@ the [licensing decision](licensing.md) records the distribution terms.
 The many-FE candidate now passes the 2026-10-18 compact Linux qualification and
 practical Mac recovery, including independent review of actual retained science,
 timing and operational evidence. Each platform passes all 126 protected comparisons.
-The development-branch activation and its integration checks are recorded below;
-Johannes has now authorized the separate two-FE qualification. Its public default
-remains disabled, and release packages are unchanged.
+The development-branch activation and its integration checks are recorded below.
+The separate two-FE qualification completed, but Linux found regressions on the
+four-worker high-degree weak graph against both original and accepted Auto.
+Mac passed. Two-FE remains disabled, many-FE remains enabled, and release packages
+are unchanged. The failed comparisons require Johannes's direction before a
+new candidate or further qualification measurements.
 
 This page keeps accepted evidence, open failures and standing caveats. The full
 narrative ledger, with every run identifier, archive and receipt digest,
@@ -547,11 +550,151 @@ the existing smoke log directory before issuing any `qsub` command. Its failure
 was retained, absence of qualification jobs/output verified, and only that
 directory check corrected. This did not repeat any measured work.
 
-Actual full qualification results, allocation isolation and independent raw
-scientific/timing/operational review remain required before two-FE activation.
+At the preparation milestone, actual full qualification results, allocation
+isolation and independent raw scientific/timing/operational review remained
+required before two-FE activation. The completed outcome follows.
 Successful timed arrays/logs are deleted by the unchanged producer; retained
 first-call arrays and all repeat fingerprints support review, not exhaustive
 replay of unavailable arrays. No release package or main-branch change is made.
+
+### Two-FE qualification result: incumbent retained
+
+The fixed candidate completed all planned work without qualification retries,
+discarded attempts, native failures or scientific failures. Mac completed all
+8,232 calls in 3,103.217 seconds, within its 14,400-second budget. Linux completed
+10,080 calls in 36 tasks on the twelve exact assigned physical hosts. Every task
+has complete scheduler accounting with failed=0 and exit=0, its application
+success signal and complete result; application times range from 177.060 to
+241.853 seconds, below the 3,600-second limit. Recorded reservations, scheduler
+censuses and process observations support the prescribed host isolation.
+
+The maintained report ran once per platform. Mac passes all 126 comparisons.
+Linux passes 124 and fails these two comparisons of the public candidate on
+`high-degree-weak-t4`:
+
+| Protected reference | Median candidate/reference ratio | Lower excess bound | Median excess | Upper excess bound |
+| --- | ---: | ---: | ---: | ---: |
+| Accepted many-FE Auto | 1.080424 | 6.936 ms | 12.137 ms | 13.509 ms |
+| Original Auto | 1.082442 | 10.391 ms | 11.778 ms | 14.016 ms |
+
+Excess subtracts the existing max(5%, 1 ms) allowance from paired complete-solve
+time. Both lower bounds are positive, so these are regressions under the frozen
+rule, not inconclusive comparisons. Linux uses one median score per physical
+host; Mac uses mirrored blocks. One-sided .025 order-statistic coverage remains
+conditional on independent scores with a common median and is not simultaneous
+coverage across comparisons. Mac success does not override the Linux failure.
+No observations were removed or added after viewing the reports.
+
+Independent actual-evidence reviews reconstruct all 252 platform comparisons
+and agree exactly with both maintained summaries. The Mac review checks 168
+retained first-call snapshots, 64 exact and 62 scoped artifact comparisons,
+84 cross-worker comparisons and all repeat fingerprints. The Linux review
+checks 2,016 first-call heads/arrays and reconstructed full-column fingerprints:
+1,536 stored categorical witnesses, 384 imported-reference comparisons and
+96 inactive analytic checks; 768 exact, 744 scoped, 1,008 cross-worker and
+1,848 cross-host comparisons; and 984 resource traces. Its 72 reservations,
+168 scheduler censuses and 1,502 process samples pass. All source/input hashes,
+file metadata and aliases remain bound. Scientific acceptance passes; the
+two Linux performance regressions determine the failed qualification.
+
+Linux audit development initially demanded bitwise equality of derived log/exp
+scores across platforms. Seven of 3,024 stored block/reference scores differ
+from Mac reconstruction by at most 5.90e-17 seconds. The audit records these
+differences and checks an eight-ulp bound at the operation scale; qualification
+is independently reconstructed from the unchanged raw timers and unchanged
+5%/1 ms allowance. No scientific tolerance, observation or report changed.
+
+The Mac terminal process check found no qualification runner/native harness.
+On SCC, successful call records imply direct-child reaping through the maintained
+`wait4` path; observer command children are reaped and sampling threads joined,
+and every scheduler task completed normally. An optional post-run direct-node
+PID census was unavailable because SSH had no trusted node keys. Automatic
+approval review rejected adding unverified first-use keys; no trust store changed.
+There is no historical per-call PID ledger or independent exhaustive descendant
+census, and these records do not claim one. Sampled observations also cannot
+rule out unsampled work or reclassify every omitted desktop process.
+
+The [compact two-FE evidence](../bench/results/incremental-two-20261018-compact.json)
+retains every qualification timer and execution order, all comparison bounds,
+source/input/artifact identities, accounting summaries and review hashes.
+Qualification uses `call.seconds` (harness `NATIVE_SECONDS`), not the separate
+diagnostic `native_s` field. Temporary full arrays and observer/log captures
+are removed after committed summaries; recorded hashes identify reviewed
+captures, not permanently available raw files.
+
+All 192 production modules and 58 artifact inputs remain equal to the launch
+checkout. `DEFAULT_MANY` remains true and `DEFAULT_TWO` remains false. No
+activation, full-battery restart, performance-triggered retry, retune, merge to
+main or release-package update was performed. The existing valid source-suite
+evidence is reused because executable runtime and artifact inputs are unchanged.
+
+Seven mapped Stata fixtures and two OLS Break checks pass on the exact Mac
+candidate, including cancellation during real optional-builder work. An extra
+legacy route fixture failed its already-documented obsolete Auto-CMG code-seven
+assertion, also known to fail on the preserved parent. Its maintained replacement
+retains the geometries and explicit CMG tests, checks six small cases against
+independent Stata dummy regressions (coefficient, variance, sample, DoF and
+residuals), and labels large-component Auto/CMG agreement as secondary evidence.
+The final saved-FE regression is unchanged. Independent review passes, and the
+migrated fixture passes once on each of the exact candidate and accepted-incumbent
+plugins. This test-only maintenance does not change or repeat qualification.
+
+Capture identities: Mac summary
+`c49b9e4d194fb58a98d18cf176176d684f8cf7fc8af867aa16acc29b2c1fe31b`,
+Mac independent review
+`7316ffa4e09bfd1b0e960c3121d4fb0c2e2fef1bf50779efa638dc979ae486ff`,
+Linux summary
+`ec6ec63d95a0854c3740a73c4a50202c2cc3a9544e204ccefa8974499fe3be08`,
+Linux independent review
+`4d0913c71cd73ec42145e88a16dfec69095f7db274bfcb99d580e57d9399f897`,
+and independent test-migration review
+`a5b53f9dcdfaa77b218d91de940446fc295dcf656ae6db6fc43cf50d28e7fc06`.
+
+### Bounded CMG/RHS/overlap diagnosis and successor proposal
+
+Read-only examination of the completed Linux observations confirms positive
+four-worker excess against both protected references on all twelve hosts;
+all twelve have negative excess at one worker. Candidate/hidden primary and
+final iterations are 22/8, versus 51/47 for original/incumbent, invariant across
+hosts and workers. Candidate/hidden install the existing synchronous h16/k1
+route. Primary setup charges 794,664,056 of 977,928,192 work units, with zero
+final setup charge. The recorded candidate primary-setup host medians are
+133.88 ms at one worker and 129.93 ms at four, versus incumbent 6.58/2.00 ms.
+These diagnostics support a near-serial construction cost that becomes harder
+to amortize as foreground solves parallelize. They do not isolate census,
+canonicalization, hierarchy, work-gate, application or overlap costs, and the
+phase fields must not be summed as independently owned exclusive spans.
+
+The current work ledger remains deterministic: for observations n, left/right
+levels p/q, first submitted RHS width r and physical stride s,
+`W0 = 10nr + 10n + (4p+64q)r + (p+3q)s + 8p + 12q + 64r`, with 32W0 total
+and 4W0 restart reserve. Compatible Low chunks share the attempt and ledger;
+later width does not replenish it. A different final-residual accuracy key may
+reuse a hierarchy with its own allowance. Submitted width, physical capacity
+and the number of still-active columns are distinct. The existing overlap
+experiment additionally copies inputs, leases an executor worker and pays
+synchronization/tail costs; its cache/controller/terminal-screen differences
+prevent treating it as a pure scheduling comparison. Neither candidate routing
+nor these budgets were changed in this diagnosis.
+
+The completed Mac wide-RHS example finishes in 14/13 iterations before h16,
+so it provides no evidence of CMG batch-application payback. Historical stage
+profiles and the archived small batch trial likewise cannot identify the current
+Linux regression cause. The retained diagnosis hash is
+`e08410df64a04d5de59cdb5269b681db2cc538a25a93dbd8c4df9abe3b6b3209`;
+its compact host summaries and source-bound observations accompany the results.
+
+Proposed next work, requiring Johannes's direction and an independently reviewed
+observation-only patch: use the existing analytic paired graph with unit and
+unequal weights; cold width one, cold width sixteen, and width sixteen after a
+one-column prime; capacity sixteen; unchanged synchronous and h16/k1 overlap
+arms; one/four workers; two exact repeats. That is 48 target plus 16 priming
+projections, bounded at 120 seconds per action and 1,800 seconds overall with
+no adaptive replacement. Record active RHSs at the checkpoint, construction
+versus reuse, charged resources, disjoint cost spans, worker lease and tail wait.
+Keep analytic science, exact repeats, cross-worker decisions and interruption
+contracts. This is a finite diagnostic proposal, not execution authorization,
+a predictive routing policy, a larger setup budget or a new promotion gate.
 
 ## Incremental Auto implementation checks, 2026-10-17
 
