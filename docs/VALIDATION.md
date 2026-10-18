@@ -103,8 +103,21 @@ exited 1 on a syntax error in the summary writer. These jobs remain failed.
 The summary was recovered from the actual logs and verified binaries without
 rebuilding or repeating native calls; its hash is
 `4b3411f0f9209018b94fff74501c2799ea14fa8cc1f24d5e3f102f42bfccdd5d`.
-A successful compute-node compact-suite smoke remains required before the full
-round. These build checks establish no performance result.
+The compute-node compact-suite smoke then passed on `scc-wo4`: job `8167554`,
+task 1, reserved all 28 cores, completed 60 native calls across four cells in
+59.785 seconds, and passed independent science, exact repeats, hidden/public
+equivalence and host isolation. Scheduler failure and exit status were both
+zero; the compact report has no errors and status `smoke_complete`. Its summary
+hash is `9be40acfe4c5dc7a2d06b527318a6d8e8a01dc5fd15b28f9d453c9db95fa4b73`.
+This is a tooling result, not performance qualification.
+
+The full plans bind the same 78 input/reference files and 17 reviewed execution
+modules, with separately verified Mac and Linux binaries. Plan hashes are
+`f055a108c0dc50898b65f5c2d92c2f31f15bc95c43fb93f2f422e8078ecb8b7b`
+(Mac) and `11d8abd07fa351730b8f38b5586882ce65e8c4a047f4a8fde79cdd7cb9749c81`
+(Linux). The prospective twelve-host assignment hash is
+`e0793a1bb771d25d2db980efb8558a0a547d1cc498954f7ad9b25739e10165ac`.
+No qualification result follows from planning or smoke success.
 
 ## Incremental Auto implementation checks, 2026-10-17
 
