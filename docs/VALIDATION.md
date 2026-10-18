@@ -27,8 +27,10 @@ finishing the existing many-FE finalist first. The documented harness timeout
 has been repaired and independently validated on exposed evidence. A separately
 reviewed declaration and fresh 42-cell panel now pass input validation. Fresh
 admission, independent witness preparation, native science, scientific
-postflight and independent scientific review pass. The same finalist's timing
-confirmation remains required.
+postflight and independent scientific review pass. Its timing freeze then hit
+the fixed 1,800-second bound before producing a manifest. This second operational
+failure blocks collection and activation; the same finalist is retained pending
+Johannes's direction, with no automatic retry or advance to two-FE.
 
 Branch `codex/auto-routing` implements the prospective
 [incremental qualification](SPEC.md#incremental-auto-qualification-2026-10-17).
@@ -679,6 +681,58 @@ timing or performance conclusion follows from these scientific checks.
 | Lead postflight validation | `77583e5dd97e8a23ec9b7d1475acc275de05d4b1c5e3f13b260d8efd1eab2ff7` |
 | Independent raw scientific review | `000dc5467252a8943551a9f64b7907c29a7f522f8bfa049b65febfdc37824432` |
 | Typed scientific review for timing admission | `e01f0ab514ebe2e5adfdaa0e72c00baee2d8832800aad00da2e216b894ffebc2` |
+
+### Fresh timing-freeze failure, 2026-10-18
+
+The single timing-freeze attempt exceeded its fixed 1,800-second execution bound
+and terminated after 1,801.64 seconds including cleanup. The supervisor records
+a timeout; the child records the resulting interrupt. One `SIGINT` stopped the
+owned child, cleanup completed, and a current process census found both recorded
+process identities absent. The monitor was deleted before failure validation.
+No timing manifest or successful report was produced, and collection and the
+decision stage were never started. Both public defaults remain disabled.
+
+The partial packet contains 42 cells and 168 prepared requests, all matching
+their scientific prerequisite hashes. A post-failure audit rehashed the observed
+closure of 5,123 files and 5,124 aliases, totaling 8,860,899,717 bytes, and checked
+their stat identities without drift. All 174 partial artifacts are preserved
+for diagnosis. These retrospective checks do not complete the failed producer's
+boundaries: its child completed zero full byte checks, its supervisor completed
+only the prelaunch check, and both operations are poisoned by their exceptions.
+There is no timing or performance acceptance.
+
+The retained traceback stops in `time_blocks.freeze` while constructing a
+`RoutingScience` adapter. Its context-binding loop calls the original file digest
+after the cached metadata function has returned. The hash wrapper reuses bytes
+only inside the four metadata entrypoints, so this downstream loop still reads
+the files repeatedly. The paired design creates 126 adapters for 42 cells and
+three protected comparisons. The later `all_bindings` loop also checks duplicate
+bindings before deduplication, and `load_manifest` repeats both paths. These are
+source-level findings; the uncached path has no retained profile establishing
+its exact total bytes or share of elapsed time.
+
+Independent review checked the outcomes, traceback and source path, frozen
+configuration, all 168 prepared-input identities and the partial-output inventory.
+It agrees with the diagnosis and attributes the full closure and current owned
+process census to the lead audit. This is acceptance of the failure diagnosis,
+not acceptance of the freeze. Adapter construction can execute the existing
+inactive-column oracle if reached; the retained evidence does not establish how
+many adapters completed. No native timing collection occurred.
+
+The failure does not erase the completed scientific checks, but it prevents
+confirmation of this candidate. No frozen source, configuration, tolerance,
+budget or stage lock was changed; no producer was rerun. Another repair or
+continuation requires Johannes's direction, including an explicit decision on
+the consumed freeze stage. Two-FE remains deferred.
+
+| Timing-freeze failure evidence | SHA-256 |
+| --- | --- |
+| Exact supervisor start | `7a314562b3a2a460401e3ae41e7e042e2d72553909acf653578aef7d012c388b` |
+| Failed supervisor outcome | `1f554c0fcfdbf536da09b49f32347f3c4c3a8c7146a738e2a7065fede7868d45` |
+| Interrupted child outcome | `7c3112c1514b6306cd4a0acf9512fb9335ac5c761eb37a2dba380224c4456117` |
+| Partial timing configuration | `2bca08a6216553790bc873d469754cbd0e4d02285b26a27f792a24a199ba221f` |
+| Lead failure and integrity validation | `1d34c6ce97725fff447fc68fb5de3a8b2db60173b3f832d4b2b9ecca5467073f` |
+| Independent final failure review | `b14f72f5bcdb78280a35d1eaca0687494efc16862211f7a6fb817b88009dd295` |
 
 ## Main-branch GitHub installation, 2026-10-14
 
