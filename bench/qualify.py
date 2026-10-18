@@ -259,6 +259,8 @@ def plan(config_path, output):
                 'qualification requires balanced blocks and enough independent measurements')
     value.update(schema=1, files=files, warmups=1,
                  execution_sources={name: digest(path) for name, path in execution_sources().items()})
+    if value['platform'] == 'Darwin':
+        value['mac_cell_policy'] = fresh_mac_policy(value)
     output.parent.mkdir(parents=True, exist_ok=True)
     write(output, value)
     return value
@@ -283,7 +285,7 @@ def metadata(manifest, item, manifest_path):
 
 def continuation_accounting(old, previous):
     """Debit started slots, never select or reuse previous timing observations."""
-    require('continuation' not in old and old['platform'] == 'Darwin'
+    require(not any(k in old for k in ('continuation', 'recovery', 'mac_cell_policy')) and old['platform'] == 'Darwin'
             and old['schema'] == old['shards'] == old['replicas'] == old['warmups'] == 1,
             'requires an original serial Mac plan')
     require(type(old['blocks']) is int and 6 <= old['blocks'] <= 24 and old['blocks'] % 2 == 0
@@ -398,6 +400,34 @@ def block_indices(manifest, cell_id):
     return manifest['continuation']['block_indices'][cell_id] if 'continuation' in manifest else range(manifest['blocks'])
 
 
+def cell_policy(manifest):
+    return manifest.get('recovery', manifest.get('mac_cell_policy'))
+
+
+def fresh_mac_policy(manifest):
+    """Fixed execution bounds, independent of any prior evidence or provenance."""
+    from block_host import MAC_RECOVERY_POLICY
+    cells = [f"{item['id']}-t{t}" for item in manifest['cases'] for t in manifest['threads']]
+    per_cell = len(set(artifact_aliases(manifest).values()))*(1+2*manifest['blocks'])
+    process = copy.deepcopy(MAC_RECOVERY_POLICY)
+    process['executables'] += ['actual_plugin_loader_test', 'actual_plugin_l']
+    return {'fresh_cells': cells, 'max_cell_retries': 1, 'max_retry_cells': 4,
+            'quiet_timeout_s': 120, 'calls_per_cell': per_cell,
+            'baseline_calls': len(cells)*per_cell,
+            'new_call_cap': (len(cells)+min(4, len(cells)))*per_cell,
+            'process_policy': process}
+
+
+def validate_cell_policy(manifest):
+    require(sum(k in manifest for k in ('continuation', 'recovery', 'mac_cell_policy')) <= 1,
+            'Mac execution policies are mutually exclusive')
+    if 'mac_cell_policy' in manifest:
+        require(manifest['platform'] == 'Darwin' and manifest['shards'] == manifest['replicas'] == 1
+                and type(manifest['budget_s']) is int and 1 <= manifest['budget_s'] <= 14400
+                and type(manifest['timeout_s']) is int and 1 <= manifest['timeout_s'] <= 120
+                and manifest['mac_cell_policy'] == fresh_mac_policy(manifest), 'invalid fresh Mac cell policy')
+
+
 def cell_calls(cell):
     return [*cell['warmups'], *(call for row in cell['blocks'] for call in row['calls'])]
 
@@ -444,7 +474,7 @@ def span_evidence(events, start, end):
 
 
 def recovery_definition(old, previous, events, paths, output):
-    require('recovery' not in old and old['platform'] == previous['platform'] == 'Darwin'
+    require(not any(k in old for k in ('recovery', 'mac_cell_policy')) and old['platform'] == previous['platform'] == 'Darwin'
             and old['shards'] == old['replicas'] == 1 and previous['shard'] == previous['replica'] == 0,
             'recovery requires a serial Mac round')
     require(previous['manifest_sha256'] == routing.identity(old) and previous['status'] == 'blocked'
@@ -683,6 +713,9 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
     require('continuation' not in manifest or not resume and manifest['continuation']['hostname'] == socket.gethostname(),
             'continuation requires a fresh session on the original host')
     recovery = manifest.get('recovery')
+    policy = cell_policy(manifest)
+    validate_cell_policy(manifest)
+    require(not policy or not resume, 'Mac cell policy requires a fresh session; budgets cannot be reset')
     require(not recovery or not resume and recovery['hostname'] == socket.gethostname(), 'recovery needs the original host and fresh session')
     require(output.is_relative_to((ROOT / 'target/tmp').resolve()), 'outputs belong under target/tmp/<task>')
     output.mkdir(parents=True, exist_ok=True)
@@ -747,11 +780,12 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
         if recovery:
             prior_cells, prior_root = recovery_prior(manifest, manifest_path)
             result['cases'] = [{**copy.deepcopy(prior_cells[cid]), 'reused': True} for cid in recovery['reused_cells']]
+        if policy:
             result.update(discarded_attempts=[], retry_cells=[], native_calls_started=0)
         from qualify_scc import HostMonitor, MacMonitor
         monitor = HostMonitor if manifest['platform'] == 'Linux' else MacMonitor
-        host = monitor(directory / f"host-{len(result['failures'])}", max(manifest['threads']), **({'recovery': True} if recovery else {}))
-        require(not recovery or host.process_policy == recovery['process_policy'], 'recovery observer policy changed')
+        host = monitor(directory / f"host-{len(result['failures'])}", max(manifest['threads']), **({'recovery': True} if policy else {}))
+        require(not policy or host.process_policy == policy['process_policy'], 'recovery observer policy changed')
         with deadline.observing(host):
             for index, item in enumerate(manifest['cases']):
                 if index % manifest['shards'] != shard:
@@ -770,11 +804,11 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                     cell = {'id': cell_id, 'family': item['family'], 'status': 'running', 'blocks': [], 'warmups': [],
                             'host_attempt': len(result['failures'])}
                     result['cases'].append(cell)
-                    if recovery:
+                    if policy:
                         cell['attempt'] = attempt
                         if attempt:
                             cell['quiet_wait'] = quiet_wait
-                    work = directory / (f"{cell_id}-attempt-{len(result['failures'])}" + (f'-{attempt}' if recovery else ''))
+                    work = directory / (f"{cell_id}-attempt-{len(result['failures'])}" + (f'-{attempt}' if policy else ''))
                     work.mkdir(exist_ok=False)
                     aliases, prepared, snapshots, requests = {}, {}, {}, {}
                     aliases = artifact_aliases(manifest)
@@ -812,8 +846,8 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                                    str(resolve(manifest_path, artifact['path'])), '--replay', str(prepared[role]), str(target)]
                         timeout = remaining()
                         phase = 'native'
-                        if recovery:
-                            require(result['native_calls_started'] < recovery['new_call_cap'], 'recovery native-call cap exhausted')
+                        if policy:
+                            require(result['native_calls_started'] < policy['new_call_cap'], 'recovery native-call cap exhausted')
                             result['native_calls_started'] += 1
                         native_started = time.monotonic_ns()
                         resources = execute(command, log, timeout)
@@ -847,7 +881,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                     current_signatures = {role: worker_signature(s[0]) for role, s in conceptual.items()}
                     require(workers not in signatures or signatures[workers] == current_signatures,
                             'same-worker retry discrete decisions changed')
-                    if recovery:
+                    if policy:
                         for previous_attempt in result['discarded_attempts']:
                             if previous_attempt['id'] == cell_id:
                                 require({c['execution']: c['fingerprint'] for c in previous_attempt['warmups']}
@@ -865,7 +899,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                     cell['references'] = {role: str((work / ('reference-' + alias)).relative_to(directory))
                                           for role, alias in aliases.items()}
                     cell['reference_files'] = {role: saved[alias] for role, alias in aliases.items()}
-                    if recovery:
+                    if policy:
                         for prior_cell in result['cases'] + result['discarded_attempts']:
                             if prior_cell is cell or prior_cell['family'] != cell['family']:
                                 continue
@@ -892,7 +926,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         persist()
                     cell['status'] = 'complete'
                     hits = []
-                    if recovery:
+                    if policy:
                         start, end = cell_records(cell, manifest, index, block_indices(manifest, cell_id))
                         hits = host.interference_between(start, end)
                         cell['eligibility'] = {'start_monotonic_ns': start, 'end_monotonic_ns': end, 'interference': hits}
@@ -907,9 +941,9 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         result['cases'].remove(cell)
                         result['discarded_attempts'].append(cell)
                         persist()
-                        require(attempt < recovery['max_cell_retries'] and len(result['retry_cells']) < recovery['max_retry_cells'],
+                        require(attempt < policy['max_cell_retries'] and len(result['retry_cells']) < policy['max_retry_cells'],
                                 'interference retry limit exhausted; retained completed cells')
-                        quiet_wait = host.await_quiet(deadline_seconds=min(recovery['quiet_timeout_s'], deadline.check()))
+                        quiet_wait = host.await_quiet(deadline_seconds=min(policy['quiet_timeout_s'], deadline.check()))
                         result['retry_cells'].append(cell_id)
                         pending.insert(0, (workers, attempt+1))
                 for columns in output_files:
@@ -919,7 +953,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
         if host is not None:
             result['host'] = host.report()
             require(result['host']['isolation_ok'], 'host observation did not complete')
-            if recovery:
+            if policy:
                 result['host_observations_sha256'] = digest(directory / 'host-0' / result['host']['observations'])
         check_files()
         result['status'] = 'complete'
@@ -958,6 +992,7 @@ def accounting(text, host):
 def report(manifest_path, output, accounting_dir=None):
     manifest, output = read(manifest_path), Path(output)
     recovery = manifest.get('recovery')
+    policy = cell_policy(manifest)
     old_cells, old_root, old_events = {}, None, []
     results, errors, comparisons, workers, snapshots, metadata_cache = [], [], {}, {}, {}, {}
     source_stamps = {}
@@ -975,6 +1010,7 @@ def report(manifest_path, output, accounting_dir=None):
             source_stamps[resolved] = before
         require(verified_files[resolved] == expected and stamp(resolved) == source_stamps[resolved], 'report file identity mismatch: '+str(path))
     try:
+        validate_cell_policy(manifest)
         prior_bindings = continuation_bindings(manifest, manifest_path)
         if recovery:
             prior_bindings.update({recovery[k]['path']: resolve(manifest_path, recovery[k]['path'])
@@ -986,7 +1022,7 @@ def report(manifest_path, output, accounting_dir=None):
             old_cells, old_root = recovery_prior(manifest, manifest_path)
             old_events = [json.loads(line) for line in resolve(manifest_path, recovery['prior_host']['path']).read_text().splitlines()]
         source_stamps.update(verify_sources(manifest['execution_sources']))
-        if recovery:
+        if policy:
             for name, expected_hash in manifest['files'].items():
                 verify_file(Path(manifest_path).parent / name, expected_hash)
     except (OSError, ValueError, KeyError, TypeError) as error:
@@ -1008,10 +1044,10 @@ def report(manifest_path, output, accounting_dir=None):
                         and 0 <= result['elapsed_s'] < manifest['budget_s'], 'unverified run budget')
                 require(result['host']['isolation_ok'], 'missing host observation')
                 current_events = []
-                if recovery:
-                    require(not result['failures'] and result['hostname'] == recovery['hostname']
-                            == result['host']['host']['hostname'] and result['host']['cell_eligibility_required'] is True
-                            and not result['host']['errors'] and result['host']['process_policy'] == recovery['process_policy'],
+                if policy:
+                    require(not result['failures'] and result['hostname'] == result['host']['host']['hostname']
+                            and (not recovery or result['hostname'] == recovery['hostname']) and result['host']['cell_eligibility_required'] is True
+                            and not result['host']['errors'] and result['host']['process_policy'] == policy['process_policy'],
                             'invalid recovery host/failure state')
                     raw_host = path.parent / 'host-0' / result['host']['observations']
                     verify_file(raw_host, result['host_observations_sha256'])
@@ -1019,10 +1055,10 @@ def report(manifest_path, output, accounting_dir=None):
                     require(not any(r['kind'] == 'error' for r in current_events), 'recovery contains an observer fault')
                     rejected = result['discarded_attempts']
                     require(result['retry_cells'] == [c['id'] for c in rejected]
-                            and len(set(result['retry_cells'])) == len(rejected) <= recovery['max_retry_cells'], 'invalid recovery retries')
+                            and len(set(result['retry_cells'])) == len(rejected) <= policy['max_retry_cells'], 'invalid recovery retries')
                     for cell in rejected:
                         require(cell['status'] == 'interfered' and cell['attempt'] == 0
-                                and cell['id'] in recovery['fresh_cells']
+                                and cell['id'] in policy['fresh_cells']
                                 and set(cell['references']) == set(cell['reference_files']) == set(aliases), 'invalid rejected attempt')
                         index = cases[cell['id'].rsplit('-t', 1)[0]][0]
                         start, end = cell_records({**cell, 'status': 'complete'}, manifest, index, block_indices(manifest, cell['id']))
@@ -1036,7 +1072,7 @@ def report(manifest_path, output, accounting_dir=None):
                         wait = accepted['quiet_wait']
                         require(end <= wait['started_monotonic_ns'] < wait['finished_monotonic_ns']
                                 <= accepted['warmups'][0]['started_monotonic_ns']
-                                and wait['finished_monotonic_ns']-wait['started_monotonic_ns'] <= recovery['quiet_timeout_s']*1e9
+                                and wait['finished_monotonic_ns']-wait['started_monotonic_ns'] <= policy['quiet_timeout_s']*1e9
                                 and len(wait['clean_intervals']) == 2, 'invalid retry quiet-wait chronology')
                         boundary = wait['started_monotonic_ns']
                         for interval_index, quiet_interval in enumerate(wait['clean_intervals']):
@@ -1059,7 +1095,7 @@ def report(manifest_path, output, accounting_dir=None):
                                     'rejected attempt discrete science changed')
                             compare_saved(base, path.parent / accepted['references'][role], meta)
                     calls = sum(len(cell_calls(c)) for c in [*result['cases'], *rejected] if not c.get('reused'))
-                    require(calls == result['native_calls_started'] <= recovery['new_call_cap'], 'recovery call budget changed')
+                    require(calls == result['native_calls_started'] <= policy['new_call_cap'], 'recovery call budget changed')
                 if manifest['platform'] == 'Linux':
                     host = result['host']['host']
                     require(result['hostname'].split('.')[0] == host['hostname'].split('.')[0],
@@ -1076,17 +1112,17 @@ def report(manifest_path, output, accounting_dir=None):
                     require(cell['status'] == 'complete' and [r['index'] for r in cell['blocks']] == indices, 'incomplete cell')
                     hosts = [*result.get('previous_hosts', []), result['host']]
                     reference_root = path.parent
-                    if recovery:
+                    if policy:
                         index = cases[cell['id'].rsplit('-t', 1)[0]][0]
                         start, end = cell_records(cell, manifest, index, indices)
                         if cell.get('reused'):
-                            require(cell['id'] in recovery['reused_cells'] and {k: v for k, v in cell.items() if k != 'reused'}
+                            require(recovery and cell['id'] in recovery['reused_cells'] and {k: v for k, v in cell.items() if k != 'reused'}
                                     == old_cells[cell['id']], 'retained cell changed')
                             evidence = span_evidence(old_events, start, end)
                             require(evidence == recovery['retained_spans'][cell['id']], 'retained span changed')
                             reference_root = old_root
                         else:
-                            require(cell['id'] in recovery['fresh_cells'] and cell['attempt'] == int(cell['id'] in result['retry_cells']),
+                            require(cell['id'] in policy['fresh_cells'] and cell['attempt'] == int(cell['id'] in result['retry_cells']),
                                     'fresh recovery cell attempt changed')
                             evidence = span_evidence(current_events, start, end)
                             require(all(cell['eligibility'][k] == evidence[k] for k in
@@ -1117,14 +1153,14 @@ def report(manifest_path, output, accounting_dir=None):
                         current = reference_root / relative
                         require(current.resolve().is_relative_to(reference_root.resolve()), 'reference outside job directory')
                         for suffix, name in (('.json', 'head'), ('.npz', 'outputs')):
-                            if recovery:
+                            if policy:
                                 verify_file(current.with_suffix(suffix), cell['reference_files'][role][name])
                             else:
                                 require(digest(current.with_suffix(suffix)) == cell['reference_files'][role][name],
                                         'retained scientific output changed')
                         raw = read(current.with_suffix('.json'))
                         validate_result(raw)
-                        if recovery:
+                        if policy:
                             require(worker_signature(raw) == cell['worker_signatures'][role], 'retained discrete science changed')
                         if (key, role) in snapshots:
                             if key not in metadata_cache:
@@ -1192,6 +1228,11 @@ def report(manifest_path, output, accounting_dir=None):
             cumulative_calls=recovery['prior_calls']+results[0]['native_calls_started'] if results else None,
             cumulative_elapsed_s=recovery['prior_elapsed_s']+results[0]['elapsed_s'] if results else None,
             discarded_attempts=results[0]['discarded_attempts'] if results else [])
+    if 'mac_cell_policy' in manifest:
+        summary['mac_cell_policy'] = {**policy,
+            'selection': 'complete cells with sealed external evidence; no timing-based selection',
+            'new_calls': results[0]['native_calls_started'] if results else None,
+            'discarded_attempts': results[0]['discarded_attempts'] if results else []}
     write(output / 'summary.json', summary)
     return summary
 

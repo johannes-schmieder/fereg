@@ -76,8 +76,9 @@ establish a Mac performance claim. The controlled timing rule below retains
 max(5%, 1 ms), balanced complete-solve blocks and the existing confidence standard.
 
 The incremental Auto workstream remains on `codex/auto-routing`, protecting the
-original uninjected baseline `f35f3a4d`. Finish the existing many-FE candidate
-before two-FE. Both public defaults remain disabled until their applicable
+original uninjected baseline `f35f3a4d` and the last accepted branch Auto.
+Many-FE passed and was activated in `d5b06cf3`; Johannes then authorized the
+separate two-FE qualification. Its public default remains disabled until that
 qualification passes. Activation is limited to OLS Auto/Auto categorical
 intercept designs; exact hidden/public equivalence, independent numerical
 witnesses and the [declared scientific scope](SPEC.md#incremental-auto-qualification-2026-10-17)
@@ -117,13 +118,18 @@ while preserving completed evidence. Scientific/native failures and unfavorable
 or inconclusive performance do not trigger retries. The existing max(5%, 1 ms)
 allowance, uncertainty gate and scientific checks remain unchanged.
 
-The current recovery retains 26 complete cells and runs the affected cell plus
+The completed many-FE recovery retained 26 complete cells and ran the affected cell plus
 15 unstarted cells. Its maximum is 2,940 new calls, including warmups and four
 possible retries, and 6,878 cumulative calls including both failed segments.
 The 12,747-second execution budget keeps cumulative execution within the original
 four hours. There is one final performance assessment, not repeated looks until
 success. See the [Mac recovery rules](../bench/README.md#results-repair-and-cleanup).
-Two-FE remains held; no main merge or release-package changes are authorized.
+New Mac qualification plans apply the same bounded cell policy from the start,
+without requiring a failed run or prior-evidence manifest. Count all distinct
+execution arms and discarded attempts against the frozen call cap. Resume,
+continuation and recovery cannot reset a fresh plan's budgets. Two-FE proceeds
+only under its separate fixed-candidate plan; no main merge or release-package
+changes are authorized.
 
 GitHub testing is paused. Mac remains the default qualification host; Johannes
 additionally requested bounded Linux and Windows build checks on 2026-10-07.

@@ -13,8 +13,13 @@ if [[ $# != 2 ]]; then
 fi
 module purge
 module load python3/3.12.4
-export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1
-export LC_ALL=C PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+export PYTHONDONTWRITEBYTECODE=1
+export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export VECLIB_MAXIMUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+export LC_ALL=C PYTHONUNBUFFERED=1
 read -r replica shard < <(python3 - "$1" "${SGE_TASK_ID:?array task required}" <<'PY'
 import json, sys
 manifest = json.load(open(sys.argv[1]))

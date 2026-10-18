@@ -565,11 +565,18 @@ role, without rejecting observations because of that activity. The role requires
 the OS executable identity and an unambiguous first subcommand; an argument that
 merely mentions `app-server` does not qualify. The server is not an owned process:
 its tool children, `codex exec`, builds, tests and estimators remain classified.
-The prospective Mac recovery policy flags substantial sampled activity: at least
+New Mac plans use the practical cell policy from their first run. The policy
+flags substantial sampled activity: at least
 one CPU-second in a valid interval no longer than 7.5 seconds, or a known process
 runnable at 20% CPU or more. Lesser activity stays recorded noise, including the
 earlier 70 ms tool-runtime burst. A flag affects only its overlapping cell attempt.
 The older strict plans keep their original policy and failed outcomes.
+Fresh plans permit at most one replacement per affected cell and four replaced
+cells overall, after two clear sampled intervals within 120 seconds. Their call
+cap includes all distinct execution arms, warmups and discarded attempts; the
+whole-run budget remains at most four hours. These plans cannot reset their
+budgets through resume, continuation or recovery entrypoints. Historical recovery
+plans retain their separate prior-evidence bindings and accounting.
 Unknown desktop activity remains recorded noise. Missing observations,
 artifact drift, native failures and scientific failures retain their failure
 semantics. Python executable-name matching handles macOS's capitalized name,

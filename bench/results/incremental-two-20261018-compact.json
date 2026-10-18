@@ -1,0 +1,1864 @@
+{
+  "accepted_base": "d5b06cf369be33e04d10ea6daa819cc507387380",
+  "build_and_source_validation": {
+    "artifact_inputs": 58,
+    "linux_build": {
+      "artifacts": {
+        "candidate.plugin": "42ec8698a8d2653827846a7c46fc9cb089f3ff216f91dbbfb2589912e0ef01d1",
+        "incumbent.plugin": "7fae1f99a4a7697540abc451a6203900ca82e2f4fb61d8ce850739178ec4954d",
+        "original.plugin": "70c0f8ebf49b857ded10e3393584c7f608b5b08a0ca0425cda63ba032e6150e3",
+        "timing-harness": "d49630f61b3f3c502d34abf1e61b4ec73fa5b69e65c8af8dc26ff47a4e40786a"
+      },
+      "host": "scc-ei3",
+      "job_id": "8168542",
+      "patch": "DEFAULT_TWO true; DEFAULT_MANY remains true",
+      "revision": "d5b06cf369be33e04d10ea6daa819cc507387380",
+      "scope": "private Linux build and ABI/load; no qualification",
+      "status": "passed",
+      "versions": {
+        "gcc": "12.2.0",
+        "python": "Python 3.12.4",
+        "rustc": "rustc 1.85.1 (4eb161250 2025-03-15)"
+      }
+    },
+    "mac_artifacts": {
+      "candidate.plugin": "8731ae4a6468e9b6a525d5bedee623e6a91572ac3fbf668d050fc631d62eb22b",
+      "incumbent.plugin": "d15b4b41700a717d1fd01f50c1c4bef18ac10493f219093df868eabf33193c46",
+      "original.plugin": "4b7e1fcc0f7b26c3a698d8879ce176ab813babc08c015908264e42b27609ec75",
+      "timing-harness": "3582baecd0492c970c30a76e0f464bfd39e4d94b3d4031372eb2856c22f49fc2"
+    },
+    "mac_build": {
+      "maxrss_bytes": 2202828800,
+      "system_s": 19.427402,
+      "user_s": 627.187749,
+      "wall_s": 459.8125723749399
+    },
+    "private_patch": "DEFAULT_TWO false to true only; DEFAULT_MANY stays true",
+    "qualification_calls": 0,
+    "runtime_modules": 192,
+    "setup_failures": [
+      "Initial Mac wrapper inherited main cwd; cancelled before artifact acceptance.",
+      "Corrected source cwd but mixed Cargo cache was rejected; rebuilt all three with separate caches."
+    ],
+    "source_identities": {
+      "candidate": {
+        "artifact_inputs_sha256": "d940c6f98d2c0ac66844dfb5a4743b4a20852630202e4c4f44a280b3394987de",
+        "production_sha256": "d07c3d455834d52cbf9f9f58434f658c053c96b4b7a98d4b05515def8e11d352"
+      },
+      "incumbent": {
+        "artifact_inputs_sha256": "d940c6f98d2c0ac66844dfb5a4743b4a20852630202e4c4f44a280b3394987de",
+        "production_sha256": "a747f2cb06dcbeba616b0a94c64e4e0bbb8d8ca8e78c3b0eb9f2e75be28ef704"
+      },
+      "original": {
+        "artifact_inputs_sha256": "d940c6f98d2c0ac66844dfb5a4743b4a20852630202e4c4f44a280b3394987de",
+        "production_sha256": "f760a5b8383eeaa5556e4f218d2a06484662315d193af4615d6ab7b9fe3a4bf1"
+      }
+    },
+    "status": "passed",
+    "tool_tests": {
+      "initial_environment_failures": [
+        "missing psutil",
+        "missing matplotlib",
+        "missing reportlab"
+      ],
+      "log_sha256": "e66b873765fbc7cb2d21d8ee93f5df4f7555f97344c262661cac28db56a81c57",
+      "passed": true,
+      "tests": 189
+    }
+  },
+  "capture_sha256": {
+    "build-source-validation.json": "bf6bd0c4a97c59b50d4cd3255b98aee460ba4ab342162dbf1664ecc4c1b9d244",
+    "fresh-mac-source-review.json": "38a50960735527ad6d88f81fb57036b22070f41d4455746f150486ce824d2841",
+    "input-preparation.json": "5f8a6ebce6378eb03b686b06a823314f9f600ba65163ff744cc3d60633635b75",
+    "linux-placement.json": "b841617872b1401fd3013c2b14827644a35b486acafd3d0f90ea16974ea2f4fc",
+    "linux-plan-review.json": "d0b070fda23ca0b4dea782241bc675d698a6441093aa83a1e4445d57007d7e67",
+    "linux-plan.json": "c264d1a98a31ef002094132b45d595e3ef41033dcb58b047068f015e21e9cc42",
+    "linux-smoke-lifecycle.txt": "208f99be411691e295de199ee750c8243022d721e455c967e6993d22aefb750c",
+    "linux-smoke-summary.json": "f8cf95aaf70bc6f9be72bfbc890ef950840f5641aed0315c0feb821192e1a001",
+    "linux-transfer-validation.json": "9ba040acc22c4004de837cf8893de00bd33d6a0f25948ff94c0f16d813f0c881",
+    "mac-plan-review.json": "8fb4103fe9701af6bef3c35f493073de69c7c927e5add7a589ef7167707222d0",
+    "mac-plan.json": "2b7c8c9044ebf4e922e493736b50c4b6e71bbd4f1231301397125f603250c74a",
+    "tool-tests.txt": "e66b873765fbc7cb2d21d8ee93f5df4f7555f97344c262661cac28db56a81c57"
+  },
+  "date": "2026-10-18",
+  "independent_reviews": {
+    "fresh-mac-source-review.json": {
+      "additional_test": "four distinct arms: 60 started,40 accepted,20 excluded on one externally affected mocked cell; final 189-tool-test suite passed",
+      "conclusions": [
+        "Four distinct arms are counted in baseline and retry caps.",
+        "Historical manifests retain previous execution/provenance behavior.",
+        "Fresh plans reject resume/continuation/recovery resets and mixed policy fields.",
+        "Run and report share raw observation hashes, sealed spans, quiet-wait chronology, discarded science and all-started-call reconciliation.",
+        "Native/scientific/observer failures and exhausted limits remain terminal."
+      ],
+      "limitations": [
+        "Sampled process screen cannot prove no interference or reclassify omitted processes.",
+        "Coverage remains conditional on independent scores with common median; no simultaneous claim."
+      ],
+      "review_was_read_only": true,
+      "reviewer": "independent mac_recovery_protocol agent",
+      "scope": "fresh Mac cell-policy source change",
+      "sources": {
+        "bench/qualify.py": "bfa57ca054c3e738defed45745494c141d17aec38421e8fc3db579f59021dcfb",
+        "bench/qualify.sge": "f9866a32e2f74e2120ec41357f6c8e53eb56c0c0e9a23a93d2ea5d49037c5fb4",
+        "bench/tests/test_qualify.py": "de7da7d5d2bacb90d026b851c492b948050fd801649358088c4024f35e5516bb"
+      },
+      "status": "passed",
+      "tool_tests_sha256": "e66b873765fbc7cb2d21d8ee93f5df4f7555f97344c262661cac28db56a81c57"
+    },
+    "linux-plan-review.json": {
+      "checks": {
+        "blocks_per_host": 2,
+        "bound_files": 82,
+        "calls_per_task": 280,
+        "cells": 42,
+        "comparisons": 126,
+        "distinct_execution_arms": 4,
+        "execution_modules": 17,
+        "linux_artifact_files": 4,
+        "mac_input_scope_reference_review_reused": true,
+        "native_timeout_s": 120,
+        "payload_bytes": 879312655,
+        "physical_hosts": 12,
+        "runner_budget_s": 3600,
+        "scheduler_wall_s": 4200,
+        "shards": 3,
+        "shared_input_reference_files": 78,
+        "slots": 28,
+        "smoke": "80 calls; smoke_complete/no errors; job8168558/task1 failed0 exit0 wall26s",
+        "stat_alias_checks": "all bound files and modules hashed with before/after/final stat and alias checks",
+        "tasks": 36,
+        "timing_seed": 2026101822,
+        "total_calls": 10080,
+        "warmups": 1
+      },
+      "completed_unix": 1792339041.061246,
+      "evidence": [
+        {
+          "capture_name": "linux-plan.json",
+          "sha256": "c264d1a98a31ef002094132b45d595e3ef41033dcb58b047068f015e21e9cc42"
+        },
+        {
+          "capture_name": "linux-placement.json",
+          "sha256": "b841617872b1401fd3013c2b14827644a35b486acafd3d0f90ea16974ea2f4fc"
+        },
+        {
+          "capture_name": "mac-plan-review.json",
+          "sha256": "8fb4103fe9701af6bef3c35f493073de69c7c927e5add7a589ef7167707222d0"
+        },
+        {
+          "capture_name": "build-source-validation.json",
+          "sha256": "bf6bd0c4a97c59b50d4cd3255b98aee460ba4ab342162dbf1664ecc4c1b9d244"
+        },
+        {
+          "capture_name": "linux-build.json",
+          "sha256": "a32894e175049d36a6c4358932b2bf37f24444fe42eddb4e6b7b4535a632c1fa"
+        },
+        {
+          "capture_name": "linux-smoke-summary.json",
+          "sha256": "f8cf95aaf70bc6f9be72bfbc890ef950840f5641aed0315c0feb821192e1a001"
+        },
+        {
+          "capture_name": "linux-smoke-lifecycle.txt",
+          "sha256": "208f99be411691e295de199ee750c8243022d721e455c967e6993d22aefb750c"
+        },
+        {
+          "path": "bench/results/incremental-many-20261018-compact.json",
+          "sha256": "9e8b69157de10a390a64bb72d1971dda9c6aa809d443c7be126536bc18968776"
+        },
+        {
+          "path": "bench/qualify.sge",
+          "sha256": "f9866a32e2f74e2120ec41357f6c8e53eb56c0c0e9a23a93d2ea5d49037c5fb4"
+        }
+      ],
+      "execution_sources": {
+        "block_host": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+        "cmgschur": "c69ef5e0cb2c5694f1e7b975c24f098a9a363d84d1ded7d4821a9aa5f46ff026",
+        "cmgschur_cases": "2b866b8b5f66ffd88b0e298e94ccdf7ea86c5b39e5e33d89f5f97df2f656c842",
+        "native": "b3b80bd029f1b5566bef8ec325c5a9ae587b7ae1eabed21fa3ee0ab809f04233",
+        "native_io": "5a3ac828c7f0c7c3cd5af963e7192f5b598c2ca817767a1ef1b49d05196f3a03",
+        "qualify": "bfa57ca054c3e738defed45745494c141d17aec38421e8fc3db579f59021dcfb",
+        "qualify_scc": "7e869cfc2235567d28806d20c2879bb45a5c788d5591a984ffce19ce669bad7d",
+        "replay_bias_reference": "32f31f26512c350980bc6c76dbf4ea2a56818b03fa0af39d9b5165d9e50d57ff",
+        "replay_cmg_polish": "fea5b0bc6a32199dad2baecd5d9f262410400b6c01e0c4fa0e5923fdcb2bc501",
+        "replay_ols_reference": "9f543e9558e3f2198b7f2995eb93b5b4fcebb3d24f08bd1f61c3eb6f80927fd0",
+        "replay_plugins": "d9ad2e3e6e4f83d3992ac757fc2cf432b7ec9c5bf9a0130b7bcc3b99bcd38fa8",
+        "replay_psd": "6eec58705ef0ffa50d177b7ae51f126e5954827a39f67b4578d018119339bef8",
+        "routing": "5f52c90cc8a926236b8a7462e765a6757eef5a1fb99b56d46a463bb72eedfe7d",
+        "routing_cases": "ef96114acf7f8d6912a09bc9248045d4b8dc4b5a03209392493a6f6b19e83ab0",
+        "routing_oracle": "f12b01e117b4c510b467f9b0bce077ad5d476023f0ae1a04fbddc0f8f96131cf",
+        "routing_science": "697cdca3fe326dffdc15bd0dc4c548469cbf2db4efeece5b32efac71ba29c422",
+        "time_exact": "f686e037d3a65c2d9ba6cb79e9cb3ad07316768bc9d5b44d928d98c6dbf6caba"
+      },
+      "findings": [],
+      "kind": "independent_two_fe_linux_plan_review",
+      "limitations": [
+        "Prospective placement does not itself establish isolation; every allocation must pass maintained full-host reservation, all-queue census, affinity/topology and process observation gates and terminal accounting.",
+        "No remote live census, scientific/native rerun or report replay was performed.",
+        "Linux smoke is functional evidence, not a performance qualification result.",
+        "Retained original and incumbent Linux artifact identities were checked against committed many-FE evidence; source-equivalence is independently checked in the bound Mac plan review.",
+        "One-sided .025 order-statistic bounds are conditional on independent physical-host scores with a common median, not simultaneous across all comparisons."
+      ],
+      "plan": {
+        "capture_name": "linux-plan.json",
+        "sha256": "c264d1a98a31ef002094132b45d595e3ef41033dcb58b047068f015e21e9cc42"
+      },
+      "status": "passed_prelaunch_review"
+    },
+    "mac-plan-review.json": {
+      "checks": {
+        "accepted_source": "d5b06cf369be",
+        "artifact_inputs": 58,
+        "baseline_calls": 8232,
+        "blocks": 24,
+        "body_sets_disjoint": true,
+        "bound_files": 82,
+        "budget_s": 14400,
+        "call_cap": 9016,
+        "candidate_delta": "DEFAULT_TWO false to true only; DEFAULT_MANY true unchanged",
+        "cells": 42,
+        "distinct_execution_arms": 4,
+        "execution_modules": 17,
+        "family_cells": {
+          "many": 10,
+          "outside": 6,
+          "two": 26
+        },
+        "fresh_body_hashes": 21,
+        "historical_two_body_hashes": 63,
+        "independent_references": {
+          "inactive": 1,
+          "replay": 4,
+          "routing": 16
+        },
+        "linux_retained_incumbent_production_equivalence": "a3f19059662836645c2ac37db9aca456d220f904 == d5b06cf369be: 192 token streams and 58 inputs",
+        "max_retried_cells": 4,
+        "max_retries_per_cell": 1,
+        "native_timeout_s": 120,
+        "original_source": "f35f3a4dbb30",
+        "payload_bytes": 888066311,
+        "source_runtime_modules": 192,
+        "stat_alias_checks": "before/after each hash and final closure recheck",
+        "timing_seed": 2026101822,
+        "warmups": 1
+      },
+      "completed_unix": 1792338973.892649,
+      "evidence": [
+        {
+          "capture_name": "build-source-validation.json",
+          "sha256": "bf6bd0c4a97c59b50d4cd3255b98aee460ba4ab342162dbf1664ecc4c1b9d244"
+        },
+        {
+          "capture_name": "fresh-mac-source-review.json",
+          "sha256": "38a50960735527ad6d88f81fb57036b22070f41d4455746f150486ce824d2841"
+        },
+        {
+          "capture_name": "input-preparation.json",
+          "sha256": "5f8a6ebce6378eb03b686b06a823314f9f600ba65163ff744cc3d60633635b75"
+        },
+        {
+          "capture_name": "old-two-panel-identities.json",
+          "sha256": "cbe7d2301ede53707a7eb842101c0eaab4439cbe196373b45edf3146f2f8fdd5"
+        },
+        {
+          "capture_name": "mac-build-outcome.json",
+          "sha256": "1a740e635d5248bd0962afae0fa5cd366515d98945bd8d3f8a0f6c7969ee4ad5"
+        },
+        {
+          "capture_name": "mac-build-original.log",
+          "sha256": "c36d75db94778364d22d548a736021dac21382040286c007e92b9dfbb1bc5f23"
+        },
+        {
+          "capture_name": "mac-build-incumbent.log",
+          "sha256": "305b2d50d435f70dfc747bf5aa923e0a4ed052d623675e1bf82a823a7bebc32c"
+        },
+        {
+          "capture_name": "mac-build-candidate.log",
+          "sha256": "7bb9b907198d9e8f50647a1649a3e0316aff52fc1f0b667b225ff6a43619b654"
+        }
+      ],
+      "execution_sources": {
+        "block_host": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+        "cmgschur": "c69ef5e0cb2c5694f1e7b975c24f098a9a363d84d1ded7d4821a9aa5f46ff026",
+        "cmgschur_cases": "2b866b8b5f66ffd88b0e298e94ccdf7ea86c5b39e5e33d89f5f97df2f656c842",
+        "native": "b3b80bd029f1b5566bef8ec325c5a9ae587b7ae1eabed21fa3ee0ab809f04233",
+        "native_io": "5a3ac828c7f0c7c3cd5af963e7192f5b598c2ca817767a1ef1b49d05196f3a03",
+        "qualify": "bfa57ca054c3e738defed45745494c141d17aec38421e8fc3db579f59021dcfb",
+        "qualify_scc": "7e869cfc2235567d28806d20c2879bb45a5c788d5591a984ffce19ce669bad7d",
+        "replay_bias_reference": "32f31f26512c350980bc6c76dbf4ea2a56818b03fa0af39d9b5165d9e50d57ff",
+        "replay_cmg_polish": "fea5b0bc6a32199dad2baecd5d9f262410400b6c01e0c4fa0e5923fdcb2bc501",
+        "replay_ols_reference": "9f543e9558e3f2198b7f2995eb93b5b4fcebb3d24f08bd1f61c3eb6f80927fd0",
+        "replay_plugins": "d9ad2e3e6e4f83d3992ac757fc2cf432b7ec9c5bf9a0130b7bcc3b99bcd38fa8",
+        "replay_psd": "6eec58705ef0ffa50d177b7ae51f126e5954827a39f67b4578d018119339bef8",
+        "routing": "5f52c90cc8a926236b8a7462e765a6757eef5a1fb99b56d46a463bb72eedfe7d",
+        "routing_cases": "ef96114acf7f8d6912a09bc9248045d4b8dc4b5a03209392493a6f6b19e83ab0",
+        "routing_oracle": "f12b01e117b4c510b467f9b0bce077ad5d476023f0ae1a04fbddc0f8f96131cf",
+        "routing_science": "697cdca3fe326dffdc15bd0dc4c548469cbf2db4efeece5b32efac71ba29c422",
+        "time_exact": "f686e037d3a65c2d9ba6cb79e9cb3ad07316768bc9d5b44d928d98c6dbf6caba"
+      },
+      "findings": [],
+      "kind": "independent_two_fe_mac_plan_review",
+      "limitations": [
+        "Prelaunch identity/certificate review only; candidate scientific and timing results remain unmeasured.",
+        "Stored oracle certificate and array layout/finite checks were validated without recomputing mathematical solves.",
+        "Inactive-column executable analytic witness is source-bound and will execute in qualification; this review did not solve it.",
+        "Sampled observer classification cannot prove absence of short interference or reclassify omitted processes; ordinary desktop activity remains retained noise.",
+        "Order-statistic coverage is conditional on independent scores with a common median, not simultaneous coverage across all comparisons.",
+        "Mac review does not establish Linux node isolation or performance; Linux exact plan reviewed separately."
+      ],
+      "plan": {
+        "capture_name": "mac-plan.json",
+        "sha256": "2b7c8c9044ebf4e922e493736b50c4b6e71bbd4f1231301397125f603250c74a"
+      },
+      "scientific_scope": {
+        "affected_two_fe": "independent witness agreement and fixed-worker repeatability/crossworker discrete gates remain mandatory",
+        "exact": [
+          "candidate public versus hidden incremental-two every cell",
+          "candidate versus incumbent outside two-FE scope"
+        ],
+        "inactive": "bound original analytic witness implementation; no witness regenerated during review",
+        "protected": [
+          "original Auto every cell",
+          "accepted-many Auto every cell"
+        ]
+      },
+      "status": "passed_prelaunch_review"
+    }
+  },
+  "limitations": [
+    "Rebuilt generators are not restored historical binaries.",
+    "Sampled activity screening does not prove absence of unsampled work or independently reclassify every omitted process.",
+    "Mirroring/randomization do not establish independent common-median scores; one-sided .025 coverage is conditional and not simultaneous.",
+    "Successful timed native arrays and logs are deleted by the unchanged producer; review retained first-call arrays and repeat fingerprints, without claiming unavailable full-array replay.",
+    "No cross-platform speed or scientific-bit claim."
+  ],
+  "linux_placement": {
+    "comparisons": 126,
+    "expected_calls_per_task": 280,
+    "hosts": [
+      "scc-tj3",
+      "scc-tj4",
+      "scc-tn3",
+      "scc-tn4",
+      "scc-tq3",
+      "scc-tq4",
+      "scc-tr2",
+      "scc-ul1",
+      "scc-ul2",
+      "scc-ul3",
+      "scc-ul4",
+      "scc-um1"
+    ],
+    "independent_unit": "physical host",
+    "native_timeout_s": 120,
+    "replicas": 12,
+    "reservation": {
+      "h_rt_s": 4200,
+      "mem_per_core": "3G",
+      "num_proc": 28,
+      "parallel_environment": "omp28",
+      "project": "welfgr",
+      "queue": "unrestricted",
+      "slots": 28
+    },
+    "runner_budget_s": 3600,
+    "shards": 3,
+    "tasks": [
+      {
+        "host": "scc-tj3.scc.bu.edu",
+        "replica": 0,
+        "shard": 0,
+        "task": 1
+      },
+      {
+        "host": "scc-tj3.scc.bu.edu",
+        "replica": 0,
+        "shard": 1,
+        "task": 2
+      },
+      {
+        "host": "scc-tj3.scc.bu.edu",
+        "replica": 0,
+        "shard": 2,
+        "task": 3
+      },
+      {
+        "host": "scc-tj4.scc.bu.edu",
+        "replica": 1,
+        "shard": 0,
+        "task": 4
+      },
+      {
+        "host": "scc-tj4.scc.bu.edu",
+        "replica": 1,
+        "shard": 1,
+        "task": 5
+      },
+      {
+        "host": "scc-tj4.scc.bu.edu",
+        "replica": 1,
+        "shard": 2,
+        "task": 6
+      },
+      {
+        "host": "scc-tn3.scc.bu.edu",
+        "replica": 2,
+        "shard": 0,
+        "task": 7
+      },
+      {
+        "host": "scc-tn3.scc.bu.edu",
+        "replica": 2,
+        "shard": 1,
+        "task": 8
+      },
+      {
+        "host": "scc-tn3.scc.bu.edu",
+        "replica": 2,
+        "shard": 2,
+        "task": 9
+      },
+      {
+        "host": "scc-tn4.scc.bu.edu",
+        "replica": 3,
+        "shard": 0,
+        "task": 10
+      },
+      {
+        "host": "scc-tn4.scc.bu.edu",
+        "replica": 3,
+        "shard": 1,
+        "task": 11
+      },
+      {
+        "host": "scc-tn4.scc.bu.edu",
+        "replica": 3,
+        "shard": 2,
+        "task": 12
+      },
+      {
+        "host": "scc-tq3.scc.bu.edu",
+        "replica": 4,
+        "shard": 0,
+        "task": 13
+      },
+      {
+        "host": "scc-tq3.scc.bu.edu",
+        "replica": 4,
+        "shard": 1,
+        "task": 14
+      },
+      {
+        "host": "scc-tq3.scc.bu.edu",
+        "replica": 4,
+        "shard": 2,
+        "task": 15
+      },
+      {
+        "host": "scc-tq4.scc.bu.edu",
+        "replica": 5,
+        "shard": 0,
+        "task": 16
+      },
+      {
+        "host": "scc-tq4.scc.bu.edu",
+        "replica": 5,
+        "shard": 1,
+        "task": 17
+      },
+      {
+        "host": "scc-tq4.scc.bu.edu",
+        "replica": 5,
+        "shard": 2,
+        "task": 18
+      },
+      {
+        "host": "scc-tr2.scc.bu.edu",
+        "replica": 6,
+        "shard": 0,
+        "task": 19
+      },
+      {
+        "host": "scc-tr2.scc.bu.edu",
+        "replica": 6,
+        "shard": 1,
+        "task": 20
+      },
+      {
+        "host": "scc-tr2.scc.bu.edu",
+        "replica": 6,
+        "shard": 2,
+        "task": 21
+      },
+      {
+        "host": "scc-ul1.scc.bu.edu",
+        "replica": 7,
+        "shard": 0,
+        "task": 22
+      },
+      {
+        "host": "scc-ul1.scc.bu.edu",
+        "replica": 7,
+        "shard": 1,
+        "task": 23
+      },
+      {
+        "host": "scc-ul1.scc.bu.edu",
+        "replica": 7,
+        "shard": 2,
+        "task": 24
+      },
+      {
+        "host": "scc-ul2.scc.bu.edu",
+        "replica": 8,
+        "shard": 0,
+        "task": 25
+      },
+      {
+        "host": "scc-ul2.scc.bu.edu",
+        "replica": 8,
+        "shard": 1,
+        "task": 26
+      },
+      {
+        "host": "scc-ul2.scc.bu.edu",
+        "replica": 8,
+        "shard": 2,
+        "task": 27
+      },
+      {
+        "host": "scc-ul3.scc.bu.edu",
+        "replica": 9,
+        "shard": 0,
+        "task": 28
+      },
+      {
+        "host": "scc-ul3.scc.bu.edu",
+        "replica": 9,
+        "shard": 1,
+        "task": 29
+      },
+      {
+        "host": "scc-ul3.scc.bu.edu",
+        "replica": 9,
+        "shard": 2,
+        "task": 30
+      },
+      {
+        "host": "scc-ul4.scc.bu.edu",
+        "replica": 10,
+        "shard": 0,
+        "task": 31
+      },
+      {
+        "host": "scc-ul4.scc.bu.edu",
+        "replica": 10,
+        "shard": 1,
+        "task": 32
+      },
+      {
+        "host": "scc-ul4.scc.bu.edu",
+        "replica": 10,
+        "shard": 2,
+        "task": 33
+      },
+      {
+        "host": "scc-um1.scc.bu.edu",
+        "replica": 11,
+        "shard": 0,
+        "task": 34
+      },
+      {
+        "host": "scc-um1.scc.bu.edu",
+        "replica": 11,
+        "shard": 1,
+        "task": 35
+      },
+      {
+        "host": "scc-um1.scc.bu.edu",
+        "replica": 11,
+        "shard": 2,
+        "task": 36
+      }
+    ],
+    "total_expected_calls": 10080
+  },
+  "linux_smoke": {
+    "analysis_unit": "physical host",
+    "comparisons": [
+      {
+        "case": "dense-t1",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.005216907664428786,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 1.0065052482381376,
+        "reference": "hidden",
+        "status": "inconclusive"
+      },
+      {
+        "case": "dense-t1",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.004598282451148019,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 1.0112291521671282,
+        "reference": "incumbent",
+        "status": "inconclusive"
+      },
+      {
+        "case": "dense-t1",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.00515635883585179,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 1.0067109326638164,
+        "reference": "original",
+        "status": "inconclusive"
+      },
+      {
+        "case": "dense-t4",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.00480645933504518,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 0.9969148365709005,
+        "reference": "hidden",
+        "status": "inconclusive"
+      },
+      {
+        "case": "dense-t4",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.007689228902914728,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 0.9665731781666885,
+        "reference": "incumbent",
+        "status": "inconclusive"
+      },
+      {
+        "case": "dense-t4",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.008603224152964167,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 0.9575270982369302,
+        "reference": "original",
+        "status": "inconclusive"
+      },
+      {
+        "case": "low-saved-t1",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.0011451263518125628,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 0.9550246692355593,
+        "reference": "hidden",
+        "status": "inconclusive"
+      },
+      {
+        "case": "low-saved-t1",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.001087084541706116,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 0.9727511964772155,
+        "reference": "incumbent",
+        "status": "inconclusive"
+      },
+      {
+        "case": "low-saved-t1",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.0009181496136043456,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 1.0273111092710177,
+        "reference": "original",
+        "status": "inconclusive"
+      },
+      {
+        "case": "low-saved-t4",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.0012419587957928418,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 0.9429739303095929,
+        "reference": "hidden",
+        "status": "inconclusive"
+      },
+      {
+        "case": "low-saved-t4",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.000993394993197186,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 1.0060629219740542,
+        "reference": "incumbent",
+        "status": "inconclusive"
+      },
+      {
+        "case": "low-saved-t4",
+        "excess_seconds": {
+          "alpha": 0.025,
+          "lower": null,
+          "median": -0.0011181860281364595,
+          "n": 1,
+          "upper": null
+        },
+        "median_ratio": 0.9708428133015472,
+        "reference": "original",
+        "status": "inconclusive"
+      }
+    ],
+    "coverage": "One-sided .025 bounds conditional on independent unit scores with a common median; no simultaneous interval claim.",
+    "errors": [],
+    "manifest_sha256": "09b71f65d438f49aca9fc562dd86a9a9629f06990cfe2be5df4788babe667ec4",
+    "native_calls": 80,
+    "next_action": "Discuss failed, missing or inconclusive evidence with Johannes; keep candidate and defaults.",
+    "platform": "Linux",
+    "schema": 1,
+    "status": "smoke_complete"
+  },
+  "linux_transfer_validation": {
+    "bytes": 879626876,
+    "checks": "all bytes, before/after file stat and alias closure; no estimator or oracle calls",
+    "completed_unix": 1792339174.6378865,
+    "execution_modules": 17,
+    "files": 82,
+    "plan_sha256": "c264d1a98a31ef002094132b45d595e3ef41033dcb58b047068f015e21e9cc42",
+    "status": "passed"
+  },
+  "plans": {
+    "Linux": {
+      "artifacts": {
+        "candidate": {
+          "build": "Rust 1.85.1 locked release; GCC 12.2.0; GLIBC <=2.28 audit and actual ABI/load",
+          "families": [
+            "many",
+            "two"
+          ],
+          "path": "artifacts/linux/candidate.plugin",
+          "request": "auto",
+          "revision": "d5b06cf369be plus DEFAULT_TWO=true"
+        },
+        "hidden": {
+          "build": "Rust 1.85.1 locked release; GCC 12.2.0; GLIBC <=2.28 audit and actual ABI/load",
+          "families": [
+            "many",
+            "two"
+          ],
+          "path": "artifacts/linux/incumbent.plugin",
+          "request": "incremental-two",
+          "revision": "a3f19059662836645c2ac37db9aca456d220f904; production-equivalent to accepted d5b06cf369be"
+        },
+        "incumbent": {
+          "build": "Rust 1.85.1 locked release; GCC 12.2.0; GLIBC <=2.28 audit and actual ABI/load",
+          "families": [
+            "many"
+          ],
+          "path": "artifacts/linux/incumbent.plugin",
+          "request": "auto",
+          "revision": "a3f19059662836645c2ac37db9aca456d220f904; production-equivalent to accepted d5b06cf369be"
+        },
+        "original": {
+          "build": "Rust 1.85.1 locked release; GCC 12.2.0; GLIBC <=2.28 audit and actual ABI/load",
+          "families": [],
+          "path": "artifacts/linux/original.plugin",
+          "request": "auto",
+          "revision": "f35f3a4dbb30"
+        }
+      },
+      "blocks": 2,
+      "budget_s": 3600,
+      "cases": [
+        {
+          "family": "dense",
+          "id": "dense",
+          "input": "inputs/dense.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/dense.json",
+          "oracle": {
+            "arrays": "oracles/dense.npz",
+            "kind": "routing",
+            "path": "oracles/dense.json"
+          },
+          "shape": [
+            100000,
+            15
+          ]
+        },
+        {
+          "family": "disconnected",
+          "id": "disconnected",
+          "input": "inputs/disconnected.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/disconnected.json",
+          "oracle": {
+            "arrays": "oracles/disconnected.npz",
+            "kind": "routing",
+            "path": "oracles/disconnected.json"
+          },
+          "shape": [
+            100000,
+            12
+          ]
+        },
+        {
+          "family": "eight-fe",
+          "id": "eight-fe",
+          "input": "inputs/eight-fe.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/eight-fe.json",
+          "oracle": {
+            "arrays": "oracles/eight-fe.npz",
+            "kind": "routing",
+            "path": "oracles/eight-fe.json"
+          },
+          "shape": [
+            100000,
+            21
+          ]
+        },
+        {
+          "family": "four-fe",
+          "id": "four-fe",
+          "input": "inputs/four-fe.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/four-fe.json",
+          "oracle": {
+            "arrays": "oracles/four-fe.npz",
+            "kind": "routing",
+            "path": "oracles/four-fe.json"
+          },
+          "shape": [
+            100000,
+            17
+          ]
+        },
+        {
+          "family": "high-degree-mixed",
+          "id": "high-degree-mixed",
+          "input": "inputs/high-degree-mixed.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/high-degree-mixed.json",
+          "oracle": {
+            "arrays": "oracles/high-degree-mixed.npz",
+            "kind": "routing",
+            "path": "oracles/high-degree-mixed.json"
+          },
+          "shape": [
+            600000,
+            12
+          ]
+        },
+        {
+          "family": "high-degree-stress",
+          "id": "high-degree-stress",
+          "input": "inputs/high-degree-stress.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/high-degree-stress.json",
+          "oracle": {
+            "arrays": "oracles/high-degree-stress.npz",
+            "kind": "routing",
+            "path": "oracles/high-degree-stress.json"
+          },
+          "shape": [
+            600000,
+            12
+          ]
+        },
+        {
+          "family": "high-degree-weak",
+          "id": "high-degree-weak",
+          "input": "inputs/high-degree-weak.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/high-degree-weak.json",
+          "oracle": {
+            "arrays": "oracles/high-degree-weak.npz",
+            "kind": "routing",
+            "path": "oracles/high-degree-weak.json"
+          },
+          "shape": [
+            600000,
+            12
+          ]
+        },
+        {
+          "family": "inactive-columns",
+          "id": "inactive-columns",
+          "input": "inputs/inactive-columns.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/inactive-columns.json",
+          "oracle": {
+            "kind": "inactive"
+          },
+          "shape": [
+            100000,
+            14
+          ]
+        },
+        {
+          "family": "low-saved",
+          "id": "low-saved",
+          "input": "inputs/low-saved.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/low-saved.json",
+          "oracle": {
+            "kind": "replay",
+            "path": "inputs/low-saved.reference.json"
+          },
+          "shape": [
+            150,
+            14
+          ]
+        },
+        {
+          "family": "near-confounded-third",
+          "id": "near-confounded-third",
+          "input": "inputs/near-confounded-third.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/near-confounded-third.json",
+          "oracle": {
+            "arrays": "oracles/near-confounded-third.npz",
+            "kind": "routing",
+            "path": "oracles/near-confounded-third.json"
+          },
+          "shape": [
+            100000,
+            13
+          ]
+        },
+        {
+          "family": "no-fe",
+          "id": "no-fe",
+          "input": "inputs/no-fe.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/no-fe.json",
+          "oracle": {
+            "kind": "replay",
+            "path": "inputs/no-fe.reference.json"
+          },
+          "shape": [
+            150,
+            10
+          ]
+        },
+        {
+          "family": "one-fe",
+          "id": "one-fe",
+          "input": "inputs/one-fe.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/one-fe.json",
+          "oracle": {
+            "kind": "replay",
+            "path": "inputs/one-fe.reference.json"
+          },
+          "shape": [
+            150,
+            11
+          ]
+        },
+        {
+          "family": "repeated-cells",
+          "id": "repeated-cells",
+          "input": "inputs/repeated-cells.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/repeated-cells.json",
+          "oracle": {
+            "arrays": "oracles/repeated-cells.npz",
+            "kind": "routing",
+            "path": "oracles/repeated-cells.json"
+          },
+          "shape": [
+            100000,
+            12
+          ]
+        },
+        {
+          "family": "sixteen-fe",
+          "id": "sixteen-fe",
+          "input": "inputs/sixteen-fe.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/sixteen-fe.json",
+          "oracle": {
+            "arrays": "oracles/sixteen-fe.npz",
+            "kind": "routing",
+            "path": "oracles/sixteen-fe.json"
+          },
+          "shape": [
+            100000,
+            29
+          ]
+        },
+        {
+          "family": "slopes",
+          "id": "slopes",
+          "input": "inputs/slopes.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/slopes.json",
+          "oracle": {
+            "kind": "replay",
+            "path": "inputs/slopes.reference.json"
+          },
+          "shape": [
+            150,
+            12
+          ]
+        },
+        {
+          "family": "small-retained",
+          "id": "small-retained",
+          "input": "inputs/small-retained.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/small-retained.json",
+          "oracle": {
+            "arrays": "oracles/small-retained.npz",
+            "kind": "routing",
+            "path": "oracles/small-retained.json"
+          },
+          "shape": [
+            60000,
+            15
+          ]
+        },
+        {
+          "family": "small-third",
+          "id": "small-third",
+          "input": "inputs/small-third.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/small-third.json",
+          "oracle": {
+            "arrays": "oracles/small-third.npz",
+            "kind": "routing",
+            "path": "oracles/small-third.json"
+          },
+          "shape": [
+            100000,
+            16
+          ]
+        },
+        {
+          "family": "weak",
+          "id": "weak",
+          "input": "inputs/weak.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/weak.json",
+          "oracle": {
+            "arrays": "oracles/weak.npz",
+            "kind": "routing",
+            "path": "oracles/weak.json"
+          },
+          "shape": [
+            100000,
+            12
+          ]
+        },
+        {
+          "family": "weight-dynamic",
+          "id": "weight-dynamic",
+          "input": "inputs/weight-dynamic.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/weight-dynamic.json",
+          "oracle": {
+            "arrays": "oracles/weight-dynamic.npz",
+            "kind": "routing",
+            "path": "oracles/weight-dynamic.json"
+          },
+          "shape": [
+            100000,
+            13
+          ]
+        },
+        {
+          "family": "weighted",
+          "id": "weighted",
+          "input": "inputs/weighted.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/weighted.json",
+          "oracle": {
+            "arrays": "oracles/weighted.npz",
+            "kind": "routing",
+            "path": "oracles/weighted.json"
+          },
+          "shape": [
+            100000,
+            16
+          ]
+        },
+        {
+          "family": "wide-rhs",
+          "id": "wide-rhs",
+          "input": "inputs/wide-rhs.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/wide-rhs.json",
+          "oracle": {
+            "arrays": "oracles/wide-rhs.npz",
+            "kind": "routing",
+            "path": "oracles/wide-rhs.json"
+          },
+          "shape": [
+            100000,
+            26
+          ]
+        }
+      ],
+      "coverage": "routing",
+      "execution_sources": {
+        "block_host": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+        "cmgschur": "c69ef5e0cb2c5694f1e7b975c24f098a9a363d84d1ded7d4821a9aa5f46ff026",
+        "cmgschur_cases": "2b866b8b5f66ffd88b0e298e94ccdf7ea86c5b39e5e33d89f5f97df2f656c842",
+        "native": "b3b80bd029f1b5566bef8ec325c5a9ae587b7ae1eabed21fa3ee0ab809f04233",
+        "native_io": "5a3ac828c7f0c7c3cd5af963e7192f5b598c2ca817767a1ef1b49d05196f3a03",
+        "qualify": "bfa57ca054c3e738defed45745494c141d17aec38421e8fc3db579f59021dcfb",
+        "qualify_scc": "7e869cfc2235567d28806d20c2879bb45a5c788d5591a984ffce19ce669bad7d",
+        "replay_bias_reference": "32f31f26512c350980bc6c76dbf4ea2a56818b03fa0af39d9b5165d9e50d57ff",
+        "replay_cmg_polish": "fea5b0bc6a32199dad2baecd5d9f262410400b6c01e0c4fa0e5923fdcb2bc501",
+        "replay_ols_reference": "9f543e9558e3f2198b7f2995eb93b5b4fcebb3d24f08bd1f61c3eb6f80927fd0",
+        "replay_plugins": "d9ad2e3e6e4f83d3992ac757fc2cf432b7ec9c5bf9a0130b7bcc3b99bcd38fa8",
+        "replay_psd": "6eec58705ef0ffa50d177b7ae51f126e5954827a39f67b4578d018119339bef8",
+        "routing": "5f52c90cc8a926236b8a7462e765a6757eef5a1fb99b56d46a463bb72eedfe7d",
+        "routing_cases": "ef96114acf7f8d6912a09bc9248045d4b8dc4b5a03209392493a6f6b19e83ab0",
+        "routing_oracle": "f12b01e117b4c510b467f9b0bce077ad5d476023f0ae1a04fbddc0f8f96131cf",
+        "routing_science": "697cdca3fe326dffdc15bd0dc4c548469cbf2db4efeece5b32efac71ba29c422",
+        "time_exact": "f686e037d3a65c2d9ba6cb79e9cb3ad07316768bc9d5b44d928d98c6dbf6caba"
+      },
+      "files": {
+        "artifacts/linux/candidate.plugin": "42ec8698a8d2653827846a7c46fc9cb089f3ff216f91dbbfb2589912e0ef01d1",
+        "artifacts/linux/incumbent.plugin": "7fae1f99a4a7697540abc451a6203900ca82e2f4fb61d8ce850739178ec4954d",
+        "artifacts/linux/original.plugin": "70c0f8ebf49b857ded10e3393584c7f608b5b08a0ca0425cda63ba032e6150e3",
+        "artifacts/linux/timing-harness": "d49630f61b3f3c502d34abf1e61b4ec73fa5b69e65c8af8dc26ff47a4e40786a",
+        "inputs/dense.case": "174d16757adeb95cd240b508748ee500d4b18b23f152581aff8a54c18fe3da37",
+        "inputs/dense.json": "1516419f216cc249a10044ad84d10bb26db36f7cda503a7ff77fb4ea42bf18f5",
+        "inputs/disconnected.case": "baced181e6db01eb686dd843ebe7a838501e6433a5731d8014469a76af3bda93",
+        "inputs/disconnected.json": "fb86b8451faf96e7bfefebb8c52775eb3a97496b4702491254474a0330962528",
+        "inputs/eight-fe.case": "b30794c85496d6a38d969f56271a83711f7b1be32ac20dc2ee281da4f84eabd9",
+        "inputs/eight-fe.json": "5defad5a40f63cf70ba7a96f5effa7a2fa2cebeec2ad1abf92f99d911752ebcf",
+        "inputs/four-fe.case": "bcef5a98f28b5c10bea4a3ba40218bb9d46ec22e0bad4bc88678fe1e159fa42f",
+        "inputs/four-fe.json": "9f030897c112220feabddb5b610b5d3ed865fe1149a23e2d3d8e3933c7c287c0",
+        "inputs/high-degree-mixed.case": "8e1b83f6799287932627914aa15f6fb43a1e9ffb5071f3f2d65edbc9582233ea",
+        "inputs/high-degree-mixed.json": "f035f503e9aa83d5e40f972ba07983bb749000fdb6fd1941e8aaeb22cc731bf0",
+        "inputs/high-degree-stress.case": "1ac41e396011d9ff7aecf7364dfad4d07d3e497c8fd46a971adeeec5bd084e5e",
+        "inputs/high-degree-stress.json": "aa02019cdd2227f3d3cfe60aae6ba8c65894961acecf8cdd757ef2180f110260",
+        "inputs/high-degree-weak.case": "9631343a441c33c277d3782b388a584f93c64486e2baa817e9e4bbf1b2623bb7",
+        "inputs/high-degree-weak.json": "74d02da7f52fc7e98405ea87a6f47d80e1c17fedc2c94678bcf528aaab7a27bc",
+        "inputs/inactive-columns.case": "1b1e576cbacb26d170874f38c51027754ba7d7eca079bc2950d0b05c8f867ba7",
+        "inputs/inactive-columns.json": "1fe55a39c73a3c4feb1459b40a2eeae1ea0c272f18d6ffc71dda678a5cb26c86",
+        "inputs/low-saved.case": "0ba0406516d3934ea6df2166f829645b4ca55a7ccf8321ebef7a19be022356d6",
+        "inputs/low-saved.json": "38ce10a2dd82c842374abb457259dfb8087ed9075544c138fae1b93a1c15f92d",
+        "inputs/low-saved.reference.json": "e216e69f9095b4c5951a17ed713770be4052da5f088b3ef82cb26be893196a8a",
+        "inputs/near-confounded-third.case": "f40f3e69d450934ef406f2b37828db9f33370c50557da0e0cf9d158bb2360e74",
+        "inputs/near-confounded-third.json": "b5b5b96c6cae9219c8efa44a77a960c2755e043f19cbe9b0dcef58e1ef5d3698",
+        "inputs/no-fe.case": "681b61d03e059c30fabef18a5e32e886f87c30fbea7a836202a3dff9733cdde8",
+        "inputs/no-fe.json": "430a41377535b38e8c8f4d4216692930ec527a87a598323a733d5c1df559735c",
+        "inputs/no-fe.reference.json": "70c9f567d2b438804608189fc05cda5cbe38a93abd407589f882c3a2fcf13867",
+        "inputs/one-fe.case": "70159454d79c7bcc0c52452104c4013bd2247cf688f12a2794a6f66028c220e3",
+        "inputs/one-fe.json": "134f115ab9e7060c36e9ad63acf7bb6b247329a4c5cb65344760707da8b4e6e0",
+        "inputs/one-fe.reference.json": "4a3af9496a96f52c34e2da1a1aa2fe824f1d616e4547197bf509c0644bf2c576",
+        "inputs/repeated-cells.case": "b74713da747338f279e2cace36c982ff0b3e45f2ea0dee74c6cdcafcecc81517",
+        "inputs/repeated-cells.json": "fc67b5ae5028cb1523c08e1a17b377ecadc07c2d4528ebcc2d5e276fdc91eb04",
+        "inputs/sixteen-fe.case": "24509a836f07cf3ece8f60b632cd20e5bf65b7a7438cd8c8715b0cff07e7cafa",
+        "inputs/sixteen-fe.json": "3f0f2c190c6c814e7d8ba23e6829f5e3441d286d6f5d9ee71911e6638326e0c5",
+        "inputs/slopes.case": "745a11c117a449a07e21f87cffae2c3a743f8c2eae0451bdb6e50231aafb9b33",
+        "inputs/slopes.json": "d0f9a920d4088ccb46a86ec49ee8c6a0a528c5f075d57693dd7c04c7d72fdce6",
+        "inputs/slopes.reference.json": "73922fae1f93ab93e57b62bf5cc8c778e3547db9cf211be44d7993a0220a880c",
+        "inputs/small-retained.case": "14d9c6f178f2a0d2d4205c67c9de7dd249047b257cbe3a6740b42e66cac38939",
+        "inputs/small-retained.json": "cb0d49aba461c5fbd70b5a4ae6924c03e048c8187dedff4ae970849c11675505",
+        "inputs/small-third.case": "8c988c06a2e761ab461cedec82aa22cef90105fa2cb59be1478d2840bbf91213",
+        "inputs/small-third.json": "b38c5c233b0e995f6856158215f8406393cc8a99151aa56939cdf7d543bfd362",
+        "inputs/weak.case": "a6c06c4b63ad71a02acf906cc4d6567585761be727cd349a6900f41c4c8b144d",
+        "inputs/weak.json": "bbfa73dcb37fd28e64472129387a1a7742e06c01fee28d78ff24dc76e78566f2",
+        "inputs/weight-dynamic.case": "fbc181b660144d74913f64378422f5e050d29c57338116338f60645f3119bdca",
+        "inputs/weight-dynamic.json": "8986e2c68f2f15cd023c75522bb591a04fe3cb3438b71db851082ac64e920aa8",
+        "inputs/weighted.case": "10ce6788328937cd776025bfc5f0f91dffaedb1c98c4b78748d9762dd98c7930",
+        "inputs/weighted.json": "1203409ce4ad5d34853e6b1e3908870340289dc9cff70e963c40630889878217",
+        "inputs/wide-rhs.case": "d45b1262cf0d22b8008a75cc988f555ca620db072b3da0feaaa6731838eeb48d",
+        "inputs/wide-rhs.json": "788f8534af1c3c6ea54fc49a1db5c205acce1562d16f8c5c6ba111090f8119a8",
+        "oracles/dense.json": "29af47d7d358d2c75fc2f18a089430c885e4736573b92c30eea31d76bfa8568f",
+        "oracles/dense.npz": "539793028dad8aa68246839e37847bbfc94a32cd1bbb6569b9ccfb9372568b38",
+        "oracles/disconnected.json": "82c84c0ccdad88ec7c2e743372e802b40fda683b748b0fd30bf1d637e74d2af5",
+        "oracles/disconnected.npz": "1c378d7f86f27d405f7a5c368a147546520d2448fbcafe5ae1713ee07c768aa3",
+        "oracles/eight-fe.json": "65a010edb56ffc11af4d38b8bd5c10e27d0c24dd642fab9e2ccf572d721035e8",
+        "oracles/eight-fe.npz": "f68c175c26f3ba857fe212c8226099e2e7e741513ba43505b3c599a34532a1a3",
+        "oracles/four-fe.json": "f030f0e0fd1f345411296ba0e52f635ef2605a98fb1707ddd3811b4270716a6a",
+        "oracles/four-fe.npz": "c23bf083b0238fb34849f55b7223ab546b6bb637e0d1754ffa2ea2773a856067",
+        "oracles/high-degree-mixed.json": "92f2dfb05f89fd98f7f87405bbff1127345f510937df71cc63a55a51b63edfc1",
+        "oracles/high-degree-mixed.npz": "ac865a57bd67b3cf8da6ba1d03abb61f9e033db7142020e7b9ada0ee994a385c",
+        "oracles/high-degree-stress.json": "39b5c2f80db02cbac1ef716361272f678979208c62dfc081558b60193dc0c30c",
+        "oracles/high-degree-stress.npz": "b223094a907d9c79935cd2145745a813c4e4beda9b67404768e8fc02eb8f18bc",
+        "oracles/high-degree-weak.json": "184239309ce42f051f7a991df0c7fbe387bda56ed80dc962f609333dfe367994",
+        "oracles/high-degree-weak.npz": "41c0a8db2711be87c10b51aabf4dac4b44d3fe159748495f032569dbcecb0650",
+        "oracles/near-confounded-third.json": "8c733e03b1c3bb6f6ef05028d000d6fee26e269165ec96ec4e26e2eb5b611de4",
+        "oracles/near-confounded-third.npz": "8f8a2e55ce6cad8e9640d4e91da98c5313becd22e26b49642c3a1807880ebc87",
+        "oracles/repeated-cells.json": "c7e19af9d4242a7245b99bb5c0af862939577a28a98ecc700a09372fe06a9ff6",
+        "oracles/repeated-cells.npz": "ee01c272cc70edf7901ccee3cde1aab11e8dd00e3f545cef7167f3a14e12c2a2",
+        "oracles/sixteen-fe.json": "523051a17dff53da5a083a9282b588cc3cbc52e7885102bb8e7b850def7ec880",
+        "oracles/sixteen-fe.npz": "54163ead99fb67c770eac080ff45f7d26fa17b006d22dad98cb0cf131a3bb021",
+        "oracles/small-retained.json": "dc494de9b6eef734a82ef205b603de3ba30ebaa2ff37d1afa9fda96bedf670bc",
+        "oracles/small-retained.npz": "d111800ce4c1b2f4f8ab50c9ab6bc2cd048426c0ca856f266c8b4e234fadedf4",
+        "oracles/small-third.json": "57a46dbc6f5545793802779c3444dadd8b5e2deb9583f1042d5ff2c88cefc935",
+        "oracles/small-third.npz": "4b163c12a62ce50c5b2b9700a7966262676f92c3e8f36e8875683b5d4c886fc1",
+        "oracles/weak.json": "3aa211aeb8bce88a44270d4e583464b77688f104e0cb7e1a27eb3a19d804c132",
+        "oracles/weak.npz": "94d91e8f4955e27bcbae0094a00fb0d7e8e177447fc0249e1499be501651e2af",
+        "oracles/weight-dynamic.json": "bd56e9a8bbaf390f5e02effe38d4f3eeffd803eb545cc775af53993ce551b2d4",
+        "oracles/weight-dynamic.npz": "eb6e940603bf49eedbe4024c0ff8c86a9cf7ccb62ee760d8bc7864bde19d351c",
+        "oracles/weighted.json": "486b11974ac8b1ac3f8d1bf59feb27de32ec6a8ab7eb67ea522dac6255dafce6",
+        "oracles/weighted.npz": "4acafd4c9092793cd6e2a2d5ac188011d412c89957f0c944f756594e6e7463c9",
+        "oracles/wide-rhs.json": "34f02c2a1b53d0ddcaf7f1c63a0224f0f69f427fa85b0a3373700a8e1fe10c80",
+        "oracles/wide-rhs.npz": "37b617340540da27fcd86a195a85fc43eeb74e623dffa37991b41cb426164828"
+      },
+      "harness": "artifacts/linux/timing-harness",
+      "platform": "Linux",
+      "replicas": 12,
+      "schema": 1,
+      "scope": "two",
+      "seed": 2026101822,
+      "shards": 3,
+      "threads": [
+        1,
+        4
+      ],
+      "timeout_s": 120,
+      "warmups": 1
+    },
+    "Mac": {
+      "artifacts": {
+        "candidate": {
+          "build": "Rust 1.85.1 locked release; universal x86_64/arm64; Apple clang; binary audit and actual ABI/load",
+          "families": [
+            "many",
+            "two"
+          ],
+          "path": "artifacts/mac/candidate.plugin",
+          "request": "auto",
+          "revision": "d5b06cf369be plus DEFAULT_TWO=true"
+        },
+        "hidden": {
+          "build": "Rust 1.85.1 locked release; universal x86_64/arm64; Apple clang; binary audit and actual ABI/load",
+          "families": [
+            "many",
+            "two"
+          ],
+          "path": "artifacts/mac/incumbent.plugin",
+          "request": "incremental-two",
+          "revision": "d5b06cf369be"
+        },
+        "incumbent": {
+          "build": "Rust 1.85.1 locked release; universal x86_64/arm64; Apple clang; binary audit and actual ABI/load",
+          "families": [
+            "many"
+          ],
+          "path": "artifacts/mac/incumbent.plugin",
+          "request": "auto",
+          "revision": "d5b06cf369be"
+        },
+        "original": {
+          "build": "Rust 1.85.1 locked release; universal x86_64/arm64; Apple clang; binary audit and actual ABI/load",
+          "families": [],
+          "path": "artifacts/mac/original.plugin",
+          "request": "auto",
+          "revision": "f35f3a4dbb30"
+        }
+      },
+      "blocks": 24,
+      "budget_s": 14400,
+      "cases": [
+        {
+          "family": "dense",
+          "id": "dense",
+          "input": "inputs/dense.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/dense.json",
+          "oracle": {
+            "arrays": "oracles/dense.npz",
+            "kind": "routing",
+            "path": "oracles/dense.json"
+          },
+          "shape": [
+            100000,
+            15
+          ]
+        },
+        {
+          "family": "disconnected",
+          "id": "disconnected",
+          "input": "inputs/disconnected.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/disconnected.json",
+          "oracle": {
+            "arrays": "oracles/disconnected.npz",
+            "kind": "routing",
+            "path": "oracles/disconnected.json"
+          },
+          "shape": [
+            100000,
+            12
+          ]
+        },
+        {
+          "family": "eight-fe",
+          "id": "eight-fe",
+          "input": "inputs/eight-fe.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/eight-fe.json",
+          "oracle": {
+            "arrays": "oracles/eight-fe.npz",
+            "kind": "routing",
+            "path": "oracles/eight-fe.json"
+          },
+          "shape": [
+            100000,
+            21
+          ]
+        },
+        {
+          "family": "four-fe",
+          "id": "four-fe",
+          "input": "inputs/four-fe.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/four-fe.json",
+          "oracle": {
+            "arrays": "oracles/four-fe.npz",
+            "kind": "routing",
+            "path": "oracles/four-fe.json"
+          },
+          "shape": [
+            100000,
+            17
+          ]
+        },
+        {
+          "family": "high-degree-mixed",
+          "id": "high-degree-mixed",
+          "input": "inputs/high-degree-mixed.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/high-degree-mixed.json",
+          "oracle": {
+            "arrays": "oracles/high-degree-mixed.npz",
+            "kind": "routing",
+            "path": "oracles/high-degree-mixed.json"
+          },
+          "shape": [
+            600000,
+            12
+          ]
+        },
+        {
+          "family": "high-degree-stress",
+          "id": "high-degree-stress",
+          "input": "inputs/high-degree-stress.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/high-degree-stress.json",
+          "oracle": {
+            "arrays": "oracles/high-degree-stress.npz",
+            "kind": "routing",
+            "path": "oracles/high-degree-stress.json"
+          },
+          "shape": [
+            600000,
+            12
+          ]
+        },
+        {
+          "family": "high-degree-weak",
+          "id": "high-degree-weak",
+          "input": "inputs/high-degree-weak.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/high-degree-weak.json",
+          "oracle": {
+            "arrays": "oracles/high-degree-weak.npz",
+            "kind": "routing",
+            "path": "oracles/high-degree-weak.json"
+          },
+          "shape": [
+            600000,
+            12
+          ]
+        },
+        {
+          "family": "inactive-columns",
+          "id": "inactive-columns",
+          "input": "inputs/inactive-columns.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/inactive-columns.json",
+          "oracle": {
+            "kind": "inactive"
+          },
+          "shape": [
+            100000,
+            14
+          ]
+        },
+        {
+          "family": "low-saved",
+          "id": "low-saved",
+          "input": "inputs/low-saved.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/low-saved.json",
+          "oracle": {
+            "kind": "replay",
+            "path": "inputs/low-saved.reference.json"
+          },
+          "shape": [
+            150,
+            14
+          ]
+        },
+        {
+          "family": "near-confounded-third",
+          "id": "near-confounded-third",
+          "input": "inputs/near-confounded-third.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/near-confounded-third.json",
+          "oracle": {
+            "arrays": "oracles/near-confounded-third.npz",
+            "kind": "routing",
+            "path": "oracles/near-confounded-third.json"
+          },
+          "shape": [
+            100000,
+            13
+          ]
+        },
+        {
+          "family": "no-fe",
+          "id": "no-fe",
+          "input": "inputs/no-fe.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/no-fe.json",
+          "oracle": {
+            "kind": "replay",
+            "path": "inputs/no-fe.reference.json"
+          },
+          "shape": [
+            150,
+            10
+          ]
+        },
+        {
+          "family": "one-fe",
+          "id": "one-fe",
+          "input": "inputs/one-fe.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/one-fe.json",
+          "oracle": {
+            "kind": "replay",
+            "path": "inputs/one-fe.reference.json"
+          },
+          "shape": [
+            150,
+            11
+          ]
+        },
+        {
+          "family": "repeated-cells",
+          "id": "repeated-cells",
+          "input": "inputs/repeated-cells.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/repeated-cells.json",
+          "oracle": {
+            "arrays": "oracles/repeated-cells.npz",
+            "kind": "routing",
+            "path": "oracles/repeated-cells.json"
+          },
+          "shape": [
+            100000,
+            12
+          ]
+        },
+        {
+          "family": "sixteen-fe",
+          "id": "sixteen-fe",
+          "input": "inputs/sixteen-fe.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/sixteen-fe.json",
+          "oracle": {
+            "arrays": "oracles/sixteen-fe.npz",
+            "kind": "routing",
+            "path": "oracles/sixteen-fe.json"
+          },
+          "shape": [
+            100000,
+            29
+          ]
+        },
+        {
+          "family": "slopes",
+          "id": "slopes",
+          "input": "inputs/slopes.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/slopes.json",
+          "oracle": {
+            "kind": "replay",
+            "path": "inputs/slopes.reference.json"
+          },
+          "shape": [
+            150,
+            12
+          ]
+        },
+        {
+          "family": "small-retained",
+          "id": "small-retained",
+          "input": "inputs/small-retained.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/small-retained.json",
+          "oracle": {
+            "arrays": "oracles/small-retained.npz",
+            "kind": "routing",
+            "path": "oracles/small-retained.json"
+          },
+          "shape": [
+            60000,
+            15
+          ]
+        },
+        {
+          "family": "small-third",
+          "id": "small-third",
+          "input": "inputs/small-third.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/small-third.json",
+          "oracle": {
+            "arrays": "oracles/small-third.npz",
+            "kind": "routing",
+            "path": "oracles/small-third.json"
+          },
+          "shape": [
+            100000,
+            16
+          ]
+        },
+        {
+          "family": "weak",
+          "id": "weak",
+          "input": "inputs/weak.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/weak.json",
+          "oracle": {
+            "arrays": "oracles/weak.npz",
+            "kind": "routing",
+            "path": "oracles/weak.json"
+          },
+          "shape": [
+            100000,
+            12
+          ]
+        },
+        {
+          "family": "weight-dynamic",
+          "id": "weight-dynamic",
+          "input": "inputs/weight-dynamic.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/weight-dynamic.json",
+          "oracle": {
+            "arrays": "oracles/weight-dynamic.npz",
+            "kind": "routing",
+            "path": "oracles/weight-dynamic.json"
+          },
+          "shape": [
+            100000,
+            13
+          ]
+        },
+        {
+          "family": "weighted",
+          "id": "weighted",
+          "input": "inputs/weighted.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/weighted.json",
+          "oracle": {
+            "arrays": "oracles/weighted.npz",
+            "kind": "routing",
+            "path": "oracles/weighted.json"
+          },
+          "shape": [
+            100000,
+            16
+          ]
+        },
+        {
+          "family": "wide-rhs",
+          "id": "wide-rhs",
+          "input": "inputs/wide-rhs.case",
+          "memory_limit_bytes": null,
+          "metadata": "inputs/wide-rhs.json",
+          "oracle": {
+            "arrays": "oracles/wide-rhs.npz",
+            "kind": "routing",
+            "path": "oracles/wide-rhs.json"
+          },
+          "shape": [
+            100000,
+            26
+          ]
+        }
+      ],
+      "coverage": "routing",
+      "execution_sources": {
+        "block_host": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+        "cmgschur": "c69ef5e0cb2c5694f1e7b975c24f098a9a363d84d1ded7d4821a9aa5f46ff026",
+        "cmgschur_cases": "2b866b8b5f66ffd88b0e298e94ccdf7ea86c5b39e5e33d89f5f97df2f656c842",
+        "native": "b3b80bd029f1b5566bef8ec325c5a9ae587b7ae1eabed21fa3ee0ab809f04233",
+        "native_io": "5a3ac828c7f0c7c3cd5af963e7192f5b598c2ca817767a1ef1b49d05196f3a03",
+        "qualify": "bfa57ca054c3e738defed45745494c141d17aec38421e8fc3db579f59021dcfb",
+        "qualify_scc": "7e869cfc2235567d28806d20c2879bb45a5c788d5591a984ffce19ce669bad7d",
+        "replay_bias_reference": "32f31f26512c350980bc6c76dbf4ea2a56818b03fa0af39d9b5165d9e50d57ff",
+        "replay_cmg_polish": "fea5b0bc6a32199dad2baecd5d9f262410400b6c01e0c4fa0e5923fdcb2bc501",
+        "replay_ols_reference": "9f543e9558e3f2198b7f2995eb93b5b4fcebb3d24f08bd1f61c3eb6f80927fd0",
+        "replay_plugins": "d9ad2e3e6e4f83d3992ac757fc2cf432b7ec9c5bf9a0130b7bcc3b99bcd38fa8",
+        "replay_psd": "6eec58705ef0ffa50d177b7ae51f126e5954827a39f67b4578d018119339bef8",
+        "routing": "5f52c90cc8a926236b8a7462e765a6757eef5a1fb99b56d46a463bb72eedfe7d",
+        "routing_cases": "ef96114acf7f8d6912a09bc9248045d4b8dc4b5a03209392493a6f6b19e83ab0",
+        "routing_oracle": "f12b01e117b4c510b467f9b0bce077ad5d476023f0ae1a04fbddc0f8f96131cf",
+        "routing_science": "697cdca3fe326dffdc15bd0dc4c548469cbf2db4efeece5b32efac71ba29c422",
+        "time_exact": "f686e037d3a65c2d9ba6cb79e9cb3ad07316768bc9d5b44d928d98c6dbf6caba"
+      },
+      "files": {
+        "artifacts/mac/candidate.plugin": "8731ae4a6468e9b6a525d5bedee623e6a91572ac3fbf668d050fc631d62eb22b",
+        "artifacts/mac/incumbent.plugin": "d15b4b41700a717d1fd01f50c1c4bef18ac10493f219093df868eabf33193c46",
+        "artifacts/mac/original.plugin": "4b7e1fcc0f7b26c3a698d8879ce176ab813babc08c015908264e42b27609ec75",
+        "artifacts/mac/timing-harness": "3582baecd0492c970c30a76e0f464bfd39e4d94b3d4031372eb2856c22f49fc2",
+        "inputs/dense.case": "174d16757adeb95cd240b508748ee500d4b18b23f152581aff8a54c18fe3da37",
+        "inputs/dense.json": "1516419f216cc249a10044ad84d10bb26db36f7cda503a7ff77fb4ea42bf18f5",
+        "inputs/disconnected.case": "baced181e6db01eb686dd843ebe7a838501e6433a5731d8014469a76af3bda93",
+        "inputs/disconnected.json": "fb86b8451faf96e7bfefebb8c52775eb3a97496b4702491254474a0330962528",
+        "inputs/eight-fe.case": "b30794c85496d6a38d969f56271a83711f7b1be32ac20dc2ee281da4f84eabd9",
+        "inputs/eight-fe.json": "5defad5a40f63cf70ba7a96f5effa7a2fa2cebeec2ad1abf92f99d911752ebcf",
+        "inputs/four-fe.case": "bcef5a98f28b5c10bea4a3ba40218bb9d46ec22e0bad4bc88678fe1e159fa42f",
+        "inputs/four-fe.json": "9f030897c112220feabddb5b610b5d3ed865fe1149a23e2d3d8e3933c7c287c0",
+        "inputs/high-degree-mixed.case": "8e1b83f6799287932627914aa15f6fb43a1e9ffb5071f3f2d65edbc9582233ea",
+        "inputs/high-degree-mixed.json": "f035f503e9aa83d5e40f972ba07983bb749000fdb6fd1941e8aaeb22cc731bf0",
+        "inputs/high-degree-stress.case": "1ac41e396011d9ff7aecf7364dfad4d07d3e497c8fd46a971adeeec5bd084e5e",
+        "inputs/high-degree-stress.json": "aa02019cdd2227f3d3cfe60aae6ba8c65894961acecf8cdd757ef2180f110260",
+        "inputs/high-degree-weak.case": "9631343a441c33c277d3782b388a584f93c64486e2baa817e9e4bbf1b2623bb7",
+        "inputs/high-degree-weak.json": "74d02da7f52fc7e98405ea87a6f47d80e1c17fedc2c94678bcf528aaab7a27bc",
+        "inputs/inactive-columns.case": "1b1e576cbacb26d170874f38c51027754ba7d7eca079bc2950d0b05c8f867ba7",
+        "inputs/inactive-columns.json": "1fe55a39c73a3c4feb1459b40a2eeae1ea0c272f18d6ffc71dda678a5cb26c86",
+        "inputs/low-saved.case": "0ba0406516d3934ea6df2166f829645b4ca55a7ccf8321ebef7a19be022356d6",
+        "inputs/low-saved.json": "38ce10a2dd82c842374abb457259dfb8087ed9075544c138fae1b93a1c15f92d",
+        "inputs/low-saved.reference.json": "e216e69f9095b4c5951a17ed713770be4052da5f088b3ef82cb26be893196a8a",
+        "inputs/near-confounded-third.case": "f40f3e69d450934ef406f2b37828db9f33370c50557da0e0cf9d158bb2360e74",
+        "inputs/near-confounded-third.json": "b5b5b96c6cae9219c8efa44a77a960c2755e043f19cbe9b0dcef58e1ef5d3698",
+        "inputs/no-fe.case": "681b61d03e059c30fabef18a5e32e886f87c30fbea7a836202a3dff9733cdde8",
+        "inputs/no-fe.json": "430a41377535b38e8c8f4d4216692930ec527a87a598323a733d5c1df559735c",
+        "inputs/no-fe.reference.json": "70c9f567d2b438804608189fc05cda5cbe38a93abd407589f882c3a2fcf13867",
+        "inputs/one-fe.case": "70159454d79c7bcc0c52452104c4013bd2247cf688f12a2794a6f66028c220e3",
+        "inputs/one-fe.json": "134f115ab9e7060c36e9ad63acf7bb6b247329a4c5cb65344760707da8b4e6e0",
+        "inputs/one-fe.reference.json": "4a3af9496a96f52c34e2da1a1aa2fe824f1d616e4547197bf509c0644bf2c576",
+        "inputs/repeated-cells.case": "b74713da747338f279e2cace36c982ff0b3e45f2ea0dee74c6cdcafcecc81517",
+        "inputs/repeated-cells.json": "fc67b5ae5028cb1523c08e1a17b377ecadc07c2d4528ebcc2d5e276fdc91eb04",
+        "inputs/sixteen-fe.case": "24509a836f07cf3ece8f60b632cd20e5bf65b7a7438cd8c8715b0cff07e7cafa",
+        "inputs/sixteen-fe.json": "3f0f2c190c6c814e7d8ba23e6829f5e3441d286d6f5d9ee71911e6638326e0c5",
+        "inputs/slopes.case": "745a11c117a449a07e21f87cffae2c3a743f8c2eae0451bdb6e50231aafb9b33",
+        "inputs/slopes.json": "d0f9a920d4088ccb46a86ec49ee8c6a0a528c5f075d57693dd7c04c7d72fdce6",
+        "inputs/slopes.reference.json": "73922fae1f93ab93e57b62bf5cc8c778e3547db9cf211be44d7993a0220a880c",
+        "inputs/small-retained.case": "14d9c6f178f2a0d2d4205c67c9de7dd249047b257cbe3a6740b42e66cac38939",
+        "inputs/small-retained.json": "cb0d49aba461c5fbd70b5a4ae6924c03e048c8187dedff4ae970849c11675505",
+        "inputs/small-third.case": "8c988c06a2e761ab461cedec82aa22cef90105fa2cb59be1478d2840bbf91213",
+        "inputs/small-third.json": "b38c5c233b0e995f6856158215f8406393cc8a99151aa56939cdf7d543bfd362",
+        "inputs/weak.case": "a6c06c4b63ad71a02acf906cc4d6567585761be727cd349a6900f41c4c8b144d",
+        "inputs/weak.json": "bbfa73dcb37fd28e64472129387a1a7742e06c01fee28d78ff24dc76e78566f2",
+        "inputs/weight-dynamic.case": "fbc181b660144d74913f64378422f5e050d29c57338116338f60645f3119bdca",
+        "inputs/weight-dynamic.json": "8986e2c68f2f15cd023c75522bb591a04fe3cb3438b71db851082ac64e920aa8",
+        "inputs/weighted.case": "10ce6788328937cd776025bfc5f0f91dffaedb1c98c4b78748d9762dd98c7930",
+        "inputs/weighted.json": "1203409ce4ad5d34853e6b1e3908870340289dc9cff70e963c40630889878217",
+        "inputs/wide-rhs.case": "d45b1262cf0d22b8008a75cc988f555ca620db072b3da0feaaa6731838eeb48d",
+        "inputs/wide-rhs.json": "788f8534af1c3c6ea54fc49a1db5c205acce1562d16f8c5c6ba111090f8119a8",
+        "oracles/dense.json": "29af47d7d358d2c75fc2f18a089430c885e4736573b92c30eea31d76bfa8568f",
+        "oracles/dense.npz": "539793028dad8aa68246839e37847bbfc94a32cd1bbb6569b9ccfb9372568b38",
+        "oracles/disconnected.json": "82c84c0ccdad88ec7c2e743372e802b40fda683b748b0fd30bf1d637e74d2af5",
+        "oracles/disconnected.npz": "1c378d7f86f27d405f7a5c368a147546520d2448fbcafe5ae1713ee07c768aa3",
+        "oracles/eight-fe.json": "65a010edb56ffc11af4d38b8bd5c10e27d0c24dd642fab9e2ccf572d721035e8",
+        "oracles/eight-fe.npz": "f68c175c26f3ba857fe212c8226099e2e7e741513ba43505b3c599a34532a1a3",
+        "oracles/four-fe.json": "f030f0e0fd1f345411296ba0e52f635ef2605a98fb1707ddd3811b4270716a6a",
+        "oracles/four-fe.npz": "c23bf083b0238fb34849f55b7223ab546b6bb637e0d1754ffa2ea2773a856067",
+        "oracles/high-degree-mixed.json": "92f2dfb05f89fd98f7f87405bbff1127345f510937df71cc63a55a51b63edfc1",
+        "oracles/high-degree-mixed.npz": "ac865a57bd67b3cf8da6ba1d03abb61f9e033db7142020e7b9ada0ee994a385c",
+        "oracles/high-degree-stress.json": "39b5c2f80db02cbac1ef716361272f678979208c62dfc081558b60193dc0c30c",
+        "oracles/high-degree-stress.npz": "b223094a907d9c79935cd2145745a813c4e4beda9b67404768e8fc02eb8f18bc",
+        "oracles/high-degree-weak.json": "184239309ce42f051f7a991df0c7fbe387bda56ed80dc962f609333dfe367994",
+        "oracles/high-degree-weak.npz": "41c0a8db2711be87c10b51aabf4dac4b44d3fe159748495f032569dbcecb0650",
+        "oracles/near-confounded-third.json": "8c733e03b1c3bb6f6ef05028d000d6fee26e269165ec96ec4e26e2eb5b611de4",
+        "oracles/near-confounded-third.npz": "8f8a2e55ce6cad8e9640d4e91da98c5313becd22e26b49642c3a1807880ebc87",
+        "oracles/repeated-cells.json": "c7e19af9d4242a7245b99bb5c0af862939577a28a98ecc700a09372fe06a9ff6",
+        "oracles/repeated-cells.npz": "ee01c272cc70edf7901ccee3cde1aab11e8dd00e3f545cef7167f3a14e12c2a2",
+        "oracles/sixteen-fe.json": "523051a17dff53da5a083a9282b588cc3cbc52e7885102bb8e7b850def7ec880",
+        "oracles/sixteen-fe.npz": "54163ead99fb67c770eac080ff45f7d26fa17b006d22dad98cb0cf131a3bb021",
+        "oracles/small-retained.json": "dc494de9b6eef734a82ef205b603de3ba30ebaa2ff37d1afa9fda96bedf670bc",
+        "oracles/small-retained.npz": "d111800ce4c1b2f4f8ab50c9ab6bc2cd048426c0ca856f266c8b4e234fadedf4",
+        "oracles/small-third.json": "57a46dbc6f5545793802779c3444dadd8b5e2deb9583f1042d5ff2c88cefc935",
+        "oracles/small-third.npz": "4b163c12a62ce50c5b2b9700a7966262676f92c3e8f36e8875683b5d4c886fc1",
+        "oracles/weak.json": "3aa211aeb8bce88a44270d4e583464b77688f104e0cb7e1a27eb3a19d804c132",
+        "oracles/weak.npz": "94d91e8f4955e27bcbae0094a00fb0d7e8e177447fc0249e1499be501651e2af",
+        "oracles/weight-dynamic.json": "bd56e9a8bbaf390f5e02effe38d4f3eeffd803eb545cc775af53993ce551b2d4",
+        "oracles/weight-dynamic.npz": "eb6e940603bf49eedbe4024c0ff8c86a9cf7ccb62ee760d8bc7864bde19d351c",
+        "oracles/weighted.json": "486b11974ac8b1ac3f8d1bf59feb27de32ec6a8ab7eb67ea522dac6255dafce6",
+        "oracles/weighted.npz": "4acafd4c9092793cd6e2a2d5ac188011d412c89957f0c944f756594e6e7463c9",
+        "oracles/wide-rhs.json": "34f02c2a1b53d0ddcaf7f1c63a0224f0f69f427fa85b0a3373700a8e1fe10c80",
+        "oracles/wide-rhs.npz": "37b617340540da27fcd86a195a85fc43eeb74e623dffa37991b41cb426164828"
+      },
+      "harness": "artifacts/mac/timing-harness",
+      "mac_cell_policy": {
+        "baseline_calls": 8232,
+        "calls_per_cell": 196,
+        "fresh_cells": [
+          "dense-t1",
+          "dense-t4",
+          "disconnected-t1",
+          "disconnected-t4",
+          "eight-fe-t1",
+          "eight-fe-t4",
+          "four-fe-t1",
+          "four-fe-t4",
+          "high-degree-mixed-t1",
+          "high-degree-mixed-t4",
+          "high-degree-stress-t1",
+          "high-degree-stress-t4",
+          "high-degree-weak-t1",
+          "high-degree-weak-t4",
+          "inactive-columns-t1",
+          "inactive-columns-t4",
+          "low-saved-t1",
+          "low-saved-t4",
+          "near-confounded-third-t1",
+          "near-confounded-third-t4",
+          "no-fe-t1",
+          "no-fe-t4",
+          "one-fe-t1",
+          "one-fe-t4",
+          "repeated-cells-t1",
+          "repeated-cells-t4",
+          "sixteen-fe-t1",
+          "sixteen-fe-t4",
+          "slopes-t1",
+          "slopes-t4",
+          "small-retained-t1",
+          "small-retained-t4",
+          "small-third-t1",
+          "small-third-t4",
+          "weak-t1",
+          "weak-t4",
+          "weight-dynamic-t1",
+          "weight-dynamic-t4",
+          "weighted-t1",
+          "weighted-t4",
+          "wide-rhs-t1",
+          "wide-rhs-t4"
+        ],
+        "max_cell_retries": 1,
+        "max_retry_cells": 4,
+        "new_call_cap": 9016,
+        "process_policy": {
+          "active_cpu_seconds": 1.0,
+          "desktop_services": [
+            "codex-app-server"
+          ],
+          "executable_identity": "macOS ucomm or Linux comm; args joined by PID and lstart",
+          "executables": [
+            "cargo",
+            "rustc",
+            "rustdoc",
+            "clang",
+            "clang++",
+            "gcc",
+            "g++",
+            "cc1",
+            "cc1plus",
+            "ld",
+            "ld.lld",
+            "make",
+            "gmake",
+            "ninja",
+            "cmake",
+            "pytest",
+            "py.test",
+            "R",
+            "Rscript",
+            "stata",
+            "stata-mp",
+            "stata-se",
+            "StataMP",
+            "StataSE",
+            "julia",
+            "codex",
+            "claude",
+            "node_repl",
+            "uvx",
+            "actual_plugin_loader_test",
+            "actual_plugin_l"
+          ],
+          "maximum_gap_seconds": 7.5,
+          "name": "mac-cell-recovery-v1",
+          "python_modules": [
+            "pytest",
+            "unittest",
+            "compileall"
+          ],
+          "runnable_cpu_percent": 20.0,
+          "rust_test_path": "target/(debug|release|ci)/deps/[^/ ]+-[0-9a-f]{8,}$",
+          "schema": 1,
+          "script_directories": [
+            "bench",
+            "scripts",
+            "tests"
+          ],
+          "unknown_activity": "retain"
+        },
+        "quiet_timeout_s": 120
+      },
+      "platform": "Darwin",
+      "replicas": 1,
+      "schema": 1,
+      "scope": "two",
+      "seed": 2026101822,
+      "shards": 1,
+      "threads": [
+        1,
+        4
+      ],
+      "timeout_s": 120,
+      "warmups": 1
+    }
+  },
+  "public_defaults": {
+    "many": true,
+    "two": false
+  },
+  "raw_evidence_policy": "Committed plans, hashes and compact summaries are retained evidence. Raw task captures are temporary and removed only after terminal validation and committed outcome. Capture names identify hashes, not permanently retained paths.",
+  "schema": 1,
+  "scope": "incremental-two",
+  "status": "reviewed_preparation; full qualification pending"
+}

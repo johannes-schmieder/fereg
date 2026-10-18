@@ -14,7 +14,8 @@ The many-FE candidate now passes the 2026-10-18 compact Linux qualification and
 practical Mac recovery, including independent review of actual retained science,
 timing and operational evidence. Each platform passes all 126 protected comparisons.
 The development-branch activation and its integration checks are recorded below;
-two-FE remains held, and release packages are unchanged.
+Johannes has now authorized the separate two-FE qualification. Its public default
+remains disabled, and release packages are unchanged.
 
 This page keeps accepted evidence, open failures and standing caveats. The full
 narrative ledger, with every run identifier, archive and receipt digest,
@@ -479,6 +480,72 @@ Mac bounds solely from the compact record's qualification times. Review SHA-256:
 Many-FE is enabled only on `codex/auto-routing`; two-FE remains disabled and held.
 The committed compact results and hashes are the retained evidence. Temporary
 task artifacts and raw captures are removed after committing these summaries.
+
+### Separate two-FE qualification preparation, 2026-10-18
+
+After accepting many-FE at `d5b06cf369be`, Johannes authorized two-FE work.
+The fixed candidate changes only `DEFAULT_TWO` from false to true in private
+builds; accepted many-FE behavior stays enabled. The checkout still has two-FE
+disabled. Qualification protects both original `f35f3a4d` Auto and accepted
+many-FE Auto, plus hidden/public equivalence, across 42 cells. Twenty-six cells
+exercise two-FE scope, ten protect many-FE fallback and six protect no-FE,
+one-FE and slopes behavior. The retained Linux incumbent at `a3f190596628`
+has independently verified production-token and artifact-input equality to
+`d5b06cf369be` (192 modules and 58 inputs).
+
+The [compact two-FE evidence](../bench/results/incremental-two-20261018-compact.json)
+contains the frozen plans, artifact/input/source identities, placement and
+independent review summaries. Twenty-one newly generated inputs use seed
+2026101821; their body hashes are disjoint from all 63 historical two-FE panel
+identities. Sixteen independent categorical certificates, four imported
+references and the inactive-column analytic witness remain scientific gates.
+The generators are the previously audited rebuilds, not restored historical
+binaries. Old panel bodies and old harnesses were not restored or rerun.
+
+The fresh Mac plan applies bounded cell recovery prospectively from its first
+call. Recorded substantial competing compute can invalidate an entire cell
+attempt, independently of timing scores. At most one retry per cell and four
+retried cells overall are allowed, after two clear sampled intervals within
+120 seconds. Scientific/native failures, timeouts and observer faults retain
+their failure semantics. There is no report-triggered resampling or budget
+reset. All attempts and discarded observations remain accounted for.
+
+Both platforms use four distinct binary/request arms, timing seed 2026101822,
+one warmup per arm, max(5%, 1 ms) protection and one-sided alpha 1/40 bounds.
+Mac schedules 24 mirrored blocks, 8,232 baseline calls and at most 9,016 calls
+including interference retries within 14,400 seconds. Linux schedules two
+blocks on each of 12 distinct assigned physical hosts, split into three shards:
+36 tasks and 10,080 calls, with a 3,600-second application and 4,200-second
+scheduler limit per task. Every native call retains its 120-second limit.
+Each platform has 126 protected comparisons. These are conditional
+order-statistic bounds at the block/physical-host unit, not simultaneous
+coverage or proof that sampled host observations detect all interference.
+
+All 189 benchmark-tool tests pass in 11.264 seconds; focused recovery tests
+include four distinct arms and complete started/accepted/discarded call
+accounting. Independent source and exact Mac/Linux plan reviews pass. Each
+plan's 82 bound files and 17 execution modules were independently rehashed;
+the transferred Linux files also pass byte/stat/alias closure checks. Runtime
+production and artifact inputs in the checkout are unchanged, so valid runtime
+and transaction evidence is reused. Shell syntax and `git diff --check` pass.
+
+Private Mac original/incumbent/candidate builds pass universal build, artifact
+audit and ABI/load checks. Two setup attempts were cancelled and retained:
+one inherited the wrong working directory, and one reused a mixed Cargo cache.
+All three accepted binaries were then rebuilt with separate caches. Initial
+tool tests lacked psutil, matplotlib and reportlab in the new task environment;
+the final complete suite passes after installing those dependencies. Linux
+build job `8168542` passes on `scc-ei3` (failed=0/exit=0, 148 seconds), including
+glibc 2.28 audit, ABI/panic and numeric guards. Maintained-runner smoke job
+`8168558.1` passes 80 calls on four cells at `scc-zj4`, with clean 28-core
+allocation evidence and scheduler accounting (failed=0/exit=0, 26 seconds).
+The smoke is tooling evidence, not performance qualification.
+
+Actual full qualification results, allocation isolation and independent raw
+scientific/timing/operational review remain required before two-FE activation.
+Successful timed arrays/logs are deleted by the unchanged producer; retained
+first-call arrays and all repeat fingerprints support review, not exhaustive
+replay of unavailable arrays. No release package or main-branch change is made.
 
 ## Incremental Auto implementation checks, 2026-10-17
 

@@ -109,11 +109,16 @@ class Qualification(unittest.TestCase):
         self.oracle = patch.object(qualify.science, 'check_oracle').start()
         patch('qualify_scc.MacMonitor', Monitor).start()
 
-    def plan(self):
+    def plan(self, practical=False):
         config = self.root / 'config.json'
         qualify.write(config, self.config)
         self.manifest = self.root / 'plan.json'
-        return qualify.plan(config, self.manifest)
+        value = qualify.plan(config, self.manifest)
+        if not practical:
+            # Existing tests exercise historical manifests and their resume semantics.
+            value.pop('mac_cell_policy', None)
+            qualify.write(self.manifest, value)
+        return value
 
     def execute(self, command, log, timeout):
         self.calls.append(command)
@@ -643,6 +648,139 @@ class Qualification(unittest.TestCase):
         self.assertEqual(record['status'], 'blocked')
         self.assertEqual(len(self.calls), 1)
         self.assertIn('changed', record['failures'][-1]['error'])
+
+    def test_fresh_mac_policy_has_no_prior_provenance_and_retries_only_affected_cell(self):
+        plan = self.plan(practical=True)
+        policy = plan['mac_cell_policy']
+        self.assertFalse({'continuation', 'recovery'} & plan.keys())
+        self.assertFalse(any('prior' in k for k in policy))
+        self.assertEqual((policy['baseline_calls'], policy['new_call_cap']), (10, 20))
+        self.assertEqual((policy['max_cell_retries'], policy['max_retry_cells'], policy['quiet_timeout_s']), (1, 4, 120))
+        self.assertEqual(plan['budget_s'], self.config['budget_s'])
+        with patch('qualify_scc.MacMonitor', RecoveryMonitor), patch.object(RecoveryMonitor, 'hits', [True, False, False]):
+            record = qualify.run(self.manifest, self.output, execute=self.execute)
+        self.assertEqual(record['status'], 'complete', record)
+        self.assertEqual((len(self.calls), record['native_calls_started']), (15, 15))
+        self.assertEqual(record['retry_cells'], ['fixture-t1'])
+        self.assertEqual([c['attempt'] for c in record['cases']], [1, 0])
+        self.assertFalse(any(c.get('reused') for c in record['cases']))
+        self.assertEqual([b['order'] for b in record['discarded_attempts'][0]['blocks']],
+                         [b['order'] for b in record['cases'][0]['blocks']])
+        summary = qualify.report(self.manifest, self.output)
+        self.assertEqual(summary['status'], 'smoke_complete', summary)
+        self.assertEqual(summary['mac_cell_policy']['new_calls'], 15)
+        results = self.output / 'run-0-0/results.json'
+        for mutate in (lambda r: r['cases'][0].update(reused=True),
+                       lambda r: r['discarded_attempts'][0]['eligibility'].update(interference=[]),
+                       lambda r: r['cases'][0]['quiet_wait']['clean_intervals'].pop(),
+                       lambda r: r['discarded_attempts'][0]['warmups'][0].update(fingerprint='b'*64),
+                       lambda r: r.update(native_calls_started=10)):
+            changed = copy.deepcopy(record)
+            mutate(changed)
+            qualify.write(results, changed)
+            self.assertEqual(qualify.report(self.manifest, self.output)['status'], 'needs_discussion')
+
+    def test_fresh_mac_four_distinct_arms_account_for_every_retry_call(self):
+        self.config['scope'] = 'two'
+        self.config['artifacts']['hidden'] = dict(self.config['artifacts']['candidate'])
+        for role, artifact in self.config['artifacts'].items():
+            name = role + '.plugin'
+            (self.root / name).write_bytes(role.encode())
+            artifact.update(path=name, families=[] if role == 'original' else
+                            ['many'] if role == 'incumbent' else ['many', 'two'],
+                            request='incremental-two' if role == 'hidden' else 'auto')
+        plan = self.plan(practical=True)
+        self.assertEqual(len(set(qualify.artifact_aliases(plan).values())), 4)
+        policy = plan['mac_cell_policy']
+        self.assertEqual((policy['calls_per_cell'], policy['baseline_calls'], policy['new_call_cap']), (20, 40, 80))
+        full = {**plan, 'blocks': 24,
+                'cases': [{**plan['cases'][0], 'id': f'case{i}'} for i in range(21)]}
+        full_policy = qualify.fresh_mac_policy(full)
+        self.assertEqual(len(full_policy['fresh_cells']), 42)
+        self.assertEqual((full_policy['calls_per_cell'], full_policy['baseline_calls'],
+                          full_policy['new_call_cap']), (196, 8232, 9016))
+        with patch('qualify_scc.MacMonitor', RecoveryMonitor), patch.object(RecoveryMonitor, 'hits', [True, False, False]):
+            record = qualify.run(self.manifest, self.output, execute=self.execute)
+        self.assertEqual(record['status'], 'complete', record)
+        self.assertEqual((len(self.calls), record['native_calls_started']), (60, 60))
+        self.assertEqual(record['retry_cells'], ['fixture-t1'])
+        for cell in [*record['cases'], *record['discarded_attempts']]:
+            self.assertEqual((len(cell['warmups']), sum(len(b['calls']) for b in cell['blocks'])), (4, 16))
+        summary = qualify.report(self.manifest, self.output)
+        self.assertEqual(summary['status'], 'smoke_complete', summary)
+        self.assertEqual(summary['native_calls'], 40)  # Accepted cells only.
+        self.assertEqual(summary['mac_cell_policy']['new_calls'], 60)  # Includes rejected attempt.
+        self.assertEqual(len(summary['mac_cell_policy']['discarded_attempts']), 1)
+
+    def test_fresh_mac_policy_cannot_reset_budgets_or_mix_provenance(self):
+        plan = self.plan(practical=True)
+        with self.assertRaisesRegex(ValueError, 'fresh session'):
+            qualify.run(self.manifest, self.output, resume=True, execute=self.execute)
+        self.assertFalse(self.output.exists())
+        with self.assertRaisesRegex(ValueError, 'original serial Mac'):
+            qualify.continuation_accounting(plan, {})
+        with self.assertRaisesRegex(ValueError, 'serial Mac'):
+            qualify.recovery_definition(plan, {}, [], {}, self.root)
+        for key in ('continuation', 'recovery'):
+            with self.assertRaisesRegex(ValueError, 'mutually exclusive'):
+                qualify.validate_cell_policy({**plan, key: {}})
+        for mutate in (lambda p: p['mac_cell_policy'].update(new_call_cap=999),
+                       lambda p: p['mac_cell_policy'].update(max_retry_cells=5),
+                       lambda p: p['mac_cell_policy']['process_policy'].update(name='different'),
+                       lambda p: p.update(platform='Linux'),
+                       lambda p: p.update(budget_s=14401),
+                       lambda p: p.update(timeout_s=121)):
+            changed = copy.deepcopy(plan)
+            mutate(changed)
+            qualify.write(self.manifest, changed)
+            with self.assertRaises(ValueError):
+                qualify.run(self.manifest, self.output, execute=self.execute)
+            self.assertEqual(qualify.report(self.manifest, self.output)['status'], 'needs_discussion')
+        self.assertFalse(self.calls)
+
+    def test_fresh_mac_global_four_retry_cap_stops_fifth_affected_cell(self):
+        self.config['cases'] += [{**self.config['cases'][0], 'id': f'extra{i}'} for i in range(2)]
+        plan = self.plan(practical=True)
+        self.assertEqual(plan['mac_cell_policy']['new_call_cap'], 50)
+        with patch('qualify_scc.MacMonitor', RecoveryMonitor), patch.object(RecoveryMonitor, 'hits', [True, False]*4+[True]):
+            record = qualify.run(self.manifest, self.output, execute=self.execute)
+        self.assertEqual(record['status'], 'blocked')
+        self.assertEqual((len(record['retry_cells']), len(record['discarded_attempts']), len(self.calls)), (4, 5, 45))
+        self.assertEqual(len(record['cases']), 4)
+
+    def test_fresh_mac_second_hit_and_quiet_failure_stop_without_replaying_battery(self):
+        self.plan(practical=True)
+        for quiet, hits, count in ((False, [False, True, True], 15), (True, [False, True], 10)):
+            self.calls.clear()
+            with patch('qualify_scc.MacMonitor', RecoveryMonitor), patch.object(RecoveryMonitor, 'hits', hits), \
+                    patch.object(RecoveryMonitor, 'quiet_failure', quiet):
+                record = qualify.run(self.manifest, self.output / str(quiet), execute=self.execute)
+            self.assertEqual(record['status'], 'blocked')
+            self.assertEqual(len(self.calls), count)
+            self.assertEqual([c['id'] for c in record['cases']], ['fixture-t1'])
+
+    def test_fresh_mac_never_retries_native_scientific_or_observer_faults(self):
+        self.plan(practical=True)
+        from qualify_scc import OperationalError
+        for failure in ('native', 'science', 'observer'):
+            self.calls.clear()
+            self.oracle.side_effect = ValueError('bad science') if failure == 'science' else None
+            def execute(*args):
+                value = self.execute(*args)
+                if failure == 'native':
+                    raise RuntimeError('native child failed')
+                return value
+            with patch('qualify_scc.MacMonitor', RecoveryMonitor), patch.object(RecoveryMonitor, 'hits', [True]), \
+                    patch.object(RecoveryMonitor, 'check', side_effect=OperationalError('observer fault') if failure == 'observer' else None):
+                record = qualify.run(self.manifest, self.output / failure, execute=execute)
+            self.assertEqual(record['status'], 'blocked')
+            self.assertFalse(record['retry_cells'])
+            self.assertFalse(record['discarded_attempts'])
+            self.assertEqual(len(self.calls), 0 if failure == 'observer' else 1)
+
+    def test_new_linux_plans_have_no_mac_cell_policy(self):
+        self.config['platform'] = 'Linux'
+        self.assertNotIn('mac_cell_policy', self.plan(practical=True))
 
     def recovery_fixture(self):
         prior = self.run_round()
