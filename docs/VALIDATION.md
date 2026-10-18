@@ -119,6 +119,87 @@ modules, with separately verified Mac and Linux binaries. Plan hashes are
 `e0793a1bb771d25d2db980efb8558a0a547d1cc498954f7ad9b25739e10165ac`.
 No qualification result follows from planning or smoke success.
 
+### Compact qualification outcome, 2026-10-18
+
+The approved round ran once on each platform. Mac stopped operationally after
+20.903 seconds, within its fixed budget, when the observer classified the
+long-lived Codex app-server as competing computation. The recorded trigger was
+0.050000000001091394 CPU seconds over 5.000162208 wall seconds, with process state
+`S`. This meets the frozen executable-name/CPU-delta rule, but the retained
+evidence does not establish deliberate competing work or prove that its activity
+was harmless. The independent review confirmed the live process identity and
+the classifier's mechanical result. The rule cannot reliably distinguish this
+background app-server activity from substantive agent work.
+
+Mac retained 83 successful calls on `dense-t1`: three warmups, 13 complete
+six-call blocks, and two calls in a partial block. All recorded scientific
+fingerprints agree. No workload cell completed, no four-worker or affected
+many-FE cell was reached, and this is not a Mac performance result. The failure
+occurred before the next native launch; completed calls were reaped and observer
+shutdown completed. Individual native PID/birth identities and full process
+snapshots were not retained, limiting independent descendant and activity audits.
+The maintained report returns `needs_discussion` and accepts zero calls from
+the blocked shard; that report count does not erase the 83 actual calls.
+The partially timed cell cannot be resumed automatically. No call was replayed,
+no observations were removed, and the observer policy was not changed afterward.
+
+SCC arrays `8167584`–`8167595` completed all 36 submitted tasks on their twelve
+distinct assigned hosts. Every task has scheduler failure and exit status zero,
+the declared 28-slot reservation, and structurally complete accounting. All
+applications report completion with 7,560 calls, no recorded failures, and
+passing budget and host-observation status. Application runtimes range from
+134.529 to 180.076 seconds, within the 3,600-second shard limit; scheduler wall
+times range from 135 to 181 seconds. All 108 collected application and raw
+host-observation records match their remote hashes. The maintained Linux report
+ran once and passes all 126 protected comparisons, with no report errors. Every
+cell has twelve physical-host units, each aggregating its two mirrored blocks;
+the bounds remain conditional on independent unit scores with a common median
+and do not establish simultaneous coverage. The nearest upper excess bound is
+still 0.888 ms below its allowance. This is Linux evidence, not a Mac speed claim.
+Independent recomputation from actual call times reproduces all 126 passes.
+The operational review validates 72 raw reservation snapshots and 144 scheduler
+censuses; 1,153 recorded process samples contain no classifier hits. Maximum
+process and scheduler sampling gaps are 6.199 and 61.163 seconds respectively,
+within the declared bounds. This remains sampled evidence: full process rows
+were not retained, so classification cannot be independently replayed from every
+raw process identity, and unsampled activity is not ruled out.
+
+Independent Linux scientific review also passes: all 1,512 retained first-call
+heads and output arrays reproduce their complete scientific fingerprints, with
+exact repeats across hosts for each case/worker/arm group. It performs 1,152
+checks against frozen categorical references, 288 imported-reference checks,
+72 inactive-column algebraic checks without new solves, and 1,449 cross-worker
+and cross-host comparisons. The largest observed cross-worker/host output
+difference is 4.44e-16. All 240 eligible raw resource traces pass. The 6,048 timed
+calls retain matching fingerprints, but their full arrays and logs were deleted
+by the unchanged runner; the review does not independently replay unavailable
+timed outputs. This completes the Linux review without a new native call,
+new oracle solve or repeated report invocation.
+
+The campaign monitor was deleted after terminal accounting was available for
+all tasks. Both public defaults remain disabled and two-FE remains on hold.
+The current artifacts, inputs and observations remain available for the
+unfinished workstream; no replacement round or increased sample was launched.
+The proposed Mac repair is prospective: distinguish the long-lived app-server
+from substantive local tool processes, continue recording its activity, and
+retain enough process identity and call-boundary evidence to attribute a trigger.
+It has not been implemented or applied to reinterpret this failed attempt.
+Johannes's direction is required before deciding how to handle the partially
+timed Mac cell or authorize further measurements.
+
+The [compact result](../bench/results/incremental-many-20261018-compact.json)
+retains all 126 Linux bounds and their twelve host-level excess scores, actual
+artifact/source identities, scheduler totals and the Mac failure summary.
+The maintained Linux summary hash is
+`eae7e603bb51a60b67cf875f8e23f8ed9939d2ad548fa5311890633b412f8db9`;
+the independent Mac review hash is
+`dcbfbbb9c2dcda8e882262c7b1ee2cb25e4f985a1dd7f50a109ee0aa9c607b9c`.
+The independent Linux review hash is
+`3fdd58a9d65c9f2f72de3b6f98aa416b4fba9ea2955247bf12a29161e2fad95f`.
+Only documentation and this compact result changed after collection. JSON
+consistency, local documentation references and `git diff --check` pass;
+unchanged-runtime test evidence above is reused.
+
 ## Incremental Auto implementation checks, 2026-10-17
 
 Before the suite replacement above, both public incremental defaults were disabled. The many-FE
