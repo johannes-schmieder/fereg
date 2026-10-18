@@ -288,6 +288,36 @@ proofs and certificates, with narrower independent solver-signature checks.
 | A terminal outcome | `16ff9ea3325e890a8ef1e4cd4a7351314dc31e71ee5b407f58841e083d45363b` |
 | Independent A equivalence review | `f84dceed282103a1ed10ac06f9d6f44429158a190a5838e7df2161ad61a5f8b3` |
 
+### Completed A/B activation equivalence
+
+B equivalence also completed its single attempt: 42 cells, 84 artifact/cell
+outcomes and 168 successful calls, with exact hidden/public and repeat science
+and solver fingerprints. Independent review verifies the 16 oracle certificates,
+84 retained repeat signatures, 42 cross-worker solver-discrete groups and 40
+resource actions. No retries, replacements or cleanup signals were needed.
+As in A, the unchanged producer deleted successful native arrays and trace logs;
+the review checks retained certificates/proofs and narrower discrete signatures,
+without claiming to reconstruct the deleted numerical outputs. Repeat calls
+inherit prerequisite resource evidence.
+
+The unchanged maintained validator subsequently reconstructed the complete A/B
+report in 753.65 seconds: 84 cells and 336 successful actual calls. Independent
+review rebuilt every factual row and checked all 40 public prerequisite trace
+actions. The typed equivalence report passes the shared activation guard. Adding
+only that report to the activation packet exactly preserves the partial packet
+used by both producers. This completes scientific activation equivalence; the
+public many-FE flag remains provisional pending untouched C24 confirmation.
+
+| Additional identity | SHA-256 |
+| --- | --- |
+| B equivalence scientific records | `5887aa45a4fe11ca582d3ba60c64402cc5b92ff50fb72e67e11dab2ca42a7e31` |
+| B oracle admission handoff | `55abda6aad703d94c8a9e52e3771f3afe05f7983b7a74049c5f2412756bc3bd8` |
+| Independent B equivalence review | `a1d123874988c3198328db0475a9ce9a681a2f16193c08f543958e34825fb114` |
+| Maintained combined factual rows | `681b5e31c474f2a584a27617013b7d7525dab56491915708f3825287661be9f3` |
+| Typed equivalence report | `37308925166a2c9a6d70ab635fd1d9bc5bf0dc4e7cf6b5b6414a90f34480c585` |
+| Independent activation-guard check | `8cf8a5eeaf4a1996f54e5d9b0908c222529a3232ecde7dd9dc9f7bd63bcd49ab` |
+| Complete activation packet | `3119bb2b3832462e2ceac7132892952d0f65f0b9a4e0d2217c8da3f8441c469b` |
+
 ## Main-branch GitHub installation, 2026-10-14
 
 The root package installs the maintained Stata files and a universal macOS
