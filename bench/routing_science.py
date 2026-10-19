@@ -213,6 +213,67 @@ def check_oracle(raw, columns, meta):
             del data
 
 
+# Stored hierarchy metadata appended to an installed bounded-CMG route record.
+ROUTE_HIERARCHY_FIELDS = ('terminal', 'levels', 'hierarchy_vertices', 'hierarchy_nonzeros', 'repeats',
+                          'terminal_factor', 'terminal_factor_dimension', 'terminal_factor_nonzeros',
+                          'application', 'parallel_operators', 'batch_columns')
+TERMINAL_REASONS = {'Direct', 'FullContraction', 'StagnatedVertexReduction', 'StagnatedFill', 'MaximumLevels'}
+
+
+def route_hierarchy(fields):
+    """Validate one auto_schur_route record. Return its installed hierarchy, or
+    None for a refused/not-built attempt (or a record predating installation
+    attestation). An installed record without complete metadata is an error."""
+    present = [key for key in ROUTE_HIERARCHY_FIELDS if key in fields]
+    installed = fields.get('installed')
+    if installed is None or installed == '0':
+        if present:
+            raise ValueError('auto_schur_route without an installation carries hierarchy metadata')
+        return None
+    if installed != '1':
+        raise ValueError('auto_schur_route has an invalid installation flag')
+    if fields.get('refusal') != 'None':
+        raise ValueError('installed auto_schur_route also reports a refusal')
+    missing = [key for key in ROUTE_HIERARCHY_FIELDS if key not in fields]
+    if missing:
+        raise ValueError('installed auto_schur_route lacks hierarchy metadata: ' + ', '.join(missing))
+
+    def count(key, minimum=0):
+        value = fields[key]
+        if not value.isdigit() or int(value) < minimum:
+            raise ValueError(f'auto_schur_route {key} is not a count >= {minimum}')
+        return int(value)
+
+    def series(key):
+        values = fields[key].split(';')
+        if not all(value.isdigit() for value in values):
+            raise ValueError(f'auto_schur_route {key} is not a count series')
+        return [int(value) for value in values]
+
+    hierarchy = {'terminal': fields['terminal'], 'levels': count('levels', 1),
+                 'vertices': series('hierarchy_vertices'), 'nonzeros': series('hierarchy_nonzeros'),
+                 'repeats': series('repeats'), 'terminal_factor': count('terminal_factor'),
+                 'terminal_factor_dimension': count('terminal_factor_dimension'),
+                 'terminal_factor_nonzeros': count('terminal_factor_nonzeros'),
+                 'application': fields['application'], 'parallel_operators': count('parallel_operators'),
+                 'batch_columns': count('batch_columns', 1)}
+    if hierarchy['terminal'] not in TERMINAL_REASONS:
+        raise ValueError('auto_schur_route has an unknown terminal reason')
+    if any(len(hierarchy[key]) != hierarchy['levels'] for key in ('vertices', 'nonzeros', 'repeats')):
+        raise ValueError('auto_schur_route level series do not match its level count')
+    # CMG factors the terminal level exactly when its terminal reason is Direct.
+    factor = hierarchy['terminal_factor']
+    if factor not in (0, 1) or bool(factor) != (hierarchy['terminal'] == 'Direct'):
+        raise ValueError('auto_schur_route terminal factor disagrees with its terminal reason')
+    if (not factor and (hierarchy['terminal_factor_dimension'] or hierarchy['terminal_factor_nonzeros'])
+            or hierarchy['terminal_factor_dimension'] > hierarchy['vertices'][-1]):
+        raise ValueError('auto_schur_route terminal factor dimensions are inconsistent')
+    if hierarchy['application'] not in ('scalar', 'parallel') or (
+            hierarchy['application'] == 'scalar' and hierarchy['parallel_operators']):
+        raise ValueError('auto_schur_route application representation is inconsistent')
+    return hierarchy
+
+
 def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None):
     candidate = requested not in {None, 'baseline'}
     expected = ({'injection': routing.ABLATIONS[requested]} if requested in routing.ABLATIONS else
@@ -221,7 +282,7 @@ def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None
             and expected_preset != expected['injection']):
         raise ValueError('unseeded portfolio requires its exact private preset')
     schur_policy = expected.get('two_fe', expected) if expected else None
-    actions, route = [], []
+    actions, route, hierarchies = [], [], []
     for line in log.splitlines():
         if not line.startswith('FEREG_SOLVER_TRACE|'):
             continue
@@ -232,6 +293,7 @@ def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None
                     or fields.get('samples') != str(schur_policy['trees'])):
                 raise ValueError('actual Schur route does not match requested policy')
             route.append(fields)
+            hierarchies.append(route_hierarchy(fields))
         if fields.get('phase') != 'routing_action':
             continue
         if expected and fields.get('preset') != (expected_preset if expected_preset is not None else expected['injection']):
@@ -257,5 +319,6 @@ def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None
         raise ValueError('candidate has no actual routing_action or bound exact-no-FE witness')
     checks = {'iteration_caps': 'passed', 'memory_caps': 'passed'}
     return {'action_resources': actions, 'resource_checks': checks, 'route_trace': route,
+            'route_hierarchy': hierarchies,
             'resource_basis': 'actual traced prerequisite' if actions else
                               'bound exact-no-FE witness' if candidate else 'bound legacy resource witness'}

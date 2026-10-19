@@ -1214,8 +1214,16 @@ impl AutoSchurRoute {
         *setup_seconds += elapsed.as_secs_f64();
         *solve_started += elapsed;
         if crate::diagnostics::solver_trace_enabled() {
+            // An installed build appends its stored hierarchy metadata to this
+            // same record; a refused or failed attempt carries none.
+            let hierarchy = built
+                .preconditioner
+                .as_ref()
+                .map_or(String::new(), |installed| {
+                    format!("|{}", installed.trace_hierarchy())
+                });
             crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint={}|samples={}|iterations={iterations}|installed={}|refusal={:?}",
+                "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint={}|samples={}|iterations={iterations}|installed={}|refusal={:?}{hierarchy}",
                 self.preset.checkpoint(), self.preset.samples(),
                 u8::from(built.preconditioner.is_some()), built.refusal));
         }

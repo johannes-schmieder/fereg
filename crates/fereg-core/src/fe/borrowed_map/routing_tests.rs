@@ -1205,6 +1205,119 @@ fn incremental_two_injection_builds_installs_and_certifies_uncapped_cmg() {
 }
 
 #[test]
+fn auto_route_trace_reports_installed_hierarchy_and_nothing_for_refusals_isolated() {
+    const CHILD: &str = "FEREG_AUTO_ROUTE_TRACE_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let trace =
+            std::env::temp_dir().join(format!("fereg-auto-route-trace-{}.log", std::process::id()));
+        let _ = std::fs::remove_file(&trace);
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD, "1")
+            .env("FEREG_SOLVER_TRACE", "1")
+            .env("FEREG_SOLVER_TRACE_FILE", &trace)
+            .args([
+                "fe::borrowed_map::routing_tests::auto_route_trace_reports_installed_hierarchy_and_nothing_for_refusals_isolated",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .status()
+            .unwrap();
+        let _ = std::fs::remove_file(&trace);
+        assert!(status.success());
+        return;
+    }
+    let routes = || {
+        std::fs::read_to_string(std::env::var_os("FEREG_SOLVER_TRACE_FILE").unwrap())
+            .unwrap_or_default()
+            .lines()
+            .filter(|line| line.contains("|phase=auto_schur_route|"))
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    };
+    let witness = PairedGraph::new();
+    let fit = |owner: &mut ReusableCategoricalMapAbsorber<'_>| {
+        owner
+            .absorb_ols(
+                BorrowedMapWeights::Provided(&witness.weights),
+                witness.columns(&[0]).into(),
+                config(),
+                false,
+            )
+            .unwrap()
+    };
+
+    // Installed: the route record carries the stored hierarchy metadata.
+    let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+    owner.retain_coefficients = true;
+    owner.request_auto_routing(RoutingPreset::portfolio_unseeded(), None, 0);
+    witness.check(&fit(&mut owner), &[0]);
+    let installed = owner
+        .two_fe_pcg
+        .as_ref()
+        .unwrap()
+        .cmg_schur
+        .as_ref()
+        .unwrap()
+        .trace_hierarchy();
+    let lines = routes();
+    assert_eq!(lines.len(), 1);
+    assert_eq!(
+        lines[0],
+        format!(
+            "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=16|samples=1|iterations=16|installed=1|refusal=None|{installed}"
+        )
+    );
+    let fields: std::collections::HashMap<_, _> = lines[0]
+        .split('|')
+        .skip(1)
+        .map(|part| part.split_once('=').unwrap())
+        .collect();
+    let series = |key: &str| -> Vec<usize> {
+        fields[key]
+            .split(';')
+            .map(|value| value.parse().unwrap())
+            .collect()
+    };
+    let levels: usize = fields["levels"].parse().unwrap();
+    assert!(levels >= 1);
+    for key in ["hierarchy_vertices", "hierarchy_nonzeros", "repeats"] {
+        assert_eq!(series(key).len(), levels, "{key}");
+    }
+    assert_eq!(series("hierarchy_vertices")[0], PairedGraph::LEVELS);
+    let factor = fields["terminal_factor"] == "1";
+    assert_eq!(factor, fields["terminal"] == "Direct");
+    let dimension: usize = fields["terminal_factor_dimension"].parse().unwrap();
+    assert!(dimension <= series("hierarchy_vertices")[levels - 1]);
+    assert_eq!(factor, dimension > 0);
+    // Bounded Auto applies the scalar cycle one lane at a time.
+    assert_eq!(
+        (
+            fields["application"],
+            fields["parallel_operators"],
+            fields["batch_columns"]
+        ),
+        ("scalar", "0", "1")
+    );
+
+    // Refused by memory admission: installation and metadata are both absent.
+    let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+    owner.retain_coefficients = true;
+    owner.request_auto_routing(RoutingPreset::portfolio_unseeded(), None, 0);
+    owner.auto_route.as_mut().unwrap().request.budget = Some(FeSolverMemoryBudget {
+        execution_bytes: 0,
+        usable_bytes: 0,
+    });
+    witness.check(&fit(&mut owner), &[0]);
+    assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
+    let lines = routes();
+    assert_eq!(lines.len(), 2);
+    assert_eq!(
+        lines[1],
+        "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=16|samples=1|iterations=16|installed=0|refusal=Some(MemoryBudget)"
+    );
+}
+
+#[test]
 fn portfolio_matched_cold_reused_and_wide_rhs_preserve_science_and_repeats() {
     let witness = PairedGraph::new();
     // The first RHS is the same target in all three cases. Only its batching

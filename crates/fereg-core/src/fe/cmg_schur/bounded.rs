@@ -1728,6 +1728,36 @@ mod control_tests {
     }
 
     #[test]
+    fn trace_hierarchy_reports_stored_metadata_of_the_installed_build() {
+        let (built, _) = candidate().unwrap();
+        let installed = built.preconditioner.unwrap();
+        let cmg = &installed.preconditioner;
+        let report = cmg.hierarchy().report();
+        let factor = cmg.terminal_factor().unwrap();
+        assert_eq!(report.terminal_reason(), cmg::TerminalReason::Direct);
+        let join = |values: &[usize]| {
+            values
+                .iter()
+                .map(usize::to_string)
+                .collect::<Vec<_>>()
+                .join(";")
+        };
+        assert_eq!(
+            installed.trace_hierarchy(),
+            format!(
+                "terminal=Direct|levels={}|hierarchy_vertices={}|hierarchy_nonzeros={}|repeats={}|terminal_factor=1|terminal_factor_dimension={}|terminal_factor_nonzeros={}|application=scalar|parallel_operators=0|batch_columns=1",
+                cmg.hierarchy().levels().len(),
+                join(report.vertex_counts()),
+                join(report.matrix_nonzeros()),
+                join(cmg.repeat_counts()),
+                factor.active_dimension(),
+                factor.factor_nonzeros(),
+            )
+        );
+        assert_eq!(report.vertex_counts().len(), cmg.hierarchy().levels().len());
+    }
+
+    #[test]
     fn steps_validate_chunks_and_poll_at_the_fixed_cadence() {
         let mut work = Work::new(false);
         for units in [0, 1025] {

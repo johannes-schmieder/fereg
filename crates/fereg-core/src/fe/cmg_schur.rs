@@ -16,7 +16,7 @@ use crate::error::{allocation, invalid_argument, invalid_data, FeregError, Resul
 use crate::linalg::neumaier_add;
 use crate::memory::{vec_capacity_bytes, FeSolverMemoryBudget, SolverWorkspacePeak};
 
-use super::cmg::cmg_error;
+use super::cmg::{cmg_error, format_usize_series};
 use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, LevelIndex};
 
 mod bounded;
@@ -230,6 +230,27 @@ impl CmgSchurPreconditioner {
 
     pub(super) fn construction_peak(&self) -> SolverWorkspacePeak {
         self.construction
+    }
+
+    /// Solver-trace fields for the installed hierarchy, read from metadata the
+    /// build already stored: no graph, factor or workspace payload is visited.
+    pub(super) fn trace_hierarchy(&self) -> String {
+        let report = self.preconditioner.hierarchy().report();
+        let factor = self.preconditioner.terminal_factor();
+        format!(
+            "terminal={:?}|levels={}|hierarchy_vertices={}|hierarchy_nonzeros={}|repeats={}|terminal_factor={}|terminal_factor_dimension={}|terminal_factor_nonzeros={}|application={}|parallel_operators={}|batch_columns={}",
+            report.terminal_reason(),
+            report.vertex_counts().len(),
+            format_usize_series(report.vertex_counts()),
+            format_usize_series(report.matrix_nonzeros()),
+            format_usize_series(self.preconditioner.repeat_counts()),
+            u8::from(factor.is_some()),
+            factor.map_or(0, cmg::GroundedLdl::active_dimension),
+            factor.map_or(0, cmg::GroundedLdl::factor_nonzeros),
+            if self.parallel.is_some() { "parallel" } else { "scalar" },
+            self.parallel.as_ref().map_or(0, |parallel| parallel.plan.operator_count()),
+            self.batch_columns,
+        )
     }
 
     /// B = P_f R B_h E P_f, where E zero-pads auxiliary workers and R restricts

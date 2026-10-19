@@ -10,6 +10,29 @@
   "run_tests_standard": "stopped at scripts/check_github_install.py: main's runtime changed (expected installed-package binding difference, as in M1/M2)"
  },
  "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+ "codex_host_evidence": {
+  "mac_plugin": {
+   "checks": "audit, ABI/load and panic containment pass",
+   "failed_attempts": "wrapper missing cargo PATH; first binary failed personal-path audit; both retained",
+   "sha256": "11ab35e27b090ff8cfe494af82da1da0f6a178648a9f37c45872e5fdcc770a0b"
+  },
+  "mac_replay": {
+   "baseline_note": "retained pre-M3a/M2 plugin; d0cee50a..7ccab5a9 changes no runtime or artifact input",
+   "baseline_sha256": "7337e642399af1a40b91aa97ac23c453ed53a8269b4886578b635c4436d3b6b0",
+   "result": "73 of 73 with zero exact/scientific/discrete differences"
+  },
+  "note": "not controlled performance evidence; standard installed-plugin binding mismatch preserved",
+  "reported_by": "Codex",
+  "revisions": "fereg 573a62166d07c16379cbe34b8da4b30f2ee7f428 / CMG 03a260411450dd2c1caaefffa3514ac78c0996d7 (before the route-trace change; reuse needs reassessment)",
+  "scc_build": {
+   "checks": "ABI/load/panic/numeric guards pass",
+   "job": "8192370",
+   "linux_sha256": "2e0c4e85301fc227bd56586b2883e045cd06899ea12116baf6601e7f2269b35b",
+   "result": "failed=0, exit_status=0, four slots, 123 s, maxvmem 2.870G"
+  },
+  "source_only": "local source-only passed: 315 Python; 1,928 passed Rust tests plus 14 ignored in 80 groups; portable, fuzz and ratchet",
+  "stata": "six mapped Stata 19 MP fixtures pass; builder Break at W2 and W4 with exactly two readiness records each, rollback/reset/follow-up; public-scope PPML Break pass"
+ },
  "decision": "Johannes, 2026-10-19: remove the construction-work cap altogether; no replacement work cap, dimension-only work bound, time cap or payback policy",
  "declared_scope": {
   "affected_routes": [
@@ -40,6 +63,43 @@
    "routing_overlap phase"
   ]
  },
+ "evidence_support": {
+  "change": "under FEREG_SOLVER_TRACE, an installed bounded build appends stored hierarchy metadata to its own auto_schur_route record; refused or failed attempts carry none; trace formatting only",
+  "checks": {
+   "bench_python": "191 tests pass, 1 skipped",
+   "fereg_focused": "trace_hierarchy_reports_stored_metadata_of_the_installed_build; auto_route_trace_reports_installed_hierarchy_and_nothing_for_refusals_isolated (real trace file: installed record with consistent metadata, zero-budget record installed=0|refusal=Some(MemoryBudget) without metadata)",
+   "not_run": "no plugin rebuild or replay for this trace-only change; no timing",
+   "parser": "bench/tests/test_routing_science.py RouteHierarchyTrace: refused/not-built/legacy records versus installed records with missing or invalid metadata",
+   "pre_m3a_focused_tests_unresolved": "first run of fe::borrowed_map::routing_tests, fe::cmg_schur and fe::routing on the patched pre-M3a snapshot reported FAILED. 83 passed; 1 failed (finished in 10.51s); the command retained only that summary line, so the failing test identity and output are missing and unrecoverable; five subsequent repetitions and one capture run each passed 84/84, which neither explains nor clears the first failure; unresolved pending review",
+   "pre_m3a_snapshot": "cargo fmt --check and clippy -D warnings pass on the patched 7ccab5a9 snapshot",
+   "run_tests_source_only": "pass: 315 Python tests, 1,945 Rust test executions in 81 groups (14 ignored), fuzz check, seven portable checks, complexity ratchet with declared growth (+24 production lines, +6 in borrowed_map.rs), mock bridge and Linux plugin load/audit",
+   "run_tests_standard": "stopped at scripts/check_github_install.py binding check (preserved)"
+  },
+  "fields": [
+   "terminal",
+   "levels",
+   "hierarchy_vertices",
+   "hierarchy_nonzeros",
+   "repeats",
+   "terminal_factor",
+   "terminal_factor_dimension",
+   "terminal_factor_nonzeros",
+   "application",
+   "parallel_operators",
+   "batch_columns"
+  ],
+  "gap": "bounded Auto auto_schur_route reported only checkpoint, installation and refusal; FEREG_CMG_HIERARCHY (explicit cmg) and cmgschur_setup (explicit cmgschur) do not run on the bounded route",
+  "paired_witness": {
+   "m3a": "terminal=Direct levels=1 vertices=64 nonzeros=210 repeats=0 factor dimension 62 nonzeros 177",
+   "pre_m3a": "terminal=Direct levels=2 vertices=64;26 nonzeros=210;80 repeats=2;0 factor dimension 24 nonzeros 61",
+   "refusal": "installed=0|refusal=Some(MemoryBudget) without metadata in both arms",
+   "source": "PairedGraph witness, portfolio_unseeded, one and four workers, scratch-only capture test (not committed)"
+  },
+  "pre_m3a_patch": "bench/diagnostics/pre-m3a-route-hierarchy-trace.patch (fereg 7ccab5a9 / CMG d11b2ac4; same trace_hierarchy method byte for byte; legacy setup_work/setup_limit fields kept)",
+  "series_format": "semicolon-separated, fine to coarse; one entry per stored level",
+  "snapshot_helper": "scripts/route_trace_snapshot.sh {pre-m3a OUT | m3a REV OUT}: private git-archive snapshot, no ref/worktree/history change; label <revision>-route-trace-diagnostic",
+  "sources": "CmgPreconditioner hierarchy().report() terminal_reason/vertex_counts/matrix_nonzeros, repeat_counts, terminal_factor active_dimension/factor_nonzeros; CmgSchurPreconditioner parallel plan operator_count and batch_columns; identical accessors at CMG d11b2ac4 and 03a26041"
+ },
  "first_candidate": {
   "cmg_revision": "c23666e894c3fb404313e5f6769e20f871d77470",
   "fereg_revision": "20e76e965aae94aab2243fc4faef0541571c11e2",
@@ -52,7 +112,9 @@
   "Cell-by-cell admission, terminal-decision and installation differences on the 42 qualification inputs are outstanding",
   "Declared-scope replay through bench/qualify.py and scripts/replay_solver_routing.py needs the frozen Mac baseline capture",
   "The pre-existing CMG warning for the unused pcg center_and_dot_with_executor under parallel+experimental-components remains",
-  "The 75 injected corpus runs still never build CMG; CMG installation on the uncapped injected route is evidenced only by the fixed source witness"
+  "The 75 injected corpus runs still never build CMG; CMG installation on the uncapped injected route is evidenced only by the fixed source witness",
+  "The route-trace change postdates the Codex host evidence; native Stata/Break/Mac/SCC reuse must be reassessed and paired diagnostic binaries rebuilt on the hosts",
+  "Unresolved: one failure (83 passed / 1 failed) in the first focused test run on the patched pre-M3a snapshot; identity and output were not captured"
  ],
  "linux_plugins": {
   "baseline_sha256": "f71e83b4b8f00b5a83cc3528260593e6557213b82d4cb8cd3230f180a3b32145",

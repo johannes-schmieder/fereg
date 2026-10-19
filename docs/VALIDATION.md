@@ -106,6 +106,71 @@ corpus, is the installation evidence. Production lines fall by three. The
 42-cell admission diff, native Stata/Break fixtures and Mac checks remain
 outstanding.
 
+Host evidence reported by Codex at fereg `573a6216` / CMG `03a26041`, not
+controlled performance evidence: local source-only checks passed. A private
+universal Mac plugin (sha256 `11ab35e2...0a0b`) passed audit, ABI/load and
+panic containment; its first attempts (missing cargo `PATH`, then a
+personal-path audit failure) are retained. All six mapped Stata 19 MP
+fixtures passed. Builder Break at two and four workers recorded exactly two
+readiness records each, with rollback, reset and follow-up fits, and the
+public-scope PPML Break fixture passed. Native Mac replay passed 73 of 73
+cases with zero exact, scientific and discrete differences against the
+retained pre-M3a/M2 plugin (`7337e642...b0`); `d0cee50a..7ccab5a9` changes no
+runtime or artifact input. SCC build job 8192370 passed (four slots, 123 s,
+2.870 GB maxvmem; Linux artifact `2e0c4e85...b35b`, ABI/load/panic/numeric
+guards pass). The standard installed-plugin binding mismatch is preserved.
+These results predate the trace-only change below and need reuse
+reassessment.
+
+Evidence support (second review). The bounded Auto route reported only
+installation, refusal and checkpoint; `FEREG_CMG_HIERARCHY` and
+`cmgschur_setup` belong to the explicit `cmg` and `cmgschur` paths, so Auto
+terminal choices were unobservable. Under the existing `FEREG_SOLVER_TRACE`
+opt-in, an installed bounded build now appends stored metadata to its own
+`auto_schur_route` record: `terminal`, `levels`, `hierarchy_vertices`,
+`hierarchy_nonzeros`, `repeats` (`;`-separated, fine to coarse),
+`terminal_factor`, `terminal_factor_dimension`, `terminal_factor_nonzeros`,
+`application`, `parallel_operators` and `batch_columns`. A refused or failed
+attempt carries none. The fields come from existing CMG accessors that return
+stored counts; no graph component, factor or workspace payload is traversed,
+and arithmetic, admission, routing, resource handling, cancellation and public
+results are unchanged. With tracing off the only cost is the existing
+environment check. `bench/routing_science.py` returns the parsed
+`route_hierarchy`, rejects an installed record with missing or inconsistent
+metadata (factor present exactly for a `Direct` terminal, one entry per level,
+factor dimension within the terminal level, scalar application without plan
+operators), and rejects metadata on a refused record.
+`scripts/route_trace_snapshot.sh` exports a private `git archive` snapshot
+of either arm. For pre-M3a fereg `7ccab5a9` / CMG `d11b2ac4` it applies
+`bench/diagnostics/pre-m3a-route-hierarchy-trace.patch`, which adds the same
+`trace_hierarchy` method byte for byte after the record's legacy
+`setup_work`/`setup_limit` fields. It labels each binary
+`<revision>-route-trace-diagnostic`; such binaries are diagnostic builds and
+are never published. On the paired-graph witness the two arms trace `Direct`
+with `64;26` vertices and a 24-dimensional factor (pre-M3a, which coarsened
+under the factor preflight) against `64` vertices and a 62-dimensional
+direct factor (M3a); the zero-budget refusal traces `installed=0` without
+metadata in both.
+
+Checks: fereg unit tests compare the appended fields with the CMG accessors,
+and an isolated test captures the real trace file. Its installed
+`portfolio_unseeded` record carries consistent metadata, and its zero-budget
+record reads exactly `installed=0|refusal=Some(MemoryBudget)` with no
+metadata. Parser tests distinguish refused, not-built and legacy records from
+an installed record with missing or invalid metadata. `--source-only` passes
+315 Python tests, 1,945 Rust test executions in 81 groups (14 ignored), the
+fuzz check, seven portable checks and the ratchet, with declared growth of 24
+production lines (6 in `borrowed_map.rs`). The bench suite passes 191 tests
+(one skipped), and the standard entrypoint again stops at the binding check.
+The patched pre-M3a snapshot passes `cargo fmt --check` and `clippy
+-D warnings`. Its first focused run (`fe::borrowed_map::routing_tests`,
+`fe::cmg_schur`, `fe::routing`) reported `FAILED. 83 passed; 1 failed`. That
+command kept only the summary line, so the failing test's identity and output
+were not captured and cannot be recovered. Five subsequent repetitions, plus
+one capture run, each passed 84 of 84. Those passes do not explain or clear
+the first failure, which stays unresolved pending review. No plugin was rebuilt
+or replayed for this trace-only change, and no timing was measured.
+
 ## CMG successor milestone 2: initial graph construction
 
 **M2 is complete: source/native checks and the fixed cost diagnostic pass.**

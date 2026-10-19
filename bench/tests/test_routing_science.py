@@ -254,6 +254,63 @@ class UnseededPortfolioScope(unittest.TestCase):
                 routing.PORTFOLIO_UNSEEDED,False,{},expected_preset='routing_portfolio_v1')
 
 
+class RouteHierarchyTrace(unittest.TestCase):
+    PREFIX = 'FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=16|samples=1|iterations=16|'
+    METADATA = ('terminal=Direct|levels=2|hierarchy_vertices=64;9|hierarchy_nonzeros=448;41|repeats=3;0|'
+                'terminal_factor=1|terminal_factor_dimension=8|terminal_factor_nonzeros=19|'
+                'application=scalar|parallel_operators=0|batch_columns=1')
+    INSTALLED = PREFIX + 'installed=1|refusal=None|' + METADATA + '\n'
+    REFUSED = PREFIX + 'installed=0|refusal=Some(MemoryBudget)\n'
+
+    def diagnostics(self, route):
+        action = TRACE.replace('routing_h4_k0', 'routing_portfolio_unseeded')
+        return science.resource_diagnostics(action + route, routing.PORTFOLIO_UNSEEDED, False, {})
+
+    def test_installed_metadata_is_parsed_and_refusals_carry_none(self):
+        hierarchy = self.diagnostics(self.INSTALLED)['route_hierarchy']
+        self.assertEqual(hierarchy, [{'terminal': 'Direct', 'levels': 2, 'vertices': [64, 9],
+            'nonzeros': [448, 41], 'repeats': [3, 0], 'terminal_factor': 1,
+            'terminal_factor_dimension': 8, 'terminal_factor_nonzeros': 19,
+            'application': 'scalar', 'parallel_operators': 0, 'batch_columns': 1}])
+        iterative = self.INSTALLED.replace('terminal=Direct', 'terminal=StagnatedFill').replace(
+            'terminal_factor=1|terminal_factor_dimension=8|terminal_factor_nonzeros=19',
+            'terminal_factor=0|terminal_factor_dimension=0|terminal_factor_nonzeros=0')
+        self.assertEqual(self.diagnostics(iterative)['route_hierarchy'][0]['terminal_factor'], 0)
+        self.assertEqual(self.diagnostics(self.REFUSED)['route_hierarchy'], [None])
+        self.assertEqual(self.diagnostics(self.REFUSED + self.INSTALLED)['route_hierarchy'][0], None)
+        # Records without an installation flag predate the attestation.
+        legacy = 'FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=16|samples=1\n'
+        self.assertEqual(self.diagnostics(legacy)['route_hierarchy'], [None])
+
+    def test_installed_without_metadata_differs_from_refusal_and_invalid_metadata_fails(self):
+        bare = self.PREFIX + 'installed=1|refusal=None\n'
+        with self.assertRaisesRegex(ValueError, 'lacks hierarchy metadata'):
+            self.diagnostics(bare)
+        partial = self.INSTALLED.replace('|batch_columns=1', '')
+        with self.assertRaisesRegex(ValueError, 'lacks hierarchy metadata: batch_columns'):
+            self.diagnostics(partial)
+        invalid = [
+            self.REFUSED.replace('\n', '|' + self.METADATA + '\n'),
+            self.INSTALLED.replace('refusal=None', 'refusal=Some(MemoryBudget)'),
+            self.INSTALLED.replace('installed=1', 'installed=2'),
+            self.INSTALLED.replace('terminal=Direct', 'terminal=Unknown'),
+            self.INSTALLED.replace('levels=2', 'levels=3'),
+            self.INSTALLED.replace('levels=2', 'levels=0'),
+            self.INSTALLED.replace('repeats=3;0', 'repeats=3'),
+            self.INSTALLED.replace('repeats=3;0', 'repeats=3;-1'),
+            self.INSTALLED.replace('hierarchy_nonzeros=448;41', 'hierarchy_nonzeros=448;x'),
+            self.INSTALLED.replace('terminal_factor=1', 'terminal_factor=0'),
+            self.INSTALLED.replace('terminal=Direct', 'terminal=MaximumLevels'),
+            self.INSTALLED.replace('terminal_factor_dimension=8', 'terminal_factor_dimension=10'),
+            self.INSTALLED.replace('parallel_operators=0', 'parallel_operators=2'),
+            self.INSTALLED.replace('application=scalar', 'application=batched'),
+            self.INSTALLED.replace('batch_columns=1', 'batch_columns=0'),
+        ]
+        for log in invalid:
+            with self.subTest(log=log), self.assertRaises(ValueError):
+                self.diagnostics(log)
+
+
 class ModelDiscreteSignature(unittest.TestCase):
     def test_full_model_matrices_presence_flags_and_discrete_dof_are_included(self):
         raw = result('auto')

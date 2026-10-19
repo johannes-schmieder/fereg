@@ -2248,7 +2248,7 @@ fn component_quantile(sorted_sizes: &[usize], percentile: usize) -> usize {
     sorted_sizes[index]
 }
 
-fn format_usize_series(values: &[usize]) -> String {
+pub(super) fn format_usize_series(values: &[usize]) -> String {
     values
         .iter()
         .map(usize::to_string)
