@@ -441,22 +441,20 @@ fn finish(
     })?;
     // Keep the already-admitted conservative hierarchy bound. Exact storage
     // reporting recursively deduplicates allocation owners and is quadratic.
-    // The workspace layout scan is O(levels) and the zeroed workspace is O(n).
+    // The workspace layout scan is O(levels) and the zeroed workspace is O(n);
+    // both poll cancellation inside CMG.
     work.step(128)?;
     let parents = parents + bound as u128;
-    let workspace_bytes = preconditioner
-        .workspace_allocation_bytes()
-        .map_err(|error| AttemptError::Fatal(cmg_error(error)))?;
+    let workspace_bytes =
+        work.cmg(|_, cancelled| preconditioner.workspace_allocation_bytes_controlled(cancelled))?;
     let bank_bytes = bytes::<[f64; 2]>(graph.vertex_count())?;
     let bound = workspace_bytes
         .checked_add(bank_bytes)
         .and_then(|bytes| bytes.checked_add(std::mem::size_of::<CmgSchurPreconditioner>()))
         .ok_or_else(|| allocation("bounded CMG apply storage overflows"))?;
     admit(memory, work, parents, bound)?;
-    work.poll()?;
-    let scalar_workspace = preconditioner
-        .try_workspace()
-        .map_err(|error| AttemptError::Fatal(cmg_error(error)))?;
+    let scalar_workspace =
+        work.cmg(|_, cancelled| preconditioner.try_workspace_controlled(cancelled))?;
     let rhs = work.filled(graph.vertex_count(), 0.0)?;
     let solution = work.filled(graph.vertex_count(), 0.0)?;
     work.step(256)?;
@@ -1798,6 +1796,63 @@ mod control_tests {
             Some(crate::error::ErrorCode::Interrupted)
         );
         crate::interrupt::reset_cancellation();
+
+        // Scalar workspace preparation polls inside CMG's initialization of
+        // its banks. Request host cancellation from inside that preparation,
+        // at polls between its allocations, and map it exactly like a build.
+        let reference = {
+            let (built, scale) = candidate().unwrap();
+            let mut built = built.preconditioner.unwrap();
+            let mut rhs = [1.0, -1.0];
+            built
+                .apply_reduced_in_place(&mut rhs, &mut [0.0; 2], scale)
+                .unwrap();
+            rhs.map(f64::to_bits)
+        };
+        // 200,000 isolates: one level whose nine banks initialize 1.8 million
+        // values at CMG's fixed counted cadence.
+        let isolated = Laplacian::from_edges(200_000, []).unwrap();
+        let large = CmgPreconditioner::build(&isolated, CmgOptions::default()).unwrap();
+        let polls = std::sync::atomic::AtomicUsize::new(0);
+        let prepare = |stop: Option<usize>| {
+            polls.store(0, std::sync::atomic::Ordering::Relaxed);
+            Work::new(false).cmg(|_, cancelled| {
+                large.try_workspace_controlled(&|| {
+                    let poll = polls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    if stop == Some(poll) {
+                        crate::interrupt::request_cancellation();
+                    }
+                    cancelled()
+                })
+            })
+        };
+        let complete = prepare(None).unwrap_or_else(|_| panic!("uncancelled workspace"));
+        let total = polls.load(std::sync::atomic::Ordering::Relaxed);
+        assert!(total >= 9 * 200_000 * 8 / 65_536);
+        for stop in [1, total / 2, total - 2] {
+            assert!(interrupted(prepare(Some(stop)).map(drop)));
+            assert_eq!(polls.load(std::sync::atomic::Ordering::Relaxed), stop + 1);
+            crate::interrupt::reset_cancellation();
+        }
+        let result = Work::new(false).cmg(|_, cancelled| {
+            crate::interrupt::request_cancellation();
+            large.workspace_allocation_bytes_controlled(cancelled)
+        });
+        assert!(interrupted(result.map(drop)));
+        crate::interrupt::reset_cancellation();
+        // After the interrupted attempts a fresh preparation and a fresh
+        // bounded candidate (whose finish prepares its workspace the same
+        // way) succeed and apply identical bits.
+        let again = prepare(None).unwrap_or_else(|_| panic!("rebuilt workspace"));
+        assert_eq!(again.byte_len(), complete.byte_len());
+        assert_eq!(again.dimensions(), complete.dimensions());
+        let (built, scale) = candidate().unwrap();
+        let mut built = built.preconditioner.unwrap();
+        let mut rhs = [1.0, -1.0];
+        built
+            .apply_reduced_in_place(&mut rhs, &mut [0.0; 2], scale)
+            .unwrap();
+        assert_eq!(rhs.map(f64::to_bits), reference);
 
         // Developer builder Break: park after executed work, then interrupt.
         let guard = crate::fe::routing_break::DeveloperBreak::claim().unwrap();

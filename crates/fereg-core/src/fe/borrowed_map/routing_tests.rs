@@ -1119,6 +1119,92 @@ fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths(
 }
 
 #[test]
+fn incremental_two_injection_builds_installs_and_certifies_uncapped_cmg() {
+    // The hidden `routing_incremental_two` injection on an exactly-two-FE
+    // Auto/Auto fit resolves to the synchronous portfolio, which has no
+    // construction-work cap after M3a.
+    let preset = RoutingPreset::incremental_two()
+        .resolve_ols(
+            crate::fe::FeSolverKind::Auto,
+            crate::fe::LsmrPreconditioner::Auto,
+            Some(2),
+        )
+        .unwrap();
+    assert_eq!(preset, RoutingPreset::portfolio_unseeded());
+    let witness = PairedGraph::new();
+    let budgets = [
+        None,
+        // Memory admission still applies; a roomy explicit budget admits.
+        Some(FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: 1 << 32,
+        }),
+    ];
+    let mut reference: Option<DenseMatrix> = None;
+    for workers in [1, 4] {
+        for budget in budgets {
+            let residual =
+                crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                    .install(|| {
+                        TWO_FE_ROUTING_BUILD_AT.set(0);
+                        let mut owner =
+                            ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers)
+                                .unwrap();
+                        owner.retain_coefficients = true;
+                        owner.request_auto_routing(preset, budget, 0);
+                        let result = owner
+                            .absorb_ols(
+                                BorrowedMapWeights::Provided(&witness.weights),
+                                witness.columns(&[0]).into(),
+                                config(),
+                                false,
+                            )
+                            .unwrap();
+                        // Built once, at the fixed iteration-16 checkpoint...
+                        assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 16);
+                        let route = owner.auto_route.as_ref().unwrap();
+                        assert!(route.setup.attempted);
+                        assert_eq!(
+                            route.setup.portfolio_choice(),
+                            PortfolioChoice::IncumbentCmg
+                        );
+                        assert_eq!(
+                            (route.request.degree, route.request.sampling.samples),
+                            (5, 1)
+                        );
+                        assert_eq!(route.request.sampling.seed, 0);
+                        // ...installed (not refused) with admitted retained storage...
+                        let installed = owner
+                            .two_fe_pcg
+                            .as_ref()
+                            .unwrap()
+                            .cmg_schur
+                            .as_ref()
+                            .expect("bounded CMG must be installed");
+                        assert!(installed.retained_bytes().unwrap() > 0);
+                        assert_ne!(installed.construction_peak(), SolverWorkspacePeak::ZERO);
+                        // ...and the restarted recurrence certifies against the
+                        // original design. The analytic witness checks the exact
+                        // weighted projection and every within-component FE contrast.
+                        assert!(result.report.iterations > 16);
+                        assert!(result.report.iterations < config().max_iterations);
+                        assert!(result.report().certified());
+                        witness.check(&result, &[0]);
+                        result.residualized().clone()
+                    })
+                    .unwrap();
+            if let Some(reference) = &reference {
+                for (actual, expected) in residual.as_slice().iter().zip(reference.as_slice()) {
+                    assert!((actual - expected).abs() < 1e-9);
+                }
+            } else {
+                reference = Some(residual);
+            }
+        }
+    }
+}
+
+#[test]
 fn portfolio_matched_cold_reused_and_wide_rhs_preserve_science_and_repeats() {
     let witness = PairedGraph::new();
     // The first RHS is the same target in all three cases. Only its batching

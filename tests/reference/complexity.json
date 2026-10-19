@@ -3431,47 +3431,47 @@
           },
           {
             "condition": "weights",
-            "line": 586
+            "line": 584
           },
           {
             "condition": "memory . budget . is_some_and ( | budget |",
-            "line": 698
+            "line": 696
           },
           {
             "condition": "cells . len ( ) > cutoff && sampling . samples > 0",
-            "line": 779
+            "line": 777
           },
           {
             "condition": "cells . len ( ) > cutoff",
-            "line": 787
+            "line": 785
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 984
+            "line": 982
           },
           {
             "condition": "let Some ( mut emission ) = EdgeEmissionPlan :: select ( self , input_edges , max_rows , cutoff , sampling , work , memory ) ?",
-            "line": 1088
+            "line": 1086
           },
           {
             "condition": "edges . len ( ) != input_edges",
-            "line": 1104
+            "line": 1102
           },
           {
             "condition": "self . cells . len ( ) > cutoff",
-            "line": 1126
+            "line": 1124
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1148
+            "line": 1146
           },
           {
             "condition": "let BorrowedMapWeights :: Provided ( values ) = weights",
-            "line": 1192
+            "line": 1190
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1196
+            "line": 1194
           }
         ],
         "functions": {
@@ -3480,7 +3480,7 @@
             "lines": 21
           },
           "admitted_cache_bytes#1": {
-            "line": 942,
+            "line": 940,
             "lines": 23
           },
           "apply_reduced_in_place#1": {
@@ -3488,7 +3488,7 @@
             "lines": 47
           },
           "bank#1": {
-            "line": 875,
+            "line": 873,
             "lines": 3
           },
           "build_observations_bounded#1": {
@@ -3496,7 +3496,7 @@
             "lines": 54
           },
           "cache_envelope#1": {
-            "line": 867,
+            "line": 865,
             "lines": 74
           },
           "capacity#1": {
@@ -3504,7 +3504,7 @@
             "lines": 6
           },
           "census_bounded#1": {
-            "line": 1022,
+            "line": 1020,
             "lines": 48
           },
           "cmg#1": {
@@ -3512,23 +3512,23 @@
             "lines": 22
           },
           "collect_edges_bounded#1": {
-            "line": 1074,
+            "line": 1072,
             "lines": 35
           },
           "component_options#1": {
-            "line": 611,
+            "line": 609,
             "lines": 7
           },
           "emit#1": {
-            "line": 714,
+            "line": 712,
             "lines": 109
           },
           "emit_edges_bounded#1": {
-            "line": 1110,
+            "line": 1108,
             "lines": 51
           },
           "entry#1": {
-            "line": 575,
+            "line": 573,
             "lines": 28
           },
           "filled#1": {
@@ -3536,15 +3536,15 @@
             "lines": 8
           },
           "find_root#1": {
-            "line": 530,
+            "line": 528,
             "lines": 10
           },
           "finish#1": {
             "line": 416,
-            "lines": 59
+            "lines": 57
           },
           "firm_count#1": {
-            "line": 564,
+            "line": 562,
             "lines": 5
           },
           "from#1": {
@@ -3552,23 +3552,23 @@
             "lines": 3
           },
           "graph#1": {
-            "line": 1180,
+            "line": 1178,
             "lines": 145
           },
           "graph_storage_bound#1": {
-            "line": 522,
+            "line": 520,
             "lines": 7
           },
           "initial_laplacian_bounded#1": {
-            "line": 1165,
+            "line": 1163,
             "lines": 14
           },
           "load#1": {
-            "line": 843,
+            "line": 841,
             "lines": 14
           },
           "load_bounded#1": {
-            "line": 974,
+            "line": 972,
             "lines": 47
           },
           "new#1": {
@@ -3576,11 +3576,11 @@
             "lines": 8
           },
           "new#2": {
-            "line": 826,
+            "line": 824,
             "lines": 6
           },
           "parts#1": {
-            "line": 480,
+            "line": 478,
             "lines": 13
           },
           "poll#1": {
@@ -3588,15 +3588,15 @@
             "lines": 11
           },
           "restore_scale#1": {
-            "line": 479,
+            "line": 477,
             "lines": 40
           },
           "row_count#1": {
-            "line": 569,
+            "line": 567,
             "lines": 6
           },
           "select#1": {
-            "line": 636,
+            "line": 634,
             "lines": 76
           },
           "sift#1": {
@@ -3612,7 +3612,7 @@
             "lines": 12
           },
           "store#1": {
-            "line": 833,
+            "line": 831,
             "lines": 9
           },
           "try_build_bounded#1": {
@@ -3624,15 +3624,15 @@
             "lines": 69
           },
           "weights#1": {
-            "line": 603,
+            "line": 601,
             "lines": 6
           },
           "worker_count#1": {
-            "line": 558,
+            "line": 556,
             "lines": 6
           }
         },
-        "production_lines": 1207
+        "production_lines": 1204
       },
       "crates/fereg-core/src/fe/cmg_schur/sampling.rs": {
         "chunk_candidates": [],
@@ -22867,7 +22867,7 @@
         "dispatch_candidates": 1371,
         "files_over_1500": 15,
         "functions_over_150": 60,
-        "production_lines": 104922
+        "production_lines": 104919
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
