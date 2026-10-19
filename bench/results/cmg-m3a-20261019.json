@@ -9,7 +9,7 @@
   "run_tests_source_only": "pass: 315 Python tests, 1,941 Rust test executions in 80 groups (14 ignored), fuzz check, seven portable checks, complexity ratchet, mock bridge and Linux plugin load/audit",
   "run_tests_standard": "stopped at scripts/check_github_install.py: main's runtime changed (expected installed-package binding difference, as in M1/M2)"
  },
- "cmg_revision": "c23666e894c3fb404313e5f6769e20f871d77470",
+ "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
  "decision": "Johannes, 2026-10-19: remove the construction-work cap altogether; no replacement work cap, dimension-only work bound, time cap or payback policy",
  "declared_scope": {
   "affected_routes": [
@@ -40,13 +40,19 @@
    "routing_overlap phase"
   ]
  },
+ "first_candidate": {
+  "cmg_revision": "c23666e894c3fb404313e5f6769e20f871d77470",
+  "fereg_revision": "20e76e965aae94aab2243fc4faef0541571c11e2",
+  "review": "not accepted: scalar workspace preparation ran graph-sized initialization without cancellation polls"
+ },
  "host": "Linux x86_64 cloud container, 4 vCPU; rustc 1.85.1; Python 3.13.16; not a qualification host",
  "limitations": [
   "No licensed Stata run: the six mapped fixtures and the migrated synchronous builder-Break fixture at two and four workers are outstanding",
   "No Mac build, ABI/load check or timing; no SCC or Linux qualification timing; no performance claim",
   "Cell-by-cell admission, terminal-decision and installation differences on the 42 qualification inputs are outstanding",
   "Declared-scope replay through bench/qualify.py and scripts/replay_solver_routing.py needs the frozen Mac baseline capture",
-  "The pre-existing CMG warning for the unused pcg center_and_dot_with_executor under parallel+experimental-components remains"
+  "The pre-existing CMG warning for the unused pcg center_and_dot_with_executor under parallel+experimental-components remains",
+  "The 75 injected corpus runs still never build CMG; CMG installation on the uncapped injected route is evidenced only by the fixed source witness"
  ],
  "linux_plugins": {
   "baseline_sha256": "f71e83b4b8f00b5a83cc3528260593e6557213b82d4cb8cd3230f180a3b32145",
@@ -57,6 +63,23 @@
  "milestone": "M3a: remove the optional CMG construction-work cap and retire the overlap experiment",
  "reference_cmg_revision": "d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d",
  "reference_revision": "7ccab5a901b135e59b73603426ea2b8bfb128d89",
+ "review_repair": {
+  "actual_plugin_replay": "73 of 73 cases pass with zero exact differences between the repaired plugin and the first M3a plugin (20e76e96)",
+  "change": "CMG restores cancellation-only workspace_allocation_bytes_controlled and try_workspace_controlled sharing one implementation with the ordinary queries (poll before every allocation, counted level/plan/bank-initialization loops at the 65,536-unit cadence, final poll); fereg finish runs both through Work::cmg so Cancelled maps to a fatal Interrupted attempt; layout, memory accounting, error classes and arithmetic unchanged; no ledger, cap, predictive limit or preflight",
+  "cmg_checks": "cargo test --all-targets default/all features in debug and release (117/227 tests), clippy -D warnings for default, parallel, experimental-components and all features, fmt, benchmark crate fmt and clippy in a standalone copy: pass; unit tests cancel at every poll of component, centering and scalar workspaces and the layout query; allocator tracer over try_workspace_controlled",
+  "complexity": "fereg-core 104,922 -> 104,919 production lines; no growth",
+  "fereg_focused": "isolated cancellation test cancels inside a 1.8-million-value workspace preparation at early, middle and late polls (Interrupted at exactly that poll), then rebuilds the workspace and a bounded candidate with reference cycle bits; incremental_two_injection_builds_installs_and_certifies_uncapped_cmg installs CMG at iteration 16 and certifies against the PairedGraph analytic witness at one and four workers, with and without a memory budget",
+  "injected_two_fe_replay": "75 injected runs (incremental_two, h4_k1, direct): zero exact, discrete, route and repeat differences against the first M3a plugin; no run reached a CMG build; the three known-defect cases report the same intended-repair expectation differences on both plugins",
+  "linux_plugins": {
+   "baseline_revision": "20e76e965aae94aab2243fc4faef0541571c11e2",
+   "baseline_sha256": "4185d6aa3a24fb9863969f11dd4eae29625f81d67e63ec868b81058a54e9b7f8",
+   "candidate_revision": "653b86c (pinned CMG 03a26041)",
+   "candidate_sha256": "158e2e340ff45b302ec1c68dd23e3a0a78fa7dac1cc204d96291c646f1f4f4b7",
+   "harness_sha256": "aa5ca6b5804fc8a724db6795fd9ac954f416cf6afb6581e7f55990d754543fd7"
+  },
+  "run_tests_source_only": "pass: 315 Python tests, 1,942 Rust test executions in 80 groups (14 ignored), fuzz check, seven portable checks, complexity ratchet, mock bridge and Linux plugin load/audit",
+  "run_tests_standard": "stopped at scripts/check_github_install.py: main's runtime changed (expected installed-package binding difference, preserved)"
+ },
  "schema": 1,
  "status": "cloud source checks pass; native Stata, Break, Mac and SCC checks outstanding"
 }

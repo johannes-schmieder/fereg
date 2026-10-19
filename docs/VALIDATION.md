@@ -33,10 +33,11 @@ outstanding.** Work stops here for review. This does not qualify two-FE
 activation, which stays disabled.
 
 Johannes decided on 2026-10-19 to remove the optional CMG construction-work cap
-altogether. CMG is pinned to `c23666e894c3fb404313e5f6769e20f871d77470`, which
-removes the control/prefix interface, the factor-affordability preflight and
-all work charges; controlled builders take a sticky cancellation query polled
-every 65,536 counted units and before every allocation. fereg removes the
+altogether. CMG is pinned to `03a260411450dd2c1caaefffa3514ac78c0996d7`
+(`c23666e8` plus the review repair below), which removes the control/prefix
+interface, the factor-affordability preflight and all work charges; controlled
+builders take a sticky cancellation query polled every 65,536 counted units and
+before every allocation. fereg removes the
 `32 W0` allowance, the `4 W0` handoff reserve, the startup-fit test, the
 host-context charges and its work ledger; its bounded builder uses the same
 cancellation cadence. The single attempt at iteration 16, cutoff 5, one tree,
@@ -65,6 +66,45 @@ build. Production lines fall by 1,922 and dispatch candidates by 18.
 Six mapped Stata fixtures, Break runs at two and four workers, the 42-cell
 admission diff, Mac builds and all timing remain outstanding. Identities are in
 [`cmg-m3a-20261019.json`](../bench/results/cmg-m3a-20261019.json).
+
+Review repair (Codex, first M3a review). The first candidate lost cancellation
+during scalar workspace preparation: the bounded builder polled once and then
+called CMG's ordinary `workspace_allocation_bytes` and `try_workspace`, whose
+level, component and centering banks are initialized without a poll. CMG
+`03a26041` restores `workspace_allocation_bytes_controlled` and
+`try_workspace_controlled` as cancellation-only queries sharing one
+implementation with the ordinary ones. Without a meter the ordinary
+reservations, contexts and fills are unchanged; with one, every allocation is
+preceded by a poll, level/plan loops and bank initialization (128 values per
+counted operation) follow the 65,536-unit cadence, and both queries poll before
+returning. Layout, contents, byte counts, error classes and arithmetic are
+identical. fereg's `finish` runs both through `Work::cmg`, so cancellation is a
+fatal `Interrupted` attempt; memory admission is unchanged. No work ledger, cap,
+predictive limit or factor preflight returns.
+
+CMG tests cancel at every poll of component, centering and complete scalar
+workspaces and of the layout query, observe polls inside each bank's
+initialization, rebuild an equal workspace with identical cycle bits, and run
+the allocator tracer over `try_workspace_controlled`; CMG passes 117/227 tests
+(default/all features, debug and release), Clippy for default, `parallel`,
+`experimental-components` and all features, and the benchmark crate in a
+standalone copy. fereg's isolated cancellation test requests host cancellation
+from inside a 1.8-million-value workspace preparation at early, middle and late
+polls, observes the `Interrupted` mapping at exactly that poll, then rebuilds
+the workspace and a bounded candidate with the reference cycle bits. A new
+fixed witness shows the `routing_incremental_two` preset resolving to the
+uncapped portfolio, building at iteration 16, installing CMG with admitted
+storage (no budget and an explicit budget, one and four workers) and certifying
+against the paired-graph analytic projection and FE contrasts. `--source-only`
+passes 315 Python tests, 1,942 Rust test executions in 80 groups (14 ignored),
+the fuzz check, seven portable checks and the ratchet; the standard entrypoint
+again stops at the installed-plugin binding check. Linux actual-plugin replay of
+the repaired plugin against the first M3a plugin passes 73 of 73 cases with zero
+exact differences; the 75 injected two-FE runs are exact with equal routes and
+repeats, and again none reaches a CMG build, so the source witness, not that
+corpus, is the installation evidence. Production lines fall by three. The
+42-cell admission diff, native Stata/Break fixtures and Mac checks remain
+outstanding.
 
 ## CMG successor milestone 2: initial graph construction
 
