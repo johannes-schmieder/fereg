@@ -88,22 +88,8 @@ class RoutingRequests(unittest.TestCase):
                 routing.prepare(source, target, 'baseline', 1)
             self.assertEqual(target.read_text(), 'retained')
 
-    def test_policy_roundtrips_are_strict_and_complete(self):
-        choices = [*routing.INCREMENTAL, *routing.PORTFOLIOS, *routing.PREFIXES,
-                   *(f'h{h}-k{k}' for h in routing.CHECKPOINTS for k in routing.TREES),
-                   *(f'overlap-h{h}-k{k}' for h in routing.CHECKPOINTS[1:] for k in routing.TREES)]
+    def test_policy_rejects_invalid_arms(self):
         self.assertIsNone(routing.policy('baseline'))
-        self.assertEqual(routing.policy_name(None), 'baseline')
-        for name in choices:
-            selected = routing.policy(name)
-            with self.subTest(name=name):
-                self.assertEqual(routing.policy_name(selected), name)
-                for key in selected:
-                    incomplete = {k: v for k, v in selected.items() if k != key}
-                    with self.assertRaises(ValueError):
-                        routing.policy_name(incomplete)
-                with self.assertRaises(ValueError):
-                    routing.policy_name({**selected, 'new_algorithm': True})
         for name in ['overlap-h4-k0', 'h16-k3', 'composed-map4', 'routing_composed_map4']:
             with self.subTest(name=name), self.assertRaises(ValueError):
                 routing.policy(name)
@@ -120,12 +106,11 @@ class RoutingRequests(unittest.TestCase):
                     for field in path[:-1]:
                         owner = owner[field]
                     owner[path[-1]] = value
-                    with self.subTest(name=name, path=path, value=value), self.assertRaises(ValueError):
-                        routing.policy_name(selected)
+                    with self.subTest(name=name, path=path, value=value):
+                        self.assertNotEqual(routing.identity(selected), routing.identity(routing.policy(name)))
         selected = routing.policy('h16-k1')
         selected['trees'] = True
-        with self.assertRaises(ValueError):
-            routing.policy_name(selected)
+        self.assertNotEqual(routing.identity(selected), routing.identity(routing.policy('h16-k1')))
 
     def test_unseeded_policy_does_not_mutate_the_retained_policy(self):
         old = routing.policy(routing.PORTFOLIO_V1)

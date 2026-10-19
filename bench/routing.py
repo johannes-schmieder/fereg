@@ -13,8 +13,6 @@ import shutil
 
 from native_io import case_header
 
-CHECKPOINTS = (4, 8, 16, 32)
-TREES = (0, 1, 2)
 ABLATIONS = {name: 'routing_' + name for name in ['diagonal', 'cells', 'direct']}
 PREFIXES = {'prefix-none': ('none', 0), 'prefix-map4': ('map4', 4), 'prefix-it4': ('it4', 8)}
 PORTFOLIO_V1 = 'portfolio-v1'
@@ -89,17 +87,6 @@ def policy(arm):
     if overlap:
         result['overlap'] = True
     return result
-
-
-def policy_name(value):
-    if value is None:
-        return 'baseline'
-    choices = [*INCREMENTAL, *PORTFOLIOS, *PREFIXES, *(f'h{h}-k{k}' for h in CHECKPOINTS for k in TREES),
-               *(f'overlap-h{h}-k{k}' for h in CHECKPOINTS[1:] for k in TREES)]
-    for name in choices:
-        if identity(policy(name)) == identity(value):
-            return name
-    raise ValueError('unknown or incomplete fixed routing policy')
 
 
 def prepare(source, destination, arm, threads):
