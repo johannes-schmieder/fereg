@@ -26,6 +26,111 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## CMG successor milestone 2: initial graph construction
+
+**Implementation, source integration and mapped Mac native checks pass;
+performance assessment is pending.** CMG is pinned to
+`d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d`. The upstream mapping/merge path and
+fereg's independent edge emission use the existing host team, a fixed 65,536-edge
+threshold and dimension-based chunks. Canonical aggregation, compensated suffix
+sums, duplicate reduction and diagonal accumulation retain their order.
+Optional suffix scratch is eight bytes per aggregated cell and row; output
+slots hold temporary dispatch metadata. Hierarchy, application and polishing
+remain unchanged. The [architecture](ARCHITECTURE.md#cmg-host-team-and-stage-admission)
+describes the admission and cleanup contract.
+
+The final focused fereg suite passes 34 tests. Upstream focused checks, all-feature
+Clippy and default-feature checks pass; narrow-feature Clippy exposed an existing
+profiling-only unused-function warning, retained without deleting used code.
+Full source integration passes 319 Python tests, 1,959 Rust test executions and
+seven portable checks. The first integration attempt stopped on the stale fuzz
+lockfile; updating only its CMG pin resolved that setup prerequisite. An earlier
+focused test run exposed shared-team lease contention between tests; process
+isolation fixed the test without changing production arithmetic or serializing
+the entire suite. Complexity grows by 282 production lines and four dispatch
+candidates, with no new oversized function or file.
+
+The private universal Mac build passes audit, ABI/load and panic containment.
+All six mapped Stata fixtures pass, including the near-within witness; all four
+fixed Break runs at two and four workers pass, with two cancellations per run,
+rollback, reset and terminal cleanup. Those native Break runs stop at the first
+64-unit bookkeeping gate; they do not establish interruption inside a parallel
+graph kernel. Focused host-stage tests cover kernel joins, cancellation and panic.
+Independent source and raw native-evidence review passes with that limitation.
+Compact identities, checks and failed-attempt summaries are retained in
+[`cmg-m2-20261019.json`](../bench/results/cmg-m2-20261019.json).
+
+Johannes authorized implementation of M2 after the repaired M1 reference
+`9244364520df5cc44c9a9b4da66c3dba844ff090`. The target is the actual synchronous
+`incremental_two` direct-or-h16/k1 path: the incumbent pauses at iteration 16
+and construction may borrow the full admitted host team. The separate overlap
+experiment retains its one-lane construction ceiling. Routing, degree cutoff 5,
+one sampled tree, seed zero, work cap and restart reserve stay fixed.
+
+Declared scope before implementation: parallel validation/mapping, bounded
+sorting and independent edge arithmetic in the initial graph. Logical partitions
+are independent of worker count. Canonical cell aggregation, compensated suffix
+sums, duplicate-edge reduction and diagonal accumulation retain their order and
+arithmetic. Hierarchy construction, application and polishing are outside this
+milestone's edits. Successful graphs, scientific results and solver signatures
+must remain exact when admission agrees. New stage planning and scratch change
+accounting near resource boundaries; refusal must retain charges, join all work
+and publish no partial state. Insufficient optional scratch selects the serial
+path before dispatch, without a retry of partially executed work.
+
+Witnesses will compare raw sampled edges, canonical graphs and diagonals,
+hierarchies and cycle outputs at one, two and four workers, with ties, duplicate
+endpoints, multiple components and sampled high-degree rows. Independent Schur
+and clique witnesses, fixed-worker repeats, low-memory/refusal boundaries,
+actual lane ceilings and joined cancellation/error/panic checks remain gates.
+
+The initial diagnostic budget is four synthetic families generated once with
+seed 2026101902: high-degree weak (10,000 workers, 1,000 firms, 60 periods),
+repeated cells (5,000/500/20), wide RHS (5,000/500/20, 16 regressors), and weak
+(5,000/500/20) in low-memory mode. On one isolated SCC allocation, each runs the
+unchanged repaired reference at one, four and eight requested workers, with one
+warmup and two recorded complete solves: at most 36 native calls. Up to two
+additional CPU profiles target high-degree weak at one and eight workers.
+Every native call has a 120-second limit; the complete diagnostic has a
+1,800-second budget. These are cost diagnostics, not qualification or a speed
+claim. Profiling failure is retained and does not authorize additional sampling.
+A fixed comparison budget will be declared after production edits and focused
+checks, before collecting candidate timings. M2 ends with a report for Johannes;
+hierarchy work, further qualification and two-FE activation require his direction.
+
+The first reference diagnostic, SCC job 8179449 on `scc-zj4`, stopped after
+one successful native warmup because its reader passed the binary-sidecar
+`columns: []` marker to the strict metadata validator. The application failure
+is retained. Independent inspection verified return code zero, both completion
+certificates, the 600,000 by 12 binary output shape and its exact fingerprint.
+The bounded reader repair uses the maintained parser, consumes that warmup
+without repeating it, and permits only the original remaining 35 calls and
+up to two profiles on the same physical host. It debits 27 seconds from the
+original budget, leaving 1,773 seconds. No input or artifact is regenerated.
+
+After source and mapped native checks, the fixed M2 comparison budget is the
+same four input families at one, four and eight requested workers, against
+the repaired reference. Six distinct isolated 28-core SCC hosts each run one
+warmup per arm and two mirrored blocks per cell: 120 calls per host, 720 in
+total. A seed of 2026101903 chooses the first arm in each balanced block.
+Each host has 3,600 seconds and each native call 120 seconds. The focused Mac
+comparison uses one warmup per arm and six mirrored blocks per cell: 312
+baseline calls, with at most one externally interfered whole-cell replacement
+on four cells (416 total). Its whole budget is 3,600 seconds. The existing
+practical Mac observer retains ordinary desktop noise and requires two clear
+intervals within 120 seconds before a replacement; timing values never select
+retries. Phase/solver tracing is enabled for both arms throughout.
+
+This is a construction-cost comparison, not a new routing qualification.
+Scientific or solver-signature differences stop the comparison for diagnosis,
+including admission differences; they are not silently excluded. SCC summaries
+use physical hosts as the independent units, with each host's mirrored blocks
+combined first. Mac uncertainty uses its fixed mirrored blocks conditionally;
+neither design proves independence or supports a simultaneous-coverage claim.
+The comparison retains setup, application, polishing and complete-solve costs,
+memory/admission observations and all failed calls. No automatic extension is
+authorized by a slow or inconclusive result.
+
 ## CMG successor milestone 1: execution and admission foundation
 
 **The bounded follow-up repairs both validation blockers: source integration,

@@ -1,4 +1,4 @@
-//! Optional, serial construction. Every loop, comparison and move is admitted
+//! Optional construction. Every loop, comparison and move is admitted
 //! before it runs; refusal leaves all incumbent solver owners untouched.
 
 use std::cmp::Ordering;
@@ -21,6 +21,7 @@ pub(in crate::fe) struct BoundedCmgBuild {
     pub(in crate::fe) peak: SolverWorkspacePeak,
 }
 
+#[derive(Debug)]
 pub(super) enum AttemptError {
     Refused(BuildRefusal),
     Fatal(FeregError),
@@ -403,7 +404,7 @@ impl CmgSchurPreconditioner {
         Ok(())
     }
 
-    /// Candidate-only serial builder. `budget` includes the caller's live
+    /// Candidate-only builder with admitted initial-graph stages. `budget` includes the caller's live
     /// incumbent owners in execution_bytes. `work_budget` excludes the caller's
     /// reserved residual-recompute/restart allowance. No solver state is changed
     /// by a refusal. Actual allocation and numerical failures remain fatal.
@@ -796,6 +797,212 @@ struct CanonicalCells {
     rows: Vec<(usize, f64)>,
 }
 
+// A fixed logical threshold, independent of the admitted physical lane count.
+const HOSTED_EDGE_THRESHOLD: usize = 65_536;
+
+struct EdgeEmissionPlan {
+    suffix: Vec<f64>,
+    chunk_len: usize,
+    chunk_work: u16,
+}
+
+impl EdgeEmissionPlan {
+    #[allow(clippy::too_many_arguments)]
+    fn select(
+        workers: &BoundedCells<'_>,
+        edges: usize,
+        max_rows: usize,
+        cutoff: usize,
+        sampling: Sampling,
+        work: &mut Work<'_>,
+        memory: &mut Admission,
+    ) -> Attempt<Option<Self>> {
+        work.charge(64)?;
+        let Some(cache) = workers
+            .cache
+            .as_ref()
+            .filter(|_| edges >= HOSTED_EDGE_THRESHOLD)
+        else {
+            return Ok(None);
+        };
+        work.charge(1024)?;
+        // This is one lookup for the entire emission, never one per row.
+        if !work.cmg(|_, team, _| Ok(team.is_some()))? {
+            return Ok(None);
+        }
+        let search_steps = usize::BITS - max_rows.saturating_sub(1).leading_zeros();
+        // 192 covers metadata, draw permutation, clamp, weight and validation;
+        // 16 per possible binary-search step and clique-index step covers all
+        // bounded loop bodies. Include the cutoff even outside public 4..=6.
+        let Some(edge_work) = cutoff
+            .checked_mul(16)
+            .and_then(|units| units.checked_add(192 + 16 * search_steps as usize))
+        else {
+            return Ok(None);
+        };
+        if edge_work > 1024 {
+            return Ok(None);
+        }
+        let suffix_len = if sampling.samples > 0 {
+            cache.cells.len().checked_add(cache.rows.len())
+        } else {
+            Some(0)
+        };
+        let Some(suffix_len) = suffix_len else {
+            return Ok(None);
+        };
+        let Some(extra) = suffix_len.checked_mul(std::mem::size_of::<f64>()) else {
+            return Ok(None);
+        };
+        // Select optional scratch against the complete conservative envelope,
+        // before any row is reordered or any edge kernel executes.
+        let Some(envelope) = cache_envelope(
+            cache.cells.capacity(),
+            cache.rows.len(),
+            workers.source.firm_count(),
+            max_rows,
+            cutoff,
+            sampling,
+        ) else {
+            return Ok(None);
+        };
+        let Some(required) = envelope.peak_bytes.checked_add(extra) else {
+            return Ok(None);
+        };
+        if memory.budget.is_some_and(|budget| {
+            budget
+                .usable_bytes
+                .checked_sub(budget.execution_bytes)
+                .is_none_or(|available| available < required as u128)
+        }) {
+            return Ok(None);
+        }
+        admit(memory, work, envelope.peak_bytes as u128, extra)?;
+        Ok(Some(Self {
+            suffix: work.filled(suffix_len, 0.0)?,
+            chunk_len: 1024 / edge_work,
+            chunk_work: (1024 / edge_work * edge_work) as u16,
+        }))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn emit(
+        &mut self,
+        cache: &mut CanonicalCells,
+        sampler: &mut Option<SampledTrees>,
+        cutoff: usize,
+        firms: usize,
+        sampling: Sampling,
+        edges: &mut Vec<(usize, usize, f64)>,
+        work: &mut Work<'_>,
+    ) -> Attempt<()> {
+        let mut auxiliary = firms;
+        for worker in 0..cache.rows.len() {
+            work.charge(64)?;
+            let start = cache.rows[worker].0;
+            let end = cache
+                .rows
+                .get(worker + 1)
+                .map_or(cache.cells.len(), |row| row.0);
+            let cells = &mut cache.cells[start..end];
+            let count = cells.len();
+            let edge_count = if count > cutoff {
+                if let Some(sampler) = sampler {
+                    // Preserve the original bounded sort and reverse Neumaier pass.
+                    sampler.prepare_bounded(cells, worker, work)?;
+                    for (output, &value) in self.suffix[start + worker..=end + worker]
+                        .iter_mut()
+                        .zip(sampler.suffix(count))
+                    {
+                        work.charge(8)?;
+                        *output = value;
+                    }
+                    (count - 1) * sampling.samples as usize
+                } else {
+                    count
+                }
+            } else {
+                count * count.saturating_sub(1) / 2
+            };
+            // Reuse the required output bank as private task metadata. No task
+            // vector or worker-by-maximum-degree scratch is needed. Auxiliary
+            // ids are exact in f64: graph admission already bounds vertices by
+            // u32::MAX + 1, so every emitted id is at most u32::MAX.
+            for ordinal in 0..edge_count {
+                work.charge(16)?;
+                edges.push((worker, ordinal, auxiliary as f64));
+            }
+            if count > cutoff && sampler.is_none() {
+                auxiliary += 1;
+            }
+        }
+        work.cmg(|remaining, team, control| {
+            let stage = cmg::ControlledStage::admit(
+                edges.len(),
+                self.chunk_len,
+                self.chunk_work,
+                remaining,
+                control,
+            )?;
+            stage.run(
+                team.expect("emission plan retains the installed action"),
+                edges,
+                crate::interrupt::cancellation_requested,
+                |_, chunk| {
+                    for edge in chunk {
+                        let (worker, ordinal, auxiliary) = *edge;
+                        let (start, total) = cache.rows[worker];
+                        let end = cache
+                            .rows
+                            .get(worker + 1)
+                            .map_or(cache.cells.len(), |row| row.0);
+                        let cells = &cache.cells[start..end];
+                        *edge = if cells.len() > cutoff && sampling.samples > 0 {
+                            super::sampling::indexed_edge(
+                                sampling,
+                                worker,
+                                cells,
+                                &self.suffix[start + worker..=end + worker],
+                                ordinal,
+                            )
+                        } else if cells.len() > cutoff {
+                            (
+                                cells[ordinal].0 as usize,
+                                auxiliary as usize,
+                                cells[ordinal].1,
+                            )
+                        } else {
+                            let mut first = 0;
+                            let mut remaining = ordinal;
+                            while remaining >= cells.len() - first - 1 {
+                                remaining -= cells.len() - first - 1;
+                                first += 1;
+                            }
+                            let second = first + 1 + remaining;
+                            let (left, left_weight) = cells[first];
+                            let (right, right_weight) = cells[second];
+                            (
+                                left as usize,
+                                right as usize,
+                                left_weight.min(right_weight)
+                                    * (left_weight.max(right_weight) / total),
+                            )
+                        };
+                        if !edge.2.is_finite() || edge.2 <= 0.0 {
+                            return Err(CmgError::InvalidEdgeWeight {
+                                u: edge.0,
+                                v: edge.1,
+                                weight: edge.2,
+                            });
+                        }
+                    }
+                    Ok(())
+                },
+            )
+        })
+    }
+}
+
 impl CanonicalCells {
     fn new(observations: usize, workers: usize, work: &mut Work<'_>) -> Attempt<Self> {
         Ok(Self {
@@ -1047,6 +1254,45 @@ impl BoundedCells<'_> {
         Ok(counts)
     }
 
+    /// Admit the output bank and select one complete emission path before
+    /// returning private raw edges. Failed stages never fall through to a retry.
+    #[allow(clippy::too_many_arguments)]
+    fn collect_edges_bounded(
+        &mut self,
+        sampler: &mut Option<SampledTrees>,
+        input_edges: usize,
+        max_rows: usize,
+        cutoff: usize,
+        sampling: Sampling,
+        scratch: u128,
+        work: &mut Work<'_>,
+        memory: &mut Admission,
+    ) -> Attempt<Vec<(usize, usize, f64)>> {
+        let edge_bytes = bytes::<(usize, usize, f64)>(input_edges)?;
+        admit(memory, work, scratch, edge_bytes)?;
+        let mut edges = work.capacity(input_edges)?;
+        if let Some(mut emission) =
+            EdgeEmissionPlan::select(self, input_edges, max_rows, cutoff, sampling, work, memory)?
+        {
+            emission.emit(
+                self.cache.as_mut().expect("admitted canonical rows"),
+                sampler,
+                cutoff,
+                self.source.firm_count(),
+                sampling,
+                &mut edges,
+                work,
+            )?;
+        } else {
+            self.emit_edges_bounded(sampler, cutoff, &mut edges, work)?;
+        }
+        work.charge(128)?;
+        if edges.len() != input_edges {
+            return Err(invalid_data("CMG Schur edge census changed during construction").into());
+        }
+        Ok(edges)
+    }
+
     fn emit_edges_bounded(
         &mut self,
         sampler: &mut Option<SampledTrees>,
@@ -1098,6 +1344,31 @@ impl BoundedCells<'_> {
         }
         Ok(())
     }
+}
+
+/// Borrow the installed team only for initial graph construction; hierarchy
+/// construction retains its separate serial admission and execution policy.
+fn initial_laplacian_bounded(
+    vertices: usize,
+    edges: &[(usize, usize, f64)],
+    admitted: usize,
+    work: &mut Work<'_>,
+) -> Attempt<Laplacian> {
+    work.cmg(|remaining, team, control| {
+        if let Some(team) = team {
+            Laplacian::from_edges_hosted_controlled(
+                vertices,
+                edges,
+                admitted,
+                remaining,
+                team,
+                crate::interrupt::cancellation_requested,
+                control,
+            )
+        } else {
+            Laplacian::from_edges_controlled(vertices, edges, admitted, u64::MAX, control)
+        }
+    })
 }
 
 fn graph(
@@ -1208,14 +1479,16 @@ fn graph(
         + sampler.as_ref().map_or(0, SampledTrees::bytes)
         + vec_capacity_bytes(&labels)
         + vec_capacity_bytes(&sizes);
-    let edge_bytes = bytes::<(usize, usize, f64)>(counts.input_edges)?;
-    admit(memory, work, scratch, edge_bytes)?;
-    let mut edges = work.capacity(counts.input_edges)?;
-    workers.emit_edges_bounded(&mut sampler, cutoff, &mut edges, work)?;
-    work.charge(128)?;
-    if edges.len() != counts.input_edges {
-        return Err(invalid_data("CMG Schur edge census changed during construction").into());
-    }
+    let edges = workers.collect_edges_bounded(
+        &mut sampler,
+        counts.input_edges,
+        max_rows,
+        cutoff,
+        sampling,
+        scratch,
+        work,
+        memory,
+    )?;
     let graph_bound = bytes::<[u64; 4]>(counts.input_edges)?
         .checked_add(bytes::<f64>(vertices)?)
         .and_then(|bytes| bytes.checked_add(128))
@@ -1226,9 +1499,7 @@ fn graph(
         scratch + vec_capacity_bytes(&edges),
         graph_bound,
     )?;
-    let graph = work.cmg(|_, _, control| {
-        Laplacian::from_edges_controlled(vertices, &edges, admitted, u64::MAX, control)
-    })?;
+    let graph = initial_laplacian_bounded(vertices, &edges, admitted, work)?;
     drop(edges);
     drop(workers);
     drop(sampler);
@@ -1250,6 +1521,453 @@ fn graph(
 #[cfg(test)]
 mod control_tests {
     use super::*;
+
+    fn emission_fixture(rows: usize) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
+        let mut pointers = vec![0];
+        let mut columns = Vec::new();
+        let mut weights = Vec::new();
+        for worker in 0..rows {
+            let count = [3, 5, 6, 17][worker % 4];
+            for firm in (0..count).rev() {
+                // Ties, duplicate cells, wide weights, and two components.
+                for weight in [1.0, [1.0, 1.0e-8, 1.0e8][firm % 3]] {
+                    columns.push((firm + 19 * (worker % 2)) as u32);
+                    weights.push(weight);
+                }
+            }
+            pointers.push(columns.len() as u32);
+        }
+        (pointers, columns, weights)
+    }
+
+    #[test]
+    fn hosted_emission_matches_serial_raw_graph_hierarchy_and_cycle_bits() {
+        use crate::{options::ThreadConfig, parallel::ThreadTeam};
+        let (pointers, columns, weights) = emission_fixture(8192);
+        for samples in [0, 1, 3] {
+            let sampling = Sampling { samples, seed: 0 };
+            let run = |lanes: Option<usize>| {
+                let operation = || {
+                    let mut work = Work {
+                        budget: u64::MAX,
+                        used: 0,
+                        ordinal: 0,
+                        control: None,
+                    };
+                    let mut memory = Admission {
+                        budget: None,
+                        peak: SolverWorkspacePeak::ZERO,
+                    };
+                    let source = CellSource::Csr {
+                        retained: 38,
+                        row_ptr: &pointers,
+                        columns: &columns,
+                        weights: &weights,
+                    };
+                    let mut cells = BoundedCells {
+                        source,
+                        weight_scale: 1.0,
+                        cells: Vec::with_capacity(34),
+                        cache: Some(CanonicalCells::new(columns.len(), 8192, &mut work).unwrap()),
+                    };
+                    let mut labels: Vec<_> = (0..38).collect();
+                    let count = cells
+                        .census_bounded(5, sampling, &mut labels, &mut work)
+                        .unwrap();
+                    assert!(count.input_edges >= HOSTED_EDGE_THRESHOLD);
+                    let mut sampler = if samples > 0 {
+                        Some(SampledTrees::new_bounded(sampling, 34, &mut work).unwrap())
+                    } else {
+                        None
+                    };
+                    let mut edges = Vec::with_capacity(count.input_edges);
+                    let plan = EdgeEmissionPlan::select(
+                        &cells,
+                        count.input_edges,
+                        34,
+                        5,
+                        sampling,
+                        &mut work,
+                        &mut memory,
+                    )
+                    .unwrap();
+                    assert_eq!(plan.is_some(), lanes.is_some());
+                    if let Some(mut plan) = plan {
+                        plan.emit(
+                            cells.cache.as_mut().unwrap(),
+                            &mut sampler,
+                            5,
+                            38,
+                            sampling,
+                            &mut edges,
+                            &mut work,
+                        )
+                        .unwrap();
+                    } else {
+                        cells
+                            .emit_edges_bounded(&mut sampler, 5, &mut edges, &mut work)
+                            .unwrap();
+                    }
+                    let graph = work
+                        .cmg(|remaining, team, control| {
+                            if let Some(team) = team {
+                                Laplacian::from_edges_hosted_controlled(
+                                    38 + count.retained_workers,
+                                    &edges,
+                                    usize::MAX,
+                                    remaining,
+                                    team,
+                                    || false,
+                                    control,
+                                )
+                            } else {
+                                Laplacian::from_edges_controlled(
+                                    38 + count.retained_workers,
+                                    &edges,
+                                    usize::MAX,
+                                    remaining,
+                                    control,
+                                )
+                            }
+                        })
+                        .unwrap();
+                    (edges, count.retained_workers, work.used, graph)
+                };
+                match lanes {
+                    Some(lanes) => {
+                        ThreadTeam::new(ThreadConfig::from_requested(lanes, true).unwrap())
+                            .install(operation)
+                            .unwrap()
+                    }
+                    None => operation(),
+                }
+            };
+            let (expected, retained, _, reference_graph) = run(None);
+            let expected_bits: Vec<_> = expected
+                .iter()
+                .map(|&(a, b, w)| (a, b, w.to_bits()))
+                .collect();
+            let mut charged = None;
+            for lanes in [1, 2, 4, 4] {
+                let (edges, actual_retained, used, graph) = run(Some(lanes));
+                assert_eq!(actual_retained, retained);
+                assert_eq!(used, *charged.get_or_insert(used));
+                assert_eq!(
+                    edges
+                        .iter()
+                        .map(|&(a, b, w)| (a, b, w.to_bits()))
+                        .collect::<Vec<_>>(),
+                    expected_bits
+                );
+                assert_eq!(graph.edges(), reference_graph.edges());
+                assert_eq!(
+                    graph
+                        .diagonal()
+                        .iter()
+                        .map(|x| x.to_bits())
+                        .collect::<Vec<_>>(),
+                    reference_graph
+                        .diagonal()
+                        .iter()
+                        .map(|x| x.to_bits())
+                        .collect::<Vec<_>>()
+                );
+                if samples > 0 {
+                    let build = |graph: &Laplacian| {
+                        CmgPreconditioner::build_component_experiment_serial_controlled(
+                            graph,
+                            CmgOptions::default(),
+                            component_options(),
+                            usize::MAX,
+                            u64::MAX,
+                            &mut |_| BuildDecision::Continue,
+                        )
+                        .unwrap()
+                    };
+                    let reference = build(&reference_graph);
+                    let actual = build(&graph);
+                    assert_eq!(actual.hierarchy(), reference.hierarchy());
+                    let mut rhs = vec![0.0; 38];
+                    rhs[0] = 1.0;
+                    rhs[1] = -1.0;
+                    assert_eq!(
+                        actual
+                            .apply(&rhs)
+                            .unwrap()
+                            .iter()
+                            .map(|x| x.to_bits())
+                            .collect::<Vec<_>>(),
+                        reference
+                            .apply(&rhs)
+                            .unwrap()
+                            .iter()
+                            .map(|x| x.to_bits())
+                            .collect::<Vec<_>>()
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn hosted_emission_scratch_fallback_and_stage_refusal_precede_kernel_work() {
+        use crate::{options::ThreadConfig, parallel::ThreadTeam};
+        let (pointers, columns, weights) = emission_fixture(8192);
+        let sampling = Sampling {
+            samples: 1,
+            seed: 0,
+        };
+        for lanes in [1, 2, 4] {
+            ThreadTeam::new(ThreadConfig::from_requested(lanes, true).unwrap())
+                .install(|| {
+                    let mut work = Work {
+                        budget: u64::MAX,
+                        used: 0,
+                        ordinal: 0,
+                        control: None,
+                    };
+                    let mut memory = Admission {
+                        budget: None,
+                        peak: SolverWorkspacePeak::ZERO,
+                    };
+                    let mut cells = BoundedCells {
+                        source: CellSource::Csr {
+                            retained: 38,
+                            row_ptr: &pointers,
+                            columns: &columns,
+                            weights: &weights,
+                        },
+                        weight_scale: 1.0,
+                        cells: Vec::with_capacity(34),
+                        cache: Some(CanonicalCells::new(columns.len(), 8192, &mut work).unwrap()),
+                    };
+                    let mut labels: Vec<_> = (0..38).collect();
+                    let counts = cells
+                        .census_bounded(5, sampling, &mut labels, &mut work)
+                        .unwrap();
+                    let canonical = cells.cache.as_ref().unwrap().cells.clone();
+                    assert!(EdgeEmissionPlan::select(
+                        &cells,
+                        HOSTED_EDGE_THRESHOLD - 1,
+                        34,
+                        5,
+                        sampling,
+                        &mut work,
+                        &mut memory
+                    )
+                    .unwrap()
+                    .is_none());
+                    let envelope =
+                        cache_envelope(columns.len(), 8192, 38, 34, 5, sampling).unwrap();
+                    memory.budget = Some(FeSolverMemoryBudget {
+                        usable_bytes: envelope.peak_bytes as u128,
+                        execution_bytes: 0,
+                    });
+                    assert!(EdgeEmissionPlan::select(
+                        &cells,
+                        counts.input_edges,
+                        34,
+                        5,
+                        sampling,
+                        &mut work,
+                        &mut memory
+                    )
+                    .unwrap()
+                    .is_none());
+                    assert_eq!(cells.cache.as_ref().unwrap().cells, canonical);
+                    memory.budget = None;
+                    for decision in [BuildDecision::StopUnused, BuildDecision::Interrupted] {
+                        let mut plan = EdgeEmissionPlan::select(
+                            &cells,
+                            counts.input_edges,
+                            34,
+                            5,
+                            sampling,
+                            &mut work,
+                            &mut memory,
+                        )
+                        .unwrap()
+                        .unwrap();
+                        let mut sampler =
+                            Some(SampledTrees::new_bounded(sampling, 34, &mut work).unwrap());
+                        let mut edges = Vec::with_capacity(counts.input_edges);
+                        let mut controller = |event: cmg::BuildBoundary| {
+                            if event.phase == "parallel stage kernel" {
+                                decision
+                            } else {
+                                BuildDecision::Continue
+                            }
+                        };
+                        let mut admitted = Work {
+                            budget: u64::MAX,
+                            used: 0,
+                            ordinal: 0,
+                            control: Some(&mut controller),
+                        };
+                        let result = plan.emit(
+                            cells.cache.as_mut().unwrap(),
+                            &mut sampler,
+                            5,
+                            38,
+                            sampling,
+                            &mut edges,
+                            &mut admitted,
+                        );
+                        match decision {
+                            BuildDecision::StopUnused => assert!(matches!(
+                                result,
+                                Err(AttemptError::Refused(BuildRefusal::Unused))
+                            )),
+                            BuildDecision::Interrupted => {
+                                assert!(matches!(result, Err(AttemptError::Fatal(error))
+                            if error.code == crate::error::ErrorCode::Interrupted))
+                            }
+                            _ => unreachable!(),
+                        }
+                        assert!(admitted.used > 0);
+                        assert_eq!(edges.len(), counts.input_edges);
+                        assert!(
+                            edges.iter().all(|edge| edge.2 == 38.0),
+                            "no kernel replaced task metadata"
+                        );
+                    }
+                })
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn observation_graph_uses_hosted_stages_and_honors_overlap_and_numeric_work_cap() {
+        use crate::{options::ThreadConfig, parallel::ThreadTeam};
+        // Exclusive overlap cannot share the process-wide cached host team
+        // with unrelated tests running concurrently.
+        const CHILD: &str = "FEREG_CMG_OBSERVATION_STAGE_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .env(CHILD, "1")
+                .args([
+                    "fe::cmg_schur::bounded::control_tests::observation_graph_uses_hosted_stages_and_honors_overlap_and_numeric_work_cap",
+                    "--exact",
+                    "--test-threads=1",
+                ])
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        for rows in [8, 8192] {
+            let (pointers, columns, weights) = emission_fixture(rows);
+            let codes: Vec<_> = pointers
+                .windows(2)
+                .enumerate()
+                .flat_map(|(worker, pair)| {
+                    std::iter::repeat(worker as u32).take((pair[1] - pair[0]) as usize)
+                })
+                .collect();
+            let membership = LevelIndex::from_codes(&codes, rows).unwrap();
+            let run = |lanes: Option<usize>, overlap: bool, allowance| {
+                let operation = || {
+                    let _permit =
+                        overlap.then(|| crate::parallel::claim_exclusive_overlap().unwrap());
+                    crate::parallel::with_cmg_execution(|team| {
+                        assert_eq!(
+                            team.map(|team| team.worker_ceiling()),
+                            lanes.map(|lanes| if overlap { 1 } else { lanes })
+                        );
+                    })
+                    .unwrap();
+                    let mut first_kernel = None;
+                    let mut kernels = 0;
+                    let mut control = |event: cmg::BuildBoundary| {
+                        if event.phase == "parallel stage kernel" {
+                            first_kernel.get_or_insert(event.charged_work);
+                            kernels += 1;
+                        }
+                        BuildDecision::Continue
+                    };
+                    let mut work = Work {
+                        budget: allowance,
+                        used: 0,
+                        ordinal: 0,
+                        control: Some(&mut control),
+                    };
+                    let mut memory = Admission {
+                        budget: None,
+                        peak: SolverWorkspacePeak::ZERO,
+                    };
+                    let result = graph(
+                        CellSource::Observations {
+                            membership: &membership,
+                            firms: &columns,
+                            retained: 38,
+                            weights: BorrowedMapWeights::Provided(&weights),
+                        },
+                        5,
+                        Sampling {
+                            samples: 1,
+                            seed: 0,
+                        },
+                        true,
+                        &mut work,
+                        &mut memory,
+                    )
+                    .map(|(graph, components, scale, cache)| {
+                        (
+                            graph
+                                .edges()
+                                .iter()
+                                .map(|edge| (edge.u(), edge.v(), edge.weight().to_bits()))
+                                .collect::<Vec<_>>(),
+                            graph
+                                .diagonal()
+                                .iter()
+                                .map(|x| x.to_bits())
+                                .collect::<Vec<_>>(),
+                            components.labels,
+                            components.sizes,
+                            scale.to_bits(),
+                            cache,
+                        )
+                    });
+                    let used = work.used;
+                    (result, used, first_kernel, kernels)
+                };
+                if let Some(lanes) = lanes {
+                    let team = ThreadTeam::new(ThreadConfig::from_requested(lanes, true).unwrap());
+                    if overlap {
+                        team.with_exclusive_overlap().install(operation).unwrap()
+                    } else {
+                        team.install(operation).unwrap()
+                    }
+                } else {
+                    operation()
+                }
+            };
+            let expected = run(None, false, u64::MAX).0.unwrap();
+            let mut expected_admission = None;
+            for (lanes, overlap) in [(1, false), (2, false), (4, false), (4, true)] {
+                let (actual, used, first_kernel, kernels) = run(Some(lanes), overlap, u64::MAX);
+                assert_eq!(actual.unwrap(), expected);
+                assert_eq!(
+                    (used, first_kernel, kernels),
+                    *expected_admission.get_or_insert((used, first_kernel, kernels))
+                );
+                assert_eq!(first_kernel.is_some(), rows == 8192);
+                if let Some(cap) = first_kernel {
+                    let (refused, used, _, kernels) = run(Some(lanes), overlap, cap);
+                    assert!(matches!(
+                        refused,
+                        Err(AttemptError::Refused(BuildRefusal::WorkBudget))
+                    ));
+                    assert!(used <= cap);
+                    assert_eq!(
+                        kernels, 0,
+                        "first stage is wholly admitted before any edge kernel"
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn host_entry_and_stage_admission_are_charged_before_dispatch_at_every_worker_count() {

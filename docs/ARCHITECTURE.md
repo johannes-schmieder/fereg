@@ -153,11 +153,12 @@ after joining. Panic unwinding also joins. These are logical work allowances,
 not elapsed-time or instruction-count guarantees; the host admits its runtime
 and stacks separately.
 
-Milestone 1 installs this interface but leaves graph preparation, hierarchy
+Milestone 1 installed this interface but left graph preparation, hierarchy
 construction and numerical application kernels serial on the bounded path.
 Every upstream entry adds one 64-unit `fereg.cmg.host_context` boundary, including
-serial fallback, before the lookup. A complete bounded build has five such
-entries (320 units). All charges debit the existing allowance, without raising
+serial fallback, before the lookup. The M1 complete bounded build had five such
+entries (320 units); M2 emission can add conditional host-context entries.
+All charges debit the existing allowance, without raising
 its cap or the handoff reserve. Factor preflight receives the actual remainder
 after the entry charge. This intentionally changes work/callback traces and
 near-boundary admission: a previously affordable factor can become coarsening,
@@ -166,13 +167,34 @@ signature need not match the prior revision. Unchanged mathematical kernels
 and generous-budget results do not establish exact admission equivalence.
 The decisions remain deterministic across worker counts; existing certificates
 remain authoritative. No new graph/application parallelism or performance
-qualification is claimed by this foundation.
+qualification was claimed by that foundation.
 
 Future stages must select a serial fallback before numerical writes if their
 parallel storage/worker admission declines, retaining all planning charges.
 They cannot retry a partially executed or failed numerical stage for free.
-The current serial builder and factor-preflight callback stream is otherwise
-unchanged; no controller decisions, native results or qualification gates are cached.
+No controller decisions, native results or qualification gates are cached.
+
+Milestone 2 uses this interface for the initial graph. The synchronous
+incremental-two construction borrows the full admitted team; the separate
+overlap experiment retains its one-lane ceiling. At 65,536 raw edges and above,
+fereg can emit independent edge arithmetic into its admitted output bank.
+Canonical cell aggregation and compensated suffix sums stay serial and retain
+their numerical order. A sampled cache adds eight bytes per aggregated cell
+and row for suffix storage; optional scratch is admitted before reordering or
+dispatch. Indexed SplitMix draws reproduce the existing sequential stream.
+Logical edge chunks depend on dimensions and the checked kernel allowance,
+not the number of lanes. Output slots temporarily carry task metadata, avoiding
+a separate task vector or scratch proportional to lanes times the largest row.
+
+The upstream initial-graph constructor maps edges and performs bounded merges
+with the same fixed threshold for one or many lanes. Runs of at most eight
+edges and bounded merge packets keep each kernel within 1–1024 work units.
+Two edge banks, the diagonal and three Arc layouts are jointly admitted;
+the spare bank is dropped before serial duplicate reduction and diagonal
+accumulation in canonical order. Successful graph bytes and downstream
+arithmetic remain exact when admission agrees. New conservative stage charges
+can change admission near the fixed budget; they never increase it. Hierarchy
+construction, numerical application and strict polishing are unchanged.
 
 The separate explicit-CMG polishing correction preserves the FE-range invariant
 of its semidefinite observation-space CG operator through three internal FE

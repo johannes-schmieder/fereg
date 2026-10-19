@@ -2,28 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 106533,
-      "before": 106491,
+      "after": 106815,
+      "before": 106533,
       "metric": "fereg-core/production_lines",
-      "reason": "Strict explicit-CMG polishing retains three internal FE coefficient banks and reconstructs its recurrence products after coefficient cancellation, preventing semidefinite nullspace contamination. Existing strict convergence and unsafe-curvature gates remain; joint memory admission prices the banks and fixed row checkpoints preserve Break. Independent mathematical review and analytic residual/reconstruction witnesses cover the scope."
+      "reason": "M2 initial graph construction adds bounded host-team edge emission, exact indexed sampling, checked suffix and output-bank admission, and a worker-independent logical partition ceiling. Canonical aggregation, suffix/reduction order, routing and hierarchy/application arithmetic remain unchanged; independent edge/graph/cycle witnesses cover exactness and admission/cancellation tests cover bounded execution."
     },
     {
-      "after": 1383,
-      "before": 1382,
+      "after": 1387,
+      "before": 1383,
       "metric": "fereg-core/dispatch_candidates",
-      "reason": "Strict explicit-CMG polishing retains three internal FE coefficient banks and reconstructs its recurrence products after coefficient cancellation, preventing semidefinite nullspace contamination. Existing strict convergence and unsafe-curvature gates remain; joint memory admission prices the banks and fixed row checkpoints preserve Break. Independent mathematical review and analytic residual/reconstruction witnesses cover the scope."
-    },
-    {
-      "after": 8416,
-      "before": 8374,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Strict explicit-CMG polishing retains three internal FE coefficient banks and reconstructs its recurrence products after coefficient cancellation, preventing semidefinite nullspace contamination. Existing strict convergence and unsafe-curvature gates remain; joint memory admission prices the banks and fixed row checkpoints preserve Break. Independent mathematical review and analytic residual/reconstruction witnesses cover the scope."
-    },
-    {
-      "after": 542,
-      "before": 538,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb_cg_with_reservation#1",
-      "reason": "Strict explicit-CMG polishing retains three internal FE coefficient banks and reconstructs its recurrence products after coefficient cancellation, preventing semidefinite nullspace contamination. Existing strict convergence and unsafe-curvature gates remain; joint memory admission prices the banks and fixed row checkpoints preserve Break. Independent mathematical review and analytic residual/reconstruction witnesses cover the scope."
+      "reason": "M2 initial graph construction adds bounded host-team edge emission, exact indexed sampling, checked suffix and output-bank admission, and a worker-independent logical partition ceiling. Canonical aggregation, suffix/reduction order, routing and hierarchy/application arithmetic remain unchanged; independent edge/graph/cycle witnesses cover exactness and admission/cancellation tests cover bounded execution."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -3592,272 +3580,312 @@
         "dispatch_candidates": [
           {
             "condition": "units > self . budget - self . used",
-            "line": 57
+            "line": 58
           },
           {
             "condition": "let Some ( budget ) = memory . budget",
-            "line": 226
+            "line": 227
           },
           {
             "condition": "n_retained == 0 || n_eliminated == 0 || ! ( 4.. = 6 ) . contains ( & degree ) || n_eliminated . checked_add ( 1 ) != Some ( row_ptr . len ( ) ) || row_ptr . first ( ) != Some ( & 0 ) || row_ptr . last ( ) . copied ( ) . map ( | n | n as usize ) != Some ( columns . len ( ) ) || columns . len ( ) != weights . len ( )",
-            "line": 284
+            "line": 285
           },
           {
             "condition": "pair [ 0 ] >= pair [ 1 ] || pair [ 1 ] as usize > columns . len ( )",
-            "line": 311
+            "line": 312
           },
           {
             "condition": "components . sizes . len ( ) != 1",
-            "line": 326
+            "line": 327
           },
           {
             "condition": "self . parallel . is_some ( ) || rhs . len ( ) != self . components . labels . len ( ) || scratch . len ( ) < rhs . len ( ) || ! weight_scale . is_finite ( ) || weight_scale <= 0.0",
-            "line": 364
+            "line": 365
           },
           {
             "condition": "design . effects ( ) . len ( ) != 2 || left_effect > 1 || rhs_capacity == 0",
-            "line": 427
+            "line": 428
           },
           {
             "condition": "! ( 4.. = 6 ) . contains ( & degree ) || firms . len ( ) != membership . nobs ( ) || matches ! ( weights , BorrowedMapWeights :: Provided ( w ) if w . len ( ) != firms . len ( ) )",
-            "line": 499
+            "line": 500
           },
           {
             "condition": "w . len ( ) != firms . len ( ) )",
-            "line": 501
+            "line": 502
           },
           {
             "condition": "weights",
-            "line": 759
+            "line": 760
+          },
+          {
+            "condition": "memory . budget . is_some_and ( | budget |",
+            "line": 872
+          },
+          {
+            "condition": "cells . len ( ) > cutoff && sampling . samples > 0",
+            "line": 960
+          },
+          {
+            "condition": "cells . len ( ) > cutoff",
+            "line": 968
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 963
+            "line": 1170
+          },
+          {
+            "condition": "let Some ( mut emission ) = EdgeEmissionPlan :: select ( self , input_edges , max_rows , cutoff , sampling , work , memory ) ?",
+            "line": 1274
+          },
+          {
+            "condition": "edges . len ( ) != input_edges",
+            "line": 1290
           },
           {
             "condition": "self . cells . len ( ) > cutoff",
-            "line": 1066
+            "line": 1312
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1088
+            "line": 1334
           },
           {
             "condition": "let BorrowedMapWeights :: Provided ( values ) = weights",
-            "line": 1115
+            "line": 1386
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1119
-          },
-          {
-            "condition": "edges . len ( ) != counts . input_edges",
-            "line": 1216
+            "line": 1390
           }
         ],
         "functions": {
           "admit#1": {
-            "line": 216,
+            "line": 217,
             "lines": 21
           },
           "admitted_cache_bytes#1": {
-            "line": 921,
+            "line": 1128,
             "lines": 23
           },
           "apply_reduced_in_place#1": {
-            "line": 358,
+            "line": 359,
             "lines": 47
           },
           "bank#1": {
-            "line": 854,
+            "line": 1061,
             "lines": 3
           },
           "build_observations_bounded#1": {
-            "line": 485,
+            "line": 486,
             "lines": 69
           },
           "cache_envelope#1": {
-            "line": 846,
+            "line": 1053,
             "lines": 74
           },
           "capacity#1": {
-            "line": 152,
+            "line": 153,
             "lines": 10
           },
           "census_bounded#1": {
-            "line": 1001,
+            "line": 1208,
             "lines": 48
           },
           "charge#1": {
-            "line": 91,
+            "line": 92,
             "lines": 3
           },
           "cmg#1": {
-            "line": 95,
+            "line": 96,
             "lines": 56
           },
+          "collect_edges_bounded#1": {
+            "line": 1260,
+            "lines": 35
+          },
           "component_options#1": {
-            "line": 784,
+            "line": 785,
             "lines": 7
           },
+          "emit#1": {
+            "line": 889,
+            "lines": 115
+          },
           "emit_edges_bounded#1": {
-            "line": 1050,
+            "line": 1296,
             "lines": 51
           },
           "entry#1": {
-            "line": 748,
+            "line": 749,
             "lines": 28
           },
           "filled#1": {
-            "line": 163,
+            "line": 164,
             "lines": 8
           },
           "find_root#1": {
-            "line": 703,
+            "line": 704,
             "lines": 10
           },
           "finish#1": {
-            "line": 556,
+            "line": 557,
             "lines": 92
           },
           "firm_count#1": {
-            "line": 737,
+            "line": 738,
             "lines": 5
           },
           "from#1": {
-            "line": 30,
+            "line": 31,
             "lines": 3
           },
           "gate#1": {
-            "line": 48,
+            "line": 49,
             "lines": 41
           },
           "graph#1": {
-            "line": 1103,
+            "line": 1374,
             "lines": 146
           },
           "graph_storage_bound#1": {
-            "line": 695,
+            "line": 696,
             "lines": 7
           },
+          "initial_laplacian_bounded#1": {
+            "line": 1351,
+            "lines": 22
+          },
           "load#1": {
-            "line": 817,
+            "line": 1024,
             "lines": 19
           },
           "load_bounded#1": {
-            "line": 953,
+            "line": 1160,
             "lines": 47
           },
           "new#1": {
-            "line": 800,
+            "line": 1007,
             "lines": 6
           },
           "parts#1": {
-            "line": 653,
+            "line": 654,
             "lines": 13
           },
           "restore_scale#1": {
-            "line": 652,
+            "line": 653,
             "lines": 40
           },
           "row_count#1": {
-            "line": 742,
+            "line": 743,
             "lines": 6
           },
+          "select#1": {
+            "line": 811,
+            "lines": 76
+          },
           "sift#1": {
-            "line": 179,
+            "line": 180,
             "lines": 24
           },
           "sort#1": {
-            "line": 174,
+            "line": 175,
             "lines": 40
           },
           "store#1": {
-            "line": 807,
+            "line": 1014,
             "lines": 9
           },
           "try_build_bounded#1": {
-            "line": 414,
+            "line": 415,
             "lines": 40
           },
           "try_build_observations_bounded_controlled#1": {
-            "line": 458,
+            "line": 459,
             "lines": 25
           },
           "try_build_reduced_bounded#1": {
-            "line": 244,
+            "line": 245,
             "lines": 24
           },
           "try_build_reduced_bounded_controlled#1": {
-            "line": 271,
+            "line": 272,
             "lines": 84
           },
           "weights#1": {
-            "line": 776,
+            "line": 777,
             "lines": 6
           },
           "worker_count#1": {
-            "line": 731,
+            "line": 732,
             "lines": 6
           }
         },
-        "production_lines": 1153
+        "production_lines": 1402
       },
       "crates/fereg-core/src/fe/cmg_schur/sampling.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
             "condition": "cells . len ( ) < 2 || cells . len ( ) >= self . suffix . len ( )",
-            "line": 115
+            "line": 152
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 126
+            "line": 163
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 169
+            "line": 206
           },
           {
             "condition": "self . vertex + 1 == cells . len ( )",
-            "line": 178
+            "line": 215
           },
           {
             "condition": "cells . len ( ) < 2 || cells . len ( ) >= self . suffix . len ( )",
-            "line": 191
+            "line": 228
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 202
+            "line": 239
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 240
+            "line": 277
           },
           {
             "condition": "self . vertex + 1 == cells . len ( )",
-            "line": 251
+            "line": 288
           }
         ],
         "functions": {
           "allocation_bytes#1": {
-            "line": 64,
+            "line": 101,
             "lines": 7
           },
           "bytes#1": {
-            "line": 186,
+            "line": 223,
             "lines": 3
+          },
+          "indexed_edge#1": {
+            "line": 62,
+            "lines": 25
+          },
+          "indexed_uniform#1": {
+            "line": 53,
+            "lines": 5
           },
           "mix#1": {
             "line": 31,
             "lines": 5
           },
           "new#1": {
-            "line": 73,
+            "line": 110,
             "lines": 14
           },
           "new_bounded#1": {
-            "line": 88,
+            "line": 125,
             "lines": 19
           },
           "next#1": {
@@ -3865,23 +3893,27 @@
             "lines": 4
           },
           "next#2": {
-            "line": 219,
+            "line": 256,
             "lines": 39
           },
           "next_bounded#1": {
-            "line": 144,
+            "line": 181,
             "lines": 41
           },
           "prepare#1": {
-            "line": 190,
+            "line": 227,
             "lines": 28
           },
           "prepare_bounded#1": {
-            "line": 108,
+            "line": 145,
             "lines": 35
           },
           "stream#1": {
             "line": 40,
+            "lines": 3
+          },
+          "suffix#1": {
+            "line": 98,
             "lines": 3
           },
           "uniform#1": {
@@ -3893,7 +3925,7 @@
             "lines": 8
           }
         },
-        "production_lines": 233
+        "production_lines": 266
       },
       "crates/fereg-core/src/fe/components.rs": {
         "chunk_candidates": [],
@@ -23134,10 +23166,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 12,
-        "dispatch_candidates": 1383,
+        "dispatch_candidates": 1387,
         "files_over_1500": 15,
         "functions_over_150": 60,
-        "production_lines": 106533
+        "production_lines": 106815
       },
       "fereg-plugin": {
         "chunk_candidates": 3,

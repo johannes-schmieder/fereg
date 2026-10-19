@@ -49,6 +49,40 @@ impl SplitMix64 {
     fn uniform(&mut self) -> f64 {
         (self.next() >> 11) as f64 * (1.0 / ((1_u64 << 53) as f64))
     }
+
+    fn indexed_uniform(seed: u64, worker: u64, tree: u32, vertex: usize) -> f64 {
+        let initial = Self::stream(seed, worker, tree).0;
+        let counter = GOLDEN_GAMMA.wrapping_mul((vertex as u64).wrapping_add(1));
+        (mix(initial.wrapping_add(counter)) >> 11) as f64 * (1.0 / ((1_u64 << 53) as f64))
+    }
+}
+
+/// One independent draw, with exactly the serial stream's counter and arithmetic.
+/// The caller has already sorted the row and formed its compensated suffix.
+pub(super) fn indexed_edge(
+    sampling: Sampling,
+    worker: usize,
+    cells: &[(u32, f64)],
+    suffix: &[f64],
+    ordinal: usize,
+) -> (usize, usize, f64) {
+    let tree = (ordinal / (cells.len() - 1)) as u32;
+    let vertex = ordinal % (cells.len() - 1);
+    let tail = suffix[vertex + 1];
+    let uniform = SplitMix64::indexed_uniform(sampling.seed, worker as u64, tree, vertex);
+    let target = (uniform * tail).min(f64::from_bits(tail.to_bits() - 1));
+    let mut lower = vertex + 1;
+    let mut upper = cells.len() - 1;
+    while lower < upper {
+        let middle = lower + (upper - lower) / 2;
+        if target < suffix[middle + 1] {
+            lower = middle + 1;
+        } else {
+            upper = middle;
+        }
+    }
+    let weight = cells[vertex].1 * (tail / suffix[0]) / f64::from(sampling.samples);
+    (cells[vertex].0 as usize, cells[lower].0 as usize, weight)
 }
 
 pub(super) struct SampledTrees {
@@ -61,6 +95,9 @@ pub(super) struct SampledTrees {
 }
 
 impl SampledTrees {
+    pub(super) fn suffix(&self, count: usize) -> &[f64] {
+        &self.suffix[..=count]
+    }
     pub(super) fn allocation_bytes(max_rows: usize) -> Result<usize> {
         super::bytes::<f64>(
             max_rows
@@ -260,6 +297,45 @@ impl SampledTrees {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn indexed_draws_and_edges_match_the_serial_stream_exactly() {
+        for seed in [0, 17, (1_u64 << 53) - 1] {
+            for worker in [0, 1, 913] {
+                for tree in [0, 1, 31] {
+                    let mut random = SplitMix64::stream(seed, worker, tree);
+                    for vertex in 0..513 {
+                        assert_eq!(
+                            random.uniform().to_bits(),
+                            SplitMix64::indexed_uniform(seed, worker, tree, vertex).to_bits(),
+                        );
+                    }
+                }
+                for count in [2, 3, 6, 17, 257] {
+                    let sampling = Sampling { samples: 3, seed };
+                    let mut cells: Vec<_> = (0..count)
+                        .rev()
+                        .map(|i| (i as u32, [1.0, 1.0, 1.0e-12, 1.0e12][i % 4]))
+                        .collect();
+                    let mut serial = SampledTrees::new(sampling, count).unwrap();
+                    serial.prepare(&mut cells, worker as usize).unwrap();
+                    for ordinal in 0..3 * (count - 1) {
+                        let expected = serial.next(&cells).unwrap().unwrap();
+                        let actual = indexed_edge(
+                            sampling,
+                            worker as usize,
+                            &cells,
+                            serial.suffix(count),
+                            ordinal,
+                        );
+                        assert_eq!((actual.0, actual.1), (expected.0, expected.1));
+                        assert_eq!(actual.2.to_bits(), expected.2.to_bits());
+                    }
+                    assert!(serial.next(&cells).unwrap().is_none());
+                }
+            }
+        }
+    }
 
     #[test]
     fn splitmix64_known_answers_and_sampling_validation() {
