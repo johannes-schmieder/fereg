@@ -1,4 +1,43 @@
 {
+ "approved_replacement_check": {
+  "approval": "Johannes, 2026-10-19: exactly one focused execution on untouched pre-M3a source and exactly one on the same source plus the diagnostic trace patch",
+  "baseline_revision": "7ccab5a901b135e59b73603426ea2b8bfb128d89",
+  "cmg_pin": "d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d (crates/fereg-core/Cargo.toml and Cargo.lock in both snapshots)",
+  "command": "cargo test -p fereg-core --lib --locked -- fe::borrowed_map::routing_tests fe::cmg_schur fe::routing",
+  "diagnostic_patch_sha256": "8d9bc3af308c26dda06348f0a125fbb9a8a2ed3a3e4d9f4a0e62e39d5184290d",
+  "fereg_review_revision": "b1df3c31b754ec5408dc2c54efbb7fb861f0d3e5",
+  "host": "Linux x86_64 cloud container, 4 vCPU; rustc 1.85.1 (4eb161250 2025-03-15), cargo 1.85.1; matches the snapshot rust-toolchain.toml channel 1.85.1",
+  "inventory": {
+   "identical_in_both_arms": true,
+   "inventory_sha256": "09d6fdab37f50edc99730d80d5ea41783589439eed5685d33b4f4079c9c4490f",
+   "list_stdout_sha256": "1b3334ba284ec9f0c2e9d1aa7f4d9e97bbb1c8882e71d12c643c8b74541fae61",
+   "tests": 84
+  },
+  "logs": "retained in the cloud session scratchpad m3a-replacement/ (raw stdout/stderr, exit files, list outputs, both snapshots and target directories) until Codex review; not committed",
+  "patch_equivalence": "applying the b1df3c31 patch yields byte-identical borrowed_map.rs, cmg.rs and cmg_schur.rs to the 26cb97d4 patch; the snapshots differ only in those files and DIAGNOSTIC_BUILD.txt",
+  "patched": {
+   "exit": 0,
+   "failed_or_panicked_lines": 0,
+   "finished": "2026-10-19T23:05:26Z",
+   "result": "84 passed; 0 failed; 0 ignored; 1296 filtered out; finished in 11.22s",
+   "started": "2026-10-19T23:05:14Z",
+   "stderr_sha256": "fd42a87751fc0c8661c7a46eb924267a8327c30c80dec2046ea09eb0fef6a046",
+   "stdout_sha256": "22afecc5d7007c988996af5a51f76bc479187cf93512b59e16b4cd5de6cd0f8f"
+  },
+  "sequence": "build and list both arms, then one untouched execution, then one patched execution; no other tests or builds ran",
+  "settings": "default test threading (RUST_TEST_THREADS unset), default features, FEREG_SOLVER_TRACE/FEREG_SOLVER_TRACE_FILE/FEREG_PHASE_TIMING unset, RUST_BACKTRACE=1 (container default, as in the original run), separate CARGO_TARGET_DIR per arm, FEREG_GIT_COMMIT=7ccab5a901b1 (untouched) or 7ccab5a901b1-route-trace-diagnostic (patched)",
+  "snapshot_helper_sha256": "a6de5da4183f88d7b95097860b7f23f683bfec9bf3aae8844334bb450dddefa3",
+  "unresolved": "the earlier patched-baseline run (83 passed, 1 failed, identity/output not captured) remains unexplained; this check does not replace or erase it",
+  "untouched": {
+   "exit": 0,
+   "failed_or_panicked_lines": 0,
+   "finished": "2026-10-19T23:05:03Z",
+   "result": "84 passed; 0 failed; 0 ignored; 1296 filtered out; finished in 11.99s",
+   "started": "2026-10-19T23:04:51Z",
+   "stderr_sha256": "a7adabd8c4ea428041e4a8c7e08adec0b6ab331f8ed9cb57c48275f668ea00a7",
+   "stdout_sha256": "3e400564a9dfcba74c49f675aea08a74f0416c1ec4d94ba2d1e3fdd2e38f2dd0"
+  }
+ },
  "checks": {
   "actual_plugin_replay": "73 of 73 cases pass science with zero exact differences between the candidate and the 7ccab5a9 baseline Linux plugins",
   "bench_python": "189 tests pass (scipy, psutil and matplotlib installed in the container for this run)",

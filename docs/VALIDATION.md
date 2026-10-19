@@ -197,6 +197,24 @@ and M3b remain blocked while Johannes considers a single fully logged paired
 replacement check of untouched versus diagnostically patched pre-M3a source.
 The historical failure remains recorded regardless of that decision.
 
+Approved replacement check (Johannes, 2026-10-19), run in the same Linux cloud
+container (4 vCPU, Rust 1.85.1). Two private `git archive` snapshots were
+made: untouched fereg `7ccab5a9` (CMG pin `d11b2ac4` in the manifest and lock)
+and the same source with the zero-context diagnostic patch from `b1df3c31`
+(sha256 `8d9bc3af…290d`), which yields the same three files as the
+`26cb97d4` patch. Each arm ran
+`cargo test -p fereg-core --lib --locked -- fe::borrowed_map::routing_tests
+fe::cmg_schur fe::routing` exactly once, with default test threading
+(`RUST_TEST_THREADS` unset), no `FEREG_SOLVER_TRACE*`, the container's
+`RUST_BACKTRACE=1` and default features. The arms ran sequentially after both
+were built, and nothing else ran. Both listed the same 84 tests before
+execution. Complete stdout and stderr went straight to retained files. The
+untouched run passed 84 of 84 (cargo exit 0, 11.99 s) and the patched run
+passed 84 of 84 (exit 0, 11.22 s); neither log contains `FAILED` or
+`panicked`. This replaces nothing: the earlier patched-baseline run that
+reported 83 passed and 1 failed stays unexplained and recorded. Hashes are in
+[`cmg-m3a-20261019.json`](../bench/results/cmg-m3a-20261019.json).
+
 ## CMG successor milestone 2: initial graph construction
 
 **M2 is complete: source/native checks and the fixed cost diagnostic pass.**
