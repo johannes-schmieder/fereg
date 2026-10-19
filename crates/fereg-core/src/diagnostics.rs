@@ -6,6 +6,9 @@ use crate::protocol::{
 };
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::sync::Mutex;
+
+static SOLVER_TRACE_FILE_LOCK: Mutex<()> = Mutex::new(());
 
 /// Developer solver tracing (`FEREG_SOLVER_TRACE`), read at each use.
 #[must_use]
@@ -26,9 +29,24 @@ pub(crate) fn emit_solver_trace(line: &str) {
     let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
         return;
     };
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-        let _ = writeln!(file, "{line}");
+    let result = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .and_then(|mut file| write_solver_trace_record(&mut file, line));
+    if let Err(error) = result {
+        eprintln!("FEREG_SOLVER_TRACE_IO_ERROR|{error}");
     }
+}
+
+fn write_solver_trace_record(writer: &mut impl Write, line: &str) -> std::io::Result<()> {
+    // O_APPEND orders individual writes, not a formatted record or short-write
+    // retries. All in-process trace producers share this record-level lock.
+    let _guard = SOLVER_TRACE_FILE_LOCK
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    writer.write_all(line.as_bytes())?;
+    writer.write_all(b"\n")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -120,5 +138,75 @@ impl BuildInfo {
             ));
         }
         output
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{mpsc, Arc};
+
+    struct FragmentedWriter {
+        bytes: Arc<Mutex<Vec<u8>>>,
+        first_write: Option<(mpsc::SyncSender<()>, mpsc::Receiver<()>)>,
+    }
+
+    impl Write for FragmentedWriter {
+        fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+            // Every fragment, including the final newline, must hold the same
+            // lock. This assertion makes the regression independent of luck.
+            assert!(SOLVER_TRACE_FILE_LOCK.try_lock().is_err());
+            self.bytes.lock().unwrap().push(data[0]);
+            if let Some((entered, release)) = self.first_write.take() {
+                entered.send(()).unwrap();
+                release.recv().unwrap();
+            }
+            Ok(1)
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn concurrent_trace_records_remain_whole_across_short_writes() {
+        let bytes = Arc::new(Mutex::new(Vec::new()));
+        let (entered_tx, entered_rx) = mpsc::sync_channel(0);
+        let (release_tx, release_rx) = mpsc::sync_channel(0);
+        let first_bytes = bytes.clone();
+        let first = std::thread::spawn(move || {
+            write_solver_trace_record(
+                &mut FragmentedWriter {
+                    bytes: first_bytes,
+                    first_write: Some((entered_tx, release_rx)),
+                },
+                "first-ready-record",
+            )
+            .unwrap();
+        });
+        entered_rx.recv().unwrap();
+        let (started_tx, started_rx) = mpsc::sync_channel(0);
+        let second_bytes = bytes.clone();
+        let second = std::thread::spawn(move || {
+            started_tx.send(()).unwrap();
+            write_solver_trace_record(
+                &mut FragmentedWriter {
+                    bytes: second_bytes,
+                    first_write: None,
+                },
+                "second-ready-record",
+            )
+            .unwrap();
+        });
+        started_rx.recv().unwrap();
+        assert_eq!(&*bytes.lock().unwrap(), b"f");
+        release_tx.send(()).unwrap();
+        first.join().unwrap();
+        second.join().unwrap();
+        assert_eq!(
+            &*bytes.lock().unwrap(),
+            b"first-ready-record\nsecond-ready-record\n"
+        );
     }
 }

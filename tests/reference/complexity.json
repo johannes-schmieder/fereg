@@ -2,10 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 106477,
-      "before": 106444,
+      "after": 106491,
+      "before": 106477,
       "metric": "fereg-core/production_lines",
-      "reason": "A scoped CMG adapter borrows the actual admitted host team without a private/global pool; bounded entry accounting debits that lookup and passes the post-charge allowance to factor preflight. Numerical kernels stay serial. Ownership/admission/cancellation tests and independent architecture review cover the additional boundary."
+      "reason": "Serialize complete developer trace records, including short writes and newlines, and surface append I/O failures; numerical arithmetic and solver policy are unchanged. Deterministic fragmented-writer and strict parser/failure-capture tests cover this evidence repair."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -503,27 +503,31 @@
         "dispatch_candidates": [],
         "functions": {
           "current#1": {
-            "line": 56,
+            "line": 74,
             "lines": 20
           },
           "emit_solver_trace#1": {
-            "line": 24,
-            "lines": 9
+            "line": 27,
+            "lines": 14
           },
           "phase_timing_enabled#1": {
-            "line": 18,
+            "line": 21,
             "lines": 3
           },
           "render#1": {
-            "line": 79,
+            "line": 97,
             "lines": 45
           },
           "solver_trace_enabled#1": {
-            "line": 12,
+            "line": 15,
             "lines": 3
+          },
+          "write_solver_trace_record#1": {
+            "line": 42,
+            "lines": 9
           }
         },
-        "production_lines": 113
+        "production_lines": 127
       },
       "crates/fereg-core/src/error.rs": {
         "chunk_candidates": [],
@@ -23107,7 +23111,7 @@
         "dispatch_candidates": 1382,
         "files_over_1500": 15,
         "functions_over_150": 60,
-        "production_lines": 106477
+        "production_lines": 106491
       },
       "fereg-plugin": {
         "chunk_candidates": 3,

@@ -56,7 +56,9 @@ local b_index : list posof "b" in prior_matrices
 local v_index : list posof "V" in prior_matrices
 assert `b_index' > 0 & `v_index' > 0
 
-* Each marker is emitted only after real optional-builder work has returned.
+* Each marker follows a returned optional-builder preparation gate. In this
+* two-FE fixture the first gate is 64 units of fereg.cmg.prepare bookkeeping;
+* it does not establish execution of a parallel numerical kernel.
 * A second interrupted action proves the exclusive gate and lease were reset.
 forvalues attempt=1/2 {
     capture noisily _fereg_estimate_ols_test y x, ///

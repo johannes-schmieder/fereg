@@ -196,6 +196,48 @@ Independent evidence review verifies the pin, plugin/capture identities,
 source-test count and matching parent/candidate failure, and agrees with this
 blocked checkpoint disposition rather than milestone acceptance.
 
+### Bounded M1 follow-up: trace evidence repair
+
+Johannes authorized a bounded follow-up to repair the two validation blockers,
+then stop again before M2. The historical four-worker trace failure remains
+unexplained because its raw trace was deleted. Source review established a
+separate concrete defect: concurrent append handles could interleave a formatted
+trace record and its newline, or short-write fragments. A merged launch/ready
+record produces the exact event-count failure, but this does not prove that
+the historical run followed that interleaving. Publishing readiness before the
+trace is not sufficient to explain a missing terminal record: the worker emits
+the trace synchronously and joins before the Stata terminal sentinel.
+
+The sink now serializes each complete file record, including short writes and
+the newline, and reports append errors to stderr. The maintained Break runner
+rejects trace I/O errors, merged/malformed records, duplicate fields, extra
+events and nonpositive work. It retains raw trace bytes (distinguishing empty,
+missing and unreadable files), PTY bytes, the original validation error, exact
+plugin/fixture/runner identities and invocation metadata. Child reaping precedes
+terminal capture; final draining is bounded, cleanup errors mark the result
+failed, and capture failures cannot replace the original validation error or
+skip cleanup. Existing evidence prefixes cannot be overwritten.
+
+Independent review corrected cleanup-status ordering, an unbounded final PTY
+drain, startup cleanup gaps and a marker/evidence variable collision before any
+new native invocation. Eleven focused Python tests pass, including complete
+mocked marker attempts with successful and failed exact-count validation.
+A deterministic Rust regression forces short writes and a paused first record
+while a second producer enters; every fragment must hold the common lock.
+It passes without sleeps or probabilistic stress. The trace change adds 14
+core production lines; it changes diagnostic I/O, not numerical arithmetic or
+solver policy. Independent source review approves this scope. The fixed native
+verification set and final combined integration remain pending at this commit.
+The Python and Rust check-capture hashes are respectively
+`8843ba1e0235707221f8113c4a2063965ab025e86d2d9c669b9625b88ec7e257`
+and `dd628f20648559c38f830b6628aebd8973e636e88e4724face2e2791fbdf1fa6`.
+
+The actual two-FE builder fixture's first 64-unit gate is `fereg.cmg.prepare`
+bookkeeping, followed by its first weighted-row gate. Its marker does not prove
+execution of a parallel numerical kernel, nor of the later host-context gate.
+The separate scoped-stage tests retain the concurrent-work, cancellation,
+join and canonical-error obligations.
+
 ## Compact validation suite, 2026-10-18
 
 Johannes authorized replacing the mandatory A/B/C harness with one fixed-candidate
