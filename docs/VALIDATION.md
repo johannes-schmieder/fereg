@@ -28,9 +28,11 @@ were deleted; hashes and summaries are the remaining record.
 
 ## CMG successor milestone 3a: construction-work cap removed
 
-**M3a cloud source checks pass; native, Break and qualification-host checks are
-outstanding.** Work stops here for review. This does not qualify two-FE
-activation, which stays disabled.
+**M3a remains unaccepted. Native and 42-cell scientific checks and the fixed
+Mac diagnostic pass; the Linux timing harness stopped before timed blocks.**
+Its metadata repair passes checks against all six saved outputs without
+repeating native calls. A fresh Linux panel requires an explicit call-budget
+exception. M3b has not started. Two-FE activation stays disabled.
 
 Johannes decided on 2026-10-19 to remove the optional CMG construction-work cap
 altogether. CMG is pinned to `03a260411450dd2c1caaefffa3514ac78c0996d7`
@@ -63,8 +65,9 @@ four feature sets and the benchmark crate. A Linux actual-plugin replay against
 `7ccab5a9` passes all 73 cases with zero exact differences. Injected two-FE runs
 on the 25 automatic-OLS replay cases are also exact, but none reached a CMG
 build. Production lines fall by 1,922 and dispatch candidates by 18.
-Six mapped Stata fixtures, Break runs at two and four workers, the 42-cell
-admission diff, Mac builds and all timing remain outstanding. Identities are in
+At that cloud handoff, six mapped Stata fixtures, Break runs at two and four
+workers, the 42-cell admission diff, Mac builds and timing were outstanding.
+Later host evidence is recorded below. Identities are in
 [`cmg-m3a-20261019.json`](../bench/results/cmg-m3a-20261019.json).
 
 Review repair (Codex, first M3a review). The first candidate lost cancellation
@@ -103,8 +106,8 @@ the repaired plugin against the first M3a plugin passes 73 of 73 cases with zero
 exact differences; the 75 injected two-FE runs are exact with equal routes and
 repeats, and again none reaches a CMG build, so the source witness, not that
 corpus, is the installation evidence. Production lines fall by three. The
-42-cell admission diff, native Stata/Break fixtures and Mac checks remain
-outstanding.
+42-cell admission diff, native Stata/Break fixtures and Mac checks were still
+outstanding at that repair handoff.
 
 Host evidence reported by Codex at fereg `573a6216` / CMG `03a26041`, not
 controlled performance evidence: local source-only checks passed. A private
@@ -192,10 +195,10 @@ Previous native evidence remains attributed to its original binary and is not
 relabelled as evidence for a newly built diagnostic artifact.
 
 The lost pre-M3a test failure remains unexplained. No further baseline test
-repetition or controlled timing was run during this review. M3a acceptance
-and M3b remain blocked while Johannes considers a single fully logged paired
-replacement check of untouched versus diagnostically patched pre-M3a source.
-The historical failure remains recorded regardless of that decision.
+repetition or controlled timing was run during that review. M3a acceptance
+and M3b were blocked pending Johannes's decision on a single fully logged
+paired check of untouched versus diagnostically patched pre-M3a source.
+The historical failure remains recorded after his approval below.
 
 Approved replacement check (Johannes, 2026-10-19), run in the same Linux cloud
 container (4 vCPU, Rust 1.85.1). Two private `git archive` snapshots were
@@ -214,6 +217,62 @@ passed 84 of 84 (exit 0, 11.22 s); neither log contains `FAILED` or
 `panicked`. This replaces nothing: the earlier patched-baseline run that
 reported 83 passed and 1 failed stays unexplained and recorded. Hashes are in
 [`cmg-m3a-20261019.json`](../bench/results/cmg-m3a-20261019.json).
+
+Codex host follow-up on `d33a1575` / CMG `03a26041` uses separately labelled
+private diagnostic builds of that revision and pre-M3a `7ccab5a9` / CMG
+`d11b2ac4`. Both contain byte-identical stored-hierarchy trace formatting.
+Paired universal Mac and Linux builds pass binary audit, actual ABI/load and
+panic checks; Linux numeric guards pass. The prior Stata, Break and public/
+explicit replay checks retain their original artifact identities and are
+reused because review found only the opt-in trace addition since those runs,
+with no numerical, admission, cancellation or transaction change.
+
+The retained 42 qualification inputs ran twice per artifact at one and four
+workers: 168 native calls, three SCC shards (8195799), all `failed=0` and
+`exit_status=0`. Independent input-bound references, original-design
+certification, exact fixed-worker repeats, cross-worker science and discrete
+decisions pass. Thirty-six cells are exact. The six changed cells are the
+one/four-worker variants of high-degree-weak, weight-dynamic and weak, all
+within the previously declared numerical/iteration scope; their largest saved
+output difference is `2.067568338759429e-12`. Both artifacts install CMG in
+the same six cells. High-degree-weak changes from five levels and a
+72-dimensional terminal factor to four levels and dimension 628;
+weight-dynamic changes from three levels/dimension 16 to one level/dimension
+499; weak changes from three levels/dimension 72 to one level/dimension 499.
+The compact result records every cell's hierarchy, repeats and iterations.
+These observations are science/admission evidence, not controlled timings.
+
+The fixed Mac D.3 diagnostic completes all 312 calls (12 cells, six mirrored
+blocks per cell, one warmup per arm), without retries, exclusions or scientific
+failures. All 12 per-cell upper excess bounds satisfy `max(5%, 1 ms)`.
+High-degree-weak candidate/reference median ratios are 0.954/0.924/0.915 at
+one/four/eight workers; weak-low ratios are 0.429/0.593/0.603. The other six
+cells retain exact science and workflow, with median ratios from 0.992 to
+1.017. Independent high-effort review reproduces the frozen identities,
+312 log/trace/repeat checks, 24 compact snapshots, complete observation spans,
+72 mirrored scores and 24 intervals. Ordinary desktop activity remains in the
+measurements. Uncertainty uses six blocks on one Mac, not six hosts, and the
+instrumented diagnostic does not qualify public activation.
+
+The Linux D.3 attempt reserves six distinct complete 28-core hosts through
+`omp28` (jobs 8195862--8195867). Every task stops after its first warmup,
+before any timed block: the adapter passes the frozen `oracle` filename into
+scientific metadata, where the legacy dense checker expects a numeric object.
+The input-bound `routing_oracle` check runs before this type error. The six
+warmups and all failure records are preserved. A narrow helper now removes
+only descriptor-path keys from runtime metadata; the bound reference and its
+scientific checks remain. Five focused tests, including an oracle-dispatch
+regression assertion, pass, and independent review finds no bypass or artifact,
+tolerance, schedule or budget change. Saved-output validation job 8195882
+passes all six retained outputs, including their independent numerical checks,
+without executing a native solve; original bindings and before/after raw-output
+hashes match. Its accounting is `failed=0`, `exit_status=0`, 13 seconds on four
+slots. The six original jobs retain `exit_status=1` despite scheduler `failed=0`.
+The original 720-call Linux budget permits no retries: no replacement panel
+has been started. One fresh 720-call panel would bring the total to 726 calls,
+including the six retained failed warmups. M3a and M3b remain blocked pending
+Johannes's disposition of this specific budget exception. The Mac and admission
+passes do not erase the Linux failure or the installed-plugin binding failure.
 
 ## CMG successor milestone 2: initial graph construction
 

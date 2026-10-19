@@ -1,202 +1,3767 @@
 {
- "approved_replacement_check": {
-  "approval": "Johannes, 2026-10-19: exactly one focused execution on untouched pre-M3a source and exactly one on the same source plus the diagnostic trace patch",
-  "baseline_revision": "7ccab5a901b135e59b73603426ea2b8bfb128d89",
-  "cmg_pin": "d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d (crates/fereg-core/Cargo.toml and Cargo.lock in both snapshots)",
-  "command": "cargo test -p fereg-core --lib --locked -- fe::borrowed_map::routing_tests fe::cmg_schur fe::routing",
-  "diagnostic_patch_sha256": "8d9bc3af308c26dda06348f0a125fbb9a8a2ed3a3e4d9f4a0e62e39d5184290d",
-  "fereg_review_revision": "b1df3c31b754ec5408dc2c54efbb7fb861f0d3e5",
-  "host": "Linux x86_64 cloud container, 4 vCPU; rustc 1.85.1 (4eb161250 2025-03-15), cargo 1.85.1; matches the snapshot rust-toolchain.toml channel 1.85.1",
-  "inventory": {
-   "identical_in_both_arms": true,
-   "inventory_sha256": "09d6fdab37f50edc99730d80d5ea41783589439eed5685d33b4f4079c9c4490f",
-   "list_stdout_sha256": "1b3334ba284ec9f0c2e9d1aa7f4d9e97bbb1c8882e71d12c643c8b74541fae61",
-   "tests": 84
+  "approved_replacement_check": {
+    "approval": "Johannes, 2026-10-19: exactly one focused execution on untouched pre-M3a source and exactly one on the same source plus the diagnostic trace patch",
+    "baseline_revision": "7ccab5a901b135e59b73603426ea2b8bfb128d89",
+    "cmg_pin": "d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d (crates/fereg-core/Cargo.toml and Cargo.lock in both snapshots)",
+    "command": "cargo test -p fereg-core --lib --locked -- fe::borrowed_map::routing_tests fe::cmg_schur fe::routing",
+    "diagnostic_patch_sha256": "8d9bc3af308c26dda06348f0a125fbb9a8a2ed3a3e4d9f4a0e62e39d5184290d",
+    "fereg_review_revision": "b1df3c31b754ec5408dc2c54efbb7fb861f0d3e5",
+    "host": "Linux x86_64 cloud container, 4 vCPU; rustc 1.85.1 (4eb161250 2025-03-15), cargo 1.85.1; matches the snapshot rust-toolchain.toml channel 1.85.1",
+    "inventory": {
+      "identical_in_both_arms": true,
+      "inventory_sha256": "09d6fdab37f50edc99730d80d5ea41783589439eed5685d33b4f4079c9c4490f",
+      "list_stdout_sha256": "1b3334ba284ec9f0c2e9d1aa7f4d9e97bbb1c8882e71d12c643c8b74541fae61",
+      "tests": 84
+    },
+    "logs": "retained in the cloud session scratchpad m3a-replacement/ (raw stdout/stderr, exit files, list outputs, both snapshots and target directories) until Codex review; not committed",
+    "patch_equivalence": "applying the b1df3c31 patch yields byte-identical borrowed_map.rs, cmg.rs and cmg_schur.rs to the 26cb97d4 patch; the snapshots differ only in those files and DIAGNOSTIC_BUILD.txt",
+    "patched": {
+      "exit": 0,
+      "failed_or_panicked_lines": 0,
+      "finished": "2026-10-19T23:05:26Z",
+      "result": "84 passed; 0 failed; 0 ignored; 1296 filtered out; finished in 11.22s",
+      "started": "2026-10-19T23:05:14Z",
+      "stderr_sha256": "fd42a87751fc0c8661c7a46eb924267a8327c30c80dec2046ea09eb0fef6a046",
+      "stdout_sha256": "22afecc5d7007c988996af5a51f76bc479187cf93512b59e16b4cd5de6cd0f8f"
+    },
+    "sequence": "build and list both arms, then one untouched execution, then one patched execution; no other tests or builds ran",
+    "settings": "default test threading (RUST_TEST_THREADS unset), default features, FEREG_SOLVER_TRACE/FEREG_SOLVER_TRACE_FILE/FEREG_PHASE_TIMING unset, RUST_BACKTRACE=1 (container default, as in the original run), separate CARGO_TARGET_DIR per arm, FEREG_GIT_COMMIT=7ccab5a901b1 (untouched) or 7ccab5a901b1-route-trace-diagnostic (patched)",
+    "snapshot_helper_sha256": "a6de5da4183f88d7b95097860b7f23f683bfec9bf3aae8844334bb450dddefa3",
+    "unresolved": "the earlier patched-baseline run (83 passed, 1 failed, identity/output not captured) remains unexplained; this check does not replace or erase it",
+    "untouched": {
+      "exit": 0,
+      "failed_or_panicked_lines": 0,
+      "finished": "2026-10-19T23:05:03Z",
+      "result": "84 passed; 0 failed; 0 ignored; 1296 filtered out; finished in 11.99s",
+      "started": "2026-10-19T23:04:51Z",
+      "stderr_sha256": "a7adabd8c4ea428041e4a8c7e08adec0b6ab331f8ed9cb57c48275f668ea00a7",
+      "stdout_sha256": "3e400564a9dfcba74c49f675aea08a74f0416c1ec4d94ba2d1e3fdd2e38f2dd0"
+    }
   },
-  "logs": "retained in the cloud session scratchpad m3a-replacement/ (raw stdout/stderr, exit files, list outputs, both snapshots and target directories) until Codex review; not committed",
-  "patch_equivalence": "applying the b1df3c31 patch yields byte-identical borrowed_map.rs, cmg.rs and cmg_schur.rs to the 26cb97d4 patch; the snapshots differ only in those files and DIAGNOSTIC_BUILD.txt",
-  "patched": {
-   "exit": 0,
-   "failed_or_panicked_lines": 0,
-   "finished": "2026-10-19T23:05:26Z",
-   "result": "84 passed; 0 failed; 0 ignored; 1296 filtered out; finished in 11.22s",
-   "started": "2026-10-19T23:05:14Z",
-   "stderr_sha256": "fd42a87751fc0c8661c7a46eb924267a8327c30c80dec2046ea09eb0fef6a046",
-   "stdout_sha256": "22afecc5d7007c988996af5a51f76bc479187cf93512b59e16b4cd5de6cd0f8f"
-  },
-  "sequence": "build and list both arms, then one untouched execution, then one patched execution; no other tests or builds ran",
-  "settings": "default test threading (RUST_TEST_THREADS unset), default features, FEREG_SOLVER_TRACE/FEREG_SOLVER_TRACE_FILE/FEREG_PHASE_TIMING unset, RUST_BACKTRACE=1 (container default, as in the original run), separate CARGO_TARGET_DIR per arm, FEREG_GIT_COMMIT=7ccab5a901b1 (untouched) or 7ccab5a901b1-route-trace-diagnostic (patched)",
-  "snapshot_helper_sha256": "a6de5da4183f88d7b95097860b7f23f683bfec9bf3aae8844334bb450dddefa3",
-  "unresolved": "the earlier patched-baseline run (83 passed, 1 failed, identity/output not captured) remains unexplained; this check does not replace or erase it",
-  "untouched": {
-   "exit": 0,
-   "failed_or_panicked_lines": 0,
-   "finished": "2026-10-19T23:05:03Z",
-   "result": "84 passed; 0 failed; 0 ignored; 1296 filtered out; finished in 11.99s",
-   "started": "2026-10-19T23:04:51Z",
-   "stderr_sha256": "a7adabd8c4ea428041e4a8c7e08adec0b6ab331f8ed9cb57c48275f668ea00a7",
-   "stdout_sha256": "3e400564a9dfcba74c49f675aea08a74f0416c1ec4d94ba2d1e3fdd2e38f2dd0"
-  }
- },
- "checks": {
-  "actual_plugin_replay": "73 of 73 cases pass science with zero exact differences between the candidate and the 7ccab5a9 baseline Linux plugins",
-  "bench_python": "189 tests pass (scipy, psutil and matplotlib installed in the container for this run)",
-  "cmg": "cargo test --all-targets (default and all features), doc tests, clippy -D warnings for default, parallel, experimental-components and all features, fmt, benchmark crate clippy/tests in a standalone copy, release metadata: pass",
-  "complexity": "fereg-core 106,815 -> 104,922 production lines and 1,387 -> 1,371 dispatch candidates; fereg-plugin 15,284 -> 15,255 lines and 142 -> 140 dispatch candidates; no growth",
-  "injected_two_fe_replay": "75 injected runs (incremental_two, h4_k1, direct) on the 25 automatic-OLS replay cases: zero exact differences, equal discrete views and repeats; no case reached a CMG build, so installation changes are not measured by this corpus",
-  "pinned_rechecks": "after the pin bump: locked clippy -D warnings, fuzz check, 202 fereg-core routing/CMG/parallel tests and 83 plugin tests pass",
-  "run_tests_source_only": "pass: 315 Python tests, 1,941 Rust test executions in 80 groups (14 ignored), fuzz check, seven portable checks, complexity ratchet, mock bridge and Linux plugin load/audit",
-  "run_tests_standard": "stopped at scripts/check_github_install.py: main's runtime changed (expected installed-package binding difference, as in M1/M2)"
- },
- "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
- "codex_diagnostic_review": {
-  "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
-  "fereg_revision": "26cb97d4ecf72508b4ddae6f5168f93360cc4374",
-  "independent_review": "high-effort review found no production correctness or arithmetic/admission/cancellation change; fresh captures require explicit installed/refusal attestation before interpreting legacy-compatible route_hierarchy",
-  "local_checks": {
-   "baseline_snapshot": "helper applied successfully; trace_hierarchy byte-identical to M3a",
-   "focused_rust": "3 passed: stored metadata, isolated trace, uncapped build/install/certification witness; isolated child also passed",
-   "parser": "21 passed",
-   "patch_hygiene": "zero-context patch removes whitespace-check errors; applying it yields byte-identical patched source in all three files",
-   "standard_entrypoint": "315 Python passed, then known installed-plugin binding mismatch; full local suite not rerun"
-  },
-  "native_evidence_reuse": "previous host evidence remains bound to 573a6216/03a26041 and its recorded binary hashes; no new diagnostic plugin rebuilt or measured in this review",
-  "status": "M3a unaccepted and M3b blocked; awaiting Johannes disposition of a proposed single fully logged untouched/patched baseline comparison; no further baseline reruns or timing performed",
-  "timing_scope": "trace formatting follows the setup bucket accounting point; its cost is included only in the instrumented complete call/solve accounting",
-  "unresolved": "the first patched-pre-M3a focused run failed 1 of 84; no failing test identity/output survives; subsequent passes do not resolve it"
- },
- "codex_host_evidence": {
-  "mac_plugin": {
-   "checks": "audit, ABI/load and panic containment pass",
-   "failed_attempts": "wrapper missing cargo PATH; first binary failed personal-path audit; both retained",
-   "sha256": "11ab35e27b090ff8cfe494af82da1da0f6a178648a9f37c45872e5fdcc770a0b"
-  },
-  "mac_replay": {
-   "baseline_note": "retained pre-M3a/M2 plugin; d0cee50a..7ccab5a9 changes no runtime or artifact input",
-   "baseline_sha256": "7337e642399af1a40b91aa97ac23c453ed53a8269b4886578b635c4436d3b6b0",
-   "result": "73 of 73 with zero exact/scientific/discrete differences"
-  },
-  "note": "not controlled performance evidence; standard installed-plugin binding mismatch preserved",
-  "reported_by": "Codex",
-  "revisions": "fereg 573a62166d07c16379cbe34b8da4b30f2ee7f428 / CMG 03a260411450dd2c1caaefffa3514ac78c0996d7 (before the route-trace change; reuse needs reassessment)",
-  "scc_build": {
-   "checks": "ABI/load/panic/numeric guards pass",
-   "job": "8192370",
-   "linux_sha256": "2e0c4e85301fc227bd56586b2883e045cd06899ea12116baf6601e7f2269b35b",
-   "result": "failed=0, exit_status=0, four slots, 123 s, maxvmem 2.870G"
-  },
-  "source_only": "local source-only passed: 315 Python; 1,928 passed Rust tests plus 14 ignored in 80 groups; portable, fuzz and ratchet",
-  "stata": "six mapped Stata 19 MP fixtures pass; builder Break at W2 and W4 with exactly two readiness records each, rollback/reset/follow-up; public-scope PPML Break pass"
- },
- "decision": "Johannes, 2026-10-19: remove the construction-work cap altogether; no replacement work cap, dimension-only work bound, time cap or payback policy",
- "declared_scope": {
-  "affected_routes": [
-   "injected two-FE routing arms (routing_incremental_two, routing_portfolio_unseeded, routing_portfolio_v1, routing_h*_k*, routing_direct, routing_cells, routing_diagonal)",
-   "injected general-pair routing_h*_k* on three or more FEs"
-  ],
-  "exact": [
-   "sample, rank, omission and other discrete model decisions",
-   "public uninjected routes",
-   "explicit cmg and cmgschur (OLS and PPML)",
-   "original-design certificate and tolerances"
-  ],
-  "may_change": [
-   "CMG installation and refusal decisions previously decided by the work cap",
-   "terminal factor choice (now hierarchy options and memory only)",
-   "small-direct admission previously declined by the remaining-allowance conjunct",
-   "iterations, hierarchy reports and solver signatures",
-   "coefficients, covariance, fit statistics, residuals and FE coordinates within section 20 tolerances"
-  ],
-  "memory_accounting": "Removed owner fields reduce the categorical owner's size_of contribution to admitted owner bytes on all two-FE and many-FE owners by a few dozen bytes; RMEMORY is outside the exact replay view",
-  "new_traces": [
-   "phase=routing_builder|event=builder_break_ready|task=0|ordinal=<zero-based poll>"
-  ],
-  "retired_traces": [
-   "auto_schur_route setup_work/setup_limit and refusal=WorkBudget",
-   "routing_action setup_work/setup_limit",
-   "auto_direct_route and auto_kernel_route limit fields",
-   "routing_overlap phase"
-  ]
- },
- "evidence_support": {
-  "change": "under FEREG_SOLVER_TRACE, an installed bounded build appends stored hierarchy metadata to its own auto_schur_route record; refused or failed attempts carry none; trace formatting only",
   "checks": {
-   "bench_python": "191 tests pass, 1 skipped",
-   "fereg_focused": "trace_hierarchy_reports_stored_metadata_of_the_installed_build; auto_route_trace_reports_installed_hierarchy_and_nothing_for_refusals_isolated (real trace file: installed record with consistent metadata, zero-budget record installed=0|refusal=Some(MemoryBudget) without metadata)",
-   "not_run": "no plugin rebuild or replay for this trace-only change; no timing",
-   "parser": "bench/tests/test_routing_science.py RouteHierarchyTrace: refused/not-built/legacy records versus installed records with missing or invalid metadata",
-   "pre_m3a_focused_tests_unresolved": "first run of fe::borrowed_map::routing_tests, fe::cmg_schur and fe::routing on the patched pre-M3a snapshot reported FAILED. 83 passed; 1 failed (finished in 10.51s); the command retained only that summary line, so the failing test identity and output are missing and unrecoverable; five subsequent repetitions and one capture run each passed 84/84, which neither explains nor clears the first failure; unresolved pending review",
-   "pre_m3a_snapshot": "cargo fmt --check and clippy -D warnings pass on the patched 7ccab5a9 snapshot",
-   "run_tests_source_only": "pass: 315 Python tests, 1,945 Rust test executions in 81 groups (14 ignored), fuzz check, seven portable checks, complexity ratchet with declared growth (+24 production lines, +6 in borrowed_map.rs), mock bridge and Linux plugin load/audit",
-   "run_tests_standard": "stopped at scripts/check_github_install.py binding check (preserved)"
+    "actual_plugin_replay": "73 of 73 cases pass science with zero exact differences between the candidate and the 7ccab5a9 baseline Linux plugins",
+    "bench_python": "189 tests pass (scipy, psutil and matplotlib installed in the container for this run)",
+    "cmg": "cargo test --all-targets (default and all features), doc tests, clippy -D warnings for default, parallel, experimental-components and all features, fmt, benchmark crate clippy/tests in a standalone copy, release metadata: pass",
+    "complexity": "fereg-core 106,815 -> 104,922 production lines and 1,387 -> 1,371 dispatch candidates; fereg-plugin 15,284 -> 15,255 lines and 142 -> 140 dispatch candidates; no growth",
+    "injected_two_fe_replay": "75 injected runs (incremental_two, h4_k1, direct) on the 25 automatic-OLS replay cases: zero exact differences, equal discrete views and repeats; no case reached a CMG build, so installation changes are not measured by this corpus",
+    "pinned_rechecks": "after the pin bump: locked clippy -D warnings, fuzz check, 202 fereg-core routing/CMG/parallel tests and 83 plugin tests pass",
+    "run_tests_source_only": "pass: 315 Python tests, 1,941 Rust test executions in 80 groups (14 ignored), fuzz check, seven portable checks, complexity ratchet, mock bridge and Linux plugin load/audit",
+    "run_tests_standard": "stopped at scripts/check_github_install.py: main's runtime changed (expected installed-package binding difference, as in M1/M2)"
   },
-  "fields": [
-   "terminal",
-   "levels",
-   "hierarchy_vertices",
-   "hierarchy_nonzeros",
-   "repeats",
-   "terminal_factor",
-   "terminal_factor_dimension",
-   "terminal_factor_nonzeros",
-   "application",
-   "parallel_operators",
-   "batch_columns"
+  "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+  "codex_diagnostic_review": {
+    "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+    "fereg_revision": "26cb97d4ecf72508b4ddae6f5168f93360cc4374",
+    "independent_review": "high-effort review found no production correctness or arithmetic/admission/cancellation change; fresh captures require explicit installed/refusal attestation before interpreting legacy-compatible route_hierarchy",
+    "local_checks": {
+      "baseline_snapshot": "helper applied successfully; trace_hierarchy byte-identical to M3a",
+      "focused_rust": "3 passed: stored metadata, isolated trace, uncapped build/install/certification witness; isolated child also passed",
+      "parser": "21 passed",
+      "patch_hygiene": "zero-context patch removes whitespace-check errors; applying it yields byte-identical patched source in all three files",
+      "standard_entrypoint": "315 Python passed, then known installed-plugin binding mismatch; full local suite not rerun"
+    },
+    "native_evidence_reuse": "previous host evidence remains bound to 573a6216/03a26041 and its recorded binary hashes; no new diagnostic plugin rebuilt or measured in this review",
+    "status": "M3a unaccepted and M3b blocked; awaiting Johannes disposition of a proposed single fully logged untouched/patched baseline comparison; no further baseline reruns or timing performed",
+    "timing_scope": "trace formatting follows the setup bucket accounting point; its cost is included only in the instrumented complete call/solve accounting",
+    "unresolved": "the first patched-pre-M3a focused run failed 1 of 84; no failing test identity/output survives; subsequent passes do not resolve it"
+  },
+  "codex_host_acceptance": {
+    "admission": {
+      "accounting": "all three tasks failed=0 exit_status=0 on scc-tb4; preparation 8195794 failed=0 exit_status=0",
+      "array_tasks": [
+        1,
+        2,
+        3
+      ],
+      "cells": 42,
+      "exact_cells": 36,
+      "install_counts": {
+        "baseline_installed_cells": 6,
+        "candidate_installed_cells": 6
+      },
+      "job_id": 8195799,
+      "maximum_output_difference": 2.067568338759429e-12,
+      "native_calls": 168,
+      "observations": [
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "dense",
+          "id": "dense-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "dense",
+          "id": "dense-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "12",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "12",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "family": "four-fe",
+          "id": "four-fe-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "12",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "12",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "family": "four-fe",
+          "id": "four-fe-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 5,
+                "nonzeros": [
+                  84920,
+                  56840,
+                  44352,
+                  35541,
+                  1833
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  1,
+                  1,
+                  1,
+                  34,
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 72,
+                "terminal_factor_nonzeros": 1012,
+                "vertices": [
+                  1000,
+                  790,
+                  700,
+                  629,
+                  73
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "21",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 4,
+                "nonzeros": [
+                  84920,
+                  56840,
+                  44352,
+                  35541
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 628,
+                "terminal_factor_nonzeros": 31858,
+                "vertices": [
+                  1000,
+                  790,
+                  700,
+                  629
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "21",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "high-degree-weak",
+          "id": "high-degree-weak-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/7",
+              "/matrices/RFIT/bits/9",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RFIT/bits/23",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/19",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/45",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 2.7305935290655725e-13,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 5,
+                "nonzeros": [
+                  84920,
+                  56840,
+                  44352,
+                  35541,
+                  1833
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  1,
+                  1,
+                  1,
+                  34,
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 72,
+                "terminal_factor_nonzeros": 1012,
+                "vertices": [
+                  1000,
+                  790,
+                  700,
+                  629,
+                  73
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "21",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 4,
+                "nonzeros": [
+                  84920,
+                  56840,
+                  44352,
+                  35541
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 628,
+                "terminal_factor_nonzeros": 31858,
+                "vertices": [
+                  1000,
+                  790,
+                  700,
+                  629
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "21",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "high-degree-weak",
+          "id": "high-degree-weak-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/7",
+              "/matrices/RFIT/bits/9",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RFIT/bits/23",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/19",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/45",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 2.7305935290655725e-13,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "17",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "9",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "17",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "9",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "family": "near-confounded-third",
+          "id": "near-confounded-third-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "17",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "9",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "17",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "9",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "family": "near-confounded-third",
+          "id": "near-confounded-third-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "repeated-cells",
+          "id": "repeated-cells-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "repeated-cells",
+          "id": "repeated-cells-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "4",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "4",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "small-retained",
+          "id": "small-retained-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "4",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "4",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "3",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "small-retained",
+          "id": "small-retained-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 3,
+                "nonzeros": [
+                  16550,
+                  3113,
+                  51
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  4,
+                  87,
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 16,
+                "terminal_factor_nonzeros": 35,
+                "vertices": [
+                  500,
+                  179,
+                  17
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "23",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "9",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 1,
+                "nonzeros": [
+                  16550
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 499,
+                "terminal_factor_nonzeros": 19409,
+                "vertices": [
+                  500
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "21",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "weight-dynamic",
+          "id": "weight-dynamic-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/9",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RFIT/bits/23",
+              "/matrices/RSOLVER/bits/2",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/16",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/19",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/29",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/45",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 2.067568338759429e-12,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 3,
+                "nonzeros": [
+                  16550,
+                  3113,
+                  51
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  4,
+                  87,
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 16,
+                "terminal_factor_nonzeros": 35,
+                "vertices": [
+                  500,
+                  179,
+                  17
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "23",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "9",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 1,
+                "nonzeros": [
+                  16550
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 499,
+                "terminal_factor_nonzeros": 19409,
+                "vertices": [
+                  500
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "21",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "weight-dynamic",
+          "id": "weight-dynamic-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/9",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RFIT/bits/23",
+              "/matrices/RSOLVER/bits/2",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/16",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/19",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/29",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/45",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 2.067568338759429e-12,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "disconnected",
+          "id": "disconnected-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "disconnected",
+          "id": "disconnected-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "9",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "8",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "9",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "8",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "high-degree-mixed",
+          "id": "high-degree-mixed-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "9",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "8",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "9",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "8",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "high-degree-mixed",
+          "id": "high-degree-mixed-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "0",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "0",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "0",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "0",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "inactive-columns",
+          "id": "inactive-columns-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "0",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "0",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "0",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "0",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "inactive-columns",
+          "id": "inactive-columns-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [],
+          "candidate_workflow": [],
+          "family": "no-fe",
+          "id": "no-fe-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [],
+          "candidate_workflow": [],
+          "family": "no-fe",
+          "id": "no-fe-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "family": "sixteen-fe",
+          "id": "sixteen-fe-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "family": "sixteen-fe",
+          "id": "sixteen-fe-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "12",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "12",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "family": "small-third",
+          "id": "small-third-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "12",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "12",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "family": "small-third",
+          "id": "small-third-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "weighted",
+          "id": "weighted-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "weighted",
+          "id": "weighted-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "family": "eight-fe",
+          "id": "eight-fe-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "13",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_many"
+            }
+          ],
+          "family": "eight-fe",
+          "id": "eight-fe-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "high-degree-stress",
+          "id": "high-degree-stress-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "high-degree-stress",
+          "id": "high-degree-stress-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "low-saved",
+          "id": "low-saved-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "1",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "low-saved",
+          "id": "low-saved-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [],
+          "candidate_workflow": [],
+          "family": "one-fe",
+          "id": "one-fe-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [],
+          "candidate_workflow": [],
+          "family": "one-fe",
+          "id": "one-fe-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [],
+          "candidate_workflow": [],
+          "family": "slopes",
+          "id": "slopes-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [],
+          "candidate_workflow": [],
+          "family": "slopes",
+          "id": "slopes-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 3,
+                "nonzeros": [
+                  16438,
+                  7004,
+                  603
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  1,
+                  19,
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 72,
+                "terminal_factor_nonzeros": 338,
+                "vertices": [
+                  500,
+                  288,
+                  73
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "22",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 1,
+                "nonzeros": [
+                  16438
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 499,
+                "terminal_factor_nonzeros": 22813,
+                "vertices": [
+                  500
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "21",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "weak",
+          "id": "weak-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/7",
+              "/matrices/RFIT/bits/9",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RSOLVER/bits/2",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/16",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/19",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 1.0538098171863908e-13,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 3,
+                "nonzeros": [
+                  16438,
+                  7004,
+                  603
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  1,
+                  19,
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 72,
+                "terminal_factor_nonzeros": 338,
+                "vertices": [
+                  500,
+                  288,
+                  73
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "22",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "7",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "checkpoint": "16",
+              "hierarchy": {
+                "application": "scalar",
+                "batch_columns": 1,
+                "levels": 1,
+                "nonzeros": [
+                  16438
+                ],
+                "parallel_operators": 0,
+                "repeats": [
+                  0
+                ],
+                "terminal": "Direct",
+                "terminal_factor": 1,
+                "terminal_factor_dimension": 499,
+                "terminal_factor_nonzeros": 22813,
+                "vertices": [
+                  500
+                ]
+              },
+              "installed": "1",
+              "iterations": "16",
+              "phase": "auto_schur_route",
+              "refusal": "None",
+              "samples": "1"
+            },
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "21",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "6",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "weak",
+          "id": "weak-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/7",
+              "/matrices/RFIT/bits/9",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RSOLVER/bits/2",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/16",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/19",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 1.0538098171863908e-13,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "wide-rhs",
+          "id": "wide-rhs-t1",
+          "threads": 1,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        },
+        {
+          "baseline_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "candidate_workflow": [
+            {
+              "certified": "1",
+              "final": "0",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            },
+            {
+              "certified": "1",
+              "final": "1",
+              "iterations": "14",
+              "native_limit": "16000",
+              "phase": "routing_action",
+              "preset": "routing_incremental_two"
+            }
+          ],
+          "family": "wide-rhs",
+          "id": "wide-rhs-t4",
+          "threads": 4,
+          "verdict": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          }
+        }
+      ],
+      "performance_claim": false,
+      "plan_sha256": "02f916664aba98a2e3169f0ba8ca595f2a8a88d6de6c7aaf99d7e5943b8d8037",
+      "result_hashes": {
+        "1": "d58a1542c73fb2a64abc2b4ee86fbb66f8b2e16e8991638cf8aabae124b01869",
+        "2": "38e62e22fe757a3525861a49ff1163b165349d89c0d30a6dbffcad2ae84941cb",
+        "3": "67c51d9bb27dff440c67fc4bc3d1b1d4a126e5e75070f29ecf0913ca1e68e2c4"
+      },
+      "scoped_cells": 6,
+      "status": "passed"
+    },
+    "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+    "fereg_revision": "d33a1575c7bc17ae1efbf75eb5fb02fb9263dfb4",
+    "independent_review": "High-effort independent review reproduced all Mac fixed-file/log/trace/snapshot/span/scoring checks and reviewed admission records plus remote log verification/accounting. No blocker in Mac or admission evidence.",
+    "linux_diagnostic": {
+      "accounting": [
+        {
+          "exit_status": 1,
+          "failed": 0,
+          "granted_pe": "omp28",
+          "hostname": "scc-xa1.scc.bu.edu",
+          "jobnumber": 8195862,
+          "maxvmem": "643.031M",
+          "ru_wallclock": 8,
+          "slots": 28
+        },
+        {
+          "exit_status": 1,
+          "failed": 0,
+          "granted_pe": "omp28",
+          "hostname": "scc-xa2.scc.bu.edu",
+          "jobnumber": 8195863,
+          "maxvmem": "819.730M",
+          "ru_wallclock": 10,
+          "slots": 28
+        },
+        {
+          "exit_status": 1,
+          "failed": 0,
+          "granted_pe": "omp28",
+          "hostname": "scc-xa4.scc.bu.edu",
+          "jobnumber": 8195864,
+          "maxvmem": "643.035M",
+          "ru_wallclock": 8,
+          "slots": 28
+        },
+        {
+          "exit_status": 1,
+          "failed": 0,
+          "granted_pe": "omp28",
+          "hostname": "scc-xb1.scc.bu.edu",
+          "jobnumber": 8195865,
+          "maxvmem": "828.691M",
+          "ru_wallclock": 10,
+          "slots": 28
+        },
+        {
+          "exit_status": 1,
+          "failed": 0,
+          "granted_pe": "omp28",
+          "hostname": "scc-xb2.scc.bu.edu",
+          "jobnumber": 8195866,
+          "maxvmem": "737.887M",
+          "ru_wallclock": 8,
+          "slots": 28
+        },
+        {
+          "exit_status": 1,
+          "failed": 0,
+          "granted_pe": "omp28",
+          "hostname": "scc-xb3.scc.bu.edu",
+          "jobnumber": 8195867,
+          "maxvmem": "819.531M",
+          "ru_wallclock": 11,
+          "slots": 28
+        }
+      ],
+      "calls_started": 6,
+      "cause": "Frozen cell oracle descriptor path leaked into scientific runtime metadata; routing_oracle check ran, then legacy cmgschur oracle_check indexed a string as an object. All six jobs stopped on their first warmup. No solver defect or numerical failure established.",
+      "failed_adapter_sha256": "cdc4e95fe368fe0567ddd70d8c4f4c902fc4b01be964792f67d995564ce4eea5",
+      "hosts": [
+        "scc-xa1",
+        "scc-xa2",
+        "scc-xa4",
+        "scc-xb1",
+        "scc-xb2",
+        "scc-xb3"
+      ],
+      "jobs": [
+        8195862,
+        8195863,
+        8195864,
+        8195865,
+        8195866,
+        8195867
+      ],
+      "native_rerun": "not authorized under the fixed 720-call/no-retry panel; request a specific exception before a restart",
+      "plan_sha256": "921e3bdddec95f16859c6b0b4a33ee0c2b564171d28657325798e9d6fa7c382a",
+      "repair": "runtime_metadata removes descriptor-path keys only; cached and uncached paths retain the bound routing_oracle. Five focused tests pass, including a real check_oracle dispatch regression assertion. Independent review found no scientific bypass, artifact, schedule or budget change.",
+      "repaired_adapter_sha256": "5aa315de94f30e5c24cb511f9dd5f9b4429f5395501731de23ce31da684f7c2f",
+      "replica_results": [
+        {
+          "elapsed_s": 7.195313630043529,
+          "error": "TypeError: string indices must be integers, not 'str'",
+          "native_calls_started": 1,
+          "replica": 1,
+          "stage": "science",
+          "status": "failed"
+        },
+        {
+          "elapsed_s": 9.401539168087766,
+          "error": "TypeError: string indices must be integers, not 'str'",
+          "native_calls_started": 1,
+          "replica": 2,
+          "stage": "science",
+          "status": "failed"
+        },
+        {
+          "elapsed_s": 7.182912928052247,
+          "error": "TypeError: string indices must be integers, not 'str'",
+          "native_calls_started": 1,
+          "replica": 3,
+          "stage": "science",
+          "status": "failed"
+        },
+        {
+          "elapsed_s": 9.106299759936519,
+          "error": "TypeError: string indices must be integers, not 'str'",
+          "native_calls_started": 1,
+          "replica": 4,
+          "stage": "science",
+          "status": "failed"
+        },
+        {
+          "elapsed_s": 7.4806710669072345,
+          "error": "TypeError: string indices must be integers, not 'str'",
+          "native_calls_started": 1,
+          "replica": 5,
+          "stage": "science",
+          "status": "failed"
+        },
+        {
+          "elapsed_s": 10.169207368977368,
+          "error": "TypeError: string indices must be integers, not 'str'",
+          "native_calls_started": 1,
+          "replica": 6,
+          "stage": "science",
+          "status": "failed"
+        }
+      ],
+      "saved_output_validation": {
+        "checks": "Original frozen plan bindings verified; all six saved native outputs pass the independent oracle, trace/resource checks and instruction-counter parsing; raw outputs, sidecars and logs unchanged before/after. No native solve repeated.",
+        "job_accounting": {
+          "cpu": 9.699,
+          "exit_status": 0,
+          "failed": 0,
+          "granted_pe": "omp",
+          "hostname": "scc-tb4.scc.bu.edu",
+          "jobnumber": 8195882,
+          "maxvmem": "439.816M",
+          "qname": "econ",
+          "ru_wallclock": 13,
+          "slots": 4
+        },
+        "native_calls": 0,
+        "plan_sha256": "921e3bdddec95f16859c6b0b4a33ee0c2b564171d28657325798e9d6fa7c382a",
+        "repair_sha256": "5aa315de94f30e5c24cb511f9dd5f9b4429f5395501731de23ce31da684f7c2f",
+        "result_sha256": "8a970e1206022ce9584ce48bd7f63619318b2fee3abf92e66982b8410de62de3",
+        "rows": [
+          {
+            "arm": "reference",
+            "cell": "repeated-cells-t4",
+            "fingerprint": "80de26eebab9d5f2fb817c959621b325e12a28ff4e99492523a792bea6eb5e49",
+            "hashes": {
+              "w0-reference.json": "64b53941f7b3b1e956a70a7fea2c6c2dac765a2befbadf9da45927e050b3c510",
+              "w0-reference.json.columns": "10706e87afed241d666f044ff998267b1c0d3f15b9ee30b35a9b98e610dc514a",
+              "w0-reference.log": "66b8817c822616a4503f8c0968bbb64bdf12315ff490d2179e52cc49b5c3c605"
+            },
+            "independent_oracle": true,
+            "perf": {
+              "event": "instructions:u",
+              "event_runtime": 330353859.0,
+              "instructions": 2703794164,
+              "running_percent": 100.0,
+              "scope": "whole harness process and inherited threads; includes parsing, tracing and plugin call; event suffix records user-only counting"
+            },
+            "replica": 1,
+            "status": "passed"
+          },
+          {
+            "arm": "reference",
+            "cell": "high-degree-weak-t1",
+            "fingerprint": "26f28b24ac17873d034fe05001907bdfce17adbe9e3c6bdc588bf78e99f82596",
+            "hashes": {
+              "w0-reference.json": "e1cdb8b76fa3f61d09bae8534fecd2d56279ef3d6a4d848ad73d1ad1ccfeaddd",
+              "w0-reference.json.columns": "845e9ebba6a48673274766ca0a19e6c12bf212dda5b6c2728bb92e8ef50c1c4b",
+              "w0-reference.log": "94f863e3dcdb120a4adce20fc5eee35af8d8d39d6e5d810ffc08c325aeef1262"
+            },
+            "independent_oracle": true,
+            "perf": {
+              "event": "instructions:u",
+              "event_runtime": 1781069971.0,
+              "instructions": 17528059842,
+              "running_percent": 100.0,
+              "scope": "whole harness process and inherited threads; includes parsing, tracing and plugin call; event suffix records user-only counting"
+            },
+            "replica": 2,
+            "status": "passed"
+          },
+          {
+            "arm": "candidate",
+            "cell": "weak-low-t1",
+            "fingerprint": "325314400ef96e6baef48979a783b9908a8c5ab300c1543ac88cffaa4b7e8674",
+            "hashes": {
+              "w0-candidate.json": "352261e85a6cb8a9fc8fe2740e6b9c1920f55180403fccd7ad6c688109e7b66d",
+              "w0-candidate.json.columns": "594a07c6d15987b9d32468067ebf9a720480acb03e8a74c0b8e0d16ad815a26b",
+              "w0-candidate.log": "c8de85573e32c1305f4760ca27ad39fc664bd399d6a6469b2401f8539720be53"
+            },
+            "independent_oracle": true,
+            "perf": {
+              "event": "instructions:u",
+              "event_runtime": 323042348.0,
+              "instructions": 3167309734,
+              "running_percent": 100.0,
+              "scope": "whole harness process and inherited threads; includes parsing, tracing and plugin call; event suffix records user-only counting"
+            },
+            "replica": 3,
+            "status": "passed"
+          },
+          {
+            "arm": "candidate",
+            "cell": "high-degree-weak-t1",
+            "fingerprint": "49538ce3c3064425a9e112e256acde796d05e1ea9f09b398b45ba609566bd976",
+            "hashes": {
+              "w0-candidate.json": "fefaaa1d2fb9bff0deb117261a77867c5d0861988b375778e4cf887e51b9fab9",
+              "w0-candidate.json.columns": "9b8e3b4460fa14892b42949441c7ba9ec52cfd59c74ca1faa246954b0cf1dfbf",
+              "w0-candidate.log": "dca43faf97cefd3f3a1bbfddc27cddc92f9c14f3f4e78b27d4d5a2690e268508"
+            },
+            "independent_oracle": true,
+            "perf": {
+              "event": "instructions:u",
+              "event_runtime": 1740094671.0,
+              "instructions": 17045279974,
+              "running_percent": 100.0,
+              "scope": "whole harness process and inherited threads; includes parsing, tracing and plugin call; event suffix records user-only counting"
+            },
+            "replica": 4,
+            "status": "passed"
+          },
+          {
+            "arm": "reference",
+            "cell": "repeated-cells-t1",
+            "fingerprint": "42119efe73b1c7bfe01f5007ea72c3b74b31698eaf59fb549eb366cd81d3335c",
+            "hashes": {
+              "w0-reference.json": "d24f5b5de62a2bf0688de873b067ee681335ec35b79fc3564b820b34a89b807f",
+              "w0-reference.json.columns": "10706e87afed241d666f044ff998267b1c0d3f15b9ee30b35a9b98e610dc514a",
+              "w0-reference.log": "b66bbc991d6b0114d05a873608ce28ba31ea7efd1b3fd0522746af07c0a5a8ff"
+            },
+            "independent_oracle": true,
+            "perf": {
+              "event": "instructions:u",
+              "event_runtime": 279120934.0,
+              "instructions": 2658138082,
+              "running_percent": 100.0,
+              "scope": "whole harness process and inherited threads; includes parsing, tracing and plugin call; event suffix records user-only counting"
+            },
+            "replica": 5,
+            "status": "passed"
+          },
+          {
+            "arm": "candidate",
+            "cell": "high-degree-weak-t1",
+            "fingerprint": "49538ce3c3064425a9e112e256acde796d05e1ea9f09b398b45ba609566bd976",
+            "hashes": {
+              "w0-candidate.json": "caaefcb9f279409720eba5782f554d1b0813af89ed2c806f1eac4c0b19728c61",
+              "w0-candidate.json.columns": "9b8e3b4460fa14892b42949441c7ba9ec52cfd59c74ca1faa246954b0cf1dfbf",
+              "w0-candidate.log": "ebdfd2aab604ab65e90d595ffae6065f0ef5b47e5275b851e4e78f58a4669089"
+            },
+            "independent_oracle": true,
+            "perf": {
+              "event": "instructions:u",
+              "event_runtime": 1738393853.0,
+              "instructions": 17045277020,
+              "running_percent": 100.0,
+              "scope": "whole harness process and inherited threads; includes parsing, tracing and plugin call; event suffix records user-only counting"
+            },
+            "replica": 6,
+            "status": "passed"
+          }
+        ],
+        "status": "passed"
+      },
+      "status": "failed_harness_before_timed_blocks",
+      "timed_calls": 0
+    },
+    "mac_diagnostic": {
+      "calls_started": 312,
+      "cells": [
+        {
+          "comparison": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RFIT/bits/23",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/16",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/29",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/45",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 1.816324868286756e-13,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.04067060284710362,
+            "median": -0.03502692620101461,
+            "n": 6,
+            "upper": -0.03434206039359359
+          },
+          "id": "high-degree-weak-t1",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.9398575970682753,
+            "median": 0.9536515191194876,
+            "n": 6,
+            "upper": 0.9555060962115265
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RFIT/bits/23",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/16",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/29",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/45",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 1.816324868286756e-13,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.02684522633046857,
+            "median": -0.025355612599873976,
+            "n": 6,
+            "upper": -0.021463867874191696
+          },
+          "id": "high-degree-weak-t4",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.9179535889462571,
+            "median": 0.924257695025899,
+            "n": 6,
+            "upper": 0.9437179018651579
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RFIT/bits/23",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/16",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/29",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/45",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 1.816324868286756e-13,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.02578155537041646,
+            "median": -0.02372250092634872,
+            "n": 6,
+            "upper": -0.020215619226160053
+          },
+          "id": "high-degree-weak-t8",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.9033781675647437,
+            "median": 0.9148370677180983,
+            "n": 6,
+            "upper": 0.9350499102581811
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.00362837950823372,
+            "median": -0.0021855205563988244,
+            "n": 6,
+            "upper": -0.00214283662079614
+          },
+          "id": "repeated-cells-t1",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.9735783797503083,
+            "median": 1.0026933394859783,
+            "n": 6,
+            "upper": 1.003564070655233
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.0019132630682751305,
+            "median": -0.001236496781943893,
+            "n": 6,
+            "upper": -0.0009383575891546889
+          },
+          "id": "repeated-cells-t4",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.9720592577693947,
+            "median": 0.9975306880809789,
+            "n": 6,
+            "upper": 1.0102568107708336
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.0019196452019129518,
+            "median": -0.0013502516635012598,
+            "n": 6,
+            "upper": -0.001031016091702646
+          },
+          "id": "repeated-cells-t8",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.9695651118622461,
+            "median": 0.9919524539248212,
+            "n": 6,
+            "upper": 1.0051592151303492
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/7",
+              "/matrices/RFIT/bits/9",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RFIT/bits/23",
+              "/matrices/RSOLVER/bits/2",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/16",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/19",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/29",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/45",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 2.4791280139879746e-13,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.10843617505277328,
+            "median": -0.10746626055151912,
+            "n": 6,
+            "upper": -0.10620294888860897
+          },
+          "id": "weak-low-t1",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.42364073664581475,
+            "median": 0.4286110199043561,
+            "n": 6,
+            "upper": 0.43690367585632994
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/7",
+              "/matrices/RFIT/bits/9",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RFIT/bits/23",
+              "/matrices/RSOLVER/bits/2",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/16",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/19",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/45",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 3.7903014060702844e-13,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.03775106018545077,
+            "median": -0.036068962530567635,
+            "n": 6,
+            "upper": -0.03518555603081602
+          },
+          "id": "weak-low-t4",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.5761816419929218,
+            "median": 0.5925626558107405,
+            "n": 6,
+            "upper": 0.6067480037466999
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [
+              "/matrices/RB/bits/0",
+              "/matrices/RB/bits/1",
+              "/matrices/RB/bits/2",
+              "/matrices/RV/bits/0",
+              "/matrices/RV/bits/1",
+              "/matrices/RV/bits/2",
+              "/matrices/RV/bits/3",
+              "/matrices/RV/bits/4",
+              "/matrices/RV/bits/5",
+              "/matrices/RV/bits/6",
+              "/matrices/RV/bits/7",
+              "/matrices/RV/bits/8",
+              "/matrices/RFIT/bits/1",
+              "/matrices/RFIT/bits/5",
+              "/matrices/RFIT/bits/7",
+              "/matrices/RFIT/bits/9",
+              "/matrices/RFIT/bits/11",
+              "/matrices/RFIT/bits/13",
+              "/matrices/RFIT/bits/15",
+              "/matrices/RFIT/bits/17",
+              "/matrices/RFIT/bits/19",
+              "/matrices/RFIT/bits/21",
+              "/matrices/RFIT/bits/23",
+              "/matrices/RSOLVER/bits/2",
+              "/matrices/RSOLVER/bits/4",
+              "/matrices/RSOLVER/bits/5",
+              "/matrices/RSOLVER/bits/6",
+              "/matrices/RSOLVER/bits/7",
+              "/matrices/RSOLVER/bits/16",
+              "/matrices/RSOLVER/bits/18",
+              "/matrices/RSOLVER/bits/19",
+              "/matrices/RSOLVER/bits/20",
+              "/matrices/RSOLVER/bits/21",
+              "/matrices/RCERT/bits/11",
+              "/matrices/RCERT/bits/13",
+              "/matrices/RCERT/bits/15",
+              "/matrices/RCERT/bits/17",
+              "/matrices/RCERT/bits/19",
+              "/matrices/RCERT/bits/21",
+              "/matrices/RCERT/bits/23",
+              "/matrices/RCERT/bits/35",
+              "/matrices/RCERT/bits/41",
+              "/matrices/RCERT/bits/43",
+              "/matrices/RCERT/bits/45",
+              "/matrices/RCERT/bits/61"
+            ],
+            "columns_exact": false,
+            "control_cost_equal": false,
+            "maximum_output_difference": 3.7903014060702844e-13,
+            "science_exact": false,
+            "scope": "two-numerical-iterations",
+            "workflow_equal": false
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.03671245389387692,
+            "median": -0.034560050383254895,
+            "n": 6,
+            "upper": -0.03409929944462602
+          },
+          "id": "weak-low-t8",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.5850086259042268,
+            "median": 0.6033763105473489,
+            "n": 6,
+            "upper": 0.6061805626459602
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.005274583331709311,
+            "median": -0.005166732821726744,
+            "n": 6,
+            "upper": -0.0016893552588901593
+          },
+          "id": "wide-rhs-t1",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.9999989393435051,
+            "median": 1.0011144916247718,
+            "n": 6,
+            "upper": 1.0339977510322749
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.005153699490437589,
+            "median": -0.001832066820850221,
+            "n": 6,
+            "upper": -0.0006774303365967536
+          },
+          "id": "wide-rhs-t4",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.9619812651827947,
+            "median": 1.0169611177694642,
+            "n": 6,
+            "upper": 1.0381120783819828
+          }
+        },
+        {
+          "comparison": {
+            "changed_fields": [],
+            "columns_exact": true,
+            "control_cost_equal": true,
+            "maximum_output_difference": 0.0,
+            "science_exact": true,
+            "scope": "exact",
+            "workflow_equal": true
+          },
+          "excess_s": {
+            "alpha": 0.025,
+            "lower": -0.006340384470604883,
+            "median": -0.0023022772422684862,
+            "n": 6,
+            "upper": -0.0017606105108767148
+          },
+          "id": "wide-rhs-t8",
+          "nonregression": true,
+          "ratio": {
+            "alpha": 0.025,
+            "lower": 0.9311954292934357,
+            "median": 1.003047587131539,
+            "n": 6,
+            "upper": 1.0147447728705954
+          }
+        }
+      ],
+      "elapsed_s": 182.38980262516998,
+      "failures": [],
+      "host_observations_sha256": "955d819cbdac10dfb800cbf87466e9b21dea2eb55773a70d6c4005b532a88d23",
+      "isolation_ok": true,
+      "nonregression": true,
+      "observation_errors": [],
+      "ordinary_activity": "retained",
+      "plan_sha256": "6222ca3b8805f2d18f053717328e63cb185a02601de22c92610c1b98d38f5711",
+      "result_sha256": "a4ecc8645493914679b57a5bb6db2f65968fd2c91a0e8951f0da1a48fd0647ca",
+      "retry_cells": [],
+      "scope": "instrumented complete-solve diagnostic; not public activation qualification",
+      "status": "complete",
+      "uncertainty_unit": "six mirrored blocks on one active desktop, not six hosts"
+    },
+    "operational_failures": [
+      "SCC submission wrapper used text/capture_output unsupported by login Python3.6; failed before qsub, corrected to universal_newlines/PIPE; no native call or submitted job repeated."
+    ],
+    "paired_diagnostic_artifacts": {
+      "candidate": {
+        "archive_sha256": "fa1a7ede4734309948f7f816f4620499c230e2050e956c7f89c5f5bd6516d637",
+        "base_revision": "d33a1575c7bc17ae1efbf75eb5fb02fb9263dfb4",
+        "build": "Rust1.85.1 locked release; private diagnostic label; bridge O3; Mac universal/remapped, Linux GCC12.2/remapped; audit and actual ABI/load/panic checks passed",
+        "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+        "diagnostic_label": "d33a1575c7bc-route-trace-diagnostic",
+        "diagnostic_patch_sha256": null,
+        "mac_build_capture": {
+          "build-diagnostic-candidate.sh": "241c95eed5702689558b91b1f71044092d86c6d30601a3c7cb6271322102e7a7",
+          "build-diagnostics-mac.sh": "5fcd40dd7dd16ddfbc5e5b1dd794b505dc8f6471e96fe32a71a02e6b46e773cf",
+          "diagnostic-candidate-mac-build.log": "3b39986224f2890ce629f891a03472b63f5c134bb39408efd0ca37accb6f2b52"
+        },
+        "plugins": {
+          "Darwin": "6dcba7fef2fd7674f6f059c0afad7d5a5c5fa2d9057b34c9926f56a2cbdc469f",
+          "Linux": "bc03a99fe9a19f66900f8713ce6d73f975ee88dcf9c293f50a6489539e942a3b"
+        },
+        "production_identity": "8d99e06f987019393293c25679a2fec16b9b5694f9c893bfaf5ffdedcc080074",
+        "schema": 1,
+        "source_capture_sha256": "96c886e49c578f16e86d2d739de6c2c1aba0ed850987114858ef9922d71d6327"
+      },
+      "reference": {
+        "archive_sha256": "4a1076286ed44ae818d34365bbc0fc4a3ef3e9a0a78e22e372d6fe7d0d4649a3",
+        "base_revision": "7ccab5a901b135e59b73603426ea2b8bfb128d89",
+        "build": "Rust1.85.1 locked release; private diagnostic label; bridge O3; Mac universal/remapped, Linux GCC12.2/remapped; audit and actual ABI/load/panic checks passed",
+        "cmg_revision": "d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d",
+        "diagnostic_label": "7ccab5a901b1-route-trace-diagnostic",
+        "diagnostic_patch_sha256": "8d9bc3af308c26dda06348f0a125fbb9a8a2ed3a3e4d9f4a0e62e39d5184290d",
+        "mac_build_capture": {
+          "build-diagnostic-baseline.sh": "316450e0ac6e1d67452b582381de29cc2d2e755a3097e513bd52a371916c2f21",
+          "build-diagnostics-mac.sh": "5fcd40dd7dd16ddfbc5e5b1dd794b505dc8f6471e96fe32a71a02e6b46e773cf",
+          "diagnostic-baseline-mac-build.log": "453a8f85aa4e8b8c3c8f79418b3cb1ef342417fe1026863a49d4fac4c9960660"
+        },
+        "plugins": {
+          "Darwin": "829eb4183aac2c8ef959eb6a6e7c91c09c8d6ee1e52363eb1c3288bc1213c3c2",
+          "Linux": "9aa3b370fe41f5e75ac4c767e8682f2174271a73809f0a594880725a37bd126c"
+        },
+        "production_identity": "47c172ccf79bbd889f494dc61acfdcdcd7c0f6f1c11e5481fd6e36dddb3d4f01",
+        "schema": 1,
+        "source_capture_sha256": "ea722ffdcd4de5b2146accbb1b46f6ecba9059eedbf7a125decd867d4946fd83"
+      }
+    },
+    "remaining": "M3a unaccepted: saved-output repair verification and Johannes disposition of a corrected fixed Linux panel; M3b not started.",
+    "reuse": "573a6216/03a native Stata/Break/public and explicit replay evidence reused after reviewed trace-only edit: unchanged numerical, admission, cancellation and transaction code; old binaries retain original identities. New paired diagnostic artifacts passed actual audit/ABI/load/panic checks on each host platform; Linux numeric guards also passed."
+  },
+  "codex_host_evidence": {
+    "mac_plugin": {
+      "checks": "audit, ABI/load and panic containment pass",
+      "failed_attempts": "wrapper missing cargo PATH; first binary failed personal-path audit; both retained",
+      "sha256": "11ab35e27b090ff8cfe494af82da1da0f6a178648a9f37c45872e5fdcc770a0b"
+    },
+    "mac_replay": {
+      "baseline_note": "retained pre-M3a/M2 plugin; d0cee50a..7ccab5a9 changes no runtime or artifact input",
+      "baseline_sha256": "7337e642399af1a40b91aa97ac23c453ed53a8269b4886578b635c4436d3b6b0",
+      "result": "73 of 73 with zero exact/scientific/discrete differences"
+    },
+    "note": "not controlled performance evidence; standard installed-plugin binding mismatch preserved",
+    "reported_by": "Codex",
+    "revisions": "fereg 573a62166d07c16379cbe34b8da4b30f2ee7f428 / CMG 03a260411450dd2c1caaefffa3514ac78c0996d7 (before the route-trace change; reuse needs reassessment)",
+    "scc_build": {
+      "checks": "ABI/load/panic/numeric guards pass",
+      "job": "8192370",
+      "linux_sha256": "2e0c4e85301fc227bd56586b2883e045cd06899ea12116baf6601e7f2269b35b",
+      "result": "failed=0, exit_status=0, four slots, 123 s, maxvmem 2.870G"
+    },
+    "source_only": "local source-only passed: 315 Python; 1,928 passed Rust tests plus 14 ignored in 80 groups; portable, fuzz and ratchet",
+    "stata": "six mapped Stata 19 MP fixtures pass; builder Break at W2 and W4 with exactly two readiness records each, rollback/reset/follow-up; public-scope PPML Break pass"
+  },
+  "decision": "Johannes, 2026-10-19: remove the construction-work cap altogether; no replacement work cap, dimension-only work bound, time cap or payback policy",
+  "declared_scope": {
+    "affected_routes": [
+      "injected two-FE routing arms (routing_incremental_two, routing_portfolio_unseeded, routing_portfolio_v1, routing_h*_k*, routing_direct, routing_cells, routing_diagonal)",
+      "injected general-pair routing_h*_k* on three or more FEs"
+    ],
+    "exact": [
+      "sample, rank, omission and other discrete model decisions",
+      "public uninjected routes",
+      "explicit cmg and cmgschur (OLS and PPML)",
+      "original-design certificate and tolerances"
+    ],
+    "may_change": [
+      "CMG installation and refusal decisions previously decided by the work cap",
+      "terminal factor choice (now hierarchy options and memory only)",
+      "small-direct admission previously declined by the remaining-allowance conjunct",
+      "iterations, hierarchy reports and solver signatures",
+      "coefficients, covariance, fit statistics, residuals and FE coordinates within section 20 tolerances"
+    ],
+    "memory_accounting": "Removed owner fields reduce the categorical owner's size_of contribution to admitted owner bytes on all two-FE and many-FE owners by a few dozen bytes; RMEMORY is outside the exact replay view",
+    "new_traces": [
+      "phase=routing_builder|event=builder_break_ready|task=0|ordinal=<zero-based poll>"
+    ],
+    "retired_traces": [
+      "auto_schur_route setup_work/setup_limit and refusal=WorkBudget",
+      "routing_action setup_work/setup_limit",
+      "auto_direct_route and auto_kernel_route limit fields",
+      "routing_overlap phase"
+    ]
+  },
+  "evidence_support": {
+    "change": "under FEREG_SOLVER_TRACE, an installed bounded build appends stored hierarchy metadata to its own auto_schur_route record; refused or failed attempts carry none; trace formatting only",
+    "checks": {
+      "bench_python": "191 tests pass, 1 skipped",
+      "fereg_focused": "trace_hierarchy_reports_stored_metadata_of_the_installed_build; auto_route_trace_reports_installed_hierarchy_and_nothing_for_refusals_isolated (real trace file: installed record with consistent metadata, zero-budget record installed=0|refusal=Some(MemoryBudget) without metadata)",
+      "not_run": "no plugin rebuild or replay for this trace-only change; no timing",
+      "parser": "bench/tests/test_routing_science.py RouteHierarchyTrace: refused/not-built/legacy records versus installed records with missing or invalid metadata",
+      "pre_m3a_focused_tests_unresolved": "first run of fe::borrowed_map::routing_tests, fe::cmg_schur and fe::routing on the patched pre-M3a snapshot reported FAILED. 83 passed; 1 failed (finished in 10.51s); the command retained only that summary line, so the failing test identity and output are missing and unrecoverable; five subsequent repetitions and one capture run each passed 84/84, which neither explains nor clears the first failure; unresolved pending review",
+      "pre_m3a_snapshot": "cargo fmt --check and clippy -D warnings pass on the patched 7ccab5a9 snapshot",
+      "run_tests_source_only": "pass: 315 Python tests, 1,945 Rust test executions in 81 groups (14 ignored), fuzz check, seven portable checks, complexity ratchet with declared growth (+24 production lines, +6 in borrowed_map.rs), mock bridge and Linux plugin load/audit",
+      "run_tests_standard": "stopped at scripts/check_github_install.py binding check (preserved)"
+    },
+    "fields": [
+      "terminal",
+      "levels",
+      "hierarchy_vertices",
+      "hierarchy_nonzeros",
+      "repeats",
+      "terminal_factor",
+      "terminal_factor_dimension",
+      "terminal_factor_nonzeros",
+      "application",
+      "parallel_operators",
+      "batch_columns"
+    ],
+    "gap": "bounded Auto auto_schur_route reported only checkpoint, installation and refusal; FEREG_CMG_HIERARCHY (explicit cmg) and cmgschur_setup (explicit cmgschur) do not run on the bounded route",
+    "paired_witness": {
+      "m3a": "terminal=Direct levels=1 vertices=64 nonzeros=210 repeats=0 factor dimension 62 nonzeros 177",
+      "pre_m3a": "terminal=Direct levels=2 vertices=64;26 nonzeros=210;80 repeats=2;0 factor dimension 24 nonzeros 61",
+      "refusal": "installed=0|refusal=Some(MemoryBudget) without metadata in both arms",
+      "source": "PairedGraph witness, portfolio_unseeded, one and four workers, scratch-only capture test (not committed)"
+    },
+    "pre_m3a_patch": "bench/diagnostics/pre-m3a-route-hierarchy-trace.patch (fereg 7ccab5a9 / CMG d11b2ac4; same trace_hierarchy method byte for byte; legacy setup_work/setup_limit fields kept)",
+    "series_format": "semicolon-separated, fine to coarse; one entry per stored level",
+    "snapshot_helper": "scripts/route_trace_snapshot.sh {pre-m3a OUT | m3a REV OUT}: private git-archive snapshot, no ref/worktree/history change; label <revision>-route-trace-diagnostic",
+    "sources": "CmgPreconditioner hierarchy().report() terminal_reason/vertex_counts/matrix_nonzeros, repeat_counts, terminal_factor active_dimension/factor_nonzeros; CmgSchurPreconditioner parallel plan operator_count and batch_columns; identical accessors at CMG d11b2ac4 and 03a26041"
+  },
+  "first_candidate": {
+    "cmg_revision": "c23666e894c3fb404313e5f6769e20f871d77470",
+    "fereg_revision": "20e76e965aae94aab2243fc4faef0541571c11e2",
+    "review": "not accepted: scalar workspace preparation ran graph-sized initialization without cancellation polls"
+  },
+  "first_cloud_handoff_limitations": [
+    "No licensed Stata run: the six mapped fixtures and the migrated synchronous builder-Break fixture at two and four workers are outstanding",
+    "No Mac build, ABI/load check or timing; no SCC or Linux qualification timing; no performance claim",
+    "Cell-by-cell admission, terminal-decision and installation differences on the 42 qualification inputs are outstanding",
+    "Declared-scope replay through bench/qualify.py and scripts/replay_solver_routing.py needs the frozen Mac baseline capture",
+    "The pre-existing CMG warning for the unused pcg center_and_dot_with_executor under parallel+experimental-components remains",
+    "The 75 injected corpus runs still never build CMG; CMG installation on the uncapped injected route is evidenced only by the fixed source witness",
+    "The route-trace change postdates the Codex host evidence; native Stata/Break/Mac/SCC reuse must be reassessed and paired diagnostic binaries rebuilt on the hosts",
+    "Unresolved: one failure (83 passed / 1 failed) in the first focused test run on the patched pre-M3a snapshot; identity and output were not captured"
   ],
-  "gap": "bounded Auto auto_schur_route reported only checkpoint, installation and refusal; FEREG_CMG_HIERARCHY (explicit cmg) and cmgschur_setup (explicit cmgschur) do not run on the bounded route",
-  "paired_witness": {
-   "m3a": "terminal=Direct levels=1 vertices=64 nonzeros=210 repeats=0 factor dimension 62 nonzeros 177",
-   "pre_m3a": "terminal=Direct levels=2 vertices=64;26 nonzeros=210;80 repeats=2;0 factor dimension 24 nonzeros 61",
-   "refusal": "installed=0|refusal=Some(MemoryBudget) without metadata in both arms",
-   "source": "PairedGraph witness, portfolio_unseeded, one and four workers, scratch-only capture test (not committed)"
-  },
-  "pre_m3a_patch": "bench/diagnostics/pre-m3a-route-hierarchy-trace.patch (fereg 7ccab5a9 / CMG d11b2ac4; same trace_hierarchy method byte for byte; legacy setup_work/setup_limit fields kept)",
-  "series_format": "semicolon-separated, fine to coarse; one entry per stored level",
-  "snapshot_helper": "scripts/route_trace_snapshot.sh {pre-m3a OUT | m3a REV OUT}: private git-archive snapshot, no ref/worktree/history change; label <revision>-route-trace-diagnostic",
-  "sources": "CmgPreconditioner hierarchy().report() terminal_reason/vertex_counts/matrix_nonzeros, repeat_counts, terminal_factor active_dimension/factor_nonzeros; CmgSchurPreconditioner parallel plan operator_count and batch_columns; identical accessors at CMG d11b2ac4 and 03a26041"
- },
- "first_candidate": {
-  "cmg_revision": "c23666e894c3fb404313e5f6769e20f871d77470",
-  "fereg_revision": "20e76e965aae94aab2243fc4faef0541571c11e2",
-  "review": "not accepted: scalar workspace preparation ran graph-sized initialization without cancellation polls"
- },
- "host": "Linux x86_64 cloud container, 4 vCPU; rustc 1.85.1; Python 3.13.16; not a qualification host",
- "limitations": [
-  "No licensed Stata run: the six mapped fixtures and the migrated synchronous builder-Break fixture at two and four workers are outstanding",
-  "No Mac build, ABI/load check or timing; no SCC or Linux qualification timing; no performance claim",
-  "Cell-by-cell admission, terminal-decision and installation differences on the 42 qualification inputs are outstanding",
-  "Declared-scope replay through bench/qualify.py and scripts/replay_solver_routing.py needs the frozen Mac baseline capture",
-  "The pre-existing CMG warning for the unused pcg center_and_dot_with_executor under parallel+experimental-components remains",
-  "The 75 injected corpus runs still never build CMG; CMG installation on the uncapped injected route is evidenced only by the fixed source witness",
-  "The route-trace change postdates the Codex host evidence; native Stata/Break/Mac/SCC reuse must be reassessed and paired diagnostic binaries rebuilt on the hosts",
-  "Unresolved: one failure (83 passed / 1 failed) in the first focused test run on the patched pre-M3a snapshot; identity and output were not captured"
- ],
- "linux_plugins": {
-  "baseline_sha256": "f71e83b4b8f00b5a83cc3528260593e6557213b82d4cb8cd3230f180a3b32145",
-  "candidate_note": "built from the M3a tree against the local CMG checkout whose code equals c23666e (two doc comments differ)",
-  "candidate_sha256": "f6e40ef47d1728cb4a1432a8410c4b3d8e885ee847d5599debf9214fe1ec5e9a",
-  "harness_sha256": "aa5ca6b5804fc8a724db6795fd9ac954f416cf6afb6581e7f55990d754543fd7"
- },
- "milestone": "M3a: remove the optional CMG construction-work cap and retire the overlap experiment",
- "reference_cmg_revision": "d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d",
- "reference_revision": "7ccab5a901b135e59b73603426ea2b8bfb128d89",
- "review_repair": {
-  "actual_plugin_replay": "73 of 73 cases pass with zero exact differences between the repaired plugin and the first M3a plugin (20e76e96)",
-  "change": "CMG restores cancellation-only workspace_allocation_bytes_controlled and try_workspace_controlled sharing one implementation with the ordinary queries (poll before every allocation, counted level/plan/bank-initialization loops at the 65,536-unit cadence, final poll); fereg finish runs both through Work::cmg so Cancelled maps to a fatal Interrupted attempt; layout, memory accounting, error classes and arithmetic unchanged; no ledger, cap, predictive limit or preflight",
-  "cmg_checks": "cargo test --all-targets default/all features in debug and release (117/227 tests), clippy -D warnings for default, parallel, experimental-components and all features, fmt, benchmark crate fmt and clippy in a standalone copy: pass; unit tests cancel at every poll of component, centering and scalar workspaces and the layout query; allocator tracer over try_workspace_controlled",
-  "complexity": "fereg-core 104,922 -> 104,919 production lines; no growth",
-  "fereg_focused": "isolated cancellation test cancels inside a 1.8-million-value workspace preparation at early, middle and late polls (Interrupted at exactly that poll), then rebuilds the workspace and a bounded candidate with reference cycle bits; incremental_two_injection_builds_installs_and_certifies_uncapped_cmg installs CMG at iteration 16 and certifies against the PairedGraph analytic witness at one and four workers, with and without a memory budget",
-  "injected_two_fe_replay": "75 injected runs (incremental_two, h4_k1, direct): zero exact, discrete, route and repeat differences against the first M3a plugin; no run reached a CMG build; the three known-defect cases report the same intended-repair expectation differences on both plugins",
+  "host": "Linux x86_64 cloud container, 4 vCPU; rustc 1.85.1; Python 3.13.16; not a qualification host",
+  "limitations": [
+    "M3a not accepted: Linux diagnostic stopped with a diagnosed metadata-adapter error after six warmups and before timed blocks; no measurement restart has run.",
+    "The standard installed-plugin binding mismatch remains a failed check; source-only evidence does not replace installed-package qualification.",
+    "The historical patched-baseline 83-pass/1-fail run remains unexplained; the approved single84/84 comparison does not erase it.",
+    "Mac D.3 measures instrumented complete solves on one active desktop; six mirrored blocks are uncertainty units, not independent hosts. This is not public activation qualification.",
+    "Historical cloud plugin results retain their own artifacts and do not establish Mac/Linux performance. Two-FE public activation stays disabled.",
+    "Raw current evidence is retained only while this workstream is unfinished; committed hashes and summaries are the durable record."
+  ],
   "linux_plugins": {
-   "baseline_revision": "20e76e965aae94aab2243fc4faef0541571c11e2",
-   "baseline_sha256": "4185d6aa3a24fb9863969f11dd4eae29625f81d67e63ec868b81058a54e9b7f8",
-   "candidate_revision": "653b86c (pinned CMG 03a26041)",
-   "candidate_sha256": "158e2e340ff45b302ec1c68dd23e3a0a78fa7dac1cc204d96291c646f1f4f4b7",
-   "harness_sha256": "aa5ca6b5804fc8a724db6795fd9ac954f416cf6afb6581e7f55990d754543fd7"
+    "baseline_sha256": "f71e83b4b8f00b5a83cc3528260593e6557213b82d4cb8cd3230f180a3b32145",
+    "candidate_note": "built from the M3a tree against the local CMG checkout whose code equals c23666e (two doc comments differ)",
+    "candidate_sha256": "f6e40ef47d1728cb4a1432a8410c4b3d8e885ee847d5599debf9214fe1ec5e9a",
+    "harness_sha256": "aa5ca6b5804fc8a724db6795fd9ac954f416cf6afb6581e7f55990d754543fd7"
   },
-  "run_tests_source_only": "pass: 315 Python tests, 1,942 Rust test executions in 80 groups (14 ignored), fuzz check, seven portable checks, complexity ratchet, mock bridge and Linux plugin load/audit",
-  "run_tests_standard": "stopped at scripts/check_github_install.py: main's runtime changed (expected installed-package binding difference, preserved)"
- },
- "schema": 1,
- "status": "cloud source checks pass; native Stata, Break, Mac and SCC checks outstanding"
+  "milestone": "M3a: remove the optional CMG construction-work cap and retire the overlap experiment",
+  "reference_cmg_revision": "d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d",
+  "reference_revision": "7ccab5a901b135e59b73603426ea2b8bfb128d89",
+  "review_repair": {
+    "actual_plugin_replay": "73 of 73 cases pass with zero exact differences between the repaired plugin and the first M3a plugin (20e76e96)",
+    "change": "CMG restores cancellation-only workspace_allocation_bytes_controlled and try_workspace_controlled sharing one implementation with the ordinary queries (poll before every allocation, counted level/plan/bank-initialization loops at the 65,536-unit cadence, final poll); fereg finish runs both through Work::cmg so Cancelled maps to a fatal Interrupted attempt; layout, memory accounting, error classes and arithmetic unchanged; no ledger, cap, predictive limit or preflight",
+    "cmg_checks": "cargo test --all-targets default/all features in debug and release (117/227 tests), clippy -D warnings for default, parallel, experimental-components and all features, fmt, benchmark crate fmt and clippy in a standalone copy: pass; unit tests cancel at every poll of component, centering and scalar workspaces and the layout query; allocator tracer over try_workspace_controlled",
+    "complexity": "fereg-core 104,922 -> 104,919 production lines; no growth",
+    "fereg_focused": "isolated cancellation test cancels inside a 1.8-million-value workspace preparation at early, middle and late polls (Interrupted at exactly that poll), then rebuilds the workspace and a bounded candidate with reference cycle bits; incremental_two_injection_builds_installs_and_certifies_uncapped_cmg installs CMG at iteration 16 and certifies against the PairedGraph analytic witness at one and four workers, with and without a memory budget",
+    "injected_two_fe_replay": "75 injected runs (incremental_two, h4_k1, direct): zero exact, discrete, route and repeat differences against the first M3a plugin; no run reached a CMG build; the three known-defect cases report the same intended-repair expectation differences on both plugins",
+    "linux_plugins": {
+      "baseline_revision": "20e76e965aae94aab2243fc4faef0541571c11e2",
+      "baseline_sha256": "4185d6aa3a24fb9863969f11dd4eae29625f81d67e63ec868b81058a54e9b7f8",
+      "candidate_revision": "653b86c (pinned CMG 03a26041)",
+      "candidate_sha256": "158e2e340ff45b302ec1c68dd23e3a0a78fa7dac1cc204d96291c646f1f4f4b7",
+      "harness_sha256": "aa5ca6b5804fc8a724db6795fd9ac954f416cf6afb6581e7f55990d754543fd7"
+    },
+    "run_tests_source_only": "pass: 315 Python tests, 1,942 Rust test executions in 80 groups (14 ignored), fuzz check, seven portable checks, complexity ratchet, mock bridge and Linux plugin load/audit",
+    "run_tests_standard": "stopped at scripts/check_github_install.py: main's runtime changed (expected installed-package binding difference, preserved)"
+  },
+  "schema": 1,
+  "status": "M3a unaccepted: native and 42-cell scientific checks plus Mac fixed diagnostic pass; Linux harness failed before timed blocks, repair validated against all six retained outputs without native repetition; awaiting a specific Linux call-budget exception"
 }
