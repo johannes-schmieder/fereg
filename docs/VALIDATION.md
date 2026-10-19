@@ -28,8 +28,9 @@ were deleted; hashes and summaries are the remaining record.
 
 ## CMG successor milestone 2: initial graph construction
 
-**Implementation, source integration and mapped Mac native checks pass;
-performance assessment is pending.** CMG is pinned to
+**M2 is complete: source/native checks and the fixed cost diagnostic pass.**
+Work stops here for Johannes. This does not qualify two-FE activation.
+CMG is pinned to
 `d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d`. The upstream mapping/merge path and
 fereg's independent edge emission use the existing host team, a fixed 65,536-edge
 threshold and dimension-based chunks. Canonical aggregation, compensated suffix
@@ -78,7 +79,7 @@ accounting near resource boundaries; refusal must retain charges, join all work
 and publish no partial state. Insufficient optional scratch selects the serial
 path before dispatch, without a retry of partially executed work.
 
-Witnesses will compare raw sampled edges, canonical graphs and diagonals,
+Focused witnesses compare raw sampled edges, canonical graphs and diagonals,
 hierarchies and cycle outputs at one, two and four workers, with ties, duplicate
 endpoints, multiple components and sampled high-degree rows. Independent Schur
 and clique witnesses, fixed-worker repeats, low-memory/refusal boundaries,
@@ -94,7 +95,7 @@ additional CPU profiles target high-degree weak at one and eight workers.
 Every native call has a 120-second limit; the complete diagnostic has a
 1,800-second budget. These are cost diagnostics, not qualification or a speed
 claim. Profiling failure is retained and does not authorize additional sampling.
-A fixed comparison budget will be declared after production edits and focused
+A fixed comparison budget was declared after production edits and focused
 checks, before collecting candidate timings. M2 ends with a report for Johannes;
 hierarchy work, further qualification and two-FE activation require his direction.
 
@@ -106,9 +107,15 @@ certificates, the 600,000 by 12 binary output shape and its exact fingerprint.
 The bounded reader repair uses the maintained parser, consumes that warmup
 without repeating it, and permits only the original remaining 35 calls and
 up to two profiles on the same physical host. It debits 27 seconds from the
-original budget, leaving 1,773 seconds. No input or artifact is regenerated.
+original budget, leaving 1,773 seconds. No input or artifact was regenerated.
+The remaining schedule completed in job 8179463 on the same `scc-zj4`, with
+`failed=0`, `exit_status=0` and 51 accounted seconds. All 36 original calls and
+both profiles completed in 76.05 seconds including the prior debit. The first
+job remains failed. The two 99 Hz profiles have 164 and 215 CPU samples and
+zero lost samples, but include substantial harness text parsing. They locate
+construction sorts without measuring a precise native-stage cost share.
 
-After source and mapped native checks, the fixed M2 comparison budget is the
+After source and mapped native checks, the fixed M2 comparison budget was the
 same four input families at one, four and eight requested workers, against
 the repaired reference. Six distinct isolated 28-core SCC hosts each run one
 warmup per arm and two mirrored blocks per cell: 120 calls per host, 720 in
@@ -130,6 +137,77 @@ neither design proves independence or supports a simultaneous-coverage claim.
 The comparison retains setup, application, polishing and complete-solve costs,
 memory/admission observations and all failed calls. No automatic extension is
 authorized by a slow or inconclusive result.
+
+The comparison completed all 720 Linux calls in jobs 8179530–8179535 on
+`scc-tj3`, `scc-tj4`, `scc-tn3`, `scc-tn4`, `scc-tq3` and `scc-tq4`.
+Every job has `failed=0`, `exit_status=0`, 28 reserved cores and valid whole-host
+observation evidence. Application time is 124.20–125.89 seconds per host.
+The single metadata report, job 8179555, also passed. Its deliberately pending
+accounting field is resolved by the separately verified six scheduler records.
+The Mac completed all 312 calls in 167.74 seconds with no retries. Ordinary
+desktop activity remained in its 47 process samples; the maximum sample gap
+was 5.231 seconds, with no classified competing-compute hit. The root process
+and matching harness commands were absent at the terminal census. This is not
+an exhaustive descendant PID/birth ledger.
+
+Independent raw reviews reconstructed 720 Linux and 312 Mac call records,
+144 Linux and 24 Mac first-call output snapshots, completion certificates,
+resource decisions, exact between-artifact science/signatures, fixed-worker
+repeats and cross-worker numerical agreement. All 12 per-cell complete-call
+excess-time upper bounds are below zero on each platform for max(5%, 1 ms).
+These are conditional per-cell bounds, without a simultaneous-coverage claim.
+Successful timed full sidecars were deleted by the fixed producer; reviewers
+could reread the retained first requested output arrays and all recorded
+fingerprints, not replay every unavailable full array. No oracle solve or native
+measurement was repeated during review.
+
+The high-degree weak case shows where M2 helps:
+
+| Platform | Workers | Initial setup, reference → M2 | Paired complete-call change |
+| --- | ---: | ---: | ---: |
+| Linux | 1 | 129.740 → 125.355 ms | −1.11% |
+| Linux | 4 | 125.890 → 106.293 ms | −4.60% |
+| Linux | 8 | 125.085 → 102.555 ms | −5.95% |
+| Mac | 1 | 50.827 → 58.622 ms | +2.22% |
+| Mac | 4 | 48.435 → 44.272 ms | −2.02% |
+| Mac | 8 | 48.310 → 43.423 ms | −1.64% |
+
+Setup here is the initial absorption's `RSOLVER` setup field, excluding final
+residual/polish setup. Each timed arm is geometrically averaged within a block;
+Linux combines its two blocks within host before taking the median across
+six hosts, while Mac uses six block units. Complete-call changes are paired
+unit median ratios. Warmups are excluded. The separate raw Mac review also
+reports per-call medians of summed projection and polish setup; those answer
+a different question and are not substituted in this table.
+
+The Linux gain at four/eight workers is concentrated in initial setup;
+initial solve remains about 73/47 ms and polishing barely changes. High-degree
+charged setup work falls from 792,495,096 to 775,849,280 at all worker counts;
+these bookkeeping units are not CPU instruction counts. The Mac one-worker
+setup penalty is real in this sample, although complete-call cost stays within
+the allowance. The weak-low eight-worker Linux median is 1.23% slower, also
+within allowance. Repeated-cell and wide-RHS cases have no checkpoint admission
+trace, so their small timing changes are controls rather than evidence of an
+M2 construction benefit. All-cell stage, memory and work summaries are in the
+compact result.
+
+Setup still costs about 103 ms on Linux and 43 ms on Mac at eight workers.
+The traced Schur recurrence bucket, which includes repeated CMG application,
+is about 12/16 ms respectively. It is not an isolated CMG-application timer.
+Canonical census/finalization and controlled hierarchy construction remain
+serial, but these logs do not separate graph and hierarchy cost. The proposed
+next milestone would first measure that split, then consider bounded,
+deterministic coarse contraction with the existing host-team contract and
+canonical reductions. It is a proposal, not work started by this report.
+
+Implementation is committed in fereg `d0cee50a2c575564b512544841b822556ce92c26`
+and upstream CMG `d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d`, both pushed.
+The source-bound handoff retains the exact compiled production identity,
+artifact hashes, build settings, compact checks and review hashes. Capture
+names identify reviewed temporary evidence, not promised permanent raw files.
+Two-FE remains disabled, many-FE stays enabled, and the old failed two-FE
+qualification remains failed. No hierarchy edits, new qualification, routing
+retune, main merge or release-package update follows automatically.
 
 ## CMG successor milestone 1: execution and admission foundation
 
