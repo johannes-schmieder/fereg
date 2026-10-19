@@ -26,6 +26,176 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## CMG successor milestone 1: execution and admission foundation
+
+**Implementation and source review are complete; milestone acceptance remains
+blocked by a reproduced pre-existing scientific failure and an unresolved
+four-worker Break trace-check failure.** No later milestone is started.
+
+Johannes authorized this milestone of the staged successor after the two-FE
+qualification above. It establishes a shared execution interface and canonical
+admission, without optimizing graph construction, hierarchy construction or
+application kernels. Work stops after this milestone for his next decision.
+No diagnostic campaign, further qualification, two-FE activation or release
+package update belongs to this milestone.
+
+The host adapter borrows only fereg's actual installed Rayon registry with a
+live action admission. It retains the pool owner for the synchronous operation,
+limits an overlap borrower to one lane, rejects an unadmitted fereg worker and
+uses the existing serial path outside fereg's team. The scoped upstream view
+cannot escape into a hierarchy or workspace. Standalone CMG-owned execution
+remains available. A controlled stage precharges planning, every logical chunk
+and its dispatch overhead through the coordinator's ordinary mutable controller;
+workers receive disjoint, previously admitted storage and bounded kernels.
+There is no shared atomic work quota. All dispatched work joins before stage
+return or unwind; errors reconcile in logical order and cancellation dominates.
+
+The current numerical builders remain serial. Five upstream entrypoints each
+charge 64 new work units, including serial fallback, before borrowing the host
+context. The existing total budget and incumbent handoff reserve do not grow.
+Factor preflight receives the actual post-charge remainder. Consequently this
+is explicitly an admission and callback/work-trace change: near a work boundary
+it can refuse construction or choose coarsening instead of a direct factor,
+changing the hierarchy and solver signature. It does not claim universal
+historical bit or admission equivalence. The arithmetic kernels, scientific
+tolerances and model/sample/rank/omission semantics are unchanged. See the
+[execution contract](ARCHITECTURE.md#cmg-host-team-and-stage-admission).
+
+Focused tests cover the actual host registry and admission lease, one/four-worker
+ceilings, overlap isolation, pre-dispatch refusal and exact canonical traces,
+and reuse of a hierarchy/workspace across separate installations. A terminal
+factor boundary witness checks equality and two smaller remaining allowances
+at one and four workers against the original two-node Laplacian. Its first test
+asserted a particular null-space gauge and failed: the direct LDL factor fixes
+a root gauge while the diagonal terminal is centered. The corrected independent
+witness checks the original operator equation at the same `1e-12` tolerance;
+both routes pass. This was a test correction, not a solver or tolerance change.
+
+Independent review also found that the newly public owned-executor coordinator
+could be misused to launch a detached Rayon task holding the last executor
+owner. Joining its own worker on final destruction would deadlock. The fix
+detects that path, signals termination and detaches handles; ordinary external
+retirement still joins every worker and its thread-local destructors. Detached
+callback work remains outside the interface contract, with asynchronous
+retirement explicitly disclosed. A bounded subprocess regression exercises
+last-owner destruction and eventual worker retirement at one and four workers.
+
+The reviewed upstream change is CMG `8b3c50507165d834199c03520f9cacc933f97778`
+on `codex/host-execution-foundation`, based on the previously admitted
+`3422b0408023769f08f33391b90a613745601e7d`; unrelated newer upstream work is not
+included. The fereg manifest and both workspace/fuzz locks bind that exact
+revision. Independent high-effort architecture review passes after the two
+findings above. Upstream checks pass six lifecycle tests, nine host/stage tests,
+four controlled-builder tests, four factor-preflight tests and the scoped-view
+compile-fail doctest, plus all-feature/all-target Clippy, no-default-feature
+compilation, formatting and diff checks. The check-capture SHA-256 is
+`7892547e8bfc9bd93923bc9fcc051a07f28ba0616078ad616a2082c9992660c7`.
+
+The fereg production identity is
+`a26fb6f7853009ae6656f9249ac31df767c48a4c6c213ccd7c63a5508fead31c`
+across 192 runtime modules and 58 artifact inputs. The complexity inventory
+records 33 added core production lines for the scoped adapter, entry accounting
+and post-charge remainder; the other complexity metrics do not increase.
+The source integration and private native checks below bind this identity.
+No performance improvement is claimed by this foundation.
+
+The default `./scripts/run_tests.sh` invocation passed its 312 Python tests,
+then failed the installed-package runtime binding check because this branch's
+source differs from the preserved release artifact. That failed invocation
+remains failed; the documented explicit `--source-only` development mode is
+used separately and cannot establish installed-package admission. The first
+source-only invocation then stopped on two `drop_non_drop` Clippy errors in the
+new tests. Removing the unnecessary test-only `drop` calls fixed those errors
+without changing production identity. The failed default and source-only
+capture hashes are respectively
+`a133b170a28b39ea7bd16bb4b57c83b0198e8c9fd50b8830ca6b924b4e1e8b20`
+and `2e1eadbd83cfd431be525700324fd051c07934909acee86e6f1195091592ee02`.
+
+The final `RUST_TEST_THREADS=1 ./scripts/run_tests.sh --source-only` passes in
+205.74 seconds on Rust 1.85.1: 312 Python tests, 1,951 Rust test executions,
+Clippy, fuzz compilation, isolated allocator/FFI audits, seven portable tests,
+the complexity ratchet, mock SPI and numeric input/output guards. The Linux
+mock-plugin audit is skipped on Mac; no Linux or installed-package admission is
+claimed. Its capture hash is
+`f03bc5d7c0af3e3965e8360c18791b1bcb3c63d71973a0aa235195f8c424ca09`.
+
+The first private universal Mac build compiled both architectures but failed
+the personal-path audit because its panic locations contained source/Cargo
+paths. That artifact was not admitted or used for Stata tests. The same source
+was rebuilt with Rust path remapping, retaining the failed build capture
+identity `e373fc3c17bda889c3e718b11f567e1c06bd7cd117a672ea72a27839b8a9017e`
+and rejected binary identity
+`a4479ba5c0193661f470b85df05470a137333c7f7eca7bf17594aa59a834cb1f`.
+
+The remapped build passes in 148.41 seconds using Rust 1.85.1, the locked
+release profile (optimization 3, fat LTO, one codegen unit, unwind), and the
+maintained universal Mac build/audit/load entrypoint. Both x86-64 and arm64
+slices pass binary inspection; actual ABI/load, worker and panic-containment
+checks run on this arm64 Mac. Build identity `m1-src-a26fb6f78530` denotes the
+production identity above, not an earlier Git commit. The private plugin is
+`96352ecfea434212761ecf178a0f744084604155424b17651c683257d3792d52`;
+the actual loader harness is
+`5285ce62b666119c6271cad54e555ebb2a930d102575e5eb29d0cb118440703d`.
+The successful build/audit capture is
+`9853eb05f17032f776640ed11d9d9b487561edf48513cacee755543acf52eec6`.
+This is private development validation, not installed-package admission.
+
+Five of six mapped Stata 19 MP fixtures pass on that exact plugin:
+`ols_cmgschur`, `ols_cmgschur_sampled`, `ols_cmgschur_nonconvergence`,
+`ols_cmg_raw_residual_oracle` and `estimate_ols_auto_cmg_route`.
+`ols_near_within_cmg_oracle` fails with `r(459)` and
+`borrowed CG direction denominator is nonfinite or nonpositive`. This remains
+a scientific failure, not an interference exclusion. The fixture, CG recurrence,
+explicit CMG construction/polishing and Auto dispatcher are unchanged from the
+exact parent `59c8e8d1056a56aab12730c8fc4e8c27e923c81d`.
+
+A private build of that parent, using the same toolchain, release settings and
+path remapping, also passes universal binary/ABI checks and reproduces the
+same failed fixture. Its binary hash is
+`b15c33189a3b335a24bfeb6c65aacb870a149ca47dd3a7b71a21fab919a29996`.
+One further diagnostic per artifact adds only per-call display labels to a
+temporary copy of the fixture, preserving its data, options and assertions.
+Both fail on the same first offending call: ordinary fit, analytic weights,
+`memory(low)`, `threads(1)`, explicit `solver(cmg)`, tolerance `1e-12`.
+The preceding unit-weight fit/recovery and fast analytic-weight calls pass.
+The unchanged strict CG polishing checks can reject a nonpositive direction
+product; this diagnosis does not justify changing them or weakening the oracle.
+The committed fixture itself is the reproducer. No solver or tolerance repair
+was attempted, and no full battery was restarted for diagnosis.
+
+The two-worker actual builder Break check passes two cancellations, rollback,
+lease/reset checks and follow-up fits. The four-worker invocation reached the
+Stata success/reset sentinel but failed the runner's requirement for exactly
+two positive-work trace records. The runner deleted that failed raw trace,
+so its record count and cause cannot be independently reconstructed. One
+bounded diagnostic invocation, adding only raw-trace capture before the same
+validator, passes with two records (`issued=373696`, `charged=64`, `ordinal=1`).
+This later observation does not erase the first failure or establish a tooling
+repair. No assertion, runtime source or observer criterion was relaxed.
+
+The summaries above are the permanent record; capture identities are:
+
+| Evidence | SHA-256 |
+| --- | --- |
+| Six-fixture M1 summary, five pass and one failure | `e075a767b5f43782b14fe0d39eb41a9914f536f11f1ab0b80a507c232423a0b7` |
+| Exact-parent build/audit/ABI | `3b30dbea1e447b157492cba041646bb1c187f0a686a983042448929c4623b4c1` |
+| Exact-parent failed-fixture summary | `0c4370fb6c3a450047fdea7d12648918c459eb424770a47d8b6b4ef1879f45d2` |
+| M1 labelled failure capture | `6d755bbe97f6a7e56adbe24faab8e23fe1982167a9e5bb6176c6f01962746fa0` |
+| Parent labelled failure capture | `c866e6d5b115ddd4a5ecb5745491c6af09784ee2dff63835b3bd28010804e7ed` |
+| Two-worker builder Break pass | `5b2e892e0db129baf3d831afc22e0856fac74bf3996f29b4a22aaada31406e72` |
+| Four-worker builder trace-check failure | `353c7169dc4dae9683efcfe8c28bc463dd135ab5beb192fbb0bcd547db1a779d` |
+| Four-worker diagnostic capture | `6d1da18c12ad0011caad041b885a7c31330b6b66fc98e7b0d41f99363965ffd2` |
+| Diagnostic raw trace | `87cf0765f3dabb3fae177bc7a4f5875e59119fa36c7ae44f17f0a776e12713c1` |
+
+This checkpoint is not a passing M1 admission or performance qualification.
+Many-FE stays enabled, two-FE stays disabled, and installed packages stay
+unchanged. Dependent work stops for Johannes's direction on the scientific and
+trace-validation blockers. Current reproducer artifacts may remain locally
+while blocked; ignored files are not permanent evidence.
+Independent evidence review verifies the pin, plugin/capture identities,
+source-test count and matching parent/candidate failure, and agrees with this
+blocked checkpoint disposition rather than milestone acceptance.
+
 ## Compact validation suite, 2026-10-18
 
 Johannes authorized replacing the mandatory A/B/C harness with one fixed-candidate

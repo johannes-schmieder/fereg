@@ -94,25 +94,36 @@ impl Work<'_> {
 
     fn cmg<T>(
         &mut self,
-        build: impl FnOnce(&mut dyn cmg::BuildControl) -> std::result::Result<T, CmgError>,
+        build: impl FnOnce(
+            u64,
+            Option<&cmg::InstalledTeam<'_>>,
+            &mut dyn cmg::BuildControl,
+        ) -> std::result::Result<T, CmgError>,
     ) -> Attempt<T> {
+        // Charge the fixed registry/lease lookup before touching the host team,
+        // also on the serial path. This is a new admission boundary, not free
+        // planning or unchanged historical callback/work traces.
+        self.gate("fereg.cmg.host_context", BuildOperation::Work { units: 64 })?;
+        let remaining = self.budget - self.used;
         let mut failure = None;
-        let result = build(&mut |boundary: cmg::BuildBoundary| match self
-            .gate(boundary.phase, boundary.operation)
-        {
-            Ok(()) => BuildDecision::Continue,
-            Err(error) => {
-                let decision = if matches!(&error, AttemptError::Fatal(e)
+        let mut control =
+            |boundary: cmg::BuildBoundary| match self.gate(boundary.phase, boundary.operation) {
+                Ok(()) => BuildDecision::Continue,
+                Err(error) => {
+                    let decision = if matches!(&error, AttemptError::Fatal(e)
                         if e.code == crate::error::ErrorCode::Interrupted)
-                {
-                    BuildDecision::Interrupted
-                } else {
-                    BuildDecision::StopUnused
-                };
-                failure = Some(error);
-                decision
-            }
-        });
+                    {
+                        BuildDecision::Interrupted
+                    } else {
+                        BuildDecision::StopUnused
+                    };
+                    failure = Some(error);
+                    decision
+                }
+            };
+        let result =
+            crate::parallel::with_cmg_execution(|team| build(remaining, team, &mut control))
+                .map_err(AttemptError::Fatal)?;
         if let Some(error) = failure {
             return Err(error);
         }
@@ -565,13 +576,8 @@ fn finish(
     let parents = graph_storage_bound(&graph)? + components.bytes() + cache_bytes;
     let admitted = admit(memory, work, parents, bound)?;
     // The finite upstream meter shadows callback-admitted work; callbacks alone
-    // debit this owner. Capture the remainder after the existing admission work.
-    let remaining_work = if bounded_terminal {
-        work.budget - work.used
-    } else {
-        u64::MAX
-    };
-    let preconditioner = work.cmg(|control| {
+    // debit this owner. The remainder includes the host-context entry charge.
+    let preconditioner = work.cmg(|remaining_work, _, control| {
         if bounded_terminal {
             CmgPreconditioner::build_component_experiment_serial_controlled_with_factor_preflight(
                 &graph,
@@ -597,10 +603,12 @@ fn finish(
     // it must never become an ungated operation in optional construction.
     work.charge(128)?;
     let parents = parents + bound as u128;
-    let workspace_bytes = work
-        .cmg(|control| preconditioner.workspace_allocation_bytes_controlled(u64::MAX, control))?;
-    let cycle_work =
-        work.cmg(|control| preconditioner.scalar_cycle_work_bound_controlled(u64::MAX, control))?;
+    let workspace_bytes = work.cmg(|_, _, control| {
+        preconditioner.workspace_allocation_bytes_controlled(u64::MAX, control)
+    })?;
+    let cycle_work = work.cmg(|_, _, control| {
+        preconditioner.scalar_cycle_work_bound_controlled(u64::MAX, control)
+    })?;
     work.charge(128)?;
     let startup_bound = (cycle_work as u128)
         .checked_add(
@@ -620,7 +628,7 @@ fn finish(
         .ok_or_else(|| allocation("bounded CMG apply storage overflows"))?;
     admit(memory, work, parents, bound)?;
     let scalar_workspace =
-        work.cmg(|control| preconditioner.try_workspace_controlled(u64::MAX, control))?;
+        work.cmg(|_, _, control| preconditioner.try_workspace_controlled(u64::MAX, control))?;
     let rhs = work.filled(graph.vertex_count(), 0.0)?;
     let solution = work.filled(graph.vertex_count(), 0.0)?;
     work.charge(256)?;
@@ -1218,7 +1226,7 @@ fn graph(
         scratch + vec_capacity_bytes(&edges),
         graph_bound,
     )?;
-    let graph = work.cmg(|control| {
+    let graph = work.cmg(|_, _, control| {
         Laplacian::from_edges_controlled(vertices, &edges, admitted, u64::MAX, control)
     })?;
     drop(edges);
@@ -1242,6 +1250,166 @@ fn graph(
 #[cfg(test)]
 mod control_tests {
     use super::*;
+
+    #[test]
+    fn host_entry_and_stage_admission_are_charged_before_dispatch_at_every_worker_count() {
+        use crate::{options::ThreadConfig, parallel::ThreadTeam};
+        let mut expected = None;
+        for workers in [1, 4] {
+            for budget in [0, 63, 64, 191, 511, 512] {
+                let result = ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap())
+                    .install(|| {
+                        let mut trace = Vec::new();
+                        let mut control = |boundary| {
+                            trace.push(boundary);
+                            BuildDecision::Continue
+                        };
+                        let mut work = Work {
+                            budget,
+                            used: 0,
+                            ordinal: 0,
+                            control: Some(&mut control),
+                        };
+                        let mut output = [0_u32; 16]; // Already owned/admitted test storage.
+                        let outcome = work.cmg(|remaining, team, controller| {
+                            assert_eq!(remaining, budget - 64);
+                            let stage =
+                                cmg::ControlledStage::admit(16, 4, 16, remaining, controller)?;
+                            stage.run(
+                                team.unwrap(),
+                                &mut output,
+                                || false,
+                                |index, chunk| {
+                                    chunk.fill(index as u32 + 1);
+                                    Ok(())
+                                },
+                            )
+                        });
+                        if budget == 512 {
+                            assert!(outcome.is_ok());
+                            assert_eq!(output, [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4]);
+                        } else {
+                            assert!(matches!(
+                                outcome,
+                                Err(AttemptError::Refused(BuildRefusal::WorkBudget))
+                            ));
+                            assert_eq!(output, [0; 16]);
+                        }
+                        assert!(work.used <= budget);
+                        let used = work.used;
+                        (used, trace)
+                    })
+                    .unwrap();
+                if workers == 1 {
+                    expected.get_or_insert_with(Vec::new).push(result);
+                } else {
+                    let index = [0, 63, 64, 191, 511, 512]
+                        .iter()
+                        .position(|value| *value == budget)
+                        .unwrap();
+                    assert_eq!(result, expected.as_ref().unwrap()[index]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn controlled_hierarchy_and_workspace_outlive_individual_installations() {
+        use crate::{options::ThreadConfig, parallel::ThreadTeam};
+        let make = |workers| {
+            ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    let mut trace = Vec::new();
+                    let (result, scale) = candidate(&mut |boundary| {
+                        trace.push(boundary);
+                        BuildDecision::Continue
+                    })
+                    .unwrap();
+                    (
+                        result.preconditioner.unwrap(),
+                        scale,
+                        result.work_used,
+                        trace,
+                    )
+                })
+                .unwrap()
+        };
+        let (mut one, scale, work, trace) = make(1);
+        let (four, other_scale, other_work, other_trace) = make(4);
+        assert_eq!((scale, work, trace), (other_scale, other_work, other_trace));
+        assert_eq!(
+            one.preconditioner.hierarchy(),
+            four.preconditioner.hierarchy()
+        );
+        let mut expected = None;
+        for workers in [4, 1, 4] {
+            let mut rhs = [1.0, -1.0];
+            ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    one.apply_reduced_in_place(&mut rhs, &mut [0.0; 2], scale)
+                        .unwrap();
+                })
+                .unwrap();
+            let bits = rhs.map(f64::to_bits);
+            assert_eq!(bits, *expected.get_or_insert(bits));
+        }
+    }
+
+    #[test]
+    fn host_charge_precedes_the_actual_terminal_affordability_remainder() {
+        use crate::{options::ThreadConfig, parallel::ThreadTeam};
+        let graph = Laplacian::from_edges(2, [(0, 1, 1.0)]).unwrap();
+        let run = |budget, workers| {
+            ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    let mut trace = Vec::new();
+                    let mut controller = |boundary| {
+                        trace.push(boundary);
+                        BuildDecision::Continue
+                    };
+                    let mut work = Work { budget, used: 0, ordinal: 0, control: Some(&mut controller) };
+                    let result = work.cmg(|remaining, _, control| {
+                        CmgPreconditioner::build_component_experiment_serial_controlled_with_factor_preflight(
+                            &graph, CmgOptions::default(), component_options(), usize::MAX,
+                            remaining, control,
+                        )
+                    });
+                    let candidate = match result { Ok(value) => value, Err(_) => panic!("small graph must complete") };
+                    let used = work.used;
+                    (candidate, used, trace)
+                }).unwrap()
+        };
+        let (_, _, full) = run(u64::MAX, 1);
+        let preflight = full
+            .iter()
+            .find(|event| event.phase == "terminal factor preflight")
+            .unwrap();
+        // Independent F(2,1)=4488 from the existing terminal-factor contract.
+        let equality = preflight.charged_work + 1024 + 4488;
+        for budget in [equality - 64, equality - 1, equality] {
+            let (one, used, trace) = run(budget, 1);
+            let (four, other_used, other_trace) = run(budget, 4);
+            assert_eq!((used, trace), (other_used, other_trace));
+            assert_eq!(one.hierarchy(), four.hierarchy());
+            assert_eq!(one.terminal_factor().is_some(), budget == equality);
+            assert_eq!(
+                one.hierarchy().report().terminal_reason(),
+                if budget == equality {
+                    cmg::TerminalReason::Direct
+                } else {
+                    cmg::TerminalReason::FullContraction
+                }
+            );
+            // Analytic inverse of [[1,-1],[-1,1]] on the quotient space.
+            // Direct LDL fixes a root gauge; the diagonal terminal is centered.
+            // Check the original operator, not a particular null-space shift.
+            for candidate in [one, four] {
+                let image = candidate.apply(&[1.0, -1.0]).unwrap();
+                assert!((image[0] - image[1] - 1.0).abs() < 1e-12);
+                assert!((image[1] - image[0] + 1.0).abs() < 1e-12);
+            }
+        }
+    }
 
     #[test]
     fn gate_rejections_preserve_state_and_admission_order() {

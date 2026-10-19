@@ -125,6 +125,55 @@ arithmetic leaves and ordered merges. One-FE, two-FE and general-FE algorithms
 remain distinct where mathematics warrants them; benchmark-specific route fences
 are prohibited. Explicit LSMR/CMG and both bias-correction modes remain supported.
 
+### CMG host-team and stage admission
+
+The bounded CMG builder enters upstream operations through `Work::cmg` and
+`parallel::with_cmg_execution`. The latter borrows the actual installed fereg
+registry and verifies a live action lease. A foreign Rayon pool or a caller
+outside fereg's registry gets the serial path. The scoped CMG `HostExecutor`
+creates no pool, retains no owner and cannot escape into a hierarchy or
+workspace. A preparation worker lent to an overlap action receives a one-lane
+ceiling. The standalone CMG-owned `ParallelExecutor` remains supported.
+Its coordinator must finish synchronously or join scoped work. Ordinary
+external destruction joins the workers. Defensive destruction on an owned
+worker instead signals termination and detaches handles if an unsupported
+detached callback retained the last owner there; it cannot promise immediate
+retirement on that misuse path. fereg's borrowed adapter creates no such owner.
+
+CMG's public `ControlledStage` admits fixed logical chunks on one coordinator
+before dispatch. Its mutable `BuildControl` is never shared with workers. The
+caller has already admitted and allocated output and any scratch; dispatch
+uses disjoint slices and bounded recursive lane splits, with no heap banks or
+atomic work-quota race. Planning costs 128 units, and each chunk costs 64 units
+of dispatch/accounting overhead plus its declared kernel allowance of 1–1024
+units. Kernels must obey that bound, avoid allocation/nested parallelism and
+leave outputs private on failure. All dispatched tasks join; the earliest
+logical kernel error wins, and an external cancellation request dominates
+after joining. Panic unwinding also joins. These are logical work allowances,
+not elapsed-time or instruction-count guarantees; the host admits its runtime
+and stacks separately.
+
+Milestone 1 installs this interface but leaves graph preparation, hierarchy
+construction and numerical application kernels serial on the bounded path.
+Every upstream entry adds one 64-unit `fereg.cmg.host_context` boundary, including
+serial fallback, before the lookup. A complete bounded build has five such
+entries (320 units). All charges debit the existing allowance, without raising
+its cap or the handoff reserve. Factor preflight receives the actual remainder
+after the entry charge. This intentionally changes work/callback traces and
+near-boundary admission: a previously affordable factor can become coarsening,
+or a build can refuse. Thus a near-boundary completed hierarchy and solver
+signature need not match the prior revision. Unchanged mathematical kernels
+and generous-budget results do not establish exact admission equivalence.
+The decisions remain deterministic across worker counts; existing certificates
+remain authoritative. No new graph/application parallelism or performance
+qualification is claimed by this foundation.
+
+Future stages must select a serial fallback before numerical writes if their
+parallel storage/worker admission declines, retaining all planning charges.
+They cannot retry a partially executed or failed numerical stage for free.
+The current serial builder and factor-preflight callback stream is otherwise
+unchanged; no controller decisions, native results or qualification gates are cached.
+
 Experimental OLS `cmgschur` reuses the two-FE implicit Schur operator and its
 observation-space reconstruction/certificate. `fe/cmg_schur.rs` owns the hybrid
 graph, fixed-weight CMG hierarchy and application workspace. Low-degree levels

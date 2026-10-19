@@ -186,6 +186,17 @@ FE, slopes, explicit solver or preconditioner choices and PPML retain their
 existing behavior. Hidden family selectors outside their eligible family retain
 the currently accepted Auto path. Existing hidden experiments keep their contracts.
 
+The subsequent CMG execution-foundation milestone adds a fixed 64-unit host-team
+entry charge to each bounded upstream operation (five entries for a complete
+build), within the existing work cap. This is an explicit accounting/admission
+scope change: near a budget boundary it may refuse a build or select the
+existing coarsening path instead of terminal factorization, with corresponding
+hierarchy/solver-signature differences. Factor preflight uses the post-charge
+remainder. Arithmetic kernels, certificates, sample/rank/omission semantics,
+cutoffs, seeds and tolerance rules are unchanged. See the
+[execution contract](ARCHITECTURE.md#cmg-host-team-and-stage-admission).
+This foundation does not activate two-FE or establish new performance evidence.
+
 Declared scientific scope is confined to the selected eligible OLS family:
 coefficients, covariance, fit statistics, residuals, FE coordinates and numerical
 solver signatures may change within section 20 tolerances. Sample, rank,

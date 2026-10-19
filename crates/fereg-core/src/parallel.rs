@@ -309,6 +309,39 @@ fn current_worker_context() -> Option<Arc<WorkerContext>> {
     WORKER_CONTEXT.with(|current| current.borrow().clone())
 }
 
+/// Borrow only the actual admitted registry for one synchronous CMG operation.
+/// Outside fereg's team (including a foreign Rayon pool), use the serial path.
+/// The callback cannot retain the installed view in a hierarchy or workspace.
+/// A lent overlap worker has a one-lane ceiling; it cannot borrow its peers.
+pub(crate) fn with_cmg_execution<T>(
+    operation: impl FnOnce(Option<&cmg::InstalledTeam<'_>>) -> T,
+) -> Result<T> {
+    let Some(context) = current_worker_context() else {
+        return Ok(operation(None));
+    };
+    let owner =
+        context.owner.get().and_then(Weak::upgrade).ok_or_else(|| {
+            FeregError::new(ErrorCode::Internal, "CMG host team has no live owner")
+        })?;
+    let pool = owner.pool.as_ref().expect("live worker team");
+    let state = context.state();
+    if state.shared == 0 && state.exclusive == 0 {
+        return Err(FeregError::new(
+            ErrorCode::Unsupported,
+            "CMG host team requires a live action admission",
+        ));
+    }
+    let ceiling = if state.overlap {
+        1
+    } else {
+        pool.current_num_threads()
+    };
+    drop(state);
+    cmg::HostExecutor::new(pool, ceiling)
+        .and_then(|executor| executor.with_installed(|team| operation(Some(&team))))
+        .map_err(|error| FeregError::new(ErrorCode::Internal, error.to_string()))
+}
+
 impl WorkerContext {
     fn state(&self) -> std::sync::MutexGuard<'_, ActionAdmission> {
         // No user work runs under this lock. Cleanup remains infallible even
@@ -888,6 +921,46 @@ mod tests {
 
     use super::*;
     use crate::options::ThreadConfig;
+
+    #[test]
+    fn cmg_borrows_the_actual_admitted_team_only() {
+        assert!(with_cmg_execution(|team| team.is_none()).unwrap());
+        let foreign = rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .build()
+            .unwrap();
+        foreign.install(|| assert!(with_cmg_execution(|team| team.is_none()).unwrap()));
+        for workers in [1, 4] {
+            let owner = OwnedThreadPool::new(workers).unwrap();
+            // Registry membership alone is not an admitted native action.
+            assert!(owner.install(|| with_cmg_execution(|_| ())).is_err());
+            let admitted = owner.acquire(false, false).unwrap();
+            admitted.install(|| {
+                let coordinator = std::thread::current().id();
+                let local = std::cell::Cell::new(0);
+                with_cmg_execution(|team| {
+                    assert_eq!(team.unwrap().worker_ceiling(), workers);
+                    assert_eq!(std::thread::current().id(), coordinator);
+                    local.set(1); // The coordinator and its controller need not be Send.
+                })
+                .unwrap();
+                assert_eq!(local.get(), 1);
+                foreign.install(|| assert!(with_cmg_execution(|team| team.is_none()).unwrap()));
+            });
+        }
+    }
+
+    #[test]
+    fn cmg_overlap_borrow_does_not_lend_the_incumbent_workers() {
+        let owner = OwnedThreadPool::new(4).unwrap();
+        let admitted = owner.acquire(true, false).unwrap();
+        admitted.install(|| {
+            let permit = claim_exclusive_overlap().unwrap();
+            with_cmg_execution(|team| assert_eq!(team.unwrap().worker_ceiling(), 1)).unwrap();
+            drop(permit);
+            with_cmg_execution(|team| assert_eq!(team.unwrap().worker_ceiling(), 4)).unwrap();
+        });
+    }
 
     #[test]
     fn owned_pool_joins_on_calling_thread_and_handles_nested_teams() {
