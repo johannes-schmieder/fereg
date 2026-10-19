@@ -12,7 +12,6 @@ pub struct RoutingPreset {
     checkpoint: usize,
     samples: u32,
     ablation: Option<RoutingAblation>,
-    overlap: bool,
     prefix: Option<PrefixPlan>,
     break_builder: bool,
 }
@@ -44,7 +43,7 @@ pub(super) enum RoutingAblation {
 impl std::fmt::Display for RoutingPreset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.break_builder {
-            return f.write_str("routing_overlap_break");
+            return f.write_str("routing_builder_break");
         }
         if let Some(prefix) = self.prefix {
             return f.write_str(match prefix {
@@ -56,9 +55,6 @@ impl std::fmt::Display for RoutingPreset {
                 PrefixPlan::IncrementalMany => "routing_incremental_many",
                 PrefixPlan::IncrementalTwo => "routing_incremental_two",
             });
-        }
-        if self.overlap {
-            return write!(f, "routing_overlap_h{}_k{}", self.checkpoint, self.samples);
         }
         match self.ablation {
             None => write!(f, "routing_h{}_k{}", self.checkpoint, self.samples),
@@ -80,7 +76,6 @@ impl RoutingPreset {
             checkpoint,
             samples,
             ablation: None,
-            overlap: false,
             prefix: None,
             break_builder: false,
         })
@@ -98,21 +93,9 @@ impl RoutingPreset {
             checkpoint: usize::MAX,
             samples: 0,
             ablation: Some(ablation),
-            overlap: false,
             prefix: None,
             break_builder: false,
         })
-    }
-
-    pub fn overlap(checkpoint: usize, samples: u32) -> Result<Self> {
-        let mut preset = Self::new(checkpoint, samples)?;
-        if checkpoint <= 4 {
-            return Err(invalid_argument(
-                "overlap routing requires a checkpoint after four iterations",
-            ));
-        }
-        preset.overlap = true;
-        Ok(preset)
     }
 
     pub fn prefix(prefix: CategoricalPrefix) -> Self {
@@ -120,7 +103,6 @@ impl RoutingPreset {
             checkpoint: usize::MAX,
             samples: 0,
             ablation: None,
-            overlap: false,
             prefix: Some(PrefixPlan::Isolated(prefix)),
             break_builder: false,
         }
@@ -192,9 +174,12 @@ impl RoutingPreset {
         self.portfolio()
     }
 
+    /// Developer Break arm for the synchronous bounded CMG builder: the h4/k1
+    /// two-FE build parks at its first cancellation poll after executed
+    /// construction work until the host requests cancellation.
     #[doc(hidden)]
-    pub fn overlap_break() -> Self {
-        let mut preset = Self::overlap(8, 1).expect("fixed developer overlap preset");
+    pub fn builder_break() -> Self {
+        let mut preset = Self::new(4, 1).expect("fixed developer builder Break preset");
         preset.break_builder = true;
         preset
     }
@@ -212,11 +197,6 @@ impl RoutingPreset {
             | PrefixPlan::IncrementalMany
             | PrefixPlan::IncrementalTwo => CategoricalPrefix::None,
         })
-    }
-
-    #[doc(hidden)]
-    pub fn overlaps(self) -> bool {
-        self.overlap
     }
 
     pub(super) fn kernel(self) -> Option<RoutingAblation> {
@@ -241,8 +221,9 @@ impl RoutingPreset {
     }
 }
 
-/// Checked deterministic currency: conservative scalar arithmetic/access work,
-/// never elapsed time. A full initial-batch incumbent iteration fixes W0 once.
+/// Conservative scalar arithmetic/access count of one packed incumbent Schur
+/// iteration, never elapsed time. It is the reference `W_ref` of the small
+/// direct criterion `A <= 4 W_ref`; it is not a construction allowance.
 pub(super) fn schur_iteration_work(
     rows: usize,
     left: usize,
@@ -279,16 +260,13 @@ pub(super) fn schur_iteration_work(
 }
 
 /// A single optional attempt is shared by all committed RHS chunks. The owner
-/// itself binds canonical sample, topology and weights; the accuracy key starts
-/// a new setup allowance for final residual projection, retaining a built M.
+/// itself binds canonical sample, topology and weights; a new accuracy key
+/// (for example final residual projection) starts a new optional attempt while
+/// retaining a built M. There is no construction-work allowance.
 pub(super) struct SetupLedger {
-    // The choice occupies padding in the existing accuracy key, preserving
-    // the retained route owner's layout and memory admission.
+    // The portfolio choice is bound to its accuracy key.
     accuracy: Option<(u64, bool, PortfolioChoice)>,
     pub attempted: bool,
-    pub limit: u64,
-    pub used: u64,
-    pub restart_reserve: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -318,13 +296,10 @@ impl SetupLedger {
         Self {
             accuracy: None,
             attempted: false,
-            limit: 0,
-            used: 0,
-            restart_reserve: 0,
         }
     }
 
-    pub fn begin(&mut self, tolerance: f64, final_residual: bool, iteration_work: Option<u64>) {
+    pub fn begin(&mut self, tolerance: f64, final_residual: bool) {
         if self.matches_accuracy(tolerance, final_residual) {
             return;
         }
@@ -333,34 +308,7 @@ impl SetupLedger {
             final_residual,
             PortfolioChoice::Undecided,
         ));
-        self.used = 0;
         self.attempted = false;
-        // Reserve four incumbent iterations for reconstruction and recurrence
-        // restart. The final original-design certificate keeps its existing
-        // reservation; no extra certificate is run merely to switch at h.
-        // The two-FE handoff bound is
-        // 28*n*r + 24*n + (16*p + 36*q)*r + (4*p + 4*q)*s
-        // + 32*p + 32*q + 64*r <= 4*W0, term by term. The first
-        // CMG application has a separate checked startup charge.
-        let allowance = iteration_work.and_then(|w| Some((w.checked_mul(32)?, w.checked_mul(4)?)));
-        (self.limit, self.restart_reserve) = allowance.unwrap_or((0, 0));
-    }
-
-    pub fn builder_allowance(&self) -> u64 {
-        self.limit
-            .saturating_sub(self.used)
-            .saturating_sub(self.restart_reserve)
-    }
-
-    pub fn charge(&mut self, work: u64) -> Result<()> {
-        self.used = self
-            .used
-            .checked_add(work)
-            .filter(|&total| total <= self.limit)
-            .ok_or_else(|| {
-                invalid_argument("solver-routing setup exceeded its checked allowance")
-            })?;
-        Ok(())
     }
 }
 
@@ -418,32 +366,31 @@ mod tests {
     }
 
     #[test]
-    fn chunks_share_setup_but_new_accuracy_gets_own_allowance() {
+    fn chunks_share_one_attempt_but_new_accuracy_gets_its_own() {
         let mut ledger = SetupLedger::new();
-        ledger.begin(1e-8, false, Some(100));
-        ledger.charge(600).unwrap();
+        ledger.begin(1e-8, false);
         ledger.attempted = true;
-        ledger.begin(1e-8, false, Some(20));
-        assert_eq!(
-            (ledger.limit, ledger.used, ledger.attempted),
-            (3200, 600, true)
-        );
-        ledger.begin(1e-14, true, Some(20));
-        assert_eq!(
-            (ledger.limit, ledger.used, ledger.attempted),
-            (640, 0, false)
-        );
-        assert_eq!(ledger.builder_allowance(), 560);
+        ledger.select_portfolio(PortfolioChoice::Direct);
+        ledger.begin(1e-8, false);
+        assert!(ledger.attempted);
+        assert_eq!(ledger.portfolio_choice(), PortfolioChoice::Direct);
+        ledger.begin(1e-14, true);
+        assert!(!ledger.attempted);
+        assert_eq!(ledger.portfolio_choice(), PortfolioChoice::Undecided);
+        assert!(RoutingPreset::new(7, 0).is_err());
+        assert!(RoutingPreset::new(8, 3).is_err());
     }
 
     #[test]
-    fn overflow_and_exhaustion_decline_without_wrapping() {
-        let mut ledger = SetupLedger::new();
-        ledger.begin(1e-8, false, Some(u64::MAX));
-        assert_eq!(ledger.builder_allowance(), 0);
-        assert!(ledger.charge(1).is_err());
-        assert!(RoutingPreset::new(7, 0).is_err());
-        assert!(RoutingPreset::new(8, 3).is_err());
+    fn builder_break_is_a_synchronous_h4_k1_developer_arm() {
+        let preset = RoutingPreset::builder_break();
+        assert_eq!(preset.to_string(), "routing_builder_break");
+        assert!(preset.breaks_builder());
+        assert_eq!(preset.checkpoint(), 4);
+        assert_eq!(preset.samples(), 1);
+        assert_eq!(preset.kernel(), None);
+        assert_eq!(preset.categorical_prefix(), None);
+        assert!(!RoutingPreset::new(4, 1).unwrap().breaks_builder());
     }
 
     #[test]
@@ -455,7 +402,6 @@ mod tests {
         assert_eq!(preset.checkpoint(), 16);
         assert_eq!(preset.samples(), 1);
         assert_eq!(preset.general_pair_checkpoint(), usize::MAX);
-        assert!(!preset.overlaps());
         assert_eq!(preset.kernel(), None);
         let legacy = RoutingPreset::prefix(CategoricalPrefix::Map4);
         assert!(!legacy.strict_categorical_prefix());
@@ -483,7 +429,6 @@ mod tests {
         assert_eq!(control.checkpoint(), v1.checkpoint());
         assert_eq!(control.samples(), v1.samples());
         assert_eq!(control.kernel(), v1.kernel());
-        assert_eq!(control.overlaps(), v1.overlaps());
         assert_eq!(control.breaks_builder(), v1.breaks_builder());
         for isolated in [
             CategoricalPrefix::None,
@@ -500,7 +445,8 @@ mod tests {
     #[test]
     fn portfolio_v1_preserves_the_original_preset_resource_layout() {
         use std::mem::{align_of, size_of};
-        // The original preset has usize/u32 values and four one-byte controls.
+        // The original preset has usize/u32 values and at most four one-byte
+        // controls; retiring the overlap flag left three.
         // Keep the owner admission unchanged on each supported pointer width.
         let alignment = align_of::<usize>().max(align_of::<u32>());
         let original_payload = size_of::<usize>() + size_of::<u32>() + 4;

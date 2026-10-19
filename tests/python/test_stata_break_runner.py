@@ -61,20 +61,23 @@ class StataBreakOptionsTests(unittest.TestCase):
                     self.arguments(*extra)
                 self.assertEqual(raised.exception.code, 2)
 
-    def test_actual_builder_fixture_and_positive_work_guard(self):
+    def test_actual_builder_fixture_and_readiness_guard(self):
         fixture = Path("tests/licensed_stata/estimate_ols_builder_break.do")
         for workers in (2, 4):
             args = self.arguments("--fixture-kind", "ols-builder", "--builder-workers", str(workers))
             self.assertEqual(fixture_command(fixture, args), f"do {stata_quote(fixture)} {workers}")
-        event = ("FEREG_SOLVER_TRACE|phase=routing_overlap|event=builder_break_ready|"
-                 "task=0|issued=1024|charged=32|ordinal=2")
+        event = ("FEREG_SOLVER_TRACE|phase=routing_builder|event=builder_break_ready|"
+                 "task=0|ordinal=2")
         self.assertEqual(builder_trace_events(event + "\n" + event), [event, event])
+        first = event.replace("ordinal=2", "ordinal=0")
+        self.assertEqual(builder_trace_events(first + "\n" + first), [first, first])
         for bad in ("", event, "\n".join([event] * 3),
-                    event.replace("charged=32", "charged=oops"),
-                    event.replace("charged=32", "charged=0"),
-                    event.replace("charged=32", "charged=-1"),
+                    event.replace("ordinal=2", "ordinal=oops"),
+                    event.replace("ordinal=2", "ordinal=-1"),
+                    event.replace("task=0", "task=1"),
                     event.replace("task=0", "task=-1"),
-                    event.replace("charged=32", "charged=2048"), event.replace("ordinal=2", "ordinal=0")):
+                    event.replace("phase=routing_builder", "phase=routing_overlap"),
+                    event + "|issued=1024|charged=32"):
             with self.assertRaises(RuntimeError):
                 builder_trace_events(bad)
         for extra in (["--builder-workers", "2"],
@@ -84,14 +87,14 @@ class StataBreakOptionsTests(unittest.TestCase):
                 self.arguments(*extra)
 
     def test_merged_append_records_cannot_pass_exact_event_check(self):
-        launch = "FEREG_SOLVER_TRACE|phase=routing_overlap|event=launch|task=0|issued=1024"
-        ready = ("FEREG_SOLVER_TRACE|phase=routing_overlap|event=builder_break_ready|"
-                 "task=0|issued=1024|charged=64|ordinal=1")
-        with self.assertRaisesRegex(RuntimeError, "invalid positive-work"):
+        launch = "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=4|samples=1"
+        ready = ("FEREG_SOLVER_TRACE|phase=routing_builder|event=builder_break_ready|"
+                 "task=0|ordinal=1")
+        with self.assertRaisesRegex(RuntimeError, "invalid synchronous builder"):
             builder_trace_events(launch + ready + "\n\n" + ready + "\n")
         self.assertEqual(builder_trace_events(launch + "\n" + ready + "\n" + ready + "\n"),
                          [ready, ready])
-        for extra in (ready + "|charged=1", ready + "|extra=1", ready.rsplit("|", 1)[0],
+        for extra in (ready + "|ordinal=1", ready + "|extra=1", ready.rsplit("|", 1)[0],
                       "prefix" + ready):
             with self.subTest(extra=extra), self.assertRaises(RuntimeError):
                 builder_trace_events(ready + "\n" + ready + "\n" + extra)
@@ -107,7 +110,7 @@ class StataBreakOptionsTests(unittest.TestCase):
                 elif state == "unreadable":
                     trace.mkdir()
                 prefix = root / "saved"
-                failure = RuntimeError("expected two actual positive-work checkpoints")
+                failure = RuntimeError("expected two synchronous builder Break readiness records")
                 errors = runner.preserve_evidence(prefix, runner.read_trace(trace), b"PTY\xff", {"plugin_sha256": "a" * 64},
                                                    failure, [])
                 record = json.loads((root / "saved.json").read_text())
@@ -180,8 +183,8 @@ class StataBreakOptionsTests(unittest.TestCase):
             self.assertNotIn("PASS:", output.getvalue())
 
     def test_native_marker_attempt_preserves_trace_on_pass_and_validation_failure(self):
-        event = ("FEREG_SOLVER_TRACE|phase=routing_overlap|event=builder_break_ready|"
-                 "task=0|issued=1024|charged=64|ordinal=1\n")
+        event = ("FEREG_SOLVER_TRACE|phase=routing_builder|event=builder_break_ready|"
+                 "task=0|ordinal=1\n")
         for valid in (False, True):
             with self.subTest(valid=valid), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)

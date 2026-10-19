@@ -4,9 +4,9 @@ mod accelerated_map;
 mod auto;
 mod borrowed_map;
 mod routing;
+pub(crate) mod routing_break;
 pub(crate) mod routing_direct;
 mod routing_kernel;
-pub(crate) mod routing_overlap;
 pub(crate) use borrowed_map::three_fe_schur;
 mod categorical_request;
 mod certificate;
@@ -89,7 +89,7 @@ pub use projection::ProjectionWorkspace;
 pub use report::{FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason};
 pub use routing::{CategoricalPrefix, RoutingPreset};
 #[doc(hidden)]
-pub use routing_overlap::routing_builder_break_ready;
+pub use routing_break::routing_builder_break_ready;
 pub use singleton::{prune_singletons_with_multiplicity, SingletonMultiplicity, SingletonResult};
 pub use topology_adapter::borrow_categorical_topology_design;
 pub use topology_finalize::{

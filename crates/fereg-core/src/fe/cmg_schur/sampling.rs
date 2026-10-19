@@ -127,7 +127,7 @@ impl SampledTrees {
         max_rows: usize,
         work: &mut super::bounded::Work,
     ) -> super::bounded::Attempt<Self> {
-        work.charge(64)?;
+        work.step(64)?;
         sampling.validate()?;
         let length = max_rows
             .checked_add(1)
@@ -148,7 +148,7 @@ impl SampledTrees {
         worker: usize,
         work: &mut super::bounded::Work,
     ) -> super::bounded::Attempt<()> {
-        work.charge(64)?;
+        work.step(64)?;
         if cells.len() < 2 || cells.len() >= self.suffix.len() {
             return Err(invalid_argument("CMG sampled worker exceeds its admitted scratch").into());
         }
@@ -159,7 +159,7 @@ impl SampledTrees {
         let mut sum = 0.0;
         let mut correction = 0.0;
         for (index, &(_, weight)) in cells.iter().enumerate().rev() {
-            work.charge(64)?;
+            work.step(64)?;
             if !weight.is_finite() || weight <= 0.0 {
                 return Err(invalid_data("CMG sampled worker weight is invalid").into());
             }
@@ -169,7 +169,7 @@ impl SampledTrees {
                 return Err(invalid_data("CMG sampled suffix mass is invalid").into());
             }
         }
-        work.charge(64)?;
+        work.step(64)?;
         self.worker = u64::try_from(worker)
             .map_err(|_| allocation("CMG sampled worker identifier overflows"))?;
         self.tree = 0;
@@ -183,7 +183,7 @@ impl SampledTrees {
         cells: &[(u32, f64)],
         work: &mut super::bounded::Work,
     ) -> super::bounded::Attempt<Option<(usize, usize, f64)>> {
-        work.charge(128)?;
+        work.step(128)?;
         if self.tree == self.sampling.samples {
             return Ok(None);
         }
@@ -192,7 +192,7 @@ impl SampledTrees {
         let mut lower = self.vertex + 1;
         let mut upper = cells.len() - 1;
         while lower < upper {
-            work.charge(32)?;
+            work.step(32)?;
             let middle = lower + (upper - lower) / 2;
             if target < self.suffix[middle + 1] {
                 lower = middle + 1;
@@ -200,7 +200,7 @@ impl SampledTrees {
                 upper = middle;
             }
         }
-        work.charge(128)?;
+        work.step(128)?;
         let weight =
             cells[self.vertex].1 * (tail / self.suffix[0]) / f64::from(self.sampling.samples);
         if !weight.is_finite() || weight <= 0.0 {

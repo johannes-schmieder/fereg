@@ -11,21 +11,18 @@ use super::{BorrowedInterceptFeDesign, BorrowedMapWeights};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct KernelLimits {
-    pub work_budget: u64,
     pub retained_live_bytes: u128,
     pub memory: Option<FeSolverMemoryBudget>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum KernelRefusal {
-    WorkBudget,
     MemoryBudget,
     Numerical,
 }
 
 pub(crate) struct OptionalSetup {
     pub kernel: Option<CellSchur>,
-    pub work_used: u64,
     pub peak: SolverWorkspacePeak,
     pub refusal: Option<KernelRefusal>,
 }
@@ -145,20 +142,15 @@ impl From<FeregError> for Stop {
 }
 type Attempt<T> = std::result::Result<T, Stop>;
 
-struct Work {
-    limit: u64,
-    used: u64,
-}
+/// Cancellation-only construction steps: each bounded operation of at most
+/// 1024 scalar units polls the host flag before it runs. There is no allowance.
+struct Work;
 impl Work {
     fn charge(&mut self, units: u16) -> Attempt<()> {
         crate::interrupt::checkpoint()?;
         if units == 0 || units > 1024 {
             return Err(invalid_argument("invalid cell-kernel work chunk").into());
         }
-        if u64::from(units) > self.limit - self.used {
-            return Err(Stop::Refused(KernelRefusal::WorkBudget));
-        }
-        self.used += u64::from(units);
         Ok(())
     }
     fn capacity<T>(&mut self, count: usize) -> Attempt<Vec<T>> {
@@ -181,7 +173,8 @@ impl Work {
 
 /// Use the incumbent's validated normalization scale without recomputing it.
 /// Positive row weights are divided exactly once, as in ValidatedWeights.
-/// Work denial discards private partial storage; allocator failure is fatal.
+/// Memory refusal discards private partial storage; allocator failure and
+/// cancellation are fatal.
 pub(crate) fn build(
     design: &BorrowedInterceptFeDesign<'_>,
     left_effect: usize,
@@ -189,16 +182,12 @@ pub(crate) fn build(
     weight_scale: f64,
     limits: KernelLimits,
 ) -> Result<OptionalSetup> {
-    let mut work = Work {
-        limit: limits.work_budget,
-        used: 0,
-    };
+    let mut work = Work;
     match work.charge(128) {
         Ok(()) => {}
         Err(Stop::Refused(reason)) => {
             return Ok(OptionalSetup {
                 kernel: None,
-                work_used: 0,
                 peak: SolverWorkspacePeak::ZERO,
                 refusal: Some(reason),
             })
@@ -233,7 +222,6 @@ pub(crate) fn build(
     let Some(bytes) = bytes else {
         return Ok(OptionalSetup {
             kernel: None,
-            work_used: work.used,
             peak: SolverWorkspacePeak::ZERO,
             refusal: Some(KernelRefusal::MemoryBudget),
         });
@@ -245,7 +233,6 @@ pub(crate) fn build(
     if !fits {
         return Ok(OptionalSetup {
             kernel: None,
-            work_used: work.used,
             peak: SolverWorkspacePeak::ZERO,
             refusal: Some(KernelRefusal::MemoryBudget),
         });
@@ -259,7 +246,6 @@ pub(crate) fn build(
     Ok(OptionalSetup {
         kernel,
         refusal,
-        work_used: work.used,
         peak: SolverWorkspacePeak::from_bytes(bytes)?,
     })
 }
@@ -450,7 +436,6 @@ mod tests {
     }
     fn limits() -> KernelLimits {
         KernelLimits {
-            work_budget: u64::MAX,
             retained_live_bytes: 0,
             memory: None,
         }
@@ -501,7 +486,6 @@ mod tests {
                 limits(),
             )
             .unwrap();
-            assert_eq!(second.work_used, setup.work_used);
             assert_eq!(
                 second
                     .kernel
@@ -594,40 +578,12 @@ mod tests {
     }
 
     #[test]
-    fn setup_refusal_charges_work_and_preserves_inputs() {
+    fn setup_memory_refusal_preserves_inputs() {
         let left = [0, 0, 1, 1];
         let right = [0, 1, 0, 1];
         with_design(&left, &right, 2, 2, |design| {
             let full = build(design, 0, BorrowedMapWeights::Unit, 1.0, limits()).unwrap();
-            for budget in [0, 127, full.work_used - 1] {
-                let stopped = build(
-                    design,
-                    0,
-                    BorrowedMapWeights::Unit,
-                    1.0,
-                    KernelLimits {
-                        work_budget: budget,
-                        ..limits()
-                    },
-                )
-                .unwrap();
-                assert!(stopped.kernel.is_none());
-                assert_eq!(stopped.refusal, Some(KernelRefusal::WorkBudget));
-                assert!(stopped.work_used <= budget);
-            }
-            assert!(build(
-                design,
-                0,
-                BorrowedMapWeights::Unit,
-                1.0,
-                KernelLimits {
-                    work_budget: full.work_used,
-                    ..limits()
-                }
-            )
-            .unwrap()
-            .kernel
-            .is_some());
+            assert!(full.kernel.is_some() && full.refusal.is_none());
             let bytes = u128::from(full.peak.bytes().unwrap());
             let refused = build(
                 design,
@@ -640,7 +596,6 @@ mod tests {
                         execution_bytes: 128,
                         usable_bytes: 512 + 128 + bytes - 1,
                     }),
-                    ..limits()
                 },
             )
             .unwrap();

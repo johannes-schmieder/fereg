@@ -297,17 +297,6 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     // saved-FE recovery) run on the action team while Stata's thread polls
     // Break; an interruption stops core loops at their next checkpoint.
     let team = ThreadTeam::new(action.fit.execution.threads);
-    let team = if team.threads() > 1
-        && action
-            .fit
-            .absorb
-            .routing
-            .is_some_and(RoutingPreset::overlaps)
-    {
-        team.with_exclusive_overlap()
-    } else {
-        team
-    };
     let mut native_break_token = action.native_break_token.take();
     let builder_break = action
         .fit
@@ -964,11 +953,6 @@ impl EstimateActionSpec {
             values.get("break_marker_token").map_or("", String::as_str),
         )?;
         let threads = parse_usize(&values, "threads")?;
-        if injection.routing.is_some_and(RoutingPreset::breaks_builder)
-            && ThreadConfig::from_requested(threads, false)?.resolved() < 2
-        {
-            return Err(syntax("hidden builder Break requires at least two workers"));
-        }
         let (cmg_schur_degree, cmg_schur_samples, cmg_schur_seed) =
             parse_cmg_schur_options(&values, solver)?;
         let specification = Self {

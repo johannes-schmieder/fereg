@@ -708,8 +708,10 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             reuse_absorption_norms,
         )
     };
-    let preparation = cmg.finish_routing_preparation();
-    let mut inputs = crate::fe::routing_overlap::arbitrate(projection, preparation)?;
+    cmg.close_routing_attempt();
+    // Cancellation requested during the projection takes precedence.
+    crate::interrupt::checkpoint()?;
+    let mut inputs = projection?;
     drop(projection_phase);
     let projection_seconds = trace.lap();
     let finite_phase = LinearSessionPhaseAllocationGuard::new(

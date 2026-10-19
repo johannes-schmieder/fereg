@@ -395,9 +395,8 @@ mod tests {
                 )
                 .passed
             );
-            assert_eq!(
-                portfolio.work().0,
-                0,
+            assert!(
+                !portfolio.has_replacement(),
                 "portfolio general stage never builds a pair replacement"
             );
         });
@@ -487,7 +486,7 @@ mod tests {
                     <= budget.usable_bytes
             );
             assert!(result.report().certified());
-            assert_eq!(constrained.work().0, 0);
+            assert!(!constrained.has_replacement());
         });
     }
 

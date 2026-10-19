@@ -1,0 +1,62 @@
+{
+ "checks": {
+  "actual_plugin_replay": "73 of 73 cases pass science with zero exact differences between the candidate and the 7ccab5a9 baseline Linux plugins",
+  "bench_python": "189 tests pass (scipy, psutil and matplotlib installed in the container for this run)",
+  "cmg": "cargo test --all-targets (default and all features), doc tests, clippy -D warnings for default, parallel, experimental-components and all features, fmt, benchmark crate clippy/tests in a standalone copy, release metadata: pass",
+  "complexity": "fereg-core 106,815 -> 104,922 production lines and 1,387 -> 1,371 dispatch candidates; fereg-plugin 15,284 -> 15,255 lines and 142 -> 140 dispatch candidates; no growth",
+  "injected_two_fe_replay": "75 injected runs (incremental_two, h4_k1, direct) on the 25 automatic-OLS replay cases: zero exact differences, equal discrete views and repeats; no case reached a CMG build, so installation changes are not measured by this corpus",
+  "pinned_rechecks": "after the pin bump: locked clippy -D warnings, fuzz check, 202 fereg-core routing/CMG/parallel tests and 83 plugin tests pass",
+  "run_tests_source_only": "pass: 315 Python tests, 1,941 Rust test executions in 80 groups (14 ignored), fuzz check, seven portable checks, complexity ratchet, mock bridge and Linux plugin load/audit",
+  "run_tests_standard": "stopped at scripts/check_github_install.py: main's runtime changed (expected installed-package binding difference, as in M1/M2)"
+ },
+ "cmg_revision": "c23666e894c3fb404313e5f6769e20f871d77470",
+ "decision": "Johannes, 2026-10-19: remove the construction-work cap altogether; no replacement work cap, dimension-only work bound, time cap or payback policy",
+ "declared_scope": {
+  "affected_routes": [
+   "injected two-FE routing arms (routing_incremental_two, routing_portfolio_unseeded, routing_portfolio_v1, routing_h*_k*, routing_direct, routing_cells, routing_diagonal)",
+   "injected general-pair routing_h*_k* on three or more FEs"
+  ],
+  "exact": [
+   "sample, rank, omission and other discrete model decisions",
+   "public uninjected routes",
+   "explicit cmg and cmgschur (OLS and PPML)",
+   "original-design certificate and tolerances"
+  ],
+  "may_change": [
+   "CMG installation and refusal decisions previously decided by the work cap",
+   "terminal factor choice (now hierarchy options and memory only)",
+   "small-direct admission previously declined by the remaining-allowance conjunct",
+   "iterations, hierarchy reports and solver signatures",
+   "coefficients, covariance, fit statistics, residuals and FE coordinates within section 20 tolerances"
+  ],
+  "memory_accounting": "Removed owner fields reduce the categorical owner's size_of contribution to admitted owner bytes on all two-FE and many-FE owners by a few dozen bytes; RMEMORY is outside the exact replay view",
+  "new_traces": [
+   "phase=routing_builder|event=builder_break_ready|task=0|ordinal=<zero-based poll>"
+  ],
+  "retired_traces": [
+   "auto_schur_route setup_work/setup_limit and refusal=WorkBudget",
+   "routing_action setup_work/setup_limit",
+   "auto_direct_route and auto_kernel_route limit fields",
+   "routing_overlap phase"
+  ]
+ },
+ "host": "Linux x86_64 cloud container, 4 vCPU; rustc 1.85.1; Python 3.13.16; not a qualification host",
+ "limitations": [
+  "No licensed Stata run: the six mapped fixtures and the migrated synchronous builder-Break fixture at two and four workers are outstanding",
+  "No Mac build, ABI/load check or timing; no SCC or Linux qualification timing; no performance claim",
+  "Cell-by-cell admission, terminal-decision and installation differences on the 42 qualification inputs are outstanding",
+  "Declared-scope replay through bench/qualify.py and scripts/replay_solver_routing.py needs the frozen Mac baseline capture",
+  "The pre-existing CMG warning for the unused pcg center_and_dot_with_executor under parallel+experimental-components remains"
+ ],
+ "linux_plugins": {
+  "baseline_sha256": "f71e83b4b8f00b5a83cc3528260593e6557213b82d4cb8cd3230f180a3b32145",
+  "candidate_note": "built from the M3a tree against the local CMG checkout whose code equals c23666e (two doc comments differ)",
+  "candidate_sha256": "f6e40ef47d1728cb4a1432a8410c4b3d8e885ee847d5599debf9214fe1ec5e9a",
+  "harness_sha256": "aa5ca6b5804fc8a724db6795fd9ac954f416cf6afb6581e7f55990d754543fd7"
+ },
+ "milestone": "M3a: remove the optional CMG construction-work cap and retire the overlap experiment",
+ "reference_cmg_revision": "d11b2ac46de73b6e3d5e37db84f816e3a8cccb6d",
+ "reference_revision": "7ccab5a901b135e59b73603426ea2b8bfb128d89",
+ "schema": 1,
+ "status": "cloud source checks pass; native Stata, Break, Mac and SCC checks outstanding"
+}

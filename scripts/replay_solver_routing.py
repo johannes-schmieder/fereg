@@ -45,17 +45,6 @@ TOPOLOGY_TOOLS = ('crates/fereg-oracle/examples/replay_topology.rs',
                   'crates/fereg-oracle/examples/replay/expected.rs',
                   'crates/fereg-oracle/examples/replay/wire.rs',
                   'tests/reference/ppml_bias_replay.json')
-OVERLAP_CASES = tuple('overlap-' + weight + '-' + mode
-                     for weight in ('unit', 'weighted') for mode in ('fast', 'low')) + (
-                         'overlap-unit-three-rhs-low', 'overlap-weighted-three-rhs-low')
-OVERLAP_CONTRACTS = {name: ('work_budget_refused'
-                           if name.endswith('-low') and 'three-rhs' not in name else 'installed')
-                     for name in OVERLAP_CASES}
-OVERLAP_TOOLS = ('crates/fereg-oracle/examples/replay_overlap.rs',
-                 'crates/fereg-oracle/examples/replay/wire.rs',
-                 'crates/fereg-oracle/tests/support/routing_overlap.rs')
-
-
 def body_digest(path):
     from native_io import case_header
 
@@ -68,7 +57,7 @@ def prepare_injected_case(source, destination, stage):
     """Add one sanctioned injection to the maintained length-framed wire."""
     from native_io import case_header
 
-    if stage not in {'it_coefficients', 'ppml_topology', 'routing_h8_k1', 'routing_overlap_h8_k1'}:
+    if stage not in {'it_coefficients', 'ppml_topology'}:
         raise ValueError('unsupported supplemental injection')
     with source.open('rb') as stream, destination.open('xb') as output:
         shape, arguments = case_header(stream)
@@ -79,9 +68,6 @@ def prepare_injected_case(source, destination, stage):
             raise ValueError('coefficient IT witness requires explicit OLS IT')
         if stage == 'ppml_topology' and arguments[0] != b'estimate-ppml':
             raise ValueError('topology witness requires PPML')
-        if stage.startswith('routing_') and (arguments[0] != b'estimate-ols'
-                                             or b'solver=auto' not in arguments):
-            raise ValueError('overlap witness requires automatic OLS')
         arguments.append(f'inject={stage}'.encode())
         shape[2] = len(arguments)
         output.write(('FEREG_REPLAY_V1\n' + ' '.join(map(str, shape)) + '\n').encode())
@@ -90,9 +76,8 @@ def prepare_injected_case(source, destination, stage):
         shutil.copyfileobj(stream, output, 1 << 20)
 
 
-def tool_hashes(direct=False, topology=False, overlap=False):
-    names = (*TOOLS, *(DIRECT_TOOLS if direct else ()), *(TOPOLOGY_TOOLS if topology else ()),
-             *(OVERLAP_TOOLS if overlap else ()))
+def tool_hashes(direct=False, topology=False):
+    names = (*TOOLS, *(DIRECT_TOOLS if direct else ()), *(TOPOLOGY_TOOLS if topology else ()))
     return {name: replay.digest(ROOT / name) for name in names}
 
 
@@ -345,162 +330,6 @@ def topology_trace_errors(log, require_reuse):
     return ['missing accepted topology reuse at changed weights'] if require_reuse and not reused else []
 
 
-def prepare_overlap(generated, baseline, output):
-    import routing
-    from native_io import prepare_case
-
-    output, baseline = output.resolve(), baseline.resolve()
-    if not output.is_relative_to((ROOT / 'target/tmp/solver-routing').resolve()):
-        raise ValueError('output must be under target/tmp/solver-routing')
-    capture = json.loads((baseline / 'capture.json').read_text())
-    if replay.digest(baseline / 'fereg_macos.plugin') != capture['identities']['plugin_sha256']:
-        raise ValueError('baseline plugin differs from immutable capture')
-    output.mkdir(parents=True, exist_ok=False)
-    inputs = output / 'cases'
-    inputs.mkdir()
-    entries, files = [], {}
-    for source in OVERLAP_CASES:
-        original = inputs / (source + '.case')
-        target = original.with_suffix('.json')
-        original.write_bytes((generated / original.name).read_bytes())
-        target.write_bytes((generated / target.name).read_bytes())
-        expected = json.loads(target.read_text())
-        contract = expected['overlap_reference']
-        three_rhs = source.endswith('-three-rhs-low')
-        if (expected['poisson'] is not False or len(expected['rows']) != 8960
-                or contract['finite_rank'] != (3 if three_rhs else 1) or contract['absorbed_rank'] != 126
-                or contract['initial_rhs'] != (1 if source.endswith('-low') and not three_rhs else 3)
-                or contract.get('initial_setup_limit') != (
-                    5_924_864 if source.endswith('-low') and not three_rhs else 11_958_272)
-                or contract.get('initial_response_certified') is not three_rhs
-                or contract.get('admission_contract') != OVERLAP_CONTRACTS[source]):
-            raise ValueError('unexpected overlap witness geometry')
-        for workers in (1, 2, 4):
-            plain = inputs / f'{source}-plain-t{workers}.case'
-            prepare_case(original, plain, workers)
-            for suffix, stage in [('serial', 'routing_h8_k1'), ('overlap', 'routing_overlap_h8_k1')]:
-                case = inputs / f'{source}-{suffix}-t{workers}.case'
-                prepare_injected_case(plain, case, stage)
-                if body_digest(case) != body_digest(original):
-                    raise ValueError('overlap preparation changed model/data bytes')
-                files[str(case.relative_to(output))] = replay.digest(case)
-            files[str(plain.relative_to(output))] = replay.digest(plain)
-        for path in (original, target):
-            files[str(path.relative_to(output))] = replay.digest(path)
-        entries.append({'name': source + '-overlap', 'source': source, 'arm': 'routing_overlap_h8_k1',
-                        'source_case': str(original.relative_to(output)), 'reference': source + '-serial',
-                        'reference_artifact': 'candidate', 'expected': str(target.relative_to(output)),
-                        'body_sha256': body_digest(original), 'allowed_paths': 'finite-baseline',
-                        'one_worker_exact': True,
-                        'admission_contract': contract['admission_contract'],
-                        'initial_setup_limit': contract['initial_setup_limit'],
-                        'initial_response_certified': three_rhs})
-    spec = {'schema': 1, 'overlap': True, 'baseline': str(baseline),
-            'baseline_capture_sha256': replay.digest(baseline / 'capture.json'),
-            'baseline_sha256': capture['identities']['plugin_sha256'],
-            'harness_sha256': replay.digest(baseline / 'replay-harness'),
-            'tools': tool_hashes(overlap=True), 'files': files, 'cases': entries,
-            'workers': [1, 2, 4], 'repeats_per_worker': 2, 'repeat_references': True,
-            'scope': 'Current-artifact serial h8/k1 versus overlap h8/k1. One-worker fallback exact; '
-                     'otherwise finite numerical outputs/diagnostics and named inner iterations only. '
-                     'Model and discrete decisions exact; both arms independently certified and repeated. '
-                     'Fast and three-regressor Low require installation; original Low requires explicit work-budget refusal. '
-                     'This panel does not supersede prior failed installation expectations.'}
-    path = output / 'manifest.json'
-    path.write_text(json.dumps(routing.seal(spec), indent=2, sort_keys=True) + '\n')
-    print(f'prepared six overlap comparisons, 72 bounded native calls: {path}')
-
-
-def overlap_trace_signature(log):
-    return [line for line in log.splitlines() if line.startswith((
-        'FEREG_SOLVER_TRACE|phase=routing_overlap|', 'FEREG_SOLVER_TRACE|phase=auto_schur_route|'))]
-
-
-def overlap_trace_errors(log, workers, serial=False, admission_contract='installed',
-                         initial_response_certified=False, initial_setup_limit=None):
-    if admission_contract not in {'installed', 'work_budget_refused'}:
-        raise ValueError('unknown overlap admission contract')
-    installed, routes, joins, active, errors = False, 0, 0, {}, []
-    for line in overlap_trace_signature(log):
-        try:
-            fields = dict(part.split('=', 1) for part in line.split('|')[1:])
-            if fields['phase'] == 'auto_schur_route':
-                if not (int(fields['checkpoint']) == 8 and int(fields['samples']) == 1
-                        and 0 < int(fields['setup_work']) <= int(fields['setup_limit'])
-                        and fields['installed'] in {'0', '1'}):
-                    raise ValueError('invalid fixed h/k or setup allowance')
-                if routes == 0 and initial_setup_limit is not None:
-                    if int(fields['setup_limit']) != initial_setup_limit:
-                        raise ValueError('first charged RHS window has the wrong frozen allowance')
-                if routes == 0 and initial_response_certified and not (
-                        fields['installed'] == '1' and fields['refusal'] == 'None'):
-                    raise ValueError('first charged RHS window did not install its hierarchy')
-                routes += 1
-                installed |= fields['installed'] == '1'
-                if fields['installed'] == '1' and fields['refusal'] != 'None':
-                    raise ValueError('installed hierarchy reports refusal')
-                if admission_contract == 'work_budget_refused' and not (
-                        fields['installed'] == '0' and fields['refusal'] == 'Some(WorkBudget)'):
-                    raise ValueError('missing explicit work-budget refusal')
-            else:
-                task, issued = int(fields['task']), int(fields['issued'])
-                if task < 0 or issued < 0 or serial or workers == 1:
-                    raise ValueError('unexpected overlap lease')
-                if fields['event'] == 'launch':
-                    if task in active:
-                        raise ValueError('overlap task launched before prior join')
-                    active[task] = issued
-                elif fields['event'] in {'grant', 'drain'}:
-                    if task not in active or issued < active[task]:
-                        raise ValueError('missing overlap launch')
-                    active[task] = issued
-                    if fields['event'] == 'drain' and not (
-                            0 <= int(fields['charged']) <= issued and int(fields['ordinal']) >= 0):
-                        raise ValueError('invalid drained overlap work')
-                elif fields['event'] == 'join':
-                    if not (task in active and issued >= active[task]
-                            and 0 < int(fields['charged']) <= issued and int(fields['ordinal']) > 0):
-                        raise ValueError('unadmitted overlap work')
-                    del active[task]
-                    joins += 1
-                else:
-                    raise ValueError('unexpected overlap event')
-        except (KeyError, ValueError):
-            errors.append('invalid overlap admission trace')
-    if not routes:
-        errors.append('missing fixed-checkpoint routing outcome')
-    if admission_contract == 'installed' and not installed:
-        errors.append('missing actual h8/k1 hierarchy installation')
-    if not serial and workers > 1 and not joins:
-        errors.append('missing actual positive-work overlap lease and join')
-    if active:
-        errors.append('overlap launches and joins differ')
-    if initial_response_certified:
-        errors += initial_response_trace_errors(log)
-    return errors
-
-
-def initial_response_trace_errors(log):
-    """The first Low action must finish before initializing a setup allowance."""
-    for line in log.splitlines():
-        if line.startswith('FEREG_SOLVER_TRACE|phase=routing_overlap|'):
-            return ['builder launched before the initial response certificate']
-        if line.startswith('FEREG_SOLVER_TRACE|phase=auto_schur_route|'):
-            return ['setup attempted before the initial response certificate']
-        if not line.startswith('FEREG_SOLVER_TRACE|phase=routing_action|'):
-            continue
-        try:
-            fields = dict(part.split('=', 1) for part in line.split('|')[1:])
-            if all(fields[key] == expected for key, expected in (
-                    ('iterations', '0'), ('setup_work', '0'), ('setup_limit', '0'),
-                    ('final', '0'), ('certified', '1'))):
-                return []
-        except (KeyError, ValueError):
-            pass
-        return ['initial response did not certify before setup allowance initialization']
-    return ['missing initial response certificate trace']
-
-
 def direct_science_errors(result, expected, key='direct_reference'):
     if result['return_code']:
         return []  # The common scientific check reports failed transactions.
@@ -563,8 +392,9 @@ def run(manifest_path, plugin, plugin_sha256):
     plugin = plugin.resolve()
     if replay.digest(plugin) != plugin_sha256:
         raise ValueError('candidate plugin SHA-256 does not match')
-    if tool_hashes(spec.get('positive_direct', False), spec.get('ppml_topology', False),
-                   spec.get('overlap', False)) != spec['tools']:
+    if spec.get('overlap', False):
+        raise ValueError('the overlap replay panel was retired with the overlap experiment')
+    if tool_hashes(spec.get('positive_direct', False), spec.get('ppml_topology', False)) != spec['tools']:
         raise ValueError('replay tools changed after preparation')
     if replay.digest(baseline / 'capture.json') != spec['baseline_capture_sha256']:
         raise ValueError('baseline capture changed after preparation')
@@ -583,7 +413,7 @@ def run(manifest_path, plugin, plugin_sha256):
         raise ValueError('frozen replay harness changed')
     output = directory / 'results'
     output.mkdir(exist_ok=False)
-    references, reference_repeats, reference_traces, records = {}, {}, {}, []
+    references, records = {}, []
     for entry in spec['cases']:
         original = (directory / entry['source_case'] if 'source_case' in entry else
                     baseline / 'replay/cases' / (entry['source'] + '.case'))
@@ -595,20 +425,12 @@ def run(manifest_path, plugin, plugin_sha256):
             reference_case = directory / 'cases' / f'{entry["reference"]}-t{workers}.case'
             if reference_case.stem not in references:
                 reference_plugin = plugin if entry.get('reference_artifact') == 'candidate' else baseline / 'fereg_macos.plugin'
-                if spec.get('overlap', False):
-                    reference, trace = traced_case(harness, reference_plugin, reference_case,
-                                                  output / (reference_case.stem + '.json'))
-                    again, repeated_trace = traced_case(harness, reference_plugin, reference_case,
-                                                        output / (reference_case.stem + '-repeat.json'))
-                    references[reference_case.stem], reference_repeats[reference_case.stem] = reference, again
-                    reference_traces[reference_case.stem] = trace, repeated_trace
-                else:
-                    references[reference_case.stem] = replay.run_case(harness, reference_plugin,
-                        reference_case, output / (reference_case.stem + '.json'))
+                references[reference_case.stem] = replay.run_case(harness, reference_plugin,
+                    reference_case, output / (reference_case.stem + '.json'))
             reference = references[reference_case.stem]
             science = replay.scientific_errors(reference, expected)
             direct = 'direct_reference' in expected
-            independent = 'direct_reference' if direct else ('overlap_reference' if spec.get('overlap', False) else None)
+            independent = 'direct_reference' if direct else None
             if independent:
                 science += direct_science_errors(reference, expected, independent)
             case = directory / 'cases' / f'{entry["name"]}-t{workers}.case'
@@ -620,29 +442,15 @@ def run(manifest_path, plugin, plugin_sha256):
                 'reason': spec['scope'], 'allowed_paths': allowed}}}
             prefixes = replay.affected_prefixes(scope, case, expected)
             admission, reference_repeat, trace_repeat = [], [], []
-            if direct or spec.get('ppml_topology', False) or spec.get('overlap', False):
+            if direct or spec.get('ppml_topology', False):
                 candidate, trace = traced_case(harness, plugin, case, output / (case.stem + '.json'))
                 repeated, repeated_trace = traced_case(harness, plugin, case,
                                                        output / (case.stem + '-repeat.json'))
                 if direct:
                     admission = direct_trace_errors(trace, expected) + direct_trace_errors(repeated_trace, expected)
-                elif spec.get('ppml_topology', False):
+                else:
                     admission = topology_trace_errors(trace, entry['require_topology_reuse'])
                     admission += topology_trace_errors(repeated_trace, entry['require_topology_reuse'])
-                else:
-                    contract = entry.get('admission_contract', 'installed')
-                    initial = entry.get('initial_response_certified', False)
-                    limit = entry.get('initial_setup_limit')
-                    admission = overlap_trace_errors(trace, workers, False, contract, initial, limit)
-                    admission += overlap_trace_errors(repeated_trace, workers, False, contract, initial, limit)
-                    serial_trace, serial_repeat_trace = reference_traces[reference_case.stem]
-                    admission += overlap_trace_errors(serial_trace, workers, True, contract, initial, limit)
-                    admission += overlap_trace_errors(serial_repeat_trace, workers, True, contract, initial, limit)
-                    reference_repeat = replay.differences(replay.exact_view(reference, False),
-                        replay.exact_view(reference_repeats[reference_case.stem], False))
-                    trace_repeat = replay.differences(overlap_trace_signature(trace), overlap_trace_signature(repeated_trace))
-                    trace_repeat += ['serial' + path for path in replay.differences(
-                        overlap_trace_signature(serial_trace), overlap_trace_signature(serial_repeat_trace))]
             else:
                 candidate = replay.run_case(harness, plugin, case, output / (case.stem + '.json'))
                 repeated = replay.run_case(harness, plugin, case, output / (case.stem + '-repeat.json'))
@@ -699,10 +507,6 @@ def main():
     topology.add_argument('--generated', type=Path, required=True)
     topology.add_argument('--baseline', type=Path, required=True)
     topology.add_argument('--output', type=Path, required=True)
-    overlap = commands.add_parser('prepare-overlap')
-    overlap.add_argument('--generated', type=Path, required=True)
-    overlap.add_argument('--baseline', type=Path, required=True)
-    overlap.add_argument('--output', type=Path, required=True)
     execution = commands.add_parser('run')
     execution.add_argument('--manifest', type=Path, required=True)
     execution.add_argument('--plugin', type=Path, required=True)
@@ -716,9 +520,6 @@ def main():
         return 0
     if args.command == 'prepare-topology':
         prepare_topology(args.generated, args.baseline, args.output)
-        return 0
-    if args.command == 'prepare-overlap':
-        prepare_overlap(args.generated, args.baseline, args.output)
         return 0
     return run(args.manifest, args.plugin, args.plugin_sha256)
 

@@ -239,8 +239,9 @@ def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None
         if fields.get('final') not in {'0', '1'}:
             raise ValueError('routing_action lacks its projection/final action classification')
         action = {'final': fields.get('final'), 'preset': fields.get('preset')}
+        # The optional construction-work cap was retired on 2026-10-19; native
+        # iteration limits and joint memory admission remain checked caps.
         for target, used, limit in [('iterations', 'iterations', 'native_limit'),
-                                    ('setup_work', 'setup_work', 'setup_limit'),
                                     ('memory_bytes', 'memory_bytes', 'memory_limit')]:
             try:
                 action[target + '_used'] = int(fields[used])
@@ -254,8 +255,7 @@ def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None
         actions.append(action)
     if candidate and not actions and not (no_fe and 'no_fe_exact_path' in witness):
         raise ValueError('candidate has no actual routing_action or bound exact-no-FE witness')
-    checks = {'iteration_caps': 'passed', 'memory_caps': 'passed',
-              'setup_caps': 'passed' if candidate else 'not_applicable'}
+    checks = {'iteration_caps': 'passed', 'memory_caps': 'passed'}
     return {'action_resources': actions, 'resource_checks': checks, 'route_trace': route,
             'resource_basis': 'actual traced prerequisite' if actions else
                               'bound exact-no-FE witness' if candidate else 'bound legacy resource witness'}

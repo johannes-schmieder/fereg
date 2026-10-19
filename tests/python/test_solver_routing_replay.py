@@ -179,131 +179,17 @@ class SolverRoutingReplay(unittest.TestCase):
         self.assertTrue({'ppml-bias-exact', 'ppml-bias-randomized', 'ppml-23'} <=
                         set(routing_replay.TOPOLOGY_FROZEN))
 
-    def test_overlap_rewrites_only_fixed_same_checkpoint_options(self):
-        from native_io import case_header
+    def test_retired_overlap_and_routing_stages_are_not_injected(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / 'plain.case'
             args = [b'estimate-ols', b'threads=2', b'solver=auto']
             source.write_bytes(b'FEREG_REPLAY_V1\n1 1 3 1 0\n' + b''.join(
                 str(len(arg)).encode() + b'\n' + arg + b'\n' for arg in args) + b'fixed body\n')
-            for stage in ('routing_h8_k1', 'routing_overlap_h8_k1'):
-                candidate = Path(directory) / (stage + '.case')
-                routing_replay.prepare_injected_case(source, candidate, stage)
-                with candidate.open('rb') as stream:
-                    _, actual = case_header(stream)
-                self.assertEqual(actual, args + [f'inject={stage}'.encode()])
-                self.assertEqual(routing_replay.body_digest(source), routing_replay.body_digest(candidate))
-            with self.assertRaises(ValueError):
-                routing_replay.prepare_injected_case(source, Path(directory) / 'different.case',
-                                                    'routing_overlap_h16_k2')
-        self.assertEqual(set(routing_replay.OVERLAP_CASES), {
-            'overlap-unit-fast', 'overlap-unit-low', 'overlap-weighted-fast', 'overlap-weighted-low',
-            'overlap-unit-three-rhs-low', 'overlap-weighted-three-rhs-low'})
-        self.assertEqual(routing_replay.OVERLAP_CONTRACTS, {
-            'overlap-unit-fast': 'installed', 'overlap-unit-low': 'work_budget_refused',
-            'overlap-weighted-fast': 'installed', 'overlap-weighted-low': 'work_budget_refused',
-            'overlap-unit-three-rhs-low': 'installed', 'overlap-weighted-three-rhs-low': 'installed'})
-
-    def test_overlap_requires_positive_work_join_and_actual_installation(self):
-        route = ('FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=8|samples=1|'
-                 'iterations=8|setup_work=200|setup_limit=300|installed=1|refusal=None')
-        launch = 'FEREG_SOLVER_TRACE|phase=routing_overlap|event=launch|task=2|issued=100'
-        joined = ('FEREG_SOLVER_TRACE|phase=routing_overlap|event=join|task=2|issued=300|'
-                  'charged=200|ordinal=3')
-        trace = '\n'.join([launch, joined, route])
-        for workers in (2, 4):
-            self.assertEqual(routing_replay.overlap_trace_errors(trace, workers), [])
-            for invalid in (route, '\n'.join([launch, route]),
-                            trace.replace('charged=200', 'charged=0'),
-                            trace.replace('charged=200', 'charged=301'),
-                            trace.replace('ordinal=3', 'ordinal=0'),
-                            trace.replace('installed=1', 'installed=0'),
-                            trace.replace('checkpoint=8', 'checkpoint=16'),
-                            trace.replace('samples=1', 'samples=2'),
-                            trace.replace('setup_work=200', 'setup_work=301'),
-                            trace.replace('event=join', 'event=builder_break_ready'),
-                            trace.replace('ordinal=3', 'ordinal=invalid')):
-                with self.subTest(workers=workers, invalid=invalid):
-                    self.assertTrue(routing_replay.overlap_trace_errors(invalid, workers))
-        self.assertEqual(routing_replay.overlap_trace_errors(route, 1), [])
-        self.assertEqual(routing_replay.overlap_trace_errors(route, 4, serial=True), [])
-        self.assertTrue(routing_replay.overlap_trace_errors(trace, 1))
-        self.assertTrue(routing_replay.overlap_trace_errors(trace, 4, serial=True))
-        self.assertEqual(routing_replay.overlap_trace_signature('unrelated timing\n' + trace),
-                         [launch, joined, route])
-
-    def test_overlap_work_refusal_is_separate_from_installation(self):
-        route = ('FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=8|samples=1|'
-                 'iterations=8|setup_work=200|setup_limit=300|installed=0|refusal=Some(WorkBudget)')
-        launch = 'FEREG_SOLVER_TRACE|phase=routing_overlap|event=launch|task=0|issued=100'
-        joined = ('FEREG_SOLVER_TRACE|phase=routing_overlap|event=join|task=0|issued=300|'
-                  'charged=200|ordinal=3')
-        trace = '\n'.join([launch, joined, route])
-        for workers in (1, 2, 4):
-            observed = route if workers == 1 else trace
-            with self.subTest(workers=workers):
-                self.assertEqual(routing_replay.overlap_trace_errors(
-                    observed, workers, admission_contract='work_budget_refused'), [])
-                # The original installation expectation remains a failure.
-                self.assertTrue(routing_replay.overlap_trace_errors(observed, workers))
-                self.assertEqual(routing_replay.overlap_trace_errors(
-                    route, workers, serial=True, admission_contract='work_budget_refused'), [])
-                for invalid in (observed.replace('Some(WorkBudget)', 'None'),
-                                observed.replace('Some(WorkBudget)', 'Some(MemoryBudget)'),
-                                observed.replace('installed=0', 'installed=1'),
-                                observed.replace('setup_work=200', 'setup_work=0'),
-                                observed.replace('setup_work=200', 'setup_work=301'),
-                                ''):
-                    self.assertTrue(routing_replay.overlap_trace_errors(
-                        invalid, workers, admission_contract='work_budget_refused'))
-        for invalid in (route, '\n'.join([launch, route]),
-                        trace.replace('charged=200', 'charged=0'),
-                        trace.replace('charged=200', 'charged=301'),
-                        trace.replace('ordinal=3', 'ordinal=0')):
-            self.assertTrue(routing_replay.overlap_trace_errors(
-                invalid, 4, admission_contract='work_budget_refused'))
-        installed = route.replace('installed=0', 'installed=1').replace('Some(WorkBudget)', 'None')
-        self.assertTrue(routing_replay.overlap_trace_errors(
-            '\n'.join([trace, installed]), 4, admission_contract='work_budget_refused'))
-        with self.assertRaises(ValueError):
-            routing_replay.overlap_trace_errors(trace, 4, admission_contract='optional')
-
-    def test_overlap_task_ids_may_repeat_only_after_join(self):
-        route = ('FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=8|samples=1|'
-                 'iterations=8|setup_work=200|setup_limit=300|installed=1|refusal=None')
-        launch = 'FEREG_SOLVER_TRACE|phase=routing_overlap|event=launch|task=0|issued=100'
-        joined = ('FEREG_SOLVER_TRACE|phase=routing_overlap|event=join|task=0|issued=300|'
-                  'charged=200|ordinal=3')
-        complete = '\n'.join([launch, joined, route])
-        self.assertEqual(routing_replay.overlap_trace_errors(complete + '\n' + complete, 4), [])
-        for events in ([launch, joined, launch, route], [launch, launch, joined, route],
-                       [joined, route], [launch, joined, joined, route]):
-            self.assertTrue(routing_replay.overlap_trace_errors('\n'.join(events), 4))
-
-    def test_three_rhs_low_requires_response_certificate_before_setup(self):
-        initial = ('FEREG_SOLVER_TRACE|phase=routing_action|preset=routing_overlap_h8_k1|'
-                   'iterations=0|setup_work=0|setup_limit=0|final=0|certified=1')
-        route = ('FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=8|samples=1|'
-                 'iterations=8|setup_work=200|setup_limit=300|installed=1|refusal=None')
-        self.assertEqual(routing_replay.overlap_trace_errors(
-            initial + '\n' + route, 1, initial_response_certified=True, initial_setup_limit=300), [])
-        self.assertEqual(routing_replay.overlap_trace_errors(
-            initial + '\n' + route, 4, serial=True, initial_response_certified=True), [])
-        for invalid in (route, route + '\n' + initial,
-                        initial.replace('iterations=0', 'iterations=1') + '\n' + route,
-                        initial.replace('setup_work=0', 'setup_work=1') + '\n' + route,
-                        initial.replace('setup_limit=0', 'setup_limit=300') + '\n' + route,
-                        initial.replace('final=0', 'final=1') + '\n' + route,
-                        initial.replace('certified=1', 'certified=0') + '\n' + route,
-                        initial.replace('setup_limit=0|', '') + '\n' + route):
-            self.assertTrue(routing_replay.overlap_trace_errors(
-                invalid, 1, initial_response_certified=True))
-        self.assertTrue(routing_replay.overlap_trace_errors(
-            initial + '\n' + route, 1, initial_response_certified=True, initial_setup_limit=301))
-        refusal = route.replace('installed=1', 'installed=0').replace('refusal=None', 'refusal=Some(WorkBudget)')
-        self.assertTrue(routing_replay.overlap_trace_errors(
-            '\n'.join([initial, refusal, route]), 1,
-            initial_response_certified=True, initial_setup_limit=300))
+            for stage in ('routing_h8_k1', 'routing_overlap_h8_k1', 'routing_builder_break'):
+                with self.assertRaises(ValueError):
+                    routing_replay.prepare_injected_case(source, Path(directory) / (stage + '.case'),
+                                                        stage)
+        self.assertFalse(hasattr(routing_replay, 'prepare_overlap'))
 
 
 if __name__ == '__main__':

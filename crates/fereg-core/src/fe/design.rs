@@ -24,24 +24,6 @@ pub struct LevelIndex {
 }
 
 impl LevelIndex {
-    pub(crate) fn try_clone(&self) -> Result<Self> {
-        fn copy(values: &[usize]) -> Result<Vec<usize>> {
-            let mut result = Vec::new();
-            result
-                .try_reserve_exact(values.len())
-                .map_err(|_| allocation("unable to reserve optional owned level index"))?;
-            for chunk in values.chunks(128) {
-                crate::interrupt::checkpoint()?;
-                result.extend_from_slice(chunk);
-            }
-            Ok(result)
-        }
-        Ok(Self {
-            offsets: copy(&self.offsets)?,
-            observations: copy(&self.observations)?,
-        })
-    }
-
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
         crate::memory::vec_capacity_bytes(&self.offsets)
             + crate::memory::vec_capacity_bytes(&self.observations)

@@ -105,7 +105,7 @@ program define _fereg_estimate_ols, eclass
     }
 
     local inject = lower(strtrim(`"`inject'"'))
-    local routing_injection = regexm(`"`inject'"', "^routing_(h(4|8|16|32)_k(0|1|2)|overlap_h(8|16|32)_k(0|1|2)|overlap_break|prefix_(none|map4|it4)|diagonal|cells|direct)$")
+    local routing_injection = regexm(`"`inject'"', "^routing_(h(4|8|16|32)_k(0|1|2)|builder_break|prefix_(none|map4|it4)|diagonal|cells|direct)$")
     local it_injection = `"`inject'"' == "it_coefficients"
     if `"`inject'"' != "" & !`routing_injection' & !`it_injection' & !inlist(`"`inject'"', ///
         "posthold", "postplugin", "poststripe", "postereturn", ///
@@ -563,7 +563,7 @@ program define _fereg_estimate_ols, eclass
         if `cmgseed_explicit' local request_arguments ///
             `"`request_arguments'cmgseed=`cmgseed';"'
     }
-    if inlist(`"`inject'"', "breaknative", "routing_overlap_break") {
+    if inlist(`"`inject'"', "breaknative", "routing_builder_break") {
         local break_marker_token : environment FEREG_BREAK_MARKER_TOKEN
         if strtrim(`"`break_marker_token'"') == "" {
             di as error "hidden OLS breaknative requires FEREG_BREAK_MARKER_TOKEN"

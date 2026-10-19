@@ -56,15 +56,16 @@ local b_index : list posof "b" in prior_matrices
 local v_index : list posof "V" in prior_matrices
 assert `b_index' > 0 & `v_index' > 0
 
-* Each marker follows a returned optional-builder preparation gate. In this
-* two-FE fixture the first gate is 64 units of fereg.cmg.prepare bookkeeping;
-* it does not establish execution of a parallel numerical kernel.
-* A second interrupted action proves the exclusive gate and lease were reset.
+* The default route needs more than four iterations, so the hidden synchronous
+* h4/k1 builder starts. Each marker follows its first cancellation poll after
+* executed construction bookkeeping; it does not establish execution of a
+* parallel numerical kernel. A second interrupted action proves that the
+* developer Break claim and the cancellation flag were reset.
 forvalues attempt=1/2 {
     capture noisily _fereg_estimate_ols_test y x, ///
         absorb(failed_worker=worker failed_firm=firm) aweight(weight) ///
         vce(robust) solver(auto) memory(fast) tolerance(1e-12) threads(`workers') ///
-        residual(failed_residual) inject(routing_overlap_break)
+        residual(failed_residual) inject(routing_builder_break)
     assert _rc == 1
     foreach output in failed_worker failed_firm failed_residual {
         confirm new variable `output'
@@ -104,12 +105,12 @@ assert reset == reference
 assert mreldif(e(b), `prior_matrix_`b_index'') == 0
 assert mreldif(e(V), `prior_matrix_`v_index'') == 0
 
-* The same process must also be able to lease a worker and finish new work.
+* The same process must also be able to build and install a hierarchy again.
 quietly _fereg_estimate_ols_test y x, absorb(reset_worker=worker reset_firm=firm) ///
     aweight(weight) vce(robust) solver(auto) memory(fast) tolerance(1e-12) ///
-    threads(`workers') residual(overlap) inject(routing_overlap_h8_k1)
+    threads(`workers') residual(followup) inject(routing_h8_k1)
 assert abs(_b[x]-.75) < 1e-9
-assert abs(overlap-truth) < 1e-8
+assert abs(followup-truth) < 1e-8
 assert e(sample) == prior_sample
 di as result "FEREG_BUILDER_" "BREAK_RESET_VERIFIED"
 di as result "END_" "FIXTURE|estimate_ols_builder_break|rc=0"

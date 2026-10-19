@@ -769,30 +769,12 @@ impl<'a> FeSession<'a> {
         )
     }
 
-    /// Close the complete committed RHS set before finite solving/publication.
-    /// Individual Low chunks only drain, retaining their single preparation.
-    pub(crate) fn finish_routing_preparation(&mut self) -> Result<()> {
-        let categorical = self
-            .categorical
-            .as_mut()
-            .map_or(Ok(()), |p| p.finish_routing_preparation());
-        let general = self
-            .general_routing
-            .as_mut()
-            .map_or(Ok(()), |p| p.finish_preparation());
-        super::routing_overlap::arbitrate(categorical, general)
-    }
-
-    fn drain_routing_preparation(&mut self) -> Result<()> {
-        let categorical = self
-            .categorical
-            .as_mut()
-            .map_or(Ok(()), |p| p.drain_routing_preparation());
-        let general = self
-            .general_routing
-            .as_mut()
-            .map_or(Ok(()), |p| p.drain_preparation());
-        super::routing_overlap::arbitrate(categorical, general)
+    /// Close the general routing's optional attempt for the current accuracy
+    /// key once the complete committed RHS set or a failed action ends.
+    pub(crate) fn close_routing_attempt(&mut self) {
+        if let Some(general) = self.general_routing.as_mut() {
+            general.close_attempt();
+        }
     }
 
     pub(crate) fn project_initial_ols(
@@ -902,7 +884,7 @@ impl<'a> FeSession<'a> {
             config.routing = stored.routing;
         }
         if final_residual {
-            self.finish_routing_preparation()?;
+            self.close_routing_attempt();
         }
         let result = self.project_ols_binding(
             weights,
@@ -912,12 +894,12 @@ impl<'a> FeSession<'a> {
             raw_final,
             dense_norms,
         );
-        let preparation = if result.is_err() || final_residual || !self.ols_chunked_norms {
-            self.finish_routing_preparation()
-        } else {
-            self.drain_routing_preparation()
-        };
-        let mut result = super::routing_overlap::arbitrate(result, preparation)?;
+        if result.is_err() || final_residual || !self.ols_chunked_norms {
+            self.close_routing_attempt();
+        }
+        // Cancellation requested during the projection takes precedence.
+        crate::interrupt::checkpoint()?;
+        let mut result = result?;
         if let Some(peak) = self
             .categorical
             .as_ref()
@@ -952,14 +934,6 @@ impl<'a> FeSession<'a> {
         };
         report.setup_seconds += std::mem::take(&mut self.setup_seconds);
         if config.routing.is_some() && crate::diagnostics::solver_trace_enabled() {
-            let (setup_work, setup_limit) = self.categorical.as_ref().map_or_else(
-                || {
-                    self.general_routing
-                        .as_ref()
-                        .map_or((0, 0), |state| state.work())
-                },
-                |p| p.routing_work(),
-            );
             let memory_bytes = (report.solver_workspace_peak.bytes().unwrap_or(0) as u128)
                 .checked_add(config.solver_memory_budget.map_or(0, |b| b.execution_bytes))
                 .ok_or_else(|| allocation("routing diagnostic memory total overflows"))?;
@@ -967,7 +941,7 @@ impl<'a> FeSession<'a> {
                 .solver_memory_budget
                 .map_or(u128::MAX, |b| b.usable_bytes);
             crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=routing_action|preset={}|iterations={}|native_limit={}|setup_work={setup_work}|setup_limit={setup_limit}|memory_bytes={memory_bytes}|memory_limit={memory_limit}|final={}|certified={}",
+                "FEREG_SOLVER_TRACE|phase=routing_action|preset={}|iterations={}|native_limit={}|memory_bytes={memory_bytes}|memory_limit={memory_limit}|final={}|certified={}",
                 config.routing.expect("traced routing preset"),
                 report.iterations,
                 config.map.max_iterations,

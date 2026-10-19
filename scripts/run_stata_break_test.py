@@ -165,27 +165,29 @@ def fixture_command(fixture: Path, args: argparse.Namespace) -> str:
 
 
 def builder_trace_events(trace: str) -> list[str]:
+    """Return the synchronous builder's readiness records.
+
+    Each record is emitted at the builder's first cancellation poll after
+    executed construction work: one task (0) and its zero-based poll ordinal.
+    """
     events = []
     for line in trace.splitlines():
         if "event=builder_break_ready" not in line:
             continue
         try:
-            if not line.startswith("FEREG_SOLVER_TRACE|phase=routing_overlap|event=builder_break_ready|"):
+            if not line.startswith("FEREG_SOLVER_TRACE|phase=routing_builder|event=builder_break_ready|"):
                 raise ValueError("fragmented builder record")
             pairs = [part.split("=", 1) for part in line.split("|")[1:]]
             fields = dict(pairs)
-            if len(pairs) != len(fields) or set(fields) != {
-                "phase", "event", "task", "issued", "charged", "ordinal"
-            }:
+            if len(pairs) != len(fields) or set(fields) != {"phase", "event", "task", "ordinal"}:
                 raise ValueError("invalid builder record fields")
-            if not (0 < int(fields["charged"]) <= int(fields["issued"])
-                    and int(fields["ordinal"]) > 0 and int(fields["task"]) >= 0):
-                raise ValueError("unadmitted builder work")
+            if fields["task"] != "0" or not fields["ordinal"].isdigit():
+                raise ValueError("invalid builder readiness point")
         except (ValueError, KeyError) as error:
-            raise RuntimeError("invalid positive-work builder Break trace") from error
+            raise RuntimeError("invalid synchronous builder Break trace") from error
         events.append(line)
     if len(events) != 2:
-        raise RuntimeError("expected two actual positive-work builder Break checkpoints")
+        raise RuntimeError("expected two synchronous builder Break readiness records")
     return events
 
 

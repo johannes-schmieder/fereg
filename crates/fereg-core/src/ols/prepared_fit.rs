@@ -1156,18 +1156,7 @@ struct FitPerturbations {
 }
 
 fn fit_thread_team(config: PreparedOlsFitConfig) -> ThreadTeam {
-    let team = ThreadTeam::new(config.execution.threads);
-    if team.threads() > 1
-        && config
-            .absorb
-            .routing
-            .is_some_and(|preset| preset.overlaps())
-        && !crate::parallel::exclusive_overlap_authorized()
-    {
-        team.with_exclusive_overlap()
-    } else {
-        team
-    }
+    ThreadTeam::new(config.execution.threads)
 }
 
 /// Fit the finite coefficients of a prepared model, without inference,

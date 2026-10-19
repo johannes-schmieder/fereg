@@ -13,7 +13,7 @@ import routing_science as science
 from test_cmgschur import bits, result
 
 TRACE = ('FEREG_SOLVER_TRACE|phase=routing_action|preset=routing_h4_k0|final=0|certified=1|iterations=5|native_limit=100|'
-         'setup_work=12|setup_limit=32|memory_bytes=64|memory_limit=128\n')
+         'memory_bytes=64|memory_limit=128\n')
 
 
 def base_raw(arm, mode=1, poolsize=1, capacity=1):
@@ -244,7 +244,7 @@ class UnseededPortfolioScope(unittest.TestCase):
             checked = science.resource_diagnostics(log,routing.PORTFOLIO_UNSEEDED,False,{})
             self.assertEqual(checked['action_resources'][0]['preset'],'routing_portfolio_unseeded')
         for log in ('',TRACE,action.replace('certified=1','certified=0'),
-                    action.replace('iterations=5','iterations=101'),action.replace('setup_work=12','setup_work=33'),
+                    action.replace('iterations=5','iterations=101'),
                     action.replace('memory_bytes=64','memory_bytes=129'),action+route.replace('samples=1','samples=0'),
                     action+route.replace('checkpoint=16','checkpoint=32')):
             with self.subTest(log=log),self.assertRaises(ValueError):
@@ -290,15 +290,20 @@ class ModelDiscreteSignature(unittest.TestCase):
 
 class ResourceCertificates(unittest.TestCase):
     def test_actual_resource_cap_and_no_fe_exception_are_not_inferred(self):
-        for trace in ['', TRACE.replace('setup_work=12', 'setup_work=33'), TRACE.replace('certified=1', 'certified=0')]:
+        for trace in ['', TRACE.replace('memory_bytes=64', 'memory_bytes=129'),
+                      TRACE.replace('certified=1', 'certified=0')]:
             with self.assertRaises(ValueError):
                 science.resource_diagnostics(trace, 'h4-k0', False, {})
         with self.assertRaises(ValueError):
             science.resource_diagnostics('', 'h4-k0', True, {})
         allowed = science.resource_diagnostics('', 'h4-k0', True, {**{}, 'no_fe_exact_path': {}})
         self.assertEqual(allowed['resource_basis'], 'bound exact-no-FE witness')
-        self.assertEqual(science.resource_diagnostics('', None, False, {})['resource_checks']['setup_caps'],
-                         'not_applicable')
+        self.assertEqual(science.resource_diagnostics('', None, False, {})['resource_checks'],
+                         {'iteration_caps': 'passed', 'memory_caps': 'passed'})
+        # Retired construction-work fields are not required and carry no cap.
+        legacy = TRACE.replace('memory_bytes=64', 'setup_work=12|setup_limit=32|memory_bytes=64')
+        self.assertNotIn('setup_work_used', science.resource_diagnostics(
+            legacy, 'h4-k0', False, {})['action_resources'][0])
 
 
     def test_actual_preset_and_handoff_parameters_must_match(self):
@@ -315,11 +320,10 @@ class ResourceCertificates(unittest.TestCase):
         for log in [action, action + route]:
             checked = science.resource_diagnostics(log, routing.PORTFOLIO_V1, False, {})
             self.assertEqual(checked['resource_checks'], {'iteration_caps': 'passed',
-                'memory_caps': 'passed', 'setup_caps': 'passed'})
+                'memory_caps': 'passed'})
             self.assertEqual(checked['action_resources'][0]['preset'], 'routing_portfolio_v1')
         for invalid in ['', route, action + route.replace('checkpoint=16', 'checkpoint=8'),
                         action + route.replace('samples=1', 'samples=0'),
-                        action.replace('setup_work=12', 'setup_work=33'),
                         action.replace('iterations=5', 'iterations=101'),
                         action.replace('memory_bytes=64', 'memory_bytes=129'),
                         action.replace('certified=1', 'certified=0'), TRACE]:
@@ -332,7 +336,8 @@ class ResourceCertificates(unittest.TestCase):
             preset = 'routing_incremental_' + family
             action = TRACE.replace('routing_h4_k0', preset)
             result = science.resource_diagnostics(action, 'incremental-' + family, False, {}, expected_preset=preset)
-            self.assertEqual(result['resource_checks']['setup_caps'], 'passed')
+            self.assertEqual(result['resource_checks'],
+                             {'iteration_caps': 'passed', 'memory_caps': 'passed'})
             with self.assertRaisesRegex(ValueError, 'not certified'):
                 science.resource_diagnostics(action + action.replace('certified=1', 'certified=0'),
                                             'incremental-' + family, False, {}, expected_preset=preset)

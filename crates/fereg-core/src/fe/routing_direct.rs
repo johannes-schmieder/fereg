@@ -3,7 +3,8 @@
 //! Numerical scope: only an admitted direct candidate changes arithmetic. The
 //! caller must certify its original-weight residuals before publication. A
 //! declined candidate leaves the incumbent, sample and omission decisions alone.
-//! Work is a conservative scalar arithmetic/access charge, not elapsed time.
+//! Work is a conservative scalar arithmetic/access count, not elapsed time; it
+//! prices the direct-versus-CMG choice and is not a construction allowance.
 
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, Result};
@@ -11,8 +12,8 @@ use crate::memory::{fallible_filled, FeSolverMemoryBudget};
 
 use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, ComponentInfo};
 
-/// Once-per-session pure portfolio selection, charged by the caller even when
-/// direct is declined. See `portfolio_preflight` for its operation envelope.
+/// Once-per-session pure portfolio selection. Its constant envelope remains a
+/// term of the direct work `A`. See `portfolio_preflight` for its operations.
 pub(crate) const PORTFOLIO_PREFLIGHT_WORK: u64 = 1024;
 
 #[derive(Clone, Copy, Debug)]
@@ -20,13 +21,12 @@ pub(crate) struct DirectLimits {
     /// Packed ordinary Schur iteration at current RHS width, independent of
     /// retained inactive banks and the physical session setup reference W0.
     pub reference_iteration_work: u64,
-    /// Already charged pure preflight; counts toward 4W, never returned as work.
+    /// Pure preflight; counts toward 4W, never returned as work.
     pub preflight_work: u64,
-    /// Remaining optional work AFTER charging `preflight_work`.
-    pub remaining_setup_work: u64,
     /// Previously incurred census work; normally zero for `attempt_with_census`.
     pub component_census_work: u64,
-    /// Full independent certificate, including any fresh norm scans.
+    /// Full independent certificate, including any fresh norm scans. It is
+    /// common to both orientations and only orders their complete bounds.
     pub certificate_work: u64,
     pub certificate_bytes: u128,
     /// Other live solver storage; execution storage is in `memory` already.
@@ -35,9 +35,10 @@ pub(crate) struct DirectLimits {
 }
 
 impl DirectLimits {
-    /// Common certificate credit never funds optional prefixes. The same
-    /// immutable original-design certificate appears on both alternatives,
-    /// while a failed direct certificate remains part of spent setup work.
+    /// The small-direct criterion `A <= 4 W_ref`, where `A` is the preflight
+    /// envelope plus the noncertificate direct work. The common immutable
+    /// original-design certificate appears on both alternatives and is not
+    /// part of `A`. There is no separate construction-work allowance.
     fn admits_work(self, noncertificate: u64) -> bool {
         self.reference_iteration_work
             .checked_mul(4)
@@ -46,9 +47,6 @@ impl DirectLimits {
                     .checked_add(noncertificate)
                     .is_some_and(|total| total <= cap)
             })
-            && noncertificate
-                .checked_add(self.certificate_work)
-                .is_some_and(|total| total <= self.remaining_setup_work)
     }
 }
 
@@ -85,8 +83,8 @@ pub(crate) struct DirectAttempt {
     pub profiles: [Option<DirectProfile>; 2],
     pub candidate: Option<DirectCandidate>,
     pub decline: Option<DirectDecline>,
-    /// Conservative work charged, excluding the already charged preflight.
-    /// Numerical failure may leave reserved work unused.
+    /// Conservative work bound of the attempt, excluding the preflight. This
+    /// is a diagnostic; numerical failure may leave part of it unused.
     pub work_used: u64,
     /// Additional storage admitted; other live storage is not included here.
     pub peak_bytes: u128,
@@ -179,8 +177,8 @@ fn fits(limits: DirectLimits, bytes: u128) -> bool {
 /// bookkeeping have a further 96-operation allowance. Each checked operation
 /// costs at most arithmetic plus its overflow predicate (512 total); reserve
 /// 256 more reads/writes/comparisons and 256 entry/exit/guard units. No scan or
-/// allocation is hidden in this 1,024-unit envelope. The caller charges it once
-/// and passes the post-charge remainder. Returned profile work excludes it.
+/// allocation is hidden in this 1,024-unit envelope. The caller passes it as
+/// `preflight_work`. Returned profile work excludes it.
 pub(crate) fn portfolio_preflight(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
@@ -615,8 +613,7 @@ pub(crate) fn attempt(
         );
         return Ok(result);
     };
-    // Reserve the entire deterministic attempt before numerical work. This also
-    // charges numerical failures without making wall-clock progress authoritative.
+    // Report the complete deterministic bound of the launched attempt.
     result.work_used = chosen.work_bound;
     result.peak_bytes = chosen.peak_bytes;
     result.candidate = solve(design, weights, components, rhs, &counts, chosen)?;
@@ -975,7 +972,6 @@ mod tests {
         DirectLimits {
             reference_iteration_work: 1_000_000,
             preflight_work: 0,
-            remaining_setup_work: 4_000_000,
             component_census_work: 100,
             certificate_work: 1_000,
             certificate_bytes: 256,
@@ -1025,7 +1021,6 @@ mod tests {
             assert_eq!(certificate, expected_c);
             let bound = DirectLimits {
                 reference_iteration_work: four_w / 4,
-                remaining_setup_work: 8 * four_w - PORTFOLIO_PREFLIGHT_WORK,
                 certificate_work: certificate,
                 certificate_bytes: 0,
                 retained_live_bytes: 0,
@@ -1074,7 +1069,6 @@ mod tests {
             // Global unknown-component upper bound is A1076 (actual A1012).
             let mut bound = DirectLimits {
                 reference_iteration_work: 525, // (1076 + preflight1024)/4
-                remaining_setup_work: 2836,    // A1076 + C1760; F already spent.
                 certificate_work: 1760,
                 ..portfolio_limits()
             };
@@ -1090,31 +1084,31 @@ mod tests {
                 portfolio_preflight(design, BorrowedMapWeights::Unit, 1, bound),
                 Some(admitted)
             );
-            for change in 0..6 {
+            for change in 0..5 {
                 let mut refused = bound;
                 match change {
                     0 => refused.reference_iteration_work -= 1,
-                    1 => refused.remaining_setup_work -= 1,
-                    2 => refused.memory.as_mut().unwrap().usable_bytes -= 1,
-                    3 => refused.preflight_work = 0,
-                    4 => refused.component_census_work = 1,
+                    1 => refused.memory.as_mut().unwrap().usable_bytes -= 1,
+                    2 => refused.preflight_work = 0,
+                    3 => refused.component_census_work = 1,
                     _ => refused.reference_iteration_work = u64::MAX,
                 }
                 assert!(
                     portfolio_preflight(design, BorrowedMapWeights::Unit, 1, refused).is_none()
                 );
             }
+            // The common certificate never enters A; an unrepresentable
+            // complete bound still declines without overflow.
             bound.certificate_work = u64::MAX;
             assert!(portfolio_preflight(design, BorrowedMapWeights::Unit, 1, bound).is_none());
         });
     }
 
     #[test]
-    fn actual_direct_gate_includes_sunk_preflight_without_charging_it_again() {
+    fn actual_direct_gate_includes_the_preflight_term() {
         with_rectangle(|design, _, rhs| {
             let mut bound = DirectLimits {
                 reference_iteration_work: 509, // (actual A1012 + F1024)/4.
-                remaining_setup_work: 2772,    // Actual A+C, not A+C+F.
                 certificate_work: 1760,
                 ..portfolio_limits()
             };
@@ -1206,7 +1200,6 @@ mod tests {
             // factor/solve96 + two clique edges96 = A1012. Certificate C1760.
             let mut limits = DirectLimits {
                 reference_iteration_work: 253,
-                remaining_setup_work: 2772,
                 component_census_work: 0,
                 certificate_work: 1760,
                 ..limits()
@@ -1217,7 +1210,6 @@ mod tests {
             assert_eq!(admitted.profiles[0].unwrap().noncertificate_work, 1012);
             assert_eq!(admitted.work_used, 2772);
             limits.reference_iteration_work = 252;
-            limits.remaining_setup_work = u64::MAX;
             for certificate_work in [1760, 10_000] {
                 limits.certificate_work = certificate_work;
                 let refused =
@@ -1243,45 +1235,26 @@ mod tests {
     }
 
     #[test]
-    fn total_attempt_reserve_and_checked_overflow_refuse_without_numerical_work() {
+    fn checked_reference_overflow_refuses_without_numerical_work() {
         with_rectangle(|design, _, rhs| {
-            let mut limits = DirectLimits {
-                reference_iteration_work: 253,
-                remaining_setup_work: 2771,
+            let limits = DirectLimits {
+                reference_iteration_work: u64::MAX,
                 component_census_work: 0,
                 certificate_work: 1760,
                 ..limits()
             };
-            let refused =
-                attempt_with_census(design, BorrowedMapWeights::Unit, rhs, limits).unwrap();
-            assert_eq!(refused.decline, Some(DirectDecline::Work));
-            assert!(refused.candidate.is_none());
-            assert_eq!(refused.work_used, 404);
-            // The necessary pre-census bound is576+C. One less cannot fund
-            // even the census, regardless of the otherwise sufficient4W cap.
-            limits.remaining_setup_work = 2335;
-            let refused =
-                attempt_with_census(design, BorrowedMapWeights::Unit, rhs, limits).unwrap();
-            assert_eq!((refused.work_used, refused.peak_bytes), (0, 0));
-            limits.remaining_setup_work = u64::MAX;
-            limits.certificate_work = u64::MAX;
             let overflow =
                 attempt_with_census(design, BorrowedMapWeights::Unit, rhs, limits).unwrap();
-            assert_eq!((overflow.work_used, overflow.peak_bytes), (0, 0));
-            limits.certificate_work = 1760;
-            limits.reference_iteration_work = u64::MAX;
-            let overflow =
-                attempt_with_census(design, BorrowedMapWeights::Unit, rhs, limits).unwrap();
+            assert_eq!(overflow.decline, Some(DirectDecline::Work));
             assert_eq!((overflow.work_used, overflow.peak_bytes), (0, 0));
         });
     }
 
     #[test]
-    fn launched_numerical_decline_keeps_complete_work_charge() {
+    fn launched_numerical_decline_reports_its_complete_work_bound() {
         with_rectangle(|design, _, rhs| {
             let limits = DirectLimits {
                 reference_iteration_work: 328,
-                remaining_setup_work: 32 * 328,
                 component_census_work: 0,
                 certificate_work: 1760,
                 ..limits()
@@ -1294,9 +1267,6 @@ mod tests {
             assert!(failed.candidate.is_none());
             assert_eq!(failed.profiles[0].unwrap().noncertificate_work, 1140);
             assert_eq!(failed.work_used, 2900);
-            // A spent reservation is not returned when its numerical phase
-            // abstains; no caller may obtain a fresh full allowance from it.
-            assert_eq!(limits.remaining_setup_work - failed.work_used, 7596);
         });
     }
 
@@ -1451,7 +1421,7 @@ mod tests {
         let components = connected_components_all(&[&a, &b], &[2, 2]).unwrap();
         let rhs = DenseMatrix::from_columns(&[vec![1., 2., 4., 8.]]).unwrap();
         let mut bound = limits();
-        bound.remaining_setup_work = 100;
+        bound.reference_iteration_work = 1;
         let refused = attempt(&design, BorrowedMapWeights::Unit, &components, &rhs, bound).unwrap();
         assert_eq!(refused.decline, Some(DirectDecline::Work));
         assert_eq!(refused.peak_bytes, 0);
@@ -1473,7 +1443,6 @@ mod tests {
         .unwrap();
         assert_eq!(refused.decline, Some(DirectDecline::Numerical));
         assert!(refused.candidate.is_none());
-        assert!(refused.work_used <= limits().remaining_setup_work);
     }
 
     #[test]
@@ -1505,10 +1474,10 @@ mod tests {
         let w_ref = super::super::routing::schur_iteration_work(n, levels, levels, 1, 1).unwrap();
         let w_padded =
             super::super::routing::schur_iteration_work(n, levels, levels, 1, 64).unwrap();
+        assert!(w_padded > w_ref);
         let limits = DirectLimits {
             reference_iteration_work: w_ref,
             preflight_work: 0,
-            remaining_setup_work: 32 * w_ref,
             component_census_work: 0,
             certificate_work: original_certificate_work(n, 2 * levels, 2, 1).unwrap(),
             certificate_bytes: 4 * 8,
@@ -1530,24 +1499,7 @@ mod tests {
                 .iter()
                 .flatten()
                 .all(|p| p.noncertificate_work <= 4 * w_ref));
-            assert!(result.work_used <= limits.remaining_setup_work);
-            let padded = attempt_with_census(
-                &design,
-                weights,
-                &rhs,
-                DirectLimits {
-                    remaining_setup_work: 32 * w_padded,
-                    ..limits
-                },
-            )
-            .unwrap();
-            assert_eq!(padded.profiles, result.profiles);
-            assert_eq!(padded.work_used, result.work_used);
             let candidate = result.candidate.unwrap();
-            assert_eq!(
-                padded.candidate.unwrap().residualized,
-                candidate.residualized
-            );
             for row in 0..n {
                 let sign = [1., -1., -1., 1.][row % 4];
                 let expected = match weights {

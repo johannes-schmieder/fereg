@@ -4223,11 +4223,6 @@ fn hidden_routing_presets_survive_framed_requests_and_reach_absorb_config() {
                 .into_iter()
                 .map(|name| RoutingPreset::ablation(name).unwrap()),
         )
-        .chain([8, 16, 32].into_iter().flat_map(|checkpoint| {
-            [0, 1, 2]
-                .into_iter()
-                .map(move |samples| RoutingPreset::overlap(checkpoint, samples).unwrap())
-        }))
         .chain(
             [
                 fereg_core::fe::CategoricalPrefix::None,
@@ -4306,24 +4301,21 @@ fn hidden_coefficient_it_is_explicit_and_survives_framed_requests() {
 }
 
 #[test]
-fn hidden_builder_break_requires_marker_and_multiple_workers() {
+fn hidden_builder_break_requires_a_marker_at_every_worker_count() {
     let (mut args, _) = fixture(OlsVceKind::Iid);
-    replace_argument(&mut args, "threads", "threads=2".to_owned());
     args.extend([
-        "inject=routing_overlap_break".to_owned(),
+        "inject=routing_builder_break".to_owned(),
         "break_marker_token=0123456789abcdef0123456789abcdef".to_owned(),
     ]);
-    for request in [&args, &bundled(&args)] {
-        let spec = EstimateActionSpec::parse(request).unwrap();
-        assert_eq!(spec.routing, Some(RoutingPreset::overlap_break()));
-        assert!(spec.native_break_token.is_some());
-    }
-    replace_argument(&mut args, "threads", "threads=1".to_owned());
-    for request in [&args, &bundled(&args)] {
-        assert_eq!(
-            EstimateActionSpec::parse(request).unwrap_err().code,
-            ErrorCode::Syntax
-        );
+    // The synchronous builder needs no spare worker: Stata's thread polls
+    // Break while the action team runs the construction.
+    for threads in ["threads=1", "threads=2", "threads=4"] {
+        replace_argument(&mut args, "threads", threads.to_owned());
+        for request in [&args, &bundled(&args)] {
+            let spec = EstimateActionSpec::parse(request).unwrap();
+            assert_eq!(spec.routing, Some(RoutingPreset::builder_break()));
+            assert!(spec.native_break_token.is_some());
+        }
     }
 }
 
@@ -4339,8 +4331,7 @@ fn invalid_hidden_routing_requests_fail_before_reads_or_publication() {
         requests.push((solver, vec!["inject=routing_prefix_none"]));
         requests.push((solver, vec!["inject=routing_prefix_map4"]));
         requests.push((solver, vec!["inject=routing_prefix_it4"]));
-        requests.push((solver, vec!["inject=routing_overlap_h8_k1"]));
-        requests.push((solver, vec!["inject=routing_overlap_break", token]));
+        requests.push((solver, vec!["inject=routing_builder_break", token]));
     }
     for solver in ["auto", "map", "lsmr", "cmg", "cmgschur", "squarem"] {
         requests.push((solver, vec!["inject=it_coefficients"]));
@@ -4349,9 +4340,11 @@ fn invalid_hidden_routing_requests_fail_before_reads_or_publication() {
     for fields in [
         vec!["inject="],
         vec!["inject=routing_h8_k1", token],
-        vec!["inject=routing_overlap_h8_k1", token],
-        vec!["inject=routing_overlap_break"],
-        vec!["inject=routing_overlap_break", "break_marker_token=invalid"],
+        vec!["inject=routing_builder_break"],
+        vec!["inject=routing_builder_break", "break_marker_token=invalid"],
+        // Retired overlap tokens are unknown injections.
+        vec!["inject=routing_overlap_h8_k1"],
+        vec!["inject=routing_overlap_break", token],
         vec!["inject=routing_prefix_map4", token],
         vec!["inject=routing_overlap_h4_k1"],
         vec!["inject=routing_overlap_h08_k1"],

@@ -26,6 +26,46 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## CMG successor milestone 3a: construction-work cap removed
+
+**M3a cloud source checks pass; native, Break and qualification-host checks are
+outstanding.** Work stops here for review. This does not qualify two-FE
+activation, which stays disabled.
+
+Johannes decided on 2026-10-19 to remove the optional CMG construction-work cap
+altogether. CMG is pinned to `c23666e894c3fb404313e5f6769e20f871d77470`, which
+removes the control/prefix interface, the factor-affordability preflight and
+all work charges; controlled builders take a sticky cancellation query polled
+every 65,536 counted units and before every allocation. fereg removes the
+`32 W0` allowance, the `4 W0` handoff reserve, the startup-fit test, the
+host-context charges and its work ledger; its bounded builder uses the same
+cancellation cadence. The single attempt at iteration 16, cutoff 5, one tree,
+seed 0, the `A <= 4 W_ref` small-direct criterion, memory admission, restart,
+certificate and fallback are unchanged. The overlap experiment, its tokens,
+exclusive team admission, replay panel and oracle generator are retired. The
+construction-Break fixture now arms `routing_builder_break` on the synchronous
+h4/k1 builder; readiness is recorded at its first poll after executed work.
+
+Declared scope: on injected two-FE and general-pair routing arms, builds and
+direct attempts previously refused by the cap may now install, and terminal
+factors follow the hierarchy options and memory only. Installation, iterations,
+hierarchy reports, solver signatures and OLS numerical outputs may change within
+section 20 tolerances. Discrete model decisions, public uninjected routes,
+explicit `cmg`/`cmgschur` and PPML stay exact. Removing owner fields lowers the
+admitted owner bytes of categorical owners by a few dozen bytes.
+
+On a four-core Linux cloud container, `./scripts/run_tests.sh` stopped at the
+expected installed-package binding check. `--source-only` passes 315 Python
+tests, 1,941 Rust test executions, the fuzz check, seven portable checks and the
+complexity ratchet. CMG passes its default and all-feature suites, Clippy for
+four feature sets and the benchmark crate. A Linux actual-plugin replay against
+`7ccab5a9` passes all 73 cases with zero exact differences. Injected two-FE runs
+on the 25 automatic-OLS replay cases are also exact, but none reached a CMG
+build. Production lines fall by 1,922 and dispatch candidates by 18.
+Six mapped Stata fixtures, Break runs at two and four workers, the 42-cell
+admission diff, Mac builds and all timing remain outstanding. Identities are in
+[`cmg-m3a-20261019.json`](../bench/results/cmg-m3a-20261019.json).
+
 ## CMG successor milestone 2: initial graph construction
 
 **M2 is complete: source/native checks and the fixed cost diagnostic pass.**

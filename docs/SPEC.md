@@ -198,16 +198,15 @@ FE, slopes, explicit solver or preconditioner choices and PPML retain their
 existing behavior. Hidden family selectors outside their eligible family retain
 the currently accepted Auto path. Existing hidden experiments keep their contracts.
 
-The subsequent CMG execution-foundation milestone adds a fixed 64-unit host-team
-entry charge to each bounded upstream operation (five entries for a complete
-build), within the existing work cap. This is an explicit accounting/admission
-scope change: near a budget boundary it may refuse a build or select the
-existing coarsening path instead of terminal factorization, with corresponding
-hierarchy/solver-signature differences. Factor preflight uses the post-charge
-remainder. Arithmetic kernels, certificates, sample/rank/omission semantics,
-cutoffs, seeds and tolerance rules are unchanged. See the
+The bounded CMG builder borrows the host team and polls cancellation at fixed
+logical chunks; construction is admitted against memory only. Johannes's
+2026-10-19 decision removed the optional construction-work cap, its accounting
+and the budget-dependent factor screen; no work cap, dimension-only work bound,
+time cap or predictive payback rule replaces them. Arithmetic kernels,
+certificates, sample/rank/omission semantics, cutoffs, seeds and tolerance
+rules are unchanged. See the
 [execution contract](ARCHITECTURE.md#cmg-host-team-and-stage-admission).
-This foundation does not activate two-FE or establish new performance evidence.
+This does not activate two-FE or establish new performance evidence.
 
 Declared scientific scope is confined to the selected eligible OLS family:
 coefficients, covariance, fit statistics, residuals, FE coordinates and numerical
@@ -297,22 +296,18 @@ acceptance still requires the original-design certificate at the requested
 tolerance. Pilots, restarts, corrections and fallbacks share the existing
 per-projection-action native cap, not an estimation-wide cap across Low chunks.
 
-Optional setup has a separate checked cap of `32 W0`, where `W0` conservatively
-prices one incumbent iteration over the first active batch (the first bounded
-window for general LSMR). Later chunks cannot enlarge that allowance. General
-LSMR first admits a bounded metadata scan against `32` times its known
-design/vector cost, then incorporates the incumbent's actual local-factor work
-bound without forgetting the scan cost; an incomplete scan declines routing.
-Construction reserves `4 W0` for handoff, and acceptance additionally admits the
-required candidate startup applications and correction work. Setup and a built
-inverse are shared by the immutable sample/topology/weight binding; a new
-accuracy/final-residual phase receives its own setup allowance and may reuse the
-inverse. Incurred optional work remains charged after refusal. Joint memory
-admission covers resident hierarchies, live recurrences, restart buffers and
-application scratch. Optional budget refusal resumes the incumbent; Break and
-fatal errors preserve atomic failure. Existing preconditioner-breakdown fallback
-uses only the remaining native budget. These optional caps do not constrain an
-explicit CMG request.
+Setup and a built inverse are shared by the immutable sample/topology/weight
+binding; one optional attempt belongs to each accuracy key, and a new
+accuracy/final-residual phase may reuse the inverse. Joint memory admission
+covers resident hierarchies, live recurrences, restart buffers and application
+scratch, and every allocation is fallible. Optional construction is cancellable
+at bounded logical chunks. A memory or resource refusal before installation
+leaves the live recurrence unchanged and resumes the incumbent. Cancellation
+(Break) and fatal errors are never swallowed: after all dispatched tasks join,
+they propagate as an interrupted or failed native estimation with atomic
+rollback; no PCG/MAP resumption and no publication follows a cancellation.
+Existing preconditioner-breakdown fallback uses only the remaining native
+budget.
 
 The synchronous two-FE observation builder may retain its first-pass canonical
 cells and already-compensated worker totals for edge emission. This preserves
@@ -320,17 +315,11 @@ the original canonical values, order and sampler input bits. Before allocating
 the cache, a checked conservative envelope admits the cache together with cell
 scratch, sampling, graph construction, components, hierarchy, scalar workspace
 and final application banks, net of live parent/execution storage. Overflow or
-insufficient memory chooses the original two-pass path before allocation. The
-1,024-unit preflight cost remains charged even when the cache is declined;
-allocation, stores and reads are also charged, with no refund or second attempt.
-Cache bytes remain reserved through finish. Controlled/general-pair builders
-and overlap presets, including their one-worker serial fallback, retain the
-uncached path and its original gates. Previously admitted cached builds require
-identical graph, hierarchy and application results. Saved work may newly admit
-a hidden synchronous routing build: installation, iterations and downstream
-OLS numerical values then fall within the declared routing scope, while the
-original strict certificate, model and discrete decisions remain authoritative.
-This optimization does not activate public routing or establish a speed claim.
+insufficient memory chooses the original two-pass path before allocation, with
+no second attempt. Cache bytes remain reserved through finish. The reduced
+general-pair builder retains the uncached path. Cached and uncached builds
+require identical graph, hierarchy and application results. This optimization
+does not activate public routing or establish a speed claim.
 
 Three separate hidden two-FE experiments isolate structural choices:
 `routing_diagonal` uses the current-weight Schur diagonal with the observation
@@ -342,21 +331,19 @@ Schur factorization in either orientation. Its structural noncertificate work
 orientations, assembly, factorization, solves for the currently committed RHSs,
 reconstruction and direct-specific checks. `W_ref` prices one incumbent iteration
 in the incumbent orientation with the current active RHSs packed, without credit
-for inactive capacity. The complete attempt, including the shared original-design
-certificate, must fit the remaining `32 W0` physical-work allowance and the joint
-memory budget; the protected fallback certificate/output reserve is unchanged.
-The certificate is common only when its kernel, scales and acceptance contract
-match the incumbent's; direct-only preparation remains in `A`. Census/profile
-prefixes cannot spend the certificate allowance. Checked overflow declines the
-proposal. The full admitted work reservation is charged before numerical work,
-with no refund or second candidate after factorization or certificate failure;
-the incumbent remains available. The four-iteration threshold applies only to
+for inactive capacity. The complete attempt must fit the joint memory budget;
+the protected fallback certificate/output reserve is unchanged. There is no
+construction-work allowance. The certificate is common only when its kernel,
+scales and acceptance contract match the incumbent's; direct-only preparation
+remains in `A`. Checked overflow declines the proposal. There is no second
+candidate after factorization or certificate failure; the incumbent remains
+available. The four-iteration threshold applies only to
 structural work and carries no total-overhead or speed guarantee. Grounding and
 zero-diagonal preconditioning safeguards are not numerical-rank authorities.
-Zero/one-FE and slope routes retain their existing behavior. Separate prefix,
-concurrent-preparation and PPML topology experiments are described below. Exact hidden tokens
+Zero/one-FE and slope routes retain their existing behavior. Separate prefix
+and PPML topology experiments are described below. Exact hidden tokens
 and validation are specified in [the plugin protocol](plugin_protocol.md#developer-injections-hidden-adapters-only);
-implementation boundaries are [routing work accounting](../crates/fereg-core/src/fe/routing.rs),
+implementation boundaries are [routing presets and the attempt record](../crates/fereg-core/src/fe/routing.rs),
 [general pair replacement](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs),
 [two-FE kernels](../crates/fereg-core/src/fe/routing_kernel.rs) and
 [direct proposals](../crates/fereg-core/src/fe/routing_direct.rs).
@@ -425,17 +412,16 @@ Uninjected Auto retains its existing shortcut.
 
 The separate `routing_portfolio_v1` qualification arm uses one fixed structural
 portfolio. With exactly two categorical FEs it retains the incumbent recurrence
-and first prices an allocation-free direct-or-CMG choice. At the first
-uncertified action without a retained inverse, a 1,024-unit preflight is charged
-once per existing accuracy key, including on decline. A checked dimension-only
-upper bound must admit direct census, both orientation profiles, assembly,
-factorization and outputs within four packed current-RHS incumbent iterations,
-including the preflight. The complete attempt plus its original certificate
-must fit the remaining setup allowance and simultaneous memory budget. A
-selected direct attempt consumes the sole optional opportunity before census;
-numerical, geometry or certificate refusal cannot enable CMG afterward. A
-declined preflight retains its charge and the one CMG opportunity across Low
-chunks. Previously retained CMG inverses remain reusable.
+and first prices an allocation-free direct-or-CMG choice once per accuracy key,
+at the first uncertified action without a retained inverse. A checked
+dimension-only upper bound must admit direct census, both orientation profiles,
+assembly, factorization and outputs within four packed current-RHS incumbent
+iterations, including the constant 1,024-unit preflight envelope, and the
+complete attempt must fit the simultaneous memory budget. A selected direct
+attempt consumes the sole optional opportunity before census; numerical,
+geometry or certificate refusal cannot enable CMG afterward. A declined
+preflight retains the one CMG opportunity across Low chunks. Previously
+retained CMG inverses remain reusable.
 
 The incumbent-CMG choice considers one synchronous build at iteration 16, using cutoff 5, one
 sampled tree per high-degree worker and seed zero. Sampling changes only the
@@ -444,22 +430,10 @@ The canonical cache uses the complete admission envelope above. These are
 prospective engineering constants, not a policy selected by the earlier failed
 Mac panel. There is no sampling ladder, resampling or second optional attempt.
 
-Only this private portfolio's bounded CMG build screens an eligible direct
-terminal against its actual remaining construction allowance. An allocation-free,
-checked integer upper bound covers the complete component-factor construction,
-including component discovery, ordering, numeric fill and storage conversion.
-The 1,024-unit screen is charged before comparison. Overflow or a bound exceeding
-the remaining allowance continues the existing coarsening branch before any
-factor attempt; empty or singleton graphs refuse safely instead. The direct
-threshold, coarsening/stagnation/fill limits, setup allowance and restart reserve
-stay fixed. Existing controlled, reduced, overlap and explicit builds do not opt
-in. This is a conservative factor-affordability screen, not reserved credit or
-an installation guarantee: pending reporting, workspace, memory, startup and
-numerical gates remain authoritative. Newly chosen private hierarchies may
-change installation, iterations and eligible OLS rounding within the declared
-routing scope; the original model, certificate, tolerances and discrete
-decisions remain authoritative. Independent factor-work bounds, compatible
-Laplacian action witnesses and exact disabled-path replay precede qualification.
+The bounded build's terminal factor follows the hierarchy options (direct
+threshold and stopping rules) and memory admission only; no construction-work
+screen redirects a direct terminal to coarsening. Compatible Laplacian action
+witnesses and exact disabled-path replay precede qualification.
 
 With three or more categorical FEs, this arm tries at most four categorical MAP
 sweeps before seeded LSMR. It replaces the three-FE shortcut,
@@ -477,45 +451,13 @@ results and solver diagnostics within the existing scientific tolerances;
 model and discrete decisions remain unchanged. It is
 experimental and does not change public Auto or establish performance evidence.
 
-`routing_overlap_h{8|16|32}_k{0|1|2}` separately tests preparation on one existing
-worker. It requires an exclusively admitted synchronous/scoped executor action
-with at least two workers; a one-worker request uses serial preparation. Shared
-or retained team handles block exclusive admission, and incompatible nested
-requests fail before launch. Arbitrary detached Rayon jobs remain outside the
-executor's scoped-lifetime contract. The foreground retains its fixed numerical
-partitions while at most `P-1` workers execute it. A startup handshake prevents
-the foreground coordinator from stealing and parking on its own builder task.
-
-At four incumbent iterations, the controller launches an owned builder with an
-initial `W0` grant; later four-iteration epochs add `W0` up to its admitted
-allowance. Compatible Low chunks retain the actual parked builder and cumulative
-spending. Before a general-LSMR builder resumes, joint admission refreshes its
-foreground-memory envelope and budget, including same-width calls with changed
-parent storage. Every subsequent allocation checks that current envelope;
-refreshing it never replenishes the initial work cap or grants. Existing builder
-storage that cannot coexist with the next foreground causes refusal and a join
-before fallback. The two-FE session instead admits its maximum Low width upfront.
-At an uncertified frozen checkpoint `h`, the remaining allowance is
-granted and the worker joined before a valid exact-residual restart. Readiness
-cannot advance the handoff or release the worker. Convergence readiness defers
-new grants and drains issued work before the existing original-design
-certificate decides. Break dominates terminal arbitration; other fatal errors
-use fixed kind/task ordering and cannot truncate the peer's prescribed work by
-arrival time. Refusal preserves the incumbent and cannot veto certified success.
-All terminal paths join before publication or rollback.
-
-Fixed service state and owned inputs are established before launch. Subsequent
-variable numerical payload allocations remain checked, fallible, memory-admitted
-and gated at stable logical operation sites. Small shared ownership controls
-are also admitted and gated; stable Rust's `Arc` allocation remains infallible.
-This replaces the original proposal to reserve every eventual
-hierarchy arena upfront. Accounting reserves do not guarantee physical memory:
-successful fixed-mode/worker/seed executions and fixed-site injected failures
-must repeat, while exogenous allocation failures have containment rather than
-schedule-independent outcome guarantees. Standard `Arc` and executor control
-bookkeeping use their allocator APIs; allocator abort and process death remain
-outside the survival guarantee. The numerical payload contract must not be
-described as universal recoverability from process-wide exhaustion.
+The former concurrent-preparation (overlap) experiment and its injections were
+retired on 2026-10-19 together with the construction-work cap. Break during
+optional construction is exercised on the synchronous builder through the
+hidden `routing_builder_break` arm: the h4/k1 two-FE build parks at its first
+cancellation poll after executed construction work, Stata's main thread polls
+Break, and the requested cancellation propagates as an interrupted native
+estimation with atomic rollback after all dispatched work joins.
 
 Hidden PPML `inject=ppml_topology` shares only component labels in the already
 admitted categorical checkpoint path. It retains no weighted numerical factors,

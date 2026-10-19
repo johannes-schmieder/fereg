@@ -1105,10 +1105,6 @@ struct AutoSchurRoute {
     request: CmgSchurRequest,
     setup: super::routing::SetupLedger,
     peak: SolverWorkspacePeak,
-    preparation: Option<super::routing_overlap::Preparation<super::cmg_schur::BoundedCmgBuild>>,
-    preparation_charged: u64,
-    preparation_bytes: u128,
-    preparation_memory: Option<std::sync::Arc<std::sync::atomic::AtomicU64>>,
 }
 
 impl AutoSchurRoute {
@@ -1127,14 +1123,9 @@ impl AutoSchurRoute {
             if graph.cmg_schur.is_some() {
                 return Ok(None);
             }
-            let work = super::routing_direct::PORTFOLIO_PREFLIGHT_WORK;
-            if self.setup.limit.saturating_sub(self.setup.used) < work {
-                self.setup.attempted = true;
-                return Ok(None);
-            }
             crate::interrupt::checkpoint()?;
-            self.setup.charge(work)?;
-            work
+            // The constant preflight term remains part of the direct work A.
+            super::routing_direct::PORTFOLIO_PREFLIGHT_WORK
         } else {
             self.setup.attempted = true;
             0
@@ -1162,7 +1153,6 @@ impl AutoSchurRoute {
         let limits = super::routing_direct::DirectLimits {
             reference_iteration_work,
             preflight_work,
-            remaining_setup_work: self.setup.limit.saturating_sub(self.setup.used),
             component_census_work: 0,
             certificate_work,
             certificate_bytes: 0,
@@ -1185,30 +1175,12 @@ impl AutoSchurRoute {
         design: &BorrowedInterceptFeDesign<'_>,
         weights: ValidatedWeights<'_>,
         left: usize,
-        rhs_count: usize,
         stride: usize,
         iterations: usize,
         iteration_limit: usize,
         setup_seconds: &mut f64,
         solve_started: &mut Instant,
     ) -> Result<Option<super::cmg_schur::CmgSchurPreconditioner>> {
-        if self.setup.attempted {
-            return Ok(None);
-        }
-        if self.preset.overlaps()
-            && rayon::current_num_threads() >= 2
-            && iterations >= 4
-            && iterations % 4 == 0
-            && iterations < self.preset.checkpoint()
-            && self.preset.checkpoint() < iteration_limit
-        {
-            TWO_FE_ROUTING_LAUNCH_AT.set(iterations);
-            if let Some(preparation) = self.preparation.as_mut() {
-                preparation.grant_epoch()?;
-            } else {
-                self.start_preparation(design, weights, left)?;
-            }
-        }
         if self.setup.attempted
             || iterations < self.preset.checkpoint()
             || iterations >= iteration_limit
@@ -1218,207 +1190,40 @@ impl AutoSchurRoute {
         self.setup.attempted = true;
         TWO_FE_ROUTING_BUILD_AT.set(iterations);
         let started = Instant::now();
-        let mut built = if let Some(built) = self.finish_preparation(true)? {
-            built
-        } else {
-            let built = super::cmg_schur::CmgSchurPreconditioner::try_build_bounded(
-                design,
-                weights
-                    .values
-                    .map_or(BorrowedMapWeights::Unit, BorrowedMapWeights::Provided),
-                left,
-                self.request.degree,
-                self.request.sampling,
-                stride,
-                self.request.budget,
-                self.setup.builder_allowance(),
-                !self.preset.overlaps(),
-                self.preset.portfolio(),
-            )?;
-            self.setup.charge(built.work_used)?;
-            built
-        };
+        // The developer builder-Break arm claims its process-wide marker for
+        // exactly this synchronous build; the guard releases it on every exit.
+        let _developer_break = self
+            .preset
+            .breaks_builder()
+            .then(super::routing_break::DeveloperBreak::claim)
+            .transpose()?;
+        let built = super::cmg_schur::CmgSchurPreconditioner::try_build_bounded(
+            design,
+            weights
+                .values
+                .map_or(BorrowedMapWeights::Unit, BorrowedMapWeights::Provided),
+            left,
+            self.request.degree,
+            self.request.sampling,
+            stride,
+            self.request.budget,
+            self.preset.breaks_builder(),
+        )?;
         self.peak = self.peak.max(built.peak);
-        let restart_work = built
-            .preconditioner
-            .as_ref()
-            .and_then(|p| p.startup_work(rhs_count))
-            .and_then(|work| work.checked_add(self.setup.restart_reserve));
-        if built.preconditioner.is_some() {
-            if let Some(work) = restart_work
-                .filter(|&work| work <= self.setup.limit.saturating_sub(self.setup.used))
-            {
-                self.setup.charge(work)?;
-            } else {
-                built.preconditioner = None;
-                built.refusal = Some(super::cmg_schur::BuildRefusal::WorkBudget);
-            }
-        }
         let elapsed = started.elapsed();
         *setup_seconds += elapsed.as_secs_f64();
         *solve_started += elapsed;
         if crate::diagnostics::solver_trace_enabled() {
             crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint={}|samples={}|iterations={iterations}|setup_work={}|setup_limit={}|installed={}|refusal={:?}",
-                self.preset.checkpoint(), self.preset.samples(), self.setup.used, self.setup.limit,
+                "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint={}|samples={}|iterations={iterations}|installed={}|refusal={:?}",
+                self.preset.checkpoint(), self.preset.samples(),
                 u8::from(built.preconditioner.is_some()), built.refusal));
         }
         Ok(built.preconditioner)
     }
 
-    fn begin(&mut self, tolerance: f64, final_residual: bool, work: Option<u64>) -> Result<()> {
-        if !self.setup.matches_accuracy(tolerance, final_residual) {
-            self.finish_preparation(false)?;
-        }
-        self.setup.begin(tolerance, final_residual, work);
-        Ok(())
-    }
-
-    fn charge_preparation(&mut self, charged: u64) -> Result<()> {
-        let additional = charged
-            .checked_sub(self.preparation_charged)
-            .ok_or_else(|| invalid_data("optional preparation work moved backwards"))?;
-        self.setup.charge(additional)?;
-        self.preparation_charged = charged;
-        Ok(())
-    }
-
-    fn drain_preparation(&mut self) -> Result<()> {
-        if let Some(preparation) = self.preparation.as_mut() {
-            let result = preparation.drain();
-            let charged = preparation.charged();
-            self.charge_preparation(charged)?;
-            if let Some(memory) = &self.preparation_memory {
-                self.peak = self.peak.max(SolverWorkspacePeak::from_bytes(
-                    self.preparation_bytes
-                        + u128::from(memory.load(std::sync::atomic::Ordering::Acquire)),
-                )?);
-            }
-            result?;
-        }
-        Ok(())
-    }
-
-    fn finish_preparation(
-        &mut self,
-        checkpoint: bool,
-    ) -> Result<Option<super::cmg_schur::BoundedCmgBuild>> {
-        let Some(preparation) = self.preparation.take() else {
-            return Ok(None);
-        };
-        let (built, charged) = preparation.finish_accounted(checkpoint);
-        self.charge_preparation(charged)?;
-        if let Some(memory) = self.preparation_memory.take() {
-            self.peak = self.peak.max(SolverWorkspacePeak::from_bytes(
-                self.preparation_bytes
-                    + u128::from(memory.load(std::sync::atomic::Ordering::Acquire)),
-            )?);
-        }
-        let mut built = built?;
-        built.peak = built.peak.with_retained(self.preparation_bytes)?;
-        self.peak = self.peak.max(built.peak);
-        Ok(Some(built))
-    }
-
-    fn start_preparation(
-        &mut self,
-        design: &BorrowedInterceptFeDesign<'_>,
-        weights: ValidatedWeights<'_>,
-        left: usize,
-    ) -> Result<()> {
-        let effect = &design.effects()[left];
-        let other = &design.effects()[1 - left];
-        let index_bytes = effect.level_index().owned_buffer_bytes();
-        let copy_bytes = index_bytes
-            .checked_add(design.nobs() as u128 * (4 + if weights.values.is_some() { 8 } else { 0 }))
-            .ok_or_else(|| allocation("optional CMG input copy overflows"))?;
-        // Fixed transport, synchronization and Rayon job metadata. Existing
-        // worker stacks are already part of the execution-memory admission.
-        let bytes = copy_bytes
-            .checked_add(4096)
-            .ok_or_else(|| allocation("optional CMG service memory overflows"))?;
-        let work = u64::try_from(copy_bytes)
-            .ok()
-            .and_then(|n| n.checked_add(256));
-        let Some(work) = work.filter(|&n| n <= self.setup.builder_allowance()) else {
-            self.setup.attempted = true;
-            return Ok(());
-        };
-        if self
-            .request
-            .budget
-            .is_some_and(|budget| !budget.fits(bytes))
-        {
-            self.setup.attempted = true;
-            return Ok(());
-        }
-        self.setup.charge(work)?;
-        fn copy<T: Copy>(source: &[T]) -> Result<Vec<T>> {
-            let mut result = Vec::new();
-            result
-                .try_reserve_exact(source.len())
-                .map_err(|_| allocation("unable to reserve optional CMG owned input"))?;
-            for chunk in source.chunks(128) {
-                crate::interrupt::checkpoint()?;
-                result.extend_from_slice(chunk);
-            }
-            Ok(result)
-        }
-        let membership = effect.level_index().try_clone()?;
-        let firms = copy(other.codes())?;
-        let weights = weights.values.map(copy).transpose()?;
-        let retained = other.n_levels();
-        let request = self.request;
-        let budget = request.budget.map(|budget| FeSolverMemoryBudget {
-            execution_bytes: budget.execution_bytes + bytes,
-            usable_bytes: budget.usable_bytes,
-        });
-        let allowance = self.setup.builder_allowance();
-        self.preparation_charged = 0;
-        self.preparation_bytes = bytes;
-        self.peak = self.peak.max(SolverWorkspacePeak::from_bytes(bytes)?);
-        let memory = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
-        self.preparation_memory = Some(memory.clone());
-        self.preparation = Some(super::routing_overlap::Preparation::launch_with_break(
-            allowance,
-            self.setup.limit / 32,
-            0,
-            self.preset.breaks_builder(),
-            move |control| {
-                let mut allocated = 0_u64;
-                let mut gate = |boundary: cmg::BuildBoundary| {
-                    let decision = control.checkpoint(boundary);
-                    if decision != cmg::BuildDecision::Continue {
-                        return decision;
-                    }
-                    if let cmg::BuildOperation::Allocation { bytes } = boundary.operation {
-                        let Some(total) = allocated.checked_add(bytes as u64) else {
-                            return cmg::BuildDecision::StopUnused;
-                        };
-                        if budget.is_some_and(|budget| !budget.fits(total as u128)) {
-                            return cmg::BuildDecision::StopUnused;
-                        }
-                        allocated = total;
-                        memory.store(total, std::sync::atomic::Ordering::Release);
-                    }
-                    cmg::BuildDecision::Continue
-                };
-                super::cmg_schur::CmgSchurPreconditioner::try_build_observations_bounded_controlled(
-                    &membership,
-                    &firms,
-                    retained,
-                    weights
-                        .as_deref()
-                        .map_or(BorrowedMapWeights::Unit, BorrowedMapWeights::Provided),
-                    request.degree,
-                    request.sampling,
-                    budget,
-                    allowance,
-                    &mut gate,
-                )
-            },
-        )?);
-        Ok(())
+    fn begin(&mut self, tolerance: f64, final_residual: bool) {
+        self.setup.begin(tolerance, final_residual);
     }
 }
 
@@ -1675,23 +1480,6 @@ impl Drop for PcgPilotGroupScratch<'_> {
 }
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
-    pub(crate) fn drain_routing_preparation(&mut self) -> Result<()> {
-        if let Some(route) = &mut self.auto_route {
-            route.drain_preparation()?;
-        }
-        Ok(())
-    }
-
-    pub(crate) fn finish_routing_preparation(&mut self) -> Result<()> {
-        if let Some(route) = &mut self.auto_route {
-            if route.preparation.is_some() {
-                route.setup.attempted = true;
-                route.finish_preparation(false)?;
-            }
-        }
-        Ok(())
-    }
-
     pub(super) fn request_auto_routing(
         &mut self,
         preset: super::RoutingPreset,
@@ -1712,10 +1500,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             },
             setup: super::routing::SetupLedger::new(),
             peak: SolverWorkspacePeak::ZERO,
-            preparation: None,
-            preparation_charged: 0,
-            preparation_bytes: 0,
-            preparation_memory: None,
         });
     }
 
@@ -1793,12 +1577,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             .as_ref()
             .and_then(|g| g.cmg_schur.as_ref())
             .map_or(Ok(0), |p| p.retained_bytes())
-    }
-
-    pub(crate) fn routing_work(&self) -> (u64, u64) {
-        self.auto_route
-            .as_ref()
-            .map_or((0, 0), |route| (route.setup.used, route.setup.limit))
     }
 
     /// Completed two-pass Schur products, in observation/RHS multiply-adds.
@@ -2239,22 +2017,20 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 values,
                 limits,
             )?;
-            route.setup.charge(attempt.work_used)?;
             route.peak = route
                 .peak
                 .max(SolverWorkspacePeak::from_bytes(attempt.peak_bytes)?);
             if crate::diagnostics::solver_trace_enabled() {
                 crate::diagnostics::emit_solver_trace(&format!(
-                    "FEREG_SOLVER_TRACE|phase=auto_direct_route|work={}|limit={}|decline={:?}|profiles={:?}|orientation={:?}",
+                    "FEREG_SOLVER_TRACE|phase=auto_direct_route|work={}|decline={:?}|profiles={:?}|orientation={:?}",
                     attempt.work_used,
-                    route.setup.limit,
                     attempt.decline,
                     attempt.profiles,
                     attempt.candidate.as_ref().map(|c| c.eliminated_effect)
                 ));
             }
             if let Some(candidate) = attempt.candidate {
-                let (direct_work, direct_limit) = (route.setup.used, route.setup.limit);
+                let direct_work = attempt.work_used;
                 let certificate =
                     self.with_pilot_group_scratch(rhs_count, |design, workspace| {
                         certify(
@@ -2268,8 +2044,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 if certificate.passed && !TWO_FE_DIRECT_CERTIFICATE_FAILURE.replace(false) {
                     if crate::diagnostics::solver_trace_enabled() {
                         crate::diagnostics::emit_solver_trace(&format!(
-                            "FEREG_SOLVER_TRACE|phase=auto_direct_certified|rows={}|rhs={rhs_count}|iterations=0|work={}|limit={}",
-                            self.design.nobs(), direct_work, direct_limit
+                            "FEREG_SOLVER_TRACE|phase=auto_direct_certified|rows={}|rhs={rhs_count}|iterations=0|work={}",
+                            self.design.nobs(), direct_work
                         ));
                     }
                     let elapsed = started.elapsed();
@@ -2396,18 +2172,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             );
         }
 
-        if let (Some(route), Some(graph)) = (self.auto_route.as_mut(), self.two_fe_pcg.as_ref()) {
-            route.begin(
-                config.tolerance,
-                !refine_ols,
-                super::routing::schur_iteration_work(
-                    self.design.nobs(),
-                    graph.left_weights.len(),
-                    graph.right_weights.len(),
-                    rhs_count,
-                    self.max_rhs,
-                ),
-            )?;
+        if let Some(route) = self.auto_route.as_mut() {
+            route.begin(config.tolerance, !refine_ols);
         }
         if let Some(result) = self.try_direct_route(
             raw_weights,
@@ -2439,19 +2205,15 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     raw_weights,
                     weights.raw_scale,
                     super::routing_kernel::KernelLimits {
-                        work_budget: route.setup.limit.saturating_sub(route.setup.used),
                         retained_live_bytes: 0,
                         memory: route.request.budget,
                     },
                 )?;
-                route.setup.charge(built.work_used)?;
                 route.peak = route.peak.max(built.peak);
                 if crate::diagnostics::solver_trace_enabled() {
                     crate::diagnostics::emit_solver_trace(&format!(
-                        "FEREG_SOLVER_TRACE|phase=auto_kernel_route|preset={}|work={}|limit={}|installed={}|refusal={:?}",
+                        "FEREG_SOLVER_TRACE|phase=auto_kernel_route|preset={}|installed={}|refusal={:?}",
                         route.preset,
-                        built.work_used,
-                        route.setup.limit,
                         u8::from(built.kernel.is_some()),
                         built.refusal
                     ));
@@ -2844,17 +2606,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             .ok_or_else(|| invalid_data("two-FE categorical MAP PCG workspace is unavailable"))?;
         let explicit_cmg_schur = self.cmg_schur_request.is_some();
         if let Some(route) = self.auto_route.as_mut() {
-            route.begin(
-                config.tolerance,
-                !refine_ols,
-                super::routing::schur_iteration_work(
-                    self.design.nobs(),
-                    graph.left_weights.len(),
-                    graph.right_weights.len(),
-                    values.ncols(),
-                    self.max_rhs,
-                ),
-            )?;
+            route.begin(config.tolerance, !refine_ols);
         }
         let result = absorb_two_fe_pcg_reusing(
             &self.design,
@@ -2897,7 +2649,6 @@ crate::fault::fault_plan! {
     static TWO_FE_BREAKDOWN: bool = false;
     static TWO_FE_CERTIFICATE_AT: usize = 0;
     static TWO_FE_CERTIFICATE_REJECTED_AT: usize = 0;
-    static TWO_FE_ROUTING_LAUNCH_AT: usize = 0;
     static TWO_FE_ROUTING_BUILD_AT: usize = 0;
     static TWO_FE_DIRECT_CERTIFICATE_FAILURE: bool = false;
     static TWO_FE_DIRECT_BREAK_AFTER_SELECTION: bool = false;
@@ -3452,7 +3203,6 @@ fn absorb_two_fe_pcg_reusing(
                     design,
                     weights,
                     graph.left_effect,
-                    rhs_count,
                     stride,
                     iterations,
                     pcg_iteration_limit,
@@ -3614,7 +3364,6 @@ fn absorb_two_fe_pcg_reusing(
                         design,
                         weights,
                         graph.left_effect,
-                        rhs_count,
                         stride,
                         iterations,
                         pcg_iteration_limit,
@@ -4631,13 +4380,7 @@ fn project_general_categorical<'a>(
         let mut memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, budget, 0)?;
         let mut norms = Vec::new();
         if let Some(state) = general_routing.as_deref_mut() {
-            state.begin(
-                map.tolerance,
-                final_residual,
-                design,
-                values.ncols(),
-                lsmr.local_size,
-            )?;
+            state.begin(map.tolerance, final_residual);
         }
         let (candidate, mut report, _, coefficients) = run_borrowed_lsmr_with_prepared(
             design,
@@ -4676,7 +4419,7 @@ fn project_general_categorical<'a>(
     // The fallback restarts original inputs; release the seed before its admission.
     drop(prefix.seed);
     if let Some(state) = general_routing {
-        state.finish_preparation()?;
+        state.close_attempt();
         state.release_backend();
     }
     finish_general_map(
@@ -5781,7 +5524,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         };
         if !certificate.passed {
             if let Some(state) = general_routing.as_deref_mut() {
-                state.finish_preparation()?;
+                state.close_attempt();
             }
         }
         let certification_seconds = certification_started.elapsed().as_secs_f64();

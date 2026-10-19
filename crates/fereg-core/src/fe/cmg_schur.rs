@@ -20,7 +20,6 @@ use super::cmg::cmg_error;
 use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, LevelIndex};
 
 mod bounded;
-pub(super) use bounded::{BoundedCmgBuild, BuildRefusal};
 mod sampling;
 use sampling::SampledTrees;
 pub(super) use sampling::Sampling;
@@ -37,7 +36,6 @@ pub(super) struct CmgSchurPreconditioner {
     batch_columns: usize,
     construction: SolverWorkspacePeak,
     retained_bound: Option<u128>,
-    startup_bound: Option<u64>,
 }
 
 struct ParallelApplication {
@@ -212,7 +210,6 @@ impl CmgSchurPreconditioner {
             batch_columns,
             construction: memory.peak,
             retained_bound: None,
-            startup_bound: None,
         })
     }
 
@@ -229,13 +226,6 @@ impl CmgSchurPreconditioner {
             storage(&[&parallel.plan, &parallel.executor, &parallel.workspace])
         })? + self.components.bytes()
             + std::mem::size_of::<Self>() as u128)
-    }
-
-    /// Checked first-application allowance cached during controlled setup.
-    /// Includes scalar CMG, firm projection and optional reduced-image scaling.
-    pub(super) fn startup_work(&self, rhs_count: usize) -> Option<u64> {
-        self.startup_bound?
-            .checked_mul(u64::try_from(rhs_count).ok()?)
     }
 
     pub(super) fn construction_peak(&self) -> SolverWorkspacePeak {
@@ -1118,14 +1108,10 @@ mod tests {
                 sampling,
                 2,
                 None,
-                u64::MAX,
-                true,
                 false,
             )
             .unwrap();
             assert_eq!(built.refusal, None);
-            assert!(built.work_used > 0);
-            let used = built.work_used;
             let mut candidate = built.preconditioner.unwrap();
             assert!(candidate.parallel.is_none());
             assert_eq!(edges(&candidate), edges(&explicit));
@@ -1151,37 +1137,6 @@ mod tests {
                 .unwrap();
             assert!(output.iter().all(|value| *value == 0.0));
             assert!(candidate.retained_bytes().unwrap() <= built.peak.bytes().unwrap() as u128);
-            let exhausted = CmgSchurPreconditioner::try_build_bounded(
-                &design,
-                BorrowedMapWeights::Provided(&fixture.weights),
-                0,
-                5,
-                sampling,
-                2,
-                None,
-                used - 1,
-                true,
-                false,
-            )
-            .unwrap();
-            assert!(exhausted.preconditioner.is_none());
-            assert_eq!(exhausted.refusal, Some(bounded::BuildRefusal::WorkBudget));
-            assert!(exhausted.work_used < used);
-            let exact = CmgSchurPreconditioner::try_build_bounded(
-                &design,
-                BorrowedMapWeights::Provided(&fixture.weights),
-                0,
-                5,
-                sampling,
-                2,
-                None,
-                used,
-                true,
-                false,
-            )
-            .unwrap();
-            assert!(exact.preconditioner.is_some());
-            assert_eq!(exact.work_used, used);
         }
     }
 
@@ -1199,7 +1154,6 @@ mod tests {
                 5,
                 Sampling::default(),
                 None,
-                u64::MAX,
             )
             .unwrap();
             let mut candidate = built.preconditioner.unwrap();
@@ -1229,7 +1183,6 @@ mod tests {
             5,
             Sampling::default(),
             None,
-            u64::MAX,
         )
         .unwrap();
         let mut candidate = built.preconditioner.unwrap();
@@ -1248,7 +1201,6 @@ mod tests {
             5,
             Sampling::default(),
             None,
-            u64::MAX,
         )
         .err()
         .unwrap();
@@ -1262,7 +1214,6 @@ mod tests {
             5,
             Sampling::default(),
             None,
-            u64::MAX,
         )
         .err()
         .unwrap();
@@ -1270,25 +1221,9 @@ mod tests {
     }
 
     #[test]
-    fn bounded_refusals_do_not_hide_invalid_inputs_or_consume_unissued_work() {
+    fn bounded_memory_refusal_does_not_hide_invalid_inputs() {
         let fixture = Fixture::weighted_stars();
         let design = fixture.design();
-        let zero = CmgSchurPreconditioner::try_build_bounded(
-            &design,
-            BorrowedMapWeights::Unit,
-            0,
-            5,
-            Sampling::default(),
-            1,
-            None,
-            0,
-            true,
-            false,
-        )
-        .unwrap();
-        assert!(zero.preconditioner.is_none());
-        assert_eq!(zero.work_used, 0);
-        assert_eq!(zero.refusal, Some(bounded::BuildRefusal::WorkBudget));
         let memory = CmgSchurPreconditioner::try_build_bounded(
             &design,
             BorrowedMapWeights::Unit,
@@ -1300,8 +1235,6 @@ mod tests {
                 usable_bytes: 0,
                 execution_bytes: 0,
             }),
-            u64::MAX,
-            true,
             false,
         )
         .unwrap();
@@ -1317,8 +1250,6 @@ mod tests {
             Sampling::default(),
             1,
             None,
-            u64::MAX,
-            true,
             false,
         )
         .err()

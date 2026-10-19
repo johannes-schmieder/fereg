@@ -26,11 +26,11 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
     let (routing, break_native) = match stage {
         "" => (None, false),
         "breaknative" => (None, true),
-        "routing_overlap_break" => {
+        "routing_builder_break" => {
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
             }
-            (Some(RoutingPreset::overlap_break()), true)
+            (Some(RoutingPreset::builder_break()), true)
         }
         "it_coefficients" => {
             if solver != FeSolverKind::IronsTuck {
@@ -88,13 +88,8 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             )
         }
         _ => {
-            let overlap = stage.starts_with("routing_overlap_h");
             let (checkpoint, samples) = stage
-                .strip_prefix(if overlap {
-                    "routing_overlap_h"
-                } else {
-                    "routing_h"
-                })
+                .strip_prefix("routing_h")
                 .and_then(|preset| preset.split_once("_k"))
                 .ok_or_else(unknown)?;
             let checkpoint = match checkpoint {
@@ -113,15 +108,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
             }
-            if overlap && checkpoint == 4 {
-                return Err(unknown());
-            }
-            let preset = if overlap {
-                RoutingPreset::overlap(checkpoint, samples)?
-            } else {
-                RoutingPreset::new(checkpoint, samples)?
-            };
-            (Some(preset), false)
+            (Some(RoutingPreset::new(checkpoint, samples)?), false)
         }
     };
     validate_break_marker_token(break_native, token)?;

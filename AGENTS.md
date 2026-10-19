@@ -47,9 +47,10 @@ and mathematical solver families; never add benchmark-specific routing fences.
 ## Development and validation
 
 The incremental Auto-routing workstream authorized on 2026-10-17 develops in
-this checkout on `codex/auto-routing`, starting at `f35f3a4d`. Commit and push
-that branch; do not reset main, merge to main, or update release packages as
-part of this workstream. Other work retains the normal main-branch convention.
+this checkout on `codex/auto-routing`, starting at `f35f3a4d`; its successor
+CMG consolidation workstream (2026-10-19) continues on the same branch and on
+CMG `codex/host-execution-foundation`. Commit and push those branches; do not
+reset main, merge to main, or update release packages as part of this workstream. Other work retains the normal main-branch convention.
 Use coherent, reviewable commits. Migrate consumers and remove
 superseded implementations together. Push completed authorized work after checks;
 never force-push or rewrite history. Report failed or missing checks honestly.
@@ -97,8 +98,15 @@ repair, not abandonment of the candidate. If repairs do not resolve it, or scien
 fails or timing is inconclusive, stop dependent work and discuss the evidence
 with Johannes before abandoning the candidate, changing the protocol or advancing
 to the next step. Never silently select a replacement or sample until success.
-Finish the increment with bounded CMG/RHS/overlap cost diagnosis and a successor
-proposal; predictive payback rules and larger speculative budgets are not authorized.
+The incremental Auto increment closed with the M2 report. By Johannes's
+2026-10-19 decision the optional CMG construction-work cap and its accounting
+are removed; no work cap, dimension-only work bound, time cap or predictive
+payback policy replaces them. The successor workstream consolidates the CMG API
+and fereg's CMG integration and parallelizes construction on the host team,
+keeping upgrade iteration 16, cutoff 5, one sampled tree, seed 0 and the
+existing eligibility, small-direct criterion, restart and fallback semantics
+fixed. Two-FE public activation remains unauthorized until a separate
+fixed-candidate qualification.
 
 Runtime changes require `./scripts/run_tests.sh` and mapped scientific/transaction
 checks. Build/package changes require focused tooling and native build/ABI checks.

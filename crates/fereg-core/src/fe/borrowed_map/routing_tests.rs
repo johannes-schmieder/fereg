@@ -366,7 +366,6 @@ fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_
     )
     .unwrap();
     let mut route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::portfolio_unseeded());
-    let mut ledger = None;
     for rhs in [1, 2] {
         let original = DenseMatrix::from_columns(&columns[..rhs]).unwrap();
         let lsmr = LsmrConfig {
@@ -407,11 +406,7 @@ fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_
         assert!(result.report().iterations <= 8);
         assert!(result.report().certificate.relative_infinity_norm <= 1e-14);
         assert!(route.has_prepared());
-        assert_eq!(route.work().0, 0);
-        if let Some(previous) = ledger {
-            assert_eq!(route.work(), previous);
-        }
-        ledger = Some(route.work());
+        assert!(!route.has_replacement());
         for (column, expected) in expected.iter().enumerate().take(rhs) {
             for (row, &expected) in expected.iter().enumerate() {
                 assert!((result.residualized()[(row, column)] - expected).abs() < 1e-12);
@@ -434,47 +429,6 @@ fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_
             }
         }
     }
-}
-
-#[test]
-fn portfolio_choice_preserves_the_existing_owner_resource_layout() {
-    #[allow(dead_code)]
-    struct PriorLedger {
-        accuracy: Option<(u64, bool)>,
-        attempted: bool,
-        limit: u64,
-        used: u64,
-        restart_reserve: u64,
-    }
-    #[allow(dead_code)]
-    struct PriorRoute {
-        preset: super::super::RoutingPreset,
-        request: CmgSchurRequest,
-        setup: PriorLedger,
-        peak: SolverWorkspacePeak,
-        preparation: Option<
-            super::super::routing_overlap::Preparation<super::super::cmg_schur::BoundedCmgBuild>,
-        >,
-        preparation_charged: u64,
-        preparation_bytes: u128,
-        preparation_memory: Option<std::sync::Arc<std::sync::atomic::AtomicU64>>,
-    }
-    assert_eq!(
-        std::mem::size_of::<super::super::routing::SetupLedger>(),
-        std::mem::size_of::<PriorLedger>()
-    );
-    assert_eq!(
-        std::mem::size_of::<AutoSchurRoute>(),
-        std::mem::size_of::<PriorRoute>()
-    );
-    assert_eq!(
-        std::mem::align_of::<AutoSchurRoute>(),
-        std::mem::align_of::<PriorRoute>()
-    );
-    assert_eq!(
-        std::mem::size_of::<Option<AutoSchurRoute>>(),
-        std::mem::size_of::<Option<PriorRoute>>()
-    );
 }
 
 #[test]
@@ -530,8 +484,6 @@ fn portfolio_direct_numerical_refusal_keeps_incumbent_bits_without_a_cmg_retry()
     let route = owner.auto_route.as_ref().unwrap();
     assert_eq!(route.setup.portfolio_choice(), PortfolioChoice::Direct);
     assert!(route.setup.attempted);
-    assert!(route.setup.used > super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK);
-    assert!(route.setup.used <= route.setup.limit);
     assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
     assert_eq!(actual.residualized(), expected.residualized());
     assert_eq!(actual.coefficients, expected.coefficients);
@@ -554,8 +506,6 @@ fn portfolio_direct_numerical_refusal_keeps_incumbent_bits_without_a_cmg_retry()
             )
             .unwrap(),
             preflight_work: super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK,
-            remaining_setup_work: route.setup.limit
-                - super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK,
             component_census_work: 0,
             certificate_work: super::super::routing_direct::original_certificate_work(9, 6, 2, 65)
                 .unwrap(),
@@ -569,16 +519,11 @@ fn portfolio_direct_numerical_refusal_keeps_incumbent_bits_without_a_cmg_retry()
         attempt.decline,
         Some(super::super::routing_direct::DirectDecline::Numerical)
     );
-    assert_eq!(
-        route.setup.used,
-        super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK + attempt.work_used
-    );
 }
 
 #[test]
 fn portfolio_direct_selection_certifies_then_keeps_one_choice_across_low_chunks() {
     let fixture = PortfolioRectangle::new();
-    let mut first_work = None;
     for (capacity, preset) in [
         (2, RoutingPreset::portfolio_v1()),
         (64, RoutingPreset::portfolio_v1()),
@@ -601,16 +546,6 @@ fn portfolio_direct_selection_certifies_then_keeps_one_choice_across_low_chunks(
         let route = owner.auto_route.as_ref().unwrap();
         assert_eq!(route.setup.portfolio_choice(), PortfolioChoice::Direct);
         assert!(route.setup.attempted);
-        let work = (route.setup.used, route.setup.limit);
-        assert!(work.0 > super::super::routing_direct::PORTFOLIO_PREFLIGHT_WORK);
-        assert!(work.0 <= work.1);
-        if let Some(previous) = first_work {
-            assert_eq!(
-                work.0, previous,
-                "padding cannot change direct admission or charged work"
-            );
-        }
-        first_work = Some(work.0);
         let later = owner
             .absorb_ols(
                 BorrowedMapWeights::Unit,
@@ -622,7 +557,7 @@ fn portfolio_direct_selection_certifies_then_keeps_one_choice_across_low_chunks(
         fixture.check(&later);
         let route = owner.auto_route.as_ref().unwrap();
         assert_eq!(route.setup.portfolio_choice(), PortfolioChoice::Direct);
-        assert_eq!((route.setup.used, route.setup.limit), work);
+        assert!(route.setup.attempted);
         assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
         let final_fit = owner
             .absorb_ols(
@@ -637,7 +572,10 @@ fn portfolio_direct_selection_certifies_then_keeps_one_choice_across_low_chunks(
             .unwrap();
         fixture.check(&final_fit);
         assert_eq!(final_fit.report().iterations, 0);
-        assert_eq!(owner.auto_route.as_ref().unwrap().setup.used, work.0);
+        assert_eq!(
+            owner.auto_route.as_ref().unwrap().setup.portfolio_choice(),
+            PortfolioChoice::Direct
+        );
     }
 }
 
@@ -708,26 +646,19 @@ fn portfolio_direct_break_after_selection_propagates_without_publication() {
 }
 
 #[test]
-fn only_portfolio_checkpoint_enables_terminal_factor_preflight() {
+fn finite_and_portfolio_checkpoints_install_the_same_bounded_hierarchy() {
     let fixture = PortfolioRectangle::new();
-    let mut charges = Vec::new();
     let mut results = Vec::new();
-    for (preset, bounded_terminal) in [
-        (RoutingPreset::new(16, 1).unwrap(), false),
-        (RoutingPreset::portfolio_v1(), true),
-        (RoutingPreset::portfolio_unseeded(), true),
+    for preset in [
+        RoutingPreset::new(16, 1).unwrap(),
+        RoutingPreset::portfolio_v1(),
+        RoutingPreset::portfolio_unseeded(),
     ] {
         let design = fixture.design();
         let mut owner = ReusableCategoricalMapAbsorber::new(fixture.design(), 2, 1).unwrap();
         owner.request_auto_routing(preset, None, 0);
         let route = owner.auto_route.as_mut().unwrap();
-        route
-            .begin(
-                config().tolerance,
-                false,
-                schur_iteration_work(design.nobs(), 4, 2, 2, 2),
-            )
-            .unwrap();
+        route.begin(config().tolerance, false);
         let reference = CmgSchurPreconditioner::try_build_bounded(
             &design,
             BorrowedMapWeights::Unit,
@@ -736,16 +667,11 @@ fn only_portfolio_checkpoint_enables_terminal_factor_preflight() {
             route.request.sampling,
             2,
             None,
-            route.setup.builder_allowance(),
-            true,
-            bounded_terminal,
+            false,
         )
         .unwrap();
         assert_eq!(reference.refusal, None);
         let mut reference_preconditioner = reference.preconditioner.unwrap();
-        let expected_work = reference.work_used
-            + reference_preconditioner.startup_work(2).unwrap()
-            + route.setup.restart_reserve;
         let mut setup_seconds = 0.0;
         let mut solve_started = Instant::now();
         let mut actual = route
@@ -754,17 +680,14 @@ fn only_portfolio_checkpoint_enables_terminal_factor_preflight() {
                 validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap(),
                 0,
                 2,
-                2,
                 16,
                 config().max_iterations,
                 &mut setup_seconds,
                 &mut solve_started,
             )
             .unwrap()
-            .expect("small bounded candidate fits either policy");
+            .expect("small bounded candidate installs");
         assert!(route.setup.attempted);
-        assert_eq!(route.setup.used, expected_work);
-        assert!(route.setup.used <= route.setup.limit);
         assert_eq!(route.peak, reference.peak);
         let mut expected = [0.0; 4];
         let mut result = [0.0; 4];
@@ -776,122 +699,21 @@ fn only_portfolio_checkpoint_enables_terminal_factor_preflight() {
             .apply_batch(&rhs, &mut result, 2, 2, None, None)
             .unwrap();
         assert_same_bits(&result, &expected);
-        charges.push(route.setup.used);
         results.push(result);
     }
-    // Both presets cache the census. Only portfolio pays the terminal screen.
-    assert_eq!(charges[1], charges[0] + 1024);
+    // Without a factor screen, every preset installs the same hierarchy.
     assert_same_bits(&results[1], &results[0]);
-    assert_eq!(charges[2], charges[1]);
     assert_same_bits(&results[2], &results[1]);
 }
 
 #[test]
-fn one_worker_overlap_checkpoint_retains_original_uncached_builder() {
-    let witness = PairedGraph::new();
-    crate::ThreadTeam::new(crate::ThreadConfig::from_requested(1, true).unwrap())
-        .install(|| {
-            assert_eq!(rayon::current_num_threads(), 1);
-            let design = witness.design();
-            let weights = BorrowedMapWeights::Provided(&witness.weights);
-            let iteration_work = schur_iteration_work(
-                witness.weights.len(),
-                PairedGraph::LEVELS,
-                PairedGraph::LEVELS,
-                3,
-                3,
-            );
-            for samples in [0, 1, 2] {
-                let mut owner =
-                    ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
-                owner.request_auto_routing(RoutingPreset::overlap(8, samples).unwrap(), None, 0);
-                let route = owner.auto_route.as_mut().unwrap();
-                route
-                    .begin(config().tolerance, false, iteration_work)
-                    .unwrap();
-                let reference = CmgSchurPreconditioner::try_build_observations_bounded_controlled(
-                    &witness.indexes[0],
-                    &witness.codes[1],
-                    PairedGraph::LEVELS,
-                    weights,
-                    route.request.degree,
-                    route.request.sampling,
-                    None,
-                    route.setup.builder_allowance(),
-                    &mut |_| cmg::BuildDecision::Continue,
-                )
-                .unwrap();
-                assert_eq!(reference.refusal, None);
-                let mut reference_preconditioner = reference.preconditioner.unwrap();
-                let expected_work = reference.work_used
-                    + reference_preconditioner.startup_work(3).unwrap()
-                    + route.setup.restart_reserve;
-                let mut setup_seconds = 0.0;
-                let mut solve_started = Instant::now();
-                // The early overlap epoch must not launch a service on t1.
-                assert!(route
-                    .checkpoint(
-                        &design,
-                        validate_weights(weights, design.nobs()).unwrap(),
-                        0,
-                        3,
-                        3,
-                        4,
-                        config().max_iterations,
-                        &mut setup_seconds,
-                        &mut solve_started,
-                    )
-                    .unwrap()
-                    .is_none());
-                assert!(route.preparation.is_none());
-                assert_eq!(route.setup.used, 0);
-                let mut fallback = route
-                    .checkpoint(
-                        &design,
-                        validate_weights(weights, design.nobs()).unwrap(),
-                        0,
-                        3,
-                        3,
-                        8,
-                        config().max_iterations,
-                        &mut setup_seconds,
-                        &mut solve_started,
-                    )
-                    .unwrap()
-                    .expect("t1 overlap fallback builds at its checkpoint");
-                assert!(route.setup.attempted);
-                assert!(route.preparation.is_none());
-                assert_eq!(route.setup.used, expected_work);
-                assert_eq!(route.peak, reference.peak);
-                assert_eq!(
-                    fallback.retained_bytes().unwrap(),
-                    reference_preconditioner.retained_bytes().unwrap()
-                );
-                let rhs: Vec<_> = (0..PairedGraph::LEVELS * 3)
-                    .map(|i| (i as f64 * 0.31).sin())
-                    .collect();
-                let mut expected = vec![0.0; rhs.len()];
-                let mut actual = vec![0.0; rhs.len()];
-                reference_preconditioner
-                    .apply_batch(&rhs, &mut expected, 3, 3, None, None)
-                    .unwrap();
-                fallback
-                    .apply_batch(&rhs, &mut actual, 3, 3, None, None)
-                    .unwrap();
-                assert_same_bits(&actual, &expected);
-            }
-        })
-        .unwrap();
-}
-
-#[test]
-fn rejected_original_certificate_preserves_overlap_epoch_and_h() {
+fn rejected_original_certificate_preserves_the_checkpoint_h() {
     const CHILD: &str = "FEREG_ROUTING_CERTIFICATE_BOUNDARY_CHILD";
     if std::env::var_os(CHILD).is_none() {
         let status = std::process::Command::new(std::env::current_exe().unwrap())
             .env(CHILD, "1")
             .args([
-                "fe::borrowed_map::routing_tests::rejected_original_certificate_preserves_overlap_epoch_and_h",
+                "fe::borrowed_map::routing_tests::rejected_original_certificate_preserves_the_checkpoint_h",
                 "--exact", "--test-threads=1",
             ]).status().unwrap();
         assert!(status.success());
@@ -900,16 +722,14 @@ fn rejected_original_certificate_preserves_overlap_epoch_and_h() {
     let witness = PairedGraph::new();
     for boundary in [4, 8] {
         crate::ThreadTeam::new(crate::ThreadConfig::from_requested(2, true).unwrap())
-            .with_exclusive_overlap()
             .install(|| {
                 TWO_FE_CERTIFICATE_AT.set(boundary);
                 TWO_FE_CERTIFICATE_REJECTED_AT.set(0);
-                TWO_FE_ROUTING_LAUNCH_AT.set(0);
                 TWO_FE_ROUTING_BUILD_AT.set(0);
                 let mut owner =
                     ReusableCategoricalMapAbsorber::new(witness.design(), 3, 2).unwrap();
                 owner.retain_coefficients = true;
-                owner.request_auto_routing(RoutingPreset::overlap(8, 0).unwrap(), None, 0);
+                owner.request_auto_routing(RoutingPreset::new(8, 0).unwrap(), None, 0);
                 let result = owner
                     .absorb_ols(
                         BorrowedMapWeights::Provided(&witness.weights),
@@ -918,7 +738,6 @@ fn rejected_original_certificate_preserves_overlap_epoch_and_h() {
                         false,
                     )
                     .unwrap();
-                owner.finish_routing_preparation().unwrap();
                 witness.check(&result, &[0, 1, 2]);
                 assert_eq!(
                     TWO_FE_CERTIFICATE_AT.get(),
@@ -930,14 +749,8 @@ fn rejected_original_certificate_preserves_overlap_epoch_and_h() {
                     boundary,
                     "original certificate rejected the frozen iterate"
                 );
-                assert_eq!(
-                    TWO_FE_ROUTING_LAUNCH_AT.get(),
-                    4,
-                    "first grant stays at iteration four"
-                );
-                assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 8, "full grant stays at h");
-                let setup = &owner.auto_route.as_ref().unwrap().setup;
-                assert!(setup.used <= setup.limit);
+                assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 8, "the build stays at h");
+                assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
                 assert!(result.report().iterations <= config().max_iterations);
             })
             .unwrap();
@@ -969,10 +782,7 @@ fn routing_diagonal_and_cells_live_callers_certify_saved_effects_and_reuse_setup
                     assert_eq!(graph.use_cell_operator, arm == "cells");
                     assert!(graph.ppml_operator_rhs_count > 0);
                     let kernel = std::ptr::from_ref(graph.kernel.as_ref().unwrap());
-                    let setup = &owner.auto_route.as_ref().unwrap().setup;
-                    assert!(setup.attempted);
-                    assert!(setup.used > 0 && setup.used <= setup.limit);
-                    let charged = (setup.limit, setup.used);
+                    assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
 
                     // Exercise an installed caller with inactive RHS lanes and
                     // saved effects, rather than calling the kernel directly.
@@ -988,8 +798,7 @@ fn routing_diagonal_and_cells_live_callers_certify_saved_effects_and_reuse_setup
                     let graph = owner.two_fe_pcg.as_ref().unwrap();
                     assert_eq!(std::ptr::from_ref(graph.kernel.as_ref().unwrap()), kernel);
                     assert_eq!(graph.use_cell_operator, arm == "cells");
-                    let setup = &owner.auto_route.as_ref().unwrap().setup;
-                    assert_eq!((setup.limit, setup.used), charged);
+                    assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
                 })
                 .unwrap();
         }
@@ -997,7 +806,7 @@ fn routing_diagonal_and_cells_live_callers_certify_saved_effects_and_reuse_setup
 }
 
 #[test]
-fn routing_kernel_and_direct_live_refusals_preserve_incumbent_bits_and_budget() {
+fn routing_kernel_and_direct_live_memory_refusals_preserve_incumbent_bits() {
     let witness = PairedGraph::new();
     let mut incumbent = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
     incumbent.retain_coefficients = true;
@@ -1010,19 +819,15 @@ fn routing_kernel_and_direct_live_refusals_preserve_incumbent_bits_and_budget() 
         )
         .unwrap();
     for arm in ["diagonal", "cells", "direct"] {
-        for memory_refusal in [false, true] {
+        {
             let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
             owner.retain_coefficients = true;
             owner.request_auto_routing(RoutingPreset::ablation(arm).unwrap(), None, 0);
             let route = owner.auto_route.as_mut().unwrap();
-            if memory_refusal {
-                route.request.budget = Some(FeSolverMemoryBudget {
-                    execution_bytes: 0,
-                    usable_bytes: 0,
-                });
-            } else {
-                route.setup.begin(config().tolerance, false, Some(0));
-            }
+            route.request.budget = Some(FeSolverMemoryBudget {
+                execution_bytes: 0,
+                usable_bytes: 0,
+            });
             let fit = owner
                 .absorb_ols(
                     BorrowedMapWeights::Provided(&witness.weights),
@@ -1031,9 +836,7 @@ fn routing_kernel_and_direct_live_refusals_preserve_incumbent_bits_and_budget() 
                     false,
                 )
                 .unwrap();
-            let setup = &owner.auto_route.as_ref().unwrap().setup;
-            assert!(setup.attempted);
-            assert!(setup.used <= setup.limit);
+            assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
             let graph = owner.two_fe_pcg.as_ref().unwrap();
             assert!(graph.kernel.is_none());
             assert!(graph.cmg_schur.is_none());
@@ -1114,9 +917,7 @@ fn routing_direct_live_caller_certifies_weighted_disconnected_coefficients() {
     let graph = owner.two_fe_pcg.as_ref().unwrap();
     assert_eq!(graph.ppml_operator_rhs_count, 0);
     assert!(graph.kernel.is_none() && graph.cmg_schur.is_none());
-    let setup = &owner.auto_route.as_ref().unwrap().setup;
-    assert!(setup.attempted);
-    assert!(setup.used > 0 && setup.used <= setup.limit / 8);
+    assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
     let coefficients = fit.coefficients.as_ref().unwrap();
     assert_eq!(coefficients.level_counts, [levels, levels]);
     for row in 0..weights.len() {
@@ -1184,7 +985,6 @@ fn routing_restart_has_independent_weighted_disconnected_science_and_repeats() {
                     assert_eq!(owner.workspace.reference_norms, original.reference_norms);
                     let route = owner.auto_route.as_ref().unwrap();
                     assert!(route.setup.attempted);
-                    assert!(route.setup.used <= route.setup.limit);
                     assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_some());
                     assert!(fit.report().iterations > 4);
                     assert!(fit.report().iterations <= config().max_iterations);
@@ -1192,7 +992,7 @@ fn routing_restart_has_independent_weighted_disconnected_science_and_repeats() {
                         fit.residualized().clone(),
                         fit.coefficients.unwrap(),
                         fit.report.iterations,
-                        route.setup.used,
+                        route.setup.attempted,
                     )
                 })
                 .unwrap();
@@ -1225,7 +1025,6 @@ fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths(
         let run = |preset| {
             crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
                 .install(|| {
-                    TWO_FE_ROUTING_LAUNCH_AT.set(0);
                     TWO_FE_ROUTING_BUILD_AT.set(0);
                     let mut owner =
                         ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
@@ -1241,7 +1040,6 @@ fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths(
                         .unwrap();
                     witness.check(&first, &[0]);
                     assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 16);
-                    assert_eq!(TWO_FE_ROUTING_LAUNCH_AT.get(), 0);
                     let route = owner.auto_route.as_ref().unwrap();
                     assert_eq!(route.request.degree, 5);
                     assert_eq!(route.request.sampling.samples, 1);
@@ -1253,18 +1051,6 @@ fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths(
                             PortfolioChoice::IncumbentCmg
                         );
                     }
-                    assert!(route.preparation.is_none());
-                    let work = (route.setup.limit, route.setup.used);
-                    let initial_work = schur_iteration_work(
-                        witness.weights.len(),
-                        PairedGraph::LEVELS,
-                        PairedGraph::LEVELS,
-                        1,
-                        3,
-                    )
-                    .unwrap();
-                    assert_eq!(work.0, 32 * initial_work);
-                    assert!(work.1 > 0 && work.1 <= work.0);
                     let hierarchy = std::ptr::from_ref(
                         owner
                             .two_fe_pcg
@@ -1284,8 +1070,7 @@ fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths(
                         )
                         .unwrap();
                     witness.check(&wider, &[0, 1, 2]);
-                    let route = owner.auto_route.as_ref().unwrap();
-                    assert_eq!((route.setup.limit, route.setup.used), work);
+                    assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
                     assert_eq!(
                         std::ptr::from_ref(
                             owner
@@ -1308,16 +1093,15 @@ fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths(
                         wider.residualized().clone(),
                         wider.coefficients.unwrap(),
                         wider.report.iterations,
-                        work,
                     )
                 })
                 .unwrap()
         };
         let expected = run(RoutingPreset::new(16, 1).unwrap());
         let actual = run(RoutingPreset::portfolio_v1());
-        // Both policies satisfy the independent analytic witnesses above. The
-        // portfolio factor screen may change the hierarchy, but never its quota.
-        assert_eq!(actual.6 .0, expected.6 .0);
+        // Both policies satisfy the independent analytic witnesses above and,
+        // without a factor screen, install the same bounded hierarchy.
+        assert_eq!(actual, expected);
         let replay = run(RoutingPreset::portfolio_v1());
         assert_eq!(actual, replay);
         assert_eq!(actual, run(RoutingPreset::portfolio_unseeded()));
@@ -1370,12 +1154,8 @@ fn portfolio_matched_cold_reused_and_wide_rhs_preserve_science_and_repeats() {
                                 .cmg_schur
                                 .as_ref()
                                 .unwrap();
-                            prior_setup = Some((
-                                route.setup.limit,
-                                route.setup.used,
-                                route.setup.restart_reserve,
-                                std::ptr::from_ref(hierarchy.as_ref()),
-                            ));
+                            assert!(route.setup.attempted);
+                            prior_setup = Some(std::ptr::from_ref(hierarchy.as_ref()));
                             results.push(first);
                         }
                         let target = owner
@@ -1395,29 +1175,13 @@ fn portfolio_matched_cold_reused_and_wide_rhs_preserve_science_and_repeats() {
                             .cmg_schur
                             .as_ref()
                             .unwrap();
-                        let work = schur_iteration_work(
-                            witness.weights.len(),
-                            PairedGraph::LEVELS,
-                            PairedGraph::LEVELS,
-                            if primed { 1 } else { positions.len() },
-                            3,
-                        )
-                        .unwrap();
                         assert!(route.setup.attempted);
                         assert_eq!(
                             route.setup.portfolio_choice(),
                             PortfolioChoice::IncumbentCmg
                         );
-                        assert_eq!(route.setup.limit, 32 * work);
-                        assert_eq!(route.setup.restart_reserve, 4 * work);
-                        assert!(route.setup.used > 0 && route.setup.used <= route.setup.limit);
-                        let setup = (
-                            route.setup.limit,
-                            route.setup.used,
-                            route.setup.restart_reserve,
-                        );
-                        if let Some((limit, used, reserve, pointer)) = prior_setup {
-                            assert_eq!(setup, (limit, used, reserve));
+                        let setup = route.setup.attempted;
+                        if let Some(pointer) = prior_setup {
                             assert_eq!(std::ptr::from_ref(hierarchy.as_ref()), pointer);
                         }
                         results.push(target);
@@ -1485,7 +1249,7 @@ fn independent_rhs_sequence(
     workers: usize,
     positions: &[usize],
     primed: bool,
-) -> (Vec<CertifiedBorrowedMap>, (u64, u64, u64)) {
+) -> (Vec<CertifiedBorrowedMap>, bool) {
     crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
         .install(|| {
             let mut owner =
@@ -1497,19 +1261,10 @@ fn independent_rhs_sequence(
                 projections.push(&[1][..]);
             }
             projections.push(positions);
-            let work = schur_iteration_work(
-                witness.weights.len(),
-                PairedGraph::LEVELS,
-                PairedGraph::LEVELS,
-                projections[0].len(),
-                16,
-            )
-            .unwrap();
             let mut results = Vec::new();
             let mut installed = None;
             for (projection, columns) in projections.into_iter().enumerate() {
                 TWO_FE_ROUTING_BUILD_AT.set(0);
-                TWO_FE_ROUTING_LAUNCH_AT.set(0);
                 let mut fit = owner
                     .absorb_ols(
                         BorrowedMapWeights::Provided(&witness.weights),
@@ -1538,15 +1293,8 @@ fn independent_rhs_sequence(
                     PortfolioChoice::IncumbentCmg
                 );
                 // Same capacity, intentionally different first submitted widths:
-                // the original first compatible 32W0/4W0 ledger is never renewed.
-                let setup = (
-                    route.setup.limit,
-                    route.setup.used,
-                    route.setup.restart_reserve,
-                );
-                assert_eq!(setup.0, 32 * work);
-                assert_eq!(setup.2, 4 * work);
-                assert!(setup.1 > 0 && setup.1 <= setup.0);
+                // the single optional attempt is never renewed for this key.
+                let setup = route.setup.attempted;
                 let pointer = std::ptr::from_ref(hierarchy.unwrap().as_ref());
                 if let Some(prior) = installed {
                     assert_eq!((setup, pointer), prior);
@@ -1554,7 +1302,6 @@ fn independent_rhs_sequence(
                 } else {
                     assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 16);
                 }
-                assert_eq!(TWO_FE_ROUTING_LAUNCH_AT.get(), 0);
                 assert!(!fit.report.fallback_used);
                 // A retained hierarchy is applied at recurrence initialization.
                 // Progress after cold installation (or on reuse) therefore
@@ -1651,7 +1398,7 @@ fn portfolio_sixteen_independent_rhs_cover_matched_cold_and_reused_routes() {
 }
 
 #[test]
-fn routing_and_portfolio_quota_or_memory_refusal_preserve_the_exact_incumbent() {
+fn routing_and_portfolio_memory_refusal_preserve_the_exact_incumbent() {
     let witness = PairedGraph::new();
     let mut incumbent = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
     incumbent.retain_coefficients = true;
@@ -1663,26 +1410,17 @@ fn routing_and_portfolio_quota_or_memory_refusal_preserve_the_exact_incumbent() 
             false,
         )
         .unwrap();
-    for (preset, memory_refusal) in [
-        (RoutingPreset::new(4, 1).unwrap(), false),
-        (RoutingPreset::new(4, 1).unwrap(), true),
-        (RoutingPreset::portfolio_v1(), false),
-        (RoutingPreset::portfolio_v1(), true),
+    for preset in [
+        RoutingPreset::new(4, 1).unwrap(),
+        RoutingPreset::portfolio_v1(),
     ] {
         let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
         owner.retain_coefficients = true;
         owner.request_auto_routing(preset, None, 0);
-        let route = owner.auto_route.as_mut().unwrap();
-        if memory_refusal {
-            route.request.budget = Some(FeSolverMemoryBudget {
-                execution_bytes: 0,
-                usable_bytes: 0,
-            });
-        } else {
-            // Bind the real session before restricting its optional setup quota.
-            // No recurrence state is injected or changed.
-            route.setup.begin(config().tolerance, false, Some(0));
-        }
+        owner.auto_route.as_mut().unwrap().request.budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: 0,
+        });
         let fit = owner
             .absorb_ols(
                 BorrowedMapWeights::Provided(&witness.weights),
@@ -1795,7 +1533,6 @@ fn routing_initial_certificate_does_not_spend_or_prepare() {
     assert_eq!(fit.residualized(), &witness.residual);
     let route = owner.auto_route.as_ref().unwrap();
     assert!(!route.setup.attempted);
-    assert_eq!(route.setup.used, 0);
     assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
 }
 
@@ -1831,7 +1568,7 @@ fn routing_installed_restart_keeps_the_last_native_iteration_limit() {
 }
 
 #[test]
-fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_ledger() {
+fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_attempt() {
     let witness = PairedGraph::new();
     let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
     request(&mut owner, 1);
@@ -1854,9 +1591,7 @@ fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_ledger(
             .unwrap()
             .as_ref(),
     );
-    let ledger = owner.auto_route.as_ref().unwrap();
-    assert!(ledger.setup.attempted);
-    let work = (ledger.setup.limit, ledger.setup.used);
+    assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
     let references = owner.workspace.reference_norms.clone();
     assert!(references.iter().all(|value| *value > 0.));
     for positions in [&[1][..], &[0, 1][..]] {
@@ -1869,8 +1604,7 @@ fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_ledger(
             )
             .unwrap();
         witness.check(&chunk, positions);
-        let ledger = owner.auto_route.as_ref().unwrap();
-        assert_eq!((ledger.setup.limit, ledger.setup.used), work);
+        assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
         assert_eq!(
             std::ptr::from_ref(
                 owner
@@ -1899,10 +1633,7 @@ fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_ledger(
         )
         .unwrap();
     witness.check(&final_fit, &[0]);
-    let ledger = owner.auto_route.as_ref().unwrap();
-    assert!(!ledger.setup.attempted);
-    assert_eq!(ledger.setup.used, 0);
-    assert!(ledger.setup.limit > 0);
+    assert!(!owner.auto_route.as_ref().unwrap().setup.attempted);
     assert_eq!(
         std::ptr::from_ref(
             owner

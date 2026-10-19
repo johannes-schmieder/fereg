@@ -65,14 +65,17 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_direct` | OLS | Tests a bounded componentwise direct Schur factorization on eligible two-FE systems |
 | `inject=it_coefficients` | OLS | Tests compact coefficient-space acceleration on eligible categorical systems; requires `solver=it` |
 | `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |
-| `inject=routing_incremental_many` | OLS | Qualifies strict unseeded LSMR with retained preparation for at least three categorical intercept FEs, using the existing unseeded portfolio |
-| `inject=routing_incremental_two` | OLS | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |
-| `inject=routing_overlap_h{8\|16\|32}_k{0\|1\|2}` | OLS | Tests deterministic preparation on one worker of the existing team, with fixed grants and handoff checkpoint; one-worker requests retain serial preparation |
-| `inject=routing_overlap_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the h8/k1 overlap arm and waits for Break only after a charged builder operation has executed; requires at least two workers |
+| `inject=routing_incremental_many` | OLS (replay wire) | Qualifies strict unseeded LSMR with retained preparation for at least three categorical intercept FEs, using the existing unseeded portfolio |
+| `inject=routing_incremental_two` | OLS (replay wire) | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |
+| `inject=routing_builder_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the synchronous h4/k1 builder and waits for Break at its first cancellation poll after executed construction work; any worker count |
 | `inject=ppml_topology` | PPML | Shares admitted categorical checkpoint component indexing after acceptance; weighted numerical data is recomputed in every frame |
 
 Each routing name is a complete literal token, for example
-`routing_h8_k1`. OLS routing injections require `solver=auto`, reject
+`routing_h8_k1`. The hidden Stata adapter accepts the `routing_h*_k*`,
+`routing_builder_break`, prefix and kernel tokens; the plugin additionally
+accepts `routing_incremental_{many,two}` and `routing_portfolio_{v1,unseeded}`,
+which reach it only through the replay wire (`bench/routing.py`,
+`bench/qualify.py`) and Rust tests. OLS routing injections require `solver=auto`, reject
 `break_marker_token` except for the builder-Break arm, and are rejected by PPML. Invalid names and explicit
 solver conflicts fail before observation reads or publication. Omitted or empty
 `inject` retains the qualified automatic policy; these arms do not enable a new
@@ -83,8 +86,10 @@ Outside the selected categorical intercept family, including slopes and explicit
 preconditioners, they retain the incumbent without optional routing preparation.
 Finite controls do not count as FEs. Both selectors resolve to the existing
 `routing_portfolio_unseeded` machinery on eligible topology; its certificates,
-limits, memory admission and cancellation remain unchanged. Public defaults
-remain incumbent pending independent family qualification.
+limits, memory admission and cancellation remain unchanged. Uninjected Auto
+already uses the incremental-many policy for at least three categorical
+intercept FEs; the two-FE public default remains incumbent pending its own
+qualification.
 
 The separate coefficient-IT injection requires explicit `solver=it` and rejects
 `break_marker_token`. Ordinary explicit IT keeps its incumbent observation-space
@@ -96,20 +101,23 @@ LSMR routes. Zero/one-FE and slope routes retain their existing behavior; the
 three kernel experiments affect only eligible two-FE systems. Explicit
 `preconditioner()` choices remain authoritative: general LSMR pair replacement
 is considered only with `preconditioner=auto`. Optional construction is admitted
-against work and memory bounds, with refusal continuing the incumbent. Accepted
-results retain the original-design certificate, requested tolerance, per-action
-iteration budget, and atomic publication contract. These qualification arms
-build at a numerical checkpoint. Only the separate overlap arms launch a
-concurrent CMG builder. Prefix and overlap experiments are independently
-qualified; their tokens cannot be combined into a Cartesian policy search.
+against the joint memory budget; a memory refusal continues the incumbent.
+Construction is cancellable at bounded chunks; a Break propagates as an
+interrupted native estimation with atomic rollback after all tasks join, never
+as a continued incumbent or a published result. Accepted results retain the
+original-design certificate, requested tolerance, per-action iteration budget,
+and atomic publication contract. These qualification arms build synchronously
+at a numerical checkpoint. Prefix experiments are independently qualified;
+their tokens cannot be combined into a Cartesian policy search. The former
+overlap arms were retired on 2026-10-19.
 
-Overlap acquires exclusive admission to the existing team before the native
-worker starts. It leases one existing worker after four incumbent iterations,
-keeps that worker while parked or complete, and joins before publication or
-rollback. Cumulative logical grants, not readiness or elapsed time, control
-preparation. A convergence-ready result defers grants until the original-design
-certificate decides. The builder-Break marker is emitted by Stata's polling
-thread only after the worker publishes the charged-operation handshake.
+The builder-Break arm claims a process-wide developer marker for its one
+synchronous build. At the builder's first cancellation poll after executed
+construction work it records readiness (solver trace
+`phase=routing_builder|event=builder_break_ready|task=0|ordinal=<zero-based poll>`)
+and parks the constructing worker. Stata's polling thread emits the native
+Break marker only after that readiness; the requested cancellation then
+propagates through the next poll.
 
 `ppml_topology` is independent of OLS routing and does not enable a new PPML
 solver policy. Its pending structural cache publishes only on acceptance;

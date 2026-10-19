@@ -11,9 +11,6 @@ use super::*;
 use crate::fe::cmg_schur::{CmgSchurPreconditioner, Sampling};
 use crate::fe::routing::{RoutingPreset, SetupLedger};
 
-mod overlap;
-use overlap::PairPreparation;
-
 /// Keep the established unseeded batch path exact. Seeded experiments use the
 /// session correction interface and report failed native work before fallback.
 pub(super) fn solve_prepared_input(
@@ -102,12 +99,6 @@ pub(crate) struct GeneralRoutingState<'a> {
     replacement_bytes: u128,
     replacement_apply_bytes: u128,
     accuracy: Option<(u64, bool)>,
-    initial_rhs: usize,
-    base_work: Option<u64>,
-    incumbent_work: Option<u64>,
-    design_work: Option<u64>,
-    preparation: Option<PairPreparation>,
-    preparation_error: Option<FeregError>,
 }
 
 impl<'a> GeneralRoutingState<'a> {
@@ -120,12 +111,6 @@ impl<'a> GeneralRoutingState<'a> {
             replacement_bytes: 0,
             replacement_apply_bytes: 0,
             accuracy: None,
-            initial_rhs: 0,
-            base_work: None,
-            incumbent_work: None,
-            design_work: None,
-            preparation: None,
-            preparation_error: None,
         }
     }
 
@@ -141,71 +126,50 @@ impl<'a> GeneralRoutingState<'a> {
         self.preset.strict_categorical_prefix()
     }
 
-    pub(crate) fn begin(
-        &mut self,
-        tolerance: f64,
-        final_residual: bool,
-        design: &BorrowedInterceptFeDesign<'_>,
-        rhs: usize,
-        local_size: Option<usize>,
-    ) -> Result<()> {
+    /// Bind a new accuracy key; it starts a new single optional attempt.
+    pub(crate) fn begin(&mut self, tolerance: f64, final_residual: bool) {
         let key = (tolerance.to_bits(), final_residual);
         if self.accuracy == Some(key) {
-            return Ok(());
+            return;
         }
-        self.finish_preparation()?;
         self.accuracy = Some(key);
-        let rhs = crate::memory::lsmr_rhs_window(rhs, rayon::current_num_threads());
-        self.initial_rhs = rhs;
-        let n = design.nobs() as u128;
-        let effects = design.effects().len() as u128;
-        let levels = design.total_term_slots() as u128;
-        let history = local_size
-            .unwrap_or(0)
-            .min(design.nobs())
-            .min(design.total_term_slots()) as u128;
-        self.base_work = n
-            .checked_mul(effects)
-            .and_then(|work| work.checked_mul(128))
-            .and_then(|work| work.checked_add(n.checked_mul(128)?))
-            .and_then(|work| work.checked_add(levels.checked_mul(128)?))
-            .and_then(|work| work.checked_add(levels.checked_mul(history)?.checked_mul(32)?))
-            .and_then(|work| work.checked_add(1024)?.checked_mul(rhs as u128))
-            .and_then(|work| u64::try_from(work).ok());
-        let work = match self.incumbent_work {
-            Some(action) => self
-                .base_work
-                .and_then(|base| base.checked_add(action.checked_mul(rhs as u64)?)),
-            None => self.base_work,
-        };
-        self.setup.begin(tolerance, final_residual, work);
-        Ok(())
+        self.setup.begin(tolerance, final_residual);
     }
 
-    pub(crate) fn work(&self) -> (u64, u64) {
-        (self.setup.used, self.setup.limit)
+    #[cfg(test)]
+    pub(crate) fn has_replacement(&self) -> bool {
+        self.replacement.is_some()
+    }
+
+    /// Close the optional attempt for the current accuracy key.
+    pub(crate) fn close_attempt(&mut self) {
+        self.setup.attempted = true;
+    }
+
+    /// A failed foreground certificate or action closes the optional attempt.
+    /// Cancellation requested meanwhile takes precedence over the failure.
+    pub(in crate::fe::borrowed_map) fn certificate_boundary<T>(
+        &mut self,
+        foreground: Result<T>,
+    ) -> Result<T> {
+        if foreground.is_err() {
+            self.close_attempt();
+            crate::interrupt::checkpoint()?;
+        }
+        foreground
     }
 
     pub(crate) fn release_backend(&mut self) {
-        self.preparation = None;
-        self.preparation_error = None;
         self.replacement = None;
         self.replacement_bytes = 0;
         self.replacement_apply_bytes = 0;
         self.prepared = BorrowedLsmrPrepared::default();
-        self.incumbent_work = None;
-        self.design_work = None;
     }
 
     pub(super) fn retained_bytes(&self) -> u128 {
-        self.prepared.retained_bytes
-            * (1 + u128::from(self.replacement.is_some() || self.preparation.is_some()))
+        self.prepared.retained_bytes * (1 + u128::from(self.replacement.is_some()))
             + self.replacement_bytes
             + self.replacement_apply_bytes
-            + self
-                .preparation
-                .as_ref()
-                .map_or(0, PairPreparation::retained_bytes)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -226,7 +190,7 @@ impl<'a> GeneralRoutingState<'a> {
             || !matches!(preconditioner, PreconditionerConfig::Additive { .. })
             || self.prepared.preconditioner_fallback
         {
-            self.finish_preparation()?;
+            self.close_attempt();
             return self.prepared.solve(
                 design,
                 weights,
@@ -255,7 +219,6 @@ impl<'a> GeneralRoutingState<'a> {
             initial_coefficients.is_some(),
         )?;
         if apply_bytes.is_none() {
-            self.finish_preparation()?;
             self.replacement = None;
             self.replacement_bytes = 0;
             self.replacement_apply_bytes = 0;
@@ -275,60 +238,7 @@ impl<'a> GeneralRoutingState<'a> {
             return Ok((solved, fallback));
         }
         self.replacement_apply_bytes = apply_bytes.expect("admitted replacement scratch");
-        memory.include(
-            parent
-                + self.replacement_bytes
-                + self.replacement_apply_bytes
-                + self
-                    .preparation
-                    .as_ref()
-                    .map_or(0, PairPreparation::allocated_bytes),
-        )?;
-        self.solve_windows(
-            design,
-            weights,
-            rhs,
-            options,
-            deterministic,
-            memory,
-            parent,
-            window,
-            setup_seconds,
-            started,
-            initial_coefficients,
-        )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn solve_windows(
-        &mut self,
-        design: &BorrowedInterceptFeDesign<'a>,
-        weights: ValidatedWeights<'_>,
-        rhs: &[&[f64]],
-        options: &LsmrOptions,
-        deterministic: bool,
-        memory: &mut BorrowedLsmrCallMemory,
-        parent: u128,
-        window: usize,
-        setup_seconds: f64,
-        started: Instant,
-        initial_coefficients: Option<&FeCoefficientBatch>,
-    ) -> Result<(within::BatchSolveResult, bool)> {
-        if self.preset.overlaps() && rayon::current_num_threads() >= 2 {
-            return self.solve_overlap_windows(
-                design,
-                weights,
-                rhs,
-                options,
-                deterministic,
-                memory,
-                parent,
-                window,
-                setup_seconds,
-                started,
-                initial_coefficients,
-            );
-        }
+        memory.include(parent + self.replacement_bytes + self.replacement_apply_bytes)?;
         self.solve_serial_windows(
             design,
             weights,
@@ -408,39 +318,23 @@ impl<'a> GeneralRoutingState<'a> {
             if pilot {
                 if progress.iter().any(|progress| !progress.converged) {
                     self.setup.attempted = true;
-                    let work_started = Instant::now();
-                    let eligible = prepare_work(
+                    let (candidate, build_seconds) = try_pair_replacement(
                         solver,
-                        &mut self.setup,
-                        &mut self.incumbent_work,
-                        &mut self.design_work,
-                        self.base_work,
-                        self.initial_rhs,
+                        self.preset,
+                        FactoryState {
+                            memory,
+                            parent,
+                            retained: 0,
+                            error: None,
+                            refused: false,
+                        },
+                        window,
                     )?;
-                    setup_seconds += work_started.elapsed().as_secs_f64();
-                    if eligible {
-                        let (candidate, build_seconds) = try_pair_replacement(
-                            solver,
-                            self.preset,
-                            FactoryState {
-                                setup: &mut self.setup,
-                                memory,
-                                parent,
-                                retained: 0,
-                                error: None,
-                                refused: false,
-                            },
-                            self.design_work,
-                            window,
-                            columns.len(),
-                            options.local_size,
-                        )?;
-                        setup_seconds += build_seconds;
-                        if let Some(candidate) = candidate {
-                            self.replacement = Some(candidate.replacement);
-                            self.replacement_apply_bytes = candidate.apply_bytes;
-                            self.replacement_bytes = candidate.retained_bytes;
-                        }
+                    setup_seconds += build_seconds;
+                    if let Some(candidate) = candidate {
+                        self.replacement = Some(candidate.replacement);
+                        self.replacement_apply_bytes = candidate.apply_bytes;
+                        self.replacement_bytes = candidate.retained_bytes;
                     }
                 }
                 let continuation: Vec<_> = sessions
@@ -520,7 +414,7 @@ impl<'a> GeneralRoutingState<'a> {
             .as_ref()
             .is_some_and(|s| s.reproducible() != deterministic)
         {
-            self.finish_preparation()?;
+            self.close_attempt();
             self.release_backend();
         }
         let setup_started = Instant::now();
@@ -554,15 +448,6 @@ impl<'a> GeneralRoutingState<'a> {
             .prepared
             .retained_bytes
             .checked_add(if seeded { 0 } else { warm_extra })
-            .and_then(|bytes| {
-                bytes.checked_add(
-                    if self.preset.overlaps() && rayon::current_num_threads() >= 2 {
-                        overlap::SERVICE_BYTES
-                    } else {
-                        0
-                    },
-                )
-            })
             .ok_or_else(|| allocation("general routing session overlap overflows"))?;
         let parent = estimate
             .lsmr_bytes(LsmrPreconditioner::Schwarz)
@@ -582,22 +467,8 @@ impl<'a> GeneralRoutingState<'a> {
                     .checked_add(apply)
             })
             .and_then(|bytes| bytes.checked_add(memory.parent_bytes));
-        let admitted = foreground
-            .and_then(|bytes| {
-                bytes.checked_add(
-                    self.preparation
-                        .as_ref()
-                        .map_or(0, PairPreparation::allocated_bytes),
-                )
-            })
-            .is_some_and(|bytes| memory.budget.is_none_or(|budget| budget.fits(bytes)));
-        let admitted = admitted
-            && self.preparation.as_ref().is_none_or(|preparation| {
-                preparation.refresh_envelope(
-                    foreground.expect("admitted foreground envelope"),
-                    memory.budget,
-                )
-            });
+        let admitted =
+            foreground.is_some_and(|bytes| memory.budget.is_none_or(|budget| budget.fits(bytes)));
         Ok(SessionAdmission {
             parent,
             window,
@@ -665,15 +536,11 @@ struct AdmittedReplacement {
     retained_bytes: u128,
 }
 
-#[allow(clippy::too_many_arguments)]
 fn try_pair_replacement(
     solver: &within::Solver<'_>,
     preset: RoutingPreset,
     state: FactoryState<'_>,
-    design_work: Option<u64>,
     window: usize,
-    rhs_count: usize,
-    local_size: Option<usize>,
 ) -> Result<(Option<AdmittedReplacement>, f64)> {
     let factory = PairFactory {
         preset,
@@ -696,18 +563,10 @@ fn try_pair_replacement(
             let memory_admitted = live
                 .and_then(|bytes| bytes.checked_add(state.memory.parent_bytes))
                 .is_some_and(|bytes| state.memory.budget.is_none_or(|budget| budget.fits(bytes)));
-            let startup =
-                warm_restart_work(solver, &replacement, design_work, rhs_count, local_size).filter(
-                    |work| {
-                        memory_admitted
-                            && *work <= state.setup.limit.saturating_sub(state.setup.used)
-                    },
-                );
-            if let Some(startup) = startup {
+            if memory_admitted {
                 state
                     .memory
                     .include(live.expect("admitted replacement scratch"))?;
-                state.setup.charge(startup)?;
                 return Ok((
                     Some(AdmittedReplacement {
                         replacement,
@@ -731,105 +590,12 @@ struct ReducedInverse {
     scale: f64,
 }
 
-fn prepare_work(
-    solver: &within::Solver<'_>,
-    setup: &mut SetupLedger,
-    incumbent: &mut Option<u64>,
-    design: &mut Option<u64>,
-    base: Option<u64>,
-    rhs: usize,
-) -> Result<bool> {
-    if incumbent.is_some() && design.is_some() {
-        return Ok(true);
-    }
-    let Some((apply, action)) = metadata_work(setup, |checkpoint| {
-        let apply = solver.incumbent_apply_work_bound(&mut *checkpoint)?;
-        let design = solver.design_apply_work_bound(checkpoint)?;
-        Ok(apply.zip(design))
-    })?
-    else {
-        return Ok(false);
-    };
-    let full = base.and_then(|base| apply.checked_mul(rhs as u64)?.checked_add(base));
-    let Some((limit, reserve)) =
-        full.and_then(|work| Some((work.checked_mul(32)?, work.checked_mul(4)?)))
-    else {
-        return Ok(false);
-    };
-    *incumbent = Some(apply);
-    *design = Some(action);
-    setup.limit = limit;
-    setup.restart_reserve = reserve;
-    Ok(true)
-}
-
-fn metadata_work<T>(
-    setup: &mut SetupLedger,
-    query: impl FnOnce(
-        &mut dyn FnMut(u64) -> std::result::Result<(), within::BuildError>,
-    ) -> std::result::Result<Option<T>, within::BuildError>,
-) -> Result<Option<T>> {
-    let mut fatal = None;
-    let mut refused = false;
-    let result = query(&mut |units| {
-        if let Err(error) = crate::interrupt::checkpoint() {
-            fatal = Some(error);
-            return Err(rejected());
-        }
-        if units > setup.limit.saturating_sub(setup.used) {
-            refused = true;
-            return Err(rejected());
-        }
-        setup.charge(units).map_err(|error| {
-            fatal = Some(error);
-            rejected()
-        })
-    });
-    if let Some(error) = fatal {
-        return Err(error);
-    }
-    match result {
-        Ok(value) => Ok(value),
-        Err(_) if refused => Ok(None),
-        Err(error) => Err(build_error(error)),
-    }
-}
-
-fn warm_restart_work(
-    solver: &within::Solver<'_>,
-    replacement: &within::PairReplacement,
-    design: Option<u64>,
-    rhs: usize,
-    local_size: Option<usize>,
-) -> Option<u64> {
-    let rows = solver.n_obs() as u64;
-    let dofs = solver.n_dofs() as u64;
-    let history = local_size
-        .unwrap_or(0)
-        .min(solver.n_obs())
-        .min(solver.n_dofs()) as u64;
-    // One original-scale adjoint/M initialization and one correction adjoint/M
-    // initialization follow the explicit A*x reconstruction. Reserve every
-    // vector zero/copy/norm and history bank before accepting the replacement.
-    replacement
-        .apply_work_bound()?
-        .checked_mul(2)?
-        .checked_add(design?.checked_mul(3)?)?
-        .checked_add(rows.checked_add(dofs)?.checked_mul(128)?)?
-        .checked_add(dofs.checked_mul(history)?.checked_mul(32)?)?
-        .checked_add(1024)?
-        .checked_mul(rhs as u64)
-}
-
 impl within::FixedReducedInverse for ReducedInverse {
     fn dimension(&self) -> usize {
         self.dimension
     }
     fn scratch_len(&self) -> usize {
         self.dimension
-    }
-    fn apply_work_bound(&self) -> Option<u64> {
-        self.solver.lock().ok()?.startup_work(1)
     }
     fn apply_in_place(
         &self,
@@ -854,7 +620,6 @@ struct PairFactory<'a> {
 }
 
 struct FactoryState<'a> {
-    setup: &'a mut SetupLedger,
     memory: &'a mut BorrowedLsmrCallMemory,
     parent: u128,
     retained: u128,
@@ -868,22 +633,15 @@ fn rejected() -> within::BuildError {
 
 impl within::FixedReducedInverseFactory for PairFactory<'_> {
     // Fixed nomination/ownership metadata is admitted in the aggregate parent
-    // envelope before this serial factory runs. OwnedFactory forwards the later
-    // worker allocations individually to the controlled preparation cursor.
-    fn checkpoint(&self, work_units: u64) -> std::result::Result<(), within::BuildError> {
+    // envelope before this serial factory runs. Each bounded construction
+    // checkpoint polls cancellation only; there is no work allowance.
+    fn checkpoint(&self, _work_units: u64) -> std::result::Result<(), within::BuildError> {
         let mut state = self.state.borrow_mut();
         if let Err(error) = crate::interrupt::checkpoint() {
             state.error = Some(error);
             return Err(rejected());
         }
-        if state.setup.builder_allowance() < work_units {
-            state.refused = true;
-            return Err(rejected());
-        }
-        state.setup.charge(work_units).map_err(|error| {
-            state.error = Some(error);
-            rejected()
-        })
+        Ok(())
     }
 
     fn build(
@@ -919,13 +677,8 @@ impl within::FixedReducedInverseFactory for PairFactory<'_> {
                 seed: 0,
             },
             budget,
-            state.setup.builder_allowance(),
         );
         let (attempt, scale) = attempt.map_err(|error| {
-            state.error = Some(error);
-            rejected()
-        })?;
-        state.setup.charge(attempt.work_used).map_err(|error| {
             state.error = Some(error);
             rejected()
         })?;
@@ -1006,11 +759,9 @@ fn action_failure<T>(results: &[std::result::Result<T, ActionFailure>]) -> Optio
         if failure.preconditioner_breakdown && !candidate.preconditioner_breakdown {
             failure = candidate;
         } else if !candidate.preconditioner_breakdown {
-            let selected = crate::fe::routing_overlap::arbitrate::<()>(
-                Err(failure.error.clone()),
-                Err(candidate.error.clone()),
-            )
-            .unwrap_err();
+            let selected =
+                arbitrate::<()>(Err(failure.error.clone()), Err(candidate.error.clone()))
+                    .unwrap_err();
             if selected.code == candidate.error.code && selected.message == candidate.error.message
             {
                 failure = candidate;
@@ -1021,6 +772,33 @@ fn action_failure<T>(results: &[std::result::Result<T, ActionFailure>]) -> Optio
         error: FeregError::new(failure.error.code, failure.error.message.clone()),
         preconditioner_breakdown: failure.preconditioner_breakdown,
     })
+}
+
+/// Fixed terminal-kind order between two outcomes, independent of wall time.
+/// Cancellation requested before the decision takes precedence.
+fn arbitrate<T>(first: Result<T>, second: Result<()>) -> Result<T> {
+    crate::interrupt::checkpoint()?;
+    match (first, second) {
+        (Ok(value), Ok(())) => Ok(value),
+        (Err(error), Ok(())) | (Ok(_), Err(error)) => Err(error),
+        (Err(front), Err(back)) => Err(if fatal_rank(&front) <= fatal_rank(&back) {
+            front
+        } else {
+            back
+        }),
+    }
+}
+
+fn fatal_rank(error: &FeregError) -> u16 {
+    match error.code {
+        ErrorCode::Interrupted => 0,
+        ErrorCode::Panic => 1,
+        ErrorCode::Internal => 2,
+        ErrorCode::InvalidData => 3,
+        ErrorCode::Allocation => 4,
+        ErrorCode::NonConvergence => 6,
+        _ => 5,
+    }
 }
 
 fn consumed(
@@ -1226,7 +1004,7 @@ mod tests {
         let mut memory =
             BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Schwarz, None, 0).unwrap();
         let mut route = GeneralRoutingState::new(RoutingPreset::portfolio_v1());
-        route.begin(1e-14, false, &design, rhs.len(), None).unwrap();
+        route.begin(1e-14, false);
         let (actual, fallback) = route
             .solve(
                 &design,
@@ -1242,9 +1020,7 @@ mod tests {
             .unwrap();
         assert!(!fallback);
         assert!(!route.setup.attempted);
-        assert_eq!(route.work().0, 0);
-        assert!(route.incumbent_work.is_none() && route.design_work.is_none());
-        assert!(route.replacement.is_none() && route.preparation.is_none());
+        assert!(route.replacement.is_none());
         for (column, expected) in expected.iter().enumerate() {
             assert_eq!(actual.iterations[column], expected.iterations);
             assert_eq!(actual.x(column), expected.x);
@@ -1295,11 +1071,28 @@ mod tests {
         let mut memory =
             BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Schwarz, None, 0).unwrap();
         let mut route = GeneralRoutingState::new(RoutingPreset::new(4, 0).unwrap());
-        route.begin(1e-8, false, &design, 2, None).unwrap();
-        route.setup.limit = 0;
-        route.setup.restart_reserve = 0;
+        route.begin(1e-8, false);
         route.prepared.solver = Some(solver);
         route.prepared.retained_bytes = estimate.lsmr_retained_bytes(LsmrPreconditioner::Schwarz);
+        // Admit the incumbent sessions exactly; the optional reduced hierarchy
+        // then has no memory and its refusal resumes the live recurrence.
+        let admission = route
+            .prepare_call(
+                &design,
+                weights,
+                2,
+                &options,
+                PreconditionerConfig::default(),
+                true,
+                &memory,
+                false,
+            )
+            .unwrap();
+        assert!(admission.apply_bytes.is_some());
+        memory.budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: admission.parent,
+        });
         let rhs: Vec<_> = fixture.rhs.iter().map(Vec::as_slice).collect();
         let (actual, fallback) = route
             .solve(
@@ -1317,7 +1110,6 @@ mod tests {
         assert!(!fallback);
         assert!(route.setup.attempted);
         assert!(route.replacement.is_none());
-        assert_eq!(route.work(), (0, 0));
         for (column, expected) in expected.iter().enumerate() {
             assert_eq!(actual.iterations[column], expected.iterations);
             assert_eq!(actual.x(column), expected.x);
@@ -1390,7 +1182,7 @@ mod tests {
         let mut memory =
             BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Schwarz, None, 0).unwrap();
         let mut route = GeneralRoutingState::new(RoutingPreset::new(8, 0).unwrap());
-        route.begin(1e-8, false, &design, rhs.len(), None).unwrap();
+        route.begin(1e-8, false);
         let admission = route
             .prepare_call(
                 &design,
@@ -1438,234 +1230,19 @@ mod tests {
         assert!(!fallback);
         assert!(route.replacement.is_none());
         assert!(route.setup.attempted);
-        assert_eq!(route.work().0, 0);
-    }
-
-    fn isolated_overlap_test(name: &str) -> bool {
-        let key = "FEREG_GENERAL_OVERLAP_TEST_CHILD";
-        if std::env::var(key).ok().as_deref() != Some(name) {
-            let status = std::process::Command::new(std::env::current_exe().unwrap())
-                .env(key, name)
-                .args([
-                    &format!("fe::borrowed_map::routing_lsmr::tests::{name}"),
-                    "--exact",
-                    "--test-threads=1",
-                ])
-                .status()
-                .unwrap();
-            assert!(status.success());
-            return true;
-        }
-        false
-    }
-
-    #[test]
-    fn overlap_joins_at_fixed_h_and_repeats_on_two_and_four_workers() {
-        if isolated_overlap_test("overlap_joins_at_fixed_h_and_repeats_on_two_and_four_workers") {
-            return;
-        }
-        for workers in [2, 4] {
-            crate::parallel::ThreadTeam::new(
-                crate::options::ThreadConfig::from_requested(workers, true).unwrap(),
-            )
-            .with_exclusive_overlap()
-            .install(|| {
-                let fixture = Fixture::new();
-                let design = fixture.design();
-                let weights = validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap();
-                let rhs: Vec<_> = fixture.rhs.iter().map(Vec::as_slice).collect();
-                let options = LsmrOptions {
-                    tol: 1e-14,
-                    maxiter: 200,
-                    local_size: None,
-                };
-                let estimate = estimate_fe_solver_memory(
-                    design.nobs(),
-                    rhs.len(),
-                    &[160, 161, 3],
-                    workers,
-                    None,
-                )
-                .unwrap();
-                let run = || {
-                    let mut route = GeneralRoutingState::new(RoutingPreset::overlap(8, 0).unwrap());
-                    route.begin(1e-8, false, &design, rhs.len(), None).unwrap();
-                    let mut memory =
-                        BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Schwarz, None, 0)
-                            .unwrap();
-                    let (solved, fallback) = route
-                        .solve(
-                            &design,
-                            weights,
-                            &rhs,
-                            &options,
-                            LsmrPreconditioner::Auto,
-                            PreconditionerConfig::default(),
-                            true,
-                            &mut memory,
-                            None,
-                        )
-                        .unwrap();
-                    route.finish_preparation().unwrap();
-                    assert!(!fallback);
-                    assert!(route.setup.attempted);
-                    assert!(
-                        route.replacement.is_some(),
-                        "fixture must install overlap hierarchy"
-                    );
-                    assert!(route.preparation.is_none());
-                    assert!(solved.iterations.iter().all(|&n| n <= options.maxiter));
-                    (solved, route.work())
-                };
-                let (first, first_work) = run();
-                let (second, second_work) = run();
-                assert_eq!(first_work, second_work);
-                assert_eq!(first.x, second.x);
-                assert_eq!(first.demeaned, second.demeaned);
-                assert_eq!(first.iterations, second.iterations);
-                for column in 0..rhs.len() {
-                    for (codes, levels) in fixture.codes.iter().zip([160, 161, 3]) {
-                        let mut sums = vec![0.0; levels];
-                        for (row, &level) in codes.iter().enumerate() {
-                            sums[level as usize] += first.demeaned(column)[row];
-                        }
-                        assert!(sums.iter().all(|sum| sum.abs() < 1e-8));
-                    }
-                }
-            })
-            .unwrap();
-        }
     }
 
     #[test]
     fn generation_setup_is_shared_and_backend_release_keeps_attempt_record() {
-        let fixture = Fixture::new();
-        let design = fixture.design();
         let mut state = GeneralRoutingState::new(RoutingPreset::new(8, 1).unwrap());
-        state.begin(1e-8, false, &design, 1, None).unwrap();
-        let initial = state.setup.limit;
-        state.setup.charge(16).unwrap();
+        state.begin(1e-8, false);
         state.setup.attempted = true;
-        state.begin(1e-8, false, &design, 8, None).unwrap();
-        assert_eq!(state.work(), (16, initial));
+        state.begin(1e-8, false);
+        assert!(state.setup.attempted);
         state.release_backend();
         assert!(state.setup.attempted);
-        assert_eq!(state.work(), (16, initial));
-        state.begin(1e-12, true, &design, 1, None).unwrap();
-        assert_eq!(state.work(), (0, initial));
+        state.begin(1e-12, true);
         assert!(!state.setup.attempted);
-    }
-
-    #[test]
-    fn overlap_low_certificates_keep_real_preparation_and_cumulative_setup() {
-        if isolated_overlap_test(
-            "overlap_low_certificates_keep_real_preparation_and_cumulative_setup",
-        ) {
-            return;
-        }
-        crate::parallel::ThreadTeam::new(
-            crate::options::ThreadConfig::from_requested(2, true).unwrap(),
-        )
-        .with_exclusive_overlap()
-        .install(|| {
-            let fixture = Fixture::new();
-            let design = fixture.design();
-            let weights = validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap();
-            // Lifecycle fixture: a looser requested certificate lets the
-            // fixed 1e-6 recurrence stop before the h=32 handoff. Separate
-            // tests above certify the installed path at strict accuracy.
-            let tolerance = 1e-4;
-            let config = LsmrConfig {
-                tolerance: 1e-6,
-                max_iterations: 200,
-                local_size: None,
-                preconditioner: LsmrPreconditioner::Auto,
-                threads: crate::options::ThreadConfig::from_requested(2, true).unwrap(),
-            };
-            let mut route = GeneralRoutingState::new(RoutingPreset::overlap(32, 0).unwrap());
-            let mut previous_used = 0;
-            let mut frozen_limit = None;
-            let mut first_iterations = None;
-            for rhs_count in [1, 2] {
-                route
-                    .begin(tolerance, false, &design, rhs_count, None)
-                    .unwrap();
-                let columns: Vec<Vec<_>> = (1..=rhs_count)
-                    .map(|scale| {
-                        fixture.rhs[0]
-                            .iter()
-                            .map(|value| scale as f64 * value)
-                            .collect()
-                    })
-                    .collect();
-                let input = DenseMatrix::from_columns(&columns).unwrap();
-                let estimate =
-                    estimate_fe_solver_memory(design.nobs(), rhs_count, &[160, 161, 3], 2, None)
-                        .unwrap();
-                let mut memory =
-                    BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Schwarz, None, 0)
-                        .unwrap();
-                let (residual, report, _, coefficients) = run_borrowed_lsmr_with_prepared(
-                    &design,
-                    weights,
-                    &input,
-                    tolerance,
-                    config.max_iterations,
-                    config,
-                    None,
-                    true,
-                    None,
-                    &mut memory,
-                    None,
-                    Some(&mut route),
-                    None,
-                )
-                .unwrap();
-                assert!(report.certified());
-                assert!(
-                    report.iterations > 4 && report.iterations < 32,
-                    "fixed Low fixture must stop between epochs 4 and 32, got {}",
-                    report.iterations
-                );
-                assert!(
-                    route.preparation.is_some(),
-                    "real owned CMG cursor must remain leased"
-                );
-                assert!(route.replacement.is_none());
-                assert_eq!(route.prepared.builds, 1);
-                if let Some(iterations) = first_iterations {
-                    assert_eq!(report.iterations, iterations);
-                }
-                first_iterations = Some(report.iterations);
-                let (used, limit) = route.work();
-                assert!(used >= previous_used && used <= limit);
-                if let Some(previous) = frozen_limit {
-                    assert_eq!(limit, previous);
-                }
-                frozen_limit = Some(limit);
-                previous_used = used;
-                assert!(route.retained_bytes() >= 2 * route.prepared.retained_bytes);
-                let coefficients = coefficients.unwrap();
-                for rhs in 0..rhs_count {
-                    let x = coefficients.rhs(rhs).unwrap();
-                    for row in 0..design.nobs() {
-                        let fitted = x[fixture.codes[0][row] as usize]
-                            + x[160 + fixture.codes[1][row] as usize]
-                            + x[321 + fixture.codes[2][row] as usize];
-                        assert!((input[(row, rhs)] - residual[(row, rhs)] - fitted).abs() < 1e-9);
-                    }
-                }
-            }
-            let paid = route.work();
-            route.finish_preparation().unwrap();
-            assert!(route.preparation.is_none());
-            assert_eq!(
-                route.work(),
-                paid,
-                "abandoning unissued suffix cannot refill or spend work"
-            );
-        })
-        .unwrap();
     }
 
     #[test]
@@ -1689,7 +1266,7 @@ mod tests {
         let mut memory =
             BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Schwarz, None, 0).unwrap();
         let mut route = GeneralRoutingState::new(RoutingPreset::new(4, 1).unwrap());
-        route.begin(1e-8, false, &design, 2, None).unwrap();
+        route.begin(1e-8, false);
         let rhs: Vec<_> = fixture.rhs.iter().map(Vec::as_slice).collect();
         let (first, fallback) = route
             .solve(
@@ -1711,14 +1288,13 @@ mod tests {
         );
         assert!(route.replacement_apply_bytes > 0);
         assert_eq!(route.prepared.builds, 1);
-        let paid = route.work();
-        assert!(paid.0 > 0 && paid.0 <= paid.1);
+        let retained = route.replacement_bytes;
         let next: Vec<_> = fixture.rhs[1]
             .iter()
             .enumerate()
             .map(|(row, value)| value * 1.7 + (row as f64 * 0.413).sin())
             .collect();
-        route.begin(1e-8, false, &design, 1, None).unwrap();
+        route.begin(1e-8, false);
         let (second, fallback) = route
             .solve(
                 &design,
@@ -1733,7 +1309,8 @@ mod tests {
             )
             .unwrap();
         assert!(!fallback);
-        assert_eq!(route.work(), paid);
+        assert!(route.replacement.is_some());
+        assert_eq!(route.replacement_bytes, retained);
         assert_eq!(route.prepared.builds, 1);
         for (solved, originals) in [(&first, rhs), (&second, vec![next.as_slice()])] {
             assert!(solved
