@@ -171,6 +171,32 @@ one capture run, each passed 84 of 84. Those passes do not explain or clear
 the first failure, which stays unresolved pending review. No plugin was rebuilt
 or replayed for this trace-only change, and no timing was measured.
 
+Codex review of fereg `26cb97d4` / CMG `03a26041`: an independent
+high-effort review found no arithmetic, admission, cancellation or production
+correctness change in the observation. Local checks pass all 21 parser tests
+and the three focused Rust tests (stored metadata, isolated real trace and
+the uncapped build/install/certification witness). The standard entrypoint
+again passes 315 Python tests and stops at the known installed-plugin binding
+check. The private baseline snapshot applies successfully, and its hierarchy
+formatter is byte-identical to the candidate's. The patch was regenerated
+without context lines to remove whitespace-check errors in blank context;
+applying it produces exactly the same three source files as before.
+
+Fresh diagnostic captures must require an explicit `installed` flag and
+`refusal` field before using `route_hierarchy`: the maintained parser also
+accepts legacy records lacking installation attestation, so `None` alone is
+not evidence of a refused build. Retain the comparison helper's completeness
+checks. Trace formatting occurs after the construction timing bucket closes;
+its cost belongs to the instrumented complete call, not that setup bucket.
+Previous native evidence remains attributed to its original binary and is not
+relabelled as evidence for a newly built diagnostic artifact.
+
+The lost pre-M3a test failure remains unexplained. No further baseline test
+repetition or controlled timing was run during this review. M3a acceptance
+and M3b remain blocked while Johannes considers a single fully logged paired
+replacement check of untouched versus diagnostically patched pre-M3a source.
+The historical failure remains recorded regardless of that decision.
+
 ## CMG successor milestone 2: initial graph construction
 
 **M2 is complete: source/native checks and the fixed cost diagnostic pass.**

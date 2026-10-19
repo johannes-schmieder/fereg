@@ -1,9 +1,6 @@
 --- a/crates/fereg-core/src/fe/borrowed_map.rs
 +++ b/crates/fereg-core/src/fe/borrowed_map.rs
-@@ -1258,8 +1258,16 @@
-         *setup_seconds += elapsed.as_secs_f64();
-         *solve_started += elapsed;
-         if crate::diagnostics::solver_trace_enabled() {
+@@ -1260,0 +1261,8 @@
 +            // An installed build appends its stored hierarchy metadata to this
 +            // same record; a refused or failed attempt carries none.
 +            let hierarchy = built
@@ -12,38 +9,22 @@
 +                .map_or(String::new(), |installed| {
 +                    format!("|{}", installed.trace_hierarchy())
 +                });
-             crate::diagnostics::emit_solver_trace(&format!(
+@@ -1262 +1270 @@
 -                "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint={}|samples={}|iterations={iterations}|setup_work={}|setup_limit={}|installed={}|refusal={:?}",
 +                "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint={}|samples={}|iterations={iterations}|setup_work={}|setup_limit={}|installed={}|refusal={:?}{hierarchy}",
-                 self.preset.checkpoint(), self.preset.samples(), self.setup.used, self.setup.limit,
-                 u8::from(built.preconditioner.is_some()), built.refusal));
-         }
 --- a/crates/fereg-core/src/fe/cmg.rs
 +++ b/crates/fereg-core/src/fe/cmg.rs
-@@ -2248,7 +2248,7 @@
-     sorted_sizes[index]
- }
- 
+@@ -2251 +2251 @@
 -fn format_usize_series(values: &[usize]) -> String {
 +pub(super) fn format_usize_series(values: &[usize]) -> String {
-     values
-         .iter()
-         .map(usize::to_string)
 --- a/crates/fereg-core/src/fe/cmg_schur.rs
 +++ b/crates/fereg-core/src/fe/cmg_schur.rs
-@@ -16,7 +16,7 @@
- use crate::linalg::neumaier_add;
- use crate::memory::{vec_capacity_bytes, FeSolverMemoryBudget, SolverWorkspacePeak};
- 
+@@ -19 +19 @@
 -use super::cmg::cmg_error;
 +use super::cmg::{cmg_error, format_usize_series};
- use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, LevelIndex};
- 
- mod bounded;
-@@ -242,6 +242,27 @@
-         self.construction
-     }
- 
+@@ -242,0 +243,21 @@
++    }
++
 +    /// Solver-trace fields for the installed hierarchy, read from metadata the
 +    /// build already stored: no graph, factor or workspace payload is visited.
 +    pub(super) fn trace_hierarchy(&self) -> String {
@@ -63,8 +44,3 @@
 +            self.parallel.as_ref().map_or(0, |parallel| parallel.plan.operator_count()),
 +            self.batch_columns,
 +        )
-+    }
-+
-     /// B = P_f R B_h E P_f, where E zero-pads auxiliary workers and R restricts
-     /// to firms. One fixed symmetric CMG cycle is used for every application.
-     /// A component-scaled outer operator S/c requires c B, hence input scaling.

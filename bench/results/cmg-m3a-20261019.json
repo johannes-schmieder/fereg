@@ -10,6 +10,22 @@
   "run_tests_standard": "stopped at scripts/check_github_install.py: main's runtime changed (expected installed-package binding difference, as in M1/M2)"
  },
  "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+ "codex_diagnostic_review": {
+  "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+  "fereg_revision": "26cb97d4ecf72508b4ddae6f5168f93360cc4374",
+  "independent_review": "high-effort review found no production correctness or arithmetic/admission/cancellation change; fresh captures require explicit installed/refusal attestation before interpreting legacy-compatible route_hierarchy",
+  "local_checks": {
+   "baseline_snapshot": "helper applied successfully; trace_hierarchy byte-identical to M3a",
+   "focused_rust": "3 passed: stored metadata, isolated trace, uncapped build/install/certification witness; isolated child also passed",
+   "parser": "21 passed",
+   "patch_hygiene": "zero-context patch removes whitespace-check errors; applying it yields byte-identical patched source in all three files",
+   "standard_entrypoint": "315 Python passed, then known installed-plugin binding mismatch; full local suite not rerun"
+  },
+  "native_evidence_reuse": "previous host evidence remains bound to 573a6216/03a26041 and its recorded binary hashes; no new diagnostic plugin rebuilt or measured in this review",
+  "status": "M3a unaccepted and M3b blocked; awaiting Johannes disposition of a proposed single fully logged untouched/patched baseline comparison; no further baseline reruns or timing performed",
+  "timing_scope": "trace formatting follows the setup bucket accounting point; its cost is included only in the instrumented complete call/solve accounting",
+  "unresolved": "the first patched-pre-M3a focused run failed 1 of 84; no failing test identity/output survives; subsequent passes do not resolve it"
+ },
  "codex_host_evidence": {
   "mac_plugin": {
    "checks": "audit, ABI/load and panic containment pass",
