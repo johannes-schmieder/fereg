@@ -2015,10 +2015,8 @@ fn terminal_residual_correction_checks_its_cg_budget() {
             .collect()])
         .unwrap()
     };
-    let incremental = estimate_fe_solver_memory(n, 1, &[4, 3], 1, None)
-        .unwrap()
-        .cg_bytes
-        + 8;
+    let estimate = estimate_fe_solver_memory(n, 1, &[4, 3], 1, None).unwrap();
+    let incremental = estimate.cg_bytes + 3 * estimate.coefficient_batch_bytes + 8;
     for short in [true, false] {
         let design =
             BorrowedInterceptFeDesign::new(n, vec![effect(&left, 4, &li), effect(&right, 3, &ri)])

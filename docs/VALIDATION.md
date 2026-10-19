@@ -28,9 +28,11 @@ were deleted; hashes and summaries are the remaining record.
 
 ## CMG successor milestone 1: execution and admission foundation
 
-**Implementation and source review are complete; milestone acceptance remains
-blocked by a reproduced pre-existing scientific failure and an unresolved
-four-worker Break trace-check failure.** No later milestone is started.
+**The bounded follow-up repairs both validation blockers: source integration,
+all six mapped Stata fixtures and four fixed native Break checks now pass.**
+Independent source and evidence review is recorded below. The strict-CMG
+repair changes arithmetic and cost; its performance is unassessed. Work stops
+before M2 for Johannes's review, without claiming performance qualification.
 
 Johannes authorized this milestone of the staged successor after the two-FE
 qualification above. It establishes a shared execution interface and canonical
@@ -227,7 +229,8 @@ while a second producer enters; every fragment must hold the common lock.
 It passes without sleeps or probabilistic stress. The trace change adds 14
 core production lines; it changes diagnostic I/O, not numerical arithmetic or
 solver policy. Independent source review approves this scope. The fixed native
-verification set and final combined integration remain pending at this commit.
+verification set and final combined integration were pending at the separate
+trace commit `ee65e67b`; their completed results are recorded below.
 The Python and Rust check-capture hashes are respectively
 `8843ba1e0235707221f8113c4a2063965ab025e86d2d9c669b9625b88ec7e257`
 and `dd628f20648559c38f830b6628aebd8973e636e88e4724face2e2791fbdf1fa6`.
@@ -237,6 +240,140 @@ bookkeeping, followed by its first weighted-row gate. Its marker does not prove
 execution of a parallel numerical kernel, nor of the later host-context gate.
 The separate scoped-stage tests retain the concurrent-work, cancellation,
 join and canonical-error obligations.
+
+### Bounded M1 follow-up: strict-CMG scientific repair
+
+The unchanged 48-observation near-within fixture isolates a defect in strict
+CMG polishing, not in the new executor. For a symmetric weighted sweep `S`,
+the CG action `I-S` is positive semidefinite: its range is the FE span and its
+null space is the within space. Rowwise residual and direction updates can
+accumulate roundoff in that null space. The recurrence norm then counts error
+that the direction's curvature cannot control. In this fixture the independent
+weighted dummy/SVD action has six positive eigenvalues between 0.999427 and 1;
+the identified failure is not an ill-conditioned positive subspace.
+
+The reduced analytic-residual witness reaches a direction with 99.999756% of
+its norm in the null space at the third iteration. The actual prepared-fit
+debug reproducer also exposes the defect: after an exhausted CMG iteration and
+strict fallback, it returns success after 72 CG iterations with a residual
+error above 193 million, despite small reported recurrence and FE certificate
+values. This is distinct from the preserved release-build curvature failure;
+both fail the independent residual truth. The fixture's analytic coefficients
+are `(0.7, -0.4)` and its residual is the constructed Hadamard noise `4uv`.
+Its requested `1e-12` fit tolerance invokes the existing `1e-14` final residual
+correction. Temporary diagnostic instrumentation was removed.
+
+The declared repair represents strict-CMG residual, direction and operator
+products through FE coefficients and reconstructs their observation values
+with compensated summation after cancellation. It addresses the observed
+null-space contamination without relaxing the Hestenes, recurrence,
+original-design certificate, iteration-limit or unsafe-curvature checks.
+It is not a proof of exact floating-point range preservation for every design.
+Three internal coefficient banks are now required without returned FE
+coefficients, and four with them. Checked joint-memory admission accounts for
+those banks; tight budgets can therefore refuse a request previously admitted.
+Reconstruction uses the existing fixed row Break checkpoints. Ordinary CG,
+saved-model recovery and PPML keep their prior arithmetic. Strict OLS CMG
+polishing/fallback/final-residual outputs and iteration signatures are affected;
+model, sample, rank, omission and separation semantics are unchanged.
+
+Independent mathematical and implementation review approved this scope before
+native validation. The new core regression checks the exact 48-row witness,
+returned coefficient reconstruction, RHS widths 1/4/17/65, fixed-worker repeats
+and one/four-worker agreement. A separate prepared-fit regression exercises the
+actual low-memory analytic-weight path and independent coefficient/residual
+truth. Existing weak-cycle, extreme-scale, unsafe-curvature and iteration-limit
+checks remain. One focused CMG run passed 103 tests and failed the old workspace
+expectation; its corrected test checks the newly required banks at the exact
+budget and rejects one byte less. The failed invocation remains failed.
+
+Final source integration passes in 203.34 seconds: 319 Python tests, 1,954 Rust
+test executions, Clippy, fuzz compilation, isolated allocator/FFI audits,
+portable checks, the complexity ratchet, mock SPI and numeric guards. The Linux
+mock-plugin audit is skipped on Mac. This explicitly source-only invocation
+does not admit installed packages. The scientific repair adds 42 core
+production lines beyond the separate 14-line trace repair; current totals are
+106,533 core and 15,284 plugin production lines. The additional dispatch is the
+strict reconstruction check. No runtime code is moved into ratchet exclusions.
+
+Performance is not assessed by these correctness checks:
+strict polishing now performs additional FE-product reconstruction and retains
+additional coefficient storage. Prior routing timings do not establish its
+nonregression. Any subsequent performance acceptance needs a bounded paired
+comparison on declared strict-CMG polishing/fallback workloads, including
+low-memory and multiple-RHS cases, with the existing max(5%, 1 ms) allowance.
+No timing campaign, later milestone or two-FE activation is part of this repair.
+
+### Bounded M1 follow-up: final native evidence and handoff
+
+The final source identity is
+`353cc6381360099000922c83c5ea9f6c52b84ec0d92748071f6748c9dffb2d2a`.
+It hashes compact sorted JSON containing `check_complexity.production_streams`
+under `runtime` and the SHA-256 mapping from `artifact_bytes` under `artifacts`:
+192 runtime modules and 58 artifact inputs. A flat 900-file source snapshot
+binds the build and test inputs. Postflight confirms identical current and
+snapshot runtime/artifact inputs; only this evidence page changed in the
+checkout after snapshotting, and only the plugin/checksum build outputs changed
+in the snapshot. Root release files remain unchanged. CMG remains pinned to
+`8b3c50507165d834199c03520f9cacc933f97778`.
+
+One private universal Mac build passes in 141.79 seconds on Rust 1.85.1,
+locked release optimization 3, fat LTO, one codegen unit and unwind, with Rust
+path remapping. Identity `m1-fix-src-353cc6381360` denotes the source identity
+above. Both x86-64 and arm64 slices pass binary audit; actual ABI/load, worker
+and injected-panic containment checks pass on this arm64 host. The plugin is
+`2e4e07576bf9e421e1a2758937460e2ca3eb45961484285d9a95059952c910c9`;
+the loader harness is
+`5285ce62b666119c6271cad54e555ebb2a930d102575e5eb29d0cb118440703d`.
+This does not establish execution on an x86-64 Mac, Linux or Windows, or
+installed-package admission.
+
+All six unchanged Stata 19 MP fixtures pass in 8.06 seconds, each with process
+and Stata exit zero: `ols_cmgschur`, `ols_cmgschur_sampled`,
+`ols_cmgschur_nonconvergence`, `ols_cmg_raw_residual_oracle`,
+`ols_near_within_cmg_oracle` and `estimate_ols_auto_cmg_route`. In particular,
+the original near-within fixture completes all unit/analytic/frequency/
+probability-weight, fast/low-memory, one/four-worker, Auto/CMG and saved-FE
+checks, including independent dummy-regression VCE and exact-scale recovery
+assertions. The earlier parent and candidate scientific failures remain
+failures; they are not reclassified or rerun here.
+Independent terminal review recomputes the source/plugin bindings and confirms
+the six raw success sentinels, all 48 near-within fits, unchanged fixture bytes,
+source-integration counts and the declared scientific/resource scope.
+
+The fixed post-repair Break set passes four of four invocations: two each at
+workers two and four. No optional pre-repair diagnostic was used, and no
+invocation was retried. Each PTY records two native cancellation markers,
+interruption, rollback, exact ordinary-fit reset and successful follow-up
+overlap fits. Each trace contains exactly two complete work-ready records with
+task 0, issued 373696, charged 64 and ordinal 1. All 112 retained trace lines
+are intact; there are no trace I/O, capture or cleanup errors. The interactive
+processes are deliberately terminated after the success sentinel, explaining
+their recorded return code -15; all four exact owned PIDs are subsequently
+absent. Independent raw review confirms these results, without inferring the
+cause of the old missing trace or concurrent numerical work at this gate.
+
+The summaries above are the permanent evidence; these hashes identify the
+completed captures and the flat source binding, not durable ignored files:
+
+| Evidence | SHA-256 |
+| --- | --- |
+| Independent action/null-space diagnosis | `c5fd526f56688a6f27ce84b88546fdac2419f5833291fb1ae504d0bf3a42e95c` |
+| Actual prepared-fit diagnostic | `8afae1503807ab9aaa54e2ca643e784ef75cf9c7f61524fd66aacdf9f8ebdcfd` |
+| Focused checks, including failed old budget expectation and correction | `4954869efba69dc67f275c030b6f0859879a9342ad2cc0fdabda7e16e455289c` |
+| Source integration | `b02415cc00d08cfbc5d66bfe68361c52c991b3c73a784349636f4852f38cc691` |
+| Flat source snapshot | `0f300d2170794b12abfa38b2d83493ceaa61c00389b4799540aebbf8ad542d6d` |
+| Native build/audit/ABI | `056c5e665fd8b768fa5d05258cbbc3c29355c3e7e523968f1303d1781da81038` |
+| Six-fixture Stata summary | `cc547c83a252c527e37edcb0c807f9b2af44cba913f2931a17d62b487f0cb01c` |
+| Two-worker Break metadata, invocation 1 | `45852d35e88cc97d2612803e0822134295f6f2be15e251e9ac6e64b86401e49a` |
+| Two-worker Break metadata, invocation 2 | `e60d4d169937283986214487a90ebfce8c3e75fe20a863a8d99684cde8dda906` |
+| Four-worker Break metadata, invocation 1 | `cb1e657de4e00288f08b32c7c65ff21238fc53b5a9378bdd336d8110310438c7` |
+| Four-worker Break metadata, invocation 2 | `0c25e3d6754be68458198dbf676f075c2e935aebeb4f48d21b4a1e592a741194` |
+| Combined terminal source/capture verification | `baef3900ff82092cf457cf4043f18f4a14341c38f16c567e35b1897e69e2cceb` |
+
+Many-FE remains enabled and two-FE disabled. The bounded correctness and trace
+repair is complete; M1 performance acceptance remains unassessed, and M2 is
+not started. No release artifact, qualification protocol or tolerance changed.
 
 ## Compact validation suite, 2026-10-18
 

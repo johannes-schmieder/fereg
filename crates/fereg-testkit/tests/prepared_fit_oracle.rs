@@ -15,6 +15,57 @@ const COEFFICIENT_TOLERANCE: f64 = 2e-8;
 const RESIDUAL_TOLERANCE: f64 = 2e-8;
 
 #[test]
+fn near_within_hadamard_weighted_low_cmg_matches_analytic_fit() {
+    let rows = 48;
+    let left: Vec<_> = (0..rows).map(|row| (row % 4) as u32).collect();
+    let right: Vec<_> = (0..rows).map(|row| ((row / 4) % 3) as u32).collect();
+    let u: Vec<_> = (0..rows)
+        .map(|row| if row / 12 < 2 { 1.0 } else { -1.0 })
+        .collect();
+    let v: Vec<_> = (0..rows)
+        .map(|row| if (row / 12) % 2 == 0 { 1.0 } else { -1.0 })
+        .collect();
+    let x1: Vec<_> = (0..rows)
+        .map(|row| u[row] + 2e-9 * (left[row] + 1) as f64)
+        .collect();
+    let x2: Vec<_> = (0..rows)
+        .map(|row| v[row] + 1e-9 * (right[row] + 1) as f64)
+        .collect();
+    let y: Vec<_> = (0..rows)
+        .map(|row| {
+            0.7 * x1[row] - 0.4 * x2[row]
+                + 2e-9 * (left[row] + 1) as f64
+                + 1e-9 * (right[row] + 1) as f64
+                + 4.0 * u[row] * v[row]
+        })
+        .collect();
+    let raw: Vec<_> = (0..rows)
+        .map(|row| 0.25 + (left[row] + 1) as f64 / 4.0 + (right[row] + 1) as f64 / 8.0)
+        .collect();
+    let prepared = prepare_case(
+        &y,
+        &[x1, x2],
+        &[left, right],
+        &[0, 1],
+        true,
+        CaseWeights::Analytic(&raw),
+    );
+    let mut config = PreparedOlsFitConfig::default();
+    config.absorb.solver = FeSolverKind::Cmg;
+    config.absorb.map.tolerance = 1e-12;
+    config.execution.mode = PreparedOlsExecutionMode::Low;
+    config.execution.poolsize = 1;
+    config.final_residual_tolerance = Some(1e-14);
+    let fit =
+        fit_prepared_model_coefficients(&prepared, config).expect("weighted near-within low CMG");
+    assert!((fit.coefficients()[0].value.unwrap() - 0.7).abs() < 1e-10);
+    assert!((fit.coefficients()[1].value.unwrap() + 0.4).abs() < 1e-10);
+    for row in 0..rows {
+        assert!((fit.residuals()[row] - 4.0 * u[row] * v[row]).abs() < 1e-9);
+    }
+}
+
+#[test]
 fn cmg_two_way_prepared_fit_matches_certified_cg() {
     let worker = vec![0, 0, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2];
     let firm = vec![0, 1, 0, 2, 1, 2, 2, 1, 0, 0, 1, 2];

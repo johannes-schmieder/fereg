@@ -2548,18 +2548,22 @@ fn ensure_cg_fallback_fits(
     let Some(budget) = config.solver_memory_budget else {
         return Ok(());
     };
-    let (cg_bytes, _) = estimate_cg_solver_memory(
+    let (cg_bytes, coefficient_batch_bytes) = estimate_cg_solver_memory(
         design.nobs(),
         right_hand_sides,
         design.effects().iter().map(|effect| effect.n_levels()),
         config.threads.resolved(),
     )?;
-    if budget.fits(cg_bytes) {
+    let required = coefficient_batch_bytes
+        .checked_mul(3)
+        .and_then(|bytes| bytes.checked_add(cg_bytes))
+        .ok_or_else(|| allocation("CMG fallback coefficient memory overflows"))?;
+    if budget.fits(required) {
         Ok(())
     } else {
         Err(allocation(format!(
             "certified CG fallback requires {} incremental bytes and does not fit the joint execution/solver memory plan",
-            cg_bytes
+            required
         )))
     }
 }
@@ -2579,13 +2583,9 @@ fn admit_cmg_polish(
     )?;
     // The solution, residual, direction and projection coefficient banks
     // coexist with the original bulk product and graph supplied by the caller.
-    let coefficient_bytes = if retain_coefficients {
-        coefficient_batch_bytes
-            .checked_mul(4)
-            .ok_or_else(|| allocation("CMG polishing coefficient memory overflows"))?
-    } else {
-        0
-    };
+    let coefficient_bytes = coefficient_batch_bytes
+        .checked_mul(if retain_coefficients { 4 } else { 3 })
+        .ok_or_else(|| allocation("CMG polishing coefficient memory overflows"))?;
     let required = retained_bytes
         .checked_add(cg_bytes)
         .and_then(|bytes| bytes.checked_add(coefficient_bytes))

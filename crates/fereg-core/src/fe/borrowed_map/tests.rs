@@ -4906,6 +4906,160 @@ fn stable_cg_polish_preserves_near_within_hadamard_products_at_every_width() {
 }
 
 #[test]
+fn cmg_near_within_hadamard_single_rhs_matches_analytic_projection() {
+    use crate::fe::{CmgAbsorber, CmgConfig};
+    let rows = 48;
+    let left: Vec<_> = (0..rows).map(|row| (row % 4) as u32).collect();
+    let right: Vec<_> = (0..rows).map(|row| ((row / 4) % 3) as u32).collect();
+    let li = LevelIndex::from_codes(&left, 4).unwrap();
+    let ri = LevelIndex::from_codes(&right, 3).unwrap();
+    let ls = ValidatedBorrowedInterceptSource::new(&left, 4, &li).unwrap();
+    let rs = ValidatedBorrowedInterceptSource::new(&right, 3, &ri).unwrap();
+    let design = BorrowedInterceptFeDesign::new(rows, vec![ls.effect(), rs.effect()]).unwrap();
+    let u: Vec<_> = (0..rows)
+        .map(|row| if row / 12 < 2 { 1.0 } else { -1.0 })
+        .collect();
+    let v: Vec<_> = (0..rows)
+        .map(|row| if (row / 12) % 2 == 0 { 1.0 } else { -1.0 })
+        .collect();
+    let x1: Vec<_> = (0..rows)
+        .map(|row| u[row] + 2e-9 * (left[row] + 1) as f64)
+        .collect();
+    let x2: Vec<_> = (0..rows)
+        .map(|row| v[row] + 1e-9 * (right[row] + 1) as f64)
+        .collect();
+    let y: Vec<_> = (0..rows)
+        .map(|row| {
+            0.7 * x1[row] - 0.4 * x2[row]
+                + 2e-9 * (left[row] + 1) as f64
+                + 1e-9 * (right[row] + 1) as f64
+                + 4.0 * u[row] * v[row]
+        })
+        .collect();
+    let raw: Vec<_> = (0..rows)
+        .map(|row| 0.25 + (left[row] + 1) as f64 / 4.0 + (right[row] + 1) as f64 / 8.0)
+        .collect();
+    let weights = BorrowedMapWeights::Provided(&raw);
+    let raw_residual: Vec<_> = (0..rows)
+        .map(|row| y[row] - 0.7 * x1[row] - (-0.4) * x2[row])
+        .collect();
+    for retain_coefficients in [false, true] {
+        let options = CmgConfig {
+            map: MapConfig {
+                tolerance: 1e-12,
+                ..config()
+            },
+            threads: crate::ThreadConfig::from_requested(1, true).unwrap(),
+            batch_size: 1,
+            retain_coefficients,
+            requested_solver: FeSolverKind::Cmg,
+            components: true,
+            solver_memory_budget: None,
+        };
+        let session_design =
+            BorrowedInterceptFeDesign::new(rows, vec![ls.effect(), rs.effect()]).unwrap();
+        let mut session = CmgAbsorber::build(session_design, weights, options, false).unwrap();
+        for (rhs, column) in [y.clone(), x1.clone(), x2.clone(), vec![1.0; rows]]
+            .into_iter()
+            .enumerate()
+        {
+            let result = session
+                .absorb(DenseMatrix::from_columns(&[column]).unwrap())
+                .unwrap_or_else(|error| panic!("RHS {rhs}: {error}"));
+            assert!(result.report().certified());
+            for row in 0..rows {
+                let expected = match rhs {
+                    0 => 0.7 * u[row] - 0.4 * v[row] + 4.0 * u[row] * v[row],
+                    1 => u[row],
+                    2 => v[row],
+                    _ => 0.0,
+                };
+                assert!((result.residualized()[(row, 0)] - expected).abs() < 1e-12);
+            }
+        }
+        let result = session
+            .absorb_raw_final_residual(
+                DenseMatrix::from_columns(&[raw_residual.clone()]).unwrap(),
+                1e-14,
+            )
+            .expect("raw final residual");
+        assert!(result.report().certified());
+        for row in 0..rows {
+            assert!((result.residualized()[(row, 0)] - 4.0 * u[row] * v[row]).abs() < 1e-12);
+        }
+        // Bulk failure may omit its coefficient product. Exercise strict polishing
+        // directly as well so retained correction reconstruction is mandatory.
+        let mut signatures = std::collections::BTreeMap::new();
+        for workers in [1, 1, 4] {
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    for width in [1, 4, 17, 65] {
+                        let input =
+                            DenseMatrix::from_columns(&vec![raw_residual.clone(); width]).unwrap();
+                        let mut norms = vec![0.0; width];
+                        weighted_column_norms(
+                            &input,
+                            validate_weights(weights, rows).unwrap(),
+                            &mut norms,
+                            &mut vec![0.0; width],
+                            &mut vec![0.0; width],
+                            &mut [],
+                        )
+                        .unwrap();
+                        let result = absorb_borrowed_intercept_cg(
+                            &design,
+                            weights,
+                            input.clone(),
+                            MapConfig {
+                                tolerance: 1e-14,
+                                ..config()
+                            },
+                            BorrowedCgOptions {
+                                retain_coefficients,
+                                ..BorrowedCgOptions::polish(&norms)
+                            },
+                        )
+                        .unwrap();
+                        let (within, report, coefficients) = result.into_full_parts();
+                        assert!(report.certified());
+                        assert_eq!(coefficients.is_some(), retain_coefficients);
+                        let signature = (
+                            within
+                                .as_slice()
+                                .iter()
+                                .map(|x| x.to_bits())
+                                .collect::<Vec<_>>(),
+                            report.iterations,
+                            report.used_solver,
+                            report.stop_reason,
+                        );
+                        if let Some(prior) = signatures.insert(width, signature.clone()) {
+                            assert_eq!(prior, signature, "workers={workers}, width={width}");
+                        }
+                        for rhs in 0..width {
+                            for row in 0..rows {
+                                assert!((within[(row, rhs)] - 4.0 * u[row] * v[row]).abs() < 1e-12);
+                                if let Some(coefficients) = coefficients.as_ref() {
+                                    let product = coefficients.rhs(rhs).unwrap();
+                                    let fitted = product
+                                        [coefficients.effect_offsets()[0] + left[row] as usize]
+                                        + product[coefficients.effect_offsets()[1]
+                                            + right[row] as usize];
+                                    assert!(
+                                        (input[(row, rhs)] - within[(row, rhs)] - fitted).abs()
+                                            < 1e-14
+                                    );
+                                }
+                            }
+                        }
+                    }
+                })
+                .unwrap();
+        }
+    }
+}
+
+#[test]
 fn borrowed_cg_constant_energy_roundoff_preserves_weighted_projection() {
     let n = 45;
     let codes = vec![0_u32; n];
@@ -5182,14 +5336,16 @@ fn retained_map_level_major_accumulator_reconstructs_every_rhs() {
 #[test]
 fn borrowed_cg_breakdown_and_exhaustion_fail_closed() {
     let mut output = [0.0, 0.0];
-    let error = cg_ratios_into(
-        &[1.0, 0.0],
-        &[0.0, 0.0],
-        &mut output,
-        "injected denominator breakdown",
-    )
-    .expect_err("breakdown");
-    assert_eq!(error.code, ErrorCode::InvalidData);
+    for denominator in [0.0, -1.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+        let error = cg_ratios_into(
+            &[1.0, 0.0],
+            &[denominator, 0.0],
+            &mut output,
+            "injected denominator breakdown",
+        )
+        .expect_err("breakdown");
+        assert_eq!(error.code, ErrorCode::InvalidData);
+    }
 
     let mut improvement = [10.0, 20.0];
     let values = DenseMatrix::from_row_major(1, 2, vec![1.0, 1.0]).unwrap();
@@ -5237,20 +5393,33 @@ fn borrowed_cg_breakdown_and_exhaustion_fail_closed() {
     let design =
         BorrowedInterceptFeDesign::new(first_codes.len(), vec![first.effect(), second.effect()])
             .expect("design");
-    let error = absorb_borrowed_intercept_cg(
-        &design,
-        BorrowedMapWeights::Unit,
-        DenseMatrix::from_columns(&[vec![1.0, 7.0, 2.0, 9.0, 4.0, 3.0]]).expect("matrix"),
-        MapConfig {
-            tolerance: 1e-16,
-            max_iterations: 1,
-            check_every: 1,
-            symmetric: true,
-        },
+    let input = DenseMatrix::from_columns(&[vec![1.0, 7.0, 2.0, 9.0, 4.0, 3.0]]).expect("matrix");
+    // Independent Euclidean norm, not the solver's projection recurrence.
+    let norms = [160.0_f64.sqrt()];
+    for options in [
         BorrowedCgOptions::default(),
-    )
-    .expect_err("iteration exhaustion");
-    assert_eq!(error.code, ErrorCode::InvalidData);
+        BorrowedCgOptions::polish(&norms),
+        BorrowedCgOptions {
+            retain_coefficients: true,
+            ..BorrowedCgOptions::polish(&norms)
+        },
+    ] {
+        let error = absorb_borrowed_intercept_cg(
+            &design,
+            BorrowedMapWeights::Unit,
+            input.clone(),
+            MapConfig {
+                tolerance: 1e-16,
+                max_iterations: 1,
+                check_every: 1,
+                symmetric: true,
+            },
+            options,
+        )
+        .expect_err("iteration exhaustion");
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert!(error.message.contains("exhausted 1 iterations"));
+    }
 }
 
 #[test]

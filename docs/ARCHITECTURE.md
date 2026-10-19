@@ -174,6 +174,16 @@ They cannot retry a partially executed or failed numerical stage for free.
 The current serial builder and factor-preflight callback stream is otherwise
 unchanged; no controller decisions, native results or qualification gates are cached.
 
+The separate explicit-CMG polishing correction preserves the FE-range invariant
+of its semidefinite observation-space CG operator through three internal FE
+coefficient banks. Residual/direction cancellation occurs in those banks before
+compensated observation evaluation, including the initial and subsequent
+operator products. The existing optional output bank remains separate. Joint
+admission prices all live banks; the reconstruction loop uses the ordinary
+fixed row Break checkpoints. This changes strict polishing arithmetic and cost,
+not the shared-executor foundation or its construction policy. See the
+[numerical contract](SPEC.md) and [validation evidence](VALIDATION.md).
+
 Experimental OLS `cmgschur` reuses the two-FE implicit Schur operator and its
 observation-space reconstruction/certificate. `fe/cmg_schur.rs` owns the hybrid
 graph, fixed-weight CMG hierarchy and application workspace. Low-degree levels

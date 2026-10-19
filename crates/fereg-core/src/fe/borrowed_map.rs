@@ -6186,7 +6186,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         values.ncols(),
         "unable to reserve borrowed CG residual matrix",
     )?;
-    let mut residual_coefficients = retain_coefficients
+    let mut residual_coefficients = (retain_coefficients || strict_polish)
         .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
         .transpose()?;
     cg_projection_action(
@@ -6209,7 +6209,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         values.ncols(),
         "unable to reserve borrowed CG projection matrix",
     )?;
-    let mut projection_coefficients = retain_coefficients
+    let mut projection_coefficients = (retain_coefficients || strict_polish)
         .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
         .transpose()?;
     // These banks coexist for the recurrence and are never resized. The
@@ -6407,19 +6407,20 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             &projection,
             &alpha,
         )?;
-        if let (
-            Some(solution),
-            Some(residual_coefficients),
-            Some(direction_coefficients),
-            Some(projection_coefficients),
-        ) = (
+        if let (Some(solution), Some(direction_coefficients)) = (
             solution_coefficients.as_mut(),
-            residual_coefficients.as_mut(),
             direction_coefficients.as_ref(),
-            projection_coefficients.as_ref(),
         ) {
             solution.add_scaled_rhs(direction_coefficients, &alpha, 1.0)?;
+        }
+        if let (Some(residual_coefficients), Some(projection_coefficients)) = (
+            residual_coefficients.as_mut(),
+            projection_coefficients.as_ref(),
+        ) {
             residual_coefficients.add_scaled_rhs(projection_coefficients, &alpha, -1.0)?;
+            if strict_polish {
+                reconstruct_cg_intercept_product(design, residual_coefficients, &mut residual)?;
+            }
         }
         weighted_dot_columns_into(
             &residual,
@@ -6491,6 +6492,9 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             residual_coefficients.as_ref(),
         ) {
             direction_coefficients.assign_sum_scaled_rhs(residual_coefficients, &beta)?;
+            if strict_polish {
+                reconstruct_cg_intercept_product(design, direction_coefficients, &mut direction)?;
+            }
         }
         residual_square.copy_from_slice(&next_residual_square);
     }
@@ -8215,7 +8219,7 @@ fn cg_projection_action(
     input: &DenseMatrix,
     projection: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
-    coefficients: Option<&mut FeCoefficientBatch>,
+    mut coefficients: Option<&mut FeCoefficientBatch>,
     mode: CgProjectionMode,
 ) -> Result<()> {
     if !matches!(mode, CgProjectionMode::Ordinary) {
@@ -8225,9 +8229,19 @@ fn cg_projection_action(
             input,
             projection,
             workspace,
-            coefficients,
+            coefficients.as_deref_mut(),
             matches!(mode, CgProjectionMode::StrictPolish),
-        )
+        )?;
+        if matches!(mode, CgProjectionMode::StrictPolish) {
+            reconstruct_cg_intercept_product(
+                design,
+                coefficients.as_deref().ok_or_else(|| {
+                    invalid_data("CMG polishing requires FE recurrence coefficients")
+                })?,
+                projection,
+            )?;
+        }
+        Ok(())
     } else {
         borrowed_symmetric_projection_into_recording(
             design,
@@ -8238,6 +8252,38 @@ fn cg_projection_action(
             coefficients,
         )
     }
+}
+
+/// Evaluate the current FE coefficients after recurrence cancellation. Updating
+/// observation rows directly lets old rounding errors survive in the weighted
+/// within space, where the semidefinite CG action cannot control them.
+fn reconstruct_cg_intercept_product(
+    design: &BorrowedInterceptFeDesign<'_>,
+    coefficients: &FeCoefficientBatch,
+    values: &mut DenseMatrix,
+) -> Result<()> {
+    if values.nrows() != design.nobs() || values.ncols() != coefficients.rhs_count {
+        return Err(invalid_argument("CG FE product dimensions differ"));
+    }
+    for row in 0..values.nrows() {
+        crate::interrupt::row_checkpoint(row)?;
+        for rhs in 0..values.ncols() {
+            let mut sum = 0.0;
+            let mut correction = 0.0;
+            for (effect_index, effect) in design.effects().iter().enumerate() {
+                let index = rhs * coefficients.coefficients_per_rhs
+                    + coefficients.effect_offsets[effect_index]
+                    + effect.codes()[row] as usize;
+                neumaier_add(coefficients.values[index], &mut sum, &mut correction);
+            }
+            let value = sum + correction;
+            if !value.is_finite() {
+                return Err(invalid_data("CG FE product is nonfinite"));
+            }
+            values[(row, rhs)] = value;
+        }
+    }
+    Ok(())
 }
 
 fn borrowed_symmetric_projection_into_recording(

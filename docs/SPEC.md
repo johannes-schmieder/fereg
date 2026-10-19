@@ -158,7 +158,19 @@ certifying an underflowed norm. The original iteration limit remains binding.
 Only this CMG polishing action preserves the high/low parts of each subtraction
 and the FMA product errors in compensated group reductions, with binary value
 scaling. Ordinary CG, saved-model recovery and PPML retain their established
-arithmetic. Successful bulk projections that retain FE coefficients also retain
+arithmetic. Strict polishing additionally carries its residual, direction and
+operator product through FE coefficients and evaluates each updated product
+with compensated summation. This preserves the mathematical FE-range
+constraint instead of allowing rowwise recurrence roundoff to accumulate in
+the operator's null space. It does not replace the Hestenes, recurrence or
+original-design certificate gates. Three internal coefficient banks are
+mandatory even when no FE coefficients are returned; a returned correction
+uses a fourth bank. These banks must fit the existing joint memory allowance.
+This correctness repair declares affected strict OLS CMG polishing/fallback/
+final-residual outputs, iteration signatures and workspace/admission; it does
+not claim historical bit identity for those affected results. Model, sample,
+rank, omission and separation semantics do not change.
+Successful bulk projections that retain FE coefficients also retain
 and add the polishing coefficients. Joint admission includes the live graph,
 norms, bulk coefficients and all CG correction banks at the actual RHS width;
 final correction releases the graph before admitting its workspace. Requested
