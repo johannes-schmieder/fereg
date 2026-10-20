@@ -5,12 +5,11 @@ use super::*;
 
 pub(crate) fn hierarchy_peak(
     graph: &Laplacian,
-    executor: &ParallelExecutor,
     preconditioner: &CmgPreconditioner,
     prepared: Option<&PreparedCmgTopology>,
     components: bool,
 ) -> Result<u128> {
-    let retained = admission::frame_storage(&[graph, executor, preconditioner], prepared)?;
+    let retained = admission::frame_storage(&[graph, preconditioner], prepared)?;
     let report = preconditioner.hierarchy().report();
     let mut scratch = 0_u128;
     // Each nonterminal performs forest grouping then contraction/pruning.

@@ -127,22 +127,29 @@ are prohibited. Explicit LSMR/CMG and both bias-correction modes remain supporte
 
 ### CMG host-team and stage admission
 
-The bounded CMG builder enters upstream operations through `Work::cmg` and
-`parallel::with_cmg_execution`. The latter borrows the actual installed fereg
-registry and verifies a live action lease. A foreign Rayon pool or a caller
-outside fereg's registry gets the serial path. The scoped CMG `HostExecutor`
-creates no pool, retains no owner and cannot escape into a hierarchy or
-workspace. The standalone CMG-owned `ParallelExecutor` remains supported.
-Its coordinator must finish synchronously or join scoped work. Ordinary
-external destruction joins the workers. Defensive destruction on an owned
-worker instead signals termination and detaches handles if an unsupported
-detached callback retained the last owner there; it cannot promise immediate
-retirement on that misuse path. fereg's borrowed adapter creates no such owner.
+CMG never creates a pool inside fereg. The bounded CMG builder enters upstream
+operations through `Work::cmg` and `parallel::with_cmg_execution`, which lends
+the actual installed fereg registry as a borrowed `cmg::Team` after verifying a
+live action lease; a foreign Rayon pool or a caller outside fereg's registry
+gets the serial path. Explicit `cmg`, `cmgschur` and PPML `cmg` requests borrow
+the same action team through `parallel::with_cmg_team`, which requires the
+team's width to equal the requested thread count (outside any native action,
+for standalone tools and tests, it installs fereg's own process-local team of
+that width). A team is a copyable borrow: it creates no pool, retains no owner
+and is never stored in a hierarchy, plan, solver or workspace; CMG's solver and
+plan record only the team's shape and reject a differently shaped team. CMG's
+standalone owned `ParallelExecutor` is not used by fereg.
 
-CMG stages receive one context: the installed team, the cancellation query and
-the memory budget. CMG's public `ControlledStage` validates fixed logical chunk
-geometry on one coordinator before dispatch; chunk boundaries depend only on the
-slice length and chunk length, never on the number of workers. The caller has
+CMG construction, application and PCG receive one context each
+(`BuildContext`, `ApplyContext`, `SolveContext`): the borrowed team, the
+host's cancellation query and, for construction, the memory budget. Every
+fereg route passes `interrupt::cancellation_requested`; CMG polls it at a fixed
+cadence of processed items inside every kernel, parallel lanes poll between
+bounded sub-ranges, and all lanes join before `Cancelled` is returned, which
+fereg maps to an interrupted estimation with atomic rollback. CMG's public
+`ControlledStage` validates fixed logical chunk geometry on one coordinator
+before dispatch; chunk boundaries depend only on the slice length and chunk
+length, never on the number of workers. The caller has
 already admitted and allocated output and any scratch; dispatch uses disjoint
 slices and bounded recursive lane splits, with no heap banks or atomic
 work-quota race. Kernels must do bounded work per chunk, avoid
@@ -200,8 +207,15 @@ not the shared-executor foundation or its construction policy. See the
 [numerical contract](SPEC.md) and [validation evidence](VALIDATION.md).
 
 Experimental OLS `cmgschur` reuses the two-FE implicit Schur operator and its
-observation-space reconstruction/certificate. `fe/cmg_schur.rs` owns the hybrid
-graph, fixed-weight CMG hierarchy and application workspace. Low-degree levels
+observation-space reconstruction/certificate. It shares the automatic route's
+one Schur graph adapter (`fe/cmg_schur/bounded.rs`: census, clique/tree edge
+emission, initial graph and hierarchy pipeline, all polling cancellation);
+the two differ only in installation. The explicit request contracts large
+levels and builds row operators for the eligible levels of its host team, and
+keeps up to four interleaved lanes; the automatic upgrade builds serially and
+applies one team-free scalar cycle per lane. Graphs, hierarchies and cycle bits
+equal the pre-consolidation explicit builder's (a frozen-digest witness covers
+one and four workers). Low-degree levels
 of the larger FE are eliminated into weighted pairs on the smaller FE; higher
 degrees remain auxiliary graph vertices. Degree is counted after repeated
 worker-firm rows are collapsed. A fixed CMG cycle receives component-centered
@@ -233,7 +247,7 @@ Sampling affects only the preconditioner, never the exact Schur operator or
 observation-space certificate. Zero samples retains the original hybrid graph.
 The sampling count, seed, edge census and scratch are validated/admitted before
 emission; edge-weight underflow is an explicit error rather than a lost link.
-This small streaming sampler is owned here because the pinned upstream
+This small bounded sampler is owned here because the pinned upstream
 clique-tree API does not expose fallible, budget-admitted scratch storage.
 An explicit request has no MAP fallback, does not reuse historical
 PPML weights and never changes the automatic route. The current support envelope

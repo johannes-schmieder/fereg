@@ -307,11 +307,14 @@ fn current_worker_context() -> Option<Arc<WorkerContext>> {
     WORKER_CONTEXT.with(|current| current.borrow().clone())
 }
 
-/// Borrow only the actual admitted registry for one synchronous CMG operation.
-/// Outside fereg's team (including a foreign Rayon pool), use the serial path.
-/// The callback cannot retain the installed view in a hierarchy or workspace.
+/// Lend the actual admitted registry to one synchronous CMG operation as a
+/// borrowed CMG team: CMG runs on fereg's workers and never creates a nested
+/// pool. The worker ceiling is the action's thread count and the parallel
+/// policy is CMG's default, matching the executors explicit routes created
+/// before. Outside fereg's team (including a foreign Rayon pool), the callback
+/// receives `None` and CMG runs serially. The team borrow cannot escape.
 pub(crate) fn with_cmg_execution<T>(
-    operation: impl FnOnce(Option<&cmg::InstalledTeam<'_>>) -> T,
+    operation: impl FnOnce(Option<cmg::Team<'_>>) -> T,
 ) -> Result<T> {
     let Some(context) = current_worker_context() else {
         return Ok(operation(None));
@@ -328,9 +331,42 @@ pub(crate) fn with_cmg_execution<T>(
         ));
     }
     let ceiling = pool.current_num_threads();
-    cmg::HostExecutor::new(pool, ceiling)
-        .and_then(|executor| executor.with_installed(|team| operation(Some(&team))))
-        .map_err(|error| FeregError::new(ErrorCode::Internal, error.to_string()))
+    let team = cmg::Team::new(pool, ceiling, cmg::ParallelOptions::default())
+        .map_err(|error| FeregError::new(ErrorCode::Internal, error.to_string()))?;
+    Ok(operation(Some(team)))
+}
+
+/// Run one explicit CMG operation on a borrowed team of exactly the requested
+/// width. Inside a native action this is the action's own team; a team of a
+/// different width is an internal error rather than a nested pool. Outside any
+/// action (standalone tools and tests) the operation runs on fereg's
+/// process-local team for `threads`, never on a CMG-owned pool.
+pub(crate) fn with_cmg_team<T: Send>(
+    threads: usize,
+    operation: impl FnOnce(cmg::Team<'_>) -> Result<T> + Send,
+) -> Result<T> {
+    let installed = move || -> Result<T> {
+        with_cmg_execution(|team| match team {
+            Some(team) if team.worker_ceiling() == threads => operation(team),
+            Some(team) => Err(FeregError::new(
+                ErrorCode::Internal,
+                format!(
+                    "explicit CMG requested {threads} workers but its host team has {}",
+                    team.worker_ceiling()
+                ),
+            )),
+            None => Err(FeregError::new(
+                ErrorCode::Internal,
+                "explicit CMG requires a host team",
+            )),
+        })?
+    };
+    if current_worker_context().is_some() {
+        installed()
+    } else {
+        ThreadTeam::new(crate::options::ThreadConfig::from_requested(threads, true)?)
+            .install(installed)?
+    }
 }
 
 impl WorkerContext {

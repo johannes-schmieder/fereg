@@ -107,22 +107,7 @@ impl SampledTrees {
     }
 
     /// The caller admits this exact suffix bank before constructing the sampler.
-    pub(super) fn new(sampling: Sampling, max_rows: usize) -> Result<Self> {
-        sampling.validate()?;
-        let length = max_rows
-            .checked_add(1)
-            .ok_or_else(|| allocation("CMG sampler suffix length overflows"))?;
-        Ok(Self {
-            sampling,
-            suffix: super::filled(length, 0.0)?,
-            worker: 0,
-            tree: 0,
-            vertex: 0,
-            random: SplitMix64(0),
-        })
-    }
-
-    pub(super) fn new_bounded(
+    pub(super) fn new(
         sampling: Sampling,
         max_rows: usize,
         work: &mut super::bounded::Work,
@@ -142,7 +127,7 @@ impl SampledTrees {
         })
     }
 
-    pub(super) fn prepare_bounded(
+    pub(super) fn prepare(
         &mut self,
         cells: &mut [(u32, f64)],
         worker: usize,
@@ -178,7 +163,7 @@ impl SampledTrees {
         Ok(())
     }
 
-    pub(super) fn next_bounded(
+    pub(super) fn next(
         &mut self,
         cells: &[(u32, f64)],
         work: &mut super::bounded::Work,
@@ -223,79 +208,11 @@ impl SampledTrees {
     pub(super) fn bytes(&self) -> u128 {
         vec_capacity_bytes(&self.suffix)
     }
-
-    pub(super) fn prepare(&mut self, cells: &mut [(u32, f64)], worker: usize) -> Result<()> {
-        if cells.len() < 2 || cells.len() >= self.suffix.len() {
-            return Err(invalid_argument(
-                "CMG sampled worker exceeds its admitted scratch",
-            ));
-        }
-        cells.sort_unstable_by(|left, right| left.1.total_cmp(&right.1).then(left.0.cmp(&right.0)));
-        self.suffix[cells.len()] = 0.0;
-        let mut sum = 0.0;
-        let mut correction = 0.0;
-        for (index, &(_, weight)) in cells.iter().enumerate().rev() {
-            crate::interrupt::row_checkpoint(index)?;
-            if !weight.is_finite() || weight <= 0.0 {
-                return Err(invalid_data("CMG sampled worker weight is invalid"));
-            }
-            neumaier_add(weight, &mut sum, &mut correction);
-            self.suffix[index] = sum + correction;
-            if !self.suffix[index].is_finite() || self.suffix[index] <= 0.0 {
-                return Err(invalid_data("CMG sampled suffix mass is invalid"));
-            }
-        }
-        self.worker = u64::try_from(worker)
-            .map_err(|_| allocation("CMG sampled worker identifier overflows"))?;
-        self.tree = 0;
-        self.vertex = 0;
-        self.random = SplitMix64::stream(self.sampling.seed, self.worker, 0);
-        Ok(())
-    }
-
-    pub(super) fn next(&mut self, cells: &[(u32, f64)]) -> Result<Option<(usize, usize, f64)>> {
-        if self.tree == self.sampling.samples {
-            return Ok(None);
-        }
-        crate::interrupt::row_checkpoint(self.vertex)?;
-        let tail = self.suffix[self.vertex + 1];
-        // Multiplication can round the largest uniform draw to the endpoint.
-        // Clamp to its predecessor so every selected target is a later vertex.
-        let target = (self.random.uniform() * tail).min(f64::from_bits(tail.to_bits() - 1));
-        let mut lower = self.vertex + 1;
-        let mut upper = cells.len() - 1;
-        while lower < upper {
-            let middle = lower + (upper - lower) / 2;
-            if target < self.suffix[middle + 1] {
-                lower = middle + 1;
-            } else {
-                upper = middle;
-            }
-        }
-        let weight =
-            cells[self.vertex].1 * (tail / self.suffix[0]) / f64::from(self.sampling.samples);
-        if !weight.is_finite() || weight <= 0.0 {
-            return Err(invalid_data(
-                "CMG sampled edge weight is nonpositive or nonfinite",
-            ));
-        }
-        let edge = (
-            cells[self.vertex].0 as usize,
-            cells[lower].0 as usize,
-            weight,
-        );
-        self.vertex += 1;
-        if self.vertex + 1 == cells.len() {
-            self.vertex = 0;
-            self.tree += 1;
-            self.random = SplitMix64::stream(self.sampling.seed, self.worker, self.tree);
-        }
-        Ok(Some(edge))
-    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::bounded::Work;
     use super::*;
 
     #[test]
@@ -317,10 +234,13 @@ mod tests {
                         .rev()
                         .map(|i| (i as u32, [1.0, 1.0, 1.0e-12, 1.0e12][i % 4]))
                         .collect();
-                    let mut serial = SampledTrees::new(sampling, count).unwrap();
-                    serial.prepare(&mut cells, worker as usize).unwrap();
+                    let mut work = Work::new(false);
+                    let mut serial = SampledTrees::new(sampling, count, &mut work).unwrap();
+                    serial
+                        .prepare(&mut cells, worker as usize, &mut work)
+                        .unwrap();
                     for ordinal in 0..3 * (count - 1) {
-                        let expected = serial.next(&cells).unwrap().unwrap();
+                        let expected = serial.next(&cells, &mut work).unwrap().unwrap();
                         let actual = indexed_edge(
                             sampling,
                             worker as usize,
@@ -331,7 +251,7 @@ mod tests {
                         assert_eq!((actual.0, actual.1), (expected.0, expected.1));
                         assert_eq!(actual.2.to_bits(), expected.2.to_bits());
                     }
-                    assert!(serial.next(&cells).unwrap().is_none());
+                    assert!(serial.next(&cells, &mut work).unwrap().is_none());
                 }
             }
         }
@@ -367,42 +287,46 @@ mod tests {
 
     #[test]
     fn suffixes_are_direct_compensated_sums_and_streams_repeat() {
+        let mut work = Work::new(false);
         let mut sampler = SampledTrees::new(
             Sampling {
                 samples: 3,
                 seed: 9,
             },
             4,
+            &mut work,
         )
         .unwrap();
         let mut cells = [(3, 4.0), (1, 1.0), (0, 0.25), (2, 2.0)];
-        sampler.prepare(&mut cells, 19).unwrap();
+        sampler.prepare(&mut cells, 19, &mut work).unwrap();
         assert_eq!(sampler.suffix, vec![7.25, 7.0, 6.0, 4.0, 0.0]);
         let mut first = Vec::new();
-        while let Some(edge) = sampler.next(&cells).unwrap() {
+        while let Some(edge) = sampler.next(&cells, &mut work).unwrap() {
             first.push(edge);
         }
         assert_eq!(first.len(), 9);
-        sampler.prepare(&mut cells, 19).unwrap();
+        sampler.prepare(&mut cells, 19, &mut work).unwrap();
         for edge in first {
-            assert_eq!(sampler.next(&cells).unwrap(), Some(edge));
+            assert_eq!(sampler.next(&cells, &mut work).unwrap(), Some(edge));
         }
-        assert!(sampler.next(&cells).unwrap().is_none());
+        assert!(sampler.next(&cells, &mut work).unwrap().is_none());
     }
 
     #[test]
     fn unrepresentable_sampled_edge_is_rejected() {
+        let mut work = Work::new(false);
         let mut sampler = SampledTrees::new(
             Sampling {
                 samples: 2,
                 seed: 0,
             },
             2,
+            &mut work,
         )
         .unwrap();
         let mut cells = [(0, f64::from_bits(1)), (1, 1.0)];
-        sampler.prepare(&mut cells, 0).unwrap();
-        assert!(sampler.next(&cells).is_err());
+        sampler.prepare(&mut cells, 0, &mut work).unwrap();
+        assert!(sampler.next(&cells, &mut work).is_err());
     }
 
     #[test]
@@ -423,28 +347,38 @@ mod tests {
             assert!(status.success());
             return;
         }
+        let mut work = Work::new(false);
         let mut sampler = SampledTrees::new(
             Sampling {
                 samples: 2,
                 seed: 0,
             },
             2048,
+            &mut work,
         )
         .unwrap();
         let mut cells: Vec<_> = (0..2048).map(|firm| (firm, 1.0)).collect();
-        sampler.prepare(&mut cells, 0).unwrap();
-        assert!(sampler.next(&cells).unwrap().is_some());
+        sampler.prepare(&mut cells, 0, &mut work).unwrap();
+        assert!(sampler.next(&cells, &mut work).unwrap().is_some());
         crate::interrupt::request_cancellation();
         let mut emitted = 1;
         let failure = loop {
-            match sampler.next(&cells) {
+            match sampler.next(&cells, &mut work) {
                 Ok(Some(_)) => emitted += 1,
                 Ok(None) => panic!("sampled tree ignored cancellation"),
                 Err(error) => break error,
             }
         };
         crate::interrupt::reset_cancellation();
+        let super::super::bounded::AttemptError::Fatal(failure) = failure else {
+            panic!("cancellation is never a refusal");
+        };
         assert_eq!(failure.code, crate::error::ErrorCode::Interrupted);
-        assert_eq!(emitted, crate::interrupt::CHECKPOINT_ROW_STRIDE);
+        // Every emitted edge counts at least 256 units; the flag is polled
+        // whenever the running count crosses the fixed 2^16-unit cadence.
+        assert!(
+            emitted <= (1 << 16) / 256 + 1,
+            "{emitted} edges between polls"
+        );
     }
 }

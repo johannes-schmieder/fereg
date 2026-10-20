@@ -3,16 +3,16 @@
 //! Firms precede auxiliary high-degree workers. Low-degree worker stars become
 //! weighted firm cliques; repeated worker/firm observations are aggregated first.
 //! The outer solver still applies its implicit, fully eliminated Schur operator.
-
-use std::time::Instant;
+//! Automatic upgrades and explicit `cmgschur` requests share one bounded graph
+//! adapter and one hierarchy pipeline; they differ only in how the built
+//! hierarchy is installed (see `bounded::Install`).
 
 use cmg::{
     CmgBatchWorkspace, CmgOptions, CmgPreconditioner, CmgStorage, CmgStorageReport, CmgWorkspace,
-    ComponentBuildOptions, Laplacian, ParallelCmgPlan, ParallelExecutor, ParallelOptions,
-    ParallelRuntimeAllowance,
+    ComponentBuildOptions, Laplacian, ParallelCmgPlan,
 };
 
-use crate::error::{allocation, invalid_argument, invalid_data, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::linalg::neumaier_add;
 use crate::memory::{vec_capacity_bytes, FeSolverMemoryBudget, SolverWorkspacePeak};
 
@@ -21,6 +21,7 @@ use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, LevelIndex};
 
 mod bounded;
 mod sampling;
+use bounded::Install;
 use sampling::SampledTrees;
 pub(super) use sampling::Sampling;
 
@@ -28,20 +29,18 @@ const MAX_BATCH_COLUMNS: usize = 4;
 
 pub(super) struct CmgSchurPreconditioner {
     preconditioner: CmgPreconditioner,
-    parallel: Option<ParallelApplication>,
-    scalar_workspace: Option<CmgWorkspace>,
+    install: Install,
+    /// Row operators for the host team's eligible levels (explicit only).
+    plan: Option<ParallelCmgPlan>,
+    scalar_workspace: CmgWorkspace,
+    /// Interleaved lanes of a wider explicit installation.
+    batch_workspace: Option<CmgBatchWorkspace>,
     rhs: Vec<f64>,
     solution: Vec<f64>,
     components: FirmComponents,
     batch_columns: usize,
     construction: SolverWorkspacePeak,
     retained_bound: Option<u128>,
-}
-
-struct ParallelApplication {
-    plan: ParallelCmgPlan,
-    executor: ParallelExecutor,
-    workspace: CmgBatchWorkspace,
 }
 
 impl CmgSchurPreconditioner {
@@ -69,6 +68,10 @@ impl CmgSchurPreconditioner {
         )
     }
 
+    /// Explicit `cmgschur`: the bounded adapter's census, graph and hierarchy,
+    /// installed on the action's host team with row operators for its eligible
+    /// levels and up to four interleaved lanes. A memory refusal is an
+    /// allocation failure; an explicit request has no incumbent to resume.
     #[allow(clippy::too_many_arguments)]
     fn build_with_options(
         design: &BorrowedInterceptFeDesign<'_>,
@@ -96,121 +99,29 @@ impl CmgSchurPreconditioner {
                 return Err(invalid_argument("CMG Schur weight count is inconsistent"));
             }
         }
-        crate::interrupt::checkpoint()?;
-        let started = Instant::now();
-        let batch_columns = rhs_capacity.min(MAX_BATCH_COLUMNS);
-        let parallel = ParallelOptions {
+        let install = Install::Explicit {
+            columns: rhs_capacity.min(MAX_BATCH_COLUMNS),
             threads,
-            ..ParallelOptions::default()
         };
-        let mut memory = Admission {
-            budget,
-            peak: SolverWorkspacePeak::ZERO,
-        };
-        let runtime = ParallelRuntimeAllowance::default()
-            .estimate(parallel)
-            .map_err(cmg_error)?;
-        let runtime_budget = memory.admit(0, runtime.total_bytes())?;
-        let (executor, runtime) = ParallelExecutor::new_with_estimated_memory_budget(
-            parallel,
-            ParallelRuntimeAllowance::default(),
-            runtime_budget,
-        )
-        .map_err(cmg_error)?;
-        let runtime_extra = runtime.runtime_heap_allowance_bytes() as u128
-            + runtime.worker_stack_allowance_bytes() as u128;
-        memory.forecast(storage(&[&executor])?)?;
-        let (graph, components, counts) = build_hybrid_graph(
-            design,
-            weights,
-            left_effect,
-            degree,
-            sampling,
-            batch_columns,
-            &executor,
-            runtime_extra,
-            &mut memory,
-        )?;
-        let graph_seconds = started.elapsed().as_secs_f64();
-        let hierarchy_started = Instant::now();
-        let component_options = ComponentBuildOptions {
-            prune_coarse_isolates: true,
-            preserve_unpruned_stopping: true,
-            factor_terminal_components: true,
-        };
-        let bound = CmgPreconditioner::component_executor_construction_cmg_allocation_bound(
-            graph.vertex_count(),
-            graph.edge_count(),
-            options,
-            component_options,
-        )
-        .map_err(cmg_error)?;
-        let parents = storage(&[&graph, &executor])? + components.bytes();
-        let admitted = memory.admit(parents + runtime_extra, bound)?;
-        let preconditioner =
-            CmgPreconditioner::build_component_experiment_with_executor_and_cmg_budget(
-                &graph,
+        // Every CMG stage of the build borrows this same host team.
+        let built = crate::parallel::with_cmg_team(threads, |_| {
+            Self::build_observations_bounded(
+                design.effects()[left_effect].level_index(),
+                design.effects()[1 - left_effect].codes(),
+                design.effects()[1 - left_effect].n_levels(),
+                weights,
+                degree,
+                sampling,
+                budget,
+                false,
+                install,
                 options,
-                component_options,
-                &executor,
-                admitted,
+                false,
             )
-            .map_err(cmg_error)?;
-        crate::interrupt::checkpoint()?;
-        memory.forecast(
-            super::cmg::forecast::hierarchy_peak(&graph, &executor, &preconditioner, None, true)?
-                + components.bytes(),
-        )?;
-        let hierarchy_seconds = hierarchy_started.elapsed().as_secs_f64();
-        let bound = ParallelCmgPlan::construction_allocation_bound(&preconditioner, &executor)
-            .map_err(cmg_error)?;
-        let parents = storage(&[&graph, &executor, &preconditioner])? + components.bytes();
-        let admitted = memory.admit(parents + runtime_extra, bound)?;
-        memory.forecast(parents + bound as u128)?;
-        let plan = ParallelCmgPlan::build_with_budget(&preconditioner, &executor, admitted)
-            .map_err(cmg_error)?;
-
-        let ApplyWorkspace {
-            workspace,
-            scalar_workspace,
-            rhs,
-            solution,
-        } = build_apply_workspace(
-            &graph,
-            &preconditioner,
-            &executor,
-            &plan,
-            &components,
-            batch_columns,
-            runtime_extra,
-            &mut memory,
-        )?;
-        if crate::diagnostics::solver_trace_enabled() {
-            let report = preconditioner.hierarchy().report();
-            crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=cmgschur_setup|degree={degree}|samples={}|seed={}|workers={}|retained_workers={}|sampled_workers={}|firms={}|vertices={}|input_edges={}|edges={}|components={}|threads={}|parallel_operators={}|batch_columns={batch_columns}|levels={}|hierarchy_vertices={:?}|hierarchy_nonzeros={:?}|repeats={:?}|graph_seconds={graph_seconds:.9}|hierarchy_seconds={hierarchy_seconds:.9}|setup_seconds={:.9}",
-                sampling.samples, sampling.seed, design.effects()[left_effect].n_levels(), counts.retained_workers, counts.sampled_workers, components.labels.len(),
-                graph.vertex_count(), counts.input_edges, graph.edge_count(), components.sizes.len(),
-                executor.thread_count(), plan.operator_count(), report.vertex_counts().len(),
-                report.vertex_counts(), report.matrix_nonzeros(), preconditioner.repeat_counts(),
-                started.elapsed().as_secs_f64(),
-            ));
-        }
-        Ok(Self {
-            preconditioner,
-            parallel: Some(ParallelApplication {
-                plan,
-                executor,
-                workspace,
-            }),
-            scalar_workspace,
-            rhs,
-            solution,
-            components,
-            batch_columns,
-            construction: memory.peak,
-            retained_bound: None,
-        })
+        })?;
+        built
+            .preconditioner
+            .ok_or_else(|| allocation("CMG Schur construction exceeds the joint memory budget"))
     }
 
     pub(super) fn retained_bytes(&self) -> Result<u128> {
@@ -219,12 +130,12 @@ impl CmgSchurPreconditioner {
         }
         Ok(storage(&[
             &self.preconditioner,
+            &self.plan,
             &self.scalar_workspace,
+            &self.batch_workspace,
             &self.rhs,
             &self.solution,
-        ])? + self.parallel.as_ref().map_or(Ok(0), |parallel| {
-            storage(&[&parallel.plan, &parallel.executor, &parallel.workspace])
-        })? + self.components.bytes()
+        ])? + self.components.bytes()
             + std::mem::size_of::<Self>() as u128)
     }
 
@@ -247,8 +158,11 @@ impl CmgSchurPreconditioner {
             u8::from(factor.is_some()),
             factor.map_or(0, cmg::GroundedLdl::active_dimension),
             factor.map_or(0, cmg::GroundedLdl::factor_nonzeros),
-            if self.parallel.is_some() { "parallel" } else { "scalar" },
-            self.parallel.as_ref().map_or(0, |parallel| parallel.plan.operator_count()),
+            match self.install {
+                Install::Auto => "scalar",
+                Install::Explicit { .. } => "parallel",
+            },
+            self.plan.as_ref().map_or(0, ParallelCmgPlan::operator_count),
             self.batch_columns,
         )
     }
@@ -346,40 +260,7 @@ impl CmgSchurPreconditioner {
                 continue;
             }
             self.rhs[firms * columns..vertices * columns].fill(0.0);
-            if self.parallel.is_none() {
-                self.preconditioner.apply_compatible_into(
-                    &self.rhs[..vertices],
-                    &mut self.solution[..vertices],
-                    self.scalar_workspace
-                        .as_mut()
-                        .ok_or_else(|| invalid_data("CMG Schur serial workspace is missing"))?,
-                )
-            } else if let Some(workspace) =
-                self.scalar_workspace.as_mut().filter(|_| rhs_count == 1)
-            {
-                let parallel = self.parallel.as_ref().unwrap();
-                parallel.plan.apply_compatible_into(
-                    &self.preconditioner,
-                    &self.rhs[..vertices],
-                    &mut self.solution[..vertices],
-                    workspace,
-                    &parallel.executor,
-                )
-            } else {
-                // The projection's original width fixes its arithmetic path.
-                // A compacted final active lane or one-column tile remainder
-                // of a multi-RHS projection still uses the batched cycle.
-                let parallel = self.parallel.as_mut().unwrap();
-                parallel.plan.apply_compatible_batch_into(
-                    &self.preconditioner,
-                    &self.rhs[..vertices * columns],
-                    &mut self.solution[..vertices * columns],
-                    columns,
-                    &mut parallel.workspace,
-                    &parallel.executor,
-                )
-            }
-            .map_err(cmg_error)?;
+            self.cycle(vertices, columns, rhs_count == 1)?;
             self.components.scatter(
                 &self.solution[..firms * columns],
                 output,
@@ -389,74 +270,41 @@ impl CmgSchurPreconditioner {
         }
         Ok(())
     }
-}
 
-struct ApplyWorkspace {
-    workspace: CmgBatchWorkspace,
-    scalar_workspace: Option<CmgWorkspace>,
-    rhs: Vec<f64>,
-    solution: Vec<f64>,
-}
-
-#[allow(clippy::too_many_arguments)]
-fn build_apply_workspace(
-    graph: &Laplacian,
-    preconditioner: &CmgPreconditioner,
-    executor: &ParallelExecutor,
-    plan: &ParallelCmgPlan,
-    components: &FirmComponents,
-    batch_columns: usize,
-    runtime_extra: u128,
-    memory: &mut Admission,
-) -> Result<ApplyWorkspace> {
-    let workspace_bound =
-        CmgBatchWorkspace::allocation_bytes(preconditioner, batch_columns).map_err(cmg_error)?;
-    // Capacity one already embeds the unchanged scalar workspace upstream.
-    // Wider sessions also retain one scalar workspace for projections whose
-    // original RHS count is one, independent of later lane compaction.
-    let scalar_bound = if batch_columns > 1 {
-        CmgBatchWorkspace::allocation_bytes(preconditioner, 1).map_err(cmg_error)?
-    } else {
-        0
-    };
-    let elements = graph
-        .vertex_count()
-        .checked_mul(batch_columns)
-        .ok_or_else(|| allocation("CMG Schur batch dimensions overflow"))?;
-    let bank_bytes = bytes::<[f64; 2]>(elements)?;
-    let bound = workspace_bound
-        .checked_add(scalar_bound)
-        .and_then(|bytes| bytes.checked_add(bank_bytes))
-        .ok_or_else(|| allocation("CMG Schur apply workspace overflows"))?;
-    let parents = storage(&[graph, executor, preconditioner, plan])? + components.bytes();
-    memory.admit(parents + runtime_extra, bound)?;
-    let workspace = CmgBatchWorkspace::try_new(preconditioner, batch_columns, workspace_bound)
-        .map_err(cmg_error)?;
-    crate::interrupt::checkpoint()?;
-    let scalar_workspace = if batch_columns > 1 {
-        Some(preconditioner.try_workspace().map_err(cmg_error)?)
-    } else {
-        None
-    };
-    let rhs = filled(elements, 0.0)?;
-    let solution = filled(elements, 0.0)?;
-    let actual = storage(&[&workspace, &scalar_workspace, &rhs, &solution])?;
-    if actual > bound as u128 {
-        return Err(allocation("CMG Schur apply storage exceeds admission"));
+    /// One fixed cycle on the packed lanes. The projection's original width
+    /// fixes the arithmetic path: a single-RHS projection uses the scalar
+    /// cycle, while a compacted final active lane or one-column tile remainder
+    /// of a multi-RHS projection still uses the interleaved cycle. CMG polls
+    /// the host's cancellation flag at its bounded application cadence.
+    fn cycle(&mut self, vertices: usize, columns: usize, single_rhs: bool) -> Result<()> {
+        let cancelled = crate::interrupt::cancellation_requested;
+        let rhs = &self.rhs[..vertices * columns];
+        let solution = &mut self.solution[..vertices * columns];
+        let preconditioner = &self.preconditioner;
+        let plan = self.plan.as_ref();
+        let scalar = &mut self.scalar_workspace;
+        let batch = self.batch_workspace.as_mut().filter(|_| !single_rhs);
+        let run = |team: Option<cmg::Team<'_>>| {
+            let context = cmg::ApplyContext {
+                plan,
+                team,
+                cancel: Some(&cancelled),
+            };
+            match batch {
+                Some(workspace) => preconditioner
+                    .apply_compatible_batch_into(rhs, solution, columns, workspace, context),
+                None => preconditioner.apply_compatible_into_with(rhs, solution, scalar, context),
+            }
+            .map_err(cmg_error)
+        };
+        match self.install {
+            // The automatic route keeps its team-free scalar application.
+            Install::Auto => run(None),
+            Install::Explicit { threads, .. } => {
+                crate::parallel::with_cmg_team(threads, |team| run(Some(team)))
+            }
+        }
     }
-    // The caller retains this relatively large owner behind a Box. Admit
-    // that final allocation as well as the heap banks reachable from it.
-    memory.admit(
-        parents + actual + runtime_extra,
-        std::mem::size_of::<CmgSchurPreconditioner>(),
-    )?;
-    memory.forecast(parents + actual + std::mem::size_of::<CmgSchurPreconditioner>() as u128)?;
-    Ok(ApplyWorkspace {
-        workspace,
-        scalar_workspace,
-        rhs,
-        solution,
-    })
 }
 
 struct Admission {
@@ -487,13 +335,6 @@ impl Admission {
         }
         Ok(remaining.min(usize::MAX as u128) as usize)
     }
-
-    fn forecast(&mut self, heap: u128) -> Result<()> {
-        self.peak = self
-            .peak
-            .max(SolverWorkspacePeak::ZERO.with_expected_heap(Some(heap))?);
-        Ok(())
-    }
 }
 
 fn bytes<T>(count: usize) -> Result<usize> {
@@ -510,12 +351,6 @@ fn capacity<T>(count: usize) -> Result<Vec<T>> {
     if values.capacity() != count {
         return Err(allocation("CMG Schur reservation exceeds admission"));
     }
-    Ok(values)
-}
-
-fn filled<T: Clone>(count: usize, value: T) -> Result<Vec<T>> {
-    let mut values = capacity(count)?;
-    values.resize(count, value);
     Ok(values)
 }
 
@@ -641,159 +476,6 @@ impl FirmComponents {
     }
 }
 
-struct WorkerCells<'a> {
-    membership: &'a LevelIndex,
-    firms: &'a [u32],
-    weights: BorrowedMapWeights<'a>,
-    weight_scale: f64,
-    cells: Vec<(u32, f64)>,
-}
-
-impl WorkerCells<'_> {
-    fn load(&mut self, worker: usize) -> Result<f64> {
-        self.cells.clear();
-        for (position, &row) in self.membership.members(worker).iter().enumerate() {
-            if position % 4096 == 0 {
-                crate::interrupt::checkpoint()?;
-            }
-            let weight = match self.weights {
-                BorrowedMapWeights::Unit => 1.0,
-                BorrowedMapWeights::Provided(values) => values[row] / self.weight_scale,
-            };
-            if !weight.is_finite() || weight <= 0.0 {
-                return Err(invalid_data("CMG Schur requires positive finite weights"));
-            }
-            self.cells.push((self.firms[row], weight));
-        }
-        self.cells.sort_unstable_by(|left, right| {
-            left.0
-                .cmp(&right.0)
-                .then_with(|| left.1.total_cmp(&right.1))
-        });
-        let mut read = 0;
-        let mut write = 0;
-        let mut total = 0.0;
-        let mut total_correction = 0.0;
-        while read < self.cells.len() {
-            let firm = self.cells[read].0;
-            let mut sum = 0.0;
-            let mut correction = 0.0;
-            while read < self.cells.len() && self.cells[read].0 == firm {
-                neumaier_add(self.cells[read].1, &mut sum, &mut correction);
-                read += 1;
-            }
-            let weight = sum + correction;
-            self.cells[write] = (firm, weight);
-            neumaier_add(weight, &mut total, &mut total_correction);
-            write += 1;
-        }
-        self.cells.truncate(write);
-        let total = total + total_correction;
-        if !total.is_finite() || total <= 0.0 {
-            return Err(invalid_data("CMG Schur worker weight total is invalid"));
-        }
-        Ok(total)
-    }
-}
-
-// Stream cliques directly into CMG's canonical edge bank. The exact census
-// supplies a size hint, avoiding a second observation- or edge-scale staging bank.
-struct HybridEdges<'a> {
-    workers: WorkerCells<'a>,
-    sampler: Option<SampledTrees>,
-    cutoff: usize,
-    next_worker: usize,
-    next_auxiliary: usize,
-    remaining: usize,
-    first: usize,
-    second: usize,
-    total: f64,
-    failure: Option<FeregError>,
-}
-
-impl Iterator for HybridEdges<'_> {
-    type Item = (usize, usize, f64);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let cells = &self.workers.cells;
-            if let Some(sampler) = self.sampler.as_mut().filter(|_| cells.len() > self.cutoff) {
-                match sampler.next(cells) {
-                    Ok(Some(edge)) => {
-                        self.remaining -= 1;
-                        return Some(edge);
-                    }
-                    Ok(None) => (),
-                    Err(error) => {
-                        self.failure = Some(error);
-                        return None;
-                    }
-                }
-            } else if cells.len() > self.cutoff && self.first < cells.len() {
-                let (firm, weight) = cells[self.first];
-                self.first += 1;
-                self.remaining -= 1;
-                return Some((firm as usize, self.next_auxiliary - 1, weight));
-            }
-            if cells.len() <= self.cutoff && self.first + 1 < cells.len() {
-                let (left, left_weight) = cells[self.first];
-                let (right, right_weight) = cells[self.second];
-                let weight =
-                    left_weight.min(right_weight) * (left_weight.max(right_weight) / self.total);
-                if !weight.is_finite() || weight <= 0.0 {
-                    self.failure = Some(invalid_data(
-                        "CMG Schur clique weight is nonpositive or nonfinite",
-                    ));
-                    return None;
-                }
-                self.second += 1;
-                if self.second == cells.len() {
-                    self.first += 1;
-                    self.second = self.first + 1;
-                }
-                self.remaining -= 1;
-                return Some((left as usize, right as usize, weight));
-            }
-            if self.next_worker == self.workers.membership.n_levels() || self.failure.is_some() {
-                return None;
-            }
-            match self.workers.load(self.next_worker) {
-                Ok(total) => self.total = total,
-                Err(error) => {
-                    self.failure = Some(error);
-                    return None;
-                }
-            }
-            if self.workers.cells.len() > self.cutoff {
-                if let Some(sampler) = self.sampler.as_mut() {
-                    if let Err(error) = sampler.prepare(&mut self.workers.cells, self.next_worker) {
-                        self.failure = Some(error);
-                        return None;
-                    }
-                }
-            }
-            self.next_worker += 1;
-            self.first = 0;
-            self.second = 1;
-            if self.workers.cells.len() > self.cutoff && self.sampler.is_none() {
-                self.next_auxiliary += 1;
-            }
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.remaining, Some(self.remaining))
-    }
-}
-
-fn root(labels: &mut [usize], mut vertex: usize) -> usize {
-    while labels[vertex] != vertex {
-        labels[vertex] = labels[labels[vertex]];
-        vertex = labels[vertex];
-    }
-    vertex
-}
-
 #[derive(Default)]
 struct GraphCounts {
     retained_workers: usize,
@@ -801,193 +483,10 @@ struct GraphCounts {
     input_edges: usize,
 }
 
-fn worker_census(
-    workers: &mut WorkerCells<'_>,
-    cutoff: usize,
-    sampling: Sampling,
-    labels: &mut [usize],
-) -> Result<GraphCounts> {
-    let mut counts = GraphCounts::default();
-    for worker in 0..workers.membership.n_levels() {
-        workers.load(worker)?;
-        let count = workers.cells.len();
-        if let Some(&(first, _)) = workers.cells.first() {
-            for &(firm, _) in workers.cells.iter().skip(1) {
-                let first = root(labels, first as usize);
-                let other = root(labels, firm as usize);
-                labels[first.max(other)] = first.min(other);
-            }
-        }
-        let edges = if count > cutoff && sampling.samples > 0 {
-            counts.sampled_workers = counts
-                .sampled_workers
-                .checked_add(1)
-                .ok_or_else(|| allocation("CMG sampled worker count overflows"))?;
-            (count - 1)
-                .checked_mul(sampling.samples as usize)
-                .ok_or_else(|| allocation("CMG sampled worker edge count overflows"))?
-        } else if count > cutoff {
-            counts.retained_workers = counts
-                .retained_workers
-                .checked_add(1)
-                .ok_or_else(|| allocation("CMG Schur auxiliary count overflows"))?;
-            count
-        } else {
-            count * count.saturating_sub(1) / 2
-        };
-        counts.input_edges = counts
-            .input_edges
-            .checked_add(edges)
-            .ok_or_else(|| allocation("CMG Schur edge count overflows"))?;
-    }
-    Ok(counts)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn build_hybrid_graph(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    left_effect: usize,
-    cutoff: usize,
-    sampling: Sampling,
-    batch_columns: usize,
-    executor: &ParallelExecutor,
-    runtime_extra: u128,
-    memory: &mut Admission,
-) -> Result<(Laplacian, FirmComponents, GraphCounts)> {
-    let left = &design.effects()[left_effect];
-    let right = &design.effects()[1 - left_effect];
-    let firms = right.n_levels();
-    // Match the implicit Schur operator's global weight normalization. This
-    // keeps both graph scales aligned and prevents harmless global AW scaling
-    // from changing the preconditioner or overflowing worker totals.
-    let mut weight_scale = 1.0_f64;
-    if let BorrowedMapWeights::Provided(values) = weights {
-        weight_scale = 0.0;
-        for (row, &weight) in values.iter().enumerate() {
-            if row % 4096 == 0 {
-                crate::interrupt::checkpoint()?;
-            }
-            if !weight.is_finite() || weight <= 0.0 {
-                return Err(invalid_data("CMG Schur requires positive finite weights"));
-            }
-            weight_scale = weight_scale.max(weight);
-        }
-    }
-    let max_rows = (0..left.n_levels())
-        .map(|worker| left.level_index().members(worker).len())
-        .max()
-        .unwrap_or(0);
-    let scratch_bytes = bytes::<(u32, f64)>(max_rows)?;
-    let sampler_bytes = if sampling.samples > 0 {
-        SampledTrees::allocation_bytes(max_rows)?
-    } else {
-        0
-    };
-    let component_bytes = bytes::<[usize; 2]>(firms)?;
-    let bound = scratch_bytes
-        .checked_add(sampler_bytes)
-        .and_then(|bytes| bytes.checked_add(component_bytes))
-        .ok_or_else(|| allocation("CMG Schur topology scratch overflows"))?;
-    let runtime_heap = storage(&[executor])?;
-    memory.admit(runtime_heap + runtime_extra, bound)?;
-    memory.forecast(runtime_heap + bound as u128)?;
-    let mut workers = WorkerCells {
-        membership: left.level_index(),
-        firms: right.codes(),
-        weights,
-        weight_scale,
-        cells: capacity(max_rows)?,
-    };
-    let sampler = if sampling.samples > 0 {
-        Some(SampledTrees::new(sampling, max_rows)?)
-    } else {
-        None
-    };
-    let mut labels = capacity(firms)?;
-    labels.extend(0..firms);
-    let mut sizes = filled(firms, usize::MAX)?;
-    let counts = worker_census(&mut workers, cutoff, sampling, &mut labels)?;
-    for firm in 0..firms {
-        labels[firm] = root(&mut labels, firm);
-    }
-    let mut component_count = 0;
-    for label in &mut labels {
-        if sizes[*label] == usize::MAX {
-            sizes[*label] = component_count;
-            component_count += 1;
-        }
-        *label = sizes[*label];
-    }
-    sizes.truncate(component_count);
-    sizes.fill(0);
-    for &label in &labels {
-        sizes[label] += 1;
-    }
-    let vertices = firms
-        .checked_add(counts.retained_workers)
-        .filter(|vertices| *vertices > 0 && *vertices as u128 <= u32::MAX as u128 + 1)
-        .ok_or_else(|| allocation("CMG Schur graph vertex count is not supported"))?;
-    // Pinned Laplacian construction reserves compact Edge (16 bytes), builds
-    // one diagonal, and may shrink its merged edge bank. Cover both banks
-    // during shrinking plus the three graph Arc allocations and control blocks.
-    let graph_bound = bytes::<[u64; 4]>(counts.input_edges)?
-        .checked_add(bytes::<f64>(vertices)?)
-        .and_then(|value| value.checked_add(128))
-        .ok_or_else(|| allocation("CMG Schur graph construction overflows"))?;
-    let parents = runtime_heap
-        + vec_capacity_bytes(&workers.cells)
-        + sampler.as_ref().map_or(0, SampledTrees::bytes)
-        + vec_capacity_bytes(&labels)
-        + vec_capacity_bytes(&sizes);
-    memory.admit(parents + runtime_extra, graph_bound)?;
-    memory.forecast(parents + graph_bound as u128)?;
-    workers.cells.clear();
-    let mut edges = HybridEdges {
-        workers,
-        sampler,
-        cutoff,
-        next_worker: 0,
-        next_auxiliary: firms,
-        remaining: counts.input_edges,
-        first: 0,
-        second: 1,
-        total: 0.0,
-        failure: None,
-    };
-    let graph_result = Laplacian::from_edges_with_executor(vertices, &mut edges, executor);
-    if let Some(error) = edges.failure.take() {
-        return Err(error);
-    }
-    let graph = graph_result.map_err(cmg_error)?;
-    if edges.remaining != 0 {
-        return Err(invalid_data(
-            "CMG Schur edge census changed during construction",
-        ));
-    }
-    drop(edges);
-    crate::interrupt::checkpoint()?;
-    let parents =
-        storage(&[&graph, executor])? + vec_capacity_bytes(&labels) + vec_capacity_bytes(&sizes);
-    let component_elements = component_count
-        .checked_mul(batch_columns)
-        .ok_or_else(|| allocation("CMG Schur component batch dimensions overflow"))?;
-    let bound = bytes::<[f64; 2]>(component_elements)?;
-    memory.admit(parents + runtime_extra, bound)?;
-    memory.forecast(parents + bound as u128)?;
-    let components = FirmComponents {
-        labels,
-        sizes,
-        sums: filled(component_elements, 0.0)?,
-        corrections: filled(component_elements, 0.0)?,
-    };
-    Ok((graph, components, counts))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::ErrorCode;
+    use crate::error::{ErrorCode, FeregError};
     use crate::fe::BorrowedInterceptEffect;
 
     struct Fixture {
@@ -1134,7 +633,8 @@ mod tests {
             .unwrap();
             assert_eq!(built.refusal, None);
             let mut candidate = built.preconditioner.unwrap();
-            assert!(candidate.parallel.is_none());
+            assert_eq!(candidate.install, Install::Auto);
+            assert!(candidate.plan.is_none() && candidate.batch_workspace.is_none());
             assert_eq!(edges(&candidate), edges(&explicit));
             assert_eq!(candidate.components.labels, explicit.components.labels);
             let n = fixture.firm_index.n_levels();
@@ -1688,10 +1188,10 @@ mod tests {
                 options,
             )
             .unwrap();
-            assert!(solver.scalar_workspace.is_some());
+            assert!(solver.batch_workspace.is_some());
             assert!(solver.preconditioner.hierarchy().levels().len() > 1);
             if threads > 1 {
-                assert!(solver.parallel.as_ref().unwrap().plan.operator_count() > 0);
+                assert!(solver.plan.as_ref().unwrap().operator_count() > 0);
             }
             let vertices = solver.rhs.len() / solver.batch_columns;
             let mut scalar_rhs = vec![0.0; vertices];
@@ -1702,19 +1202,22 @@ mod tests {
                 .components
                 .gather(&residual, columns, &[0], None, &mut scalar_rhs[..firms])
                 .unwrap();
-            solver
-                .parallel
-                .as_ref()
-                .unwrap()
-                .plan
-                .apply_compatible_into(
-                    &solver.preconditioner,
-                    &scalar_rhs,
-                    &mut scalar_solution,
-                    &mut scalar_workspace,
-                    &solver.parallel.as_ref().unwrap().executor,
-                )
-                .unwrap();
+            crate::parallel::with_cmg_team(threads, |team| {
+                solver
+                    .preconditioner
+                    .apply_compatible_into_with(
+                        &scalar_rhs,
+                        &mut scalar_solution,
+                        &mut scalar_workspace,
+                        cmg::ApplyContext {
+                            plan: solver.plan.as_ref(),
+                            team: Some(team),
+                            cancel: None,
+                        },
+                    )
+                    .map_err(cmg_error)
+            })
+            .unwrap();
             solver
                 .components
                 .scatter(&scalar_solution[..firms], &mut expected, columns, &[0])
@@ -1734,9 +1237,10 @@ mod tests {
             let batch_expected = output.clone();
             let tiny_graph = Laplacian::from_edges(2, [(0, 1, 1.0)]).unwrap();
             let tiny_cmg = CmgPreconditioner::build(&tiny_graph, CmgOptions::default()).unwrap();
-            let retained_scalar = solver
-                .scalar_workspace
-                .replace(tiny_cmg.try_workspace().unwrap());
+            let retained_scalar = std::mem::replace(
+                &mut solver.scalar_workspace,
+                tiny_cmg.try_workspace().unwrap(),
+            );
             solver
                 .apply_batch(&residual, &mut output, columns, columns, None, None)
                 .unwrap();
@@ -1838,19 +1342,22 @@ mod tests {
                         )
                         .unwrap();
                     scalar_rhs[firms..].fill(0.0);
-                    solver
-                        .parallel
-                        .as_ref()
-                        .unwrap()
-                        .plan
-                        .apply_compatible_into(
-                            &solver.preconditioner,
-                            &scalar_rhs,
-                            &mut scalar_solution,
-                            &mut scalar_workspace,
-                            &solver.parallel.as_ref().unwrap().executor,
-                        )
-                        .unwrap();
+                    crate::parallel::with_cmg_team(2, |team| {
+                        solver
+                            .preconditioner
+                            .apply_compatible_into_with(
+                                &scalar_rhs,
+                                &mut scalar_solution,
+                                &mut scalar_workspace,
+                                cmg::ApplyContext {
+                                    plan: solver.plan.as_ref(),
+                                    team: Some(team),
+                                    cancel: None,
+                                },
+                            )
+                            .map_err(cmg_error)
+                    })
+                    .unwrap();
                     solver
                         .components
                         .scatter(&scalar_solution[..firms], &mut expected, columns, &[rhs])
@@ -1915,7 +1422,7 @@ mod tests {
                 )
             };
             let baseline = build(None).unwrap();
-            assert_eq!(baseline.scalar_workspace.is_some(), rhs_capacity > 1);
+            assert_eq!(baseline.batch_workspace.is_some(), rhs_capacity > 1);
             let admitted = baseline.construction_peak().bytes().unwrap() as u128;
             drop(baseline);
             assert!(build(Some(FeSolverMemoryBudget {
@@ -1958,6 +1465,397 @@ mod tests {
             assert!(solver
                 .apply_batch(&residual, &mut vec![0.0; 28], 1, 1, None, None)
                 .is_err());
+        }
+    }
+
+    // Host cancellation raised inside CMG's planned interleaved cycle or a
+    // planned PCG solve on the explicit route's host team joins every lane,
+    // maps to an interrupted estimation and leaves the installed hierarchy,
+    // plan and workspaces reusable with unchanged bits.
+    #[test]
+    fn explicit_kernels_cancel_inside_application_and_pcg_then_recover() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        const CHILD: &str = "FEREG_CMG_SCHUR_KERNEL_CANCEL_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .env(CHILD, "1")
+                .args([
+                    "fe::cmg_schur::tests::explicit_kernels_cancel_inside_application_and_pcg_then_recover",
+                    "--exact",
+                    "--test-threads=1",
+                ])
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        let bits = |values: &[f64]| {
+            values
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>()
+        };
+        let fixture = Fixture::torus(65);
+        let design = fixture.design();
+        let firms = fixture.firm_index.n_levels();
+        let columns = 4;
+        let residual: Vec<f64> = (0..firms * columns)
+            .map(|index| (index as f64 * 0.17).sin())
+            .collect();
+        let mut solver = CmgSchurPreconditioner::build_with_options(
+            &design,
+            BorrowedMapWeights::Unit,
+            0,
+            4,
+            Sampling::default(),
+            columns,
+            4,
+            None,
+            CmgOptions {
+                direct_threshold: 16,
+                ..CmgOptions::default()
+            },
+        )
+        .unwrap();
+        assert!(solver.plan.as_ref().unwrap().operator_count() > 0);
+        let mut expected = vec![0.0; residual.len()];
+        solver
+            .apply_batch(&residual, &mut expected, columns, columns, None, None)
+            .unwrap();
+        // The packed, component-centered tile of that projection.
+        let vertices = solver.rhs.len() / solver.batch_columns;
+        let packed = solver.rhs[..vertices * columns].to_vec();
+        let polls = AtomicUsize::new(0);
+        let query = |stop: Option<usize>| {
+            let polls = &polls;
+            move || {
+                let poll = polls.fetch_add(1, Ordering::Relaxed);
+                if stop == Some(poll) {
+                    crate::interrupt::request_cancellation();
+                }
+                crate::interrupt::cancellation_requested()
+            }
+        };
+        let apply = |solver: &mut CmgSchurPreconditioner, stop: Option<usize>| {
+            polls.store(0, Ordering::Relaxed);
+            let cancel = query(stop);
+            let CmgSchurPreconditioner {
+                preconditioner,
+                plan,
+                batch_workspace,
+                solution,
+                ..
+            } = solver;
+            crate::parallel::with_cmg_team(4, |team| {
+                preconditioner
+                    .apply_compatible_batch_into(
+                        &packed,
+                        &mut solution[..vertices * columns],
+                        columns,
+                        batch_workspace.as_mut().unwrap(),
+                        cmg::ApplyContext {
+                            plan: plan.as_ref(),
+                            team: Some(team),
+                            cancel: Some(&cancel),
+                        },
+                    )
+                    .map_err(cmg_error)
+            })
+        };
+        apply(&mut solver, None).unwrap();
+        let reference = bits(&solver.solution[..vertices * columns]);
+        let total = polls.load(Ordering::Relaxed);
+        assert!(total >= 3, "{total} application polls");
+        for stop in [0, total / 2, total - 1] {
+            let error = apply(&mut solver, Some(stop)).unwrap_err();
+            assert_eq!(error.code, ErrorCode::Interrupted);
+            crate::interrupt::reset_cancellation();
+        }
+        apply(&mut solver, None).unwrap();
+        assert_eq!(bits(&solver.solution[..vertices * columns]), reference);
+        let mut output = vec![0.0; residual.len()];
+        solver
+            .apply_batch(&residual, &mut output, columns, columns, None, None)
+            .unwrap();
+        assert_eq!(bits(&output), bits(&expected));
+        // A pending host cancellation also stops the public application.
+        crate::interrupt::request_cancellation();
+        assert_eq!(
+            solver
+                .apply_batch(&residual, &mut output, columns, columns, None, None)
+                .unwrap_err()
+                .code,
+            ErrorCode::Interrupted
+        );
+        crate::interrupt::reset_cancellation();
+
+        // One planned PCG solve with the same hierarchy, plan and team.
+        let graph = solver.preconditioner.hierarchy().levels()[0]
+            .graph()
+            .clone();
+        let n = graph.vertex_count();
+        let potentials: Vec<f64> = (0..n).map(|vertex| (vertex as f64 * 0.11).cos()).collect();
+        let rhs = graph.matvec(&potentials).unwrap();
+        let bytes =
+            cmg::PcgBatchWorkspace::bank_allocation_bytes(&solver.preconditioner, 1).unwrap();
+        let mut workspaces =
+            cmg::PcgBatchWorkspace::new_bank_with_budget(&solver.preconditioner, 1, bytes).unwrap();
+        let mut solution = vec![0.0; n];
+        let mut diagnostics = [cmg::PcgDiagnostics::default()];
+        let mut solve = |stop: Option<usize>| {
+            polls.store(0, Ordering::Relaxed);
+            let cancel = query(stop);
+            solution.fill(0.0);
+            crate::parallel::with_cmg_team(4, |team| {
+                cmg::solve_pcg_batch_into(
+                    &graph,
+                    &solver.preconditioner,
+                    cmg::PcgBatchRef::contiguous(&rhs, 1, n).unwrap(),
+                    None,
+                    cmg::PcgBatchMut::contiguous(&mut solution, 1, n).unwrap(),
+                    &mut diagnostics,
+                    cmg::PcgOptions::default(),
+                    &mut workspaces,
+                    cmg::SolveContext {
+                        plan: solver.plan.as_ref(),
+                        team: Some(team),
+                        cancel: Some(&cancel),
+                        ..cmg::SolveContext::default()
+                    },
+                )
+                .map_err(cmg_error)
+            })
+            .map(|()| (bits(&solution), diagnostics[0].iterations()))
+        };
+        let reference = solve(None).unwrap();
+        let total = polls.load(Ordering::Relaxed);
+        assert!(
+            total > reference.1,
+            "{total} polls over {} iterations",
+            reference.1
+        );
+        for stop in [1, total / 2, total - 1] {
+            assert_eq!(solve(Some(stop)).unwrap_err().code, ErrorCode::Interrupted);
+            crate::interrupt::reset_cancellation();
+        }
+        assert_eq!(solve(None).unwrap(), reference);
+    }
+
+    // Pre-consolidation witness: digests recorded from the explicit executor
+    // builder and the bounded automatic builder before M3b. The consolidated
+    // adapter must reproduce graphs, labels, hierarchy metadata, application
+    // policy and every cycle output bit at one and four workers.
+    #[test]
+    fn explicit_and_automatic_builds_reproduce_frozen_pre_consolidation_bits() {
+        fn mix(digest: &mut u64, word: u64) {
+            for byte in word.to_le_bytes() {
+                *digest ^= u64::from(byte);
+                *digest = digest.wrapping_mul(0x0000_0100_0000_01b3);
+            }
+        }
+        fn digest(solver: &mut CmgSchurPreconditioner, firms: usize, capacity: usize) -> u64 {
+            let mut value = 0xcbf2_9ce4_8422_2325_u64;
+            for (u, v, w) in edges(solver) {
+                mix(&mut value, u as u64);
+                mix(&mut value, v as u64);
+                mix(&mut value, w);
+            }
+            for &label in &solver.components.labels {
+                mix(&mut value, label as u64);
+            }
+            for byte in solver.trace_hierarchy().bytes() {
+                mix(&mut value, u64::from(byte));
+            }
+            let stride = capacity;
+            let residual: Vec<f64> = (0..firms * stride)
+                .map(|index| (index as f64 * 0.37).sin() + (index % 3) as f64 * 0.25)
+                .collect();
+            let scales: Vec<f64> = (0..firms).map(|firm| 1.0 + (firm % 4) as f64).collect();
+            let mut mask = vec![1.0; stride];
+            mask[0] = 0.0;
+            if stride > 2 {
+                mask[2] = -1.0;
+            }
+            let mut output = vec![0.0; residual.len()];
+            for rhs_count in [1, stride] {
+                for (scaled, masked) in [(false, false), (true, false), (false, true)] {
+                    if masked && rhs_count == 1 {
+                        continue;
+                    }
+                    output.fill(0.5);
+                    solver
+                        .apply_batch(
+                            &residual,
+                            &mut output,
+                            stride,
+                            rhs_count,
+                            scaled.then_some(&scales[..]),
+                            masked.then_some(&mask[..rhs_count]),
+                        )
+                        .unwrap();
+                    for entry in &output {
+                        mix(&mut value, entry.to_bits());
+                    }
+                }
+            }
+            value
+        }
+        let torus_options = |threshold| CmgOptions {
+            direct_threshold: threshold,
+            ..CmgOptions::default()
+        };
+        let cases: Vec<(&str, Fixture, bool, usize, u32, CmgOptions)> = vec![
+            (
+                "sampled0",
+                Fixture::sampled_degrees(true, 1.0),
+                true,
+                5,
+                0,
+                CmgOptions::default(),
+            ),
+            (
+                "sampled1",
+                Fixture::sampled_degrees(true, 1.0),
+                true,
+                5,
+                1,
+                CmgOptions::default(),
+            ),
+            (
+                "sampled2",
+                Fixture::sampled_degrees(true, 1.0),
+                true,
+                5,
+                2,
+                CmgOptions::default(),
+            ),
+            (
+                "stars4",
+                Fixture::weighted_stars(),
+                true,
+                4,
+                0,
+                CmgOptions::default(),
+            ),
+            (
+                "stars6",
+                Fixture::weighted_stars(),
+                true,
+                6,
+                0,
+                CmgOptions::default(),
+            ),
+            ("torus20", Fixture::torus(20), false, 4, 0, torus_options(8)),
+            (
+                "torus65",
+                Fixture::torus(65),
+                false,
+                4,
+                0,
+                torus_options(16),
+            ),
+        ];
+        let record = std::env::var_os("FEREG_RECORD_FROZEN_CMG_SCHUR").is_some();
+        let mut actual = Vec::new();
+        for (name, fixture, provided, degree, samples, options) in &cases {
+            let design = fixture.design();
+            let weights = if *provided {
+                BorrowedMapWeights::Provided(&fixture.weights)
+            } else {
+                BorrowedMapWeights::Unit
+            };
+            let sampling = Sampling {
+                samples: *samples,
+                seed: 0,
+            };
+            let firms = fixture.firm_index.n_levels();
+            for threads in [1, 4] {
+                for capacity in [1, 2, 5] {
+                    let value = crate::ThreadTeam::new(
+                        crate::ThreadConfig::from_requested(threads, true).unwrap(),
+                    )
+                    .install(|| {
+                        let mut explicit = CmgSchurPreconditioner::build_with_options(
+                            &design, weights, 0, *degree, sampling, capacity, threads, None,
+                            *options,
+                        )
+                        .unwrap();
+                        let explicit = digest(&mut explicit, firms, capacity);
+                        let automatic = if *options == CmgOptions::default() {
+                            let mut automatic = CmgSchurPreconditioner::try_build_bounded(
+                                &design, weights, 0, *degree, sampling, capacity, None, false,
+                            )
+                            .unwrap()
+                            .preconditioner
+                            .unwrap();
+                            digest(&mut automatic, firms, capacity)
+                        } else {
+                            0
+                        };
+                        (explicit, automatic)
+                    })
+                    .unwrap();
+                    actual.push((format!("{name}/t{threads}/c{capacity}"), value));
+                }
+            }
+        }
+        if record {
+            for (key, (explicit, automatic)) in &actual {
+                eprintln!("FROZEN|{key}|{explicit:#018x}|{automatic:#018x}");
+            }
+            return;
+        }
+        let expected: &[(&str, u64, u64)] = &[
+            ("sampled0/t1/c1", 0x09b37388c01198aa, 0xfdd13d2e6a370bb7),
+            ("sampled0/t1/c2", 0xb2e95973bb3a6b75, 0xbf90b632c782dc53),
+            ("sampled0/t1/c5", 0xd118a8fa8b6e088a, 0x56bb0c560e0d54aa),
+            ("sampled0/t4/c1", 0x09b37388c01198aa, 0xfdd13d2e6a370bb7),
+            ("sampled0/t4/c2", 0xb2e95973bb3a6b75, 0xbf90b632c782dc53),
+            ("sampled0/t4/c5", 0xd118a8fa8b6e088a, 0x56bb0c560e0d54aa),
+            ("sampled1/t1/c1", 0xcdafe3ebd60291f9, 0xf280345af3796f9c),
+            ("sampled1/t1/c2", 0xe81d78c6a325788e, 0x5e4856ee8bae8ce4),
+            ("sampled1/t1/c5", 0xebe7777eb79939f2, 0x8aba3dab1669aa52),
+            ("sampled1/t4/c1", 0xcdafe3ebd60291f9, 0xf280345af3796f9c),
+            ("sampled1/t4/c2", 0xe81d78c6a325788e, 0x5e4856ee8bae8ce4),
+            ("sampled1/t4/c5", 0xebe7777eb79939f2, 0x8aba3dab1669aa52),
+            ("sampled2/t1/c1", 0xb9a90b0ee7a1de87, 0x38e63447839bae22),
+            ("sampled2/t1/c2", 0x511a2a0edd9a7f1e, 0x3c079e8ffccb48c4),
+            ("sampled2/t1/c5", 0x43d8741368781e8c, 0x1bc0004de8704dec),
+            ("sampled2/t4/c1", 0xb9a90b0ee7a1de87, 0x38e63447839bae22),
+            ("sampled2/t4/c2", 0x511a2a0edd9a7f1e, 0x3c079e8ffccb48c4),
+            ("sampled2/t4/c5", 0x43d8741368781e8c, 0x1bc0004de8704dec),
+            ("stars4/t1/c1", 0x3ee2b904fbb591b3, 0x8f42663d9941963e),
+            ("stars4/t1/c2", 0x82483d0591541f9d, 0x8155c2315176f037),
+            ("stars4/t1/c5", 0x116e0025371d04b1, 0x1074fcf511fcd051),
+            ("stars4/t4/c1", 0x3ee2b904fbb591b3, 0x8f42663d9941963e),
+            ("stars4/t4/c2", 0x82483d0591541f9d, 0x8155c2315176f037),
+            ("stars4/t4/c5", 0x116e0025371d04b1, 0x1074fcf511fcd051),
+            ("stars6/t1/c1", 0x769d271dc0a6637a, 0x02d6e476a18de78f),
+            ("stars6/t1/c2", 0xa8cbf56880245205, 0xbe1739c37b35ecef),
+            ("stars6/t1/c5", 0xbc798d4fb28c284b, 0x006f8dc4b1b5052b),
+            ("stars6/t4/c1", 0x769d271dc0a6637a, 0x02d6e476a18de78f),
+            ("stars6/t4/c2", 0xa8cbf56880245205, 0xbe1739c37b35ecef),
+            ("stars6/t4/c5", 0xbc798d4fb28c284b, 0x006f8dc4b1b5052b),
+            ("torus20/t1/c1", 0x0cba0e03824f2012, 0x0000000000000000),
+            ("torus20/t1/c2", 0xe3b789c7a2eef928, 0x0000000000000000),
+            ("torus20/t1/c5", 0x1c7c3d082b028813, 0x0000000000000000),
+            ("torus20/t4/c1", 0x0cba0e03824f2012, 0x0000000000000000),
+            ("torus20/t4/c2", 0xe3b789c7a2eef928, 0x0000000000000000),
+            ("torus20/t4/c5", 0x1c7c3d082b028813, 0x0000000000000000),
+            ("torus65/t1/c1", 0x0711a0279fa0c492, 0x0000000000000000),
+            ("torus65/t1/c2", 0x9683bfdd3c052635, 0x0000000000000000),
+            ("torus65/t1/c5", 0x2b7deac6ae780a33, 0x0000000000000000),
+            ("torus65/t4/c1", 0xd878f2faba2ecdc3, 0x0000000000000000),
+            ("torus65/t4/c2", 0x14d375ba280ad0e0, 0x0000000000000000),
+            ("torus65/t4/c5", 0x6f1a2d7ba68d3b5a, 0x0000000000000000),
+        ];
+        assert_eq!(actual.len(), expected.len());
+        for ((key, (explicit, automatic)), (name, frozen_explicit, frozen_automatic)) in
+            actual.iter().zip(expected)
+        {
+            assert_eq!(key, name);
+            assert_eq!(explicit, frozen_explicit, "explicit {key}");
+            assert_eq!(automatic, frozen_automatic, "automatic {key}");
         }
     }
 }

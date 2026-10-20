@@ -100,23 +100,25 @@ pub(super) fn component_options() -> ComponentBuildOptions {
     }
 }
 
+pub(super) fn build_options(options: CmgOptions, config: CmgConfig) -> cmg::BuildOptions {
+    cmg::BuildOptions {
+        hierarchy: options,
+        components: if config.components {
+            component_options()
+        } else {
+            ComponentBuildOptions::default()
+        },
+    }
+}
+
+/// The explicit route always contracts on its host team.
 pub(super) fn construction_bound(
     vertices: usize,
     edges: usize,
-    options: CmgOptions,
-    config: CmgConfig,
+    options: cmg::BuildOptions,
 ) -> Result<usize> {
-    if config.components {
-        CmgPreconditioner::component_executor_construction_cmg_allocation_bound(
-            vertices,
-            edges,
-            options,
-            component_options(),
-        )
-    } else {
-        CmgPreconditioner::executor_construction_cmg_allocation_bound(vertices, edges, options)
-    }
-    .map_err(cmg_error)
+    CmgPreconditioner::construction_allocation_bound(vertices, edges, options, true)
+        .map_err(cmg_error)
 }
 
 // CMG's select_batch_execution may initialize its plan. Use the pinned public
@@ -124,11 +126,9 @@ pub(super) fn construction_bound(
 // can choose Planned even when full batches run AcrossRightHandSides. Tests
 // compare all actual width decisions with this predicate at the crossovers.
 pub(super) fn may_need_plan(solver: &ParallelPcgSolver) -> bool {
-    let options = solver.executor().options();
+    let options = solver.execution_shape();
     let graph = solver.graph();
-    if solver.executor().thread_count() <= 1
-        || graph.edge_count() < solver.policy().min_planned_edges
-    {
+    if options.threads <= 1 || graph.edge_count() < solver.policy().min_planned_edges {
         return false;
     }
     // The component count is private upstream. Conservatively admit the
@@ -202,33 +202,6 @@ mod tests {
             remaining(config, u128::MAX, 1).unwrap_err().code,
             ErrorCode::Allocation
         );
-        assert!(ParallelExecutor::runtime_allocation_bound().is_none());
-    }
-
-    #[test]
-    fn runtime_handles_are_counted_once_and_shutdown_can_repeat() {
-        for threads in [1, 4, 1] {
-            let config = config(threads);
-            let estimate = runtime(config).unwrap();
-            let (executor, actual) = ParallelExecutor::new_with_estimated_memory_budget(
-                parallel(config),
-                ParallelRuntimeAllowance::default(),
-                estimate.total_bytes(),
-            )
-            .unwrap();
-            assert_eq!(actual, estimate);
-            let report = CmgStorageReport::measure(&[&executor, &executor]).unwrap();
-            assert!(report.runtime_heap_unbounded());
-            assert_eq!(
-                report.total_bytes().unwrap(),
-                estimate.worker_handles_bytes()
-            );
-            assert_eq!(
-                storage(&[&executor]).unwrap() + runtime_extra(actual),
-                actual.total_bytes() as u128
-            );
-            drop(executor);
-        }
     }
 
     #[test]
@@ -252,31 +225,26 @@ mod tests {
                     reduction_chunk_size: 1,
                     ..ParallelOptions::default()
                 };
-                let estimate = ParallelRuntimeAllowance::default().estimate(par).unwrap();
-                let (executor, _) = ParallelExecutor::new_with_estimated_memory_budget(
-                    par,
-                    ParallelRuntimeAllowance::default(),
-                    estimate.total_bytes(),
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap();
+                let team = cmg::Team::new(&pool, threads, par).unwrap();
+                let options = build_options(options, config);
+                let bound = construction_bound(80, graph.edge_count(), options).unwrap();
+                let preconditioner = CmgPreconditioner::build_with(
+                    &graph,
+                    options,
+                    cmg::BuildContext {
+                        team: Some(team),
+                        budget_bytes: Some(bound),
+                        ..cmg::BuildContext::default()
+                    },
                 )
-                .unwrap();
-                let bound = construction_bound(80, graph.edge_count(), options, config).unwrap();
-                let preconditioner = if components {
-                    CmgPreconditioner::build_component_experiment_with_executor_and_cmg_budget(
-                        &graph,
-                        options,
-                        component_options(),
-                        &executor,
-                        bound,
-                    )
-                } else {
-                    CmgPreconditioner::build_with_executor_and_cmg_budget(
-                        &graph, options, &executor, bound,
-                    )
-                }
                 .unwrap();
                 let solver = ParallelPcgSolver::from_preconditioner(
                     preconditioner,
-                    executor,
+                    team,
                     ParallelPcgPolicy {
                         min_planned_edges: 1,
                         ..ParallelPcgPolicy::default()
@@ -286,12 +254,12 @@ mod tests {
                 let needs = may_need_plan(&solver);
                 if needs {
                     let bytes = solver.plan_construction_allocation_bound().unwrap();
-                    assert!(solver.try_plan_with_budget(bytes - 1).is_err());
-                    solver.try_plan_with_budget(bytes).unwrap();
+                    assert!(solver.try_plan_with_budget(team, bytes - 1).is_err());
+                    solver.try_plan_with_budget(team, bytes).unwrap();
                 }
                 let before = storage(&[&solver]).unwrap();
                 for width in [1, 2, 4] {
-                    let report = solver.select_batch_execution(width).unwrap();
+                    let report = solver.select_batch_execution(width, team).unwrap();
                     assert_eq!(
                         width == 1 && needs,
                         width == 1 && report.execution() == ParallelPcgExecution::Planned

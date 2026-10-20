@@ -8,13 +8,12 @@
 use std::time::Instant;
 
 use cmg::{
-    solve_pcg_batch_into_with_executor, solve_pcg_batch_into_with_plan_and_workspace,
-    solve_pcg_batch_into_with_workspace, CmgMemoryEstimate, CmgOptions, CmgPreconditioner,
-    CmgProblemSize, CmgStorage, CmgStorageReport, ComponentBuildOptions, Components, Laplacian,
-    ParallelExecutor, ParallelOptions, ParallelPcgExecution, ParallelPcgPolicy, ParallelPcgSolver,
-    ParallelRuntimeAllowance, ParallelRuntimeEstimate, PcgBatchMut, PcgBatchRef, PcgBatchWorkspace,
-    PcgDiagnostics, PcgOptions, PreparedLaplacianTopology, PreparedLaplacianWorkspace,
-    RepeatedPcgMemoryEstimate,
+    solve_pcg_batch_into, CmgMemoryEstimate, CmgOptions, CmgPreconditioner, CmgProblemSize,
+    CmgStorage, CmgStorageReport, ComponentBuildOptions, Components, Laplacian, ParallelOptions,
+    ParallelPcgExecution, ParallelPcgPolicy, ParallelPcgSolver, ParallelRuntimeAllowance,
+    ParallelRuntimeEstimate, PcgBatchMut, PcgBatchRef, PcgBatchWorkspace, PcgDiagnostics,
+    PcgOptions, PreparedLaplacianTopology, PreparedLaplacianWorkspace, RepeatedPcgMemoryEstimate,
+    SolveContext,
 };
 
 use crate::data::DenseMatrix;
@@ -357,6 +356,8 @@ struct CallerPcgBuffers {
     diagnostics: Vec<PcgDiagnostics>,
     workspaces: Vec<PcgBatchWorkspace>,
     planned_used: bool,
+    /// Width of the host team every solve borrows.
+    threads: usize,
 }
 
 impl CallerPcgBuffers {
@@ -376,9 +377,11 @@ impl CallerPcgBuffers {
         let nuisance_elements = vertices
             .checked_mul(nuisance)
             .ok_or_else(|| allocation("prepared CMG nuisance potential dimensions overflow"))?;
-        let report = solver
-            .select_batch_execution(batch_size)
-            .map_err(cmg_error)?;
+        let report = crate::parallel::with_cmg_team(config.threads.resolved(), |team| {
+            solver
+                .select_batch_execution(batch_size, team)
+                .map_err(cmg_error)
+        })?;
         let workspace_count = report.concurrency().max(1);
         let bank_bytes =
             PcgBatchWorkspace::bank_allocation_bytes(solver.preconditioner(), workspace_count)
@@ -422,9 +425,13 @@ impl CallerPcgBuffers {
             diagnostics,
             workspaces,
             planned_used: false,
+            threads: config.threads.resolved(),
         })
     }
 
+    /// Solve on the action's host team. CMG polls the host's cancellation
+    /// flag in every kernel; a cancellation joins all lanes and fails the
+    /// estimation as interrupted.
     fn solve(
         &mut self,
         solver: &ParallelPcgSolver,
@@ -444,64 +451,66 @@ impl CallerPcgBuffers {
                 "prepared CMG solve exceeds its caller-buffer capacity",
             ));
         }
-        let report = solver
-            .select_batch_execution(rhs_count)
-            .map_err(cmg_error)?;
-        if report.concurrency() > self.workspaces.len() {
-            return Err(FeregError::new(
-                ErrorCode::Internal,
-                "prepared CMG solve exceeds its fixed workspace pool",
-            ));
-        }
-        let rhs = PcgBatchRef::contiguous(&self.right_hand_sides[..elements], rhs_count, vertices)
-            .map_err(cmg_error)?;
-        let solutions =
-            PcgBatchMut::contiguous(&mut self.solutions[..elements], rhs_count, vertices)
+        let Self {
+            right_hand_sides,
+            solutions,
+            diagnostics,
+            workspaces,
+            planned_used,
+            threads,
+            ..
+        } = self;
+        crate::parallel::with_cmg_team(*threads, |team| {
+            let report = solver
+                .select_batch_execution(rhs_count, team)
                 .map_err(cmg_error)?;
-        let guesses = initial_guesses
-            .map(|values| PcgBatchRef::contiguous(values, rhs_count, vertices))
-            .transpose()
-            .map_err(cmg_error)?;
-        let diagnostics = &mut self.diagnostics[..rhs_count];
-        match report.execution() {
-            ParallelPcgExecution::Serial => solve_pcg_batch_into_with_workspace(
-                solver.graph(),
-                solver.preconditioner(),
-                rhs,
-                guesses,
-                solutions,
-                diagnostics,
-                options,
-                &mut self.workspaces[0],
-            ),
-            ParallelPcgExecution::Planned => {
-                self.planned_used = true;
-                solve_pcg_batch_into_with_plan_and_workspace(
-                    solver.graph(),
-                    solver.preconditioner(),
-                    solver.try_plan_with_budget(0).map_err(cmg_error)?,
-                    rhs,
-                    guesses,
-                    solutions,
-                    diagnostics,
-                    options,
-                    &mut self.workspaces[0],
-                    solver.executor(),
-                )
+            if report.concurrency() > workspaces.len() {
+                return Err(FeregError::new(
+                    ErrorCode::Internal,
+                    "prepared CMG solve exceeds its fixed workspace pool",
+                ));
             }
-            ParallelPcgExecution::AcrossRightHandSides => solve_pcg_batch_into_with_executor(
+            let rhs = PcgBatchRef::contiguous(&right_hand_sides[..elements], rhs_count, vertices)
+                .map_err(cmg_error)?;
+            let solutions =
+                PcgBatchMut::contiguous(&mut solutions[..elements], rhs_count, vertices)
+                    .map_err(cmg_error)?;
+            let guesses = initial_guesses
+                .map(|values| PcgBatchRef::contiguous(values, rhs_count, vertices))
+                .transpose()
+                .map_err(cmg_error)?;
+            let cancelled = crate::interrupt::cancellation_requested;
+            let mut context = SolveContext {
+                cancel: Some(&cancelled),
+                ..SolveContext::default()
+            };
+            let workspaces = match report.execution() {
+                ParallelPcgExecution::Serial => &mut workspaces[..1],
+                ParallelPcgExecution::Planned => {
+                    *planned_used = true;
+                    context.plan = Some(solver.try_plan_with_budget(team, 0).map_err(cmg_error)?);
+                    context.team = Some(team);
+                    &mut workspaces[..1]
+                }
+                ParallelPcgExecution::AcrossRightHandSides => {
+                    context.team = Some(team);
+                    context.concurrent_right_hand_sides = true;
+                    &mut workspaces[..report.concurrency()]
+                }
+            };
+            solve_pcg_batch_into(
                 solver.graph(),
                 solver.preconditioner(),
                 rhs,
                 guesses,
                 solutions,
-                diagnostics,
+                &mut diagnostics[..rhs_count],
                 options,
-                &mut self.workspaces[..report.concurrency()],
-                solver.executor(),
-            ),
-        }
-        .map_err(cmg_solve_error)
+                workspaces,
+                context,
+            )
+            .map_err(cmg_solve_error)
+        })
     }
 
     fn solution(&self, rhs: usize, vertices: usize) -> Result<&[f64]> {
@@ -1085,7 +1094,7 @@ impl<'a> CmgAbsorber<'a> {
         };
         #[cfg(test)]
         let executor_threads = match &self.route {
-            CmgRoute::Graph(graph) => graph.solver.executor().thread_count(),
+            CmgRoute::Graph(graph) => graph.solver.execution_shape().threads,
             CmgRoute::Direct | CmgRoute::Failed(_) => unreachable!("CMG route checked above"),
         };
         let solve_started = Instant::now();
@@ -1812,7 +1821,7 @@ impl GraphCmg {
                     )?;
                     if let Some(started) = subtract_started {
                         eprintln!("FEREG_PHASE|cmg_batch|rhs={rhs_seconds:.9}|solve={solve_seconds:.9}|subtract={:.9}|width={width}|route={:?}",
-                            started.elapsed().as_secs_f64(), self.solver.select_batch_execution(width).map_err(cmg_error)?.execution());
+                            started.elapsed().as_secs_f64(), crate::parallel::with_cmg_team(config.threads.resolved(), |team| self.solver.select_batch_execution(width, team).map_err(cmg_error))?.execution());
                     }
                 }
             }
@@ -1866,6 +1875,19 @@ impl CmgSolveMetrics {
     }
 }
 
+/// Admit the explicit route's unchanged runtime allowance (worker heap and
+/// stacks of a `threads`-worker team) before any graph storage. CMG runs on the
+/// action's host team and creates no pool, so nothing is allocated here.
+fn admit_runtime(
+    config: CmgConfig,
+    memory: &mut CmgWorkspacePlan,
+) -> Result<ParallelRuntimeEstimate> {
+    let estimate = admission::runtime(config)?;
+    admission::admit(config, 0, estimate.total_bytes(), memory)?;
+    memory.record_expected_heap(estimate.worker_handles_bytes() as u128)?;
+    Ok(estimate)
+}
+
 // Keep the legacy workspace and ownership boundaries explicit during migration.
 fn build_graph_route(
     design: &BorrowedInterceptFeDesign<'_>,
@@ -1884,19 +1906,7 @@ fn build_graph_route(
     let vertices = left_levels
         .checked_add(right_levels)
         .ok_or_else(|| allocation("CMG graph vertex count overflows"))?;
-    let parallel = ParallelOptions {
-        threads: config.threads.resolved(),
-        ..ParallelOptions::default()
-    };
-    let estimate = admission::runtime(config)?;
-    let runtime_budget = admission::admit(config, 0, estimate.total_bytes(), memory)?;
-    memory.record_expected_heap(estimate.worker_handles_bytes() as u128)?;
-    let (executor, runtime_estimate) = ParallelExecutor::new_with_estimated_memory_budget(
-        parallel,
-        ParallelRuntimeAllowance::default(),
-        runtime_budget,
-    )
-    .map_err(cmg_error)?;
+    let runtime_estimate = admit_runtime(config, memory)?;
     let left_codes = design.effects()[core_effects[0]].codes();
     let right_codes = design.effects()[core_effects[1]].codes();
     let edges = (0..design.nobs()).map(|row| {
@@ -1907,11 +1917,20 @@ fn build_graph_route(
         )
     });
     let graph_started = trace_enabled.then(Instant::now);
-    let graph =
-        Laplacian::from_edges_with_executor(vertices, edges, &executor).map_err(cmg_error)?;
+    let graph = crate::parallel::with_cmg_team(config.threads.resolved(), |team| {
+        Laplacian::from_edges_with(
+            vertices,
+            edges,
+            cmg::BuildContext {
+                team: Some(team),
+                ..cmg::BuildContext::default()
+            },
+        )
+        .map_err(cmg_error)
+    })?;
     // Duplicate aggregation compacts in place: retained edge capacity still
     // covers the raw observation bank. Sorting is in-place in the pinned CMG.
-    memory.record_expected_heap(admission::storage(&[&graph, &executor])?)?;
+    memory.record_expected_heap(admission::storage(&[&graph])?)?;
     let graph_seconds = graph_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
     build_graph_route_from_numeric(
         design,
@@ -1920,7 +1939,6 @@ fn build_graph_route(
         config,
         profile,
         graph,
-        executor,
         None,
         trace_enabled,
         graph_seconds,
@@ -1939,19 +1957,7 @@ fn build_prepared_graph_route(
     memory: &mut CmgWorkspacePlan,
 ) -> Result<GraphCmg> {
     let trace_enabled = crate::diagnostics::solver_trace_enabled();
-    let parallel = ParallelOptions {
-        threads: config.threads.resolved(),
-        ..ParallelOptions::default()
-    };
-    let estimate = admission::runtime(config)?;
-    let runtime_budget = admission::admit(config, 0, estimate.total_bytes(), memory)?;
-    memory.record_expected_heap(estimate.worker_handles_bytes() as u128)?;
-    let (executor, runtime_estimate) = ParallelExecutor::new_with_estimated_memory_budget(
-        parallel,
-        ParallelRuntimeAllowance::default(),
-        runtime_budget,
-    )
-    .map_err(cmg_error)?;
+    let runtime_estimate = admit_runtime(config, memory)?;
     let numeric_bytes = prepared
         .topology
         .numeric_allocation_bytes()
@@ -1962,7 +1968,9 @@ fn build_prepared_graph_route(
         numeric_bytes,
         memory,
     )?;
-    memory.record_expected_heap(estimate.worker_handles_bytes() as u128 + numeric_bytes as u128)?;
+    memory.record_expected_heap(
+        runtime_estimate.worker_handles_bytes() as u128 + numeric_bytes as u128,
+    )?;
     let graph_started = trace_enabled.then(Instant::now);
     let graph = prepared.assemble(design, profile, weights, weight_scale)?;
     let graph_seconds = graph_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
@@ -1973,7 +1981,6 @@ fn build_prepared_graph_route(
         config,
         profile,
         graph,
-        executor,
         Some(prepared),
         trace_enabled,
         graph_seconds,
@@ -1990,7 +1997,6 @@ fn build_graph_route_from_numeric(
     config: CmgConfig,
     profile: &CmgTopologyProfile,
     graph: Laplacian,
-    executor: ParallelExecutor,
     prepared: Option<&PreparedCmgTopology>,
     trace_enabled: bool,
     graph_seconds: f64,
@@ -2004,35 +2010,26 @@ fn build_graph_route_from_numeric(
     let hierarchy_options = prepared.map_or_else(CmgOptions::default, |_| {
         prepared_cmg_options(profile, &graph)
     });
-    let bound = admission::construction_bound(
-        graph.vertex_count(),
-        graph.edge_count(),
-        hierarchy_options,
-        config,
-    )?;
-    let parents = admission::frame_storage(&[&graph, &executor], prepared)?
-        + admission::runtime_extra(runtime_estimate);
+    let options = admission::build_options(hierarchy_options, config);
+    let bound = admission::construction_bound(graph.vertex_count(), graph.edge_count(), options)?;
+    let parents =
+        admission::frame_storage(&[&graph], prepared)? + admission::runtime_extra(runtime_estimate);
     let construction_budget = admission::admit(config, parents, bound, memory)?;
-    let preconditioner = if config.components {
-        CmgPreconditioner::build_component_experiment_with_executor_and_cmg_budget(
+    let cancelled = crate::interrupt::cancellation_requested;
+    let preconditioner = crate::parallel::with_cmg_team(config.threads.resolved(), |team| {
+        CmgPreconditioner::build_with(
             &graph,
-            hierarchy_options,
-            admission::component_options(),
-            &executor,
-            construction_budget,
+            options,
+            cmg::BuildContext {
+                team: Some(team),
+                cancel: Some(&cancelled),
+                budget_bytes: Some(construction_budget),
+            },
         )
-    } else {
-        CmgPreconditioner::build_with_executor_and_cmg_budget(
-            &graph,
-            hierarchy_options,
-            &executor,
-            construction_budget,
-        )
-    }
-    .map_err(cmg_error)?;
+        .map_err(cmg_error)
+    })?;
     memory.record_expected_heap(forecast::hierarchy_peak(
         &graph,
-        &executor,
         &preconditioner,
         prepared,
         config.components,
@@ -2056,12 +2053,10 @@ fn build_graph_route_from_numeric(
         );
     }
     let solver_started = trace_enabled.then(Instant::now);
-    let solver = ParallelPcgSolver::from_preconditioner(
-        preconditioner,
-        executor,
-        ParallelPcgPolicy::default(),
-    )
-    .map_err(cmg_error)?;
+    let solver = crate::parallel::with_cmg_team(config.threads.resolved(), |team| {
+        ParallelPcgSolver::from_preconditioner(preconditioner, team, ParallelPcgPolicy::default())
+            .map_err(cmg_error)
+    })?;
     if admission::may_need_plan(&solver) {
         let required = solver
             .plan_construction_allocation_bound()
@@ -2072,7 +2067,12 @@ fn build_graph_route_from_numeric(
         memory.record_expected_heap(
             parents - admission::runtime_extra(runtime_estimate) + required as u128,
         )?;
-        solver.try_plan_with_budget(budget).map_err(cmg_error)?;
+        crate::parallel::with_cmg_team(config.threads.resolved(), |team| {
+            solver
+                .try_plan_with_budget(team, budget)
+                .map(|_| ())
+                .map_err(cmg_error)
+        })?;
     }
     let caller = CallerPcgBuffers::new(
         &solver,
@@ -3353,6 +3353,9 @@ fn cmg_solve_error(error: cmg::CmgError) -> FeregError {
 
 fn cmg_error_code(error: &cmg::CmgError) -> ErrorCode {
     match error {
+        // Cancellation is never a solver or resource outcome: the estimation
+        // fails atomically as interrupted after CMG has joined every lane.
+        cmg::CmgError::Cancelled { .. } => ErrorCode::Interrupted,
         cmg::CmgError::PcgBreakdown { .. }
         | cmg::CmgError::MaximumIterations { .. }
         | cmg::CmgError::ResidualVerificationFailed { .. }

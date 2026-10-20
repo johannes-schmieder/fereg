@@ -3,8 +3,11 @@
 //! memory refusal leaves all incumbent solver owners untouched.
 
 use std::cmp::Ordering;
+use std::time::Instant;
 
 use cmg::CmgError;
+
+use crate::error::FeregError;
 
 use super::*;
 
@@ -17,6 +20,34 @@ pub(in crate::fe) struct BoundedCmgBuild {
     pub(in crate::fe) preconditioner: Option<CmgSchurPreconditioner>,
     pub(in crate::fe) refusal: Option<BuildRefusal>,
     pub(in crate::fe) peak: SolverWorkspacePeak,
+}
+
+/// How a built Schur preconditioner is installed: the only difference between
+/// the automatic upgrade and an explicit `cmgschur` request. Both share the
+/// census, edge emission, initial graph, hierarchy options, terminal factor and
+/// cancellation cadence; every CMG stage polls the host's cancellation flag.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(in crate::fe) enum Install {
+    /// Automatic upgrade: the hierarchy builds serially and each lane runs one
+    /// scalar team-free cycle with no row operators.
+    Auto,
+    /// Explicit `cmgschur`: large levels contract on the action's host team of
+    /// `threads` workers, a row-operator plan selects that team's eligible
+    /// levels, and up to `columns` lanes share one interleaved cycle.
+    Explicit { columns: usize, threads: usize },
+}
+
+impl Install {
+    fn columns(self) -> usize {
+        match self {
+            Self::Auto => 1,
+            Self::Explicit { columns, .. } => columns,
+        }
+    }
+
+    const fn explicit(self) -> bool {
+        matches!(self, Self::Explicit { .. })
+    }
 }
 
 #[derive(Debug)]
@@ -92,7 +123,7 @@ impl Work {
     fn cmg<T>(
         &mut self,
         build: impl FnOnce(
-            Option<&cmg::InstalledTeam<'_>>,
+            Option<cmg::Team<'_>>,
             cmg::Cancellation<'_>,
         ) -> std::result::Result<T, CmgError>,
     ) -> Attempt<T> {
@@ -245,15 +276,31 @@ impl CmgSchurPreconditioner {
                 columns,
                 weights,
             };
-            let (graph, components, scale, cache_bytes) =
-                graph(source, degree, sampling, false, &mut work, &mut memory)?;
+            let (graph, components, scale, cache_bytes, _) = graph(
+                source,
+                degree,
+                sampling,
+                false,
+                Install::Auto,
+                &mut work,
+                &mut memory,
+            )?;
             weight_scale = scale;
             if components.sizes.len() != 1 {
                 return Err(AttemptError::Fatal(invalid_data(
                     "CMG reduced component is disconnected",
                 )));
             }
-            finish(graph, components, cache_bytes, &mut work, &mut memory)
+            finish(
+                graph,
+                components,
+                cache_bytes,
+                Install::Auto,
+                CmgOptions::default(),
+                &mut work,
+                &mut memory,
+            )
+            .map(|(preconditioner, _)| preconditioner)
         })();
         let (preconditioner, refusal) = match attempt {
             Ok(candidate) => (Some(candidate), None),
@@ -278,7 +325,7 @@ impl CmgSchurPreconditioner {
         scratch: &mut [f64],
         weight_scale: f64,
     ) -> Result<()> {
-        if self.parallel.is_some()
+        if self.install != Install::Auto
             || rhs.len() != self.components.labels.len()
             || scratch.len() < rhs.len()
             || !weight_scale.is_finite()
@@ -352,12 +399,18 @@ impl CmgSchurPreconditioner {
             sampling,
             budget,
             true,
+            Install::Auto,
+            CmgOptions::default(),
             break_builder,
         )
     }
 
+    /// The one Schur graph adapter and hierarchy pipeline. With `cache_census`
+    /// (the automatic route) canonical census cells are cached whenever their
+    /// complete peak is admitted; otherwise (the explicit route) the census
+    /// streams the observations twice like the original explicit builder.
     #[allow(clippy::too_many_arguments)]
-    fn build_observations_bounded(
+    pub(super) fn build_observations_bounded(
         membership: &LevelIndex,
         firms: &[u32],
         retained: usize,
@@ -366,6 +419,8 @@ impl CmgSchurPreconditioner {
         sampling: Sampling,
         budget: Option<FeSolverMemoryBudget>,
         cache_census: bool,
+        install: Install,
+        options: CmgOptions,
         break_builder: bool,
     ) -> Result<BoundedCmgBuild> {
         sampling.validate()?;
@@ -378,6 +433,7 @@ impl CmgSchurPreconditioner {
             ));
         }
         crate::interrupt::checkpoint()?;
+        let started = Instant::now();
         let mut work = Work::new(break_builder);
         let mut memory = Admission {
             budget,
@@ -394,11 +450,37 @@ impl CmgSchurPreconditioner {
             degree,
             sampling,
             cache_census,
+            install,
             &mut work,
             &mut memory,
         )
-        .and_then(|(graph, components, _, cache_bytes)| {
-            finish(graph, components, cache_bytes, &mut work, &mut memory)
+        .and_then(|(graph, components, _, cache_bytes, counts)| {
+            let graph_seconds = started.elapsed().as_secs_f64();
+            let shape = (graph.vertex_count(), graph.edge_count());
+            let (preconditioner, hierarchy_seconds) = finish(
+                graph,
+                components,
+                cache_bytes,
+                install,
+                options,
+                &mut work,
+                &mut memory,
+            )?;
+            if let Install::Explicit { threads, .. } = install {
+                if crate::diagnostics::solver_trace_enabled() {
+                    let report = preconditioner.preconditioner.hierarchy().report();
+                    crate::diagnostics::emit_solver_trace(&format!(
+                        "FEREG_SOLVER_TRACE|phase=cmgschur_setup|degree={degree}|samples={}|seed={}|workers={}|retained_workers={}|sampled_workers={}|firms={}|vertices={}|input_edges={}|edges={}|components={}|threads={threads}|parallel_operators={}|batch_columns={}|levels={}|hierarchy_vertices={:?}|hierarchy_nonzeros={:?}|repeats={:?}|graph_seconds={graph_seconds:.9}|hierarchy_seconds={hierarchy_seconds:.9}|setup_seconds={:.9}",
+                        sampling.samples, sampling.seed, membership.n_levels(), counts.retained_workers, counts.sampled_workers, retained,
+                        shape.0, counts.input_edges, shape.1, preconditioner.components.sizes.len(),
+                        preconditioner.plan.as_ref().map_or(0, cmg::ParallelCmgPlan::operator_count),
+                        preconditioner.batch_columns, report.vertex_counts().len(),
+                        report.vertex_counts(), report.matrix_nonzeros(), preconditioner.preconditioner.repeat_counts(),
+                        started.elapsed().as_secs_f64(),
+                    ));
+                }
+            }
+            Ok(preconditioner)
         });
         let (preconditioner, refusal) = match attempt {
             Ok(preconditioner) => (Some(preconditioner), None),
@@ -417,58 +499,114 @@ fn finish(
     graph: Laplacian,
     components: FirmComponents,
     cache_bytes: u128,
+    install: Install,
+    options: CmgOptions,
     work: &mut Work,
     memory: &mut Admission,
-) -> Attempt<CmgSchurPreconditioner> {
-    let options = CmgOptions::default();
-    let experiment = component_options();
+) -> Attempt<(CmgSchurPreconditioner, f64)> {
+    let explicit = install.explicit();
+    let options = cmg::BuildOptions {
+        hierarchy: options,
+        components: component_options(),
+    };
     work.step(1024)?;
-    let bound = CmgPreconditioner::component_serial_construction_allocation_bound(
+    let bound = CmgPreconditioner::construction_allocation_bound(
         graph.vertex_count(),
         graph.edge_count(),
         options,
-        experiment,
+        explicit,
     )
     .map_err(cmg_error)?;
     // The synchronous cache stays reserved even after graph emission drops it.
-    let parents = graph_storage_bound(&graph)? + components.bytes() + cache_bytes;
+    let mut parents = graph_storage_bound(&graph)? + components.bytes() + cache_bytes;
     let admitted = admit(memory, work, parents, bound)?;
     // The terminal factor follows the hierarchy options and memory admission.
-    let preconditioner = work.cmg(|_, cancelled| {
-        CmgPreconditioner::build_component_experiment_serial_controlled(
-            &graph, options, experiment, admitted, cancelled,
+    // Only an explicit build contracts large levels on the host team.
+    let started = Instant::now();
+    let preconditioner = work.cmg(|team, cancelled| {
+        CmgPreconditioner::build_with(
+            &graph,
+            options,
+            cmg::BuildContext {
+                team: team.filter(|_| explicit),
+                cancel: Some(cancelled),
+                budget_bytes: Some(admitted),
+            },
         )
     })?;
+    let hierarchy_seconds = started.elapsed().as_secs_f64();
     // Keep the already-admitted conservative hierarchy bound. Exact storage
     // reporting recursively deduplicates allocation owners and is quadratic.
-    // The workspace layout scan is O(levels) and the zeroed workspace is O(n);
-    // both poll cancellation inside CMG.
+    parents += bound as u128;
+    let plan = if explicit {
+        work.step(128)?;
+        let bound = work.cmg(|team, _| {
+            team.map_or(Ok(0), |team| {
+                cmg::ParallelCmgPlan::construction_allocation_bound(&preconditioner, team)
+            })
+        })?;
+        let admitted = admit(memory, work, parents, bound)?;
+        let plan = work.cmg(|team, _| {
+            team.map(|team| {
+                cmg::ParallelCmgPlan::build_with_budget(&preconditioner, team, admitted)
+            })
+            .transpose()
+        })?;
+        parents += bound as u128;
+        plan
+    } else {
+        None
+    };
+    // Layout scans are O(levels) and the zeroed workspaces O(n * columns);
+    // all poll cancellation inside CMG.
     work.step(128)?;
-    let parents = parents + bound as u128;
-    let workspace_bytes =
+    let columns = install.columns();
+    let scalar_bytes =
         work.cmg(|_, cancelled| preconditioner.workspace_allocation_bytes_controlled(cancelled))?;
-    let bank_bytes = bytes::<[f64; 2]>(graph.vertex_count())?;
-    let bound = workspace_bytes
-        .checked_add(bank_bytes)
+    let batch_bytes = if columns > 1 {
+        work.cmg(|_, _| CmgBatchWorkspace::allocation_bytes(&preconditioner, columns))?
+    } else {
+        0
+    };
+    let elements = graph
+        .vertex_count()
+        .checked_mul(columns)
+        .ok_or_else(|| allocation("CMG Schur batch dimensions overflow"))?;
+    let bound = scalar_bytes
+        .checked_add(batch_bytes)
+        .and_then(|bytes| bytes.checked_add(super::bytes::<[f64; 2]>(elements).ok()?))
         .and_then(|bytes| bytes.checked_add(std::mem::size_of::<CmgSchurPreconditioner>()))
         .ok_or_else(|| allocation("bounded CMG apply storage overflows"))?;
     admit(memory, work, parents, bound)?;
     let scalar_workspace =
         work.cmg(|_, cancelled| preconditioner.try_workspace_controlled(cancelled))?;
-    let rhs = work.filled(graph.vertex_count(), 0.0)?;
-    let solution = work.filled(graph.vertex_count(), 0.0)?;
+    let batch_workspace = if columns > 1 {
+        Some(work.cmg(|_, cancelled| {
+            CmgBatchWorkspace::try_new_controlled(&preconditioner, columns, batch_bytes, cancelled)
+        })?)
+    } else {
+        None
+    };
+    let rhs = work.filled(elements, 0.0)?;
+    let solution = work.filled(elements, 0.0)?;
     work.step(256)?;
-    Ok(CmgSchurPreconditioner {
-        preconditioner,
-        parallel: None,
-        scalar_workspace: Some(scalar_workspace),
-        rhs,
-        solution,
-        components,
-        batch_columns: 1,
-        construction: memory.peak,
-        retained_bound: Some(parents + bound as u128),
-    })
+    Ok((
+        CmgSchurPreconditioner {
+            preconditioner,
+            install,
+            plan,
+            scalar_workspace,
+            batch_workspace,
+            rhs,
+            solution,
+            components,
+            batch_columns: columns,
+            construction: memory.peak,
+            // Explicit installations report their exact retained storage.
+            retained_bound: (!explicit).then_some(parents + bound as u128),
+        },
+        hierarchy_seconds,
+    ))
 }
 
 // Evaluate value*numerator/denominator without overflowing or underflowing
@@ -732,7 +870,7 @@ impl EdgeEmissionPlan {
             let edge_count = if count > cutoff {
                 if let Some(sampler) = sampler {
                     // Preserve the original bounded sort and reverse Neumaier pass.
-                    sampler.prepare_bounded(cells, worker, work)?;
+                    sampler.prepare(cells, worker, work)?;
                     for (output, &value) in self.suffix[start + worker..=end + worker]
                         .iter_mut()
                         .zip(sampler.suffix(count))
@@ -897,11 +1035,14 @@ fn cache_envelope(
         0
     };
     let options = CmgOptions::default();
-    let hierarchy = CmgPreconditioner::component_serial_construction_allocation_bound(
+    let hierarchy = CmgPreconditioner::construction_allocation_bound(
         vertices,
         edges,
-        options,
-        component_options(),
+        cmg::BuildOptions {
+            hierarchy: options,
+            components: component_options(),
+        },
+        false,
     )
     .ok()?;
     let workspace = CmgPreconditioner::scalar_workspace_allocation_bound(vertices, options).ok()?;
@@ -1123,8 +1264,8 @@ impl BoundedCells<'_> {
             };
             if self.cells.len() > cutoff {
                 if let Some(sampler) = sampler.as_mut() {
-                    sampler.prepare_bounded(&mut self.cells, worker, work)?;
-                    while let Some(edge) = sampler.next_bounded(&self.cells, work)? {
+                    sampler.prepare(&mut self.cells, worker, work)?;
+                    while let Some(edge) = sampler.next(&self.cells, work)? {
                         work.step(8)?;
                         edges.push(edge);
                     }
@@ -1158,8 +1299,8 @@ impl BoundedCells<'_> {
     }
 }
 
-/// Borrow the installed team only for initial graph construction; hierarchy
-/// construction retains its separate serial admission and execution policy.
+/// Borrow the installed team for initial graph construction; above CMG's
+/// hosted threshold the edges map and sort in fixed chunks on fereg's workers.
 fn initial_laplacian_bounded(
     vertices: usize,
     edges: &[(usize, usize, f64)],
@@ -1167,22 +1308,60 @@ fn initial_laplacian_bounded(
     work: &mut Work,
 ) -> Attempt<Laplacian> {
     work.cmg(|team, cancelled| {
-        if let Some(team) = team {
-            Laplacian::from_edges_hosted_controlled(vertices, edges, admitted, team, cancelled)
-        } else {
-            Laplacian::from_edges_controlled(vertices, edges, admitted, cancelled)
-        }
+        Laplacian::build(
+            vertices,
+            edges,
+            cmg::BuildContext {
+                team,
+                cancel: Some(cancelled),
+                budget_bytes: Some(admitted),
+            },
+        )
     })
 }
 
+/// Replace union-find parents by dense component labels in first-appearance
+/// order and count each component's firms. `sizes` enters as `usize::MAX`.
+fn relabel_components(
+    labels: &mut [usize],
+    sizes: &mut Vec<usize>,
+    work: &mut Work,
+) -> Attempt<usize> {
+    for firm in 0..labels.len() {
+        work.step(8)?;
+        labels[firm] = find_root(labels, firm, work)?;
+    }
+    let mut component_count = 0;
+    for label in labels.iter_mut() {
+        work.step(32)?;
+        if sizes[*label] == usize::MAX {
+            sizes[*label] = component_count;
+            component_count += 1;
+        }
+        *label = sizes[*label];
+    }
+    sizes.truncate(component_count);
+    for size in sizes.iter_mut() {
+        work.step(8)?;
+        *size = 0;
+    }
+    for &label in labels.iter() {
+        work.step(8)?;
+        sizes[label] += 1;
+    }
+    Ok(component_count)
+}
+
+#[allow(clippy::type_complexity)]
 fn graph(
     source: CellSource<'_>,
     cutoff: usize,
     sampling: Sampling,
     cache_census: bool,
+    install: Install,
     work: &mut Work,
     memory: &mut Admission,
-) -> Attempt<(Laplacian, FirmComponents, f64, u128)> {
+) -> Attempt<(Laplacian, FirmComponents, f64, u128, GraphCounts)> {
     work.step(64)?;
     let firms = source.firm_count();
     let weights = source.weights();
@@ -1239,7 +1418,7 @@ fn graph(
         },
     };
     let mut sampler = if sampling.samples > 0 {
-        Some(SampledTrees::new_bounded(sampling, max_rows, work)?)
+        Some(SampledTrees::new(sampling, max_rows, work)?)
     } else {
         None
     };
@@ -1250,28 +1429,7 @@ fn graph(
     }
     let mut sizes = work.filled(firms, usize::MAX)?;
     let counts = workers.census_bounded(cutoff, sampling, &mut labels, work)?;
-    for firm in 0..firms {
-        work.step(8)?;
-        labels[firm] = find_root(&mut labels, firm, work)?;
-    }
-    let mut component_count = 0;
-    for label in &mut labels {
-        work.step(32)?;
-        if sizes[*label] == usize::MAX {
-            sizes[*label] = component_count;
-            component_count += 1;
-        }
-        *label = sizes[*label];
-    }
-    sizes.truncate(component_count);
-    for size in &mut sizes {
-        work.step(8)?;
-        *size = 0;
-    }
-    for &label in &labels {
-        work.step(8)?;
-        sizes[label] += 1;
-    }
+    let component_count = relabel_components(&mut labels, &mut sizes, work)?;
     work.step(128)?;
     let vertices = firms
         .checked_add(counts.retained_workers)
@@ -1311,14 +1469,42 @@ fn graph(
         + vec_capacity_bytes(&labels)
         + vec_capacity_bytes(&sizes)
         + cache_bytes as u128;
-    admit(memory, work, parents, bytes::<[f64; 2]>(component_count)?)?;
+    let component_elements = component_count
+        .checked_mul(install.columns())
+        .ok_or_else(|| allocation("CMG Schur component batch dimensions overflow"))?;
+    admit(
+        memory,
+        work,
+        parents,
+        bytes::<[f64; 2]>(component_elements)?,
+    )?;
     let components = FirmComponents {
         labels,
         sizes,
-        sums: work.filled(component_count, 0.0)?,
-        corrections: work.filled(component_count, 0.0)?,
+        sums: work.filled(component_elements, 0.0)?,
+        corrections: work.filled(component_elements, 0.0)?,
     };
-    Ok((graph, components, weight_scale, cache_bytes as u128))
+    Ok((graph, components, weight_scale, cache_bytes as u128, counts))
+}
+
+/// The automatic route's hierarchy build, exactly as `finish` runs it.
+#[cfg(test)]
+fn automatic_hierarchy(
+    graph: &Laplacian,
+    cancel: cmg::Cancellation<'_>,
+) -> std::result::Result<CmgPreconditioner, CmgError> {
+    CmgPreconditioner::build_with(
+        graph,
+        cmg::BuildOptions {
+            hierarchy: CmgOptions::default(),
+            components: component_options(),
+        },
+        cmg::BuildContext {
+            team: None,
+            cancel: Some(cancel),
+            budget_bytes: Some(usize::MAX),
+        },
+    )
 }
 
 #[cfg(test)]
@@ -1378,7 +1564,7 @@ mod control_tests {
                         .unwrap();
                     assert!(count.input_edges >= HOSTED_EDGE_THRESHOLD);
                     let mut sampler = if samples > 0 {
-                        Some(SampledTrees::new_bounded(sampling, 34, &mut work).unwrap())
+                        Some(SampledTrees::new(sampling, 34, &mut work).unwrap())
                     } else {
                         None
                     };
@@ -1446,16 +1632,7 @@ mod control_tests {
                 assert_eq!(bits(graph.diagonal()), bits(reference_graph.diagonal()));
                 if samples > 0 {
                     let never = || false;
-                    let build = |graph: &Laplacian| {
-                        CmgPreconditioner::build_component_experiment_serial_controlled(
-                            graph,
-                            CmgOptions::default(),
-                            component_options(),
-                            usize::MAX,
-                            &never,
-                        )
-                        .unwrap()
-                    };
+                    let build = |graph: &Laplacian| automatic_hierarchy(graph, &never).unwrap();
                     let reference = build(&reference_graph);
                     let actual = build(&graph);
                     assert_eq!(actual.hierarchy(), reference.hierarchy());
@@ -1561,7 +1738,7 @@ mod control_tests {
                         budget: None,
                         peak: SolverWorkspacePeak::ZERO,
                     };
-                    let (graph, components, scale, cache) = graph(
+                    let (graph, components, scale, cache, _) = graph(
                         CellSource::Observations {
                             membership: &membership,
                             firms: &columns,
@@ -1574,6 +1751,7 @@ mod control_tests {
                             seed: 0,
                         },
                         true,
+                        Install::Auto,
                         &mut work,
                         &mut memory,
                     )
@@ -1695,15 +1873,7 @@ mod control_tests {
                 .install(|| {
                     let mut work = Work::new(false);
                     let candidate = work
-                        .cmg(|_, cancelled| {
-                            CmgPreconditioner::build_component_experiment_serial_controlled(
-                                &graph,
-                                CmgOptions::default(),
-                                component_options(),
-                                usize::MAX,
-                                cancelled,
-                            )
-                        })
+                        .cmg(|_, cancelled| automatic_hierarchy(&graph, cancelled))
                         .unwrap_or_else(|_| panic!("small graph must complete"));
                     (candidate, work.polls)
                 })
@@ -1812,13 +1982,7 @@ mod control_tests {
         let graph = Laplacian::from_edges(3, [(0, 1, 1.0), (1, 2, 2.0)]).unwrap();
         let result = work.cmg(|_, _| {
             crate::interrupt::request_cancellation();
-            CmgPreconditioner::build_component_experiment_serial_controlled(
-                &graph,
-                CmgOptions::default(),
-                component_options(),
-                usize::MAX,
-                &crate::interrupt::cancellation_requested,
-            )
+            automatic_hierarchy(&graph, &crate::interrupt::cancellation_requested)
         });
         assert!(interrupted(result.map(drop)));
         assert_eq!(
@@ -2051,6 +2215,8 @@ mod cache_tests {
                     sampling,
                     budget,
                     false,
+                    Install::Auto,
+                    CmgOptions::default(),
                     false,
                 )
             }
@@ -2108,7 +2274,7 @@ mod cache_tests {
             samples: 2,
             seed: 19,
         };
-        let mut sampler = completed(SampledTrees::new_bounded(sampling, 72, &mut work));
+        let mut sampler = completed(SampledTrees::new(sampling, 72, &mut work));
         for (worker, (canonical, total)) in expected.iter().enumerate() {
             assert_eq!(
                 completed(cache.load(worker, &mut rows.cells, &mut work)).to_bits(),
@@ -2116,7 +2282,7 @@ mod cache_tests {
             );
             assert_eq!(&rows.cells, canonical);
             if canonical.len() > 5 {
-                completed(sampler.prepare_bounded(&mut rows.cells, worker, &mut work));
+                completed(sampler.prepare(&mut rows.cells, worker, &mut work));
             }
             assert_eq!(
                 completed(cache.load(worker, &mut rows.cells, &mut work)).to_bits(),
@@ -2275,12 +2441,13 @@ mod cache_tests {
                 5,
                 Sampling::default(),
                 cached,
+                Install::Auto,
                 &mut work,
                 &mut memory,
             ))
         };
-        let (old, old_components, old_scale, _) = build(false);
-        let (new, new_components, new_scale, cache_bytes) = build(true);
+        let (old, old_components, old_scale, _, _) = build(false);
+        let (new, new_components, new_scale, cache_bytes, _) = build(true);
         assert_eq!(old, new);
         assert_eq!(old_components.labels, new_components.labels);
         assert_eq!(old_components.sizes, new_components.sizes);
