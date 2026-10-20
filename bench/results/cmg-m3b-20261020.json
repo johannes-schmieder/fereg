@@ -1,5 +1,5 @@
 {
- "milestone": "M3b unaccepted: second repair plus prepared-publication follow-up passed source review; Mac source integration failed two tests; dependent qualification and M3c stopped",
+ "milestone": "M3b unaccepted: reviewed runtime repairs and repaired Mac source integration pass; actual native and host diagnostics pending; M3c not released",
  "date": "2026-10-20",
  "revisions": {
   "fereg_code": "65bc39f5f98090ee4b2206e13a72cc9bf0a51c0d",
@@ -193,5 +193,161 @@
    "stop": "Any same-host difference remains a blocker; no candidate-derived rebaseline or automatic retry"
   },
   "qualification_repairs_remaining": 3
+ },
+ "authorized_mac_test_repair": {
+  "authorization": "Johannes: I'm authorizing retries until Claude finishes all the milestones.",
+  "effect": "Diagnosed repairs and affected reruns through M3d authorized; supersedes earlier retry prohibition and remaining harness-repair count. Scientific semantics/tolerances and fixed timing protocol unchanged; no sampling until a performance pass.",
+  "historical_failed_runs": "unchanged",
+  "reference_fereg": "e9efda5501917915245a1913026ce0ec8bb000d2",
+  "reference_cmg": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+  "candidate_production_fereg": "dad54c1198f2444684a3ede6d0d4e4713ca55861",
+  "candidate_cmg": "efb5339459617b1aba99b34195240689deeab61c",
+  "host": "aarch64-apple-darwin Rust1.85.1 ci profile",
+  "original_fixture": {
+   "configurations": 42,
+   "captured_section_instances": 767,
+   "all_same_host_input_structure_output_words_exact": true,
+   "all_same_host_digests_exact": true,
+   "identical_old_linux_table_mismatches": 26,
+   "records": [
+    {
+     "arm": "reference",
+     "revision": "e9efda5501917915245a1913026ce0ec8bb000d2",
+     "exit_code": 101,
+     "timeout": false,
+     "elapsed_seconds": 19.478832459,
+     "log_sha256": "77c82ef36f64cfb7cabd1c29cf44d49ac304822a71f6dc5e15507cd129863958"
+    },
+    {
+     "arm": "reference",
+     "revision": "e9efda5501917915245a1913026ce0ec8bb000d2",
+     "exit_code": 0,
+     "timeout": false,
+     "elapsed_seconds": 72.28900025,
+     "log_sha256": "3e09d371e844db9c4cc1b9a7556024a6819b1bfd7abe9ba9ac4045f15f8a37b9"
+    },
+    {
+     "arm": "reference",
+     "revision": "e9efda5501917915245a1913026ce0ec8bb000d2",
+     "exit_code": 0,
+     "timeout": false,
+     "elapsed_seconds": 0.5580522500000029,
+     "log_sha256": "1412ec07472da65bf25aa87eb663b401da5312bf670269693b438803af7a231e"
+    },
+    {
+     "arm": "candidate",
+     "revision": "dad54c1198f2444684a3ede6d0d4e4713ca55861",
+     "exit_code": 0,
+     "timeout": false,
+     "elapsed_seconds": 75.743406583,
+     "log_sha256": "5071c45c8804666fc056d86fac65485498ad8d6a6cbaf59c4ffb1c4187534dfe"
+    },
+    {
+     "arm": "candidate",
+     "revision": "dad54c1198f2444684a3ede6d0d4e4713ca55861",
+     "exit_code": 0,
+     "timeout": false,
+     "elapsed_seconds": 0.6226621669999872,
+     "log_sha256": "1a0711dfc326406599234fb0dd632a3b215597bfb11cb7705a14a5704b4506e4"
+    }
+   ],
+   "comparison_sha256": "5786b31b00ea1698658d3fd2701c0c137c1a0d5f033cdf4ccb560fe2f4e125a8"
+  },
+  "dyadic_fixture": {
+   "formula": "((index * 37 % 257) as f64 - 128.0) / 64.0 + (index % 3) as f64 * 0.25",
+   "expectation_source": "accepted M3a only",
+   "configurations": 42,
+   "captured_section_instances": 767,
+   "all_same_host_input_structure_output_words_exact": true,
+   "all_same_host_digests_exact": true,
+   "replacement_expectations_exact": true,
+   "records": [
+    {
+     "arm": "reference",
+     "revision": "e9efda5501917915245a1913026ce0ec8bb000d2",
+     "stage": "build",
+     "exit_code": 0,
+     "elapsed_seconds": 70.22308737499999,
+     "log_sha256": "99f96c24cae120f8e695457ea0a01ba7cafb748cde3a7f9340ebf0e2278580e2"
+    },
+    {
+     "arm": "reference",
+     "revision": "e9efda5501917915245a1913026ce0ec8bb000d2",
+     "stage": "witness",
+     "exit_code": 0,
+     "elapsed_seconds": 0.552710291000011,
+     "log_sha256": "92a9f2cf2c79ed4163704728550ee2fc996011eb0064b2b752399659a3a28cfb"
+    },
+    {
+     "arm": "candidate",
+     "revision": "dad54c1198f2444684a3ede6d0d4e4713ca55861",
+     "stage": "build",
+     "exit_code": 0,
+     "elapsed_seconds": 70.566483542,
+     "log_sha256": "e74c32d895e5ea53f59619226245bccf6faf96a6ecfb33bad2c4f3baf62e47b8"
+    },
+    {
+     "arm": "candidate",
+     "revision": "dad54c1198f2444684a3ede6d0d4e4713ca55861",
+     "stage": "witness",
+     "exit_code": 0,
+     "elapsed_seconds": 0.5550347500000044,
+     "log_sha256": "11718c956c99af7527f91541572cf30b432b78108497007ff974e45756465716"
+    }
+   ],
+   "comparison_sha256": "a28637b2f1b6660813d4a4528cb893d7349f8a8ed42b9eaa53bc58143996392e",
+   "linux_check": "pending"
+  },
+  "cancellation_repair": "Reached sampled route thresholds require Interrupted and exact reconstruction; sampled phase names are observations. Existing exhaustive serial query sweep additionally requires six unconditional numeric allocation/publication phases. CMG actual-inner-work witnesses remain separate.",
+  "independent_review": "Independent high-effort patch author and bounded Astra final review; no actionable findings",
+  "production_identity": {
+   "comparison": "dad54c1198f2444684a3ede6d0d4e4713ca55861",
+   "runtime_modules": 191,
+   "artifact_inputs": 58,
+   "equal": true
+  },
+  "operational_failures": [
+   "Diagnostic preparation: system Python tarfile filter argument unsupported; before extraction/test",
+   "First reference diagnostic compile: ambiguous float type in reporting; repaired with Vec<f64>; exit101 retained in records",
+   "Portable comparison first invocation: unqualified Path NameError before comparisons; corrected parser then exact comparison passed"
+  ],
+  "disposition": "Test-only repairs and Mac source integration passed; actual native/host checks pending; M3b unaccepted; M3c not released.",
+  "integration": {
+   "runs": [
+    {
+     "command": [
+      "./scripts/run_tests.sh"
+     ],
+     "revision": "2e85635f4aa9fa6ac1c61da95157ead50c77b2cf",
+     "exit_code": 1,
+     "seconds": 20.083275666227564,
+     "full_log_sha256": "f62eb0afdfbd0a16a363cea8dc424afb15b73f99d138cdb2465ff39165982026",
+     "source_state": "2e85635f plus the two test-only repairs in this commit; production equal to dad54c11"
+    },
+    {
+     "command": [
+      "./scripts/run_tests.sh",
+      "--source-only"
+     ],
+     "revision": "2e85635f4aa9fa6ac1c61da95157ead50c77b2cf",
+     "exit_code": 0,
+     "seconds": 241.97336487518623,
+     "full_log_sha256": "f9c527d49e62898e11f2d36c9e9813d04e0d335b2ea7b5434e0d2110897f9ac3",
+     "source_state": "2e85635f plus the two test-only repairs in this commit; production equal to dad54c11"
+    }
+   ],
+   "standard_python_tests": 315,
+   "standard_failure": "installed-plugin binding mismatch, retained",
+   "source_only_python_tests": 322,
+   "source_only_rust_executions": 1939,
+   "source_only_rust_groups": 80,
+   "source_only_ignored": 14,
+   "core_library_passed": 1365,
+   "core_library_ignored": 3,
+   "source_only_exit": 0,
+   "additional_checks": "fmt, fuzz compile, both Clippy configurations, allocator audits, portable checks, complexity ratchet, mock bridge and numeric guards passed",
+   "skip": "Linux mock-plugin audit requires GNU ELF linker; installed-package admission omitted explicitly",
+   "status_sha256": "1e13698364c882708767b9ea877e28d0bd94b331f21843979742b1ddab5dc10e"
+  }
  }
 }

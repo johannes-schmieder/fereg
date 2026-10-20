@@ -1747,7 +1747,9 @@ mod tests {
     }
 
     // Pre-consolidation witness: digests recorded from the explicit executor
-    // builder and the bounded automatic builder before M3b. The consolidated
+    // builder and bounded automatic builder at fereg e9efda55 / CMG 03a26041,
+    // using the dyadic inputs below. These expectations come from the accepted
+    // pre-M3b implementation, not the consolidated adapter. The consolidated
     // adapter must reproduce graphs, labels, hierarchy metadata, application
     // policy and every cycle output bit at one and four workers.
     #[test]
@@ -1772,8 +1774,9 @@ mod tests {
                 mix(&mut value, u64::from(byte));
             }
             let stride = capacity;
+            // Small dyadic inputs have identical bits across platform math libraries.
             let residual: Vec<f64> = (0..firms * stride)
-                .map(|index| (index as f64 * 0.37).sin() + (index % 3) as f64 * 0.25)
+                .map(|index| ((index * 37 % 257) as f64 - 128.0) / 64.0 + (index % 3) as f64 * 0.25)
                 .collect();
             let scales: Vec<f64> = (0..firms).map(|firm| 1.0 + (firm % 4) as f64).collect();
             let mut mask = vec![1.0; stride];
@@ -1911,48 +1914,48 @@ mod tests {
             return;
         }
         let expected: &[(&str, u64, u64)] = &[
-            ("sampled0/t1/c1", 0x09b37388c01198aa, 0xfdd13d2e6a370bb7),
-            ("sampled0/t1/c2", 0xb2e95973bb3a6b75, 0xbf90b632c782dc53),
-            ("sampled0/t1/c5", 0xd118a8fa8b6e088a, 0x56bb0c560e0d54aa),
-            ("sampled0/t4/c1", 0x09b37388c01198aa, 0xfdd13d2e6a370bb7),
-            ("sampled0/t4/c2", 0xb2e95973bb3a6b75, 0xbf90b632c782dc53),
-            ("sampled0/t4/c5", 0xd118a8fa8b6e088a, 0x56bb0c560e0d54aa),
-            ("sampled1/t1/c1", 0xcdafe3ebd60291f9, 0xf280345af3796f9c),
-            ("sampled1/t1/c2", 0xe81d78c6a325788e, 0x5e4856ee8bae8ce4),
-            ("sampled1/t1/c5", 0xebe7777eb79939f2, 0x8aba3dab1669aa52),
-            ("sampled1/t4/c1", 0xcdafe3ebd60291f9, 0xf280345af3796f9c),
-            ("sampled1/t4/c2", 0xe81d78c6a325788e, 0x5e4856ee8bae8ce4),
-            ("sampled1/t4/c5", 0xebe7777eb79939f2, 0x8aba3dab1669aa52),
-            ("sampled2/t1/c1", 0xb9a90b0ee7a1de87, 0x38e63447839bae22),
-            ("sampled2/t1/c2", 0x511a2a0edd9a7f1e, 0x3c079e8ffccb48c4),
-            ("sampled2/t1/c5", 0x43d8741368781e8c, 0x1bc0004de8704dec),
-            ("sampled2/t4/c1", 0xb9a90b0ee7a1de87, 0x38e63447839bae22),
-            ("sampled2/t4/c2", 0x511a2a0edd9a7f1e, 0x3c079e8ffccb48c4),
-            ("sampled2/t4/c5", 0x43d8741368781e8c, 0x1bc0004de8704dec),
-            ("stars4/t1/c1", 0x3ee2b904fbb591b3, 0x8f42663d9941963e),
-            ("stars4/t1/c2", 0x82483d0591541f9d, 0x8155c2315176f037),
-            ("stars4/t1/c5", 0x116e0025371d04b1, 0x1074fcf511fcd051),
-            ("stars4/t4/c1", 0x3ee2b904fbb591b3, 0x8f42663d9941963e),
-            ("stars4/t4/c2", 0x82483d0591541f9d, 0x8155c2315176f037),
-            ("stars4/t4/c5", 0x116e0025371d04b1, 0x1074fcf511fcd051),
-            ("stars6/t1/c1", 0x769d271dc0a6637a, 0x02d6e476a18de78f),
-            ("stars6/t1/c2", 0xa8cbf56880245205, 0xbe1739c37b35ecef),
-            ("stars6/t1/c5", 0xbc798d4fb28c284b, 0x006f8dc4b1b5052b),
-            ("stars6/t4/c1", 0x769d271dc0a6637a, 0x02d6e476a18de78f),
-            ("stars6/t4/c2", 0xa8cbf56880245205, 0xbe1739c37b35ecef),
-            ("stars6/t4/c5", 0xbc798d4fb28c284b, 0x006f8dc4b1b5052b),
-            ("torus20/t1/c1", 0x0cba0e03824f2012, 0x0000000000000000),
-            ("torus20/t1/c2", 0xe3b789c7a2eef928, 0x0000000000000000),
-            ("torus20/t1/c5", 0x1c7c3d082b028813, 0x0000000000000000),
-            ("torus20/t4/c1", 0x0cba0e03824f2012, 0x0000000000000000),
-            ("torus20/t4/c2", 0xe3b789c7a2eef928, 0x0000000000000000),
-            ("torus20/t4/c5", 0x1c7c3d082b028813, 0x0000000000000000),
-            ("torus65/t1/c1", 0x0711a0279fa0c492, 0x0000000000000000),
-            ("torus65/t1/c2", 0x9683bfdd3c052635, 0x0000000000000000),
-            ("torus65/t1/c5", 0x2b7deac6ae780a33, 0x0000000000000000),
-            ("torus65/t4/c1", 0xd878f2faba2ecdc3, 0x0000000000000000),
-            ("torus65/t4/c2", 0x14d375ba280ad0e0, 0x0000000000000000),
-            ("torus65/t4/c5", 0x6f1a2d7ba68d3b5a, 0x0000000000000000),
+            ("sampled0/t1/c1", 0x40beee6dc6bd41ea, 0x060991e685a537f7),
+            ("sampled0/t1/c2", 0xec45ed054d93097e, 0x8c7a45f494247580),
+            ("sampled0/t1/c5", 0xbdd14aaa7012574a, 0xf723baa93e6956aa),
+            ("sampled0/t4/c1", 0x40beee6dc6bd41ea, 0x060991e685a537f7),
+            ("sampled0/t4/c2", 0xec45ed054d93097e, 0x8c7a45f494247580),
+            ("sampled0/t4/c5", 0xbdd14aaa7012574a, 0xf723baa93e6956aa),
+            ("sampled1/t1/c1", 0x29c9481088727731, 0x6347d246a656dd64),
+            ("sampled1/t1/c2", 0x494fdaf4e3d02c73, 0xe65943e3d1bf25c9),
+            ("sampled1/t1/c5", 0x21c5d9da3ff35436, 0x7c2ae72dd1e86816),
+            ("sampled1/t4/c1", 0x29c9481088727731, 0x6347d246a656dd64),
+            ("sampled1/t4/c2", 0x494fdaf4e3d02c73, 0xe65943e3d1bf25c9),
+            ("sampled1/t4/c5", 0x21c5d9da3ff35436, 0x7c2ae72dd1e86816),
+            ("sampled2/t1/c1", 0x6fb9ace2e79bd4c3, 0x8f0e7d0e077df0a6),
+            ("sampled2/t1/c2", 0x6932ef4e465f2ed0, 0xc12238b468600b42),
+            ("sampled2/t1/c5", 0xc8903a83f6f56897, 0x55379ef6ef995eb7),
+            ("sampled2/t4/c1", 0x6fb9ace2e79bd4c3, 0x8f0e7d0e077df0a6),
+            ("sampled2/t4/c2", 0x6932ef4e465f2ed0, 0xc12238b468600b42),
+            ("sampled2/t4/c5", 0xc8903a83f6f56897, 0x55379ef6ef995eb7),
+            ("stars4/t1/c1", 0x932919e4d1a4d427, 0x47a450334a12f962),
+            ("stars4/t1/c2", 0xbd13e8617dc315aa, 0x420cbbebb2cfa480),
+            ("stars4/t1/c5", 0x4cd4a3454c9faa34, 0x106c59d795b112d4),
+            ("stars4/t4/c1", 0x932919e4d1a4d427, 0x47a450334a12f962),
+            ("stars4/t4/c2", 0xbd13e8617dc315aa, 0x420cbbebb2cfa480),
+            ("stars4/t4/c5", 0x4cd4a3454c9faa34, 0x106c59d795b112d4),
+            ("stars6/t1/c1", 0x1aaf4e774688e9e2, 0x4afb6812eb0140a7),
+            ("stars6/t1/c2", 0x923bba1f8c902780, 0xcd52f75d7183bc26),
+            ("stars6/t1/c5", 0x6a0e33f2e77d3451, 0x4f0ef63b17c49eb1),
+            ("stars6/t4/c1", 0x1aaf4e774688e9e2, 0x4afb6812eb0140a7),
+            ("stars6/t4/c2", 0x923bba1f8c902780, 0xcd52f75d7183bc26),
+            ("stars6/t4/c5", 0x6a0e33f2e77d3451, 0x4f0ef63b17c49eb1),
+            ("torus20/t1/c1", 0xef9541428232ec5e, 0x0000000000000000),
+            ("torus20/t1/c2", 0xe531af690d09bb67, 0x0000000000000000),
+            ("torus20/t1/c5", 0x49ffc6a279e28594, 0x0000000000000000),
+            ("torus20/t4/c1", 0xef9541428232ec5e, 0x0000000000000000),
+            ("torus20/t4/c2", 0xe531af690d09bb67, 0x0000000000000000),
+            ("torus20/t4/c5", 0x49ffc6a279e28594, 0x0000000000000000),
+            ("torus65/t1/c1", 0x90ff271e68e46c62, 0x0000000000000000),
+            ("torus65/t1/c2", 0x50ac0449cd803c99, 0x0000000000000000),
+            ("torus65/t1/c5", 0x5d9cbd673f7c76c1, 0x0000000000000000),
+            ("torus65/t4/c1", 0xc8ee3adf7c3e89f3, 0x0000000000000000),
+            ("torus65/t4/c2", 0x82248e5ca0b9e4f8, 0x0000000000000000),
+            ("torus65/t4/c5", 0x25caff7f6ecf4d04, 0x0000000000000000),
         ];
         assert_eq!(actual.len(), expected.len());
         for ((key, (explicit, automatic)), (name, frozen_explicit, frozen_automatic)) in

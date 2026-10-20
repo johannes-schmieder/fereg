@@ -513,6 +513,59 @@ scientific tolerance change or automatic rerun is proposed.
 The compact JSON record contains the full-log and status hashes. Ignored raw
 logs remain resumable working material, not retained committed evidence.
 
+### Authorized Mac diagnosis and test repairs
+
+Johannes subsequently authorized retries until Claude completes all milestones.
+This permits diagnosed repairs and affected reruns through M3d; it supersedes
+the earlier retry prohibition and remaining harness-repair count. Failed
+attempts remain failed. Scientific semantics and tolerances, milestone review,
+and the fixed timing protocol remain unchanged; retries do not authorize
+additional sampling to obtain a performance pass.
+
+The proposed same-Mac comparison completed using the original sine-derived
+fixture. Accepted M3a (`e9efda55` / `03a26041`) and the M3b candidate
+(`dad54c11` / `efb53394`) matched all 42 configuration digests and all 767
+captured input, graph, label, hierarchy and cycle-output sections exactly.
+Both differed from the old Linux table in the same 26 configurations. This
+isolates the failure to that table's cross-platform assumption for this witness;
+it provides no evidence of candidate arithmetic drift on this Mac.
+
+The maintained witness now uses small dyadic residual inputs, avoiding a
+platform math-library dependency. Its 42 replacement expectations were
+captured exclusively from accepted M3a. A separate candidate capture matched
+all 42 digests and 767 sections exactly. Configuration, masks, scaling,
+worker counts, application policy and exact output assertions are preserved.
+Linux execution of the revised fixture remains a separate required check.
+
+The end-to-end cancellation test now asserts interruption at reached sampled
+query thresholds and exact reconstruction, while recording observed phases.
+Guaranteed preparation coverage belongs to the existing exhaustive serial
+query sweep, which now additionally requires all six unconditional numeric
+allocation/publication phases. CMG's actual-inner-work tests retain their
+separate role; sampled host-query hits are not inner-latency evidence.
+Independent high-effort and bounded Astra review found no actionable defect
+in these test repairs. Production comparison with `dad54c11` confirms identical
+tokens in 191 runtime modules and identical bytes in 58 artifact inputs.
+
+The diagnostic preparation first failed because the system Python did not
+support the archive-filter argument; no source extraction or test ran. The
+first reference compilation then failed on an ambiguous float type in added
+reporting code; an explicit `Vec<f64>` annotation repaired that reporting.
+An initial comparison-script invocation also failed on a missing qualified
+`Path` name before comparing results. These operational failures remain in the
+compact record. They did not execute native scientific calls or consume timing
+observations.
+
+The repaired standard entrypoint passed 315 Python tests and retained its
+installed-plugin binding failure (exit 1, 20.083275666 seconds). The separately
+labelled source-only entrypoint passed with exit 0 in 241.973364875 seconds:
+322 Python tests, 1,939 Rust test executions in 80 groups, 14 ignored, both
+Clippy configurations, formatting, fuzz compilation, allocator audits, portable
+checks, the complexity ratchet, mock bridge and numeric guards. The core group
+passed 1,365 tests with three ignored, including both repaired tests. Linux
+mock-plugin audit was skipped on Mac; installed-package admission was explicitly
+omitted. M3b remains unaccepted pending the actual native and host checks.
+
 ## CMG successor milestone 3a: construction-work cap removed
 
 **M3a is accepted for M3b: review, native/transaction checks, the 42-cell
