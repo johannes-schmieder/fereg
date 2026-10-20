@@ -66,6 +66,20 @@
     "unresolved": "the first patched-pre-M3a focused run failed 1 of 84; no failing test identity/output survives; subsequent passes do not resolve it"
   },
   "codex_host_acceptance": {
+    "acceptance": {
+      "basis": "Reviewed cancellation repair and trace-only diagnostics; source/native/transaction evidence, independent build-install witness, 42-cell audit and fixed Linux/Mac D.3 nonregression pass. Every corrected Linux timing/report job has failed0 and exit0.",
+      "cmg_revision": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+      "performance_limits": "Paired instrumented diagnostic solves only; per-cell six-host Linux units and six-block single-Mac units. No public activation, uninstrumented release qualification or material unchanged-workflow control-cost reduction claim.",
+      "preserved_failures": [
+        "standard installed-plugin binding mismatch",
+        "lost historical patched-baseline83/1 failure",
+        "six first Linux warmups failed at metadata adapter before timed blocks"
+      ],
+      "production_revision": "d33a1575c7bc17ae1efbf75eb5fb02fb9263dfb4",
+      "repair_authorization_remaining": 3,
+      "repair_authorization_used": 2,
+      "status": "accepted_for_M3b"
+    },
     "admission": {
       "accounting": "all three tasks failed=0 exit_status=0 on scc-tb4; preparation 8195794 failed=0 exit_status=0",
       "array_tasks": [
@@ -2746,6 +2760,2318 @@
           "slots": 28
         }
       ],
+      "approved_corrected_panel": {
+        "accounting": [
+          {
+            "cpu": "175.289",
+            "exit_status": 0,
+            "failed": 0,
+            "granted_pe": "omp28",
+            "hostname": "scc-xa1.scc.bu.edu",
+            "jobnumber": 8196135,
+            "maxvmem": "1.271G",
+            "qname": "onrcc-m512-pub",
+            "ru_wallclock": 157,
+            "slots": 28
+          },
+          {
+            "cpu": "174.589",
+            "exit_status": 0,
+            "failed": 0,
+            "granted_pe": "omp28",
+            "hostname": "scc-xa2.scc.bu.edu",
+            "jobnumber": 8196136,
+            "maxvmem": "1.272G",
+            "qname": "onrcc-m512-pub",
+            "ru_wallclock": 157,
+            "slots": 28
+          },
+          {
+            "cpu": "176.467",
+            "exit_status": 0,
+            "failed": 0,
+            "granted_pe": "omp28",
+            "hostname": "scc-xa4.scc.bu.edu",
+            "jobnumber": 8196137,
+            "maxvmem": "1.258G",
+            "qname": "onrcc-m512-pub",
+            "ru_wallclock": 159,
+            "slots": 28
+          },
+          {
+            "cpu": "176.340",
+            "exit_status": 0,
+            "failed": 0,
+            "granted_pe": "omp28",
+            "hostname": "scc-xb1.scc.bu.edu",
+            "jobnumber": 8196138,
+            "maxvmem": "1.263G",
+            "qname": "onrcc-m512-pub",
+            "ru_wallclock": 158,
+            "slots": 28
+          },
+          {
+            "cpu": "176.382",
+            "exit_status": 0,
+            "failed": 0,
+            "granted_pe": "omp28",
+            "hostname": "scc-xb2.scc.bu.edu",
+            "jobnumber": 8196139,
+            "maxvmem": "1.262G",
+            "qname": "onrcc-m512-pub",
+            "ru_wallclock": 158,
+            "slots": 28
+          },
+          {
+            "cpu": "175.307",
+            "exit_status": 0,
+            "failed": 0,
+            "granted_pe": "omp28",
+            "hostname": "scc-xb3.scc.bu.edu",
+            "jobnumber": 8196140,
+            "maxvmem": "1.296G",
+            "qname": "onrcc-m512-pub",
+            "ru_wallclock": 158,
+            "slots": 28
+          }
+        ],
+        "activation_qualified": false,
+        "comparisons": [
+          {
+            "control_cost_equal": false,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.0746265839933633,
+              "median": -0.07155624254945211,
+              "n": 6,
+              "upper": -0.0677993456019101
+            },
+            "host_units": [
+              {
+                "excess_s": -0.07146714995743848,
+                "hostname": "scc-xa1",
+                "ratio": 0.9456916174566286,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.07448531387408788,
+                "hostname": "scc-xa2",
+                "ratio": 0.9416612555102614,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.0689657364868561,
+                "hostname": "scc-xa4",
+                "ratio": 0.9493117615917165,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.07164533514146576,
+                "hostname": "scc-xb1",
+                "ratio": 0.9458317751784896,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.0677993456019101,
+                "hostname": "scc-xb2",
+                "ratio": 0.9512135470233956,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.0746265839933633,
+                "hostname": "scc-xb3",
+                "ratio": 0.9414469142450269,
+                "replica": 6
+              }
+            ],
+            "id": "high-degree-weak-t1",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17045279181,
+                    "median": 17045278206.5,
+                    "min": 17045277524,
+                    "spread": 1657
+                  },
+                  "reference": {
+                    "max": 17528058897,
+                    "median": 17528058193.0,
+                    "min": 17528057693,
+                    "spread": 1204
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9724567343524628,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17045278983,
+                    "median": 17045277197.5,
+                    "min": 17045276817,
+                    "spread": 2166
+                  },
+                  "reference": {
+                    "max": 17528058816,
+                    "median": 17528057437.5,
+                    "min": 17528056615,
+                    "spread": 2201
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9724567296950658,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17045279602,
+                    "median": 17045277694.0,
+                    "min": 17045277365,
+                    "spread": 2237
+                  },
+                  "reference": {
+                    "max": 17528059166,
+                    "median": 17528058086.0,
+                    "min": 17528057703,
+                    "spread": 1463
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.972456722568361,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17045278682,
+                    "median": 17045278305.0,
+                    "min": 17045277438,
+                    "spread": 1244
+                  },
+                  "reference": {
+                    "max": 17528059762,
+                    "median": 17528057800.0,
+                    "min": 17528057472,
+                    "spread": 2290
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9724567307880195,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17045279795,
+                    "median": 17045277903.5,
+                    "min": 17045276917,
+                    "spread": 2878
+                  },
+                  "reference": {
+                    "max": 17528059672,
+                    "median": 17528058655.5,
+                    "min": 17528057981,
+                    "spread": 1691
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9724566982354537,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17045277242,
+                    "median": 17045277033.5,
+                    "min": 17045276768,
+                    "spread": 474
+                  },
+                  "reference": {
+                    "max": 17528068273,
+                    "median": 17528058539.5,
+                    "min": 17528057766,
+                    "spread": 10507
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9724565217839671,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "changed workflow; whole-solve instructions only",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.9724565217839671,
+              "median": 0.9724567261317134,
+              "n": 6,
+              "upper": 0.9724567343524628
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.9414469142450269,
+              "median": 0.945761696317559,
+              "n": 6,
+              "upper": 0.9512135470233956
+            }
+          },
+          {
+            "control_cost_equal": false,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.06637864713277147,
+              "median": -0.06108522001657865,
+              "n": 6,
+              "upper": -0.05696032615431733
+            },
+            "host_units": [
+              {
+                "excess_s": -0.060982169597583284,
+                "hostname": "scc-xa1",
+                "ratio": 0.9017049397953761,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.06637864713277147,
+                "hostname": "scc-xa2",
+                "ratio": 0.8909502417602151,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.061188270435574024,
+                "hostname": "scc-xa4",
+                "ratio": 0.9017159234511428,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.06018775050580403,
+                "hostname": "scc-xb1",
+                "ratio": 0.9044083446071045,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.05696032615431733,
+                "hostname": "scc-xb2",
+                "ratio": 0.9112969546735973,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.06123577648246616,
+                "hostname": "scc-xb3",
+                "ratio": 0.9014115540198807,
+                "replica": 6
+              }
+            ],
+            "id": "high-degree-weak-t4",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17197342044,
+                    "median": 17196192073.0,
+                    "min": 17195666439,
+                    "spread": 1675605
+                  },
+                  "reference": {
+                    "max": 17677349594,
+                    "median": 17677079422.5,
+                    "min": 17676926485,
+                    "spread": 423109
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9728032116871084,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17197071226,
+                    "median": 17196472301.5,
+                    "min": 17195345777,
+                    "spread": 1725449
+                  },
+                  "reference": {
+                    "max": 17678142975,
+                    "median": 17677156149.5,
+                    "min": 17675783458,
+                    "spread": 2359517
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9728054729755339,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17196333599,
+                    "median": 17195262677.0,
+                    "min": 17194791311,
+                    "spread": 1542288
+                  },
+                  "reference": {
+                    "max": 17677250910,
+                    "median": 17676677150.5,
+                    "min": 17675680230,
+                    "spread": 1570680
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9727798572364765,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17196887242,
+                    "median": 17195815831.0,
+                    "min": 17194794457,
+                    "spread": 2092785
+                  },
+                  "reference": {
+                    "max": 17677590167,
+                    "median": 17676987387.5,
+                    "min": 17675943647,
+                    "spread": 1646520
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9727865500668451,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17196647210,
+                    "median": 17196347809.0,
+                    "min": 17195825521,
+                    "spread": 821689
+                  },
+                  "reference": {
+                    "max": 17677807765,
+                    "median": 17677365382.5,
+                    "min": 17676776967,
+                    "spread": 1030798
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.972787925832182,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17196772719,
+                    "median": 17196290120.5,
+                    "min": 17195216404,
+                    "spread": 1556315
+                  },
+                  "reference": {
+                    "max": 17677177923,
+                    "median": 17676340770.5,
+                    "min": 17676136953,
+                    "spread": 1040970
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9728251183687828,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "changed workflow; whole-solve instructions only",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.9727798572364765,
+              "median": 0.9727955687596452,
+              "n": 6,
+              "upper": 0.9728251183687828
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.8909502417602151,
+              "median": 0.9017104316232595,
+              "n": 6,
+              "upper": 0.9112969546735973
+            }
+          },
+          {
+            "control_cost_equal": false,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.06095367510355452,
+              "median": -0.05893400293862702,
+              "n": 6,
+              "upper": -0.0566919652790416
+            },
+            "host_units": [
+              {
+                "excess_s": -0.06095367510355452,
+                "hostname": "scc-xa1",
+                "ratio": 0.8835284703232982,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.05979117909556724,
+                "hostname": "scc-xa2",
+                "ratio": 0.8874094215998688,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.05732964177047194,
+                "hostname": "scc-xa4",
+                "ratio": 0.8926610122602824,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.05846859724151738,
+                "hostname": "scc-xb1",
+                "ratio": 0.8906154702381511,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.05939940863573667,
+                "hostname": "scc-xb2",
+                "ratio": 0.8881158274573198,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.0566919652790416,
+                "hostname": "scc-xb3",
+                "ratio": 0.8942076320766387,
+                "replica": 6
+              }
+            ],
+            "id": "high-degree-weak-t8",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17251377352,
+                    "median": 17250562941.5,
+                    "min": 17249293136,
+                    "spread": 2084216
+                  },
+                  "reference": {
+                    "max": 17737880023,
+                    "median": 17735809558.5,
+                    "min": 17733804189,
+                    "spread": 4075834
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9726329808320977,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17252398668,
+                    "median": 17251460221.0,
+                    "min": 17249116644,
+                    "spread": 3282024
+                  },
+                  "reference": {
+                    "max": 17736768357,
+                    "median": 17735486740.5,
+                    "min": 17735060084,
+                    "spread": 1708273
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9726770542373476,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17253642134,
+                    "median": 17252597803.0,
+                    "min": 17252269798,
+                    "spread": 1372336
+                  },
+                  "reference": {
+                    "max": 17738925439,
+                    "median": 17737452925.0,
+                    "min": 17733983365,
+                    "spread": 4942074
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9727023758580492,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17255790978,
+                    "median": 17253736576.5,
+                    "min": 17251577948,
+                    "spread": 4213030
+                  },
+                  "reference": {
+                    "max": 17738099057,
+                    "median": 17736607317.0,
+                    "min": 17733713589,
+                    "spread": 4385468
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9727932271309347,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17253156102,
+                    "median": 17252816480.0,
+                    "min": 17248526088,
+                    "spread": 4630014
+                  },
+                  "reference": {
+                    "max": 17737041337,
+                    "median": 17735115834.5,
+                    "min": 17734324295,
+                    "spread": 2717042
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9727341568387037,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 17254289295,
+                    "median": 17251001220.0,
+                    "min": 17250150297,
+                    "spread": 4138998
+                  },
+                  "reference": {
+                    "max": 17737166669,
+                    "median": 17736758204.5,
+                    "min": 17735024058,
+                    "spread": 2142611
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9726655011541255,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "changed workflow; whole-solve instructions only",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.9726329808320977,
+              "median": 0.9726897150476984,
+              "n": 6,
+              "upper": 0.9727932271309347
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.8835284703232982,
+              "median": 0.8893656488477355,
+              "n": 6,
+              "upper": 0.8942076320766387
+            }
+          },
+          {
+            "control_cost_equal": true,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.004808469809978488,
+              "median": -0.003991051351160672,
+              "n": 6,
+              "upper": -0.003599454599408341
+            },
+            "host_units": [
+              {
+                "excess_s": -0.004808469809978488,
+                "hostname": "scc-xa1",
+                "ratio": 0.9957284117820305,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.0036006923692714302,
+                "hostname": "scc-xa2",
+                "ratio": 1.008802766139636,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.004181052571440203,
+                "hostname": "scc-xa4",
+                "ratio": 1.0024001302401817,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.0038010501308811426,
+                "hostname": "scc-xb1",
+                "ratio": 1.0067598962567392,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.003599454599408341,
+                "hostname": "scc-xb2",
+                "ratio": 1.0088638556335836,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.004791535373807552,
+                "hostname": "scc-xb3",
+                "ratio": 0.9957050470965079,
+                "replica": 6
+              }
+            ],
+            "id": "repeated-cells-t1",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2658132182,
+                    "median": 2658130676.5,
+                    "min": 2658129692,
+                    "spread": 2490
+                  },
+                  "reference": {
+                    "max": 2658139064,
+                    "median": 2658137264.0,
+                    "min": 2658136338,
+                    "spread": 2726
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999974885610897,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2658130922,
+                    "median": 2658130232.0,
+                    "min": 2658129801,
+                    "spread": 1121
+                  },
+                  "reference": {
+                    "max": 2658138419,
+                    "median": 2658136299.0,
+                    "min": 2658135923,
+                    "spread": 2496
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999975779087033,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2658131660,
+                    "median": 2658130679.5,
+                    "min": 2658129394,
+                    "spread": 2266
+                  },
+                  "reference": {
+                    "max": 2658137244,
+                    "median": 2658136136.0,
+                    "min": 2658135794,
+                    "spread": 1450
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999978465174706,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2658131832,
+                    "median": 2658129932.5,
+                    "min": 2658129548,
+                    "spread": 2284
+                  },
+                  "reference": {
+                    "max": 2658137782,
+                    "median": 2658137015.0,
+                    "min": 2658136345,
+                    "spread": 1437
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999974689039691,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2658132356,
+                    "median": 2658130436.5,
+                    "min": 2658129637,
+                    "spread": 2719
+                  },
+                  "reference": {
+                    "max": 2658137168,
+                    "median": 2658136790.0,
+                    "min": 2658136219,
+                    "spread": 949
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999977332805821,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2658131533,
+                    "median": 2658130623.5,
+                    "min": 2658130123,
+                    "spread": 1410
+                  },
+                  "reference": {
+                    "max": 2658139301,
+                    "median": 2658137416.5,
+                    "min": 2658136628,
+                    "spread": 2673
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999973798385813,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "single-worker control-cost diagnostic",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.9999973798385813,
+              "median": 0.9999975332348965,
+              "n": 6,
+              "upper": 0.9999978465174706
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.9957050470965079,
+              "median": 1.0045800132484604,
+              "n": 6,
+              "upper": 1.0088638556335836
+            }
+          },
+          {
+            "control_cost_equal": true,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.004231882854208769,
+              "median": -0.0021490878012359353,
+              "n": 6,
+              "upper": -0.0013890238255624846
+            },
+            "host_units": [
+              {
+                "excess_s": -0.002110420541832995,
+                "hostname": "scc-xa1",
+                "ratio": 1.0150104298696723,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.0026758331528379566,
+                "hostname": "scc-xa2",
+                "ratio": 1.0058581495898533,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.0018129459732269498,
+                "hostname": "scc-xa4",
+                "ratio": 1.0193250838369257,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.004231882854208769,
+                "hostname": "scc-xb1",
+                "ratio": 0.981060959829248,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.0013890238255624846,
+                "hostname": "scc-xb2",
+                "ratio": 1.0271680979315267,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.0021877550606388754,
+                "hostname": "scc-xb3",
+                "ratio": 1.0136380078593783,
+                "replica": 6
+              }
+            ],
+            "id": "repeated-cells-t4",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2705312430,
+                    "median": 2703474879.0,
+                    "min": 2702506841,
+                    "spread": 2805589
+                  },
+                  "reference": {
+                    "max": 2705355709,
+                    "median": 2703687021.5,
+                    "min": 2703161229,
+                    "spread": 2194480
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9998962458993705,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2703698771,
+                    "median": 2703501458.5,
+                    "min": 2702881982,
+                    "spread": 816789
+                  },
+                  "reference": {
+                    "max": 2703431504,
+                    "median": 2703208591.5,
+                    "min": 2702919295,
+                    "spread": 512209
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0000754332208557,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2705355028,
+                    "median": 2703539763.0,
+                    "min": 2702494714,
+                    "spread": 2860314
+                  },
+                  "reference": {
+                    "max": 2703701234,
+                    "median": 2703507409.5,
+                    "min": 2703287666,
+                    "spread": 413568
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0000855171917806,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2704158697,
+                    "median": 2703513544.5,
+                    "min": 2702975286,
+                    "spread": 1183411
+                  },
+                  "reference": {
+                    "max": 2705427850,
+                    "median": 2703667824.5,
+                    "min": 2702383589,
+                    "spread": 3044261
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999088981568114,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2705385518,
+                    "median": 2703372290.5,
+                    "min": 2702088111,
+                    "spread": 3297407
+                  },
+                  "reference": {
+                    "max": 2704156522,
+                    "median": 2703399176.5,
+                    "min": 2702863714,
+                    "spread": 1292808
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0000368754917885,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2703582436,
+                    "median": 2703197013.0,
+                    "min": 2702370198,
+                    "spread": 1212238
+                  },
+                  "reference": {
+                    "max": 2703913832,
+                    "median": 2703649186.5,
+                    "min": 2703516921,
+                    "spread": 396911
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9997796900195005,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "multi-worker observation with within-host spread",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.9997796900195005,
+              "median": 0.9999728868243,
+              "n": 6,
+              "upper": 1.0000855171917806
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.981060959829248,
+              "median": 1.0143242188645254,
+              "n": 6,
+              "upper": 1.0271680979315267
+            }
+          },
+          {
+            "control_cost_equal": true,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.003786425630903382,
+              "median": -0.0034547143913596827,
+              "n": 6,
+              "upper": -0.0025750080557955975
+            },
+            "host_units": [
+              {
+                "excess_s": -0.003786425630903382,
+                "hostname": "scc-xa1",
+                "ratio": 0.9844852393345588,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.0025750080557955975,
+                "hostname": "scc-xa2",
+                "ratio": 1.0051489056844158,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.003026086103861678,
+                "hostname": "scc-xa4",
+                "ratio": 0.9972756956830771,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.0036137164159024673,
+                "hostname": "scc-xb1",
+                "ratio": 0.9881735136233043,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.003295712366816898,
+                "hostname": "scc-xb2",
+                "ratio": 0.9934247872390146,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.0037243047120891154,
+                "hostname": "scc-xb3",
+                "ratio": 0.9849328617705113,
+                "replica": 6
+              }
+            ],
+            "id": "repeated-cells-t8",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2737749064,
+                    "median": 2733874760.5,
+                    "min": 2733259028,
+                    "spread": 4490036
+                  },
+                  "reference": {
+                    "max": 2735097026,
+                    "median": 2733969675.5,
+                    "min": 2732884269,
+                    "spread": 2212757
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0002592448930858,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2734274907,
+                    "median": 2733949727.0,
+                    "min": 2733458934,
+                    "spread": 815973
+                  },
+                  "reference": {
+                    "max": 2734701550,
+                    "median": 2734029639.0,
+                    "min": 2732511975,
+                    "spread": 2189575
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0000330032952196,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2734667903,
+                    "median": 2734568669.5,
+                    "min": 2733644402,
+                    "spread": 1023501
+                  },
+                  "reference": {
+                    "max": 2735728477,
+                    "median": 2735011177.5,
+                    "min": 2733543496,
+                    "spread": 2184981
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9998314086551994,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2736484016,
+                    "median": 2735326956.0,
+                    "min": 2733313423,
+                    "spread": 3170593
+                  },
+                  "reference": {
+                    "max": 2736649109,
+                    "median": 2735082629.0,
+                    "min": 2732487163,
+                    "spread": 4161946
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0001051971713097,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2735560605,
+                    "median": 2734634949.5,
+                    "min": 2734325892,
+                    "spread": 1234713
+                  },
+                  "reference": {
+                    "max": 2735050822,
+                    "median": 2733887999.5,
+                    "min": 2733627359,
+                    "spread": 1423463
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0002470865916568,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 2735191426,
+                    "median": 2733996156.5,
+                    "min": 2733679449,
+                    "spread": 1511977
+                  },
+                  "reference": {
+                    "max": 2735204423,
+                    "median": 2733786199.0,
+                    "min": 2732726267,
+                    "spread": 2478156
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0001244027054115,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "multi-worker observation with within-host spread",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.9998314086551994,
+              "median": 1.0001147999383606,
+              "n": 6,
+              "upper": 1.0002592448930858
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.9844852393345588,
+              "median": 0.9907991504311595,
+              "n": 6,
+              "upper": 1.0051489056844158
+            }
+          },
+          {
+            "control_cost_equal": true,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.010803168000811263,
+              "median": -0.008690286020330222,
+              "n": 6,
+              "upper": -0.007394286644995495
+            },
+            "host_units": [
+              {
+                "excess_s": -0.008927565010014606,
+                "hostname": "scc-xa1",
+                "ratio": 1.0123368218861304,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.008402427660961382,
+                "hostname": "scc-xa2",
+                "ratio": 1.01446811083431,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.00873105326169123,
+                "hostname": "scc-xa4",
+                "ratio": 1.0130822843499596,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.010803168000811263,
+                "hostname": "scc-xb1",
+                "ratio": 1.0048846466707277,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.008649518778969214,
+                "hostname": "scc-xb2",
+                "ratio": 1.013679060136549,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.007394286644995495,
+                "hostname": "scc-xb3",
+                "ratio": 1.0186290445763442,
+                "replica": 6
+              }
+            ],
+            "id": "wide-rhs-t1",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6003519003,
+                    "median": 5997019535.5,
+                    "min": 5997019078,
+                    "spread": 6499925
+                  },
+                  "reference": {
+                    "max": 6003524873,
+                    "median": 5999275777.0,
+                    "min": 5997025331,
+                    "spread": 6499542
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9998114696325093,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6003519310,
+                    "median": 5999269341.0,
+                    "min": 5995019065,
+                    "spread": 8500245
+                  },
+                  "reference": {
+                    "max": 6003526533,
+                    "median": 6003525311.0,
+                    "min": 5995025217,
+                    "spread": 8501316
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9996447987482351,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6003519670,
+                    "median": 6000269007.5,
+                    "min": 5995018987,
+                    "spread": 8500683
+                  },
+                  "reference": {
+                    "max": 6003526922,
+                    "median": 5999275460.0,
+                    "min": 5995025704,
+                    "spread": 8501218
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0000822721211704,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6003520711,
+                    "median": 6000270006.5,
+                    "min": 5995021272,
+                    "spread": 8499439
+                  },
+                  "reference": {
+                    "max": 6003527979,
+                    "median": 6000275387.0,
+                    "min": 5995026291,
+                    "spread": 8501688
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999990396895122,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6003521471,
+                    "median": 6003519733.0,
+                    "min": 6003519524,
+                    "spread": 1947
+                  },
+                  "reference": {
+                    "max": 6003527639,
+                    "median": 6000275552.5,
+                    "min": 5995034654,
+                    "spread": 8492985
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0006238528343574,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6003529295,
+                    "median": 6003520346.5,
+                    "min": 5997021551,
+                    "spread": 6507744
+                  },
+                  "reference": {
+                    "max": 6003524812,
+                    "median": 5997024517.0,
+                    "min": 5995026123,
+                    "spread": 8498689
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0006248744037514,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "single-worker control-cost diagnostic",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.9996447987482351,
+              "median": 1.0000406559053414,
+              "n": 6,
+              "upper": 1.0006248744037514
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 1.0048846466707277,
+              "median": 1.0133806722432543,
+              "n": 6,
+              "upper": 1.0186290445763442
+            }
+          },
+          {
+            "control_cost_equal": true,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.008990187322935614,
+              "median": -0.00573233994210523,
+              "n": 6,
+              "upper": -0.0011779562210569774
+            },
+            "host_units": [
+              {
+                "excess_s": -0.004631005498873884,
+                "hostname": "scc-xa1",
+                "ratio": 1.0173307634659925,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.002091278853873124,
+                "hostname": "scc-xa2",
+                "ratio": 1.0351792272728486,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.008542673632661618,
+                "hostname": "scc-xa4",
+                "ratio": 0.9908150779251703,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.0011779562210569774,
+                "hostname": "scc-xb1",
+                "ratio": 1.0417286023676349,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.008990187322935614,
+                "hostname": "scc-xb2",
+                "ratio": 0.987999438993434,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.0068336743853365765,
+                "hostname": "scc-xb3",
+                "ratio": 1.0022826326181211,
+                "replica": 6
+              }
+            ],
+            "id": "wide-rhs-t4",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6175329453,
+                    "median": 6174950004.5,
+                    "min": 6174620508,
+                    "spread": 708945
+                  },
+                  "reference": {
+                    "max": 6176832798,
+                    "median": 6175069870.0,
+                    "min": 6174461500,
+                    "spread": 2371298
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999358809780718,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6176610472,
+                    "median": 6172029496.0,
+                    "min": 6167837709,
+                    "spread": 8772763
+                  },
+                  "reference": {
+                    "max": 6174914477,
+                    "median": 6174303611.0,
+                    "min": 6168500209,
+                    "spread": 6414268
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9998575395235583,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6174724136,
+                    "median": 6173075547.5,
+                    "min": 6166456564,
+                    "spread": 8267572
+                  },
+                  "reference": {
+                    "max": 6174916891,
+                    "median": 6174386696.0,
+                    "min": 6168574382,
+                    "spread": 6342509
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9998001825615063,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6177467091,
+                    "median": 6175028739.0,
+                    "min": 6174074945,
+                    "spread": 3392146
+                  },
+                  "reference": {
+                    "max": 6175440613,
+                    "median": 6173475660.0,
+                    "min": 6168898641,
+                    "spread": 6541972
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0004175729650369,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6175432754,
+                    "median": 6173650828.5,
+                    "min": 6169935997,
+                    "spread": 5496757
+                  },
+                  "reference": {
+                    "max": 6174905141,
+                    "median": 6173221231.0,
+                    "min": 6168120108,
+                    "spread": 6785033
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.000129747052639,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6175391989,
+                    "median": 6174952699.5,
+                    "min": 6174731462,
+                    "spread": 660527
+                  },
+                  "reference": {
+                    "max": 6175196962,
+                    "median": 6174649643.0,
+                    "min": 6172876000,
+                    "spread": 2320962
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0001075770480659,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "multi-worker observation with within-host spread",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.9998001825615063,
+              "median": 1.0000217290130688,
+              "n": 6,
+              "upper": 1.0004175729650369
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.987999438993434,
+              "median": 1.0098066980420568,
+              "n": 6,
+              "upper": 1.0417286023676349
+            }
+          },
+          {
+            "control_cost_equal": true,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.009923225135879007,
+              "median": -0.0044124324522825335,
+              "n": 6,
+              "upper": -0.0015620417356128633
+            },
+            "host_units": [
+              {
+                "excess_s": -0.0038313299877966228,
+                "hostname": "scc-xa1",
+                "ratio": 1.0173901274820338,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.0015620417356128633,
+                "hostname": "scc-xa2",
+                "ratio": 1.0366786713320701,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.004993534916768443,
+                "hostname": "scc-xa4",
+                "ratio": 1.007282629246522,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.003414696614646774,
+                "hostname": "scc-xb1",
+                "ratio": 1.0212105733803662,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.006799900137342992,
+                "hostname": "scc-xb2",
+                "ratio": 0.9941039583957242,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.009923225135879007,
+                "hostname": "scc-xb3",
+                "ratio": 0.9695918816023661,
+                "replica": 6
+              }
+            ],
+            "id": "wide-rhs-t8",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6365090402,
+                    "median": 6361350865.0,
+                    "min": 6351407646,
+                    "spread": 13682756
+                  },
+                  "reference": {
+                    "max": 6361686861,
+                    "median": 6359347535.5,
+                    "min": 6358980794,
+                    "spread": 2706067
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999932905134166,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6360813545,
+                    "median": 6359119398.5,
+                    "min": 6354841681,
+                    "spread": 5971864
+                  },
+                  "reference": {
+                    "max": 6362617557,
+                    "median": 6360003479.5,
+                    "min": 6353363244,
+                    "spread": 9254313
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.9999177683308256,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6363233317,
+                    "median": 6361851597.0,
+                    "min": 6351741816,
+                    "spread": 11491501
+                  },
+                  "reference": {
+                    "max": 6361006428,
+                    "median": 6355498936.0,
+                    "min": 6350448203,
+                    "spread": 10558225
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0006382181915803,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6362461882,
+                    "median": 6360976057.5,
+                    "min": 6353063307,
+                    "spread": 9398575
+                  },
+                  "reference": {
+                    "max": 6360927811,
+                    "median": 6359154032.0,
+                    "min": 6352589104,
+                    "spread": 8338707
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0002222075525968,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6364580221,
+                    "median": 6361670854.5,
+                    "min": 6358156863,
+                    "spread": 6423358
+                  },
+                  "reference": {
+                    "max": 6364950983,
+                    "median": 6361363203.5,
+                    "min": 6350652237,
+                    "spread": 14298746
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0003049094507273,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 6361063965,
+                    "median": 6360311257.5,
+                    "min": 6354319362,
+                    "spread": 6744603
+                  },
+                  "reference": {
+                    "max": 6356402480,
+                    "median": 6352351126.5,
+                    "min": 6351295682,
+                    "spread": 5106798
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 1.0009288551385367,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "multi-worker observation with within-host spread",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.9999177683308256,
+              "median": 1.0002635585016622,
+              "n": 6,
+              "upper": 1.0009288551385367
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.9695918816023661,
+              "median": 1.012336378364278,
+              "n": 6,
+              "upper": 1.0366786713320701
+            }
+          },
+          {
+            "control_cost_equal": false,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.1416963069189619,
+              "median": -0.13726309612706028,
+              "n": 6,
+              "upper": -0.1355226080797048
+            },
+            "host_units": [
+              {
+                "excess_s": -0.13688597167049157,
+                "hostname": "scc-xa1",
+                "ratio": 0.5204253046819817,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.1355226080797048,
+                "hostname": "scc-xa2",
+                "ratio": 0.5243083499782959,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.13687727644485306,
+                "hostname": "scc-xa4",
+                "ratio": 0.5204390567681005,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.1416963069189619,
+                "hostname": "scc-xb1",
+                "ratio": 0.5126523097116171,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.137640220583629,
+                "hostname": "scc-xb2",
+                "ratio": 0.5194852019761912,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.13928400478869246,
+                "hostname": "scc-xb3",
+                "ratio": 0.5157556834780401,
+                "replica": 6
+              }
+            ],
+            "id": "weak-low-t1",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3167309230,
+                    "median": 3167308037.0,
+                    "min": 3167307330,
+                    "spread": 1900
+                  },
+                  "reference": {
+                    "max": 4913126431,
+                    "median": 4913125878.5,
+                    "min": 4913125138,
+                    "spread": 1293
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6446625360565917,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3167309045,
+                    "median": 3167307745.0,
+                    "min": 3167307494,
+                    "spread": 1551
+                  },
+                  "reference": {
+                    "max": 4913126449,
+                    "median": 4913126067.5,
+                    "min": 4913125428,
+                    "spread": 1021
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6446624827688038,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3167310347,
+                    "median": 3167308102.0,
+                    "min": 3167307419,
+                    "spread": 2928
+                  },
+                  "reference": {
+                    "max": 4913128158,
+                    "median": 4913125791.0,
+                    "min": 4913125284,
+                    "spread": 2874
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6446625483381214,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3167308705,
+                    "median": 3167308425.5,
+                    "min": 3167307635,
+                    "spread": 1070
+                  },
+                  "reference": {
+                    "max": 4913136099,
+                    "median": 4913127430.0,
+                    "min": 4913125432,
+                    "spread": 10667
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6446621358273669,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3167310573,
+                    "median": 3167309151.5,
+                    "min": 3167307820,
+                    "spread": 2753
+                  },
+                  "reference": {
+                    "max": 4913128153,
+                    "median": 4913126043.5,
+                    "min": 4913125763,
+                    "spread": 2390
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6446626549339576,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3167317620,
+                    "median": 3167308008.5,
+                    "min": 3167307233,
+                    "spread": 10387
+                  },
+                  "reference": {
+                    "max": 4913125479,
+                    "median": 4913125392.5,
+                    "min": 4913125299,
+                    "spread": 180
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6446630129693467,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "changed workflow; whole-solve instructions only",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.6446621358273669,
+              "median": 0.6446625421973566,
+              "n": 6,
+              "upper": 0.6446630129693467
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.5126523097116171,
+              "median": 0.5199552533290864,
+              "n": 6,
+              "upper": 0.5243083499782959
+            }
+          },
+          {
+            "control_cost_equal": false,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.07555089222165845,
+              "median": -0.07255587623097723,
+              "n": 6,
+              "upper": -0.07091309493384446
+            },
+            "host_units": [
+              {
+                "excess_s": -0.07555089222165845,
+                "hostname": "scc-xa1",
+                "ratio": 0.6185673154753953,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.07307807972134275,
+                "hostname": "scc-xa2",
+                "ratio": 0.6324614268349477,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.0747413522304787,
+                "hostname": "scc-xa4",
+                "ratio": 0.6214270796078166,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.0720336727406117,
+                "hostname": "scc-xb1",
+                "ratio": 0.6352391970461273,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.07091309493384446,
+                "hostname": "scc-xb2",
+                "ratio": 0.6390215297608124,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.07173362609744754,
+                "hostname": "scc-xb3",
+                "ratio": 0.6342304492359183,
+                "replica": 6
+              }
+            ],
+            "id": "weak-low-t4",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3197310310,
+                    "median": 3197094045.5,
+                    "min": 3196909309,
+                    "spread": 401001
+                  },
+                  "reference": {
+                    "max": 4931122718,
+                    "median": 4930766698.5,
+                    "min": 4930353661,
+                    "spread": 769057
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6484004149579046,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3197690722,
+                    "median": 3197427137.0,
+                    "min": 3196925504,
+                    "spread": 765218
+                  },
+                  "reference": {
+                    "max": 4931209673,
+                    "median": 4931041388.0,
+                    "min": 4930101507,
+                    "spread": 1108166
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6484416693747924,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3197764283,
+                    "median": 3197252857.5,
+                    "min": 3196691290,
+                    "spread": 1072993
+                  },
+                  "reference": {
+                    "max": 4935942696,
+                    "median": 4930760396.5,
+                    "min": 4930176050,
+                    "spread": 5766646
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6482763763926965,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3198571640,
+                    "median": 3197545315.0,
+                    "min": 3196908024,
+                    "spread": 1663616
+                  },
+                  "reference": {
+                    "max": 4931792616,
+                    "median": 4930750967.5,
+                    "min": 4927278629,
+                    "spread": 4513987
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6485902171979957,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3198085839,
+                    "median": 3197676720.5,
+                    "min": 3196897798,
+                    "spread": 1188041
+                  },
+                  "reference": {
+                    "max": 4934808527,
+                    "median": 4931405628.0,
+                    "min": 4928984738,
+                    "spread": 5823789
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6483801461869988,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3197692386,
+                    "median": 3197394239.0,
+                    "min": 3197275295,
+                    "spread": 417091
+                  },
+                  "reference": {
+                    "max": 4930950920,
+                    "median": 4930366844.0,
+                    "min": 4928662003,
+                    "spread": 2288917
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6485563661320101,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "changed workflow; whole-solve instructions only",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.6482763763926965,
+              "median": 0.6484210421663485,
+              "n": 6,
+              "upper": 0.6485902171979957
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.6185673154753953,
+              "median": 0.6333459380354329,
+              "n": 6,
+              "upper": 0.6390215297608124
+            }
+          },
+          {
+            "control_cost_equal": false,
+            "diagnostic": "upper_bound_within_allowance",
+            "excess_s": {
+              "alpha": 0.025,
+              "lower": -0.0582476374691024,
+              "median": -0.05214895275856413,
+              "n": 6,
+              "upper": -0.05054418083500008
+            },
+            "host_units": [
+              {
+                "excess_s": -0.05309998755194176,
+                "hostname": "scc-xa1",
+                "ratio": 0.6921840087507208,
+                "replica": 1
+              },
+              {
+                "excess_s": -0.05054418083500008,
+                "hostname": "scc-xa2",
+                "ratio": 0.7039830971471686,
+                "replica": 2
+              },
+              {
+                "excess_s": -0.0582476374691024,
+                "hostname": "scc-xa4",
+                "ratio": 0.6686946235542698,
+                "replica": 3
+              },
+              {
+                "excess_s": -0.051197917965186496,
+                "hostname": "scc-xb1",
+                "ratio": 0.7081011711935054,
+                "replica": 4
+              },
+              {
+                "excess_s": -0.055248418956419534,
+                "hostname": "scc-xb2",
+                "ratio": 0.6840279728581222,
+                "replica": 5
+              },
+              {
+                "excess_s": -0.0507605720367405,
+                "hostname": "scc-xb3",
+                "ratio": 0.70404138786548,
+                "replica": 6
+              }
+            ],
+            "id": "weak-low-t8",
+            "instruction_host_units": [
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3244956619,
+                    "median": 3242350795.5,
+                    "min": 3240046329,
+                    "spread": 4910290
+                  },
+                  "reference": {
+                    "max": 5051504948,
+                    "median": 5040659866.0,
+                    "min": 5033201543,
+                    "spread": 18303405
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6431467137180441,
+                "replica": 1
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3243439645,
+                    "median": 3241696931.5,
+                    "min": 3241474252,
+                    "spread": 1965393
+                  },
+                  "reference": {
+                    "max": 5035782827,
+                    "median": 5034056540.0,
+                    "min": 5030295448,
+                    "spread": 5487379
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6440938288779564,
+                "replica": 2
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3243325310,
+                    "median": 3241238660.0,
+                    "min": 3240179013,
+                    "spread": 3146297
+                  },
+                  "reference": {
+                    "max": 5038269233,
+                    "median": 5037245169.0,
+                    "min": 5035125542,
+                    "spread": 3143691
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.643540556685385,
+                "replica": 3
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3244510119,
+                    "median": 3241626008.5,
+                    "min": 3240129232,
+                    "spread": 4380887
+                  },
+                  "reference": {
+                    "max": 5040099063,
+                    "median": 5034104274.0,
+                    "min": 5033089211,
+                    "spread": 7009852
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6438427276719165,
+                "replica": 4
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3242495303,
+                    "median": 3241033138.5,
+                    "min": 3240316661,
+                    "spread": 2178642
+                  },
+                  "reference": {
+                    "max": 5040213358,
+                    "median": 5037297204.5,
+                    "min": 5034220671,
+                    "spread": 5992687
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6434493514195688,
+                "replica": 5
+              },
+              {
+                "counts": {
+                  "candidate": {
+                    "max": 3242417196,
+                    "median": 3242192674.0,
+                    "min": 3240923665,
+                    "spread": 1493531
+                  },
+                  "reference": {
+                    "max": 5033857609,
+                    "median": 5032738095.0,
+                    "min": 5032311350,
+                    "spread": 1546259
+                  }
+                },
+                "minimum_running_percent": 100.0,
+                "ratio": 0.6441463669556204,
+                "replica": 6
+              }
+            ],
+            "instruction_interpretation": "changed workflow; whole-solve instructions only",
+            "instruction_ratio": {
+              "alpha": 0.025,
+              "lower": 0.6431467137180441,
+              "median": 0.6436916421786507,
+              "n": 6,
+              "upper": 0.6441463669556204
+            },
+            "ratio": {
+              "alpha": 0.025,
+              "lower": 0.6686946235542698,
+              "median": 0.6980835529489446,
+              "n": 6,
+              "upper": 0.7081011711935054
+            }
+          }
+        ],
+        "freeze_job": 8196125,
+        "hosts": [
+          "scc-xa1",
+          "scc-xa2",
+          "scc-xa4",
+          "scc-xb1",
+          "scc-xb2",
+          "scc-xb3"
+        ],
+        "independent_review": "Independent review reproduced all12physical-host paired intervals and inspected all720compact records, schedule/repeats/workflows/crossworker and crosshost decisions, host summaries and all six success accounting records. Closest upper excess=-1.1779562210569774ms. Remote report rechecked rawlog/perf/snapshot integrity and passed. No material same-workflow single-worker instruction reduction.",
+        "jobs": [
+          8196135,
+          8196136,
+          8196137,
+          8196138,
+          8196139,
+          8196140
+        ],
+        "limitations": [
+          "instrumented complete solves; not uninstrumented performance qualification",
+          "independent oracle checked each call; report rechecks retained first-call heads/outputs; full timed sidecars deleted",
+          "perf counts whole-process instructions including parsing/tracing, with recorded event running fractions; six host units do not prove independence",
+          "per-cell uncertainty; no simultaneous 12-cell coverage claim",
+          "qacct failed=0 and exit_status=0 still required for every recorded job/task"
+        ],
+        "native_call_budget": 720,
+        "native_calls": 720,
+        "plan_sha256": "f946d943cea1425068ecfb46cae5b96a2a87d0ad4e24e3fe63706fb7afc818f2",
+        "prior_failed_warmups": 6,
+        "producer_report_status": "observations_complete_accounting_pending",
+        "remaining_authorized_repairs": 3,
+        "repair_number": 2,
+        "report_accounting": {
+          "cpu": "62.906",
+          "exit_status": 0,
+          "failed": 0,
+          "granted_pe": "omp",
+          "hostname": "scc-ei3.scc.bu.edu",
+          "jobnumber": 8196144,
+          "maxvmem": "455.035M",
+          "qname": "econ",
+          "ru_wallclock": 85,
+          "slots": 4
+        },
+        "report_completion_log_sha256": "7e5fb506f96699e9796bbc796e0ebadd0559e7b5e45663a9b6a6faf196635e85",
+        "report_job": 8196144,
+        "report_only_no_native_calls": true,
+        "report_sha256": "d9ca9eb02300c93ce3ab318cb2662d33aef0c8591b9f01984a7060ee306f1ba3",
+        "result_hashes": {
+          "replica-1": "670a4cc9a0a0ebd5cb3612b0784e073fc0b7a3aacef9d755a1ad189a7aca3089",
+          "replica-2": "124fbcf68b75818c93762aff5af8a0e99f7f42dbd2f323f4d78d53d084c5ea29",
+          "replica-3": "b86efd6188a3817f7b371e82ee7d2632a63b5989c0d024ce448de814f7fd8fd5",
+          "replica-4": "4c21021564ed70a9850bb378378eeeda38891d5e4f860bd4c3d037a734f465eb",
+          "replica-5": "1ef1d51907c4f09ad5df97f712b320b9b7cfb07e2a9aa64c0d891e864cb4cc53",
+          "replica-6": "910a1be72bba859f599ad82ba79ea1f8705eb0c05f76ce3604b87d619a1d1fbe"
+        },
+        "same_design_verified": true,
+        "scheduler_accounting_verified": true,
+        "status": "passed",
+        "superseded_metadata_only_freeze_job": 8196108,
+        "uncertainty_unit": "one physical host; two blocks summarized within host; distinct hosts do not prove independence"
+      },
       "calls_started": 6,
       "cause": "Frozen cell oracle descriptor path leaked into scientific runtime metadata; routing_oracle check ran, then legacy cmgschur oracle_check indexed a string as an object. All six jobs stopped on their first warmup. No solver defect or numerical failure established.",
       "failed_adapter_sha256": "cdc4e95fe368fe0567ddd70d8c4f4c902fc4b01be964792f67d995564ce4eea5",
@@ -2765,9 +5091,20 @@
         8195866,
         8195867
       ],
-      "native_rerun": "not authorized under the fixed 720-call/no-retry panel; request a specific exception before a restart",
+      "native_rerun": "Johannes approved next five bounded repairs; final corrected panel submitted as repair 2, retaining original six failed warmups",
       "plan_sha256": "921e3bdddec95f16859c6b0b4a33ee0c2b564171d28657325798e9d6fa7c382a",
       "repair": "runtime_metadata removes descriptor-path keys only; cached and uncached paths retain the bound routing_oracle. Five focused tests pass, including a real check_oracle dispatch regression assertion. Independent review found no scientific bypass, artifact, schedule or budget change.",
+      "repair_authorization": {
+        "approved_repairs": 5,
+        "cumulative_native_budget_after_current_attempt": 726,
+        "current_attempt_native_budget": 720,
+        "current_repair": 2,
+        "date": "2026-10-19",
+        "prior_failed_warmups": 6,
+        "scope": "Up to five bounded M3a validation repairs, including the corrected Linux panel; preserve failed attempts and scientific checks, candidate and protocol; each new Linux panel has the same 720-call/3600-second-per-host budget. No retry for science failure or unfavorable/inconclusive timing.",
+        "text": "Yes I approve the next 5 repairs.",
+        "user": "Johannes"
+      },
       "repaired_adapter_sha256": "5aa315de94f30e5c24cb511f9dd5f9b4429f5395501731de23ce31da684f7c2f",
       "replica_results": [
         {
@@ -2819,6 +5156,15 @@
           "status": "failed"
         }
       ],
+      "report_order_repair": {
+        "adapter_sha256": "0dfbc9b5171934af53f81ec0255b908f4ddc6b39f9c02bb45e38cd67a8415a20",
+        "change": "Canonicalize only changed_fields path order for retained verdict comparison, reject duplicates/nonstrings, preserve equality for every other verdict field.",
+        "checks": "6 focused tests pass; negative cases include missing path, changed maximum difference, changed scope and duplicates.",
+        "independent_review": "All 12 saved Mac comparisons pass; exactly six scoped cases require order normalization. Only changed_fields order is canonicalized; all other verdict equality and duplicate/type checks retained. No native work.",
+        "native_calls": 0,
+        "reproducer": "All six scoped retained Mac cells have identical changed-field paths in a different traversal order after sorted JSON serialization. Original report would compare list order exactly. No native failure or repetition.",
+        "status": "focused_checks_and_independent_review_passed"
+      },
       "saved_output_validation": {
         "checks": "Original frozen plan bindings verified; all six saved native outputs pass the independent oracle, trace/resource checks and instruction-counter parsing; raw outputs, sidecars and logs unchanged before/after. No native solve repeated.",
         "job_accounting": {
@@ -3619,7 +5965,7 @@
         "source_capture_sha256": "ea722ffdcd4de5b2146accbb1b46f6ecba9059eedbf7a125decd867d4946fd83"
       }
     },
-    "remaining": "M3a unaccepted: saved-output repair verification and Johannes disposition of a corrected fixed Linux panel; M3b not started.",
+    "remaining": "No remaining M3a acceptance prerequisite under the approved plan. M3b release is authorized; public two-FE activation is not qualified.",
     "reuse": "573a6216/03a native Stata/Break/public and explicit replay evidence reused after reviewed trace-only edit: unchanged numerical, admission, cancellation and transaction code; old binaries retain original identities. New paired diagnostic artifacts passed actual audit/ABI/load/panic checks on each host platform; Linux numeric guards also passed."
   },
   "codex_host_evidence": {
@@ -3729,10 +6075,11 @@
   ],
   "host": "Linux x86_64 cloud container, 4 vCPU; rustc 1.85.1; Python 3.13.16; not a qualification host",
   "limitations": [
-    "M3a not accepted: Linux diagnostic stopped with a diagnosed metadata-adapter error after six warmups and before timed blocks; no measurement restart has run.",
+    "The initial Linux attempt failed in its metadata adapter after six warmups and remains failed. Johannes approved up to five bounded repairs; two fixes preceded one corrected720-call panel, which passed. Cumulative native calls across those attempts:726. Three repair authorizations remain.",
     "The standard installed-plugin binding mismatch remains a failed check; source-only evidence does not replace installed-package qualification.",
     "The historical patched-baseline 83-pass/1-fail run remains unexplained; the approved single84/84 comparison does not erase it.",
     "Mac D.3 measures instrumented complete solves on one active desktop; six mirrored blocks are uncertainty units, not independent hosts. This is not public activation qualification.",
+    "Linux D.3 uses six distinct whole-host units with two mirrored blocks each; intervals are per-cell, not simultaneous12-cell coverage or proof of host independence. Instructions:u counts the whole user-space harness and inherited threads, including parsing/tracing; it is not a function-level cost measure.",
     "Historical cloud plugin results retain their own artifacts and do not establish Mac/Linux performance. Two-FE public activation stays disabled.",
     "Raw current evidence is retained only while this workstream is unfinished; committed hashes and summaries are the durable record."
   ],
@@ -3763,5 +6110,5 @@
     "run_tests_standard": "stopped at scripts/check_github_install.py: main's runtime changed (expected installed-package binding difference, preserved)"
   },
   "schema": 1,
-  "status": "M3a unaccepted: native and 42-cell scientific checks plus Mac fixed diagnostic pass; Linux harness failed before timed blocks, repair validated against all six retained outputs without native repetition; awaiting a specific Linux call-budget exception"
+  "status": "M3a accepted for M3b after reviewed repairs and required source/native/scientific/transaction/Linux/Mac diagnostics; public two-FE activation disabled; historical failures preserved"
 }

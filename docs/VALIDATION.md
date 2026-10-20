@@ -28,11 +28,10 @@ were deleted; hashes and summaries are the remaining record.
 
 ## CMG successor milestone 3a: construction-work cap removed
 
-**M3a remains unaccepted. Native and 42-cell scientific checks and the fixed
-Mac diagnostic pass; the Linux timing harness stopped before timed blocks.**
-Its metadata repair passes checks against all six saved outputs without
-repeating native calls. A fresh Linux panel requires an explicit call-budget
-exception. M3b has not started. Two-FE activation stays disabled.
+**M3a is accepted for M3b: review, native/transaction checks, the 42-cell
+scientific audit and fixed Linux/Mac diagnostics pass.** Johannes's approval
+covered two bounded harness repairs before one corrected Linux panel. Historical
+failures remain recorded; public two-FE activation stays disabled.
 
 Johannes decided on 2026-10-19 to remove the optional CMG construction-work cap
 altogether. CMG is pinned to `03a260411450dd2c1caaefffa3514ac78c0996d7`
@@ -268,11 +267,47 @@ passes all six retained outputs, including their independent numerical checks,
 without executing a native solve; original bindings and before/after raw-output
 hashes match. Its accounting is `failed=0`, `exit_status=0`, 13 seconds on four
 slots. The six original jobs retain `exit_status=1` despite scheduler `failed=0`.
-The original 720-call Linux budget permits no retries: no replacement panel
-has been started. One fresh 720-call panel would bring the total to 726 calls,
-including the six retained failed warmups. M3a and M3b remain blocked pending
-Johannes's disposition of this specific budget exception. The Mac and admission
-passes do not erase the Linux failure or the installed-plugin binding failure.
+The original 720-call Linux budget permitted no retries, so work stopped for
+Johannes's decision. He approved the next five bounded repairs. Before the new
+panel, a second reporting repair addressed JSON key ordering: identical
+changed-field paths can be traversed in a different order after serialization.
+The comparison canonicalizes only that order and rejects duplicates; six focused
+tests pass, including negative cases for missing paths and changed values or
+scope. Independent review reproduces all 12 saved Mac comparisons, with only the
+six scoped cases needing normalization. No new native call was needed for this
+repair. The two repairs leave three authorizations available; they do not permit
+sampling after scientific failure or unfavorable or inconclusive timing.
+
+The corrected Linux panel (8196135--8196140) completes all 720 calls on the same
+six isolated hosts, with the same artifacts, inputs, schedule and per-attempt
+budget. Every task has `failed=0`, `exit_status=0`, 157--159 seconds wall time
+and maximum virtual memory of 1.258--1.296 GB. Every original-design certificate,
+input-bound oracle, fixed-worker repeat, cross-worker/host discrete decision and
+hierarchy comparison passes. Report job 8196144 also passes (`failed=0`,
+`exit_status=0`), rechecking all 720 log/perf records and retained snapshots.
+The failed attempt plus corrected panel used 726 native calls in total.
+
+All 12 Linux per-cell nonregression upper bounds satisfy `max(5%, 1 ms)`.
+High-degree-weak candidate/reference median ratios are 0.946/0.902/0.889 at
+one/four/eight workers; weak-low ratios are 0.520/0.633/0.698. These are changed
+hierarchy/whole-solve observations. The other six cells retain exact science and
+workflow, with median ratios from 0.991 to 1.014; their unchanged-workflow
+single-worker instruction ratios are 0.999998 (repeated-cells) and 1.000041
+(wide-rhs), providing no material control-cost reduction claim. Independent
+review reproduces all 12 intervals, with the closest upper excess 1.178 ms
+inside the allowance. Each uncertainty unit is one physical host summarizing two
+mirrored blocks; there is no simultaneous 12-cell coverage or independence claim.
+All counters are `instructions:u` at 100% running and cover the user-space
+harness and inherited threads, including parsing/tracing. Both platform panels
+are instrumented diagnostics, not uninstrumented release or public-activation
+qualification.
+
+These results close the M3a prerequisites in the approved plan. M3b may proceed
+from production `d33a1575` / CMG `03a26041` plus the subsequent evidence-only
+commits. The prior installed-plugin binding failure, lost baseline-test failure
+and initial Linux harness failure remain recorded. Existing valid native evidence
+retains its original artifact identity; no failed attempt was relabelled as a pass.
+
 
 ## CMG successor milestone 2: initial graph construction
 
