@@ -2969,4 +2969,93 @@ fn explicit_cmg_projections_match_across_workers_above_the_reduction_floor() {
             .passed
         );
     }
+    // The prepared/reweighted path used by PPML must carry the same reduction
+    // tree when a certified control seed becomes the next frame's initial guess.
+    // Fixed budget: four prepared projections and two independent CG projections.
+    let frame_weights = [
+        weights.clone(),
+        weights
+            .iter()
+            .enumerate()
+            .map(|(row, weight)| weight * (1.0 + 0.01 * (row % 7) as f64))
+            .collect::<Vec<_>>(),
+    ];
+    let prepared_input = input(2);
+    let mut prepared_projections = Vec::new();
+    for threads in [1, 4] {
+        let mut options = config(2);
+        options.threads = ThreadConfig::from_requested(threads, true).expect("threads");
+        let mut topology = PreparedCmgTopology::prepare(&design()).expect("prepared topology");
+        assert!(topology.profile.vertices >= 131_072);
+        let mut control_seed =
+            CmgControlSeed::new(topology.profile.vertices, 1).expect("control seed");
+        let mut frames = Vec::new();
+        for (frame, weights) in frame_weights.iter().enumerate() {
+            assert_eq!(control_seed.ready(), frame == 1);
+            let mut absorber = CmgAbsorber::build_unpolished_prepared(
+                design(),
+                BorrowedMapWeights::Provided(weights),
+                options,
+                &mut topology,
+            )
+            .expect("prepared reweighted setup");
+            let CmgRoute::Graph(graph) = &absorber.route else {
+                panic!("prepared graph route")
+            };
+            assert!(graph.solver.graph().vertex_count() >= 131_072);
+            let mut candidate = prepared_input.clone();
+            let report = absorber
+                .project_unpolished_with_seed(&mut candidate, 1e-11, Some(&mut control_seed))
+                .expect("prepared projection");
+            assert!(!control_seed.ready(), "a solve consumes the prior seed");
+            assert_eq!(report.projection_work.warm_right_hand_sides, frame);
+            assert!(
+                certify_borrowed_intercept_candidate(
+                    &design(),
+                    BorrowedMapWeights::Provided(weights),
+                    &candidate,
+                    options.map,
+                )
+                .expect("prepared full-FE certificate")
+                .passed
+            );
+            control_seed
+                .retain_certified(report.projection_work)
+                .expect("certified control seed promotion");
+            assert!(control_seed.ready());
+            topology
+                .retain_certified_seed(absorber)
+                .expect("certified prepared seed promotion");
+            frames.push(candidate);
+        }
+        prepared_projections.push(frames);
+    }
+    for (frame, weights) in frame_weights.iter().enumerate() {
+        assert_eq!(
+            prepared_projections[0][frame]
+                .as_slice()
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            prepared_projections[1][frame]
+                .as_slice()
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            "prepared frame {frame}: worker counts differ"
+        );
+        let reference = absorb_borrowed_intercept_cg(
+            &design(),
+            BorrowedMapWeights::Provided(weights),
+            prepared_input.clone(),
+            config(2).map,
+            BorrowedCgOptions::default(),
+        )
+        .expect("independent reweighted CG oracle");
+        assert_matrix_close(
+            &prepared_projections[0][frame],
+            reference.residualized(),
+            5e-8,
+        );
+    }
 }

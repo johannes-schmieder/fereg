@@ -181,6 +181,18 @@ inputs unchanged. Exact commands, durations, hashes, review findings and limits
 are in the M3d result record. Native qualification and final scope/performance
 acceptance remain pending; prior milestone exceptions do not accept M3d.
 
+A supplemental test-only extension reuses the 72,000-worker/70,000-firm,
+360,000-row fixture for two prepared weight frames at W1/W4. Four projections
+and two independent CG projections pass: actual graphs exceed 131,072 vertices,
+the certified control seed is consumed in the second frame, all four full-FE
+certificates pass, outputs agree bitwise across workers, and the existing
+5e-8 oracle allowance holds. Both reviewers cleared the exact addition. The
+control comes first and the cold response last; with two FEs there is no
+nuisance block. This is prepared/reweighted control-seed coverage, not an
+above-floor end-to-end PPML or bias claim. Production and artifact inputs are
+unchanged; the fixed native candidate remains c283b3ff. The exact tested overlay
+hash and execution are recorded separately from that native-source identity.
+
 ## CMG successor milestone 3c: parallel construction on the host team
 
 **The first handoff (fereg `ffc1b014`, CMG `8fafe5a7`) was unaccepted by

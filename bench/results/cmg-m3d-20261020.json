@@ -756,11 +756,71 @@
   "limits": [
    "Source suite used the uncommitted test-only bit-comparison correction over the recorded handoff revision; hashes bind that tested patch. Production comparison to the handoff confirms 192 runtime modules and 58 artifact inputs unchanged.",
    "Standard entrypoint remains failed after 315 Python tests at the installed-package binding check. Release packages are intentionally unchanged; source-only does not establish package admission.",
-   "The above-floor OLS projection and low-threshold CMG solve/cycle tests exercise changed arithmetic. Native historical replays below the real threshold establish unaffected exactness, not full changed-path PPML/bias/retained or CMGSchur coverage.",
+   "Changed arithmetic is exercised by the above-floor OLS and prepared/reweighted control-seed projections plus low-threshold CMG solve/cycle tests. Native historical replays below the threshold establish unaffected exactness; above-floor end-to-end PPML/bias and CMGSchur remain outside native coverage.",
    "Row-operator selection remains worker-dependent but bit-neutral in inspected products; optional Auto RHS batching is omitted. No new memory policy is inferred from the released scope; this narrowing remains explicit for final decision.",
    "No root native build or timing has run at this source checkpoint. Prior M3b/M3c timing exceptions do not accept M3d.",
    "Original cloud attempts and failed mutations remain in this record. Raw local logs are temporary; commands, exits, durations, hashes and compact outcomes are the retained evidence."
   ],
-  "recording_failure": "Initial evidence writer saved the JSON then failed to locate the abbreviated M3c heading in VALIDATION.md (ValueError, exit 1). The exact existing heading was used to append the same prepared source-review paragraph. No test or measurement was rerun."
+  "recording_failure": "Initial evidence writer saved the JSON then failed to locate the abbreviated M3c heading in VALIDATION.md (ValueError, exit 1). The exact existing heading was used to append the same prepared source-review paragraph. No test or measurement was rerun.",
+  "prepared_control_seed_witness": {
+   "scope": "Test-only extension; native artifacts remain the fixed c283b3ff source. Capturing that clean base precedes the test-evidence commit.",
+   "workers": 72000,
+   "firms": 70000,
+   "rows": 360000,
+   "rhs": 2,
+   "threads": [
+    1,
+    4
+   ],
+   "frames": 2,
+   "prepared_projection_budget": 4,
+   "oracle_projection_budget": 2,
+   "weights": "existing positive weights; second frame multiplied by 1 + 0.01*(row % 7)",
+   "assertions": [
+    "actual CMG graph >=131072 vertices",
+    "control seed initially absent, certified promotion then consumed in second frame",
+    "same-machine cross-worker floating-point bits identical for each frame",
+    "independent CG agreement with existing above-floor 5e-8 allowance",
+    "full-FE certificate for every frame"
+   ],
+   "limitation": "Exercises PPML's prepared projection machinery, not above-floor end-to-end PPML bias estimates.",
+   "rhs_order": "control first, cold response last",
+   "seed_scope": "retained control seed; two FEs have no nuisance block",
+   "base": "c283b3ff3839bdf955cc749b54e9674c74e9001c",
+   "test_source_sha256": "7a0f419b8650f8b18ce4b365daa28de9ec858a1f5139152f3d72ec13a076132e",
+   "execution": {
+    "label": "prepared-above-floor",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "-p",
+     "fereg-core",
+     "--profile",
+     "ci",
+     "--lib",
+     "explicit_cmg_projections_match_across_workers_above_the_reduction_floor",
+     "--",
+     "--nocapture"
+    ],
+    "revision": "c283b3ff3839bdf955cc749b54e9674c74e9001c",
+    "elapsed_seconds": 51.06719558290206,
+    "exit_code": 0,
+    "log_sha256": "06eb707af0ce4c205980bf59824951f44780fcbaacabeff63c3861dd0ae52f9a"
+   },
+   "independent_reviews": "Both existing reviewers inspected the precise addition and found no actionable defect. Two FEs have no nuisance block; only control-seed promotion and consumption are claimed. They executed no tests.",
+   "production_identity": "192 runtime modules and 58 artifact inputs unchanged against c283b3ff; audited native artifacts remain that fixed revision."
+  },
+  "qualification_helper_preflight": {
+   "synthetic_tests": 24,
+   "exit_code": 0,
+   "retained_repair": {
+    "stage": "pre-native helper inspection",
+    "issue": "Sequential revision substitutions rewrote the prefix of the newly installed reference SHA, yielding an invalid reference identity. Existing synthetic tests reused constants and did not detect this. Root inspection caught it before native audit or timing.",
+    "original_helper_sha256": "924fad590708082e8bfda2b6ea44a0734ab91c009152f219be901626b2bd8cf7",
+    "correction": "Use simultaneous exact-token revision replacement and assert the independently known accepted reference SHA. No native calls or samples consumed."
+   },
+   "review": "Independent high-effort review found no actionable helper defect: accepted M3c hashes, exact Auto science/signatures/hierarchy/admission, NATIVE_SECONDS primary, unchanged schedules, budgets and runtime isolation checks. Candidate identities must still pass freeze verification."
+  }
  }
 }
