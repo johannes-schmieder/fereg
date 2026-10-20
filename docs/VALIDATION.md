@@ -424,6 +424,38 @@ the PPML Break fixture, Mac73 and the required 42-cell coverage, and the fixed
 Linux/Mac nonregression diagnostics. The 75 injected cases do not substitute
 for any of them. No performance claim is made from this cloud host.
 
+### Codex source re-review and prepared-publication follow-up
+
+The second repair was re-reviewed at fereg `26d46327` and CMG `be1b89d3`.
+Bounded Astra review found no actionable arithmetic, hierarchy, order, admission
+or seed-validity defect. Independent high-effort review confirmed closure of
+the four substantive CMG findings and found one remaining constant-size tail:
+prepared topology performed its final checkpoint before constructing its two
+shared owners. The fereg fatal-error and prepared-seed changes passed source
+review; the documented fixed-row-stride limits remain limits, not inner-work
+latency claims.
+
+CMG `efb5339459617b1aba99b34195240689deeab61c` constructs the private topology
+before its final checkpoint and polls before each shared-owner allocation in
+topology and numeric-frame publication. Independent review confirmed unchanged
+arithmetic, allocation order/count, layouts and admission bounds. The existing
+every-poll test now checks the individual allocation phases. All eight frozen-bit
+feature/profile configurations and prepared tests in default, parallel and
+all-feature debug/release configurations passed locally; seven Clippy feature
+sets and formatting passed with Rust 1.85.1. The initial all-feature Clippy run
+failed on two explicit lifetime annotations, and the next matrix stopped on an
+unparenthesized bit-pack expression in the experimental-components frozen test;
+those failures remain recorded. Eliding the lifetimes and adding parentheses
+fixed the lints without changing values. An earlier formatter invocation failed
+to locate cargo-fmt before the pinned toolchain was added to PATH.
+
+The standard entrypoint on `26d46327` passed 315 Python tests and failed the
+installed-plugin binding check with exit 1 in 20.563819208 seconds. M3b remains
+unaccepted pending source integration and the outstanding host checks above.
+The final CMG pin is updated in the manifest and both lockfiles. No M3c work
+has been released, and none of these source repairs consumes a qualification
+retry or resets its budget.
+
 Identities are in [`cmg-m3b-20261020.json`](../bench/results/cmg-m3b-20261020.json).
 
 ## CMG successor milestone 3a: construction-work cap removed

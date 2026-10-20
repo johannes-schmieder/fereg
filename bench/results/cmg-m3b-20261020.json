@@ -109,5 +109,25 @@
   ],
   "run_tests_standard": "315 Python tests pass, then the installed-plugin binding check fails (exit 1) (log 70); not green on any M3b handoff",
   "run_tests_source_only": "exit 0, labelled source-only: 322 Python tests, 1,954 Rust test executions in 85 groups (14 ignored), allocator audits, fuzz check, portable checks, ratchet (log 71)"
+ },
+ "codex_source_review": {
+  "fereg_reviewed": "26d4632770495a3309ad0776fffb25a5eda95132",
+  "cmg_reviewed": "be1b89d3137467b076dc61e2622dfb7dcef520a2",
+  "final_cmg_pin": "efb5339459617b1aba99b34195240689deeab61c",
+  "status": "source findings repaired and independently re-reviewed; source integration and host gates pending; M3b unaccepted",
+  "local_fix": "per-owner allocation polls and final prepared-topology checkpoint after construction; unchanged arithmetic/layout/admission",
+  "checks": "prepared tests default/parallel/all-features debug and release; frozen bits in eight feature/profile configurations; Clippy seven feature sets; fmt: pass on Rust 1.85.1",
+  "failures": [
+   "initial all-feature Clippy: two needless lifetimes",
+   "next feature matrix: frozen-test bit-pack precedence lint",
+   "initial formatter: pinned toolchain absent from PATH"
+  ],
+  "standard_on_26d46327": {
+   "python_tests_passed": 315,
+   "exit_code": 1,
+   "elapsed_seconds": 20.563819207949564,
+   "failure": "installed-plugin binding mismatch"
+  },
+  "qualification_repairs_remaining": 3
  }
 }
