@@ -26,6 +26,143 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## CMG successor milestone 3d: worker-independent team arithmetic
+
+**Cloud handoff pending independent review; not self-accepted.** M3d starts
+from the accepted M3c pair (fereg `27fa40cd`, tested source `71092c38`,
+production correction `c89ab124`; CMG `82ae1c86`, production `65bd817a`),
+including the root R1 lookup correction and the cross-thread allocation
+witness. It pins CMG `35a095f3e26972fcfa9e58c2222a1098efb8e607`. Root owns the
+independent review, native, 42-cell and fixed Linux/Mac checks on the stable
+candidate. No timing, panel or profile ran in the cloud.
+
+Survey before the edits (read-only). With fixed inputs and thresholds, CMG
+result bits differed only between one worker and two or more. Three gates
+caused this: PCG dot and norm sums used the fixed-chunk tree only with
+`worker_ceiling() > 1`; single-component centering (the finest PCG level and
+scalar-cycle coarse levels) did the same; and `ParallelPcgSolver` gave a team
+only to the planned mode, while serial solves and across-RHS lanes ran the
+team-free recurrence. The tree's shape already depended only on the leaf
+count. CSR row operators (gather) already reproduced the edge-list products
+(scatter) bit for bit, and construction was worker-independent.
+
+Declared before the edits:
+
+- Design. A team-carrying solve or application chooses its arithmetic from
+  lengths and the team's fixed thresholds only: the fixed-chunk tree from
+  `max(min_parallel_len, 8 * reduction_chunk_size)` entries (131,072 with
+  fereg's defaults), also at one worker. Serial solves and each concurrent
+  right-hand-side lane run on `Team::single_lane()`, a one-lane view of the
+  same pool (no pool, no allocation, no nested forks beyond the ceiling).
+  Team-free calls keep the serial compensated sums. Mode selection stays a
+  scheduling decision.
+- Paths. CMG `pcg.rs` (reduction team, concurrent lanes, owned concurrent
+  solves), `components.rs` (centering gate), `parallel_solver.rs` (serial
+  context), `execution.rs` (`single_lane`; a test-only thread-aware lane
+  gauge); fereg `fe/cmg.rs` (the caller-buffer serial context uses
+  `ParallelPcgSolver::serial`).
+- Numerical scope. Explicit `cmg` (OLS and PPML, both bias modes) changes
+  rounding where a reduced or centered vector reaches 131,072 entries: at one
+  worker, and in serial or across-RHS solves at any worker count. Multi-worker
+  planned results are unchanged. Explicit `cmgschur` changes only in one-worker
+  single-RHS cycles with a single-component coarse level of that size. After
+  the change, explicit results are bit-identical across worker counts and
+  solver modes on one platform. Auto (team-free cycle), injected two-FE and
+  all public routes, construction and hierarchies are exact. Iteration logic,
+  certification, tolerances and discrete decisions are unchanged.
+- Resources. No new allocation, bank, pool, admission or memory policy.
+- Representation (narrowed from the plan's M3d list). Row-operator selection
+  stays worker-dependent. It is bit-neutral, so making it worker-independent
+  would only add CSR memory at one worker, a resource policy not authorized
+  here. A witness pins the bit neutrality.
+- Optional Auto RHS batching: not taken (new arithmetic and storage scope for
+  a measured low ceiling).
+- Witnesses. Reductions and centering identical at ceilings 1/2/3/4/8 and on
+  the one-lane view. Solver modes (serial, planned, across-RHS) and
+  caller-buffer contexts identical at 1/2/4/8 workers, with all three modes
+  exercised. Row operators vs one-lane applications identical. An
+  independent edge-list residual reproduces the reported residual, and the
+  certificates hold. Old-vs-new frozen digest mapping. Many-leaf cancellation
+  on the one-lane view. A fereg explicit `cmg` projection above the threshold
+  is bit-identical at one and four workers, checked against an independent CG
+  oracle and the full-FE certificate. Explicit OLS/PPML replay in both bias
+  modes.
+
+Validation reported by Claude (cloud; full logs, commands and real exits
+under `target/tmp/auto-routing/m3d/logs` until review):
+
+- CMG `35a095f3`: the 27-step matrix runs on the final source. fmt, tests
+  (default 131, `parallel` 200, all features 257, each in debug and release),
+  frozen bits in eight configurations, rustdoc and the benchmark crate pass.
+  Clippy first failed on a type-complexity lint in the new test file; after
+  the test-only alias, Clippy passes for all seven feature sets. The failed
+  logs are retained.
+- First passes before the final source failed as intended: the old
+  one-worker-equals-serial reduction test, and the lane gauge. The gauge
+  counted an inline one-lane primitive inside a concurrent right-hand-side
+  lane as a second lane (6 on a ceiling of 3) although no extra thread ran.
+  It now counts threads. The frozen digests then changed as declared.
+- Frozen mapping over all twelve sections. Non-parallel sections are
+  unchanged. 180 parallel digests changed: 88 equal the old planned
+  four-worker digest of the same fixture, 48 owned-concurrent digests now
+  agree between one and four workers, 40 policy digests hash the execution
+  report, and 4 plan digests hash the operator count. In the new fixture the
+  only remaining one- vs four-worker digest differences are plan digests
+  (operator count).
+- CMG mutations (all exit 101): restoring the reduction gate (d1), the
+  centering gate (d2), team-free concurrent lanes (d3) or a team-free serial
+  mode (d4). d3 first survived because the witness covered only
+  `solve_batch`. The caller-buffer witness added for fereg's path kills it;
+  the earlier runs are retained as superseded.
+- fereg: ratchet (no ratcheted metric changes), fmt and Clippy pass. The
+  core lib passes 1,388 executions (1,374 top-level tests plus 14 isolated
+  child re-executions, counted by summary tuple), 3 ignored. The new
+  above-threshold projection test (about 142,000 vertices) passes in 127 s
+  in debug. On the accepted M3c pair (CMG `82ae1c86` with fereg's team-free
+  serial mapping) it fails: one- and four-worker single-column projections
+  differ. Mutation e1 (new CMG, fereg's serial mapping team-free) fails it
+  too. An earlier run of the accepted-pair check failed only because CMG
+  `82ae1c86` was missing from the offline cache; it is retained as invalid.
+- Actual-plugin replay of the candidate (`aa65874e...1ee0`) against a cloud
+  build of the accepted M3c source (`27fa40cd`, plugin `88a73c1f...a72f`):
+  73 of 73 cases exact with no science error. 46 derived explicit OLS and
+  PPML runs (both bias modes, 1/4 workers) and 75 injected two-FE runs are
+  row-identical to the M3c runs. All replay inputs are below the 131,072
+  threshold, so exactness is expected there.
+- Within the candidate, explicit outputs at one and four workers are
+  identical for 5 of 10 derived pairs. Two pairs differ only in runtime and
+  memory signature fields. ols-26 `cmgschur` and both PPML bias runs differ
+  in data columns. Those three differ identically in the accepted M3c
+  baseline (510, 620 and 628 fields). They come from worker-dependent fereg
+  arithmetic outside CMG, which SPEC §20 permits and which M3d did not
+  declare or change.
+- Standard `./scripts/run_tests.sh`: 315 Python tests pass, then the
+  installed-plugin binding check fails (exit 1). `--source-only` (labelled
+  source-only; installed-package admission not performed) passes 322 Python
+  tests, 1,965 Rust test executions in 83 summary groups (14 ignored), the
+  allocator audits, the fuzz check, the portable checks and the ratchet. My
+  earlier handoffs counted line-anchored summaries and could undercount
+  interleaved child summaries, as root corrected for M3c.
+
+Limits:
+
+- No timing, panel or profile ran. One-worker and serial-mode explicit
+  solves above the threshold now run the fixed-chunk tree on one lane
+  instead of a single running sum; the cost is unmeasured.
+- Replay coverage of the changed arithmetic is nil (inputs below the
+  threshold). The change is covered by CMG fixtures run with a 512-entry
+  threshold and by one fereg projection above 131,072. Explicit `cmgschur`'s
+  one-worker coarse-centering change is covered only by the CMG application
+  witness.
+- Worker-dependent fereg arithmetic outside CMG remains; see above.
+- Row-operator selection stays worker-dependent (bit-neutral). Auto RHS
+  batching was not taken.
+- Root owns the independent review, native and 42-cell checks and the fixed
+  Linux/Mac panels on the changed artifact.
+
+Identities and per-step exits are in
+[`cmg-m3d-20261020.json`](../bench/results/cmg-m3d-20261020.json).
+
 ## CMG successor milestone 3c: parallel construction on the host team
 
 **The first handoff (fereg `ffc1b014`, CMG `8fafe5a7`) was unaccepted by

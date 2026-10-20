@@ -1,0 +1,559 @@
+{
+ "milestone": "M3d cloud handoff: worker-independent team arithmetic; pending independent review, not self-accepted",
+ "date": "2026-10-20",
+ "revisions": {
+  "fereg_base": "27fa40cd26d238e02a0b60c558fcf48422300dcd (accepted M3c; tested source 71092c38, production c89ab124)",
+  "cmg_base": "82ae1c86d1e7d8c04f35d723b5affae8a031e283 (production 65bd817a)",
+  "cmg_pin": "35a095f3e26972fcfa9e58c2222a1098efb8e607"
+ },
+ "host": "Linux cloud container; source, unit and actual-plugin replay checks only. No timing, panel or profile.",
+ "plugins": {
+  "candidate_sha256": "aa65874eccea10f17a96f5149187f0e3bb8d570113c90be0f4052a0c95961ee0",
+  "baseline_m3c_accepted_cloud_build_sha256": "88a73c1f3102cad2705b7bce44a90a2497169bf12b674f89bfda63acd3d5a72f",
+  "baseline_source": "27fa40cd (cloud build; root accepted actual artifacts: Linux 4d3a78de..., Mac c0a8d9c7...)"
+ },
+ "declared_scope": {
+  "design": "team-carrying solves/applications use the fixed-chunk tree from max(min_parallel_len, 8*reduction_chunk_size) entries at every worker ceiling including one; serial solves and concurrent RHS lanes run on Team::single_lane(); team-free calls keep serial compensated sums",
+  "numerical": "explicit cmg (OLS/PPML, both bias modes): rounding changes where reduced/centered vectors reach 131,072 entries at one worker or in serial/across-RHS modes; multi-worker planned unchanged; explicit cmgschur only one-worker single-RHS cycles with a single-component coarse level >= 131,072; Auto, injected two-FE, public routes, construction and hierarchies exact",
+  "resources": "no new allocation, bank, pool, admission or memory policy",
+  "representation": "row-operator selection remains worker-dependent (bit-neutral); narrowed from the plan list to avoid a new memory policy",
+  "rhs_batching": "optional Auto RHS batching not taken"
+ },
+ "frozen_mapping": {
+  "unchanged_sections": [
+   "default",
+   "default+release",
+   "experimental-components",
+   "experimental-components+release"
+  ],
+  "changed_parallel_digests": 180,
+  "equal_old_planned_w4": 88,
+  "owned_concurrent_now_t1_eq_t4": 48,
+  "policy_hash_execution_report": 40,
+  "plan_hash_operator_count": 4,
+  "remaining_t1_ne_t4_in_new_fixture": "plan digests only (operator count)"
+ },
+ "steps": {
+  "100-firstpass-cmg-all-features": {
+   "exit": 101,
+   "log_sha256": "00fd44084c164bc3276bf20cec55a0ac205924714133fcd8c6daf620a74de52d",
+   "passed": 96,
+   "failed": 2,
+   "ignored": 0,
+   "groups": 2
+  },
+  "101-secondpass-cmg-all-features": {
+   "exit": 101,
+   "log_sha256": "0ce90529add5b76989850e4df4d791a2acaa7df64cb4cd0915c0a3911c6aaf69",
+   "passed": 97,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 2
+  },
+  "102-thirdpass-cmg-all-features": {
+   "exit": 101,
+   "log_sha256": "51d85ff0f052662fb0db18235eedc194fcd049fb0e1ec527373ef94657400480",
+   "passed": 153,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 15
+  },
+  "103-nofailfast-cmg-all-features": {
+   "exit": 101,
+   "log_sha256": "1130f38ab92062938ed4c5a04275815a363c4de00d7bb3aed8f7005f07d76273",
+   "passed": 253,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 40
+  },
+  "110-frozen-write-parallel": {
+   "exit": 0,
+   "log_sha256": "5cc7234800310f3db77a30ae8c0bce7f0f7de1739677117b6a094c4df0924bef",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "111-frozen-write-parallelrelease": {
+   "exit": 0,
+   "log_sha256": "f98f4d14ce01f37a50c7a5441e6dd86bca2267e94fa5069c66ca5e175453a8b4",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "112-frozen-write-parallel+experimentalcomponents": {
+   "exit": 0,
+   "log_sha256": "a95756df1f5e97a82a2203bbaaf782207675c78fbb9ea0318c9c0707a3150383",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "113-frozen-write-parallel+experimentalcomponentsrelease": {
+   "exit": 0,
+   "log_sha256": "2213f4fbedd5207ea94e84d4b4f3355a2d324e6cdb64d40cea73bc3be0112b07",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "114-frozen-write-parallel+profiling": {
+   "exit": 0,
+   "log_sha256": "921f15a1eea39311efa695581cca3bb945a8df21986f466b9ddddb32ed765000",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "115-frozen-write-parallel+profilingrelease": {
+   "exit": 0,
+   "log_sha256": "606ceff4ca7c9b68d14b1b80e70721a8efe19490281290562520066f4a76a068",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "116-frozen-write-parallel+experimentalcomponents+profiling+cycleprofiling": {
+   "exit": 0,
+   "log_sha256": "11ccc701513a1c667409651e5e42764400aca19f53486708668d50bc77d09ee2",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "117-frozen-write-parallel+experimentalcomponents+profiling+cycleprofilingrelease": {
+   "exit": 0,
+   "log_sha256": "1135a82175cee1db47c47749ac1c4939fe50d243f41a0aeb70642c10612eae05",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "130-cmg-frozen-parallel": {
+   "exit": 0,
+   "log_sha256": "85b3d88add366d7a148ec85baa2c4e11391bce950315f421defaa9f6caae8d39",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "131-cmg-frozen-parallelrelease": {
+   "exit": 0,
+   "log_sha256": "e3906cf2e4be80a1ca3a1ed3d3f4783d66ce896512bd05858427b81d9f650883",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "132-cmg-frozen-experimentalcomponents": {
+   "exit": 0,
+   "log_sha256": "39fd77a2cef47145dc20b060c60920edbce456d27e630a5b3e56481ac5e1235f",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "133-cmg-frozen-experimentalcomponentsrelease": {
+   "exit": 0,
+   "log_sha256": "acc84dec66861f5bb2f03e2943f15513afdc71186b106cee29a309b099745e1a",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "134-cmg-frozen-parallel+experimentalcomponents": {
+   "exit": 0,
+   "log_sha256": "c054eca877f327001064cc72f718ace1403134cfac9a12cad5c74d16015f39fd",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "135-cmg-frozen-parallel+experimentalcomponentsrelease": {
+   "exit": 0,
+   "log_sha256": "131e7b629701b1f57eb5ebdc42814302350bb5b8dc7371917f0c2f5972a36edf",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "136-cmg-frozen-parallel+profiling": {
+   "exit": 0,
+   "log_sha256": "caf51039387c2e64bf1c67dfbb536e17d911aad9ce42fa8cac702b814e4aa5ad",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "137-cmg-frozen-parallel+profilingrelease": {
+   "exit": 0,
+   "log_sha256": "2e3de8a49ea6835a577d43b3a287891e1a6d28139565ca08be0a55796d0a0682",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "140-cmg-clippy-none": {
+   "exit": 0,
+   "log_sha256": "1fccf36ab4a87137965f56fd6d44d1cd51f9682ed01ea5093099f954f10a7c69",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "142-cmg-clippy-experimental-components": {
+   "exit": 0,
+   "log_sha256": "3d5e093d34cab20cb5c0b6028aa0109e3b39d52ade74774d2bbde21b9693d6f4",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "201-mut-d1_reduction_gate": {
+   "exit": 101,
+   "log_sha256": "77680de7380cd5a7ce4147eeeb56af48139a240ae5e53b3742091b848b9e8077",
+   "passed": 1,
+   "failed": 2,
+   "ignored": 0,
+   "groups": 1
+  },
+  "202-mut-d2_centering_gate": {
+   "exit": 101,
+   "log_sha256": "1d6842b1e0237e53b3f9dee8aa3714a8560bf83a820cc4874b4f1e001c654483",
+   "passed": 0,
+   "failed": 3,
+   "ignored": 0,
+   "groups": 1
+  },
+  "203-mut-d3_concurrent_lanes_team_free": {
+   "exit": 101,
+   "log_sha256": "7202d2a1a2d9110d939dd54bc94e37da5af16f153284665049fbb24a394eafac",
+   "passed": 2,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 1
+  },
+  "204-mut-d4_serial_mode_team_free": {
+   "exit": 101,
+   "log_sha256": "dbbf0637ca0c632270e6d62e1c34c242327c42068160404bc63a3273cdd8d180",
+   "passed": 1,
+   "failed": 2,
+   "ignored": 0,
+   "groups": 1
+  },
+  "300-prechange-accepted-m3c-pair": {
+   "exit": 101,
+   "log_sha256": "8fa08a3e58fad081e3f6b6b67a590f7d233f90f1a6c3ff65cc5027779bd2c356",
+   "passed": 0,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 1
+  },
+  "301-mut-e1-fereg-serial-team-free": {
+   "exit": 101,
+   "log_sha256": "b76afb614ce5a2ac4ed8400724953907d825cc253b172ba94e39831093f41ec6",
+   "passed": 0,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 1
+  },
+  "320-cmg-fmt-check": {
+   "exit": 0,
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "321-cmg-test-default": {
+   "exit": 0,
+   "log_sha256": "f0f8088ff08ef7074212329db08f01d4823b35bc42faf2090ea91392ba2672a5",
+   "passed": 131,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 40
+  },
+  "322-cmg-test-parallel": {
+   "exit": 0,
+   "log_sha256": "6b4e5bdce3b4b098dfc5d9e327bf994602ccb179b97b9bc167102e8cc54cc9a3",
+   "passed": 200,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 41
+  },
+  "323-cmg-test-all-features": {
+   "exit": 0,
+   "log_sha256": "e69045e6238bd85db3421457d6f3ef17d7da42f817133fc282033b27bf104063",
+   "passed": 257,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 41
+  },
+  "324-cmg-test-release": {
+   "exit": 0,
+   "log_sha256": "d00806af92947bb51b0e445521179225f2d3bd257525061559171cf0c2c0d0a9",
+   "passed": 131,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 40
+  },
+  "325-cmg-test-all-features-release": {
+   "exit": 0,
+   "log_sha256": "d1ac68ba798401854476249029717bb104bf24eda654f6185a8b03203d33d23e",
+   "passed": 257,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 41
+  },
+  "326-cmg-doctest-all-features": {
+   "exit": 0,
+   "log_sha256": "875489de800051b0faf115d6a33e4a7fe7e1b594db7c1eb34d8f4bfa46e063a1",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "327-cmg-test-parallel-release": {
+   "exit": 0,
+   "log_sha256": "0db91c02a7b0a3118cd1461029259bdda22147cfe791642d3ca66021c385b9bb",
+   "passed": 200,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 41
+  },
+  "347-cmg-doc": {
+   "exit": 0,
+   "log_sha256": "d6698c90610f6f9cb8417aa1d81e1bfea75a039659094ff9213401616d8fb336",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "348-cmg-bench-clippy-default": {
+   "exit": 0,
+   "log_sha256": "c2d384a2380a6259aae6eec378e24115081d4febee33c3683e052e3063363a17",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "349-cmg-bench-clippy-all": {
+   "exit": 0,
+   "log_sha256": "4deca082302046bb36861aeab9121597af2a68fa7c59b59a8ec7b1a2495a59aa",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "350-cmg-bench-fmt-check": {
+   "exit": 0,
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "360-cmg-clippy-none": {
+   "exit": 0,
+   "log_sha256": "d9f98e72e6ed387e38924c70ea160c7c928945d3457979db58d5f344aaf19277",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "361-cmg-clippy-parallel": {
+   "exit": 0,
+   "log_sha256": "319959a277d74b5a1289df70986afa0bd6ef3ca77609585b07e7a5d096914c68",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "362-cmg-clippy-experimental-components": {
+   "exit": 0,
+   "log_sha256": "d270847b971665af50ac02d2c6d0b9eaded7fe786310028e02e518f189c0c32e",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "363-cmg-clippy-profiling": {
+   "exit": 0,
+   "log_sha256": "746762f9a87c6fefee151375ac066862b1bf52037ef039acb1e4419472bbf3cf",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "364-cmg-clippy-cycle-profiling": {
+   "exit": 0,
+   "log_sha256": "bafbb13956c1e3b65f3fa9078340b532117ba5ae4107b60088dc149b1e6e2b77",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "365-cmg-clippy-parallel+experimental-components": {
+   "exit": 0,
+   "log_sha256": "103cec9be3af8ef4f6d7bceb2a63863eca0f7bc6f52b736b7056e23f74e39e1a",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "366-cmg-clippy-all": {
+   "exit": 0,
+   "log_sha256": "a0c324d05606550b21de5e1f0b3a7828d3faaddf54b5c349a875da3e33531769",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "367-cmg-fmt-check": {
+   "exit": 0,
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "368-cmg-test-parallel-worker-independent": {
+   "exit": 0,
+   "log_sha256": "30e899c6c8af73d76e9006ab1c6e3686da7e0f0933366cca77347b5f20375755",
+   "passed": 3,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "369-cmg-test-all-features-worker-independent": {
+   "exit": 0,
+   "log_sha256": "fd1be4b61c5fc18ee2a06429bb4941b1aa1a9cffbfbe54ff72c7554b89a35620",
+   "passed": 3,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "400-baseline-plugin-build": {
+   "exit": 0,
+   "log_sha256": "f47f0a29756c1cf49c45f1284499083da7b3471773b7a37b11cf7a8a3a985f28",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "60-fereg-complexity": {
+   "exit": 0,
+   "log_sha256": "66b3155d375ba75b896268fc3f4f19bfba3230e9924f44ed34edcafc1bfb1714",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "61-fereg-fmt-check": {
+   "exit": 0,
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "62-fereg-clippy": {
+   "exit": 0,
+   "log_sha256": "7cccc216e0f919c98b9ca14a8443afe5cc4bd1bc664873f532338b20657cbc82",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "63-fereg-core-lib": {
+   "exit": 0,
+   "log_sha256": "f5b2cfc1dfa1291ae554d51233beb8d952ee55a7d3b0d28d18fdef626d526080",
+   "passed": 1388,
+   "failed": 0,
+   "ignored": 3,
+   "groups": 15
+  },
+  "64-candidate-plugin-build": {
+   "exit": 0,
+   "log_sha256": "3dbadfecf256084e8b1185c004b3f4894414335a8ec0a3043810c25959067158",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "65-replay-vs-m3c": {
+   "exit": 0,
+   "log_sha256": "563790583be79a69787198921a9d2c59a4cde1c7b96e059bebf4907807c45fed",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "66-derived-explicit": {
+   "exit": 0,
+   "log_sha256": "fc374441f39ef12c264e9ff5833fe422937e50e7532860c8e5f455ccaf9f9074",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "67-injected-two-fe": {
+   "exit": 0,
+   "log_sha256": "c4b634dc0baae98375844417db35401c0e402ba834c811eea4c4391ec7c92699",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "70-run-tests-standard": {
+   "exit": 1,
+   "log_sha256": "9373ae86d10eebaf75e74a99e2a221164658e10474715ca85801f78ceeca8088",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "71-run-tests-source-only": {
+   "exit": 0,
+   "log_sha256": "9829556be52b30c4a9757b0c355fb2a010084ecc3d4828ba55dd26042136031a",
+   "passed": 1965,
+   "failed": 0,
+   "ignored": 14,
+   "groups": 83
+  }
+ },
+ "superseded_runs": {
+  "141-cmg-clippy-parallel.exit": "101",
+  "143-cmg-clippy-profiling.exit": "101",
+  "144-cmg-clippy-cycle-profiling.exit": "101",
+  "145-cmg-clippy-parallel+experimental-components.exit": "101",
+  "346-cmg-clippy-all.exit": "101"
+ },
+ "invalid_runs": {
+  "300-prechange-accepted-m3c-pair.offline-cache-miss.exit": "101"
+ },
+ "step_notes": {
+  "100-103": "first passes before the final CMG source: expected contract test and gauge failures, then frozen digests",
+  "201-204": "CMG mutations d1-d4 on the final witness (expected 101)",
+  "300": "accepted M3c pair (CMG 82ae, fereg team-free serial mapping) with the new fereg witness: fails (expected)",
+  "301": "mutation e1: new CMG with fereg serial mapping team-free: fails (expected)",
+  "63": "1,374 top-level tests plus 14 isolated child re-executions; counted by summary tuple",
+  "derived_cross_worker": "candidate explicit t1 vs t4: 5/10 identical, 2 differ only in runtime/memory signature fields, 3 (ols-26 cmgschur, PPML bias exact/randomized) differ in data identically in the accepted M3c baseline: fereg-side arithmetic outside CMG, outside M3d scope"
+ },
+ "limitations": [
+  "no timing; one-lane fixed-chunk reductions at one worker/serial mode unmeasured",
+  "replay inputs below the 131,072 threshold: changed arithmetic covered by CMG fixtures (512 threshold) and one fereg projection above 131,072",
+  "explicit cmgschur one-worker coarse centering covered only by the CMG application witness",
+  "worker-dependent fereg arithmetic outside CMG remains (pre-existing, unchanged)",
+  "logs retained under target/tmp/auto-routing/m3d/logs in the cloud session until review; not committed"
+ ],
+ "outstanding_host_checks": [
+  "Root: independent review, native/42-cell checks, fixed Linux/Mac panels on the changed artifact",
+  "Standard ./scripts/run_tests.sh fails at installed-package binding after 315 Python tests; release packages untouched"
+ ],
+ "outstanding_decisions": [
+  "Whether row-operator selection should become worker-independent (adds CSR memory at one worker)",
+  "Whether fereg-side worker-dependent arithmetic in explicit cmgschur/PPML should be addressed in a later milestone"
+ ]
+}
