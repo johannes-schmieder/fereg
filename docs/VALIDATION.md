@@ -30,7 +30,8 @@ were deleted; hashes and summaries are the remaining record.
 
 **The first cloud handoff (fereg `b4b53577`, CMG `c6f9e822`) and the first
 review repair (fereg `5ba16717`, CMG `b9f2585a`) were rejected by Codex review
-on 2026-10-20; the second review repair below awaits re-review. M3b remains
+on 2026-10-20. The second repair and prepared-publication follow-up passed
+source review, but local Mac source integration failed two tests. M3b remains
 unaccepted and M3c is not started.** M3b is a behaviour-preserving
 consolidation. The first handoff pinned CMG
 `c6f9e8224503273a20b47cf42ec8bc09d50fefd9`
@@ -457,6 +458,60 @@ has been released, and none of these source repairs consumes a qualification
 retry or resets its budget.
 
 Identities are in [`cmg-m3b-20261020.json`](../bench/results/cmg-m3b-20261020.json).
+
+### Mac source-integration failure and bounded diagnostic proposal
+
+At fereg `dad54c1198f2444684a3ede6d0d4e4713ca55861`, pinning CMG
+`efb5339459617b1aba99b34195240689deeab61c`, the standard entrypoint passed
+315 Python tests and failed the installed-plugin binding check, exit 1 after
+19.525626041 seconds. The separately labelled source-only entrypoint passed
+315 Python tests, formatting, fuzz compilation and the two Clippy configurations,
+then failed the core library group: 1,363 passed, two failed, three ignored.
+The process exited 101 after 205.769801041 seconds. Subsequent integration groups
+were not reached. The analytic uncapped h16 build/install/certification unit
+witness passed in this run; it does not replace the outstanding native checks.
+The host was arm64 macOS, rustc 1.85.1, LLVM 19.1.7, Cargo's `ci` profile.
+
+The frozen pre-consolidation adapter witness failed at explicit
+`sampled0/t1/c2`: actual digest `10196290651989369033`, expected
+`12891933761922034549`. The preceding capacity-one explicit and Auto comparisons
+passed. Independent source review found a portability assumption: the single
+expected table was recorded on Linux x86_64, while residual inputs are generated
+with `f64::sin()` and every cycle-output bit is hashed with graph and hierarchy
+data. The digest does not identify which field differs. This does not prove that
+platform-dependent input bits caused the failure, and does not exclude a
+Mac-specific arithmetic regression. No expected value was replaced, assertion
+relaxed or failed test rerun.
+
+The end-to-end cancellation test failed because its PPML sample did not contain
+the phase `prepared numeric edge`. Its query-index subsampling cannot guarantee
+observing a particular phase: worker scheduling and additional valid checkpoints
+change query indices. The earlier repair changed the required sampled phase
+without removing this assumption. Independent review recommends retaining the
+end-to-end test as sampled route coverage and strengthening the already-passing
+exhaustive serial prepared-route sweep with guaranteed allocation/publication
+phase assertions. CMG's inner-work witnesses remain separate evidence. This
+diagnosis does not clear the independent digest failure.
+
+Native execution, host qualification and M3c are stopped. No SCC jobs or timing
+panels were started; no qualification budget or harness-repair allowance was
+reset or consumed by this diagnosis. The monitor was deleted at the preceding
+Claude terminal boundary. Both failed entrypoints remain failed.
+
+Pending Johannes's direction under the no-scientific-retry instruction, the
+proposed diagnostic is one execution per arm of the existing 42-configuration
+adapter witness on this same Mac: accepted pre-M3b fereg `e9efda55` with CMG
+`03a26041`, and candidate `dad54c11` with CMG `efb53394`. Both use rustc 1.85.1
+and the same `ci` profile. Test-only reporting would separate original input
+bits, graph/label/hierarchy bits and every cycle output, while preserving the
+fixture, operations and expected table. Each arm has a ten-minute compilation
+limit with four build jobs and a 120-second witness limit, with zero retries.
+This is a diagnostic comparison, not a qualification pass or new timing panel.
+Any same-host difference remains a blocker; no candidate-derived rebaseline,
+scientific tolerance change or automatic rerun is proposed.
+
+The compact JSON record contains the full-log and status hashes. Ignored raw
+logs remain resumable working material, not retained committed evidence.
 
 ## CMG successor milestone 3a: construction-work cap removed
 

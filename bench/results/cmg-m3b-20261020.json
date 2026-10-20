@@ -1,5 +1,5 @@
 {
- "milestone": "M3b behaviour-preserving consolidation: first cloud handoff and first review repair rejected by Codex review 2026-10-20; second review repair pending re-review",
+ "milestone": "M3b unaccepted: second repair plus prepared-publication follow-up passed source review; Mac source integration failed two tests; dependent qualification and M3c stopped",
  "date": "2026-10-20",
  "revisions": {
   "fereg_code": "65bc39f5f98090ee4b2206e13a72cc9bf0a51c0d",
@@ -127,6 +127,70 @@
    "exit_code": 1,
    "elapsed_seconds": 20.563819207949564,
    "failure": "installed-plugin binding mismatch"
+  },
+  "qualification_repairs_remaining": 3
+ },
+ "mac_source_integration": {
+  "fereg_revision": "dad54c1198f2444684a3ede6d0d4e4713ca55861",
+  "cmg_revision": "efb5339459617b1aba99b34195240689deeab61c",
+  "host": "aarch64-apple-darwin",
+  "rustc": "1.85.1 (4eb161250 2025-03-15)",
+  "llvm": "19.1.7",
+  "cargo_profile": "ci",
+  "standard": {
+   "command": "./scripts/run_tests.sh",
+   "exit_code": 1,
+   "elapsed_seconds": 19.52562604099512,
+   "python_tests_passed": 315,
+   "failure": "installed-plugin binding mismatch",
+   "full_log_sha256": "c2c4cb206cc9a5eedbfcf8ed9e07c558802a67c146869f7af493e5793538a21e"
+  },
+  "source_only": {
+   "command": "./scripts/run_tests.sh --source-only",
+   "exit_code": 101,
+   "elapsed_seconds": 205.76980104111135,
+   "python_tests_passed": 315,
+   "core_library": {
+    "passed": 1363,
+    "failed": 2,
+    "ignored": 3
+   },
+   "earlier_checks": "formatting, fuzz compilation, workspace and ffi Clippy passed; uncapped h16 analytic build/install/certification unit witness passed",
+   "later_groups": "not reached",
+   "full_log_sha256": "f43b69b2d937d230e798065a9cbdb1618515fed6d25f42962fea9dce6100a18f"
+  },
+  "status_sha256": "48238573428ddb45b6846749141813a45f6eafcb8fc0779ac8bcb747b49d2f37",
+  "failures": [
+   {
+    "test": "fe::cmg_schur::tests::explicit_and_automatic_builds_reproduce_frozen_pre_consolidation_bits",
+    "case": "explicit sampled0/t1/c2",
+    "actual_u64": "10196290651989369033",
+    "expected_u64": "12891933761922034549",
+    "diagnosis": "Single Linux x86_64 frozen table includes sine-derived inputs and every cycle output bit. Concrete portability assumption; actual differing component unisolated. Same-host arithmetic regression not excluded. Preceding c1 explicit and Auto comparisons passed."
+   },
+   {
+    "test": "fe::cmg::tests::explicit_cmg_routes_poll_the_host_inside_every_stage",
+    "case": "ppml",
+    "failure": "prepared numeric edge absent from sampled global host-query phases",
+    "diagnosis": "Subsampling cannot guarantee a particular phase. Existing exhaustive serial prepared-route sweep passed; strengthen guaranteed allocation/publication assertions there rather than assuming an inner phase sample hit."
+   }
+  ],
+  "review": "Bounded Astra and independent high-effort source/log diagnosis; no numerical execution or reruns",
+  "disposition": "Native and timing work stopped; M3b unaccepted; M3c not released. Both failed runs remain failed. No qualification or retry budget reset.",
+  "diagnostic_proposal": {
+   "status": "awaiting Johannes direction under no-scientific-retry instruction",
+   "reference_fereg": "e9efda5501917915245a1913026ce0ec8bb000d2",
+   "reference_cmg": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+   "candidate_fereg": "dad54c1198f2444684a3ede6d0d4e4713ca55861",
+   "candidate_cmg": "efb5339459617b1aba99b34195240689deeab61c",
+   "host": "same Mac, rustc 1.85.1, ci profile",
+   "scope": "Existing 42-configuration adapter witness; test-only separate original input, structure and output bit reporting; preserve fixture and expected table",
+   "executions_per_arm": 1,
+   "compile_timeout_seconds_per_arm": 600,
+   "build_jobs": 4,
+   "witness_timeout_seconds_per_arm": 120,
+   "retries": 0,
+   "stop": "Any same-host difference remains a blocker; no candidate-derived rebaseline or automatic retry"
   },
   "qualification_repairs_remaining": 3
  }
