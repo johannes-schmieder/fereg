@@ -674,9 +674,9 @@ validation on the changed artifact. This panel remains failed. No unchanged
 candidate resampling, timing-budget reset, tolerance change, public two-FE
 activation or M3c release follows from it.
 
-### Scalar lane-kernel performance repair (pending root review)
+### Scalar lane-kernel performance repair
 
-Source cause. The second review repair's lane tiling (`row_lanes`, CMG
+Cloud-reported source attribution. The second review repair's lane tiling (`row_lanes`, CMG
 `004d1c4d`) changed the codegen shape of every lane kernel the Auto scalar
 cycle uses, without changing its work or arithmetic. Three effects compound:
 (1) every row or edge became a callback with a runtime lane range, so the
@@ -689,16 +689,23 @@ scalar row loops from specializing and vectorizing; and (3) the edge-list
 product no longer carried the input/output length equality that the M3a
 kernel's dimension checks provided, so each edge paid two extra bounds checks
 (24 instructions per edge against 20).
+Root reviewed the source changes and successful-path order, polling bounds,
+dimensions and resource behavior. The cloud's raw profiles, disassembly and
+diagnostic binary/harness identities were not independently reviewed; the
+code-generation attribution and instruction counts below remain reported
+diagnostics.
 
-Bounded diagnostic (declared before execution; cloud instruction counts with
-callgrind, diagnostic only, no timing claim). Workload: a 200x200 weighted
+Cloud instruction diagnostic using callgrind; diagnostic only, no timing
+qualification claim. Workload: a 200x200 weighted
 grid Laplacian with default options (levels 40,000/14,102/3,452/1,077/348
-vertices, repeats 1,2,2,1, direct terminal), 200 scalar team-free applications
-of one compatible right-hand side, instructions counted inside the application
-entry only. Arms: reference CMG `03a26041` (`apply_compatible_into`, the
+vertices, repeats 1,2,2,1, direct terminal). The comparison counts below use
+200 scalar team-free applications of one compatible right-hand side, with
+instructions counted inside the application entry only. One separate
+per-instruction attribution run used 50 applications. Arms: reference CMG `03a26041` (`apply_compatible_into`, the
 post-M3a Auto call), candidate `efb53394` with a never-true query (Auto today)
 and without a query. Each application runs 19 edge-list products over 321,561
-edges in every arm, and every arm's output bits are identical.
+edges in every arm. The observed first-output hash was identical across the
+arms; that hash does not establish exactness of every application in a run.
 
 | Arm | With query | Without query |
 |---|---:|---:|
@@ -706,8 +713,14 @@ edges in every arm, and every arm's output bits are identical.
 | candidate `efb53394` | 3,328,178,200 (+52.1%) | 2,801,377,200 (+28.1%) |
 | repair `ccd7177f` | 2,300,440,800 (+5.2%) | 2,262,586,400 (+3.4%) |
 
-Three declared arms and nine verification runs of the candidate under repair
-were used (intermediate steps retained in the summary). The remaining metered
+The initial budget was three initial profiles plus three reserved verification
+profiles. It was explicitly expanded during changed-code diagnosis: after two
+verification profiles, up to four further profiles were declared, followed by
+one 50-application attribution profile and two final verification profiles.
+The actual total was three initial plus nine verification profiles: twelve
+profiles overall. These expansions concern the cloud diagnostic only; they
+neither qualify the changed artifact on a host nor reset the consumed timing
+budget of an unchanged candidate. The remaining metered
 difference is restriction (+40 million), the terminal solve's required per-row
 counting (+30 million of +40 million), centering and prolongation (+13 million
 each). Whether the repair removes the Linux excess is for root's fixed panels on
@@ -722,8 +735,7 @@ constant scalar width reaches each loop under a polling meter; the edge-list
 product reslices its input to the output's length; row operations capture the
 width by value. fereg `ab8d69c` pins it (manifest and both lockfiles).
 
-Validation (cloud; full output and real exit codes under
-`target/tmp/auto-routing/m3b-perf/logs`, not committed):
+Validation reported by Claude (cloud; compact outcomes retained here):
 
 - CMG: all 27 matrix steps exit 0 — fmt; tests default 131, `parallel` 194
   and all features 251 in debug and release (including the many-leaf,
@@ -751,6 +763,122 @@ claim; root owns the fixed Linux/Mac panels, the analytic h16 install, native
 Break and fixture checks on the changed artifact. Superseded cloud candidate
 plugins (`5f9fd1ed`, `f7b40a9e`, `835ae095`) were deleted after their hashes
 were recorded here and in the results file.
+
+### Root review of the scalar repair: three timing cells remain inconclusive
+
+M3b remains **unaccepted**. The repaired high-degree Linux cells pass their
+nonregression bounds, and source, scientific and transaction checks pass.
+However, two Mac cells and one Linux cell do not establish nonregression.
+No source defect or external interference explains those three results.
+M3c has not been released; Claude is stopped and its monitor was deleted.
+
+The reviewed source is fereg `671239d47e2d93c0ce11304c10af62551787f4c0`
+and CMG `ccd7177fd6491421bab46de27bdb4d77eb2ee75c`, pinned in the manifest
+and both lockfiles. The accepted comparison remains M3a `e9efda55`
+(measured production `d33a1575`, CMG `03a26041`). The source archive has
+SHA-256 `48fec7848aa9a177c08b5d24ded4671914ca6b24f13d2b55e857a476e606577b`.
+The actual candidate plugins are:
+
+- Mac: `509ef88a0cabedee7ed9b18d45e9c3984c803bfd76f01c6e1ebd11bcccd78db8`.
+- Linux: `438c3a4f3e77e2a30373e4c8a3b979aa35eabf00e33a68c5d5dd2890945c16ba`.
+
+Both carry revision label `671239d47e2d` and use Rust 1.85.1 locked release.
+Independent high-effort and bounded Astra source reviews inspected all ten
+changed lane-kernel callers, successful arithmetic/order, dimensions, actual
+work polling, resources and joins. Neither found an actionable defect.
+
+Root validation:
+
+- Source-only integration passed 322 Python tests and 1,940 Rust test
+  executions in 81 groups, with 14 ignored. Core passed 1,365 with three
+  ignored. Formatting, both Clippy configurations, fuzz, allocator, portable,
+  numeric/mock guards and the complexity ratchet passed.
+- CMG release/all-features passed 251 executions in 38 groups, including
+  many-leaf reductions/centering, allocation/publication tails, owned result
+  copying, wide CSR/LDL/cycle lanes, joins and frozen independent witnesses.
+  The unaffected feature/profile matrix is reused.
+- Actual Mac and Linux binaries passed audit, ABI, load and panic checks.
+  The first Mac build failed its binary audit because its path remap covered
+  the repository but not dependency sources. No scientific or timing call ran
+  on that binary. The corrected full-user remap passed; the failed identity,
+  exit and log hash remain recorded.
+- All six mapped Stata fixtures, public PPML Break's five markers and
+  transaction recovery passed. Builder Break passed twice each at W2/W4,
+  covering the first actual task-zero/ordinal-zero poll and recovery, not
+  arbitrary deep phases. Separate inner-work tests cover the repaired loops.
+- Mac replay was exact in all 73 cases. Sixteen explicit CMG PPML calls
+  covered both bias modes, W1/W4, both arms and two repeats with exact science,
+  solver signatures and independent checks. Root analytic h16 construction,
+  installation/certification and the bounded analytic Schur witness passed.
+- The Linux 42-cell audit completed 168 calls, all 42 exact, maximum paired
+  difference zero, with the same six h16 installations per arm. Preparation
+  job 8203604 and array 8203605 tasks 1–3 have zero failure/exit accounting;
+  build job 8203592 also passed. Cross-worker science/discrete/hierarchy
+  agreement does not imply every output bit or iteration count is identical.
+
+The standard `./scripts/run_tests.sh` still **failed** after 315 Python tests
+at the installed-package binding check (exit 1, 20.437854 s). Release packages
+remain intentionally untouched. Source/private-native validation does not
+turn that standard entrypoint green.
+
+Both timing schedules were frozen before measurements on this changed
+artifact. Mac plan file SHA-256 is
+`9346b99f7bc07c2a20bb841bd167da4bcaa390541f6fb6a61fcaa8cda65456f6`;
+Linux plan file SHA-256 is
+`a2c644ab31369121f851e24a8c8e9181a11a801d346b76414d96527817a5fa18`.
+Mac completed 312 calls over six mirrored blocks per cell on one active
+desktop: ten cells pass and two are inconclusive. Linux jobs 8203630–8203635
+completed 720 calls on six distinct isolated 28-core hosts; report job 8203636
+revalidated retained science and captures. All seven jobs have structurally
+complete zero failure/exit accounting. Eleven Linux cells pass and one is
+inconclusive. All 1,032 calls passed scientific/repeat checks with exact
+paired outputs/workflow. No observations were removed or repeated.
+
+| Platform and cell | Median candidate/reference | Per-cell ratio interval | Upper excess over allowance | Verdict |
+| --- | ---: | ---: | ---: | --- |
+| Mac weak-low W8 | 1.016839 | [0.980604, 1.062151] | +0.589958 ms | inconclusive |
+| Mac wide-rhs W8 | 1.005671 | [0.984744, 1.051833] | +0.090181 ms | inconclusive |
+| Linux repeated-cells W4 | 1.031880 | [1.014145, 1.050799] | +0.056126 ms | inconclusive |
+
+These intervals cross the allowance; none establishes a regression, and
+none establishes nonregression. Independent reviews reproduced all 24
+verdicts and checked ordered calls, log/timer hashes, artifact bindings,
+repeat/scientific digests and observation coverage. The Mac review checked
+49 process samples, maximum gap 5.2284 s. Linux review checked reservations,
+censuses, process coverage, all 720 perf CSV hashes/counts and 100% event
+running fractions. Neither review found evidence permitting exclusions.
+
+Mac wide-rhs W8 and Linux repeated-cells W4 never install CMG; their two
+certified actions use 15/14 and 14/14 iterations respectively. Mac weak-low
+W8 installs a one-level direct factor of dimension 499 with scalar CMG
+application. Its phase medians show small distributed differences, without
+a concrete remaining CMG bottleneck. Another source change solely to obtain
+a new timing budget would not be a diagnosed repair.
+
+The original high-degree Linux regression has a useful repaired diagnostic
+signal: additional whole-harness instructions fall from about 313 million
+to 3.5–4.1 million (about 1.82% to 0.02%), and aggregate Schur recurrence
+overhead falls from about 20 ms to 0.27–0.30 ms. W4 and W8 upper excesses
+are now −1.171371 ms and −0.161966 ms. This is instrumented complete-solve
+evidence, not an isolated-kernel or uninstrumented release-speed claim.
+Six hosts do not establish independence; Mac uses one desktop; intervals
+are per cell, not simultaneous coverage of twelve comparisons.
+
+The results JSON's `performance_repair.root_validation` retains all 1,032
+complete-call timing observations, interval/unit summaries, instruction counts,
+actual identities, accounting, checks, failures and independent review
+limits. The scoring timer is `seconds`, parsed from `NATIVE_SECONDS`;
+the separate plugin `native_s` component timer is retained as a diagnostic.
+Final review corrected an initial summary that retained only the component
+timer; no measurements, intervals or verdicts changed. All 24 bounds were
+then reproduced from the complete-call observations in the committed summary.
+Earlier rejected handoffs and failed panels remain recorded.
+Temporary raw captures are resume inputs, not retained committed evidence.
+Johannes's retry authorization covers diagnosed repairs but does not reset
+this unchanged candidate's budget or waive an unmet prerequisite. Advancing
+requires his decision on an explicit exception for the three named cells
+or a prospectively fixed protocol change; no further measurements are
+authorized by this report.
 
 ## CMG successor milestone 3a: construction-work cap removed
 
