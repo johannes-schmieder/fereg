@@ -32,7 +32,9 @@ were deleted; hashes and summaries are the remaining record.
 independent review on 2026-10-20. Claude's repair and the additional root
 corrections below have been reviewed. Root source-only/native checks pass, and the
 fixed Linux panel passes all 12 cells. Three Mac cells remain inconclusive.
-M3c is unaccepted pending Johannes's decision, and M3d is not released.**
+Johannes explicitly accepted M3c with those uncertainties on 2026-10-20 and
+authorized progression to M3d. The timing verdicts and historical failures
+remain unchanged.**
 M3c starts from the accepted M3b pair (fereg `b9cc6b75`, i.e. source `671239d4` plus
 records, with CMG `ccd7177f`). It pins CMG
 `8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9`: `65bd817a` adds team forest
@@ -442,9 +444,33 @@ The JSON `root_host_validation` retains compact observations, actual identities,
 job accounting, independent reviews and limits. The existing standard
 installed-package binding failure and earlier rejected handoffs, mutations,
 test-accounting failure and operational failures remain recorded.
-M3b's explicit acceptance exception does not waive these M3c prerequisites.
-No further unchanged-candidate sampling or M3d release follows from this round;
-Johannes's decision is required. Claude remains stopped and no monitor remains.
+At the review boundary, M3c remained unaccepted and Claude stopped with no
+monitor active. M3b's earlier exception did not waive the M3c prerequisite.
+
+### Explicit acceptance with retained timing limits
+
+After the three Mac bounds above and the known installed-package binding
+failure were disclosed, Johannes instructed: “Yes, I accept. Continue with M3d”.
+M3c is accepted by that specific decision. All three bounds remain
+inconclusive; no observations are excluded and the fixed measurement budget
+is not reopened. The standard entrypoint remains failed at installed-package
+binding. This decision does not waive future prerequisites.
+
+The accepted source/artifact pair is fereg `71092c38` (production correction
+`c89ab124`) and CMG `82ae1c86`, with the actual Mac/Linux plugin and archive
+hashes above. Root evidence is committed at
+`a28d48b806867fbceb6766a13e2d14ce348fa08d`. This is the accepted comparison
+for M3d; M3b, M3a and their historical failures remain recorded.
+
+M3d is authorized within final plan revision 3: worker-independent
+representation/reductions and optional new RHS batching, with affected
+arithmetic and storage declared before edits and independent mathematical
+witnesses. It must incorporate the root fixes and preserve the consolidated
+pipeline, host-team ownership, fixed scientific parameters, resource controls,
+actual inner-work cancellation and atomic transactions. No construction-work
+cap, ledger, predictive gate or factor preflight returns. Claude must report
+and stop for independent review and applicable native/host validation; public
+two-FE activation remains unauthorized.
 
 
 ## CMG successor milestone 3b: one construction pipeline, cycle and adapter

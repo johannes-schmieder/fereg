@@ -1,5 +1,5 @@
 {
- "milestone": "M3c repairs source/native reviewed; fixed host qualification recorded; unaccepted pending decision, M3d not released",
+ "milestone": "M3c accepted by Johannes with three retained Mac timing uncertainties; M3d authorized for implementation and review",
  "date": "2026-10-20",
  "revisions": {
   "fereg_base": "b9cc6b752b40abaf688e941fdb1def1059b2ba54 (accepted M3b source 671239d4 plus records)",
@@ -16879,9 +16879,72 @@
   ]
  },
  "current_decision": {
+  "accepted": true,
+  "reason": "Johannes explicitly accepted M3c with the three disclosed Mac timing uncertainties after root review and fixed host qualification.",
+  "next": "M3d is authorized within final plan revision 3; report and stop for independent review.",
+  "authority": "Diagnosed repairs remain authorized through M3d; the specific M3c acceptance does not waive future prerequisites or reset measurement budgets."
+ },
+ "pre_acceptance_decision": {
   "accepted": false,
   "reason": "Linux passes all 12 bounds; Mac passes nine with repeated-cells W4/W8 and wide-rhs W4 inconclusive. No actionable source defect or external interference identified; exact observations and independent reviews are retained in root_host_validation",
   "next": "Johannes decision required before M3c acceptance or M3d release; no further sampling of this unchanged candidate",
   "authority": "Diagnosed repairs remain authorized through M3d. This does not reset fixed timing budgets or waive scientific/resource/performance prerequisites"
+ },
+ "acceptance": {
+  "date": "2026-10-20",
+  "decision_maker": "Johannes",
+  "user_instruction": "Yes, I accept. Continue with M3d",
+  "basis": "Explicit acceptance after root repairs, independent reviews and disclosure of three inconclusive Mac timing bounds. Original verdicts, observations and failures remain unchanged.",
+  "reviewed_fereg": "71092c3823f0488ecbd906761a52f142cffbf612",
+  "production_correction": "c89ab124e99b5ece97d93747bd03ef1c8c4cf6bb",
+  "reviewed_cmg": "82ae1c86d1e7d8c04f35d723b5affae8a031e283",
+  "root_evidence_commit": "a28d48b806867fbceb6766a13e2d14ce348fa08d",
+  "actual_plugins_sha256": {
+   "Darwin": "c0a8d9c7355494e4ea40b5ac95a979d883d38f2544cecc2966892a180302c5dd",
+   "Linux": "4d3a78dea4239f59e3491abac4a90448d9181ff8b9ed7152380e02a2be1fef11"
+  },
+  "source_archive_sha256": "527c5ddf637f2f5315f2e902ff6aa81533f9083cd336f191dbf9b6f37db85580",
+  "retained_inconclusive_cells": [
+   {
+    "host": "Mac",
+    "id": "repeated-cells-t8",
+    "excess_s": {
+     "alpha": 0.025,
+     "lower": -0.003147247285924972,
+     "median": -0.0007922068406776847,
+     "n": 6,
+     "upper": 0.0011503868563434987
+    }
+   },
+   {
+    "host": "Mac",
+    "id": "repeated-cells-t4",
+    "excess_s": {
+     "alpha": 0.025,
+     "lower": -0.0014310837906135387,
+     "median": -0.000859784954000459,
+     "n": 6,
+     "upper": 3.6463460845697574e-05
+    }
+   },
+   {
+    "host": "Mac",
+    "id": "wide-rhs-t4",
+    "excess_s": {
+     "alpha": 0.025,
+     "lower": -0.002498118053752836,
+     "median": -0.0010476486923774112,
+     "n": 6,
+     "upper": 0.00028494096563213113
+    }
+   }
+  ],
+  "performance_pass_cells": 21,
+  "performance_total_cells": 24,
+  "standard_entrypoint": "FAILED installed-package binding; source-only/private-native checks passed; release packages untouched",
+  "comparison_baseline_for_next_milestone": "This accepted M3c source/artifact pair with its retained limits; M3b/M3a and their original evidence remain preserved.",
+  "authorized_next_scope": "M3d within final plan revision 3: worker-independent representation/reductions and optional new RHS batching with separately declared arithmetic/storage scope and independent witnesses. Incorporate root repairs, report and stop for independent review.",
+  "limits": "A specific M3c acceptance exception, not a full timing pass or waiver of future prerequisites. No observation exclusions, unchanged-candidate resampling, reset budgets, cap/work ledger/predictive gate/factor preflight, public two-FE activation, or silent scientific/resource/protocol changes.",
+  "historical_fields": "Original cloud outstanding_host_checks/outstanding_decisions and review decisions describe their respective handoffs; root_host_validation and this acceptance record are the current disposition."
  }
 }
