@@ -2862,3 +2862,103 @@ fn prepared_route_polls_reserves_workspace_assembly_seeds_and_final_fills() {
     assert!(!topology.seed_valid);
     test_polls::cancel_at(None);
 }
+
+/// Above CMG's fixed-chunk reduction threshold (131,072 entries) explicit
+/// `solver(cmg)` projections are bit-identical at one and four workers: the
+/// single-column projection runs serially on one lane at one worker and
+/// planned on the team at four, the three-column one serially and across
+/// right-hand sides; all share the team's reduction and centering arithmetic.
+/// An independent CG oracle and the full-FE certificate check the science.
+#[test]
+fn explicit_cmg_projections_match_across_workers_above_the_reduction_floor() {
+    let (workers, firms, per_worker) = (72_000_usize, 70_000_usize, 5_usize);
+    let rows = workers * per_worker;
+    let worker_codes: Vec<u32> = (0..rows).map(|row| (row / per_worker) as u32).collect();
+    let firm_codes: Vec<u32> = (0..rows)
+        .map(|row| {
+            let (worker, slot) = (row / per_worker, row % per_worker);
+            let firm = match slot {
+                0 => worker,
+                1 => worker + 1,
+                _ => worker * 7 + slot * 13_001 + slot * slot,
+            };
+            (firm % firms) as u32
+        })
+        .collect();
+    let worker_index = LevelIndex::from_codes(&worker_codes, workers).expect("workers");
+    let firm_index = LevelIndex::from_codes(&firm_codes, firms).expect("firms");
+    let design = || {
+        BorrowedInterceptFeDesign::new(
+            rows,
+            vec![
+                effect(&worker_codes, workers, &worker_index),
+                effect(&firm_codes, firms, &firm_index),
+            ],
+        )
+        .expect("design")
+    };
+    let weights: Vec<f64> = (0..rows).map(|row| 0.6 + (row % 13) as f64 * 0.1).collect();
+    let input = |columns: usize| {
+        DenseMatrix::from_columns(
+            &(0..columns)
+                .map(|column| {
+                    (0..rows)
+                        .map(|row| ((row * 7 + column * 31) as f64 * 0.013).sin())
+                        .collect()
+                })
+                .collect::<Vec<_>>(),
+        )
+        .expect("input")
+    };
+    for columns in [1, 3] {
+        let mut projections = Vec::new();
+        for threads in [1, 4] {
+            let mut options = config(3);
+            options.threads = ThreadConfig::from_requested(threads, true).expect("threads");
+            let mut absorber = CmgAbsorber::build(
+                design(),
+                BorrowedMapWeights::Provided(&weights),
+                options,
+                false,
+            )
+            .expect("OLS setup");
+            let CmgRoute::Graph(graph) = &absorber.route else {
+                panic!("graph route")
+            };
+            assert!(graph.solver.graph().vertex_count() >= 131_072);
+            let projected = absorber.absorb(input(columns)).expect("projection");
+            let CmgRoute::Graph(graph) = &absorber.route else {
+                panic!("graph route")
+            };
+            let (GraphCmgWorkspace::OlsBuffers(buffers)
+            | GraphCmgWorkspace::CallerBuffers(buffers)) = &graph.workspace;
+            // Only the four-worker single-column projection is planned.
+            assert_eq!(buffers.planned_used, threads == 4 && columns == 1);
+            projections.push(projected.residualized().clone());
+        }
+        assert_eq!(
+            projections[0].as_slice(),
+            projections[1].as_slice(),
+            "{columns} columns: one and four workers differ"
+        );
+        let reference = absorb_borrowed_intercept_cg(
+            &design(),
+            BorrowedMapWeights::Provided(&weights),
+            input(columns),
+            config(3).map,
+            BorrowedCgOptions::default(),
+        )
+        .expect("independent CG oracle");
+        assert_matrix_close(&projections[0], reference.residualized(), 5e-8);
+        assert!(
+            certify_borrowed_intercept_candidate(
+                &design(),
+                BorrowedMapWeights::Provided(&weights),
+                &projections[0],
+                config(3).map,
+            )
+            .expect("fresh full-FE certificate")
+            .passed
+        );
+    }
+}

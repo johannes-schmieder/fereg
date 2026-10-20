@@ -140,6 +140,18 @@ and is never stored in a hierarchy, plan, solver or workspace; CMG's solver and
 plan record only the team's shape and reject a differently shaped team. CMG's
 standalone owned `ParallelExecutor` is not used by fereg.
 
+Explicit `cmg` and `cmgschur` results do not depend on the worker count
+(milestone 3d). Every CMG solve and application in them carries the team: PCG
+dot products, norm sums and single-component centering use CMG's fixed-chunk
+tree whenever a length reaches 131,072 entries (fereg's default thresholds).
+That includes a one-worker team. Serial and concurrent right-hand-side solves
+run on `Team::single_lane()`, a one-lane view of the same pool. A projection
+is therefore bit-identical at one, two, four or eight workers on one platform,
+whichever execution mode the solver selects. Which hierarchy levels carry row
+operators still follows the worker count; that is a memory and speed choice,
+since row operators reproduce the edge-list products bit for bit. The
+automatic route's team-free scalar cycle keeps its serial arithmetic.
+
 CMG construction, application and PCG receive one context each
 (`BuildContext`, `ApplyContext`, `SolveContext`): the borrowed team, the
 host's cancellation query and, for construction, the memory budget. fereg's

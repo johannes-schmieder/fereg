@@ -2640,168 +2640,168 @@
           },
           {
             "condition": "level + 1 < vertex_counts . len ( )",
-            "line": 614
+            "line": 616
           },
           {
             "condition": "current > 0.0 && * numeric_weight > 0.0",
-            "line": 785
+            "line": 787
           },
           {
             "condition": "profile != & self . profile || ! self . design_identity . matches ( design ) || self . numeric_weights . len ( ) != profile . observations",
-            "line": 825
+            "line": 827
           },
           {
             "condition": "! caller . nuisance_potentials . is_empty ( ) && caller . nuisance_potentials . len ( ) == self . nuisance_seed . len ( ) && graph . nuisance_setup . extra_restarts == 0 && ( graph . nuisance_setup . warm_right_hand_sides == 0 || graph . nuisance_setup . initial_relative_residual < 0.5 ) && all_finite ( & caller . nuisance_potentials ) ?",
-            "line": 880
+            "line": 882
           },
           {
             "condition": "design . effects ( ) . len ( ) < 2",
-            "line": 1013
+            "line": 1015
           },
           {
             "condition": "graph . is_err ( ) && memory . construction != SolverWorkspacePeak :: ZERO",
-            "line": 1047
+            "line": 1049
           },
           {
             "condition": "values . nrows ( ) != self . design . nobs ( ) || values . ncols ( ) == 0",
-            "line": 1118
+            "line": 1120
           },
           {
             "condition": "values . nrows ( ) != self . design . nobs ( ) || values . ncols ( ) == 0",
-            "line": 1216
+            "line": 1218
           },
           {
             "condition": "values . nrows ( ) != self . design . nobs ( ) || values . ncols ( ) == 0",
-            "line": 1479
+            "line": 1481
           },
           {
             "condition": "! matches ! ( self . workspace , GraphCmgWorkspace :: CallerBuffers ( _ ) ) || Some ( seed . potentials . len ( ) ) != self . solver . graph ( ) . vertex_count ( ) . checked_mul ( values . ncols ( ) - 1 )",
-            "line": 1778
+            "line": 1780
           },
           {
             "condition": "seed . as_ref ( ) . is_some_and ( | ( _ , enabled ) | * enabled ) && start < values . ncols ( ) - 1",
-            "line": 1798
+            "line": 1800
           },
           {
             "condition": "solution . len ( ) != left_levels . saturating_add ( right_levels ) || ! scale . is_finite ( )",
-            "line": 1919
+            "line": 1921
           },
           {
             "condition": "columns > 0",
-            "line": 2373
+            "line": 2375
           },
           {
             "condition": "profile . nuisance_columns > MAX_NUISANCE_COLUMNS",
-            "line": 2388
+            "line": 2390
           },
           {
             "condition": "config . solver_memory_budget . is_none_or ( | budget | budget . fits ( required ) )",
-            "line": 2458
+            "line": 2460
           },
           {
             "condition": "config . solver_memory_budget . is_none_or ( | budget | budget . fits ( required ) )",
-            "line": 2488
+            "line": 2490
           },
           {
             "condition": "profile . nuisance_columns > 0 && ! graph . edges ( ) . is_empty ( ) && graph . edges ( ) . iter ( ) . all ( | edge |",
-            "line": 2530
+            "line": 2532
           },
           {
             "condition": "budget . fits ( required )",
-            "line": 2631
+            "line": 2633
           },
           {
             "condition": "config . solver_memory_budget . is_some_and ( | budget | ! budget . fits ( required ) )",
-            "line": 2663
+            "line": 2665
           },
           {
             "condition": "budget . fits ( required )",
-            "line": 2683
+            "line": 2685
           },
           {
             "condition": "nuisance_columns == 0",
-            "line": 2740
+            "line": 2742
           },
           {
             "condition": "! weighted . is_finite ( )",
-            "line": 2988
+            "line": 2990
           },
           {
             "condition": "moments . len ( ) != corrections . len ( )",
-            "line": 3014
+            "line": 3016
           },
           {
             "condition": "index >= moments . len ( )",
-            "line": 3026
+            "line": 3028
           },
           {
             "condition": "vertices == 0 || solutions . len ( ) % vertices != 0",
-            "line": 3082
+            "line": 3084
           },
           {
             "condition": "first_column . checked_add ( width ) . is_none_or ( | end | end > columns )",
-            "line": 3089
+            "line": 3091
           },
           {
             "condition": "config . batch_size == 0 || ! config . map . tolerance . is_finite ( ) || config . map . tolerance <= 0.0 || config . map . tolerance >= 1.0 || config . map . max_iterations == 0",
-            "line": 3127
+            "line": 3129
           },
           {
             "condition": "weights",
-            "line": 3139
+            "line": 3141
           },
           {
             "condition": "values . len ( ) != nobs",
-            "line": 3142
+            "line": 3144
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 3148
+            "line": 3150
           },
           {
             "condition": "weight / scale == 0.0",
-            "line": 3158
+            "line": 3160
           },
           {
             "condition": "weights",
-            "line": 3168
+            "line": 3170
           },
           {
             "condition": "gram . len ( ) != dimension . saturating_mul ( dimension )",
-            "line": 3253
+            "line": 3255
           },
           {
             "condition": "rhs . len ( ) != self . dimension || output . len ( ) != self . dimension || work . len ( ) < self . rank",
-            "line": 3338
+            "line": 3340
           },
           {
             "condition": "values . capacity ( ) < elements",
-            "line": 3411
+            "line": 3413
           }
         ],
         "functions": {
           "absorb#1": {
-            "line": 1214,
+            "line": 1216,
             "lines": 103
           },
           "absorb_final_residual#1": {
-            "line": 1474,
+            "line": 1476,
             "lines": 91
           },
           "absorb_raw_final_residual#1": {
-            "line": 1458,
+            "line": 1460,
             "lines": 8
           },
           "admit_cmg_polish#1": {
-            "line": 2641,
+            "line": 2643,
             "lines": 32
           },
           "admit_runtime#1": {
-            "line": 1947,
+            "line": 1949,
             "lines": 9
           },
           "all_finite#1": {
-            "line": 3449,
+            "line": 3451,
             "lines": 8
           },
           "analyze#1": {
@@ -2809,75 +2809,75 @@
             "lines": 42
           },
           "assemble#1": {
-            "line": 771,
+            "line": 773,
             "lines": 48
           },
           "build#1": {
-            "line": 933,
+            "line": 935,
             "lines": 15
           },
           "build_graph_route#1": {
-            "line": 1958,
+            "line": 1960,
             "lines": 58
           },
           "build_graph_route_from_numeric#1": {
-            "line": 2060,
+            "line": 2062,
             "lines": 208
           },
           "build_nuisance_columns#1": {
-            "line": 2329,
+            "line": 2331,
             "lines": 32
           },
           "build_nuisance_effects#1": {
-            "line": 2362,
+            "line": 2364,
             "lines": 24
           },
           "build_nuisance_factor#1": {
-            "line": 2760,
+            "line": 2762,
             "lines": 115
           },
           "build_prepared_graph_route#1": {
-            "line": 2017,
+            "line": 2019,
             "lines": 41
           },
           "build_profiled_internal#1": {
-            "line": 994,
+            "line": 996,
             "lines": 100
           },
           "build_unpolished_prepared#1": {
-            "line": 973,
+            "line": 975,
             "lines": 19
           },
           "build_with_workspace#1": {
-            "line": 949,
+            "line": 951,
             "lines": 19
           },
           "certify_graph_projection#1": {
-            "line": 1321,
+            "line": 1323,
             "lines": 134
           },
           "cmg_error#1": {
-            "line": 3504,
+            "line": 3506,
             "lines": 3
           },
           "cmg_error_code#1": {
-            "line": 3512,
+            "line": 3514,
             "lines": 32
           },
           "cmg_retained_workspace_bound_bytes#1": {
-            "line": 2692,
+            "line": 2694,
             "lines": 42
           },
           "cmg_solve_error#1": {
-            "line": 3508,
+            "line": 3510,
             "lines": 3
           },
           "column_at_row#1": {
-            "line": 562,
+            "line": 564,
             "lines": 4
           },
           "compensated_add#1": {
-            "line": 3466,
+            "line": 3468,
             "lines": 8
           },
           "component_policy#1": {
@@ -2885,23 +2885,23 @@
             "lines": 3
           },
           "component_quantile#1": {
-            "line": 2313,
+            "line": 2315,
             "lines": 7
           },
           "conservative_prepare_peak_bytes#1": {
-            "line": 652,
+            "line": 654,
             "lines": 26
           },
           "conservative_prepared_cmg_frame_bytes#1": {
-            "line": 2548,
+            "line": 2550,
             "lines": 64
           },
           "conservative_prepared_problem#1": {
-            "line": 2506,
+            "line": 2508,
             "lines": 13
           },
           "conservative_retained_frame_peak_bytes#1": {
-            "line": 682,
+            "line": 684,
             "lines": 14
           },
           "consume#1": {
@@ -2909,19 +2909,19 @@
             "lines": 5
           },
           "empty#1": {
-            "line": 3226,
+            "line": 3228,
             "lines": 9
           },
           "ensure_cg_fallback_fits#1": {
-            "line": 2613,
+            "line": 2615,
             "lines": 27
           },
           "ensure_cmg_exact_retained_memory_fits#1": {
-            "line": 2674,
+            "line": 2676,
             "lines": 17
           },
           "ensure_matches#1": {
-            "line": 820,
+            "line": 822,
             "lines": 15
           },
           "estimated_bytes#1": {
@@ -2929,7 +2929,7 @@
             "lines": 7
           },
           "expected_heap_peak#1": {
-            "line": 1190,
+            "line": 1192,
             "lines": 3
           },
           "explicit_cmg_components#1": {
@@ -2937,43 +2937,43 @@
             "lines": 3
           },
           "factor#1": {
-            "line": 3252,
+            "line": 3254,
             "lines": 84
           },
           "falls_back_to_cg#1": {
-            "line": 3497,
+            "line": 3499,
             "lines": 6
           },
           "fill_polled#1": {
-            "line": 3441,
+            "line": 3443,
             "lines": 6
           },
           "filled_vec#1": {
-            "line": 3404,
+            "line": 3406,
             "lines": 18
           },
           "format_usize_series#1": {
-            "line": 2321,
+            "line": 2323,
             "lines": 7
           },
           "from_levels#1": {
-            "line": 591,
+            "line": 593,
             "lines": 43
           },
           "include#1": {
-            "line": 637,
+            "line": 639,
             "lines": 4
           },
           "include_batch#1": {
-            "line": 642,
+            "line": 644,
             "lines": 4
           },
           "include_from#1": {
-            "line": 1934,
+            "line": 1936,
             "lines": 8
           },
           "matches#1": {
-            "line": 915,
+            "line": 917,
             "lines": 15
           },
           "new#1": {
@@ -2985,15 +2985,15 @@
             "lines": 74
           },
           "new#3": {
-            "line": 895,
+            "line": 897,
             "lines": 19
           },
           "nonconvergence#1": {
-            "line": 3545,
+            "line": 3547,
             "lines": 3
           },
           "normalized_weight#1": {
-            "line": 3167,
+            "line": 3169,
             "lines": 6
           },
           "nuisance_columns#1": {
@@ -3001,23 +3001,23 @@
             "lines": 3
           },
           "nuisance_moments_into#1": {
-            "line": 3004,
+            "line": 3006,
             "lines": 40
           },
           "nuisance_projection_workspace_bytes#1": {
-            "line": 2735,
+            "line": 2737,
             "lines": 24
           },
           "nuisance_seed_bytes#1": {
-            "line": 2520,
+            "line": 2522,
             "lines": 7
           },
           "nuisance_value#1": {
-            "line": 3045,
+            "line": 3047,
             "lines": 21
           },
           "pcg_batch_width#1": {
-            "line": 1568,
+            "line": 1570,
             "lines": 11
           },
           "pcg_options#1": {
@@ -3029,39 +3029,39 @@
             "lines": 7
           },
           "polled_segments#1": {
-            "line": 3426,
+            "line": 3428,
             "lines": 14
           },
           "preflight_cmg_memory#1": {
-            "line": 2401,
+            "line": 2403,
             "lines": 72
           },
           "preflight_prepared_cmg_memory#1": {
-            "line": 2474,
+            "line": 2476,
             "lines": 31
           },
           "prepare#1": {
-            "line": 697,
+            "line": 699,
             "lines": 73
           },
           "prepared_cmg_options#1": {
-            "line": 2528,
+            "line": 2530,
             "lines": 19
           },
           "project_core_matrix#1": {
-            "line": 1761,
+            "line": 1763,
             "lines": 137
           },
           "project_matrix_with_options#1": {
-            "line": 1581,
+            "line": 1583,
             "lines": 179
           },
           "project_unpolished#1": {
-            "line": 1095,
+            "line": 1097,
             "lines": 7
           },
           "project_unpolished_with_seed#1": {
-            "line": 1105,
+            "line": 1107,
             "lines": 84
           },
           "record_expected_heap#1": {
@@ -3073,7 +3073,7 @@
             "lines": 3
           },
           "reset_warm_start#1": {
-            "line": 859,
+            "line": 861,
             "lines": 4
           },
           "retain_certified#1": {
@@ -3081,55 +3081,55 @@
             "lines": 7
           },
           "retain_certified_seed#1": {
-            "line": 872,
+            "line": 874,
             "lines": 20
           },
           "retained_bytes#1": {
-            "line": 836,
+            "line": 838,
             "lines": 22
           },
           "retained_bytes#2": {
-            "line": 3236,
+            "line": 3238,
             "lines": 15
           },
           "retained_workspace_peak#1": {
-            "line": 1194,
+            "line": 1196,
             "lines": 16
           },
           "solution#1": {
-            "line": 535,
+            "line": 537,
             "lines": 11
           },
           "solve#1": {
             "line": 447,
-            "lines": 87
+            "lines": 89
           },
           "solve_into#1": {
-            "line": 3337,
+            "line": 3339,
             "lines": 47
           },
           "swap_symmetric#1": {
-            "line": 3386,
+            "line": 3388,
             "lines": 11
           },
           "trace_cmg_hierarchy#1": {
-            "line": 2269,
+            "line": 2271,
             "lines": 43
           },
           "validate_config#1": {
-            "line": 3126,
+            "line": 3128,
             "lines": 11
           },
           "validate_finite_slice#1": {
-            "line": 3458,
+            "line": 3460,
             "lines": 7
           },
           "validate_nuisance_limit#1": {
-            "line": 2387,
+            "line": 2389,
             "lines": 13
           },
           "validate_weights#1": {
-            "line": 3138,
+            "line": 3140,
             "lines": 28
           },
           "vertices#1": {
@@ -3137,11 +3137,11 @@
             "lines": 3
           },
           "weighted_column_norms#1": {
-            "line": 3174,
+            "line": 3176,
             "lines": 42
           },
           "zero_vec#1": {
-            "line": 3398,
+            "line": 3400,
             "lines": 3
           }
         },

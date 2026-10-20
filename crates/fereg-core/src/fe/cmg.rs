@@ -491,9 +491,11 @@ impl CallerPcgBuffers {
                 .map(|values| PcgBatchRef::contiguous(values, rhs_count, vertices))
                 .transpose()
                 .map_err(cmg_error)?;
+            // Serial solves run on one lane of the team, so every execution
+            // mode and worker count shares the team's reduction arithmetic.
             let mut context = SolveContext {
                 cancel: Some(HOST_CANCEL),
-                ..SolveContext::default()
+                ..ParallelPcgSolver::serial(team)
             };
             let workspaces = match report.execution() {
                 ParallelPcgExecution::Serial => &mut workspaces[..1],
