@@ -26,6 +26,102 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## CMG successor milestone 3b: one construction pipeline, cycle and adapter
+
+**Cloud handoff, pending Codex review; M3c is not started.** M3b is a
+behaviour-preserving consolidation. CMG is pinned to
+`c6f9e8224503273a20b47cf42ec8bc09d50fefd9` (`6986265e` freezes
+pre-consolidation digests, then `c6f9e822` consolidates). CMG now has one
+construction pipeline (`build_with` with `BuildOptions` and a `BuildContext` of
+borrowed `Team`, optional cancellation and optional layout budget), one
+stationary cycle recursion over the two existing operator kernels
+(`ApplyContext { plan, team, cancel }`) and one PCG recurrence (`SolveContext`).
+The serial/budgeted/executor/controlled/component builder cross-product, the
+17 `solve_pcg_*_with_*` variants, separate profiled copies, `HostExecutor`,
+`InstalledTeam` and `with_installed` are removed with their tests, examples and
+benchmarks migrated. No CMG construction, application or solve creates a pool.
+
+fereg has one CMG-Schur adapter: explicit `cmgschur` now runs the automatic
+route's bounded census, clique/tree emission, initial graph and hierarchy
+pipeline, differing only in installation (explicit: host-team contraction, row
+operators for the team's eligible levels, up to four interleaved lanes; Auto:
+serial hierarchy, team-free scalar cycle, width one). The explicit hybrid
+builder, worker census, iterator edge stream, unbounded sampler and executor
+application owner are deleted. Explicit OLS/PPML `solver(cmg)` builds, plans and
+solves on the action's host team through `parallel::with_cmg_team`, which
+requires the team width to equal the requested threads (outside a native action
+it installs fereg's process-local team). Construction, application and PCG on
+every route pass the host cancellation flag; CMG's `Cancelled` maps to
+`Interrupted` after all lanes join. Auto keeps `Never`/width 1, explicit routes
+keep `Eligible` (worker-dependent) and width 4, reduction orders, hierarchies,
+factors, repeats and cycle bits are unchanged. Iteration 16, cutoff 5, k = 1,
+seed 0, eligibility, the small-direct criterion, restart, certificate, fallback
+and public memory controls are unchanged.
+
+Declared non-arithmetic scope: explicit `cmgschur` memory admission now follows
+the bounded adapter (no CMG pool runtime allowance or forecast; a memory refusal
+remains an allocation error with a new message); explicit `cmg` keeps its
+runtime allowance but no longer counts an owned pool's handle bank; owner byte
+reports follow the new struct layouts. Memory tables are outside exact replay.
+
+Evidence (cloud, Linux x86_64; full stdout/stderr and real exit codes retained
+under `target/tmp/auto-routing/m3b/logs` until review, not committed):
+
+- Frozen witnesses. CMG `tests/frozen_bits.rs` reproduces digests frozen from
+  the pre-consolidation builders, cycles and solves at one and four workers in
+  eight feature/profile configurations. A fereg witness records 42 digests
+  (graph edges, firm labels, hierarchy trace fields, application policy and
+  every output bit of scalar, masked, scaled and interleaved applications) of
+  the old explicit executor builder and the bounded Auto builder on the
+  post-M3a tree (`e9efda55` plus the test only), at 1 and 4 workers and widths
+  1, 2 and 5 over sampled, star and multilevel torus fixtures (row operators at
+  four workers); the consolidated adapter reproduces all 42.
+- Cancellation. CMG unit tests cancel a scalar cycle at every bounded poll,
+  cancel serial PCG mid-recurrence with an exact restart, and cancel planned
+  and interleaved cycles and planned and concurrent PCG with all lanes joined;
+  a new test cancels batch-workspace preparation at every poll. A fereg witness raises
+  host cancellation inside a planned interleaved cycle and a planned PCG solve
+  on a four-worker host team at early, middle and late polls, observes
+  `Interrupted`, and then reproduces reference bits from the same installed
+  hierarchy, plan and workspaces.
+- CMG checks: tests default 120, `parallel` 171 and all features 227 (debug
+  and release), doc tests, Clippy `-D warnings` for no features, `parallel`,
+  `experimental-components`, `profiling`, `cycle-profiling`,
+  `parallel,experimental-components` and all features, fmt, rustdoc
+  `-D warnings`, and the benchmark crate (Clippy default/all features, fmt) in
+  a standalone copy.
+- Actual-plugin replay of the candidate (`5f9fd1ed...87d4`) against the
+  post-M3a plugin (`971d3e30...fb97`): 73 of 73 cases exact with no science
+  error, including ten explicit `solver(cmg)` OLS/PPML cases. Derived explicit
+  variants (46 runs: `cmgschur` at 1 and 4 workers, sampled and degree-4;
+  `cmg` at 4 workers; `cmg` with both PPML bias modes at 1 and 4 workers) are
+  exact with equal repeats and identical `cmgschur_setup` traces (graph,
+  hierarchy, threads, row operators, width); five unsupported `cmgschur`
+  inputs return the same code 198 on both. Injected two-FE runs
+  (`routing_incremental_two`, `routing_h4_k1`, `routing_direct`; 75 runs) are
+  exact with equal routes and repeats; none reaches a CMG build, so the source
+  witnesses remain the installation evidence. Their 18 science notes are the
+  three known-defect fixtures, identical on both plugins (that ad-hoc runner
+  does not apply the replay's baseline-fix labels).
+- Complexity: fereg-core 104,943 -> 104,553 production lines and 1,371 ->
+  1,354 dispatch candidates; no growth.
+- `./scripts/run_tests.sh` passes 315 Python tests and stops at the expected
+  installed-plugin binding check (exit 1). `--source-only` passes 322 Python
+  tests, 1,947 Rust test executions in 82 groups (14 ignored), the allocator
+  audits, the fuzz check, seven portable checks and the ratchet.
+
+Logging limitation: the first CMG frozen-witness run filtered cargo output
+through grep/head and kept no per-command exit status; that filtered stream and
+a limitation note are retained, the run was not repeated, and every later check
+saved complete output and its real exit code.
+
+Outstanding host checks (Codex): six mapped Stata fixtures, builder Break at
+two and four workers, the PPML Break fixture, native Mac build and replay, and
+the Linux/Mac nonregression diagnostics. No performance claim is made from this
+cloud host.
+
+Identities are in [`cmg-m3b-20261020.json`](../bench/results/cmg-m3b-20261020.json).
+
 ## CMG successor milestone 3a: construction-work cap removed
 
 **M3a is accepted for M3b: review, native/transaction checks, the 42-cell

@@ -1,0 +1,40 @@
+{
+ "milestone": "M3b behaviour-preserving consolidation (cloud handoff, pending Codex review)",
+ "date": "2026-10-20",
+ "revisions": {
+  "fereg_code": "65bc39f5f98090ee4b2206e13a72cc9bf0a51c0d",
+  "fereg_base": "e9efda5501917915245a1913026ce0ec8bb000d2",
+  "cmg_pin": "c6f9e8224503273a20b47cf42ec8bc09d50fefd9",
+  "cmg_frozen_witness": "6986265e (parent of the pin)",
+  "cmg_base": "03a260411450dd2c1caaefffa3514ac78c0996d7"
+ },
+ "host": "Linux x86_64 cloud container; rustc 1.85.1 for fereg, CMG clippy toolchain 1.97.0; no timing claims",
+ "plugins": {
+  "candidate_sha256": "5f9fd1ed14e3544bdd48424c7c18b2b072757d17f1282325f0297d3b5a8087d4",
+  "baseline_post_m3a_sha256": "971d3e307d293aedf968d09c79aae63584c18d6e4a789592c7e4b0839a61fb97"
+ },
+ "checks": {
+  "cmg_tests": "default 120, parallel 171, all features 227 (debug and release), doc tests; frozen_bits in 8 feature/profile configurations: pass",
+  "cmg_static": "clippy -D warnings for none, parallel, experimental-components, profiling, cycle-profiling, parallel+experimental-components and all features; fmt; rustdoc -D warnings; benchmark crate clippy default/all features and fmt (standalone copy): pass",
+  "fereg_frozen_witness": "42 digests recorded on e9efda55 plus the test (old explicit executor builder and bounded Auto builder, 1/4 workers, widths 1/2/5) reproduced by the consolidated adapter",
+  "fereg_cancellation_witness": "host cancellation inside a planned interleaved cycle and a planned PCG solve on a four-worker team maps to Interrupted and the same owners reproduce reference bits",
+  "actual_plugin_replay": "73 of 73 cases exact with no science error against the post-M3a plugin",
+  "derived_explicit_replay": "46 runs (cmgschur 1/4 workers, sampled, degree 4; cmg 4 workers; cmg with exact and randomized bias at 1/4 workers): zero exact, discrete and repeat differences; identical cmgschur_setup traces; 5 unsupported cmgschur inputs return 198 on both",
+  "injected_two_fe_replay": "75 runs (routing_incremental_two, routing_h4_k1, routing_direct): zero exact differences, equal routes and repeats; no CMG build reached; 18 known-defect fixture notes identical on both plugins",
+  "complexity": "fereg-core 104,943 -> 104,553 production lines, 1,371 -> 1,354 dispatch candidates; no growth",
+  "run_tests_standard": "315 Python tests pass, then the expected installed-plugin binding check fails (exit 1)",
+  "run_tests_source_only": "exit 0: 322 Python tests, 1,947 Rust test executions in 82 groups (14 ignored), allocator audits, fuzz check, portable checks, ratchet"
+ },
+ "limitations": [
+  "first CMG frozen-witness run kept only grep/head-filtered output and no per-command exit status; retained with a note and not repeated",
+  "first old-tree digest recording never ran its test (ENOSPC during compilation); rerun after freeing regenerable build caches",
+  "logs retained under target/tmp/auto-routing/m3b/logs in the cloud session until review; not committed"
+ ],
+ "outstanding_host_checks": [
+  "six mapped Stata fixtures",
+  "builder Break at 2 and 4 workers",
+  "PPML Break fixture",
+  "native Mac build and replay",
+  "Linux/Mac nonregression diagnostics"
+ ]
+}
