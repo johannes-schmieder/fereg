@@ -531,6 +531,7 @@
     "exit_code": 101,
     "log_sha256": "94eb7fbbcb56eec364a9d736e48d9b6c0b7b7aa5812728444b3f940d1d2e1adc",
     "rust_passed_executions": 0,
+    "rust_failed_executions": 0,
     "rust_result_groups": 0,
     "rust_ignored": 0
    },
@@ -554,6 +555,7 @@
     "exit_code": 0,
     "log_sha256": "4cb3e8a3836d7a0e51d4a4cd36776dab04c250738f243988ea67f425dd1e898b",
     "rust_passed_executions": 10,
+    "rust_failed_executions": 0,
     "rust_result_groups": 3,
     "rust_ignored": 0
    },
@@ -567,6 +569,7 @@
     "exit_code": 1,
     "log_sha256": "2a10e8d9af2b02ac245ecb7d7ea4b08abb9ebd55b137b2b993e96a1abd1ba162",
     "rust_passed_executions": 0,
+    "rust_failed_executions": 0,
     "rust_result_groups": 0,
     "rust_ignored": 0
    },
@@ -590,6 +593,7 @@
     "exit_code": 0,
     "log_sha256": "bab8eeeab79d9b57c3ac33d7e4f67d9f82f2db7a628fadb4f7206e2278df9577",
     "rust_passed_executions": 10,
+    "rust_failed_executions": 0,
     "rust_result_groups": 3,
     "rust_ignored": 0
    },
@@ -604,6 +608,7 @@
     "exit_code": 0,
     "log_sha256": "0c120c55857bd95476609b38053734cbf99cd6572ac72982a0702e75822d3206",
     "rust_passed_executions": 1950,
+    "rust_failed_executions": 0,
     "rust_result_groups": 83,
     "rust_ignored": 14
    },
@@ -617,6 +622,7 @@
     "exit_code": 1,
     "log_sha256": "ed55bee67a3bcc1bbc4661011d16906437051a28544e3a6574b8c21a8389f1fa",
     "rust_passed_executions": 0,
+    "rust_failed_executions": 0,
     "rust_result_groups": 0,
     "rust_ignored": 0
    },
@@ -634,7 +640,8 @@
     "exit_code": 101,
     "log_sha256": "9d30118f779291b34962adfab1e528a3aa2c9b8d8cc89390dba86529a455ccc0",
     "rust_passed_executions": 205,
-    "rust_result_groups": 23,
+    "rust_failed_executions": 1,
+    "rust_result_groups": 24,
     "rust_ignored": 0
    },
    "cmg-origin-cleanup": {
@@ -655,6 +662,7 @@
     "exit_code": 0,
     "log_sha256": "251a0f94c0de81c684d413fc9b529b391666ff48b2f1215405da638962997654",
     "rust_passed_executions": 1,
+    "rust_failed_executions": 0,
     "rust_result_groups": 1,
     "rust_ignored": 0
    },
@@ -672,6 +680,7 @@
     "exit_code": 0,
     "log_sha256": "7ee50fd24e4b84f80db165178848704e509c84e350db6ecbbec969b4d68056aa",
     "rust_passed_executions": 254,
+    "rust_failed_executions": 0,
     "rust_result_groups": 38,
     "rust_ignored": 0
    },
@@ -692,6 +701,7 @@
     "exit_code": 0,
     "log_sha256": "bb909a69359451fd20a95d57e88d20a2d40b59a8a5f993dd0ca42686da8d7b77",
     "rust_passed_executions": 0,
+    "rust_failed_executions": 0,
     "rust_result_groups": 0,
     "rust_ignored": 0
    },
@@ -710,6 +720,7 @@
     "exit_code": 0,
     "log_sha256": "f7afb2a907f06c3f35bc3204bcb6bf1af19551bdd6158c147705b62bfa441aa0",
     "rust_passed_executions": 1,
+    "rust_failed_executions": 0,
     "rust_result_groups": 1,
     "rust_ignored": 0
    },
@@ -723,8 +734,9 @@
     "elapsed_seconds": 336.30121724982746,
     "exit_code": 0,
     "log_sha256": "a52d135825dae60f2b0861f917b64f2d8dda7c22c81de739f833e707bf8b3efa",
-    "rust_passed_executions": 1948,
-    "rust_result_groups": 81,
+    "rust_passed_executions": 1950,
+    "rust_failed_executions": 0,
+    "rust_result_groups": 83,
     "rust_ignored": 14
    },
    "final-standard": {
@@ -737,6 +749,7 @@
     "exit_code": 1,
     "log_sha256": "e5a9aeffc3cc51f67267f740a7aa7e2f300d0bc3444169c8ce807b98379b7819",
     "rust_passed_executions": 0,
+    "rust_failed_executions": 0,
     "rust_result_groups": 0,
     "rust_ignored": 0
    }
@@ -747,7 +760,8 @@
    "Standard installed-package binding remains failed after 315 Python; release packages intentionally untouched.",
    "Initial core-team-stages failed before compilation on sandbox denial fetching the CMG cache revision; the authorized-cache attempt retained the same intended command and passed.",
    "Raw local logs are not retained evidence; command, true exit, duration, hashes, compact outcomes and source remain recorded here.",
-   "No root native build, native qualification, SCC workload, timing or profiling has yet run for this candidate."
+   "No root native build, native qualification, SCC workload, timing or profiling has yet run for this candidate.",
+   "Initial final-source summary parser required contiguous 'test result: ok.' and missed two child result prefixes interleaved with parent test output; it reported 1948/81 and its assertion failed. The shell still committed that summary in c89ab124. Counting intact numeric result tuples confirms 1950/83, zero failed, 14 ignored, with 41 one-test child/group starts. This is a record correction using the same log, not a test rerun."
   ]
  }
 }

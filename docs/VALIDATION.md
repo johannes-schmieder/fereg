@@ -363,7 +363,11 @@ PATH invocation remain recorded with the successful corrections.
 Final integration with all three pins at `82ae1c8` also passes the source-only
 entrypoint (336.301217 seconds, the same 322 Python / 1,950 Rust / 83 group
 counts). The standard entrypoint retains its installed-binding failure
-(exit 1, 19.814272 seconds).
+(exit 1, 19.814272 seconds). The first summary parser missed two child
+result prefixes interrupted by parallel parent output and reported 1,948/81.
+The unchanged log contains all 1,950 passed results in 83 numeric summary
+tuples; the JSON corrects that counting error and retains the failed assertion.
+No runtime check was rerun for this record correction.
 
 The JSON `root_review` records commands, actual exits, durations, log hashes,
 source hashes, mutation outcomes and final pinned integration checks. No root
