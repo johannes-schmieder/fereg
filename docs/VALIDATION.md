@@ -28,14 +28,16 @@ were deleted; hashes and summaries are the remaining record.
 
 ## CMG successor milestone 3b: one construction pipeline, cycle and adapter
 
-**The first cloud handoff (fereg `b4b53577`, CMG `c6f9e822`) was rejected by
-Codex review on 2026-10-20; the review repair below awaits re-review. M3b
-remains unaccepted and M3c is not started.** M3b is a behaviour-preserving
+**The first cloud handoff (fereg `b4b53577`, CMG `c6f9e822`) and the first
+review repair (fereg `5ba16717`, CMG `b9f2585a`) were rejected by Codex review
+on 2026-10-20; the second review repair below awaits re-review. M3b remains
+unaccepted and M3c is not started.** M3b is a behaviour-preserving
 consolidation. The first handoff pinned CMG
 `c6f9e8224503273a20b47cf42ec8bc09d50fefd9`
 (`69862653ed5d4815c05fe85a91c8b625626f3e3c` freezes pre-consolidation digests,
 then `c6f9e822` consolidates; the first records abbreviated the witness as
-`6986265e`). The repair pins `b9f2585a00ceefd9f27abb98be8828a856854864`. CMG now has one
+`6986265e`). The first repair pinned `b9f2585a00ceefd9f27abb98be8828a856854864`; the second
+repair pins `be1b89d3137467b076dc61e2622dfb7dcef520a2`. CMG now has one
 construction pipeline (`build_with` with `BuildOptions` and a `BuildContext` of
 borrowed `Team`, optional cancellation and optional layout budget), one
 stationary cycle recursion over the two existing operator kernels
@@ -129,7 +131,7 @@ two and four workers, the PPML Break fixture, native Mac build and replay, and
 the Linux/Mac nonregression diagnostics. No performance claim is made from this
 cloud host.
 
-### M3b review repair (pending re-review)
+### M3b review repair (rejected on re-review)
 
 Codex's independent review of the first handoff found that bounded
 cancellation was not yet true of every kernel and route, and that the worker
@@ -214,7 +216,9 @@ Repair evidence (cloud; full output and real exit codes under
 - fereg witnesses: host cancellation sampled over the explicit OLS and
   prepared PPML routes on four workers is `Interrupted` and reaches the team
   sort, contraction mapping, workspace banks, prepared topology sort and
-  duplicate sort and fereg checkpoints, with exact bits afterwards; the
+  duplicate sort and fereg checkpoints, with exact bits afterwards (a
+  poll-sampling witness: it shows where cancellation is observed, not how
+  much inner work runs between polls); the
   explicit `cmgschur` build and application reach plan CSR stages, plan
   publication and batch workspaces; mid-cycle and mid-PCG cancellation recovers
   exact bits; the 42 frozen adapter digests still match.
@@ -238,7 +242,8 @@ Repair evidence (cloud; full output and real exit codes under
   groups (14 ignored), the allocator audits, the fuzz check, the portable
   checks and the ratchet.
 
-Remaining cancellation limits: allocator, operating-system and join latency;
+Remaining cancellation limits as recorded for this repair (the second repair
+below corrects them): allocator, operating-system and join latency;
 per-row elementwise work proportional to the caller's fixed tile width (at
 most four in fereg); O(levels) layout and metadata loops polled only at their
 checkpoints; ordinary context-free CMG entry points and the owned-result
@@ -251,6 +256,173 @@ mapped Stata fixtures, builder and PPML Break, native Mac build and replay, and
 the Linux/Mac nonregression diagnostics. The team sort changed from Rayon's
 parallel sort to the counted introsort, so its timing belongs to those
 diagnostics; no performance claim is made from this cloud host.
+
+### M3b second review repair (pending re-review)
+
+Codex's source re-review of the first repair (CMG `b9f2585a`, fereg
+`5ba16717`) rejected it again on 2026-10-20; M3c is not released. Codex's
+root standard check on `5ba16717` passed 315 Python tests and then failed the
+installed-plugin binding check (exit 1, 20.780299459 s), as on `b4b53577`
+(exit 1, 20.4167 s); the standard entrypoint has not passed on any M3b
+handoff. Findings:
+
+1. The fixed reduction tree always evaluated both serial subtrees, a lane
+   poll did not retain a stopped state, and PCG leaves returned zero on
+   cancellation, so a cancelled reduction kept traversing untouched leaves.
+2. Prepared numeric assembly took its final poll before publication, whose
+   diagonal metadata scan and shared handles were unmetered; topology
+   preparation polled once before four reserves; the duplicate-weight
+   workspace had no controlled constructor.
+3. `solve_pcg_with` cloned its owned solution infallibly after the last poll.
+4. Batch kernels counted a row of `columns` lanes as one segment, so widths
+   above 1024 lanes defeated the bound.
+5. fereg's prepared route left the weight-ratio loop, the seed finiteness scan,
+   certified seed retention and the endpoint reserve unpolled, used the
+   budget-only workspace constructor, and `filled_vec` had no final poll.
+6. Every explicit-route CMG error other than cancellation (including internal
+   runtime and hierarchy-invariant failures) was retained as a setup failure or
+   CG fallback.
+
+Second repair, CMG `004d1c4d` (with the test-only witness fix `be1b89d3` below) (bits, hierarchies, factors, repeats,
+representations, reduction trees and orders, worker eligibility and memory
+admission unchanged):
+
+- The fixed balanced reduction tree takes fallible leaves. A lane poll that
+  observes cancellation keeps a stopped state; its lane visits none of its
+  remaining leaves and a shared flag stops every other lane at its next leaf;
+  started lanes join. Without cancellation the leftmost failing leaf's error is
+  returned. PCG dot, norm scale and scaled-square leaves and centering sums
+  propagate `Cancelled` instead of returning zero.
+- Prepared numeric publication counts its diagonal metadata scan, polls before
+  allocating the shared handles and polls again after publication; topology
+  preparation polls before each of its four map reserves;
+  `PreparedLaplacianWorkspace::new_with` constructs assembly scratch under a
+  `BuildContext` (poll before allocating, poll before returning).
+- `solve_pcg_with` copies its owned solution through a fallible counted copy
+  and then takes the final poll.
+- Every lane kernel (edge-list and CSR products, elementwise and parallel rows,
+  restriction, prolongation, pruned transfers, centering, terminal batch
+  solves, diagonal solve and scatter) processes and counts a row wider than one
+  segment in lane tiles of at most 1024 lanes, each lane keeping its operation
+  order. No width cap or batching change; widths up to 1024 lanes, including
+  fereg's widths one and four, run the same segments as before.
+
+The fereg repair (after `5ba16717`):
+
+- The prepared route polls before the endpoint reserve, constructs its
+  assembly scratch with `new_with` and the host query, polls the weight-ratio
+  loop every 1,024 rows and the seed finiteness scan by 65,536-entry segment,
+  and publishes a frame's seed admission only after CMG returns the frame.
+  Certified seed retention and control-seed admission and retention return
+  `Result` and scan by polled segment; a cancelled scan keeps no seed.
+  `filled_vec` polls once more after its last segment.
+- Graph- and observation-sized scans on the CMG routes poll the host flag:
+  input and RHS finiteness checks, weight validation, value and nuisance RHS
+  accumulation, nuisance moments, Schur contributions, correction and residual
+  updates, column norms and the reused nuisance solution (every 1,024 rows or
+  65,536 entries).
+- Only `NonConvergence` (numerical breakdown, failed certification),
+  `Allocation` (resource refusal) and `InvalidData` (nonfinite numerical data)
+  are retained as setup failures or select the explicit route's certified CG
+  fallback. `Interrupted`, `Internal` (including CMG's `ParallelRuntime` and
+  `InvalidHierarchy`), `InvalidArgument` and `Unsupported` fail the estimation.
+  This follows SPEC's rule that Break and fatal errors are never swallowed
+  while preserving the documented breakdown fallback; no rule conflict was
+  found. Test-only `fault_plan!` statics inject each class at setup and at
+  projection.
+
+Second-repair evidence (cloud; full output and real exit codes under
+`target/tmp/auto-routing/m3b-r2/logs`, not committed). What each witness
+establishes:
+
+- Inner work after observation (reductions). On a two-lane ceiling over a
+  four-worker pool, 2^21-entry PCG dot, scaled-square and norm-scale
+  reductions and centering sums over 256-entry leaves count every entry
+  visited (a test-only counter keyed to the reduced slice). With the query
+  turning true at its first or third call, entries visited after the first
+  true answer stay within one poll interval plus 1024 entries per lane and the
+  total stays below a quarter of the vector; uncancelled reruns visit every
+  entry once and reproduce the bits.
+- Wide lanes. At 1,100 lanes every counted operation of a complete serial
+  interleaved cycle (edge list, rows, restriction, prolongation, centering,
+  terminal solves) reports at most 1024 units, with identical counts on two
+  runs; cancellation at sampled counts returns `Cancelled` and the rerun
+  matches. Every lane equals the matching width-four lane bit for bit, serial
+  and planned on a team. Partial-output witnesses for a 100,000-entry factor
+  row and a CSR row show that only the first 1024-lane tile's first entry is
+  applied before the first count, and the counts are exact (a 1024-lane and a
+  76-lane tile). Parallel elementwise rows receive tiles of at most 1024 lanes.
+  Widths one and four are covered by the frozen-bit witnesses.
+- Prepared publication and the owned PCG result. Cancelling at every poll of
+  topology preparation hits each of the four map reserves exactly once;
+  numeric assembly on a 200,000-vertex path polls at least five times inside
+  the metadata scan, once before the shared handles and once after
+  publication; `new_with` polls exactly twice. Cancelling at each of the last
+  eight polls of `solve_pcg_with` on 40,000 vertices hits at least five polls
+  inside the owned copy and the final poll; the same workspace reproduces the
+  reference after every cancellation.
+- fereg prepared route (child process, every host poll): preparation polls
+  exactly once before the endpoint reserve plus once per 1,024 rows before
+  CMG's preparation, then CMG's workspace construction polls, then exactly the
+  fill polls (before, per 65,536 entries, final) of the numeric weights and
+  the 31,600-entry nuisance seed; assembly polls the weight-ratio loop every
+  1,024 rows and the seed scan by segment before CMG's assembly and ends at
+  CMG's frame poll; a cancelled assembly leaves no seed admitted; control-seed
+  admission and retention and certified seed retention return `Interrupted`
+  and keep no seed. These establish poll positions and counts, not timing.
+- Classification. Injected `NonConvergence`, `Allocation` and `InvalidData`
+  at setup and at projection select the certified CG fallback; injected
+  `Interrupted`, `Internal`, `InvalidArgument` and `Unsupported` fail with the
+  same code and a later session reproduces the reference.
+- Mutation checks: restoring each pre-repair behaviour in a scratch copy
+  (reduction without stop state, unmetered metadata scan, missing reserve
+  polls, missing workspace publication poll, infallible owned clone, no lane
+  tiles) makes the corresponding witnesses fail (logs 160-165).
+- CMG at `004d1c4d`: fmt, rustdoc, frozen bits in eight configurations,
+  Clippy for seven feature sets and the benchmark crate pass; tests default
+  131 (debug and release) and all features 251 (release) pass. The debug
+  `parallel` and all-features runs (logs 122, 123) failed in the new planned
+  wide-batch witness, which expected cancellation at a threshold near the
+  uncancelled query count although lane polls vary with chunk claiming; the
+  test-only fix `be1b89d3` accepts success only when the query never reached
+  the threshold, and the reruns pass (`parallel` 194, all features 251 debug
+  and release, fmt, Clippy; logs 220-246).
+- fereg at the `be1b89d3` pin: fmt, Clippy, the ratchet (104,624 -> 104,701
+  production lines, declared) and 1,365 fereg-core lib tests (3 ignored),
+  including the 42 frozen adapter digests, pass. Before the pin, the R1 route
+  witness failed once because its sampling no longer met the prepared
+  duplicate sort, which this mostly singleton fixture rarely counts; it now
+  requires the prepared numeric-edge stage, and the duplicate sort is
+  witnessed at every poll by CMG's assembly tests.
+- Actual-plugin replay of the candidate (`835ae095...bbc6`) against the
+  post-M3a plugin: 73 of 73 exact; 46 derived explicit runs (including both
+  PPML bias modes at one and four workers) exact with identical setup traces
+  and the same baseline science notes as before on both plugins; 75 injected
+  two-FE runs exact with equal routes (the same nine known-defect rows as the
+  first repair, identical on both plugins).
+- Standard `./scripts/run_tests.sh`: 315 Python tests pass, then the
+  installed-plugin binding check fails (exit 1; "main's runtime changed"). It
+  is not green on any M3b handoff: Codex recorded the same failure on
+  `b4b53577` (20.4167 s) and `5ba16717` (20.780299459 s). `--source-only`
+  (labelled source-only; installed-package admission not performed) passes
+  322 Python tests, 1,954 Rust test executions in 85 groups (14 ignored), the
+  allocator audits, the fuzz check, the portable checks and the ratchet.
+
+Remaining cancellation limits: allocator, operating-system and join latency;
+after a lane observes cancellation, every other lane may finish up to one poll
+interval plus one segment (the bound is per lane, not global); fereg row loops
+poll every 1,024 rows, so work between polls grows with the row's columns or
+nuisance width; fereg's dense-matrix allocations (`DenseMatrix::zeros`) and
+O(levels) layout loops are polled only at their surrounding checkpoints; the
+ordinary context-free CMG entry points remain unmetered by design and are
+unused by fereg's routes. No witness measures wall-clock latency.
+
+Outstanding host checks (Codex, unchanged): the native analytic h16
+install/certification witness and the explicit bounded witness, six mapped
+Stata fixtures, deep cancellation and builder Break at two and four workers,
+the PPML Break fixture, Mac73 and the required 42-cell coverage, and the fixed
+Linux/Mac nonregression diagnostics. The 75 injected cases do not substitute
+for any of them. No performance claim is made from this cloud host.
 
 Identities are in [`cmg-m3b-20261020.json`](../bench/results/cmg-m3b-20261020.json).
 

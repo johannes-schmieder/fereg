@@ -1,5 +1,5 @@
 {
- "milestone": "M3b behaviour-preserving consolidation: first cloud handoff rejected by Codex review 2026-10-20; review repair pending re-review",
+ "milestone": "M3b behaviour-preserving consolidation: first cloud handoff and first review repair rejected by Codex review 2026-10-20; second review repair pending re-review",
  "date": "2026-10-20",
  "revisions": {
   "fereg_code": "65bc39f5f98090ee4b2206e13a72cc9bf0a51c0d",
@@ -7,7 +7,9 @@
   "cmg_pin": "c6f9e8224503273a20b47cf42ec8bc09d50fefd9",
   "cmg_frozen_witness": "69862653ed5d4815c05fe85a91c8b625626f3e3c (parent of the first pin; first records abbreviated it as 6986265e)",
   "cmg_base": "03a260411450dd2c1caaefffa3514ac78c0996d7",
-  "cmg_repair_pin": "b9f2585a00ceefd9f27abb98be8828a856854864"
+  "cmg_repair_pin": "b9f2585a00ceefd9f27abb98be8828a856854864",
+  "cmg_second_repair_pin": "be1b89d3137467b076dc61e2622dfb7dcef520a2 (repair 004d1c4d1a38f5cb37e71dde599f9f1e199aab6e plus a test-only witness fix)",
+  "fereg_second_repair_code": "1d2185a (pin 004d1c4d), 4f7c8a8 (pin be1b89d3)"
  },
  "host": "Linux x86_64 cloud container; rustc 1.85.1 for fereg, CMG clippy toolchain 1.97.0; no timing claims",
  "plugins": {
@@ -73,5 +75,39 @@
   ],
   "run_tests_standard": "315 Python tests pass, then the expected installed-plugin binding check fails (exit 1) (log 70)",
   "run_tests_source_only": "exit 0, labelled source-only: 322 Python tests, 1,951 Rust test executions in 84 groups (14 ignored), allocator audits, fuzz check, portable checks, ratchet (log 71)"
+ },
+ "second_review": {
+  "verdict": "first repair (fereg 5ba167171f461e137d72d4b647097bfdb7e24466, CMG b9f2585a00ceefd9f27abb98be8828a856854864) rejected; M3b unaccepted; M3c not released",
+  "defects": [
+   "fixed reduction tree evaluated both subtrees after cancellation; lane poll kept no stopped state; PCG leaves returned zero on cancellation",
+   "prepared numeric publication (diagonal metadata scan, shared handles) after the final poll; one poll before four topology reserves; no controlled workspace constructor",
+   "solve_pcg_with cloned its owned solution infallibly after the last poll",
+   "batch widths above 1024 lanes counted a whole row as one segment",
+   "fereg prepared route: unpolled weight-ratio loop, seed scans, seed retention and endpoint reserve; budget-only workspace constructor; filled_vec without a final poll",
+   "every non-cancellation CMG error, including internal ones, retained as a setup failure or CG fallback"
+  ],
+  "codex_standard_run_5ba16717": "315 Python tests passed, then the installed-plugin binding check failed (exit 1) in 20.780299459 s"
+ },
+ "second_repair": {
+  "plugins": {
+   "candidate_sha256": "835ae095c4f92061541993d32c72e892094e7d67398723e4e725a804df27bbc6",
+   "baseline_post_m3a_sha256": "971d3e307d293aedf968d09c79aae63584c18d6e4a789592c7e4b0839a61fb97"
+  },
+  "cmg_tests": "at 004d1c4d: default 131 (debug and release), all features 251 (release), doc tests, frozen_bits in 8 configurations pass (logs 120-137); debug parallel and all-features runs failed in the new planned wide-batch witness (logs 122, 123, retained); after the test-only fix be1b89d3: parallel 194, all features 251 debug and release (logs 222-225)",
+  "cmg_static": "fmt, rustdoc, clippy -D warnings for seven feature sets and the benchmark crate pass (logs 140-150, 220, 241, 246)",
+  "mutation_checks": "each restored pre-repair behaviour fails its witness: reduction stop state, metadata scan, reserve polls, workspace publication poll, owned copy, lane tiles (logs 160-165)",
+  "fereg_core_lib": "1,365 passed, 0 failed, 3 ignored (log 63)",
+  "fereg_static": "fmt, clippy --workspace --all-targets, complexity ratchet with three declared growth entries: pass (logs 60-62)",
+  "actual_plugin_replay": "73 of 73 exact, no science error (log 65)",
+  "derived_explicit_replay": "46 runs exact with identical setup traces; baseline science notes identical on both plugins (log 66)",
+  "injected_two_fe_replay": "75 runs exact, equal routes, no CMG build; the same nine known-defect rows as the first repair, identical on both (log 67)",
+  "complexity": "fereg-core 104,624 -> 104,701 production lines (declared growth); dispatch candidates 1,354 unchanged",
+  "failed_iterations_retained": [
+   "CMG logs 122, 123 (planned wide-batch witness threshold; test-only fix)",
+   "fereg R1 route witness (sampling missed the prepared duplicate sort after the added fereg polls; requirement changed to prepared numeric edge)",
+   "fereg prepared-route witness first run (seed admission published before CMG assembly; fixed to publish after the frame)"
+  ],
+  "run_tests_standard": "315 Python tests pass, then the installed-plugin binding check fails (exit 1) (log 70); not green on any M3b handoff",
+  "run_tests_source_only": "exit 0, labelled source-only: 322 Python tests, 1,954 Rust test executions in 85 groups (14 ignored), allocator audits, fuzz check, portable checks, ratchet (log 71)"
  }
 }
