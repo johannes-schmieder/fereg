@@ -1,9 +1,10 @@
 //! Construction stages of the bounded Schur graph adapter that run on the
-//! borrowed host team: the cached census and sampled-row preparation. Each
-//! stage partitions by item counts, never by the worker count, admits its
-//! small task table before dispatch (the serial stage runs otherwise), counts
-//! every unit in its lanes, and reports the earliest failing worker after the
-//! join, so its results equal the serial stage's exactly.
+//! borrowed host team: the cached census, sampled-row preparation and hosted
+//! edge emission. Each stage partitions by item counts, never by the worker
+//! count, and admits its scratch before dispatch (the serial stage runs
+//! otherwise). Census and preparation lanes count every unit and report the
+//! earliest failing worker after the join; emission chunks have a declared
+//! per-edge bound. Results equal the serial stage's exactly.
 
 use cmg::CmgError;
 
@@ -90,6 +91,121 @@ fn stage_phase(error: CmgError, phase: &'static str) -> CmgError {
 }
 
 impl EdgeEmissionPlan {
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn emit(
+        &mut self,
+        cache: &mut CanonicalCells,
+        sampler: &mut Option<SampledTrees>,
+        cutoff: usize,
+        firms: usize,
+        sampling: Sampling,
+        edges: &mut Vec<(usize, usize, f64)>,
+        work: &mut Work,
+    ) -> Attempt<()> {
+        let workers = cache.rows.len();
+        // Edge offsets and auxiliary vertices by prefix over workers; the
+        // sampled rows are prepared on the team below.
+        let mut auxiliary = firms;
+        let mut start = 0_usize;
+        for worker in 0..workers {
+            work.step(32)?;
+            let count = cache.row(worker).len();
+            let edge_count = if count > cutoff {
+                if sampling.samples > 0 && sampler.is_some() {
+                    (count - 1) * sampling.samples as usize
+                } else {
+                    count
+                }
+            } else {
+                count * count.saturating_sub(1) / 2
+            };
+            self.offsets.push((start, auxiliary));
+            start = start
+                .checked_add(edge_count)
+                .ok_or_else(|| allocation("CMG Schur edge count overflows"))?;
+            if count > cutoff && sampler.is_none() {
+                auxiliary += 1;
+            }
+        }
+        self.offsets.push((start, auxiliary));
+        // The admitted output bank never grows; the caller checks the count.
+        if start > edges.capacity() {
+            return Err(invalid_data("CMG Schur edge census changed during construction").into());
+        }
+        if sampler.is_some() {
+            self.prepare_rows(cache, cutoff, work)?;
+        }
+        // The output bank becomes the edge slots in counted segments.
+        while edges.len() < start {
+            let next = (start - edges.len()).min(128);
+            work.step(8 * next as u16)?;
+            edges.resize(edges.len() + next, (0, 0, 0.0));
+        }
+        let chunk_len = self.chunk_len;
+        let offsets = &self.offsets;
+        let suffix = &self.suffix;
+        let cache = &*cache;
+        work.cmg(|team, cancelled| {
+            let stage = cmg::ControlledStage::admit(edges.len(), chunk_len)?;
+            stage.run(
+                team.expect("emission plan retains the installed action"),
+                edges,
+                cancelled,
+                |chunk_index, chunk| {
+                    let first = chunk_index * chunk_len;
+                    let mut worker = offsets.partition_point(|offset| offset.0 <= first) - 1;
+                    for (position, edge) in chunk.iter_mut().enumerate() {
+                        let index = first + position;
+                        worker = edge_worker(offsets, worker, index);
+                        let (edge_start, auxiliary) = offsets[worker];
+                        let ordinal = index - edge_start;
+                        let (start, total) = cache.rows[worker];
+                        let end = cache
+                            .rows
+                            .get(worker + 1)
+                            .map_or(cache.cells.len(), |row| row.0);
+                        let cells = &cache.cells[start..end];
+                        *edge = if cells.len() > cutoff && sampling.samples > 0 {
+                            super::sampling::indexed_edge(
+                                sampling,
+                                worker,
+                                cells,
+                                &suffix[start + worker..=end + worker],
+                                ordinal,
+                            )
+                        } else if cells.len() > cutoff {
+                            (cells[ordinal].0 as usize, auxiliary, cells[ordinal].1)
+                        } else {
+                            let mut first = 0;
+                            let mut remaining = ordinal;
+                            while remaining >= cells.len() - first - 1 {
+                                remaining -= cells.len() - first - 1;
+                                first += 1;
+                            }
+                            let second = first + 1 + remaining;
+                            let (left, left_weight) = cells[first];
+                            let (right, right_weight) = cells[second];
+                            (
+                                left as usize,
+                                right as usize,
+                                left_weight.min(right_weight)
+                                    * (left_weight.max(right_weight) / total),
+                            )
+                        };
+                        if !edge.2.is_finite() || edge.2 <= 0.0 {
+                            return Err(CmgError::InvalidEdgeWeight {
+                                u: edge.0,
+                                v: edge.1,
+                                weight: edge.2,
+                            });
+                        }
+                    }
+                    Ok(())
+                },
+            )
+        })
+    }
+
     /// Sort each sampled row by weight and form its suffix masses on the team,
     /// in place in the cache and in that row's range of the suffix bank. Tasks
     /// group consecutive workers by merged cells; lanes count every unit and
@@ -370,4 +486,39 @@ impl BoundedCells<'_> {
         cache.cells.truncate(write);
         Ok(Some(failure))
     }
+}
+
+/// The worker whose edge range holds `index`, starting from the worker of
+/// an earlier edge in the same chunk. Workers without edges share their
+/// successor's start, so a run of them is crossed by one bisection: at most
+/// one probe plus the bit length of the worker count, the steps that the
+/// declared per-edge work includes.
+#[inline]
+fn edge_worker(offsets: &[(usize, usize)], worker: usize, index: usize) -> usize {
+    #[cfg(test)]
+    let mut probes = 1;
+    let mut lower = worker + 1;
+    if offsets[lower].0 > index {
+        #[cfg(test)]
+        emission_probes::record(probes);
+        return worker;
+    }
+    // offsets[lower].0 <= index < offsets[upper].0 (the last entry is the
+    // edge total), and upper - lower < the worker count.
+    let mut upper = offsets.len() - 1;
+    while upper - lower > 1 {
+        #[cfg(test)]
+        {
+            probes += 1;
+        }
+        let middle = lower + (upper - lower) / 2;
+        if offsets[middle].0 <= index {
+            lower = middle;
+        } else {
+            upper = middle;
+        }
+    }
+    #[cfg(test)]
+    emission_probes::record(probes);
+    lower
 }

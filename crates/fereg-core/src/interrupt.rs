@@ -45,19 +45,43 @@ pub(crate) mod test_polls {
 
     static POLLS: AtomicUsize = AtomicUsize::new(0);
     static STOP: AtomicUsize = AtomicUsize::new(usize::MAX);
+    // Instrumented inner work, and its value when the stop query was made.
+    static WORK: AtomicUsize = AtomicUsize::new(0);
+    static WORK_AT_STOP: AtomicUsize = AtomicUsize::new(usize::MAX);
 
     pub(super) fn count() {
-        if POLLS.fetch_add(1, Ordering::SeqCst) >= STOP.load(Ordering::SeqCst) {
+        let poll = POLLS.fetch_add(1, Ordering::SeqCst);
+        let stop = STOP.load(Ordering::SeqCst);
+        if poll == stop {
+            WORK_AT_STOP.store(WORK.load(Ordering::SeqCst), Ordering::SeqCst);
+        }
+        if poll >= stop {
             super::request_cancellation();
         }
     }
 
-    /// Reset the flag and the count; cancel from query `stop` onwards.
+    /// Reset the flag, the count and the work; cancel from query `stop` onwards.
     pub(crate) fn cancel_at(stop: Option<usize>) {
         super::reset_cancellation();
         STOP.store(usize::MAX, Ordering::SeqCst);
         POLLS.store(0, Ordering::SeqCst);
+        WORK.store(0, Ordering::SeqCst);
+        WORK_AT_STOP.store(usize::MAX, Ordering::SeqCst);
         STOP.store(stop.unwrap_or(usize::MAX), Ordering::SeqCst);
+    }
+
+    /// Count `units` of instrumented inner work.
+    pub(crate) fn work(units: usize) {
+        WORK.fetch_add(units, Ordering::SeqCst);
+    }
+
+    /// Instrumented work so far, and at the stop query (`None` before it).
+    pub(crate) fn work_done() -> (usize, Option<usize>) {
+        let at = WORK_AT_STOP.load(Ordering::SeqCst);
+        (
+            WORK.load(Ordering::SeqCst),
+            (at != usize::MAX).then_some(at),
+        )
     }
 
     pub(crate) fn polls() -> usize {

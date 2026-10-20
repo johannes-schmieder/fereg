@@ -570,11 +570,12 @@ fn finish(
     // automatic build uses the team when the parallel bound is admitted and
     // otherwise builds serially under the serial bound; both build the same
     // hierarchy, factor and repeats.
+    let serial = bound_for(false)?;
     let team_build = explicit || {
         let parallel = bound_for(true)?;
         work.cmg(|team, _| Ok(team.is_some()))? && fits(memory, parents, parallel)
     };
-    let bound = bound_for(team_build)?;
+    let bound = if team_build { bound_for(true)? } else { serial };
     let admitted = admit(memory, work, parents, bound)?;
     #[cfg(test)]
     if team_build && work.cmg(|team, _| Ok(team.is_some()))? {
@@ -594,9 +595,13 @@ fn finish(
         )
     })?;
     let hierarchy_seconds = started.elapsed().as_secs_f64();
-    // Keep the already-admitted conservative hierarchy bound. Exact storage
+    // Keep an already-admitted conservative hierarchy bound. Exact storage
     // reporting recursively deduplicates allocation owners and is quadratic.
-    parents += bound as u128;
+    // The parallel bound's extra contraction slot bank is transient: it is
+    // released by the joined build, so the automatic route keeps the serial
+    // bound of the identical hierarchy (its accepted retained charge) and the
+    // admitted peak keeps the parallel one. Explicit builds keep their bound.
+    parents += if explicit { bound } else { serial } as u128;
     let plan = if explicit {
         work.step(128)?;
         let bound = work.cmg(|team, _| {
@@ -864,13 +869,17 @@ impl EdgeEmissionPlan {
             return Ok(None);
         }
         let search_steps = usize::BITS - max_rows.saturating_sub(1).leading_zeros();
+        // Locating an edge's worker probes one offset, then binary-searches
+        // at most all worker offsets (a run of edge-less workers).
+        let worker_steps = 1 + usize::BITS - cache.rows.len().leading_zeros();
         // 192 covers metadata, draw permutation, clamp, weight and validation;
-        // 16 per possible binary-search step and clique-index step covers all
-        // bounded loop bodies. Include the cutoff even outside public 4..=6.
-        // Workers poll cancellation before every chunk of at most 1024 units.
+        // 16 per possible binary-search step (row draw and worker lookup) and
+        // clique-index step covers all bounded loop bodies. Include the cutoff
+        // even outside public 4..=6. Workers poll cancellation before every
+        // chunk of at most 1024 units.
         let Some(edge_work) = cutoff
             .checked_mul(16)
-            .and_then(|units| units.checked_add(192 + 16 * search_steps as usize))
+            .and_then(|units| units.checked_add(192 + 16 * (search_steps + worker_steps) as usize))
         else {
             return Ok(None);
         };
@@ -940,6 +949,8 @@ impl EdgeEmissionPlan {
             return Ok(None);
         }
         admit(memory, work, envelope.peak_bytes as u128, extra)?;
+        #[cfg(test)]
+        emission_probes::CHUNK.store(1024 / edge_work, std::sync::atomic::Ordering::SeqCst);
         Ok(Some(Self {
             suffix: work.filled(suffix_len, 0.0)?,
             offsets: work.capacity(workers_count + 1)?,
@@ -947,122 +958,21 @@ impl EdgeEmissionPlan {
             chunk_len: 1024 / edge_work,
         }))
     }
+}
 
-    #[allow(clippy::too_many_arguments)]
-    fn emit(
-        &mut self,
-        cache: &mut CanonicalCells,
-        sampler: &mut Option<SampledTrees>,
-        cutoff: usize,
-        firms: usize,
-        sampling: Sampling,
-        edges: &mut Vec<(usize, usize, f64)>,
-        work: &mut Work,
-    ) -> Attempt<()> {
-        let workers = cache.rows.len();
-        // Edge offsets and auxiliary vertices by prefix over workers; the
-        // sampled rows are prepared on the team below.
-        let mut auxiliary = firms;
-        let mut start = 0_usize;
-        for worker in 0..workers {
-            work.step(32)?;
-            let count = cache.row(worker).len();
-            let edge_count = if count > cutoff {
-                if sampling.samples > 0 && sampler.is_some() {
-                    (count - 1) * sampling.samples as usize
-                } else {
-                    count
-                }
-            } else {
-                count * count.saturating_sub(1) / 2
-            };
-            self.offsets.push((start, auxiliary));
-            start = start
-                .checked_add(edge_count)
-                .ok_or_else(|| allocation("CMG Schur edge count overflows"))?;
-            if count > cutoff && sampler.is_none() {
-                auxiliary += 1;
-            }
-        }
-        self.offsets.push((start, auxiliary));
-        // The admitted output bank never grows; the caller checks the count.
-        if start > edges.capacity() {
-            return Err(invalid_data("CMG Schur edge census changed during construction").into());
-        }
-        if sampler.is_some() {
-            self.prepare_rows(cache, cutoff, work)?;
-        }
-        // The output bank becomes the edge slots in counted segments.
-        while edges.len() < start {
-            let next = (start - edges.len()).min(128);
-            work.step(8 * next as u16)?;
-            edges.resize(edges.len() + next, (0, 0, 0.0));
-        }
-        let chunk_len = self.chunk_len;
-        let offsets = &self.offsets;
-        let suffix = &self.suffix;
-        let cache = &*cache;
-        work.cmg(|team, cancelled| {
-            let stage = cmg::ControlledStage::admit(edges.len(), chunk_len)?;
-            stage.run(
-                team.expect("emission plan retains the installed action"),
-                edges,
-                cancelled,
-                |chunk_index, chunk| {
-                    let first = chunk_index * chunk_len;
-                    let mut worker = offsets.partition_point(|offset| offset.0 <= first) - 1;
-                    for (position, edge) in chunk.iter_mut().enumerate() {
-                        let index = first + position;
-                        while offsets[worker + 1].0 <= index {
-                            worker += 1;
-                        }
-                        let (edge_start, auxiliary) = offsets[worker];
-                        let ordinal = index - edge_start;
-                        let (start, total) = cache.rows[worker];
-                        let end = cache
-                            .rows
-                            .get(worker + 1)
-                            .map_or(cache.cells.len(), |row| row.0);
-                        let cells = &cache.cells[start..end];
-                        *edge = if cells.len() > cutoff && sampling.samples > 0 {
-                            super::sampling::indexed_edge(
-                                sampling,
-                                worker,
-                                cells,
-                                &suffix[start + worker..=end + worker],
-                                ordinal,
-                            )
-                        } else if cells.len() > cutoff {
-                            (cells[ordinal].0 as usize, auxiliary, cells[ordinal].1)
-                        } else {
-                            let mut first = 0;
-                            let mut remaining = ordinal;
-                            while remaining >= cells.len() - first - 1 {
-                                remaining -= cells.len() - first - 1;
-                                first += 1;
-                            }
-                            let second = first + 1 + remaining;
-                            let (left, left_weight) = cells[first];
-                            let (right, right_weight) = cells[second];
-                            (
-                                left as usize,
-                                right as usize,
-                                left_weight.min(right_weight)
-                                    * (left_weight.max(right_weight) / total),
-                            )
-                        };
-                        if !edge.2.is_finite() || edge.2 <= 0.0 {
-                            return Err(CmgError::InvalidEdgeWeight {
-                                u: edge.0,
-                                v: edge.1,
-                                weight: edge.2,
-                            });
-                        }
-                    }
-                    Ok(())
-                },
-            )
-        })
+/// Test-only record of offset probes per emitted edge; each edge counts its
+/// probes plus one evaluation as instrumented work.
+#[cfg(test)]
+pub(super) mod emission_probes {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    pub(super) static MAX: AtomicUsize = AtomicUsize::new(0);
+    /// Edges per chunk of the most recently selected emission plan.
+    pub(super) static CHUNK: AtomicUsize = AtomicUsize::new(0);
+
+    pub(super) fn record(probes: usize) {
+        MAX.fetch_max(probes, Ordering::SeqCst);
+        crate::interrupt::test_polls::work(probes + 1);
     }
 }
 
@@ -2700,6 +2610,34 @@ mod team_stage_tests {
             }
         }
 
+        /// 70,000 emitting workers (two firms, one clique edge each) around a
+        /// run of 100,000 duplicate-only workers (two observations at one
+        /// firm: canonical degree one, no edges). Edges 34,999 and 35,000
+        /// are adjacent in emission order but 100,000 workers apart.
+        fn gap() -> Self {
+            let (before, gap, after) = (35_000, 100_000, 35_000);
+            let count = before + gap + after;
+            let mut workers = Vec::new();
+            let mut firms = Vec::new();
+            let mut weights = Vec::new();
+            for worker in 0..count {
+                let emitting = worker < before || worker >= before + gap;
+                for position in 0..2 {
+                    workers.push(worker as u32);
+                    let firm = worker * 7 + usize::from(emitting) * position;
+                    firms.push((firm % 500) as u32);
+                    weights.push([1.0, 0.5][position]);
+                }
+            }
+            let membership = LevelIndex::from_codes(&workers, count).unwrap();
+            Self {
+                workers,
+                firms,
+                weights,
+                membership,
+            }
+        }
+
         fn source(&self) -> CellSource<'_> {
             CellSource::Observations {
                 membership: &self.membership,
@@ -3044,6 +2982,159 @@ mod team_stage_tests {
         }
     }
 
+    /// The automatic route's persistent charge after a team hierarchy build is
+    /// the accepted serial one. The parallel bound's extra contraction slot
+    /// bank (D) is transient: it bounds the construction peak only. With live
+    /// parents P, serial bound S and completion storage W (derived from the
+    /// accepted serial result), a budget of P + S + max(D, W) admits the team
+    /// build and its completion. Both sides of the parallel admission boundary
+    /// install with identical retained accounting, and budgets below P + S + W
+    /// or P + S are refused at every worker count. Hierarchies, repeats and
+    /// application bits are identical throughout.
+    #[test]
+    fn automatic_completion_keeps_the_serial_retained_charge_after_a_team_build() {
+        let fixture = Fixture::new(&[]);
+        let sampling = Sampling {
+            samples: 1,
+            seed: 0,
+        };
+        type Built = (CmgSchurPreconditioner, u8, u128, u128, u128);
+        // Returns the build, its hierarchy stage, and (P, S, D).
+        let build = |lanes: Option<usize>, available: Option<u128>| -> Attempt<Built> {
+            let run = || {
+                let mut work = Work::new(false);
+                let mut memory = Admission {
+                    budget: None,
+                    peak: SolverWorkspacePeak::ZERO,
+                };
+                let (graph, components, _, cache, _) = graph(
+                    fixture.source(),
+                    5,
+                    sampling,
+                    true,
+                    Install::Auto,
+                    &mut work,
+                    &mut memory,
+                )?;
+                let options = cmg::BuildOptions {
+                    hierarchy: CmgOptions::default(),
+                    components: component_options(),
+                };
+                let parents = graph_storage_bound(&graph)? + components.bytes() + cache;
+                let bound = |parallel| {
+                    CmgPreconditioner::construction_allocation_bound(
+                        graph.vertex_count(),
+                        graph.edge_count(),
+                        options,
+                        parallel,
+                    )
+                    .unwrap() as u128
+                };
+                let (serial, parallel) = (bound(false), bound(true));
+                let execution = 913 + (1 << 30);
+                let mut memory = Admission {
+                    budget: available.map(|available| FeSolverMemoryBudget {
+                        usable_bytes: available + execution,
+                        execution_bytes: execution,
+                    }),
+                    peak: SolverWorkspacePeak::ZERO,
+                };
+                work.team_stages = 0;
+                let (built, _) = finish(
+                    graph,
+                    components,
+                    cache,
+                    Install::Auto,
+                    CmgOptions::default(),
+                    &mut work,
+                    &mut memory,
+                )?;
+                Ok((
+                    built,
+                    work.team_stages & TEAM_HIERARCHY,
+                    parents,
+                    serial,
+                    parallel - serial,
+                ))
+            };
+            match lanes {
+                Some(lanes) => ThreadTeam::new(ThreadConfig::from_requested(lanes, true).unwrap())
+                    .install(run)
+                    .unwrap(),
+                None => run(),
+            }
+        };
+        let peak = |bytes: u128| {
+            SolverWorkspacePeak::from_bytes(bytes)
+                .unwrap()
+                .with_expected_heap(Some(0))
+                .unwrap()
+        };
+        let Ok((mut accepted, stages, p, s, d)) = build(None, None) else {
+            panic!("the unlimited serial build installs");
+        };
+        assert_eq!(stages, 0);
+        let retained = accepted.retained_bound.expect("automatic retained charge");
+        let w = retained - p - s;
+        assert!(d > 0 && w > 0, "D {d}, W {w}");
+        let firms = accepted.components.labels.len();
+        let rhs: Vec<f64> = (0..firms).map(|i| (i % 11) as f64 - 5.0).collect();
+        let mut expected = vec![0.0; firms];
+        accepted
+            .apply_batch(&rhs, &mut expected, 1, 1, None, None)
+            .unwrap();
+        let expected: Vec<u64> = expected.iter().map(|x| x.to_bits()).collect();
+        // (available, whether the team hierarchy is selected with a team).
+        // When W >= D, P + S + D - 1 is below P + S + W: a true refusal below.
+        let mut installs = vec![(None, true), (Some(p + s + d.max(w)), true)];
+        if w < d {
+            installs.push((Some(p + s + d), true));
+            installs.push((Some(p + s + d - 1), false));
+        }
+        for (available, parallel) in installs {
+            for lanes in [None, Some(1), Some(4)] {
+                let label = format!("available {available:?}, lanes {lanes:?}");
+                let (mut built, stages, ..) = match build(lanes, available) {
+                    Ok(built) => built,
+                    Err(error) => panic!("{label}: {error:?}"),
+                };
+                let team = lanes.is_some() && parallel;
+                assert_eq!(stages, if team { TEAM_HIERARCHY } else { 0 }, "{label}");
+                assert_eq!(built.retained_bound, Some(retained), "{label}");
+                // The admitted construction peak keeps the real parallel peak.
+                let top = if team { p + s + d.max(w) } else { p + s + w };
+                assert_eq!(built.construction, peak(top), "{label}");
+                assert_eq!(
+                    built.preconditioner.hierarchy(),
+                    accepted.preconditioner.hierarchy(),
+                    "{label}"
+                );
+                assert_eq!(
+                    built.preconditioner.repeat_counts(),
+                    accepted.preconditioner.repeat_counts(),
+                    "{label}"
+                );
+                let mut actual = vec![0.0; firms];
+                built
+                    .apply_batch(&rhs, &mut actual, 1, 1, None, None)
+                    .unwrap();
+                let actual: Vec<u64> = actual.iter().map(|x| x.to_bits()).collect();
+                assert_eq!(actual, expected, "{label}");
+            }
+        }
+        for available in [p + s + w - 1, p + s - 1] {
+            for lanes in [None, Some(1), Some(4)] {
+                assert!(
+                    matches!(
+                        build(lanes, Some(available)),
+                        Err(AttemptError::Refused(BuildRefusal::MemoryBudget))
+                    ),
+                    "available {available}, lanes {lanes:?}"
+                );
+            }
+        }
+    }
+
     /// Host cancellation raised at sampled polls of a teamed graph build (a
     /// child process: the poll seam is process-global) is interrupted from
     /// inside the team census and the team row preparation; every lane has
@@ -3112,6 +3203,109 @@ mod team_stage_tests {
         for phase in ["CMG Schur team census", "CMG Schur sampled-row preparation"] {
             assert!(phases.contains(phase), "{phase} not in {phases:?}");
         }
+        test_polls::cancel_at(None);
+        assert_eq!(run().unwrap(), reference);
+    }
+    /// Hosted emission across a long run of zero-edge workers (a child
+    /// process: the poll and work seams are process-global). Each edge's
+    /// worker lookup probes at most one offset plus a binary search over the
+    /// workers. Emission is the only instrumented stage, so a stop whose
+    /// recorded work lies strictly inside it was observed by the emission
+    /// stage. After that observation each lane finishes at most its current
+    /// chunk, untouched edges stay unevaluated, every lane has joined when the
+    /// build returns, and a fresh build repeats the bits. No team, one and
+    /// four lanes emit identical graphs.
+    #[test]
+    fn emission_lookup_across_zero_edge_workers_is_bounded_and_cancellable() {
+        const CHILD: &str = "FEREG_EMISSION_GAP_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .env(CHILD, "1")
+                .args([
+                    "fe::cmg_schur::bounded::team_stage_tests::emission_lookup_across_zero_edge_workers_is_bounded_and_cancellable",
+                    "--exact",
+                    "--test-threads=1",
+                ])
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        use super::emission_probes;
+        use crate::interrupt::test_polls;
+        use std::sync::atomic::Ordering;
+        let fixture = Fixture::gap();
+        let workers = fixture.membership.n_levels();
+        // One fast-path probe plus a binary search over at most `workers`
+        // offsets.
+        let probe_bound = 1 + (usize::BITS - workers.leading_zeros()) as usize;
+        let sampling = Sampling {
+            samples: 0,
+            seed: 0,
+        };
+        let serial = on(None, || graph_bits(&fixture, sampling, None)).unwrap();
+        assert!(
+            serial.counts.0 >= HOSTED_EDGE_THRESHOLD,
+            "{:?}",
+            serial.counts
+        );
+        for lanes in [1, 4] {
+            test_polls::cancel_at(None);
+            emission_probes::MAX.store(0, Ordering::SeqCst);
+            let team = on(Some(lanes), || graph_bits(&fixture, sampling, None)).unwrap();
+            assert_eq!(team, serial, "lanes {lanes}");
+            assert_eq!(team.stages, TEAM_CENSUS, "lanes {lanes}");
+            let probes = emission_probes::MAX.load(Ordering::SeqCst);
+            assert!(
+                probes <= probe_bound,
+                "lanes {lanes}: one edge probed {probes} worker offsets (bound {probe_bound})"
+            );
+            // The declared chunk covers its actual worst edge: 192 fixed
+            // units, 16 per clique step (cutoff 5), per row-draw step (rows of
+            // two: one) and per probed worker offset.
+            let chunk = emission_probes::CHUNK.load(Ordering::SeqCst);
+            let worst = chunk * (192 + 16 * 5 + 16 * (1 + probes));
+            assert!(
+                chunk > 0 && worst <= 1024,
+                "lanes {lanes}: {chunk} edges per chunk need {worst} units"
+            );
+        }
+        let lanes = 4;
+        let team = ThreadTeam::new(ThreadConfig::from_requested(lanes, true).unwrap());
+        let run = || {
+            team.install(|| graph_bits(&fixture, sampling, None))
+                .unwrap()
+        };
+        test_polls::cancel_at(None);
+        let reference = run().unwrap();
+        let total_polls = test_polls::polls();
+        let (total_work, _) = test_polls::work_done();
+        assert!(total_work > serial.counts.0, "{total_work} units");
+        // A chunk holds at most 1024 / 288 = 3 edges (the smallest declared
+        // per-edge work), each one evaluation plus its probes.
+        let chunk_work = 3 * (1 + probe_bound);
+        let mut inside = 0;
+        for stop in (0..total_polls).step_by((total_polls / 300).max(1)) {
+            test_polls::cancel_at(Some(stop));
+            let result = run();
+            let (work, at) = test_polls::work_done();
+            let settled = test_polls::polls();
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            assert_eq!(test_polls::polls(), settled, "a lane polled after return");
+            let Some(at) = at.filter(|&at| at > 0 && at < total_work) else {
+                continue;
+            };
+            inside += 1;
+            let message = result.unwrap_err();
+            assert!(message.contains("cancelled"), "{message}");
+            assert!(
+                work - at <= lanes * chunk_work,
+                "stop {stop}: {} units after the observation",
+                work - at
+            );
+            assert!(work < total_work, "stop {stop}: every edge evaluated");
+        }
+        assert!(inside >= 10, "only {inside} stops inside emission");
         test_polls::cancel_at(None);
         assert_eq!(run().unwrap(), reference);
     }

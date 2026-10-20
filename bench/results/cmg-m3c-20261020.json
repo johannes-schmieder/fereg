@@ -1,5 +1,5 @@
 {
- "milestone": "M3c cloud handoff: parallel construction census, emission, contraction and forest work on the host team; pending independent review, not self-accepted",
+ "milestone": "M3c: first handoff (fereg ffc1b014, CMG 8fafe5a7) unaccepted by independent review on 2026-10-20; review repair pending re-review; M3d not released",
  "date": "2026-10-20",
  "revisions": {
   "fereg_base": "b9cc6b752b40abaf688e941fdb1def1059b2ba54 (accepted M3b source 671239d4 plus records)",
@@ -166,7 +166,8 @@
    },
    "63-fereg-core-lib": {
     "exit": 0,
-    "tests_passed": 1384
+    "tests_passed": 1384,
+    "note": "1,384 = 1,371 top-level tests plus 13 isolated child-process re-executions (each prints its own one-test result line)"
    },
    "64-candidate-plugin-build": {
     "exit": 0,
@@ -265,5 +266,124 @@
   "standard": "exit 1: 315 Python tests pass, then the installed-plugin binding check fails (main runtime changed), as on every M3b handoff",
   "source_only": "exit 0 (labelled source-only; installed-package admission not performed): 322 Python tests, 1,961 Rust test executions in 86 groups (14 ignored), allocator audits, fuzz check, portable checks, ratchet"
  },
- "complexity": "fereg-core 104,701 -> 105,148 production lines and 1,354 -> 1,365 dispatch candidates (declared growth); no new file over 1,500 or function over 150 lines; team stages in fe/cmg_schur/bounded/team.rs"
+ "complexity": "fereg-core 104,701 -> 105,148 production lines and 1,354 -> 1,365 dispatch candidates (declared growth); no new file over 1,500 or function over 150 lines; team stages in fe/cmg_schur/bounded/team.rs",
+ "review": {
+  "outcome": "unaccepted",
+  "findings": [
+   "R1: hosted edge emission advanced the worker with an unbounded scan over worker offsets inside one ControlledStage chunk; runs of canonical-degree-one (edge-less) workers made work between cancellation polls unbounded; declared search steps used max_rows, not the worker count",
+   "R2: the automatic route added the whole parallel construction bound (serial S plus transient contraction slot bank D) to its persistent charge before admitting completion storage W and published it as retained; P + S + max(D, W) refused the team completion and unlimited team builds overcharged retained storage by D"
+  ],
+  "not_found": "no further concrete defect in CMG paired dispatch, maximum-edge/tie selection, incoming-index sizing, hub polling or joins (bounded review)"
+ },
+ "repair": {
+  "source": "fereg only; CMG production unchanged (65bd817a, pin 8fafe5a7); CMG matrix reused",
+  "fixes": [
+   "each edge checks the next worker offset, otherwise bisects the remaining offsets: at most 1 + bit length of the worker count probes, included in the declared per-edge work (16 units per step)",
+   "automatic route keeps the serial bound of the identical hierarchy as its persistent charge; the admitted construction peak keeps the parallel bound; explicit accounting unchanged",
+   "hosted emission moved to fe/cmg_schur/bounded/team.rs (bounded.rs under the 1,500-line limit)"
+  ],
+  "pre_fix": {
+   "R1": "one edge probed 100,002 worker offsets (bound 19)",
+   "R2": "unlimited W1 team build retained 43,068,776 bytes vs accepted 42,675,896 (D = 392,880); budget P+S+max(D,W) = 43,043,376 refused (MemoryBudget) at W1",
+   "retained_test_error": "first R1 run failed on a wrong stage expectation (sampling also prepares rows); fixture now unsampled"
+  },
+  "mutation_notes": "m1 (submitted defect) and m1c (accounting without lookup steps) killed; m1b (linear scan only) survives as a declared equivalent mutant (each hosted chunk of the fixture holds one edge under the corrected accounting); m2 (parallel bound retained) killed; f2-f5 killed again; superseded runs retained separately",
+  "steps": {
+   "60-fereg-complexity": {
+    "exit": 0
+   },
+   "61-fereg-fmt-check": {
+    "exit": 0
+   },
+   "62-fereg-clippy": {
+    "exit": 0
+   },
+   "63-fereg-core-lib": {
+    "exit": 0
+   },
+   "64-candidate-plugin-build": {
+    "exit": 0
+   },
+   "65-replay-vs-m3b": {
+    "exit": 0
+   },
+   "66-derived-explicit": {
+    "exit": 0
+   },
+   "67-injected-two-fe": {
+    "exit": 0
+   },
+   "70-run-tests-standard": {
+    "exit": 1
+   },
+   "71-run-tests-source-only": {
+    "exit": 0
+   }
+  },
+  "core_lib": "1,373 top-level tests (3 ignored) plus 14 isolated child-process re-executions",
+  "plugins": {
+   "candidate_sha256": "77838f0dc91a16d08e167ad134809fd8a67e1a081cf65673ef01b324842f4f7f",
+   "baseline_accepted_m3b_sha256": "2c751c49f6b38317468afb36c09130e8ed633b4e61a7e704de2420898f2e2cd7"
+  },
+  "replay": "73/73 exact; 46 derived explicit and 75 injected runs row-identical to the accepted M3b and first M3c runs",
+  "run_tests": {
+   "standard": "exit 1 after 315 Python tests at the installed-plugin binding check",
+   "source_only": "exit 0 (source-only): 322 Python tests, 1,964 Rust executions in 87 groups (14 ignored)"
+  },
+  "complexity": "fereg-core 105,148 -> 105,165 production lines (declared); no file over 1,500 or function over 150 added",
+  "witness_and_mutation_runs": {
+   "500-prefix-r1-witness": {
+    "exit": 101
+   },
+   "500-prefix-r1-witness.stage-expectation": {
+    "exit": 101
+   },
+   "510-postfix-r1-witness": {
+    "exit": 0
+   },
+   "511-postfix-r1-witness-accounting": {
+    "exit": 0
+   },
+   "512-postfix-r1-bisection": {
+    "exit": 0
+   },
+   "520-mut-m1-linear-worker-scan.equivalent-under-new-accounting": {
+    "exit": 0
+   },
+   "530-prefix-r2-witness": {
+    "exit": 101
+   },
+   "531-prefix-r2-interval-first": {
+    "exit": 101
+   },
+   "540-postfix-r2-team-stage-tests": {
+    "exit": 0
+   },
+   "551-mut-m1_submitted_defect": {
+    "exit": 101
+   },
+   "552-mut-m1b_linear_scan_only": {
+    "exit": 0
+   },
+   "553-mut-m1c_accounting_without_worker_steps": {
+    "exit": 101
+   },
+   "554-mut-m2_parallel_bound_retained": {
+    "exit": 101
+   },
+   "562-mut-f2_lane_poll": {
+    "exit": 101
+   },
+   "563-mut-f3_census_last_failure": {
+    "exit": 101
+   },
+   "564-mut-f4_auto_ignores_fits": {
+    "exit": 101
+   },
+   "565-mut-f5_failed_row_start": {
+    "exit": 101
+   }
+  },
+  "witness_and_mutation_runs_note": "500-531 pre-fix witness runs (expected 101), 510-540 post-fix witness runs (expected 0), 551-565 mutations on the final source (expected 101 except declared-equivalent m1b); 520 is the first scan-only mutation run, equivalent under the new accounting"
+ }
 }

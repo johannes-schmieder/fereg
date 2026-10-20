@@ -214,13 +214,18 @@ range of the admitted cache bank. Lane counters poll every 65,536 units,
 including inside one long row. The rows are then compacted in worker order
 into the serial census's exact layout, and the earliest failing worker's
 error is reported. Sampled-row suffixes are prepared by the same kind of
-task. Edge emission locates each chunk's first worker from prefix offsets
-instead of a serial placeholder pass. Only the small task tables are new
+task. Edge emission locates each edge's worker from prefix offsets instead
+of a serial placeholder pass. It checks the next offset, or bisects the
+remaining offsets across a run of edge-less workers, so a lookup takes at
+most one probe plus the bit length of the worker count. These steps are
+part of the declared per-edge work. Only the small task tables are new
 scratch; they are admitted, and the serial stage runs when they do not fit.
 With a team, the automatic upgrade builds its hierarchy on that team, which
 contracts large levels and selects heavy forest edges in row-owned lanes,
 whenever the parallel construction bound is admitted. Otherwise it builds
-serially under the serial bound. Graphs, labels, hierarchies, factors,
+serially under the serial bound. The parallel bound's extra contraction slot
+bank is transient. It counts toward the admitted construction peak only, and
+the installed hierarchy keeps the serial bound as its retained charge. Graphs, labels, hierarchies, factors,
 repeats and cycle bits are identical either way and at every worker count.
 Explicit `cmgschur` keeps its uncached two-pass census and therefore its
 serial census and emission. Its hierarchy already used the team.

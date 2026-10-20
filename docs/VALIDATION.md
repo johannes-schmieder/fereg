@@ -28,8 +28,9 @@ were deleted; hashes and summaries are the remaining record.
 
 ## CMG successor milestone 3c: parallel construction on the host team
 
-**Cloud handoff pending independent review; not self-accepted.** M3c starts
-from the accepted M3b pair (fereg `b9cc6b75`, i.e. source `671239d4` plus
+**The first handoff (fereg `ffc1b014`, CMG `8fafe5a7`) was unaccepted by
+independent review on 2026-10-20. A review repair is pending re-review (see
+below); M3d is not released.** M3c starts from the accepted M3b pair (fereg `b9cc6b75`, i.e. source `671239d4` plus
 records, with CMG `ccd7177f`). It pins CMG
 `8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9`: `65bd817a` adds team forest
 selection, and `8fafe5a7` makes its hub-row cancellation witness reach the
@@ -184,6 +185,121 @@ Limits and open items:
 
 Identities, per-step exits and limits are in
 [`cmg-m3c-20261020.json`](../bench/results/cmg-m3c-20261020.json).
+
+### Independent review: unaccepted; review repair (pending re-review)
+
+Root fast-forwarded to the handoff and the two independent reviewers
+finished their source review. Root checked two findings against source as
+source proofs and test recipes, not runtime reproductions. No other concrete
+defect was found in CMG paired dispatch, maximum-edge and tie selection,
+incoming-index sizing, hub polling or joins. That is a bounded review, not a
+proof that unexecuted root gates pass.
+
+1. Unbounded work without cancellation in hosted edge emission. The edge
+   kernel advanced the worker with
+   `while offsets[worker + 1].0 <= index { worker += 1; }` inside one
+   `ControlledStage` chunk. Workers of canonical degree one (duplicate
+   observations at one firm, which singleton removal need not drop) emit no
+   edges. A run of them between two edges of one chunk therefore cost an
+   arbitrarily long scan before the next cancellation query. The declared
+   per-edge work also counted binary-search steps from `max_rows`, not the
+   worker count.
+2. Transient parallel construction scratch kept in the persistent automatic
+   charge. With a team, the automatic route admitted the parallel bound
+   (serial bound S plus the contraction slot bank D) and then added all of
+   it to the live parents before admitting completion storage W. It also
+   published that larger retained bound. A budget of P + S + max(D, W) admits
+   accepted serial completion and the parallel construction, but refused the
+   team completion. Unlimited team builds overcharged retained storage by D.
+   The earlier finish-level test only covered P + S + D/2.
+
+Declared before the edits (fereg only; CMG production unchanged, so the CMG
+`65bd817a`/`8fafe5a7` evidence above is reused):
+
+- Paths. R1: the emission plan's worker lookup and its declared per-edge
+  work. R2: the automatic route's persistent charge in `finish`. Explicit
+  accounting, edge order, draws and arithmetic are unchanged.
+- Witnesses. R1 is an isolated child-process test on 70,000 emitting
+  workers around 100,000 duplicate-only workers, which emit at least
+  65,536 edges. It checks probes per edge, that the declared chunk covers its
+  actual worst edge, work after the cancelling poll, untouched edges, joins,
+  an exact rebuild, and identical graphs with no team, one lane and four
+  lanes. R2 is a finish-level test that derives W from the accepted serial
+  result and covers P + S + max(D, W), both sides of P + S + D, and true
+  refusals below P + S + W and P + S, with no team, W1 and W4.
+
+Pre-fix failures on the submitted code (plus test instrumentation only):
+
+- R1: one edge probed 100,002 worker offsets (bound 19).
+- R2: an unlimited W1 team build retained 43,068,776 bytes against the
+  accepted 42,675,896 (D = 392,880). With the P + S + max(D, W) case first,
+  the budget of 43,043,376 bytes was refused (`MemoryBudget`) for W1.
+- The first R1 run failed on a wrong stage expectation in the new test
+  (sampling also prepares rows). It is retained, and the fixture now runs
+  without sampling.
+
+Repair:
+
+- Each edge checks the next worker offset. Otherwise it bisects the
+  remaining offsets, so it takes at most one probe plus the bit length of
+  the worker count. The declared per-edge work adds 16 units per such step,
+  so every hosted chunk of the gap fixture holds one edge. An earlier
+  version used `partition_point`, which made one more comparison than the
+  declared steps (20 against 19 under mutation m1c). It was replaced by an
+  explicit bisection whose step count is fixed.
+- The automatic route adds the serial bound S of the identical hierarchy to
+  its persistent charge. The admitted construction peak keeps the parallel
+  bound. Explicit builds keep their bound.
+- Hosted emission moves into `fe/cmg_schur/bounded/team.rs` with the other
+  team stages, keeping `bounded.rs` under the 1,500-line limit.
+
+Mutations on the final source (expected nonzero unless declared):
+
+- m1, the submitted defect (linear scan and accounting without lookup
+  steps): killed, 100,002 probes.
+- m1c, accounting without lookup steps but bisection kept: killed, 3 edges
+  per chunk need 1,728 units.
+- m1b, the linear scan alone: survives as a declared equivalent mutant.
+  Under the corrected accounting every hosted chunk of the fixture holds one
+  edge, whose worker the per-chunk search already finds, so a scan never
+  crosses workers. The bisection keeps the bound independent of chunk length.
+- m2, the parallel bound retained: killed (43,068,776 against 42,675,896).
+- f2–f5 from the first handoff are killed again on the final source. f4 is
+  now also caught by the R2 witness.
+- Superseded mutation runs (on the `partition_point` version, and before the
+  module move) and the first run of the scan-only mutation are retained
+  separately.
+
+Count clarification: the first handoff's JSON field `63-fereg-core-lib`
+reported 1,384 passed. That is 1,371 top-level tests plus 13 isolated
+child-process re-executions; each child prints its own one-test result line.
+The record now reports the two separately.
+
+Validation of the repair (cloud; full logs, commands and real exits under
+`target/tmp/auto-routing/m3c-r1/logs` until review):
+
+- fereg: complexity ratchet (declared growth 105,148 → 105,165 production
+  lines), fmt and Clippy `-D warnings` pass. fereg-core lib: 1,373
+  top-level tests pass (3 ignored), plus 14 isolated child-process
+  re-executions. These include both new witnesses, the 42 frozen W1/W4
+  builder, cycle, solve and adapter digests, and the allocation, publication,
+  error, route-cancellation and fatal-classification tests.
+- Actual-plugin replay of the repaired candidate (`77838f0d...4f7f`) against
+  the accepted M3b cloud plugin (`2c751c49...2cd7`): 73 of 73 cases exact
+  with no science error. 46 derived explicit OLS and PPML runs (both bias
+  modes, 1/4 workers) and 75 injected two-FE runs: every row identical to
+  the accepted M3b and first M3c runs; the known-fixture notes are identical.
+- Standard `./scripts/run_tests.sh`: 315 Python tests pass, then the
+  installed-plugin binding check fails (exit 1). `--source-only` (labelled
+  source-only; installed-package admission not performed) passes 322 Python
+  tests, 1,964 Rust test executions in 87 groups (14 ignored), the allocator
+  audits, the fuzz check, the portable checks and the ratchet.
+- CMG production is unchanged at `65bd817a` (pin `8fafe5a7`); its matrix
+  above is reused.
+
+Remaining limits are those of the first handoff, with explicit `cmgschur`'s
+uncached census and one-worker team behavior retained as instructed. Replay
+fixtures remain below the team thresholds. No timing, panel or profile ran.
 
 
 ## CMG successor milestone 3b: one construction pipeline, cycle and adapter
