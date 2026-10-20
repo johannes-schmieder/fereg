@@ -85,6 +85,34 @@ pub(super) fn indexed_edge(
     (cells[vertex].0 as usize, cells[lower].0 as usize, weight)
 }
 
+/// Sort one sampled worker's cells by weight and form their compensated
+/// suffix masses in reverse order (`suffix[cells.len()]` is zero). The serial
+/// sampler and team lanes share this one implementation.
+pub(super) fn prepare_row<C: super::bounded::Counter>(
+    cells: &mut [(u32, f64)],
+    suffix: &mut [f64],
+    counter: &mut C,
+) -> std::result::Result<(), C::Error> {
+    super::bounded::counted_sort(counter, cells, |left, right| {
+        left.1.total_cmp(&right.1).then(left.0.cmp(&right.0))
+    })?;
+    suffix[cells.len()] = 0.0;
+    let mut sum = 0.0;
+    let mut correction = 0.0;
+    for (index, &(_, weight)) in cells.iter().enumerate().rev() {
+        counter.step(64)?;
+        if !weight.is_finite() || weight <= 0.0 {
+            return Err(invalid_data("CMG sampled worker weight is invalid").into());
+        }
+        neumaier_add(weight, &mut sum, &mut correction);
+        suffix[index] = sum + correction;
+        if !suffix[index].is_finite() || suffix[index] <= 0.0 {
+            return Err(invalid_data("CMG sampled suffix mass is invalid").into());
+        }
+    }
+    Ok(())
+}
+
 pub(super) struct SampledTrees {
     sampling: Sampling,
     suffix: Vec<f64>,
@@ -95,9 +123,11 @@ pub(super) struct SampledTrees {
 }
 
 impl SampledTrees {
+    #[cfg(test)]
     pub(super) fn suffix(&self, count: usize) -> &[f64] {
         &self.suffix[..=count]
     }
+
     pub(super) fn allocation_bytes(max_rows: usize) -> Result<usize> {
         super::bytes::<f64>(
             max_rows
@@ -137,23 +167,8 @@ impl SampledTrees {
         if cells.len() < 2 || cells.len() >= self.suffix.len() {
             return Err(invalid_argument("CMG sampled worker exceeds its admitted scratch").into());
         }
-        work.sort(cells, |left, right| {
-            left.1.total_cmp(&right.1).then(left.0.cmp(&right.0))
-        })?;
-        self.suffix[cells.len()] = 0.0;
-        let mut sum = 0.0;
-        let mut correction = 0.0;
-        for (index, &(_, weight)) in cells.iter().enumerate().rev() {
-            work.step(64)?;
-            if !weight.is_finite() || weight <= 0.0 {
-                return Err(invalid_data("CMG sampled worker weight is invalid").into());
-            }
-            neumaier_add(weight, &mut sum, &mut correction);
-            self.suffix[index] = sum + correction;
-            if !self.suffix[index].is_finite() || self.suffix[index] <= 0.0 {
-                return Err(invalid_data("CMG sampled suffix mass is invalid").into());
-            }
-        }
+        let length = cells.len();
+        prepare_row(cells, &mut self.suffix[..=length], work)?;
         work.step(64)?;
         self.worker = u64::try_from(worker)
             .map_err(|_| allocation("CMG sampled worker identifier overflows"))?;

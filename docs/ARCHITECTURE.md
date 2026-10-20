@@ -205,6 +205,26 @@ stream. Logical edge chunks depend on dimensions and the per-edge kernel bound
 temporarily carry task metadata, avoiding a separate task vector or scratch
 proportional to lanes times the largest row.
 
+Milestone 3c moves the remaining graph-construction passes onto the same
+borrowed team without changing any bit. With the canonical cell cache (the
+automatic route) and at least 65,536 observations, the census groups
+consecutive workers into tasks of at least 4,096 raw cells (a longer row is
+its own task). Each task fills, sorts and compensates its rows in its own
+range of the admitted cache bank. Lane counters poll every 65,536 units,
+including inside one long row. The rows are then compacted in worker order
+into the serial census's exact layout, and the earliest failing worker's
+error is reported. Sampled-row suffixes are prepared by the same kind of
+task. Edge emission locates each chunk's first worker from prefix offsets
+instead of a serial placeholder pass. Only the small task tables are new
+scratch; they are admitted, and the serial stage runs when they do not fit.
+With a team, the automatic upgrade builds its hierarchy on that team, which
+contracts large levels and selects heavy forest edges in row-owned lanes,
+whenever the parallel construction bound is admitted. Otherwise it builds
+serially under the serial bound. Graphs, labels, hierarchies, factors,
+repeats and cycle bits are identical either way and at every worker count.
+Explicit `cmgschur` keeps its uncached two-pass census and therefore its
+serial census and emission. Its hierarchy already used the team.
+
 The upstream initial-graph constructor maps edges and performs bounded merges
 with the same fixed threshold for one or many lanes. Runs of at most eight
 edges and bounded merge packets keep each kernel within 1–1024 primitive units
@@ -230,8 +250,9 @@ one Schur graph adapter (`fe/cmg_schur/bounded.rs`: census, clique/tree edge
 emission, initial graph and hierarchy pipeline, all polling cancellation);
 the two differ only in installation. The explicit request contracts large
 levels and builds row operators for the eligible levels of its host team, and
-keeps up to four interleaved lanes; the automatic upgrade builds serially and
-applies one team-free scalar cycle per lane. Graphs, hierarchies and cycle bits
+keeps up to four interleaved lanes; the automatic upgrade builds on the team
+when the parallel bound is admitted (serially otherwise, with identical bits)
+and applies one team-free scalar cycle per lane. Graphs, hierarchies and cycle bits
 equal the pre-consolidation explicit builder's (a frozen-digest witness covers
 one and four workers). Low-degree levels
 of the larger FE are eliminated into weighted pairs on the smaller FE; higher

@@ -1718,20 +1718,45 @@ mod tests {
         let reference = run().unwrap();
         let total = test_polls::polls();
         let mut phases = std::collections::BTreeSet::new();
-        for stop in (0..total).step_by((total / 400).max(1)).chain([total - 1]) {
+        let mut cancel = |stop: usize| -> Option<String> {
             test_polls::cancel_at(Some(stop));
             match run() {
                 Err(error) => {
                     assert_eq!(error.code, ErrorCode::Interrupted, "{error}");
-                    phases.insert(
-                        error
-                            .message
-                            .split_once("cancelled during ")
-                            .map_or_else(|| "fereg".to_string(), |(_, phase)| phase.to_string()),
-                    );
+                    let phase = error
+                        .message
+                        .split_once("cancelled during ")
+                        .map_or_else(|| "fereg".to_string(), |(_, phase)| phase.to_string());
+                    phases.insert(phase.clone());
+                    Some(phase)
                 }
-                Ok(_) => assert!(test_polls::polls() <= stop, "poll {stop} ignored"),
+                Ok(_) => {
+                    assert!(test_polls::polls() <= stop, "poll {stop} ignored");
+                    None
+                }
             }
+        };
+        let stops: Vec<usize> = (0..total)
+            .step_by((total / 400).max(1))
+            .chain([total - 1])
+            .collect();
+        let sampled: Vec<Option<String>> = stops.iter().map(|&stop| cancel(stop)).collect();
+        // Plan publication is one checkpoint after the plan's CSR polls and
+        // before the workspaces, so every stop from the first sampled plan
+        // stop to the first sampled workspace stop is visited.
+        let phase_at = |prefix: &str, from: usize| {
+            (from..sampled.len())
+                .find(|&index| {
+                    sampled[index]
+                        .as_deref()
+                        .is_some_and(|p| p.starts_with(prefix))
+                })
+                .expect("phase not sampled")
+        };
+        let plan = phase_at("plan ", 0);
+        let workspace = phase_at("CMG workspace", plan);
+        for stop in stops[plan] + 1..stops[workspace] {
+            cancel(stop);
         }
         // The torus has degree four, so its row operators use serial CSR.
         for phase in [

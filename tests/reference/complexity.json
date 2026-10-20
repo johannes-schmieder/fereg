@@ -3,21 +3,15 @@
   "growth": [
     {
       "metric": "fereg-core/production_lines",
-      "before": 104624,
-      "after": 104701,
-      "reason": "Second M3b review repair: fereg's prepared and explicit CMG traversals (endpoint reserve, weight-ratio rows, seed and input finiteness scans, certified seed retention, RHS accumulation, nuisance moments and corrections, residual updates, weight validation and bank fills) poll the host flag every 1,024 rows or 65,536 entries with a final poll after each fill; the prepared assembly scratch uses CMG's controlled constructor and a frame's seed admission is published only after the frame exists; and only numerical, resource or nonfinite-data failures select the certified CG fallback (cancellation and fatal failures propagate), with test-only fault plans for the witness. No arithmetic, route or memory policy changes."
+      "before": 104701,
+      "after": 105148,
+      "reason": "M3c parallel construction on the borrowed host team: the cached Schur census loads, sorts and compensates worker rows in logical tasks of at least 4,096 raw cells with counting lanes, compacts them in worker order into the serial cache layout and reports the earliest failing worker; sampled-row suffixes are prepared by the same kind of task; edge emission locates workers from prefix offsets instead of a serial placeholder pass; the automatic hierarchy uses the team when the parallel bound fits. Task tables are admitted and the serial stage runs otherwise. The heapsort and row loader are shared by serial and lane counters, and the team stages live in a separate bounded/team.rs module. Graphs, hierarchies and bits are unchanged."
     },
     {
-      "metric": "file/crates/fereg-core/src/fe/cmg.rs",
-      "before": 3155,
-      "after": 3232,
-      "reason": "Second M3b review repair: fereg's prepared and explicit CMG traversals (endpoint reserve, weight-ratio rows, seed and input finiteness scans, certified seed retention, RHS accumulation, nuisance moments and corrections, residual updates, weight validation and bank fills) poll the host flag every 1,024 rows or 65,536 entries with a final poll after each fill; the prepared assembly scratch uses CMG's controlled constructor and a frame's seed admission is published only after the frame exists; and only numerical, resource or nonfinite-data failures select the certified CG fallback (cancellation and fatal failures propagate), with test-only fault plans for the witness. No arithmetic, route or memory policy changes."
-    },
-    {
-      "metric": "function/crates/fereg-core/src/fe/cmg.rs/project_matrix_with_options#1",
-      "before": 172,
-      "after": 179,
-      "reason": "Second M3b review repair: the nuisance correction and residual-update row loops poll the host flag every 1,024 rows, and the reused nuisance solution is zeroed and accumulated in polled 65,536-entry segments; arithmetic order is unchanged."
+      "metric": "fereg-core/dispatch_candidates",
+      "before": 1354,
+      "after": 1365,
+      "reason": "M3c parallel construction on the borrowed host team: the cached Schur census loads, sorts and compensates worker rows in logical tasks of at least 4,096 raw cells with counting lanes, compacts them in worker order into the serial cache layout and reports the earliest failing worker; sampled-row suffixes are prepared by the same kind of task; edge emission locates workers from prefix offsets instead of a serial placeholder pass; the automatic hierarchy uses the team when the parallel bound fits. Task tables are admitted and the serial stage runs otherwise. The heapsort and row loader are shared by serial and lane counters, and the team stages live in a separate bounded/team.rs module. Graphs, hierarchies and bits are unchanged. New conditions: census and preparation task boundaries, the emission capacity check, the task-table fit test, lane row results and the earliest-failure compaction stop."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -3350,288 +3344,380 @@
         "dispatch_candidates": [
           {
             "condition": "let Some ( budget ) = memory . budget",
-            "line": 216
+            "line": 261
           },
           {
             "condition": "n_retained == 0 || n_eliminated == 0 || ! ( 4.. = 6 ) . contains ( & degree ) || n_eliminated . checked_add ( 1 ) != Some ( row_ptr . len ( ) ) || row_ptr . first ( ) != Some ( & 0 ) || row_ptr . last ( ) . copied ( ) . map ( | n | n as usize ) != Some ( columns . len ( ) ) || columns . len ( ) != weights . len ( )",
-            "line": 245
+            "line": 290
           },
           {
             "condition": "pair [ 0 ] >= pair [ 1 ] || pair [ 1 ] as usize > columns . len ( )",
-            "line": 267
+            "line": 312
           },
           {
             "condition": "components . sizes . len ( ) != 1",
-            "line": 289
+            "line": 334
           },
           {
             "condition": "self . install != Install :: Auto || rhs . len ( ) != self . components . labels . len ( ) || scratch . len ( ) < rhs . len ( ) || ! weight_scale . is_finite ( ) || weight_scale <= 0.0",
-            "line": 328
+            "line": 373
           },
           {
             "condition": "design . effects ( ) . len ( ) != 2 || left_effect > 1 || rhs_capacity == 0",
-            "line": 388
+            "line": 433
           },
           {
             "condition": "! ( 4.. = 6 ) . contains ( & degree ) || firms . len ( ) != membership . nobs ( ) || matches ! ( weights , BorrowedMapWeights :: Provided ( w ) if w . len ( ) != firms . len ( ) )",
-            "line": 427
+            "line": 472
           },
           {
             "condition": "w . len ( ) != firms . len ( ) )",
-            "line": 429
+            "line": 474
           },
           {
             "condition": "columns > 1",
-            "line": 573
+            "line": 632
           },
           {
             "condition": "columns > 1",
-            "line": 592
+            "line": 651
           },
           {
             "condition": "weights",
-            "line": 731
+            "line": 790
+          },
+          {
+            "condition": "pending >= CENSUS_TASK_CELLS || worker + 1 == workers_count",
+            "line": 895
           },
           {
             "condition": "memory . budget . is_some_and ( | budget |",
-            "line": 843
+            "line": 934
+          },
+          {
+            "condition": "start > edges . capacity ( )",
+            "line": 989
           },
           {
             "condition": "cells . len ( ) > cutoff && sampling . samples > 0",
-            "line": 924
+            "line": 1027
           },
           {
             "condition": "cells . len ( ) > cutoff",
-            "line": 932
+            "line": 1035
           },
           {
-            "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1132
+            "condition": "& mut team_rows",
+            "line": 1264
+          },
+          {
+            "condition": "failure . as_ref ( ) . is_some_and ( | ( failed , _ ) | * failed == worker )",
+            "line": 1266
+          },
+          {
+            "condition": "( & team_rows , & self . cache )",
+            "line": 1282
           },
           {
             "condition": "let Some ( mut emission ) = EdgeEmissionPlan :: select ( self , input_edges , max_rows , cutoff , sampling , work , memory ) ?",
-            "line": 1236
+            "line": 1339
           },
           {
             "condition": "edges . len ( ) != input_edges",
-            "line": 1252
+            "line": 1355
           },
           {
             "condition": "self . cells . len ( ) > cutoff",
-            "line": 1274
+            "line": 1377
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1296
+            "line": 1399
+          },
+          {
+            "condition": "! weight . is_finite ( ) || weight <= 0.0",
+            "line": 1433
           },
           {
             "condition": "let BorrowedMapWeights :: Provided ( values ) = weights",
-            "line": 1378
+            "line": 1537
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 1382
+            "line": 1541
           }
         ],
         "functions": {
           "admit#1": {
-            "line": 206,
+            "line": 251,
             "lines": 21
           },
           "admitted_cache_bytes#1": {
-            "line": 1090,
+            "line": 1198,
             "lines": 23
           },
           "apply_reduced_in_place#1": {
-            "line": 322,
+            "line": 367,
             "lines": 47
           },
           "bank#1": {
-            "line": 1020,
+            "line": 1128,
             "lines": 3
           },
           "build_observations_bounded#1": {
-            "line": 413,
+            "line": 458,
             "lines": 83
           },
           "cache_envelope#1": {
-            "line": 1012,
+            "line": 1120,
             "lines": 77
           },
           "capacity#1": {
-            "line": 146,
+            "line": 162,
             "lines": 6
           },
           "census_bounded#1": {
-            "line": 1170,
-            "lines": 48
+            "line": 1250,
+            "lines": 71
           },
           "cmg#1": {
-            "line": 123,
+            "line": 139,
             "lines": 22
           },
           "collect_edges_bounded#1": {
-            "line": 1222,
+            "line": 1325,
             "lines": 35
           },
           "columns#1": {
-            "line": 41,
+            "line": 45,
             "lines": 6
           },
           "component_options#1": {
-            "line": 756,
+            "line": 815,
             "lines": 7
           },
+          "counted_sort#1": {
+            "line": 198,
+            "lines": 40
+          },
           "emit#1": {
-            "line": 859,
-            "lines": 109
+            "line": 952,
+            "lines": 115
           },
           "emit_edges_bounded#1": {
-            "line": 1258,
+            "line": 1361,
             "lines": 51
           },
           "entry#1": {
-            "line": 720,
+            "line": 779,
             "lines": 28
           },
           "explicit#1": {
-            "line": 48,
+            "line": 52,
             "lines": 3
           },
           "filled#1": {
-            "line": 153,
+            "line": 169,
             "lines": 8
           },
           "find_root#1": {
-            "line": 675,
+            "line": 734,
             "lines": 10
           },
           "finish#1": {
-            "line": 498,
-            "lines": 122
+            "line": 543,
+            "lines": 136
           },
           "firm_count#1": {
-            "line": 709,
+            "line": 768,
             "lines": 5
           },
+          "fits#1": {
+            "line": 241,
+            "lines": 9
+          },
           "from#1": {
-            "line": 60,
+            "line": 64,
             "lines": 3
           },
           "graph#1": {
-            "line": 1365,
-            "lines": 133
+            "line": 1524,
+            "lines": 139
           },
           "graph_storage_bound#1": {
-            "line": 667,
+            "line": 726,
             "lines": 7
           },
           "initial_laplacian_bounded#1": {
-            "line": 1313,
+            "line": 1472,
             "lines": 18
           },
           "load#1": {
-            "line": 988,
+            "line": 1096,
             "lines": 14
           },
           "load_bounded#1": {
-            "line": 1122,
-            "lines": 47
+            "line": 1230,
+            "lines": 18
+          },
+          "load_row#1": {
+            "line": 1418,
+            "lines": 51
           },
           "new#1": {
-            "line": 84,
-            "lines": 8
+            "line": 98,
+            "lines": 10
           },
           "new#2": {
-            "line": 971,
+            "line": 1070,
             "lines": 6
           },
           "parts#1": {
-            "line": 625,
+            "line": 684,
             "lines": 13
           },
           "poll#1": {
-            "line": 93,
+            "line": 109,
             "lines": 11
           },
           "relabel_components#1": {
-            "line": 1334,
+            "line": 1493,
             "lines": 29
           },
           "restore_scale#1": {
-            "line": 624,
+            "line": 683,
             "lines": 40
           },
+          "row#1": {
+            "line": 1087,
+            "lines": 8
+          },
           "row_count#1": {
-            "line": 714,
+            "line": 773,
             "lines": 6
           },
           "select#1": {
-            "line": 781,
-            "lines": 76
+            "line": 844,
+            "lines": 106
           },
           "sift#1": {
-            "line": 169,
+            "line": 203,
             "lines": 24
           },
-          "sort#1": {
-            "line": 164,
-            "lines": 40
-          },
           "step#1": {
-            "line": 107,
+            "line": 123,
             "lines": 12
           },
+          "step#2": {
+            "line": 191,
+            "lines": 3
+          },
           "store#1": {
-            "line": 978,
+            "line": 1077,
             "lines": 9
           },
           "try_build_bounded#1": {
-            "line": 377,
+            "line": 422,
             "lines": 30
           },
           "try_build_reduced_bounded#1": {
-            "line": 234,
+            "line": 279,
             "lines": 85
           },
           "weights#1": {
-            "line": 748,
+            "line": 807,
             "lines": 6
           },
           "worker_count#1": {
-            "line": 703,
+            "line": 762,
             "lines": 6
           }
         },
-        "production_lines": 1371
+        "production_lines": 1497
+      },
+      "crates/fereg-core/src/fe/cmg_schur/bounded/team.rs": {
+        "chunk_candidates": [],
+        "dispatch_candidates": [
+          {
+            "condition": "length >= CENSUS_TASK_CELLS || worker + 1 == workers",
+            "line": 118
+          },
+          {
+            "condition": "pending >= CENSUS_TASK_CELLS || worker + 1 == workers",
+            "line": 248
+          },
+          {
+            "condition": "! fits ( memory , parents , table )",
+            "line": 254
+          },
+          {
+            "condition": "length >= CENSUS_TASK_CELLS || worker + 1 == workers",
+            "line": 277
+          },
+          {
+            "condition": "load_row ( source , weight_scale , worker , cells , & mut lane )",
+            "line": 309
+          },
+          {
+            "condition": "failure . as_ref ( ) . is_some_and ( | ( failed , _ ) | * failed == worker )",
+            "line": 349
+          }
+        ],
+        "functions": {
+          "from#1": {
+            "line": 43,
+            "lines": 3
+          },
+          "load_rows_on_team#1": {
+            "line": 224,
+            "lines": 149
+          },
+          "new#1": {
+            "line": 57,
+            "lines": 6
+          },
+          "prepare_rows#1": {
+            "line": 97,
+            "lines": 114
+          },
+          "stage_phase#1": {
+            "line": 85,
+            "lines": 6
+          },
+          "step#1": {
+            "line": 69,
+            "lines": 13
+          }
+        },
+        "production_lines": 315
       },
       "crates/fereg-core/src/fe/cmg_schur/sampling.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
+            "condition": "! weight . is_finite ( ) || weight <= 0.0",
+            "line": 104
+          },
+          {
             "condition": "cells . len ( ) < 2 || cells . len ( ) >= self . suffix . len ( )",
-            "line": 137
+            "line": 167
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 148
-          },
-          {
-            "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 191
+            "line": 206
           },
           {
             "condition": "self . vertex + 1 == cells . len ( )",
-            "line": 200
+            "line": 215
           }
         ],
         "functions": {
           "allocation_bytes#1": {
-            "line": 101,
+            "line": 131,
             "lines": 7
           },
           "bytes#1": {
-            "line": 208,
+            "line": 223,
             "lines": 3
           },
           "indexed_edge#1": {
@@ -3647,7 +3733,7 @@
             "lines": 5
           },
           "new#1": {
-            "line": 110,
+            "line": 140,
             "lines": 19
           },
           "next#1": {
@@ -3655,19 +3741,19 @@
             "lines": 4
           },
           "next#2": {
-            "line": 166,
+            "line": 181,
             "lines": 41
           },
           "prepare#1": {
-            "line": 130,
-            "lines": 35
+            "line": 160,
+            "lines": 20
+          },
+          "prepare_row#1": {
+            "line": 91,
+            "lines": 24
           },
           "stream#1": {
             "line": 40,
-            "lines": 3
-          },
-          "suffix#1": {
-            "line": 98,
             "lines": 3
           },
           "uniform#1": {
@@ -3679,7 +3765,7 @@
             "lines": 8
           }
         },
-        "production_lines": 187
+        "production_lines": 193
       },
       "crates/fereg-core/src/fe/components.rs": {
         "chunk_candidates": [],
@@ -22819,10 +22905,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 12,
-        "dispatch_candidates": 1354,
+        "dispatch_candidates": 1365,
         "files_over_1500": 15,
         "functions_over_150": 60,
-        "production_lines": 104701
+        "production_lines": 105148
       },
       "fereg-plugin": {
         "chunk_candidates": 3,

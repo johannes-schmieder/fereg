@@ -11,6 +11,9 @@ use crate::error::FeregError;
 
 use super::*;
 
+mod team;
+use team::{PrepareTask, CENSUS_TASK_CELLS};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::fe) enum BuildRefusal {
     MemoryBudget,
@@ -28,8 +31,9 @@ pub(in crate::fe) struct BoundedCmgBuild {
 /// cancellation cadence; every CMG stage polls the host's cancellation flag.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::fe) enum Install {
-    /// Automatic upgrade: the hierarchy builds serially and each lane runs one
-    /// scalar team-free cycle with no row operators.
+    /// Automatic upgrade: the hierarchy builds on the host team when its
+    /// parallel bound is admitted (serially otherwise, with the same result),
+    /// and each lane runs one scalar team-free cycle with no row operators.
     Auto,
     /// Explicit `cmgschur`: large levels contract on the action's host team of
     /// `threads` workers, a row-operator plan selects that team's eligible
@@ -78,7 +82,17 @@ pub(super) struct Work {
     polls: u64,
     executed: bool,
     break_builder: bool,
+    /// Test-only record of the team stages taken (see `TEAM_*` bits).
+    #[cfg(test)]
+    team_stages: u8,
 }
+
+#[cfg(test)]
+const TEAM_CENSUS: u8 = 1;
+#[cfg(test)]
+const TEAM_PREPARE: u8 = 2;
+#[cfg(test)]
+const TEAM_HIERARCHY: u8 = 4;
 
 impl Work {
     pub(super) fn new(break_builder: bool) -> Self {
@@ -87,6 +101,8 @@ impl Work {
             polls: 0,
             executed: false,
             break_builder,
+            #[cfg(test)]
+            team_stages: 0,
         }
     }
 
@@ -158,49 +174,78 @@ impl Work {
         }
         Ok(result)
     }
+}
 
-    // Unlike standard-library sorting, this sorter can return before the next
-    // bounded group of comparisons/moves. Equal keys have identical value bits.
-    pub(super) fn sort<T: Copy>(
-        &mut self,
-        values: &mut [T],
-        compare: impl Fn(&T, &T) -> Ordering,
-    ) -> Attempt<()> {
-        fn sift<T: Copy>(
-            work: &mut Work,
-            values: &mut [T],
-            mut root: usize,
-            end: usize,
-            compare: &impl Fn(&T, &T) -> Ordering,
-        ) -> Attempt<()> {
-            loop {
-                work.step(64)?;
-                let child = root * 2 + 1;
-                if child >= end {
-                    return Ok(());
-                }
-                let mut largest = child;
-                if child + 1 < end && compare(&values[child], &values[child + 1]).is_lt() {
-                    largest += 1;
-                }
-                if !compare(&values[root], &values[largest]).is_lt() {
-                    return Ok(());
-                }
-                values.swap(root, largest);
-                root = largest;
-            }
-        }
-        self.step(16)?;
-        for root in (0..values.len() / 2).rev() {
-            sift(self, values, root, values.len(), &compare)?;
-        }
-        for end in (1..values.len()).rev() {
-            self.step(32)?;
-            values.swap(0, end);
-            sift(self, values, 0, end, &compare)?;
-        }
-        Ok(())
+/// Bounded-work counting shared by the serial builder and team lanes: one
+/// operation of 1..=1024 conservative units at a time, with the same cadence.
+pub(super) trait Counter {
+    type Error: From<FeregError>;
+
+    fn step(&mut self, units: u16) -> std::result::Result<(), Self::Error>;
+}
+
+impl Counter for Work {
+    type Error = AttemptError;
+
+    #[inline(always)]
+    fn step(&mut self, units: u16) -> Attempt<()> {
+        Work::step(self, units)
     }
+}
+
+/// Counted, allocation-free heapsort with a total comparator: every sift step
+/// and extraction is one bounded operation, so it can stop between them.
+pub(super) fn counted_sort<C: Counter, T: Copy>(
+    counter: &mut C,
+    values: &mut [T],
+    compare: impl Fn(&T, &T) -> Ordering,
+) -> std::result::Result<(), C::Error> {
+    fn sift<C: Counter, T: Copy>(
+        counter: &mut C,
+        values: &mut [T],
+        mut root: usize,
+        end: usize,
+        compare: &impl Fn(&T, &T) -> Ordering,
+    ) -> std::result::Result<(), C::Error> {
+        loop {
+            counter.step(64)?;
+            let child = root * 2 + 1;
+            if child >= end {
+                return Ok(());
+            }
+            let mut largest = child;
+            if child + 1 < end && compare(&values[child], &values[child + 1]).is_lt() {
+                largest += 1;
+            }
+            if !compare(&values[root], &values[largest]).is_lt() {
+                return Ok(());
+            }
+            values.swap(root, largest);
+            root = largest;
+        }
+    }
+    counter.step(16)?;
+    for root in (0..values.len() / 2).rev() {
+        sift(counter, values, root, values.len(), &compare)?;
+    }
+    for end in (1..values.len()).rev() {
+        counter.step(32)?;
+        values.swap(0, end);
+        sift(counter, values, 0, end, &compare)?;
+    }
+    Ok(())
+}
+
+/// Whether optional scratch of `additional` bytes fits after `parents`
+/// without recording anything; a refusal selects the serial path instead.
+fn fits(memory: &Admission, parents: u128, additional: usize) -> bool {
+    memory.budget.is_none_or(|budget| {
+        budget
+            .usable_bytes
+            .checked_sub(budget.execution_bytes)
+            .and_then(|bytes| bytes.checked_sub(parents))
+            .is_some_and(|available| available >= additional as u128)
+    })
 }
 
 fn admit(
@@ -510,25 +555,39 @@ fn finish(
         components: component_options(),
     };
     work.step(1024)?;
-    let bound = CmgPreconditioner::construction_allocation_bound(
-        graph.vertex_count(),
-        graph.edge_count(),
-        options,
-        explicit,
-    )
-    .map_err(cmg_error)?;
+    let bound_for = |parallel| {
+        CmgPreconditioner::construction_allocation_bound(
+            graph.vertex_count(),
+            graph.edge_count(),
+            options,
+            parallel,
+        )
+        .map_err(cmg_error)
+    };
     // The synchronous cache stays reserved even after graph emission drops it.
     let mut parents = graph_storage_bound(&graph)? + components.bytes() + cache_bytes;
+    // An explicit build always contracts on its host team, as before. The
+    // automatic build uses the team when the parallel bound is admitted and
+    // otherwise builds serially under the serial bound; both build the same
+    // hierarchy, factor and repeats.
+    let team_build = explicit || {
+        let parallel = bound_for(true)?;
+        work.cmg(|team, _| Ok(team.is_some()))? && fits(memory, parents, parallel)
+    };
+    let bound = bound_for(team_build)?;
     let admitted = admit(memory, work, parents, bound)?;
+    #[cfg(test)]
+    if team_build && work.cmg(|team, _| Ok(team.is_some()))? {
+        work.team_stages |= TEAM_HIERARCHY;
+    }
     // The terminal factor follows the hierarchy options and memory admission.
-    // Only an explicit build contracts large levels on the host team.
     let started = Instant::now();
     let preconditioner = work.cmg(|team, cancelled| {
         CmgPreconditioner::build_with(
             &graph,
             options,
             cmg::BuildContext {
-                team: team.filter(|_| explicit),
+                team: team.filter(|_| team_build),
                 cancel: Some(cancelled),
                 budget_bytes: Some(admitted),
             },
@@ -770,9 +829,13 @@ struct CanonicalCells {
 
 // A fixed logical threshold, independent of the admitted physical lane count.
 const HOSTED_EDGE_THRESHOLD: usize = 65_536;
-
 struct EdgeEmissionPlan {
     suffix: Vec<f64>,
+    // Per worker: its first edge and its auxiliary vertex; one more entry
+    // holds the total. Edge chunks locate their worker by binary search.
+    offsets: Vec<(usize, usize)>,
+    // Logical preparation tasks for sampled rows (zero without sampling).
+    tasks: usize,
     chunk_len: usize,
 }
 
@@ -822,7 +885,35 @@ impl EdgeEmissionPlan {
         let Some(suffix_len) = suffix_len else {
             return Ok(None);
         };
-        let Some(extra) = suffix_len.checked_mul(std::mem::size_of::<f64>()) else {
+        let workers_count = cache.rows.len();
+        let tasks: usize = if sampling.samples > 0 {
+            let mut tasks = 0;
+            let mut pending = 0;
+            for worker in 0..workers_count {
+                work.step(16)?;
+                pending += cache.row(worker).len();
+                if pending >= CENSUS_TASK_CELLS || worker + 1 == workers_count {
+                    tasks += 1;
+                    pending = 0;
+                }
+            }
+            tasks
+        } else {
+            0
+        };
+        let Some(extra) = suffix_len
+            .checked_mul(std::mem::size_of::<f64>())
+            .and_then(|bytes| {
+                bytes.checked_add(
+                    workers_count
+                        .checked_add(1)?
+                        .checked_mul(std::mem::size_of::<(usize, usize)>())?,
+                )
+            })
+            .and_then(|bytes| {
+                bytes.checked_add(tasks.checked_mul(std::mem::size_of::<PrepareTask<'_>>())?)
+            })
+        else {
             return Ok(None);
         };
         // Select optional scratch against the complete conservative envelope,
@@ -851,6 +942,8 @@ impl EdgeEmissionPlan {
         admit(memory, work, envelope.peak_bytes as u128, extra)?;
         Ok(Some(Self {
             suffix: work.filled(suffix_len, 0.0)?,
+            offsets: work.capacity(workers_count + 1)?,
+            tasks,
             chunk_len: 1024 / edge_work,
         }))
     }
@@ -866,27 +959,16 @@ impl EdgeEmissionPlan {
         edges: &mut Vec<(usize, usize, f64)>,
         work: &mut Work,
     ) -> Attempt<()> {
+        let workers = cache.rows.len();
+        // Edge offsets and auxiliary vertices by prefix over workers; the
+        // sampled rows are prepared on the team below.
         let mut auxiliary = firms;
-        for worker in 0..cache.rows.len() {
-            work.step(64)?;
-            let start = cache.rows[worker].0;
-            let end = cache
-                .rows
-                .get(worker + 1)
-                .map_or(cache.cells.len(), |row| row.0);
-            let cells = &mut cache.cells[start..end];
-            let count = cells.len();
+        let mut start = 0_usize;
+        for worker in 0..workers {
+            work.step(32)?;
+            let count = cache.row(worker).len();
             let edge_count = if count > cutoff {
-                if let Some(sampler) = sampler {
-                    // Preserve the original bounded sort and reverse Neumaier pass.
-                    sampler.prepare(cells, worker, work)?;
-                    for (output, &value) in self.suffix[start + worker..=end + worker]
-                        .iter_mut()
-                        .zip(sampler.suffix(count))
-                    {
-                        work.step(8)?;
-                        *output = value;
-                    }
+                if sampling.samples > 0 && sampler.is_some() {
                     (count - 1) * sampling.samples as usize
                 } else {
                     count
@@ -894,27 +976,48 @@ impl EdgeEmissionPlan {
             } else {
                 count * count.saturating_sub(1) / 2
             };
-            // Reuse the required output bank as private task metadata. No task
-            // vector or worker-by-maximum-degree scratch is needed. Auxiliary
-            // ids are exact in f64: graph admission already bounds vertices by
-            // u32::MAX + 1, so every emitted id is at most u32::MAX.
-            for ordinal in 0..edge_count {
-                work.step(16)?;
-                edges.push((worker, ordinal, auxiliary as f64));
-            }
+            self.offsets.push((start, auxiliary));
+            start = start
+                .checked_add(edge_count)
+                .ok_or_else(|| allocation("CMG Schur edge count overflows"))?;
             if count > cutoff && sampler.is_none() {
                 auxiliary += 1;
             }
         }
+        self.offsets.push((start, auxiliary));
+        // The admitted output bank never grows; the caller checks the count.
+        if start > edges.capacity() {
+            return Err(invalid_data("CMG Schur edge census changed during construction").into());
+        }
+        if sampler.is_some() {
+            self.prepare_rows(cache, cutoff, work)?;
+        }
+        // The output bank becomes the edge slots in counted segments.
+        while edges.len() < start {
+            let next = (start - edges.len()).min(128);
+            work.step(8 * next as u16)?;
+            edges.resize(edges.len() + next, (0, 0, 0.0));
+        }
+        let chunk_len = self.chunk_len;
+        let offsets = &self.offsets;
+        let suffix = &self.suffix;
+        let cache = &*cache;
         work.cmg(|team, cancelled| {
-            let stage = cmg::ControlledStage::admit(edges.len(), self.chunk_len)?;
+            let stage = cmg::ControlledStage::admit(edges.len(), chunk_len)?;
             stage.run(
                 team.expect("emission plan retains the installed action"),
                 edges,
                 cancelled,
-                |_, chunk| {
-                    for edge in chunk {
-                        let (worker, ordinal, auxiliary) = *edge;
+                |chunk_index, chunk| {
+                    let first = chunk_index * chunk_len;
+                    let mut worker = offsets.partition_point(|offset| offset.0 <= first) - 1;
+                    for (position, edge) in chunk.iter_mut().enumerate() {
+                        let index = first + position;
+                        while offsets[worker + 1].0 <= index {
+                            worker += 1;
+                        }
+                        let (edge_start, auxiliary) = offsets[worker];
+                        let ordinal = index - edge_start;
                         let (start, total) = cache.rows[worker];
                         let end = cache
                             .rows
@@ -926,15 +1029,11 @@ impl EdgeEmissionPlan {
                                 sampling,
                                 worker,
                                 cells,
-                                &self.suffix[start + worker..=end + worker],
+                                &suffix[start + worker..=end + worker],
                                 ordinal,
                             )
                         } else if cells.len() > cutoff {
-                            (
-                                cells[ordinal].0 as usize,
-                                auxiliary as usize,
-                                cells[ordinal].1,
-                            )
+                            (cells[ordinal].0 as usize, auxiliary, cells[ordinal].1)
                         } else {
                             let mut first = 0;
                             let mut remaining = ordinal;
@@ -983,6 +1082,15 @@ impl CanonicalCells {
             self.cells.push(*cell);
         }
         Ok(())
+    }
+
+    fn row(&self, worker: usize) -> &[(u32, f64)] {
+        let start = self.rows[worker].0;
+        let end = self
+            .rows
+            .get(worker + 1)
+            .map_or(self.cells.len(), |row| row.0);
+        &self.cells[start..end]
     }
 
     fn load(&self, worker: usize, cells: &mut Vec<(u32, f64)>, work: &mut Work) -> Attempt<f64> {
@@ -1120,70 +1228,65 @@ struct BoundedCells<'a> {
 
 impl BoundedCells<'_> {
     fn load_bounded(&mut self, worker: usize, work: &mut Work) -> Attempt<f64> {
-        work.step(16)?;
+        let count = self.source.row_count(worker);
         self.cells.clear();
-        for position in 0..self.source.row_count(worker) {
-            work.step(64)?;
-            let (firm, raw_weight) = self.source.entry(worker, position);
-            let weight = raw_weight / self.weight_scale;
-            if firm as usize >= self.source.firm_count() {
-                return Err(invalid_data("CMG Schur firm code is out of bounds").into());
-            }
-            if !weight.is_finite() || weight <= 0.0 {
-                return Err(invalid_data("CMG Schur requires positive finite weights").into());
-            }
-            self.cells.push((firm, weight));
+        while self.cells.len() < count {
+            let next = (count - self.cells.len()).min(128);
+            work.step(8 * next as u16)?;
+            self.cells.resize(self.cells.len() + next, (0, 0.0));
         }
-        work.sort(&mut self.cells, |left, right| {
-            left.0
-                .cmp(&right.0)
-                .then_with(|| left.1.total_cmp(&right.1))
-        })?;
-        let mut read = 0;
-        let mut write = 0;
-        let mut total = 0.0;
-        let mut total_correction = 0.0;
-        while read < self.cells.len() {
-            work.step(32)?;
-            let firm = self.cells[read].0;
-            let mut sum = 0.0;
-            let mut correction = 0.0;
-            while read < self.cells.len() && self.cells[read].0 == firm {
-                work.step(32)?;
-                neumaier_add(self.cells[read].1, &mut sum, &mut correction);
-                read += 1;
-            }
-            work.step(32)?;
-            let weight = sum + correction;
-            self.cells[write] = (firm, weight);
-            neumaier_add(weight, &mut total, &mut total_correction);
-            write += 1;
-        }
-        self.cells.truncate(write);
-        let total = total + total_correction;
-        if !total.is_finite() || total <= 0.0 {
-            return Err(invalid_data("CMG Schur worker weight total is invalid").into());
-        }
+        let (kept, total) = load_row(
+            self.source,
+            self.weight_scale,
+            worker,
+            &mut self.cells,
+            work,
+        )?;
+        self.cells.truncate(kept);
         Ok(total)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn census_bounded(
         &mut self,
         cutoff: usize,
         sampling: Sampling,
         labels: &mut [usize],
         work: &mut Work,
+        memory: &mut Admission,
+        parents: u128,
     ) -> Attempt<GraphCounts> {
+        // With an admitted cache and the host team, rows load on the team; the
+        // earliest failing worker's error is reported here in worker order.
+        let mut team_rows = self.load_rows_on_team(work, memory, parents)?;
         let mut counts = GraphCounts::default();
         for worker in 0..self.source.worker_count() {
-            let total = self.load_bounded(worker, work)?;
-            if let Some(cache) = &mut self.cache {
-                cache.store(&self.cells, total, work)?;
+            match &mut team_rows {
+                Some(failure) => {
+                    if failure
+                        .as_ref()
+                        .is_some_and(|(failed, _)| *failed == worker)
+                    {
+                        let (_, error) = failure.take().expect("checked failure");
+                        return Err(error.into());
+                    }
+                    work.step(32)?;
+                }
+                None => {
+                    let total = self.load_bounded(worker, work)?;
+                    if let Some(cache) = &mut self.cache {
+                        cache.store(&self.cells, total, work)?;
+                    }
+                }
             }
+            let cells = match (&team_rows, &self.cache) {
+                (Some(_), Some(cache)) => cache.row(worker),
+                _ => &self.cells[..],
+            };
             work.step(64)?;
-            let count = self.cells.len();
-            if let Some(&(first, _)) = self.cells.first() {
-                for &(firm, _) in self.cells.iter().skip(1) {
+            let count = cells.len();
+            if let Some(&(first, _)) = cells.first() {
+                for &(firm, _) in cells.iter().skip(1) {
                     work.step(16)?;
                     let first = find_root(labels, first as usize, work)?;
                     let other = find_root(labels, firm as usize, work)?;
@@ -1306,6 +1409,62 @@ impl BoundedCells<'_> {
         }
         Ok(())
     }
+}
+
+/// Load one worker's raw cells into `cells` (exactly its row length), sort them
+/// by firm and weight, and merge each firm's weights with compensated sums in
+/// that order. Returns the merged length and the worker's compensated total.
+/// The serial census and team lanes share this one implementation.
+fn load_row<C: Counter>(
+    source: CellSource<'_>,
+    weight_scale: f64,
+    worker: usize,
+    cells: &mut [(u32, f64)],
+    counter: &mut C,
+) -> std::result::Result<(usize, f64), C::Error> {
+    counter.step(16)?;
+    for (position, cell) in cells.iter_mut().enumerate() {
+        counter.step(64)?;
+        let (firm, raw_weight) = source.entry(worker, position);
+        let weight = raw_weight / weight_scale;
+        if firm as usize >= source.firm_count() {
+            return Err(invalid_data("CMG Schur firm code is out of bounds").into());
+        }
+        if !weight.is_finite() || weight <= 0.0 {
+            return Err(invalid_data("CMG Schur requires positive finite weights").into());
+        }
+        *cell = (firm, weight);
+    }
+    counted_sort(counter, cells, |left, right| {
+        left.0
+            .cmp(&right.0)
+            .then_with(|| left.1.total_cmp(&right.1))
+    })?;
+    let mut read = 0;
+    let mut write = 0;
+    let mut total = 0.0;
+    let mut total_correction = 0.0;
+    while read < cells.len() {
+        counter.step(32)?;
+        let firm = cells[read].0;
+        let mut sum = 0.0;
+        let mut correction = 0.0;
+        while read < cells.len() && cells[read].0 == firm {
+            counter.step(32)?;
+            neumaier_add(cells[read].1, &mut sum, &mut correction);
+            read += 1;
+        }
+        counter.step(32)?;
+        let weight = sum + correction;
+        cells[write] = (firm, weight);
+        neumaier_add(weight, &mut total, &mut total_correction);
+        write += 1;
+    }
+    let total = total + total_correction;
+    if !total.is_finite() || total <= 0.0 {
+        return Err(invalid_data("CMG Schur worker weight total is invalid").into());
+    }
+    Ok((write, total))
 }
 
 /// Borrow the installed team for initial graph construction; above CMG's
@@ -1437,7 +1596,13 @@ fn graph(
         labels.push(firm);
     }
     let mut sizes = work.filled(firms, usize::MAX)?;
-    let counts = workers.census_bounded(cutoff, sampling, &mut labels, work)?;
+    let census_parents = vec_capacity_bytes(&workers.cells)
+        + cache_bytes as u128
+        + sampler.as_ref().map_or(0, SampledTrees::bytes)
+        + vec_capacity_bytes(&labels)
+        + vec_capacity_bytes(&sizes);
+    let counts =
+        workers.census_bounded(cutoff, sampling, &mut labels, work, memory, census_parents)?;
     let component_count = relabel_components(&mut labels, &mut sizes, work)?;
     work.step(128)?;
     let vertices = firms
@@ -1569,7 +1734,17 @@ mod control_tests {
                     };
                     let mut labels: Vec<_> = (0..38).collect();
                     let count = cells
-                        .census_bounded(5, sampling, &mut labels, &mut work)
+                        .census_bounded(
+                            5,
+                            sampling,
+                            &mut labels,
+                            &mut work,
+                            &mut Admission {
+                                budget: None,
+                                peak: SolverWorkspacePeak::ZERO,
+                            },
+                            0,
+                        )
                         .unwrap();
                     assert!(count.input_edges >= HOSTED_EDGE_THRESHOLD);
                     let mut sampler = if samples > 0 {
@@ -1686,7 +1861,17 @@ mod control_tests {
                     };
                     let mut labels: Vec<_> = (0..38).collect();
                     let counts = cells
-                        .census_bounded(5, sampling, &mut labels, &mut work)
+                        .census_bounded(
+                            5,
+                            sampling,
+                            &mut labels,
+                            &mut work,
+                            &mut Admission {
+                                budget: None,
+                                peak: SolverWorkspacePeak::ZERO,
+                            },
+                            0,
+                        )
                         .unwrap();
                     let canonical = cells.cache.as_ref().unwrap().cells.clone();
                     assert!(EdgeEmissionPlan::select(
@@ -2462,5 +2647,472 @@ mod cache_tests {
         assert_eq!(old_components.sizes, new_components.sizes);
         assert_eq!(old_scale.to_bits(), new_scale.to_bits());
         assert!(cache_bytes > 0);
+    }
+}
+
+/// Team construction stages (census rows, sampled-row preparation, edge
+/// offsets and the automatic hierarchy) reproduce the serial graph, cache,
+/// hierarchy and applications bit for bit at every worker count; lanes count
+/// inner work inside one long row; the earliest failing worker's error is the
+/// serial error; and refused optional scratch selects the serial path.
+#[cfg(test)]
+mod team_stage_tests {
+    use super::team::{LaneStop, LaneWork, TEAM_STAGE_ITEMS};
+    use super::*;
+    use crate::{options::ThreadConfig, parallel::ThreadTeam};
+
+    /// About 100,000 observations: varied rows, duplicate cells, one 60,000
+    /// cell worker and enough sampled rows for the hosted emission plan.
+    struct Fixture {
+        workers: Vec<u32>,
+        firms: Vec<u32>,
+        weights: Vec<f64>,
+        membership: LevelIndex,
+    }
+
+    impl Fixture {
+        fn new(bad: &[(usize, f64)]) -> Self {
+            let (count, firms_total) = (3000, 500);
+            let mut workers = Vec::new();
+            let mut firms = Vec::new();
+            let mut weights = Vec::new();
+            for worker in 0..count {
+                let row = if worker == 7 {
+                    60_000
+                } else {
+                    [3, 5, 6, 17, 40][worker % 5]
+                };
+                for position in 0..row {
+                    workers.push(worker as u32);
+                    firms.push(((worker * 13 + position * 7 + position / 3) % firms_total) as u32);
+                    weights.push([1.0, 0.5, 2.0, 1.0e-3][(position + worker) % 4]);
+                }
+            }
+            for &(observation, value) in bad {
+                weights[observation] = value;
+            }
+            let membership = LevelIndex::from_codes(&workers, count).unwrap();
+            Self {
+                workers,
+                firms,
+                weights,
+                membership,
+            }
+        }
+
+        fn source(&self) -> CellSource<'_> {
+            CellSource::Observations {
+                membership: &self.membership,
+                firms: &self.firms,
+                retained: 500,
+                weights: BorrowedMapWeights::Provided(&self.weights),
+            }
+        }
+
+        fn first_observation_of(&self, worker: u32) -> usize {
+            self.workers.iter().position(|&w| w == worker).unwrap()
+        }
+    }
+
+    fn on(lanes: Option<usize>, operation: impl FnOnce() -> GraphResult + Send) -> GraphResult {
+        match lanes {
+            Some(lanes) => ThreadTeam::new(ThreadConfig::from_requested(lanes, true).unwrap())
+                .install(operation)
+                .unwrap(),
+            None => operation(),
+        }
+    }
+
+    type GraphResult = std::result::Result<GraphBits, String>;
+
+    #[derive(Debug)]
+    struct GraphBits {
+        /// The team stages taken: a path, not part of the result.
+        stages: u8,
+        edges: Vec<(usize, usize, u64)>,
+        diagonal: Vec<u64>,
+        labels: Vec<usize>,
+        sizes: Vec<usize>,
+        counts: (usize, usize, usize),
+        cache: u128,
+    }
+
+    impl PartialEq for GraphBits {
+        fn eq(&self, other: &Self) -> bool {
+            (
+                &self.edges,
+                &self.diagonal,
+                &self.labels,
+                &self.sizes,
+                self.counts,
+                self.cache,
+            ) == (
+                &other.edges,
+                &other.diagonal,
+                &other.labels,
+                &other.sizes,
+                other.counts,
+                other.cache,
+            )
+        }
+    }
+
+    fn graph_bits(
+        fixture: &Fixture,
+        sampling: Sampling,
+        budget: Option<FeSolverMemoryBudget>,
+    ) -> GraphResult {
+        let mut work = Work::new(false);
+        let mut memory = Admission {
+            budget,
+            peak: SolverWorkspacePeak::ZERO,
+        };
+        match graph(
+            fixture.source(),
+            5,
+            sampling,
+            true,
+            Install::Auto,
+            &mut work,
+            &mut memory,
+        ) {
+            Ok((graph, components, _, cache, counts)) => Ok(GraphBits {
+                stages: work.team_stages,
+                edges: graph
+                    .edges()
+                    .iter()
+                    .map(|edge| (edge.u(), edge.v(), edge.weight().to_bits()))
+                    .collect(),
+                diagonal: graph.diagonal().iter().map(|d| d.to_bits()).collect(),
+                labels: components.labels,
+                sizes: components.sizes,
+                counts: (
+                    counts.input_edges,
+                    counts.sampled_workers,
+                    counts.retained_workers,
+                ),
+                cache,
+            }),
+            Err(AttemptError::Fatal(error)) => Err(error.message),
+            Err(AttemptError::Refused(refusal)) => Err(format!("{refusal:?}")),
+        }
+    }
+
+    #[test]
+    fn team_census_and_emission_match_the_serial_graph_at_every_worker_count() {
+        let fixture = Fixture::new(&[]);
+        assert!(fixture.membership.nobs() >= TEAM_STAGE_ITEMS);
+        for samples in [0, 1, 3] {
+            let sampling = Sampling { samples, seed: 0 };
+            let serial = on(None, || graph_bits(&fixture, sampling, None)).unwrap();
+            assert_eq!(serial.stages, 0);
+            assert!(serial.cache > 0, "the canonical cache is admitted");
+            let hosted = serial.counts.0 >= HOSTED_EDGE_THRESHOLD;
+            assert_eq!(hosted, samples == 3, "{:?}", serial.counts);
+            for lanes in [1, 2, 4, 8] {
+                let team = on(Some(lanes), || graph_bits(&fixture, sampling, None)).unwrap();
+                assert_eq!(team, serial, "samples {samples}, lanes {lanes}");
+                let prepared = if hosted { TEAM_PREPARE } else { 0 };
+                assert_eq!(team.stages, TEAM_CENSUS | prepared, "lanes {lanes}");
+            }
+        }
+    }
+
+    #[test]
+    fn earliest_failing_worker_error_matches_the_serial_census() {
+        let probe = Fixture::new(&[]);
+        let late = probe.first_observation_of(2900) + 1;
+        let early = probe.first_observation_of(40) + 2;
+        let giant = probe.first_observation_of(7) + 59_000;
+        // The prologue rejects nonpositive or nonfinite raw weights before
+        // the census. The census itself rejects an out-of-range firm and a
+        // positive weight that underflows after scaling (the largest weight
+        // is 2). Workers in different census tasks fail with these different
+        // messages, so only the earliest failing worker reproduces the serial
+        // error.
+        let tiny = f64::from_bits(1);
+        for (bad, firm) in [
+            (vec![(late, f64::NAN), (early, -1.0)], None),
+            (vec![(late, tiny)], Some(early)),
+            (vec![(early, tiny)], Some(late)),
+            (vec![(late, tiny)], Some(giant)),
+            (vec![(giant, tiny)], Some(late)),
+        ] {
+            let mut fixture = Fixture::new(&bad);
+            if let Some(observation) = firm {
+                fixture.firms[observation] = 500;
+            }
+            let sampling = Sampling {
+                samples: 1,
+                seed: 0,
+            };
+            let serial = on(None, || graph_bits(&fixture, sampling, None)).unwrap_err();
+            if firm.is_some() {
+                let expected = if bad[0].0 < firm.unwrap() {
+                    "positive finite weights"
+                } else {
+                    "firm code is out of bounds"
+                };
+                assert!(serial.contains(expected), "{serial}");
+            }
+            for lanes in [1, 2, 4] {
+                let team = on(Some(lanes), || graph_bits(&fixture, sampling, None)).unwrap_err();
+                assert_eq!(team, serial, "lanes {lanes}");
+            }
+        }
+    }
+
+    #[test]
+    fn lane_counters_poll_inside_one_long_row_and_stop_there() {
+        let fixture = Fixture::new(&[]);
+        let source = fixture.source();
+        let count = source.row_count(7);
+        assert_eq!(count, 60_000);
+        // 64 units per loaded cell: one poll interval covers 1,024 cells.
+        for stop in [1, 2, 10] {
+            let calls = std::sync::atomic::AtomicUsize::new(0);
+            let query = || calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1 >= stop;
+            let mut cells = vec![(u32::MAX, f64::NAN); count];
+            let mut lane = LaneWork::new(&query);
+            let result = load_row(source, 1.0, 7, &mut cells, &mut lane);
+            assert!(matches!(result, Err(LaneStop::Cancelled)));
+            assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), stop);
+            let loaded = cells.iter().take_while(|cell| cell.0 != u32::MAX).count();
+            // The lane stopped inside the row, within one interval of its poll.
+            assert!(
+                loaded <= stop * 1024,
+                "{loaded} cells loaded by poll {stop}"
+            );
+            assert!(loaded + 1024 > stop * 1024 - 1024, "{loaded}");
+        }
+        let mut cells = vec![(0, 0.0); count];
+        let mut serial = vec![(0, 0.0); count];
+        let never = || false;
+        let team = load_row(source, 1.0, 7, &mut cells, &mut LaneWork::new(&never)).ok();
+        let expected = load_row(source, 1.0, 7, &mut serial, &mut Work::new(false)).ok();
+        assert_eq!(
+            team.map(|(n, t)| (n, t.to_bits())),
+            expected.map(|(n, t)| (n, t.to_bits()))
+        );
+        assert_eq!(cells, serial);
+    }
+
+    /// Optional team scratch is admitted per stage. A budget of exactly the
+    /// cache envelope admits the cache (and with it the small census task
+    /// table, which the complete envelope covers) but not the emission plan's
+    /// extra offsets and suffix banks, so emission runs serially; a budget
+    /// below the envelope admits no cache, so the census runs serially too.
+    /// Every path builds the same graph.
+    #[test]
+    fn refused_optional_scratch_selects_the_serial_stage_with_identical_bits() {
+        let fixture = Fixture::new(&[]);
+        let sampling = Sampling {
+            samples: 3,
+            seed: 0,
+        };
+        let serial = on(None, || graph_bits(&fixture, sampling, None)).unwrap();
+        let envelope =
+            cache_envelope(fixture.membership.nobs(), 3000, 500, 60_000, 5, sampling).unwrap();
+        let budget = |bytes: u128| {
+            Some(FeSolverMemoryBudget {
+                usable_bytes: bytes + 913,
+                execution_bytes: 913,
+            })
+        };
+        let exact = budget(envelope.peak_bytes as u128);
+        let tight = on(Some(4), || graph_bits(&fixture, sampling, exact)).unwrap();
+        assert_eq!(tight, serial);
+        assert_eq!(tight.stages, TEAM_CENSUS, "emission scratch is refused");
+        let below = budget(envelope.peak_bytes as u128 - 1);
+        let uncached_serial = on(None, || graph_bits(&fixture, sampling, below)).unwrap();
+        let uncached = on(Some(4), || graph_bits(&fixture, sampling, below)).unwrap();
+        assert_eq!(uncached.cache, 0, "no cache is admitted");
+        assert_eq!(uncached, uncached_serial);
+        assert_eq!(uncached.stages, 0, "without a cache every stage is serial");
+        assert_eq!(
+            (&uncached.edges, &uncached.diagonal, &uncached.labels),
+            (&serial.edges, &serial.diagonal, &serial.labels)
+        );
+    }
+
+    /// The automatic route builds its hierarchy on the team when the parallel
+    /// bound is admitted, and serially when only the serial bound is: same
+    /// hierarchy, factor, repeats and applications on every path.
+    #[test]
+    fn automatic_hierarchy_on_the_team_equals_the_serial_hierarchy() {
+        let fixture = Fixture::new(&[]);
+        let sampling = Sampling {
+            samples: 1,
+            seed: 0,
+        };
+        type Built = (CmgSchurPreconditioner, u8);
+        let build = |lanes: Option<usize>, tight: bool| -> Built {
+            let run = || {
+                let mut work = Work::new(false);
+                let mut memory = Admission {
+                    budget: None,
+                    peak: SolverWorkspacePeak::ZERO,
+                };
+                let (graph, components, _, cache, _) = graph(
+                    fixture.source(),
+                    5,
+                    sampling,
+                    true,
+                    Install::Auto,
+                    &mut work,
+                    &mut memory,
+                )
+                .unwrap();
+                let options = cmg::BuildOptions {
+                    hierarchy: CmgOptions::default(),
+                    components: component_options(),
+                };
+                let parents = graph_storage_bound(&graph).unwrap() + components.bytes() + cache;
+                let serial = CmgPreconditioner::construction_allocation_bound(
+                    graph.vertex_count(),
+                    graph.edge_count(),
+                    options,
+                    false,
+                )
+                .unwrap();
+                let parallel = CmgPreconditioner::construction_allocation_bound(
+                    graph.vertex_count(),
+                    graph.edge_count(),
+                    options,
+                    true,
+                )
+                .unwrap();
+                assert!(parallel > serial);
+                // Admit the serial hierarchy bound but not the parallel one.
+                // Later workspaces are admitted separately against parents.
+                let mut memory = Admission {
+                    budget: tight.then(|| FeSolverMemoryBudget {
+                        usable_bytes: parents + serial as u128 + 913 + (1 << 30),
+                        execution_bytes: 913 + (1 << 30) - (parallel - serial) as u128 / 2,
+                    }),
+                    peak: SolverWorkspacePeak::ZERO,
+                };
+                let stages = work.team_stages & !TEAM_CENSUS & !TEAM_PREPARE;
+                let (built, _) = finish(
+                    graph,
+                    components,
+                    cache,
+                    Install::Auto,
+                    CmgOptions::default(),
+                    &mut work,
+                    &mut memory,
+                )
+                .unwrap();
+                (built, work.team_stages & TEAM_HIERARCHY | stages)
+            };
+            match lanes {
+                Some(lanes) => ThreadTeam::new(ThreadConfig::from_requested(lanes, true).unwrap())
+                    .install(run)
+                    .unwrap(),
+                None => run(),
+            }
+        };
+        let (mut serial, stages) = build(None, false);
+        assert_eq!(stages, 0);
+        let firms = serial.components.labels.len();
+        let rhs: Vec<f64> = (0..firms).map(|i| (i % 11) as f64 - 5.0).collect();
+        let mut expected = vec![0.0; firms];
+        serial
+            .apply_batch(&rhs, &mut expected, 1, 1, None, None)
+            .unwrap();
+        for (lanes, tight) in [(1, false), (2, false), (4, false), (4, true)] {
+            let (mut team, stages) = build(Some(lanes), tight);
+            let hierarchy = if tight { 0 } else { TEAM_HIERARCHY };
+            assert_eq!(stages, hierarchy, "lanes {lanes}, tight {tight}");
+            assert_eq!(
+                team.preconditioner.hierarchy(),
+                serial.preconditioner.hierarchy()
+            );
+            assert_eq!(
+                team.preconditioner.repeat_counts(),
+                serial.preconditioner.repeat_counts()
+            );
+            assert_eq!(team.components.labels, serial.components.labels);
+            let mut actual = vec![0.0; firms];
+            team.apply_batch(&rhs, &mut actual, 1, 1, None, None)
+                .unwrap();
+            assert_eq!(
+                actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                "lanes {lanes}, tight {tight}"
+            );
+        }
+    }
+
+    /// Host cancellation raised at sampled polls of a teamed graph build (a
+    /// child process: the poll seam is process-global) is interrupted from
+    /// inside the team census and the team row preparation; every lane has
+    /// joined when the build returns, and a fresh build repeats the bits.
+    #[test]
+    fn team_stages_cancel_inside_their_lanes_and_join() {
+        const CHILD: &str = "FEREG_TEAM_STAGE_CANCEL_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .env(CHILD, "1")
+                .args([
+                    "fe::cmg_schur::bounded::team_stage_tests::team_stages_cancel_inside_their_lanes_and_join",
+                    "--exact",
+                    "--test-threads=1",
+                ])
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        use crate::interrupt::test_polls;
+        let fixture = Fixture::new(&[]);
+        let sampling = Sampling {
+            samples: 3,
+            seed: 0,
+        };
+        let team = ThreadTeam::new(ThreadConfig::from_requested(4, true).unwrap());
+        let run = || {
+            team.install(|| graph_bits(&fixture, sampling, None))
+                .unwrap()
+        };
+        test_polls::cancel_at(None);
+        let reference = run().unwrap();
+        assert_eq!(reference.stages, TEAM_CENSUS | TEAM_PREPARE);
+        let total = test_polls::polls();
+        assert!(total > 200, "{total} host polls");
+        let mut phases = std::collections::BTreeSet::new();
+        // The team census and row preparation come first: sample their
+        // window densely, then the rest of the build sparsely.
+        let early = (0..total.min(3000)).step_by(10);
+        for stop in early.chain((0..total).step_by(total / 150)) {
+            test_polls::cancel_at(Some(stop));
+            match run() {
+                Err(message) => {
+                    assert!(
+                        message.contains("interrupt") || message.contains("cancelled"),
+                        "{message}"
+                    );
+                    phases.insert(
+                        message
+                            .split_once("cancelled during ")
+                            .map_or("fereg", |(_, phase)| phase)
+                            .to_string(),
+                    );
+                }
+                Ok(_) => assert!(test_polls::polls() <= stop, "poll {stop} ignored"),
+            }
+            let settled = test_polls::polls();
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            assert_eq!(
+                test_polls::polls(),
+                settled,
+                "a lane polled after the build returned"
+            );
+        }
+        for phase in ["CMG Schur team census", "CMG Schur sampled-row preparation"] {
+            assert!(phases.contains(phase), "{phase} not in {phases:?}");
+        }
+        test_polls::cancel_at(None);
+        assert_eq!(run().unwrap(), reference);
     }
 }
