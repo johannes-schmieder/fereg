@@ -1,5 +1,5 @@
 {
- "milestone": "M3d cloud handoff: worker-independent team arithmetic; pending independent review, not self-accepted",
+ "milestone": "M3d source reviewed; root test/documentation corrections, native and fixed host qualification pending; unaccepted",
  "date": "2026-10-20",
  "revisions": {
   "fereg_base": "27fa40cd26d238e02a0b60c558fcf48422300dcd (accepted M3c; tested source 71092c38, production c89ab124)",
@@ -14,7 +14,7 @@
  },
  "declared_scope": {
   "design": "team-carrying solves/applications use the fixed-chunk tree from max(min_parallel_len, 8*reduction_chunk_size) entries at every worker ceiling including one; serial solves and concurrent RHS lanes run on Team::single_lane(); team-free calls keep serial compensated sums",
-  "numerical": "explicit cmg (OLS/PPML, both bias modes): rounding changes where reduced/centered vectors reach 131,072 entries at one worker or in serial/across-RHS modes; multi-worker planned unchanged; explicit cmgschur only one-worker single-RHS cycles with a single-component coarse level >= 131,072; Auto, injected two-FE, public routes, construction and hierarchies exact",
+  "numerical": "explicit cmg (OLS/PPML, both bias modes): rounding changes where reduced/centered vectors reach 131,072 entries at one worker or in serial/across-RHS modes; multi-worker planned unchanged; explicit cmgschur only one-worker single-RHS cycles with a single-component coarse level >= 131,072; Auto, injected two-FE, public Auto routes, construction and hierarchies exact",
   "resources": "no new allocation, bank, pool, admission or memory policy",
   "representation": "row-operator selection remains worker-dependent (bit-neutral); narrowed from the plan list to avoid a new memory policy",
   "rhs_batching": "optional Auto RHS batching not taken"
@@ -31,7 +31,7 @@
   "owned_concurrent_now_t1_eq_t4": 48,
   "policy_hash_execution_report": 40,
   "plan_hash_operator_count": 4,
-  "remaining_t1_ne_t4_in_new_fixture": "plan digests only (operator count)"
+  "remaining_t1_ne_t4_in_new_fixture": "72 pairs: 56 policy digests (execution/concurrency metadata) and 16 plan digests (operator count); corrected by independent root review"
  },
  "steps": {
   "100-firstpass-cmg-all-features": {
@@ -555,5 +555,212 @@
  "outstanding_decisions": [
   "Whether row-operator selection should become worker-independent (adds CSR memory at one worker)",
   "Whether fereg-side worker-dependent arithmetic in explicit cmgschur/PPML should be addressed in a later milestone"
- ]
+ ],
+ "root_review": {
+  "date": "2026-10-20",
+  "decision": "Source reviewed; M3d remains unaccepted pending native/scientific/transaction/routing and fixed host qualification, and resolution of the disclosed representation scope.",
+  "fereg_handoff": "375237f0d2c6ddc62576a0ce31c52f330a9975ff",
+  "cmg_revision": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
+  "independent_high_effort_review": {
+   "runtime_findings": [],
+   "assessment": "Single-lane views preserve the borrowed pool, fixed thresholds and memory policy; fixed reduction leaves, order and arithmetic are shared. Inner work bounds, untouched-work stopping, joins and deterministic ordinary errors remain intact. No new scratch or admission policy; M3c R1/R2 and allocation-origin regressions unchanged.",
+   "frozen_reconstruction": {
+    "entries": 3611,
+    "changed": 180,
+    "old_planned_w4": 88,
+    "owned_concurrent_now_equal": 48,
+    "policy": 40,
+    "plan": 4,
+    "remaining_cross_worker_unequal_pairs": {
+     "policy": 56,
+     "plan": 16
+    }
+   },
+   "method": "Independent source and frozen-data review; no host tests, builds, timings or profiles executed by the reviewer."
+  },
+  "independent_astra_review": {
+   "scope": "Bounded independent read-only M3d source/math review",
+   "fereg": "375237f0d2c6ddc62576a0ce31c52f330a9975ff",
+   "cmg": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
+   "runtime_findings": [],
+   "required_documentation_correction": {
+    "locations": [
+     "docs/ARCHITECTURE.md:143",
+     "docs/VALIDATION.md:69"
+    ],
+    "issue": "Whole explicit fereg results are claimed worker-identical despite the same handoff documenting unchanged cross-worker data differences in explicit cmgschur and PPML bias cases.",
+    "replacement_scope": "CMG solves/applications with identical supplied buffers, options and fixed thresholds use worker-independent reduction arithmetic; worker-dependent fereg preparation and arithmetic outside CMG remain unchanged."
+   },
+   "test_strength_note": {
+    "location": "crates/fereg-core/src/fe/cmg/tests.rs:2939",
+    "issue": "The above-floor fereg witness compares f64 slices with PartialEq, which treats positive and negative zero as equal; the asserted contract is bit identity.",
+    "recommendation": "Compare to_bits() values, as the new CMG witnesses already do. This is a test-strength correction, not an observed output regression."
+   },
+   "source_assessment": [
+    "Team::single_lane preserves the borrowed pool, fixed thresholds and memory policy while lowering the lane ceiling to one. The fixed reduction tree itself is unchanged.",
+    "Serial and across-RHS owned/caller-buffer solves propagate the one-lane team into reduction, centering and preconditioning; fereg retains cancellation and its existing workspace/mode selection.",
+    "Norm scale maximum retains worker-dependent scheduling, but its finite maximum is order-independent; dot/square sums and single-component centering choose arithmetic by fixed lengths/thresholds.",
+    "Previously fused multi-component centering/dot and paired norms can become separate passes when a serial solve now carries a team. Existing equivalence witnesses and source order support equal arithmetic below the reduction floor; this is a performance consideration, not a discovered numeric defect.",
+    "M3c bounded emission/memory fixes and allocation-origin cleanup fixture are unchanged by this diff."
+   ],
+   "witness_assessment": [
+    "CMG low-threshold fixtures exercise serial/planned/across-RHS owned results and all three caller-buffer contexts at 1/2/4/8 workers, with full solution-bit and diagnostics comparison; component/reduction tests also cover 3 workers and one-lane cancellation.",
+    "One fereg OLS projection exceeds the real 131072-entry floor and covers one/three columns at W1/W4 with independent CG comparison and full-FE certification.",
+    "The 1e-6 residual agreement is relative to an independently accumulated small residual, not a changed production convergence tolerance. The independent edge accumulation changes summation order and can magnify cancellation error; diagnostic residual/tolerance and backward-error certificates remain separately checked. It is a fixture-specific agreement bound, not a general floating-point error theorem."
+   ],
+   "coverage_limits": [
+    "Actual-plugin replay is below the changed arithmetic threshold. It establishes unaffected exactness and existing feature/transaction behavior, not changed-path native OLS/PPML/bias behavior.",
+    "Above-floor PPML, both bias modes, warm-start/retained-preconditioner integration and explicit cmgschur coarse centering lack an equivalent new full-native witness; the supplied lower-level CMG evidence and one OLS projection are the changed-path coverage.",
+    "Row-operator worker dependence remains bit-neutral in the inspected witness; making CSR storage independent of worker count would change resource policy. Optional Auto RHS batching is omitted and should remain an explicit scope decision.",
+    "No tests, builds, native calls, timings or profiles were executed by this review. Host validation and timing remain root-owned; prior milestone exceptions do not accept M3d."
+   ],
+   "verdict": "No concrete runtime arithmetic, buffer, resource, cancellation or join defect found in the bounded pass. Correct overbroad documentation and retain coverage limits; M3d unaccepted."
+  },
+  "root_corrections": [
+   "Narrowed worker-independent claims to CMG calls with identical supplied inputs, hierarchy, options and fixed thresholds; complete fereg estimates may retain disclosed pre-existing outer-arithmetic differences.",
+   "Corrected remaining frozen cross-worker differences to 56 policy and 16 plan digests; all 180 changed entries independently mapped.",
+   "Above-floor fereg projection comparison now compares f64 bits, including signed zero. Focused test and source suite pass; no production change."
+  ],
+  "tested_patch_hashes": {
+   "crates/fereg-core/src/fe/cmg/tests.rs": "e8ae9355c1243cc2cca170d96d1d61a0c2efe69b201f0c441083ab4fe9c6352f",
+   "crates/fereg-core/src/fe/cmg.rs": "cb7a2cba10c480985ce7cfc1dcea93e390a60a378c53bcc01a9f06784b6a592f",
+   "crates/fereg-core/Cargo.toml": "ee7da3906b5d279d1f4361cecccad20ab4968ec623b543ac11e52f7a6858df3a",
+   "Cargo.lock": "10f6826f082a0b2f04e3e8c8819ff1b050fbea9b5e16211b1f24403114663055",
+   "fuzz/Cargo.lock": "944b2736a4c651041795d2c28aec785a75fcb1200998c75dbb6f76f3795dddc7"
+  },
+  "checks": {
+   "core-above-floor": {
+    "label": "core-above-floor",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "-p",
+     "fereg-core",
+     "--profile",
+     "ci",
+     "--lib",
+     "explicit_cmg_projections_match_across_workers_above_the_reduction_floor",
+     "--",
+     "--nocapture"
+    ],
+    "revision": "375237f0d2c6ddc62576a0ce31c52f330a9975ff",
+    "elapsed_seconds": 55.96522045810707,
+    "exit_code": 0,
+    "log_sha256": "7a8ce0b8a6be8686283a92c614813655950687efd954d1d9b6902f7741b9dcdb",
+    "rust_passed_executions": 1,
+    "rust_failed_executions": 0,
+    "rust_ignored": 0,
+    "rust_result_groups": 1,
+    "python_passed": 0
+   },
+   "core-above-floor-bitwise": {
+    "label": "core-above-floor-bitwise",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "-p",
+     "fereg-core",
+     "--profile",
+     "ci",
+     "--lib",
+     "explicit_cmg_projections_match_across_workers_above_the_reduction_floor",
+     "--",
+     "--nocapture"
+    ],
+    "revision": "375237f0d2c6ddc62576a0ce31c52f330a9975ff",
+    "elapsed_seconds": 45.17786749987863,
+    "exit_code": 0,
+    "log_sha256": "5dca527225b9d47f9e39c3690d8ff2fa576c52ace15fe0e261a1fd1fd32de759",
+    "rust_passed_executions": 1,
+    "rust_failed_executions": 0,
+    "rust_ignored": 0,
+    "rust_result_groups": 1,
+    "python_passed": 0
+   },
+   "cmg-worker-independent": {
+    "label": "cmg-worker-independent",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "--release",
+     "--all-features",
+     "--test",
+     "worker_independent",
+     "--",
+     "--nocapture"
+    ],
+    "revision": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
+    "elapsed_seconds": 4.706460166024044,
+    "exit_code": 0,
+    "log_sha256": "309e8a09e551f79a37e3ca09d2dc401f8e25f3ab1003bddaa8b69b9c5cf5c9c7",
+    "rust_passed_executions": 3,
+    "rust_failed_executions": 0,
+    "rust_ignored": 0,
+    "rust_result_groups": 1,
+    "python_passed": 0
+   },
+   "cmg-release": {
+    "label": "cmg-release",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "--release",
+     "--all-features"
+    ],
+    "revision": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
+    "elapsed_seconds": 21.53494912502356,
+    "exit_code": 0,
+    "log_sha256": "104dd804189580e65204b52cc7ad30857e1337e9385afd1ffb010df706c79706",
+    "rust_passed_executions": 257,
+    "rust_failed_executions": 0,
+    "rust_ignored": 0,
+    "rust_result_groups": 39,
+    "python_passed": 0
+   },
+   "standard": {
+    "label": "standard",
+    "command": [
+     "./scripts/run_tests.sh"
+    ],
+    "revision": "375237f0d2c6ddc62576a0ce31c52f330a9975ff",
+    "elapsed_seconds": 20.56562624988146,
+    "exit_code": 1,
+    "log_sha256": "da1474d00e03a2e3bdb779f82d1ba59194ddd50df470927b03cd5c10130663f3",
+    "rust_passed_executions": 0,
+    "rust_failed_executions": 0,
+    "rust_ignored": 0,
+    "rust_result_groups": 0,
+    "python_passed": 315
+   },
+   "source": {
+    "label": "source",
+    "command": [
+     "./scripts/run_tests.sh",
+     "--source-only"
+    ],
+    "revision": "375237f0d2c6ddc62576a0ce31c52f330a9975ff",
+    "elapsed_seconds": 186.49662524997257,
+    "exit_code": 0,
+    "log_sha256": "0be737c6015313b74eccee300c6307e8225b535a22b50580fc40e47daa646ece",
+    "rust_passed_executions": 1951,
+    "rust_failed_executions": 0,
+    "rust_ignored": 14,
+    "rust_result_groups": 83,
+    "python_passed": 322
+   }
+  },
+  "limits": [
+   "Source suite used the uncommitted test-only bit-comparison correction over the recorded handoff revision; hashes bind that tested patch. Production comparison to the handoff confirms 192 runtime modules and 58 artifact inputs unchanged.",
+   "Standard entrypoint remains failed after 315 Python tests at the installed-package binding check. Release packages are intentionally unchanged; source-only does not establish package admission.",
+   "The above-floor OLS projection and low-threshold CMG solve/cycle tests exercise changed arithmetic. Native historical replays below the real threshold establish unaffected exactness, not full changed-path PPML/bias/retained or CMGSchur coverage.",
+   "Row-operator selection remains worker-dependent but bit-neutral in inspected products; optional Auto RHS batching is omitted. No new memory policy is inferred from the released scope; this narrowing remains explicit for final decision.",
+   "No root native build or timing has run at this source checkpoint. Prior M3b/M3c timing exceptions do not accept M3d.",
+   "Original cloud attempts and failed mutations remain in this record. Raw local logs are temporary; commands, exits, durations, hashes and compact outcomes are the retained evidence."
+  ],
+  "recording_failure": "Initial evidence writer saved the JSON then failed to locate the abbreviated M3c heading in VALIDATION.md (ValueError, exit 1). The exact existing heading was used to append the same prepared source-review paragraph. No test or measurement was rerun."
+ }
 }

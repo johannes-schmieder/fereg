@@ -66,9 +66,12 @@ Declared before the edits:
   worker, and in serial or across-RHS solves at any worker count. Multi-worker
   planned results are unchanged. Explicit `cmgschur` changes only in one-worker
   single-RHS cycles with a single-component coarse level of that size. After
-  the change, explicit results are bit-identical across worker counts and
-  solver modes on one platform. Auto (team-free cycle), injected two-FE and
-  all public routes, construction and hierarchies are exact. Iteration logic,
+  the change, CMG solves and applications with identical inputs, hierarchy,
+  options and fixed thresholds are bit-identical across worker ceilings and
+  solver modes on one platform. This does not imply identity of whole fereg
+  estimates; pre-existing outer arithmetic differences are disclosed below.
+  Auto (team-free cycle), injected two-FE and public Auto routes, construction
+  and hierarchies are exact. Iteration logic,
   certification, tolerances and discrete decisions are unchanged.
 - Resources. No new allocation, bank, pool, admission or memory policy.
 - Representation (narrowed from the plan's M3d list). Row-operator selection
@@ -107,8 +110,9 @@ under `target/tmp/auto-routing/m3d/logs` until review):
   four-worker digest of the same fixture, 48 owned-concurrent digests now
   agree between one and four workers, 40 policy digests hash the execution
   report, and 4 plan digests hash the operator count. In the new fixture the
-  only remaining one- vs four-worker digest differences are plan digests
-  (operator count).
+  remaining one- vs four-worker digest differences are 56 policy digests
+  (execution/concurrency metadata) and 16 plan digests (operator count).
+  Root independently reconstructed both this count and the 88/48/40/4 mapping.
 - CMG mutations (all exit 101): restoring the reduction gate (d1), the
   centering gate (d2), team-free concurrent lanes (d3) or a team-free serial
   mode (d4). d3 first survived because the witness covered only
@@ -162,6 +166,20 @@ Limits:
 
 Identities and per-step exits are in
 [`cmg-m3d-20261020.json`](../bench/results/cmg-m3d-20261020.json).
+
+Root source review (2026-10-20) found no concrete production defect. The two
+independent reviewers checked reduction order, one-lane contexts, resources,
+inner cancellation, joins, frozen changes and the fereg boundary. Root narrowed
+the overbroad whole-estimate claim above, corrected the frozen metadata count,
+and strengthened the above-floor projection assertion to compare floating-point
+bits, including signed zero. The focused witness passes. The source-only suite
+passes 322 Python tests and 1,951 Rust executions in 83 groups, with 14 ignored;
+CMG release/all-features passes 257 executions in 39 groups. The standard entrypoint
+still fails at installed-package binding after 315 Python tests (exit 1).
+Production comparison to the handoff confirms 192 runtime modules and 58 artifact
+inputs unchanged. Exact commands, durations, hashes, review findings and limits
+are in the M3d result record. Native qualification and final scope/performance
+acceptance remain pending; prior milestone exceptions do not accept M3d.
 
 ## CMG successor milestone 3c: parallel construction on the host team
 

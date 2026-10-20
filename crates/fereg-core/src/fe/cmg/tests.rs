@@ -2937,8 +2937,16 @@ fn explicit_cmg_projections_match_across_workers_above_the_reduction_floor() {
             projections.push(projected.residualized().clone());
         }
         assert_eq!(
-            projections[0].as_slice(),
-            projections[1].as_slice(),
+            projections[0]
+                .as_slice()
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            projections[1]
+                .as_slice()
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
             "{columns} columns: one and four workers differ"
         );
         let reference = absorb_borrowed_intercept_cg(
