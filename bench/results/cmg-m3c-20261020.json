@@ -1,5 +1,5 @@
 {
- "milestone": "M3c: first handoff (fereg ffc1b014, CMG 8fafe5a7) unaccepted by independent review on 2026-10-20; review repair pending re-review; M3d not released",
+ "milestone": "M3c: initial handoff rejected; Claude R1/R2 repair and root complete-lookup/test-accounting repairs reviewed; root host qualification pending, M3d not released",
  "date": "2026-10-20",
  "revisions": {
   "fereg_base": "b9cc6b752b40abaf688e941fdb1def1059b2ba54 (accepted M3b source 671239d4 plus records)",
@@ -385,5 +385,369 @@
    }
   },
   "witness_and_mutation_runs_note": "500-531 pre-fix witness runs (expected 101), 510-540 post-fix witness runs (expected 0), 551-565 mutations on the final source (expected 101 except declared-equivalent m1b); 520 is the first scan-only mutation run, equivalent under the new accounting"
+ },
+ "root_review": {
+  "date": "2026-10-20",
+  "decision": "M3c remains unaccepted pending root native, scientific, transaction, routing and fixed performance qualification. M3d not released.",
+  "reviewed_cloud_fereg": "0c3ea0986d7abb6176824974929a86d12a518f9f",
+  "tested_root_patch_parent": "0c3ea0986d7abb6176824974929a86d12a518f9f",
+  "cmg_fixture_revision": "82ae1c86d1e7d8c04f35d723b5affae8a031e283",
+  "cmg_production": "65bd817a70f7e9d220d450160ac642a3cf9c7023",
+  "source_hashes": {
+   "crates/fereg-core/src/fe/cmg_schur/bounded.rs": "6289b08fa76aafa5c66ab8e96f8e6813c5427dae1e622f3ae45f93262c26e6b9",
+   "crates/fereg-core/src/fe/cmg_schur/bounded/team.rs": "9a9fae18bbd03d713cfb9cbb2514d83f791a5650dc776568a43bfde5f4dd20c9",
+   "crates/fereg-core/Cargo.toml": "25d6e3165023270fb29088f2a9a228feeef553944ffe355d4577787b12cf7974",
+   "Cargo.lock": "8a0d6a5b87daa7ab26cacb91114dc519622ec65e6565d4ca1830ad822a4dc6cb",
+   "fuzz/Cargo.lock": "44accf12ea103cb201fd1557733642b3fa8711655f6a898e54b375134ee6994c"
+  },
+  "independent_reviews": [
+   "High-effort review of Claude repair and root complete lookup: no remaining actionable production finding.",
+   "Bounded Astra review: R2 uses serial retained charge while admitting the real parallel construction peak; no further production finding.",
+   "Both reviewers independently diagnosed the cross-thread allocation-accounting flaw; high-effort source review cleared the replacement pointer tracker."
+  ],
+  "r1_root_correction": {
+   "finding": "Claude's initial per-chunk partition_point was not part of counted edge_worker lookup; one-edge chunks meant the long-gap test did not execute bisection and its scan-only mutant survived.",
+   "scope": "Arithmetic/order-preserving: start each chunk at worker zero and use the counted bounded edge_worker lookup for its first and later edges. No resource, allocation or pool change.",
+   "witnesses": [
+    "Explicit owner offsets cover leading, internal and trailing zero-edge workers, fresh chunk starts and prior owners.",
+    "Direct 100,000-worker gap lookup requires owner 100001 and at most 18 probes.",
+    "Hosted 70,000-emitter fixture must execute more than one probe; real work bounds, untouched work, joins, fresh rebuild and no-team/W1/W4 graph equality retained."
+   ],
+   "finite_mutations": [
+    {
+     "name": "scan-restored",
+     "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "--profile",
+      "ci",
+      "fe::cmg_schur::bounded::team_stage_tests::emission_lookup_across_zero_edge_workers_is_bounded_and_cancellable",
+      "--",
+      "--exact",
+      "--test-threads=1"
+     ],
+     "exit_code": 101,
+     "elapsed_seconds": 45.42647675005719,
+     "log_sha256": "ba695d0214207f68c912f85de4ffb01928cedd31c65ca5f2d6bd4e085189a6b2",
+     "source_sha256": {
+      "crates/fereg-core/src/fe/cmg_schur/bounded.rs": "6289b08fa76aafa5c66ab8e96f8e6813c5427dae1e622f3ae45f93262c26e6b9",
+      "crates/fereg-core/src/fe/cmg_schur/bounded/team.rs": "e3a355afe13ff6ffde6845971ba8a1d6d612bc103d4cefee118038c0f9947564"
+     },
+     "test_failed": true,
+     "compilation_error": false
+    },
+    {
+     "name": "lookup-accounting-removed",
+     "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "--profile",
+      "ci",
+      "fe::cmg_schur::bounded::team_stage_tests::emission_lookup_across_zero_edge_workers_is_bounded_and_cancellable",
+      "--",
+      "--exact",
+      "--test-threads=1"
+     ],
+     "exit_code": 101,
+     "elapsed_seconds": 39.822832457954064,
+     "log_sha256": "b4e3b8edd85e67482a95c296a0f066c4f7ed3c111a8ac0e4dad553ccaed50e99",
+     "source_sha256": {
+      "crates/fereg-core/src/fe/cmg_schur/bounded.rs": "84e9f99064e1820d9b2b42d907d8ce622a6b4085d610f5a0638a985d29c508a3",
+      "crates/fereg-core/src/fe/cmg_schur/bounded/team.rs": "9a9fae18bbd03d713cfb9cbb2514d83f791a5650dc776568a43bfde5f4dd20c9"
+     },
+     "test_failed": true,
+     "compilation_error": false
+    },
+    {
+     "name": "parallel-retained-restored",
+     "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "--profile",
+      "ci",
+      "fe::cmg_schur::bounded::team_stage_tests::automatic_completion_keeps_the_serial_retained_charge_after_a_team_build",
+      "--",
+      "--exact",
+      "--test-threads=1"
+     ],
+     "exit_code": 101,
+     "elapsed_seconds": 40.32257700012997,
+     "log_sha256": "adbd00d295082711c6e0e2bbc2259cc3f77dea3e3cc749e32ed588bb4c8c4f2e",
+     "source_sha256": {
+      "crates/fereg-core/src/fe/cmg_schur/bounded.rs": "fb05a202bf4fd8c0dc6a3e2010f85a3f1fe3542c84372f710f5874db981e1bab",
+      "crates/fereg-core/src/fe/cmg_schur/bounded/team.rs": "9a9fae18bbd03d713cfb9cbb2514d83f791a5650dc776568a43bfde5f4dd20c9"
+     },
+     "test_failed": true,
+     "compilation_error": false
+    }
+   ],
+   "mutation_results": {
+    "scan-restored": "Actual witness failure: linear scan exceeds 18-probe bound.",
+    "lookup-accounting-removed": "Actual witness failure: 3-edge chunk needs 1776 units, over 1024.",
+    "parallel-retained-restored": "Actual witness failure: W1 retained 43068776 versus accepted serial 42675896 bytes."
+   },
+   "complexity": "105165 production lines, 1365 dispatch candidates, 12 chunk calls; no root production metric growth."
+  },
+  "cmg_allocation_fixture_repair": {
+   "original_attempt": "cmg-release",
+   "failure": "W4 vertices=612 edges=65586; cleanup assertion at old test line 210 read 3229314 versus 3229378 bytes (-64). Original exit 101 retained.",
+   "diagnosis": "CALLER_LIVE credits allocating thread and debits freeing thread, so ownership transfer invalidates the net balance. Forest dispatch precedes mapping-bank failure. No actual leak/join defect established and individual 64-byte owner not identified.",
+   "correction": "Test-only fixed allocation-free caller-origin pointer cohort; any-thread frees/realloc update origin; exactly zero outstanding pointers and no overflow required. Process-wide peak observations remain separate.",
+   "controls": "Caller allocation/worker free; foreign worker origin never charged on caller realloc/free; worker capture/caller failed and successful realloc/other-worker free; held allocation fails the same exact-clean predicate.",
+   "limit": "Successful realloc can be in place; pointer-move handling is source-reviewed, not guaranteed executed.",
+   "production_identical_to": "8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9",
+   "retained_tooling_failure": "First direct cargo fmt invocation could not find the fmt subcommand because cargo-fmt was absent from PATH; corrected pinned-toolchain PATH passed. No test outcome was replaced."
+  },
+  "checks": {
+   "core-team-stages": {
+    "label": "core-team-stages",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "-p",
+     "fereg-core",
+     "--lib",
+     "--profile",
+     "ci",
+     "team_stage_tests",
+     "--",
+     "--test-threads=1"
+    ],
+    "revision": "0c3ea0986d7abb6176824974929a86d12a518f9f",
+    "elapsed_seconds": 0.08756925002671778,
+    "exit_code": 101,
+    "log_sha256": "94eb7fbbcb56eec364a9d736e48d9b6c0b7b7aa5812728444b3f940d1d2e1adc",
+    "rust_passed_executions": 0,
+    "rust_result_groups": 0,
+    "rust_ignored": 0
+   },
+   "core-team-stages-authorized-cache": {
+    "label": "core-team-stages-authorized-cache",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "-p",
+     "fereg-core",
+     "--lib",
+     "--profile",
+     "ci",
+     "team_stage_tests",
+     "--",
+     "--test-threads=1"
+    ],
+    "revision": "0c3ea0986d7abb6176824974929a86d12a518f9f",
+    "elapsed_seconds": 59.992746624862775,
+    "exit_code": 0,
+    "log_sha256": "4cb3e8a3836d7a0e51d4a4cd36776dab04c250738f243988ea67f425dd1e898b",
+    "rust_passed_executions": 10,
+    "rust_result_groups": 3,
+    "rust_ignored": 0
+   },
+   "standard": {
+    "label": "standard",
+    "command": [
+     "./scripts/run_tests.sh"
+    ],
+    "revision": "0c3ea0986d7abb6176824974929a86d12a518f9f",
+    "elapsed_seconds": 22.76177050010301,
+    "exit_code": 1,
+    "log_sha256": "2a10e8d9af2b02ac245ecb7d7ea4b08abb9ebd55b137b2b993e96a1abd1ba162",
+    "rust_passed_executions": 0,
+    "rust_result_groups": 0,
+    "rust_ignored": 0
+   },
+   "root-complete-lookup": {
+    "label": "root-complete-lookup",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "-p",
+     "fereg-core",
+     "--lib",
+     "--profile",
+     "ci",
+     "team_stage_tests",
+     "--",
+     "--test-threads=1"
+    ],
+    "revision": "0c3ea0986d7abb6176824974929a86d12a518f9f",
+    "elapsed_seconds": 56.43887404119596,
+    "exit_code": 0,
+    "log_sha256": "bab8eeeab79d9b57c3ac33d7e4f67d9f82f2db7a628fadb4f7206e2278df9577",
+    "rust_passed_executions": 10,
+    "rust_result_groups": 3,
+    "rust_ignored": 0
+   },
+   "root-source": {
+    "label": "root-source",
+    "command": [
+     "./scripts/run_tests.sh",
+     "--source-only"
+    ],
+    "revision": "0c3ea0986d7abb6176824974929a86d12a518f9f",
+    "elapsed_seconds": 183.48982045799494,
+    "exit_code": 0,
+    "log_sha256": "0c120c55857bd95476609b38053734cbf99cd6572ac72982a0702e75822d3206",
+    "rust_passed_executions": 1950,
+    "rust_result_groups": 83,
+    "rust_ignored": 14
+   },
+   "root-standard": {
+    "label": "root-standard",
+    "command": [
+     "./scripts/run_tests.sh"
+    ],
+    "revision": "0c3ea0986d7abb6176824974929a86d12a518f9f",
+    "elapsed_seconds": 20.531529083149508,
+    "exit_code": 1,
+    "log_sha256": "ed55bee67a3bcc1bbc4661011d16906437051a28544e3a6574b8c21a8389f1fa",
+    "rust_passed_executions": 0,
+    "rust_result_groups": 0,
+    "rust_ignored": 0
+   },
+   "cmg-release": {
+    "label": "cmg-release",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "--release",
+     "--all-features"
+    ],
+    "revision": "8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9",
+    "elapsed_seconds": 45.687290124827996,
+    "exit_code": 101,
+    "log_sha256": "9d30118f779291b34962adfab1e528a3aa2c9b8d8cc89390dba86529a455ccc0",
+    "rust_passed_executions": 205,
+    "rust_result_groups": 23,
+    "rust_ignored": 0
+   },
+   "cmg-origin-cleanup": {
+    "label": "cmg-origin-cleanup",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "--release",
+     "--all-features",
+     "--test",
+     "parallel_construction_admission",
+     "--",
+     "--nocapture"
+    ],
+    "revision": "8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9",
+    "elapsed_seconds": 1.8122156248427927,
+    "exit_code": 0,
+    "log_sha256": "251a0f94c0de81c684d413fc9b529b391666ff48b2f1215405da638962997654",
+    "rust_passed_executions": 1,
+    "rust_result_groups": 1,
+    "rust_ignored": 0
+   },
+   "cmg-origin-release": {
+    "label": "cmg-origin-release",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "--release",
+     "--all-features"
+    ],
+    "revision": "8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9",
+    "elapsed_seconds": 10.21271075005643,
+    "exit_code": 0,
+    "log_sha256": "7ee50fd24e4b84f80db165178848704e509c84e350db6ecbbec969b4d68056aa",
+    "rust_passed_executions": 254,
+    "rust_result_groups": 38,
+    "rust_ignored": 0
+   },
+   "cmg-origin-clippy": {
+    "label": "cmg-origin-clippy",
+    "command": [
+     "cargo",
+     "clippy",
+     "--locked",
+     "--all-targets",
+     "--all-features",
+     "--",
+     "-D",
+     "warnings"
+    ],
+    "revision": "8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9",
+    "elapsed_seconds": 3.873315209057182,
+    "exit_code": 0,
+    "log_sha256": "bb909a69359451fd20a95d57e88d20a2d40b59a8a5f993dd0ca42686da8d7b77",
+    "rust_passed_executions": 0,
+    "rust_result_groups": 0,
+    "rust_ignored": 0
+   },
+   "cmg-origin-debug": {
+    "label": "cmg-origin-debug",
+    "command": [
+     "cargo",
+     "test",
+     "--locked",
+     "--all-features",
+     "--test",
+     "parallel_construction_admission"
+    ],
+    "revision": "8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9",
+    "elapsed_seconds": 14.438269791891798,
+    "exit_code": 0,
+    "log_sha256": "f7afb2a907f06c3f35bc3204bcb6bf1af19551bdd6158c147705b62bfa441aa0",
+    "rust_passed_executions": 1,
+    "rust_result_groups": 1,
+    "rust_ignored": 0
+   },
+   "final-source": {
+    "label": "final-source",
+    "command": [
+     "./scripts/run_tests.sh",
+     "--source-only"
+    ],
+    "revision": "0c3ea0986d7abb6176824974929a86d12a518f9f",
+    "elapsed_seconds": 336.30121724982746,
+    "exit_code": 0,
+    "log_sha256": "a52d135825dae60f2b0861f917b64f2d8dda7c22c81de739f833e707bf8b3efa",
+    "rust_passed_executions": 1948,
+    "rust_result_groups": 81,
+    "rust_ignored": 14
+   },
+   "final-standard": {
+    "label": "final-standard",
+    "command": [
+     "./scripts/run_tests.sh"
+    ],
+    "revision": "0c3ea0986d7abb6176824974929a86d12a518f9f",
+    "elapsed_seconds": 19.81427233410068,
+    "exit_code": 1,
+    "log_sha256": "e5a9aeffc3cc51f67267f740a7aa7e2f300d0bc3444169c8ce807b98379b7819",
+    "rust_passed_executions": 0,
+    "rust_result_groups": 0,
+    "rust_ignored": 0
+   }
+  },
+  "check_limits": [
+   "root-source and root-standard use the root lookup correction with CMG pin 8fafe5a7; final-source/final-standard use the same production with fixture-only pin 82ae1c8.",
+   "Commands record repository HEAD before root changes are committed; source_hashes bind the tested patch. Root-source Mac counts are 322 Python, 1950 Rust executions, 83 groups, 14 ignored; cloud counts are separate.",
+   "Standard installed-package binding remains failed after 315 Python; release packages intentionally untouched.",
+   "Initial core-team-stages failed before compilation on sandbox denial fetching the CMG cache revision; the authorized-cache attempt retained the same intended command and passed.",
+   "Raw local logs are not retained evidence; command, true exit, duration, hashes, compact outcomes and source remain recorded here.",
+   "No root native build, native qualification, SCC workload, timing or profiling has yet run for this candidate."
+  ]
  }
 }

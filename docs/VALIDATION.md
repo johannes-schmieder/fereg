@@ -29,8 +29,9 @@ were deleted; hashes and summaries are the remaining record.
 ## CMG successor milestone 3c: parallel construction on the host team
 
 **The first handoff (fereg `ffc1b014`, CMG `8fafe5a7`) was unaccepted by
-independent review on 2026-10-20. A review repair is pending re-review (see
-below); M3d is not released.** M3c starts from the accepted M3b pair (fereg `b9cc6b75`, i.e. source `671239d4` plus
+independent review on 2026-10-20. Claude's repair and the additional root
+corrections below have been reviewed; root host qualification remains pending.
+M3c is unaccepted and M3d is not released.** M3c starts from the accepted M3b pair (fereg `b9cc6b75`, i.e. source `671239d4` plus
 records, with CMG `ccd7177f`). It pins CMG
 `8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9`: `65bd817a` adds team forest
 selection, and `8fafe5a7` makes its hub-row cancellation witness reach the
@@ -122,8 +123,8 @@ Witness repairs and a defect found before commit:
   witness now also visits every stop between the first sampled plan stop and
   the first sampled workspace stop. The requirement is unchanged.
 
-Validation reported by Claude (cloud; compact outcomes; full logs and real
-exit codes under `target/tmp/auto-routing/m3c/logs` until review):
+Validation reported by Claude (cloud; compact outcomes and real exit codes
+in the linked JSON; raw logs are not retained evidence):
 
 - CMG `65bd817a`: all 27 matrix steps exit 0. These are fmt; tests (default
   131, `parallel` 197, all features 254, each in debug and release); frozen
@@ -275,8 +276,8 @@ reported 1,384 passed. That is 1,371 top-level tests plus 13 isolated
 child-process re-executions; each child prints its own one-test result line.
 The record now reports the two separately.
 
-Validation of the repair (cloud; full logs, commands and real exits under
-`target/tmp/auto-routing/m3c-r1/logs` until review):
+Validation of the repair (cloud; compact outcomes, commands and real exits
+in the linked JSON; raw logs are not retained evidence):
 
 - fereg: complexity ratchet (declared growth 105,148 → 105,165 production
   lines), fmt and Clippy `-D warnings` pass. fereg-core lib: 1,373
@@ -300,6 +301,73 @@ Validation of the repair (cloud; full logs, commands and real exits under
 Remaining limits are those of the first handoff, with explicit `cmgschur`'s
 uncached census and one-worker team behavior retained as instructed. Replay
 fixtures remain below the team thresholds. No timing, panel or profile ran.
+
+### Root review and additional corrections
+
+Root reviewed fereg `0c3ea098` with CMG `8fafe5a7`. The two independent
+reviewers cleared the R2 production correction. They found that R1 still
+located the first edge of each chunk with an uncounted `partition_point`.
+Since corrected accounting made the long-gap fixture's chunks one edge long,
+the test never exercised the new bisection; its scan-only mutation survived.
+This was an incomplete accounting and witness issue, not an executed
+demonstration that the repaired production code exceeded its cancellation bound.
+
+The root correction starts each chunk at worker zero and sends its first and
+later edges through the same counted, bounded lookup. Edge order, draws and
+arithmetic remain exact; there is no allocation, resource or pool change.
+Explicit offset witnesses cover leading, internal and trailing zero-edge
+workers and both fresh and continuing lookups. A direct 100,000-worker gap
+requires the exact owner and at most 18 probes. The hosted fixture must
+actually execute bisection and retains its actual-work cancellation, untouched
+work, joins, exact rebuild and no-team/W1/W4 checks.
+
+The finite root mutation set kills the restored linear scan, removed lookup
+accounting (a three-edge chunk needs 1,776 units against 1,024), and restored
+parallel persistent charge (43,068,776 against 42,675,896 bytes). Each is an
+executed witness failure, not a compilation failure. The independent
+high-effort review found no further actionable production defect. The root
+change adds no production complexity metric growth.
+
+The standalone CMG release check then failed in
+`parallel_construction_admission`: after a W4 interrupted build with 612
+vertices and 65,586 edges, the test's caller-thread byte count was 3,229,314
+against 3,229,378 before it. Both reviewers independently found that the
+allocator credited the allocating thread and debited the freeing thread;
+cross-thread ownership makes that balance invalid. Forest dispatch can
+precede the injected mapping-bank allocation. The negative 64-byte result
+does not establish a leak or a join defect, and the particular allocation
+was not identified.
+
+CMG `82ae1c86d1e7d8c04f35d723b5affae8a031e283` changes only that test and
+its documentation. A fixed, allocation-free pointer ledger tracks the
+initiating caller's allocation cohort through frees and reallocations on
+any thread. Cleanup requires exactly zero outstanding allocations and no
+ledger overflow. Cross-thread, foreign-origin, retained-allocation and
+failed/successful reallocation controls verify the accounting. The successful
+resize may happen in place; pointer movement is source-reviewed rather than
+guaranteed by that control. Process-wide peak observations stay separate.
+The manifest and both lockfiles pin this test-only commit; CMG production
+still equals `65bd817a`.
+
+After that diagnosed repair, CMG release/all-features passes 254 executions
+in 38 result groups; the focused debug test and all-target/all-feature Clippy
+with warnings denied pass. Root fereg source integration before the test-only
+pin change passes 322 Python tests and 1,950 Rust executions in 83 groups
+(14 ignored), including the frozen and deep cancellation witnesses, allocator,
+portable, fuzz and numeric checks. These are the Mac run's counts; the cloud
+counts above describe different runs. The standard entrypoint still fails
+installed-package binding after 315 Python tests. The original standalone
+CMG failure, an initial sandbox cache-fetch denial and a missing `cargo-fmt`
+PATH invocation remain recorded with the successful corrections.
+
+Final integration with all three pins at `82ae1c8` also passes the source-only
+entrypoint (336.301217 seconds, the same 322 Python / 1,950 Rust / 83 group
+counts). The standard entrypoint retains its installed-binding failure
+(exit 1, 19.814272 seconds).
+
+The JSON `root_review` records commands, actual exits, durations, log hashes,
+source hashes, mutation outcomes and final pinned integration checks. No root
+native or performance qualification is claimed by these source checks.
 
 
 ## CMG successor milestone 3b: one construction pipeline, cycle and adapter

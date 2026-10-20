@@ -153,7 +153,9 @@ impl EdgeEmissionPlan {
                 cancelled,
                 |chunk_index, chunk| {
                     let first = chunk_index * chunk_len;
-                    let mut worker = offsets.partition_point(|offset| offset.0 <= first) - 1;
+                    // Locate the first edge through the same counted lookup as
+                    // every later edge; no uncharged per-chunk search.
+                    let mut worker = 0;
                     for (position, edge) in chunk.iter_mut().enumerate() {
                         let index = first + position;
                         worker = edge_worker(offsets, worker, index);
@@ -494,7 +496,7 @@ impl BoundedCells<'_> {
 /// one probe plus the bit length of the worker count, the steps that the
 /// declared per-edge work includes.
 #[inline]
-fn edge_worker(offsets: &[(usize, usize)], worker: usize, index: usize) -> usize {
+pub(super) fn edge_worker(offsets: &[(usize, usize)], worker: usize, index: usize) -> usize {
     #[cfg(test)]
     let mut probes = 1;
     let mut lower = worker + 1;

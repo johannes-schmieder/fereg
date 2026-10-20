@@ -1,13 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "metric": "fereg-core/production_lines",
-      "before": 105148,
-      "after": 105165,
-      "reason": "M3c review repair: hosted edge emission locates each edge's worker by one offset probe or a bisection bounded by the worker count's bit length, and the declared per-edge work includes those steps (a run of edge-less workers was crossed by an unbounded scan inside one stage chunk); the automatic route's persistent charge after a team hierarchy build is the serial bound of the identical hierarchy, while the admitted peak keeps the transient parallel bound. Hosted emission moves to fe/cmg_schur/bounded/team.rs with the other team stages. Edge order, draws, arithmetic and explicit-path accounting are unchanged."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -3622,52 +3615,52 @@
           },
           {
             "condition": "cells . len ( ) > cutoff && sampling . samples > 0",
-            "line": 168
+            "line": 170
           },
           {
             "condition": "cells . len ( ) > cutoff",
-            "line": 176
+            "line": 178
           },
           {
             "condition": "length >= CENSUS_TASK_CELLS || worker + 1 == workers",
-            "line": 234
+            "line": 236
           },
           {
             "condition": "pending >= CENSUS_TASK_CELLS || worker + 1 == workers",
-            "line": 364
+            "line": 366
           },
           {
             "condition": "! fits ( memory , parents , table )",
-            "line": 370
+            "line": 372
           },
           {
             "condition": "length >= CENSUS_TASK_CELLS || worker + 1 == workers",
-            "line": 393
+            "line": 395
           },
           {
             "condition": "load_row ( source , weight_scale , worker , cells , & mut lane )",
-            "line": 425
+            "line": 427
           },
           {
             "condition": "failure . as_ref ( ) . is_some_and ( | ( failed , _ ) | * failed == worker )",
-            "line": 465
+            "line": 467
           }
         ],
         "functions": {
           "edge_worker#1": {
-            "line": 497,
+            "line": 499,
             "lines": 28
           },
           "emit#1": {
             "line": 95,
-            "lines": 113
+            "lines": 115
           },
           "from#1": {
             "line": 44,
             "lines": 3
           },
           "load_rows_on_team#1": {
-            "line": 340,
+            "line": 342,
             "lines": 149
           },
           "new#1": {
@@ -3675,7 +3668,7 @@
             "lines": 6
           },
           "prepare_rows#1": {
-            "line": 213,
+            "line": 215,
             "lines": 114
           },
           "stage_phase#1": {

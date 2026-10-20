@@ -3234,6 +3234,22 @@ mod team_stage_tests {
         use super::emission_probes;
         use crate::interrupt::test_polls;
         use std::sync::atomic::Ordering;
+        // Leading, internal and trailing zero-edge workers, plus several
+        // edges per emitting worker: fixed expected owners independent of the
+        // lookup implementation, starting a chunk at every edge.
+        let offsets = [0, 0, 2, 2, 2, 5, 5, 7, 7].map(|start| (start, 0));
+        let mut previous = 0;
+        for (edge, expected) in [1, 1, 4, 4, 4, 6, 6].into_iter().enumerate() {
+            assert_eq!(super::team::edge_worker(&offsets, 0, edge), expected);
+            previous = super::team::edge_worker(&offsets, previous, edge);
+            assert_eq!(previous, expected);
+        }
+        let mut gap_offsets = vec![(1, 0); 100_003];
+        gap_offsets[0].0 = 0;
+        gap_offsets.last_mut().unwrap().0 = 2;
+        emission_probes::MAX.store(0, Ordering::SeqCst);
+        assert_eq!(super::team::edge_worker(&gap_offsets, 0, 1), 100_001);
+        assert!(emission_probes::MAX.load(Ordering::SeqCst) <= 18);
         let fixture = Fixture::gap();
         let workers = fixture.membership.n_levels();
         // One fast-path probe plus a binary search over at most `workers`
@@ -3256,6 +3272,7 @@ mod team_stage_tests {
             assert_eq!(team, serial, "lanes {lanes}");
             assert_eq!(team.stages, TEAM_CENSUS, "lanes {lanes}");
             let probes = emission_probes::MAX.load(Ordering::SeqCst);
+            assert!(probes > 1, "the gap fixture must exercise worker bisection");
             assert!(
                 probes <= probe_bound,
                 "lanes {lanes}: one edge probed {probes} worker offsets (bound {probe_bound})"
