@@ -1,5 +1,5 @@
 {
- "milestone": "M3b unaccepted: source/native/science gates and Mac12bounds pass; Linux9pass,2regression,1inconclusive; diagnosed performance repair authorized; M3c not released",
+ "milestone": "M3b accepted by Johannes on 2026-10-20 with three inconclusive timing cells retained; M3c authorized; M3d gated on M3c review",
  "date": "2026-10-20",
  "revisions": {
   "fereg_code": "65bc39f5f98090ee4b2206e13a72cc9bf0a51c0d",
@@ -37,7 +37,8 @@
   "repair logs retained under target/tmp/auto-routing/m3b-r1/logs in the cloud session; not committed"
  ],
  "outstanding_host_checks": [
-  "Linux nonregression not established: high-degree-weak W4/W8 regression; weak-low W4 inconclusive. M3b repair and affected validation on a reviewed changed artifact required; no unchanged-candidate resampling."
+  "Accepted exception: Mac weak-low W8, Mac wide-rhs W8 and Linux repeated-cells W4 remain inconclusive in the final fixed panels; no further unchanged-artifact measurements authorized.",
+  "Standard ./scripts/run_tests.sh remains failed at installed-package binding after 315 Python tests; release packages intentionally untouched. Source/private-native checks do not make the standard entrypoint green."
  ],
  "review": {
   "verdict": "first handoff (fereg b4b5357704a2d7027901b5347d156ae6446f3963, CMG c6f9e8224503273a20b47cf42ec8bc09d50fefd9) rejected; M3b unaccepted",
@@ -17084,13 +17085,13 @@
   }
  },
  "current_decision": {
-  "accepted": false,
-  "reason": "Repaired high-degree Linux cells pass, but Mac weak-lowW8/wide-rhsW8 and Linux repeated-cellsW4 remain inconclusive; no new runtime source defect or exclusion basis identified",
-  "next": "Johannes decision required on an explicit milestone exception or a prospectively fixed protocol change. M3c remains unreleased; Claude stopped; no monitor or measurement job remains",
-  "authority": "Retries of diagnosed repairs remain authorized through M3d. This does not reset an unchanged candidate timing budget, waive a failed prerequisite, alter science/resources or authorize sampling until pass"
+  "accepted": true,
+  "reason": "Explicit milestone acceptance by Johannes with Mac weak-low W8, Mac wide-rhs W8 and Linux repeated-cells W4 still inconclusive; 21 of 24 platform cells pass. This is not a full performance pass.",
+  "next": "Release M3c in the existing Claude session under plan revision 3, then report and stop for independent review and applicable validation before M3d.",
+  "authority": "Johannes: Yes, please accept M3b and continue onwards. Diagnosed repairs and affected reruns remain authorized through M3d. This specific exception does not waive future prerequisites, alter science/resources/protocols, exclude observations or reopen unchanged-candidate timing budgets."
  },
  "performance_repair": {
-  "status": "root reviewed; M3b unaccepted because three fixed timing cells remain inconclusive",
+  "status": "M3b accepted by Johannes with three inconclusive timing cells retained; M3c authorized",
   "source_cause": "Cloud-reported attribution, not independently verified from raw disassembly/profiles: second-repair lane tiling (row_lanes, CMG 004d1c4d) turned lane kernels into per-row callbacks with runtime lane ranges; under a polling meter jacobi/scale captured the width by reference with an escaped stack slot (shared with the parallel path), so the scalar loop reloaded it after every polled segment and did not vectorize; the edge-list product lost the input/output length equality (24 vs 20 instructions per edge)",
   "repair": {
    "cmg": "ccd7177fd6491421bab46de27bdb4d77eb2ee75c",
@@ -32038,5 +32039,27 @@
     "Compact committed observations, identities and summaries are retained evidence; ignored raw captures remain temporary resume inputs only"
    ]
   }
+ },
+ "acceptance": {
+  "date": "2026-10-20",
+  "decision_maker": "Johannes",
+  "user_instruction": "Yes, please accept M3b and continue onwards",
+  "basis": "Explicit acceptance following root review of the repaired artifact and disclosure of three inconclusive timing cells; all original timing verdicts and failures retained.",
+  "reviewed_fereg": "671239d47e2d93c0ce11304c10af62551787f4c0",
+  "reviewed_cmg": "ccd7177fd6491421bab46de27bdb4d77eb2ee75c",
+  "root_evidence_commit": "49a3aefa7ec8e513bd3ce150c59462fddab11faa",
+  "mac_plugin_sha256": "509ef88a0cabedee7ed9b18d45e9c3984c803bfd76f01c6e1ebd11bcccd78db8",
+  "linux_plugin_sha256": "438c3a4f3e77e2a30373e4c8a3b979aa35eabf00e33a68c5d5dd2890945c16ba",
+  "retained_inconclusive_cells": [
+   "Mac weak-low W8",
+   "Mac wide-rhs W8",
+   "Linux repeated-cells W4"
+  ],
+  "performance_pass_cells": 21,
+  "performance_total_cells": 24,
+  "standard_entrypoint": "FAILED installed-package binding; source/private-native validation passed; release packages unchanged",
+  "comparison_baseline_for_next_milestone": "The accepted M3b implementation/artifacts above, with these limitations; M3a and all historical failures remain recorded.",
+  "authorized_next_scope": "M3c plan revision 3 only: parallel construction census/emission/contraction/forest on the existing host-owned team. Report and stop for review before M3d.",
+  "limits": "No changed verdicts, excluded observations or new unchanged-candidate samples. No waiver of future prerequisites or scientific/resource/protocol changes."
  }
 }

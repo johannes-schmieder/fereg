@@ -28,13 +28,15 @@ were deleted; hashes and summaries are the remaining record.
 
 ## CMG successor milestone 3b: one construction pipeline, cycle and adapter
 
-**The first cloud handoff (fereg `b4b53577`, CMG `c6f9e822`) and the first
-review repair (fereg `5ba16717`, CMG `b9f2585a`) were rejected by Codex review
-on 2026-10-20. The second repair, prepared-publication follow-up and test
-repairs now pass source review and source/native checks. Mac passes all 12
-nonregression bounds; Linux passes nine, fails two and leaves one inconclusive.
-A scalar lane-kernel performance repair (CMG `ccd7177f`, below) awaits root
-review. M3b remains unaccepted and M3c is not started.** M3b is a behaviour-preserving
+**Johannes accepted M3b on 2026-10-20 and authorized M3c, explicitly retaining
+three inconclusive timing cells.** The accepted source is fereg `671239d4`
+with CMG `ccd7177f`; root review is recorded at `49a3aefa`. Source, native,
+scientific and transaction checks pass. The final fixed panels pass 21 of
+24 platform cells, with Mac weak-low W8, Mac wide-rhs W8 and Linux
+repeated-cells W4 inconclusive. This is milestone acceptance by explicit
+exception, not a full performance pass. The standard installed-package
+binding failure and all earlier rejected handoffs and failed panels remain
+recorded below. M3d remains gated on M3c review. M3b is a behaviour-preserving
 consolidation. The first handoff pinned CMG
 `c6f9e8224503273a20b47cf42ec8bc09d50fefd9`
 (`69862653ed5d4815c05fe85a91c8b625626f3e3c` freezes pre-consolidation digests,
@@ -766,15 +768,16 @@ were recorded here and in the results file.
 
 ### Root review of the scalar repair: three timing cells remain inconclusive
 
-M3b remains **unaccepted**. The repaired high-degree Linux cells pass their
+At the root review boundary, M3b remained **unaccepted**. The repaired high-degree Linux cells pass their
 nonregression bounds, and source, scientific and transaction checks pass.
 However, two Mac cells and one Linux cell do not establish nonregression.
 No source defect or external interference explains those three results.
-M3c has not been released; Claude is stopped and its monitor was deleted.
+M3c had not been released; Claude was stopped and its monitor was deleted.
+Johannes's subsequent acceptance is recorded after this review.
 
 The reviewed source is fereg `671239d47e2d93c0ce11304c10af62551787f4c0`
 and CMG `ccd7177fd6491421bab46de27bdb4d77eb2ee75c`, pinned in the manifest
-and both lockfiles. The accepted comparison remains M3a `e9efda55`
+and both lockfiles. This review compared against accepted M3a `e9efda55`
 (measured production `d33a1575`, CMG `03a26041`). The source archive has
 SHA-256 `48fec7848aa9a177c08b5d24ded4671914ca6b24f13d2b55e857a476e606577b`.
 The actual candidate plugins are:
@@ -879,6 +882,34 @@ this unchanged candidate's budget or waive an unmet prerequisite. Advancing
 requires his decision on an explicit exception for the three named cells
 or a prospectively fixed protocol change; no further measurements are
 authorized by this report.
+
+### Johannes's M3b acceptance and M3c authorization
+
+On 2026-10-20, after the three inconclusive cells and their limits were
+presented, Johannes instructed: “Yes, please accept M3b and continue onwards.”
+M3b is therefore accepted with those three uncertainties retained. None of
+their verdicts changes to a pass, no observations are excluded, and this
+decision does not reopen the unchanged candidate's measurement budget.
+The failed standard installed-package binding check also remains a failure.
+
+The accepted implementation is fereg
+`671239d47e2d93c0ce11304c10af62551787f4c0` with CMG
+`ccd7177fd6491421bab46de27bdb4d77eb2ee75c`; the complete root review and
+observations are committed at `49a3aefa7ec8e513bd3ce150c59462fddab11faa`.
+The actual accepted Mac and Linux artifact hashes are those in the root
+review above. This source/artifact pair, with its stated limits, is the
+last accepted comparison for the next milestone. M3a evidence and all
+historical failures remain available; acceptance does not relabel them.
+
+M3c is authorized within plan revision 3: parallel construction census,
+emission, contraction and forest work on the existing host-owned team.
+It must preserve the consolidated pipeline, arithmetic/order and scientific,
+resource, cancellation and transaction guarantees. Worker-independent
+representation/reductions, new RHS batching and separately declared
+arithmetic remain M3d scope. Claude must report and stop after M3c for
+independent source review and applicable validation before M3d is released.
+This exception does not waive future prerequisites or authorize protocol,
+resource or scientific changes.
 
 ## CMG successor milestone 3a: construction-work cap removed
 
