@@ -2414,3 +2414,169 @@ fn more_than_sixty_four_nuisance_columns_are_rejected() {
     assert_eq!(error.code, ErrorCode::Unsupported);
     assert!(error.message.contains("at most 64"));
 }
+
+/// Explicit OLS and prepared PPML CMG routes poll the host flag inside every
+/// CMG stage on a four-worker team: the initial graph's team sort, hierarchy
+/// contraction, plan construction, PCG workspace banks, caller buffers,
+/// prepared topology preparation and numeric assembly, cycles and solves.
+/// Cancellation at sampled host polls fails as `Interrupted` naming the stage;
+/// a fresh run afterwards repeats the uncancelled bits.
+#[test]
+fn explicit_cmg_routes_poll_the_host_inside_every_stage() {
+    const CHILD: &str = "FEREG_CMG_ROUTE_POLL_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD, "1")
+            .args([
+                "fe::cmg::tests::explicit_cmg_routes_poll_the_host_inside_every_stage",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .status()
+            .unwrap();
+        assert!(status.success());
+        return;
+    }
+    use crate::interrupt::test_polls;
+    let rows = 70_000;
+    let workers = 7_000;
+    let firms = 900;
+    let worker: Vec<u32> = (0..rows).map(|row| (row % workers) as u32).collect();
+    let firm: Vec<u32> = (0..rows)
+        .map(|row| ((row / workers * 37 + row * 11) % firms) as u32)
+        .collect();
+    let worker_index = LevelIndex::from_codes(&worker, workers).expect("worker index");
+    let firm_index = LevelIndex::from_codes(&firm, firms).expect("firm index");
+    let design = || {
+        BorrowedInterceptFeDesign::new(
+            rows,
+            vec![
+                effect(&worker, workers, &worker_index),
+                effect(&firm, firms, &firm_index),
+            ],
+        )
+        .expect("design")
+    };
+    let values = || {
+        DenseMatrix::from_columns(&[(0..rows).map(|row| (row as f64 * 0.37).sin()).collect()])
+            .expect("values")
+    };
+    let mut threaded = config(2);
+    threaded.threads = ThreadConfig::from_requested(4, true).expect("threads");
+    let ols = || -> Result<Vec<u64>> {
+        let mut absorber = CmgAbsorber::build(design(), BorrowedMapWeights::Unit, threaded, false)?;
+        let projected = absorber.absorb(values())?;
+        Ok(projected
+            .residualized()
+            .as_slice()
+            .iter()
+            .map(|value| value.to_bits())
+            .collect())
+    };
+    let ppml = || -> Result<Vec<u64>> {
+        let mut prepared = PreparedCmgTopology::prepare(&design())?;
+        let mut absorber = CmgAbsorber::build_unpolished_prepared(
+            design(),
+            BorrowedMapWeights::Unit,
+            threaded,
+            &mut prepared,
+        )?;
+        let mut values = values();
+        absorber.project_unpolished(&mut values, 1e-10)?;
+        Ok(values
+            .as_slice()
+            .iter()
+            .map(|value| value.to_bits())
+            .collect())
+    };
+    // The phase at host query `stop`: a CMG stage, "fereg" for a fereg
+    // checkpoint, or None when the run finished before reaching it.
+    let phase_at = |name: &str, route: &dyn Fn() -> Result<Vec<u64>>, stop: usize| {
+        test_polls::cancel_at(Some(stop));
+        match route() {
+            Err(error) => {
+                assert_eq!(
+                    error.code,
+                    crate::error::ErrorCode::Interrupted,
+                    "{name} {error}"
+                );
+                Some(
+                    error
+                        .message
+                        .split_once("cancelled during ")
+                        .map_or_else(|| "fereg".to_string(), |(_, phase)| phase.to_string()),
+                )
+            }
+            // Lane polls depend on chunk claiming; a run may end first.
+            Ok(_) => {
+                assert!(test_polls::polls() <= stop, "{name}: poll {stop} ignored");
+                None
+            }
+        }
+    };
+    for (name, route, required) in [
+        (
+            "ols",
+            &ols as &dyn Fn() -> Result<Vec<u64>>,
+            &[
+                "team edge sort",
+                "parallel contracted edge mapping",
+                "fereg",
+            ][..],
+        ),
+        (
+            "ppml",
+            &ppml,
+            &["prepared endpoint sort", "prepared duplicate sort", "fereg"][..],
+        ),
+    ] {
+        test_polls::cancel_at(None);
+        let reference = route().expect("uncancelled route");
+        let total = test_polls::polls();
+        let samples: Vec<(usize, String)> = (0..total)
+            .step_by((total / 100).max(1))
+            .filter_map(|stop| phase_at(name, route, stop).map(|phase| (stop, phase)))
+            .collect();
+        let mut phases: std::collections::BTreeSet<String> =
+            samples.iter().map(|(_, phase)| phase.clone()).collect();
+        // Topology preparation and numeric assembly come first: sample the
+        // first twentieth of the queries densely.
+        let early = total / 20;
+        for stop in (0..early).step_by((early / 100).max(1)) {
+            phases.extend(phase_at(name, route, stop));
+        }
+        // Workspace banks and caller buffers lie between the terminal factor
+        // and the first PCG phase: sample that window densely.
+        let last_factor = samples
+            .iter()
+            .rposition(|(_, phase)| phase.starts_with("terminal"))
+            .expect("terminal factor sampled");
+        let first_solve = samples[last_factor..]
+            .iter()
+            .position(|(_, phase)| phase.starts_with("PCG"))
+            .map_or(samples.len() - 1, |offset| last_factor + offset);
+        let (start, end) = (samples[last_factor].0, samples[first_solve].0);
+        for stop in (start..end).step_by(((end - start) / 100).max(1)) {
+            phases.extend(phase_at(name, route, stop));
+        }
+        for phase in required {
+            assert!(phases.contains(*phase), "{name}: {phase} not in {phases:?}");
+        }
+        assert!(
+            phases.iter().any(|phase| {
+                [
+                    "PCG batch",
+                    "PCG projected",
+                    "CMG workspace",
+                    "component workspace",
+                    "centering workspace",
+                ]
+                .iter()
+                .any(|prefix| phase.starts_with(prefix))
+            }),
+            "{name}: no workspace-bank stage in {phases:?}"
+        );
+        test_polls::cancel_at(None);
+        assert_eq!(route().expect("fresh route"), reference, "{name}");
+    }
+}

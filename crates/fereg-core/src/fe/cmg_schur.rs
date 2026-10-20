@@ -259,7 +259,16 @@ impl CmgSchurPreconditioner {
             if columns == 0 {
                 continue;
             }
-            self.rhs[firms * columns..vertices * columns].fill(0.0);
+            // Zero auxiliary loads in bounded segments between host polls.
+            for (segment, values) in self.rhs[firms * columns..vertices * columns]
+                .chunks_mut(crate::interrupt::CHECKPOINT_ROW_STRIDE)
+                .enumerate()
+            {
+                crate::interrupt::row_checkpoint(
+                    segment * crate::interrupt::CHECKPOINT_ROW_STRIDE,
+                )?;
+                values.fill(0.0);
+            }
             self.cycle(vertices, columns, rhs_count == 1)?;
             self.components.scatter(
                 &self.solution[..firms * columns],
@@ -268,7 +277,8 @@ impl CmgSchurPreconditioner {
                 &lanes[..columns],
             )?;
         }
-        Ok(())
+        // A cancellation during the final scatter is never reported as success.
+        crate::interrupt::checkpoint()
     }
 
     /// One fixed cycle on the packed lanes. The projection's original width
@@ -376,14 +386,24 @@ impl FirmComponents {
             + vec_capacity_bytes(&self.corrections)
     }
 
-    fn clear(&mut self, columns: usize) {
+    /// Clear the component accumulators in bounded segments between host polls.
+    fn clear(&mut self, columns: usize) -> Result<()> {
         let elements = self.sizes.len() * columns;
-        self.sums[..elements].fill(0.0);
-        self.corrections[..elements].fill(0.0);
+        for (segment, (sums, corrections)) in self.sums[..elements]
+            .chunks_mut(crate::interrupt::CHECKPOINT_ROW_STRIDE)
+            .zip(self.corrections[..elements].chunks_mut(crate::interrupt::CHECKPOINT_ROW_STRIDE))
+            .enumerate()
+        {
+            crate::interrupt::row_checkpoint(segment * crate::interrupt::CHECKPOINT_ROW_STRIDE)?;
+            sums.fill(0.0);
+            corrections.fill(0.0);
+        }
+        Ok(())
     }
 
     fn means(&mut self, columns: usize) -> Result<()> {
         for (component, &size) in self.sizes.iter().enumerate() {
+            crate::interrupt::row_checkpoint(component)?;
             for lane in 0..columns {
                 let index = component * columns + lane;
                 self.sums[index] = (self.sums[index] + self.corrections[index]) / size as f64;
@@ -406,7 +426,7 @@ impl FirmComponents {
         target: &mut [f64],
     ) -> Result<[bool; MAX_BATCH_COLUMNS]> {
         let columns = lanes.len();
-        self.clear(columns);
+        self.clear(columns)?;
         for (firm, &label) in self.labels.iter().enumerate() {
             crate::interrupt::row_checkpoint(firm)?;
             let scale = scales.map_or(1.0, |scales| scales[firm]);
@@ -449,7 +469,7 @@ impl FirmComponents {
         lanes: &[usize],
     ) -> Result<()> {
         let columns = lanes.len();
-        self.clear(columns);
+        self.clear(columns)?;
         for (firm, &label) in self.labels.iter().enumerate() {
             crate::interrupt::row_checkpoint(firm)?;
             for lane in 0..columns {
@@ -1566,9 +1586,13 @@ mod tests {
         let reference = bits(&solver.solution[..vertices * columns]);
         let total = polls.load(Ordering::Relaxed);
         assert!(total >= 3, "{total} application polls");
+        // Lane polls depend on chunk claiming, so a late stop may not be
+        // reached; a query that answered true never yields success.
         for stop in [0, total / 2, total - 1] {
-            let error = apply(&mut solver, Some(stop)).unwrap_err();
-            assert_eq!(error.code, ErrorCode::Interrupted);
+            match apply(&mut solver, Some(stop)) {
+                Err(error) => assert_eq!(error.code, ErrorCode::Interrupted),
+                Ok(()) => assert!(polls.load(Ordering::Relaxed) <= stop),
+            }
             crate::interrupt::reset_cancellation();
         }
         apply(&mut solver, None).unwrap();
@@ -1635,10 +1659,91 @@ mod tests {
             reference.1
         );
         for stop in [1, total / 2, total - 1] {
-            assert_eq!(solve(Some(stop)).unwrap_err().code, ErrorCode::Interrupted);
+            match solve(Some(stop)) {
+                Err(error) => assert_eq!(error.code, ErrorCode::Interrupted),
+                Ok(_) => assert!(polls.load(Ordering::Relaxed) <= stop),
+            }
             crate::interrupt::reset_cancellation();
         }
         assert_eq!(solve(None).unwrap(), reference);
+    }
+
+    // The explicit adapter's plan, workspaces and application poll the host
+    // flag inside their stages on a four-worker team; cancellation at sampled
+    // host queries is Interrupted, and a fresh build repeats the same bits.
+    #[test]
+    fn explicit_build_and_application_poll_the_host_inside_plan_and_workspaces() {
+        const CHILD: &str = "FEREG_CMG_SCHUR_BUILD_POLL_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .env(CHILD, "1")
+                .args([
+                    "fe::cmg_schur::tests::explicit_build_and_application_poll_the_host_inside_plan_and_workspaces",
+                    "--exact",
+                    "--test-threads=1",
+                ])
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        use crate::interrupt::test_polls;
+        let fixture = Fixture::torus(65);
+        let design = fixture.design();
+        let firms = fixture.firm_index.n_levels();
+        let columns = 4;
+        let residual: Vec<f64> = (0..firms * columns)
+            .map(|index| (index as f64 * 0.17).sin())
+            .collect();
+        let run = || -> Result<Vec<u64>> {
+            let mut solver = CmgSchurPreconditioner::build_with_options(
+                &design,
+                BorrowedMapWeights::Unit,
+                0,
+                4,
+                Sampling::default(),
+                columns,
+                4,
+                None,
+                CmgOptions {
+                    direct_threshold: 16,
+                    ..CmgOptions::default()
+                },
+            )?;
+            let mut output = vec![0.0; residual.len()];
+            solver.apply_batch(&residual, &mut output, columns, columns, None, None)?;
+            Ok(output.iter().map(|value| value.to_bits()).collect())
+        };
+        test_polls::cancel_at(None);
+        let reference = run().unwrap();
+        let total = test_polls::polls();
+        let mut phases = std::collections::BTreeSet::new();
+        for stop in (0..total).step_by((total / 400).max(1)).chain([total - 1]) {
+            test_polls::cancel_at(Some(stop));
+            match run() {
+                Err(error) => {
+                    assert_eq!(error.code, ErrorCode::Interrupted, "{error}");
+                    phases.insert(
+                        error
+                            .message
+                            .split_once("cancelled during ")
+                            .map_or_else(|| "fereg".to_string(), |(_, phase)| phase.to_string()),
+                    );
+                }
+                Ok(_) => assert!(test_polls::polls() <= stop, "poll {stop} ignored"),
+            }
+        }
+        // The torus has degree four, so its row operators use serial CSR.
+        for phase in [
+            "CSR scatter",
+            "plan publication",
+            "CMG batch workspace",
+            "fereg",
+        ] {
+            assert!(phases.contains(phase), "{phase} not in {phases:?}");
+        }
+        test_polls::cancel_at(None);
+        assert_eq!(run().unwrap(), reference);
     }
 
     // Pre-consolidation witness: digests recorded from the explicit executor

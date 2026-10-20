@@ -132,9 +132,9 @@ impl Work {
         let result = crate::parallel::with_cmg_execution(|team| build(team, &cancelled))
             .map_err(AttemptError::Fatal)?;
         result.map_err(|error| match error {
-            CmgError::Cancelled { .. } => AttemptError::Fatal(FeregError::new(
+            CmgError::Cancelled { phase } => AttemptError::Fatal(FeregError::new(
                 crate::error::ErrorCode::Interrupted,
-                "bounded CMG construction was interrupted",
+                format!("bounded CMG construction was cancelled during {phase}"),
             )),
             CmgError::MemoryBudgetExceeded { .. } => {
                 AttemptError::Refused(BuildRefusal::MemoryBudget)
@@ -364,7 +364,7 @@ impl CmgSchurPreconditioner {
             crate::interrupt::row_checkpoint(row)?;
             *value = restore_scale(image, rhs_scale, weight_scale)?;
         }
-        Ok(())
+        crate::interrupt::checkpoint()
     }
 
     /// Candidate-only builder with admitted initial-graph stages. `budget`
@@ -546,9 +546,16 @@ fn finish(
             })
         })?;
         let admitted = admit(memory, work, parents, bound)?;
-        let plan = work.cmg(|team, _| {
+        let plan = work.cmg(|team, cancelled| {
             team.map(|team| {
-                cmg::ParallelCmgPlan::build_with_budget(&preconditioner, team, admitted)
+                cmg::ParallelCmgPlan::build_with(
+                    &preconditioner,
+                    cmg::BuildContext {
+                        team: Some(team),
+                        cancel: Some(cancelled),
+                        budget_bytes: Some(admitted),
+                    },
+                )
             })
             .transpose()
         })?;
@@ -564,7 +571,9 @@ fn finish(
     let scalar_bytes =
         work.cmg(|_, cancelled| preconditioner.workspace_allocation_bytes_controlled(cancelled))?;
     let batch_bytes = if columns > 1 {
-        work.cmg(|_, _| CmgBatchWorkspace::allocation_bytes(&preconditioner, columns))?
+        work.cmg(|_, cancelled| {
+            CmgBatchWorkspace::allocation_bytes_controlled(&preconditioner, columns, cancelled)
+        })?
     } else {
         0
     };

@@ -33,6 +33,9 @@ mod admission;
 #[path = "cmg_forecast.rs"]
 pub(super) mod forecast;
 
+/// The host's sticky cancellation query, polled by every CMG stage.
+const HOST_CANCEL: cmg::Cancellation<'static> = &crate::interrupt::cancellation_requested;
+
 pub(crate) const MAX_NUISANCE_COLUMNS: usize = 64;
 // CMG's graph solve feeds the OLS normal equations, whose score certificate is
 // more sensitive than the observation-space FE certificate. Keep the public
@@ -383,9 +386,12 @@ impl CallerPcgBuffers {
                 .map_err(cmg_error)
         })?;
         let workspace_count = report.concurrency().max(1);
-        let bank_bytes =
-            PcgBatchWorkspace::bank_allocation_bytes(solver.preconditioner(), workspace_count)
-                .map_err(cmg_error)?;
+        let bank_bytes = PcgBatchWorkspace::bank_allocation_bytes_with(
+            solver.preconditioner(),
+            workspace_count,
+            Some(HOST_CANCEL),
+        )
+        .map_err(cmg_error)?;
         let caller_bytes = elements
             .checked_mul(2)
             .and_then(|v| v.checked_add(nuisance_elements))
@@ -401,17 +407,21 @@ impl CallerPcgBuffers {
             admission::frame_storage(&[solver], prepared)? + admission::runtime_extra(runtime);
         admission::admit(config, parents, total, memory)?;
         memory.record_expected_heap(parents - admission::runtime_extra(runtime) + total as u128)?;
-        let workspaces = PcgBatchWorkspace::new_bank_with_budget(
+        let workspaces = PcgBatchWorkspace::new_bank_with(
             solver.preconditioner(),
             workspace_count,
-            bank_bytes,
+            cmg::BuildContext {
+                cancel: Some(HOST_CANCEL),
+                budget_bytes: Some(bank_bytes),
+                ..cmg::BuildContext::default()
+            },
         )
         .map_err(cmg_error)?;
-        let mut diagnostics = Vec::new();
-        diagnostics
-            .try_reserve_exact(batch_size)
-            .map_err(|_| allocation("unable to reserve prepared CMG diagnostics"))?;
-        diagnostics.resize(batch_size, PcgDiagnostics::default());
+        let diagnostics = filled_vec(
+            batch_size,
+            PcgDiagnostics::default(),
+            "unable to reserve prepared CMG diagnostics",
+        )?;
         Ok(Self {
             right_hand_sides: zero_vec(
                 elements,
@@ -479,16 +489,23 @@ impl CallerPcgBuffers {
                 .map(|values| PcgBatchRef::contiguous(values, rhs_count, vertices))
                 .transpose()
                 .map_err(cmg_error)?;
-            let cancelled = crate::interrupt::cancellation_requested;
             let mut context = SolveContext {
-                cancel: Some(&cancelled),
+                cancel: Some(HOST_CANCEL),
                 ..SolveContext::default()
             };
             let workspaces = match report.execution() {
                 ParallelPcgExecution::Serial => &mut workspaces[..1],
                 ParallelPcgExecution::Planned => {
                     *planned_used = true;
-                    context.plan = Some(solver.try_plan_with_budget(team, 0).map_err(cmg_error)?);
+                    context.plan = Some(
+                        solver
+                            .try_plan_with(cmg::BuildContext {
+                                team: Some(team),
+                                cancel: Some(HOST_CANCEL),
+                                budget_bytes: Some(0),
+                            })
+                            .map_err(cmg_error)?,
+                    );
                     context.team = Some(team);
                     &mut workspaces[..1]
                 }
@@ -695,15 +712,23 @@ impl PreparedCmgTopology {
         endpoints
             .try_reserve_exact(design.nobs())
             .map_err(|_| allocation("unable to reserve prepared CMG endpoints"))?;
-        endpoints.extend((0..design.nobs()).map(|row| {
-            (
+        for row in 0..design.nobs() {
+            crate::interrupt::row_checkpoint(row)?;
+            endpoints.push((
                 left_codes[row] as usize,
                 left_levels + right_codes[row] as usize,
-            )
-        }));
-        let topology =
-            PreparedLaplacianTopology::prepare_with_budget(vertices, &endpoints, topology_budget)
-                .map_err(cmg_error)?;
+            ));
+        }
+        let topology = PreparedLaplacianTopology::prepare_with(
+            vertices,
+            &endpoints,
+            cmg::BuildContext {
+                cancel: Some(HOST_CANCEL),
+                budget_bytes: Some(topology_budget),
+                ..cmg::BuildContext::default()
+            },
+        )
+        .map_err(cmg_error)?;
         drop(endpoints);
         let scratch_bytes =
             PreparedLaplacianWorkspace::allocation_bytes(&topology).map_err(cmg_error)?;
@@ -762,12 +787,18 @@ impl PreparedCmgTopology {
             && self.weight_ratio <= 2.0
             && self.nuisance_seed.iter().all(|value| value.is_finite());
         self.topology
-            .assemble_with_workspace_budgeted(
+            .assemble_with(
                 &self.numeric_weights,
                 &mut self.assembly_workspace,
-                self.topology
-                    .numeric_allocation_bytes()
-                    .map_err(cmg_error)?,
+                cmg::BuildContext {
+                    cancel: Some(HOST_CANCEL),
+                    budget_bytes: Some(
+                        self.topology
+                            .numeric_allocation_bytes()
+                            .map_err(cmg_error)?,
+                    ),
+                    ..cmg::BuildContext::default()
+                },
             )
             .map_err(cmg_error)
     }
@@ -1009,8 +1040,12 @@ impl<'a> CmgAbsorber<'a> {
             *attempted_peak = attempted_peak.max(memory.construction);
             match graph {
                 Ok(graph) => CmgRoute::Graph(graph),
+                // Cancellation is never a retained setup failure: it fails the
+                // estimation as interrupted instead of selecting a fallback.
                 Err(error)
-                    if config.requested_solver == FeSolverKind::Auto || !retain_setup_failure =>
+                    if config.requested_solver == FeSolverKind::Auto
+                        || !retain_setup_failure
+                        || error.code == ErrorCode::Interrupted =>
                 {
                     return Err(error);
                 }
@@ -1353,6 +1388,8 @@ impl<'a> CmgAbsorber<'a> {
                 }
                 CertifiedBorrowedMap::from_certified_parts(residualized, report)
             }
+            // A cancelled projection is interrupted, never a CG fallback.
+            Err(error) if error.code == ErrorCode::Interrupted => Err(error),
             Err(error) => {
                 ensure_cg_fallback_fits(&self.design, candidate.ncols(), self.config)?;
                 // The failed bulk has released its temporary arrays before
@@ -1923,6 +1960,7 @@ fn build_graph_route(
             edges,
             cmg::BuildContext {
                 team: Some(team),
+                cancel: Some(HOST_CANCEL),
                 ..cmg::BuildContext::default()
             },
         )
@@ -2015,14 +2053,13 @@ fn build_graph_route_from_numeric(
     let parents =
         admission::frame_storage(&[&graph], prepared)? + admission::runtime_extra(runtime_estimate);
     let construction_budget = admission::admit(config, parents, bound, memory)?;
-    let cancelled = crate::interrupt::cancellation_requested;
     let preconditioner = crate::parallel::with_cmg_team(config.threads.resolved(), |team| {
         CmgPreconditioner::build_with(
             &graph,
             options,
             cmg::BuildContext {
                 team: Some(team),
-                cancel: Some(&cancelled),
+                cancel: Some(HOST_CANCEL),
                 budget_bytes: Some(construction_budget),
             },
         )
@@ -2069,7 +2106,11 @@ fn build_graph_route_from_numeric(
         )?;
         crate::parallel::with_cmg_team(config.threads.resolved(), |team| {
             solver
-                .try_plan_with_budget(team, budget)
+                .try_plan_with(cmg::BuildContext {
+                    team: Some(team),
+                    cancel: Some(HOST_CANCEL),
+                    budget_bytes: Some(budget),
+                })
                 .map(|_| ())
                 .map_err(cmg_error)
         })?;
@@ -3315,6 +3356,14 @@ fn swap_symmetric(matrix: &mut [f64], dimension: usize, left: usize, right: usiz
 }
 
 fn zero_vec(elements: usize, label: &'static str) -> Result<Vec<f64>> {
+    filled_vec(elements, 0.0, label)
+}
+
+/// Exact-capacity storage filled in bounded segments, polling the host's
+/// cancellation flag between them.
+fn filled_vec<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
+    const SEGMENT: usize = 1 << 16;
+    crate::interrupt::checkpoint()?;
     let mut values = Vec::new();
     values
         .try_reserve_exact(elements)
@@ -3322,7 +3371,11 @@ fn zero_vec(elements: usize, label: &'static str) -> Result<Vec<f64>> {
     if values.capacity() < elements {
         return Err(allocation(label));
     }
-    values.resize(elements, 0.0);
+    while values.len() < elements {
+        crate::interrupt::checkpoint()?;
+        let next = (elements - values.len()).min(SEGMENT);
+        values.resize(values.len() + next, value.clone());
+    }
     Ok(values)
 }
 

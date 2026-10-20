@@ -31,7 +31,38 @@ pub fn reset_cancellation() {
 /// Whether cancellation has been requested for the current action.
 #[must_use]
 pub fn cancellation_requested() -> bool {
+    #[cfg(test)]
+    test_polls::count();
     CANCELLATION_REQUESTED.load(Ordering::Relaxed)
+}
+
+/// Test-only seam: count every query of the flag and request cancellation at
+/// one zero-based query, so witnesses cancel deterministically inside a stage.
+/// Tests using it run in an isolated child process.
+#[cfg(test)]
+pub(crate) mod test_polls {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static POLLS: AtomicUsize = AtomicUsize::new(0);
+    static STOP: AtomicUsize = AtomicUsize::new(usize::MAX);
+
+    pub(super) fn count() {
+        if POLLS.fetch_add(1, Ordering::SeqCst) >= STOP.load(Ordering::SeqCst) {
+            super::request_cancellation();
+        }
+    }
+
+    /// Reset the flag and the count; cancel from query `stop` onwards.
+    pub(crate) fn cancel_at(stop: Option<usize>) {
+        super::reset_cancellation();
+        STOP.store(usize::MAX, Ordering::SeqCst);
+        POLLS.store(0, Ordering::SeqCst);
+        STOP.store(stop.unwrap_or(usize::MAX), Ordering::SeqCst);
+    }
+
+    pub(crate) fn polls() -> usize {
+        POLLS.load(Ordering::SeqCst)
+    }
 }
 
 /// Fail with `Interrupted` once cancellation has been requested.

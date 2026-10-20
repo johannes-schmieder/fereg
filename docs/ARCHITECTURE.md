@@ -142,11 +142,20 @@ standalone owned `ParallelExecutor` is not used by fereg.
 
 CMG construction, application and PCG receive one context each
 (`BuildContext`, `ApplyContext`, `SolveContext`): the borrowed team, the
-host's cancellation query and, for construction, the memory budget. Every
-fereg route passes `interrupt::cancellation_requested`; CMG polls it at a fixed
-cadence of processed items inside every kernel, parallel lanes poll between
-bounded sub-ranges, and all lanes join before `Cancelled` is returned, which
-fereg maps to an interrupted estimation with atomic rollback. CMG's public
+host's cancellation query and, for construction, the memory budget. fereg's
+CMG routes pass `interrupt::cancellation_requested` to graph construction
+(including PPML topology preparation and numeric assembly), hierarchies,
+plans, PCG workspace banks, cycles and solves. CMG counts long traversals (a
+CSR row, a terminal-factor row, a reduction leaf, a team sort partition) in
+segments while they run; serial meters poll every 65,536 counted units and
+each parallel lane polls the same query at that cadence inside its rows and
+leaves. All lanes join and the coordinator polls before `Cancelled` is
+returned, which fereg maps to an interrupted estimation with atomic rollback;
+a cancellation is never retained as a CMG setup or projection failure and
+never selects a CG fallback. Every CMG stage runs on at most the team's
+worker ceiling of lanes. Allocator, operating-system and join latency are not
+bounded; per-row elementwise work scales with the caller's fixed tile width
+(at most four in fereg). CMG's public
 `ControlledStage` validates fixed logical chunk geometry on one coordinator
 before dispatch; chunk boundaries depend only on the slice length and chunk
 length, never on the number of workers. The caller has

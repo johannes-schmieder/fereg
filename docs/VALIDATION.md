@@ -28,10 +28,14 @@ were deleted; hashes and summaries are the remaining record.
 
 ## CMG successor milestone 3b: one construction pipeline, cycle and adapter
 
-**Cloud handoff, pending Codex review; M3c is not started.** M3b is a
-behaviour-preserving consolidation. CMG is pinned to
-`c6f9e8224503273a20b47cf42ec8bc09d50fefd9` (`6986265e` freezes
-pre-consolidation digests, then `c6f9e822` consolidates). CMG now has one
+**The first cloud handoff (fereg `b4b53577`, CMG `c6f9e822`) was rejected by
+Codex review on 2026-10-20; the review repair below awaits re-review. M3b
+remains unaccepted and M3c is not started.** M3b is a behaviour-preserving
+consolidation. The first handoff pinned CMG
+`c6f9e8224503273a20b47cf42ec8bc09d50fefd9`
+(`69862653ed5d4815c05fe85a91c8b625626f3e3c` freezes pre-consolidation digests,
+then `c6f9e822` consolidates; the first records abbreviated the witness as
+`6986265e`). The repair pins `b9f2585a00ceefd9f27abb98be8828a856854864`. CMG now has one
 construction pipeline (`build_with` with `BuildOptions` and a `BuildContext` of
 borrowed `Team`, optional cancellation and optional layout budget), one
 stationary cycle recursion over the two existing operator kernels
@@ -50,9 +54,11 @@ builder, worker census, iterator edge stream, unbounded sampler and executor
 application owner are deleted. Explicit OLS/PPML `solver(cmg)` builds, plans and
 solves on the action's host team through `parallel::with_cmg_team`, which
 requires the team width to equal the requested threads (outside a native action
-it installs fereg's process-local team). Construction, application and PCG on
-every route pass the host cancellation flag; CMG's `Cancelled` maps to
-`Interrupted` after all lanes join. Auto keeps `Never`/width 1, explicit routes
+it installs fereg's process-local team). The first handoff claimed that
+construction, application and PCG polled the host flag at a bounded interval
+on every route; review showed that claim was overbroad (seven defects listed in
+the repair below). CMG's `Cancelled` maps to `Interrupted` after all lanes
+join. Auto keeps `Never`/width 1, explicit routes
 keep `Eligible` (worker-dependent) and width 4, reduction orders, hierarchies,
 factors, repeats and cycle bits are unchanged. Iteration 16, cutoff 5, k = 1,
 seed 0, eligibility, the small-direct criterion, restart, certificate, fallback
@@ -64,8 +70,9 @@ remains an allocation error with a new message); explicit `cmg` keeps its
 runtime allowance but no longer counts an owned pool's handle bank; owner byte
 reports follow the new struct layouts. Memory tables are outside exact replay.
 
-Evidence (cloud, Linux x86_64; full stdout/stderr and real exit codes retained
-under `target/tmp/auto-routing/m3b/logs` until review, not committed):
+First-handoff evidence (cloud, Linux x86_64; full stdout/stderr and real exit
+codes retained under `target/tmp/auto-routing/m3b/logs` until review, not
+committed):
 
 - Frozen witnesses. CMG `tests/frozen_bits.rs` reproduces digests frozen from
   the pre-consolidation builders, cycles and solves at one and four workers in
@@ -105,8 +112,10 @@ under `target/tmp/auto-routing/m3b/logs` until review, not committed):
   does not apply the replay's baseline-fix labels).
 - Complexity: fereg-core 104,943 -> 104,553 production lines and 1,371 ->
   1,354 dispatch candidates; no growth.
-- `./scripts/run_tests.sh` passes 315 Python tests and stops at the expected
-  installed-plugin binding check (exit 1). `--source-only` passes 322 Python
+- `./scripts/run_tests.sh` passes 315 Python tests and fails at the expected
+  installed-plugin binding check (exit 1); Codex's local run on `b4b53577`
+  matches (315 passed, then the binding check failed with exit 1 in 20.4167 s,
+  full output retained locally). `--source-only` passes 322 Python
   tests, 1,947 Rust test executions in 82 groups (14 ignored), the allocator
   audits, the fuzz check, seven portable checks and the ratchet.
 
@@ -119,6 +128,129 @@ Outstanding host checks (Codex): six mapped Stata fixtures, builder Break at
 two and four workers, the PPML Break fixture, native Mac build and replay, and
 the Linux/Mac nonregression diagnostics. No performance claim is made from this
 cloud host.
+
+### M3b review repair (pending re-review)
+
+Codex's independent review of the first handoff found that bounded
+cancellation was not yet true of every kernel and route, and that the worker
+ceiling was enforced only by `ControlledStage`:
+
+1. Team construction ran graph-sized work uninterrupted: contraction filled
+   its slot bank unmetered, mapped edges on Rayon without the query, compacted
+   unpolled, and team sorts polled only before and after Rayon's sort.
+2. CSR rows, terminal-factor rows (scalar and interleaved) and configurable
+   reduction leaves were counted before an unpolled traversal; parallel lanes
+   polled only between groups of rows.
+3. Plan construction and PCG workspace banks had no cancellation plumbing, and
+   `CmgBatchWorkspace::try_new_controlled` used the unmetered layout helper.
+4. Concurrent PCG chose errors and published solutions after the join with no
+   poll, so a numerical error could mask a lane's cancellation and a final-copy
+   cancellation could return success.
+5. `Team::worker_ceiling` was not enforced outside `ControlledStage`: Rayon
+   kernels could run more lanes than the ceiling on a larger borrowed pool.
+6. fereg passed no query to the explicit route's initial graph, plan and
+   workspace banks; caller buffers, Schur auxiliary fills, component clears and
+   means were unpolled, and `apply_batch` had no final checkpoint.
+7. Profiled builds grew their phase records infallibly and unaccounted.
+
+Repair, CMG `b9f2585a` (bits, hierarchies, factors, repeats, representations,
+reduction orders and memory admission unchanged):
+
+- Long traversals advance a shared `Progress` in segments of at most 1024
+  units while they run; parallel lanes keep a lane-local count and poll the
+  sticky query every 65,536 units, also inside a row or leaf. Accumulators,
+  compensation state and leaf boundaries are unchanged.
+- Every parallel stage runs through one capped dispatcher (fixed chunks
+  claimed by at most `worker_ceiling` lanes), one fixed balanced reduction tree
+  whose forks stop when the lane budget is spent, a lane-budget token for
+  recursive work, or `ControlledStage`; a source test forbids forking anywhere
+  else.
+- Team contraction maps in fixed logical chunks and fills and compacts its slot
+  bank in counted segments; team canonicalization sorts in place with a counted
+  introsort (three-way partitions, heapsort fallback). It allocates nothing,
+  as the earlier in-place Rayon sort did. An intermediate design that reused the
+  initial-graph merge sort was dropped before commit because its spare edge
+  bank is not covered by fereg's explicit-route admission when observations
+  repeat worker-firm pairs.
+- Context forms with metered preparation: `ParallelCmgPlan::build_with`,
+  `ParallelPcgSolver::try_plan_with`, `PcgBatchWorkspace::new_bank_with` and
+  `bank_allocation_bytes_with`, `CmgBatchWorkspace::allocation_bytes_controlled`
+  (now used by `try_new_controlled`), `PreparedLaplacianTopology::prepare_with`
+  and `assemble_with`; each polls before every allocation and once before
+  publication.
+- Concurrent PCG polls after the join, before error selection, publishes
+  through the bounded meter and polls before success.
+- Profiled builds reserve their record banks fallibly under the meter and
+  admit them with the build bound.
+
+The fereg repair, on the same branch after `b4b53577`, passes the host
+query to every explicit CMG stage named above, fills its own buffers in polled
+segments with a final checkpoint, names the cancelled stage in bounded-adapter
+errors, and propagates a cancelled setup or projection as `Interrupted`: the
+route witness found that the explicit route had retained a CMG cancellation as
+a setup failure (CG fallback for OLS, `NonConvergence` for unpolished PPML),
+which is now fixed. Production lines grow by 71 with scoped ratchet entries.
+
+Repair evidence (cloud; full output and real exit codes under
+`target/tmp/auto-routing/m3b-r1/logs`, not committed):
+
+- New CMG witnesses that fail on the reviewed gaps: a 200,000-leaf hub row
+  cancelled at segment k leaves exactly k×1024 terms summed (serial), and a
+  lane stops inside the hub row at its first poll with 65,536 terms; long
+  sparse and packed factor rows (scalar and interleaved) leave exactly the
+  earlier terms summed and otherwise equal `Iterator::sum` bit for bit; a
+  single 2^20-term reduction leaf polls 16 times inside the leaf, and the tree
+  is ceiling-independent; cancellation sweeps over team construction reach
+  contraction slot fill, mapping, compaction and the team sort, over plan
+  construction reach every CSR stage and publication, and over PCG banks,
+  interleaved workspaces, prepared topology and assembly and profiled builds
+  reach their fills and final polls, each followed by an exact rebuild;
+  concurrent and sequential PCG report cancellation at each of their last
+  three polls (join, publication, final) and a cancelled lane is not masked by
+  an earlier RHS's non-finite error; on an eight-thread pool with ceiling
+  three, initial graphs, contraction, plan, planned and interleaved cycles and
+  planned and concurrent PCG never exceed three concurrent lanes (and reach at
+  least two).
+- fereg witnesses: host cancellation sampled over the explicit OLS and
+  prepared PPML routes on four workers is `Interrupted` and reaches the team
+  sort, contraction mapping, workspace banks, prepared topology sort and
+  duplicate sort and fereg checkpoints, with exact bits afterwards; the
+  explicit `cmgschur` build and application reach plan CSR stages, plan
+  publication and batch workspaces; mid-cycle and mid-PCG cancellation recovers
+  exact bits; the 42 frozen adapter digests still match.
+- CMG: tests default 126, `parallel` 186, all features 243 (debug and
+  release), doc tests, frozen bits in eight configurations, Clippy for seven
+  feature sets, fmt, rustdoc and the benchmark crate pass. The first repair
+  matrix failed Clippy in every feature set (a needless range loop, a
+  recursion-only parameter and a test struct update); those logs are retained,
+  the fixes were made and the whole matrix was rerun.
+- fereg-core: 1,363 lib tests pass (3 ignored); fmt, Clippy and the complexity
+  ratchet pass. Earlier route-witness iterations that failed while their
+  sampling and expectations were corrected are retained.
+- Actual-plugin replay of the repaired candidate (`f7b40a9e...dfd68`) against
+  the post-M3a plugin: 73 of 73 exact; 46 derived explicit runs (including both
+  PPML bias modes at one and four workers) exact with identical setup traces;
+  75 injected two-FE runs exact with equal routes and no CMG build.
+- Final source boundary on the stable tree: `./scripts/run_tests.sh` passes
+  315 Python tests and fails at the expected installed-plugin binding check
+  (exit 1). `--source-only` (labelled source-only; installed-package admission
+  not performed) passes 322 Python tests, 1,951 Rust test executions in 84
+  groups (14 ignored), the allocator audits, the fuzz check, the portable
+  checks and the ratchet.
+
+Remaining cancellation limits: allocator, operating-system and join latency;
+per-row elementwise work proportional to the caller's fixed tile width (at
+most four in fereg); O(levels) layout and metadata loops polled only at their
+checkpoints; ordinary context-free CMG entry points and the owned-result
+`ParallelPcgSolver` methods remain unmetered by design and are unused by
+fereg's routes.
+
+Outstanding host checks (Codex): the native analytic h16 install/certification
+witness (the 75 injected cases built no CMG and cannot discharge it), six
+mapped Stata fixtures, builder and PPML Break, native Mac build and replay, and
+the Linux/Mac nonregression diagnostics. The team sort changed from Rayon's
+parallel sort to the counted introsort, so its timing belongs to those
+diagnostics; no performance claim is made from this cloud host.
 
 Identities are in [`cmg-m3b-20261020.json`](../bench/results/cmg-m3b-20261020.json).
 
