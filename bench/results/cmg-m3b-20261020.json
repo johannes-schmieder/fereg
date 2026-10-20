@@ -17088,5 +17088,47 @@
   "reason": "Linux nonregression not established in3of12cells. Scientific comparisons remain exact.",
   "next": "Diagnose scalar nonterminal CMG application overhead and implement arithmetic-preserving M3b repair. Preserve inner-work cancellation guarantees, failed observations and fixed qualification protocol. Report-and-stop for review before affected validation.",
   "authority": "Johannes authorized retries until Claude completes allmilestones; earlier retry prohibition/remaining repair count superseded. No scientific semantics/tolerance changes, sampling until performance pass, unchanged-candidate budget reset, public two-FE activation or M3c release."
+ },
+ "performance_repair": {
+  "status": "pending root review; Linux nonregression not yet re-established",
+  "source_cause": "second-repair lane tiling (row_lanes, CMG 004d1c4d) turned lane kernels into per-row callbacks with runtime lane ranges; under a polling meter jacobi/scale captured the width by reference with an escaped stack slot (shared with the parallel path), so the scalar loop reloaded it after every polled segment and did not vectorize; the edge-list product lost the input/output length equality (24 vs 20 instructions per edge)",
+  "repair": {
+   "cmg": "ccd7177fd6491421bab46de27bdb4d77eb2ee75c",
+   "fereg_pin": "ab8d69c",
+   "scope": "row_lanes passes whole counted row segments with every lane (one tile per row only above 1024 lanes) with inlined segment bodies; edge-list input resliced to output length; row operations capture width by value; counts, polls, tiles, order and bits unchanged"
+  },
+  "diagnostic": {
+   "workload": "200x200 weighted grid Laplacian, default options, levels [40000,14102,3452,1077,348], repeats [1,2,2,1,0], direct terminal; 200 scalar team-free applications; callgrind instructions inside the application entry",
+   "identities": {
+    "reference_cmg": "03a260411450dd2c1caaefffa3514ac78c0996d7",
+    "candidate_cmg": "efb5339459617b1aba99b34195240689deeab61c",
+    "repair_cmg": "ccd7177fd6491421bab46de27bdb4d77eb2ee75c"
+   },
+   "instructions": {
+    "reference": 2187517600,
+    "candidate_with_query": 3328178200,
+    "candidate_no_query": 2801377200,
+    "repair_with_query": 2300440800,
+    "repair_no_query": 2262586400
+   },
+   "bits": "identical first-output hash in every arm",
+   "runs": "3 declared arms plus 9 verification runs of the candidate under repair; diagnostic only, no timing claim",
+   "remaining_metered_difference": "restriction +40M, terminal per-row counting +30M of +40M, centering +13M, prolongation +13M"
+  },
+  "checks": {
+   "cmg": "27 matrix steps exit 0: fmt; tests default 131, parallel 194, all features 251 debug and release; frozen bits 8 configurations; clippy 7 feature sets; rustdoc; benchmark clippy/fmt",
+   "fereg": "fmt, clippy, ratchet pass; fereg-core lib 1,365 passed, 3 ignored",
+   "plugin_sha256": "2c751c49f6b38317468afb36c09130e8ed633b4e61a7e704de2420898f2e2cd7",
+   "actual_plugin_replay": "73 of 73 exact",
+   "derived_explicit_replay": "46 runs exact incl. both PPML bias modes at 1 and 4 workers, identical setup traces",
+   "injected_two_fe_replay": "75 runs exact, equal routes",
+   "run_tests_standard": "315 Python tests pass, then installed-plugin binding check fails (exit 1)",
+   "run_tests_source_only": "exit 0, labelled source-only: 322 Python, 1,954 Rust executions in 85 groups (14 ignored)"
+  },
+  "deleted_superseded_plugins": [
+   "5f9fd1ed14e3544bdd48424c7c18b2b072757d17f1282325f0297d3b5a8087d4",
+   "f7b40a9ed5f49affc1eedaa64295b6f56bb35a152d5977142b2411712f8dfd68",
+   "835ae095c4f92061541993d32c72e892094e7d67398723e4e725a804df27bbc6"
+  ]
  }
 }

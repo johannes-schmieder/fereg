@@ -33,7 +33,8 @@ review repair (fereg `5ba16717`, CMG `b9f2585a`) were rejected by Codex review
 on 2026-10-20. The second repair, prepared-publication follow-up and test
 repairs now pass source review and source/native checks. Mac passes all 12
 nonregression bounds; Linux passes nine, fails two and leaves one inconclusive.
-M3b remains unaccepted and M3c is not started.** M3b is a behaviour-preserving
+A scalar lane-kernel performance repair (CMG `ccd7177f`, below) awaits root
+review. M3b remains unaccepted and M3c is not started.** M3b is a behaviour-preserving
 consolidation. The first handoff pinned CMG
 `c6f9e8224503273a20b47cf42ec8bc09d50fefd9`
 (`69862653ed5d4815c05fe85a91c8b625626f3e3c` freezes pre-consolidation digests,
@@ -672,6 +673,84 @@ arithmetic-preserving M3b performance repair, followed by review and applicable
 validation on the changed artifact. This panel remains failed. No unchanged
 candidate resampling, timing-budget reset, tolerance change, public two-FE
 activation or M3c release follows from it.
+
+### Scalar lane-kernel performance repair (pending root review)
+
+Source cause. The second review repair's lane tiling (`row_lanes`, CMG
+`004d1c4d`) changed the codegen shape of every lane kernel the Auto scalar
+cycle uses, without changing its work or arithmetic. Three effects compound:
+(1) every row or edge became a callback with a runtime lane range, so the
+narrow (width one) loops lost their slice-iterator form; (2) under a polling
+meter the row operations of `jacobi` and `scale` captured the width by
+reference; the same closure reaches the out-of-line parallel row path, so the
+stack slot's address escaped and the serial loop reloaded the width after every
+polled segment (the meter's opaque query call intervenes), which kept the
+scalar row loops from specializing and vectorizing; and (3) the edge-list
+product no longer carried the input/output length equality that the M3a
+kernel's dimension checks provided, so each edge paid two extra bounds checks
+(24 instructions per edge against 20).
+
+Bounded diagnostic (declared before execution; cloud instruction counts with
+callgrind, diagnostic only, no timing claim). Workload: a 200x200 weighted
+grid Laplacian with default options (levels 40,000/14,102/3,452/1,077/348
+vertices, repeats 1,2,2,1, direct terminal), 200 scalar team-free applications
+of one compatible right-hand side, instructions counted inside the application
+entry only. Arms: reference CMG `03a26041` (`apply_compatible_into`, the
+post-M3a Auto call), candidate `efb53394` with a never-true query (Auto today)
+and without a query. Each application runs 19 edge-list products over 321,561
+edges in every arm, and every arm's output bits are identical.
+
+| Arm | With query | Without query |
+|---|---:|---:|
+| reference `03a26041` | 2,187,517,600 | — |
+| candidate `efb53394` | 3,328,178,200 (+52.1%) | 2,801,377,200 (+28.1%) |
+| repair `ccd7177f` | 2,300,440,800 (+5.2%) | 2,262,586,400 (+3.4%) |
+
+Three declared arms and nine verification runs of the candidate under repair
+were used (intermediate steps retained in the summary). The remaining metered
+difference is restriction (+40 million), the terminal solve's required per-row
+counting (+30 million of +40 million), centering and prolongation (+13 million
+each). Whether the repair removes the Linux excess is for root's fixed panels on
+the changed artifact.
+
+Repair, CMG `ccd7177fd6491421bab46de27bdb4d77eb2ee75c` (one maintained
+implementation per kernel; counts, polls, lane tiles, operation order,
+hierarchies, factors, repeats and bits unchanged): `row_lanes` hands kernels
+whole counted segments of rows with every lane (one lane tile per row only for
+batches wider than 1024 lanes) and its segment bodies are inlined, so the
+constant scalar width reaches each loop under a polling meter; the edge-list
+product reslices its input to the output's length; row operations capture the
+width by value. fereg `ab8d69c` pins it (manifest and both lockfiles).
+
+Validation (cloud; full output and real exit codes under
+`target/tmp/auto-routing/m3b-perf/logs`, not committed):
+
+- CMG: all 27 matrix steps exit 0 — fmt; tests default 131, `parallel` 194
+  and all features 251 in debug and release (including the many-leaf,
+  wide-lane, prepared tail, owned-copy and cancellation witnesses); frozen bits
+  in eight feature/profile configurations; Clippy `-D warnings` for seven
+  feature sets; rustdoc; benchmark crate Clippy and fmt.
+- fereg: fmt, Clippy and the complexity ratchet (no production change) pass;
+  1,365 fereg-core lib tests pass (3 ignored), including the 42 frozen W1/W4
+  adapter digests, route cancellation witnesses and fatal-classification
+  witnesses.
+- Actual-plugin replay of the repaired candidate (`2c751c49...2cd7`) against
+  the post-M3a plugin: 73 of 73 exact; 46 derived explicit OLS/PPML runs
+  (including both PPML bias modes at one and four workers) exact with
+  identical setup traces; 75 injected two-FE runs exact with equal routes.
+- Standard `./scripts/run_tests.sh`: 315 Python tests pass, then the
+  installed-plugin binding check fails (exit 1), as on every M3b handoff.
+  `--source-only` (labelled source-only; installed-package admission not
+  performed) passes 322 Python tests, 1,954 Rust test executions in 85 groups
+  (14 ignored), the allocator audits, the fuzz check, the portable checks and
+  the ratchet.
+
+Limits: instruction counts on one synthetic fixture are not the Linux wall-time
+regression and do not establish nonregression; the cloud host makes no timing
+claim; root owns the fixed Linux/Mac panels, the analytic h16 install, native
+Break and fixture checks on the changed artifact. Superseded cloud candidate
+plugins (`5f9fd1ed`, `f7b40a9e`, `835ae095`) were deleted after their hashes
+were recorded here and in the results file.
 
 ## CMG successor milestone 3a: construction-work cap removed
 
