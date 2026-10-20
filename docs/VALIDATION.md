@@ -28,7 +28,8 @@ were deleted; hashes and summaries are the remaining record.
 
 ## CMG successor milestone 3d: worker-independent team arithmetic
 
-**Cloud handoff pending independent review; not self-accepted.** M3d starts
+**Independent source/native review and the fixed host round are complete; M3d
+remains unaccepted pending the disclosed representation-scope decision.** M3d starts
 from the accepted M3c pair (fereg `27fa40cd`, tested source `71092c38`,
 production correction `c89ab124`; CMG `82ae1c86`, production `65bd817a`),
 including the root R1 lookup correction and the cross-thread allocation
@@ -91,8 +92,8 @@ Declared before the edits:
   oracle and the full-FE certificate. Explicit OLS/PPML replay in both bias
   modes.
 
-Validation reported by Claude (cloud; full logs, commands and real exits
-under `target/tmp/auto-routing/m3d/logs` until review):
+Validation reported by Claude (cloud; commands, exits, log hashes and compact
+outcomes are retained in the result record):
 
 - CMG `35a095f3`: the 27-step matrix runs on the final source. fmt, tests
   (default 131, `parallel` 200, all features 257, each in debug and release),
@@ -144,11 +145,11 @@ under `target/tmp/auto-routing/m3d/logs` until review):
   installed-plugin binding check fails (exit 1). `--source-only` (labelled
   source-only; installed-package admission not performed) passes 322 Python
   tests, 1,965 Rust test executions in 83 summary groups (14 ignored), the
-  allocator audits, the fuzz check, the portable checks and the ratchet. My
-  earlier handoffs counted line-anchored summaries and could undercount
+  allocator audits, the fuzz check, the portable checks and the ratchet. Earlier
+  cloud handoffs counted line-anchored summaries and could undercount
   interleaved child summaries, as root corrected for M3c.
 
-Limits:
+Cloud handoff limits (before root review and the host round below):
 
 - No timing, panel or profile ran. One-worker and serial-mode explicit
   solves above the threshold now run the fixed-chunk tree on one lane
@@ -178,8 +179,8 @@ CMG release/all-features passes 257 executions in 39 groups. The standard entryp
 still fails at installed-package binding after 315 Python tests (exit 1).
 Production comparison to the handoff confirms 192 runtime modules and 58 artifact
 inputs unchanged. Exact commands, durations, hashes, review findings and limits
-are in the M3d result record. Native qualification and final scope/performance
-acceptance remain pending; prior milestone exceptions do not accept M3d.
+are in the M3d result record. This source checkpoint preceded the native and
+host round below; prior milestone exceptions do not accept M3d.
 
 A supplemental test-only extension reuses the 72,000-worker/70,000-firm,
 360,000-row fixture for two prepared weight frames at W1/W4. Four projections
@@ -192,6 +193,63 @@ nuisance block. This is prepared/reweighted control-seed coverage, not an
 above-floor end-to-end PPML or bias claim. Production and artifact inputs are
 unchanged; the fixed native candidate remains c283b3ff. The exact tested overlay
 hash and execution are recorded separately from that native-source identity.
+
+Root M3d native and fixed host round (2026-10-20). The measured source is
+fereg `c283b3ff3839bdf955cc749b54e9674c74e9001c` with CMG `35a095f3`;
+`7a769eea` adds the prepared control-seed test and its evidence without changing
+192 runtime modules or 58 artifact inputs. Rust 1.85.1 locked release builds
+have actual Mac SHA-256 `21c9fb801eed54de5952b31b4c0ec52c5e568e472654a54d35c19997496c716e`
+and Linux SHA-256 `d62e9ee8858ba901465938f2336b198c636dc558196d0727533dcd1e27b5d515`.
+Both are compared with the actual qualified M3c binaries, not the cloud builds.
+Binary audits and actual ABI/load/panic checks pass on each platform; the Linux
+portable frozen-adapter witness also passes.
+
+All six mapped Stata fixtures, 73 exact Mac replays, and 16 explicit CMG PPML
+calls (both bias modes, W1/W4, both arms, two repeats) pass. Native builder Break
+checks cover W2/W4 twice each at the first actual task/ordinal plus recovery;
+the five PPML Break markers and rollback/recovery pass. Separate actual-work
+unit tests cover deep inner bounds. Linux's 42-cell, 168-call audit is exact,
+with maximum output difference zero and the same six iteration-16 CMG
+installation cells in both arms. Build `8218899`, preparation `8219509` and
+all three tasks of `8219510` have complete failed=0/exit=0 accounting and
+application success markers.
+
+The fixed complete-call `NATIVE_SECONDS` panel passes 12/12 Mac and 12/12 Linux
+nonregression bounds against max(5%, 1 ms). Mac used 312 calls on the active
+desktop; Linux used 720 calls in six isolated 28-core allocations (jobs
+`8219571`–`8219576`, report `8219577`). All 1,032 calls preserve exact science
+and solver signatures, including fixed-worker repeats and the applicable
+cross-worker checks. No observations were discarded and no timing retries or
+additional sampling occurred. Independent reviewers reconstructed timers,
+schedules, intervals, science evidence and host observations; exact review
+coverage and limits are recorded in the JSON. All seven Linux panel/report
+accounting records have failed=0/exit=0 and their application markers.
+
+This establishes the fixed Auto nonregression comparison. It is not an
+above-threshold explicit CMG/PPML performance claim: these complete instrumented
+solves include tracing and do not measure isolated kernels or an uninstrumented
+release. Six Linux host units do not prove independence; intervals are per cell,
+not simultaneous across twelve. Changed arithmetic is covered by the above-floor
+OLS and prepared control-seed witnesses and lower-level CMG tests. Above-floor
+end-to-end PPML/bias and explicit CMGSchur remain outside native coverage.
+The standard installed-package binding failure remains; release packages and
+public two-FE activation are unchanged.
+
+The root record preserves the earlier failed cloud attempts, helper-reference
+substitution repair, an audit-log reader corrected to the observed
+`NATIVE_SECONDS=` format, and a login-shell Python 3.6 submission failure before
+any job was created. Loading the declared Python 3.12.4 module resolved the last
+failure; no native calls or timing observations were repeated. A pre-freeze host
+substitution avoided an already occupied node and did not use timing outcomes.
+Commands, real exits, identities, compact observations and reviews are retained
+in `root_review` and `root_host_validation`; raw task captures are temporary.
+
+Final scope acceptance is pending: CMG arithmetic is independent of worker
+count and solve mode for identical supplied inputs and fixed options/thresholds,
+while row-operator storage remains worker-dependent and bit-neutral. Optional
+Auto RHS batching was not taken. Johannes must decide that disclosed scope
+before whole-program completion; there is no active monitor and no further
+sampling of this fixed candidate.
 
 ## CMG successor milestone 3c: parallel construction on the host team
 
