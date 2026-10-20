@@ -30,9 +30,10 @@ were deleted; hashes and summaries are the remaining record.
 
 **The first cloud handoff (fereg `b4b53577`, CMG `c6f9e822`) and the first
 review repair (fereg `5ba16717`, CMG `b9f2585a`) were rejected by Codex review
-on 2026-10-20. The second repair and prepared-publication follow-up passed
-source review, but local Mac source integration failed two tests. M3b remains
-unaccepted and M3c is not started.** M3b is a behaviour-preserving
+on 2026-10-20. The second repair, prepared-publication follow-up and test
+repairs now pass source review and source/native checks. Mac passes all 12
+nonregression bounds; Linux passes nine, fails two and leaves one inconclusive.
+M3b remains unaccepted and M3c is not started.** M3b is a behaviour-preserving
 consolidation. The first handoff pinned CMG
 `c6f9e8224503273a20b47cf42ec8bc09d50fefd9`
 (`69862653ed5d4815c05fe85a91c8b625626f3e3c` freezes pre-consolidation digests,
@@ -565,6 +566,112 @@ checks, the complexity ratchet, mock bridge and numeric guards. The core group
 passed 1,365 tests with three ignored, including both repaired tests. Linux
 mock-plugin audit was skipped on Mac; installed-package admission was explicitly
 omitted. M3b remains unaccepted pending the actual native and host checks.
+
+### Root host validation and Linux nonregression failure
+
+The reviewed candidate is fereg
+`2073c21a5ec07c7d56cdcd4d0a2d7d778518f27d`, pinning CMG
+`efb5339459617b1aba99b34195240689deeab61c` in the manifest and both lockfiles.
+Its production tokens and artifact inputs equal `dad54c11`; the intervening
+repair changes tests and documentation. The comparison is accepted M3a
+`e9efda55` (measured production `d33a1575`) with CMG `03a26041`.
+The source archive SHA-256 is
+`9b259921ad4b235e4e8427ec8d343ba477c8784a6438335b22b5423f8da85504`.
+The compact JSON linked above records full artifact identities, check hashes,
+all 1,032 timing observations, uncertainty summaries and scheduler accounting.
+Ignored working captures are not retained committed evidence.
+
+The actual universal Mac plugin, SHA-256
+`a8acfffd3787d9eb50b1a52f3e6ee175d70403fb2a67be13be9343daa62de960`,
+passes binary audit, ABI/load and panic containment. All six mapped Stata
+fixtures pass. Builder Break at W2 and W4 passes twice each at task 0,
+ordinal 0, with follow-up fits; this covers the first actual builder poll,
+not every interior construction point. Public PPML Break passes its five
+armed markers and transaction recovery. The runners' final process status
+`-15` is their intentional shutdown after the fixtures pass. Mac replay is
+exact on all 73 retained cases against the accepted M3a plugin. A separate
+16-call explicit-CMG PPML check covers exact/randomized bias, W1/W4, both
+artifacts and two repeats: selected CMG, independent numerical checks,
+fixed-worker repeats and paired science/signatures all pass.
+
+The final source integration includes the actual analytic uncapped h16
+build/install/certification witness. Root additionally ran nine focused CMG
+tests on the final pin with Rust 1.85.1, all features and the release profile:
+many-leaf PCG and centering reductions, late owned-result copy, wide CSR/LDL
+lane tiles, serial/planned wide cycles and cycle/PCG joins all pass. These
+actual-inner-work witnesses remain distinct from sampled host-query coverage
+and native first-poll Break checks. The initial driver stopped after one
+filter matched two passing CSR/LDL tests instead of one; completed tests were
+not repeated, and the four remaining commands passed.
+
+SCC build job 8203375 passes the portable 42-configuration frozen witness,
+locked release build, actual ABI/load/panic and numeric guards. Its plugin
+SHA-256 is
+`6c6973be1a0bb2a276d7b2fedb6051f74f45af67f1c1288c06e5d94c0da354b6`.
+The audit preparation job 8203392 and three tasks of 8203393 have successful
+application results and zero failure/exit accounting. All 42 routing cells
+match exactly over 168 calls, including the same six h16 CMG installations
+in both arms; maximum paired output difference is zero. Cross-worker checks
+cover scientific agreement and discrete/hierarchy decisions, not every
+iteration count or output bit.
+
+The Mac plan was frozen before timing (SHA-256
+`de96ba1c43f9ca7bac7dbda21a702a05d1ff54d09366e2c53d904f1bbf18cb23`).
+All 312 calls completed: 12 cells, one warmup per arm and six mirrored
+blocks per cell, with no discarded cells or replacements. All 12
+max(5%, 1 ms) upper excess bounds pass. Independent review recomputed those
+bounds, verified the schedule, artifact/log bindings and 49 process samples;
+maximum observation gap was 5.23 seconds. Ordinary desktop noise remains
+included. These are six blocks on one desktop, not six independent hosts.
+The initial sandboxed observer failed at `ps` before any native call; the
+same plan ran once with the required observation access, retaining that
+zero-call startup failure.
+
+The Linux plan was also frozen before timing (SHA-256
+`4e91cb8f2798dde8079ff554ad62dc319f85779798774a008ab70e269315c42d`).
+Jobs 8203413–8203418 each completed 120 calls on a distinct observed,
+isolated 28-core host; report job 8203419 rechecked the retained science,
+logs and observations. All seven jobs have zero failure/exit accounting.
+No observations were removed or repeated. The initial submission helper
+failed under system Python 3.6 before submitting a job; loading the declared
+Python 3.12.4 module fixed submission without consuming measurements.
+
+Nine Linux cells pass. The remaining comparisons are:
+
+| Cell | Candidate/reference median | Per-cell ratio interval | Upper excess over allowance | Result |
+| --- | ---: | ---: | ---: | --- |
+| high-degree weak, W4 | 1.05512 | [1.05168, 1.05967] | +3.597 ms | regression |
+| high-degree weak, W8 | 1.06738 | [1.05425, 1.07301] | +7.512 ms | regression |
+| weak low, W4 | 0.99952 | [0.96732, 1.10203] | +6.118 ms | inconclusive |
+
+All 720 Linux calls passed independent science and fixed-worker repeat
+checks; paired science and workflow remain exact. Whole-process instruction
+ratios on the high-degree family are about 1.018 across worker counts.
+Other instruction medians are near one. These instrumented complete solves
+include parsing/tracing costs; they do not establish uninstrumented release
+speed or a material control-cost reduction. Linux uncertainty uses six host
+units with two mirrored blocks each. Distinct hosts do not prove independence,
+and neither platform's per-cell intervals provide simultaneous 12-cell coverage.
+
+Independent bounded Astra review reproduced all 12 Linux bounds and checked
+the 720 log hashes, native timers, traces, repeat signatures, reservations,
+censuses and process coverage. The useful diagnostic signal is high-degree
+weak's aggregate Schur recurrence phase: about 9–10 ms in the reference and
+30 ms in the candidate at W1/W4/W8, with approximately 313 million additional
+whole-harness instructions. Hierarchy, iterations and repeats match. This
+points toward the scalar nonterminal application path (Auto uses no CMG team
+and the edge-list operator), but does not establish a precise source cause.
+The largest weak-low W4 block ratio is about 1.198 on `scc-xa4`; no recorded
+interference permits excluding it.
+
+M3b remains unaccepted because Linux nonregression is not established.
+The standard entrypoint's installed-package binding failure also remains
+failed; release packages were intentionally not updated, and private native
+checks are separate evidence. The next authorized work is diagnosis and an
+arithmetic-preserving M3b performance repair, followed by review and applicable
+validation on the changed artifact. This panel remains failed. No unchanged
+candidate resampling, timing-budget reset, tolerance change, public two-FE
+activation or M3c release follows from it.
 
 ## CMG successor milestone 3a: construction-work cap removed
 
