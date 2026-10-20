@@ -1,0 +1,269 @@
+{
+ "milestone": "M3c cloud handoff: parallel construction census, emission, contraction and forest work on the host team; pending independent review, not self-accepted",
+ "date": "2026-10-20",
+ "revisions": {
+  "fereg_base": "b9cc6b752b40abaf688e941fdb1def1059b2ba54 (accepted M3b source 671239d4 plus records)",
+  "cmg_base": "ccd7177fd6491421bab46de27bdb4d77eb2ee75c",
+  "cmg_forest": "65bd817a70f7e9d220d450160ac642a3cf9c7023",
+  "cmg_pin": "8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9 (65bd817a plus a test-only witness fix)"
+ },
+ "host": "Linux cloud container; source, unit and actual-plugin replay checks only. No timing, panel or profile.",
+ "plugins": {
+  "candidate_sha256": "f9214488f4bf7e639dd1f6b0c8bcf36c3acdd3f8f3f11f081e8098caa5a9cb3b",
+  "baseline_accepted_m3b_sha256": "2c751c49f6b38317468afb36c09130e8ed633b4e61a7e704de2420898f2e2cd7"
+ },
+ "steps": {
+  "cmg": {
+   "130-cmg-frozen-parallel": {
+    "exit": 0,
+    "tests_passed": 1
+   },
+   "131-cmg-frozen-parallelrelease": {
+    "exit": 0,
+    "tests_passed": 1
+   },
+   "132-cmg-frozen-experimentalcomponents": {
+    "exit": 0,
+    "tests_passed": 1
+   },
+   "133-cmg-frozen-experimentalcomponentsrelease": {
+    "exit": 0,
+    "tests_passed": 1
+   },
+   "134-cmg-frozen-parallel+experimentalcomponents": {
+    "exit": 0,
+    "tests_passed": 1
+   },
+   "135-cmg-frozen-parallel+experimentalcomponentsrelease": {
+    "exit": 0,
+    "tests_passed": 1
+   },
+   "136-cmg-frozen-parallel+profiling": {
+    "exit": 0,
+    "tests_passed": 1
+   },
+   "137-cmg-frozen-parallel+profilingrelease": {
+    "exit": 0,
+    "tests_passed": 1
+   },
+   "140-cmg-clippy-none": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "141-cmg-clippy-parallel": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "142-cmg-clippy-experimental-components": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "143-cmg-clippy-profiling": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "144-cmg-clippy-cycle-profiling": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "145-cmg-clippy-parallel+experimental-components": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "320-cmg-fmt-check": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "321-cmg-test-default": {
+    "exit": 0,
+    "tests_passed": 131
+   },
+   "322-cmg-test-parallel": {
+    "exit": 0,
+    "tests_passed": 197
+   },
+   "323-cmg-test-all-features": {
+    "exit": 0,
+    "tests_passed": 254
+   },
+   "324-cmg-test-release": {
+    "exit": 0,
+    "tests_passed": 131
+   },
+   "325-cmg-test-all-features-release": {
+    "exit": 0,
+    "tests_passed": 254
+   },
+   "326-cmg-doctest-all-features": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "327-cmg-test-parallel-release": {
+    "exit": 0,
+    "tests_passed": 197
+   },
+   "346-cmg-clippy-all": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "347-cmg-doc": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "348-cmg-bench-clippy-default": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "349-cmg-bench-clippy-all": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "350-cmg-bench-fmt-check": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "360-cmg-fmt-check": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "361-cmg-clippy-parallel": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "362-cmg-clippy-all": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "363-cmg-clippy-none": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "364-cmg-test-parallel": {
+    "exit": 0,
+    "tests_passed": 197
+   },
+   "365-cmg-test-all-features": {
+    "exit": 0,
+    "tests_passed": 254
+   },
+   "366-cmg-test-parallel-release": {
+    "exit": 0,
+    "tests_passed": 197
+   }
+  },
+  "fereg": {
+   "60-fereg-complexity": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "61-fereg-fmt-check": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "62-fereg-clippy": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "63-fereg-core-lib": {
+    "exit": 0,
+    "tests_passed": 1384
+   },
+   "64-candidate-plugin-build": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "65-replay-vs-m3b": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "66-derived-explicit": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "67-injected-two-fe": {
+    "exit": 0,
+    "tests_passed": 0
+   },
+   "70-run-tests-standard": {
+    "exit": 1,
+    "tests_passed": 0
+   },
+   "71-run-tests-source-only": {
+    "exit": 0,
+    "tests_passed": 1961
+   }
+  },
+  "mutations": {
+   "400-mut-f1-forest-rows": {
+    "exit": 101,
+    "expected": "nonzero"
+   },
+   "401-mut-f2_lane_poll": {
+    "exit": 101,
+    "expected": "nonzero"
+   },
+   "402-mut-f3_census_last_failure": {
+    "exit": 101,
+    "expected": "nonzero"
+   },
+   "403-mut-f4_auto_ignores_fits": {
+    "exit": 101,
+    "expected": "nonzero"
+   },
+   "405-mut-f5_failed_row_start": {
+    "exit": 101,
+    "expected": "nonzero"
+   }
+  }
+ },
+ "declared_scope": {
+  "affected_paths": [
+   "CMG heavy-forest selection on the build's team (all team builds: explicit cmgschur, explicit OLS/PPML cmg, automatic upgrade)",
+   "fereg bounded Schur adapter: cached census, sampled-row preparation and emission offsets on the borrowed team",
+   "automatic upgrade hierarchy on the team when the parallel construction bound fits after live parents"
+  ],
+  "unchanged": "arithmetic and emission/reduction order, hierarchies, factors, repeats, representations, solver signatures; iteration 16, cutoff 5, one sampled tree, seed 0, eligibility, small-direct criterion, native limits, memory/resource semantics, certification, restart, fallback; Auto Never/width 1, explicit Eligible/width 4",
+  "independent_witnesses": [
+   "serial-vs-team forest parents/weights at ceilings 1-8 (u32 and usize indices) and hierarchies",
+   "serial-vs-team census, emission and graph at 1/2/4/8 lanes, samples 0/1/3, 60,000-cell worker",
+   "earliest failing worker across census tasks with distinct census-detected errors",
+   "refused task tables select the serial stage with identical bits",
+   "automatic hierarchy team vs serial: identical hierarchy, repeats, labels and application bits; tight budget keeps the serial bound",
+   "lane cancellation inside one long row and inside a 199,999-entry hub row; lanes join; exact rebuild",
+   "42 frozen W1/W4 pre-consolidation adapter digests",
+   "actual-plugin replay against the accepted M3b cloud plugin"
+  ]
+ },
+ "replay": {
+  "actual_plugin": "73 of 73 cases exact, no science error, against 2c751c49 (accepted M3b cloud plugin)",
+  "derived_explicit": "46 runs (cmgschur 1/4 workers, sampled, degree 4; cmg 4 workers; PPML cmg exact/randomized bias at 1/4 workers): zero exact, discrete and repeat differences; identical setup traces; 5 unsupported cmgschur inputs return 198 on both; every row equals the accepted M3b run",
+  "injected_two_fe": "75 runs (routing_incremental_two, routing_h4_k1, routing_direct): zero exact differences, equal routes; known-defect fixture notes identical; every row equals the accepted M3b run"
+ },
+ "defects_found_before_commit": [
+  "team census lane failure: compaction stopped before writing the failing worker's row start, so the census read the preceding row with a stale end and panicked; fixed (failing worker's start closes the preceding row); mutation f5 shows the witness detects it",
+  "hub-row forest witness never reached a lane (stops fired in the serial incoming-index polls); replaced by lane-progress thresholds (CMG 8fafe5a7, test-only)",
+  "earliest-failure witness used inputs rejected before the census; replaced with census-detected failures (out-of-range firm, scaled-weight underflow) in different tasks",
+  "explicit cmgschur poll witness grid missed the single plan publication checkpoint after the poll schedule shifted; dense window between plan and workspace stops added, requirement unchanged"
+ ],
+ "limitations": [
+  "No timing, panel or profile; no performance claim. Remaining serial passes bound the gain: forest incoming-index count/scatter O(m), census task planning and worker-order compaction copy O(N) (also paid by a one-worker team), union-find and canonical graph merge.",
+  "Replay fixtures are below the 65,536-item team thresholds; team census/preparation/forest are witnessed by unit tests on synthetic fixtures only.",
+  "Explicit cmgschur keeps the uncached census (serial census and emission); enabling the cache would raise its admitted peak and needs a decision.",
+  "A long census row is sorted by one lane (counted, polled), not split by merge passes; no ping-pong bank.",
+  "Invalid mutation runs (weak or unreached witnesses, copies without the new module, pre-fix source) retained separately and not counted.",
+  "Logs retained under target/tmp/auto-routing/m3c/logs in the cloud session until review; not committed."
+ ],
+ "outstanding_host_checks": [
+  "Root: independent source review; native Break and mapped fixtures; 42-cell scientific and transaction checks; Linux/Mac panels on the changed artifact.",
+  "Standard ./scripts/run_tests.sh fails at the installed-package binding check after 315 Python tests, as on every M3b handoff; release packages intentionally untouched."
+ ],
+ "outstanding_decisions": [
+  "Whether explicit cmgschur should use the canonical cache (team census and emission) at the cost of a higher admitted peak.",
+  "Whether a one-worker team should skip the team census (saves the compaction copy, but makes the stage decision depend on the worker count)."
+ ],
+ "run_tests": {
+  "standard": "exit 1: 315 Python tests pass, then the installed-plugin binding check fails (main runtime changed), as on every M3b handoff",
+  "source_only": "exit 0 (labelled source-only; installed-package admission not performed): 322 Python tests, 1,961 Rust test executions in 86 groups (14 ignored), allocator audits, fuzz check, portable checks, ratchet"
+ },
+ "complexity": "fereg-core 104,701 -> 105,148 production lines and 1,354 -> 1,365 dispatch candidates (declared growth); no new file over 1,500 or function over 150 lines; team stages in fe/cmg_schur/bounded/team.rs"
+}

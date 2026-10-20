@@ -26,6 +26,166 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## CMG successor milestone 3c: parallel construction on the host team
+
+**Cloud handoff pending independent review; not self-accepted.** M3c starts
+from the accepted M3b pair (fereg `b9cc6b75`, i.e. source `671239d4` plus
+records, with CMG `ccd7177f`). It pins CMG
+`8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9`: `65bd817a` adds team forest
+selection, and `8fafe5a7` makes its hub-row cancellation witness reach the
+lanes (test-only). Root owns the source review, the native, scientific,
+transaction and 42-cell checks and the Linux/Mac panels. No host panel or
+profile ran in the cloud, and no timing claim is made.
+
+Declared before the edits. Affected paths:
+
+- CMG heavy-forest selection on the build's team, which reaches every team
+  build: explicit `cmgschur`, explicit OLS and PPML `cmg`, and now the
+  automatic upgrade.
+- fereg's bounded Schur adapter: the cached census, sampled-row suffix
+  preparation, emission offsets, and the automatic hierarchy on the team.
+
+Unchanged: arithmetic and emission/reduction order, hierarchies, factors,
+repeats, representations and solver signatures. Iteration 16, cutoff 5, one
+sampled tree, seed 0, Auto eligibility, the small-direct criterion, native
+limits, certification, restart, fallback, Auto `Never`/width 1 and explicit
+`Eligible`/width 4 are also unchanged. Independent witnesses: serial-vs-team
+forest parents, weights and hierarchies; serial-vs-team census, emission and
+graph; earliest-failure equality; refusal-to-serial bit identity; Auto
+team-vs-serial hierarchy and application bits; lane-level cancellation; the
+42 frozen W1/W4 adapter digests; and actual-plugin replay against the accepted
+M3b plugin.
+
+Implementation:
+
+- CMG `heavy_forest` uses a row-owned team path with the build's team on
+  levels with at least 65,536 directed entries and more than 1.5 edges per
+  vertex. A counted serial pass gathers incoming edges into a transient index
+  (row starts plus one `u32` or `usize` per edge). The path runs only when the
+  index is no larger than the contraction slot bank that the parallel
+  construction bound already adds to the serial forest scratch, so admission
+  and peak are unchanged. Lanes own fixed 4,096-vertex blocks through a
+  paired dispatcher on the existing claim loop and count every scanned entry,
+  inside a hub row too. Selection is a maximum under a total order (weight,
+  then lowest neighbor), so parents and weights equal the serial scan at any
+  ceiling.
+- fereg census with the canonical cache (the automatic route) and at least
+  65,536 observations: consecutive workers form tasks of at least 4,096 raw
+  cells (a longer row is its own task). Each task fills, sorts (counted
+  heapsort), deduplicates (Neumaier) and totals its rows in its own range of
+  the admitted cache bank. Lane counters use the serial units and the
+  65,536-unit cadence and poll inside a single long row. After the join, rows
+  are compacted in worker order into the serial census's exact layout, and
+  the earliest failing worker's error is returned, as the serial census
+  reports it. The decision depends on item counts, never on the worker count
+  (a one-worker team runs the same tasks).
+- Sampled-row preparation (sort by weight, suffix masses) runs in the same
+  kind of task on the team. Edge emission locates each chunk's first worker
+  by binary search over prefix offsets instead of the serial placeholder
+  pre-pass.
+- Only the census and preparation task tables and the offsets are new
+  scratch. They are admitted; a refusal selects the serial stage before any
+  numerical write.
+- The automatic upgrade builds its hierarchy on the team whenever the
+  parallel construction bound fits after the live parents (checked without
+  recording). Otherwise it admits and builds under the serial bound, as
+  before. Both build identical hierarchies.
+- Explicit `cmgschur` keeps its uncached two-pass census, so its census and
+  emission stay serial; its hierarchy already used the team.
+- The team stages live in `fe/cmg_schur/bounded/team.rs`. The heapsort and
+  row loader are shared with the serial census, and `Work::sort` is removed.
+
+Witness repairs and a defect found before commit:
+
+- The first hub-row forest witness stopped at the first host polls. These
+  belong to the serial incoming-index pass, so the witness never reached a
+  lane, and a mutation that scans team rows unmetered still passed. Its query
+  now turns true after the lanes have scanned 1, 20,000 or 100,000 entries.
+  Lane 0 starts in the 199,999-entry hub row, and every lane must stop within
+  one poll interval plus one bounded segment and the row-block slack (CMG
+  `8fafe5a7`, test-only).
+- The first earliest-failure witness used nonfinite and nonpositive weights.
+  The adapter rejects these before the census, so no lane ever failed. The
+  replacement uses the two failures the census itself detects: an
+  out-of-range firm, and a positive weight that underflows after scaling. It
+  places them, with different messages, in different census tasks in both
+  orders. This exposed a real defect in the uncommitted team census: on a
+  lane failure, compaction stopped before writing the failing worker's row
+  start. The census then read the preceding row with a stale end and
+  panicked instead of returning the error. The failing worker's start now
+  closes the preceding row. The unrepaired code fails the new witness with
+  the slice panic (mutation f5).
+- The explicit `cmgschur` build/application poll witness requires the single
+  `plan publication` checkpoint. Its 400-stop grid (step 2) no longer landed
+  on it after the counted serial row loader shifted the poll schedule. The
+  witness now also visits every stop between the first sampled plan stop and
+  the first sampled workspace stop. The requirement is unchanged.
+
+Validation reported by Claude (cloud; compact outcomes; full logs and real
+exit codes under `target/tmp/auto-routing/m3c/logs` until review):
+
+- CMG `65bd817a`: all 27 matrix steps exit 0. These are fmt; tests (default
+  131, `parallel` 197, all features 254, each in debug and release); frozen
+  bits in eight feature/profile configurations; Clippy `-D warnings` for
+  seven feature sets; rustdoc; benchmark crate Clippy and fmt. The crate has
+  no doctests. After the test-only `8fafe5a7`: fmt, Clippy (none, `parallel`,
+  all features) and tests (`parallel` 197 debug and release, all features
+  254) exit 0.
+- Mutations on scratch copies (expected nonzero; all exit 101): f1 team
+  forest rows unmetered; f2 fereg lane counters never poll; f3 team census
+  reports the last failing task; f4 automatic build ignores the parallel
+  bound fit; f5 failing worker's row start not written. Each fails its named
+  witness. Earlier runs of f1 (weak witness), f3 (weak and unreached
+  witnesses) and f2–f4 (on copies without the new module file, or on the
+  pre-fix source) are retained separately as invalid, not as evidence.
+- fereg on the pinned tree: complexity ratchet (declared growth
+  104,701 → 105,148 production lines and 1,354 → 1,365 dispatch candidates;
+  no file over 1,500 lines and no function over 150 added), fmt, Clippy
+  `-D warnings` and 1,371 fereg-core lib tests (3 ignored) pass. These
+  include the 42 frozen W1/W4 adapter digests and the team-stage, route
+  cancellation and fatal-classification witnesses.
+- Actual-plugin replay of the candidate (`f9214488...cb3b`) against the
+  accepted M3b cloud plugin (`2c751c49...2cd7`): 73 of 73 cases exact with
+  no science error. 46 derived explicit runs (`cmgschur` at 1/4 workers,
+  sampled and degree-4 variants; `cmg` at 4 workers; PPML `cmg` with exact
+  and randomized bias at 1/4 workers): no exact, discrete or repeat
+  differences, identical setup traces. The 5 unsupported `cmgschur` inputs
+  return 198 on both plugins. 75 injected two-FE runs (`routing_incremental_two`,
+  `routing_h4_k1`, `routing_direct`): no exact differences and equal routes.
+  The known-defect fixture notes are identical. Every per-run row equals the
+  accepted M3b run's row.
+- Standard `./scripts/run_tests.sh`: 315 Python tests pass, then the
+  installed-plugin binding check fails (exit 1), as on every M3b handoff.
+  `--source-only` (labelled source-only; installed-package admission not
+  performed) passes 322 Python tests, 1,961 Rust test executions in 86
+  groups (14 ignored), the allocator audits, the fuzz check, the portable
+  checks and the ratchet.
+
+Limits and open items:
+
+- No timing, panel or profile ran; M3c makes no performance claim. Gains are
+  bounded by the remaining serial passes: the forest's incoming-index count
+  and scatter (O(m)); the census's task planning and worker-order compaction
+  copy (O(N)), which a one-worker team also pays because the decision is
+  worker-independent; and serial union-find and canonical graph merging.
+- The replay fixtures are below the 65,536-item team thresholds. The team
+  census, preparation and forest paths are therefore witnessed by unit tests
+  on synthetic fixtures (about 100,000 observations, a 60,000-cell worker, a
+  199,999-entry hub row), not by the replayed transactions.
+- Explicit `cmgschur` keeps its uncached census, so its census and emission
+  stay serial. Giving it the team census needs the canonical cache and would
+  raise its admitted peak by the cache bank. That is a resource change left
+  for a decision, not made here.
+- A long row is sorted by one lane (counted and polled), not split across
+  lanes by merge passes, so no extra ping-pong bank is admitted.
+- Root owns the independent source review, native Break and fixture checks,
+  the 42-cell scientific and transaction checks and the Linux/Mac panels on
+  the changed artifact.
+
+Identities, per-step exits and limits are in
+[`cmg-m3c-20261020.json`](../bench/results/cmg-m3c-20261020.json).
+
+
 ## CMG successor milestone 3b: one construction pipeline, cycle and adapter
 
 **Johannes accepted M3b on 2026-10-20 and authorized M3c, explicitly retaining
