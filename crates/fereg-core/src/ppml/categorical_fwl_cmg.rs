@@ -740,8 +740,8 @@ impl ReusableCategoricalFwlCmg {
         let finish_seconds =
             diagnostics.certification_seconds + finish_started.elapsed().as_secs_f64();
         if failed == 0 {
-            self.control_seed.retain_certified(first.projection_work);
-            self.prepared_topology.retain_certified_seed(absorber);
+            self.control_seed.retain_certified(first.projection_work)?;
+            self.prepared_topology.retain_certified_seed(absorber)?;
         } else {
             self.reset_warm_start();
         }

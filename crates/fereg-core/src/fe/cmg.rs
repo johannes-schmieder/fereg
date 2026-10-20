@@ -250,19 +250,21 @@ impl CmgControlSeed {
         self.valid = false;
     }
 
-    fn consume(&mut self, weight_ratio: f64) -> bool {
-        std::mem::replace(&mut self.valid, false)
+    fn consume(&mut self, weight_ratio: f64) -> Result<bool> {
+        Ok(std::mem::replace(&mut self.valid, false)
             && (1.0..=2.0).contains(&weight_ratio)
-            && self.potentials.iter().all(|value| value.is_finite())
+            && all_finite(&self.potentials)?)
     }
 
     /// Only the owner of all per-RHS and combined PPML certificates may call
     /// this. Promotion only marks the buffer written while invalid: it cannot
     /// copy or allocate. No stale residual is retained or promoted.
-    pub(crate) fn retain_certified(&mut self, work: CmgProjectionWork) {
+    pub(crate) fn retain_certified(&mut self, work: CmgProjectionWork) -> Result<()> {
+        self.valid = false;
         self.valid = work.extra_restarts == 0
             && (work.warm_right_hand_sides == 0 || work.initial_relative_residual < 0.5)
-            && self.potentials.iter().all(|value| value.is_finite());
+            && all_finite(&self.potentials)?;
+        Ok(())
     }
 
     #[cfg(test)]
@@ -708,6 +710,7 @@ impl PreparedCmgTopology {
         let topology_budget =
             PreparedLaplacianTopology::preparation_allocation_bound(vertices, design.nobs())
                 .map_err(cmg_error)?;
+        crate::interrupt::checkpoint()?;
         let mut endpoints = Vec::new();
         endpoints
             .try_reserve_exact(design.nobs())
@@ -732,9 +735,15 @@ impl PreparedCmgTopology {
         drop(endpoints);
         let scratch_bytes =
             PreparedLaplacianWorkspace::allocation_bytes(&topology).map_err(cmg_error)?;
-        let assembly_workspace =
-            PreparedLaplacianWorkspace::new_with_budget(&topology, scratch_bytes)
-                .map_err(cmg_error)?;
+        let assembly_workspace = PreparedLaplacianWorkspace::new_with(
+            &topology,
+            cmg::BuildContext {
+                cancel: Some(HOST_CANCEL),
+                budget_bytes: Some(scratch_bytes),
+                ..cmg::BuildContext::default()
+            },
+        )
+        .map_err(cmg_error)?;
         let numeric_weights = zero_vec(
             design.nobs(),
             "unable to reserve prepared CMG numeric weights",
@@ -768,8 +777,10 @@ impl PreparedCmgTopology {
     ) -> Result<Laplacian> {
         self.ensure_matches(design, profile)?;
         let was_valid = std::mem::replace(&mut self.seed_valid, false);
+        self.seed_for_frame = false;
         self.weight_ratio = 1.0;
         for (row, numeric_weight) in self.numeric_weights.iter_mut().enumerate() {
+            crate::interrupt::row_checkpoint(row)?;
             let current = normalized_weight(weights, weight_scale, row);
             self.weight_ratio = if current > 0.0 && *numeric_weight > 0.0 {
                 self.weight_ratio
@@ -783,10 +794,11 @@ impl PreparedCmgTopology {
         // This bounds the normalized graph's quadratic-form change in either
         // direction by two. It is only a seed-admission rule: the upstream
         // solve recomputes b - L_current*x and uses its unchanged certificate.
-        self.seed_for_frame = was_valid
-            && self.weight_ratio <= 2.0
-            && self.nuisance_seed.iter().all(|value| value.is_finite());
-        self.topology
+        // The seed is admitted for this frame only once the frame exists.
+        let seed_for_frame =
+            was_valid && self.weight_ratio <= 2.0 && all_finite(&self.nuisance_seed)?;
+        let graph = self
+            .topology
             .assemble_with(
                 &self.numeric_weights,
                 &mut self.assembly_workspace,
@@ -800,7 +812,9 @@ impl PreparedCmgTopology {
                     ..cmg::BuildContext::default()
                 },
             )
-            .map_err(cmg_error)
+            .map_err(cmg_error)?;
+        self.seed_for_frame = seed_for_frame;
+        Ok(graph)
     }
 
     fn ensure_matches(
@@ -853,28 +867,27 @@ impl PreparedCmgTopology {
     }
 
     /// Called only after the full PPML per-RHS and combined certificates.
-    /// Swapping preflighted buffers cannot allocate or change accepted state.
-    pub(crate) fn retain_certified_seed(&mut self, mut absorber: CmgAbsorber<'_>) {
+    /// Swapping preflighted buffers cannot allocate or change accepted state;
+    /// the finiteness scan polls the host, and a cancellation keeps no seed.
+    pub(crate) fn retain_certified_seed(&mut self, mut absorber: CmgAbsorber<'_>) -> Result<()> {
         self.reset_warm_start();
         let CmgRoute::Graph(graph) = &mut absorber.route else {
-            return;
+            return Ok(());
         };
         let GraphCmgWorkspace::CallerBuffers(caller) = &mut graph.workspace else {
-            return;
+            return Ok(());
         };
         if !caller.nuisance_potentials.is_empty()
             && caller.nuisance_potentials.len() == self.nuisance_seed.len()
-            && caller
-                .nuisance_potentials
-                .iter()
-                .all(|value| value.is_finite())
             && graph.nuisance_setup.extra_restarts == 0
             && (graph.nuisance_setup.warm_right_hand_sides == 0
                 || graph.nuisance_setup.initial_relative_residual < 0.5)
+            && all_finite(&caller.nuisance_potentials)?
         {
             std::mem::swap(&mut self.nuisance_seed, &mut caller.nuisance_potentials);
             self.seed_valid = true;
         }
+        Ok(())
     }
 }
 
@@ -1038,14 +1051,18 @@ impl<'a> CmgAbsorber<'a> {
                 memory.projection = memory.projection.with_expected_heap(None)?;
             }
             *attempted_peak = attempted_peak.max(memory.construction);
+            let graph = graph.and_then(|graph| match FORCE_SETUP_FAILURE_ONCE.replace(None) {
+                Some(code) => Err(FeregError::new(code, "injected CMG setup failure")),
+                None => Ok(graph),
+            });
             match graph {
                 Ok(graph) => CmgRoute::Graph(graph),
-                // Cancellation is never a retained setup failure: it fails the
-                // estimation as interrupted instead of selecting a fallback.
+                // Only a retainable failure selects the certified CG fallback;
+                // cancellation and fatal failures fail the estimation.
                 Err(error)
                     if config.requested_solver == FeSolverKind::Auto
                         || !retain_setup_failure
-                        || error.code == ErrorCode::Interrupted =>
+                        || !falls_back_to_cg(&error) =>
                 {
                     return Err(error);
                 }
@@ -1091,18 +1108,19 @@ impl<'a> CmgAbsorber<'a> {
         relative_tolerance: f64,
         mut seed: Option<&mut CmgControlSeed>,
     ) -> Result<CmgUnpolishedProjectionReport> {
-        let use_seed = seed.as_mut().is_some_and(|seed| {
-            seed.consume(match &self.route {
+        let use_seed = match seed.as_mut() {
+            Some(seed) => seed.consume(match &self.route {
                 CmgRoute::Graph(graph) => graph.nuisance_setup.weight_ratio,
                 _ => f64::INFINITY,
-            })
-        });
+            })?,
+            None => false,
+        };
         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
             return Err(invalid_argument(
                 "CMG unpolished design and matrix dimensions are inconsistent",
             ));
         }
-        if values.as_slice().iter().any(|value| !value.is_finite()) {
+        if !all_finite(values.as_slice())? {
             return Err(invalid_data("CMG unpolished input values must be finite"));
         }
         if !relative_tolerance.is_finite() || relative_tolerance <= 0.0 {
@@ -1200,7 +1218,7 @@ impl<'a> CmgAbsorber<'a> {
                 "CMG design and matrix dimensions are inconsistent",
             ));
         }
-        if values.as_slice().iter().any(|value| !value.is_finite()) {
+        if !all_finite(values.as_slice())? {
             return Err(invalid_data("CMG input values must be finite"));
         }
         let (reference_norms, norm_workspace) =
@@ -1314,6 +1332,10 @@ impl<'a> CmgAbsorber<'a> {
         trace: bool,
     ) -> Result<CertifiedBorrowedMap> {
         let norm_bytes = reference_norms.capacity() as u128 * 8;
+        let bulk = bulk.and_then(|bulk| match FORCE_PROJECTION_FAILURE_ONCE.replace(None) {
+            Some(code) => Err(FeregError::new(code, "injected CMG projection failure")),
+            None => Ok(bulk),
+        });
         match bulk {
             Ok((mut metrics, coefficients)) => {
                 let coefficient_bytes = coefficients
@@ -1388,8 +1410,8 @@ impl<'a> CmgAbsorber<'a> {
                 }
                 CertifiedBorrowedMap::from_certified_parts(residualized, report)
             }
-            // A cancelled projection is interrupted, never a CG fallback.
-            Err(error) if error.code == ErrorCode::Interrupted => Err(error),
+            // Cancellation and fatal failures are never a CG fallback.
+            Err(error) if !falls_back_to_cg(&error) => Err(error),
             Err(error) => {
                 ensure_cg_fallback_fits(&self.design, candidate.ncols(), self.config)?;
                 // The failed bulk has released its temporary arrays before
@@ -1650,6 +1672,7 @@ impl GraphCmg {
                 }
             }
             for row in 0..values.nrows() {
+                crate::interrupt::row_checkpoint(row)?;
                 for local in 0..width {
                     let nuisance_coefficients =
                         &gamma[local * nuisance_columns..(local + 1) * nuisance_columns];
@@ -1667,7 +1690,7 @@ impl GraphCmg {
                     .saturating_add(width);
                 for local in 0..width {
                     let solution = &mut caller.solutions[local * vertices..(local + 1) * vertices];
-                    solution.fill(0.0);
+                    fill_polled(solution, 0.0)?;
                     for (direction, &coefficient) in gamma
                         [local * nuisance_columns..(local + 1) * nuisance_columns]
                         .iter()
@@ -1675,9 +1698,14 @@ impl GraphCmg {
                     {
                         let potential = &caller.nuisance_potentials
                             [direction * vertices..(direction + 1) * vertices];
-                        for (value, &basis) in solution.iter_mut().zip(potential) {
-                            *value += coefficient * basis;
-                        }
+                        polled_segments(vertices, |range| {
+                            for (value, &basis) in
+                                solution[range.clone()].iter_mut().zip(&potential[range])
+                            {
+                                *value += coefficient * basis;
+                            }
+                            Ok(())
+                        })?;
                     }
                     if let Some(batch) = coefficients.as_mut() {
                         record_core_solution(
@@ -1715,6 +1743,7 @@ impl GraphCmg {
                 metrics.include_from(correction_metrics);
             }
             for row in 0..values.nrows() {
+                crate::interrupt::row_checkpoint(row)?;
                 for local in 0..width {
                     let updated = values[(row, start + local)] - correction[(row, local)];
                     if !updated.is_finite() {
@@ -2865,11 +2894,12 @@ fn fill_value_rhs_batch_into(
     let output = output
         .get_mut(..elements)
         .ok_or_else(|| invalid_argument("prepared CMG value RHS buffer is too small"))?;
-    output.fill(0.0);
+    fill_polled(output, 0.0)?;
     let left = design.effects()[core[0]].codes();
     let right = design.effects()[core[1]].codes();
     let right_offset = design.effects()[core[0]].n_levels();
     for row in 0..values.nrows() {
+        crate::interrupt::row_checkpoint(row)?;
         let weight = normalized_weight(weights, weight_scale, row);
         for (local, column) in (start..end).enumerate() {
             let contribution = weight * values[(row, column)];
@@ -2902,11 +2932,12 @@ fn fill_nuisance_rhs_batch_into(
     let output = output
         .get_mut(..elements)
         .ok_or_else(|| invalid_argument("prepared CMG nuisance RHS buffer is too small"))?;
-    output.fill(0.0);
+    fill_polled(output, 0.0)?;
     let left = design.effects()[core[0]].codes();
     let right = design.effects()[core[1]].codes();
     let right_offset = design.effects()[core[0]].n_levels();
     for row in 0..design.nobs() {
+        crate::interrupt::row_checkpoint(row)?;
         let weight = normalized_weight(weights, weight_scale, row);
         for nuisance_effect in nuisance_effects {
             if let Some(column) = nuisance_effect.column_at_row(design, row) {
@@ -2944,6 +2975,7 @@ fn accumulate_schur_column(
     let right = design.effects()[core[1]].codes();
     let right_offset = design.effects()[core[0]].n_levels();
     for row in 0..design.nobs() {
+        crate::interrupt::row_checkpoint(row)?;
         let indicator =
             if design.effects()[nuisance[column].effect].codes()[row] == nuisance[column].level {
                 1.0
@@ -2987,6 +3019,7 @@ fn nuisance_moments_into(
     moments.fill(0.0);
     corrections.fill(0.0);
     for row in 0..values.nrows() {
+        crate::interrupt::row_checkpoint(row)?;
         let weighted = normalized_weight(weights, weight_scale, row) * values[(row, column)];
         for nuisance_effect in nuisance_effects {
             if let Some(index) = nuisance_effect.column_at_row(design, row) {
@@ -3065,6 +3098,7 @@ fn subtract_core_fits(
     let right = design.effects()[core[1]].codes();
     let right_offset = design.effects()[core[0]].n_levels();
     for (row, entries) in values.as_mut_slice().chunks_exact_mut(columns).enumerate() {
+        crate::interrupt::row_checkpoint(row)?;
         let left = left[row] as usize;
         let right = right_offset + right[row] as usize;
         for (value, solution) in entries[first_column..first_column + width]
@@ -3108,18 +3142,22 @@ fn validate_weights(weights: BorrowedMapWeights<'_>, nobs: usize) -> Result<f64>
             if values.len() != nobs {
                 return Err(invalid_argument("CMG weight and observation counts differ"));
             }
-            if values
-                .iter()
-                .any(|weight| !weight.is_finite() || *weight <= 0.0)
-            {
-                return Err(invalid_data("CMG weights must be finite and positive"));
+            let mut scale = 0.0_f64;
+            for (row, &weight) in values.iter().enumerate() {
+                crate::interrupt::row_checkpoint(row)?;
+                if !weight.is_finite() || weight <= 0.0 {
+                    return Err(invalid_data("CMG weights must be finite and positive"));
+                }
+                scale = scale.max(weight);
             }
-            let scale = values.iter().copied().fold(0.0_f64, f64::max);
-            if !scale.is_finite()
-                || scale <= 0.0
-                || values.iter().any(|weight| *weight / scale == 0.0)
-            {
+            if !scale.is_finite() || scale <= 0.0 {
                 return Err(invalid_data("CMG weight normalization failed"));
+            }
+            for (row, &weight) in values.iter().enumerate() {
+                crate::interrupt::row_checkpoint(row)?;
+                if weight / scale == 0.0 {
+                    return Err(invalid_data("CMG weight normalization failed"));
+                }
             }
             Ok(scale)
         }
@@ -3140,6 +3178,7 @@ fn weighted_column_norms(
 ) -> Result<(Vec<f64>, SolverWorkspacePeak)> {
     let mut scales = zero_vec(values.ncols(), "unable to reserve CMG column scales")?;
     for row in 0..values.nrows() {
+        crate::interrupt::row_checkpoint(row)?;
         for column in 0..values.ncols() {
             scales[column] = scales[column].max(values[(row, column)].abs());
         }
@@ -3150,6 +3189,7 @@ fn weighted_column_norms(
         "unable to reserve CMG column norm corrections",
     )?;
     for row in 0..values.nrows() {
+        crate::interrupt::row_checkpoint(row)?;
         let weight = normalized_weight(weights, weight_scale, row);
         for column in 0..values.ncols() {
             if scales[column] != 0.0 {
@@ -3376,14 +3416,50 @@ fn filled_vec<T: Clone>(elements: usize, value: T, label: &'static str) -> Resul
         let next = (elements - values.len()).min(SEGMENT);
         values.resize(values.len() + next, value.clone());
     }
+    crate::interrupt::checkpoint()?;
     Ok(values)
 }
 
-fn validate_finite_slice(values: &[f64], message: &'static str) -> Result<()> {
-    if values.iter().any(|value| !value.is_finite()) {
-        Err(invalid_data(message))
-    } else {
+/// Run `body` over `0..len` in consecutive segments of at most 65,536 items,
+/// polling the host's cancellation flag before each segment and once after
+/// the last. Segments only split a forward loop, so arithmetic is unchanged.
+fn polled_segments(
+    len: usize,
+    mut body: impl FnMut(std::ops::Range<usize>) -> Result<()>,
+) -> Result<()> {
+    const SEGMENT: usize = 1 << 16;
+    let mut start = 0;
+    while start < len {
+        crate::interrupt::checkpoint()?;
+        let end = len.min(start + SEGMENT);
+        body(start..end)?;
+        start = end;
+    }
+    crate::interrupt::checkpoint()
+}
+
+fn fill_polled(values: &mut [f64], value: f64) -> Result<()> {
+    polled_segments(values.len(), |range| {
+        values[range].fill(value);
         Ok(())
+    })
+}
+
+/// Whether every value is finite, scanned in polled segments.
+fn all_finite(values: &[f64]) -> Result<bool> {
+    let mut finite = true;
+    polled_segments(values.len(), |range| {
+        finite = finite && values[range].iter().all(|value| value.is_finite());
+        Ok(())
+    })?;
+    Ok(finite)
+}
+
+fn validate_finite_slice(values: &[f64], message: &'static str) -> Result<()> {
+    if all_finite(values)? {
+        Ok(())
+    } else {
+        Err(invalid_data(message))
     }
 }
 
@@ -3394,6 +3470,35 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
     } else {
         Err(invalid_data("CMG compensated accumulation is nonfinite"))
     }
+}
+
+// Test fault plans; shipped builds compile these branches out.
+crate::fault::fault_plan! {
+    static FORCE_SETUP_FAILURE_ONCE: Option<ErrorCode> = None;
+    static FORCE_PROJECTION_FAILURE_ONCE: Option<ErrorCode> = None;
+}
+
+#[cfg(test)]
+pub(crate) fn inject_setup_failure_once(code: ErrorCode) {
+    FORCE_SETUP_FAILURE_ONCE.set(Some(code));
+}
+
+#[cfg(test)]
+pub(crate) fn inject_projection_failure_once(code: ErrorCode) {
+    FORCE_PROJECTION_FAILURE_ONCE.set(Some(code));
+}
+
+/// Whether a CMG setup or projection failure selects the documented
+/// certified CG fallback: a numerical breakdown or failed certification
+/// (`NonConvergence`), a resource refusal (`Allocation`) or nonfinite
+/// numerical data (`InvalidData`). Cancellation, internal failures (including
+/// CMG's runtime and hierarchy-invariant errors), caller-contract violations
+/// and unsupported requests fail the estimation atomically.
+fn falls_back_to_cg(error: &FeregError) -> bool {
+    matches!(
+        error.code,
+        ErrorCode::NonConvergence | ErrorCode::Allocation | ErrorCode::InvalidData
+    )
 }
 
 pub(super) fn cmg_error(error: cmg::CmgError) -> FeregError {

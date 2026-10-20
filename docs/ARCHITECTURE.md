@@ -152,10 +152,19 @@ each parallel lane polls the same query at that cadence inside its rows and
 leaves. All lanes join and the coordinator polls before `Cancelled` is
 returned, which fereg maps to an interrupted estimation with atomic rollback;
 a cancellation is never retained as a CMG setup or projection failure and
-never selects a CG fallback. Every CMG stage runs on at most the team's
-worker ceiling of lanes. Allocator, operating-system and join latency are not
-bounded; per-row elementwise work scales with the caller's fixed tile width
-(at most four in fereg). CMG's public
+never selects a CG fallback. Only a numerical breakdown or failed
+certification (`NonConvergence`), a resource refusal (`Allocation`) or
+nonfinite numerical data (`InvalidData`) selects the explicit route's
+certified CG fallback; internal failures (including CMG's runtime and
+hierarchy-invariant errors), caller-contract violations and unsupported
+requests fail the estimation atomically. A reduction lane that observes
+cancellation stops its own and every other lane's remaining leaves, and batch
+rows wider than 1024 lanes are counted in lane tiles. fereg's own traversals on
+these routes (endpoint and weight-ratio rows, seed and input finiteness scans,
+RHS accumulation, nuisance moments and corrections, residual updates and
+bank fills) poll the host flag every 1,024 rows or 65,536 entries and once
+after each fill. Every CMG stage runs on at most the team's worker ceiling of
+lanes. Allocator, operating-system and join latency are not bounded. CMG's public
 `ControlledStage` validates fixed logical chunk geometry on one coordinator
 before dispatch; chunk boundaries depend only on the slice length and chunk
 length, never on the number of workers. The caller has

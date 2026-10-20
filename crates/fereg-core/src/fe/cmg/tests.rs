@@ -258,8 +258,10 @@ fn prepared_coarsening_certifies_large_permuted_weighted_three_fe_graphs() {
             } else {
                 *reference = Some(candidate);
             }
-            control_seed.retain_certified(report.projection_work);
-            topology.retain_certified_seed(absorber);
+            control_seed
+                .retain_certified(report.projection_work)
+                .unwrap();
+            topology.retain_certified_seed(absorber).unwrap();
         }
     }
 }
@@ -493,7 +495,7 @@ fn prepared_cmg_seed_weight_boundary_and_memory_are_explicit() {
 fn control_seed_admission_consumes_only_finite_certified_evidence() {
     let mut seed = CmgControlSeed::new(6, 3).unwrap();
     assert!(!seed.ready());
-    assert!(!seed.consume(1.0));
+    assert!(!seed.consume(1.0).unwrap());
     let capacity = seed.potentials.capacity();
     assert_eq!(
         CmgControlSeed::estimated_bytes(6, 3).unwrap(),
@@ -508,11 +510,11 @@ fn control_seed_admission_consumes_only_finite_certified_evidence() {
         (f64::INFINITY, false),
         (f64::NAN, false),
     ] {
-        seed.retain_certified(CmgProjectionWork::default());
-        assert_eq!(seed.consume(ratio), admitted);
+        seed.retain_certified(CmgProjectionWork::default()).unwrap();
+        assert_eq!(seed.consume(ratio).unwrap(), admitted);
         assert!(!seed.ready());
         assert!(
-            !seed.consume(1.0),
+            !seed.consume(1.0).unwrap(),
             "a partial/failed solve cannot reuse the buffer"
         );
     }
@@ -527,16 +529,17 @@ fn control_seed_admission_consumes_only_finite_certified_evidence() {
             initial_relative_residual: residual,
             extra_restarts,
             ..CmgProjectionWork::default()
-        });
+        })
+        .unwrap();
         assert_eq!(seed.ready(), retained);
     }
-    seed.retain_certified(CmgProjectionWork::default());
+    seed.retain_certified(CmgProjectionWork::default()).unwrap();
     seed.potentials[2] = f64::NAN;
-    assert!(!seed.consume(1.0));
-    seed.retain_certified(CmgProjectionWork::default());
+    assert!(!seed.consume(1.0).unwrap());
+    seed.retain_certified(CmgProjectionWork::default()).unwrap();
     assert!(!seed.ready());
     seed.potentials.fill(0.0);
-    seed.retain_certified(CmgProjectionWork::default());
+    seed.retain_certified(CmgProjectionWork::default()).unwrap();
     seed.reset();
     assert!(!seed.ready());
     assert_eq!(
@@ -659,9 +662,11 @@ fn prepared_cmg_warm_seed_is_consumed_recertified_and_invalidated() {
             .unwrap()
             .passed
         );
-        control_seed.retain_certified(report.projection_work);
+        control_seed
+            .retain_certified(report.projection_work)
+            .unwrap();
         assert!(control_seed.ready());
-        topology.retain_certified_seed(absorber);
+        topology.retain_certified_seed(absorber).unwrap();
         assert!(
             topology.seed_valid,
             "frame {frame}: {:?}",
@@ -2527,7 +2532,9 @@ fn explicit_cmg_routes_poll_the_host_inside_every_stage() {
         (
             "ppml",
             &ppml,
-            &["prepared endpoint sort", "prepared duplicate sort", "fereg"][..],
+            // Duplicate-group sorts are witnessed at every poll by CMG's
+            // assembly tests; this mostly singleton fixture rarely counts one.
+            &["prepared endpoint sort", "prepared numeric edge", "fereg"][..],
         ),
     ] {
         test_polls::cancel_at(None);
@@ -2579,4 +2586,287 @@ fn explicit_cmg_routes_poll_the_host_inside_every_stage() {
         test_polls::cancel_at(None);
         assert_eq!(route().expect("fresh route"), reference, "{name}");
     }
+}
+
+/// A retainable failure (numerical breakdown, failed certification, resource
+/// refusal or nonfinite numerical data) keeps the documented certified CG
+/// fallback on the explicit route. Cancellation and fatal failures, including
+/// CMG's internal runtime and hierarchy-invariant classes, fail atomically at
+/// setup and at projection: no route is retained and no fallback runs.
+#[test]
+fn explicit_cmg_falls_back_only_for_numerical_or_resource_failures() {
+    let periods = 8;
+    let workers = 100;
+    let firms = 10;
+    let rows = periods * workers;
+    let worker: Vec<u32> = (0..rows).map(|row| (row / periods) as u32).collect();
+    let firm: Vec<u32> = (0..rows)
+        .map(|row| ((row / periods + row % periods) % firms) as u32)
+        .collect();
+    let worker_index = LevelIndex::from_codes(&worker, workers).expect("worker index");
+    let firm_index = LevelIndex::from_codes(&firm, firms).expect("firm index");
+    let design = || {
+        BorrowedInterceptFeDesign::new(
+            rows,
+            vec![
+                effect(&worker, workers, &worker_index),
+                effect(&firm, firms, &firm_index),
+            ],
+        )
+        .expect("design")
+    };
+    let values = || {
+        DenseMatrix::from_columns(&[(0..rows)
+            .map(|row| (row as f64 * 0.031).sin() + (row as f64 * 0.017).cos())
+            .collect()])
+        .expect("values")
+    };
+    let build = || {
+        CmgAbsorber::build_with_workspace(
+            design(),
+            BorrowedMapWeights::Unit,
+            config(3),
+            false,
+            &mut SolverWorkspacePeak::from_bytes(0).unwrap(),
+        )
+    };
+    let reference = build()
+        .expect("explicit CMG setup")
+        .absorb(values())
+        .expect("explicit CMG projection");
+    assert_eq!(reference.report().used_solver, FeSolverKind::Cmg);
+    assert!(!reference.report().fallback_used);
+
+    let retained = [
+        ErrorCode::NonConvergence,
+        ErrorCode::Allocation,
+        ErrorCode::InvalidData,
+    ];
+    let fatal = [
+        ErrorCode::Interrupted,
+        ErrorCode::Internal,
+        ErrorCode::InvalidArgument,
+        ErrorCode::Unsupported,
+    ];
+    for code in retained {
+        inject_setup_failure_once(code);
+        let mut session = build().expect("retained setup failure keeps the session");
+        let result = session.absorb(values()).expect("certified CG fallback");
+        assert!(result.report().fallback_used, "{code:?} setup");
+        assert_eq!(result.report().used_solver, FeSolverKind::Cg);
+
+        let mut session = build().expect("explicit CMG setup");
+        inject_projection_failure_once(code);
+        let result = session.absorb(values()).expect("certified CG fallback");
+        assert!(result.report().fallback_used, "{code:?} projection");
+        assert_eq!(result.report().used_solver, FeSolverKind::Cg);
+    }
+    for code in fatal {
+        inject_setup_failure_once(code);
+        match build() {
+            Err(error) => assert_eq!(error.code, code, "{}", error.message),
+            Ok(_) => panic!("{code:?} setup failure was retained"),
+        }
+        let mut session = build().expect("explicit CMG setup");
+        inject_projection_failure_once(code);
+        match session.absorb(values()) {
+            Err(error) => assert_eq!(error.code, code, "{}", error.message),
+            Ok(result) => panic!(
+                "{code:?} projection failure fell back: {:?}",
+                result.report().used_solver
+            ),
+        }
+        // The next session is unaffected and reproduces the reference.
+        let again = build().unwrap().absorb(values()).unwrap();
+        assert_eq!(
+            again.residualized().as_slice(),
+            reference.residualized().as_slice()
+        );
+    }
+}
+
+/// Every host poll of the prepared PPML route's fereg-owned traversals, in a
+/// child process (the poll seam is process-global). Topology preparation polls
+/// before the endpoint reserve and every 1,024 endpoint rows, runs CMG's
+/// preparation, constructs the duplicate-weight workspace under the host query
+/// (one poll before allocating, one before returning) and fills the numeric
+/// weights and nuisance seed with a final poll after each. Assembly polls the
+/// weight-ratio loop every 1,024 rows and the seed's finiteness scan by
+/// segment before CMG's assembly. Certified seed retention polls its scans.
+/// Each cancellation is interrupted, leaves no usable seed, and a fresh run
+/// rebuilds the reference exactly.
+#[test]
+fn prepared_route_polls_reserves_workspace_assembly_seeds_and_final_fills() {
+    const CHILD: &str = "FEREG_CMG_PREPARED_POLL_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD, "1")
+            .args([
+                "fe::cmg::tests::prepared_route_polls_reserves_workspace_assembly_seeds_and_final_fills",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .status()
+            .unwrap();
+        assert!(status.success());
+        return;
+    }
+    use crate::interrupt::test_polls;
+    const SEGMENT: usize = 1 << 16;
+    let rows = 70_000;
+    let levels = [7_000, 900, 5];
+    let codes = [
+        (0..rows)
+            .map(|row| (row % 7_000) as u32)
+            .collect::<Vec<_>>(),
+        (0..rows)
+            .map(|row| ((row / 7_000 * 37 + row * 11) % 900) as u32)
+            .collect(),
+        (0..rows)
+            .map(|row| ((row / 13 + row % 3) % 5) as u32)
+            .collect(),
+    ];
+    let indexes = codes
+        .iter()
+        .zip(levels)
+        .map(|(codes, levels)| LevelIndex::from_codes(codes, levels).unwrap())
+        .collect::<Vec<_>>();
+    let design = || {
+        BorrowedInterceptFeDesign::new(
+            rows,
+            (0..3)
+                .map(|i| effect(&codes[i], levels[i], &indexes[i]))
+                .collect(),
+        )
+        .unwrap()
+    };
+    let phase = |error: FeregError| {
+        assert_eq!(error.code, ErrorCode::Interrupted, "{}", error.message);
+        error
+            .message
+            .split_once("cancelled during ")
+            .map_or_else(|| "fereg".to_string(), |(_, phase)| phase.to_string())
+    };
+    // The phase at every host poll of `run`, after an uncancelled count.
+    let sweep = |run: &mut dyn FnMut() -> Result<()>| {
+        test_polls::cancel_at(None);
+        run().unwrap();
+        let total = test_polls::polls();
+        let phases: Vec<String> = (0..total)
+            .map(|stop| {
+                test_polls::cancel_at(Some(stop));
+                let result = run();
+                assert_eq!(test_polls::polls(), stop + 1, "poll {stop} of {total}");
+                phase(result.expect_err("every poll cancels"))
+            })
+            .collect();
+        test_polls::cancel_at(None);
+        phases
+    };
+
+    let reference = PreparedCmgTopology::prepare(&design()).unwrap();
+    let seed = reference.nuisance_seed.len();
+    assert!(seed > 30_000, "{seed} seed entries");
+    let phases = sweep(&mut || PreparedCmgTopology::prepare(&design()).map(drop));
+    let leading = phases.iter().take_while(|phase| *phase == "fereg").count();
+    assert_eq!(
+        leading,
+        1 + rows.div_ceil(1024),
+        "endpoint reserve and rows"
+    );
+    let workspace = phases
+        .iter()
+        .position(|phase| phase == "prepared duplicate weights")
+        .expect("controlled workspace construction");
+    assert_eq!(phases[workspace + 1], "prepared workspace publication");
+    let fills = &phases[workspace + 2..];
+    assert!(fills.iter().all(|phase| phase == "fereg"), "{fills:?}");
+    // Each fill: a poll before reserving, one per segment and a final poll.
+    assert_eq!(
+        fills.len(),
+        (2 + rows.div_ceil(SEGMENT)) + (2 + seed.div_ceil(SEGMENT))
+    );
+    assert_eq!(
+        PreparedCmgTopology::prepare(&design())
+            .unwrap()
+            .retained_bytes(),
+        reference.retained_bytes()
+    );
+
+    let mut topology = reference;
+    let profile = CmgTopologyProfile::analyze(&design()).unwrap();
+    let weights = (0..rows)
+        .map(|row| 0.7 + (row % 11) as f64 * 0.13)
+        .collect::<Vec<_>>();
+    let weights = BorrowedMapWeights::Provided(&weights);
+    let frame = topology
+        .assemble(&design(), &profile, weights, 2.0)
+        .unwrap();
+    let topology = std::cell::RefCell::new(topology);
+    // A valid seed and an unchanged frame make assembly scan the seed.
+    let phases = sweep(&mut || {
+        let mut topology = topology.borrow_mut();
+        topology.seed_valid = true;
+        let graph = topology.assemble(&design(), &profile, weights, 2.0);
+        if graph.is_err() {
+            assert!(!topology.seed_valid && !topology.seed_for_frame);
+        } else {
+            assert!(topology.seed_for_frame);
+        }
+        graph.map(drop)
+    });
+    let ratio = rows.div_ceil(1024);
+    let scan = 1 + seed.div_ceil(SEGMENT);
+    assert!(phases[..ratio + scan].iter().all(|phase| phase == "fereg"));
+    assert_ne!(
+        phases[ratio + scan],
+        "fereg",
+        "CMG assembly follows the scan"
+    );
+    assert_eq!(
+        phases.last().map(String::as_str),
+        Some("prepared numeric frame")
+    );
+    let mut topology = topology.into_inner();
+    let again = topology
+        .assemble(&design(), &profile, weights, 2.0)
+        .unwrap();
+    assert_eq!(again.edges(), frame.edges());
+    assert_eq!(again.diagonal(), frame.diagonal());
+
+    // Certified seed retention polls its finiteness scans.
+    let mut control = CmgControlSeed::new(topology.profile.vertices, 1).unwrap();
+    control
+        .retain_certified(CmgProjectionWork::default())
+        .unwrap();
+    assert!(control.ready());
+    test_polls::cancel_at(Some(0));
+    assert_eq!(
+        control.consume(1.0).unwrap_err().code,
+        ErrorCode::Interrupted
+    );
+    assert!(!control.ready(), "a cancelled admission consumes the seed");
+    test_polls::cancel_at(None);
+    control
+        .retain_certified(CmgProjectionWork::default())
+        .unwrap();
+    test_polls::cancel_at(Some(0));
+    let retained = control.retain_certified(CmgProjectionWork::default());
+    assert_eq!(retained.unwrap_err().code, ErrorCode::Interrupted);
+    assert!(!control.ready(), "a cancelled retention keeps no seed");
+    test_polls::cancel_at(None);
+    let mut absorber =
+        CmgAbsorber::build_unpolished_prepared(design(), weights, config(2), &mut topology)
+            .unwrap();
+    let mut candidate =
+        DenseMatrix::from_columns(&[(0..rows).map(|row| (row as f64 * 0.31).sin()).collect()])
+            .unwrap();
+    absorber
+        .project_unpolished_with_seed(&mut candidate, 1e-10, None)
+        .unwrap();
+    test_polls::cancel_at(Some(0));
+    let retained = topology.retain_certified_seed(absorber);
+    assert_eq!(retained.unwrap_err().code, ErrorCode::Interrupted);
+    assert!(!topology.seed_valid);
+    test_polls::cancel_at(None);
 }
