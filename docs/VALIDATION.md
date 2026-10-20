@@ -30,8 +30,10 @@ were deleted; hashes and summaries are the remaining record.
 
 **The first handoff (fereg `ffc1b014`, CMG `8fafe5a7`) was unaccepted by
 independent review on 2026-10-20. Claude's repair and the additional root
-corrections below have been reviewed; root host qualification remains pending.
-M3c is unaccepted and M3d is not released.** M3c starts from the accepted M3b pair (fereg `b9cc6b75`, i.e. source `671239d4` plus
+corrections below have been reviewed. Root source-only/native checks pass, and the
+fixed Linux panel passes all 12 cells. Three Mac cells remain inconclusive.
+M3c is unaccepted pending Johannes's decision, and M3d is not released.**
+M3c starts from the accepted M3b pair (fereg `b9cc6b75`, i.e. source `671239d4` plus
 records, with CMG `ccd7177f`). It pins CMG
 `8fafe5a7701e4e0d3d35772dd69a5f2b3d39b3d9`: `65bd817a` adds team forest
 selection, and `8fafe5a7` makes its hub-row cancellation witness reach the
@@ -372,6 +374,77 @@ No runtime check was rerun for this record correction.
 The JSON `root_review` records commands, actual exits, durations, log hashes,
 source hashes, mutation outcomes and final pinned integration checks. No root
 native or performance qualification is claimed by these source checks.
+
+### Root native and fixed host qualification
+
+The tested candidate is fereg
+`71092c3823f0488ecbd906761a52f142cffbf612`, with production correction
+`c89ab124e99b5ece97d93747bd03ef1c8c4cf6bb`, and CMG
+`82ae1c86d1e7d8c04f35d723b5affae8a031e283`. The intervening record correction
+is production-identical: 192 runtime modules and 58 artifact inputs match.
+Both root and fuzz locks and the manifest pin that CMG revision.
+The comparison uses the accepted M3b source `671239d4` / CMG `ccd7177f`,
+not an earlier rejected or cloud-only artifact.
+
+Rust 1.85.1 locked release builds passed actual Mac and Linux binary audits,
+ABI/load and panic-containment checks. Actual candidate plugin SHA-256:
+
+- Mac: `c0a8d9c7355494e4ea40b5ac95a979d883d38f2544cecc2966892a180302c5dd`
+- Linux: `4d3a78dea4239f59e3491abac4a90448d9181ff8b9ed7152380e02a2be1fef11`
+
+The source archive hash is
+`527c5ddf637f2f5315f2e902ff6aa81533f9083cd336f191dbf9b6f37db85580`.
+The Linux portable frozen witness also passes. Mac checks pass all six mapped
+Stata fixtures, 73 exact replay cases, and 16 explicit CMG PPML calls across
+both bias modes, W1/W4, both arms and two repeats. Native builder Break at W2/W4
+passes twice each at actual task 0/ordinal 0 with recovery; this does not claim
+arbitrary deep native-phase latency. Separate actual-work unit witnesses cover
+deep cancellation, including the long emission gap. Public PPML Break passes
+all five markers and transaction recovery.
+
+The Linux 42-cell audit passes all 168 calls exactly, with maximum output
+difference zero and the same six h16 installations in both arms. Build job
+8210060, preparation 8210607 and array 8210608 tasks 1–3 have complete
+`failed=0` / `exit_status=0` accounting. The analytic construction/install/
+certification and bounded Schur witnesses passed in the source suite.
+
+Before measurement, the actual binaries, source, harnesses, inputs, references,
+schedules and budgets were frozen. The fixed round retained all 1,032 calls:
+312 on one active Mac and 720 across six isolated 28-core Linux hosts.
+All science and repeats pass, with exact paired outputs and workflow.
+There were no exclusions, replacement cells or additional samples.
+Linux timing jobs 8210650–8210655 and report job 8210656 have complete
+`failed=0` / `exit_status=0` accounting and verified completion markers.
+Linux passes all 12 nonregression bounds. Mac passes nine; three are
+inconclusive against the unchanged max(5%, 1 ms) allowance:
+
+| Mac cell | Upper excess beyond allowance |
+| --- | ---: |
+| repeated-cells W4 | +0.036463 ms |
+| repeated-cells W8 | +1.150387 ms |
+| wide-rhs W4 | +0.284941 ms |
+
+Independent reviews reconstructed the complete-call `NATIVE_SECONDS` results;
+the plugin's `native_s` component remains a diagnostic. The Linux reviewer
+verified all raw timers, perf CSVs, signatures and digests locally; full
+scientific heads/arrays were rechecked by the remote report rather than
+downloaded and revalidated by that reviewer. The three inconclusive
+Mac cells finish before iteration 16 and do not install CMG. Their retained
+phase observations do not identify a construction-path defect, and no recorded
+external interference supports discarding them. Inconclusive bounds remain
+inconclusive. The Linux high-degree W4/W8 median complete-call ratios are
+0.9343/0.8959, and the Mac ratios are 0.9441/0.9090. These are instrumented
+complete-solve observations, not isolated-kernel or uninstrumented release claims.
+Intervals are per cell, not simultaneous across 12 cells; six hosts do not
+establish independence.
+
+The JSON `root_host_validation` retains compact observations, actual identities,
+job accounting, independent reviews and limits. The existing standard
+installed-package binding failure and earlier rejected handoffs, mutations,
+test-accounting failure and operational failures remain recorded.
+M3b's explicit acceptance exception does not waive these M3c prerequisites.
+No further unchanged-candidate sampling or M3d release follows from this round;
+Johannes's decision is required. Claude remains stopped and no monitor remains.
 
 
 ## CMG successor milestone 3b: one construction pipeline, cycle and adapter
