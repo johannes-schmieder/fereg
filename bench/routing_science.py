@@ -274,7 +274,8 @@ def route_hierarchy(fields):
     return hierarchy
 
 
-def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None):
+def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None,
+                         route_validator=route_hierarchy):
     candidate = requested not in {None, 'baseline'}
     expected = ({'injection': routing.ABLATIONS[requested]} if requested in routing.ABLATIONS else
                 routing.policy(requested) if candidate else None)
@@ -293,7 +294,7 @@ def resource_diagnostics(log, requested, no_fe, witness, *, expected_preset=None
                     or fields.get('samples') != str(schur_policy['trees'])):
                 raise ValueError('actual Schur route does not match requested policy')
             route.append(fields)
-            hierarchies.append(route_hierarchy(fields))
+            hierarchies.append(route_validator(fields))
         if fields.get('phase') != 'routing_action':
             continue
         if expected and fields.get('preset') != (expected_preset if expected_preset is not None else expected['injection']):

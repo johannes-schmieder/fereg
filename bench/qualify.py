@@ -49,7 +49,7 @@ ALPHA = Fraction(1, 40)
 SOURCE_MODULES = ('qualify_scc', 'block_host', 'native', 'native_io', 'routing',
                   'routing_cases', 'routing_oracle', 'routing_science', 'cmgschur',
                   'cmgschur_cases', 'time_exact', 'replay_plugins', 'replay_psd',
-                  'replay_bias_reference', 'replay_cmg_polish', 'replay_ols_reference')
+                  'replay_bias_reference', 'replay_cmg_polish', 'replay_ols_reference', 'cmg_setup')
 
 
 def execution_sources():
@@ -160,13 +160,32 @@ def resolve(manifest_path, path):
     return (Path(manifest_path).parent / path).resolve(strict=True)
 
 
-def plan(config_path, output):
+def diagnostic_mode(manifest):
+    if 'diagnostic' not in manifest:
+        return False
+    import cmg_setup
+    cmg_setup.validate(manifest)
+    return True
+
+
+def comparison_pairs(manifest):
+    if diagnostic_mode(manifest):
+        import cmg_setup
+        return cmg_setup.comparisons(manifest)
+    return tuple((role, 'candidate') for role in ('original', 'incumbent', 'hidden')
+                 if role in manifest['artifacts'])
+
+
+def plan(config_path, output, *, configuration=None):
     """Hash each actual input once. No native call, oracle solve, or history walk."""
     config_path, output = Path(config_path).resolve(), Path(output).resolve()
     require(not output.exists(), 'plan already exists')
-    value = read(config_path)
+    value = read(config_path) if configuration is None else copy.deepcopy(configuration)
+    diagnostic = diagnostic_mode(value)
     required = {'scope', 'platform', 'artifacts', 'harness', 'cases', 'threads',
                 'blocks', 'shards', 'replicas', 'seed', 'timeout_s', 'budget_s', 'coverage'}
+    if diagnostic:
+        required.add('diagnostic')
     require(set(value) == required, 'configuration needs exactly: ' + ', '.join(sorted(required)))
     require(value['scope'] in {'exact', 'many', 'two'}, 'unsupported numerical scope')
     require(value['platform'] in {'Darwin', 'Linux'}, 'platform must be Darwin or Linux')
@@ -180,7 +199,7 @@ def plan(config_path, output):
     require(value['platform'] != 'Darwin' or value['replicas'] == value['shards'] == 1,
             'Mac timing uses one serial host run')
     artifacts = value['artifacts']
-    require(set(artifacts) in ({'original', 'incumbent', 'candidate'},
+    require(diagnostic or set(artifacts) in ({'original', 'incumbent', 'candidate'},
                               {'original', 'incumbent', 'candidate', 'hidden'}), 'required artifact roles missing')
     files = {}
 
@@ -199,18 +218,19 @@ def plan(config_path, output):
         require(isinstance(artifact['families'], list) and set(artifact['families']) <= {'many', 'two'},
                 'invalid artifact numerical families')
         artifact['path'] = bind(artifact['path'])
-    require(artifacts['original']['families'] == [], 'original baseline must remain original')
-    require(all(artifacts[r]['request'] in {'auto', 'preserve'} for r in ('original', 'incumbent')),
-            'protected references must use their public requests')
-    require(set(artifacts['candidate']['families']) == (set(artifacts['incumbent']['families']) |
-            ({value['scope']} if value['scope'] != 'exact' else set())), 'candidate changes an undeclared family')
-    require(value['scope'] == 'exact' or value['scope'] in artifacts['candidate']['families'],
-            'candidate lacks the declared changed family')
-    require(value['scope'] == 'exact' or artifacts['candidate']['request'] != 'preserve',
-            'changed Auto qualification requires an explicit auto or incremental request')
-    if value['scope'] != 'exact' and artifacts['candidate']['request'] == 'auto':
-        require('hidden' in artifacts and artifacts['hidden']['request'] == 'incremental-' + value['scope'],
-                'public activation requires the selected hidden artifact')
+    if not diagnostic:
+        require(artifacts['original']['families'] == [], 'original baseline must remain original')
+        require(all(artifacts[r]['request'] in {'auto', 'preserve'} for r in ('original', 'incumbent')),
+                'protected references must use their public requests')
+        require(set(artifacts['candidate']['families']) == (set(artifacts['incumbent']['families']) |
+                ({value['scope']} if value['scope'] != 'exact' else set())), 'candidate changes an undeclared family')
+        require(value['scope'] == 'exact' or value['scope'] in artifacts['candidate']['families'],
+                'candidate lacks the declared changed family')
+        require(value['scope'] == 'exact' or artifacts['candidate']['request'] != 'preserve',
+                'changed Auto qualification requires an explicit auto or incremental request')
+        if value['scope'] != 'exact' and artifacts['candidate']['request'] == 'auto':
+            require('hidden' in artifacts and artifacts['hidden']['request'] == 'incremental-' + value['scope'],
+                    'public activation requires the selected hidden artifact')
     value['harness'] = bind(value['harness'])
     seen = set()
     require(isinstance(value['cases'], list) and value['cases'], 'cases must be a nonempty list')
@@ -222,6 +242,9 @@ def plan(config_path, output):
                 and item['memory_limit_bytes'] > 0, 'invalid memory bound')
         source = (config_path.parent / item['input']).resolve(strict=True)
         item['input'] = bind(item['input'])
+        if diagnostic:
+            import cmg_setup
+            cmg_setup.validate_case(source, item)
         with source.open('rb') as stream:
             shape, arguments = case_header(stream)
         require(not any(a.startswith((b'inject=', b'break_marker_token=')) for a in arguments),
@@ -259,6 +282,8 @@ def plan(config_path, output):
                 'qualification requires balanced blocks and enough independent measurements')
     value.update(schema=1, files=files, warmups=1,
                  execution_sources={name: digest(path) for name, path in execution_sources().items()})
+    if diagnostic:
+        diagnostic_mode(value)
     if value['platform'] == 'Darwin':
         value['mac_cell_policy'] = fresh_mac_policy(value)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -411,14 +436,19 @@ def fresh_mac_policy(manifest):
     per_cell = len(set(artifact_aliases(manifest).values()))*(1+2*manifest['blocks'])
     process = copy.deepcopy(MAC_RECOVERY_POLICY)
     process['executables'] += ['actual_plugin_loader_test', 'actual_plugin_l']
-    return {'fresh_cells': cells, 'max_cell_retries': 1, 'max_retry_cells': 4,
+    retries = 0 if diagnostic_mode(manifest) else 4
+    return {'fresh_cells': cells, 'max_cell_retries': int(bool(retries)), 'max_retry_cells': retries,
             'quiet_timeout_s': 120, 'calls_per_cell': per_cell,
             'baseline_calls': len(cells)*per_cell,
-            'new_call_cap': (len(cells)+min(4, len(cells)))*per_cell,
+            'new_call_cap': (len(cells)+min(retries, len(cells)))*per_cell,
             'process_policy': process}
 
 
 def validate_cell_policy(manifest):
+    if diagnostic_mode(manifest):
+        require(manifest.get('schema') == manifest.get('warmups') == 1
+                and (manifest['platform'] != 'Darwin' or 'mac_cell_policy' in manifest),
+                'diagnostic requires its frozen warmup and Mac observation policy')
     require(sum(k in manifest for k in ('continuation', 'recovery', 'mac_cell_policy')) <= 1,
             'Mac execution policies are mutually exclusive')
     if 'mac_cell_policy' in manifest:
@@ -613,6 +643,9 @@ def artifact_aliases(manifest):
 
 
 def compare_artifacts(manifest, meta, snapshots):
+    if diagnostic_mode(manifest):
+        import cmg_setup
+        return cmg_setup.compare_science(manifest, meta, snapshots)
     candidate = snapshots['candidate']
     for role in ('original', 'incumbent', 'hidden'):
         if role not in snapshots:
@@ -702,6 +735,7 @@ def run(manifest_path, output, shard=0, replica=0, resume=False, execute=run_pro
     require(threading.current_thread() is threading.main_thread(), 'run requires the main thread')
     started = time.monotonic()
     manifest = read(manifest_path)
+    require(not diagnostic_mode(manifest) or not resume, 'diagnostic cannot resume or reset its budget')
     with Deadline(manifest['budget_s'], started) as deadline:
         return _run(manifest_path, output, manifest, deadline, shard, replica, resume, execute)
 
@@ -864,8 +898,14 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                             eligible = affected(meta, artifact['families'])
                             if eligible:
                                 family = next(f for f in artifact['families'] if affected(meta, [f]))
-                                detail.update(science.resource_diagnostics(log.read_text(), 'incremental-' + family,
-                                              False, {}, expected_preset='routing_incremental_' + family))
+                                if diagnostic_mode(manifest):
+                                    import cmg_setup
+                                    resources_detail = cmg_setup.resource_diagnostics(
+                                        log.read_text(), role, artifact['revision'], family=family)
+                                else:
+                                    resources_detail = science.resource_diagnostics(log.read_text(), 'incremental-' + family,
+                                        False, {}, expected_preset='routing_incremental_' + family)
+                                detail.update(resources_detail)
                         detail.update(execution=role, maxrss_bytes=resources['maxrss_bytes'],
                                       started_monotonic_ns=native_started, finished_monotonic_ns=native_finished)
                         phase = 'setup'
@@ -920,8 +960,8 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                             columns.unlink()
                             columns.with_suffix('').unlink()
                             (work / f'block-{block}-{number}.log').unlink()
-                        row['comparisons'] = {role: score(row['calls'], aliases[role], aliases['candidate'])
-                                              for role in ('original', 'incumbent', 'hidden') if role in aliases}
+                        row['comparisons'] = {role: score(row['calls'], aliases[role], aliases[target])
+                                              for role, target in comparison_pairs(manifest)}
                         row['status'] = 'complete'
                         persist()
                     cell['status'] = 'complete'
@@ -991,6 +1031,7 @@ def accounting(text, host):
 
 def report(manifest_path, output, accounting_dir=None):
     manifest, output = read(manifest_path), Path(output)
+    diagnostic = diagnostic_mode(manifest)
     recovery = manifest.get('recovery')
     policy = cell_policy(manifest)
     old_cells, old_root, old_events = {}, None, []
@@ -1174,10 +1215,8 @@ def report(manifest_path, output, accounting_dir=None):
                                 'incomplete/reordered block')
                         require(all(c['fingerprint'] == warmups[c['execution']] for c in row['calls']),
                                 'timed repeat lost independent scientific agreement')
-                        for role in ('original', 'incumbent', 'hidden'):
-                            if role not in cell['aliases']:
-                                continue
-                            value = score(row['calls'], cell['aliases'][role], cell['aliases']['candidate'])
+                        for role, target in comparison_pairs(manifest):
+                            value = score(row['calls'], cell['aliases'][role], cell['aliases'][target])
                             comparisons.setdefault((cell['id'], role), []).append((result['hostname'].split('.')[0], value))
                 results.append(result)
             except (OSError, ValueError, KeyError, TypeError) as error:
@@ -1201,6 +1240,8 @@ def report(manifest_path, output, accounting_dir=None):
         require(all(resolve(manifest_path, name) == p for name, p in prior_bindings.items()), 'prior evidence alias changed')
     except (OSError, ValueError) as error:
         errors.append(str(error))
+    if diagnostic and manifest['platform'] == 'Linux' and len({r['hostname'].split('.')[0] for r in results}) != 6:
+        errors.append('diagnostic requires six distinct accounted physical hosts')
     complete = not errors and bool(rows)
     passed = complete and all(row['status'] == 'passed' for row in rows)
     summary = {'schema': 1, 'manifest_sha256': routing.identity(manifest), 'platform': manifest['platform'],
@@ -1212,6 +1253,11 @@ def report(manifest_path, output, accounting_dir=None):
                'coverage': 'One-sided .025 bounds conditional on independent unit scores with a common median; no simultaneous interval claim.',
                'next_action': 'Review platform-specific evidence; no automatic activation or successor.' if passed else
                               'Discuss failed, missing or inconclusive evidence with Johannes; keep candidate and defaults.'}
+    if diagnostic:
+        summary.update(status='diagnostic_complete' if complete else 'needs_discussion',
+                       diagnostic=manifest['diagnostic'], activation_qualified=False,
+                       target='post_refactor_hidden',
+                       next_action='Review this bounded diagnostic; no activation qualification or automatic sampling.')
     if 'continuation' in manifest:
         state = manifest['continuation']
         summary['continuation'] = {k: state[k] for k in ('prior_plan', 'prior_result', 'prior_calls', 'prior_elapsed_s',
