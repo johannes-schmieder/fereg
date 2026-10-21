@@ -1,0 +1,403 @@
+{
+ "candidate": "setup candidate 1: one counted in-place canonical edge sort (ideas 1 and 2); pending independent review, not self-accepted",
+ "date": "2026-10-21",
+ "revisions": {
+  "fereg_base": "fa1fbbe52c349d6877e2be4bb2cfa557d145463f (runtime 3f9d54ee)",
+  "cmg_base": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
+  "cmg_candidate": "7b610e1e37bc8a8b01f98a9957089d8fc10367ae",
+  "fereg_pin": "7fe3e7e (manifest and both lockfiles; no fereg source change)"
+ },
+ "plugins": {
+  "candidate_sha256": "24ac8d1cba1f9d7d9b5989e1c7fa374c12e1bf118e5456b785ff3c10b9363308",
+  "baseline_fa1fbbe_cloud_sha256": "a4c9bd11e33edfcea8dc2b31d59f2cdc0880b0f66d790eb449388c094af742b6"
+ },
+ "declared_scope": {
+  "change": "serial canonical and hosted initial-graph sorts use one counted in-place introsort; hosted merge passes, spare bank allocation and merge helpers removed",
+  "order": "total comparator (endpoint key, total_cmp weight); every bit unchanged; frozen fixture unmodified",
+  "resources": "public construction bound keeps the spare-bank reserve; no new allocation or pool; thresholds and worker selection unchanged",
+  "polling": "serial: caller meter cadence; team: each logical partition-tree node polls on entry with its own lane counter, ceiling-independent schedule"
+ },
+ "steps": {
+  "100-firstpass-cmg-all-features": {
+   "exit": 101,
+   "log_sha256": "2be221394f5f2299780283847af36498825ff57987472d9f5a8240c59dd9fe38",
+   "passed": 256,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 41
+  },
+  "101-secondpass-cmg-all-features": {
+   "exit": 101,
+   "log_sha256": "714810d24583af81c33843e888b2c03c5cfb8c9651e5b5c3f941d6c8ff2813b3",
+   "passed": 256,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 41
+  },
+  "102-thirdpass-cmg-all-features": {
+   "exit": 0,
+   "log_sha256": "ea29b86450c14b69acd9b6d05627e40e6087e7ef26b6e474287bbfda0590a2a5",
+   "passed": 257,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 41
+  },
+  "130-cmg-frozen-parallel": {
+   "exit": 0,
+   "log_sha256": "35b8b83c4b8bde7300e34a2e464afc089392c986269cd8b7b2c42666cab888f4",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "131-cmg-frozen-parallelrelease": {
+   "exit": 0,
+   "log_sha256": "f9c136e8d32d3e00b93f7f8ac6d81bb60b64ab9bc7488b7fb4ac279d563dac66",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "132-cmg-frozen-experimentalcomponents": {
+   "exit": 0,
+   "log_sha256": "8e3b289996a0d3c0c2ff3244368dc1abd9459cb063fac1483adaeb8fa39c2dab",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "133-cmg-frozen-experimentalcomponentsrelease": {
+   "exit": 0,
+   "log_sha256": "4a6e91aed878d729ef931baf2f28f5683679f9e84eff4f431ba3aa5a85ba5201",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "134-cmg-frozen-parallel+experimentalcomponents": {
+   "exit": 0,
+   "log_sha256": "96eca91d0614acf58ab345e081c250e3b4cba70ba43f2551dec8dd0c034c130d",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "135-cmg-frozen-parallel+experimentalcomponentsrelease": {
+   "exit": 0,
+   "log_sha256": "c2bd8b165774b3533ea9cf95acd2c45cfa956a7c34cc1efc4b5a8d29675e91c5",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "136-cmg-frozen-parallel+profiling": {
+   "exit": 0,
+   "log_sha256": "b7f440498278915f4b805cf03e6dfe8948a9e4e1dd85c4a477274746352ee838",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "137-cmg-frozen-parallel+profilingrelease": {
+   "exit": 0,
+   "log_sha256": "6cd34c406b5bf083dbece88f15198905cd1ead72e94b0e38bf6e672d876d4883",
+   "passed": 1,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "140-cmg-clippy-none": {
+   "exit": 0,
+   "log_sha256": "0133372c6142fe29886eab6b0a9d5e100f1df24736773c32e8bca7c2e8fcd540",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "141-cmg-clippy-parallel": {
+   "exit": 0,
+   "log_sha256": "0133372c6142fe29886eab6b0a9d5e100f1df24736773c32e8bca7c2e8fcd540",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "142-cmg-clippy-experimental-components": {
+   "exit": 0,
+   "log_sha256": "8e50df2922c0855d8c1d0a7e0bc643fcc14985e790bbdf412c2b019892fad117",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "143-cmg-clippy-profiling": {
+   "exit": 0,
+   "log_sha256": "3ed5956d4fda20335e5847f5090dbee5c8e763c9a7445c22622d05f6b7dd5601",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "144-cmg-clippy-cycle-profiling": {
+   "exit": 0,
+   "log_sha256": "fff58b876b8c346f600b20013e87497e8c7abd53c5fd1d92397daa368e337f53",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "145-cmg-clippy-parallel+experimental-components": {
+   "exit": 0,
+   "log_sha256": "8bee70a8c13d2ab69246f1f1f240a3d990e2adfe151adb0dbf7bdc3649304255",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "201-mut-s1_partition_unpolled": {
+   "exit": 101,
+   "log_sha256": "fb1e48b98476caf94bc09a6ab15f63167dcb67f9162885e3663659161c6a4e2a",
+   "passed": 3,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 1
+  },
+  "202-mut-s2_weight_blind_order": {
+   "exit": 101,
+   "log_sha256": "38d43a2dc42a0a9511dfed14cb0ce62ddf0a035803320e1aad05bf2d93f12b65",
+   "passed": 1,
+   "failed": 3,
+   "ignored": 0,
+   "groups": 1
+  },
+  "203-mut-s3a_shared_tail_counter": {
+   "exit": 101,
+   "log_sha256": "94a1408b64a94d049cfb7a27ef40714ea88e42c6b4a62a7660f74b6cd5f139d8",
+   "passed": 4,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 1
+  },
+  "204-mut-s3a_shared_tail_counter-hosted": {
+   "exit": 101,
+   "log_sha256": "b1569167059b358ca1ac733d2c860db14bccc3e20fb33807616a2a29e2f45729",
+   "passed": 2,
+   "failed": 2,
+   "ignored": 0,
+   "groups": 1
+  },
+  "205-mut-s3b_no_node_entry_poll": {
+   "exit": 101,
+   "log_sha256": "07c5885f52272e177936461173bc32c91cb09d36a978a1e3b047b383e1086d0d",
+   "passed": 4,
+   "failed": 1,
+   "ignored": 0,
+   "groups": 1
+  },
+  "320-cmg-fmt-check": {
+   "exit": 0,
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "321-cmg-test-default": {
+   "exit": 0,
+   "log_sha256": "c4ce2f838aeefd2beb10387bf6e2c93d13798a51ff6ef33ec186ee23d3ee6aab",
+   "passed": 132,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 40
+  },
+  "322-cmg-test-parallel": {
+   "exit": 0,
+   "log_sha256": "660f971ff02b870db73d35866dce55dcba43f72a828e1ccc0c2b89a5c4bf447b",
+   "passed": 201,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 41
+  },
+  "323-cmg-test-all-features": {
+   "exit": 0,
+   "log_sha256": "97f46daf4c7acc55f053da5d338255685f064026dd6e5b2900ad6d5a216d90b5",
+   "passed": 258,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 41
+  },
+  "324-cmg-test-release": {
+   "exit": 0,
+   "log_sha256": "6f99318dd4637835e1d0c3b4239df8e7307f8b077905db380dedefd5851716cb",
+   "passed": 132,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 40
+  },
+  "325-cmg-test-all-features-release": {
+   "exit": 0,
+   "log_sha256": "d1a1252614a6f7ce91afb699f80b044d7508d65250a957522a53d2cfe0797823",
+   "passed": 258,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 41
+  },
+  "326-cmg-doctest-all-features": {
+   "exit": 0,
+   "log_sha256": "dc99598d5b0356e9be7169a447e229ef00e31e1c7b52d6d743d08435036340eb",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 1
+  },
+  "327-cmg-test-parallel-release": {
+   "exit": 0,
+   "log_sha256": "d1e0b5fea93aba88dc4a727ebe7ed6aee6b39b82864a906acc8e54e763f119db",
+   "passed": 201,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 41
+  },
+  "346-cmg-clippy-all": {
+   "exit": 0,
+   "log_sha256": "77134d7b42b6c2ba7195696d62f8f38c3acc1eb92f4f24be7a73767a1942322c",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "347-cmg-doc": {
+   "exit": 0,
+   "log_sha256": "85f89d8bff16f64b376a45376b3fa47d48054f4d1e88e16759d51611f5ce8d53",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "348-cmg-bench-clippy-default": {
+   "exit": 0,
+   "log_sha256": "47147d3cee24a3a18e93c37eec9a1efc35773ef4381d7a81df7273cc082792d8",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "349-cmg-bench-clippy-all": {
+   "exit": 0,
+   "log_sha256": "6f88ac8520b617af34b78997b5ecf66c89f2d2bf9d4c062c507cc1eab4d43a38",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "350-cmg-bench-fmt-check": {
+   "exit": 0,
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "400-baseline-plugin-build": {
+   "exit": 0,
+   "log_sha256": "7e927585fa221ac2b2785122fbd19d466683b38845bfc79d9008bb11ed4d4955",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "60-fereg-complexity": {
+   "exit": 0,
+   "log_sha256": "66b3155d375ba75b896268fc3f4f19bfba3230e9924f44ed34edcafc1bfb1714",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "61-fereg-fmt-check": {
+   "exit": 0,
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "62-fereg-clippy": {
+   "exit": 0,
+   "log_sha256": "81c404c068cb92bc9d7a8984e40bd4255a7f70e0e613c47f1cd18ad02b4d8e05",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "63-fereg-core-lib": {
+   "exit": 0,
+   "log_sha256": "fcc6478a6ea83cd0232107ab982a1ebca68c99662e893371be57fc2e2eece51d",
+   "passed": 1388,
+   "failed": 0,
+   "ignored": 3,
+   "groups": 15
+  },
+  "64-candidate-plugin-build": {
+   "exit": 0,
+   "log_sha256": "8fac2fb7e2cab35d9b50195f7a7e10d60b0ece00e3af019ae50fc4ecd66c9814",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "65-replay-vs-baseline": {
+   "exit": 0,
+   "log_sha256": "7ab70f503a24bee5573fa4a61d0b533ab70888a009939e1c5c2bd81440fe8f28",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "66-derived-explicit": {
+   "exit": 0,
+   "log_sha256": "fc374441f39ef12c264e9ff5833fe422937e50e7532860c8e5f455ccaf9f9074",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "67-injected-two-fe": {
+   "exit": 0,
+   "log_sha256": "c4b634dc0baae98375844417db35401c0e402ba834c811eea4c4391ec7c92699",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "70-run-tests-standard": {
+   "exit": 1,
+   "log_sha256": "8ce0240b9d58e082b632a363e2e07daea4c94efeae53ccd9f2569b34feaee786",
+   "passed": 0,
+   "failed": 0,
+   "ignored": 0,
+   "groups": 0
+  },
+  "71-run-tests-source-only": {
+   "exit": 0,
+   "log_sha256": "e5ba8eb1c62aaf3be80113b4ee45f6a6ef6a51c05e77f5672835f071381c4cb5",
+   "passed": 1965,
+   "failed": 0,
+   "ignored": 14,
+   "groups": 83
+  }
+ },
+ "superseded_runs": {},
+ "notes": {
+  "100-101": "plan-cancellation sampling witness missed a single-poll phase under full-suite load; passes 3/3 isolated on this tree and the unmodified base; plan code untouched",
+  "102": "full suite passes 257 tests",
+  "201-205": "mutations s1, s2, s3a (edge sort and hosted), s3b: all exit 101",
+  "63": "1,374 top-level tests plus 14 child re-executions, counted by summary tuple"
+ },
+ "limits": [
+  "no cloud timing; benefit is for root controlled comparison",
+  "contraction remains serial below 65,536 edges",
+  "terminal factor, forest granularity, component reuse and hosted emission unchanged",
+  "logs under target/tmp/auto-routing/setup1/logs in the cloud session until review; not committed"
+ ]
+}

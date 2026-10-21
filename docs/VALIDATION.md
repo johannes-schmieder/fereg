@@ -84,6 +84,106 @@ or uninstrumented release-speed claims. Per-cell intervals are not simultaneous
 setup changes and deterministic RHS/core-aware policy still need implementation,
 review and the fixed 42-cell qualification before public two-FE activation.
 
+### Setup candidate 1: one counted in-place edge sort (pending review)
+
+Cloud implementation of the first authorized setup candidate (ideas 1 and 2 of
+the setup review) on runtime `3f9d54ee` / CMG `35a095f3` (fereg `fa1fbbe5`).
+It is not self-accepted. CMG `7b610e1e37bc8a8b01f98a9957089d8fc10367ae` is
+pinned by fereg `7fe3e7e` (manifest and both lockfiles); there is no fereg
+source change. No timing, panel or profile ran in the cloud. Root owns the
+controlled Linux/Mac comparison.
+
+Declared before the edits:
+
+- Change. Every canonical edge sort under a cancellation query uses one
+  counted in-place introsort, `graph/edge_sort.rs` (renamed from
+  `team_sort.rs`, now always compiled). It uses three-way partitions around a
+  median-of-three pivot, insertion below 17 records and a heapsort fallback at
+  depth `2 log2(n)`, counting 16 units per partition step and polling every
+  64 steps.
+- Migrated paths. Serial `canonical` (contraction, serial initial graphs and
+  owned compact edges) replaces the counted heapsort. The hosted initial
+  graph keeps its fixed 8-record mapping chunks, then sorts in place on the
+  team instead of using insertion runs and 14 merge passes through a spare
+  bank; that merge code and its tests are removed. The prepared and LDL key
+  heapsorts are unchanged.
+- Order. The total comparator (endpoint key, then `total_cmp` weight) and
+  bit-identical equal records leave every order, duplicate reduction,
+  hierarchy, factor, repeat, representation and bit unchanged.
+- Resources. The public construction bound still reserves the spare bank,
+  which no path allocates any more. Retained and peak accounting, the
+  thresholds (hosted path at 65,536 or more edges with any team, contraction
+  team threshold) and worker selection are unchanged. No pool and no
+  allocation are added.
+- Polling. A serial sort counts on the caller's meter. On a team, partitions
+  of at least 16,384 records fork within the ceiling, and every logical node
+  of the partition tree polls on entry with its own lane counter. The first
+  team version shared counters across unforked recursion. It changed the
+  hosted build's poll count with the ceiling (8,458 against 8,459), which the
+  existing "poll schedule depends on the input, never on the ceiling" witness
+  rejected. The per-node entry poll restores that property. The hosted
+  sort's cancellation phase is now "team edge sort"; the serial phase stays
+  "coarse edge sorting".
+
+Witnesses and results (logs, commands and real exits under
+`target/tmp/auto-routing/setup1/logs` until review):
+
+- New CMG tests:
+  - Serial and team sorts equal the standard sort on random, duplicate-heavy,
+    sorted, reversed, all-equal, two-value, organ-pipe, sawtooth and
+    median-of-three-killer inputs, with signed zeros and a subnormal weight, at
+    ceilings 1/2/3/8.
+  - Cancellation observed inside the first partition of a 400,000-record sort
+    stops untouched work. Serially no step follows; each team lane runs at
+    most one cadence plus one segment. Lanes join and a fresh sort is exact.
+  - The widest gap between polls is bounded serially and at ceilings 1 and 4,
+    deep in the partition tree.
+  - Team poll counts are identical at ceilings 1, 2, 3 and 8.
+  - A test-only range visit counter measures partition steps on subslices.
+- Mutations (all exit 101):
+  - s1, partitions never poll: killed by the in-partition cancellation
+    witness.
+  - s2, weight-blind comparator: killed by the equality witnesses.
+  - s3a, one counter across tail iterations: killed by the poll-schedule
+    witnesses (edge sort and hosted graph).
+  - s3b, no node entry poll: killed by the gap witness. Its first single-file
+    run survived because the gap witness did not exist yet; it is retained as
+    superseded.
+- CMG matrix on the final source: all 27 steps exit 0.
+  - Tests: default 132, `parallel` 201, all features 258, each in debug and
+    release.
+  - Frozen bits pass in all eight configurations with the fixture file
+    unmodified, so every frozen hierarchy, cycle, solve and plan digest is
+    bit-identical.
+  - Clippy for seven feature sets, rustdoc, and the benchmark crate pass.
+  - Earlier full-suite passes failed once each on the plan-cancellation
+    sampling witness ("CSR construction finish" not sampled). The plan code
+    is untouched, and the witness passes three of three in isolation on both
+    this tree and the unmodified base. It is a pre-existing load-sensitive
+    sampling witness; the failed logs are retained.
+- fereg on the pinned tree: ratchet (no change), fmt and Clippy pass. The
+  core lib passes 1,388 executions (1,374 top-level tests plus 14 child
+  re-executions), 3 ignored. These include the 42 frozen no-team/W1/W4
+  adapter digests, R1/R2, the above-floor projection and the allocation,
+  publication, error, cancellation and fatal-classification tests.
+- Actual-plugin replay of the candidate (`24ac8d1c...3308`) against a cloud
+  build of `fa1fbbe5` (`a4c9bd11...42b6`): 73 of 73 cases exact. 46 derived
+  explicit OLS and PPML runs (both bias modes, 1/4 workers) and 75 injected
+  two-FE runs are row-identical to the M3d runs.
+- Standard `./scripts/run_tests.sh`: 315 Python tests pass, then the
+  installed-plugin binding check fails (exit 1). `--source-only` (labelled
+  source-only; installed-package admission not performed) passes 322 Python
+  tests and 1,965 Rust test executions in 83 summary groups (14 ignored).
+
+Limits: no cloud timing. The candidate removes about 14 merge passes and the
+spare-bank first touch in the hosted initial graph, and replaces about 1.35M
+counted heap-sift steps in contraction with introsort partitions. Whether
+this lowers the measured initial-Laplacian and hierarchy phases is for
+root's controlled comparison. Contraction remains serial below 65,536 edges.
+The terminal factor, forest granularity, component reuse and hosted emission
+are untouched. Identities are in
+[`cmg-setup-candidate1-20261021.json`](../bench/results/cmg-setup-candidate1-20261021.json).
+
 ## CMG successor milestone 3d: worker-independent team arithmetic
 
 **Johannes accepted M3d's disclosed final scope on 2026-10-21 after independent
