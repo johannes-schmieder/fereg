@@ -488,6 +488,89 @@ bound, while source-to-binary provenance additionally rests on root's source,
 patch and build-command checks. No separate Mac profile host observer was
 recorded. Neither setup diagnosis nor these profiles activate public two-FE Auto.
 
+### Setup attribution tooling (pending review)
+
+This is maintained diagnostic tooling. It separates two explanations of the
+candidate's broader descriptive hierarchy/finalization phase: serial
+raw-edge sort operations, and the remaining hierarchy and finalization
+stages. There is no production change, timing, profile, SCC job, plugin build
+or replay. The work sits on root's `25a68ead`; CMG stays at `355d328a`.
+
+`bench/cmg_setup_attribution.py` instruments only private copies.
+
+- **Preparation.** It exports the exact arm commits (accepted
+  `3f9d54ee`/`35a095f3`, candidate `0407060c`/`355d328a`) with `git archive`
+  and checks pristine file hashes. It then applies root's unchanged
+  `cmg_setup_profile.patch` (SHA-256 pinned). The attribution edits follow;
+  every anchor must occur exactly once.
+- **CMG dependency.** The copy's CMG dependency points to the patched copy,
+  and builds stay `cargo --locked`. A diff, a deterministic source archive
+  and an `attribution-source.json` are written.
+- **Added module.** `setup_attribution.rs` holds fixed atomic tables and
+  per-thread counter cells. There is no admitted bank, factor walk,
+  constructor, pool or graph copy, and no comparison, query or meter
+  arithmetic changes.
+- **Modes.** A compile-time constant selects a counts-only build or a
+  timers-only build. Counter-build time is never evidence.
+- **Counts.** One record per canonical raw-edge sort, with its contraction
+  level or outside site and its serial/team/hosted path. Only serial sorts
+  on the calling thread are counted:
+  - comparator calls;
+  - partitions, partition steps and swaps;
+  - insertion leaves, records and swaps;
+  - heapsorts, records, sift steps and swaps;
+  - the caller meter's units and queries.
+
+  The shared heapsort counts only inside an active canonical scope, so
+  prepared and LDL sorts stay out.
+- **Timers.** Every existing `measure_hierarchy_phase` boundary per level,
+  pruning, `hierarchy_total`, finest components, coarse centering, the
+  terminal factor, `finalize_total` and `build_with_total`, plus sort and
+  sort-with-reduction times per record. The validator checks the nesting and
+  returns disjoint `exclusive_ms` pieces whose sum equals the fereg profile's
+  hierarchy phase. Inclusive timers are never added.
+- **`run`.** It binds through `cmg_setup_profile.load_context` and runs that
+  helper's fixed 18 calls with exact science, signature, route and hierarchy
+  checks. In addition it requires per call:
+  - one built six-phase profile line and one attribution line;
+  - no overflow or unknown phase;
+  - the arm's algorithm identities;
+  - contraction records that match the contraction timers;
+  - the unchanged meter cadence.
+
+  Within a case, every call must also have identical sorts, and identical
+  counters in counts builds.
+
+Focused checks, all exit 0 on the final tool:
+
+- Preparation and build inputs, for each of the four arm × mode copies:
+  `prepare`, `cargo metadata --locked` and `cargo check --locked -p
+  fereg-plugin`.
+- CMG `frozen_bits` in release, and the graph/hierarchy/preconditioner lib
+  tests (31 accepted, 34 candidate), on each instrumented copy.
+- Smoke harness. Two synthetic graphs at W1/W4 built through the route's
+  calls. Hierarchy, repeat, factor and apply-bit digests are identical to the
+  pristine source and across arms and modes. The banded graph reaches a direct
+  terminal factor. Real attribution lines validate.
+- Tests: 23 new tests (real fixtures, fail-closed rejections, a mocked
+  18-call `run`); 73 setup tests and the full bench suite (264, 1 skipped)
+  pass under `discover`; the complexity ratchet passes.
+
+Earlier passing runs on older tool revisions, an invocation error (root
+setup tests need `discover`) and one cloud command refused by the session
+safety check are recorded. The record is
+[`cmg-setup-attribution-tool-20261021.json`](../bench/results/cmg-setup-attribution-tool-20261021.json).
+It holds file and prepared-source hashes, commands, exits, log hashes,
+deterministic synthetic-smoke counts, root's proposed protocol (four builds
+per platform, 18 calls each, high-degree-weak and weak-low) and the limits.
+
+- **Can distinguish:** per-level operation counts of the accepted heapsort
+  against the candidate introsort, and which disjoint stage holds an
+  accepted-versus-candidate difference, descriptively.
+- **Cannot distinguish:** per-operation cost, causality, or work inside team
+  lanes. Hosted and team sorts are recorded by size and timed only, and timer
+  builds carry a small overhead.
+
 ## CMG successor milestone 3d: worker-independent team arithmetic
 
 **Johannes accepted M3d's disclosed final scope on 2026-10-21 after independent
