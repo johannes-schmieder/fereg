@@ -99,8 +99,10 @@ Declared before the edits:
   counted in-place introsort, `graph/edge_sort.rs` (renamed from
   `team_sort.rs`, now always compiled). It uses three-way partitions around a
   median-of-three pivot, insertion below 17 records and a heapsort fallback at
-  depth `2 log2(n)`, counting 16 units per partition step and polling every
-  64 steps.
+  depth `2 log2(n)`. A partition advances its meter by 1,024 units (16 per
+  step) every 64 steps; the meter queries cancellation every 65,536 units,
+  about every 4,096 partition steps plus bounded segment slack. (Corrected by
+  the repair below; this bullet first said "polling every 64 steps".)
 - Migrated paths. Serial `canonical` (contraction, serial initial graphs and
   owned compact edges) replaces the counted heapsort. The hosted initial
   graph keeps its fixed 8-record mapping chunks, then sorts in place on the
@@ -110,14 +112,20 @@ Declared before the edits:
 - Order. The total comparator (endpoint key, then `total_cmp` weight) and
   bit-identical equal records leave every order, duplicate reduction,
   hierarchy, factor, repeat, representation and bit unchanged.
-- Resources. The public construction bound still reserves the spare bank,
-  which no path allocates any more. Retained and peak accounting, the
+- Resources. Only the spare sort bank is gone. The unchanged public
+  construction bound still counts two edge banks; the second covers the
+  transient compaction copy that `from_sorted_edges` allocates while the
+  merged bank is live. (Corrected by the repair below; this bullet first said
+  the second bank is never allocated.) Retained and peak accounting, the
   thresholds (hosted path at 65,536 or more edges with any team, contraction
   team threshold) and worker selection are unchanged. No pool and no
   allocation are added.
 - Polling. A serial sort counts on the caller's meter. On a team, partitions
   of at least 16,384 records fork within the ceiling, and every logical node
-  of the partition tree polls on entry with its own lane counter. The first
+  of the partition tree also queries on entry with its own lane counter; the
+  coordinator queries once more after the join. A successful run's query
+  total and each node's logical checkpoints are ceiling-independent; the
+  chronological order of queries and where a cancellation stops are not. The first
   team version shared counters across unforked recursion. It changed the
   hosted build's poll count with the ceiling (8,458 against 8,459), which the
   existing "poll schedule depends on the input, never on the ceiling" witness
@@ -125,8 +133,9 @@ Declared before the edits:
   sort's cancellation phase is now "team edge sort"; the serial phase stays
   "coarse edge sorting".
 
-Witnesses and results (logs, commands and real exits under
-`target/tmp/auto-routing/setup1/logs` until review):
+Witnesses and results (compact commands, real exits and log SHA-256 values
+are in the JSON record; raw logs were session-local and are not retained in
+the repository):
 
 - New CMG tests:
   - Serial and team sorts equal the standard sort on random, duplicate-heavy,
@@ -136,9 +145,12 @@ Witnesses and results (logs, commands and real exits under
   - Cancellation observed inside the first partition of a 400,000-record sort
     stops untouched work. Serially no step follows; each team lane runs at
     most one cadence plus one segment. Lanes join and a fresh sort is exact.
+    (Review: every stop here falls in the root partition before any fork, so
+    this witness says nothing about concurrent lanes; the repair below adds
+    the post-fork witness.)
   - The widest gap between polls is bounded serially and at ceilings 1 and 4,
     deep in the partition tree.
-  - Team poll counts are identical at ceilings 1, 2, 3 and 8.
+  - Successful-run team query totals are identical at ceilings 1, 2, 3 and 8.
   - A test-only range visit counter measures partition steps on subslices.
 - Mutations (all exit 101):
   - s1, partitions never poll: killed by the in-partition cancellation
@@ -156,11 +168,14 @@ Witnesses and results (logs, commands and real exits under
     unmodified, so every frozen hierarchy, cycle, solve and plan digest is
     bit-identical.
   - Clippy for seven feature sets, rustdoc, and the benchmark crate pass.
-  - Earlier full-suite passes failed once each on the plan-cancellation
-    sampling witness ("CSR construction finish" not sampled). The plan code
-    is untouched, and the witness passes three of three in isolation on both
-    this tree and the unmodified base. It is a pre-existing load-sensitive
-    sampling witness; the failed logs are retained.
+  - Earlier full-suite passes (corrected attribution): run 100 failed the
+    hosted-graph poll-schedule witness (8,458 against 8,459, the shared-counter
+    defect above, fixed before run 101); run 101 failed the plan-cancellation
+    sampling witness ("CSR construction finish" not sampled); run 102 passed
+    (257 tests). The plan failure is a defect of the pre-existing witness
+    design (sampled query ordinals under dynamic CSR chunk claiming), not a
+    baseline failure that was observed: the base passed three isolated runs,
+    which does not reproduce a flake. The repair below replaces it.
 - fereg on the pinned tree: ratchet (no change), fmt and Clippy pass. The
   core lib passes 1,388 executions (1,374 top-level tests plus 14 child
   re-executions), 3 ignored. These include the 42 frozen no-team/W1/W4
@@ -183,6 +198,139 @@ root's controlled comparison. Contraction remains serial below 65,536 edges.
 The terminal factor, forest granularity, component reuse and hosted emission
 are untouched. Identities are in
 [`cmg-setup-candidate1-20261021.json`](../bench/results/cmg-setup-candidate1-20261021.json).
+
+### Setup candidate 1 repair: witnesses and evidence (pending review)
+
+Root's review found no production sorting, order or resource defect but five
+evidence gaps (R1 to R5). The repair is two CMG commits,
+`b0b9aaf5c71f2f1ec669be73995c4f74da3c8abb` (parent `7b610e1e`) and
+`1bed1672dd80ece3ff9c6c2074d3ff48588b722d`, pinned by fereg in the manifest
+and both lockfiles on top of root's tooling commit
+`1ee45cc4` (whose `bench/cmg_setup.py`, qualify hooks, tests and README are
+untouched). It changes tests, test-only probes and documentation only:
+`-Zunpretty=expanded` non-test release expansions of the CMG library at
+`7b610e1e` and `1bed1672` are token-identical apart from doc comments for the
+default, `parallel`, `experimental-components` and
+`parallel,experimental-components` feature sets. No timing ran.
+
+- R1, post-fork cancellation. The earlier in-partition witness stops in the
+  root partition before any fork, so its W4 claims were vacuous. The new
+  witness `started_lanes_cancel_inside_partitions_after_the_fork` parks every
+  lane at its first query inside actual partition work past the root
+  partition, using a test-only per-thread partition probe and the lane gauge.
+  The lanes are released only when all `ceiling` lanes have arrived on
+  distinct threads; at W4 these are the four one-lane leaves after the second
+  fork, with four lanes active at firing. Parking is a mutex/condvar barrier
+  with a 30-second escape that fails the witness instead of hanging; success
+  depends on no sleep or schedule. After the firing, no partition step and
+  no lane query follow (the only later query is the coordinator's poll after
+  the join). Each parked partition still had unclassified records, all lanes
+  have joined on return, query and visit counts do not move afterwards, and
+  fresh team and serial sorts are exact. It runs at W4 and W1. The early-root
+  and deep-gap witnesses are kept.
+- R2, signed zeros. `Edge`'s `PartialEq` equates `+0` and `-0`. Every
+  serial/team standard-sort and fresh-rebuild comparison now uses endpoints
+  and `weight.to_bits`. A signed-zero duplicate-group input was added, and an
+  explicit check shows that the bit comparison separates a swapped signed-zero
+  pair that `PartialEq` accepts. The frozen fixtures are unchanged.
+- R3, plan preparation. The full-suite failure of
+  `plan_and_workspace_preparation...` (run 101) came from the witness design:
+  it calibrates a global query ordinal and samples indices, but CSR fill
+  claims chunks dynamically with persistent per-lane counters, so ordinals
+  move and a single checkpoint can fall between samples. A test-only,
+  allocation-free thread-local probe now records the phase of the
+  `CancelMeter::poll` whose production query runs, and a guard restores it on
+  return or unwind. Each required caller phase is cancelled by a sticky query
+  that latches when the probe names it ("plan operators", "CSR row counts",
+  "CSR row offsets", "CSR incoming scatter", "parallel CSR fill", "CSR
+  construction finish"). For each, the witness requires that the phase was
+  reached, that exactly that phase is reported, that nothing is published and
+  that "plan publication" is never queried afterwards; the existing exact
+  rebuild follows. The production query decides; the probe only observes.
+  - The first latch design let both CSR-finish mutations survive (exit 0).
+    The serial CSR path polls the same phase name, so the latch landed there.
+    The repaired latch identifies the parallel finish (`csr.rs` near line 404)
+    as the meter poll directly after the parallel fill's join poll, which the
+    serial path never produces.
+  - The construction witness latches "team edge sort" and the contraction's
+    coordinator phases the same way. The mapping stage polls the raw query on
+    its lanes, without a meter phase, so it stays covered by the bracketing
+    sweep.
+  - Ordinal sampling remains only as supplementary coverage.
+- R4, documentation (CMG doc comments, `controlled-construction.md`,
+  CHANGELOG, and the candidate entry above).
+  - Cadence. A partition advances the meter by 1,024 units every 64 steps, and
+    the meter queries every 65,536 units: about every 4,096 steps plus bounded
+    segment slack, with extra node-entry and final queries on a team.
+  - Ceiling independence. Successful-run query totals and per-node logical
+    checkpoints do not depend on the ceiling; the chronological order of
+    queries and where a cancellation stops do.
+  - Edge banks. Only the spare sort bank was removed. The unchanged
+    two-bank bound still covers the transient compaction copy that
+    `from_sorted_edges` allocates while the merged bank is live.
+- R5, failure evidence. The attribution of the earlier failures is corrected
+  above. Run 100 was the 8,458/8,459 poll-count failure of the first team
+  version; run 101 was the plan witness; run 102 succeeded.
+  - The candidate-entry claim of three isolated passes on each tree came from
+    unlogged runs: only their summary lines were seen, so no hashes exist.
+    That claim is narrowed to a logged reproduction: three runs each on
+    `7b610e1e` and `35a095f3`, all exit 0. No baseline failure was observed,
+    and passing isolated runs do not reproduce a flake.
+  - The initially surviving entry-poll mutation and the superseded mutation
+    attempts are recorded with their commands, exits and hashes.
+  - 257 against 258: run 102 predates `work_between_polls_is_bounded_deep_in_the_partition_tree`,
+    which was added after the first entry-poll mutation survived. That is
+    the only test-count difference between runs 102 and 323 (lib 97 → 98).
+- Mutations, all applied to a copy of the repaired tree:
+  - Started-lanes witness, first with W1 checked first (501–503), then with
+    W4 first (521–523): a partition that swallows cancellation (W4: 1,199,971
+    steps against 816,376 at firing), no in-partition poll (W4 returns
+    `Ok`), and no coordinator poll after the join (W4: 204 queries against
+    205). All exit 101.
+  - CSR finish: deletion and a counting-only bypass of the parallel
+    checkpoint. With the first latch design both exit 0 (retained); with the
+    repaired witness both exit 101 ("CSR construction finish (after parallel
+    CSR fill) was never polled"). Two earlier attempts whose anchor was not
+    unique did not apply (exit 2) and are recorded as superseded.
+- Deep-gap witness race (second CMG commit). The first repair matrix's
+  all-features debug run (623, exit 101) failed the existing candidate
+  witness `work_between_polls_is_bounded_deep_in_the_partition_tree` at W4
+  (47,022 steps between polls against 16,640). That witness read the global
+  step counter and stored it with a separate atomic swap, so a lane preempted
+  between the two stores a stale reading that inflates the next gap. Lane
+  segments depend only on the input's partition tree, and W1 runs the same
+  nodes within its one-lane bound, so this was the measurement, not the sort.
+  `1bed1672` reads and records under one lock. s1 (no in-partition poll,
+  1,048,576 steps between polls serially) and s3b (no node-entry poll, 72,660
+  at W1) still fail it (541/542, exit 101). The failed log is retained.
+- CMG matrix on `1bed1672`: all 27 steps exit 0.
+  - Focused repair witnesses (edge sort and bounded team): 10 of 10, three
+    consecutive runs.
+  - Tests: default 132, `parallel` 202, all features 259, each in debug and
+    release. The one-test increase over the candidate's 201/258 is the new
+    started-lanes witness.
+  - Frozen bits pass in eight feature/profile configurations with the fixture
+    unmodified.
+  - Clippy for seven feature sets, rustfmt and rustdoc pass. The benchmark
+    crate is not rerun: the non-test library code is token-identical.
+  - The first repair matrix on `b0b9aaf5` passed every step except 623 (above).
+- fereg on the pinned tree (no fereg source change; the ratchet inventory
+  is unchanged): ratchet, fmt and Clippy pass, and the core lib passes 1,388
+  executions with 3 ignored.
+  - Plugin. A plugin built from the repair (`040e85a4...aa7b3`) differs in
+    bytes from the candidate's (`24ac8d1c...3308`). Its build inputs differ in
+    the build label, the CMG checkout revision and the line numbers in the
+    edited files; the non-test CMG source is token-identical.
+  - Replay against the `fa1fbbe5` cloud baseline (`a4c9bd11...42b6`) is
+    exact again: 73 of 73 cases, plus 46 derived explicit OLS and PPML rows
+    (both bias modes, 1/4 workers) and 75 injected two-FE rows with zero
+    differences, matching the candidate's counts.
+  - Standard `./scripts/run_tests.sh`: 315 Python tests pass, then the known
+    installed-plugin binding check fails (exit 1). Not green.
+  - `--source-only`: exit 0, 322 Python tests and 1,965 Rust executions in 83
+    summary groups (14 ignored), counted from summary tuples. Root's parser
+    counted 1,951 executions on `c796a3b6`, so the two counting methods
+    differ.
 
 ## CMG successor milestone 3d: worker-independent team arithmetic
 

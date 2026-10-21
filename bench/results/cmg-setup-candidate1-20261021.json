@@ -14,8 +14,8 @@
  "declared_scope": {
   "change": "serial canonical and hosted initial-graph sorts use one counted in-place introsort; hosted merge passes, spare bank allocation and merge helpers removed",
   "order": "total comparator (endpoint key, total_cmp weight); every bit unchanged; frozen fixture unmodified",
-  "resources": "public construction bound keeps the spare-bank reserve; no new allocation or pool; thresholds and worker selection unchanged",
-  "polling": "serial: caller meter cadence; team: each logical partition-tree node polls on entry with its own lane counter, ceiling-independent schedule"
+  "resources": "only the spare sort bank is removed; the unchanged public construction bound still counts two edge banks, the second covering the transient compaction copy in from_sorted_edges (corrected by the repair; first recorded as a spare-bank reserve that no path allocates)",
+  "polling": "partitions advance the meter 1,024 units per 64 steps; the meter queries every 65,536 units (about 4,096 steps plus bounded segment slack); team nodes also query on entry and the coordinator after the join; successful-run query totals and per-node checkpoints are ceiling-independent, chronological order and cancellation stop locations are not (corrected by the repair; first recorded as a ceiling-independent schedule)"
  },
  "steps": {
   "100-firstpass-cmg-all-features": {
@@ -387,17 +387,802 @@
    "groups": 83
   }
  },
- "superseded_runs": {},
+ "superseded_runs": {
+  "isolated_plan_witness_unlogged": {
+   "commands": "cargo test --offline --no-default-features --features parallel,experimental-components --lib plan_and_workspace_preparation, 3x on the then-candidate tree, then 3x after git stash (base 35a095f3)",
+   "outcome": "six summary lines \"1 passed; 0 failed\" seen in the session; output was not logged, so no log hashes exist; the claim is narrowed to the logged reproduction 531-533"
+  },
+  "first_s3_mutation_survived": {
+   "203-mut-s3_shared_lane_counter": {
+    "command": "<task>/setup1/mutations/run_mutation.sh <home>/CMG s3_shared_lane_counter.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort (cwd: <task>/setup1)",
+    "exit": 0,
+    "log_sha256": "74ae9d23a42e246ac2c2b147eb1ca0676c3a717967a1e62c8f0052ee12f3dab3",
+    "passed": 4,
+    "failed": 0,
+    "ignored": 0
+   },
+   "204-mut-s3_shared_lane_counter-hosted": {
+    "command": "<task>/setup1/mutations/run_mutation.sh <home>/CMG s3_shared_lane_counter.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --test hosted_graph (cwd: <task>/setup1)",
+    "exit": 0,
+    "log_sha256": "7bebc94ad7396be7b8deca140b0ac85a67196fb1d20ac3c22f466177265e2f85",
+    "passed": 4,
+    "failed": 0,
+    "ignored": 0
+   }
+  },
+  "first_s3_mutation_note": "combined shared-counter/no-entry-poll mutation survived (exit 0) before the gap witness existed; its script was split into s3a/s3b and not retained",
+  "poll_count_8458_8459": {
+   "command": "cargo test --offline --all-targets --all-features --no-fail-fast (cwd: <home>/CMG)",
+   "exit": 101,
+   "log_sha256": "2be221394f5f2299780283847af36498825ff57987472d9f5a8240c59dd9fe38",
+   "passed": 256,
+   "failed": 1,
+   "ignored": 0,
+   "failure": "tests/hosted_graph.rs:143 left 8458 right 8459"
+  },
+  "plan_witness_run_101": {
+   "command": "cargo test --offline --all-targets --all-features --no-fail-fast (cwd: <home>/CMG)",
+   "exit": 101,
+   "log_sha256": "714810d24583af81c33843e888b2c03c5cfb8c9651e5b5c3f941d6c8ff2813b3",
+   "passed": 256,
+   "failed": 1,
+   "ignored": 0,
+   "failure": "src/bounded_team_tests.rs:229 CSR construction finish not sampled"
+  },
+  "run_102": {
+   "command": "cargo test --offline --all-targets --all-features --no-fail-fast (cwd: <home>/CMG)",
+   "exit": 0,
+   "log_sha256": "ea29b86450c14b69acd9b6d05627e40e6087e7ef26b6e474287bbfda0590a2a5",
+   "passed": 257,
+   "failed": 0,
+   "ignored": 0
+  },
+  "r3_mutations_anchor_not_unique": {
+   "511-mut-r3a_delete_parallel_csr_finish": {
+    "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r3a_delete_parallel_csr_finish.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib bounded_team_tests::plan_and_workspace_preparation (cwd: <task>/setup1-repair)",
+    "exit": 2,
+    "log_sha256": "95f578e60fa3a88147c28937818be45ab7212e9b51a74904da67dd8fce4305ef",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   },
+   "512-mut-r3b_bypass_parallel_csr_finish": {
+    "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r3b_bypass_parallel_csr_finish.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib bounded_team_tests::plan_and_workspace_preparation (cwd: <task>/setup1-repair)",
+    "exit": 2,
+    "log_sha256": "997c9363d0c6ac6d3c1052cf7b9205e922032f4b7804cea3dec61a2db5edb3e5",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   }
+  },
+  "r3_mutations_survived_first_latch": {
+   "511-mut-r3a_delete_parallel_csr_finish": {
+    "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r3a_delete_parallel_csr_finish.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib bounded_team_tests::plan_and_workspace_preparation (cwd: <task>/setup1-repair)",
+    "exit": 0,
+    "log_sha256": "15c0be827ff9206e602df1a5fc68bdf7f737cf1dfa99bfa763cf8a4525bb6ff4",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0
+   },
+   "512-mut-r3b_bypass_parallel_csr_finish": {
+    "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r3b_bypass_parallel_csr_finish.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib bounded_team_tests::plan_and_workspace_preparation (cwd: <task>/setup1-repair)",
+    "exit": 0,
+    "log_sha256": "d446afc77e927fe08f091b1acc850d47495a6c62787d2078c6b0264dbd56d7ac",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0
+   }
+  },
+  "first_repair_matrix_b0b9aaf5": {
+   "601-cmg-focused-repair-witnesses-run1": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib -- edge_sort bounded_team_tests (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "17f2c0cdf3a77d6fe5be0336eb751424bf755c2b0d0d6b642000ca51f8a5cbf7",
+    "passed": 10,
+    "failed": 0,
+    "ignored": 0
+   },
+   "602-cmg-focused-repair-witnesses-run2": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib -- edge_sort bounded_team_tests (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "bfb43aefaf15f5b65117e7d04ee8aabfa9c6c78c1329af83b52348ccf0812b2a",
+    "passed": 10,
+    "failed": 0,
+    "ignored": 0
+   },
+   "603-cmg-focused-repair-witnesses-run3": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib -- edge_sort bounded_team_tests (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "d30a98e3b986378a934f575aa46ab2a61fa3a11d98af1e68dfc497d8fdbe1f49",
+    "passed": 10,
+    "failed": 0,
+    "ignored": 0
+   },
+   "620-cmg-fmt-check": {
+    "command": "cargo fmt --all -- --check (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   },
+   "621-cmg-test-default": {
+    "command": "cargo test --offline --all-targets (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "6864e55091114ba114e23239fedfaa3def36b1083511cd64a9129a6bb82105c5",
+    "passed": 132,
+    "failed": 0,
+    "ignored": 0
+   },
+   "622-cmg-test-parallel": {
+    "command": "cargo test --offline --all-targets --no-default-features --features parallel (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "6954a3216f45e3b3bd43bf973729bdb65901889faa3f74c2b4a2e54049c9c2ef",
+    "passed": 202,
+    "failed": 0,
+    "ignored": 0
+   },
+   "623-cmg-test-all-features": {
+    "command": "cargo test --offline --all-targets --all-features (cwd: <home>/CMG)",
+    "exit": 101,
+    "log_sha256": "480bd003d331ef4aecfdc7941ebaa16e54865158f9290b812cc08c276be7bd92",
+    "passed": 99,
+    "failed": 1,
+    "ignored": 0
+   },
+   "624-cmg-test-release": {
+    "command": "cargo test --offline --all-targets --release (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "b8e5f41cba19f9cad9d1ce2e83ac8bda75efa1ab7ba08902a1afb4beef942354",
+    "passed": 132,
+    "failed": 0,
+    "ignored": 0
+   },
+   "625-cmg-test-all-features-release": {
+    "command": "cargo test --offline --all-targets --all-features --release (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "7db9fe4c47b2dbdc065f7edd5a141afede0c1775733c17a925fb97d9599e85af",
+    "passed": 259,
+    "failed": 0,
+    "ignored": 0
+   },
+   "626-cmg-doctest-all-features": {
+    "command": "cargo test --offline --doc --all-features (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "dc99598d5b0356e9be7169a447e229ef00e31e1c7b52d6d743d08435036340eb",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   },
+   "627-cmg-test-parallel-release": {
+    "command": "cargo test --offline --all-targets --no-default-features --features parallel --release (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "3f9e5eaaa209730872f325533e4fa1a4df1608f64b16a041b0c690221cec632d",
+    "passed": 202,
+    "failed": 0,
+    "ignored": 0
+   },
+   "630-cmg-frozen-parallel": {
+    "command": "cargo test --offline --no-default-features --features parallel --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "ed402f6d3b70e0ee360e25c7aa7cb56aa21a142251215041f273178cde6fc29d",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0
+   },
+   "631-cmg-frozen-parallelrelease": {
+    "command": "cargo test --offline --no-default-features --features parallel --release --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "4bcb127839cf4871d9594be2fc1c9e95158a4563a767706ca5b1f217192e23e2",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0
+   },
+   "632-cmg-frozen-experimentalcomponents": {
+    "command": "cargo test --offline --no-default-features --features experimental-components --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "6f81ce9f23be1be31a55c387435b65f0a90fcfb5ba32d1e4df75e3f87bbf8396",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0
+   },
+   "633-cmg-frozen-experimentalcomponentsrelease": {
+    "command": "cargo test --offline --no-default-features --features experimental-components --release --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "e89736fec0424b1856e4800addce8c37099e49b905006a3bd77213e2729577a1",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0
+   },
+   "634-cmg-frozen-parallel+experimentalcomponents": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "783f9503684d84cb480bdaa09358f38bdc3be7ee520495e44c835e6b97c50d7c",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0
+   },
+   "635-cmg-frozen-parallel+experimentalcomponentsrelease": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --release --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "cde2ca8f6191995fb490b58f112a8761c93d8d06cb3c5d47650f4c297a18867b",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0
+   },
+   "636-cmg-frozen-parallel+profiling": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,profiling --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "4a28a8f191779c68af8be8e52dee80b1cfe865848b0fe00c32ec6d9cf4fbd667",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0
+   },
+   "637-cmg-frozen-parallel+profilingrelease": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,profiling --release --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "03474744526353f388e2a1382f91f1e9e352c4de19d87c6c9ed697cd1c371377",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0
+   },
+   "640-cmg-clippy-none": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features '' -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "c2ec5458ffb25c1d04787bfc6d79ba8938c2d1b7e0d34a5bd80a1771b4e2552a",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   },
+   "641-cmg-clippy-parallel": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features parallel -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "f83d23368894742d17bb222d738074506b1df635706808aaac6af358ea05a857",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   },
+   "642-cmg-clippy-experimental-components": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features experimental-components -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "fb6af01f6b49992bbb36c44fbd927d4652bebb03222e00b6287e4bc4cedf1123",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   },
+   "643-cmg-clippy-profiling": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features profiling -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "40189a87f79b0a8b594538f175bfa7ecb635c9689c97af754cdf66ad0b13da1e",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   },
+   "644-cmg-clippy-cycle-profiling": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features cycle-profiling -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "8f478a5ea5e51d72df0841698a385900cc184b482205a9ea7061862dffee81db",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   },
+   "645-cmg-clippy-parallel+experimental-components": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features parallel\\,experimental-components -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "85ea82bdecbb0010a69222d5966be4b481a3ecef241d181050970316f27fab58",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   },
+   "646-cmg-clippy-all": {
+    "command": "cargo clippy --offline --all-targets --all-features -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "ddff542d2632227ce901c9b9055d2a5196fe0f1e2c917ec031c0f0f7b324507a",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   },
+   "647-cmg-doc": {
+    "command": "env RUSTDOCFLAGS=-D\\ warnings cargo doc --offline --no-deps --all-features (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "3dece11eb9babf0307fe24a8e61e6386d7f723c6e2c3bf550e329d06d6bfeec7",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0
+   }
+  }
+ },
  "notes": {
-  "100-101": "plan-cancellation sampling witness missed a single-poll phase under full-suite load; passes 3/3 isolated on this tree and the unmodified base; plan code untouched",
+  "100-101": "corrected attribution: run 100 failed the hosted-graph poll-schedule witness (8,458 vs 8,459, first team version sharing a counter across unforked recursion, fixed before run 101); run 101 failed the plan-cancellation sampling witness (CSR construction finish not sampled), a defect of the pre-existing witness design; no baseline failure was observed",
   "102": "full suite passes 257 tests",
   "201-205": "mutations s1, s2, s3a (edge sort and hosted), s3b: all exit 101",
-  "63": "1,374 top-level tests plus 14 child re-executions, counted by summary tuple"
+  "63": "1,374 top-level tests plus 14 child re-executions, counted by summary tuple",
+  "102-vs-323": "257 vs 258: run 102 predates work_between_polls_is_bounded_deep_in_the_partition_tree (lib 97 -> 98); no other test differs"
  },
  "limits": [
   "no cloud timing; benefit is for root controlled comparison",
   "contraction remains serial below 65,536 edges",
   "terminal factor, forest granularity, component reuse and hosted emission unchanged",
-  "logs under target/tmp/auto-routing/setup1/logs in the cloud session until review; not committed"
- ]
+  "raw logs were session-local and are not retained in the repository; compact commands, exits and SHA-256 values are recorded here"
+ ],
+ "repair": {
+  "date": "2026-10-21",
+  "review": "root review of setup candidate 1: R1-R5 evidence gaps; no production defect found",
+  "revisions": {
+   "cmg_reviewed": "7b610e1e37bc8a8b01f98a9957089d8fc10367ae",
+   "cmg_repair": [
+    "b0b9aaf5c71f2f1ec669be73995c4f74da3c8abb",
+    "1bed1672dd80ece3ff9c6c2074d3ff48588b722d"
+   ],
+   "fereg_base": "1ee45cc4040f2fd181aef066f6bd06a2ac0a1e43 (root tooling commit; preserved)"
+  },
+  "production_identity": "rustc 1.85.1 -Zunpretty=expanded non-test release expansion of the CMG lib at 7b610e1e and the repair is token-identical apart from doc comments for default, parallel, experimental-components and parallel,experimental-components",
+  "repairs": {
+   "R1": "started_lanes_cancel_inside_partitions_after_the_fork: deterministic barrier (30 s escape) parks all ceiling lanes inside partition work past the root on distinct threads; W4 active 4 at firing; no step or lane query after firing; joined; stable after return; fresh exact sorts; W4 and W1",
+   "R2": "order and rebuild witnesses compare endpoints and weight.to_bits; signed-zero duplicate groups",
+   "R3": "cfg(test) thread-local phase probe around CancelMeter::poll; per-phase latch with exact phase, no publication; parallel CSR finish identified as the poll directly after the parallel fill join",
+   "R4": "cadence, ceiling-independence and second-bank docs corrected in CMG and fereg",
+   "R5": "failure attribution corrected; superseded runs recorded with commands, exits and hashes",
+   "deep_gap_race": "work_between_polls witness read/swap race (623: 47,022 vs 16,640 at W4) fixed by one lock"
+  },
+  "steps": {
+   "mutations": {
+    "501-mut-r1a_partition_swallows_cancel": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r1a_partition_swallows_cancel.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort::tests::started_lanes_cancel_inside_partitions_after_the_fork (cwd: <task>/setup1-repair)",
+     "exit": 101,
+     "log_sha256": "3e5ddcaae2cf5780e1d0dabbdc799abe3555b6207f535471c66769bb8c1baf7a",
+     "passed": 0,
+     "failed": 1,
+     "ignored": 0
+    },
+    "502-mut-r1b_no_in_partition_poll": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r1b_no_in_partition_poll.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort::tests::started_lanes_cancel_inside_partitions_after_the_fork (cwd: <task>/setup1-repair)",
+     "exit": 101,
+     "log_sha256": "c26b3957a09d1e82105f805a1a16734324ab6abc60f8ce6e8f3b118b1077b07c",
+     "passed": 0,
+     "failed": 1,
+     "ignored": 0
+    },
+    "503-mut-r1c_no_final_joined_poll": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r1c_no_final_joined_poll.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort::tests::started_lanes_cancel_inside_partitions_after_the_fork (cwd: <task>/setup1-repair)",
+     "exit": 101,
+     "log_sha256": "f6a644b8aaed9e77d13abfd8c3897a0c115db67671fb6dda917eecef813fd9dc",
+     "passed": 0,
+     "failed": 1,
+     "ignored": 0
+    },
+    "511-mut-r3a_delete_parallel_csr_finish": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r3a_delete_parallel_csr_finish.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib bounded_team_tests::plan_and_workspace_preparation (cwd: <task>/setup1-repair)",
+     "exit": 0,
+     "log_sha256": "15c0be827ff9206e602df1a5fc68bdf7f737cf1dfa99bfa763cf8a4525bb6ff4",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "512-mut-r3b_bypass_parallel_csr_finish": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r3b_bypass_parallel_csr_finish.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib bounded_team_tests::plan_and_workspace_preparation (cwd: <task>/setup1-repair)",
+     "exit": 0,
+     "log_sha256": "d446afc77e927fe08f091b1acc850d47495a6c62787d2078c6b0264dbd56d7ac",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "513-mut-r3a_delete_parallel_csr_finish": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r3a_delete_parallel_csr_finish.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib bounded_team_tests::plan_and_workspace_preparation (cwd: <task>/setup1-repair)",
+     "exit": 101,
+     "log_sha256": "48b1361a0903a21aeb24e0323225ef34223574675ea4ae1ee23084237df542bd",
+     "passed": 0,
+     "failed": 1,
+     "ignored": 0
+    },
+    "514-mut-r3b_bypass_parallel_csr_finish": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r3b_bypass_parallel_csr_finish.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib bounded_team_tests::plan_and_workspace_preparation (cwd: <task>/setup1-repair)",
+     "exit": 101,
+     "log_sha256": "a471b60227df5f73ec4bb8334588b70e35858876b04113a07aa1213172480ed6",
+     "passed": 0,
+     "failed": 1,
+     "ignored": 0
+    },
+    "521-mut-r1a_partition_swallows_cancel": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r1a_partition_swallows_cancel.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort::tests::started_lanes_cancel_inside_partitions_after_the_fork (cwd: <task>/setup1-repair)",
+     "exit": 101,
+     "log_sha256": "5f895a470fa601687cae87c25898acad958689dfb33a61a35ed319dbe2a3a0d6",
+     "passed": 0,
+     "failed": 1,
+     "ignored": 0
+    },
+    "522-mut-r1b_no_in_partition_poll": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r1b_no_in_partition_poll.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort::tests::started_lanes_cancel_inside_partitions_after_the_fork (cwd: <task>/setup1-repair)",
+     "exit": 101,
+     "log_sha256": "85acbff545539990652d23ae9395f4ebebf24dd38c6d7dce30adc67f4c7fa3d7",
+     "passed": 0,
+     "failed": 1,
+     "ignored": 0
+    },
+    "523-mut-r1c_no_final_joined_poll": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG r1c_no_final_joined_poll.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort::tests::started_lanes_cancel_inside_partitions_after_the_fork (cwd: <task>/setup1-repair)",
+     "exit": 101,
+     "log_sha256": "7682f75334cd4f3c6e1bda8719ac18527f298f7a826b0ea21d26f7466b624c77",
+     "passed": 0,
+     "failed": 1,
+     "ignored": 0
+    },
+    "541-mut-s1_partition_unpolled-gap": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG s1_partition_unpolled.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort::tests::work_between_polls (cwd: <task>/setup1-repair)",
+     "exit": 101,
+     "log_sha256": "463387dc91c26603a4e18ba00e289589d4f07f795950b4399565eb12d23c5901",
+     "passed": 0,
+     "failed": 1,
+     "ignored": 0
+    },
+    "542-mut-s3b_no_node_entry_poll-gap": {
+     "command": "<task>/setup1-repair/mutations/run_mutation.sh <home>/CMG s3b_no_node_entry_poll.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort::tests::work_between_polls (cwd: <task>/setup1-repair)",
+     "exit": 101,
+     "log_sha256": "ac65606c04d7b43191e60f912a77449e89c33dc85c4563a26464a26453292844",
+     "passed": 0,
+     "failed": 1,
+     "ignored": 0
+    }
+   },
+   "isolated_plan_reproduction": {
+    "531-isolated-plan-35a095f3-run1": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib plan_and_workspace_preparation (cwd: <task>/setup1-repair/worktree-35a095f3)",
+     "exit": 0,
+     "log_sha256": "d52fc74b77252a61af91b12cc30e41cee63d1f0f887848bef053b457d8cef3a7",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "531-isolated-plan-7b610e1e-run1": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib plan_and_workspace_preparation (cwd: <task>/setup1-repair/worktree-7b610e1e)",
+     "exit": 0,
+     "log_sha256": "c7675ab5ace145e15e8c87602742f952318458d7af7d4263b1c8aafc78ad1152",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "532-isolated-plan-35a095f3-run2": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib plan_and_workspace_preparation (cwd: <task>/setup1-repair/worktree-35a095f3)",
+     "exit": 0,
+     "log_sha256": "4efa378294907b2cd7578d6e57730e8cbfcb1061a84964fbf45cdc4719a95985",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "532-isolated-plan-7b610e1e-run2": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib plan_and_workspace_preparation (cwd: <task>/setup1-repair/worktree-7b610e1e)",
+     "exit": 0,
+     "log_sha256": "1b3480660d9ca7c1017118f3e47fe57b5ed0d61a510f8302c39a0455bdb4f35f",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "533-isolated-plan-35a095f3-run3": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib plan_and_workspace_preparation (cwd: <task>/setup1-repair/worktree-35a095f3)",
+     "exit": 0,
+     "log_sha256": "b97081155231b476b65ec6b2cb066fe2111ce679c7d22edc0774d7ae15e105c7",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "533-isolated-plan-7b610e1e-run3": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib plan_and_workspace_preparation (cwd: <task>/setup1-repair/worktree-7b610e1e)",
+     "exit": 0,
+     "log_sha256": "a87e65f060df139f0c821678699b4b494efbdae9a3ef9299d58a6b43eeefe664",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    }
+   },
+   "cmg_matrix_1bed1672": {
+    "801-cmg-focused-repair-witnesses-run1": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib -- edge_sort bounded_team_tests (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "4d185914b7ed53873a1e5315f7ea5dcf2063447c37a420563a43b64cb2767918",
+     "passed": 10,
+     "failed": 0,
+     "ignored": 0
+    },
+    "802-cmg-focused-repair-witnesses-run2": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib -- edge_sort bounded_team_tests (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "6d3956705727c9cdbfb08138418f830ef054f653aa4e41cd470b2b4b50397b40",
+     "passed": 10,
+     "failed": 0,
+     "ignored": 0
+    },
+    "803-cmg-focused-repair-witnesses-run3": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib -- edge_sort bounded_team_tests (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "e3f739b5154eca1fdc7de225984fba6c7b6680bf22a42ef802bf7a4f31cd4bdc",
+     "passed": 10,
+     "failed": 0,
+     "ignored": 0
+    },
+    "820-cmg-fmt-check": {
+     "command": "cargo fmt --all -- --check (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "821-cmg-test-default": {
+     "command": "cargo test --offline --all-targets (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "5992af34666bb255607fd6f74f69e6335c63bcf15e21ff1e11b06f9c152410d1",
+     "passed": 132,
+     "failed": 0,
+     "ignored": 0
+    },
+    "822-cmg-test-parallel": {
+     "command": "cargo test --offline --all-targets --no-default-features --features parallel (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "67269f90cac0b5484154041ab731851d5dd79d9bd40736206bdf32536f909b21",
+     "passed": 202,
+     "failed": 0,
+     "ignored": 0
+    },
+    "823-cmg-test-all-features": {
+     "command": "cargo test --offline --all-targets --all-features --no-fail-fast (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "fef802453709d98652b604dc11b5637a99a75395c09368d2b066d814fe8204d5",
+     "passed": 259,
+     "failed": 0,
+     "ignored": 0
+    },
+    "824-cmg-test-release": {
+     "command": "cargo test --offline --all-targets --release (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "2cf39c3bab6f1968c37e432d99a4a3a6d0a89f92ed0911b3be484f0e23c8cc2d",
+     "passed": 132,
+     "failed": 0,
+     "ignored": 0
+    },
+    "825-cmg-test-all-features-release": {
+     "command": "cargo test --offline --all-targets --all-features --release (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "de00ec8ff386ef17412317973443ddcf0e23ae87b1978a9f8da0b688595bf1d7",
+     "passed": 259,
+     "failed": 0,
+     "ignored": 0
+    },
+    "826-cmg-doctest-all-features": {
+     "command": "cargo test --offline --doc --all-features (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "875489de800051b0faf115d6a33e4a7fe7e1b594db7c1eb34d8f4bfa46e063a1",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "827-cmg-test-parallel-release": {
+     "command": "cargo test --offline --all-targets --no-default-features --features parallel --release (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "339986ce47b0a088c122183275a8b837d3e94e243b352122d124e6414820ac95",
+     "passed": 202,
+     "failed": 0,
+     "ignored": 0
+    },
+    "830-cmg-frozen-parallel": {
+     "command": "cargo test --offline --no-default-features --features parallel --test frozen_bits (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "c295ca430bb1652b9cde970d2c6a2bff9bd9fe8116bbff7461e7c3181a04cd49",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "831-cmg-frozen-parallelrelease": {
+     "command": "cargo test --offline --no-default-features --features parallel --release --test frozen_bits (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "849ac4b43d7e78e4a4a876a79e2a9deb5a90a6ada4a29b11d4b927db9dabc6c4",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "832-cmg-frozen-experimentalcomponents": {
+     "command": "cargo test --offline --no-default-features --features experimental-components --test frozen_bits (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "f554287c1c1d476c3720fdea544930c58acc5a26cdcf329f47b7b7433bf94e0d",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "833-cmg-frozen-experimentalcomponentsrelease": {
+     "command": "cargo test --offline --no-default-features --features experimental-components --release --test frozen_bits (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "f2faf0aae8d8f8680355751638df079af5fd2edd528f61a134d97e310215e98a",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "834-cmg-frozen-parallel+experimentalcomponents": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "85c497078b0a7209aa5d4044eeaba5b111a4ea788bff0f24410fce26570028bc",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "835-cmg-frozen-parallel+experimentalcomponentsrelease": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --release --test frozen_bits (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "109a528c1ce1062fa95497472ebc4d3cf3852929f75d6f59a7457325d9f5a256",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "836-cmg-frozen-parallel+profiling": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,profiling --test frozen_bits (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "18e209ba419e02f443205c08e6dc02fcca6cefb8657cafcdc7cbfe4412abac60",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "837-cmg-frozen-parallel+profilingrelease": {
+     "command": "cargo test --offline --no-default-features --features parallel\\,profiling --release --test frozen_bits (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "02fd654e4e4ec1a030a7d7a49c286a7bd8d1dd8a09f06edd3c0bc8ade9b06b84",
+     "passed": 1,
+     "failed": 0,
+     "ignored": 0
+    },
+    "840-cmg-clippy-none": {
+     "command": "cargo clippy --offline --all-targets --no-default-features --features '' -- -D warnings (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "1a1e3962b56a8963645c2c785804d3f60008faa843c5fdf4cdeba8e40d3ff482",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "841-cmg-clippy-parallel": {
+     "command": "cargo clippy --offline --all-targets --no-default-features --features parallel -- -D warnings (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "dd372f00e9dbdbcd5658c6a39522a2029b90bd32f87a025cb9f8842833b23898",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "842-cmg-clippy-experimental-components": {
+     "command": "cargo clippy --offline --all-targets --no-default-features --features experimental-components -- -D warnings (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "0df293e9d70ec5511639cd02185b5e10fab956fda4c18dfa7918da123c28698f",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "843-cmg-clippy-profiling": {
+     "command": "cargo clippy --offline --all-targets --no-default-features --features profiling -- -D warnings (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "dd372f00e9dbdbcd5658c6a39522a2029b90bd32f87a025cb9f8842833b23898",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "844-cmg-clippy-cycle-profiling": {
+     "command": "cargo clippy --offline --all-targets --no-default-features --features cycle-profiling -- -D warnings (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "555cff1d75d916910e3441b994ee4176bbba4d35c30239dc3c45b05495d06cfd",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "845-cmg-clippy-parallel+experimental-components": {
+     "command": "cargo clippy --offline --all-targets --no-default-features --features parallel\\,experimental-components -- -D warnings (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "8bee70a8c13d2ab69246f1f1f240a3d990e2adfe151adb0dbf7bdc3649304255",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "846-cmg-clippy-all": {
+     "command": "cargo clippy --offline --all-targets --all-features -- -D warnings (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "c97b90ba73bd42e7c39355a2c781f542612def88528d983a67f61e1c3d484847",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "847-cmg-doc": {
+     "command": "env RUSTDOCFLAGS=-D\\ warnings cargo doc --offline --no-deps --all-features (cwd: <home>/CMG)",
+     "exit": 0,
+     "log_sha256": "06927d7e8cf5007236347e8037fd3f14d58c060c4e3882d599450da823cae794",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    }
+   },
+   "fereg": {
+    "760-fereg-complexity": {
+     "command": "python3 scripts/check_complexity.py (cwd: <home>/fereg)",
+     "exit": 0,
+     "log_sha256": "66b3155d375ba75b896268fc3f4f19bfba3230e9924f44ed34edcafc1bfb1714",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "761-fereg-fmt-check": {
+     "command": "cargo fmt --all -- --check (cwd: <home>/fereg)",
+     "exit": 0,
+     "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "762-fereg-clippy": {
+     "command": "cargo clippy --offline --locked --workspace --all-targets -- -D warnings (cwd: <home>/fereg)",
+     "exit": 0,
+     "log_sha256": "f2f3cfee1673c46d77146a6fd5674e9cb9a7a50f58d61076a7973232d630bc46",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "763-fereg-core-lib": {
+     "command": "cargo test --offline --locked -p fereg-core --lib (cwd: <home>/fereg)",
+     "exit": 0,
+     "log_sha256": "1ee49242fffe97736bf9a761270921f14277b1c16fef5be0ad679ac829c22f94",
+     "passed": 1388,
+     "failed": 0,
+     "ignored": 3
+    },
+    "764-candidate-plugin-build": {
+     "command": "env FEREG_GIT_COMMIT=setup1-repair bash <task>/setup1-repair/build_plugin.sh <home>/fereg <task>/m3b/candidate-target <task>/plugins/setup1-repair-candidate.plugin (cwd: <home>/fereg)",
+     "exit": 0,
+     "log_sha256": "c7ed09eb1b01fe513878060927106f7f485753813377718bc1c365fd0910052a",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "765-replay-vs-baseline": {
+     "command": "env FEREG_REPLAY_ROOT=<task>/setup1-repair/replay ./scripts/run_plugin_replay.sh <task>/plugins/setup1-repair-candidate.plugin <task>/plugins/setup-baseline-fa1fbbe.plugin (cwd: <home>/fereg)",
+     "exit": 0,
+     "log_sha256": "82beb35d62487aed47efb5d49eb68224c9aa3eced7ddb6fbbf6d71138a8679c2",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "766-derived-explicit": {
+     "command": "python3 <task>/setup1-repair/derived_compare.py <task>/setup1-repair/replay/cases <task>/setup1-repair/derived <task>/plugins/setup-baseline-fa1fbbe.plugin <task>/plugins/setup1-repair-candidate.plugin <home>/fereg/target/actual-plugin-harness/actual_plugin_loader_test (cwd: <home>/fereg)",
+     "exit": 0,
+     "log_sha256": "fc374441f39ef12c264e9ff5833fe422937e50e7532860c8e5f455ccaf9f9074",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "767-injected-two-fe": {
+     "command": "python3 <task>/setup1-repair/injected_compare.py <task>/setup1-repair/replay/cases <task>/setup1-repair/injected <task>/plugins/setup-baseline-fa1fbbe.plugin <task>/plugins/setup1-repair-candidate.plugin <home>/fereg/target/actual-plugin-harness/actual_plugin_loader_test routing_incremental_two\\,routing_h4_k1\\,routing_direct (cwd: <home>/fereg)",
+     "exit": 0,
+     "log_sha256": "c4b634dc0baae98375844417db35401c0e402ba834c811eea4c4391ec7c92699",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "780-run-tests-standard": {
+     "command": "./scripts/run_tests.sh (cwd: <home>/fereg)",
+     "exit": 1,
+     "log_sha256": "ea8c1ae3b1fabf69e47449709f1a92f1764363df846c82485016ee953ee83827",
+     "passed": 0,
+     "failed": 0,
+     "ignored": 0
+    },
+    "781-run-tests-source-only": {
+     "command": "./scripts/run_tests.sh --source-only (cwd: <home>/fereg)",
+     "exit": 0,
+     "log_sha256": "7c35cd78219b81b69adb31155cb25129312d072914b4683af9f828098494d5a5",
+     "passed": 1965,
+     "failed": 0,
+     "ignored": 14
+    }
+   }
+  },
+  "plugins": {
+   "repair_candidate_sha256": "040e85a4a6d9ba8be2e96df11aa081248afcb5e782e1c0a54b5542ca301aa7b3",
+   "baseline_fa1fbbe_cloud_sha256": "a4c9bd11e33edfcea8dc2b31d59f2cdc0880b0f66d790eb449388c094af742b6"
+  },
+  "limits": [
+   "no cloud timing; raw logs are session-local and not retained in the repository",
+   "standard run_tests.sh fails at the installed-plugin binding check (known); not green",
+   "the contraction mapping stage polls its raw query on lanes, so its phase stays covered by sampling"
+  ]
+ }
 }
