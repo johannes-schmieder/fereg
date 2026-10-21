@@ -1,5 +1,5 @@
 {
- "milestone": "M3d source/native reviewed; fixed host qualification recorded; unaccepted pending scope decision",
+ "milestone": "M3d accepted by Johannes on 2026-10-21; final implementation and independent qualification complete",
  "date": "2026-10-20",
  "revisions": {
   "fereg_base": "27fa40cd26d238e02a0b60c558fcf48422300dcd (accepted M3c; tested source 71092c38, production c89ab124)",
@@ -543,7 +543,7 @@
  },
  "root_review": {
   "date": "2026-10-20",
-  "decision": "Source and applicable native/scientific checks independently reviewed; fixed host results are in root_host_validation. Known installed-package binding failure and disclosed coverage limits remain. M3d scope acceptance pending Johannes.",
+  "decision": "Source and applicable native/scientific checks independently reviewed; fixed host results are in root_host_validation. Johannes accepted the disclosed final scope on 2026-10-21; see acceptance and current_decision. Known installed-package binding failure and coverage limits remain.",
   "fereg_handoff": "375237f0d2c6ddc62576a0ce31c52f330a9975ff",
   "cmg_revision": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
   "independent_high_effort_review": {
@@ -16467,11 +16467,12 @@
   }
  },
  "current_decision": {
-  "accepted": false,
+  "accepted": true,
+  "date": "2026-10-21",
   "host_nonregression_established": true,
-  "reason": "Applicable source/native/scientific/transaction checks and independent reviews complete. Standard installed-package binding remains failed. The disclosed representation scope requires Johannes's decision; timing verdicts below remain unchanged.",
-  "next": "Resolve the pending representation scope: accept worker-independent CMG arithmetic with existing worker-dependent bit-neutral storage, or discuss its resource tradeoff before further edits. No additional sampling of this fixed candidate.",
-  "authority": "Diagnosed repairs remain authorized through M3d; prior milestone exceptions do not reset budgets or waive current prerequisites"
+  "reason": "Johannes explicitly accepted the disclosed final scope after independent review and fixed host qualification. Known installed-package failure and scientific/performance coverage limits remain recorded; acceptance does not relabel those outcomes.",
+  "next": "Finish authorized cleanup of completed task artifacts, then stop the whole program with no workflow monitor or active jobs.",
+  "authority": "Johannes: Ok, accept the current scope"
  },
  "cloud_handoff_snapshot": {
   "fereg_handoff": "375237f0d2c6ddc62576a0ce31c52f330a9975ff",
@@ -16491,5 +16492,32 @@
    "Whether row-operator selection should become worker-independent (adds CSR memory at one worker)",
    "Whether fereg-side worker-dependent arithmetic in explicit cmgschur/PPML should be addressed in a later milestone"
   ]
+ },
+ "pre_acceptance_decision": {
+  "accepted": false,
+  "host_nonregression_established": true,
+  "reason": "Applicable source/native/scientific/transaction checks and independent reviews complete. Standard installed-package binding remains failed. The disclosed representation scope requires Johannes's decision; timing verdicts below remain unchanged.",
+  "next": "Resolve the pending representation scope: accept worker-independent CMG arithmetic with existing worker-dependent bit-neutral storage, or discuss its resource tradeoff before further edits. No additional sampling of this fixed candidate.",
+  "authority": "Diagnosed repairs remain authorized through M3d; prior milestone exceptions do not reset budgets or waive current prerequisites"
+ },
+ "acceptance": {
+  "date": "2026-10-21",
+  "authority": "Johannes",
+  "instruction": "Ok, accept the current scope",
+  "evidence_commit": "1a3515e0af438733eee7d23473fc10ce2453c906",
+  "measured_fereg_source": "c283b3ff3839bdf955cc749b54e9674c74e9001c",
+  "cmg_revision": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
+  "supplemental_test_commit": "7a769eea1e1cfcbaf11968c885640311ada26a31",
+  "scope": "CMG arithmetic is independent of worker ceiling and solve mode on one platform for identical supplied inputs, hierarchy, options and fixed thresholds. Existing worker-dependent, bit-neutral row-operator storage remains; optional Auto RHS batching is omitted. Existing resource and memory policy is preserved.",
+  "qualification": "Independent source/native reviews and the fixed host round are complete: all 12 Mac and 12 Linux nonregression bounds pass, all 1032 panel calls retain exact science and signatures, and all 42 routing cells pass. No observations were discarded, no additional sampling occurred, and no earlier milestone exception is used to pass M3d.",
+  "retained_limits": [
+   "Standard installed-package binding admission remains failed after 315 Python tests; release packages remain unchanged.",
+   "Above-floor end-to-end PPML/bias and explicit CMGSchur remain outside native coverage; lower-level CMG and above-floor OLS/prepared-control witnesses cover the declared arithmetic changes.",
+   "The fixed Auto panels do not establish above-floor explicit CMG/PPML performance, isolated-kernel speed or uninstrumented-release speed. Per-cell intervals are not simultaneous across twelve cells, and six Linux host units do not prove independence.",
+   "Pre-existing fereg arithmetic outside CMG can remain worker-dependent; this acceptance does not extend the identical-input CMG contract to whole fereg estimates.",
+   "Historical failures and M3b/M3c timing uncertainties retain their recorded outcomes."
+  ],
+  "validation_reuse": "Acceptance changes documentation only. Reuse the reviewed runtime/native evidence after verifying unchanged production and artifact inputs; no runtime rerun is required.",
+  "completion": "M3a through M3d and their required review repairs are complete. Stop the implementation-and-review program after final artifact cleanup. No new representation redesign, timing campaign, main merge, release-package update or public two-FE activation is authorized by this acceptance."
  }
 }

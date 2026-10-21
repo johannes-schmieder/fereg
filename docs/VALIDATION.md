@@ -28,8 +28,8 @@ were deleted; hashes and summaries are the remaining record.
 
 ## CMG successor milestone 3d: worker-independent team arithmetic
 
-**Independent source/native review and the fixed host round are complete; M3d
-remains unaccepted pending the disclosed representation-scope decision.** M3d starts
+**Johannes accepted M3d's disclosed final scope on 2026-10-21 after independent
+source/native review and the completed fixed host round.** M3d starts
 from the accepted M3c pair (fereg `27fa40cd`, tested source `71092c38`,
 production correction `c89ab124`; CMG `82ae1c86`, production `65bd817a`),
 including the root R1 lookup correction and the cross-thread allocation
@@ -244,12 +244,25 @@ substitution avoided an already occupied node and did not use timing outcomes.
 Commands, real exits, identities, compact observations and reviews are retained
 in `root_review` and `root_host_validation`; raw task captures are temporary.
 
-Final scope acceptance is pending: CMG arithmetic is independent of worker
-count and solve mode for identical supplied inputs and fixed options/thresholds,
-while row-operator storage remains worker-dependent and bit-neutral. Optional
-Auto RHS batching was not taken. Johannes must decide that disclosed scope
-before whole-program completion; there is no active monitor and no further
-sampling of this fixed candidate.
+On 2026-10-21, after discussion of the representation alternatives and their
+memory/construction tradeoffs, Johannes instructed: “Ok, accept the current
+scope”. CMG arithmetic is independent of worker count and solve mode for
+identical supplied inputs, hierarchy and fixed options/thresholds on one
+platform. Row-operator storage remains worker-dependent and bit-neutral;
+optional Auto RHS batching was not taken. Existing resource and memory policy
+is preserved. The reviewed evidence is committed at `1a3515e0`; the measured
+source remains `c283b3ff`, with the test-only addition `7a769eea` and CMG
+`35a095f3`. Acceptance changes no runtime or artifact inputs and needs no new
+runtime execution.
+
+M3a through M3d and their required independent reviews and repairs are complete.
+The implementation-and-review program closes after final artifact cleanup,
+with no active workflow monitor or further sampling. The installed-package
+failure, coverage limits and historical timing uncertainties above remain
+recorded. This acceptance does not authorize a representation redesign, main
+merge, release-package update or public two-FE activation. The compact
+[M3d result record](../bench/results/cmg-m3d-20261020.json) preserves the
+pre-acceptance decision alongside Johannes's acceptance.
 
 ## CMG successor milestone 3c: parallel construction on the host team
 
