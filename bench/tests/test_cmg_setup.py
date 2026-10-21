@@ -368,6 +368,141 @@ class SetupCandidateDiagnostic(unittest.TestCase):
         self.assertFalse(record['retry_cells'])
 
 
+class PivotDiagnostic(unittest.TestCase):
+    plan = SetupDiagnostic.plan
+    execute = SetupDiagnostic.execute
+
+    def setUp(self):
+        SetupCandidateDiagnostic.setUp(self)
+        self.config.update(diagnostic=setup.PIVOT_MODE)
+        self.config['artifacts'] = {}
+        for role in setup.PIVOT_ARMS:
+            plugin = self.root / (role + '.plugin')
+            plugin.write_bytes(role.encode())
+            self.config['artifacts'][role] = {'path': plugin.name, 'build': 'synthetic',
+                                            'revision': setup.PIVOT_REVISIONS[role]}
+
+    def test_complete_three_arm_exact_budget_and_report(self):
+        value = self.plan()
+        self.assertEqual(q.comparison_pairs(value), ((setup.PIVOT_ACCEPTED, setup.PIVOT),
+                                                    (setup.PRE_PIVOT, setup.PIVOT)))
+        self.assertEqual(value['scope'], 'exact')
+        self.assertEqual(value['mac_cell_policy']['new_call_cap'], setup.PIVOT_CALLS['Darwin'])
+        self.assertEqual(value['mac_cell_policy']['max_cell_retries'], 0)
+        self.assertEqual(value['mac_cell_policy']['max_retry_cells'], 0)
+        linux = {**value, **setup.fixed('Linux', setup.PIVOT_MODE), 'platform': 'Linux'}
+        setup.validate(linux)
+        self.assertEqual(12 * 3 * (1 + 2 * linux['blocks']) * linux['replicas'], setup.PIVOT_CALLS['Linux'])
+        self.assertTrue(all(a['request'] == 'incremental-two' for a in value['artifacts'].values()))
+        record = q.run(self.manifest, self.output, execute=self.execute)
+        self.assertEqual(record['status'], 'complete', record['failures'])
+        self.assertEqual(len(self.calls), 900)
+        self.assertEqual(self.oracle.call_count, 36)
+        self.compatibility.assert_not_called()
+        for cell in record['cases']:
+            self.assertEqual(set(cell['aliases'].values()), set(setup.PIVOT_ARMS))
+            for block in cell['blocks']:
+                self.assertEqual(len(block['calls']), 6)
+                self.assertTrue(all(c['seconds'] == .01 for c in block['calls']))
+        report = q.report(self.manifest, self.output)
+        self.assertEqual(report['status'], 'diagnostic_complete', report['errors'])
+        self.assertFalse(report['activation_qualified'])
+        self.assertEqual(report['target'], setup.PIVOT)
+        self.assertEqual(report['native_calls'], 900)
+        self.assertEqual(len(report['comparisons']), 24)
+        self.assertEqual({c['reference'] for c in report['comparisons']},
+                         {setup.PIVOT_ACCEPTED, setup.PRE_PIVOT})
+
+    def test_revision_alias_budget_and_old_names_fail_closed(self):
+        value = self.plan()
+        for role in setup.PIVOT_ARMS:
+            changed = copy.deepcopy(value)
+            changed['artifacts'][role]['revision'] = 'a' * 40
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, 'revision'):
+                setup.validate(changed)
+        for left, right in ((setup.PIVOT_ACCEPTED, setup.PRE_PIVOT),
+                            (setup.PIVOT_ACCEPTED, setup.PIVOT), (setup.PRE_PIVOT, setup.PIVOT)):
+            changed = copy.deepcopy(value)
+            changed['files'][changed['artifacts'][right]['path']] = changed['files'][changed['artifacts'][left]['path']]
+            with self.subTest(pair=(left, right)), self.assertRaisesRegex(ValueError, 'distinct actual binaries'):
+                setup.validate(changed)
+        for key, wrong in [('diagnostic', setup.CANDIDATE_MODE), ('seed', 1), ('warmups', 2),
+                           ('blocks', 1), ('scope', 'two'), ('continuation', {}), ('recovery', {})]:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                setup.validate({**value, key: wrong})
+        with self.assertRaises(ValueError):
+            q.run(self.manifest, self.output, resume=True, execute=self.execute)
+        self.assertFalse(self.calls)
+        self.assertTrue(setup.valid_revision(setup.SETUP, 'a' * 40))
+        self.assertEqual(setup.roles(setup.CANDIDATE_MODE), setup.CANDIDATE_ARMS)
+
+    def test_both_references_require_exact_science_routes_and_hierarchy(self):
+        from test_cmgschur import result
+        value = self.plan()
+        snapshot = (result(), None, {'fingerprint': 'same', 'route_trace': [], 'route_hierarchy': []})
+        snapshots = {role: copy.deepcopy(snapshot) for role in setup.PIVOT_ARMS}
+        setup.compare_science(value, self.meta, snapshots)
+        for role in setup.PIVOT_ARMS:
+            for field in ('fingerprint', 'route_trace', 'route_hierarchy'):
+                changed = copy.deepcopy(snapshots)
+                changed[role][2][field] = 'different' if field == 'fingerprint' else ['different']
+                with self.subTest(role=role, field=field), self.assertRaisesRegex(ValueError, 'exact'):
+                    setup.compare_science(value, self.meta, changed)
+                if field != 'fingerprint':
+                    del changed[role][2][field]
+                    with self.assertRaisesRegex(ValueError, 'missing'):
+                        setup.compare_science(value, self.meta, changed)
+
+    def test_scientific_failure_stops_without_retry(self):
+        self.plan()
+        def changed(command, log, timeout):
+            if len(self.calls) == 1:
+                self.data[1, 0] += .01
+            return self.execute(command, log, timeout)
+        record = q.run(self.manifest, self.output, execute=changed)
+        self.assertEqual(record['status'], 'blocked')
+        self.assertEqual(len(self.calls), 3)
+        self.assertEqual(record['failures'][-1]['kind'], 'scientific')
+        self.assertFalse(record['retry_cells'])
+
+    def test_repeat_failure_stops_without_retry(self):
+        self.plan()
+        def changed(command, log, timeout):
+            if len(self.calls) == 3:
+                self.data[1, 0] += .01
+            return self.execute(command, log, timeout)
+        record = q.run(self.manifest, self.output, execute=changed)
+        self.assertEqual(len(self.calls), 4)
+        self.assertIn('fixed-worker repeat changed', record['failures'][-1]['error'])
+        self.assertFalse(record['retry_cells'])
+
+    def test_cross_worker_discrete_change_stops_without_retry(self):
+        from test_cmgschur import bits
+        self.plan()
+        def changed(command, log, timeout):
+            resources = self.execute(command, log, timeout)
+            # One complete W1 cell is 75 calls. Change every arm equally
+            # at W4, so cross-arm exactness passes and the worker gate fails.
+            if len(self.calls) > 75:
+                target = Path(command[-1])
+                raw = q.read(target)
+                raw['matrices']['RSOLVER']['bits'][1] = bits(2.)
+                q.write(target, raw)
+            return resources
+        record = q.run(self.manifest, self.output, execute=changed)
+        self.assertEqual(len(self.calls), 78)
+        self.assertIn('cross-worker discrete decisions changed', record['failures'][-1]['error'])
+        self.assertFalse(record['retry_cells'])
+
+    test_source_auto_auto_is_required_even_with_exact_scope = SetupCandidateDiagnostic.test_source_auto_auto_is_required_even_with_exact_scope
+
+    def test_current_resource_and_hierarchy_checks_remain_required(self):
+        log = HistoricalTraceDiagnostics.ROUTE + HistoricalTraceDiagnostics.PRIMARY
+        for role in setup.PIVOT_ARMS:
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, 'lacks hierarchy'):
+                setup.resource_diagnostics(log, role, setup.PIVOT_REVISIONS[role])
+
+
 class HistoricalTraceDiagnostics(unittest.TestCase):
     # Captured d5b public-enabled high-degree weak route and both action records.
     ROUTE = ('FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=16|samples=1|iterations=16|'

@@ -54,7 +54,7 @@ def native_fixture(text):
 
 
 class RealFixtures(unittest.TestCase):
-    """Smoke outputs of the four prepared builds (arm x mode)."""
+    """Compact synthetic smoke outputs of every prepared arm x mode."""
 
     def test_every_fixture_call_validates(self):
         for arm in attribution.ARMS:
@@ -79,7 +79,18 @@ class RealFixtures(unittest.TestCase):
     def test_digests_agree_across_arms_and_modes(self):
         digests = {(arm, mode): [d for _, _, d, _ in attribution.smoke_calls(fixture(arm, mode))]
                    for arm in attribution.ARMS for mode in attribution.MODES}
-        self.assertEqual(len({tuple(value) for value in digests.values()}), 1)
+        # Historical fixtures share their capture host. Pivot fixtures and
+        # their pristine reference were captured on Darwin: the unchanged
+        # smoke uses a sine RHS and does not promise cross-platform bits.
+        historical = [v for (arm, _), v in digests.items() if arm != 'pivot']
+        self.assertEqual(len({tuple(value) for value in historical}), 1)
+        pristine = [d for _, _, d, _ in attribution.smoke_calls((DATA / 'pivot-pristine.txt').read_text())]
+        for mode in attribution.MODES:
+            self.assertEqual(digests['pivot', mode], pristine)
+        hierarchy = lambda digest: {k: v for k, v in attribution.fields_of('DIGEST|' + digest).items()
+                                    if k != 'apply_fnv'}
+        for value in digests.values():
+            self.assertEqual([hierarchy(d) for d in value], [hierarchy(d) for d in pristine])
         self.assertTrue(any('terminal=Direct' in d for d in digests['candidate', 'timers']))
 
     def test_sorts_are_identical_across_workers(self):
@@ -103,6 +114,15 @@ class RealFixtures(unittest.TestCase):
     def test_mode_mismatch_is_rejected(self):
         with self.assertRaisesRegex(Error, 'outcome/mode'):
             attribution.validate_call(first_call('candidate', 'counts'), 'candidate', 'timers')
+
+    def test_pivot_comparisons_include_sample_work_and_reject_double_counting(self):
+        original = first_call('pivot', 'counts')
+        serial = next(s for s in attribution.validate_call(original, 'pivot', 'counts')['sorts']
+                      if s['path'] == 'serial')
+        for cmp in (serial['partition_steps'], serial['cmp'] * 2):
+            changed = edit_attribution(original, lambda line: _set_first_serial(line, 'cmp', cmp))
+            with self.subTest(cmp=cmp), self.assertRaisesRegex(Error, 'pivot comparisons'):
+                attribution.validate_call(changed, 'pivot', 'counts')
 
 
 class Rejections(unittest.TestCase):
@@ -308,6 +328,44 @@ class PatchSpecification(unittest.TestCase):
 
 
 class Revisions(unittest.TestCase):
+    def test_historical_definitions_and_pivot_aliases_are_fixed(self):
+        self.assertEqual(attribution.ARMS['accepted'], {
+            'hidden': 'accepted_hidden', 'fereg': '3f9d54eeacb2ced61bf8cb9a629daa0d1a6d23d9',
+            'cmg': '35a095f3e26972fcfa9e58c2222a1098efb8e607'})
+        self.assertEqual(attribution.ARMS['candidate'], {
+            'hidden': 'setup_hidden', 'fereg': '0407060c2959ff5076619511fcc85d82ceac8de0',
+            'cmg': '355d328a33639b5fa50c3c1954c8ee62e59e6b20'})
+        self.assertEqual(attribution.ARMS['pivot'], {
+            'hidden': 'pivot_1cdb_hidden', 'fereg': '1cdb225e2460e391ad38f856755ae3ea5efb2e5b',
+            'cmg': 'fd77d98da1f74009b3e5b634e1944433b647a9b1'})
+        for arm, wrong in [('accepted', 'pre_pivot_040_hidden'), ('candidate', 'pivot_1cdb_hidden'),
+                           ('pivot', 'setup_hidden')]:
+            with self.subTest(arm=arm), self.assertRaisesRegex(Error, 'another source arm'):
+                attribution.prepare(arm, 'counts', Path('.'), Path('.'), Path('unused'), wrong)
+
+    def test_generic_pivot_comparator_is_wrapped_once_and_polling_is_untouched(self):
+        # Exact pinned production prefix, excluding the large Rust test module.
+        before = (DATA / 'pivot-edge-sort.rs').read_text()
+        after = before
+        for name, anchor, replacement in attribution.ARM_CMG['pivot']:
+            if name == 'cmg/src/graph/edge_sort.rs':
+                after = attribution.apply_edit(after, anchor, replacement, name)
+        self.assertEqual(after.count('counted_compare_raw_edges'), 1)
+        self.assertIn('counted_compare_raw_edges as compare_raw_edges', after)
+        # All generic compare calls remain direct; no second wrapper around
+        # partition, sample, insertion or heapsort callbacks.
+        for token in ('compare(', 'compare:', 'compare,', '.advance(', 'MEDIAN_UNITS', 'NINTHER_UNITS'):
+            self.assertEqual(before.count(token), after.count(token), token)
+        advance = lambda text: [l.strip() for l in text.splitlines() if '.advance(' in l]
+        self.assertEqual(advance(before), advance(after))
+        self.assertIn('heapsort(poll, values, compare, phase)', after)
+        self.assertIn('let (pivot, units) = pivot(values, compare)', after)
+        # Removing or duplicating an exact generic anchor fails closed.
+        anchor = '        match compare(&values[index], &pivot) {\n'
+        for broken in (before.replace(anchor, ''), before + anchor):
+            with self.assertRaisesRegex(Error, 'occurs'):
+                attribution.apply_edit(broken, anchor, 'replacement', 'generic partition')
+
     def test_wrong_revision_or_existing_output_fails_closed(self):
         import subprocess
         with tempfile.TemporaryDirectory() as temporary:
@@ -359,6 +417,32 @@ class Binding(unittest.TestCase):
         with self.assertRaisesRegex(Error, 'archive changed'):
             attribution.bind(self.root, self.root / 'plugin', self.root / 'build.log', 'a' * 64)
 
+    def test_fixed_aliases_bind_and_reject_cross_arm_or_revision(self):
+        path = self.root / 'attribution-source.json'
+        for arm in attribution.ARMS:
+            for hidden in attribution.hidden_arms(arm):
+                source = {**self.source, 'arm': arm, 'hidden_arm': hidden,
+                          'fereg_revision': attribution.ARMS[arm]['fereg'],
+                          'cmg_revision': attribution.ARMS[arm]['cmg']}
+                path.write_text(json.dumps(source))
+                bound = attribution.bind(self.root, self.root / 'plugin', self.root / 'build.log', 'a' * 64)
+                self.assertEqual((bound['arm'], bound['revision']), (hidden, source['fereg_revision']))
+                identity = {'arm': hidden, 'base_revision': source['fereg_revision'],
+                            'patch_sha256': attribution.PROFILE_PATCH_SHA256,
+                            'source_archive_sha256': source['source_archive']['sha256']}
+                self.assertEqual(attribution.check_attribution_source(path, identity)[0], arm)
+                with self.assertRaisesRegex(Error, 'revision mismatch'):
+                    attribution.check_attribution_source(path, {**identity, 'base_revision': '0' * 40})
+                for field, wrong in [('hidden_arm', 'unknown_hidden'), ('fereg_revision', '0' * 40),
+                                     ('cmg_revision', '0' * 40), ('arm', 'unknown')]:
+                    path.write_text(json.dumps({**source, field: wrong}))
+                    with self.subTest(arm=arm, field=field), self.assertRaises(Error):
+                        attribution.bind(self.root, self.root / 'plugin', self.root / 'build.log', 'a' * 64)
+                path.write_text(json.dumps(source))
+                other = next(h for a in attribution.ARMS for h in attribution.hidden_arms(a) if h != hidden)
+                with self.assertRaisesRegex(Error, 'another arm'):
+                    attribution.check_attribution_source(path, {**identity, 'arm': other})
+
     def test_attribution_source_must_match_the_bound_profile(self):
         sys.path.insert(0, str(Path(attribution.__file__).parent))
         identity = {'arm': 'setup_hidden', 'base_revision': attribution.ARMS['candidate']['fereg'],
@@ -390,18 +474,24 @@ class RunLoop(unittest.TestCase):
     def test_second_call_shape_change_stops_immediately_and_keeps_failing_output(self):
         self.run_fixture(change_second_call=True)
 
-    def run_fixture(self, change_second_call=False):
+    def test_new_named_arms_run_without_repointing_historical_sources(self):
+        for arm, hidden in [('accepted', 'accepted_3f9_hidden'), ('candidate', 'pre_pivot_040_hidden'),
+                            ('pivot', 'pivot_1cdb_hidden')]:
+            with self.subTest(arm=arm):
+                self.run_fixture(arm=arm, hidden=hidden)
+
+    def run_fixture(self, change_second_call=False, arm='candidate', hidden='setup_hidden'):
         import cmg_setup_profile as profile
         import qualify as q
         import routing
         body = native_fixture(next(b for g, w, _, b in attribution.smoke_calls(
-            fixture('candidate', 'timers')) if g == 'banded'))
+            fixture(arm, 'timers')) if g == 'banded'))
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive = attribution.sha256(b'archive')
-            source = {'arm': 'candidate', 'hidden_arm': 'setup_hidden', 'mode': 'timers',
-                      'fereg_revision': attribution.ARMS['candidate']['fereg'],
-                      'cmg_revision': attribution.ARMS['candidate']['cmg'],
+            source = {'arm': arm, 'hidden_arm': hidden, 'mode': 'timers',
+                      'fereg_revision': attribution.ARMS[arm]['fereg'],
+                      'cmg_revision': attribution.ARMS[arm]['cmg'],
                       'tool_sha256': attribution.file_sha256(attribution.__file__),
                       'module_sha256': attribution.file_sha256(attribution.MODULE),
                       'profile_patch_sha256': attribution.PROFILE_PATCH_SHA256,
@@ -409,10 +499,10 @@ class RunLoop(unittest.TestCase):
             (root / 'attribution-source.json').write_text(json.dumps(source))
             for name in ('harness', 'high-degree-weak', 'weak-low'):
                 (root / name).write_text(name)
-            identity = {'arm': 'setup_hidden', 'base_revision': source['fereg_revision'],
+            identity = {'arm': hidden, 'base_revision': source['fereg_revision'],
                         'patch_sha256': attribution.PROFILE_PATCH_SHA256, 'source_archive_sha256': archive}
             manifest = {'harness': 'harness', 'cases': [{'id': n, 'input': n} for n in ('high-degree-weak', 'weak-low')]}
-            base = {'cases': [{'id': f'{n}-t{w}', 'warmups': [{'execution': 'setup_hidden', 'fingerprint': 'f'}]}
+            base = {'cases': [{'id': f'{n}-t{w}', 'warmups': [{'execution': hidden, 'fingerprint': 'f'}]}
                               for n in ('high-degree-weak', 'weak-low') for w in (1, 4, 8)]}
             guard = mock.Mock()
             guard.bind.return_value = '0' * 64
@@ -434,7 +524,7 @@ class RunLoop(unittest.TestCase):
                 return None, columns, {'fingerprint': 'f'}
 
             args = types.SimpleNamespace(repository=Path(attribution.__file__).parents[1], task_root=root,
-                                         output=root / 'out', arm='setup_hidden', revision=source['fereg_revision'],
+                                         output=root / 'out', arm=hidden, revision=source['fereg_revision'],
                                          source=root / 'profile-source.json', attribution=root / 'attribution-source.json',
                                          plugin=root / 'plugin', plan=None, baseline=None)
             with mock.patch.object(profile, 'load_context', return_value=(root / 'plan', manifest, base, root / 'plugin',

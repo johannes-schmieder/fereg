@@ -2,7 +2,7 @@
 """Run the fixed 18-call CMG setup attribution panel after cmg_setup.py.
 
 Usage: cmg_setup_profile.py REPOSITORY TASK_ROOT OUTPUT
-For cmg-setup-candidate-v1 add --arm accepted_hidden|setup_hidden
+For cmg-setup-candidate-v1 or cmg-setup-pivot-v1 select its named --arm
 --revision FULL_REV --source PROFILE_SOURCE.json. Optional --plan, --baseline,
 and --plugin override the historical layout. Source JSON binds arm, revision,
 baseline_sha256, plugin_sha256, patch_sha256, source_archive and build_log;
@@ -83,11 +83,11 @@ def load_context(repo, root, system, *, arm=None, revision=None, source=None,
     plan_hash = guard.bind(plan)
     manifest = q.read(plan)
     cmg_setup.validate(manifest)
-    candidate = manifest['diagnostic'] == cmg_setup.CANDIDATE_MODE
+    candidate = cmg_setup.exact_mode(manifest['diagnostic'])
     q.require(manifest['seed'] == (cmg_setup.CANDIDATE_SEED if candidate else 2026102103)
               and manifest['platform'] == system, 'profile plan seed/platform changed')
     if candidate:
-        q.require(arm in cmg_setup.CANDIDATE_ARMS and revision is not None and source is not None,
+        q.require(arm in cmg_setup.roles(manifest['diagnostic']) and revision is not None and source is not None,
                   'candidate profile requires explicit arm, revision and source identity')
         q.require(revision == manifest['artifacts'][arm]['revision'], 'profile selected arm revision mismatch')
     else:
@@ -177,7 +177,7 @@ def check_call(manifest, arm, expected, detail, trace):
     import cmg_setup
     q.require(detail['fingerprint'] == expected['fingerprint'], 'instrumentation changed science/signature')
     resources = cmg_setup.resource_diagnostics(trace, arm, manifest['artifacts'][arm]['revision'])
-    if manifest['diagnostic'] == cmg_setup.CANDIDATE_MODE:
+    if cmg_setup.exact_mode(manifest['diagnostic']):
         require_routes(expected)
         for key in ('route_trace', 'route_hierarchy'):
             q.require(resources[key] == expected[key], 'instrumentation changed ' + key)
@@ -188,7 +188,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('repository', 'task_root', 'output'):
         parser.add_argument(name, type=Path)
-    parser.add_argument('--arm', choices=('accepted_hidden', 'setup_hidden'))
+    import cmg_setup
+    parser.add_argument('--arm', choices=(*cmg_setup.CANDIDATE_ARMS, *cmg_setup.PIVOT_ARMS))
     parser.add_argument('--revision')
     for name in ('source', 'plan', 'baseline', 'plugin'):
         parser.add_argument('--' + name, type=Path)

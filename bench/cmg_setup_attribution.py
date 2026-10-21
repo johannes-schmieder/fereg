@@ -9,8 +9,8 @@ builds; counter-build wall time is never timing evidence.
 
 Subcommands (no timing, sampling or production change):
 
-  prepare --arm accepted|candidate --mode counts|timers --fereg-git REPO
-          --cmg-git REPO --out DIR
+  prepare --arm accepted|candidate|pivot --mode counts|timers --fereg-git REPO
+          --cmg-git REPO --out DIR [--hidden-arm FIXED_ALIAS]
       Export the exact pinned fereg and CMG commits with ``git archive`` into a
       private DIR, apply root's unchanged ``cmg_setup_profile.patch`` and the
       exact-anchor attribution edits, redirect the copy's CMG dependency to the
@@ -62,7 +62,14 @@ ARMS = {
     'candidate': {'hidden': 'setup_hidden',
                   'fereg': '0407060c2959ff5076619511fcc85d82ceac8de0',
                   'cmg': '355d328a33639b5fa50c3c1954c8ee62e59e6b20'},
+    'pivot': {'hidden': 'pivot_1cdb_hidden',
+              'fereg': '1cdb225e2460e391ad38f856755ae3ea5efb2e5b',
+              'cmg': 'fd77d98da1f74009b3e5b634e1944433b647a9b1'},
 }
+# Aliases change only the named invocation in the frozen three-arm plan.
+# They never redirect a source arm or either of its pinned revisions.
+HIDDEN_ALIASES = {'accepted': ('accepted_3f9_hidden',),
+                  'candidate': ('pre_pivot_040_hidden',), 'pivot': ()}
 MODES = ('counts', 'timers')
 
 # Pristine SHA-256 of every edited file, per arm.
@@ -91,6 +98,19 @@ PRISTINE = {
             '6289b08fa76aafa5c66ab8e96f8e6813c5427dae1e622f3ae45f93262c26e6b9',
         'fereg/crates/fereg-core/Cargo.toml': '601a307cd91bf69c8a7afde0f9b479f52eb655240c1d98b61f1b687323d9e2f4',
         'fereg/Cargo.lock': '423f4714550366483955763aa2ae9528b4bc9a74206727273ce5fbfbed6fd8cc',
+    },
+    'pivot': {
+        'cmg/src/lib.rs': '747c097772854e41177a05b5ec0890894f73843f9abe83e873b950f82f3ec172',
+        'cmg/src/cancel.rs': '2e427d4846e557e8f73657cb9685496841541f23d4419fd8edf71330f4d9f719',
+        'cmg/src/graph.rs': 'a7c653788cc8bc995af30ef1f776acfdde55641b7f9f140965fa440be455901e',
+        'cmg/src/graph/hosted.rs': 'de868aec2a6a01d2df7e3327b7a43fa821909ca728e5ebd7c35ed9843574b870',
+        'cmg/src/graph/edge_sort.rs': '9f6788fd51c9a0a678dd99ffc6543a1735efa00b842446e7fb5224aaf9496e94',
+        'cmg/src/hierarchy.rs': 'cae23d52f96308257ecec5d4c8dc0155643b3cb6185193d47b237675b6f82125',
+        'cmg/src/preconditioner.rs': '7118fd352608a8f70f60a1643a8d5ece9c24afcafc5ecf5967a8f2824613ad66',
+        'fereg/crates/fereg-core/src/fe/cmg_schur/bounded.rs':
+            '6289b08fa76aafa5c66ab8e96f8e6813c5427dae1e622f3ae45f93262c26e6b9',
+        'fereg/crates/fereg-core/Cargo.toml': '6b41d8c23d76ed94736a391f9fff7223dda5c903ceb9995869bc5215c8500130',
+        'fereg/Cargo.lock': '2f50560e24e9acf839cf1cbf4aca94cfcd2e1fd2ee807057fb64fafef2364186',
     },
 }
 
@@ -282,6 +302,33 @@ ARM_CMG = {
     ],
 }
 
+# The pivot arm threads one comparator through serial_range, insertion,
+# partition/pivot and the fallback. Alias that comparator exactly once at
+# the import; wrapping the generic callbacks again would double-count.
+# The production advance calls and their charged units are untouched.
+ARM_CMG['pivot'] = ARM_CMG['candidate'][:3] + [
+    ('cmg/src/graph/edge_sort.rs', 'use super::{Edge, compare_raw_edges};\n',
+     'use super::{Edge, counted_compare_raw_edges as compare_raw_edges};\n'),
+    ('cmg/src/graph/edge_sort.rs',
+     '    compare: C,\n) -> Result<(), CmgError> {\n    for index in 1..values.len() {\n',
+     '    compare: C,\n) -> Result<(), CmgError> {\n'
+     f'    {A}count({A}INSERTION_LEAVES, 1);\n'
+     f'    {A}count({A}INSERTION_RECORDS, values.len() as u64);\n'
+     '    for index in 1..values.len() {\n'),
+    ('cmg/src/graph/edge_sort.rs', '            values.swap(current, current - 1);\n',
+     f'            {A}count({A}INSERTION_SWAPS, 1);\n'
+     '            values.swap(current, current - 1);\n'),
+    ('cmg/src/graph/edge_sort.rs', '    let _probe = probe::enter(values.len());\n',
+     f'    let _probe = probe::enter(values.len());\n    {A}count({A}PARTITIONS, 1);\n'),
+    ('cmg/src/graph/edge_sort.rs', '        match compare(&values[index], &pivot) {\n',
+     f'        {A}count({A}PARTITION_STEPS, 1);\n'
+     '        match compare(&values[index], &pivot) {\n'),
+    ('cmg/src/graph/edge_sort.rs', '                values.swap(less, index);\n',
+     f'                {A}count({A}PARTITION_SWAPS, 1);\n                values.swap(less, index);\n'),
+    ('cmg/src/graph/edge_sort.rs', '                values.swap(index, greater);\n',
+     f'                {A}count({A}PARTITION_SWAPS, 1);\n                values.swap(index, greater);\n'),
+]
+
 FEREG = [
     ('fereg/crates/fereg-core/src/fe/cmg_schur/bounded.rs',
      '            work.setup_profile = Some(SetupProfile::new());\n',
@@ -401,8 +448,26 @@ def unified_diff(before, after):
     return ''.join(chunks)
 
 
-def prepare(arm, mode, fereg_git, cmg_git, out):
+def hidden_arms(arm):
+    require(arm in ARMS, 'unknown attribution arm')
+    return (ARMS[arm]['hidden'], *HIDDEN_ALIASES[arm])
+
+
+def source_identity(source):
+    """Validate the fixed source/hidden mapping even before a plan is bound."""
+    arm = source.get('arm')
+    require(arm in ARMS and source.get('hidden_arm') in hidden_arms(arm),
+            'attribution source belongs to another arm')
+    require(source.get('fereg_revision') == ARMS[arm]['fereg']
+            and source.get('cmg_revision') == ARMS[arm]['cmg'], 'attribution source revision mismatch')
+    require(source.get('mode') in MODES, 'attribution source mode')
+    return arm
+
+
+def prepare(arm, mode, fereg_git, cmg_git, out, hidden_arm=None):
     require(arm in ARMS and mode in MODES, 'unknown arm or mode')
+    hidden_arm = ARMS[arm]['hidden'] if hidden_arm is None else hidden_arm
+    require(hidden_arm in hidden_arms(arm), 'hidden alias belongs to another source arm')
     require(file_sha256(PROFILE_PATCH) == PROFILE_PATCH_SHA256, 'cmg_setup_profile.patch changed')
     out = Path(out).absolute()
     require(not out.exists(), f'{out} exists')
@@ -425,7 +490,7 @@ def prepare(arm, mode, fereg_git, cmg_git, out):
     sources = [f'fereg/{n}' for n in tree_files(out / 'fereg')] + [f'cmg/{n}' for n in tree_files(out / 'cmg')]
     archive_sha = deterministic_archive(out, sources, out / 'source.tar')
     record = {
-        'schema': 1, 'arm': arm, 'hidden_arm': ARMS[arm]['hidden'], 'mode': mode,
+        'schema': 1, 'arm': arm, 'hidden_arm': hidden_arm, 'mode': mode,
         'fereg_revision': ARMS[arm]['fereg'], 'cmg_revision': ARMS[arm]['cmg'],
         'tool_sha256': file_sha256(__file__), 'module_sha256': file_sha256(MODULE),
         'profile_patch_sha256': PROFILE_PATCH_SHA256, 'attribution_diff_sha256': sha256(diff.encode()),
@@ -554,6 +619,14 @@ def validate_counts(sort, arm):
         require(c['heapsort_records'] <= n * max(1, c['heapsorts']), 'fallback larger than input')
         require(c['insertion_swaps'] <= c['cmp'] and c['partition_swaps'] <= c['partition_steps'],
                 'swap counts exceed comparisons/steps')
+        if arm == 'pivot':
+            # Every partition classifies each record once and selects its
+            # pivot with 2..12 comparisons; insertion adds at most one
+            # failed comparison per record, heapsift at most two per step.
+            require(c['partition_steps'] + 2 * c['partitions'] + c['insertion_swaps'] <= c['cmp']
+                    <= c['partition_steps'] + 12 * c['partitions'] + c['insertion_swaps']
+                    + c['insertion_records'] + 2 * c['heap_sift_steps'],
+                    'pivot comparisons do not cover sampling/partition/insertion/fallback')
     # Queries are the caller's meter polls inside the sort (no allocation or
     # checkpoint there): one whenever 65,536 units have accumulated, counted
     # in steps of at most 1,024, so each period spans 65,536..66,559 units
@@ -774,6 +847,7 @@ def smoke(directory, cmg_git):
 def bind(directory, plugin, build_log, baseline_sha256):
     directory = Path(directory).absolute()
     source = json.loads((directory / 'attribution-source.json').read_text())
+    source_identity(source)
     require(re.fullmatch(r'[0-9a-f]{64}', baseline_sha256) is not None, 'invalid baseline hash')
     archive = directory / source['source_archive']['path']
     require(file_sha256(archive) == source['source_archive']['sha256'], 'source archive changed')
@@ -792,8 +866,8 @@ def bind(directory, plugin, build_log, baseline_sha256):
 def check_attribution_source(path, identity):
     import qualify as q
     source = q.read(path)
-    arm = next((name for name, value in ARMS.items() if value['hidden'] == identity['arm']), None)
-    require(arm is not None and source['arm'] == arm and source['hidden_arm'] == identity['arm'],
+    arm = source_identity(source)
+    require(source['hidden_arm'] == identity['arm'],
             'attribution source belongs to another arm')
     require(source['fereg_revision'] == identity['base_revision'] == ARMS[arm]['fereg']
             and source['cmg_revision'] == ARMS[arm]['cmg'], 'attribution source revision mismatch')
@@ -879,6 +953,7 @@ def main():
     p = commands.add_parser('prepare')
     p.add_argument('--arm', choices=tuple(ARMS), required=True)
     p.add_argument('--mode', choices=MODES, required=True)
+    p.add_argument('--hidden-arm', choices=tuple(h for a in ARMS for h in hidden_arms(a)))
     for name in ('fereg-git', 'cmg-git', 'out'):
         p.add_argument('--' + name, type=Path, required=True)
     p = commands.add_parser('bind')
@@ -896,7 +971,7 @@ def main():
     p = commands.add_parser('run')
     for name in ('repository', 'task_root', 'output'):
         p.add_argument(name, type=Path)
-    p.add_argument('--arm', choices=tuple(value['hidden'] for value in ARMS.values()), required=True)
+    p.add_argument('--arm', choices=tuple(h for a in ARMS for h in hidden_arms(a)), required=True)
     p.add_argument('--revision', required=True)
     for name in ('source', 'attribution', 'plugin'):
         p.add_argument('--' + name, type=Path, required=True)
@@ -904,7 +979,7 @@ def main():
         p.add_argument('--' + name, type=Path)
     args = parser.parse_args()
     if args.command == 'prepare':
-        record = prepare(args.arm, args.mode, args.fereg_git, args.cmg_git, args.out)
+        record = prepare(args.arm, args.mode, args.fereg_git, args.cmg_git, args.out, args.hidden_arm)
         print(json.dumps(record, indent=1, sort_keys=True))
     elif args.command == 'bind':
         print(json.dumps(bind(args.directory, args.plugin, args.build_log, args.baseline_sha256), indent=1))

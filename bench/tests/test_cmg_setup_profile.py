@@ -294,5 +294,49 @@ class CandidateProfileBindings(unittest.TestCase):
             profile.check_call(self.manifest, self.arm, inconsistent, detail, trace)
 
 
+class PivotProfileBindings(CandidateProfileBindings):
+    """Run the full explicit-source guards with the immutable third arm."""
+    def setUp(self):
+        super().setUp()
+        self.manifest.update(setup.fixed('Linux', setup.PIVOT_MODE))
+        (self.root / 'pre-pivot.plugin').write_bytes(b'stable pre-pivot')
+        self.manifest['files']['pre-pivot.plugin'] = q.digest(self.root / 'pre-pivot.plugin')
+        paths = dict(zip(setup.PIVOT_ARMS, ('current.plugin', 'pre-pivot.plugin', 'old.plugin')))
+        self.manifest['artifacts'] = {
+            role: {'path': paths[role], 'revision': setup.PIVOT_REVISIONS[role],
+                   'build': 'synthetic', **setup.artifact_policy(role)} for role in setup.PIVOT_ARMS}
+        for cell in self.base['cases']:
+            cell['aliases'] = q.artifact_aliases(self.manifest)
+            cell['warmups'] = [{'execution': role, 'fingerprint': 'a' * 64,
+                               'route_trace': [], 'route_hierarchy': []} for role in setup.PIVOT_ARMS]
+        self.save()
+        self.select(setup.PIVOT)
+
+    def test_both_explicit_arms_bind_source_and_fixed_panel(self):
+        for arm in setup.PIVOT_ARMS:
+            self.select(arm)
+            identity = self.load()[4]
+            self.assertEqual(identity['arm'], arm)
+            self.assertEqual(identity['base_revision'], setup.PIVOT_REVISIONS[arm])
+            self.assertEqual(identity['diagnostic'], setup.PIVOT_MODE)
+            self.assertEqual(identity['source_binding_sha256'], q.digest(self.source))
+            self.assertEqual(identity['source_archive_sha256'], q.digest(self.root / 'instrumented-source.tar'))
+            self.assertEqual(identity['calls'], 18)
+            self.assertEqual(identity['timeout_s'], 120)
+
+    def test_old_arm_names_and_reference_revision_cannot_select_pivot(self):
+        for arm in setup.CANDIDATE_ARMS:
+            with self.subTest(arm=arm), self.assertRaises(ValueError):
+                self.load(arm=arm)
+        with self.assertRaisesRegex(ValueError, 'revision mismatch'):
+            self.load(revision=setup.PIVOT_REVISIONS[setup.PRE_PIVOT])
+
+    def test_pre_pivot_source_cannot_bind_pivot_artifact(self):
+        q.write(self.source, {**self.capture, 'arm': setup.PRE_PIVOT,
+                              'revision': setup.PIVOT_REVISIONS[setup.PRE_PIVOT]})
+        with self.assertRaisesRegex(ValueError, 'another arm/revision'):
+            self.load()
+
+
 if __name__ == '__main__':
     unittest.main()

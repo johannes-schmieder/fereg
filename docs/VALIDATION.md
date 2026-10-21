@@ -666,7 +666,7 @@ resource, failure and cancellation behavior. Root will validate the stable
 implementation and measure it separately. No two-FE policy or public activation
 follows from these diagnostics.
 
-### Ninther pivot repair (native validation pending)
+### Ninther pivot repair (native validation complete; comparison pending)
 
 This is the one selected generic repair to the shared canonical raw-edge
 introsort, CMG `aaf6ec4c6b88b69c58024cc18f60e6abd5754a5a` (parent
@@ -763,10 +763,28 @@ installed-package binding remains a known failed check; source-only success
 does not qualify release packages. Exact commands, exits and log hashes are in
 the compact record.
 
+Root then built the exact fereg `1cdb225e` / CMG `fd77d98d` pair with Rust
+1.85.1, locked release/fat LTO and bridge O3 in fresh caches. Actual Mac and
+Linux plugins passed audit, ABI/load and injected-panic containment; Linux also
+passed the input/output guards. Linux job 8232322 ended with failed 0 / exit 0. The Mac replay passed
+73 accepted-baseline cases and 146 W4/W8 checks; 18 explicit OLS/PPML rows
+(both bias modes, 54 calls) passed mathematics, exactness and worker checks.
+All six mapped Stata fixtures and actual builder/explicit-CMG Break and rollback
+checks passed. Native hashes and check identities are retained in the record.
+
+The maintained comparison and attribution helpers now bind a separate
+three-arm pivot mode; historical definitions remain intact. Root's 104 focused
+tooling tests passed, and the attribution helper's synthetic pristine versus
+instrumented W1/W4 smoke passed all 16 calls. One initial fixture test failure
+is retained: newly captured Mac application hashes differ from historical
+fixture hashes. New modes bind their own pristine Mac reference exactly;
+historical equality and live smoke checks remain exact. All fixture hierarchy
+fields agree. No cause for the cross-origin application-bit difference is claimed.
+
 Limits: counted units are generic work, not cost or speed. The real
-contraction split pattern was not observed. Root owns native builds, audits,
-the Stata/Break checks, the controlled comparison and any new attribution
-binding. The record is
+contraction split pattern was not observed. The controlled comparison and new
+actual attribution measurements remain pending; the native checks do not
+establish a speed improvement or authorize activation. The record is
 [`cmg-pivot-repair-20261021.json`](../bench/results/cmg-pivot-repair-20261021.json).
 
 ## CMG successor milestone 3d: worker-independent team arithmetic

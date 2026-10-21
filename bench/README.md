@@ -51,7 +51,17 @@ scores complete-call `NATIVE_SECONDS` with unchanged 120-second call and
 3600-second Linux/14400-second Mac budgets, zero recovery or resampling, and
 retains failures. This protocol description is not timing evidence and this
 diagnostic cannot qualify public activation. The historical three-arm mode
-remains the default; the attribution helper below still targets that mode.
+remains the default.
+
+The fixed pivot-repair comparison uses `"diagnostic": "cmg-setup-pivot-v1"`
+and the same order seed. Its three distinct artifacts are `accepted_3f9_hidden`
+at `3f9d54eeacb2ced61bf8cb9a629daa0d1a6d23d9`, `pre_pivot_040_hidden` at
+`0407060c2959ff5076619511fcc85d82ceac8de0`, and `pivot_1cdb_hidden` at
+`1cdb225e2460e391ad38f856755ae3ea5efb2e5b`. Both reference arms must agree
+exactly with the pivot arm. The unchanged input, worker, block, warmup and
+timeout rules give 1,080 calls across six isolated Linux hosts and 900 on Mac.
+Each comparison retains its own nonregression bound; no activation follows.
+The two earlier modes and their recorded artifact meanings are unchanged.
 
 For separate setup attribution, apply `cmg_setup_profile.patch` to the exact
 accepted `3f9d54ee` source and build/audit a distinct plugin. The bounded helper
@@ -62,6 +72,18 @@ are attribution evidence, not qualification timings. Arrange host isolation
 externally and keep profile measurements separate from the complete-call panel.
 The initial executed ad hoc helper predates the maintained helper's identity
 guards; that limitation remains explicit in the evidence.
+
+`cmg_setup_attribution.py prepare` supports the exact `accepted`, `candidate`
+and `pivot` source pairs. For the new comparison, use `--hidden-arm
+accepted_3f9_hidden` or `--hidden-arm pre_pivot_040_hidden` for the first two;
+`pivot` defaults to `pivot_1cdb_hidden`. An alias cannot change either revision.
+Prepare fresh `counts` and `timers` copies with the final helper, build and audit
+them, then `bind` their source archive, actual plugin and build log. `run`
+requires the completed corresponding ordinary panel and checks all 18 calls
+against that selected arm. The pivot's generic comparator is counted once,
+including sampling and fallback; production work charges and polls are unchanged.
+Counter-build wall time is never performance evidence. Select and freeze the
+profile arms and finite budget before collecting new observations.
 
 ## Packed SCC comparison
 

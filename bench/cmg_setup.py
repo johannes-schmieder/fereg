@@ -19,6 +19,18 @@ ACCEPTED = 'accepted_hidden'
 SETUP = 'setup_hidden'
 CANDIDATE_ARMS = (ACCEPTED, SETUP)
 CANDIDATE_SEED = 2026102104
+# New names keep both historical modes and their artifact meanings intact.
+PIVOT_MODE = 'cmg-setup-pivot-v1'
+PIVOT_ACCEPTED = 'accepted_3f9_hidden'
+PRE_PIVOT = 'pre_pivot_040_hidden'
+PIVOT = 'pivot_1cdb_hidden'
+PIVOT_ARMS = (PIVOT_ACCEPTED, PRE_PIVOT, PIVOT)
+PIVOT_REVISIONS = {
+    PIVOT_ACCEPTED: '3f9d54eeacb2ced61bf8cb9a629daa0d1a6d23d9',
+    PRE_PIVOT: '0407060c2959ff5076619511fcc85d82ceac8de0',
+    PIVOT: '1cdb225e2460e391ad38f856755ae3ea5efb2e5b',
+}
+PIVOT_CALLS = {'Linux': 1080, 'Darwin': 900}
 PRE = 'pre_refactor_enabled'
 POST = 'post_refactor_hidden'
 PUBLIC = 'current_public'
@@ -31,22 +43,32 @@ INPUT_SEED = 2026101821
 HIGH_DEGREE_SHA256 = '9631343a441c33c277d3782b388a584f93c64486e2baa817e9e4bbf1b2623bb7'
 
 
+def exact_mode(mode):
+    return mode in (CANDIDATE_MODE, PIVOT_MODE)
+
+
+def roles(mode):
+    return PIVOT_ARMS if mode == PIVOT_MODE else CANDIDATE_ARMS if mode == CANDIDATE_MODE else ARMS
+
+
 def fixed(platform, mode=MODE):
     import qualify as q
     q.require(platform in ('Linux', 'Darwin'), 'unsupported diagnostic platform')
-    q.require(mode in (MODE, CANDIDATE_MODE), 'unknown setup diagnostic mode')
-    return {'diagnostic': mode, 'scope': 'exact' if mode == CANDIDATE_MODE else 'two', 'coverage': 'smoke',
+    q.require(mode in (MODE, CANDIDATE_MODE, PIVOT_MODE), 'unknown setup diagnostic mode')
+    return {'diagnostic': mode, 'scope': 'exact' if exact_mode(mode) else 'two', 'coverage': 'smoke',
             'threads': [1, 4, 8], 'shards': 1, 'replicas': 6 if platform == 'Linux' else 1,
             'blocks': 2 if platform == 'Linux' else 12, 'timeout_s': 120,
             'budget_s': 3600 if platform == 'Linux' else 14400}
 
 
 def artifact_policy(role):
-    return {'request': 'incremental-two' if role in (POST, *CANDIDATE_ARMS) else 'auto',
+    return {'request': 'incremental-two' if role in (POST, *CANDIDATE_ARMS, *PIVOT_ARMS) else 'auto',
             'families': ['many'] if role == PUBLIC else ['many', 'two']}
 
 
 def valid_revision(role, revision):
+    if role in PIVOT_REVISIONS:
+        return revision == PIVOT_REVISIONS[role]
     if role == SETUP:
         return isinstance(revision, str) and re.fullmatch('[0-9a-f]{40}', revision) is not None
     return revision == REVISIONS.get(POST if role == ACCEPTED else role) and role in (*ARMS, ACCEPTED)
@@ -55,28 +77,33 @@ def valid_revision(role, revision):
 def validate(value):
     """Called by plan, run and report; the mode cannot loosen ordinary plans."""
     import qualify as q
-    candidate = value.get('diagnostic') == CANDIDATE_MODE
-    roles = CANDIDATE_ARMS if candidate else ARMS
+    candidate = exact_mode(value.get('diagnostic'))
+    selected_roles = roles(value.get('diagnostic'))
     q.require(all(value.get(k) == v for k, v in fixed(value['platform'], value.get('diagnostic')).items()),
               'diagnostic schedule/scope changed')
     q.require(not any(k in value for k in ('continuation', 'recovery')),
               'diagnostic has no continuation or automatic recovery')
     q.require(not candidate or value.get('seed') == CANDIDATE_SEED, 'setup candidate order seed changed')
-    q.require(set(value['artifacts']) == set(roles), 'diagnostic needs its named arms')
-    for role in roles:
+    q.require(set(value['artifacts']) == set(selected_roles), 'diagnostic needs its named arms')
+    for role in selected_roles:
         artifact = value['artifacts'][role]
         q.require(valid_revision(role, artifact['revision']), 'diagnostic source revision/patch changed: ' + role)
         q.require(all(artifact.get(k) == v for k, v in artifact_policy(role).items()),
                   'diagnostic request/family changed: ' + role)
     q.require([c['id'] for c in value['cases']] == list(CASES), 'diagnostic needs the four ordered families')
     if 'files' in value and candidate:
-        q.require(value['files'][value['artifacts'][ACCEPTED]['path']]
-                  != value['files'][value['artifacts'][SETUP]['path']],
-                  'setup candidate requires two distinct actual binaries for its fixed call budget')
+        q.require(len({value['files'][value['artifacts'][role]['path']] for role in selected_roles})
+                  == len(selected_roles),
+                  'setup candidate requires distinct actual binaries for its fixed call budget')
     if 'files' in value and not candidate:
         q.require(value['files'][value['artifacts'][POST]['path']]
                   == value['files'][value['artifacts'][PUBLIC]['path']],
                   'current public and hidden must use the same actual binary')
+    if value.get('diagnostic') == PIVOT_MODE:
+        q.require(value.get('warmups', 1) == 1, 'pivot warmup budget changed')
+        calls = (len(value['cases']) * len(value['threads']) * len(selected_roles)
+                 * (1 + 2 * value['blocks']) * value['replicas'])
+        q.require(calls == PIVOT_CALLS[value['platform']], 'pivot native-call budget changed')
     for item in value['cases']:
         q.require(item['family'] == item['id'] and item['memory_limit_bytes'] is None
                   and item['oracle']['kind'] == 'routing', 'diagnostic requires independent routing witnesses')
@@ -90,7 +117,7 @@ def validate_case(source, item, *, mode=MODE):
     with source.open('rb') as stream:
         shape, args = q.case_header(stream)
     fields = dict(a.decode().split('=', 1) for a in args[1:])
-    if mode == CANDIDATE_MODE:
+    if exact_mode(mode):
         q.require(fields.get('solver') == 'auto' and fields.get('preconditioner') == 'auto',
                   'setup candidate source must request Auto/Auto')
     expected = (600000, 12) if item['id'] == CASES[0] else (100000, 26 if item['id'] == 'wide-rhs' else 12)
@@ -104,6 +131,8 @@ def validate_case(source, item, *, mode=MODE):
 
 def comparisons(value):
     validate(value)
+    if value['diagnostic'] == PIVOT_MODE:
+        return ((PIVOT_ACCEPTED, PIVOT), (PRE_PIVOT, PIVOT))
     if value['diagnostic'] == CANDIDATE_MODE:
         return ((ACCEPTED, SETUP),)
     return ((PRE, POST), (PUBLIC, POST))
@@ -114,7 +143,7 @@ def compare_science(value, meta, snapshots):
     import qualify as q
     for reference, changed in comparisons(value):
         before, after = snapshots[reference], snapshots[changed]
-        if value['diagnostic'] == CANDIDATE_MODE:
+        if exact_mode(value['diagnostic']):
             q.require(before[2]['fingerprint'] == after[2]['fingerprint'],
                       'setup candidate exact science/solver fingerprint changed')
             q.require(q.worker_signature(before[0]) == q.worker_signature(after[0]),
@@ -206,10 +235,10 @@ def prepare(config_path, output):
               'invalid diagnostic config fields')
     value = copy.deepcopy(value)
     value.update(fixed(value['platform'], value.get('diagnostic', MODE)))
-    roles = CANDIDATE_ARMS if value['diagnostic'] == CANDIDATE_MODE else ARMS
-    q.require(set(value['artifacts']) == set(roles), 'diagnostic needs its named arms')
+    selected_roles = roles(value['diagnostic'])
+    q.require(set(value['artifacts']) == set(selected_roles), 'diagnostic needs its named arms')
     # The shared writer canonicalizes object keys before the frozen plan is read.
-    value['artifacts'] = {role: value['artifacts'][role] for role in roles}
+    value['artifacts'] = {role: value['artifacts'][role] for role in selected_roles}
     for role, artifact in value['artifacts'].items():
         q.require(set(artifact) == {'path', 'revision', 'build'}, 'invalid diagnostic artifact fields')
         artifact.update(artifact_policy(role))
