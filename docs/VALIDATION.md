@@ -382,6 +382,47 @@ for the four feature sets remain token-identical to `7b610e1e`.
   and the 1,965/1,951 source-only counts are kept as two distinct runs
   without an attributed cause.
 
+### Setup candidate 1: root validation and frozen comparison
+
+The focused source-review gate passes at CMG `355d328a` and fereg
+`0407060c`; both independent reviewers found no remaining issue in the
+lock-counted witness. Root ran all seven edge-sort tests in debug and release.
+The prior source-only integration, allocation, analytic, frozen-adapter and
+portable evidence remains applicable because the repairs changed tests and
+documentation only. Root did not rerun the broad matrix or claim independent
+execution of the cloud expansion check.
+
+Root's actual Mac universal build passed binary audit and host ABI/load/panic
+checks. The 73-case replay passed with zero exact differences against accepted
+`3f9d54ee`, with 146 additional worker-count checks. Eighteen explicit-solver
+cases (54 calls) cover CMG-Schur and CMG/LSMR PPML with both bias modes, exact
+same-worker repeats, independent mathematics and cross-worker decisions. All
+six mapped Stata fixtures and the native optional-builder and sampled explicit
+CMG-Schur Break/rollback checks passed. The Linux build/audit/load job
+`8227206` exited 0 on four slots; this is build evidence, not timing.
+
+The task smoke adapter initially discarded validated route records, so its
+first Mac attempt failed the exact comparison after two scientifically valid
+calls. Attaching those records, as the maintained runner already does, makes
+those same saved calls pass without new execution. A bounded eight-call repaired
+Mac smoke passed. The queued Linux smoke `8227525` was cancelled before execution;
+its corrected eight-call replacement is `8227531`. Failures, commands, hashes,
+compact native results and the small diagnostic helpers are retained in
+[`cmg-setup-candidate1-20261021.json`](../bench/results/cmg-setup-candidate1-20261021.json)
+under `root_validation`.
+
+Before timing, the maintained `cmg-setup-candidate-v1` protocol is frozen:
+accepted `3f9d54ee` versus candidate `0407060c`, both hidden h16 invocations,
+four existing families, W1/4/8, input seed 2026101821 and order seed 2026102104.
+Linux uses six distinct isolated 28-core hosts and 720 total calls; Mac uses
+12 balanced blocks and 600 calls. The call timeout is 120 seconds, job budgets
+are 3,600/14,400 seconds, and there is no resume, recovery or retry. Complete
+native calls are scored; exact science, solver decisions and route/hierarchy
+identity remain required. Ordinary desktop noise stays. The explicit-arm
+profile helper passed 21 tests and independent review; its separate 18-call
+panels provide attribution only. Setup performance and public two-FE activation
+are still unaccepted.
+
 ## CMG successor milestone 3d: worker-independent team arithmetic
 
 **Johannes accepted M3d's disclosed final scope on 2026-10-21 after independent
