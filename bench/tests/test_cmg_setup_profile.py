@@ -163,5 +163,136 @@ class ProfileBindings(unittest.TestCase):
             guard.check()
 
 
+class CandidateProfileBindings(unittest.TestCase):
+    save = ProfileBindings.save
+
+    def setUp(self):
+        ProfileBindings.setUp(self)
+        self.manifest.update(setup.fixed('Linux', setup.CANDIDATE_MODE), seed=setup.CANDIDATE_SEED)
+        self.manifest['artifacts'] = {
+            role: {'path': 'current.plugin' if role == setup.ACCEPTED else 'old.plugin',
+                   'revision': setup.REVISIONS[setup.POST] if role == setup.ACCEPTED else 'b' * 40,
+                   'build': 'synthetic', **setup.artifact_policy(role)} for role in setup.CANDIDATE_ARMS}
+        for cell in self.base['cases']:
+            cell['aliases'] = q.artifact_aliases(self.manifest)
+            cell['warmups'] = [{'execution': role, 'fingerprint': 'a' * 64,
+                               'route_trace': [], 'route_hierarchy': []} for role in setup.CANDIDATE_ARMS]
+        self.source = self.root / 'profile-source.json'
+        for filename in ('instrumented-source.tar', 'build.log'):
+            (self.root / filename).write_bytes(('synthetic ' + filename).encode())
+        self.save()
+        self.select(setup.SETUP)
+
+    def select(self, arm):
+        self.arm = arm
+        self.revision = self.manifest['artifacts'][arm]['revision']
+        self.capture = {'arm': arm, 'revision': self.revision,
+                        'baseline_sha256': self.manifest['files'][self.manifest['artifacts'][arm]['path']],
+                        'plugin_sha256': q.digest(self.plugin),
+                        'patch_sha256': q.digest(REPO / 'bench/cmg_setup_profile.patch'),
+                        'source_archive': {'path': 'instrumented-source.tar',
+                                           'sha256': q.digest(self.root / 'instrumented-source.tar')},
+                        'build_log': {'path': 'build.log', 'sha256': q.digest(self.root / 'build.log')}}
+        q.write(self.source, self.capture)
+
+    def load(self, **overrides):
+        options = {'arm': self.arm, 'revision': self.revision, 'source': self.source}
+        options.update(overrides)
+        return profile.load_context(REPO, self.root, 'Linux', **options)
+
+    def test_both_explicit_arms_bind_source_and_fixed_panel(self):
+        for arm in setup.CANDIDATE_ARMS:
+            self.select(arm)
+            identity = self.load()[4]
+            self.assertEqual(identity['arm'], arm)
+            self.assertEqual(identity['base_revision'], self.revision)
+            self.assertEqual(identity['source_binding_sha256'], q.digest(self.source))
+            self.assertEqual(identity['source_archive_sha256'], q.digest(self.root / 'instrumented-source.tar'))
+            self.assertEqual(identity['calls'], 18)
+            self.assertEqual(identity['timeout_s'], 120)
+            self.assertIn('caller-verified', identity['source_binding_limit'])
+
+    def test_explicit_revision_and_source_required(self):
+        for overrides in ({'arm': None}, {'revision': None}, {'source': None},
+                          {'revision': 'b' * 8}, {'revision': 'c' * 40}, {'arm': setup.POST}):
+            with self.subTest(overrides=overrides), self.assertRaises(ValueError):
+                self.load(**overrides)
+
+    def test_cross_arm_or_stale_artifact_source_binding_rejected(self):
+        for field, value in [('arm', setup.ACCEPTED), ('revision', 'c' * 40),
+                             ('plugin_sha256', '0' * 64), ('baseline_sha256', '0' * 64),
+                             ('patch_sha256', '0' * 64)]:
+            q.write(self.source, {**self.capture, field: value})
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                self.load()
+        q.write(self.source, self.capture)
+
+    def test_missing_source_evidence_and_wrong_hash_rejected(self):
+        for key in ('source_archive', 'build_log'):
+            changed = copy.deepcopy(self.capture)
+            changed[key]['sha256'] = '0' * 64
+            q.write(self.source, changed)
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'input identity mismatch'):
+                self.load()
+            del changed[key]
+            q.write(self.source, changed)
+            with self.assertRaisesRegex(ValueError, 'source binding'):
+                self.load()
+
+    def test_source_and_build_files_get_drift_checks(self):
+        for path in (self.source, self.root / 'instrumented-source.tar', self.root / 'build.log'):
+            guard = self.load()[-1]
+            original = path.read_bytes()
+            path.write_bytes(original + b'changed')
+            with self.subTest(path=path.name), self.assertRaisesRegex(ValueError, 'changed during execution'):
+                guard.check()
+            path.write_bytes(original)
+
+    def test_wrong_selected_warmup_or_missing_route_identity_rejected(self):
+        for mutate in ('arm', 'route_trace', 'route_hierarchy'):
+            changed = copy.deepcopy(self.base)
+            warmup = next(c for c in changed['cases'][0]['warmups'] if c['execution'] == self.arm)
+            if mutate == 'arm':
+                warmup['execution'] = setup.ACCEPTED
+            else:
+                del warmup[mutate]
+            q.write(self.base_path, changed)
+            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+                self.load()
+
+    def test_alias_to_uninstrumented_plugin_rejected(self):
+        self.plugin.write_bytes((self.root / 'old.plugin').read_bytes())
+        self.select(self.arm)
+        with self.assertRaisesRegex(ValueError, 'uninstrumented baseline'):
+            self.load()
+
+    def test_explicit_layout_overrides_remain_bound(self):
+        alternate = self.root / 'alternate-result.json'
+        alternate.write_bytes(self.base_path.read_bytes())
+        result = self.load(plan_path=self.plan, baseline_path=alternate, plugin_path=self.plugin)
+        self.assertEqual(result[4]['baseline_result_sha256'], q.digest(alternate))
+        alternate.write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'changed during execution'):
+            result[-1].check()
+
+    def test_call_science_route_and_hierarchy_are_exact(self):
+        from test_routing_science import RouteHierarchyTrace
+        from test_cmg_setup import HistoricalTraceDiagnostics
+        action = HistoricalTraceDiagnostics.PRIMARY.replace('setup_work=794664056|setup_limit=977928192|', '')
+        trace = RouteHierarchyTrace.INSTALLED + action
+        expected = {'fingerprint': 'a' * 64, **setup.resource_diagnostics(trace, self.arm, self.revision)}
+        detail = {'fingerprint': 'a' * 64, 'seconds': 2., 'maxrss_bytes': 555}
+        profile.check_call(self.manifest, self.arm, expected, detail, trace)
+        for changed in (trace.replace('repeats=3;0', 'repeats=4;0'), RouteHierarchyTrace.REFUSED + action):
+            with self.subTest(trace=changed), self.assertRaisesRegex(ValueError, 'changed route_trace'):
+                profile.check_call(self.manifest, self.arm, expected, detail, changed)
+        with self.assertRaisesRegex(ValueError, 'science/signature'):
+            profile.check_call(self.manifest, self.arm, expected, {'fingerprint': 'b' * 64}, trace)
+        inconsistent = copy.deepcopy(expected)
+        inconsistent['route_hierarchy'][0]['repeats'][0] += 1
+        with self.assertRaisesRegex(ValueError, 'inconsistent'):
+            profile.check_call(self.manifest, self.arm, inconsistent, detail, trace)
+
+
 if __name__ == '__main__':
     unittest.main()
