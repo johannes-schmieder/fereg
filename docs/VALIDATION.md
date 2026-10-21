@@ -666,7 +666,7 @@ resource, failure and cancellation behavior. Root will validate the stable
 implementation and measure it separately. No two-FE policy or public activation
 follows from these diagnostics.
 
-### Ninther pivot repair (native validation complete; Mac comparison inconclusive)
+### Ninther pivot repair (native validation complete; Mac/Linux comparisons inconclusive)
 
 This is the one selected generic repair to the shared canonical raw-edge
 introsort, CMG `aaf6ec4c6b88b69c58024cc18f60e6abd5754a5a` (parent
@@ -860,26 +860,62 @@ cell are descriptive. Run 8233861 completed on `scc-wo4` with 28 reserved
 physical cores, failed 0 / exit 0, 230 seconds and 1.231G maximum virtual
 memory. Its 42 process samples, five queue censuses and two reservation checks
 passed, with a maximum process-sample gap of 6.920 seconds. No calls were
-retried or excluded. The full Linux comparison remains pending, and the Mac
-comparison's inconclusive bound remains unchanged.
+retried or excluded. The Mac comparison's inconclusive bound remains unchanged.
 
-The first ordinary Linux replica, job 8233028 on `scc-wo4`, completed all
-180 calls with exact science, repeats and resource checks, failed 0 / exit 0,
-328 scheduler seconds and 1.199G maximum virtual memory. Its 65 process
-observations, seven queue censuses and two reservation checks passed; the
-maximum process gap was 6.710 seconds. Full observations are retained in
-[`cmg-setup-pivot-linux-part1-20261021.json`](../bench/results/cmg-setup-pivot-linux-part1-20261021.json).
-This is incomplete evidence: the five other submitted replicas remain queued,
-so no aggregate Linux comparison is assessed.
+The ordinary Linux comparison completed all 1,080 calls on six distinct
+28-core physical hosts. All scientific, repeat, cross-worker, cross-host and
+resource checks passed; every job has failed 0 / exit 0. The maintained
+aggregate report passes 23 of 24 bounds. High-degree-weak at W1 against the
+accepted baseline is inconclusive: median ratio 0.984011 and excess-time
+median -41.314716 ms, lower -58.041011 ms, upper +28.535722 ms. The six host
+medians, each based on two mirrored blocks, are the analysis units. This does
+not establish a regression, but it does not satisfy that nonregression bound.
+All twelve Linux comparisons against the pre-pivot candidate pass.
+
+An independent statistical reconstruction reproduced all 288 paired block
+scores and 24 bounds within floating-point rounding (maximum difference
+7.8e-16). The upper bound for the inconclusive cell comes from `wo4`: its two
+block excesses are +60.438579 and -3.367134 ms, yielding a host median of
++28.535722 ms. These observations establish neither a cause nor an exclusion
+basis. At six hosts, the selected one-sided .025 upper bound is the maximum
+host excess.
+
+All 1,080 complete call objects, the full report, accounting and host summaries
+are retained in
+[`cmg-setup-pivot-linux-part1-20261021.json`](../bench/results/cmg-setup-pivot-linux-part1-20261021.json)
+and [`cmg-setup-pivot-linux-part2-20261021.json`](../bench/results/cmg-setup-pivot-linux-part2-20261021.json).
+The 232 process observations have a maximum gap of 6.710 seconds, with no
+recorded competing compute or observer errors. All reservation and all-queue
+census checks pass. Coverage is sampled; six distinct hosts do not by
+themselves prove independent scores, and the per-cell intervals do not provide
+a simultaneous guarantee for all comparisons. No calls were retried or excluded.
+
+Independent execution/science review matched all six full result objects and
+their source hashes to the retained parts, rehashed all 216 retained numerical
+heads/array sets, and verified the schedules, cross-arm/repeat/worker/host
+science, accounting and raw host observations. All 216 retained warmup timers
+match `NATIVE_SECONDS`; scored `seconds` is the complete-call timer, not the
+auxiliary `native_s`. Timed raw logs were deleted by the maintained runner.
+The candidate binary, available inputs/references and execution sources were
+independently verified; the two reference binaries and Linux timing wrapper
+were unavailable for independent local rehash. Independent numerical oracle
+execution was not repeated.
 
 Queued-only placement changes preserved the same job IDs, all resource limits,
 the six-distinct-host requirement and the fixed call budget. A later quota
 inspection explained the abandoned `wp3` placement: that host is restricted to
 two other users. An independent scheduler check found valid requests and idle,
-eligible public queue instances for the current five jobs, but could not
-establish their rejection reason. Current scheduler rejection details are
-disabled and the available schedule file is stale. The queued jobs remain
-intact; no measurements are resubmitted or added to address this delay.
+eligible public queue instances for the five delayed jobs, but could not
+establish their rejection reason. Scheduler rejection details were disabled
+and the available schedule file was stale. These jobs subsequently dispatched
+at 17:28-17:29 and completed during 17:31-17:32 on their unchanged final hosts; no
+measurements were resubmitted or added. The earlier delay remains unexplained.
+
+Across Mac and Linux, 46 of 48 bounds pass and two remain inconclusive, both
+against the accepted baseline. The pivot repair demonstrably reduces sorting
+work on the diagnosed inputs, but the fixed comparison does not establish
+full nonregression. Policy advancement and public activation remain held for
+Johannes's decision; neither platform is resampled to obtain a pass.
 
 Limits: counted units are generic work, not cost or speed. The real
 contraction split pattern was not observed. Neither the native checks nor this
