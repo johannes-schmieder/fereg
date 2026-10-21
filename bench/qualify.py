@@ -244,7 +244,7 @@ def plan(config_path, output, *, configuration=None):
         item['input'] = bind(item['input'])
         if diagnostic:
             import cmg_setup
-            cmg_setup.validate_case(source, item)
+            cmg_setup.validate_case(source, item, mode=value['diagnostic'])
         with source.open('rb') as stream:
             shape, arguments = case_header(stream)
         require(not any(a.startswith((b'inject=', b'break_marker_token=')) for a in arguments),
@@ -1256,7 +1256,7 @@ def report(manifest_path, output, accounting_dir=None):
     if diagnostic:
         summary.update(status='diagnostic_complete' if complete else 'needs_discussion',
                        diagnostic=manifest['diagnostic'], activation_qualified=False,
-                       target='post_refactor_hidden',
+                       target=comparison_pairs(manifest)[0][1],
                        next_action='Review this bounded diagnostic; no activation qualification or automatic sampling.')
     if 'continuation' in manifest:
         state = manifest['continuation']

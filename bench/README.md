@@ -35,6 +35,24 @@ never qualifies default activation. Run `prepare CONFIG --output PLAN`, then
 requires `--accounting DIRECTORY` on SCC. The four input families, original seed,
 worker counts and per-platform budgets are fixed by this diagnostic version.
 
+For a future arithmetic-preserving setup comparison, select
+`"diagnostic": "cmg-setup-candidate-v1"` and order seed `2026102104` in the
+config. Supply exactly `accepted_hidden` (full revision
+`3f9d54eeacb2ced61bf8cb9a629daa0d1a6d23d9`) and `setup_hidden` (the explicit full
+candidate revision), each with `path`, `revision` and `build`. Both use
+`incremental-two`; the distinct actual plugins, harness, inputs and execution
+sources are hash-bound at preparation. The same four seed-2026101821 Auto/Auto
+inputs run at W1/W4/W8, with one warmup per arm, six isolated Linux hosts with
+two mirrored blocks each (720 calls), or twelve Mac blocks (600 calls). This
+mode requires exact paired scientific fingerprints, solver signatures and
+present route/hierarchy records (both may be empty before iteration 16),
+independent oracles, exact own repeats and existing cross-worker checks. It
+scores complete-call `NATIVE_SECONDS` with unchanged 120-second call and
+3600-second Linux/14400-second Mac budgets, zero recovery or resampling, and
+retains failures. This protocol description is not timing evidence and this
+diagnostic cannot qualify public activation. The historical three-arm mode
+remains the default; the attribution helper below still targets that mode.
+
 For separate setup attribution, apply `cmg_setup_profile.patch` to the exact
 accepted `3f9d54ee` source and build/audit a distinct plugin. The bounded helper
 `cmg_setup_profile.py REPOSITORY TASK_ROOT OUTPUT` requires the completed ordinary

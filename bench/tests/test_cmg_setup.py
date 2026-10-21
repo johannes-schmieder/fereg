@@ -193,6 +193,181 @@ class SetupDiagnostic(unittest.TestCase):
                 setup.validate_case(self.source, self.config['cases'][0])
 
 
+class SetupCandidateDiagnostic(unittest.TestCase):
+    plan = SetupDiagnostic.plan
+    execute = SetupDiagnostic.execute
+
+    def setUp(self):
+        SetupDiagnostic.setUp(self)
+        self.config.update(diagnostic=setup.CANDIDATE_MODE, seed=setup.CANDIDATE_SEED)
+        # The shared two-row fixture has no FE route. Supply explicit empty
+        # trace evidence; actual two-FE calls obtain these fields from the parser.
+        read_native = q.read_native
+        def read_fixture(*args, **kwargs):
+            raw, columns, detail = read_native(*args, **kwargs)
+            return raw, columns, {**detail, 'route_trace': [], 'route_hierarchy': []}
+        patch.object(q, 'read_native', side_effect=read_fixture).start()
+        self.config['artifacts'] = {}
+        for role in setup.CANDIDATE_ARMS:
+            plugin = self.root / (role + '.plugin')
+            plugin.write_bytes(role.encode())
+            self.config['artifacts'][role] = {'path': plugin.name, 'build': 'synthetic',
+                'revision': setup.REVISIONS[setup.POST] if role == setup.ACCEPTED else 'a' * 40}
+
+    def test_complete_exact_two_arm_budget_and_report(self):
+        value = self.plan()
+        self.assertEqual(value['scope'], 'exact')
+        self.assertEqual(value['mac_cell_policy']['new_call_cap'], 600)
+        self.assertEqual(value['mac_cell_policy']['max_cell_retries'], 0)
+        self.assertEqual(value['mac_cell_policy']['max_retry_cells'], 0)
+        self.assertEqual(q.comparison_pairs(value), ((setup.ACCEPTED, setup.SETUP),))
+        self.assertTrue(all(a['request'] == 'incremental-two' for a in value['artifacts'].values()))
+        linux = setup.fixed('Linux', setup.CANDIDATE_MODE)
+        self.assertEqual(12 * 2 * (1 + 2 * linux['blocks']) * linux['replicas'], 720)
+        self.assertEqual(value['execution_sources']['cmg_setup'], q.digest(Path(setup.__file__)))
+        self.assertEqual(value['execution_sources']['qualify'], q.digest(Path(q.__file__)))
+        record = q.run(self.manifest, self.output, execute=self.execute)
+        self.assertEqual(record['status'], 'complete', record['failures'])
+        self.assertEqual(len(self.calls), 600)
+        self.assertEqual(self.oracle.call_count, 24)
+        self.compatibility.assert_not_called()
+        for cell in record['cases']:
+            self.assertEqual(set(cell['aliases'].values()), set(setup.CANDIDATE_ARMS))
+            for block in cell['blocks']:
+                self.assertEqual(len(block['calls']), 4)
+                self.assertTrue(all(c['seconds'] == .01 for c in block['calls']))
+        report = q.report(self.manifest, self.output)
+        self.assertEqual(report['status'], 'diagnostic_complete', report['errors'])
+        self.assertEqual(report['target'], setup.SETUP)
+        self.assertFalse(report['activation_qualified'])
+        self.assertEqual(report['native_calls'], 600)
+        self.assertEqual(len(report['comparisons']), 12)
+
+    def test_strict_mode_revision_seed_and_alias_admission(self):
+        value = self.plan()
+        for field, changed in [('seed', 2026102103), ('scope', 'two'), ('blocks', 13), ('diagnostic', setup.MODE)]:
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                setup.validate({**value, field: changed})
+        for role, revision in [(setup.ACCEPTED, 'b' * 40), (setup.SETUP, '7b610e1'), (setup.SETUP, 'HEAD')]:
+            other = copy.deepcopy(value)
+            other['artifacts'][role]['revision'] = revision
+            with self.subTest(role=role, revision=revision), self.assertRaises(ValueError):
+                setup.validate(other)
+        other = copy.deepcopy(value)
+        other['files'][other['artifacts'][setup.SETUP]['path']] = other['files'][other['artifacts'][setup.ACCEPTED]['path']]
+        with self.assertRaisesRegex(ValueError, 'distinct actual binaries'):
+            setup.validate(other)
+        for marker in ('continuation', 'recovery'):
+            with self.assertRaises(ValueError):
+                setup.validate({**value, marker: {}})
+        with self.assertRaises(ValueError):
+            q.run(self.manifest, self.output, resume=True, execute=self.execute)
+        self.assertFalse(self.calls)
+
+    def test_cross_arm_exact_failure_retained_without_retry(self):
+        self.plan()
+        def changed(command, log, timeout):
+            if len(self.calls) == 1:
+                self.data[1, 0] += .01
+            return self.execute(command, log, timeout)
+        record = q.run(self.manifest, self.output, execute=changed)
+        self.assertEqual(record['status'], 'blocked')
+        self.assertEqual(len(self.calls), 2)
+        self.assertIn('exact science/solver fingerprint', record['failures'][-1]['error'])
+        self.assertEqual(record['failures'][-1]['kind'], 'scientific')
+        self.assertFalse(record['retry_cells'])
+
+    def test_iteration_change_is_exact_failure(self):
+        from test_cmgschur import result, bits
+        value = self.plan()
+        raw, changed = result(), result()
+        changed['matrices']['RSOLVER']['bits'][2] = bits(123.)
+        def snapshot(head):
+            return (head, None, {'fingerprint': q.routing.identity(q.exact_view(head, False))})
+        with self.assertRaisesRegex(ValueError, 'exact science/solver fingerprint'):
+            setup.compare_science(value, self.meta,
+                                  {setup.ACCEPTED: snapshot(raw), setup.SETUP: snapshot(changed)})
+
+    def test_current_hierarchy_stays_mandatory(self):
+        log = HistoricalTraceDiagnostics.ROUTE + HistoricalTraceDiagnostics.PRIMARY
+        for role in setup.CANDIDATE_ARMS:
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                setup.resource_diagnostics(log, role, self.config['artifacts'][role]['revision'])
+
+    def test_valid_route_and_hierarchy_changes_fail_with_unchanged_science(self):
+        from test_cmgschur import result
+        from test_routing_science import RouteHierarchyTrace as traces
+        value = self.plan()
+        action = HistoricalTraceDiagnostics.PRIMARY.replace('setup_work=794664056|setup_limit=977928192|', '')
+        def snapshot(route):
+            detail = setup.resource_diagnostics(route + action, setup.ACCEPTED, setup.REVISIONS[setup.POST])
+            return (result(), None, {**detail, 'fingerprint': 'identical-science'})
+        baseline = snapshot(traces.INSTALLED)
+        changes = [traces.INSTALLED.replace('repeats=3;0', 'repeats=4;0'),
+                   traces.INSTALLED.replace('terminal_factor_nonzeros=19', 'terminal_factor_nonzeros=20'),
+                   traces.INSTALLED.replace('application=scalar|parallel_operators=0',
+                                            'application=parallel|parallel_operators=1'),
+                   traces.REFUSED]
+        for route in changes:
+            with self.subTest(route=route), self.assertRaisesRegex(ValueError, 'exact route_trace changed'):
+                setup.compare_science(value, self.meta, {setup.ACCEPTED: baseline, setup.SETUP: snapshot(route)})
+        # Test the independently stored parsed hierarchy too, rather than relying
+        # on the redundant raw trace to detect every change.
+        changed = copy.deepcopy(baseline)
+        changed[2]['route_hierarchy'][0]['repeats'][0] += 1
+        with self.assertRaisesRegex(ValueError, 'exact route_hierarchy changed'):
+            setup.compare_science(value, self.meta, {setup.ACCEPTED: baseline, setup.SETUP: changed})
+        refused = snapshot(traces.REFUSED)
+        with self.assertRaisesRegex(ValueError, 'exact route_trace changed'):
+            setup.compare_science(value, self.meta, {setup.ACCEPTED: refused,
+                setup.SETUP: snapshot(traces.REFUSED.replace('Some(MemoryBudget)', 'Some(Unused)'))})
+
+    def test_equal_empty_routes_pass_but_missing_evidence_fails(self):
+        from test_cmgschur import result
+        value = self.plan()
+        snapshot = (result(), None, {'fingerprint': 'same', 'route_trace': [], 'route_hierarchy': []})
+        setup.compare_science(value, self.meta, {setup.ACCEPTED: snapshot, setup.SETUP: snapshot})
+        telemetry = copy.deepcopy(snapshot)
+        telemetry[2].update(seconds=99., maxrss_bytes=123456, action_resources=[{'memory_bytes_used': 999}])
+        setup.compare_science(value, self.meta, {setup.ACCEPTED: snapshot, setup.SETUP: telemetry})
+        for field in ('route_trace', 'route_hierarchy'):
+            missing = copy.deepcopy(snapshot)
+            del missing[2][field]
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'missing ' + field):
+                setup.compare_science(value, self.meta, {setup.ACCEPTED: snapshot, setup.SETUP: missing})
+
+    def test_source_auto_auto_is_required_even_with_exact_scope(self):
+        from test_cmgschur import case_bytes
+        self.input_guard.stop()
+        self.source.with_suffix('.json').write_text('{"seed":2026101821}')
+        for solver, preconditioner in [('lsmr', 'auto'), ('auto', 'off')]:
+            self.source.write_bytes(case_bytes([b'estimate-ols', b'threads=1', ('solver=' + solver).encode(),
+                                               ('preconditioner=' + preconditioner).encode()]))
+            with self.subTest(solver=solver, preconditioner=preconditioner), self.assertRaisesRegex(ValueError, 'Auto/Auto'):
+                self.plan()
+        self.assertFalse(self.calls)
+
+    def test_repeat_failure_does_not_create_retries(self):
+        self.plan()
+        def changed(command, log, timeout):
+            if len(self.calls) == 2:
+                self.data[1, 0] += .01
+            return self.execute(command, log, timeout)
+        record = q.run(self.manifest, self.output, execute=changed)
+        self.assertEqual(len(self.calls), 3)
+        self.assertIn('fixed-worker repeat changed', record['failures'][-1]['error'])
+        self.assertFalse(record['retry_cells'])
+
+    def test_interference_retained_with_zero_recovery(self):
+        self.plan()
+        RecoveryMonitor.hits = [True]
+        record = q.run(self.manifest, self.output, execute=self.execute)
+        self.assertEqual(record['status'], 'blocked')
+        self.assertEqual(len(self.calls), 50)
+        self.assertEqual(len(record['discarded_attempts']), 1)
+        self.assertFalse(record['retry_cells'])
+
+
 class HistoricalTraceDiagnostics(unittest.TestCase):
     # Captured d5b public-enabled high-degree weak route and both action records.
     ROUTE = ('FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=16|samples=1|iterations=16|'
