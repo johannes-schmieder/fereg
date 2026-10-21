@@ -108,6 +108,23 @@ existing eligibility, small-direct criterion, restart and fallback semantics
 fixed. Two-FE public activation remains unauthorized until a separate
 fixed-candidate qualification.
 
+Johannes's 2026-10-21 successor decision authorizes measured CMG setup
+optimization in fereg/CMG and replaces the fixed iteration-16 requirement and
+predictive-payback prohibition for two-FE OLS Auto only. Develop a deterministic
+upgrade decision using active and genuinely reusable RHS work, admitted workers,
+graph structure and solver progress; do not use elapsed-time routing or restore
+the removed construction-work cap. Preserve public memory controls, cutoff 5,
+one sampled tree, seed 0, eligibility, small-direct selection, certification,
+restart and fallback semantics unless a further scientific decision is discussed.
+Use Claude Opus 5.5 for setup review and GPT Pro plus Claude Fable for independent
+upgrade-policy proposals. Keep setup and policy comparisons separate. Diagnosed
+repairs are authorized without a fixed repair-count cap; failed evidence remains
+failed and unchanged artifacts are never resampled to obtain a pass. Enable the
+qualified two-FE default on the development branch only after the fixed-candidate
+42-cell Mac/Linux round and exact public-versus-hidden equivalence pass. Main,
+release packages and GitHub testing remain unchanged. Discuss scientific
+questions, substantive rule conflicts and inconclusive qualification with Johannes.
+
 Runtime changes require `./scripts/run_tests.sh` and mapped scientific/transaction
 checks. Build/package changes require focused tooling and native build/ABI checks.
 Prose-only documentation/instruction changes use link/reference checks and
