@@ -844,6 +844,25 @@ two-call observations are descriptive; the earlier Mac comparison remains
 inconclusive. Full calls and evidence are retained in
 [`cmg-setup-pivot-attribution-20261021.json`](../bench/results/cmg-setup-pivot-attribution-20261021.json).
 
+Linux attribution also completed all 72 calls, making 144 retained calls across
+the two platforms. An independent review reparsed all Linux raw logs and
+matched every retained call to its source result. Counts agree exactly across
+platforms, workers and repeats. The fresh Linux pivot binaries and source
+captures were independently rehashed; the reused pre-pivot binaries are bound
+by their original build and run records, without a separate local rehash of
+those two binary files.
+
+Linux timer-only means for contraction sorting are 9.850/14.867/14.892 ms
+(W1/W4/W8), versus 22.018/32.890/33.117 ms before the repair. Entire hierarchy
+means are 23.951/36.723/36.538 ms versus 35.986/54.475/54.633 ms. Weak-low
+hierarchy means remain approximately 4.9 ms. These two recorded calls per
+cell are descriptive. Run 8233861 completed on `scc-wo4` with 28 reserved
+physical cores, failed 0 / exit 0, 230 seconds and 1.231G maximum virtual
+memory. Its 42 process samples, five queue censuses and two reservation checks
+passed, with a maximum process-sample gap of 6.920 seconds. No calls were
+retried or excluded. The full Linux comparison remains pending, and the Mac
+comparison's inconclusive bound remains unchanged.
+
 Limits: counted units are generic work, not cost or speed. The real
 contraction split pattern was not observed. Neither the native checks nor this
 inconclusive comparison establish a general speed improvement or authorize
