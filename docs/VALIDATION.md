@@ -420,8 +420,73 @@ are 3,600/14,400 seconds, and there is no resume, recovery or retry. Complete
 native calls are scored; exact science, solver decisions and route/hierarchy
 identity remain required. Ordinary desktop noise stays. The explicit-arm
 profile helper passed 21 tests and independent review; its separate 18-call
-panels provide attribution only. Setup performance and public two-FE activation
-are still unaccepted.
+panels provide attribution only. The following results complete that frozen
+diagnostic; they do not qualify public two-FE activation.
+
+### Setup candidate 1: completed paired measurement
+
+All **1,320 complete calls** are retained in the candidate JSON's
+`root_measurement`: 720 on six distinct isolated Linux hosts and 600 on Mac.
+Every scientific, exact repeat, route/hierarchy, cross-worker and resource gate
+passed. All 12 nonregression bounds per platform passed, with no exclusions,
+retries or scientific/native failures. Independent reviews recomputed the
+bounds from complete-call `NATIVE_SECONDS`, aggregating the two Linux blocks
+within each host. Mac's 12 blocks share one active desktop. These are conditional
+per-cell intervals, not simultaneous coverage or proof that hosts are independent.
+
+High-degree-weak candidate/accepted median complete-call ratios were:
+
+| Platform | W1 | W4 | W8 |
+| --- | ---: | ---: | ---: |
+| Linux | 0.997469 | 1.015255 | 1.027198 |
+| Mac | 0.984409 | 1.005425 | 1.012140 |
+
+This passes the declared max(5%, 1 ms) allowance; it does **not** establish a
+general speedup. Repeated-cells and wide-rhs still finish before h16, so they
+do not supply construction or RHS-amortization evidence.
+
+The separate accepted/candidate profiles retain 36 calls per platform: one
+warmup and two recorded calls for each arm, family and worker count. All match
+the corresponding main-panel scientific fingerprints and route/hierarchy.
+The high-degree phase medians below are descriptive milliseconds from those
+two recorded calls, with accepted followed by candidate:
+
+| Platform and phase | W1 | W4 | W8 |
+| --- | ---: | ---: | ---: |
+| Mac initial Laplacian | 16.027 → 8.918 | 5.337 → 4.389 | 3.608 → 3.814 |
+| Mac hierarchy/finalization | 9.820 → 11.515 | 9.942 → 11.622 | 9.987 → 11.665 |
+| Linux initial Laplacian | 48.660 → 34.825 | 21.269 → 18.592 | 14.294 → 16.028 |
+| Linux hierarchy/finalization | 30.241 → 38.042 | 46.525 → 55.013 | 46.402 → 55.245 |
+
+The profile is not a causal timing experiment or qualification. Source review
+narrows a useful diagnostic: the high-degree graph has 41,722 canonical edges,
+and all subsequent graphs are below the unchanged 65,536-edge parallel
+contraction floor. Its coarse sorts therefore use the changed serial
+heapsort-to-introsort path at every worker count. `hierarchy_team=true` does
+not imply parallel contraction, and the broad hierarchy phase also includes
+components, centering and terminal factorization. Further work should distinguish
+sort operation counts from hierarchy and finalization costs before changing
+production code; the current samples do not identify the responsible kernel.
+
+Operational failures remain separate from these measurements. Linux profile
+build `8227507` exited zero but reused the uninstrumented Cargo artifact because
+the patched archive preserved old source mtimes. Identical binary hashes caught
+this before profiling. A fresh isolated build cache in `8227545` produced the
+distinct, audited profile artifact used above. The first six comparison host
+requests selected a queue that does not support `omp28`; all six jobs were still
+queued with no calls when their host requests were corrected. The same job IDs
+and frozen budget then ran on xa1–xa4/xb1–xb2. A Python 3.6 inspection-script
+failure occurred before any host alteration and is also retained.
+
+The six comparison jobs `8227633`–`8227638`, report `8227775`, and separate
+profile `8227776` all have complete 0/0 accounting. Remote reporting checked
+Linux native heads and arrays; the independent local Linux audit checked compact
+records and host evidence. Mac retained heads/arrays were independently checked.
+The maintained runner deletes timed raw logs after validation; their complete
+observations remain in the compact record. Profile archive/build hashes are
+bound, while source-to-binary provenance additionally rests on root's source,
+patch and build-command checks. No separate Mac profile host observer was
+recorded. Neither setup diagnosis nor these profiles activate public two-FE Auto.
 
 ## CMG successor milestone 3d: worker-independent team arithmetic
 
