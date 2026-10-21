@@ -666,6 +666,86 @@ resource, failure and cancellation behavior. Root will validate the stable
 implementation and measure it separately. No two-FE policy or public activation
 follows from these diagnostics.
 
+### Ninther pivot repair (pending review)
+
+This is the one selected generic repair to the shared canonical raw-edge
+introsort, CMG `aaf6ec4c6b88b69c58024cc18f60e6abd5754a5a` (parent
+`355d328a`). It is pinned in the fereg manifest and both lockfiles on root's
+`04d99221`. Its scope was declared before the edits: the final order, duplicate
+reduction and every downstream bit are unchanged. Only counted pivot work
+moves query positions. No timing ran.
+
+- **Rule (frozen).** Partitions of more than 40 records take Tukey's ninther
+  (Bentley and McIlroy 1993). With `s = len / 8`, `last = len - 1` and
+  `m = last / 2`, the pivot is the median of the medians of positions (0, s,
+  2s), (m - s, m, m + s) and (last - 2s, last - s, last). Partitions of 17–40
+  records keep the median of first, middle and last records, now an explicit
+  three-comparison median with the same value. The insertion cutoff, depth
+  limit and heapsort fallback, fork threshold, lane ceiling, comparator and
+  hierarchy thresholds are unchanged.
+- **Rationale.** After three-way partitioning, first/middle/last sampling
+  misjudges the median of structured subranges. It then splits lopsidedly
+  and exhausts the depth limit. Nine evenly spaced samples estimate the
+  median robustly at a constant 12 comparisons per large partition. The
+  rule is not adversary-proof.
+- **Counted work.** Pivot selection is counted after it runs, at 16 units
+  per comparison: 192 for a ninther and 48 for a median of three. Both fit
+  within one 1,024-unit segment, and the 65,536-unit query cadence is
+  unchanged. Between two queries there are at most 65,535 + 1,024 counted
+  units, plus one uncounted bounded segment: 64 partition steps, one pivot
+  selection (12 comparisons and nine record copies), one insertion record or
+  one heap step.
+- **New witnesses.**
+  - The pivot equals the declared sample rule, computed independently, for
+    lengths 17 to 4,097.
+  - At 65,536 records, structured orderings have no depth-limit fallback
+    and at most 32 counted units per record per level, with every advance at
+    most 1,024 units. The orderings are sorted, reversed, organ pipe, one
+    record moved, descending blocks, interleaved runs, sawtooth, few values,
+    duplicates and Musser's median-of-three killer.
+  - A McIlroy adaptive adversary built against this algorithm still reaches
+    the fallback. Its output is exact serially and at W1/W4, with
+    O(n log n) counted work.
+  - Cancelling at a partition's first advance stops it after exactly the
+    pivot's units, with no record classified.
+  - The new orderings were added to the serial and team bit oracles.
+  - The early-root, deep-gap, post-fork inside-partition, ordinal-inversion
+    and public phase-query witnesses are kept.
+- **Mutations.** All are killed (exit 101): the old median-of-three rule
+  (sorted: 14 fallbacks over 61,688 records), uncounted pivot work, an
+  undercounted ninther, no depth fallback, a middle-only ninther,
+  swallowed/unpolled/unjoined cancellation, the pre-lock snapshot, partitions
+  without polls and no node-entry poll.
+  - The middle-only ninther first survived; the positional witness was
+    added and kills it.
+  - The no-fallback mutation first ran a quadratic 200,000-record adversary
+    and was stopped (SIGTERM, not counted as a kill); its focused rerun
+    fails.
+- **CMG matrix: 30/30 exit 0.**
+  - Focused witnesses run three times.
+  - Tests: default 135, `parallel` 207, all features 264, each in debug and
+    release.
+  - Frozen bits pass in eight configurations.
+  - Clippy for seven feature sets, rustdoc, and the bench crate pass.
+- **fereg on the pin.**
+  - Ratchet, fmt and Clippy pass; the core library passes 1,388 tests with 3
+    ignored.
+  - The replay is exact against both the stable pre-repair candidate
+    (`0407060c`/`355d328a`) and the accepted `fa1fbbe` baseline: 73/73
+    cases, 46 derived explicit OLS/PPML rows (both bias modes) and 75
+    injected two-FE rows, with no route change.
+  - Standard `run_tests.sh`: 315 Python tests pass, then the known
+    installed-plugin binding check fails (exit 1).
+  - `--source-only`: exit 0, 322 Python and 1,965 Rust executions in 83
+    groups, 14 ignored.
+  - Bench tests pass (one skipped).
+
+Limits: counted units are generic work, not cost or speed. The real
+contraction split pattern was not observed. Root owns native builds, audits,
+the Stata/Break checks, the controlled comparison and any new attribution
+binding. The record is
+[`cmg-pivot-repair-20261021.json`](../bench/results/cmg-pivot-repair-20261021.json).
+
 ## CMG successor milestone 3d: worker-independent team arithmetic
 
 **Johannes accepted M3d's disclosed final scope on 2026-10-21 after independent

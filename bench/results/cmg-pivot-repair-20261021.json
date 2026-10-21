@@ -1,0 +1,522 @@
+{
+ "schema": 1,
+ "date": "2026-10-21",
+ "purpose": "One focused generic pivot-selection repair of the shared canonical raw-edge introsort (ninther on large partitions). Correctness, counted-work and replay evidence only; no timing, profile or claim.",
+ "revisions": {
+  "cmg_parent": "355d328a33639b5fa50c3c1954c8ee62e59e6b20",
+  "cmg_repair": "aaf6ec4c6b88b69c58024cc18f60e6abd5754a5a",
+  "fereg_base": "04d99221cc32acd1c52f3d0f03756d64f52dc8e2",
+  "pins": "crates/fereg-core/Cargo.toml, Cargo.lock and fuzz/Cargo.lock pin aaf6ec4c"
+ },
+ "formulation": {
+  "rule": "partitions of more than 40 records: Tukey ninther (Bentley and McIlroy 1993); s = len/8, last = len-1, m = last/2; median of medians of (0,s,2s), (m-s,m,m+s), (last-2s,last-s,last). 17..40 records: median of first, middle, last (explicit three-comparison median, same value).",
+  "unchanged": "insertion cutoff 16, depth limit 2 log2(n) with heapsort fallback, fork threshold 16,384, lane ceiling, comparator (endpoint key, total_cmp weight), duplicate reduction, hierarchy thresholds",
+  "counting": "pivot selection counted after it runs, 16 units per comparison: 192 (ninther) or 48 (median of three), within one 1,024-unit segment; the 65,536-unit query cadence is unchanged",
+  "unpolled_bound": "at most 65,535 + 1,024 counted units between queries, plus one uncounted bounded segment: 64 partition steps, one pivot selection (12 comparisons, 9 record copies), one insertion record or one heap step; team lanes also query on every node entry",
+  "scope": "arithmetic-preserving: final order, duplicate reduction and every downstream bit unchanged; only counted pivot work moves query positions"
+ },
+ "steps": {
+  "mutations": {
+   "5-mut-p1_median_of_three_only": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG p1_median_of_three_only.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "a37afb3079d7e958ea923efdb0e759c21216ba348cf0192c9bf01f84667a97cb",
+    "rust": [
+     8,
+     2,
+     0
+    ]
+   },
+   "5-mut-p2_pivot_uncounted": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG p2_pivot_uncounted.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "81c4a85df3d46fc2f6be1836e6fedffda6984d14f350dbb3e8ef6fc09f0187da",
+    "rust": [
+     9,
+     1,
+     0
+    ]
+   },
+   "5-mut-p3_ninther_undercounted": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG p3_ninther_undercounted.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "9fc30191a9edfb71fbd9f4fe5fe98b02d4dc64ec467267c238b09b3e49540664",
+    "rust": [
+     9,
+     1,
+     0
+    ]
+   },
+   "5-mut-p4_no_depth_fallback": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG p4_no_depth_fallback.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib adaptive_adversary_still_reaches_the_depth_fallback (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "4c098d86726569bb50b8d53f40bd762b6e1a8c4f24b4a3264450bb5273dd3445",
+    "rust": [
+     0,
+     1,
+     0
+    ]
+   },
+   "5-mut-p5_ninther_middle_only": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG p5_ninther_middle_only.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "eb60883881933fecae08f3adfd9308d0182b59a68a61495bc9c53e53450dee9c",
+    "rust": [
+     10,
+     1,
+     0
+    ]
+   },
+   "5-mut-r1a_partition_swallows_cancel": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG r1a_partition_swallows_cancel.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib started_lanes (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "d0a509aa0152458132db539695efdb4ab22cc6bb3beafcb9a8ce8240cc5f9646",
+    "rust": [
+     0,
+     2,
+     0
+    ]
+   },
+   "5-mut-r1b_no_in_partition_poll": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG r1b_no_in_partition_poll.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib started_lanes (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "3a95233ddc8755b351b6a70778791909a3bcf95bb726a6a3ebf8e1ae0dffbbef",
+    "rust": [
+     0,
+     2,
+     0
+    ]
+   },
+   "5-mut-r1c_no_final_joined_poll": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG r1c_no_final_joined_poll.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib started_lanes (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "c4b1395e0adc076ce3cb7dc45dccae9ec9d3dd6957f8299830e02ec537660fbb",
+    "rust": [
+     0,
+     2,
+     0
+    ]
+   },
+   "5-mut-r1d_prelock_ordinal_snapshot": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG r1d_prelock_ordinal_snapshot.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib started_lanes_witness_counts_queries_under_the_lock_despite_ordinal_inversion (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "b12dea446d2b5a0731d3b008d1fd82d776fb8238d15e82e9ef58ec6a49763446",
+    "rust": [
+     0,
+     1,
+     0
+    ]
+   },
+   "5-mut-s1_partition_unpolled": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG s1_partition_unpolled.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort::tests::work_between_polls (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "43cc98defb9d54759e67ad9b739243bebe7e55c4032e5f2efb29349fec7bacb2",
+    "rust": [
+     0,
+     1,
+     0
+    ]
+   },
+   "5-mut-s3b_no_node_entry_poll": {
+    "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG s3b_no_node_entry_poll.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort::tests::work_between_polls (cwd: <task>/pivot-repair)",
+    "exit": 101,
+    "log_sha256": "6e7951df27ee898b96de6a8b2abeb62b9204ed2e65ee62bfa426db33cdb2a096",
+    "rust": [
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  "cmg_matrix": {
+   "601-cmg-focused-sort-witnesses-run1": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib -- edge_sort bounded_team_tests (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "87105307edc909c1feeb385f9cbf20fec517619790520e82ce3822cebc75a93b",
+    "rust": [
+     15,
+     0,
+     0
+    ]
+   },
+   "602-cmg-focused-sort-witnesses-run2": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib -- edge_sort bounded_team_tests (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "fc73c1116c362112d985231c170528c9b4a0bf0d8f90a04b34e4818a2a5aa06b",
+    "rust": [
+     15,
+     0,
+     0
+    ]
+   },
+   "603-cmg-focused-sort-witnesses-run3": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --lib -- edge_sort bounded_team_tests (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "b8dac60e5124d55a4ec584c73bc5df2c733878f013e27bbaae5ffa7549f120af",
+    "rust": [
+     15,
+     0,
+     0
+    ]
+   },
+   "620-cmg-fmt-check": {
+    "command": "cargo fmt --all -- --check (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   "621-cmg-test-default": {
+    "command": "cargo test --offline --all-targets (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "0945c3e95372915aaeaec0365cd58dcd4a2f004cce3734fd97a4844005ecf6f6",
+    "rust": [
+     135,
+     0,
+     0
+    ]
+   },
+   "622-cmg-test-parallel": {
+    "command": "cargo test --offline --all-targets --no-default-features --features parallel (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "caaea9b72de860635cace3af6e3b26d3d56b2d6ae248ba60094e430f4afae855",
+    "rust": [
+     207,
+     0,
+     0
+    ]
+   },
+   "623-cmg-test-all-features": {
+    "command": "cargo test --offline --all-targets --all-features --no-fail-fast (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "c59e9738f4e5e8ac1e26674c181ca43efd715c8ba7b38929e8ded19ae535b9d0",
+    "rust": [
+     264,
+     0,
+     0
+    ]
+   },
+   "624-cmg-test-release": {
+    "command": "cargo test --offline --all-targets --release (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "50d239ae1b565ceeeb76134d1bb1a62bed94bbb49a1994765956d7371fc4bc8f",
+    "rust": [
+     135,
+     0,
+     0
+    ]
+   },
+   "625-cmg-test-all-features-release": {
+    "command": "cargo test --offline --all-targets --all-features --release (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "9f6b1f0e476d93b5d52bffab8a9b7a0f76c500090955961ec0c337e6bb02514c",
+    "rust": [
+     264,
+     0,
+     0
+    ]
+   },
+   "626-cmg-doctest-all-features": {
+    "command": "cargo test --offline --doc --all-features (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "dc99598d5b0356e9be7169a447e229ef00e31e1c7b52d6d743d08435036340eb",
+    "rust": [
+     0,
+     0,
+     0
+    ]
+   },
+   "627-cmg-test-parallel-release": {
+    "command": "cargo test --offline --all-targets --no-default-features --features parallel --release (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "3747ac51456abc5eb285ee7d386ffad861430701a5c0e2d117fcf08e3c076adf",
+    "rust": [
+     207,
+     0,
+     0
+    ]
+   },
+   "630-cmg-frozen-parallel": {
+    "command": "cargo test --offline --no-default-features --features parallel --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "a6dd8c6bb44171f0fe8dfd5bcf105ad0c3e4cb2d8f647cdbd74ee4bb0944aec1",
+    "rust": [
+     1,
+     0,
+     0
+    ]
+   },
+   "631-cmg-frozen-parallelrelease": {
+    "command": "cargo test --offline --no-default-features --features parallel --release --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "bbb94745923dfdfe7f145035650432e50b02b6bb162eb478e6864232dc795ceb",
+    "rust": [
+     1,
+     0,
+     0
+    ]
+   },
+   "632-cmg-frozen-experimentalcomponents": {
+    "command": "cargo test --offline --no-default-features --features experimental-components --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "2245031cf0d2605bafb45a1a5fb7c946f191da00c821f1d07d3d143847eb4cd1",
+    "rust": [
+     1,
+     0,
+     0
+    ]
+   },
+   "633-cmg-frozen-experimentalcomponentsrelease": {
+    "command": "cargo test --offline --no-default-features --features experimental-components --release --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "72107e6fb763433a5d765d0cc8e08c12df23fa03d327b611fd89cc1673c955d6",
+    "rust": [
+     1,
+     0,
+     0
+    ]
+   },
+   "634-cmg-frozen-parallel+experimentalcomponents": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "7e18ca9241dcafdda7b43af896dc01601a75a85b243f965ac296344b4f6c8d9c",
+    "rust": [
+     1,
+     0,
+     0
+    ]
+   },
+   "635-cmg-frozen-parallel+experimentalcomponentsrelease": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,experimental-components --release --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "a2892cffe052ccfa41368c9a7b214345787693f087bfcb49f35c926677bda261",
+    "rust": [
+     1,
+     0,
+     0
+    ]
+   },
+   "636-cmg-frozen-parallel+profiling": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,profiling --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "e449f355e523e917ad69bf11eb365976c7328bbed58ae5403ea5943bf73377fe",
+    "rust": [
+     1,
+     0,
+     0
+    ]
+   },
+   "637-cmg-frozen-parallel+profilingrelease": {
+    "command": "cargo test --offline --no-default-features --features parallel\\,profiling --release --test frozen_bits (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "ae5b391263950f70091e5ec35c4314d18b97db23368e20e6a39700aca86b36bb",
+    "rust": [
+     1,
+     0,
+     0
+    ]
+   },
+   "640-cmg-clippy-none": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features '' -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "ddff542d2632227ce901c9b9055d2a5196fe0f1e2c917ec031c0f0f7b324507a"
+   },
+   "641-cmg-clippy-parallel": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features parallel -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "589dc7c4e7624256201980f125e8483d960c9fa1454cac0e8182c9e3e7b82f22"
+   },
+   "642-cmg-clippy-experimental-components": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features experimental-components -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "f7114332e2439b16f40d542bff9d53a7d3008a2de19468870c96f373f88764f5"
+   },
+   "643-cmg-clippy-profiling": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features profiling -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "3080f6fbaf75ab6927e1e7e47863c7bbe5ee8a43bcfe1eb9c40e503a10383df2"
+   },
+   "644-cmg-clippy-cycle-profiling": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features cycle-profiling -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "3b8e8b8abbc288acabd68d72f07e3e500a19590ffd58a6b779be5121e08c79d2"
+   },
+   "645-cmg-clippy-parallel+experimental-components": {
+    "command": "cargo clippy --offline --all-targets --no-default-features --features parallel\\,experimental-components -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "983f4c5765e8e9983dfa2478fb2e0d35f5242effbb6710d627fa5470a959d06e"
+   },
+   "646-cmg-clippy-all": {
+    "command": "cargo clippy --offline --all-targets --all-features -- -D warnings (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "f63b4232ea4df376ad49b15e44b688d4f0adaf851cbb525b68b73aa2ed83df3e"
+   },
+   "647-cmg-doc": {
+    "command": "env RUSTDOCFLAGS=-D\\ warnings cargo doc --offline --no-deps --all-features (cwd: <home>/CMG)",
+    "exit": 0,
+    "log_sha256": "32f016360d6d31e4af867a5cf05b0abad081290f5ea7a5cde8849aa3a0032fb2"
+   },
+   "648-cmg-bench-clippy-default": {
+    "command": "cargo clippy --offline --all-targets -- -D warnings (cwd: <task>/pivot-repair/bench-copy)",
+    "exit": 0,
+    "log_sha256": "cd5069a4c5ff0737ef6cf3cfade15799af1aff590efb3d62c3a9fc46f0574308"
+   },
+   "649-cmg-bench-clippy-all": {
+    "command": "cargo clippy --offline --all-targets --all-features -- -D warnings (cwd: <task>/pivot-repair/bench-copy)",
+    "exit": 0,
+    "log_sha256": "a4e1cdb8d66f9dfcc636275a93fb6355a99cc1199a46e72d4dfb03ac83286824"
+   },
+   "650-cmg-bench-fmt-check": {
+    "command": "bash -c rustfmt\\ --edition\\ 2024\\ --check\\ \\$\\(find\\ src\\ -name\\ \\\"\\*.rs\\\"\\) (cwd: <home>/CMG/benchmarks)",
+    "exit": 0,
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   }
+  },
+  "fereg": {
+   "760-fereg-complexity": {
+    "command": "python3 scripts/check_complexity.py (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "66b3155d375ba75b896268fc3f4f19bfba3230e9924f44ed34edcafc1bfb1714"
+   },
+   "761-fereg-fmt-check": {
+    "command": "cargo fmt --all -- --check (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   "762-fereg-clippy": {
+    "command": "cargo clippy --offline --locked --workspace --all-targets -- -D warnings (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "089e45ef22b49f9287dc458b5427b1a0622b1b7bb68ff711e702a470e2698231"
+   },
+   "763-fereg-core-lib": {
+    "command": "cargo test --offline --locked -p fereg-core --lib (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "6834ed5b0b4f774c42842748bbf8173867bef86ae47afb602a9ec3f4b422b31c",
+    "rust": [
+     1388,
+     0,
+     3
+    ]
+   },
+   "764-candidate-plugin-build": {
+    "command": "env FEREG_GIT_COMMIT=pivot-repair bash <task>/pivot-repair/build_plugin.sh <home>/fereg <task>/pivot-repair/candidate-target <task>/plugins/pivot-candidate.plugin (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "a847b784a77e877c814ef4592feecf462c3a18b0fc6de922ef527193d8fdfb2f"
+   },
+   "765-replay-vs-pre": {
+    "command": "env FEREG_REPLAY_ROOT=<task>/pivot-repair/replay-pre ./scripts/run_plugin_replay.sh <task>/plugins/pivot-candidate.plugin <task>/plugins/setup1-candidate.plugin (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "bf5946c77b9631bc8fd117f8e2abf0330b2a7ec335d04b331e529ed520f84e71"
+   },
+   "766-derived-explicit-vs-pre": {
+    "command": "python3 <task>/pivot-repair/derived_compare.py <task>/pivot-repair/replay-pre/cases <task>/pivot-repair/derived-pre <task>/plugins/setup1-candidate.plugin <task>/plugins/pivot-candidate.plugin <home>/fereg/target/actual-plugin-harness/actual_plugin_loader_test (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "fc374441f39ef12c264e9ff5833fe422937e50e7532860c8e5f455ccaf9f9074"
+   },
+   "767-injected-two-fe-vs-pre": {
+    "command": "python3 <task>/pivot-repair/injected_compare.py <task>/pivot-repair/replay-pre/cases <task>/pivot-repair/injected-pre <task>/plugins/setup1-candidate.plugin <task>/plugins/pivot-candidate.plugin <home>/fereg/target/actual-plugin-harness/actual_plugin_loader_test routing_incremental_two\\,routing_h4_k1\\,routing_direct (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "c4b634dc0baae98375844417db35401c0e402ba834c811eea4c4391ec7c92699"
+   },
+   "775-replay-vs-accepted": {
+    "command": "env FEREG_REPLAY_ROOT=<task>/pivot-repair/replay-accepted ./scripts/run_plugin_replay.sh <task>/plugins/pivot-candidate.plugin <task>/plugins/setup-baseline-fa1fbbe.plugin (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "e17844ee6d1b401e9c78652e04282767a183caac3f8f7bdd7c95834dff975347"
+   },
+   "776-derived-explicit-vs-accepted": {
+    "command": "python3 <task>/pivot-repair/derived_compare.py <task>/pivot-repair/replay-accepted/cases <task>/pivot-repair/derived-accepted <task>/plugins/setup-baseline-fa1fbbe.plugin <task>/plugins/pivot-candidate.plugin <home>/fereg/target/actual-plugin-harness/actual_plugin_loader_test (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "fc374441f39ef12c264e9ff5833fe422937e50e7532860c8e5f455ccaf9f9074"
+   },
+   "777-injected-two-fe-vs-accepted": {
+    "command": "python3 <task>/pivot-repair/injected_compare.py <task>/pivot-repair/replay-accepted/cases <task>/pivot-repair/injected-accepted <task>/plugins/setup-baseline-fa1fbbe.plugin <task>/plugins/pivot-candidate.plugin <home>/fereg/target/actual-plugin-harness/actual_plugin_loader_test routing_incremental_two\\,routing_h4_k1\\,routing_direct (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "c4b634dc0baae98375844417db35401c0e402ba834c811eea4c4391ec7c92699"
+   },
+   "780-run-tests-standard": {
+    "command": "./scripts/run_tests.sh (cwd: <home>/fereg)",
+    "exit": 1,
+    "log_sha256": "8ddcb38a91027f676fc0d2866e94698db9923a6db21de98789e6a16347fc0c95",
+    "python_tests": 315
+   },
+   "781-run-tests-source-only": {
+    "command": "./scripts/run_tests.sh --source-only (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "f44bb9cf8cd3dd20ba7a492e602a6a92872e340b301630519cfceaf0352e0a08",
+    "rust": [
+     1965,
+     0,
+     14
+    ],
+    "python_tests": 322
+   },
+   "790-bench-tests": {
+    "command": "python3 -m unittest discover -s bench/tests (cwd: <home>/fereg)",
+    "exit": 0,
+    "log_sha256": "5b9fa4bd99235e40094447859901ec0d1b866976d8fb2f3de87e1b4abb9fcbd3",
+    "python_tests": 271
+   }
+  }
+ },
+ "replay_rows": {
+  "765-replay-vs-pre": {
+   "rows": 73,
+   "zero_difference_rows": 73
+  },
+  "766-derived-explicit-vs-pre": {
+   "rows": 46,
+   "zero_difference_rows": 46
+  },
+  "767-injected-two-fe-vs-pre": {
+   "rows": 75,
+   "zero_difference_rows": 75
+  },
+  "775-replay-vs-accepted": {
+   "rows": 73,
+   "zero_difference_rows": 73
+  },
+  "776-derived-explicit-vs-accepted": {
+   "rows": 46,
+   "zero_difference_rows": 46
+  },
+  "777-injected-two-fe-vs-accepted": {
+   "rows": 75,
+   "zero_difference_rows": 75
+  }
+ },
+ "plugins": {
+  "repair_candidate_sha256": "b66909a10d3e7a86bb6890a3c9d1377d8293bfeb60dbee78b1aa0eb28c77f1be",
+  "pre_repair_candidate_sha256": "24ac8d1cba1f9d7d9b5989e1c7fa374c12e1bf118e5456b785ff3c10b9363308",
+  "accepted_fa1fbbe_cloud_sha256": "a4c9bd11e33edfcea8dc2b31d59f2cdc0880b0f66d790eb449388c094af742b6"
+ },
+ "superseded_runs": {
+  "5-mut-p5_ninther_middle_only|survived-before-positional-witness": {
+   "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG p5_ninther_middle_only.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort (cwd: <task>/pivot-repair)",
+   "exit": 0,
+   "log_sha256": "823b92dfac0d243a31c6bee6989b857b4cc0b1536405ac35c98e17a1f9d06c57",
+   "rust": [
+    10,
+    0,
+    0
+   ]
+  },
+  "5-mut-p4_no_depth_fallback|aborted-quadratic-full-filter": {
+   "command": "<task>/pivot-repair/mutations/run_mutation.sh <home>/CMG p4_no_depth_fallback.py -- cargo test --offline --no-default-features --features parallel\\,experimental-components --lib edge_sort (cwd: <task>/pivot-repair)",
+   "exit": 101,
+   "log_sha256": "4945f982169a3012d72122c1226a4e5ba504f94519c025117805216d28aa233b"
+  }
+ },
+ "notes": {
+  "p5": "a ninther sampling only the middle triple first survived (exit 0): the bounds did not pin sample positions; pivot_is_the_declared_sample_rule was added and kills it",
+  "p4": "no depth fallback first ran the whole edge-sort filter, whose 200,000-record adversary is quadratic without the fallback; the test process was stopped (SIGTERM, exit 101, not counted as a kill) and rerun on the focused adversary test, which fails with no fallback",
+  "p1": "the old median-of-three rule fails the structured regression (sorted: 14 fallbacks over 61,688 records) and the pivot-unit witness",
+  "ad_hoc_experiment": "unlogged temporary test at 65,536 records (removed): old rule fell back on sorted, reversed, organ-pipe, push-front, descending blocks, interleaved runs and Musser killer; the ninther on none. The logged witnesses above supersede it.",
+  "shell": "one pkill pattern also matched the invoking shell (exit 144); the targeted test process did stop"
+ },
+ "limits": [
+  "no cloud timing or profile; counted units are generic work, not cost or speed",
+  "not adversary-proof: an adaptive adversary still reaches the heapsort fallback",
+  "the real contraction split pattern was not observed; the structured orderings are generic",
+  "standard run_tests.sh fails at the known installed-plugin binding check (exit 1, 315 Python tests first)",
+  "root-owned attribution tooling still binds the earlier arms; root adds any new exact-source binding",
+  "raw logs are session-local; commands, exits and hashes are recorded here"
+ ]
+}
