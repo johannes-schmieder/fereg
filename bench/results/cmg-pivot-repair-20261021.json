@@ -9,11 +9,11 @@
   "pins": "crates/fereg-core/Cargo.toml, Cargo.lock and fuzz/Cargo.lock pin aaf6ec4c"
  },
  "formulation": {
-  "rule": "partitions of more than 40 records: Tukey ninther (Bentley and McIlroy 1993); s = len/8, last = len-1, m = last/2; median of medians of (0,s,2s), (m-s,m,m+s), (last-2s,last-s,last). 17..40 records: median of first, middle, last (explicit three-comparison median, same value).",
+  "rule": "partitions of more than 40 records: Tukey ninther (Bentley and McIlroy 1993); s = len/8, last = len-1, m = last/2; median of medians of (0,s,2s), (m-s,m,m+s), (last-2s,last-s,last). 17..40 records: median of first, middle, last (explicit median using at most three comparisons, same value).",
   "unchanged": "insertion cutoff 16, depth limit 2 log2(n) with heapsort fallback, fork threshold 16,384, lane ceiling, comparator (endpoint key, total_cmp weight), duplicate reduction, hierarchy thresholds",
-  "counting": "pivot selection counted after it runs, 16 units per comparison: 192 (ninther) or 48 (median of three), within one 1,024-unit segment; the 65,536-unit query cadence is unchanged",
-  "unpolled_bound": "at most 65,535 + 1,024 counted units between queries, plus one uncounted bounded segment: 64 partition steps, one pivot selection (12 comparisons, 9 record copies), one insertion record or one heap step; team lanes also query on every node entry",
-  "scope": "arithmetic-preserving: final order, duplicate reduction and every downstream bit unchanged; only counted pivot work moves query positions"
+  "counting": "pivot selection conservatively charged after it runs: 192 units for at most twelve comparisons (ninther), or 48 for at most three (median of three), at 16 units per possible comparison; within one 1,024-unit segment; the 65,536-unit query cadence is unchanged",
+  "unpolled_bound": "at most 65,535 + 1,024 counted units between queries, plus one uncounted bounded segment: 64 partition steps, one pivot selection (at most twelve comparisons, nine record copies), one insertion record or one heap step; team lanes also query on every node entry",
+  "scope": "arithmetic-preserving: final order, duplicate reduction and every successful downstream scientific bit unchanged; pivot sampling and the resulting partition tree change work counts and query positions; cadence, boundedness and worker-ceiling independence remain"
  },
  "steps": {
   "mutations": {
@@ -518,5 +518,74 @@
   "standard run_tests.sh fails at the known installed-plugin binding check (exit 1, 315 Python tests first)",
   "root-owned attribution tooling still binds the earlier arms; root adds any new exact-source binding",
   "raw logs are session-local; commands, exits and hashes are recorded here"
- ]
+ ],
+ "root_review": {
+  "cmg_documentation_revision": "fd77d98da1f74009b3e5b634e1944433b647a9b1",
+  "runtime_unchanged_from": "aaf6ec4c6b88b69c58024cc18f60e6abd5754a5a",
+  "fereg_delivery": "fd0a316a3473a888c25dd8b14902f26ad0b0a0e2",
+  "current_pins": "fd77d98da1f74009b3e5b634e1944433b647a9b1",
+  "reviews": [
+   "Independent high-effort source/evidence review: no production correctness blocker; sample indices, total order, accounting, cancellation/fallback witnesses and scope checked.",
+   "Bounded Astra source/evidence review: no production correctness blocker; maximum unpolled work and conservative charges checked."
+  ],
+  "corrections": "Polling positions also change with the partition tree, classified work and fallback paths; 48/192 units are worst-case charges for up to 3/12 comparisons. Structured fixture results are not a proof about retained contraction inputs.",
+  "limits": "Reviewers did not rerun tests or native calls. Native validation and controlled measurements remain pending. CMG documentation successor changes no source, manifest or lock bytes.",
+  "local_checks": {
+   "pivot-root-source-only": {
+    "command": "./scripts/run_tests.sh --source-only",
+    "exit": 0,
+    "log_sha256": "1234683eaf0bdee5c93b84dedb41c75dfb98359ef652bd2e35280844d74396fb",
+    "head": "fd0a316a3473a888c25dd8b14902f26ad0b0a0e2",
+    "source_state_unchanged_during_check": true,
+    "rust_executions": 1951,
+    "rust_result_groups": 83,
+    "ignored": 14,
+    "python_tests": 322
+   },
+   "pivot-root-ratchet": {
+    "command": "<task>/python/bin/python3.13 scripts/check_complexity.py",
+    "exit": 0,
+    "log_sha256": "66b3155d375ba75b896268fc3f4f19bfba3230e9924f44ed34edcafc1bfb1714",
+    "head": "fd0a316a3473a888c25dd8b14902f26ad0b0a0e2",
+    "source_state_unchanged_during_check": true,
+    "rust_executions": 0,
+    "rust_result_groups": 0,
+    "ignored": 0,
+    "python_tests": 0
+   },
+   "pivot-root-cmg-debug": {
+    "command": "cargo test --locked --offline --no-default-features --features parallel,experimental-components --lib edge_sort",
+    "exit": 0,
+    "log_sha256": "333c7232aa3566e0d61cf10521810c407bd086f6a1ac29bf8ac58ef253c6521b",
+    "head": "fd77d98da1f74009b3e5b634e1944433b647a9b1",
+    "source_state_unchanged_during_check": true,
+    "rust_executions": 11,
+    "rust_result_groups": 1,
+    "ignored": 0,
+    "python_tests": 0
+   },
+   "pivot-root-cmg-release": {
+    "command": "cargo test --locked --offline --release --no-default-features --features parallel,experimental-components --lib edge_sort",
+    "exit": 0,
+    "log_sha256": "efe67e47e80e123fe9c695ad6c708d19a24730e0eb74b4eee02f6303a861a418",
+    "head": "fd77d98da1f74009b3e5b634e1944433b647a9b1",
+    "source_state_unchanged_during_check": true,
+    "rust_executions": 11,
+    "rust_result_groups": 1,
+    "ignored": 0,
+    "python_tests": 0
+   }
+  },
+  "operational_notes": [
+   {
+    "event": "Initial SCC BatchMode inspection failed authentication (exit 255); required interactive ssh login succeeded and subsequent BatchMode hostname returned scc1. No user action or job retry was needed.",
+    "log_sha256": null
+   },
+   {
+    "event": "Read-only helper/process/path discovery encountered missing guessed helper filenames and local-only SCC paths, plus sandbox-denied ps. Existing paths were identified from prior check records; an authorized read-only process inspection succeeded. No build, test or measurement failed as a result.",
+    "log_sha256": null
+   }
+  ],
+  "operational_notes_limit": "These discovery/authentication observations exist in tool traces only; no standalone log hash is claimed."
+ }
 }

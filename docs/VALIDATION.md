@@ -666,34 +666,41 @@ resource, failure and cancellation behavior. Root will validate the stable
 implementation and measure it separately. No two-FE policy or public activation
 follows from these diagnostics.
 
-### Ninther pivot repair (pending review)
+### Ninther pivot repair (native validation pending)
 
 This is the one selected generic repair to the shared canonical raw-edge
 introsort, CMG `aaf6ec4c6b88b69c58024cc18f60e6abd5754a5a` (parent
-`355d328a`). It is pinned in the fereg manifest and both lockfiles on root's
-`04d99221`. Its scope was declared before the edits: the final order, duplicate
-reduction and every downstream bit are unchanged. Only counted pivot work
-moves query positions. No timing ran.
+`355d328a`). The delivery on fereg `606b6f6b` pinned it in the manifest and both lockfiles
+after root's `04d99221`. The current pin `fd77d98d` adds only the reviewed
+documentation corrections; CMG source, manifest and lock bytes are unchanged. Its scope was declared before the edits: the final order, duplicate
+reduction and every successful downstream scientific bit are unchanged.
+Pivot sampling and the resulting partition tree change work counts and query
+positions; the cadence, boundedness and worker-ceiling independence remain.
+No timing ran.
 
 - **Rule (frozen).** Partitions of more than 40 records take Tukey's ninther
   (Bentley and McIlroy 1993). With `s = len / 8`, `last = len - 1` and
   `m = last / 2`, the pivot is the median of the medians of positions (0, s,
   2s), (m - s, m, m + s) and (last - 2s, last - s, last). Partitions of 17–40
   records keep the median of first, middle and last records, now an explicit
-  three-comparison median with the same value. The insertion cutoff, depth
+  median using at most three comparisons with the same value. The insertion
+  cutoff, depth
   limit and heapsort fallback, fork threshold, lane ceiling, comparator and
   hierarchy thresholds are unchanged.
 - **Rationale.** After three-way partitioning, first/middle/last sampling
-  misjudges the median of structured subranges. It then splits lopsidedly
-  and exhausts the depth limit. Nine evenly spaced samples estimate the
-  median robustly at a constant 12 comparisons per large partition. The
-  rule is not adversary-proof.
-- **Counted work.** Pivot selection is counted after it runs, at 16 units
-  per comparison: 192 for a ninther and 48 for a median of three. Both fit
+  can misjudge the median of structured subranges, split lopsidedly and
+  exhaust the depth limit. Nine evenly spaced samples provide a broader
+  estimate using at most twelve comparisons per large partition. This is a
+  generic motivation, not a proven diagnosis of the retained contraction
+  arrays. The rule is not adversary-proof.
+- **Counted work.** Pivot selection is conservatively charged after it runs:
+  192 units for at most twelve comparisons in a ninther and 48 for at most
+  three in a median of three (16 units per possible comparison). Both fit
   within one 1,024-unit segment, and the 65,536-unit query cadence is
   unchanged. Between two queries there are at most 65,535 + 1,024 counted
   units, plus one uncounted bounded segment: 64 partition steps, one pivot
-  selection (12 comparisons and nine record copies), one insertion record or
+  selection (at most twelve comparisons and nine record copies), one insertion
+  record or
   one heap step.
 - **New witnesses.**
   - The pivot equals the declared sample rule, computed independently, for
@@ -704,8 +711,9 @@ moves query positions. No timing ran.
     record moved, descending blocks, interleaved runs, sawtooth, few values,
     duplicates and Musser's median-of-three killer.
   - A McIlroy adaptive adversary built against this algorithm still reaches
-    the fallback. Its output is exact serially and at W1/W4, with
-    O(n log n) counted work.
+    the fallback. Its output is exact serially and at W1/W4. A finite fixture
+    checks a counted-work bound; the general O(n log n) guarantee follows
+    from the retained depth limit and heapsort fallback.
   - Cancelling at a partition's first advance stops it after exactly the
     pivot's units, with no record classified.
   - The new orderings were added to the serial and team bit oracles.
@@ -739,6 +747,21 @@ moves query positions. No timing ran.
   - `--source-only`: exit 0, 322 Python and 1,965 Rust executions in 83
     groups, 14 ignored.
   - Bench tests pass (one skipped).
+
+Independent high-effort and bounded Astra source/evidence reviews found no
+production correctness blocker. Both confirmed the sample rule, conservative
+pivot accounting, bounded polling, exact total order, retained fallback and
+cancellation witnesses, and matching pins. They reviewed the reported checks
+as recorded evidence without rerunning tests or native calls. Their reporting
+corrections are incorporated here and in the compact record.
+
+Root's local source integration passed on the synchronized pin: 322 Python
+tests and 1951 Rust executions in 83 result groups, 14 ignored.
+The complexity ratchet and all 11 focused edge-sort witnesses passed in debug
+and release. These counts are separate from the cloud report above. The standard
+installed-package binding remains a known failed check; source-only success
+does not qualify release packages. Exact commands, exits and log hashes are in
+the compact record.
 
 Limits: counted units are generic work, not cost or speed. The real
 contraction split pattern was not observed. Root owns native builds, audits,
