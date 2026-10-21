@@ -39,6 +39,7 @@ import argparse
 import hashlib
 import io
 import json
+import math
 import os
 import platform
 import re
@@ -376,7 +377,8 @@ def deterministic_archive(root, names, path):
         for name in sorted(names):
             data = (root / name).read_bytes()
             info = tarfile.TarInfo(name)
-            info.size, info.mtime, info.mode = len(data), 0, 0o644
+            info.size, info.mtime = len(data), 0
+            info.mode = 0o755 if (root / name).stat().st_mode & 0o111 else 0o644
             archive.addfile(info, io.BytesIO(data))
     path.write_bytes(buffer.getvalue())
     return sha256(buffer.getvalue())
@@ -471,8 +473,6 @@ OPTIONAL_ONCE = ('terminal_factor',)
 CONTRACTION = 'coarse_edge_map_sort_merge_and_graph_finalization'
 PREFIX = 'FEREG_SOLVER_TRACE|phase=auto_schur_setup_attribution|'
 PROFILE_PREFIX = 'FEREG_SOLVER_TRACE|phase=auto_schur_setup_profile|'
-# Nested monotonic timers printed at nanosecond (fereg: 1e-9 s) resolution.
-NEST_SLACK_NS = 1000
 
 
 def fields_of(line):
@@ -562,6 +562,33 @@ def validate_counts(sort, arm):
             'meter queries do not match the unchanged cadence')
 
 
+def call_hierarchy(text):
+    """Read terminal/level identity independently of the diagnostic timers.
+
+    Native runs use the installed route (also matched to the frozen reference
+    by check_call); the small smoke harness emits its independent digest.
+    """
+    routes = [fields_of(line) for line in text.splitlines()
+              if line.startswith('FEREG_SOLVER_TRACE|phase=auto_schur_route|')]
+    if routes:
+        from routing_science import route_hierarchy
+        require(len(routes) == 1, 'expected one installed route')
+        hierarchy = route_hierarchy(routes[0])
+        require(hierarchy is not None, 'route has no installed hierarchy')
+        return {key: hierarchy[key] for key in ('terminal', 'levels', 'terminal_factor')}
+    digests = [fields_of(line) for line in text.splitlines() if line.startswith('SMOKE_DIGEST|')]
+    require(len(digests) == 1, 'missing route or smoke hierarchy metadata')
+    digest = digests[0]
+    from routing_science import TERMINAL_REASONS
+    require(digest.get('terminal') in TERMINAL_REASONS, 'invalid smoke terminal')
+    vertices = json.loads(digest['vertices'])
+    require(isinstance(vertices, list) and vertices and all(type(n) is int and n >= 0 for n in vertices),
+            'invalid smoke hierarchy levels')
+    factor = digest['factor_nonzeros'] != 'None'
+    require(factor == (digest['terminal'] == 'Direct'), 'smoke terminal factor mismatch')
+    return {'terminal': digest['terminal'], 'levels': len(vertices), 'terminal_factor': int(factor)}
+
+
 def validate_call(text, arm, mode):
     """Validate one call's log: one attribution and one built profile line."""
     require(arm in ARMS and mode in MODES, 'unknown arm or mode')
@@ -582,6 +609,10 @@ def validate_call(text, arm, mode):
     require(all(s['site'] == 'contraction' or s['level'] == 0 for s in sorts), 'outside sort has a level')
     require(all(s['complete'] == 1 for s in sorts), 'incomplete sort record')
     hierarchy_seconds = float(profile['hierarchy_seconds'])
+    require(math.isfinite(hierarchy_seconds) and hierarchy_seconds >= 0,
+            'hierarchy_seconds must be finite and nonnegative')
+    hierarchy = call_hierarchy(text)
+    require(len(contraction) == hierarchy['levels'] - 1, 'sorts disagree with hierarchy level count')
     if mode == 'counts':
         require(not timers, 'counts build recorded timers')
         for sort in sorts:
@@ -590,16 +621,16 @@ def validate_call(text, arm, mode):
     else:
         require(all(all(s[key] == 0 for key in COUNT_KEYS) for s in sorts), 'timers build counted operations')
         require(all(s['sort_ns'] <= s['canonical_ns'] for s in sorts), 'sort time exceeds canonical time')
-        derived = validate_timers(timers, contraction, hierarchy_seconds)
+        derived = validate_timers(timers, contraction, hierarchy_seconds, hierarchy)
     return {'profile': profile, 'sorts': sorts,
             'timers': {f'{name}@{level}': value for (name, level), value in sorted(timers.items())},
-            'exclusive_ms': derived}
+            'hierarchy': hierarchy, 'exclusive_ms': derived}
 
 
-def validate_timers(timers, contraction, hierarchy_seconds):
+def validate_timers(timers, contraction, hierarchy_seconds, hierarchy):
     """Check nesting and return disjoint pieces summing to the fereg phase."""
     levels = {level for (name, level) in timers if name in LEVEL_PHASES}
-    require(levels and levels == set(range(len(levels))), 'hierarchy level timers are not contiguous')
+    require(levels == set(range(hierarchy['levels'])), 'hierarchy level timers disagree with route')
     for name in ONCE_PHASES + OPTIONAL_ONCE:
         entries = [(level, value) for (n, level), value in timers.items() if n == name]
         level = max(levels) if name in LAST_LEVEL_PHASES else 0
@@ -608,8 +639,19 @@ def validate_timers(timers, contraction, hierarchy_seconds):
         require(all(at == level and value['calls'] == 1 for at, value in entries),
                 f'timer {name} at the wrong level or repeated')
     for level in sorted(levels):
+        required = {'direct_terminal_check', 'inverse_diagonal_and_level_finalization'}
+        if level < max(levels) or hierarchy['terminal'] != 'Direct':
+            required.update(('forest_select_split_low_degree_and_label', 'aggregation_construction',
+                             'hierarchy_bookkeeping_and_fill_checks'))
+        if level < max(levels):
+            required.update((CONTRACTION, 'coarse_isolate_pruning', 'repeat_count_initialization'))
+        actual = {name for (name, at) in timers if at == level and name in LEVEL_PHASES}
+        require(actual == required, f'level {level} timer coverage mismatch: '
+                f'missing={sorted(required - actual)}, unexpected={sorted(actual - required)}')
         require(all(value['calls'] == 1 for (name, at), value in timers.items() if at == level
                     and name in LEVEL_PHASES), f'level {level} phase timed twice')
+    require(int(('terminal_factor', 0) in timers) == hierarchy['terminal_factor'],
+            'terminal_factor timer disagrees with route')
     contracted = sorted(level for (name, level) in timers if name == CONTRACTION)
     require(contracted == [s['level'] for s in contraction],
             'contraction timers and contraction sort records disagree')
@@ -625,6 +667,8 @@ def validate_timers(timers, contraction, hierarchy_seconds):
     canonical_ns = sum(s['canonical_ns'] for s in contraction)
     contraction_ns = sum(ns(CONTRACTION, s['level']) for s in contraction)
     checks = [
+        *((s['canonical_ns'], ns(CONTRACTION, s['level']),
+           f'canonical within contraction at level {s["level"]}') for s in contraction),
         (canonical_ns, contraction_ns, 'canonical within contraction'),
         (level_ns + once_ns, ns('hierarchy_total'), 'hierarchy phases within hierarchy_total'),
         (finalize_parts, ns('finalize_total'), 'finalize parts within finalize_total'),
@@ -633,10 +677,10 @@ def validate_timers(timers, contraction, hierarchy_seconds):
         (ns('build_with_total'), fereg_ns, 'build_with_total within the fereg hierarchy phase'),
     ]
     for inner, outer, what in checks:
-        require(inner <= outer + NEST_SLACK_NS, f'nested timers inconsistent: {what}')
+        require(inner <= outer, f'nested timers inconsistent: {what}')
     pieces = {
         'contraction_sort': sort_ns,
-        'contraction_duplicate_reduction': canonical_ns - sort_ns,
+        'contraction_post_sort_graph_finalization': canonical_ns - sort_ns,
         'contraction_mapping_other': contraction_ns - canonical_ns,
         **{name: sum(v['ns'] for (n, _), v in timers.items() if n == name)
            for name in LEVEL_PHASES if name != CONTRACTION},
@@ -650,6 +694,7 @@ def validate_timers(timers, contraction, hierarchy_seconds):
         'fereg_hierarchy_other': fereg_ns - ns('build_with_total'),
     }
     require(sum(pieces.values()) == fereg_ns, 'exclusive pieces do not partition the fereg phase')
+    require(all(value >= 0 for value in pieces.values()), 'negative exclusive timer duration')
     return {name: value / 1e6 for name, value in pieces.items()}
 
 
@@ -814,6 +859,7 @@ def run(args):
                                 'route_hierarchy': resources['route_hierarchy'], 'attribution': call,
                                 'log_sha256': q.digest(log)})
                 q.write(out / 'results.json', {'status': 'running', 'identity': identity, 'calls': records})
+                require_deterministic([c['attribution'] for c in records if c['case'] == name], source['mode'])
                 columns.unlink()
                 result.unlink()
             guard.forget_request(request)

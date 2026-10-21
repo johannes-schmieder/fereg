@@ -1,964 +1,1153 @@
 {
- "schema": 1,
- "date": "2026-10-21",
- "purpose": "Maintained setup-attribution tooling for the accepted and candidate setup arms: counted serial raw-edge sorting per hierarchy level and a disjoint split of the hierarchy/finalization phase. Diagnostic tooling only; no timing, profile, production change or claim.",
- "revisions": {
-  "fereg_base": "25a68eadad250279a3329fe0e168a12403ed26a7",
-  "cmg_head_unchanged": "355d328a33639b5fa50c3c1954c8ee62e59e6b20",
-  "arms": {
-   "accepted": {
-    "hidden": "accepted_hidden",
-    "fereg": "3f9d54eeacb2ced61bf8cb9a629daa0d1a6d23d9",
-    "cmg": "35a095f3e26972fcfa9e58c2222a1098efb8e607"
-   },
-   "candidate": {
-    "hidden": "setup_hidden",
-    "fereg": "0407060c2959ff5076619511fcc85d82ceac8de0",
-    "cmg": "355d328a33639b5fa50c3c1954c8ee62e59e6b20"
-   }
+  "schema": 1,
+  "date": "2026-10-21",
+  "purpose": "Maintained setup-attribution tooling for the accepted and candidate setup arms: counted serial raw-edge sorting per hierarchy level and a disjoint split of the hierarchy/finalization phase. Diagnostic tooling only; no timing, profile, production change or claim.",
+  "revisions": {
+    "fereg_base": "25a68eadad250279a3329fe0e168a12403ed26a7",
+    "cmg_head_unchanged": "355d328a33639b5fa50c3c1954c8ee62e59e6b20",
+    "arms": {
+      "accepted": {
+        "hidden": "accepted_hidden",
+        "fereg": "3f9d54eeacb2ced61bf8cb9a629daa0d1a6d23d9",
+        "cmg": "35a095f3e26972fcfa9e58c2222a1098efb8e607"
+      },
+      "candidate": {
+        "hidden": "setup_hidden",
+        "fereg": "0407060c2959ff5076619511fcc85d82ceac8de0",
+        "cmg": "355d328a33639b5fa50c3c1954c8ee62e59e6b20"
+      }
+    },
+    "root_tooling": "bb47e81dc71d794815118da9eb786a26f427ec98",
+    "frozen_protocol": "947ac928eaf631d8d50763d813b2a68c5529eaf7"
   },
-  "root_tooling": "bb47e81dc71d794815118da9eb786a26f427ec98",
-  "frozen_protocol": "947ac928eaf631d8d50763d813b2a68c5529eaf7"
- },
- "files": {
-  "bench/cmg_setup_attribution.py": "042610a882639d46d3502257e7e69e27dfc2ecf4ee82e782a24c9ff6bbf65124",
-  "bench/cmg_setup_attribution/setup_attribution.rs": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
-  "bench/cmg_setup_attribution/smoke.rs": "a8424bccff4dac39638dc9cb47b608e60e096ac336b74596e488e75661520e9f",
-  "bench/cmg_setup_attribution/smoke.toml": "b1b406ca3a27aabd6014a2338a9770722dd430b969392122c7f049e85b53bb86",
-  "bench/cmg_setup_attribution/README.md": "97e789ecced216f9dad0388db583605fef61ffe5b0a0333ebe3d26714079825d",
-  "bench/tests/test_cmg_setup_attribution.py": "76306a0890d40596649f4a0144ff819665e28fc7f8fea3bef2ee1cfaaeebecb2",
-  "bench/cmg_setup_profile.patch": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
-  "bench/cmg_setup_profile.py": "b53ee3a8a1000e846c4e254db657c7387077adc4a43251d62db6a009f7571262"
- },
- "prepared_sources": {
-  "accepted-counts": {
-   "tool_sha256": "042610a882639d46d3502257e7e69e27dfc2ecf4ee82e782a24c9ff6bbf65124",
-   "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
-   "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
-   "attribution_diff_sha256": "65079213b5f463e301f23c94456bc8eb561686694e9f504293683bb7e20ba945",
-   "source_archive_sha256": "dad109a9c920037600e1e4c9eddf7c137c416f65bfd8895da581a6236be29d16",
-   "attribution_source_sha256": "e6d98727627d7e0283337b3c60c3d572756ee1705f124510c6b402442a0d654b"
+  "files": {
+    "bench/cmg_setup_attribution.py": "042610a882639d46d3502257e7e69e27dfc2ecf4ee82e782a24c9ff6bbf65124",
+    "bench/cmg_setup_attribution/setup_attribution.rs": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
+    "bench/cmg_setup_attribution/smoke.rs": "a8424bccff4dac39638dc9cb47b608e60e096ac336b74596e488e75661520e9f",
+    "bench/cmg_setup_attribution/smoke.toml": "b1b406ca3a27aabd6014a2338a9770722dd430b969392122c7f049e85b53bb86",
+    "bench/cmg_setup_attribution/README.md": "97e789ecced216f9dad0388db583605fef61ffe5b0a0333ebe3d26714079825d",
+    "bench/tests/test_cmg_setup_attribution.py": "76306a0890d40596649f4a0144ff819665e28fc7f8fea3bef2ee1cfaaeebecb2",
+    "bench/cmg_setup_profile.patch": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
+    "bench/cmg_setup_profile.py": "b53ee3a8a1000e846c4e254db657c7387077adc4a43251d62db6a009f7571262"
   },
-  "accepted-timers": {
-   "tool_sha256": "042610a882639d46d3502257e7e69e27dfc2ecf4ee82e782a24c9ff6bbf65124",
-   "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
-   "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
-   "attribution_diff_sha256": "31f56e1a184b585fb3f4d65241cad7ce3b289bd67fb83e6be600f8006e98eab9",
-   "source_archive_sha256": "aa290494cb441ed9ed57192d52d601eb4b012d5db953feaff7bd44899e4991ae",
-   "attribution_source_sha256": "84421fe0cf09f755b4e87267e52ac684d1ec6888c06fd2a0364e688525ee6f05"
+  "prepared_sources": {
+    "accepted-counts": {
+      "tool_sha256": "042610a882639d46d3502257e7e69e27dfc2ecf4ee82e782a24c9ff6bbf65124",
+      "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
+      "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
+      "attribution_diff_sha256": "65079213b5f463e301f23c94456bc8eb561686694e9f504293683bb7e20ba945",
+      "source_archive_sha256": "dad109a9c920037600e1e4c9eddf7c137c416f65bfd8895da581a6236be29d16",
+      "attribution_source_sha256": "e6d98727627d7e0283337b3c60c3d572756ee1705f124510c6b402442a0d654b"
+    },
+    "accepted-timers": {
+      "tool_sha256": "042610a882639d46d3502257e7e69e27dfc2ecf4ee82e782a24c9ff6bbf65124",
+      "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
+      "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
+      "attribution_diff_sha256": "31f56e1a184b585fb3f4d65241cad7ce3b289bd67fb83e6be600f8006e98eab9",
+      "source_archive_sha256": "aa290494cb441ed9ed57192d52d601eb4b012d5db953feaff7bd44899e4991ae",
+      "attribution_source_sha256": "84421fe0cf09f755b4e87267e52ac684d1ec6888c06fd2a0364e688525ee6f05"
+    },
+    "candidate-counts": {
+      "tool_sha256": "042610a882639d46d3502257e7e69e27dfc2ecf4ee82e782a24c9ff6bbf65124",
+      "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
+      "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
+      "attribution_diff_sha256": "10719e56318a8dd02fe882ce19ce60d5a3bde2fc633254670539f263303ad8c9",
+      "source_archive_sha256": "19931fb3ac3a478c6ba0d4aeb8d1f31b23e0c67b47c03697fa40ade6cc5b6901",
+      "attribution_source_sha256": "cb308e54049f69014a8262d36fd49462daa9b67b5054113825350761a0fa78b1"
+    },
+    "candidate-timers": {
+      "tool_sha256": "042610a882639d46d3502257e7e69e27dfc2ecf4ee82e782a24c9ff6bbf65124",
+      "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
+      "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
+      "attribution_diff_sha256": "8697a49961f4d9ccc7febdd5ed75f208d94a3a3f86fc6bf198b0900ce9880b56",
+      "source_archive_sha256": "94cf6e5e5f32b3a09972fd86cef9659558121e800f85f9800bb277057aeea2e6",
+      "attribution_source_sha256": "e937f988e4105d9455896001f280d96b30599da85bfdf2ee4f654343dfc69344"
+    }
   },
-  "candidate-counts": {
-   "tool_sha256": "042610a882639d46d3502257e7e69e27dfc2ecf4ee82e782a24c9ff6bbf65124",
-   "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
-   "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
-   "attribution_diff_sha256": "10719e56318a8dd02fe882ce19ce60d5a3bde2fc633254670539f263303ad8c9",
-   "source_archive_sha256": "19931fb3ac3a478c6ba0d4aeb8d1f31b23e0c67b47c03697fa40ade6cc5b6901",
-   "attribution_source_sha256": "cb308e54049f69014a8262d36fd49462daa9b67b5054113825350761a0fa78b1"
+  "production_scope": "No fereg crate, plugin, script, Stata, Cargo manifest/lock or CMG change; executable production and artifact inputs are unchanged, so no runtime requalification is needed. Instrumentation exists only in private exported copies.",
+  "steps": {
+    "final": {
+      "31-prepare-accepted-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-counts (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "e6d98727627d7e0283337b3c60c3d572756ee1705f124510c6b402442a0d654b"
+      },
+      "31-prepare-accepted-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-timers (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "84421fe0cf09f755b4e87267e52ac684d1ec6888c06fd2a0364e688525ee6f05"
+      },
+      "31-prepare-candidate-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-counts (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "cb308e54049f69014a8262d36fd49462daa9b67b5054113825350761a0fa78b1"
+      },
+      "31-prepare-candidate-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-timers (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "e937f988e4105d9455896001f280d96b30599da85bfdf2ee4f654343dfc69344"
+      },
+      "32-metadata-accepted-counts": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "efaf3df51163cdeccf885a58cb55f0b779780e165d5f862c939822cbeb9b3ec7"
+      },
+      "32-metadata-accepted-timers": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "b56c3b5e1890b4e21916eba42195bd1e06dd5362c0360fd6e370d8840ed85821"
+      },
+      "32-metadata-candidate-counts": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "35b27ca5f4275c59ddc9ed1f4afbea49d9f74f3c427c095a5cf143fd7c789a27"
+      },
+      "32-metadata-candidate-timers": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "bc683f241c864f62819e126274696c65c7fb4b87f54f387d30b90c6e89158fb7"
+      },
+      "33-check-accepted-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "6de0b26b3947a2e7c7a71d8d415a4ab4bc8e7a2b45e40afa932909fc2c9cec44"
+      },
+      "33-check-accepted-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "14fd79fe91262bd5f699f7b3ce6a921f99d6de005bd8b20bc78eb55644765992"
+      },
+      "33-check-candidate-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "9b333de775fd431d2605421ac48de10a8c476299a8dd76176c248e403eb6b3f0"
+      },
+      "33-check-candidate-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "2180932142fd8fd0105ec21eac083dd30122b65997e8102ea397e4d6d601c886"
+      },
+      "34-smoke-accepted-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "2362cd801fcd7a571ddcc97773d1dc784ce63a89cc2a8794f4880763b2e45082"
+      },
+      "34-smoke-accepted-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "03eeccedc94c8e2b05a370783a7b82af014b4ad72c188a731c39bbb1b14adbd4"
+      },
+      "34-smoke-candidate-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "d290f0f560d12e5d8bf59a702c26ed48cbe7d0dc4f018c863fa235a7b0499682"
+      },
+      "34-smoke-candidate-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "e235dcee96a230fb20f871c306c660aca00b1f70e05ee5fb40d1364c3e7b73d1"
+      },
+      "35-cmg-frozen-accepted-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/accepted-counts/cmg)",
+        "exit": 0,
+        "log_sha256": "a66beacc99fe3023bf1970cb9c5ca85271e772f4bc817b509e1dc6a36a991c77",
+        "rust": [
+          1,
+          0,
+          0
+        ]
+      },
+      "35-cmg-frozen-accepted-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/accepted-timers/cmg)",
+        "exit": 0,
+        "log_sha256": "eb53e75d346038fc02e8fd4b06a74534c3d2bf8de3177b4a748c5e1acbd64652",
+        "rust": [
+          1,
+          0,
+          0
+        ]
+      },
+      "35-cmg-frozen-candidate-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/candidate-counts/cmg)",
+        "exit": 0,
+        "log_sha256": "cb6649ae0dbaf6c3957d28c15f94c2e636c4cf4607b59a2b04f8bb506079b606",
+        "rust": [
+          1,
+          0,
+          0
+        ]
+      },
+      "35-cmg-frozen-candidate-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/candidate-timers/cmg)",
+        "exit": 0,
+        "log_sha256": "5d3c61f5caea3809ea6b911a7e1d22a66c92b75aefb9b8cd8483e6e24032fba6",
+        "rust": [
+          1,
+          0,
+          0
+        ]
+      },
+      "36-cmg-graph-lib-accepted-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/accepted-counts/cmg)",
+        "exit": 0,
+        "log_sha256": "09d341eaf1ac53e877fc6b0a3d015e9f931b9062f8b7935259d4d5f8dffd3372",
+        "rust": [
+          31,
+          0,
+          0
+        ]
+      },
+      "36-cmg-graph-lib-accepted-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/accepted-timers/cmg)",
+        "exit": 0,
+        "log_sha256": "38b8cb74505df05509b3a2e8c27db5a80f7ca172833cb006684b869924bd7171",
+        "rust": [
+          31,
+          0,
+          0
+        ]
+      },
+      "36-cmg-graph-lib-candidate-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/candidate-counts/cmg)",
+        "exit": 0,
+        "log_sha256": "abd06b313eb0c4adb4859ce2de4123a8a182c075f389bdc67d011494e536db8c",
+        "rust": [
+          34,
+          0,
+          0
+        ]
+      },
+      "36-cmg-graph-lib-candidate-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/candidate-timers/cmg)",
+        "exit": 0,
+        "log_sha256": "cbed9feddc03ecd6f5559e885912b76b99fbf8ee82aede6f4d094917346ff082",
+        "rust": [
+          34,
+          0,
+          0
+        ]
+      }
+    },
+    "tests": {
+      "41-fereg-complexity": {
+        "command": "python3 scripts/check_complexity.py (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "66b3155d375ba75b896268fc3f4f19bfba3230e9924f44ed34edcafc1bfb1714"
+      },
+      "42-bench-tests": {
+        "command": "python3 -m unittest discover -s bench/tests (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "00e6405e73066504db3fb943ae0b439d33f8a88cede9e832086495f3f177885d",
+        "python_tests": 264
+      },
+      "43-attribution-tests": {
+        "command": "python3 -m unittest bench/tests/test_cmg_setup_attribution.py bench/tests/test_cmg_setup_profile.py bench/tests/test_cmg_setup.py (cwd: <home>/fereg)",
+        "exit": 1,
+        "log_sha256": "604e535cde313b7f841525f9f8799971b51f750964ca6db5a932ee421b638ade",
+        "python_tests": 45
+      },
+      "44-attribution-tests-discover": {
+        "command": "python3 -m unittest discover -s bench/tests -p test_cmg_setup\\*.py (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "6c6f0f2c23173c3dc8aefe9e3a64abed12decfbd98801f130f29ee3b1b9ae682",
+        "python_tests": 73
+      },
+      "45-bench-tests-final": {
+        "command": "python3 -m unittest discover -s bench/tests (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "43a447f56e8115f6f72a201a4a398c273c57a28214d7ad04e35c7fc89ecae02b",
+        "python_tests": 264
+      }
+    }
   },
-  "candidate-timers": {
-   "tool_sha256": "042610a882639d46d3502257e7e69e27dfc2ecf4ee82e782a24c9ff6bbf65124",
-   "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
-   "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
-   "attribution_diff_sha256": "8697a49961f4d9ccc7febdd5ed75f208d94a3a3f86fc6bf198b0900ce9880b56",
-   "source_archive_sha256": "94cf6e5e5f32b3a09972fd86cef9659558121e800f85f9800bb277057aeea2e6",
-   "attribution_source_sha256": "e937f988e4105d9455896001f280d96b30599da85bfdf2ee4f654343dfc69344"
-  }
- },
- "production_scope": "No fereg crate, plugin, script, Stata, Cargo manifest/lock or CMG change; executable production and artifact inputs are unchanged, so no runtime requalification is needed. Instrumentation exists only in private exported copies.",
- "steps": {
-  "final": {
-   "31-prepare-accepted-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-counts (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "e6d98727627d7e0283337b3c60c3d572756ee1705f124510c6b402442a0d654b"
-   },
-   "31-prepare-accepted-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-timers (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "84421fe0cf09f755b4e87267e52ac684d1ec6888c06fd2a0364e688525ee6f05"
-   },
-   "31-prepare-candidate-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-counts (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "cb308e54049f69014a8262d36fd49462daa9b67b5054113825350761a0fa78b1"
-   },
-   "31-prepare-candidate-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-timers (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "e937f988e4105d9455896001f280d96b30599da85bfdf2ee4f654343dfc69344"
-   },
-   "32-metadata-accepted-counts": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "efaf3df51163cdeccf885a58cb55f0b779780e165d5f862c939822cbeb9b3ec7"
-   },
-   "32-metadata-accepted-timers": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "b56c3b5e1890b4e21916eba42195bd1e06dd5362c0360fd6e370d8840ed85821"
-   },
-   "32-metadata-candidate-counts": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "35b27ca5f4275c59ddc9ed1f4afbea49d9f74f3c427c095a5cf143fd7c789a27"
-   },
-   "32-metadata-candidate-timers": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "bc683f241c864f62819e126274696c65c7fb4b87f54f387d30b90c6e89158fb7"
-   },
-   "33-check-accepted-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "6de0b26b3947a2e7c7a71d8d415a4ab4bc8e7a2b45e40afa932909fc2c9cec44"
-   },
-   "33-check-accepted-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "14fd79fe91262bd5f699f7b3ce6a921f99d6de005bd8b20bc78eb55644765992"
-   },
-   "33-check-candidate-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "9b333de775fd431d2605421ac48de10a8c476299a8dd76176c248e403eb6b3f0"
-   },
-   "33-check-candidate-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "2180932142fd8fd0105ec21eac083dd30122b65997e8102ea397e4d6d601c886"
-   },
-   "34-smoke-accepted-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "2362cd801fcd7a571ddcc97773d1dc784ce63a89cc2a8794f4880763b2e45082"
-   },
-   "34-smoke-accepted-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "03eeccedc94c8e2b05a370783a7b82af014b4ad72c188a731c39bbb1b14adbd4"
-   },
-   "34-smoke-candidate-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "d290f0f560d12e5d8bf59a702c26ed48cbe7d0dc4f018c863fa235a7b0499682"
-   },
-   "34-smoke-candidate-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "e235dcee96a230fb20f871c306c660aca00b1f70e05ee5fb40d1364c3e7b73d1"
-   },
-   "35-cmg-frozen-accepted-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/accepted-counts/cmg)",
-    "exit": 0,
-    "log_sha256": "a66beacc99fe3023bf1970cb9c5ca85271e772f4bc817b509e1dc6a36a991c77",
-    "rust": [
-     1,
-     0,
-     0
-    ]
-   },
-   "35-cmg-frozen-accepted-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/accepted-timers/cmg)",
-    "exit": 0,
-    "log_sha256": "eb53e75d346038fc02e8fd4b06a74534c3d2bf8de3177b4a748c5e1acbd64652",
-    "rust": [
-     1,
-     0,
-     0
-    ]
-   },
-   "35-cmg-frozen-candidate-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/candidate-counts/cmg)",
-    "exit": 0,
-    "log_sha256": "cb6649ae0dbaf6c3957d28c15f94c2e636c4cf4607b59a2b04f8bb506079b606",
-    "rust": [
-     1,
-     0,
-     0
-    ]
-   },
-   "35-cmg-frozen-candidate-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/candidate-timers/cmg)",
-    "exit": 0,
-    "log_sha256": "5d3c61f5caea3809ea6b911a7e1d22a66c92b75aefb9b8cd8483e6e24032fba6",
-    "rust": [
-     1,
-     0,
-     0
-    ]
-   },
-   "36-cmg-graph-lib-accepted-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/accepted-counts/cmg)",
-    "exit": 0,
-    "log_sha256": "09d341eaf1ac53e877fc6b0a3d015e9f931b9062f8b7935259d4d5f8dffd3372",
-    "rust": [
-     31,
-     0,
-     0
-    ]
-   },
-   "36-cmg-graph-lib-accepted-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/accepted-timers/cmg)",
-    "exit": 0,
-    "log_sha256": "38b8cb74505df05509b3a2e8c27db5a80f7ca172833cb006684b869924bd7171",
-    "rust": [
-     31,
-     0,
-     0
-    ]
-   },
-   "36-cmg-graph-lib-candidate-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/candidate-counts/cmg)",
-    "exit": 0,
-    "log_sha256": "abd06b313eb0c4adb4859ce2de4123a8a182c075f389bdc67d011494e536db8c",
-    "rust": [
-     34,
-     0,
-     0
-    ]
-   },
-   "36-cmg-graph-lib-candidate-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/candidate-timers/cmg)",
-    "exit": 0,
-    "log_sha256": "cbed9feddc03ecd6f5559e885912b76b99fbf8ee82aede6f4d094917346ff082",
-    "rust": [
-     34,
-     0,
-     0
-    ]
-   }
+  "superseded_runs": {
+    "first_module_round": {
+      "01-prepare-accepted-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-counts (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "00defcd3dd3718e182ecd2329e49f4479a5906f3ee589bba03bd75d627aeb60b"
+      },
+      "01-prepare-accepted-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-timers (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "a403177a99bcb55c7a38821586374935cde91a942994ce29d07f054ec9b1db9d"
+      },
+      "01-prepare-candidate-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-counts (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "3ebbec4a2ba26f109d228a687c54f44333ce79a7e1252c92ad65c578adcb5259"
+      },
+      "01-prepare-candidate-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-timers (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "196bb76964cf94265f2b2e83cd9c3a69fd7e99931b1b3098ab363299da177e1a"
+      },
+      "02-metadata-accepted-counts": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "efaf3df51163cdeccf885a58cb55f0b779780e165d5f862c939822cbeb9b3ec7"
+      },
+      "02-metadata-accepted-timers": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "b56c3b5e1890b4e21916eba42195bd1e06dd5362c0360fd6e370d8840ed85821"
+      },
+      "02-metadata-candidate-counts": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "35b27ca5f4275c59ddc9ed1f4afbea49d9f74f3c427c095a5cf143fd7c789a27"
+      },
+      "02-metadata-candidate-timers": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "bc683f241c864f62819e126274696c65c7fb4b87f54f387d30b90c6e89158fb7"
+      },
+      "03-check-accepted-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "e6a30f5f851ea103bd1c97187f72224caff176d7e26253c85b0a0ea4688d1fa6"
+      },
+      "03-check-accepted-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "60f0ec82133c5ce3a9c9369f01075064a65575787d3858197d244aeedce59b5a"
+      },
+      "03-check-candidate-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "57508b73ee9cb2abd9b7a01d6b5e730f74fa9699c64f89ff03d46c5a87254724"
+      },
+      "03-check-candidate-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "af9b9e95b6bf8aec9cbd3a97462016a71395aea4f74c1043cdff385c9350c398"
+      }
+    },
+    "earlier_tool_revision": {
+      "11-prepare-accepted-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-counts (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "17b232080885a9ee00a18b1c6190c20a702868fd0f95f4edcbd9d0e49aab7b6d"
+      },
+      "11-prepare-accepted-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-timers (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "dc92dba94aeb30345674861ac53df8bdbdf06c2137386ed8237020d8c02b38a2"
+      },
+      "11-prepare-candidate-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-counts (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "59a1320a91ec65aa119e30b48e444cf5f34c0384017792ead6e1b1b4ed340dc2"
+      },
+      "11-prepare-candidate-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-timers (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "186c92415d4be054620ac32d08b69366fcaf317fadd30d39e3e70931418f7a4f"
+      },
+      "12-metadata-accepted-counts": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "efaf3df51163cdeccf885a58cb55f0b779780e165d5f862c939822cbeb9b3ec7"
+      },
+      "12-metadata-accepted-timers": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "b56c3b5e1890b4e21916eba42195bd1e06dd5362c0360fd6e370d8840ed85821"
+      },
+      "12-metadata-candidate-counts": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "35b27ca5f4275c59ddc9ed1f4afbea49d9f74f3c427c095a5cf143fd7c789a27"
+      },
+      "12-metadata-candidate-timers": {
+        "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "bc683f241c864f62819e126274696c65c7fb4b87f54f387d30b90c6e89158fb7"
+      },
+      "13-check-accepted-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "5582583bf3eedd640c195656c6c5e0ca92b07e96e0fdacb89522a9cc1dc2eb12"
+      },
+      "13-check-accepted-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "435a1b9a64571c55af40a01df7cdf7b791eeeadecc651738642d73f053865ac6"
+      },
+      "13-check-candidate-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-counts/fereg)",
+        "exit": 0,
+        "log_sha256": "311cb4838e629dae1e6ee99f8665f9ad300bec5f531e3857465d8bed581177d1"
+      },
+      "13-check-candidate-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-timers/fereg)",
+        "exit": 0,
+        "log_sha256": "a60229019e1a6cc4c74d50eb3bddc7a1adac05f52a9e6cb346f8724c18f13251"
+      },
+      "14-smoke-accepted-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "b0564a77c83676f273def94f47f2f7e24fd233b038d59530321f0979f5742caa"
+      },
+      "14-smoke-accepted-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "4868fd539743d4c00cf59b24ef58a8fed6cc6daa8631ae9cf0e55e9555db3636"
+      },
+      "14-smoke-candidate-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "67a4b03a29d832a5389f159466abeb8ac224f8a93662a4b0f90f818081352dc5"
+      },
+      "14-smoke-candidate-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "65d32ad96b05ecb9dfeecc94a53670e1da145476453fd5f6a4d408702ec1da40"
+      },
+      "15-cmg-frozen-accepted-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/accepted-counts/cmg)",
+        "exit": 0,
+        "log_sha256": "97ca40750f049ead611c63026bbb6f8c59eb18024455515bc2f777a0f19c0810",
+        "rust": [
+          1,
+          0,
+          0
+        ]
+      },
+      "15-cmg-frozen-accepted-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/accepted-timers/cmg)",
+        "exit": 0,
+        "log_sha256": "87acce1bc779f46b024fe07368508f6038edcaa555d67f915176f4e430830548",
+        "rust": [
+          1,
+          0,
+          0
+        ]
+      },
+      "15-cmg-frozen-candidate-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/candidate-counts/cmg)",
+        "exit": 0,
+        "log_sha256": "c2b4000fd6b9da2ef76a8bb84092f5a86a093b831bd0f6d4c52ccc02a647f0f5",
+        "rust": [
+          1,
+          0,
+          0
+        ]
+      },
+      "15-cmg-frozen-candidate-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/candidate-timers/cmg)",
+        "exit": 0,
+        "log_sha256": "18fdb54b0f84904faf52345abe861f507b16709e846ea1ddbe15223d4f31afaf",
+        "rust": [
+          1,
+          0,
+          0
+        ]
+      },
+      "16-cmg-graph-lib-accepted-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/accepted-counts/cmg)",
+        "exit": 0,
+        "log_sha256": "3991327e323c1bbd5af81068899844a30f2a6896613e19b3af459396211785f8",
+        "rust": [
+          31,
+          0,
+          0
+        ]
+      },
+      "16-cmg-graph-lib-accepted-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/accepted-timers/cmg)",
+        "exit": 0,
+        "log_sha256": "3bf3b307e8762a7c0cdc1aa981f36bd2766acacb4fec57d3fa9b49b09d38b913",
+        "rust": [
+          31,
+          0,
+          0
+        ]
+      },
+      "16-cmg-graph-lib-candidate-counts": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/candidate-counts/cmg)",
+        "exit": 0,
+        "log_sha256": "9808eecc6b26299cc5e109188a9d8a10d324eedcaa29924e06763cbf98ff5b04",
+        "rust": [
+          34,
+          0,
+          0
+        ]
+      },
+      "16-cmg-graph-lib-candidate-timers": {
+        "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/candidate-timers/cmg)",
+        "exit": 0,
+        "log_sha256": "209ab02e1abfc77c08828482311d7fa9344869a3fdd0ad7b6f0b8341ca970a4b",
+        "rust": [
+          34,
+          0,
+          0
+        ]
+      },
+      "24-smoke2-accepted-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "1c0d933730016b7fc64c8a825ae673d3e9852461dca1e0cf106a2a1c8466232a"
+      },
+      "24-smoke2-accepted-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "e742d799ba9cf963b30a05dbd892123dda8372495382b8b04fe936eab9ffface"
+      },
+      "24-smoke2-candidate-counts": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "64bd9248a69745764954e73fd76ded7fc4c422c8384d71b5eb530f4cb35c283e"
+      },
+      "24-smoke2-candidate-timers": {
+        "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
+        "exit": 0,
+        "log_sha256": "798dab274f9e2679df1ab8dde38cad9150e595988c3542168f3a994cfe97aa2c"
+      }
+    },
+    "notes": {
+      "01-03": "first patch round compiled with dead-code/unused-import warnings in the patched CMG; module allow(dead_code) and a test-only import fixed them",
+      "11-16,24": "passed on earlier tool revisions; superseded by 31-36 bound to the final tool hash; 14 used one random smoke graph that never reached a direct terminal, 24 added the banded graph",
+      "43": "invocation error, not a test failure: root setup tests import sibling test modules and need unittest discover (44/45 pass)",
+      "blocked": "one cloud shell command was refused by the session safety check (unguarded variable in rm); rerun with literal paths"
+    }
   },
-  "tests": {
-   "41-fereg-complexity": {
-    "command": "python3 scripts/check_complexity.py (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "66b3155d375ba75b896268fc3f4f19bfba3230e9924f44ed34edcafc1bfb1714"
-   },
-   "42-bench-tests": {
-    "command": "python3 -m unittest discover -s bench/tests (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "00e6405e73066504db3fb943ae0b439d33f8a88cede9e832086495f3f177885d",
-    "python_tests": 264
-   },
-   "43-attribution-tests": {
-    "command": "python3 -m unittest bench/tests/test_cmg_setup_attribution.py bench/tests/test_cmg_setup_profile.py bench/tests/test_cmg_setup.py (cwd: <home>/fereg)",
-    "exit": 1,
-    "log_sha256": "604e535cde313b7f841525f9f8799971b51f750964ca6db5a932ee421b638ade",
-    "python_tests": 45
-   },
-   "44-attribution-tests-discover": {
-    "command": "python3 -m unittest discover -s bench/tests -p test_cmg_setup\\*.py (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "6c6f0f2c23173c3dc8aefe9e3a64abed12decfbd98801f130f29ee3b1b9ae682",
-    "python_tests": 73
-   },
-   "45-bench-tests-final": {
-    "command": "python3 -m unittest discover -s bench/tests (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "43a447f56e8115f6f72a201a4a398c273c57a28214d7ad04e35c7fc89ecae02b",
-    "python_tests": 264
-   }
-  }
- },
- "superseded_runs": {
-  "first_module_round": {
-   "01-prepare-accepted-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-counts (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "00defcd3dd3718e182ecd2329e49f4479a5906f3ee589bba03bd75d627aeb60b"
-   },
-   "01-prepare-accepted-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-timers (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "a403177a99bcb55c7a38821586374935cde91a942994ce29d07f054ec9b1db9d"
-   },
-   "01-prepare-candidate-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-counts (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "3ebbec4a2ba26f109d228a687c54f44333ce79a7e1252c92ad65c578adcb5259"
-   },
-   "01-prepare-candidate-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-timers (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "196bb76964cf94265f2b2e83cd9c3a69fd7e99931b1b3098ab363299da177e1a"
-   },
-   "02-metadata-accepted-counts": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "efaf3df51163cdeccf885a58cb55f0b779780e165d5f862c939822cbeb9b3ec7"
-   },
-   "02-metadata-accepted-timers": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "b56c3b5e1890b4e21916eba42195bd1e06dd5362c0360fd6e370d8840ed85821"
-   },
-   "02-metadata-candidate-counts": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "35b27ca5f4275c59ddc9ed1f4afbea49d9f74f3c427c095a5cf143fd7c789a27"
-   },
-   "02-metadata-candidate-timers": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "bc683f241c864f62819e126274696c65c7fb4b87f54f387d30b90c6e89158fb7"
-   },
-   "03-check-accepted-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "e6a30f5f851ea103bd1c97187f72224caff176d7e26253c85b0a0ea4688d1fa6"
-   },
-   "03-check-accepted-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "60f0ec82133c5ce3a9c9369f01075064a65575787d3858197d244aeedce59b5a"
-   },
-   "03-check-candidate-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "57508b73ee9cb2abd9b7a01d6b5e730f74fa9699c64f89ff03d46c5a87254724"
-   },
-   "03-check-candidate-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "af9b9e95b6bf8aec9cbd3a97462016a71395aea4f74c1043cdff385c9350c398"
-   }
+  "synthetic_smoke_counts": {
+    "note": "Deterministic operation counts of the two synthetic smoke graphs at W1 (identical at W4), not the frozen families and not timing. Timer values from the cloud are not recorded.",
+    "graphs": {
+      "random": {
+        "digest": "graph_edges=44984|vertices=[12000, 3232, 2069, 1844, 1777, 1743, 1712]|nonzeros=[101965, 75204, 70699, 68752, 67145, 65799, 63912]|repeats=[1, 1, 1, 1, 1, 1, 0]|terminal=StagnatedFill|factor_nonzeros=None|apply_fnv=1476d21607649316",
+        "accepted": [
+          {
+            "site": "outside",
+            "level": 0,
+            "path": "hosted",
+            "n": 114375,
+            "out": 44984,
+            "cmp": 0,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 0,
+            "heapsort_records": 0,
+            "heap_sift_steps": 0,
+            "heap_swaps": 0,
+            "meter_units": 0,
+            "queries": 0
+          },
+          {
+            "site": "contraction",
+            "level": 0,
+            "path": "serial",
+            "n": 36213,
+            "out": 35986,
+            "cmp": 988997,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 1,
+            "heapsort_records": 36213,
+            "heap_sift_steps": 538194,
+            "heap_swaps": 520088,
+            "meter_units": 35023824,
+            "queries": 535
+          },
+          {
+            "site": "contraction",
+            "level": 1,
+            "path": "serial",
+            "n": 34822,
+            "out": 34315,
+            "cmp": 947290,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 1,
+            "heapsort_records": 34822,
+            "heap_sift_steps": 518505,
+            "heap_swaps": 501094,
+            "meter_units": 33741472,
+            "queries": 514
+          },
+          {
+            "site": "contraction",
+            "level": 2,
+            "path": "serial",
+            "n": 34090,
+            "out": 33454,
+            "cmp": 935719,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 1,
+            "heapsort_records": 34090,
+            "heap_sift_steps": 513370,
+            "heap_swaps": 496325,
+            "meter_units": 33401120,
+            "queries": 510
+          },
+          {
+            "site": "contraction",
+            "level": 3,
+            "path": "serial",
+            "n": 33385,
+            "out": 32684,
+            "cmp": 923342,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 1,
+            "heapsort_records": 33385,
+            "heap_sift_steps": 507874,
+            "heap_swaps": 491182,
+            "meter_units": 33038096,
+            "queries": 504
+          },
+          {
+            "site": "contraction",
+            "level": 4,
+            "path": "serial",
+            "n": 32648,
+            "out": 32028,
+            "cmp": 904564,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 1,
+            "heapsort_records": 32648,
+            "heap_sift_steps": 497742,
+            "heap_swaps": 481418,
+            "meter_units": 32377856,
+            "queries": 494
+          },
+          {
+            "site": "contraction",
+            "level": 5,
+            "path": "serial",
+            "n": 31989,
+            "out": 31100,
+            "cmp": 885512,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 1,
+            "heapsort_records": 31989,
+            "heap_sift_steps": 487622,
+            "heap_swaps": 471628,
+            "meter_units": 31719632,
+            "queries": 484
+          }
+        ],
+        "candidate": [
+          {
+            "site": "outside",
+            "level": 0,
+            "path": "hosted",
+            "n": 114375,
+            "out": 44984,
+            "cmp": 0,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 0,
+            "heapsort_records": 0,
+            "heap_sift_steps": 0,
+            "heap_swaps": 0,
+            "meter_units": 0,
+            "queries": 0
+          },
+          {
+            "site": "contraction",
+            "level": 0,
+            "path": "serial",
+            "n": 36213,
+            "out": 35986,
+            "cmp": 620035,
+            "partitions": 3446,
+            "partition_steps": 504548,
+            "partition_swaps": 501097,
+            "insertion_leaves": 3447,
+            "insertion_records": 32762,
+            "insertion_swaps": 83093,
+            "heapsorts": 0,
+            "heapsort_records": 0,
+            "heap_sift_steps": 0,
+            "heap_swaps": 0,
+            "meter_units": 9871600,
+            "queries": 150
+          },
+          {
+            "site": "contraction",
+            "level": 1,
+            "path": "serial",
+            "n": 34822,
+            "out": 34315,
+            "cmp": 570304,
+            "partitions": 3293,
+            "partition_steps": 462882,
+            "partition_swaps": 459583,
+            "insertion_leaves": 3294,
+            "insertion_records": 31523,
+            "insertion_swaps": 76230,
+            "heapsorts": 0,
+            "heapsort_records": 0,
+            "heap_sift_steps": 0,
+            "heap_swaps": 0,
+            "meter_units": 9077968,
+            "queries": 137
+          },
+          {
+            "site": "contraction",
+            "level": 2,
+            "path": "serial",
+            "n": 34090,
+            "out": 33454,
+            "cmp": 599835,
+            "partitions": 3348,
+            "partition_steps": 505562,
+            "partition_swaps": 502207,
+            "insertion_leaves": 3349,
+            "insertion_records": 30735,
+            "insertion_swaps": 63447,
+            "heapsorts": 0,
+            "heapsort_records": 0,
+            "heap_sift_steps": 0,
+            "heap_swaps": 0,
+            "meter_units": 9542784,
+            "queries": 145
+          },
+          {
+            "site": "contraction",
+            "level": 3,
+            "path": "serial",
+            "n": 33385,
+            "out": 32684,
+            "cmp": 718208,
+            "partitions": 3256,
+            "partition_steps": 603208,
+            "partition_swaps": 599934,
+            "insertion_leaves": 3230,
+            "insertion_records": 27139,
+            "insertion_swaps": 40725,
+            "heapsorts": 27,
+            "heapsort_records": 2972,
+            "heap_sift_steps": 26887,
+            "heap_swaps": 25410,
+            "meter_units": 12454176,
+            "queries": 190
+          },
+          {
+            "site": "contraction",
+            "level": 4,
+            "path": "serial",
+            "n": 32648,
+            "out": 32028,
+            "cmp": 952455,
+            "partitions": 2957,
+            "partition_steps": 716786,
+            "partition_swaps": 713822,
+            "insertion_leaves": 2906,
+            "insertion_records": 20049,
+            "insertion_swaps": 26312,
+            "heapsorts": 52,
+            "heapsort_records": 9635,
+            "heap_sift_steps": 106731,
+            "heap_swaps": 101924,
+            "meter_units": 19149280,
+            "queries": 292
+          },
+          {
+            "site": "contraction",
+            "level": 5,
+            "path": "serial",
+            "n": 31989,
+            "out": 31100,
+            "cmp": 1318979,
+            "partitions": 1239,
+            "partition_steps": 873083,
+            "partition_swaps": 871838,
+            "insertion_leaves": 1121,
+            "insertion_records": 8079,
+            "insertion_swaps": 9970,
+            "heapsorts": 119,
+            "heapsort_records": 22665,
+            "heap_sift_steps": 244605,
+            "heap_swaps": 233303,
+            "meter_units": 30257856,
+            "queries": 461
+          }
+        ]
+      },
+      "banded": {
+        "digest": "graph_edges=41485|vertices=[9000, 2409, 699]|nonzeros=[91970, 15151, 2235]|repeats=[5, 6, 0]|terminal=Direct|factor_nonzeros=Some(2122)|apply_fnv=befc70fef5953a96",
+        "accepted": [
+          {
+            "site": "outside",
+            "level": 0,
+            "path": "hosted",
+            "n": 114375,
+            "out": 41485,
+            "cmp": 0,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 0,
+            "heapsort_records": 0,
+            "heap_sift_steps": 0,
+            "heap_swaps": 0,
+            "meter_units": 0,
+            "queries": 0
+          },
+          {
+            "site": "contraction",
+            "level": 0,
+            "path": "serial",
+            "n": 29630,
+            "out": 6371,
+            "cmp": 817643,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 1,
+            "heapsort_records": 29630,
+            "heap_sift_steps": 450875,
+            "heap_swaps": 436060,
+            "meter_units": 29330080,
+            "queries": 447
+          },
+          {
+            "site": "contraction",
+            "level": 1,
+            "path": "serial",
+            "n": 3450,
+            "out": 768,
+            "cmp": 73807,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 1,
+            "heapsort_records": 3450,
+            "heap_sift_steps": 41763,
+            "heap_swaps": 40038,
+            "meter_units": 2728032,
+            "queries": 41
+          }
+        ],
+        "candidate": [
+          {
+            "site": "outside",
+            "level": 0,
+            "path": "hosted",
+            "n": 114375,
+            "out": 41485,
+            "cmp": 0,
+            "partitions": 0,
+            "partition_steps": 0,
+            "partition_swaps": 0,
+            "insertion_leaves": 0,
+            "insertion_records": 0,
+            "insertion_swaps": 0,
+            "heapsorts": 0,
+            "heapsort_records": 0,
+            "heap_sift_steps": 0,
+            "heap_swaps": 0,
+            "meter_units": 0,
+            "queries": 0
+          },
+          {
+            "site": "contraction",
+            "level": 0,
+            "path": "serial",
+            "n": 29630,
+            "out": 6371,
+            "cmp": 1681249,
+            "partitions": 64,
+            "partition_steps": 880541,
+            "partition_swaps": 880461,
+            "insertion_leaves": 62,
+            "insertion_records": 603,
+            "insertion_swaps": 1467,
+            "heapsorts": 3,
+            "heapsort_records": 28947,
+            "heap_sift_steps": 440158,
+            "heap_swaps": 425685,
+            "meter_units": 42754048,
+            "queries": 652
+          },
+          {
+            "site": "contraction",
+            "level": 1,
+            "path": "serial",
+            "n": 3450,
+            "out": 768,
+            "cmp": 142974,
+            "partitions": 39,
+            "partition_steps": 78860,
+            "partition_swaps": 78821,
+            "insertion_leaves": 37,
+            "insertion_records": 378,
+            "insertion_swaps": 588,
+            "heapsorts": 3,
+            "heapsort_records": 3033,
+            "heap_sift_steps": 35761,
+            "heap_swaps": 34245,
+            "meter_units": 3613872,
+            "queries": 55
+          }
+        ]
+      }
+    }
   },
-  "earlier_tool_revision": {
-   "11-prepare-accepted-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-counts (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "17b232080885a9ee00a18b1c6190c20a702868fd0f95f4edcbd9d0e49aab7b6d"
-   },
-   "11-prepare-accepted-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm accepted --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/accepted-timers (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "dc92dba94aeb30345674861ac53df8bdbdf06c2137386ed8237020d8c02b38a2"
-   },
-   "11-prepare-candidate-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode counts --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-counts (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "59a1320a91ec65aa119e30b48e444cf5f34c0384017792ead6e1b1b4ed340dc2"
-   },
-   "11-prepare-candidate-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py prepare --arm candidate --mode timers --fereg-git <home>/fereg --cmg-git <home>/CMG --out <attr>/candidate-timers (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "186c92415d4be054620ac32d08b69366fcaf317fadd30d39e3e70931418f7a4f"
-   },
-   "12-metadata-accepted-counts": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "efaf3df51163cdeccf885a58cb55f0b779780e165d5f862c939822cbeb9b3ec7"
-   },
-   "12-metadata-accepted-timers": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/accepted-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "b56c3b5e1890b4e21916eba42195bd1e06dd5362c0360fd6e370d8840ed85821"
-   },
-   "12-metadata-candidate-counts": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "35b27ca5f4275c59ddc9ed1f4afbea49d9f74f3c427c095a5cf143fd7c789a27"
-   },
-   "12-metadata-candidate-timers": {
-    "command": "cargo metadata --locked --offline --format-version 1 (cwd: <attr>/candidate-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "bc683f241c864f62819e126274696c65c7fb4b87f54f387d30b90c6e89158fb7"
-   },
-   "13-check-accepted-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "5582583bf3eedd640c195656c6c5e0ca92b07e96e0fdacb89522a9cc1dc2eb12"
-   },
-   "13-check-accepted-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/accepted-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "435a1b9a64571c55af40a01df7cdf7b791eeeadecc651738642d73f053865ac6"
-   },
-   "13-check-candidate-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-counts/fereg)",
-    "exit": 0,
-    "log_sha256": "311cb4838e629dae1e6ee99f8665f9ad300bec5f531e3857465d8bed581177d1"
-   },
-   "13-check-candidate-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/check-target cargo check --locked --offline -p fereg-plugin --lib (cwd: <attr>/candidate-timers/fereg)",
-    "exit": 0,
-    "log_sha256": "a60229019e1a6cc4c74d50eb3bddc7a1adac05f52a9e6cb346f8724c18f13251"
-   },
-   "14-smoke-accepted-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "b0564a77c83676f273def94f47f2f7e24fd233b038d59530321f0979f5742caa"
-   },
-   "14-smoke-accepted-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "4868fd539743d4c00cf59b24ef58a8fed6cc6daa8631ae9cf0e55e9555db3636"
-   },
-   "14-smoke-candidate-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "67a4b03a29d832a5389f159466abeb8ac224f8a93662a4b0f90f818081352dc5"
-   },
-   "14-smoke-candidate-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "65d32ad96b05ecb9dfeecc94a53670e1da145476453fd5f6a4d408702ec1da40"
-   },
-   "15-cmg-frozen-accepted-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/accepted-counts/cmg)",
-    "exit": 0,
-    "log_sha256": "97ca40750f049ead611c63026bbb6f8c59eb18024455515bc2f777a0f19c0810",
-    "rust": [
-     1,
-     0,
-     0
-    ]
-   },
-   "15-cmg-frozen-accepted-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/accepted-timers/cmg)",
-    "exit": 0,
-    "log_sha256": "87acce1bc779f46b024fe07368508f6038edcaa555d67f915176f4e430830548",
-    "rust": [
-     1,
-     0,
-     0
-    ]
-   },
-   "15-cmg-frozen-candidate-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/candidate-counts/cmg)",
-    "exit": 0,
-    "log_sha256": "c2b4000fd6b9da2ef76a8bb84092f5a86a093b831bd0f6d4c52ccc02a647f0f5",
-    "rust": [
-     1,
-     0,
-     0
-    ]
-   },
-   "15-cmg-frozen-candidate-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --release --no-default-features --features parallel\\,experimental-components --test frozen_bits (cwd: <attr>/candidate-timers/cmg)",
-    "exit": 0,
-    "log_sha256": "18fdb54b0f84904faf52345abe861f507b16709e846ea1ddbe15223d4f31afaf",
-    "rust": [
-     1,
-     0,
-     0
-    ]
-   },
-   "16-cmg-graph-lib-accepted-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/accepted-counts/cmg)",
-    "exit": 0,
-    "log_sha256": "3991327e323c1bbd5af81068899844a30f2a6896613e19b3af459396211785f8",
-    "rust": [
-     31,
-     0,
-     0
-    ]
-   },
-   "16-cmg-graph-lib-accepted-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/accepted-timers/cmg)",
-    "exit": 0,
-    "log_sha256": "3bf3b307e8762a7c0cdc1aa981f36bd2766acacb4fec57d3fa9b49b09d38b913",
-    "rust": [
-     31,
-     0,
-     0
-    ]
-   },
-   "16-cmg-graph-lib-candidate-counts": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/candidate-counts/cmg)",
-    "exit": 0,
-    "log_sha256": "9808eecc6b26299cc5e109188a9d8a10d324eedcaa29924e06763cbf98ff5b04",
-    "rust": [
-     34,
-     0,
-     0
-    ]
-   },
-   "16-cmg-graph-lib-candidate-timers": {
-    "command": "env CARGO_TARGET_DIR=<attr>/cmg-target cargo test --locked --offline --no-default-features --features parallel\\,experimental-components --lib -- graph hierarchy preconditioner (cwd: <attr>/candidate-timers/cmg)",
-    "exit": 0,
-    "log_sha256": "209ab02e1abfc77c08828482311d7fa9344869a3fdd0ad7b6f0b8341ca970a4b",
-    "rust": [
-     34,
-     0,
-     0
-    ]
-   },
-   "24-smoke2-accepted-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "1c0d933730016b7fc64c8a825ae673d3e9852461dca1e0cf106a2a1c8466232a"
-   },
-   "24-smoke2-accepted-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/accepted-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "e742d799ba9cf963b30a05dbd892123dda8372495382b8b04fe936eab9ffface"
-   },
-   "24-smoke2-candidate-counts": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-counts --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "64bd9248a69745764954e73fd76ded7fc4c422c8384d71b5eb530f4cb35c283e"
-   },
-   "24-smoke2-candidate-timers": {
-    "command": "python3 bench/cmg_setup_attribution.py smoke <attr>/candidate-timers --cmg-git <home>/CMG (cwd: <home>/fereg)",
-    "exit": 0,
-    "log_sha256": "798dab274f9e2679df1ab8dde38cad9150e595988c3542168f3a994cfe97aa2c"
-   }
-  },
-  "notes": {
-   "01-03": "first patch round compiled with dead-code/unused-import warnings in the patched CMG; module allow(dead_code) and a test-only import fixed them",
-   "11-16,24": "passed on earlier tool revisions; superseded by 31-36 bound to the final tool hash; 14 used one random smoke graph that never reached a direct terminal, 24 added the banded graph",
-   "43": "invocation error, not a test failure: root setup tests import sibling test modules and need unittest discover (44/45 pass)",
-   "blocked": "one cloud shell command was refused by the session safety check (unguarded variable in rm); rerun with literal paths"
-  }
- },
- "synthetic_smoke_counts": {
-  "note": "Deterministic operation counts of the two synthetic smoke graphs at W1 (identical at W4), not the frozen families and not timing. Timer values from the cloud are not recorded.",
-  "graphs": {
-   "random": {
-    "digest": "graph_edges=44984|vertices=[12000, 3232, 2069, 1844, 1777, 1743, 1712]|nonzeros=[101965, 75204, 70699, 68752, 67145, 65799, 63912]|repeats=[1, 1, 1, 1, 1, 1, 0]|terminal=StagnatedFill|factor_nonzeros=None|apply_fnv=1476d21607649316",
-    "accepted": [
-     {
-      "site": "outside",
-      "level": 0,
-      "path": "hosted",
-      "n": 114375,
-      "out": 44984,
-      "cmp": 0,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 0,
-      "heapsort_records": 0,
-      "heap_sift_steps": 0,
-      "heap_swaps": 0,
-      "meter_units": 0,
-      "queries": 0
-     },
-     {
-      "site": "contraction",
-      "level": 0,
-      "path": "serial",
-      "n": 36213,
-      "out": 35986,
-      "cmp": 988997,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 1,
-      "heapsort_records": 36213,
-      "heap_sift_steps": 538194,
-      "heap_swaps": 520088,
-      "meter_units": 35023824,
-      "queries": 535
-     },
-     {
-      "site": "contraction",
-      "level": 1,
-      "path": "serial",
-      "n": 34822,
-      "out": 34315,
-      "cmp": 947290,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 1,
-      "heapsort_records": 34822,
-      "heap_sift_steps": 518505,
-      "heap_swaps": 501094,
-      "meter_units": 33741472,
-      "queries": 514
-     },
-     {
-      "site": "contraction",
-      "level": 2,
-      "path": "serial",
-      "n": 34090,
-      "out": 33454,
-      "cmp": 935719,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 1,
-      "heapsort_records": 34090,
-      "heap_sift_steps": 513370,
-      "heap_swaps": 496325,
-      "meter_units": 33401120,
-      "queries": 510
-     },
-     {
-      "site": "contraction",
-      "level": 3,
-      "path": "serial",
-      "n": 33385,
-      "out": 32684,
-      "cmp": 923342,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 1,
-      "heapsort_records": 33385,
-      "heap_sift_steps": 507874,
-      "heap_swaps": 491182,
-      "meter_units": 33038096,
-      "queries": 504
-     },
-     {
-      "site": "contraction",
-      "level": 4,
-      "path": "serial",
-      "n": 32648,
-      "out": 32028,
-      "cmp": 904564,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 1,
-      "heapsort_records": 32648,
-      "heap_sift_steps": 497742,
-      "heap_swaps": 481418,
-      "meter_units": 32377856,
-      "queries": 494
-     },
-     {
-      "site": "contraction",
-      "level": 5,
-      "path": "serial",
-      "n": 31989,
-      "out": 31100,
-      "cmp": 885512,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 1,
-      "heapsort_records": 31989,
-      "heap_sift_steps": 487622,
-      "heap_swaps": 471628,
-      "meter_units": 31719632,
-      "queries": 484
-     }
+  "root_protocol_proposal": {
+    "families": [
+      "high-degree-weak",
+      "weak-low"
     ],
-    "candidate": [
-     {
-      "site": "outside",
-      "level": 0,
-      "path": "hosted",
-      "n": 114375,
-      "out": 44984,
-      "cmp": 0,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 0,
-      "heapsort_records": 0,
-      "heap_sift_steps": 0,
-      "heap_swaps": 0,
-      "meter_units": 0,
-      "queries": 0
-     },
-     {
-      "site": "contraction",
-      "level": 0,
-      "path": "serial",
-      "n": 36213,
-      "out": 35986,
-      "cmp": 620035,
-      "partitions": 3446,
-      "partition_steps": 504548,
-      "partition_swaps": 501097,
-      "insertion_leaves": 3447,
-      "insertion_records": 32762,
-      "insertion_swaps": 83093,
-      "heapsorts": 0,
-      "heapsort_records": 0,
-      "heap_sift_steps": 0,
-      "heap_swaps": 0,
-      "meter_units": 9871600,
-      "queries": 150
-     },
-     {
-      "site": "contraction",
-      "level": 1,
-      "path": "serial",
-      "n": 34822,
-      "out": 34315,
-      "cmp": 570304,
-      "partitions": 3293,
-      "partition_steps": 462882,
-      "partition_swaps": 459583,
-      "insertion_leaves": 3294,
-      "insertion_records": 31523,
-      "insertion_swaps": 76230,
-      "heapsorts": 0,
-      "heapsort_records": 0,
-      "heap_sift_steps": 0,
-      "heap_swaps": 0,
-      "meter_units": 9077968,
-      "queries": 137
-     },
-     {
-      "site": "contraction",
-      "level": 2,
-      "path": "serial",
-      "n": 34090,
-      "out": 33454,
-      "cmp": 599835,
-      "partitions": 3348,
-      "partition_steps": 505562,
-      "partition_swaps": 502207,
-      "insertion_leaves": 3349,
-      "insertion_records": 30735,
-      "insertion_swaps": 63447,
-      "heapsorts": 0,
-      "heapsort_records": 0,
-      "heap_sift_steps": 0,
-      "heap_swaps": 0,
-      "meter_units": 9542784,
-      "queries": 145
-     },
-     {
-      "site": "contraction",
-      "level": 3,
-      "path": "serial",
-      "n": 33385,
-      "out": 32684,
-      "cmp": 718208,
-      "partitions": 3256,
-      "partition_steps": 603208,
-      "partition_swaps": 599934,
-      "insertion_leaves": 3230,
-      "insertion_records": 27139,
-      "insertion_swaps": 40725,
-      "heapsorts": 27,
-      "heapsort_records": 2972,
-      "heap_sift_steps": 26887,
-      "heap_swaps": 25410,
-      "meter_units": 12454176,
-      "queries": 190
-     },
-     {
-      "site": "contraction",
-      "level": 4,
-      "path": "serial",
-      "n": 32648,
-      "out": 32028,
-      "cmp": 952455,
-      "partitions": 2957,
-      "partition_steps": 716786,
-      "partition_swaps": 713822,
-      "insertion_leaves": 2906,
-      "insertion_records": 20049,
-      "insertion_swaps": 26312,
-      "heapsorts": 52,
-      "heapsort_records": 9635,
-      "heap_sift_steps": 106731,
-      "heap_swaps": 101924,
-      "meter_units": 19149280,
-      "queries": 292
-     },
-     {
-      "site": "contraction",
-      "level": 5,
-      "path": "serial",
-      "n": 31989,
-      "out": 31100,
-      "cmp": 1318979,
-      "partitions": 1239,
-      "partition_steps": 873083,
-      "partition_swaps": 871838,
-      "insertion_leaves": 1121,
-      "insertion_records": 8079,
-      "insertion_swaps": 9970,
-      "heapsorts": 119,
-      "heapsort_records": 22665,
-      "heap_sift_steps": 244605,
-      "heap_swaps": 233303,
-      "meter_units": 30257856,
-      "queries": 461
-     }
-    ]
-   },
-   "banded": {
-    "digest": "graph_edges=41485|vertices=[9000, 2409, 699]|nonzeros=[91970, 15151, 2235]|repeats=[5, 6, 0]|terminal=Direct|factor_nonzeros=Some(2122)|apply_fnv=befc70fef5953a96",
-    "accepted": [
-     {
-      "site": "outside",
-      "level": 0,
-      "path": "hosted",
-      "n": 114375,
-      "out": 41485,
-      "cmp": 0,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 0,
-      "heapsort_records": 0,
-      "heap_sift_steps": 0,
-      "heap_swaps": 0,
-      "meter_units": 0,
-      "queries": 0
-     },
-     {
-      "site": "contraction",
-      "level": 0,
-      "path": "serial",
-      "n": 29630,
-      "out": 6371,
-      "cmp": 817643,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 1,
-      "heapsort_records": 29630,
-      "heap_sift_steps": 450875,
-      "heap_swaps": 436060,
-      "meter_units": 29330080,
-      "queries": 447
-     },
-     {
-      "site": "contraction",
-      "level": 1,
-      "path": "serial",
-      "n": 3450,
-      "out": 768,
-      "cmp": 73807,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 1,
-      "heapsort_records": 3450,
-      "heap_sift_steps": 41763,
-      "heap_swaps": 40038,
-      "meter_units": 2728032,
-      "queries": 41
-     }
+    "builds_per_platform": 4,
+    "calls_per_build": 18,
+    "commands": [
+      "python3 bench/cmg_setup_attribution.py prepare --arm ARM --mode MODE --fereg-git FEREG --cmg-git CMG --out ATTR",
+      "python3 bench/cmg_setup_attribution.py smoke ATTR --cmg-git CMG",
+      "(cd ATTR/fereg && ./scripts/build_linux.sh|build_macos.sh) > BUILD_LOG",
+      "python3 bench/cmg_setup_attribution.py bind ATTR --plugin PLUGIN --build-log BUILD_LOG --baseline-sha256 ARM_PLUGIN_SHA256",
+      "python3 bench/cmg_setup_attribution.py run REPOSITORY TASK_ROOT OUTPUT --arm accepted_hidden|setup_hidden --revision FEREG_REVISION --source ATTR/profile-source.json --attribution ATTR/attribution-source.json --plugin PLUGIN --plan PLAN --baseline COMPLETED_RESULTS"
     ],
-    "candidate": [
-     {
-      "site": "outside",
-      "level": 0,
-      "path": "hosted",
-      "n": 114375,
-      "out": 41485,
-      "cmp": 0,
-      "partitions": 0,
-      "partition_steps": 0,
-      "partition_swaps": 0,
-      "insertion_leaves": 0,
-      "insertion_records": 0,
-      "insertion_swaps": 0,
-      "heapsorts": 0,
-      "heapsort_records": 0,
-      "heap_sift_steps": 0,
-      "heap_swaps": 0,
-      "meter_units": 0,
-      "queries": 0
-     },
-     {
-      "site": "contraction",
-      "level": 0,
-      "path": "serial",
-      "n": 29630,
-      "out": 6371,
-      "cmp": 1681249,
-      "partitions": 64,
-      "partition_steps": 880541,
-      "partition_swaps": 880461,
-      "insertion_leaves": 62,
-      "insertion_records": 603,
-      "insertion_swaps": 1467,
-      "heapsorts": 3,
-      "heapsort_records": 28947,
-      "heap_sift_steps": 440158,
-      "heap_swaps": 425685,
-      "meter_units": 42754048,
-      "queries": 652
-     },
-     {
-      "site": "contraction",
-      "level": 1,
-      "path": "serial",
-      "n": 3450,
-      "out": 768,
-      "cmp": 142974,
-      "partitions": 39,
-      "partition_steps": 78860,
-      "partition_swaps": 78821,
-      "insertion_leaves": 37,
-      "insertion_records": 378,
-      "insertion_swaps": 588,
-      "heapsorts": 3,
-      "heapsort_records": 3033,
-      "heap_sift_steps": 35761,
-      "heap_swaps": 34245,
-      "meter_units": 3613872,
-      "queries": 55
-     }
-    ]
-   }
+    "analysis": "counts: compare per-level operation counts across arms (deterministic). timers: compare exclusive_ms pieces (sum exactly to the fereg hierarchy phase) descriptively; never add inclusive timers; counter-build times are not evidence."
+  },
+  "can_distinguish": [
+    "whether the candidate serial raw-edge sort does more/fewer comparisons, swaps, partition/insertion steps or heapsort fallbacks than the accepted heapsort at each contraction level, and its meter queries",
+    "how the fereg hierarchy phase splits into contraction sort / duplicate reduction / mapping, forest, aggregation, pruning, level finalization, bookkeeping, finest components, coarse centering, terminal factor and remainders"
+  ],
+  "cannot_distinguish": [
+    "per-operation cost (memory traffic, branches, caches) or any causal kernel claim",
+    "work inside team lanes (team/hosted sorts are recorded by size and timed only)",
+    "timer overhead is small but nonzero; timer builds are diagnostic, not production timing"
+  ],
+  "limits": [
+    "no cloud timing, profile, SCC job, plugin build or replay; run() exercised only with mocked native calls",
+    "raw logs and prepared copies are session-local and not retained; commands, exits and hashes are recorded here",
+    "the standard run_tests.sh still fails at the known installed-plugin binding check; not rerun (no runtime change)"
+  ],
+  "root_review": {
+    "against": "0fc466104b10f7bca9d4803c0c6335deba452261",
+    "findings": [
+      "Post-sort duration includes graph allocation, reduction, compaction, invariants and publication, not duplicate summation alone.",
+      "Swap calls do not establish exact record moves.",
+      "Deleting required per-level timers passed; coverage now follows independently parsed route levels/terminal and the scoped always-prune policy.",
+      "One-microsecond nesting slack accepted negative exclusive durations; strict per-level and aggregate nesting now rejects them.",
+      "Nonfinite/negative profile durations now reject in either mode.",
+      "Per-case determinism now checks each call and stops immediately, retaining the failing outputs.",
+      "Source archives now preserve executable status so the documented build entrypoints survive extraction."
+    ],
+    "checks": [
+      {
+        "label": "attribution-tool-root-tests",
+        "exit": 0,
+        "elapsed_s": 5.0293787501286715,
+        "log_sha256": "7bd35c3928026982588a338d268453a4c7b9a02f69d3650f9bfe1b9a274c83e3",
+        "command": [
+          "TASK_PYTHON",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "bench/tests",
+          "-p",
+          "test_cmg_setup*.py"
+        ]
+      },
+      {
+        "label": "attribution-root-repair-tests",
+        "exit": 0,
+        "elapsed_s": 5.089704625075683,
+        "log_sha256": "d16318d226fbfd37b4e7340713113e64f1d7b57abaa90b89e1460534f6fcba99",
+        "command": [
+          "TASK_PYTHON",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "bench/tests",
+          "-p",
+          "test_cmg_setup*.py"
+        ]
+      },
+      {
+        "label": "attribution-root-prepare",
+        "exit": 0,
+        "elapsed_s": 2.762029833160341,
+        "log_sha256": "5379718c6eda094b3bff6a5143c7eb8424a577b4a20129e5b888ba1b569a8d8e",
+        "command": [
+          "TASK_PYTHON",
+          "-c",
+          "import sys,json;from pathlib import Path;sys.path.insert(0,\"bench\");import cmg_setup_attribution as a;prior=json.loads(Path(\"bench/results/cmg-setup-attribution-tool-20261021.json\").read_text())[\"prepared_sources\"];[(a.prepare(arm,mode,Path(\".\"),Path(\"CMG_REPO\"),Path(\"target/tmp/cmg-upgrade/attribution\")/(arm+\"-\"+mode))) for arm in a.ARMS for mode in a.MODES];records={name:json.loads((Path(\"target/tmp/cmg-upgrade/attribution\")/name/\"attribution-source.json\").read_text()) for name in prior};assert all(records[name][\"attribution_diff_sha256\"]==prior[name][\"attribution_diff_sha256\"] for name in prior);print(json.dumps({name:{key:r[key] for key in (\"arm\",\"mode\",\"attribution_diff_sha256\",\"source_archive\")} for name,r in records.items()},indent=1));print(\"FOUR_PREPARES_PASS_PATCHES_IDENTICAL_TO_CLOUD\")"
+        ]
+      }
+    ],
+    "repair_tests": "80 setup tests pass, including 30 attribution tests; individual deletion of every direct/iterative timer, per-level compensating timer shift, negative500ns remainder, NaN/Inf, route terminal factor, second-call immediate stop and deterministic executable archive coverage.",
+    "identity": "Both arms and modes produce exactly the delivered Rust instrumentation edits/module. Four root preparations match the delivered attribution diff hashes. Archive hashes change only for executable modes; tool metadata changes for parser repair. Production sources and dependency pins unchanged.",
+    "reviews": [
+      "Independent high-effort source review: reporting, executable archives and mandatory pruning pass.",
+      "Independent bounded Astra re-review: phase coverage, nesting, finite values, immediate stop and bindings pass. Reviewers ran no builds or timings."
+    ],
+    "operational_failures": [
+      {
+        "action": "First apply_patch attempt",
+        "result": "Rejected missing exact q.write context; atomic no files changed; corrected against observed line."
+      }
+    ],
+    "source_preparations": {
+      "accepted-counts": {
+        "arm": "accepted",
+        "attribution_diff_sha256": "65079213b5f463e301f23c94456bc8eb561686694e9f504293683bb7e20ba945",
+        "build": "caller builds DIR/fereg with ./scripts/build_linux.sh or build_macos.sh (cargo --locked; the copy depends on DIR/cmg by path)",
+        "cmg_revision": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
+        "edited_files": {
+          "cmg/src/cancel.rs": "09f4830ebc5c342dedd34ee655abb7d79b356ac8e3470fe3e2babe5e0b20984b",
+          "cmg/src/graph.rs": "3ebce5fff797b100009e8201d6268d11a13d16169353f93a2413f28ed0b3c7b3",
+          "cmg/src/graph/hosted.rs": "094dd627fc839a4f049c9999ee798f02c982cfe891e37e4e0225d965a122acad",
+          "cmg/src/hierarchy.rs": "31fa411ca4c2e73229c08d702dcc54789282978fab47cc6401a358426bef2c29",
+          "cmg/src/lib.rs": "1a205e1ffd76f09a05c22dfbfcaeebe25678ab3ab7b650ab5925ae2667846004",
+          "cmg/src/preconditioner.rs": "41074ad0403f4f2347881d8f48010f966c945efc7770552a7bc0d608017c283c",
+          "cmg/src/setup_attribution.rs": "a8a4019b9247d50a6bf5a99dea592722a0294465049d6f10ddd350d41acedcab",
+          "fereg/Cargo.lock": "092c01a4333ffa1c6d69db16a90b7200249e0c412f25f5bdf6d734baf734038b",
+          "fereg/crates/fereg-core/Cargo.toml": "c339c9e53fe60b26bf27b97bfe646c501e1a6804f438add946cafdeea6cc5813",
+          "fereg/crates/fereg-core/src/fe/cmg_schur/bounded.rs": "89f4edf1978fd13453165df003030151c4a3fd934223616a82ee716da4b27a82"
+        },
+        "fereg_revision": "3f9d54eeacb2ced61bf8cb9a629daa0d1a6d23d9",
+        "hidden_arm": "accepted_hidden",
+        "mode": "counts",
+        "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
+        "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
+        "schema": 1,
+        "source_archive": {
+          "path": "source.tar",
+          "sha256": "322fc083ccdc3fa14ff6f3c1678f184d4b4671313dbaf4b605072caa00a7fc7c"
+        },
+        "tool_sha256": "1981f5e9c647207a2334a1cc43cbbf8bcfcc9a6a03ae7600d1c26c0eac7e417d"
+      },
+      "accepted-timers": {
+        "arm": "accepted",
+        "attribution_diff_sha256": "31f56e1a184b585fb3f4d65241cad7ce3b289bd67fb83e6be600f8006e98eab9",
+        "build": "caller builds DIR/fereg with ./scripts/build_linux.sh or build_macos.sh (cargo --locked; the copy depends on DIR/cmg by path)",
+        "cmg_revision": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
+        "edited_files": {
+          "cmg/src/cancel.rs": "09f4830ebc5c342dedd34ee655abb7d79b356ac8e3470fe3e2babe5e0b20984b",
+          "cmg/src/graph.rs": "3ebce5fff797b100009e8201d6268d11a13d16169353f93a2413f28ed0b3c7b3",
+          "cmg/src/graph/hosted.rs": "094dd627fc839a4f049c9999ee798f02c982cfe891e37e4e0225d965a122acad",
+          "cmg/src/hierarchy.rs": "31fa411ca4c2e73229c08d702dcc54789282978fab47cc6401a358426bef2c29",
+          "cmg/src/lib.rs": "1a205e1ffd76f09a05c22dfbfcaeebe25678ab3ab7b650ab5925ae2667846004",
+          "cmg/src/preconditioner.rs": "41074ad0403f4f2347881d8f48010f966c945efc7770552a7bc0d608017c283c",
+          "cmg/src/setup_attribution.rs": "ffc66b198064da310434cc2bdbf6529ce08c19e5adb3841cc41e221b7af688e5",
+          "fereg/Cargo.lock": "092c01a4333ffa1c6d69db16a90b7200249e0c412f25f5bdf6d734baf734038b",
+          "fereg/crates/fereg-core/Cargo.toml": "c339c9e53fe60b26bf27b97bfe646c501e1a6804f438add946cafdeea6cc5813",
+          "fereg/crates/fereg-core/src/fe/cmg_schur/bounded.rs": "89f4edf1978fd13453165df003030151c4a3fd934223616a82ee716da4b27a82"
+        },
+        "fereg_revision": "3f9d54eeacb2ced61bf8cb9a629daa0d1a6d23d9",
+        "hidden_arm": "accepted_hidden",
+        "mode": "timers",
+        "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
+        "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
+        "schema": 1,
+        "source_archive": {
+          "path": "source.tar",
+          "sha256": "cc63eb7f60722c18a0ff431e952e89ce64d081124cfaeec600c018be73bc2b79"
+        },
+        "tool_sha256": "1981f5e9c647207a2334a1cc43cbbf8bcfcc9a6a03ae7600d1c26c0eac7e417d"
+      },
+      "candidate-counts": {
+        "arm": "candidate",
+        "attribution_diff_sha256": "10719e56318a8dd02fe882ce19ce60d5a3bde2fc633254670539f263303ad8c9",
+        "build": "caller builds DIR/fereg with ./scripts/build_linux.sh or build_macos.sh (cargo --locked; the copy depends on DIR/cmg by path)",
+        "cmg_revision": "355d328a33639b5fa50c3c1954c8ee62e59e6b20",
+        "edited_files": {
+          "cmg/src/cancel.rs": "9f741e5913776fb581ac207fc145cee6853e9384bcfeea6938b981c63409e4a2",
+          "cmg/src/graph.rs": "6f67ca2c5bd2349308099257dd1e7e1c7a17e56d9cdd4cf1330cbb56a288e329",
+          "cmg/src/graph/edge_sort.rs": "fde5119850a4cd94c47d5e3db5082ee5c304ab6ce81f45329b0cf57a0d7eab4d",
+          "cmg/src/graph/hosted.rs": "62008ae71da49699c9e7e0a32d3927c7413e6bd01d5cd8588a73d81f21a803be",
+          "cmg/src/hierarchy.rs": "31fa411ca4c2e73229c08d702dcc54789282978fab47cc6401a358426bef2c29",
+          "cmg/src/lib.rs": "1a205e1ffd76f09a05c22dfbfcaeebe25678ab3ab7b650ab5925ae2667846004",
+          "cmg/src/preconditioner.rs": "41074ad0403f4f2347881d8f48010f966c945efc7770552a7bc0d608017c283c",
+          "cmg/src/setup_attribution.rs": "a8a4019b9247d50a6bf5a99dea592722a0294465049d6f10ddd350d41acedcab",
+          "fereg/Cargo.lock": "092c01a4333ffa1c6d69db16a90b7200249e0c412f25f5bdf6d734baf734038b",
+          "fereg/crates/fereg-core/Cargo.toml": "c339c9e53fe60b26bf27b97bfe646c501e1a6804f438add946cafdeea6cc5813",
+          "fereg/crates/fereg-core/src/fe/cmg_schur/bounded.rs": "89f4edf1978fd13453165df003030151c4a3fd934223616a82ee716da4b27a82"
+        },
+        "fereg_revision": "0407060c2959ff5076619511fcc85d82ceac8de0",
+        "hidden_arm": "setup_hidden",
+        "mode": "counts",
+        "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
+        "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
+        "schema": 1,
+        "source_archive": {
+          "path": "source.tar",
+          "sha256": "5cd9af468a832f1a2a62d4155092df420223f94009a10b07e2dfe1687ec8ebc7"
+        },
+        "tool_sha256": "1981f5e9c647207a2334a1cc43cbbf8bcfcc9a6a03ae7600d1c26c0eac7e417d"
+      },
+      "candidate-timers": {
+        "arm": "candidate",
+        "attribution_diff_sha256": "8697a49961f4d9ccc7febdd5ed75f208d94a3a3f86fc6bf198b0900ce9880b56",
+        "build": "caller builds DIR/fereg with ./scripts/build_linux.sh or build_macos.sh (cargo --locked; the copy depends on DIR/cmg by path)",
+        "cmg_revision": "355d328a33639b5fa50c3c1954c8ee62e59e6b20",
+        "edited_files": {
+          "cmg/src/cancel.rs": "9f741e5913776fb581ac207fc145cee6853e9384bcfeea6938b981c63409e4a2",
+          "cmg/src/graph.rs": "6f67ca2c5bd2349308099257dd1e7e1c7a17e56d9cdd4cf1330cbb56a288e329",
+          "cmg/src/graph/edge_sort.rs": "fde5119850a4cd94c47d5e3db5082ee5c304ab6ce81f45329b0cf57a0d7eab4d",
+          "cmg/src/graph/hosted.rs": "62008ae71da49699c9e7e0a32d3927c7413e6bd01d5cd8588a73d81f21a803be",
+          "cmg/src/hierarchy.rs": "31fa411ca4c2e73229c08d702dcc54789282978fab47cc6401a358426bef2c29",
+          "cmg/src/lib.rs": "1a205e1ffd76f09a05c22dfbfcaeebe25678ab3ab7b650ab5925ae2667846004",
+          "cmg/src/preconditioner.rs": "41074ad0403f4f2347881d8f48010f966c945efc7770552a7bc0d608017c283c",
+          "cmg/src/setup_attribution.rs": "ffc66b198064da310434cc2bdbf6529ce08c19e5adb3841cc41e221b7af688e5",
+          "fereg/Cargo.lock": "092c01a4333ffa1c6d69db16a90b7200249e0c412f25f5bdf6d734baf734038b",
+          "fereg/crates/fereg-core/Cargo.toml": "c339c9e53fe60b26bf27b97bfe646c501e1a6804f438add946cafdeea6cc5813",
+          "fereg/crates/fereg-core/src/fe/cmg_schur/bounded.rs": "89f4edf1978fd13453165df003030151c4a3fd934223616a82ee716da4b27a82"
+        },
+        "fereg_revision": "0407060c2959ff5076619511fcc85d82ceac8de0",
+        "hidden_arm": "setup_hidden",
+        "mode": "timers",
+        "module_sha256": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
+        "profile_patch_sha256": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
+        "schema": 1,
+        "source_archive": {
+          "path": "source.tar",
+          "sha256": "7f0c676dbd365237b9d2fa1c4c33d920ae9e75a8b77d96fedf84cd3052973c20"
+        },
+        "tool_sha256": "1981f5e9c647207a2334a1cc43cbbf8bcfcc9a6a03ae7600d1c26c0eac7e417d"
+      }
+    }
   }
- },
- "root_protocol_proposal": {
-  "families": [
-   "high-degree-weak",
-   "weak-low"
-  ],
-  "builds_per_platform": 4,
-  "calls_per_build": 18,
-  "commands": [
-   "python3 bench/cmg_setup_attribution.py prepare --arm ARM --mode MODE --fereg-git FEREG --cmg-git CMG --out ATTR",
-   "python3 bench/cmg_setup_attribution.py smoke ATTR --cmg-git CMG",
-   "(cd ATTR/fereg && ./scripts/build_linux.sh|build_macos.sh) > BUILD_LOG",
-   "python3 bench/cmg_setup_attribution.py bind ATTR --plugin PLUGIN --build-log BUILD_LOG --baseline-sha256 ARM_PLUGIN_SHA256",
-   "python3 bench/cmg_setup_attribution.py run REPOSITORY TASK_ROOT OUTPUT --arm accepted_hidden|setup_hidden --revision FEREG_REVISION --source ATTR/profile-source.json --attribution ATTR/attribution-source.json --plugin PLUGIN --plan PLAN --baseline COMPLETED_RESULTS"
-  ],
-  "analysis": "counts: compare per-level operation counts across arms (deterministic). timers: compare exclusive_ms pieces (sum exactly to the fereg hierarchy phase) descriptively; never add inclusive timers; counter-build times are not evidence."
- },
- "can_distinguish": [
-  "whether the candidate serial raw-edge sort does more/fewer comparisons, swaps, partition/insertion steps or heapsort fallbacks than the accepted heapsort at each contraction level, and its meter queries",
-  "how the fereg hierarchy phase splits into contraction sort / duplicate reduction / mapping, forest, aggregation, pruning, level finalization, bookkeeping, finest components, coarse centering, terminal factor and remainders"
- ],
- "cannot_distinguish": [
-  "per-operation cost (memory traffic, branches, caches) or any causal kernel claim",
-  "work inside team lanes (team/hosted sorts are recorded by size and timed only)",
-  "timer overhead is small but nonzero; timer builds are diagnostic, not production timing"
- ],
- "limits": [
-  "no cloud timing, profile, SCC job, plugin build or replay; run() exercised only with mocked native calls",
-  "raw logs and prepared copies are session-local and not retained; commands, exits and hashes are recorded here",
-  "the standard run_tests.sh still fails at the known installed-plugin binding check; not rerun (no runtime change)"
- ]
 }

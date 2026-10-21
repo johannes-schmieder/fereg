@@ -1,6 +1,8 @@
 """Attribution patch, parser and binding guards: no native call or timing."""
 import copy
 import json
+import re
+import tarfile
 from pathlib import Path
 import sys
 import tempfile
@@ -32,6 +34,23 @@ def replace_line(text, prefix, edit):
 
 def edit_attribution(text, edit):
     return replace_line(text, attribution.PREFIX, edit)
+
+
+def native_fixture(text):
+    """Use the same real diagnostic output with independently recorded route metadata."""
+    digest = attribution.fields_of(next(l for l in text.splitlines() if l.startswith('SMOKE_DIGEST|')))
+    series = {key: json.loads(digest[key]) for key in ('vertices', 'nonzeros', 'repeats')}
+    direct = digest['terminal'] == 'Direct'
+    fields = {'phase': 'auto_schur_route', 'installed': '1', 'refusal': 'None',
+              'terminal': digest['terminal'], 'levels': len(series['vertices']),
+              'hierarchy_vertices': ';'.join(map(str, series['vertices'])),
+              'hierarchy_nonzeros': ';'.join(map(str, series['nonzeros'])),
+              'repeats': ';'.join(map(str, series['repeats'])), 'terminal_factor': int(direct),
+              'terminal_factor_dimension': series['vertices'][-1] - 1 if direct else 0,
+              'terminal_factor_nonzeros': int(digest['factor_nonzeros'][5:-1]) if direct else 0,
+              'application': 'scalar', 'parallel_operators': 0, 'batch_columns': 1}
+    return replace_line(text, 'SMOKE_DIGEST|', lambda _: 'FEREG_SOLVER_TRACE|' +
+                        '|'.join(f'{key}={value}' for key, value in fields.items()))
 
 
 class RealFixtures(unittest.TestCase):
@@ -143,6 +162,47 @@ class Rejections(unittest.TestCase):
         self.rejects(edit_attribution(self.timers, lambda l: l.replace('|timers=', '|timers=bogus_phase@0:1:1;', 1)),
                      'unknown timer phase', mode='timers')
 
+    def test_every_expected_phase_is_required_on_direct_and_iterative_routes(self):
+        for _, _, _, body in attribution.smoke_calls(fixture('candidate', 'timers')):
+            native = native_fixture(body)
+            expected = attribution.validate_call(native, 'candidate', 'timers')
+            for phase in expected['timers']:
+                with self.subTest(phase=phase, terminal=expected['hierarchy']['terminal']):
+                    self.rejects(edit_attribution(native, lambda l: _drop_timer(l, phase)),
+                                 'missing|coverage|terminal_factor|disagree', mode='timers')
+
+    def test_timer_cannot_move_to_another_level(self):
+        call = attribution.validate_call(self.timers, 'candidate', 'timers')
+        phase = attribution.CONTRACTION
+        first = call['timers'][phase + '@0']['ns']
+        canonical = next(s['canonical_ns'] for s in call['sorts'] if s['site'] == 'contraction')
+        delta = first - canonical + 1
+        text = edit_attribution(self.timers, lambda l: _set_timer(l, phase + '@0', first - delta))
+        text = edit_attribution(text, lambda l: _set_timer(l, phase + '@1',
+                                                        call['timers'][phase + '@1']['ns'] + delta))
+        self.rejects(text, 'canonical within contraction at level 0', mode='timers')
+
+    def test_sub_microsecond_negative_remainder_is_rejected(self):
+        call = attribution.validate_call(self.timers, 'candidate', 'timers')
+        parent = round(float(call['profile']['hierarchy_seconds']) * 1e9)
+        text = edit_attribution(self.timers, lambda l: _set_timer(l, 'build_with_total@0', parent + 500))
+        self.rejects(text, 'nested timers inconsistent', mode='timers')
+
+    def test_profile_duration_is_finite_and_nonnegative_in_both_modes(self):
+        for mode in attribution.MODES:
+            for value in ('nan', 'inf', '-inf', '-0.001'):
+                text = replace_line(first_call('candidate', mode), attribution.PROFILE_PREFIX,
+                                    lambda l: re.sub(r'hierarchy_seconds=[^|]+', 'hierarchy_seconds=' + value, l))
+                self.rejects(text, 'finite and nonnegative', mode=mode)
+
+    def test_terminal_factor_must_agree_with_independent_route(self):
+        text = native_fixture(self.timers)
+        self.rejects(edit_attribution(text, lambda l: l.replace('|timers=', '|timers=terminal_factor@0:0:1;', 1)),
+                     'terminal_factor timer disagrees', mode='timers')
+        body = next(b for g, _, _, b in attribution.smoke_calls(fixture('candidate', 'timers')) if g == 'banded')
+        native = native_fixture(body)
+        self.assertEqual(attribution.validate_call(native, 'candidate', 'timers')['hierarchy']['terminal_factor'], 1)
+
 
 def _set_first_serial(line, key, value):
     fields = line.split('|')
@@ -185,7 +245,26 @@ def _scale_timer(line, name, factor):
     return _join(head, scaled, tail)
 
 
+def _set_timer(line, name, value):
+    head, items, tail = _timer_items(line)
+    return _join(head, [f'{name}:{value}:{item.rsplit(":", 1)[1]}' if item.startswith(name + ':') else item
+                        for item in items], tail)
+
+
 class PatchSpecification(unittest.TestCase):
+    def test_archive_preserves_executables_and_normalizes_other_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name, mode in (('build.sh', 0o755), ('source.rs', 0o644)):
+                (root / name).write_text(name)
+                (root / name).chmod(mode)
+            first = attribution.deterministic_archive(root, ['source.rs', 'build.sh'], root / 'one.tar')
+            second = attribution.deterministic_archive(root, ['build.sh', 'source.rs'], root / 'two.tar')
+            self.assertEqual(first, second)
+            with tarfile.open(root / 'one.tar') as archive:
+                self.assertEqual([(m.name, m.mode, m.mtime) for m in archive],
+                                 [('build.sh', 0o755, 0), ('source.rs', 0o644, 0)])
+
     def test_anchor_must_occur_exactly_once(self):
         self.assertEqual(attribution.apply_edit('a b c', 'b', 'x', 'test'), 'a x c')
         with self.assertRaisesRegex(Error, 'occurs 0 times'):
@@ -306,10 +385,17 @@ class RunLoop(unittest.TestCase):
     harness subprocess replays one real fixture call per invocation."""
 
     def test_run_records_eighteen_validated_calls(self):
+        self.run_fixture()
+
+    def test_second_call_shape_change_stops_immediately_and_keeps_failing_output(self):
+        self.run_fixture(change_second_call=True)
+
+    def run_fixture(self, change_second_call=False):
         import cmg_setup_profile as profile
         import qualify as q
         import routing
-        body = next(b for g, w, _, b in attribution.smoke_calls(fixture('candidate', 'timers')) if g == 'banded')
+        body = native_fixture(next(b for g, w, _, b in attribution.smoke_calls(
+            fixture('candidate', 'timers')) if g == 'banded'))
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive = attribution.sha256(b'archive')
@@ -331,8 +417,14 @@ class RunLoop(unittest.TestCase):
             guard = mock.Mock()
             guard.bind.return_value = '0' * 64
 
+            native_calls = []
+
             def harness(command, stdout, **_):
-                stdout.write(body)
+                native_calls.append(command)
+                text = body
+                if change_second_call and len(native_calls) == 2:
+                    text = edit_attribution(body, lambda l: _set_first_serial(l, 'n', 123456))
+                stdout.write(text)
                 Path(command[-1]).write_text('{}')
                 return types.SimpleNamespace(returncode=0)
 
@@ -352,8 +444,19 @@ class RunLoop(unittest.TestCase):
                     mock.patch.object(q, 'read_native', side_effect=native), \
                     mock.patch.object(routing, 'prepare', side_effect=lambda src, dst, *a: Path(dst).write_text('case')), \
                     mock.patch.object(attribution.subprocess, 'run', side_effect=harness):
-                attribution.run(args)
+                if change_second_call:
+                    with self.assertRaisesRegex(Error, 'differ between calls'):
+                        attribution.run(args)
+                else:
+                    attribution.run(args)
             results = json.loads((root / 'out' / 'results.json').read_text())
+            if change_second_call:
+                self.assertEqual(len(native_calls), 2)
+                self.assertEqual(len(results['calls']), 2)
+                self.assertEqual(results['status'], 'running')
+                self.assertTrue((root / 'out' / 'high-degree-weak-t1-1.json').exists())
+                self.assertTrue((root / 'out' / 'high-degree-weak-t1-1.log').exists())
+                return
             self.assertEqual(results['status'], 'complete')
             self.assertEqual(len(results['calls']), 18)
             self.assertEqual(results['identity']['attribution_mode'], 'timers')

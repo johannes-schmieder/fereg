@@ -37,8 +37,12 @@ hosted-initial call, in call order, with these fields:
   graph).
 - `path`: `serial`, `team` or `hosted`.
 - `n`: input records; `out`: canonical edges after duplicate reduction.
-- `sort_ns` (sort only) and `canonical_ns` (sort plus duplicate reduction):
+- `sort_ns` (sort only) and `canonical_ns` (sort plus post-sort graph finalization):
   timers build only.
+
+Post-sort graph finalization includes diagonal allocation and initialization,
+duplicate reduction, compact-edge allocation and copying, invariant checks
+and graph publication. It is not a separate measure of duplicate summation.
 
 In the counts build, only `serial` sorts are counted. Counting happens only
 on the calling thread while that sort runs, so prepared and LDL heapsorts and
@@ -58,8 +62,10 @@ team lanes are never counted. The counters are:
   (its cancellation polls).
 
 The meter's cadence and arithmetic are unchanged. The validator checks
-`meter_units // 66559 <= queries <= meter_units // 65536 + 1`. Record moves
-are `2 x swaps`, plus three pivot-sample copies per partition.
+`meter_units // 66559 <= queries <= meter_units // 65536 + 1`. Swap counters
+count logical swap calls, including self-swaps. They do not measure record
+moves or memory traffic; pivot-sample copying/sorting and compiler treatment
+of swaps are not measured by these counters.
 
 ### Timers
 
@@ -74,7 +80,12 @@ Timers nest:
 - `build_with_total` contains `hierarchy_total` and `finalize_total`.
 - A contraction phase contains its `canonical_ns`, which contains `sort_ns`.
 
-`validate_call` checks this nesting (1 µs slack). It reports `exclusive_ms`:
+`validate_call` checks this nesting at each level and in aggregate, rejecting
+negative remainders. It requires every phase expected for the independent
+route's terminal reason and level count, including terminal factorization
+exactly when the terminal is direct. The selected hidden invocation and smoke
+harness both prune after every contraction; that timer is mandatory here.
+It reports `exclusive_ms`:
 disjoint pieces whose sum is exactly the fereg profile's `hierarchy_seconds`.
 Never add the inclusive timers.
 
@@ -113,7 +124,8 @@ hierarchy checks, and requires per call:
 - nested-timer consistency.
 
 Within a case, every call must have identical canonical sorts, and in the
-counts build identical counters.
+counts build identical counters. These checks run after each call and stop
+on the first violation, retaining the failing outputs.
 
 ## What it can and cannot distinguish
 
@@ -126,7 +138,7 @@ counts build identical counters.
   prediction, cache behaviour), or anything on team lanes. The hosted initial
   sort is recorded by size only.
 - **Can (timers):** split the fereg hierarchy phase into disjoint pieces:
-  - coarse sort, duplicate reduction and mapping;
+  - coarse sort, post-sort graph finalization and mapping;
   - forest; aggregation; pruning; level finalization; bookkeeping;
   - finest components, coarse centering and the terminal factor;
   - finalize/build/admission remainders.

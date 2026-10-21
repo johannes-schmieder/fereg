@@ -488,7 +488,7 @@ bound, while source-to-binary provenance additionally rests on root's source,
 patch and build-command checks. No separate Mac profile host observer was
 recorded. Neither setup diagnosis nor these profiles activate public two-FE Auto.
 
-### Setup attribution tooling (pending review)
+### Setup attribution tooling and fixed diagnostic protocol
 
 This is maintained diagnostic tooling. It separates two explanations of the
 candidate's broader descriptive hierarchy/finalization phase: serial
@@ -526,7 +526,9 @@ or replay. The work sits on root's `25a68ead`; CMG stays at `355d328a`.
 - **Timers.** Every existing `measure_hierarchy_phase` boundary per level,
   pruning, `hierarchy_total`, finest components, coarse centering, the
   terminal factor, `finalize_total` and `build_with_total`, plus sort and
-  sort-with-reduction times per record. The validator checks the nesting and
+  sort-with-post-sort-graph-finalization times per record. This latter span
+  includes allocation, duplicate reduction, compaction, invariants and graph
+  publication, not duplicate summation alone. The validator checks the nesting and
   returns disjoint `exclusive_ms` pieces whose sum equals the fereg profile's
   hierarchy phase. Inclusive timers are never added.
 - **`run`.** It binds through `cmg_setup_profile.load_context` and runs that
@@ -570,6 +572,28 @@ per platform, 18 calls each, high-degree-weak and weak-low) and the limits.
 - **Cannot distinguish:** per-operation cost, causality, or work inside team
   lanes. Hosted and team sorts are recorded by size and timed only, and timer
   builds carry a small overhead.
+
+Root review of `0fc4661` found missing mandatory timer coverage, permitted
+negative exclusive durations, nonfinite profile values, delayed determinism
+checks and two overbroad labels. The repaired parser requires each phase dictated
+by independent route metadata, strict nesting at each level and in aggregate,
+and finite nonnegative durations. It stops on the first changed sort/counter
+record and retains that call. Swap counts are logical calls, not exact moves;
+post-sort graph finalization includes allocation and compaction. Source archives
+also preserve executable file status. All 80 root setup-tool tests pass; both
+independent reviewers cleared the repairs. The four prepared Rust patches match
+the delivered patches exactly, so valid unchanged compilation/smoke evidence is
+reused. Commands, exits, hashes and the rejected atomic patch attempt are retained
+in the tool evidence's `root_review`.
+
+The [fixed diagnostic protocol](../bench/results/cmg-setup-attribution-20261021.json)
+freezes four separate arm/mode builds per platform and 72 calls each on Linux and
+Mac: two families, W1/W4/W8, one retained warmup and two recorded calls. Each build
+uses a fresh cache and actual native audit/load checks. One isolated Linux host
+and the active Mac desktop receive process observation. There are no measurement
+retries or exclusions; a failed gate stops dependent calls. Count-build elapsed
+times are not performance evidence. Two sequential timer observations provide
+descriptive attribution only. The completed main comparison remains immutable.
 
 ## CMG successor milestone 3d: worker-independent team arithmetic
 

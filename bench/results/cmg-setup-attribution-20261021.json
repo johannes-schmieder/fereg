@@ -1,0 +1,103 @@
+{
+  "protocol": {
+    "schema": 1,
+    "date": "2026-10-21",
+    "purpose": "Fixed diagnostic attribution of the accepted and candidate hierarchy/finalization; no speed, causal, or activation qualification claim.",
+    "arms": {
+      "accepted-counts": {
+        "fereg": "3f9d54eeacb2ced61bf8cb9a629daa0d1a6d23d9",
+        "cmg": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
+        "mode": "counts",
+        "source_archive_sha256": "322fc083ccdc3fa14ff6f3c1678f184d4b4671313dbaf4b605072caa00a7fc7c",
+        "instrumentation_diff_sha256": "65079213b5f463e301f23c94456bc8eb561686694e9f504293683bb7e20ba945"
+      },
+      "accepted-timers": {
+        "fereg": "3f9d54eeacb2ced61bf8cb9a629daa0d1a6d23d9",
+        "cmg": "35a095f3e26972fcfa9e58c2222a1098efb8e607",
+        "mode": "timers",
+        "source_archive_sha256": "cc63eb7f60722c18a0ff431e952e89ce64d081124cfaeec600c018be73bc2b79",
+        "instrumentation_diff_sha256": "31f56e1a184b585fb3f4d65241cad7ce3b289bd67fb83e6be600f8006e98eab9"
+      },
+      "candidate-counts": {
+        "fereg": "0407060c2959ff5076619511fcc85d82ceac8de0",
+        "cmg": "355d328a33639b5fa50c3c1954c8ee62e59e6b20",
+        "mode": "counts",
+        "source_archive_sha256": "5cd9af468a832f1a2a62d4155092df420223f94009a10b07e2dfe1687ec8ebc7",
+        "instrumentation_diff_sha256": "10719e56318a8dd02fe882ce19ce60d5a3bde2fc633254670539f263303ad8c9"
+      },
+      "candidate-timers": {
+        "fereg": "0407060c2959ff5076619511fcc85d82ceac8de0",
+        "cmg": "355d328a33639b5fa50c3c1954c8ee62e59e6b20",
+        "mode": "timers",
+        "source_archive_sha256": "7f0c676dbd365237b9d2fa1c4c33d920ae9e75a8b77d96fedf84cd3052973c20",
+        "instrumentation_diff_sha256": "8697a49961f4d9ccc7febdd5ed75f208d94a3a3f86fc6bf198b0900ce9880b56"
+      }
+    },
+    "order": [
+      "accepted-timers",
+      "candidate-timers",
+      "accepted-counts",
+      "candidate-counts"
+    ],
+    "coverage": {
+      "platforms": [
+        "Linux",
+        "Darwin"
+      ],
+      "cases": [
+        "high-degree-weak",
+        "weak-low"
+      ],
+      "workers": [
+        1,
+        4,
+        8
+      ],
+      "calls_per_cell_per_artifact": 3,
+      "first_call": "warmup retained",
+      "recorded_calls_per_cell": 2,
+      "calls_per_artifact_per_platform": 18,
+      "calls_per_platform": 72,
+      "total_calls": 144
+    },
+    "inputs": "The frozen candidate-v1 plans and their input/oracle/harness hashes, input seed2026101821; exact selected hidden warmup science/signature/routes/hierarchy from completed main comparison.",
+    "budgets": {
+      "native_call_timeout_seconds": 120,
+      "artifact_run_timeout_seconds": 1200,
+      "platform_run_timeout_seconds": 5400,
+      "build_job_walltime_seconds": 3600,
+      "build_step_timeout_seconds": 900,
+      "retry": 0,
+      "resume": false,
+      "exclusions": 0
+    },
+    "build": {
+      "rust": "1.85.1",
+      "locked": true,
+      "release": "fat LTO",
+      "bridge": "O3",
+      "build_date": "2026-10-21",
+      "jobs": 4,
+      "cache": "fresh isolated cache for each arm/mode/platform; never reuse a cache between instrumented sources",
+      "gates": "Actual binary audit, ABI/load and panic checks in build script, artifact hash distinct from uninstrumented and other mode; bind archive/build log/plugin before calls."
+    },
+    "host": {
+      "Linux": "One verified isolated28physical-core omp28 allocation for all four artifacts, requirednum_proc28, all-queue quota/census and process observer; pinnedidlewp3 preferred for availability, no CPU-model claim.",
+      "Darwin": "Active desktop, MacMonitor process observer; no competing build/test/estimation/agent tool workload during calls; ordinary OS/desktop noise retained.",
+      "process_interval_seconds": 5,
+      "Linux_census_interval_seconds": 60
+    },
+    "validation": "Exact selected hidden science/signature/routes/hierarchy per call, mandatory timer phases/nesting/finite nonnegative exclusive pieces, count identities/meter cadence, per-case exact counts/structure checked immediately; all original observations retained.",
+    "stop": "Stop dependent calls on any native/scientific/identity/diagnostic/observer failure or timeout. Preserve every completed and failing observation. No sampling continuation or rerun for timing; diagnose a concrete tooling fault under existing repair authority before changing artifacts/protocol.",
+    "interpretation": "Count-only elapsed time is not performance evidence. Two timer observations per cell are descriptive and sequential, not uncertainty estimates or causal attribution. Compare counts exactly, report inclusive and exclusive spans separately, no extra response to unfavorable timings.",
+    "reuse": "Keep the completed1320call comparison and72phaseprofiles immutable. Production runtime and prior scientific/native evidence remain applicable; new instrumented binaries receive their own actual build/load checks.",
+    "files": {
+      "bench/cmg_setup_attribution.py": "1981f5e9c647207a2334a1cc43cbbf8bcfcc9a6a03ae7600d1c26c0eac7e417d",
+      "bench/cmg_setup_attribution/setup_attribution.rs": "612bb0771fc42cb1528e4747de96d5834d4555426f4d4cf87b662ddf6c6447f1",
+      "bench/cmg_setup_profile.py": "b53ee3a8a1000e846c4e254db657c7387077adc4a43251d62db6a009f7571262",
+      "bench/cmg_setup_profile.patch": "571f8e1f724c4f24806068f7ac2e1fa0eec0d1cadf5913949c9e3c3f0618ac95",
+      "bench/qualify_scc.py": "7e869cfc2235567d28806d20c2879bb45a5c788d5591a984ffce19ce669bad7d",
+      "bench/block_host.py": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d"
+    }
+  }
+}
