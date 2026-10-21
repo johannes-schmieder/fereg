@@ -54,7 +54,7 @@ dependencies = [
 [[package]]
 name = "cmg"
 version = "0.1.0"
-source = "git+https://github.com/johannes-schmieder/CMG?rev=35a095f3e26972fcfa9e58c2222a1098efb8e607#35a095f3e26972fcfa9e58c2222a1098efb8e607"
+source = "git+https://github.com/johannes-schmieder/CMG?rev=7b610e1e37bc8a8b01f98a9957089d8fc10367ae#7b610e1e37bc8a8b01f98a9957089d8fc10367ae"
 dependencies = [
  "rayon",
 ]
