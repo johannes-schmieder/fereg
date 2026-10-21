@@ -256,7 +256,9 @@ default, `parallel`, `experimental-components` and
     coordinator phases the same way. The mapping stage polls the raw query on
     its lanes, without a meter phase, so it stays covered by the bracketing
     sweep.
-  - Ordinal sampling remains only as supplementary coverage.
+  - In plan preparation, ordinal sampling remains only as supplementary
+    coverage. The contraction mapping phase is still required from its
+    sampled sweep, as stated above.
 - R4, documentation (CMG doc comments, `controlled-construction.md`,
   CHANGELOG, and the candidate entry above).
   - Cadence. A partition advances the meter by 1,024 units every 64 steps, and
@@ -328,9 +330,57 @@ default, `parallel`, `experimental-components` and
   - Standard `./scripts/run_tests.sh`: 315 Python tests pass, then the known
     installed-plugin binding check fails (exit 1). Not green.
   - `--source-only`: exit 0, 322 Python tests and 1,965 Rust executions in 83
-    summary groups (14 ignored), counted from summary tuples. Root's parser
-    counted 1,951 executions on `c796a3b6`, so the two counting methods
-    differ.
+    summary groups (14 ignored), counted from this run's summary tuples.
+    Root's separate local source-only run on `c796a3b6`/CMG `7b610e1e`
+    reported 1,951 Rust executions in 83 groups (exit 0). These are distinct
+    runs; the cause of the difference has not been established, and each
+    count stands for its own run. (Corrected: this bullet first attributed
+    the difference to the counting methods.)
+
+### Setup candidate 1 repair 2: post-fork witness accounting (pending review)
+
+Root's second review found one remaining race in the R1 witness. It took
+each query's ordinal before the barrier lock and recorded the firing lane's
+ordinal plus one as the count at firing. A lane that took an early ordinal
+but reached the lock last fired with a stale count, so the strict check that
+only the coordinator queries after the firing could reject a correct join.
+CMG `355d328a33639b5fa50c3c1954c8ee62e59e6b20` (parent `1bed1672`) is
+test-only and pinned in the manifest and both lockfiles. Non-test expansions
+for the four feature sets remain token-identical to `7b610e1e`.
+
+- Queries are counted under the barrier lock, and the count at firing is
+  read there once all lanes have entered. The strict `+1` coordinator check,
+  the post-fork, untouched-work, join, quiescence and rebuild checks, and the
+  30-second escape are unchanged. The other snapshots were reviewed:
+  visits and active lanes are read under the lock while every lane is in the
+  query, and the post-return reads follow the join.
+- New regression
+  `started_lanes_witness_counts_queries_under_the_lock_despite_ordinal_inversion`
+  forces the inversion in the actual witness at W4. The first qualifying
+  lane takes its ordinal under a selection lock and is held before the
+  barrier lock until the three other lanes have parked with later ordinals.
+  It requires the old snapshot to be stale by at least three queries and the
+  locked count to be exact. Synchronization only, no sleeps for success.
+- Checks (all exit 0 unless stated):
+  - The two started-lanes tests, three times each in debug and in release
+    (`parallel,experimental-components`).
+  - All edge-sort tests in debug and release with `parallel` and with all
+    features, and the default-feature edge-sort test.
+  - rustfmt, and Clippy for seven feature sets including all features.
+  - fereg: the pin resolves (`cargo fetch --locked`; fuzz
+    `cargo metadata --locked`) and `cargo check --locked --workspace
+    --all-targets` passes.
+- Mutations, all exit 101:
+  - Restoring the old pre-lock snapshot fails the inversion regression with
+    205 queries against 202.
+  - r1a, r1b and r1c fail the started-lanes tests.
+  - s1 and s3b fail the deep-gap witness.
+- Reused rather than rerun: the runtime, replay and native evidence of the
+  repair above (production code unchanged), and the broad CMG matrix on
+  `1bed1672` (only this test module changed).
+- Documentation: the plan-preparation sampling sentence above is narrowed,
+  and the 1,965/1,951 source-only counts are kept as two distinct runs
+  without an attributed cause.
 
 ## CMG successor milestone 3d: worker-independent team arithmetic
 
