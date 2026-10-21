@@ -781,6 +781,20 @@ fixture hashes. New modes bind their own pristine Mac reference exactly;
 historical equality and live smoke checks remain exact. All fixture hierarchy
 fields agree. No cause for the cross-origin application-bit difference is claimed.
 
+Before collecting new performance data, the
+[`cmg-setup-pivot-v1` protocol](../bench/results/cmg-setup-pivot-20261021.json)
+freezes three distinct actual artifacts: accepted `3f9d54ee`, pre-pivot
+`0407060c`, and repaired `1cdb225e`. The same four inputs and W1/W4/W8 run in
+six isolated Linux host allocations with two mirrored blocks (1,080 calls),
+and twelve Mac blocks (900 calls). One warmup per arm/cell/host is retained.
+Both references receive separate exact-science and max(5%, 1 ms) comparisons.
+There is no retry or resume. A separate 144-call attribution round covers
+pre-pivot and repaired timer/count variants on the two setup-sensitive families.
+Unchanged pre-pivot instrumentation archives and binaries are reused with
+their original build evidence; new aliases cannot change either source revision.
+The Linux preflight has twelve scientific calls whose times are excluded.
+This protocol does not qualify public activation.
+
 Limits: counted units are generic work, not cost or speed. The real
 contraction split pattern was not observed. The controlled comparison and new
 actual attribution measurements remain pending; the native checks do not
