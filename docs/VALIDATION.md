@@ -816,11 +816,33 @@ objects, the full report and the review are retained in
 
 Linux attribution build 8232539 and twelve-call scientific preflight 8232540
 completed with failed 0 / exit 0. The fresh Linux instrumented plugins passed
-native checks and were collected and independently rehashed. Linux's main
-comparison and both platforms' actual attribution measurements have not run.
-Dependent measurements, policy advancement and activation are held for
-Johannes's direction on the inconclusive result; the fixed Mac budget is
-exhausted and no additional sampling is authorized by this protocol.
+native checks and were collected and independently rehashed. After reviewing
+the inconclusive Mac result, Johannes authorized completing the frozen Linux
+comparison and separate attribution. The fixed Mac comparison budget remains
+exhausted; no extra samples are added. Policy advancement and activation remain
+held for review of the combined evidence.
+
+The separate Mac attribution completed all 72 calls with exact science,
+route/hierarchy and count-repeat checks. An independent review reparsed every
+raw log and verified the source, actual binary, build and ordinary-panel
+baseline bindings. High-degree-weak's three serial contraction sorts use
+1,362,820 comparisons versus 3,855,283 before the pivot repair; partition steps
+fall from 2,410,573 to 1,081,481, depth-limit fallbacks from 131 to zero, and
+cancellation queries from 1,368 to 337. Counts repeat exactly across W1/W4/W8.
+These inputs demonstrate less sorting work, not elimination of adversarial
+behavior. The fixed depth-limit fallback remains protected by generic tests.
+
+Timer-only means of two recorded calls put contraction sorting at 3.436,
+3.352 and 3.346 ms (W1/W4/W8), versus 6.587, 6.386 and 6.564 ms before the
+repair. Entire hierarchy means are 8.586/8.550/8.609 ms versus
+11.845/11.623/11.926 ms. Weak-low has no contractions; its initial serial sort
+uses 189,827 rather than 212,770 comparisons, with no fallback in either
+version. Its total setup means are mixed, so fewer comparisons alone do not
+predict elapsed time. The twelve process observations have a maximum gap of
+5.221 seconds, with no recorded competing compute or error. These sequential
+two-call observations are descriptive; the earlier Mac comparison remains
+inconclusive. Full calls and evidence are retained in
+[`cmg-setup-pivot-attribution-20261021.json`](../bench/results/cmg-setup-pivot-attribution-20261021.json).
 
 Limits: counted units are generic work, not cost or speed. The real
 contraction split pattern was not observed. Neither the native checks nor this
