@@ -17,14 +17,72 @@ The development-branch activation and its integration checks are recorded below.
 The separate two-FE qualification completed, but Linux found regressions on the
 four-worker high-degree weak graph against both original and accepted Auto.
 Mac passed. Two-FE remains disabled, many-FE remains enabled, and release packages
-are unchanged. The failed comparisons require Johannes's direction before a
-new candidate or further qualification measurements.
+are unchanged. Johannes's 2026-10-21 direction authorizes the setup and upgrade
+strategy work below; the historical failed comparisons remain failed.
 
 This page keeps accepted evidence, open failures and standing caveats. The full
 narrative ledger, with every run identifier, archive and receipt digest,
 campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
+
+## Measured CMG setup and two-FE upgrade strategy (2026-10-21)
+
+The initial diagnostic compares accepted source `3f9d54ee` with the pre-refactor
+two-FE candidate `d5b06cf3` plus only `DEFAULT_TWO=true`, and with current public
+Auto using the same current binary. The [compact evidence](../bench/results/cmg-setup-diagnostic-20261021.json)
+retains all 1,980 complete-call timing observations, identities, comparisons,
+phase observations, scheduler summaries and operational failures. No new runtime
+or upgrade-policy change is included in these measurements.
+
+All 24 comparison bounds pass on each platform. Linux uses six distinct isolated
+28-core hosts, two mirrored blocks per cell and 1,080 calls. Mac uses 12 mirrored
+blocks per cell on the active desktop and 900 calls. Input seed is 2026101821;
+balanced order seed is 2026102103. There are no exclusions or measurement retries.
+Independent numerical witnesses, exact own repeats and cross-worker science and
+discrete checks pass. The scored timer is complete-call `NATIVE_SECONDS`; the
+retained auxiliary `timing_field=native_s` label does not describe that score.
+
+| High-degree weak graph | Linux current/public | Linux current/pre-refactor | Mac current/public | Mac current/pre-refactor |
+| --- | ---: | ---: | ---: | ---: |
+| W1 | 0.7458 | 0.9244 | 0.6693 | 0.9837 |
+| W4 | 0.8612 | 0.7953 | 0.7978 | 0.8618 |
+| W8 | 0.9706 | 0.7423 | 0.8976 | 0.8248 |
+
+Ratios are paired median complete-call comparisons. This repeats the exact input
+that previously failed on Linux at W4. The weak-low fixture also improves, but
+its historical route refused the now-removed construction-work cap: those gains
+combine cap removal with implementation changes. Repeated-cells and wide-rhs
+finish before h16 and therefore do not exercise setup or RHS amortization.
+
+A separate 18-call profile per platform (one warmup and two recorded observations
+for each of two families at W1/W4/W8) preserves exact baseline science/signatures.
+The [instrumentation patch](../bench/cmg_setup_profile.patch) uses the ordinary
+construction path without additional admitted banks. On Mac, high-degree setup
+falls from 51.465 to 23.957 to 19.153 ms, while hierarchy admission/build remains
+9.890/10.010/10.049 ms. Linux on a separate reserved host reports setup
+218.385/115.263/93.093 ms and hierarchy 30.297/46.151/46.179 ms. These small,
+sequential attribution samples identify a hierarchy scaling limit; they do not
+separate forest, contraction and factor costs or establish a causal worker-speed
+comparison. Opus 5.5's source review prioritizes contraction sorting and initial
+Laplacian sorting for the next setup changes, with h16 held fixed.
+
+Independent review reproduced all timing summaries and inspected schedules,
+signatures, host observations and accounting. Mac retained numerical arrays were
+also independently checked locally. Linux's complete numerical-array check ran
+in the successful remote report; the local reviewer inspected compact evidence.
+All six primary Linux jobs `8225587`–`8225592`, report `8225643` and profile
+`8225645` have scheduler failure/exit status 0/0. The failed initial smoke/deploy
+and profile-copy attempts remain recorded. The executed profile helper had
+weaker runtime identity guards than the diagnostic runner; retained identities
+were checked separately. The maintained helper now enforces these guards and
+has 12 focused binding/drift tests, without rerunning the completed profile.
+
+These are instrumented diagnostic solves, not default-activation qualification
+or uninstrumented release-speed claims. Per-cell intervals are not simultaneous
+24-comparison coverage; distinct Linux hosts do not prove independence. The new
+setup changes and deterministic RHS/core-aware policy still need implementation,
+review and the fixed 42-cell qualification before public two-FE activation.
 
 ## CMG successor milestone 3d: worker-independent team arithmetic
 

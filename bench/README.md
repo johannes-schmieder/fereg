@@ -25,6 +25,26 @@ bounded protocol under `docs/development_workflow.md`.
 Generated captures belong under `target/tmp/` and are deleted after inspection.
 Historical campaigns and the legacy comparator are available only in Git history.
 
+## CMG setup diagnostic
+
+`cmg_setup.py` freezes the three-arm historical/current/public comparison described
+in the [October 21 evidence](results/cmg-setup-diagnostic-20261021.json). It reuses
+the native qualification runner's science, resource, timer and host checks, but
+never qualifies default activation. Run `prepare CONFIG --output PLAN`, then
+`run PLAN --output RESULTS --replica N`; `report PLAN --output RESULTS` additionally
+requires `--accounting DIRECTORY` on SCC. The four input families, original seed,
+worker counts and per-platform budgets are fixed by this diagnostic version.
+
+For separate setup attribution, apply `cmg_setup_profile.patch` to the exact
+accepted `3f9d54ee` source and build/audit a distinct plugin. The bounded helper
+`cmg_setup_profile.py REPOSITORY TASK_ROOT OUTPUT` requires the completed ordinary
+diagnostic, matching frozen inputs, and that instrumented artifact. It runs only
+18 calls and checks their exact baseline science/signatures. Its six phase timers
+are attribution evidence, not qualification timings. Arrange host isolation
+externally and keep profile measurements separate from the complete-call panel.
+The initial executed ad hoc helper predates the maintained helper's identity
+guards; that limitation remains explicit in the evidence.
+
 ## Packed SCC comparison
 
 The [retained October 10 results and October 12 optimized rerun](../docs/fixest_benchmarks.md)

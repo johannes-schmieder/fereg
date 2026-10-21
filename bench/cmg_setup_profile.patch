@@ -1,0 +1,225 @@
+--- a/crates/fereg-core/src/fe/cmg_schur/bounded.rs
++++ b/crates/fereg-core/src/fe/cmg_schur/bounded.rs
+@@ -71,6 +71,71 @@
+ /// Counted primitive units between two cancellation polls.
+ const POLL_UNITS: u32 = 1 << 16;
+ 
++// Scratch diagnostic only: stack state, no admitted banks or profiled CMG API.
++// Stages partition the attempt, including their admission/initialization work:
++// census+canonicalization+labels; emission; initial Laplacian; graph cleanup and
++// component apply banks; hierarchy admission/build; apply workspace/publication.
++struct SetupProfile {
++    started: Instant,
++    phase_started: Instant,
++    seconds: [f64; 6],
++    completed: usize,
++    census_tasks: usize,
++    emission_tasks: usize,
++    emission_chunk_len: usize,
++    emission_chunks: usize,
++    hierarchy_team: bool,
++    cache_bytes: usize,
++    vertices: usize,
++    input_edges: usize,
++    edges: usize,
++}
++
++impl SetupProfile {
++    fn new() -> Self {
++        let started = Instant::now();
++        Self {
++            started,
++            phase_started: started,
++            seconds: [0.0; 6],
++            completed: 0,
++            census_tasks: 0,
++            emission_tasks: 0,
++            emission_chunk_len: 0,
++            emission_chunks: 0,
++            hierarchy_team: false,
++            cache_bytes: 0,
++            vertices: 0,
++            input_edges: 0,
++            edges: 0,
++        }
++    }
++
++    fn complete_phase(&mut self) {
++        let now = Instant::now();
++        self.seconds[self.completed] = now.duration_since(self.phase_started).as_secs_f64();
++        self.completed += 1;
++        self.phase_started = now;
++    }
++
++    fn emit(mut self, outcome: &str, observations: usize) {
++        let now = Instant::now();
++        // On refusal/fatal, the first incomplete stage holds its partial time;
++        // later zeroes mean unvisited. completed_phases disambiguates these.
++        if self.completed < self.seconds.len() {
++            self.seconds[self.completed] = now.duration_since(self.phase_started).as_secs_f64();
++        }
++        let total = now.duration_since(self.started).as_secs_f64();
++        crate::diagnostics::emit_solver_trace(&format!(
++            "FEREG_SOLVER_TRACE|phase=auto_schur_setup_profile|outcome={outcome}|completed_phases={}|observations={observations}|census_tasks={}|emission_prepare_tasks={}|emission_chunk_len={}|emission_chunks={}|hierarchy_team={}|cache_bytes={}|vertices={}|input_edges={}|edges={}|census_seconds={:.9}|emission_seconds={:.9}|initial_laplacian_seconds={:.9}|graph_tail_seconds={:.9}|hierarchy_seconds={:.9}|workspace_seconds={:.9}|total_seconds={total:.9}",
++            self.completed, self.census_tasks, self.emission_tasks, self.emission_chunk_len,
++            self.emission_chunks, self.hierarchy_team, self.cache_bytes, self.vertices,
++            self.input_edges, self.edges, self.seconds[0], self.seconds[1], self.seconds[2],
++            self.seconds[3], self.seconds[4], self.seconds[5],
++        ));
++    }
++}
++
+ /// Cancellation cadence for optional construction. Each bounded operation of
+ /// 1..=1024 conservative scalar arithmetic/access units is counted before it
+ /// runs; the host's sticky cancellation flag is polled whenever the running
+@@ -78,6 +143,7 @@
+ /// before every allocation. Work between polls is therefore bounded; allocator
+ /// and destructor latency are not. Units are a cadence, never an allowance.
+ pub(super) struct Work {
++    setup_profile: Option<SetupProfile>,
+     pending: u32,
+     polls: u64,
+     executed: bool,
+@@ -97,12 +163,19 @@
+ impl Work {
+     pub(super) fn new(break_builder: bool) -> Self {
+         Self {
++            setup_profile: None,
+             pending: 0,
+             polls: 0,
+             executed: false,
+             break_builder,
+             #[cfg(test)]
+             team_stages: 0,
++        }
++    }
++
++    fn profile_phase_complete(&mut self) {
++        if let Some(profile) = &mut self.setup_profile {
++            profile.complete_phase();
+         }
+     }
+ 
+@@ -480,6 +553,12 @@
+         crate::interrupt::checkpoint()?;
+         let started = Instant::now();
+         let mut work = Work::new(break_builder);
++        if matches!(install, Install::Auto)
++            && (crate::diagnostics::solver_trace_enabled()
++                || crate::diagnostics::phase_timing_enabled())
++        {
++            work.setup_profile = Some(SetupProfile::new());
++        }
+         let mut memory = Admission {
+             budget,
+             peak: SolverWorkspacePeak::ZERO,
+@@ -527,6 +606,17 @@
+             }
+             Ok(preconditioner)
+         });
++        if attempt.is_ok() {
++            work.profile_phase_complete();
++        }
++        if let Some(profile) = work.setup_profile.take() {
++            let outcome = match &attempt {
++                Ok(_) => "built",
++                Err(AttemptError::Refused(_)) => "refused",
++                Err(AttemptError::Fatal(_)) => "fatal",
++            };
++            profile.emit(outcome, membership.nobs());
++        }
+         let (preconditioner, refusal) = match attempt {
+             Ok(preconditioner) => (Some(preconditioner), None),
+             Err(AttemptError::Refused(reason)) => (None, Some(reason)),
+@@ -575,6 +665,9 @@
+         let parallel = bound_for(true)?;
+         work.cmg(|team, _| Ok(team.is_some()))? && fits(memory, parents, parallel)
+     };
++    if let Some(profile) = &mut work.setup_profile {
++        profile.hierarchy_team = team_build;
++    }
+     let bound = if team_build { bound_for(true)? } else { serial };
+     let admitted = admit(memory, work, parents, bound)?;
+     #[cfg(test)]
+@@ -595,6 +688,7 @@
+         )
+     })?;
+     let hierarchy_seconds = started.elapsed().as_secs_f64();
++    work.profile_phase_complete();
+     // Keep an already-admitted conservative hierarchy bound. Exact storage
+     // reporting recursively deduplicates allocation owners and is quadratic.
+     // The parallel bound's extra contraction slot bank is transient: it is
+@@ -1249,6 +1343,12 @@
+         if let Some(mut emission) =
+             EdgeEmissionPlan::select(self, input_edges, max_rows, cutoff, sampling, work, memory)?
+         {
++            if let Some(profile) = &mut work.setup_profile {
++                profile.emission_tasks = emission.tasks;
++                profile.emission_chunk_len = emission.chunk_len;
++                profile.emission_chunks = input_edges / emission.chunk_len
++                    + usize::from(input_edges % emission.chunk_len != 0);
++            }
+             emission.emit(
+                 self.cache.as_mut().expect("admitted canonical rows"),
+                 sampler,
+@@ -1467,6 +1567,9 @@
+     } else {
+         0
+     };
++    if let Some(profile) = &mut work.setup_profile {
++        profile.cache_bytes = cache_bytes;
++    }
+     let sampler_bytes = if sampling.samples > 0 {
+         SampledTrees::allocation_bytes(max_rows)?
+     } else {
+@@ -1514,6 +1617,10 @@
+     let counts =
+         workers.census_bounded(cutoff, sampling, &mut labels, work, memory, census_parents)?;
+     let component_count = relabel_components(&mut labels, &mut sizes, work)?;
++    if let Some(profile) = &mut work.setup_profile {
++        profile.input_edges = counts.input_edges;
++    }
++    work.profile_phase_complete();
+     work.step(128)?;
+     let vertices = firms
+         .checked_add(counts.retained_workers)
+@@ -1534,6 +1641,7 @@
+         work,
+         memory,
+     )?;
++    work.profile_phase_complete();
+     let graph_bound = bytes::<[u64; 4]>(counts.input_edges)?
+         .checked_add(bytes::<f64>(vertices)?)
+         .and_then(|bytes| bytes.checked_add(128))
+@@ -1545,6 +1653,11 @@
+         graph_bound,
+     )?;
+     let graph = initial_laplacian_bounded(vertices, &edges, admitted, work)?;
++    if let Some(profile) = &mut work.setup_profile {
++        profile.vertices = graph.vertex_count();
++        profile.edges = graph.edge_count();
++    }
++    work.profile_phase_complete();
+     drop(edges);
+     drop(workers);
+     drop(sampler);
+@@ -1568,6 +1681,7 @@
+         sums: work.filled(component_elements, 0.0)?,
+         corrections: work.filled(component_elements, 0.0)?,
+     };
++    work.profile_phase_complete();
+     Ok((graph, components, weight_scale, cache_bytes as u128, counts))
+ }
+ 
+--- a/crates/fereg-core/src/fe/cmg_schur/bounded/team.rs
++++ b/crates/fereg-core/src/fe/cmg_schur/bounded/team.rs
+@@ -409,6 +409,9 @@
+                 }
+             }
+         }
++        if let Some(profile) = &mut work.setup_profile {
++            profile.census_tasks = table.len();
++        }
+         work.cmg(|team, cancelled| {
+             let stage = cmg::ControlledStage::admit(table.len(), 1)?;
+             stage
