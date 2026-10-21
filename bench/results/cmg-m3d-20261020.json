@@ -16471,8 +16471,9 @@
   "date": "2026-10-21",
   "host_nonregression_established": true,
   "reason": "Johannes explicitly accepted the disclosed final scope after independent review and fixed host qualification. Known installed-package failure and scientific/performance coverage limits remain recorded; acceptance does not relabel those outcomes.",
-  "next": "Finish authorized cleanup of completed task artifacts, then stop the whole program with no workflow monitor or active jobs.",
-  "authority": "Johannes: Ok, accept the current scope"
+  "next": "None for this workstream: implementation, independent review, qualification, scope acceptance and artifact cleanup are complete. No workflow monitor or active jobs remain.",
+  "authority": "Johannes: Ok, accept the current scope",
+  "program_complete": true
  },
  "cloud_handoff_snapshot": {
   "fereg_handoff": "375237f0d2c6ddc62576a0ce31c52f330a9975ff",
@@ -16518,6 +16519,29 @@
    "Historical failures and M3b/M3c timing uncertainties retain their recorded outcomes."
   ],
   "validation_reuse": "Acceptance changes documentation only. Reuse the reviewed runtime/native evidence after verifying unchanged production and artifact inputs; no runtime rerun is required.",
-  "completion": "M3a through M3d and their required review repairs are complete. Stop the implementation-and-review program after final artifact cleanup. No new representation redesign, timing campaign, main merge, release-package update or public two-FE activation is authorized by this acceptance."
+  "completion": "M3a through M3d and their required review repairs are complete. Final artifact cleanup is complete and the implementation-and-review program is stopped. No new representation redesign, timing campaign, main merge, release-package update or public two-FE activation is authorized by this acceptance."
+ },
+ "closure": {
+  "date": "2026-10-21",
+  "acceptance_commit": "1871abb7c0ba1d65c96f0f840b3b4a00cc23753e",
+  "program_complete": true,
+  "runtime_or_artifact_changes": false,
+  "cleanup": {
+   "local": "Repository cleanup removed four completed output entries, including the approximately 3.5 GB auto-routing task tree. A second dry run found zero removable entries; target retains approximately 11 GB of Cargo cache and the current replay baseline.",
+   "scc_completed_captures_removed": [
+    "cmg-m3d-20261020",
+    "cmg-m3c-20261020",
+    "cmg-m3b-20261020",
+    "cmg-m3a-20261019",
+    "cmg-m2-20261019",
+    "auto-routing-qualification-20261018"
+   ],
+   "verification": "No local build or estimation task was active. SCC qstat was empty before and after cleanup; all six exact, user-owned, non-symlink capture directories were verified absent after deletion, and the shared Rust tools remain.",
+   "preserved": "Compact committed evidence and source history, Cargo caches, current replay baseline, shared cluster tools, unrelated run directories, worktrees and automations."
+  },
+  "monitor": "No review-claude-cmg workflow automation remains. Two unrelated automation definitions are preserved.",
+  "documentation_validation": "JSON parsing, preserved evidence snapshots, referenced commits, M3d links, file size and git diff --check pass. Production comparison against the complete evidence commit verifies all 192 runtime modules and 58 artifact inputs unchanged.",
+  "tooling_failure_retained": "The first documentation production-identity check used system Python and failed on missing tomllib. Repeating that check with the existing Python 3.14 interpreter passed; this did not rerun runtime tests or measurements.",
+  "disposition": "Stop the whole implementation-and-review program. All applicable evidence and limitations remain as recorded; no new sampling, redesign, release update, main merge or public two-FE activation follows."
  }
 }

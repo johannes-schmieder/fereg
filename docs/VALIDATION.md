@@ -242,7 +242,8 @@ any job was created. Loading the declared Python 3.12.4 module resolved the last
 failure; no native calls or timing observations were repeated. A pre-freeze host
 substitution avoided an already occupied node and did not use timing outcomes.
 Commands, real exits, identities, compact observations and reviews are retained
-in `root_review` and `root_host_validation`; raw task captures are temporary.
+in `root_review` and `root_host_validation`; temporary raw task captures were
+removed at closure.
 
 On 2026-10-21, after discussion of the representation alternatives and their
 memory/construction tradeoffs, Johannes instructed: “Ok, accept the current
@@ -256,13 +257,22 @@ source remains `c283b3ff`, with the test-only addition `7a769eea` and CMG
 runtime execution.
 
 M3a through M3d and their required independent reviews and repairs are complete.
-The implementation-and-review program closes after final artifact cleanup,
-with no active workflow monitor or further sampling. The installed-package
+The implementation-and-review program is complete and stopped, with no active
+workflow monitor or further sampling. The installed-package
 failure, coverage limits and historical timing uncertainties above remain
 recorded. This acceptance does not authorize a representation redesign, main
 merge, release-package update or public two-FE activation. The compact
 [M3d result record](../bench/results/cmg-m3d-20261020.json) preserves the
-pre-acceptance decision alongside Johannes's acceptance.
+pre-acceptance decision alongside Johannes's acceptance (`1871abb7`).
+
+Final cleanup removed completed local task outputs (about 3.5 GB) and the six
+completed SCC capture directories for Auto qualification and CMG M2/M3a–M3d,
+after their compact evidence and acceptance were committed. No build or
+estimation tasks or SCC jobs were active. The cleanup dry run now finds zero
+removable entries; Cargo caches, the current replay baseline, shared cluster
+tools and unrelated worktrees/automations remain. Raw captures are no longer
+retained evidence; committed identities, observations, failures and summaries
+remain in the result records and Git history.
 
 ## CMG successor milestone 3c: parallel construction on the host team
 
