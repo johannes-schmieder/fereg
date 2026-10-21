@@ -666,7 +666,7 @@ resource, failure and cancellation behavior. Root will validate the stable
 implementation and measure it separately. No two-FE policy or public activation
 follows from these diagnostics.
 
-### Ninther pivot repair (native validation complete; comparison pending)
+### Ninther pivot repair (native validation complete; Mac comparison inconclusive)
 
 This is the one selected generic repair to the shared canonical raw-edge
 introsort, CMG `aaf6ec4c6b88b69c58024cc18f60e6abd5754a5a` (parent
@@ -676,7 +676,7 @@ documentation corrections; CMG source, manifest and lock bytes are unchanged. It
 reduction and every successful downstream scientific bit are unchanged.
 Pivot sampling and the resulting partition tree change work counts and query
 positions; the cadence, boundedness and worker-ceiling independence remain.
-No timing ran.
+No timing ran during the delegated repair.
 
 - **Rule (frozen).** Partitions of more than 40 records take Tukey's ninther
   (Bentley and McIlroy 1993). With `s = len / 8`, `last = len - 1` and
@@ -795,10 +795,37 @@ their original build evidence; new aliases cannot change either source revision.
 The Linux preflight has twelve scientific calls whose times are excluded.
 This protocol does not qualify public activation.
 
+The frozen Mac comparison completed all 900 calls with exact science,
+repeatability, cross-worker and resource checks passing. Of the 24 performance
+bounds (twelve cells against two references), 23 passed and one is inconclusive:
+weak-low at W8 against the accepted baseline. Its median candidate/reference
+ratio is 0.993812, but the upper bound for excess time beyond max(5%, 1 ms) is
++0.783814 ms (median -2.451567 ms, lower -3.579015 ms, twelve mirrored-block
+units). This neither establishes a regression nor satisfies the nonregression
+gate. The runner's `diagnostic_complete` status means the observations are
+complete; it does not mean all bounds passed.
+
+The independent high-effort review recomputed all 288 paired block scores and
+24 bounds and verified the frozen schedule, identities and scientific checks.
+The 100 process observations have a maximum gap of 5.283 seconds, with no
+recorded competing compute or observer error. Coverage is sampled, ordinary
+desktop noise is retained, and the per-cell bounds have no simultaneous
+24-comparison guarantee. No calls were retried or discarded. All 900 call
+objects, the full report and the review are retained in
+[`cmg-setup-pivot-mac-20261021.json`](../bench/results/cmg-setup-pivot-mac-20261021.json).
+
+Linux attribution build 8232539 and twelve-call scientific preflight 8232540
+completed with failed 0 / exit 0. The fresh Linux instrumented plugins passed
+native checks and were collected and independently rehashed. Linux's main
+comparison and both platforms' actual attribution measurements have not run.
+Dependent measurements, policy advancement and activation are held for
+Johannes's direction on the inconclusive result; the fixed Mac budget is
+exhausted and no additional sampling is authorized by this protocol.
+
 Limits: counted units are generic work, not cost or speed. The real
-contraction split pattern was not observed. The controlled comparison and new
-actual attribution measurements remain pending; the native checks do not
-establish a speed improvement or authorize activation. The record is
+contraction split pattern was not observed. Neither the native checks nor this
+inconclusive comparison establish a general speed improvement or authorize
+activation. The source/native repair record is
 [`cmg-pivot-repair-20261021.json`](../bench/results/cmg-pivot-repair-20261021.json).
 
 ## CMG successor milestone 3d: worker-independent team arithmetic
