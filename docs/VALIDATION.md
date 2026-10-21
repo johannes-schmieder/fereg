@@ -464,9 +464,9 @@ and all subsequent graphs are below the unchanged 65,536-edge parallel
 contraction floor. Its coarse sorts therefore use the changed serial
 heapsort-to-introsort path at every worker count. `hierarchy_team=true` does
 not imply parallel contraction, and the broad hierarchy phase also includes
-components, centering and terminal factorization. Further work should distinguish
-sort operation counts from hierarchy and finalization costs before changing
-production code; the current samples do not identify the responsible kernel.
+components, centering and terminal factorization. These samples did not identify
+the responsible kernel; the attribution exercise below separates sort operation
+counts from the other hierarchy and finalization costs.
 
 Operational failures remain separate from these measurements. Linux profile
 build `8227507` exited zero but reused the uninstrumented Cargo artifact because
@@ -493,8 +493,10 @@ recorded. Neither setup diagnosis nor these profiles activate public two-FE Auto
 This is maintained diagnostic tooling. It separates two explanations of the
 candidate's broader descriptive hierarchy/finalization phase: serial
 raw-edge sort operations, and the remaining hierarchy and finalization
-stages. There is no production change, timing, profile, SCC job, plugin build
-or replay. The work sits on root's `25a68ead`; CMG stays at `355d328a`.
+stages. Claude's tooling delivery changed no production code and ran no real
+workload timing, SCC job, plugin build or replay. It started at root's
+`25a68ead`; CMG stays at `355d328a`. Root's subsequent controlled diagnostic
+execution is recorded below.
 
 `bench/cmg_setup_attribution.py` instruments only private copies.
 
@@ -594,6 +596,75 @@ and the active Mac desktop receive process observation. There are no measurement
 retries or exclusions; a failed gate stops dependent calls. Count-build elapsed
 times are not performance evidence. Two sequential timer observations provide
 descriptive attribution only. The completed main comparison remains immutable.
+
+### Measured hierarchy attribution, 2026-10-21
+
+The diagnostic record retains every call, including warmups, with separate
+counts-only and timers-only artifacts. Fresh builds perform actual binary
+audit, ABI/load and injected-panic checks. The numerical oracle, selected hidden
+scientific fingerprint, route and hierarchy checks run before each call is
+accepted. Independent review reparses retained attribution logs and verifies
+fingerprints and traces; raw numerical arrays were removed after the maintained
+checks, so this later review does not independently recalculate their oracles.
+
+All 144 calls pass: 72 on Mac and 72 on Linux. Counts repeat exactly at W1/W4/W8
+and match across the two platforms. High-degree-weak's three serial contraction
+sorts show the following work:
+
+| Level | Input records | Accepted comparisons | Candidate comparisons | Candidate fallback calls / records |
+| --- | ---: | ---: | ---: | ---: |
+| 0 | 41,502 | 1,181,027 | 1,891,031 | 61 / 29,365 |
+| 1 | 27,634 | 751,998 | 1,136,978 | 50 / 18,583 |
+| 2 | 21,172 | 557,175 | 827,274 | 20 / 12,792 |
+| Total | 90,308 | 2,490,200 | 3,855,283 | 131 / 60,740 |
+
+The candidate classifies 2,410,573 records through partitions before falling
+back to heapsort on 67.3% of the total sort input. Comparisons increase 54.8%;
+logical swap calls increase from 1,324,608 to 3,189,945. These include self-swaps
+and do not measure memory traffic. Cancellation queries change only from 1,359
+to 1,368. The evidence identifies partition work followed by substantial
+fallback, but the precise bad split pattern is not recorded.
+
+Timer-only means of the two recorded calls, in milliseconds:
+
+| Platform and span, accepted → candidate | W1 | W4 | W8 |
+| --- | ---: | ---: | ---: |
+| Mac contraction sorting | 5.145 → 6.665 | 4.932 → 6.750 | 4.916 → 6.492 |
+| Mac complete hierarchy/finalization | 10.462 → 12.018 | 10.384 → 12.262 | 10.402 → 11.915 |
+| Linux contraction sorting | 16.940 → 27.891 | 25.786 → 32.875 | 26.427 → 33.764 |
+| Linux complete hierarchy/finalization | 30.649 → 43.076 | 47.462 → 54.367 | 47.414 → 55.087 |
+
+Mac terminal factorization remains near 4 ms; forest work and post-sort graph
+finalization show no comparable increase. Weak-low has one initial serial sort
+and no contractions: comparisons fall 31.0% with no fallback, yet its observed
+Mac sort time increases about 0.10–0.11 ms. Counts alone do not predict wall time.
+These sequential timer observations locate a useful repair target; they do not
+establish causality, a general speedup or qualification. Individual fallback
+sizes and per-operation costs are unavailable. The 13 Mac process observations
+have a maximum gap of 5.212 seconds, with no recorded competing compute or
+observer error; coverage is sampled and calls lack individual observation spans.
+Linux records 42 process observations (maximum gap 6.761 seconds), five all-queue
+censuses and two physical-host reservation checks, with no competing compute or
+observer error. Both independent reviewers verified the retained Linux evidence
+and the cross-platform counts. SCC build `8229404` and run `8229425` have complete
+0/0 accounting, taking 489 and 224 seconds respectively; the run used all 28
+physical cores of wo4 for the four artifacts.
+
+The initial preferred wp3 placement remained queued. A placement-only adjustment
+to idle wo4 first replaced the hard resource list; root caught this while the
+job was still queued and restored all frozen limits before execution. No calls
+ran under the incomplete request. The scheduler cause of the original wait was
+not established. Read-only inspection failures and a retention-script privacy
+guard false positive are also recorded; no measurement was retried or excluded.
+
+The next selected formulation is a fixed deterministic ninther pivot on large
+partitions, with median-of-three on small partitions and the current depth-limit
+heapsort fallback. This is a generic sort repair motivated by the observed work,
+not a demonstrated speed improvement. It must count added pivot work, retain the
+maximum unpolled-work bound and exact final edge order, and preserve host-team,
+resource, failure and cancellation behavior. Root will validate the stable
+implementation and measure it separately. No two-FE policy or public activation
+follows from these diagnostics.
 
 ## CMG successor milestone 3d: worker-independent team arithmetic
 
