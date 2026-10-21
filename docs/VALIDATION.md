@@ -863,6 +863,24 @@ passed, with a maximum process-sample gap of 6.920 seconds. No calls were
 retried or excluded. The full Linux comparison remains pending, and the Mac
 comparison's inconclusive bound remains unchanged.
 
+The first ordinary Linux replica, job 8233028 on `scc-wo4`, completed all
+180 calls with exact science, repeats and resource checks, failed 0 / exit 0,
+328 scheduler seconds and 1.199G maximum virtual memory. Its 65 process
+observations, seven queue censuses and two reservation checks passed; the
+maximum process gap was 6.710 seconds. Full observations are retained in
+[`cmg-setup-pivot-linux-part1-20261021.json`](../bench/results/cmg-setup-pivot-linux-part1-20261021.json).
+This is incomplete evidence: the five other submitted replicas remain queued,
+so no aggregate Linux comparison is assessed.
+
+Queued-only placement changes preserved the same job IDs, all resource limits,
+the six-distinct-host requirement and the fixed call budget. A later quota
+inspection explained the abandoned `wp3` placement: that host is restricted to
+two other users. An independent scheduler check found valid requests and idle,
+eligible public queue instances for the current five jobs, but could not
+establish their rejection reason. Current scheduler rejection details are
+disabled and the available schedule file is stale. The queued jobs remain
+intact; no measurements are resubmitted or added to address this delay.
+
 Limits: counted units are generic work, not cost or speed. The real
 contraction split pattern was not observed. Neither the native checks nor this
 inconclusive comparison establish a general speed improvement or authorize
