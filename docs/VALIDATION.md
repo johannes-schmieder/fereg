@@ -90,8 +90,8 @@ update consumed about 20 CPU seconds during the probe; the host was not idle,
 and this probe supplies no timing evidence. Audited hook hashes, startup files
 and subsequent removal of the exact temporary files were checked.
 
-Only the eight never-started replicas change to `mpi_28_tasks_per_node_u`.
-Their original job IDs, 24 task IDs, call budgets and limits are retained;
+Only the eight remaining replicas change to `mpi_28_tasks_per_node_u`.
+Their 24 task indices and call budgets are retained;
 four completed replicas retain all 12 original shard results and 2,520 calls.
 The amended plan differs only in the reviewed observer/report source hashes.
 The reporter binds both complete source versions, selects the expected plan
@@ -110,6 +110,18 @@ request's PE were rejected. Using the canonical hostname verified cleanup
 with existing hostname trust and without relaxing SSH verification. No
 qualification observation was discarded or repeated for these operational
 repairs, and the completed Mac qualification remains unchanged.
+
+The [launcher repair](../bench/results/two-fe-policy-gates-launch-repair-20261022.json)
+retains three subsequent pre-native failures: the amended archive's runner
+rejected the original archive's output directory. The failures occurred before
+output creation, source verification or native execution. An exact `target/tmp`
+link now gives both archives the same canonical task subtree; the containment
+guard and all 20 execution-source hashes remain unchanged. A read-only preflight
+in the actual SCC Python environment checks those hashes, the canonical paths
+and absence of all 24 pending task outputs before release. The 21 never-started
+tasks keep their original jobs; three replacement jobs keep the original hosts
+and task indices. Their recorded 4, 6 and 4 elapsed seconds are deducted from
+both application and scheduler budgets. No timing observation is resampled.
 
 Completed held-out captures and inputs were hash-checked against committed
 records before deletion, along with the completed original-build cache. Current
