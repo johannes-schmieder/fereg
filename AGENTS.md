@@ -132,6 +132,15 @@ performance bounds remain recorded as inconclusive. This milestone acceptance
 permits policy development; it does not waive the separate 42-cell qualification
 or exact public-versus-hidden activation gates.
 
+On 2026-10-22, after the first policy calibration selected no upgrades,
+Johannes authorized carefully revising the policy to minimize complete-command
+runtime. Conservatism and fewer builds are not independent objectives: missed
+beneficial upgrades count as decision errors alongside harmful upgrades.
+The empirical forecasts, global cost envelopes, margins and support rules may
+be revised using the retained calibration evidence and independent Pro/Fable
+review. Preserve the completed outcome, keep held-out validation separate,
+and retain the scientific, resource, transaction and activation gates above.
+
 Runtime changes require `./scripts/run_tests.sh` and mapped scientific/transaction
 checks. Build/package changes require focused tooling and native build/ABI checks.
 Prose-only documentation/instruction changes use link/reference checks and

@@ -154,8 +154,11 @@ descriptive calibration observations, not confidence bounds or unseen-input
 guarantees. No row, margin or coefficient was changed after this diagnosis.
 The coefficients are retained as evidence and have not been installed in the
 runtime. Held-out and final qualification runs have not started; public two-FE
-Auto remains disabled. A substantive decision on further development is needed
-before changing the formulation or measurement protocol.
+Auto remains disabled. Following this diagnosis, Johannes authorized careful
+revision to optimize complete-command speed, explicitly rejecting conservatism
+as an independent objective. The [revision objective](two_fe_auto_policy.md#revision-objective-2026-10-22)
+opens the empirical modeling choices to independent review while retaining this
+completed outcome and the separate validation and activation gates.
 
 Two operational defects are retained. Linux job 8243850 rejected an output
 directory outside the permitted task tree before creating outputs or making a

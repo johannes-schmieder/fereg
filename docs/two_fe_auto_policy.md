@@ -4,11 +4,30 @@ This successor develops against the accepted ninther setup at native source
 `1cdb225e2460e391ad38f856755ae3ea5efb2e5b` with CMG
 `fd77d98da1f74009b3e5b634e1944433b647a9b1`. Johannes accepted that setup with its
 reported timing uncertainties and authorized policy development on 2026-10-21.
-This document specifies the selected development formulation. The fixed
+This document records the first development formulation. The fixed
 calibration completed on 2026-10-22 and produced a valid encoded fit, but no
 builds among its 150 supported intervention observations. The coefficients
 remain evidence only; the runtime calibration is absent and the public default
 is disabled. See the [calibration assessment](VALIDATION.md#fixed-calibration-outcome-2026-10-22).
+
+## Revision objective (2026-10-22)
+
+Johannes authorized revising this formulation to minimize complete-command
+runtime. Conservatism is not a separate objective. The revision must assess
+both harmful upgrades and profitable upgrades missed through deferral,
+including setup, restart, actual application and reuse costs, and monitoring
+overhead. The first formulation's empirical margins, global cost envelopes,
+support bins and forecasts are open to replacement; they are not scientific
+safeguards or uncertainty guarantees.
+
+Independent Pro and Fable review precedes selection of one revised formulation.
+Reuse all valid calibration observations as development evidence, retaining
+missing labels and failures. Freeze the revised model and fitting procedure
+before evaluation, keep held-out data separate, and do not search until a pass.
+The scope, scientific/resource/transaction safeguards and separate 42-cell
+qualification and exact public-versus-hidden activation gates remain in force.
+The remainder of this document describes the completed first formulation;
+no revised policy or coefficients have yet been selected or installed.
 
 ## Scope and independent witnesses
 
