@@ -56,7 +56,7 @@ class RoutingRequests(unittest.TestCase):
             root = Path(tmp)
             source = root / 'source.case'
             source.write_bytes(case_bytes([b'estimate-ols', b'threads=1', b'solver=auto']))
-            for name in [*routing.PORTFOLIOS, *routing.INCREMENTAL, *routing.PREFIXES, 'overlap-h8-k1', routing.COMPACT_IT]:
+            for name in [*routing.PORTFOLIOS, *routing.INCREMENTAL, *routing.REMAINING, *routing.PREFIXES, 'overlap-h8-k1', routing.COMPACT_IT]:
                 target = root / (name + '.case')
                 routing.prepare(source, target, name, 4)
                 with target.open('rb') as stream:

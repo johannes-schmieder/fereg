@@ -7,6 +7,7 @@ mod routing;
 pub(crate) mod routing_break;
 pub(crate) mod routing_direct;
 mod routing_kernel;
+pub(crate) mod routing_remaining;
 pub(crate) use borrowed_map::three_fe_schur;
 mod categorical_request;
 mod certificate;

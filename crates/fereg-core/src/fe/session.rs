@@ -3,6 +3,7 @@
 //! Raw weights belong to the current call. A coefficient direction is a
 //! different mathematical product from the canonical within projection, so
 //! the two payloads may coexist without replacing the binding or its authority.
+use super::routing_remaining::{Demand, State as RemainingState};
 use super::{
     BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, MapConfig, MapGeometryGeneration,
     ReusableCategoricalMapAbsorber, ReusableMapAbsorber, ReusableMapCapacities,
@@ -383,6 +384,15 @@ impl<'a> FeSession<'a> {
             rhs,
             config.execution.threads.resolved(),
         )?;
+        if config
+            .absorb
+            .routing
+            .is_some_and(|preset| preset.remaining_mode().is_some())
+        {
+            bytes = bytes
+                .checked_add(RemainingState::shell_bytes())
+                .ok_or_else(|| allocation("remaining-cost parent admission overflows"))?;
+        }
         if config.absorb.retain_coefficients {
             let levels: Vec<_> = design.effects().iter().map(|e| e.n_levels()).collect();
             let product = crate::memory::estimate_fe_solver_memory(
@@ -759,6 +769,7 @@ impl<'a> FeSession<'a> {
         final_residual: bool,
         raw_final: bool,
     ) -> Result<CertifiedBorrowedMap> {
+        let mut remaining = self.remaining_state();
         self.project_ols_input(
             weights,
             values.into(),
@@ -766,6 +777,37 @@ impl<'a> FeSession<'a> {
             final_residual,
             raw_final,
             false,
+            remaining.as_mut().map(|state| (state, Demand::OneOff)),
+        )
+    }
+
+    /// A sidecar is bound to this retained categorical session by its caller.
+    /// Generic one-off projections use no speculative future demand.
+    pub(crate) fn remaining_state(&self) -> Option<RemainingState> {
+        self.categorical
+            .as_ref()?
+            .remaining_mode()
+            .map(RemainingState::new)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn project_ols_with_remaining(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: super::AbsorbConfig,
+        final_residual: bool,
+        raw_final: bool,
+        remaining: Option<(&mut RemainingState, Demand)>,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.project_ols_input(
+            weights,
+            values.into(),
+            config,
+            final_residual,
+            raw_final,
+            false,
+            remaining,
         )
     }
 
@@ -783,10 +825,20 @@ impl<'a> FeSession<'a> {
         values: crate::ols::OlsProjectionInput,
         config: super::AbsorbConfig,
         dense_norms: bool,
+        remaining: Option<(&mut RemainingState, Demand)>,
     ) -> Result<CertifiedBorrowedMap> {
-        self.project_ols_input(weights, values, config, false, false, dense_norms)
+        self.project_ols_input(
+            weights,
+            values,
+            config,
+            false,
+            false,
+            dense_norms,
+            remaining,
+        )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn project_ols_binding(
         &mut self,
         weights: BorrowedMapWeights<'_>,
@@ -795,6 +847,7 @@ impl<'a> FeSession<'a> {
         final_residual: bool,
         raw_final: bool,
         dense_norms: bool,
+        remaining: Option<&mut RemainingState>,
     ) -> Result<CertifiedBorrowedMap> {
         if let Some(p) = self.cmg.as_mut() {
             let values = values.into_values();
@@ -821,7 +874,7 @@ impl<'a> FeSession<'a> {
                 dense_norms,
             )
         } else if let Some(p) = self.categorical.as_mut() {
-            p.absorb_ols(weights, values, config.map, final_residual)
+            p.absorb_ols_with_remaining(weights, values, config.map, final_residual, remaining)
         } else if let Some(p) = self.general.as_mut() {
             let values = values.into_values();
             let generation = MapGeometryGeneration {
@@ -868,6 +921,7 @@ impl<'a> FeSession<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn project_ols_input(
         &mut self,
         weights: BorrowedMapWeights<'_>,
@@ -876,6 +930,7 @@ impl<'a> FeSession<'a> {
         final_residual: bool,
         raw_final: bool,
         dense_norms: bool,
+        remaining: Option<(&mut RemainingState, Demand)>,
     ) -> Result<CertifiedBorrowedMap> {
         config.validate_cmg_schur_options()?;
         let admission = config;
@@ -883,6 +938,23 @@ impl<'a> FeSession<'a> {
             config.solver_memory_budget = stored.solver_memory_budget;
             config.routing = stored.routing;
         }
+        let mut remaining = remaining
+            .filter(|_| {
+                self.categorical
+                    .as_ref()
+                    .is_some_and(|p| p.remaining_mode().is_some())
+            })
+            .map(|(state, demand)| {
+                state.begin(
+                    demand,
+                    values.ncols(),
+                    self.categorical.as_ref().unwrap().max_rhs(),
+                    config.map.tolerance,
+                    final_residual,
+                );
+                state
+            });
+        let _measurement_scope = remaining.as_ref().map(|state| state.measurement_scope());
         if final_residual {
             self.close_routing_attempt();
         }
@@ -893,6 +965,7 @@ impl<'a> FeSession<'a> {
             final_residual,
             raw_final,
             dense_norms,
+            remaining.as_deref_mut(),
         );
         if result.is_err() || final_residual || !self.ols_chunked_norms {
             self.close_routing_attempt();
@@ -933,7 +1006,15 @@ impl<'a> FeSession<'a> {
             report.solver_workspace_peak.max(self.peak)
         };
         report.setup_seconds += std::mem::take(&mut self.setup_seconds);
-        if config.routing.is_some() && crate::diagnostics::solver_trace_enabled() {
+        let trace_started = remaining
+            .as_ref()
+            .and_then(|state| state.measurement_started());
+        if config.routing.is_some()
+            && (crate::diagnostics::solver_trace_enabled()
+                || remaining
+                    .as_ref()
+                    .is_some_and(|state| state.trace_enabled()))
+        {
             let memory_bytes = (report.solver_workspace_peak.bytes().unwrap_or(0) as u128)
                 .checked_add(config.solver_memory_budget.map_or(0, |b| b.execution_bytes))
                 .ok_or_else(|| allocation("routing diagnostic memory total overflows"))?;
@@ -949,6 +1030,9 @@ impl<'a> FeSession<'a> {
                 u8::from(report.certified())
             ));
         }
+        if let Some(state) = remaining.as_deref_mut() {
+            state.exclude_measurement(trace_started);
+        }
         let result = match coefficients {
             Some(coefficients) => CertifiedBorrowedMap::from_certified_parts_with_coefficients(
                 values,
@@ -957,11 +1041,15 @@ impl<'a> FeSession<'a> {
             )?,
             None => CertifiedBorrowedMap::from_certified_parts(values, report)?,
         };
-        if norms.is_empty() {
-            Ok(result)
+        let result = if norms.is_empty() {
+            result
         } else {
-            result.with_residual_norms(norms)
+            result.with_residual_norms(norms)?
+        };
+        if let Some(state) = remaining {
+            state.complete();
         }
+        Ok(result)
     }
 }
 

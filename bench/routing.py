@@ -19,6 +19,8 @@ PORTFOLIO_V1 = 'portfolio-v1'
 PORTFOLIO_UNSEEDED = 'portfolio-unseeded'
 PORTFOLIOS = (PORTFOLIO_V1, PORTFOLIO_UNSEEDED)
 INCREMENTAL = ('incremental-many', 'incremental-two')
+REMAINING = ('two-remaining-v1', 'two-remaining-never',
+             'two-remaining-force16', 'two-remaining-force32')
 COMPACT_IT = 'it-coefficients'
 
 
@@ -54,6 +56,14 @@ def sha(value):
 def policy(arm):
     if arm == 'baseline':
         return None
+    if arm in REMAINING:
+        base = policy(PORTFOLIO_UNSEEDED)
+        checkpoint = {'two-remaining-v1': 0, 'two-remaining-never': 2**64 - 1,
+                      'two-remaining-force16': 16, 'two-remaining-force32': 32}[arm]
+        return {**base, 'family': 'two', 'injection': 'routing_' + arm.replace('-', '_'),
+                'decision': 'remaining-cost-v1', 'observation_cadence': 8,
+                'first_decision': 16, 'calibration_control': arm != REMAINING[0],
+                'two_fe': {**base['two_fe'], 'checkpoint': checkpoint}}
     if arm in INCREMENTAL:
         return {**policy(PORTFOLIO_UNSEEDED), 'family': arm.removeprefix('incremental-'),
                 'injection': 'routing_' + arm.replace('-', '_')}

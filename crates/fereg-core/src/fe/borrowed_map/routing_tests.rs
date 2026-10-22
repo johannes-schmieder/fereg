@@ -2,6 +2,45 @@ use super::super::{cmg_schur::CmgSchurPreconditioner, routing::schur_iteration_w
 use super::*;
 use crate::fe::{LevelIndex, RoutingPreset, ValidatedBorrowedInterceptSource};
 
+#[path = "remaining_tests.rs"]
+pub(super) mod remaining_tests;
+
+/// Cached Rayon workers can execute another test's installed action while
+/// joining work. Isolate worker-local observations, keeping complete witnesses
+/// and child panic output; the deadline bounds a broken join, not solver work.
+fn isolated_routing_witness(marker: &str, test: &str) -> bool {
+    if std::env::var_os(marker).is_some() {
+        return false;
+    }
+    let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+        .env(marker, "1")
+        .args([test, "--exact", "--test-threads=1", "--nocapture"])
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .spawn()
+        .unwrap_or_else(|error| panic!("cannot start isolated witness {test}: {error}"));
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                assert!(status.success(), "isolated witness {test} failed: {status}");
+                return true;
+            }
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            result => {
+                let killed = child.kill();
+                let reaped = child.wait();
+                panic!(
+                    "isolated witness {test} timed out or failed to wait: \
+                     poll={result:?}, kill={killed:?}, reap={reaped:?}"
+                );
+            }
+        }
+    }
+}
+
 /// Every occupied cell contains equal-weight opposite pairs. Its exact weighted
 /// projection is therefore known without running another iterative solver.
 struct PairedGraph {
@@ -682,6 +721,8 @@ fn finite_and_portfolio_checkpoints_install_the_same_bounded_hierarchy() {
                 2,
                 16,
                 config().max_iterations,
+                false,
+                None,
                 &mut setup_seconds,
                 &mut solve_started,
             )
@@ -1019,6 +1060,12 @@ fn routing_restart_has_independent_weighted_disconnected_science_and_repeats() {
 
 #[test]
 fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths() {
+    if isolated_routing_witness(
+        "FEREG_PORTFOLIO_BOUNDED_RHS_CHILD",
+        "fe::borrowed_map::routing_tests::portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths",
+    ) {
+        return;
+    }
     let witness = PairedGraph::new();
     let mut across_workers: Option<DenseMatrix> = None;
     for workers in [1, 4] {
@@ -1120,6 +1167,12 @@ fn portfolio_bounded_hierarchy_certifies_and_reuses_one_setup_across_rhs_widths(
 
 #[test]
 fn incremental_two_injection_builds_installs_and_certifies_uncapped_cmg() {
+    if isolated_routing_witness(
+        "FEREG_INCREMENTAL_TWO_UNCAPPED_CHILD",
+        "fe::borrowed_map::routing_tests::incremental_two_injection_builds_installs_and_certifies_uncapped_cmg",
+    ) {
+        return;
+    }
     // The hidden `routing_incremental_two` injection on an exactly-two-FE
     // Auto/Auto fit resolves to the synchronous portfolio, which has no
     // construction-work cap after M3a.
@@ -1143,7 +1196,7 @@ fn incremental_two_injection_builds_installs_and_certifies_uncapped_cmg() {
     let mut reference: Option<DenseMatrix> = None;
     for workers in [1, 4] {
         for budget in budgets {
-            let residual =
+            let residual = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
                     .install(|| {
                         TWO_FE_ROUTING_BUILD_AT.set(0);
@@ -1192,7 +1245,18 @@ fn incremental_two_injection_builds_installs_and_certifies_uncapped_cmg() {
                         witness.check(&result, &[0]);
                         result.residualized().clone()
                     })
-                    .unwrap();
+                    .unwrap()
+            }))
+            .unwrap_or_else(|failure| {
+                // Re-emit on the test caller: a cached worker's panic capture
+                // can belong to the test that originally constructed its pool.
+                let message = failure
+                    .downcast_ref::<String>()
+                    .map(String::as_str)
+                    .or_else(|| failure.downcast_ref::<&str>().copied())
+                    .unwrap_or("non-string panic payload");
+                panic!("h16 CMG witness workers={workers}, budget={budget:?}: {message}");
+            });
             if let Some(reference) = &reference {
                 for (actual, expected) in residual.as_slice().iter().zip(reference.as_slice()) {
                     assert!((actual - expected).abs() < 1e-9);
@@ -1202,6 +1266,38 @@ fn incremental_two_injection_builds_installs_and_certifies_uncapped_cmg() {
             }
         }
     }
+}
+
+#[test]
+fn routing_worker_local_observation_is_overwritten_by_nested_action() {
+    if isolated_routing_witness(
+        "FEREG_ROUTING_TLS_REENTRANCY_CHILD",
+        "fe::borrowed_map::routing_tests::routing_worker_local_observation_is_overwritten_by_nested_action",
+    ) {
+        return;
+    }
+    let team = crate::ThreadTeam::new(crate::ThreadConfig::from_requested(1, true).unwrap());
+    team.install(|| {
+        let worker = std::thread::current().id();
+        let previous = TWO_FE_ROUTING_BUILD_AT.replace(16);
+        // W1 forces the scoped child to run on this worker at the scope join;
+        // there is no sleep, race-to-arrive assumption or scheduler lottery.
+        rayon::scope(|scope| {
+            scope.spawn(|_| {
+                team.install(|| {
+                    assert_eq!(std::thread::current().id(), worker);
+                    assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 16);
+                    // A reused projection resets the observation without a new
+                    // constructor. It leaves zero on the shared worker.
+                    TWO_FE_ROUTING_BUILD_AT.set(0);
+                })
+                .unwrap();
+            });
+        });
+        assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 0);
+        TWO_FE_ROUTING_BUILD_AT.set(previous);
+    })
+    .unwrap();
 }
 
 #[test]
@@ -1558,6 +1654,12 @@ fn assert_independent_rhs_workers(
 
 #[test]
 fn portfolio_sixteen_independent_rhs_cover_matched_cold_and_reused_routes() {
+    if isolated_routing_witness(
+        "FEREG_PORTFOLIO_INDEPENDENT_RHS_CHILD",
+        "fe::borrowed_map::routing_tests::portfolio_sixteen_independent_rhs_cover_matched_cold_and_reused_routes",
+    ) {
+        return;
+    }
     let witness = PairedGraph::independent_columns();
     let sixteen: Vec<_> = (0..16).collect();
     let sequences = [

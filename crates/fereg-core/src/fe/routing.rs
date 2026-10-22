@@ -31,6 +31,7 @@ enum PrefixPlan {
     PortfolioUnseeded,
     IncrementalMany,
     IncrementalTwo,
+    RemainingTwo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,6 +55,12 @@ impl std::fmt::Display for RoutingPreset {
                 PrefixPlan::PortfolioUnseeded => "routing_portfolio_unseeded",
                 PrefixPlan::IncrementalMany => "routing_incremental_many",
                 PrefixPlan::IncrementalTwo => "routing_incremental_two",
+                PrefixPlan::RemainingTwo => match self.checkpoint {
+                    0 => "routing_two_remaining_v1",
+                    16 => "routing_two_remaining_force16",
+                    32 => "routing_two_remaining_force32",
+                    _ => "routing_two_remaining_never",
+                },
             });
         }
         match self.ablation {
@@ -144,6 +151,36 @@ impl RoutingPreset {
         }
     }
 
+    /// Successor two-FE policy. Historical fixed-checkpoint arms stay separate.
+    pub fn remaining_two() -> Self {
+        Self {
+            checkpoint: 0,
+            prefix: Some(PrefixPlan::RemainingTwo),
+            ..Self::portfolio_unseeded()
+        }
+    }
+
+    /// Prospective matched-state calibration controls for the same policy.
+    pub fn remaining_two_control(checkpoint: Option<usize>) -> Result<Self> {
+        if checkpoint.is_some_and(|age| !matches!(age, 16 | 32)) {
+            return Err(invalid_argument(
+                "invalid remaining-cost calibration control",
+            ));
+        }
+        Ok(Self {
+            checkpoint: checkpoint.unwrap_or(usize::MAX),
+            ..Self::remaining_two()
+        })
+    }
+
+    pub(crate) fn remaining_mode(self) -> Option<super::routing_remaining::Mode> {
+        (self.prefix == Some(PrefixPlan::RemainingTwo)).then_some(match self.checkpoint {
+            0 => super::routing_remaining::Mode::Predict,
+            16 | 32 => super::routing_remaining::Mode::Force(self.checkpoint),
+            _ => super::routing_remaining::Mode::Never,
+        })
+    }
+
     /// Resolve family selectors before allocating any optional preparation.
     /// None means the qualified incumbent; all older experiments pass through.
     pub(crate) fn resolve_ols(
@@ -155,18 +192,27 @@ impl RoutingPreset {
         let eligible = match self.prefix {
             Some(PrefixPlan::IncrementalMany) => categorical_effects.is_some_and(|n| n >= 3),
             Some(PrefixPlan::IncrementalTwo) => categorical_effects == Some(2),
+            Some(PrefixPlan::RemainingTwo) => categorical_effects == Some(2),
             _ => return Some(self),
         };
         (eligible
             && solver == super::FeSolverKind::Auto
             && preconditioner == super::LsmrPreconditioner::Auto)
-            .then(Self::portfolio_unseeded)
+            .then(|| {
+                if self.remaining_mode().is_some() {
+                    self
+                } else {
+                    Self::portfolio_unseeded()
+                }
+            })
     }
 
     pub(crate) fn portfolio(self) -> bool {
         matches!(
             self.prefix,
-            Some(PrefixPlan::PortfolioV1 | PrefixPlan::PortfolioUnseeded)
+            Some(
+                PrefixPlan::PortfolioV1 | PrefixPlan::PortfolioUnseeded | PrefixPlan::RemainingTwo
+            )
         )
     }
 
@@ -195,7 +241,8 @@ impl RoutingPreset {
             PrefixPlan::PortfolioV1 => CategoricalPrefix::Map4,
             PrefixPlan::PortfolioUnseeded
             | PrefixPlan::IncrementalMany
-            | PrefixPlan::IncrementalTwo => CategoricalPrefix::None,
+            | PrefixPlan::IncrementalTwo
+            | PrefixPlan::RemainingTwo => CategoricalPrefix::None,
         })
     }
 
@@ -330,6 +377,26 @@ mod tests {
                 "routing_incremental_two",
                 false,
             ),
+            (
+                RoutingPreset::remaining_two(),
+                "routing_two_remaining_v1",
+                false,
+            ),
+            (
+                RoutingPreset::remaining_two_control(None).unwrap(),
+                "routing_two_remaining_never",
+                false,
+            ),
+            (
+                RoutingPreset::remaining_two_control(Some(16)).unwrap(),
+                "routing_two_remaining_force16",
+                false,
+            ),
+            (
+                RoutingPreset::remaining_two_control(Some(32)).unwrap(),
+                "routing_two_remaining_force32",
+                false,
+            ),
         ] {
             assert_eq!(preset.to_string(), name);
             for effects in [None, Some(0), Some(1), Some(2), Some(3), Some(7)] {
@@ -354,7 +421,11 @@ mod tests {
                             && effects.is_some_and(|n| if many { n >= 3 } else { n == 2 });
                         assert_eq!(
                             preset.resolve_ols(solver, preconditioner, effects),
-                            eligible.then(RoutingPreset::portfolio_unseeded)
+                            eligible.then(|| if preset.remaining_mode().is_some() {
+                                preset
+                            } else {
+                                RoutingPreset::portfolio_unseeded()
+                            })
                         );
                         // Historical hidden experiments keep their existing contract.
                         let old = RoutingPreset::portfolio_unseeded();

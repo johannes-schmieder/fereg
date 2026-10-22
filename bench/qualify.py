@@ -49,7 +49,8 @@ ALPHA = Fraction(1, 40)
 SOURCE_MODULES = ('qualify_scc', 'block_host', 'native', 'native_io', 'routing',
                   'routing_cases', 'routing_oracle', 'routing_science', 'cmgschur',
                   'cmgschur_cases', 'time_exact', 'replay_plugins', 'replay_psd',
-                  'replay_bias_reference', 'replay_cmg_polish', 'replay_ols_reference', 'cmg_setup')
+                  'replay_bias_reference', 'replay_cmg_polish', 'replay_ols_reference', 'cmg_setup',
+                  'two_fe_policy')
 
 
 def execution_sources():
@@ -163,17 +164,26 @@ def resolve(manifest_path, path):
 def diagnostic_mode(manifest):
     if 'diagnostic' not in manifest:
         return False
-    import cmg_setup
-    cmg_setup.validate(manifest)
+    diagnostic_tool(manifest).validate(manifest)
     return True
+
+
+def diagnostic_tool(manifest):
+    import two_fe_policy
+    import cmg_setup
+    return two_fe_policy if manifest.get('diagnostic') == two_fe_policy.MODE else cmg_setup
 
 
 def comparison_pairs(manifest):
     if diagnostic_mode(manifest):
-        import cmg_setup
-        return cmg_setup.comparisons(manifest)
+        return diagnostic_tool(manifest).comparisons(manifest)
     return tuple((role, 'candidate') for role in ('original', 'incumbent', 'hidden')
                  if role in manifest['artifacts'])
+
+
+def comparison_key(manifest, reference, target):
+    return (reference + '->' + target if manifest.get('diagnostic') == 'two-fe-remaining-calibration-v1'
+            else reference)
 
 
 def minimum_hosts_per_cell(manifest):
@@ -237,7 +247,10 @@ def plan(config_path, output, *, configuration=None):
         require(set(artifact) == {'path', 'revision', 'build', 'request', 'families'}, 'invalid artifact ' + role)
         require(isinstance(artifact['revision'], str) and artifact['revision'], 'record artifact revision')
         require(isinstance(artifact['build'], str) and artifact['build'], 'record compiler and build settings')
-        require(artifact['request'] in {'auto', 'preserve', *routing.INCREMENTAL}, 'unsupported request')
+        require(artifact['request'] in {'auto', 'preserve', *routing.INCREMENTAL, *routing.REMAINING}, 'unsupported request')
+        require(artifact['request'] not in routing.REMAINING[1:] or
+                value.get('diagnostic') == 'two-fe-remaining-calibration-v1',
+                'forced/never controls belong only to the frozen calibration')
         require(isinstance(artifact['families'], list) and set(artifact['families']) <= {'many', 'two'},
                 'invalid artifact numerical families')
         artifact['path'] = bind(artifact['path'])
@@ -252,7 +265,10 @@ def plan(config_path, output, *, configuration=None):
         require(value['scope'] == 'exact' or artifacts['candidate']['request'] != 'preserve',
                 'changed Auto qualification requires an explicit auto or incremental request')
         if value['scope'] != 'exact' and artifacts['candidate']['request'] == 'auto':
-            require('hidden' in artifacts and artifacts['hidden']['request'] == 'incremental-' + value['scope'],
+            allowed_hidden = {'incremental-' + value['scope']}
+            if value['scope'] == 'two':
+                allowed_hidden.add(routing.REMAINING[0])
+            require('hidden' in artifacts and artifacts['hidden']['request'] in allowed_hidden,
                     'public activation requires the selected hidden artifact')
     value['harness'] = bind(value['harness'])
     seen = set()
@@ -266,8 +282,7 @@ def plan(config_path, output, *, configuration=None):
         source = (config_path.parent / item['input']).resolve(strict=True)
         item['input'] = bind(item['input'])
         if diagnostic:
-            import cmg_setup
-            cmg_setup.validate_case(source, item, mode=value['diagnostic'])
+            diagnostic_tool(value).validate_case(source, item, mode=value['diagnostic'])
         with source.open('rb') as stream:
             shape, arguments = case_header(stream)
         require(not any(a.startswith((b'inject=', b'break_marker_token=')) for a in arguments),
@@ -303,6 +318,8 @@ def plan(config_path, output, *, configuration=None):
                 and sorted(workers) == [1, 4], 'routing qualification requires all 42 workload cells')
         require(value['blocks'] % 2 == 0 and value['blocks'] >= (6 if value['platform'] == 'Darwin' else 2),
                 'qualification requires balanced blocks and enough independent measurements')
+    if value.get('diagnostic') == 'two-fe-remaining-calibration-v1':
+        diagnostic_tool(value).validate_panel(value, output)
     value.update(schema=1, files=files, warmups=1,
                  execution_sources={name: digest(path) for name, path in execution_sources().items()})
     if diagnostic:
@@ -667,8 +684,7 @@ def artifact_aliases(manifest):
 
 def compare_artifacts(manifest, meta, snapshots):
     if diagnostic_mode(manifest):
-        import cmg_setup
-        return cmg_setup.compare_science(manifest, meta, snapshots)
+        return diagnostic_tool(manifest).compare_science(manifest, meta, snapshots)
     candidate = snapshots['candidate']
     for role in ('original', 'incumbent', 'hidden'):
         if role not in snapshots:
@@ -889,6 +905,8 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
 
                     def call(role, name, traced):
                         nonlocal phase
+                        calibration = manifest.get('diagnostic') == 'two-fe-remaining-calibration-v1'
+                        traced = traced or calibration
                         check_files()
                         if host is not None:
                             host.check()
@@ -898,6 +916,8 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                                *[key + '=1' for key in THREAD_ENV]]
                         if traced:
                             env += ['FEREG_SOLVER_TRACE=1']
+                        if calibration:
+                            env += ['FEREG_PHASE_TIMING=1']
                         if item['memory_limit_bytes'] is not None:
                             env += ['FEREG_MEMORY_LIMIT_BYTES=' + str(item['memory_limit_bytes'])]
                         command = [*env, str(resolve(manifest_path, manifest['harness'])),
@@ -923,12 +943,13 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                             if eligible:
                                 family = next(f for f in artifact['families'] if affected(meta, [f]))
                                 if diagnostic_mode(manifest):
-                                    import cmg_setup
-                                    resources_detail = cmg_setup.resource_diagnostics(
+                                    resources_detail = diagnostic_tool(manifest).resource_diagnostics(
                                         log.read_text(), role, artifact['revision'], family=family)
                                 else:
-                                    resources_detail = science.resource_diagnostics(log.read_text(), 'incremental-' + family,
-                                        False, {}, expected_preset='routing_incremental_' + family)
+                                    request = artifact['request']
+                                    selected = request if request in routing.REMAINING else 'incremental-' + family
+                                    resources_detail = science.resource_diagnostics(log.read_text(), selected,
+                                        False, {}, expected_preset=routing.policy(selected)['injection'])
                                 detail.update(resources_detail)
                         detail.update(execution=role, maxrss_bytes=resources['maxrss_bytes'],
                                       started_monotonic_ns=native_started, finished_monotonic_ns=native_finished)
@@ -965,7 +986,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                     cell['reference_files'] = {role: saved[alias] for role, alias in aliases.items()}
                     if policy:
                         for prior_cell in result['cases'] + result['discarded_attempts']:
-                            if prior_cell is cell or prior_cell['family'] != cell['family']:
+                            if prior_cell is cell or not same_source_case(prior_cell, cell):
                                 continue
                             require(prior_cell['worker_signatures'] == cell['worker_signatures'], 'retained cross-worker decisions changed')
                             root = prior_root if prior_cell.get('reused') else directory
@@ -984,7 +1005,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                             columns.unlink()
                             columns.with_suffix('').unlink()
                             (work / f'block-{block}-{number}.log').unlink()
-                        row['comparisons'] = {role: score(row['calls'], aliases[role], aliases[target])
+                        row['comparisons'] = {comparison_key(manifest, role, target): score(row['calls'], aliases[role], aliases[target])
                                               for role, target in comparison_pairs(manifest)}
                         row['status'] = 'complete'
                         persist()
@@ -1040,6 +1061,11 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
     return result
 
 
+def same_source_case(left, right):
+    """Worker agreement belongs to one actual input, not its generator family."""
+    return left['id'].rsplit('-t', 1)[0] == right['id'].rsplit('-t', 1)[0]
+
+
 def accounting(text, host, *, normalize=False):
     values = {}
     for line in text.splitlines():
@@ -1064,6 +1090,7 @@ def report(manifest_path, output, accounting_dir=None):
     minimum_hosts = None
     prior_bindings = {}
     verified_files = {}
+    calibration_result_sha256 = None
 
     def verify_file(path, expected):
         path = Path(path).absolute()
@@ -1100,7 +1127,12 @@ def report(manifest_path, output, accounting_dir=None):
         for shard in range(manifest['shards']):
             path = output / f'run-{replica}-{shard}/results.json'
             try:
+                before = stamp(path)
                 result = read(path)
+                if manifest.get('diagnostic') == 'two-fe-remaining-calibration-v1':
+                    calibration_result_sha256 = digest(path)
+                    require(stamp(path) == before, 'calibration result changed while hashing')
+                    source_stamps[path] = before
                 require(result['manifest_sha256'] == routing.identity(manifest)
                         and (result['replica'], result['shard']) == (replica, shard)
                         and result['status'] == 'complete', 'missing, changed or failed shard')
@@ -1245,7 +1277,7 @@ def report(manifest_path, output, accounting_dir=None):
                                 'timed repeat lost independent scientific agreement')
                         for role, target in comparison_pairs(manifest):
                             value = score(row['calls'], cell['aliases'][role], cell['aliases'][target])
-                            comparisons.setdefault((cell['id'], role), []).append(
+                            comparisons.setdefault((cell['id'], comparison_key(manifest, role, target)), []).append(
                                 (physical_host(result['hostname'], minimum_hosts is not None), value))
                 results.append(result)
             except (OSError, ValueError, KeyError, TypeError) as error:
@@ -1282,8 +1314,10 @@ def report(manifest_path, output, accounting_dir=None):
         require(all(resolve(manifest_path, name) == p for name, p in prior_bindings.items()), 'prior evidence alias changed')
     except (OSError, ValueError) as error:
         errors.append(str(error))
-    if diagnostic and manifest['platform'] == 'Linux' and len({r['hostname'].split('.')[0] for r in results}) != 6:
-        errors.append('diagnostic requires six distinct accounted physical hosts')
+    if diagnostic and manifest['platform'] == 'Linux':
+        required_hosts = 1 if manifest['diagnostic'] == 'two-fe-remaining-calibration-v1' else 6
+        if len({r['hostname'].split('.')[0] for r in results}) != required_hosts:
+            errors.append(f'diagnostic requires {required_hosts} distinct accounted physical hosts')
     complete = not errors and bool(rows)
     passed = complete and all(row['status'] == 'passed' for row in rows)
     summary = {'schema': 1, 'manifest_sha256': routing.identity(manifest), 'platform': manifest['platform'],
@@ -1300,6 +1334,10 @@ def report(manifest_path, output, accounting_dir=None):
                        diagnostic=manifest['diagnostic'], activation_qualified=False,
                        target=comparison_pairs(manifest)[0][1],
                        next_action='Review this bounded diagnostic; no activation qualification or automatic sampling.')
+        if manifest['diagnostic'] == 'two-fe-remaining-calibration-v1':
+            summary.pop('target')
+            summary['targets'] = [target for _, target in comparison_pairs(manifest)]
+            summary['calibration_result_sha256'] = calibration_result_sha256
     if 'min_distinct_hosts_per_cell' in manifest:
         summary['min_distinct_hosts_per_cell'] = manifest['min_distinct_hosts_per_cell']
     if 'continuation' in manifest:

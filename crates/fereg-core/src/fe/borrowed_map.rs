@@ -13,6 +13,7 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 
 use super::map::ReusableMapCapacities;
 use super::routing::PortfolioChoice;
+use super::routing_remaining::State as RemainingState;
 
 mod categorical_prefix;
 mod irons_tuck;
@@ -1178,11 +1179,17 @@ impl AutoSchurRoute {
         stride: usize,
         iterations: usize,
         iteration_limit: usize,
+        remaining_granted: bool,
+        remaining: Option<&mut RemainingState>,
         setup_seconds: &mut f64,
         solve_started: &mut Instant,
     ) -> Result<Option<super::cmg_schur::CmgSchurPreconditioner>> {
         if self.setup.attempted
-            || iterations < self.preset.checkpoint()
+            || if self.preset.remaining_mode().is_some() {
+                !remaining_granted
+            } else {
+                iterations < self.preset.checkpoint()
+            }
             || iterations >= iteration_limit
         {
             return Ok(None);
@@ -1211,9 +1218,20 @@ impl AutoSchurRoute {
         )?;
         self.peak = self.peak.max(built.peak);
         let elapsed = started.elapsed();
+        let mut remaining = remaining;
+        if let Some(state) = remaining.as_deref_mut() {
+            state.built(elapsed, built.preconditioner.is_some());
+        }
         *setup_seconds += elapsed.as_secs_f64();
         *solve_started += elapsed;
-        if crate::diagnostics::solver_trace_enabled() {
+        let trace_started = remaining
+            .as_ref()
+            .and_then(|state| state.measurement_started());
+        if crate::diagnostics::solver_trace_enabled()
+            || remaining
+                .as_ref()
+                .is_some_and(|state| state.trace_enabled())
+        {
             // An installed build appends its stored hierarchy metadata to this
             // same record; a refused or failed attempt carries none.
             let hierarchy = built
@@ -1226,6 +1244,9 @@ impl AutoSchurRoute {
                 "FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint={}|samples={}|iterations={iterations}|installed={}|refusal={:?}{hierarchy}",
                 self.preset.checkpoint(), self.preset.samples(),
                 u8::from(built.preconditioner.is_some()), built.refusal));
+        }
+        if let Some(state) = remaining {
+            state.exclude_measurement(trace_started);
         }
         Ok(built.preconditioner)
     }
@@ -1488,6 +1509,10 @@ impl Drop for PcgPilotGroupScratch<'_> {
 }
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
+    pub(crate) fn remaining_mode(&self) -> Option<super::routing_remaining::Mode> {
+        self.auto_route.as_ref()?.preset.remaining_mode()
+    }
+
     pub(super) fn request_auto_routing(
         &mut self,
         preset: super::RoutingPreset,
@@ -1975,7 +2000,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
-        let result = self.absorb(weights, values.into(), config, false);
+        let result = self.absorb(weights, values.into(), config, false, None);
         if !result.as_ref().is_ok_and(|fit| fit.report().certified()) {
             self.reject_ppml_topology();
         }
@@ -1991,7 +2016,18 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
         final_residual: bool,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values, config, !final_residual)
+        self.absorb(weights, values, config, !final_residual, None)
+    }
+
+    pub(crate) fn absorb_ols_with_remaining(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: crate::ols::OlsProjectionInput,
+        config: MapConfig,
+        final_residual: bool,
+        remaining: Option<&mut RemainingState>,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.absorb(weights, values, config, !final_residual, remaining)
     }
 
     fn try_direct_route(
@@ -2098,6 +2134,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: crate::ols::OlsProjectionInput,
         config: MapConfig,
         refine_ols: bool,
+        mut remaining: Option<&mut RemainingState>,
     ) -> Result<CertifiedBorrowedMap> {
         validate_config(config)?;
         let rhs_count = values.ncols();
@@ -2192,6 +2229,17 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             &mut solve_started,
         )? {
             return Ok(result);
+        }
+
+        if let (Some(state), Some(route), Some(graph)) = (
+            remaining.as_deref_mut(),
+            self.auto_route.as_mut(),
+            self.two_fe_pcg.as_ref(),
+        ) {
+            if !route.setup.attempted && graph.cmg_schur.is_none() {
+                let bytes = state.prepare_observations(route.request.budget)?;
+                route.peak = route.peak.max(SolverWorkspacePeak::from_bytes(bytes)?);
+            }
         }
 
         if let (Some(route), Some(graph)) = (self.auto_route.as_mut(), self.two_fe_pcg.as_mut()) {
@@ -2448,6 +2496,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 1.0,
                 setup_seconds,
                 solve_started,
+                remaining,
             );
         }
 
@@ -2553,6 +2602,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             SchurWorkLimit::Checkpoint(cap),
             self.retain_coefficients,
             None,
+            None,
         )?;
         cost.solve_seconds = solve_started.elapsed().as_secs_f64();
         match attempt {
@@ -2607,6 +2657,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         pilot_contraction: f64,
         setup_seconds: f64,
         solve_started: Instant,
+        remaining: Option<&mut RemainingState>,
     ) -> Result<CertifiedBorrowedMap> {
         let graph = self
             .two_fe_pcg
@@ -2641,6 +2692,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             },
             self.retain_coefficients,
             self.auto_route.as_mut(),
+            remaining.map(|state| (state, self.max_level_members)),
         );
         match result? {
             SchurAttempt::Certified(result) => Ok(result),
@@ -2684,6 +2736,7 @@ fn absorb_two_fe_pcg_reusing(
     work_limit: SchurWorkLimit,
     retain_coefficients: bool,
     mut auto_route: Option<&mut AutoSchurRoute>,
+    mut remaining: Option<(&mut RemainingState, usize)>,
 ) -> Result<SchurAttempt> {
     let trace = crate::diagnostics::phase_timing_enabled();
     let mut operator_seconds = 0.0;
@@ -2846,6 +2899,9 @@ fn absorb_two_fe_pcg_reusing(
                 }
             }
             if let Some(preconditioner) = graph.cmg_schur.as_mut() {
+                let startup = remaining
+                    .as_ref()
+                    .and_then(|(state, _)| state.startup_started());
                 preconditioner.apply_batch(
                     &graph.residual,
                     &mut graph.direction,
@@ -2854,6 +2910,9 @@ fn absorb_two_fe_pcg_reusing(
                     scale_components.then_some(graph.component_scales.as_slice()),
                     None,
                 )?;
+                if let Some((state, _)) = remaining.as_mut() {
+                    state.startup_finished(startup);
+                }
                 crate::kernels::dispatch!(
                     hardware,
                     column_products(&graph.residual, &graph.direction, stride, residual_square)
@@ -2922,11 +2981,38 @@ fn absorb_two_fe_pcg_reusing(
         }
         let mut reconstruct = active_rhs == 0;
         let mut route_restart = false;
+        let epoch_start = iterations;
+        if let Some((state, _)) = remaining.as_mut() {
+            state.initialized();
+        }
+        observe_remaining(
+            remaining.as_mut(),
+            0,
+            active_rhs_state,
+            recurrence_tolerance,
+            pcg_iteration_limit.saturating_sub(iterations),
+            design,
+            graph,
+            certificate_workspace,
+            stride,
+            weights.values.is_some(),
+            scale_components,
+            &[
+                values.as_slice(),
+                residual_square,
+                next_residual_square,
+                direction_projection,
+                ratio,
+            ],
+        )?;
         let initialization_seconds = phase_start.elapsed().as_secs_f64();
         while !reconstruct && iterations < pcg_iteration_limit {
             crate::interrupt::checkpoint()?;
             let op_start = Instant::now();
             graph.apply_schur(design, weights, rhs_count, stride)?;
+            if let Some((state, _)) = remaining.as_mut() {
+                state.step(active_rhs);
+            }
             // Count actual operator lanes, including converged zeros. Only the
             // PPML owner exposes this scalar as a later-call routing hint.
             graph.ppml_operator_rhs_count = graph
@@ -3207,6 +3293,30 @@ fn absorb_two_fe_pcg_reusing(
             if let Some(route) = auto_route.as_deref_mut().filter(|_| !cmg_schur) {
                 // A ready recurrence leaves this loop for its original-design
                 // certificate before reaching the grant decision.
+                let granted = if !route.setup.attempted {
+                    observe_remaining(
+                        remaining.as_mut(),
+                        iterations - epoch_start,
+                        active_rhs_state,
+                        recurrence_tolerance,
+                        pcg_iteration_limit - iterations,
+                        design,
+                        graph,
+                        certificate_workspace,
+                        stride,
+                        weights.values.is_some(),
+                        scale_components,
+                        &[
+                            values.as_slice(),
+                            residual_square,
+                            next_residual_square,
+                            direction_projection,
+                            ratio,
+                        ],
+                    )?
+                } else {
+                    false
+                };
                 if let Some(preconditioner) = route.checkpoint(
                     design,
                     weights,
@@ -3214,6 +3324,8 @@ fn absorb_two_fe_pcg_reusing(
                     stride,
                     iterations,
                     pcg_iteration_limit,
+                    granted,
+                    remaining.as_mut().map(|(state, _)| &mut **state),
                     &mut setup_seconds,
                     &mut solve_started,
                 )? {
@@ -3363,6 +3475,9 @@ fn absorb_two_fe_pcg_reusing(
                 }
                 TWO_FE_CORRECTIONS.set(TWO_FE_CORRECTIONS.get() + 1);
                 recurrence_tolerance = tighter;
+                if let Some((state, _)) = remaining.as_mut() {
+                    state.correction()?;
+                }
                 // Certification rejected this frozen iterate. Honor the same
                 // logical epoch before spending another native iteration. The
                 // residual is already reconstructed; initialize its correction
@@ -3375,6 +3490,8 @@ fn absorb_two_fe_pcg_reusing(
                         stride,
                         iterations,
                         pcg_iteration_limit,
+                        false,
+                        None,
                         &mut setup_seconds,
                         &mut solve_started,
                     )? {
@@ -3409,6 +3526,9 @@ fn absorb_two_fe_pcg_reusing(
             coefficients.as_mut(),
             config.symmetric,
         )?;
+        if let Some((state, _)) = remaining.as_mut() {
+            state.step(rhs_count);
+        }
         if iteration % config.check_every == 0 || iteration == config.max_iterations {
             let certificate = certify(
                 design,
@@ -3796,6 +3916,109 @@ fn finish_ready_two_fe_pcg_rhs(
         }
     }
     Ok(completed)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn observe_remaining(
+    remaining: Option<&mut (&mut RemainingState, usize)>,
+    age: usize,
+    active: &[f64],
+    target: f64,
+    allowance: usize,
+    design: &BorrowedInterceptFeDesign<'_>,
+    graph: &TwoFePcgWorkspace,
+    workspace: &BorrowedMapWorkspace,
+    stride: usize,
+    weighted: bool,
+    scaled: bool,
+    state_banks: &[&[f64]],
+) -> Result<bool> {
+    let Some((state, max_members)) = remaining else {
+        return Ok(false);
+    };
+    if !state.observes(age) {
+        return Ok(false);
+    }
+    let workers =
+        crate::parallel::with_cmg_execution(|team| team.map_or(1, |team| team.worker_ceiling()))?;
+    state.observe(
+        age,
+        active,
+        target,
+        allowance,
+        [
+            design.nobs(),
+            graph.left_weights.len(),
+            graph.right_weights.len(),
+            *max_members,
+        ],
+        workers,
+        weighted,
+        scaled,
+        |rhs| {
+            let mut maximum = 0.0_f64;
+            for level in 0..graph.right_weights.len() {
+                crate::interrupt::row_checkpoint(level)?;
+                // Exactly the readiness expression below, including its
+                // original-weight and zero-reference conventions. This scan
+                // reads all groups instead of stopping at the first miss.
+                let denominator = graph.right_weights[level];
+                let scaled_denominator = denominator
+                    / if scaled {
+                        graph.component_scales[level]
+                    } else {
+                        1.0
+                    };
+                let mean = graph.residual[level * stride + rhs] / scaled_denominator;
+                let reference = workspace.reference_norms[rhs];
+                let relative = if reference == 0.0 {
+                    if mean == 0.0 {
+                        0.0
+                    } else {
+                        f64::INFINITY
+                    }
+                } else {
+                    (mean.abs() / reference) * denominator.sqrt().max(1.0)
+                };
+                if !relative.is_finite() {
+                    return Ok(f64::NAN);
+                }
+                maximum = maximum.max(relative);
+                #[cfg(test)]
+                routing_tests::remaining_tests::observer_entry();
+            }
+            Ok(maximum)
+        },
+        || {
+            use std::hash::{Hash, Hasher};
+            let mut hash = std::collections::hash_map::DefaultHasher::new();
+            // A drift fingerprint, bound to this Rust/toolchain and source.
+            // Inputs, dimensions and action identities are bound separately.
+            for bank in [
+                graph.left_weights.as_slice(),
+                graph.right_weights.as_slice(),
+                &graph.left_rhs,
+                &graph.left_work,
+                &graph.solution,
+                &graph.residual,
+                &graph.direction,
+                &graph.operator,
+                &graph.component_scales,
+                active,
+                &workspace.reference_norms,
+            ]
+            .into_iter()
+            .chain(state_banks.iter().copied())
+            {
+                bank.len().hash(&mut hash);
+                for (entry, value) in bank.iter().enumerate() {
+                    crate::interrupt::row_checkpoint(entry)?;
+                    value.to_bits().hash(&mut hash);
+                }
+            }
+            Ok(hash.finish())
+        },
+    )
 }
 
 fn two_fe_pcg_rhs_ready(

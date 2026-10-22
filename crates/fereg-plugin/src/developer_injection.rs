@@ -46,6 +46,21 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             }
             (Some(RoutingPreset::portfolio_v1()), false)
         }
+        "routing_two_remaining_v1"
+        | "routing_two_remaining_never"
+        | "routing_two_remaining_force16"
+        | "routing_two_remaining_force32" => {
+            if solver != FeSolverKind::Auto {
+                return Err(syntax("hidden routing injection requires solver(auto)"));
+            }
+            let preset = match stage {
+                "routing_two_remaining_v1" => RoutingPreset::remaining_two(),
+                "routing_two_remaining_force16" => RoutingPreset::remaining_two_control(Some(16))?,
+                "routing_two_remaining_force32" => RoutingPreset::remaining_two_control(Some(32))?,
+                _ => RoutingPreset::remaining_two_control(None)?,
+            };
+            (Some(preset), false)
+        }
         "routing_incremental_many" | "routing_incremental_two" => {
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
@@ -172,6 +187,10 @@ mod tests {
         for preset in [
             RoutingPreset::incremental_many(),
             RoutingPreset::incremental_two(),
+            RoutingPreset::remaining_two(),
+            RoutingPreset::remaining_two_control(None).unwrap(),
+            RoutingPreset::remaining_two_control(Some(16)).unwrap(),
+            RoutingPreset::remaining_two_control(Some(32)).unwrap(),
         ] {
             let name = preset.to_string();
             assert_eq!(

@@ -26,6 +26,48 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Two-FE remaining-cost policy foundation (2026-10-21)
+
+Johannes accepted the ninther setup for policy development. Independent GPT Pro
+and Claude Fable proposals and cross-critique selected the formulation in
+[the development specification](two_fe_auto_policy.md). The hidden successor
+now carries actual Fast/Low/final demand, bounded completed-action history,
+admitted workers and cancellable progress observations into checked fixed-point
+cost arithmetic. Its predictive coefficients remain absent, so prediction
+defers; public two-FE Auto remains disabled. Never/force16/force32 controls and
+disjoint economic labels support the frozen prospective calibration only.
+
+The [compact development evidence](../bench/results/two-fe-policy-development-20261021.json)
+retains commands, exits, source/log hashes and all failed attempts. The complete
+source-only suite passes, including 315 general Python tests, seven portable
+harness tests, Rust workspace/FFI checks, isolated allocator audits, Clippy,
+fuzz compilation, complexity and mock bridge guards. All 366 benchmark-tool
+tests pass. The full standard entrypoint still fails its known installed-plugin
+binding; no installed or release artifact was changed. Source validation is not
+package admission or native qualification.
+
+Four real callsite mutations are killed: omitted correction reset, omitted
+observer cancellation poll, omitted parent-memory charge and a refreshed
+iteration budget at handoff. Sources were restored byte-for-byte and all six
+focused witnesses pass. The observer witness interrupts after 2,048 inspected
+entries following a sticky request at entry 1,025; the restart witness retains
+17 PCG plus five MAP iterations under the existing total cap. Independent
+analytic projections and exact memory boundaries remain in the tests.
+
+A prior broad run failed the old h16 test without printing its internal
+assertion. A separate deterministic witness demonstrates that nested actions
+on the cached worker pool can overwrite a worker-local test observation.
+Four affected witnesses now run in bounded child processes with complete
+assertions, inherited failure output and kill/reap on timeout. The later focused
+and full passes do not erase the failure or prove its exact historical cause.
+
+The reviewed complexity increase is 1,398 core production lines and 15 plugin
+lines; no new function/file size violation is introduced. The sidecar and labels
+are scoped to sanctioned successor injections. Actual native builds,
+old/outside-scope replay, Stata transactions, the 1,728-call calibration,
+held-out validation and the separate fixed 42-cell qualification are still
+required before any public activation or performance claim.
+
 ## Measured CMG setup and two-FE upgrade strategy (2026-10-21)
 
 The initial diagnostic compares accepted source `3f9d54ee` with the pre-refactor

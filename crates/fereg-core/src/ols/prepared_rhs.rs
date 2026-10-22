@@ -1753,6 +1753,7 @@ mod tests {
                                         OlsProjectionInput::Prepared(rhs),
                                         config.absorb,
                                         false,
+                                        None,
                                     )
                                     .unwrap();
                                 let mut ordinary = FeSession::for_ols(&prepared, weights, config)

@@ -1,0 +1,3057 @@
+{
+  "accepted_native_revision": "1cdb225e2460e391ad38f856755ae3ea5efb2e5b",
+  "base_revision": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+  "checks": [
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "bench/tests"
+      ],
+      "diagnosis": "352 discovered tests; two import failures because private test environment lacked psutil.",
+      "elapsed_s": 31.24408195912838,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "policy-bench-suite-1",
+      "log_sha256": "70c60cbcba51c97a5e7dea7c438a4d7e7896f17287a54e8239cb185f915c4c9d",
+      "python_test_counts": [
+        352
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "3b9e3cc96889b8c4ec63e8e2a64061224c1751ca4dacba81cb88131ac1deb192",
+      "tracked_diff_before_sha256": "3b9e3cc96889b8c4ec63e8e2a64061224c1751ca4dacba81cb88131ac1deb192"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "bench/tests"
+      ],
+      "diagnosis": "360 discovered tests; two import failures because private test environment lacked matplotlib.",
+      "elapsed_s": 34.193511915858835,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "policy-bench-suite-2",
+      "log_sha256": "3629f8b9013d87ca264e1d11512833b7a10b44857d0a59987055f0e8493a93ac",
+      "python_test_counts": [
+        360
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa",
+      "tracked_diff_before_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "bench/tests"
+      ],
+      "elapsed_s": 35.00655154208653,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-bench-suite-3",
+      "log_sha256": "c68b8d97df356d273b4bc91bec1adce61cf6414a32a3a3f18ceb22b919292b95",
+      "python_test_counts": [
+        366
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": "6f4c3d304172b9f09b9a397cb2e25f9a30c254b609de4b09bef3ac9bc37cfbba",
+      "source_vector_before_sha256": "6f4c3d304172b9f09b9a397cb2e25f9a30c254b609de4b09bef3ac9bc37cfbba",
+      "tracked_diff_after_sha256": "fb0b8eb7d0ec4a4a28aadadd0d1764d61c4043dbd5ec5cdea9d631664512f1ea",
+      "tracked_diff_before_sha256": "fb0b8eb7d0ec4a4a28aadadd0d1764d61c4043dbd5ec5cdea9d631664512f1ea"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "test_two_fe_policy",
+        "test_two_fe_policy_labels",
+        "test_two_fe_policy_outcomes",
+        "test_two_fe_policy_calibrate",
+        "test_two_fe_policy_fit"
+      ],
+      "elapsed_s": 0.16275550005957484,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-calibration-matching-1",
+      "log_sha256": "b19c25b50d52718fd9a4c2a9b4c5bb9d9ffc2c1da8d33a077095e3adfaf5ed20",
+      "python_test_counts": [
+        46
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "1ce91802c93138e03603f5df004381139c14a54d5ae2b02974e5d07aaa3432b8",
+      "tracked_diff_before_sha256": "1ce91802c93138e03603f5df004381139c14a54d5ae2b02974e5d07aaa3432b8"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "test_two_fe_policy"
+      ],
+      "diagnosis": "Test fixture omitted required platform metadata; corrected the fixture.",
+      "elapsed_s": 0.09032108308747411,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "policy-calibration-parser-1",
+      "log_sha256": "fe73f1ea1d48cc8cb13a087f785fd46ea9cc2a9b6ede2217f156c676aed01518",
+      "python_test_counts": [
+        5
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "72c1d279891830ff93c2e02c52af22f9c2d2602a5ee5a2810c69ef61235a123e",
+      "tracked_diff_before_sha256": "72c1d279891830ff93c2e02c52af22f9c2d2602a5ee5a2810c69ef61235a123e"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "test_two_fe_policy"
+      ],
+      "elapsed_s": 0.09365708287805319,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-calibration-parser-2",
+      "log_sha256": "d03ce458f2a6cd2b4f27522f3aacad03ce1872c028853507c3ad02ca621bdcad",
+      "python_test_counts": [
+        5
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "72c1d279891830ff93c2e02c52af22f9c2d2602a5ee5a2810c69ef61235a123e",
+      "tracked_diff_before_sha256": "72c1d279891830ff93c2e02c52af22f9c2d2602a5ee5a2810c69ef61235a123e"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "test_two_fe_policy_runner"
+      ],
+      "elapsed_s": 12.761415749788284,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-calibration-runner-1",
+      "log_sha256": "43404bae31964eb6821363648151e290f510fb218b8c3ecb84ccec7ecf436ccd",
+      "python_test_counts": [
+        4
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "3b9e3cc96889b8c4ec63e8e2a64061224c1751ca4dacba81cb88131ac1deb192",
+      "tracked_diff_before_sha256": "3b9e3cc96889b8c4ec63e8e2a64061224c1751ca4dacba81cb88131ac1deb192"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "fe::borrowed_map::routing_tests::remaining_tests::remaining_correction_restarts_observations_not_work",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "diagnosis": "Expected discriminating mutation failure: Omitted actual correction notification: epoch 0 instead of 1 despite cumulative installation at 24.",
+      "elapsed_s": 70.8727274169214,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": "1.85.1"
+      },
+      "exit": 101,
+      "label": "policy-callsite-mutant-correction-1",
+      "log_sha256": "e65f5423f37f54ae581e5fc6741d55f126583764d225ba59ca253d0d62cac797",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 1,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 1,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "3a9075287c67410c678745690ac46d189300bd938796eb1d2f4ba4a72defb6a2",
+      "tracked_diff_before_sha256": "3a9075287c67410c678745690ac46d189300bd938796eb1d2f4ba4a72defb6a2"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "fe::borrowed_map::routing_tests::remaining_tests::remaining_observer_scan_honors_sticky_inner_break",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "diagnosis": "Expected discriminating mutation failure: Omitted actual row poll: full scan returned Ok(false) despite sticky cancellation after entry 1025.",
+      "elapsed_s": 70.29916166700423,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": "1.85.1"
+      },
+      "exit": 101,
+      "label": "policy-callsite-mutant-observer-1",
+      "log_sha256": "f6cf97d2063e0bf0314a10799bd6dbdb1bfb723c818211b6925060ada21e9457",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 1,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 1,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "1a58e9619ca90398209dd5a55799bb9f7b5b55e168cd703b2555be10aeba9c2c",
+      "tracked_diff_before_sha256": "58c08f8f50cd75da88bba3a0cada5a09e14fd6013ee88b10f23c100f00393397"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "fe::borrowed_map::routing_tests::remaining_tests::remaining_restart_keeps_native_iteration_cap",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "diagnosis": "Expected discriminating mutation failure: Reset native iterations at hierarchy handoff: 87 operator-RHS visits instead of 51.",
+      "elapsed_s": 70.6018618750386,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": "1.85.1"
+      },
+      "exit": 101,
+      "label": "policy-callsite-mutant-restart-1",
+      "log_sha256": "cd18dbfce6ebec850725ea458ad9072d02fcdf470f21ba0d552fe9835c30a773",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 1,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 1,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        }
+      ],
+      "source_vector_after_sha256": "cc96f05bd30b76649a1b31df47916a139313727b40b1dba3d2b88b0906db97a1",
+      "source_vector_before_sha256": "cc96f05bd30b76649a1b31df47916a139313727b40b1dba3d2b88b0906db97a1",
+      "tracked_diff_after_sha256": "ece17712e1fe6f115996570fff098b06d6ab0324e533d8b4667940d73887f41c",
+      "tracked_diff_before_sha256": "ece17712e1fe6f115996570fff098b06d6ab0324e533d8b4667940d73887f41c"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "fe::routing_remaining::integration_tests::real_session_remaining_shell_has_an_exact_parent_admission_boundary",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "diagnosis": "Expected discriminating mutation failure: Omitted shell admission charge: owner incorrectly admitted below the exact required parent boundary.",
+      "elapsed_s": 72.61385870818049,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": "1.85.1"
+      },
+      "exit": 101,
+      "label": "policy-callsite-mutant-shell-1",
+      "log_sha256": "5963badc4ac8363509e38f54994cd9cebd36b2ffd982360c61a0282053ff2972",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 1,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "037e04f7a0f94ee08525e829449d09aab51d441089737f76b2576df42cc5802f",
+      "tracked_diff_before_sha256": "037e04f7a0f94ee08525e829449d09aab51d441089737f76b2576df42cc5802f"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "remaining_",
+        "--",
+        "--nocapture"
+      ],
+      "elapsed_s": 71.80606299987994,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": "1.85.1"
+      },
+      "exit": 0,
+      "label": "policy-callsite-restored-1",
+      "log_sha256": "9b9b3ed89386d6de3abb51d5472b2f1a1917fe724aedd58c5ef87fd9c32dcbba",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 6
+        }
+      ],
+      "source_vector_after_sha256": "6f4c3d304172b9f09b9a397cb2e25f9a30c254b609de4b09bef3ac9bc37cfbba",
+      "source_vector_before_sha256": "6f4c3d304172b9f09b9a397cb2e25f9a30c254b609de4b09bef3ac9bc37cfbba",
+      "tracked_diff_after_sha256": "fb0b8eb7d0ec4a4a28aadadd0d1764d61c4043dbd5ec5cdea9d631664512f1ea",
+      "tracked_diff_before_sha256": "fb0b8eb7d0ec4a4a28aadadd0d1764d61c4043dbd5ec5cdea9d631664512f1ea"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "remaining_",
+        "--",
+        "--nocapture"
+      ],
+      "diagnosis": "New test used a nonexistent into_design API; corrected to the existing prepared borrowed binding.",
+      "elapsed_s": 8.693420583149418,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": "1.85.1"
+      },
+      "exit": 101,
+      "label": "policy-callsite-unit-1",
+      "log_sha256": "229c3cf29101c8ecb627b40e429422655d37e73abbbb2911f5db3291aa14f404",
+      "python_test_counts": [],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa",
+      "tracked_diff_before_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "remaining_",
+        "--",
+        "--nocapture"
+      ],
+      "elapsed_s": 72.63237541611306,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": "1.85.1"
+      },
+      "exit": 0,
+      "label": "policy-callsite-unit-2",
+      "log_sha256": "9690681e266240159865f8f9203ca47d9c68ef27c046fa36ed0ae4615dbe8013",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 6
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa",
+      "tracked_diff_before_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "remaining_",
+        "--",
+        "--nocapture"
+      ],
+      "elapsed_s": 70.22781858406961,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": "1.85.1"
+      },
+      "exit": 0,
+      "label": "policy-callsite-unit-3",
+      "log_sha256": "a5d3a058831a4ded18741af8979ff724a826c179093d0bcd5334cb45904ae622",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 6
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "9291db85d558b1a0a5170a4e88c872f186c4f728ba171d228b6b6f70b2282262",
+      "tracked_diff_before_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "test_campaign",
+        "test_campaign_report"
+      ],
+      "diagnosis": "Two import failures because private test environment lacked ReportLab.",
+      "elapsed_s": 15.793924084166065,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "policy-campaign-dependency-retest-1",
+      "log_sha256": "4d9a44428e23c4361987afd407427140e1309b36b3b030fa36e1b60a1541f1c3",
+      "python_test_counts": [
+        8
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "58c08f8f50cd75da88bba3a0cada5a09e14fd6013ee88b10f23c100f00393397",
+      "tracked_diff_before_sha256": "9291db85d558b1a0a5170a4e88c872f186c4f728ba171d228b6b6f70b2282262"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "test_campaign",
+        "test_campaign_report"
+      ],
+      "elapsed_s": 1.9375582500360906,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-campaign-dependency-retest-2",
+      "log_sha256": "18b24642530ef025734cac26219feeade82a53129975d534198f55f81a9e713e",
+      "python_test_counts": [
+        14
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": "a235cbb240e18c206062c6ceb91b61a6314bf08f4f91f14df15c9c3996d086c2",
+      "source_vector_before_sha256": "a235cbb240e18c206062c6ceb91b61a6314bf08f4f91f14df15c9c3996d086c2",
+      "tracked_diff_after_sha256": "037e04f7a0f94ee08525e829449d09aab51d441089737f76b2576df42cc5802f",
+      "tracked_diff_before_sha256": "037e04f7a0f94ee08525e829449d09aab51d441089737f76b2576df42cc5802f"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "fe::borrowed_map::routing_tests::incremental_two_injection_builds_installs_and_certifies_uncapped_cmg",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "elapsed_s": 40.15249975002371,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-existing-incremental-two-isolated-1",
+      "log_sha256": "13599c807e5883a2f278e1504a871767b94ce8a1802d6ab46b747aa860c77a76",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "3b9e3cc96889b8c4ec63e8e2a64061224c1751ca4dacba81cb88131ac1deb192",
+      "tracked_diff_before_sha256": "3b9e3cc96889b8c4ec63e8e2a64061224c1751ca4dacba81cb88131ac1deb192"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "test_two_fe_policy_fit"
+      ],
+      "elapsed_s": 0.07560758315958083,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-fit-unit-1",
+      "log_sha256": "ecb2481fe4fc37e099494fd2eac56322269cfb68a6d7b32b8bde0a57efe94e8a",
+      "python_test_counts": [
+        17
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "a59b0fb41099dbe33ad0a4bf414c4b75287979b011de98cfbc050cadc1474435",
+      "tracked_diff_before_sha256": "a59b0fb41099dbe33ad0a4bf414c4b75287979b011de98cfbc050cadc1474435"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "./scripts/run_tests.sh"
+      ],
+      "diagnosis": "315 Python tests passed, then existing installed-plugin binding failed. Release artifacts were not changed; package admission remains failed.",
+      "elapsed_s": 20.211294708075002,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "policy-full-suite-1",
+      "log_sha256": "d14b257011f33b5be3cc349b0d1417034649ee5992513c7ef7e55e796c802e2c",
+      "python_test_counts": [
+        315
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "a59b0fb41099dbe33ad0a4bf414c4b75287979b011de98cfbc050cadc1474435",
+      "tracked_diff_before_sha256": "a59b0fb41099dbe33ad0a4bf414c4b75287979b011de98cfbc050cadc1474435"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "test_routing",
+        "test_qualify",
+        "test_cmg_setup"
+      ],
+      "elapsed_s": 16.386621207930148,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-harness-existing-1",
+      "log_sha256": "cdd2f97bd45ccee15c77054640e8862e14ee7a78c2b98c40f916ec4b9468195a",
+      "python_test_counts": [
+        100
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "72c1d279891830ff93c2e02c52af22f9c2d2602a5ee5a2810c69ef61235a123e",
+      "tracked_diff_before_sha256": "72c1d279891830ff93c2e02c52af22f9c2d2602a5ee5a2810c69ef61235a123e"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "unittest",
+        "test_two_fe_policy_inputs"
+      ],
+      "elapsed_s": 0.26582037517800927,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-input-unit-1",
+      "log_sha256": "cba92c10f5ae697aa32a1f94eb2c738b4126fa5111edc0ba02734dc1aaa1902f",
+      "python_test_counts": [
+        13
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "1ce91802c93138e03603f5df004381139c14a54d5ae2b02974e5d07aaa3432b8",
+      "tracked_diff_before_sha256": "1ce91802c93138e03603f5df004381139c14a54d5ae2b02974e5d07aaa3432b8"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "check",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "-p",
+        "fereg-plugin"
+      ],
+      "elapsed_s": 7.053377958014607,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-lifecycle-check-1",
+      "log_sha256": "cc41f80e13266b77e825a1f3540f6e83bd24d2b643757176a53f90bcb3f2abed",
+      "python_test_counts": [],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "b6351f9b5e44b8c71cf1a734d33aa5b1f450513c7b1581d83dba4d8c90f145e0",
+      "tracked_diff_before_sha256": "b6351f9b5e44b8c71cf1a734d33aa5b1f450513c7b1581d83dba4d8c90f145e0"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "check",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "-p",
+        "fereg-plugin"
+      ],
+      "elapsed_s": 4.322311209049076,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-remaining-check-2",
+      "log_sha256": "4efad1305762514535cc6f500123273b2111244dd3a25b3a14149ff88d06a279",
+      "python_test_counts": [],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "72c1d279891830ff93c2e02c52af22f9c2d2602a5ee5a2810c69ef61235a123e",
+      "tracked_diff_before_sha256": "72c1d279891830ff93c2e02c52af22f9c2d2602a5ee5a2810c69ef61235a123e"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "fe::routing_remaining",
+        "--",
+        "--test-threads=1"
+      ],
+      "diagnosis": "Test expected the wrong existing unsupported-request error variant; changed expectation to InvalidArgument without changing production behavior.",
+      "elapsed_s": 71.93628429202363,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 101,
+      "label": "policy-remaining-integration-1",
+      "log_sha256": "383191b25eab43d1442266da449302bd155ee6d5a5356b124e7f7ebb97934771",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 1,
+          "filtered": 1378,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 31
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "72c1d279891830ff93c2e02c52af22f9c2d2602a5ee5a2810c69ef61235a123e",
+      "tracked_diff_before_sha256": "72c1d279891830ff93c2e02c52af22f9c2d2602a5ee5a2810c69ef61235a123e"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--no-default-features",
+        "--profile",
+        "ci",
+        "--lib",
+        "fe::routing_remaining",
+        "--",
+        "--test-threads=1"
+      ],
+      "elapsed_s": 71.1109034998808,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-remaining-integration-2",
+      "log_sha256": "8d45c4c1352bb76c0e2af84e0c0ad9215e629e107df052134d959d7171fa1cee",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1378,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 32
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "a59b0fb41099dbe33ad0a4bf414c4b75287979b011de98cfbc050cadc1474435",
+      "tracked_diff_before_sha256": "a59b0fb41099dbe33ad0a4bf414c4b75287979b011de98cfbc050cadc1474435"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "routing_remaining",
+        "--lib"
+      ],
+      "diagnosis": "A retained routing test call lacked the new successor flag/sidecar arguments; migrated to false/None.",
+      "elapsed_s": 12.229717958020046,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 101,
+      "label": "policy-remaining-unit-1",
+      "log_sha256": "434e7e093a03f9cb48850289f646b5ca7aca3dd2535c8db10712c4b9f18b83f5",
+      "python_test_counts": [],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "1376485881cabfe6e721ac7ef44a84049a0a6524e128d2523f53a4785f3320f2",
+      "tracked_diff_before_sha256": "1376485881cabfe6e721ac7ef44a84049a0a6524e128d2523f53a4785f3320f2"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "routing_remaining",
+        "--lib"
+      ],
+      "elapsed_s": 25.98988395789638,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-remaining-unit-2",
+      "log_sha256": "cfd4b7b7c2603de9ab87713c12605d666126a9698782f12d18b8019706baa130",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1377,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 27
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "2c9bd71e1eb9403b6f59edb1780014eca8b53ac3aec8254e60b99500d95cf178",
+      "tracked_diff_before_sha256": "2c9bd71e1eb9403b6f59edb1780014eca8b53ac3aec8254e60b99500d95cf178"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "routing_remaining",
+        "--lib"
+      ],
+      "elapsed_s": 17.133120415965095,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-remaining-unit-3",
+      "log_sha256": "300fb62ecab24a0c79ce968ea4d8de6efdb4ff71c8ff86315f4cf4dcfd6a7346",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1378,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 27
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "798f250d64535d3ddb14c7f79a8e565f12f679fda1cf3381f2d178128fb2551f",
+      "tracked_diff_before_sha256": "798f250d64535d3ddb14c7f79a8e565f12f679fda1cf3381f2d178128fb2551f"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--profile",
+        "ci",
+        "-p",
+        "fereg-core",
+        "fe::borrowed_map::routing_tests",
+        "--",
+        "--nocapture"
+      ],
+      "elapsed_s": 85.15116791706532,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": "1.85.1"
+      },
+      "exit": 0,
+      "label": "policy-routing-isolation-1",
+      "log_sha256": "66852978aa2a827bf08ba9e5defcb732f4bf72e5d2d41e4fa93e3625cc5677a3",
+      "python_test_counts": [],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1390,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 25
+        },
+        {
+          "failed": 0,
+          "filtered": 2,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 8,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 2,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 14,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        }
+      ],
+      "source_vector_after_sha256": "951fb2b82f3c0a1ab682e4114f509906b0cf62ac14a77ea7ecdbc7fd7a051afc",
+      "source_vector_before_sha256": "99f2091d0ccfafcf8829b6cdd54933710353c01d14144c8c8cfebfcdf12c11e3",
+      "tracked_diff_after_sha256": "79a0987e12af89dca8864e0d59150680e026a71f94843d8406dcd94a3c0ccc7a",
+      "tracked_diff_before_sha256": "9d263e956e47040284f06c0502f31e6e86b2bd82bea691c4b00d0354fb07b51d"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "scc",
+        "hostname; qstat -u johannes; pquota -u welfgr; ls -ld <scc-task>; ls <scc-task>"
+      ],
+      "elapsed_s": 0.8808330830652267,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-scc-inspect-1",
+      "log_sha256": "b35554a62611d002547ed3444832dd38edc785a9643d9cd894e74ed256d4d6ed",
+      "python_test_counts": [],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa",
+      "tracked_diff_before_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "./scripts/run_tests.sh",
+        "--source-only"
+      ],
+      "diagnosis": "New test failed Clippy manual-range-contains; replaced the equivalent assertion with RangeInclusive::contains.",
+      "elapsed_s": 39.58229966694489,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 101,
+      "label": "policy-source-suite-1",
+      "log_sha256": "086a29b189e9cf395ba440bd386699ca02159a22f47134502294bc31968bdaa2",
+      "python_test_counts": [
+        315
+      ],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "a59b0fb41099dbe33ad0a4bf414c4b75287979b011de98cfbc050cadc1474435",
+      "tracked_diff_before_sha256": "a59b0fb41099dbe33ad0a4bf414c4b75287979b011de98cfbc050cadc1474435"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "./scripts/run_tests.sh",
+        "--source-only"
+      ],
+      "diagnosis": "Runtime, Clippy, fuzz, FFI and portable checks passed; complexity inventory was stale. Reviewed scoped growth and refreshed the inventory. Later mock-bridge checks were not reached.",
+      "elapsed_s": 159.6925782498438,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "policy-source-suite-2",
+      "log_sha256": "fff7cc0ce0bc72399f05bdcfab42e54744ca9c376f48512bd88a9d6bc96070d4",
+      "python_test_counts": [
+        315,
+        7
+      ],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 3,
+          "measured": 0,
+          "passed": 1407
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 8
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 14
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 5
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 5
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 11
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 6
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 3
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 6
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 3
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 1,
+          "measured": 0,
+          "passed": 6
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 4
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 6
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 3
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 167,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 167,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 167,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 168
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 3
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 5
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 9
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 4
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 5
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 3
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 8
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 8
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 13
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 12
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 8
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 10,
+          "measured": 0,
+          "passed": 198
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "1ce91802c93138e03603f5df004381139c14a54d5ae2b02974e5d07aaa3432b8",
+      "tracked_diff_before_sha256": "a59b0fb41099dbe33ad0a4bf414c4b75287979b011de98cfbc050cadc1474435"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "./scripts/run_tests.sh",
+        "--source-only"
+      ],
+      "diagnosis": "Core suite retained 1406 passed, 1 failed, 3 ignored. Existing incremental_two_injection_builds_installs_and_certifies_uncapped_cmg failed; the exact internal assertion was not printed. A deterministic independent witness later demonstrated nested cached-worker TLS overwrite, but the historical assertion/cause remains unproven.",
+      "elapsed_s": 103.43065491714515,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 101,
+      "label": "policy-source-suite-3",
+      "log_sha256": "23a71cb7ede60abfc43e8bbac1f7b1e6e8057db77b76fb8a8e9d6f3f54746a17",
+      "python_test_counts": [
+        315
+      ],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1409,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 1,
+          "filtered": 0,
+          "ignored": 3,
+          "measured": 0,
+          "passed": 1406
+        }
+      ],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "3b9e3cc96889b8c4ec63e8e2a64061224c1751ca4dacba81cb88131ac1deb192",
+      "tracked_diff_before_sha256": "3b9e3cc96889b8c4ec63e8e2a64061224c1751ca4dacba81cb88131ac1deb192"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "./scripts/run_tests.sh",
+        "--source-only"
+      ],
+      "elapsed_s": 225.7486730411183,
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": "ci",
+        "FEREG_TEST_THREADS": "4",
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": "1.85.1"
+      },
+      "exit": 0,
+      "label": "policy-source-suite-4",
+      "log_sha256": "fbeb7a068380b9e3f391f959e226690ea0b2b5819d007c4b12651b8535a41e4c",
+      "python_test_counts": [
+        315,
+        7
+      ],
+      "rust_test_groups": [
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 1414,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 3,
+          "measured": 0,
+          "passed": 1412
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 8
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 14
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 5
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 5
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 11
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 6
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 3
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 6
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 3
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 1,
+          "measured": 0,
+          "passed": 6
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 4
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 6
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 3
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 0
+        },
+        {
+          "failed": 0,
+          "filtered": 167,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 167,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 168
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 3
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 5
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 9
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 4
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 5
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 3
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 8
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 8
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 13
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 12
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 8
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 2
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 0,
+          "ignored": 10,
+          "measured": 0,
+          "passed": 198
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        },
+        {
+          "failed": 0,
+          "filtered": 207,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 1
+        }
+      ],
+      "source_vector_after_sha256": "951fb2b82f3c0a1ab682e4114f509906b0cf62ac14a77ea7ecdbc7fd7a051afc",
+      "source_vector_before_sha256": "951fb2b82f3c0a1ab682e4114f509906b0cf62ac14a77ea7ecdbc7fd7a051afc",
+      "tracked_diff_after_sha256": "79a0987e12af89dca8864e0d59150680e026a71f94843d8406dcd94a3c0ccc7a",
+      "tracked_diff_before_sha256": "79a0987e12af89dca8864e0d59150680e026a71f94843d8406dcd94a3c0ccc7a"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "psutil"
+      ],
+      "diagnosis": "Sandbox network could not resolve package index. Authorized network retry installed the same dependency in the task-private environment.",
+      "elapsed_s": 7.830245667137206,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "policy-test-dependency-1",
+      "log_sha256": "85ec648e2c4b5190b157862f83b61461348694e08607812c2e385704d11203a2",
+      "python_test_counts": [],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "e01b6c98a3c997d2b66ebc22d783919e91d50a71cb14efe418095286396f265b",
+      "tracked_diff_before_sha256": "e01b6c98a3c997d2b66ebc22d783919e91d50a71cb14efe418095286396f265b"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "--no-cache-dir",
+        "psutil"
+      ],
+      "elapsed_s": 0.8916887498926371,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-test-dependency-2",
+      "log_sha256": "0d044fa11e287bfa2a9cedfadb904082c150da89b6bdd0bf4d27adc0612aa8df",
+      "python_test_counts": [],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa",
+      "tracked_diff_before_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "--no-cache-dir",
+        "matplotlib"
+      ],
+      "elapsed_s": 5.3988208749797195,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-test-dependency-3",
+      "log_sha256": "ab3a88695ec29f4ee9f0219c3e99c83dbadb4d13a6ea61422352addf1e42c12e",
+      "python_test_counts": [],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa",
+      "tracked_diff_before_sha256": "ae3a1550cf2f1614f06664be15ffbde34c9b8633251aaab9d7ca8134300b37aa"
+    },
+    {
+      "after_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "before_head": "6995bc4561ccd9c511b3876bcf5b3ca09179dbe3",
+      "command": [
+        "target/tmp/cmg-upgrade/python/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "--no-cache-dir",
+        "reportlab"
+      ],
+      "elapsed_s": 1.6345633331220597,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "policy-test-dependency-4",
+      "log_sha256": "cd2040be4f1f384a0eec69000fdac298186f58eecad883f0822f220e24b30670",
+      "python_test_counts": [],
+      "rust_test_groups": [],
+      "source_vector_after_sha256": null,
+      "source_vector_before_sha256": null,
+      "tracked_diff_after_sha256": "1a58e9619ca90398209dd5a55799bb9f7b5b55e168cd703b2555be10aeba9c2c",
+      "tracked_diff_before_sha256": "58c08f8f50cd75da88bba3a0cada5a09e14fd6013ee88b10f23c100f00393397"
+    }
+  ],
+  "cmg_revision": "fd77d98da1f74009b3e5b634e1944433b647a9b1",
+  "complexity": {
+    "fereg-core": {
+      "chunk_candidates": 12,
+      "dispatch_candidates": 1377,
+      "files_over_1500": 15,
+      "functions_over_150": 60,
+      "production_lines": 106563
+    },
+    "fereg-plugin": {
+      "chunk_candidates": 3,
+      "dispatch_candidates": 140,
+      "files_over_1500": 3,
+      "functions_over_150": 12,
+      "production_lines": 15270
+    }
+  },
+  "date": "2026-10-21",
+  "final_check_source_vector_sha256": "951fb2b82f3c0a1ab682e4114f509906b0cf62ac14a77ea7ecdbc7fd7a051afc",
+  "hygiene": {
+    "completed_setup_cleanup": {
+      "committed_evidence": {
+        "bench/results/cmg-setup-attribution-20261021.json": "173bcd5d94015f4c7d3cbbb59b6dc4e7c667595884210313c0edd2d107448119",
+        "bench/results/cmg-setup-candidate1-20261021.json": "fcbed471fb52bee8db1aea928e2de5ccb55cc5b41393c233ef209806cd66d100",
+        "bench/results/cmg-setup-pivot-20261021.json": "f0dc94b29a9cf7986f0d33a54af3a4f9d4df0924119b706b9d1523b46ae1e4cb",
+        "bench/results/cmg-setup-pivot-attribution-20261021.json": "43bed3a43c7822210028dc775c5dc6a6bf9e4d93b59ebee640aac2602fa792bd",
+        "bench/results/cmg-setup-pivot-linux-part1-20261021.json": "12017027d41662165666fa91106b59b81d48e5c5b27574445d3bc18f31d6a560",
+        "bench/results/cmg-setup-pivot-linux-part2-20261021.json": "ee110de6d7cc091c2ec8c6b4ddd290783db31ace7911fa7855214e86404ece9d",
+        "bench/results/cmg-setup-pivot-mac-20261021.json": "f1a5847b5b15964b60ebfa210e677aba03b5ebc55050de64ed5948cd77eb4d3f"
+      },
+      "purpose": "Remove completed accepted-setup duplicate captures after committed compact evidence; retain accepted native artifacts, reusable replay inputs, current policy work and checks.",
+      "removed": [
+        {
+          "bytes": 870253337,
+          "capture": "attribution",
+          "files": 4881
+        },
+        {
+          "bytes": 726233246,
+          "capture": "pivot-attribution",
+          "files": 4883
+        },
+        {
+          "bytes": 139952567,
+          "capture": "diagnostic-candidate-Darwin",
+          "files": 100
+        },
+        {
+          "bytes": 209802606,
+          "capture": "diagnostic-Darwin",
+          "files": 148
+        },
+        {
+          "bytes": 209971116,
+          "capture": "diagnostic-pivot-Darwin",
+          "files": 148
+        },
+        {
+          "bytes": 115230204,
+          "capture": "smoke-candidate-Darwin",
+          "files": 7
+        },
+        {
+          "bytes": 195341176,
+          "capture": "smoke-candidate-Darwin-repaired",
+          "files": 26
+        },
+        {
+          "bytes": 1251846667,
+          "capture": "pivot-linux-collected/main",
+          "files": 883
+        }
+      ]
+    },
+    "completed_setup_cleanup_sha256": "777dc306deeb2a5bc0ff5abe321c0c058dc718939f508f0328f8d0d1a099425c"
+  },
+  "independent_review": {
+    "astra": "Reviewed formula/fit and runtime integration, then implemented four real callsite witnesses and killed all four actual callsite mutants; original source restored byte-for-byte.",
+    "high_effort": "Reviewed ownership, arithmetic, disjoint labels, actual worker admission, bounded future grouping, calibration matching, fitting and full fake 864-call runner; completed deterministic cached-worker TLS overwrite witness and bounded subprocess isolation of four affected tests.",
+    "limitations": "Independent source review and synthetic/analytic checks do not establish native integration, calibration support, prediction accuracy or performance qualification."
+  },
+  "known_failures": {
+    "historical_h16_assertion": "The exact failing internal assertion in source-suite-3 remains unknown. Demonstrated TLS overwrite and later isolated passes do not erase or conclusively explain that failure.",
+    "installed_package_binding": "Failed; source-only validation does not replace package admission. Distribution packages remain unchanged.",
+    "unlogged_operations": [
+      {
+        "exit": 101,
+        "log_sha256": null,
+        "operation": "initial cargo fmt invocation",
+        "reason": "Pinned cargo executable used without its toolchain directory on PATH; corrected PATH invocation passed."
+      },
+      {
+        "exit": null,
+        "log_sha256": null,
+        "operation": "read-only local process inspection",
+        "reason": "Sandbox denied ps. No workload or artifact was changed."
+      }
+    ]
+  },
+  "limits": [
+    "Timing values in check records are command durations, not performance measurements.",
+    "Rust groups include isolated child test processes and zero-match integration binaries; their sum is not a unique-test count.",
+    "Earlier checks predate the untracked-source-vector wrapper enhancement; null source vectors are unavailable, not verified.",
+    "All failures are retained. No calibration or held-out native panel has run at this boundary. Public DEFAULT_TWO remains false and CALIBRATION remains None.",
+    "Native audit/ABI/load/panic, exact old/outside-scope replay and mapped Stata/transaction checks belong to the next stable-artifact integration boundary."
+  ],
+  "mutation_review": {
+    "checks": [
+      {
+        "diagnosis": "test API compile error E0599; corrected using existing borrowed binding API",
+        "exit": 101,
+        "label": "policy-callsite-unit-1",
+        "log_sha256": "229c3cf29101c8ecb627b40e429422655d37e73abbbb2911f5db3291aa14f404",
+        "result_lines": []
+      },
+      {
+        "diagnosis": null,
+        "exit": 0,
+        "label": "policy-callsite-unit-2",
+        "log_sha256": "9690681e266240159865f8f9203ca47d9c68ef27c046fa36ed0ae4615dbe8013",
+        "result_lines": [
+          "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 1409 filtered out; finished in 0.04s"
+        ]
+      },
+      {
+        "diagnosis": null,
+        "exit": 0,
+        "label": "policy-callsite-unit-3",
+        "log_sha256": "a5d3a058831a4ded18741af8979ff724a826c179093d0bcd5334cb45904ae622",
+        "result_lines": [
+          "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 1409 filtered out; finished in 0.04s"
+        ]
+      },
+      {
+        "diagnosis": null,
+        "exit": 0,
+        "label": "policy-callsite-restored-1",
+        "log_sha256": "9b9b3ed89386d6de3abb51d5472b2f1a1917fe724aedd58c5ef87fd9c32dcbba",
+        "result_lines": [
+          "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 1409 filtered out; finished in 0.04s"
+        ]
+      }
+    ],
+    "checks_after_restoration": {
+      "failed": 0,
+      "focused_passed": 6,
+      "git_diff_check": true,
+      "rustfmt_owned_tests": true
+    },
+    "command_template": "cargo test --locked -p fereg-core --no-default-features --profile ci --lib FILTER -- --nocapture",
+    "coverage": [
+      "real correction at cumulative 8 then fresh local 16, cumulative 24; certified paired-cell oracle; action work retained",
+      "real observer 3073-level scan; sticky trigger after 1025 completed entries; interrupted at 2048; allocation-free test probe and cleanup",
+      "real FeSession parent admission: baseline B, successor B+shell-1 refusal, exact B+shell success, explicit nonzero execution bytes",
+      "actual Force16 installation with total cap22: 17 PCG iterations and five reserved MAP iterations; operator-RHS count51"
+    ],
+    "environment": {
+      "cargo_build_jobs": 4,
+      "cargo_target_dir": "default shared target",
+      "rust_toolchain": "1.85.1"
+    },
+    "final_owned_test_sources": {
+      "crates/fereg-core/src/fe/borrowed_map/remaining_tests.rs": "150b39688da311e72245b48c1120b8d7e2b7685c8ca07b955c7de1f3b354034c",
+      "crates/fereg-core/src/fe/routing_remaining/integration_tests.rs": "221d0238dc59c479ef7d01838f992d73465853a04f3f318675be57dbd9849abf"
+    },
+    "limits": [
+      "No broad suite, native plugin calls, qualification timings, profiles or SCC work.",
+      "Initial test compile failure retained; all four mutants killed with no surviving or application-failed mutant.",
+      "Other agent h16/TLS wrapper tests remain root-owned and were not run here.",
+      "Historical unrelated suite failure remains retained and is not reclassified by these passes."
+    ],
+    "mutants": [
+      {
+        "after_sha256": "bd1ac79c1a41ba47e6b931bf13465ff60eb8fd877b789cad1ef5462a242da4c8",
+        "applied": true,
+        "before_sha256": "bd1ac79c1a41ba47e6b931bf13465ff60eb8fd877b789cad1ef5462a242da4c8",
+        "compiled": true,
+        "discrimination": "Omitted actual correction notification: epoch 0 instead of 1 despite cumulative installation at 24.",
+        "exit": 101,
+        "file": "crates/fereg-core/src/fe/borrowed_map.rs",
+        "label": "policy-callsite-mutant-correction-1",
+        "log_sha256": "e65f5423f37f54ae581e5fc6741d55f126583764d225ba59ca253d0d62cac797",
+        "mutant": "correction",
+        "mutant_sha256": "c6082cd73c284d95b2bce3ccf6366a1148cedd7e1c447fdf17c7b447780b95cd",
+        "new_span": "                // MUTANT: omit the real correction notification.",
+        "old_span": "                if let Some((state, _)) = remaining.as_mut() {\n                    state.correction()?;\n                }",
+        "restored": true,
+        "runtime_assertion_failure": true
+      },
+      {
+        "after_sha256": "bd1ac79c1a41ba47e6b931bf13465ff60eb8fd877b789cad1ef5462a242da4c8",
+        "applied": true,
+        "before_sha256": "bd1ac79c1a41ba47e6b931bf13465ff60eb8fd877b789cad1ef5462a242da4c8",
+        "compiled": true,
+        "discrimination": "Omitted actual row poll: full scan returned Ok(false) despite sticky cancellation after entry 1025.",
+        "exit": 101,
+        "file": "crates/fereg-core/src/fe/borrowed_map.rs",
+        "label": "policy-callsite-mutant-observer-1",
+        "log_sha256": "f6cf97d2063e0bf0314a10799bd6dbdb1bfb723c818211b6925060ada21e9457",
+        "mutant": "observer",
+        "mutant_sha256": "485fad6968c706a87c21e2c451248151fa406df93163e76962517169839547cb",
+        "new_span": "            for level in 0..graph.right_weights.len() {\n                // MUTANT: omit the real observer row checkpoint.",
+        "old_span": "            for level in 0..graph.right_weights.len() {\n                crate::interrupt::row_checkpoint(level)?;",
+        "restored": true,
+        "runtime_assertion_failure": true
+      },
+      {
+        "after_sha256": "eefe73b3b4fcacfb7b96a99fd8c6bd2630ccf84537ec6338e56352093f3c79ae",
+        "applied": true,
+        "before_sha256": "eefe73b3b4fcacfb7b96a99fd8c6bd2630ccf84537ec6338e56352093f3c79ae",
+        "compiled": true,
+        "discrimination": "Omitted shell admission charge: owner incorrectly admitted below the exact required parent boundary.",
+        "exit": 101,
+        "file": "crates/fereg-core/src/fe/session.rs",
+        "label": "policy-callsite-mutant-shell-1",
+        "log_sha256": "5963badc4ac8363509e38f54994cd9cebd36b2ffd982360c61a0282053ff2972",
+        "mutant": "shell",
+        "mutant_sha256": "a85496bddaeea3b39c4aa9248d3e7945e57e6e320a2c78aeb171b440863a89de",
+        "new_span": ".checked_add(0) // MUTANT: omit the successor parent shell.",
+        "old_span": ".checked_add(RemainingState::shell_bytes())",
+        "restored": true,
+        "runtime_assertion_failure": true
+      },
+      {
+        "after_sha256": "bd1ac79c1a41ba47e6b931bf13465ff60eb8fd877b789cad1ef5462a242da4c8",
+        "applied": true,
+        "before_sha256": "bd1ac79c1a41ba47e6b931bf13465ff60eb8fd877b789cad1ef5462a242da4c8",
+        "compiled": true,
+        "discrimination": "Reset native iterations at hierarchy handoff: 87 operator-RHS visits instead of 51.",
+        "exit": 101,
+        "file": "crates/fereg-core/src/fe/borrowed_map.rs",
+        "label": "policy-callsite-mutant-restart-1",
+        "log_sha256": "cd18dbfce6ebec850725ea458ad9072d02fcdf470f21ba0d552fe9835c30a773",
+        "mutant": "restart",
+        "mutant_sha256": "965d0ee436c06663b0be6c13c0c86b9c1668057bad98447eb5da9239b964d848",
+        "new_span": "            if route_restart {\n                iterations = 0; // MUTANT: refresh the native action budget.\n                // A handoff is not a publication point.",
+        "old_span": "            if route_restart {\n                // A handoff is not a publication point.",
+        "restored": true,
+        "runtime_assertion_failure": true
+      }
+    ],
+    "schema": "remaining-policy-callsite-witness-review-v1"
+  },
+  "mutation_review_sha256": "eea73b885acccf3d94c5ccf23fd84473b8b454194ed88c6fc2e55b993b3c31ee",
+  "purpose": "Hidden remaining-cost policy foundation and prospective calibration tools; no fitted coefficients or public activation.",
+  "retention_tool": {
+    "sha256": "aa08a10f7a90f40a740072599ad448cedfc09bbd00fff20b22dd1b3ddbb7a9ed",
+    "source": "\"\"\"Retain compact development evidence without raw logs or private paths.\"\"\"\nfrom pathlib import Path\nimport hashlib\nimport json\nimport re\nimport subprocess\n\ntask = Path(__file__).resolve().parent\nrepo = task.parents[2]\nchecks = task / 'setup1-review/checks'\n\n\ndef sha(path):\n    return hashlib.sha256(path.read_bytes()).hexdigest()\n\n\ndef public_text(text):\n    replacements = [(str(task), '<task>'), (str(repo), '<repo>'),\n                    (str(repo.parents[1] / '.rustup/toolchains/1.85.1-aarch64-apple-darwin'), '<rust-1.85.1>'),\n                    ('/' + 'projectnb/welfgr/fereg/runs/cmg-upgrade-20261021', '<scc-task>')]\n    for old, new in replacements:\n        text = text.replace(old, new)\n    return text\n\n\ndiagnoses = {\n    'policy-remaining-unit-1': 'A retained routing test call lacked the new successor flag/sidecar arguments; migrated to false/None.',\n    'policy-calibration-parser-1': 'Test fixture omitted required platform metadata; corrected the fixture.',\n    'policy-remaining-integration-1': 'Test expected the wrong existing unsupported-request error variant; changed expectation to InvalidArgument without changing production behavior.',\n    'policy-full-suite-1': '315 Python tests passed, then existing installed-plugin binding failed. Release artifacts were not changed; package admission remains failed.',\n    'policy-source-suite-1': 'New test failed Clippy manual-range-contains; replaced the equivalent assertion with RangeInclusive::contains.',\n    'policy-source-suite-2': 'Runtime, Clippy, fuzz, FFI and portable checks passed; complexity inventory was stale. Reviewed scoped growth and refreshed the inventory. Later mock-bridge checks were not reached.',\n    'policy-source-suite-3': 'Core suite retained 1406 passed, 1 failed, 3 ignored. Existing incremental_two_injection_builds_installs_and_certifies_uncapped_cmg failed; the exact internal assertion was not printed. A deterministic independent witness later demonstrated nested cached-worker TLS overwrite, but the historical assertion/cause remains unproven.',\n    'policy-callsite-unit-1': 'New test used a nonexistent into_design API; corrected to the existing prepared borrowed binding.',\n    'policy-bench-suite-1': '352 discovered tests; two import failures because private test environment lacked psutil.',\n    'policy-test-dependency-1': 'Sandbox network could not resolve package index. Authorized network retry installed the same dependency in the task-private environment.',\n    'policy-bench-suite-2': '360 discovered tests; two import failures because private test environment lacked matplotlib.',\n    'policy-campaign-dependency-retest-1': 'Two import failures because private test environment lacked ReportLab.',\n}\nmutation = json.loads((task / 'policy-callsite-witness-review.json').read_text())\nfor item in mutation['mutants']:\n    diagnoses[item['label']] = 'Expected discriminating mutation failure: ' + item['discrimination']\n\nrecords = []\nfor path in sorted(checks.glob('policy-*.json')):\n    value = json.loads(path.read_text())\n    log = path.with_suffix('.log')\n    assert sha(log) == value['log_sha256']\n    text = log.read_text(errors='replace')\n    record = {key: value[key] for key in ('label', 'exit', 'elapsed_s', 'log_sha256')}\n    record['command'] = [public_text(item) for item in value['command']]\n    record['environment'] = value['environment']\n    record['before_head'] = value['before']['head'].strip()\n    record['after_head'] = value['after']['head'].strip()\n    record['source_vector_before_sha256'] = value['before'].get('source_vector_sha256')\n    record['source_vector_after_sha256'] = value['after'].get('source_vector_sha256')\n    record['tracked_diff_before_sha256'] = hashlib.sha256(value['before']['diff'].encode()).hexdigest()\n    record['tracked_diff_after_sha256'] = hashlib.sha256(value['after']['diff'].encode()).hexdigest()\n    record['python_test_counts'] = [int(n) for n in re.findall(r'^Ran (\\d+) tests? in ', text, re.M)]\n    record['rust_test_groups'] = [dict(zip(('passed', 'failed', 'ignored', 'measured', 'filtered'), map(int, match)))\n                                  for match in re.findall(r'test result: (?:ok|FAILED)\\. (\\d+) passed; (\\d+) failed; (\\d+) ignored; (\\d+) measured; (\\d+) filtered out;', text)]\n    if record['exit']:\n        assert record['label'] in diagnoses, record['label']\n        record['diagnosis'] = diagnoses[record['label']]\n    records.append(record)\n\nfinal = json.loads((checks / 'policy-source-suite-4.json').read_text())\nassert final['exit'] == 0\nassert final['before']['source_vector_sha256'] == final['after']['source_vector_sha256']\nbench = json.loads((checks / 'policy-bench-suite-3.json').read_text())\nassert bench['exit'] == 0\nnames = subprocess.check_output(['git', 'ls-files', '--modified', '--others', '--exclude-standard'], cwd=repo, text=True).splitlines()\nsources = {name: sha(repo / name) for name in sorted(names)\n           if not name.startswith('bench/results/') and (repo / name).is_file()}\nsource = Path(__file__).read_text()\nrecord = {\n    'schema': 1, 'date': '2026-10-21',\n    'purpose': 'Hidden remaining-cost policy foundation and prospective calibration tools; no fitted coefficients or public activation.',\n    'base_revision': final['before']['head'].strip(),\n    'accepted_native_revision': '1cdb225e2460e391ad38f856755ae3ea5efb2e5b',\n    'cmg_revision': 'fd77d98da1f74009b3e5b634e1944433b647a9b1',\n    'specification': 'docs/two_fe_auto_policy.md',\n    'source_files_sha256': sources,\n    'final_check_source_vector_sha256': final['before']['source_vector_sha256'],\n    'checks': records,\n    'mutation_review_sha256': sha(task / 'policy-callsite-witness-review.json'),\n    'mutation_review': mutation,\n    'independent_review': {\n        'high_effort': 'Reviewed ownership, arithmetic, disjoint labels, actual worker admission, bounded future grouping, calibration matching, fitting and full fake 864-call runner; completed deterministic cached-worker TLS overwrite witness and bounded subprocess isolation of four affected tests.',\n        'astra': 'Reviewed formula/fit and runtime integration, then implemented four real callsite witnesses and killed all four actual callsite mutants; original source restored byte-for-byte.',\n        'limitations': 'Independent source review and synthetic/analytic checks do not establish native integration, calibration support, prediction accuracy or performance qualification.'\n    },\n    'known_failures': {\n        'installed_package_binding': 'Failed; source-only validation does not replace package admission. Distribution packages remain unchanged.',\n        'historical_h16_assertion': 'The exact failing internal assertion in source-suite-3 remains unknown. Demonstrated TLS overwrite and later isolated passes do not erase or conclusively explain that failure.',\n        'unlogged_operations': [\n            {'operation': 'initial cargo fmt invocation', 'exit': 101, 'log_sha256': None, 'reason': 'Pinned cargo executable used without its toolchain directory on PATH; corrected PATH invocation passed.'},\n            {'operation': 'read-only local process inspection', 'exit': None, 'log_sha256': None, 'reason': 'Sandbox denied ps. No workload or artifact was changed.'}\n        ]\n    },\n    'complexity': json.loads((repo / 'tests/reference/complexity.json').read_text())['inventory']['metrics'],\n    'hygiene': {'completed_setup_cleanup_sha256': sha(task / 'policy/completed-setup-cleanup.json'),\n                'completed_setup_cleanup': json.loads((task / 'policy/completed-setup-cleanup.json').read_text())},\n    'limits': ['Timing values in check records are command durations, not performance measurements.',\n               'Rust groups include isolated child test processes and zero-match integration binaries; their sum is not a unique-test count.',\n               'Earlier checks predate the untracked-source-vector wrapper enhancement; null source vectors are unavailable, not verified.',\n               'All failures are retained. No calibration or held-out native panel has run at this boundary. Public DEFAULT_TWO remains false and CALIBRATION remains None.',\n               'Native audit/ABI/load/panic, exact old/outside-scope replay and mapped Stata/transaction checks belong to the next stable-artifact integration boundary.'],\n    'retention_tool': {'sha256': hashlib.sha256(source.encode()).hexdigest(), 'source': source}\n}\noutput = public_text(json.dumps(record, indent=2, sort_keys=True)) + '\\n'\nfor name in ('Users/', 'projectnb/', 'usr4/', 'private/var/', 'var/folders/'):\n    forbidden = '/' + name\n    assert forbidden not in output, forbidden\nassert len(output.encode()) < 1_000_000\npath = repo / 'bench/results/two-fe-policy-development-20261021.json'\npath.write_text(output)\nprint(path.name, len(output.encode()), sha(path))\n"
+  },
+  "schema": 1,
+  "source_files_sha256": {
+    "bench/README.md": "dd07f989c04c322d21552addeaecf7316432dfe1ffcf1df5dd51100f16f054f3",
+    "bench/qualify.py": "ff7d0720303a18f4805947e71cdbf868841669b1a6ef1a55c2490a1fea2c05ef",
+    "bench/routing.py": "11376a99a90f5c6f2313fe46e752fd9044b3606a1e3c5db282ed65235994ce79",
+    "bench/tests/test_routing.py": "09cfe8540b34ade75897a67215d62dca84414a93549d4f56a0499565c6c5113d",
+    "bench/tests/test_two_fe_policy.py": "0bd8ba11e9299efc397aa08a1fdb2fe05e1b4963b83989de18923ac7ab4f2145",
+    "bench/tests/test_two_fe_policy_calibrate.py": "7fa48651e82cb60ab5e91ec392b1fba57eadec82fa74f8695d7c872969459610",
+    "bench/tests/test_two_fe_policy_fit.py": "81e94a1a17d9e167b1f90edf84046b08a14447d57a6ca011cc2232e6f926945e",
+    "bench/tests/test_two_fe_policy_inputs.py": "bac42aa9ab394d1fc91239ef7f5fd4ee9651cf4b81182554c30fb82ab1f62aee",
+    "bench/tests/test_two_fe_policy_labels.py": "9b44d557b6aab8ccebeb031ad11911db62b55ca1752314e7cf8112e6fb9086cd",
+    "bench/tests/test_two_fe_policy_outcomes.py": "1353aa2486887be2bde756f92a443fbef396ff23bf2881738fb0076ad196accf",
+    "bench/tests/test_two_fe_policy_runner.py": "ff30fb87393854aec7558ac4788b475f81fb166a1caaaa3bdbd6502eb42d40e8",
+    "bench/two_fe_policy.py": "0c6a925e1ddb99b82e8b460a2d9bb2a67911b31ba16f9808469d44c9a1fb71d8",
+    "bench/two_fe_policy_calibrate.py": "51ca7ccee1ffff2a79c77672e3310843400c67466e61c5f06ee9d891e098ba36",
+    "bench/two_fe_policy_fit.py": "724e88535130d9281e97f86152e66d3c58a783380c9f09ccb36a6d2306f8ce0a",
+    "bench/two_fe_policy_inputs.py": "938ac62828891142da0cb400398223885d953e367ebdfdb7446b6e0ff3018eff",
+    "bench/two_fe_policy_labels.py": "9fb1a4111b8d04ad714b3d6df92d037191ded2b3879cdbf3bf0da0ad3a78bfc5",
+    "crates/fereg-core/src/diagnostics.rs": "062d7b1c4f2d74b6f5ad32bcd4a347cb8dc1f3ff06ed79eb1142602357166318",
+    "crates/fereg-core/src/fe/borrowed_map.rs": "bd1ac79c1a41ba47e6b931bf13465ff60eb8fd877b789cad1ef5462a242da4c8",
+    "crates/fereg-core/src/fe/borrowed_map/remaining_tests.rs": "150b39688da311e72245b48c1120b8d7e2b7685c8ca07b955c7de1f3b354034c",
+    "crates/fereg-core/src/fe/borrowed_map/routing_tests.rs": "3d820062941dadb59d58bf0163036211063dc8487df23036bdbd700368e351be",
+    "crates/fereg-core/src/fe/mod.rs": "c4f87da3411e88854ed6cf97f961a18b00b1516f451f97ab75a0ba4b72e5edc0",
+    "crates/fereg-core/src/fe/routing.rs": "637c4c62650389c00bd9928a4887d7de9ae73c84f53af9a3bccf4d900b7b6755",
+    "crates/fereg-core/src/fe/routing_remaining/diagnostic.rs": "7ffdf7bcca8e2f4a8c4a42f4dcc33c921c7b3badb8e2d3af11e51f8eaaaf2f4a",
+    "crates/fereg-core/src/fe/routing_remaining/integration_tests.rs": "221d0238dc59c479ef7d01838f992d73465853a04f3f318675be57dbd9849abf",
+    "crates/fereg-core/src/fe/routing_remaining/mod.rs": "c0d2ab701f84c3c22966a43ed16568ca3cd9e403d8e1d2ccbff68d1f225c1c91",
+    "crates/fereg-core/src/fe/routing_remaining/model.rs": "15e0166d4ba58d04f0b2fbd285977bf53ee4424f17895672015e0d8c23e9c065",
+    "crates/fereg-core/src/fe/routing_remaining/progress.rs": "6880d73025f223ea9b211fbe18cc21795c73c3697bca7be2ffdfb0e1fc75dc37",
+    "crates/fereg-core/src/fe/routing_remaining/tests.rs": "948c36c2d75f0ac3bdd1bc85c4fcb056a1784d668e7b7e231743444edbda1851",
+    "crates/fereg-core/src/fe/session.rs": "eefe73b3b4fcacfb7b96a99fd8c6bd2630ccf84537ec6338e56352093f3c79ae",
+    "crates/fereg-core/src/ols/prepared_fit/one_shot.rs": "8ec3f4344f575a0855b4be7181698fe014ed8c860cd8b618dfe48c89632f7fbb",
+    "crates/fereg-core/src/ols/prepared_rhs.rs": "d1c9849a5cae0deb553d344b3fe3524530ee72dfce6e5bdc70a59ea33eeca9fa",
+    "crates/fereg-plugin/src/developer_injection.rs": "2f73f06d3000e6e5ebcc184298d44cac2269fd16016d77cc28ee57c5df779d2f",
+    "docs/SPEC.md": "faacf4156b92a70dd795dc0b4bd5d42090058f92dbf3a1cf33fec17a62e4a52a",
+    "docs/VALIDATION.md": "a7d5cec2e96dd76a17f64ecbb470ee64da895fd612c2aa9596fb8312a4ae2ea3",
+    "docs/two_fe_auto_policy.md": "1485d4ad9aab02631c084b50a595845a17a5a56be8ea8291c3db76a2c64455ce",
+    "tests/reference/complexity.json": "4a89ab020c72bc588be3de1a9fd59f385ac3c1e5082989f5ba60e636ad18a8c1"
+  },
+  "specification": "docs/two_fe_auto_policy.md"
+}

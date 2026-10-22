@@ -1,5 +1,6 @@
 //! One OLS lifecycle; storage implements projection and physical finite kernels.
 use super::*;
+use crate::fe::routing_remaining::{Demand, State as RemainingState};
 
 struct DenseRaw {
     values: crate::ols::OlsProjectionInput,
@@ -172,6 +173,7 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     loaded_rows: Option<LoadedOlsRows>,
     retained_fe_parent: u128,
     reuse_absorption_norms: bool,
+    remaining: Option<&mut RemainingState>,
 ) -> Result<OneShotInputs> {
     let weights = frame.weights();
     let mut raw = dense_raw(
@@ -190,6 +192,14 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         ),
         config.absorb,
         frame.dense_norm_handoff(config.execution.mode, reuse_absorption_norms),
+        remaining.map(|state| {
+            (
+                state,
+                Demand::Packed {
+                    regressors: prepared.fit_model().columns.len(),
+                },
+            )
+        }),
     )?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
@@ -306,13 +316,28 @@ fn project_scratch<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     reservation: &mut R,
     cmg: &mut crate::fe::FeSession<'a>,
     reuse_absorption_norms: bool,
+    mut remaining: Option<&mut RemainingState>,
 ) -> Result<OneShotInputs> {
     let rows = prepared.fit_sample().n_active();
     let generated_columns = prepared.fit_model().columns.len();
     let weights = frame.weights();
     let raw_outcome = prepared.fit_build_rhs_block_with_response(0, 0, true, frame.response())?;
-    let mut absorbed_outcome =
-        cmg.project_ols(weights.borrowed(), raw_outcome, config.absorb, false, false)?;
+    let mut absorbed_outcome = cmg.project_ols_with_remaining(
+        weights.borrowed(),
+        raw_outcome,
+        config.absorb,
+        false,
+        false,
+        remaining.as_deref_mut().map(|state| {
+            (
+                state,
+                Demand::Outcome {
+                    regressors: generated_columns,
+                    block: config.execution.poolsize.min(generated_columns.max(1)),
+                },
+            )
+        }),
+    )?;
     if !absorbed_outcome.report().certified() {
         return Err(invalid_data(
             "prepared OLS low-memory outcome absorption was not certified",
@@ -354,6 +379,7 @@ fn project_scratch<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         &mut score_norms,
         &mut absorption_report,
         &mut scratch,
+        remaining,
     )?;
     if let Some(lsmr) = cmg.lsmr.take() {
         cmg.binding = Some(lsmr.into_design());
@@ -389,6 +415,7 @@ fn project_scratch_columns<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation
     score_norms: &mut [f64],
     absorption_report: &mut SolveReport,
     scratch: &mut PreparedOlsScratch,
+    mut remaining: Option<&mut RemainingState>,
 ) -> Result<Option<(f64, f64)>> {
     let rows = prepared.fit_sample().n_active();
     let generated_columns = prepared.fit_model().columns.len();
@@ -415,8 +442,24 @@ fn project_scratch_columns<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation
             }
             *reference_norm = weighted_slice_norm(&column_buffer, weights)?;
         }
-        let mut absorbed_block =
-            cmg.project_ols(weights.borrowed(), raw_block, config.absorb, false, false)?;
+        let mut absorbed_block = cmg.project_ols_with_remaining(
+            weights.borrowed(),
+            raw_block,
+            config.absorb,
+            false,
+            false,
+            remaining.as_deref_mut().map(|state| {
+                (
+                    state,
+                    Demand::Regressors {
+                        start,
+                        end,
+                        total: generated_columns,
+                        block: block_width,
+                    },
+                )
+            }),
+        )?;
         if !absorbed_block.report().certified() {
             return Err(invalid_data(
                 "prepared OLS low-memory regressor-block absorption was not certified",
@@ -680,6 +723,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         0
     };
     let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
+    let mut remaining = cmg.remaining_state();
     let projection_phase = LinearSessionPhaseAllocationGuard::new(
         phase_probe,
         phase_observation.as_deref_mut(),
@@ -697,6 +741,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             loaded_rows,
             retained_fe_parent,
             reuse_absorption_norms,
+            remaining.as_mut(),
         )
     } else {
         project_scratch(
@@ -706,6 +751,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             reservation,
             &mut cmg,
             reuse_absorption_norms,
+            remaining.as_mut(),
         )
     };
     cmg.close_routing_attempt();
@@ -748,17 +794,11 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         perturbations,
         retain_fast_score_cache,
     )?;
-    let initial_absorbed_outcome_sum_of_squares =
-        inputs.initial_sum_of_squares * bread.weight_scale().reference_weight_multiplier;
-    if !initial_absorbed_outcome_sum_of_squares.is_finite()
-        || initial_absorbed_outcome_sum_of_squares < 0.0
-    {
-        return Err(invalid_data(if dense {
-            "prepared OLS initial absorbed outcome sum of squares is invalid"
-        } else {
-            "prepared OLS low-memory initial absorbed outcome sum of squares is invalid"
-        }));
-    }
+    let initial_absorbed_outcome_sum_of_squares = scaled_initial_sum_of_squares(
+        inputs.initial_sum_of_squares,
+        bread.weight_scale().reference_weight_multiplier,
+        dense,
+    )?;
     drop(finite_phase);
     let bread_seconds = trace.lap();
     let residual_projection_phase = LinearSessionPhaseAllocationGuard::new(
@@ -775,6 +815,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         config,
         retained_fe_parent,
         perturbations.final_residual_constant,
+        remaining.as_mut(),
     )?;
     if !dense {
         drop(cmg);
@@ -803,6 +844,19 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     Ok(fit)
 }
 
+fn scaled_initial_sum_of_squares(value: f64, multiplier: f64, dense: bool) -> Result<f64> {
+    let scaled = value * multiplier;
+    if !scaled.is_finite() || scaled < 0.0 {
+        return Err(invalid_data(if dense {
+            "prepared OLS initial absorbed outcome sum of squares is invalid"
+        } else {
+            "prepared OLS low-memory initial absorbed outcome sum of squares is invalid"
+        }));
+    }
+    Ok(scaled)
+}
+
+#[allow(clippy::too_many_arguments)]
 fn project_residual(
     cmg: &mut crate::fe::FeSession<'_>,
     rows: usize,
@@ -811,17 +865,19 @@ fn project_residual(
     config: PreparedOlsFitConfig,
     retained_fe_parent: u128,
     perturb_constant: bool,
+    remaining: Option<&mut RemainingState>,
 ) -> Result<(DenseMatrix, SolveReport, Option<FeCoefficientBatch>)> {
     let dense = config.execution.mode == PreparedOlsExecutionMode::Fast;
     let matrix = DenseMatrix::from_row_major(rows, 1, seed)?;
     // Original-source seeds contain the full FE contribution. They require the
     // full projector; only dense within seeds may use terminal residual polish.
-    let residual_absorbed = cmg.project_ols(
+    let residual_absorbed = cmg.project_ols_with_remaining(
         weights.borrowed(),
         matrix,
         config.final_absorb_config(),
         true,
         !dense,
+        remaining.map(|state| (state, Demand::Final)),
     )?;
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(if dense {

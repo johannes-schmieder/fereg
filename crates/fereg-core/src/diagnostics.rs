@@ -8,18 +8,50 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Mutex;
 
+thread_local! {
+    static SILENCED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Suppress ordinary diagnostic formatting while measuring a projection's
+/// economic intervals. The caller emits its bounded labels explicitly. This
+/// guard belongs to the executing thread and restores nesting on every exit.
+pub(crate) struct Silence {
+    enabled: bool,
+    _thread: std::marker::PhantomData<std::rc::Rc<()>>,
+}
+
+impl Silence {
+    pub(crate) fn new(enabled: bool) -> Self {
+        if enabled {
+            SILENCED.set(SILENCED.get() + 1);
+        }
+        Self {
+            enabled,
+            _thread: std::marker::PhantomData,
+        }
+    }
+}
+
+impl Drop for Silence {
+    fn drop(&mut self) {
+        if self.enabled {
+            SILENCED.set(SILENCED.get() - 1);
+        }
+    }
+}
+
 static SOLVER_TRACE_FILE_LOCK: Mutex<()> = Mutex::new(());
 
 /// Developer solver tracing (`FEREG_SOLVER_TRACE`), read at each use.
 #[must_use]
 pub fn solver_trace_enabled() -> bool {
-    std::env::var_os("FEREG_SOLVER_TRACE").is_some()
+    std::env::var_os("FEREG_SOLVER_TRACE").is_some() && SILENCED.get() == 0
 }
 
 /// Developer phase timing (`FEREG_PHASE_TIMING`), read at each use.
 #[must_use]
 pub fn phase_timing_enabled() -> bool {
-    std::env::var_os("FEREG_PHASE_TIMING").is_some()
+    std::env::var_os("FEREG_PHASE_TIMING").is_some() && SILENCED.get() == 0
 }
 
 /// Write one solver-trace line to standard error and, when
@@ -145,6 +177,22 @@ impl BuildInfo {
 mod tests {
     use super::*;
     use std::sync::{mpsc, Arc};
+
+    #[test]
+    fn scoped_silence_restores_nesting_after_failure() {
+        assert_eq!(SILENCED.get(), 0);
+        let outer = Silence::new(true);
+        assert!(std::panic::catch_unwind(|| {
+            let _inner = Silence::new(true);
+            let _disabled = Silence::new(false);
+            assert_eq!(SILENCED.get(), 2);
+            panic!("test scope failure");
+        })
+        .is_err());
+        assert_eq!(SILENCED.get(), 1);
+        drop(outer);
+        assert_eq!(SILENCED.get(), 0);
+    }
 
     struct FragmentedWriter {
         bytes: Arc<Mutex<Vec<u8>>>,

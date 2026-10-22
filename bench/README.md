@@ -14,6 +14,9 @@ python3 bench/compare.py target/bench-smoke/run.json
 python3 -m unittest discover -s bench/tests
 ```
 
+The complete benchmark test suite additionally requires SciPy, psutil,
+matplotlib and ReportLab for the independent references and campaign reporting tools.
+
 The output directory must be new. Runtime/frontend hashes are checked throughout;
 inputs are hash-bound and round-trip verified. Failed commands and partial runs
 remain visible. Comparisons retain coefficient, covariance, scalar, exact sample,
@@ -84,6 +87,41 @@ against that selected arm. The pivot's generic comparator is counted once,
 including sampling and fallback; production work charges and polls are unchanged.
 Counter-build wall time is never performance evidence. Select and freeze the
 profile arms and finite budget before collecting new observations.
+
+## Two-FE remaining-cost calibration
+
+The [development specification](../docs/two_fe_auto_policy.md) freezes the
+policy, label definitions, seeds, support requirements and finite budgets.
+`two_fe_policy_inputs.py` prepares its 16 full-size inputs and 32 Fast/Low
+cases with independent references, using a separately built and identified
+`replay_large` executable. Its output directory must be new; no seed or size
+overrides, resume or replacement-input path is provided.
+
+```sh
+python3 bench/two_fe_policy_inputs.py --generator REPLAY_LARGE --output target/tmp/TASK/inputs
+python3 bench/two_fe_policy.py prepare CONFIG.json --output target/tmp/TASK/plan.json
+python3 bench/two_fe_policy.py run target/tmp/TASK/plan.json --output target/tmp/TASK/results
+python3 bench/two_fe_policy.py report target/tmp/TASK/plan.json --output target/tmp/TASK/results
+```
+
+The configuration uses the ordinary qualification `platform`, `harness` and
+`cases` fields. Its three artifact keys are `never`, `force16` and `force32`,
+with requests `two-remaining-never`, `two-remaining-force16` and
+`two-remaining-force32`, respectively; all declare `families: ["two"]` and
+identify the same actual plugin, full source revision and build settings.
+The helper fixes W1/4/8, one retained warmup, two mirrored recorded calls,
+120 seconds per call and 14,400 seconds per platform: 864 calls per platform.
+Linux execution uses the verified whole-node runner, and its report also
+requires `--accounting DIRECTORY`. No continuation or retries are available.
+
+After both complete reports, `two_fe_policy_calibrate.py --platform MAC_PLAN
+MAC_RESULTS --platform LINUX_PLAN LINUX_RESULTS --output NEW_FIT.json` verifies
+the exact reported results, common source/input bindings and deterministic
+labels, then fits once with the specified rational/encoded arithmetic. It
+retains unavailable pairs and unsupported keys. A failed fit supplies no
+fallback coefficients. These tools do not edit runtime coefficients or activate
+Auto; held-out development validation and the separate 42-cell qualification
+remain required.
 
 ## Packed SCC comparison
 
