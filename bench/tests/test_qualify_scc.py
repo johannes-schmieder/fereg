@@ -33,6 +33,37 @@ def census(task='2', slots='28', extra=''):
 
 
 class ReservationTests(unittest.TestCase):
+    def test_mpi_whole_host_requires_exact_pe_contract_and_census(self):
+        host, raw = allocation()
+        host['pe'] = scc.MPI_WHOLE_HOST_PE
+        raw['pe'] = ('pe_name mpi_28_tasks_per_node_u\nallocation_rule 28\n'
+                     'control_slaves TRUE\njob_is_first_task FALSE\naccounting_summary FALSE\n'
+                     'start_proc_args /usr/local/sge/sge_root/mpi/startmpi.sh -catch_rsh $pe_hostfile\n'
+                     'stop_proc_args /usr/local/sge/sge_root/mpi/stopmpi.sh\n')
+        self.assertEqual(scc.validate_reservation(raw, host, 4), host['queue'])
+        job, xml = census()
+        scc.validate_census(job.replace('omp28', host['pe']), xml, host)
+        for before, after in [('allocation_rule 28', 'allocation_rule 1'),
+                              ('control_slaves TRUE', 'control_slaves FALSE'),
+                              ('job_is_first_task FALSE', 'job_is_first_task TRUE'),
+                              ('accounting_summary FALSE', 'accounting_summary TRUE'),
+                              ('startmpi.sh -catch_rsh', 'startmpi.sh -catch_hostname'),
+                              ('stopmpi.sh', 'other.sh')]:
+            with self.subTest(before=before), self.assertRaises(scc.OperationalError):
+                scc.validate_reservation({**raw, 'pe': raw['pe'].replace(before, after)}, host, 4)
+        for changed_host, changed_raw in [({**host, 'pe': 'mpi_28_tasks_per_node_z'}, raw),
+                ({**host, 'pe': 'omp28'}, raw),
+                ({**host, 'affinity': list(range(27))}, raw),
+                (host, {**raw, 'pe_hostfile': raw['pe_hostfile'] + 'scc-b 28 batch@scc-b\n'}),
+                (host, {**raw, 'quota': raw['quota'].replace('TRUE', 'FALSE')})]:
+            with self.assertRaises(scc.OperationalError):
+                scc.validate_reservation(changed_raw, changed_host, 4)
+        for bad_job, bad_xml in [(job, xml),
+                (job.replace('omp28', host['pe']), census(slots='27')[1]),
+                (job.replace('omp28', host['pe']), census(extra='<job_list/>')[1])]:
+            with self.assertRaises(scc.OperationalError):
+                scc.validate_census(bad_job, bad_xml, host)
+
     def test_full_reservation_and_array_identity(self):
         host, raw = allocation()
         self.assertEqual(scc.validate_reservation(raw, host, 28), host['queue'])

@@ -78,10 +78,38 @@ smoke arrays were not collected, so no independent array recheck is claimed.
 The smoke supplies no performance qualification. Subsequent scheduler diagnosis
 found that the frozen `scc-wp3` assignment is barred by a user restriction;
 its exact enabled rule is retained. Other assigned hosts were occupied.
-Idle public hosts use a different PE with MPI startup/cleanup hooks. Extending
-the frozen observer to accept that allocation requires a prospective execution
-decision; it has not been silently substituted. Completed observations remain
-valid evidence and are not resampled because of the queue delay.
+Idle public hosts use a different PE with MPI startup/cleanup hooks. Johannes
+authorized a bounded validation and prospective allocation amendment on
+2026-10-22. The [amendment evidence](../bench/results/two-fe-policy-gates-allocation-20261022.json)
+retains one zero-estimation probe, job `8250416.1`, on `scc-uf1`: scheduler
+failed/exit 0/0, 28 seconds and 345.344M maximum virtual memory. Two reservations
+and two all-queue censuses verified one 28-core physical host, full affinity,
+the consumable quota and exclusive job/task allocation. Five full process
+snapshots showed no MPI launcher or rank daemon. An administrative package
+update consumed about 20 CPU seconds during the probe; the host was not idle,
+and this probe supplies no timing evidence. Audited hook hashes, startup files
+and subsequent removal of the exact temporary files were checked.
+
+Only the eight never-started replicas change to `mpi_28_tasks_per_node_u`.
+Their original job IDs, 24 task IDs, call budgets and limits are retained;
+four completed replicas retain all 12 original shard results and 2,520 calls.
+The amended plan differs only in the reviewed observer/report source hashes.
+The reporter binds both complete source versions, selects the expected plan
+by a frozen replica partition, and rechecks reservation/census/accounting
+evidence before applying the unchanged scientific checks and host-level
+performance bounds. Both cohorts still require 12 distinct physical hosts
+per cell. The guarded launcher checks audited hook and wrapper hashes at
+entry and exit. All 88 focused tooling tests passed; the production-identity
+check found all 198 runtime modules and 58 artifact inputs unchanged.
+
+The record also retains the probe's pre-dispatch host-placement changes,
+normal accounting lag, a short-host SSH verification failure, and two
+never-started cleanup requests that were cancelled. The one-slot cleanup
+request was barred by the MPI queue policy; attempts to change that serial
+request's PE were rejected. Using the canonical hostname verified cleanup
+with existing hostname trust and without relaxing SSH verification. No
+qualification observation was discarded or repeated for these operational
+repairs, and the completed Mac qualification remains unchanged.
 
 Completed held-out captures and inputs were hash-checked against committed
 records before deletion, along with the completed original-build cache. Current

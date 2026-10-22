@@ -1068,7 +1068,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
         if host is not None:
             result['host'] = host.report()
             require(result['host']['isolation_ok'], 'host observation did not complete')
-            if policy:
+            if policy or manifest['platform'] == 'Linux' and 'observations' in result['host']:
                 result['host_observations_sha256'] = digest(directory / 'host-0' / result['host']['observations'])
         check_files()
         result['status'] = 'complete'
@@ -1113,7 +1113,105 @@ def accounting(text, host, *, normalize=False):
             and values.get('exit_status') == '0' and values.get('end_time'), 'missing/failed SGE accounting')
 
 
-def report(manifest_path, output, accounting_dir=None):
+def validate_allocation_amendment(path, manifest_path, output, verify_file):
+    """Bind two source cohorts without changing any completed observation."""
+    path = Path(path).resolve(strict=True)
+    before = stamp(path)
+    descriptor = read(path)
+    descriptor_sha = digest(path)
+    require(stamp(path) == before, 'allocation amendment changed while reading')
+    verify_file(path, descriptor_sha)
+    require(set(descriptor) == {'schema', 'kind', 'original_plan', 'amended_plan', 'source_roots',
+            'completed_replicas', 'amended_replicas', 'completed_results', 'completed_observations', 'source_changes'}
+            and descriptor['schema'] == 1 and descriptor['kind'] == 'linux-allocation-amendment-v1',
+            'invalid allocation amendment schema')
+    plans, paths = {}, {}
+    for name in ('original', 'amended'):
+        binding = descriptor[name + '_plan']
+        require(set(binding) == {'path', 'sha256'} and routing.sha(binding['sha256']), 'invalid allocation plan binding')
+        paths[name] = resolve(path, binding['path'])
+        verify_file(paths[name], binding['sha256'])
+        plans[name] = read(paths[name])
+    old, new = plans['original'], plans['amended']
+    require(paths['amended'] == Path(manifest_path).resolve(strict=True), 'report must use the bound amended plan')
+    require(old['platform'] == 'Linux' and old['schema'] == 1 and minimum_hosts_per_cell(old) is not None
+            and not any(k in old for k in ('diagnostic', 'continuation', 'recovery', 'mac_cell_policy')),
+            'allocation amendment requires an original Linux qualification')
+    require({**old, 'execution_sources': new['execution_sources']} == new,
+            'allocation amendment changed inputs, artifacts, science, schedule or budgets')
+    sources = execution_sources()
+    require(set(old['execution_sources']) == set(new['execution_sources']) == set(sources),
+            'allocation amendment source coverage changed')
+    changes = {name: {'before': old['execution_sources'][name], 'after': new['execution_sources'][name]}
+               for name in sources if old['execution_sources'][name] != new['execution_sources'][name]}
+    require(changes == descriptor['source_changes'] and 'qualify_scc' in changes
+            and set(changes) <= {'qualify', 'qualify_scc'}, 'unapproved allocation source delta')
+    require(set(descriptor['source_roots']) == {'original', 'amended'}, 'invalid allocation source roots')
+    for name, plan in plans.items():
+        root = resolve(path, descriptor['source_roots'][name])
+        for module, source in sources.items():
+            expected = plan['execution_sources'][module]
+            require(routing.sha(expected), 'invalid archived execution hash')
+            verify_file(root / source.relative_to(ROOT), expected)
+        for relative, expected in plan['files'].items():
+            file = resolve(paths[name], relative)
+            require(file == resolve(paths['amended'], relative), 'allocation input alias changed')
+            verify_file(file, expected)
+    completed, amended = descriptor['completed_replicas'], descriptor['amended_replicas']
+    require(all(isinstance(ids, list) and ids and all(type(i) is int for i in ids)
+                and ids == sorted(set(ids)) for ids in (completed, amended))
+            and not set(completed) & set(amended)
+            and sorted(completed + amended) == list(range(old['replicas'])),
+            'allocation replica partition is incomplete or overlapping')
+    expected_results = {f'run-{replica}-{shard}/results.json'
+                        for replica in completed for shard in range(old['shards'])}
+    require(set(descriptor['completed_results']) == expected_results, 'completed allocation result coverage changed')
+    for relative, expected in descriptor['completed_results'].items():
+        require(routing.sha(expected), 'invalid completed allocation result hash')
+        verify_file(Path(output) / relative, expected)
+    expected_observations = {name.replace('results.json', 'host-0/host-observations.jsonl') for name in expected_results}
+    require(set(descriptor['completed_observations']) == expected_observations, 'completed allocation observer coverage changed')
+    for relative, expected in descriptor['completed_observations'].items():
+        require(routing.sha(expected), 'invalid completed observer hash')
+        verify_file(Path(output) / relative, expected)
+    return {'plans': plans, 'completed': set(completed),
+            'record': {'descriptor_sha256': descriptor_sha, **descriptor}}
+
+
+def validate_allocation_host(result, directory, accounting_path, expected_hash, amended, threads, verify_file):
+    """Recheck both allocation contracts from sealed raw observer evidence."""
+    import qualify_scc as scc
+    report, host = result['host'], result['host']['host']
+    expected_pe = 'mpi_28_tasks_per_node_u' if amended else 'omp28'
+    require(host.get('pe', 'omp28') == expected_pe and host['slots'] == 28
+            and report['errors'] == [] and report['observations'] == 'host-observations.jsonl',
+            'allocation cohort PE or observer mismatch')
+    observer = directory / 'host-0' / report['observations']
+    require(routing.sha(expected_hash), 'missing allocation observer binding')
+    verify_file(observer, expected_hash)
+    events = [json.loads(line) for line in observer.read_text().splitlines()]
+    require(all(e['kind'] in ('reservation', 'census', 'process') and not e.get('competing_compute') for e in events)
+            and all(sum(e['kind'] == kind for e in events) >= 2 for kind in ('reservation', 'census', 'process')),
+            'allocation observer incomplete or reports interference')
+    try:
+        for event in events:
+            if event['kind'] == 'reservation':
+                require(scc.validate_reservation(event['raw'], host, max(threads)) == host['queue'], 'allocation queue changed')
+            elif event['kind'] == 'census':
+                scc.validate_census(event['raw']['job'], event['raw']['queues'], host)
+        accounting_text = accounting_path.read_text()
+        values = scc.fields(accounting_text)
+    except scc.OperationalError as error:
+        raise ValueError('allocation evidence: ' + str(error)) from error
+    require(values.get('granted_pe') == expected_pe and values.get('slots') == '28', 'accounted allocation PE/slots mismatch')
+    verify_file(accounting_path, digest(accounting_path))
+    calls = [call for cell in result['cases'] for call in cell_calls(cell)]
+    span = span_evidence(events, min(c['started_monotonic_ns'] for c in calls),
+                         max(c['finished_monotonic_ns'] for c in calls))
+    require(not span['interference'], 'allocation process observation does not cover calls')
+
+
+def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=None):
     manifest, output = read(manifest_path), Path(output)
     diagnostic = diagnostic_mode(manifest)
     recovery = manifest.get('recovery')
@@ -1125,6 +1223,7 @@ def report(manifest_path, output, accounting_dir=None):
     prior_bindings = {}
     verified_files = {}
     calibration_result_sha256 = None
+    allocation = None
 
     def verify_file(path, expected):
         path = Path(path).absolute()
@@ -1150,6 +1249,8 @@ def report(manifest_path, output, accounting_dir=None):
             old_cells, old_root = recovery_prior(manifest, manifest_path)
             old_events = [json.loads(line) for line in resolve(manifest_path, recovery['prior_host']['path']).read_text().splitlines()]
         source_stamps.update(verify_sources(manifest['execution_sources']))
+        if allocation_amendment is not None:
+            allocation = validate_allocation_amendment(allocation_amendment, manifest_path, output, verify_file)
         if policy:
             for name, expected_hash in manifest['files'].items():
                 verify_file(Path(manifest_path).parent / name, expected_hash)
@@ -1163,14 +1264,21 @@ def report(manifest_path, output, accounting_dir=None):
             try:
                 before = stamp(path)
                 result = read(path)
+                expected_manifest = (allocation['plans']['original' if replica in allocation['completed'] else 'amended']
+                                     if allocation else manifest)
+                if allocation:
+                    require(stamp(path) == before, 'allocation result changed while reading')
+                    verify_file(path, digest(path))
+                    require(result['failures'] == [] and not result.get('previous_hosts'),
+                            'allocation amendment cannot hide failed or reused attempts')
                 if manifest.get('diagnostic') in ('two-fe-remaining-calibration-v1', 'two-fe-gates-development-v1'):
                     calibration_result_sha256 = digest(path)
                     require(stamp(path) == before, 'calibration result changed while hashing')
                     source_stamps[path] = before
-                require(result['manifest_sha256'] == routing.identity(manifest)
+                require(result['manifest_sha256'] == routing.identity(expected_manifest)
                         and (result['replica'], result['shard']) == (replica, shard)
                         and result['status'] == 'complete', 'missing, changed or failed shard')
-                require(result.get('execution_sources') == manifest['execution_sources'], 'unverified execution sources')
+                require(result.get('execution_sources') == expected_manifest['execution_sources'], 'unverified execution sources')
                 require('continuation' not in manifest or result['hostname'] == manifest['continuation']['hostname'],
                         'continuation host changed')
                 require(result.get('budget_compliant') is True
@@ -1235,8 +1343,16 @@ def report(manifest_path, output, accounting_dir=None):
                             == physical_host(host['hostname'], minimum_hosts is not None),
                             'recorded host differs from accounted host')
                     require(accounting_dir is not None, 'SGE accounting is required')
-                    accounting((Path(accounting_dir) / f"{host['job_id']}.{host['task_id']}.txt").read_text(), host,
+                    accounting_path = Path(accounting_dir) / f"{host['job_id']}.{host['task_id']}.txt"
+                    accounting(accounting_path.read_text(), host,
                                normalize=minimum_hosts is not None)
+                    if allocation:
+                        completed = replica in allocation['completed']
+                        observer_key = f'run-{replica}-{shard}/host-0/host-observations.jsonl'
+                        observer_hash = (allocation['record']['completed_observations'][observer_key] if completed
+                                         else result.get('host_observations_sha256'))
+                        validate_allocation_host(result, path.parent, accounting_path, observer_hash,
+                                                 not completed, manifest['threads'], verify_file)
                 expected = {f"{c['id']}-t{t}" for i, c in enumerate(manifest['cases'])
                             if i % manifest['shards'] == shard for t in manifest['threads']}
                 require(len(result['cases']) == len(expected) and {c['id'] for c in result['cases']} == expected,
@@ -1389,6 +1505,8 @@ def report(manifest_path, output, accounting_dir=None):
             summary['policy_binding'] = manifest['policy_binding']
     if 'min_distinct_hosts_per_cell' in manifest:
         summary['min_distinct_hosts_per_cell'] = manifest['min_distinct_hosts_per_cell']
+    if allocation:
+        summary['allocation_amendment'] = allocation['record']
     if 'continuation' in manifest:
         state = manifest['continuation']
         summary['continuation'] = {k: state[k] for k in ('prior_plan', 'prior_result', 'prior_calls', 'prior_elapsed_s',
@@ -1440,6 +1558,7 @@ def main():
             command.add_argument('--resume', action='store_true')
         else:
             command.add_argument('--accounting', type=Path)
+            command.add_argument('--allocation-amendment', type=Path)
     args = parser.parse_args()
     if args.action == 'recovery-plan':
         recovery_plan(args.manifest, args.results, args.host, args.review, args.output)
@@ -1460,7 +1579,7 @@ def main():
         result = run(args.manifest, args.output, args.shard, args.replica, args.resume)
         print(result['status'])
         return 0 if result['status'] == 'complete' else 1
-    result = report(args.manifest, args.output, args.accounting)
+    result = report(args.manifest, args.output, args.accounting, allocation_amendment=args.allocation_amendment)
     print(result['status'])
     return 0 if result['status'] in {'passed', 'smoke_complete'} else 1
 

@@ -17,6 +17,7 @@ import block_host
 
 LIBRARY_LIMITS = {name: '1' for name in
                   ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS')}
+MPI_WHOLE_HOST_PE = 'mpi_28_tasks_per_node_u'
 
 
 class OperationalError(RuntimeError):
@@ -82,12 +83,24 @@ def ordinary_activity(processes, previous, owned):
 def validate_reservation(raw, host, required_threads):
     """Slots plus the all-queue consumable quota establish the reservation."""
     n = host['slots']
-    require(n == 28 and 1 <= required_threads <= n, 'expected complete omp28 host and fitting worker count')
+    require(n == 28 and 1 <= required_threads <= n, 'expected complete 28-core host and fitting worker count')
     lines = [line.split() for line in raw['pe_hostfile'].splitlines() if line.strip()]
     require(len(lines) == 1 and len(lines[0]) >= 3 and short_host(lines[0][0]) == short_host(host['hostname'])
             and lines[0][1] == str(n), 'PE allocation does not cover one whole host')
     pe = fields(raw['pe'])
-    require(pe.get('pe_name') == 'omp28' and pe.get('allocation_rule') == '$pe_slots', 'invalid PE allocation rule')
+    expected_pe = host.get('pe', 'omp28')  # Historical omp28 evidence predates this field.
+    require(pe.get('pe_name') == expected_pe, 'PE allocation identity differs')
+    if expected_pe == MPI_WHOLE_HOST_PE:
+        # This PE reserves one 28-slot host; the launcher does not start MPI ranks.
+        # Its audited hooks create/remove TMPDIR files outside the timed calls.
+        expected = {'allocation_rule': '28', 'control_slaves': 'TRUE',
+                    'job_is_first_task': 'FALSE', 'accounting_summary': 'FALSE',
+                    'start_proc_args': '/usr/local/sge/sge_root/mpi/startmpi.sh -catch_rsh $pe_hostfile',
+                    'stop_proc_args': '/usr/local/sge/sge_root/mpi/stopmpi.sh'}
+        require(all(' '.join(pe.get(key, '').split()) == value for key, value in expected.items()),
+                'invalid whole-host MPI PE contract')
+    else:
+        require(expected_pe == 'omp28' and pe.get('allocation_rule') == '$pe_slots', 'invalid PE allocation rule')
     quota = fields(raw['quota'])
     limits = [line.strip().split() for line in raw['quota'].splitlines() if line.strip().startswith('limit ')]
     require(quota.get('name') == 'max_slots_per_host' and quota.get('enabled') == 'TRUE'
@@ -113,7 +126,10 @@ def validate_reservation(raw, host, required_threads):
 def validate_census(job_text, queue_xml, host):
     job = fields(job_text, colon=True)
     require(job.get('job_number') == host['job_id'] and job.get('project') == 'welfgr', 'wrong scheduler job/project')
-    require(job.get('parallel environment', '').split() == ['omp28', 'range:', '28'], 'wrong scheduler PE request')
+    expected_pe = host.get('pe', 'omp28')
+    require(expected_pe in {'omp28', MPI_WHOLE_HOST_PE}
+            and job.get('parallel environment', '').split() == [expected_pe, 'range:', '28'],
+            'wrong scheduler PE request')
     resources = dict(part.split('=', 1) for part in job.get('hard resource_list', '').split(',') if '=' in part)
     require(resources.get('num_proc') == '28', 'missing whole-node num_proc request')
     queues = ET.fromstring(queue_xml).findall('./queue_info/Queue-List')
@@ -155,7 +171,7 @@ class HostMonitor:
 
     def _reservation(self):
         raw = {'pe_hostfile': Path(os.environ['PE_HOSTFILE']).read_text()}
-        for key, argv in [('pe', ['qconf', '-sp', 'omp28']), ('quota', ['qconf', '-srqs', 'max_slots_per_host']),
+        for key, argv in [('pe', ['qconf', '-sp', self.host['pe']]), ('quota', ['qconf', '-srqs', 'max_slots_per_host']),
                           ('complexes', ['qconf', '-sc']), ('host', ['qconf', '-se', self.host['hostname']]),
                           ('topology', ['lscpu', '-p=CPU,CORE,SOCKET,ONLINE'])]:
             raw[key] = self.execute(argv)
@@ -250,12 +266,13 @@ class HostMonitor:
     def _admit(self):
         require(sys.platform.startswith('linux') and os.environ.get('JOB_ID'), 'SCC monitor requires a Linux SGE job')
         require(all(os.environ.get(k) == v for k, v in LIBRARY_LIMITS.items()), 'library thread limits must be one')
-        require(os.environ.get('PE') == 'omp28', 'SCC monitor requires omp28')
+        require(os.environ.get('PE') in {'omp28', MPI_WHOLE_HOST_PE}, 'unsupported SCC whole-host PE')
         task = os.environ.get('SGE_TASK_ID', '0')
         task = '0' if task == 'undefined' else task
         require(task.isdigit() and os.environ['JOB_ID'].isdigit(), 'invalid SGE identity')
         self.host = {'hostname': socket.gethostname(), 'job_id': os.environ['JOB_ID'], 'task_id': task,
-                     'slots': int(os.environ['NSLOTS']), 'affinity': sorted(os.sched_getaffinity(0))}
+                     'pe': os.environ['PE'], 'slots': int(os.environ['NSLOTS']),
+                     'affinity': sorted(os.sched_getaffinity(0))}
 
     def __enter__(self):
         try:
