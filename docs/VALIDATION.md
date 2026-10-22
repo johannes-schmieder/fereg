@@ -28,6 +28,26 @@ were deleted; hashes and summaries are the remaining record.
 
 ## Selected two-FE gates: fixed qualification preparation (2026-10-22)
 
+The [Mac result](../bench/results/two-fe-policy-gates-qualification-mac-20261022.json)
+passes all 84 protected performance bounds across 42 cells and 6,174 calls.
+Its two linked call tables retain every complete call object losslessly.
+There were no scientific/native failures, discarded observations or cell
+retries. Independent review verified the frozen bindings, all 126 retained
+reference sets, cross-arm and cross-worker science, policy/resource traces,
+and independently reconstructed every bound from `NATIVE_SECONDS`.
+The closest upper excess was -0.746312 ms, repeated-cells W4 against original
+Auto. These are per-comparison bounds from 24 mirrored blocks on one active
+Mac, not simultaneous coverage or a general speedup claim.
+
+The initial Mac observer attempt failed because sandbox access to `ps` was
+denied, before any native call. That failure remains retained. The unchanged
+plan ran with host-observer access and a reduced external deadline of 14,399
+seconds, deducting the failed attempt's 0.719856 seconds from the original
+budget. It completed in 2,447.765 seconds. All 533 observer samples recorded
+no competing compute; ordinary desktop activity remains included. Sampled
+observation is not continuous proof of absence. Linux qualification and exact
+public-versus-hidden equivalence remain required before activation.
+
 The [qualification freeze](../bench/results/two-fe-policy-gates-qualification-freeze-20261022.json)
 keeps native candidate `e9be9e64` / CMG `fd77d98d`, the selected structural gates
 and both protected public baselines unchanged. All 21 families run at W1/W4.
