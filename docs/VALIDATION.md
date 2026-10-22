@@ -26,6 +26,36 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Selected two-FE gates: fixed qualification preparation (2026-10-22)
+
+The [qualification freeze](../bench/results/two-fe-policy-gates-qualification-freeze-20261022.json)
+keeps native candidate `e9be9e64` / CMG `fd77d98d`, the selected structural gates
+and both protected public baselines unchanged. All 21 families run at W1/W4.
+Seventeen generated bodies use the separate seed 2026105201; four imported
+feature fixtures retain their independent replay references. Sixteen bounded
+categorical references and the inactive-column analytic witness cover the
+generated inputs. Independent review verified both plans, all 82 bound files
+per platform, actual plugins and harnesses, and all 20 execution-source hashes.
+Five helper files initially missing from the standalone runner archive were
+added and reverified before execution. No native source changed.
+
+Ordering seed is 2026102206. Linux fixes 12 distinct physical hosts per cell,
+three shards and two mirrored blocks: 36 tasks and 7,560 calls, with 3,600-second
+application and 4,200-second scheduler limits per task. Mac fixes 24 blocks and
+6,174 calls within 14,400 seconds; its existing external-interference policy
+permits at most four whole-cell replacements, up to 6,762 calls in total. Each
+native call has a 120-second limit. Ordinary desktop noise stays in the data;
+scientific failures, native failures, slow results and inconclusive bounds do
+not authorize resampling. A separate 90-call SCC smoke checks the deployed
+runner across TWO, MANY and unaffected feature paths before qualification.
+Queued host assignments do not establish isolation or satisfy the host count.
+
+Completed held-out captures and inputs were hash-checked against committed
+records before deletion, along with the completed original-build cache. Current
+qualification inputs and actual artifacts remain available. Public two-FE Auto
+is still disabled. Qualification results and exact public-versus-hidden
+equivalence are required before its invocation wiring can change.
+
 ## Selected two-FE gates: held-out development (2026-10-22)
 
 The [frozen development comparison](../bench/results/two-fe-policy-gates-development-freeze-20261022.json)
