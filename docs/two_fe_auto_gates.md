@@ -4,6 +4,26 @@ Prospectively frozen after independent review (2026-10-22). This specification
 and the reviewed offline fitter are committed before the single real calibration
 fit. The selected hidden implementation follows that fit and an independent audit.
 
+The [completed fit](../bench/results/two-fe-policy-gates-fit-20261022.json)
+and [independent audit](../bench/results/two-fe-policy-gates-audit-20261022.json)
+select gate16 `feature16 <= 0 → Build` and gate32 `Defer` under the rules below.
+Within the separately validated packed/outcome/final action scope, this builds
+the first eligible packed or outcome action at step 16 and defers a final
+residual. Regressor-only and one-off first episodes close Unknown; they must
+not pass merely because `final == false`. This selected pair needs no progress
+banks, proxy scans, historical action counters or economic clocks. Its runtime
+still preserves owner-level closure, current-key eligibility, readiness,
+positive remaining allowance and the existing direct-route semantics.
+
+The actual frozen grids contain 56 × 52 pairs, of which 1,479 are admissible.
+Two pairs tie on the primary loss; the declared order selects feature 16.
+The resulting 72 builds and 36 deferrals include three harmful training builds.
+The other 84 cells have no eligible episode and remain in coverage; their
+counterfactual regret is unknown. These are projection-suffix training results,
+not a complete-command speed or qualification claim. The prospective design
+below remains the record of the class and selection procedure; unselected
+progress machinery is not part of the selected runtime.
+
 This revision targets complete-command speed. Missed beneficial upgrades,
 harmful builds and mistimed builds all incur loss. The available training labels
 cover projection suffixes and exclude observer/caller work; this is an empirical

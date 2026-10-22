@@ -12258,3 +12258,43 @@ collector repair distinguishes the two historical schemas explicitly, checks
 the bound complete/no-error 864-call summaries and exact nine-call cells, and
 rejects recovery markers inconsistent with that platform. It changes no
 observations, feature/cut rules, loss, tie order or fitting budget.
+
+## Selected direct-loss gates and independent audit (2026-10-22)
+
+After the collector-only repair was committed at `ca090b06`, the single
+[frozen fit](../bench/results/two-fe-policy-gates-fit-20261022.json)
+completed with exit 0. Its SHA-256 is
+`5b42c6e24862e0a4c008aa9a1b7d0256e8d335e2ac82d50d9f530a73b2bff573`.
+The [audit record](../bench/results/two-fe-policy-gates-audit-20261022.json)
+retains the exact execution/log identity, independent decoder source and report,
+descriptive diagnostics and all three harmful training choices. The independent
+audit reproduced all 108 raw/pooled cell costs and decisions, 192-cell coverage,
+204 unavailable labels, the 56 × 52 grids, 1,479 admissible pairs, both primary
+loss ties and the exact 128-byte encoding. It also checked all 1,728 archived
+calls and the 240 recorded plus 120 warmup pooling comparisons. Its two
+validator-only failures preceded enumeration and remain recorded with their
+log hashes; correcting those checks changed no observations or selected model.
+
+The selected gate builds at step 16 when the first eligible initial action is
+packed or outcome, defers final residuals, and never grants at step 32.
+Unsupported regressor-only and one-off episodes close Unknown before that
+predicate. It projects 72 Force16 and 36 Never choices; the other 84 cells have
+no episode and unknown counterfactual regret. The three harmful builds occur
+on high-degree-weak Fast seed 2026102201: Darwin W8 loses 10.165624 ms;
+Linux W4 loses 0.4990565 ms and W8 loses 17.335576 ms against Never.
+No second model was fitted to avoid these losses.
+
+The selected model's pooled projection-suffix empirical regret averages
+`56000513/384` ns per coverage cell. Re-evaluating this same model with unpooled
+costs gives `58195663/384` ns; this diagnostic selects no replacement.
+No identical cheap-exposure tuple repeats within platform and checkpoint age,
+so the descriptive setup-variation table for such groups is empty. Remaining-
+work tokens are also descriptive, not literal step forecasts or selected
+runtime dependencies. Original numeric arrays were not recreated by this audit;
+it verified retained fingerprints, trajectories and source bindings.
+
+This evidence stage contains no new native calls, held-out observations or
+public activation. The selected rule needs no progress banks/scans, but its
+callback and caller costs must still be measured in complete-command tests.
+It is a fitted candidate with known training losses, not a fastest-command or
+qualification result. The separate held-out and 42-cell schedules remain fixed.
