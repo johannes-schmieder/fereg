@@ -125,6 +125,13 @@ qualified two-FE default on the development branch only after the fixed-candidat
 release packages and GitHub testing remain unchanged. Discuss scientific
 questions, substantive rule conflicts and inconclusive qualification with Johannes.
 
+Later on 2026-10-21, Johannes accepted the completed ninther setup version
+(fereg native source `1cdb225e`, CMG `fd77d98d`, evidence at `4e7217a8`)
+and authorized continuing the new Auto policy. Its two inconclusive setup
+performance bounds remain recorded as inconclusive. This milestone acceptance
+permits policy development; it does not waive the separate 42-cell qualification
+or exact public-versus-hidden activation gates.
+
 Runtime changes require `./scripts/run_tests.sh` and mapped scientific/transaction
 checks. Build/package changes require focused tooling and native build/ABI checks.
 Prose-only documentation/instruction changes use link/reference checks and

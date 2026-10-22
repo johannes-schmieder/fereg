@@ -189,6 +189,22 @@ unsupported explicit requests must not silently become auto.
 
 ### Incremental Auto qualification (2026-10-17)
 
+**Successor policy development, authorized 2026-10-21.** Johannes accepted the
+ninther setup implementation for development of a deterministic two-FE OLS
+Auto upgrade policy, with the disclosed setup timing limits retained in
+[validation](VALIDATION.md#ninther-pivot-repair-accepted-for-policy-development-timing-limits-retained).
+For this successor only, the fixed iteration-16 checkpoint and the prohibition
+on predictive payback below are superseded: the decision may use actual active
+and genuinely reusable RHS work, admitted workers, cheap graph structure and
+solver progress. It must include future setup, restart and application costs,
+exclude sunk work and hypothetical reuse across changing weights, and use no
+elapsed-time routing or construction-work cap. The existing h16 implementation
+and historical injection contracts remain the reference until a reviewed
+replacement is implemented. Preserve cutoff 5, one sampled tree, seed zero,
+eligibility, small-direct selection, certification, memory controls, restart
+and fallback semantics. Public activation still requires the separate fixed
+42-cell Mac/Linux qualification and exact public-versus-hidden equivalence.
+
 The `codex/auto-routing` workstream qualifies two independent OLS candidates:
 at least three categorical intercept FEs use strict unseeded LSMR with retained
 preparation; exactly two categorical intercept FEs use the existing portfolio's

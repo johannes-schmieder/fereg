@@ -666,7 +666,21 @@ resource, failure and cancellation behavior. Root will validate the stable
 implementation and measure it separately. No two-FE policy or public activation
 follows from these diagnostics.
 
-### Ninther pivot repair (native validation complete; Mac/Linux comparisons inconclusive)
+### Ninther pivot repair (accepted for policy development; timing limits retained)
+
+On 2026-10-21, after reviewing the complete Mac/Linux comparison and the
+alternatives, Johannes accepted this setup version and authorized development
+of the new deterministic two-FE OLS Auto policy (option 1). The accepted
+implementation is fereg native source `1cdb225e2460e391ad38f856755ae3ea5efb2e5b`
+with CMG `fd77d98da1f74009b3e5b634e1944433b647a9b1`; the complete evidence is
+recorded at fereg `4e7217a8d060414a715d06d604ee67a39f1d847b`.
+This is milestone acceptance with disclosed uncertainty: the two inconclusive
+bounds below remain inconclusive, and no observations are added or excluded.
+Proceed with independent GPT Pro and Claude Fable proposals and cross-critique,
+then implementation and the separate fixed-candidate qualification. Public
+two-FE activation still requires all applicable scientific, resource,
+transaction, 42-cell Mac/Linux and exact public-versus-hidden gates. Main,
+release packages and GitHub testing remain unchanged.
 
 This is the one selected generic repair to the shared canonical raw-edge
 introsort, CMG `aaf6ec4c6b88b69c58024cc18f60e6abd5754a5a` (parent
@@ -914,8 +928,10 @@ measurements were resubmitted or added. The earlier delay remains unexplained.
 Across Mac and Linux, 46 of 48 bounds pass and two remain inconclusive, both
 against the accepted baseline. The pivot repair demonstrably reduces sorting
 work on the diagnosed inputs, but the fixed comparison does not establish
-full nonregression. Policy advancement and public activation remain held for
-Johannes's decision; neither platform is resampled to obtain a pass.
+full nonregression. Johannes subsequently accepted this disclosed setup
+milestone for policy development as recorded above. Public activation remains
+subject to the separate qualification; neither platform is resampled to obtain
+a pass.
 
 Limits: counted units are generic work, not cost or speed. The real
 contraction split pattern was not observed. Neither the native checks nor this
