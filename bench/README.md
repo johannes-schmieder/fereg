@@ -567,13 +567,18 @@ The configuration is a JSON object with these fields:
 | `coverage` | `routing` requires all 42 cells; `smoke` only checks tooling and cannot qualify a candidate. |
 
 Artifact `build` records compiler and build settings in a short string. `request`
-is `auto`, `preserve`, `incremental-many` or `incremental-two`. `families` lists
+is `auto`, `preserve`, `incremental-many`, `incremental-two`, `two-remaining-v1`
+or `two-gates-v1`. `families` lists
 accepted numerical changes relative to the original (`[]`, `["many"]`, etc.).
 Original and incumbent use their actual uninjected public invocation. A public
 Auto candidate requires the corresponding hidden artifact, with exact agreement
 of scientific output and numerical solver signatures. Unchanged explicit OLS
 requests use `scope: "exact"` and `request: "preserve"`. This routing runner is
 OLS-only; PPML remains covered by the mapped feature/replay suite.
+Resource and gate evidence follows the eligible family: two-FE hidden policies
+retain accepted many-FE routing outside TWO. A public candidate uses the selected
+hidden artifact's policy for that family; original and incumbent references do
+not inherit that override. Missing expected gate fields fail reporting.
 
 An oracle is `{"kind": "routing", "path": "reference.json"}` for a bounded
 independent categorical reference, `{"kind": "replay", "path": "reference.json"}`

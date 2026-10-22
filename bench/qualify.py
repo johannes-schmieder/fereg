@@ -670,7 +670,8 @@ def read_native(target, log, meta, check_reference=True):
     signature = {**exact_view(raw, False), 'columns_sha256': digest(columns)}
     if check_reference:
         science.check_oracle(raw, columns, meta)
-    return raw, columns, {**detail, 'seconds': float(match[0]), 'fingerprint': routing.identity(signature)}
+    return raw, columns, {**detail, 'seconds': float(match[0]), 'timing_field': 'NATIVE_SECONDS',
+                          'fingerprint': routing.identity(signature)}
 
 
 def worker_signature(raw):
@@ -681,6 +682,20 @@ def worker_signature(raw):
 
 def affected(meta, families):
     return any(routing.incremental_eligible(meta, family) for family in families)
+
+
+def resource_policy(manifest, role, meta):
+    """Resolve the executed family, including a public candidate's hidden binding."""
+    artifact = manifest['artifacts'][role]
+    family = next((f for f in artifact['families'] if affected(meta, [f])), None)
+    if family is None:
+        return None
+    request = artifact['request']
+    if role == 'candidate' and request == 'auto' and 'hidden' in manifest['artifacts']:
+        request = manifest['artifacts']['hidden']['request']
+    if family == 'two' and request in (*routing.REMAINING, routing.GATES):
+        return request
+    return 'incremental-' + family
 
 
 def artifact_aliases(manifest):
@@ -955,8 +970,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                                     resources_detail = diagnostic_tool(manifest).resource_diagnostics(
                                         log.read_text(), role, artifact['revision'], family=family)
                                 else:
-                                    request = artifact['request']
-                                    selected = request if request in (*routing.REMAINING, routing.GATES) else 'incremental-' + family
+                                    selected = resource_policy(manifest, role, meta)
                                     resources_detail = science.resource_diagnostics(log.read_text(), selected,
                                         False, {}, expected_preset=routing.policy(selected)['injection'])
                                     if selected == routing.GATES:
@@ -989,7 +1003,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         for role, current in conceptual.items():
                             prior = first_worker[role]
                             cmgschur.scientific_comparison(prior[0], current[0], prior[1], current[1], meta)
-                            if 'gate_events' in current[2]:
+                            if resource_policy(manifest, role, meta) == routing.GATES:
                                 import two_fe_policy_development as development
                                 require(development.semantic_signature(current[2]) == development.semantic_signature(prior[2]),
                                         'cross-worker gate decisions changed')
@@ -1089,7 +1103,11 @@ def accounting(text, host, *, normalize=False):
         if len(pair) == 2:
             require(pair[0] not in values, 'accounting must contain one task')
             values[pair[0]] = pair[1].strip()
-    require(values.get('jobnumber') == str(host['job_id']) and values.get('taskid') == str(host['task_id'])
+    def task_id(value):
+        require(isinstance(value, str) and (value in ('0', 'undefined') or
+                re.fullmatch(r'[1-9][0-9]*', value) is not None), 'invalid SGE task identity')
+        return '0' if value == 'undefined' else value
+    require(values.get('jobnumber') == str(host['job_id']) and task_id(values.get('taskid')) == task_id(str(host['task_id']))
             and physical_host(values.get('hostname', ''), normalize) == physical_host(host['hostname'], normalize)
             and values.get('project') == 'welfgr' and values.get('failed', '').split()[0:1] == ['0']
             and values.get('exit_status') == '0' and values.get('end_time'), 'missing/failed SGE accounting')
@@ -1257,8 +1275,11 @@ def report(manifest_path, output, accounting_dir=None):
                     warmups = {c['execution']: c['fingerprint'] for c in cell['warmups']}
                     require(len(cell['warmups']) == len(set(aliases.values())) and set(warmups) == set(aliases.values()),
                             'missing/duplicate warmup')
+                    if key not in metadata_cache:
+                        metadata_cache[key] = routing_cases.inspect_case(resolve(manifest_path, item['input']), item['family'])
+                    policy_meta = metadata_cache[key]
                     for call in cell['warmups']:
-                        if manifest['artifacts'][call['execution']]['request'] == routing.GATES:
+                        if resource_policy(manifest, call['execution'], policy_meta) == routing.GATES:
                             import two_fe_policy_development as development
                             signature = development.semantic_signature(call)
                             policy_key = (key, call['execution'])

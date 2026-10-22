@@ -26,6 +26,53 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Selected two-FE gates: held-out development (2026-10-22)
+
+The [frozen development comparison](../bench/results/two-fe-policy-gates-development-freeze-20261022.json)
+completed all 864 calls, 432 per platform, with the unchanged native candidate
+`e9be9e64` and CMG `fd77d98d`. The
+[complete compact results](../bench/results/two-fe-policy-gates-development-20261022.json)
+retain every warmup and recorded call, both platform reports, actual binary and
+source bindings, scientific fingerprints, gate/resource evidence and failures.
+All scientific, own-repeat and cross-worker checks passed. Independent review
+rehashed all retained reference arrays and heads, reparsed warmup traces and
+timers, and reproduced the paired scores. All 144 cross-platform reference
+fingerprints and 48 candidate policy signatures agree. Each platform installed
+18 upgrades at iteration 16, deferred nine Final actions and had 21 cells without
+a policy episode. These counts include all three worker counts.
+
+All 96 Mac point comparisons stayed within max(5%, 1 ms). Linux had seven
+positive point excesses across four cells: dense Low W8, inactive-columns Fast
+W8, wide-rhs Fast W4 and wide-rhs Low W8. The largest excess against accepted
+Auto was 37.213 ms for wide-rhs Low W8 (ratio 1.09099). Weak-connectivity cases
+showed gains, but the aggregate medians are not workload-weighted speedups.
+One isolated Linux host and one Mac mirrored block cannot establish the required
+uncertainty bounds: all 192 bounds remain inconclusive by design. No timing was
+excluded or rerun, and no model was selected or refitted on these observations.
+The separate 42-cell qualification and exact public-hidden equivalence remain
+required; public two-FE Auto remains disabled.
+
+Linux job `8245855` completed with scheduler failed/exit 0/0, 697 seconds and
+1.161G maximum virtual memory. Its first report failed because the observer
+canonicalized scalar SGE task `undefined` to `0`, while the reporter compared
+the spelling literally. A tested and independently reviewed accounting-only
+adapter repaired the report using the same frozen source, raw accounting and
+calls. The failed report is retained. FQDN shortening already worked.
+The observers recorded 90 Mac and 139 Linux process samples, with maximum gaps
+5.008 and 6.694 seconds, plus two Linux reservations and 13 queue censuses.
+No competing compute was observed; this is sampled coverage, not continuous
+proof. Ordinary desktop and OS activity remains in the measurements.
+
+Prospective qualification tooling now resolves the actual eligible family:
+hidden two-FE gates fall back to accepted many-FE routing outside TWO, and a
+public candidate uses its selected hidden policy for the relevant family.
+Protected references retain their own policies. Expected gate evidence fails
+closed in both run and report. Scalar SGE task normalization and the accurate
+`NATIVE_SECONDS` metadata label are also maintained. The scored `seconds` value
+already used that complete-call timer; auxiliary `native_s` was never the score.
+Ninety focused tests and bounded Astra review passed. Production identity is
+unchanged, so the completed source/native integration evidence is reused.
+
 ## Two-FE remaining-cost policy foundation (2026-10-21)
 
 Johannes accepted the ninther setup for policy development. Independent GPT Pro
