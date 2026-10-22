@@ -12345,3 +12345,29 @@ removed only after every actual hash matched both its original result and
 committed compact record. Current inputs, artifacts, scalar observations and
 audit sources remain available during the unfinished workstream. This cleanup
 does not erase failed or inconclusive evidence or recreate a numerical oracle.
+
+## Selected structural gate native integration (2026-10-22)
+
+The [native record](../bench/results/two-fe-policy-gates-native-20261022.json)
+binds native source `e9be9e64` and CMG `fd77d98d`, fresh Mac/Linux builds,
+actual binary hashes, audit/load/ABI/panic checks, commands, scheduler accounting
+and all 72 targeted integration calls. Both platforms pass 36 calls across
+three existing calibration bodies, Fast/Low and W1/W4, using accepted-public,
+hidden candidate and candidate repeat. Independent numerical references, scoped
+compatibility, fixed-worker repeats, cross-worker discrete decisions, gate
+traces and resource checks pass. These correctness calls have no performance
+score and do not consume held-out inputs.
+
+The actual Mac candidate also passes 73 public exact/scientific replays with
+146 W4/W8 checks, six mapped Stata fixtures and real optional-builder/explicit-CMG
+Break/rollback checks. Independent review rehashed and reparsed retained evidence
+on both platforms, including the collected Linux binary. It did not recompute
+numerical oracles; Linux numerical columns were not collected for local rehash.
+Mac native execution is arm64, not an Intel-Mac execution claim. Shared Break
+fixtures and gate-specific source cancellation witnesses cover distinct seams.
+The standard installed-plugin binding remains failed, and release packages are
+unchanged. Held-out speed, final qualification and public activation remain open.
+
+Completed duplicate native captures and isolated build caches may now be removed
+after verifying the hashes retained in this record. The unfinished workstream
+retains its current inputs, candidate and protected baseline artifacts.
