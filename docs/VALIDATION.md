@@ -12371,3 +12371,30 @@ unchanged. Held-out speed, final qualification and public activation remain open
 Completed duplicate native captures and isolated build caches may now be removed
 after verifying the hashes retained in this record. The unfinished workstream
 retains its current inputs, candidate and protected baseline artifacts.
+
+## Selected structural gate held-out development freeze (2026-10-22)
+
+The [prospective freeze](../bench/results/two-fe-policy-gates-development-freeze-20261022.json)
+contains both actual artifact/input/reference/source manifests before any timing:
+eight held-out bodies at seed 2026104201, Fast/Low, W1/W4/W8, original public
+`f35f3a4d`, accepted public `1cdb225e` and selected hidden native `e9be9e64`.
+Each platform has one retained warmup and two recorded calls per arm/cell:
+432 calls, 120 seconds/call, 14,400 seconds/platform, no retries or additional
+sampling. Order seed is 2026102205; final seed 2026105201 remains untouched.
+All source and numerical input bindings agree across platforms.
+
+The protected original has fresh audited Mac/Linux builds with the candidate's
+compiler settings and build date. The selected model and native candidate are
+unchanged. Minimal gate/resource traces use only warmups; complete native-call
+`NATIVE_SECONDS` scores include caller/policy costs without diagnostic tracing.
+Linux uses one verified isolated physical host; Mac retains ordinary active
+desktop noise. The two recorded calls do not establish independent-host
+uncertainty or qualify performance. No fit or model reselection follows this
+panel. The separate 42-cell qualification and exact activation gates remain.
+
+Before this freeze, 72 completed duplicate Mac input/column captures totaling
+3,390,566,334 bytes were hash-verified against the committed native record and
+removed with the completed 559,294,252-byte candidate build cache. Current
+comparison inputs, artifacts and compact observations remain. The baseline
+archive's final-printer failure and successful independent source verification
+are retained; no native measurement failed or was replaced during preparation.
