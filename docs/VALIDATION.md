@@ -64,9 +64,46 @@ and full passes do not erase the failure or prove its exact historical cause.
 The reviewed complexity increase is 1,398 core production lines and 15 plugin
 lines; no new function/file size violation is introduced. The sidecar and labels
 are scoped to sanctioned successor injections. Actual native builds,
-old/outside-scope replay, Stata transactions, the 1,728-call calibration,
-held-out validation and the separate fixed 42-cell qualification are still
-required before any public activation or performance claim.
+old/outside-scope replay and Stata transactions are recorded at the stable
+artifact boundary below. The 1,728-call calibration, held-out validation and
+separate fixed 42-cell qualification remain required before public activation
+or a performance claim.
+
+### Native integration and frozen calibration (2026-10-22)
+
+The [frozen protocol and native evidence](../bench/results/two-fe-policy-calibration-20261022.json)
+bind source `cdc478dd0cac7a6d4d5c0861fb4e380820987022` and unchanged
+CMG `fd77d98d`, Rust 1.85.1, locked fat-LTO builds, bridge O3 and the fixed
+2026-10-21 build date. Fresh Mac/Linux artifacts pass binary audits and actual
+ABI/load/self-tests with injected-panic containment. Linux build job 8243812
+used four slots on `scc-gd4`, completed with scheduler failed/exit 0/0, and its
+actual plugin was collected and independently rehashed locally.
+
+Mac preserves exact scientific results on all 73 accepted-runtime replays;
+all 146 W4/W8 checks and independent numerical checks pass. Six mapped Stata
+fixtures pass, including nonconvergence and independent residual witnesses.
+Actual W4 optional-builder Break tests pass twice with fresh follow-up fits;
+explicit sampled-CMG native and publication interruption checks also pass.
+The initial Stata command used an artifact alias; the runner rejected its
+filename before launch. Using the identical bytes at their required platform
+filename passed. That failed attempt remains recorded.
+
+The prospective calibration has 16 independently generated input bodies and
+32 Fast/Low cases, with fixed independent references and separate calibration,
+development and qualification seed streams. Both platform plans bind the same
+full inputs and 19 execution modules. Independent freeze review rehashed all
+108 Mac plan files and 242 preparation sources and found no blocker. Each
+platform has exactly 864 calls: 96 case/worker cells, three controls, one retained
+warmup plus two mirrored recorded executions. The controls share one actual
+binary. Limits are 120 seconds per call and 14,400 seconds per platform, with
+no retries or continuation. The Linux plan requires a verified whole physical
+host; ordinary Mac desktop activity remains recorded noise.
+
+This freeze contains no calibration observations and establishes no fitted
+coefficient, support coverage or forecast accuracy. Predictive calibration is
+still absent and public two-FE Auto is disabled. The installed-package binding
+remains failed; these isolated development artifacts do not update distribution
+packages. Previous timing uncertainties and failures remain unchanged.
 
 ## Measured CMG setup and two-FE upgrade strategy (2026-10-21)
 
