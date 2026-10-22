@@ -26,7 +26,7 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
-## Selected two-FE gates: fixed qualification preparation (2026-10-22)
+## Selected two-FE gates: fixed qualification (2026-10-22)
 
 The [Mac result](../bench/results/two-fe-policy-gates-qualification-mac-20261022.json)
 passes all 84 protected performance bounds across 42 cells and 6,174 calls.
@@ -69,6 +69,19 @@ scientific failures, native failures, slow results and inconclusive bounds do
 not authorize resampling. A separate 90-call SCC smoke checks the deployed
 runner across TWO, MANY and unaffected feature paths before qualification.
 Queued host assignments do not establish isolation or satisfy the host count.
+
+The [operational evidence](../bench/results/two-fe-policy-gates-qualification-operations-20261022.json)
+retains the successful 90-call SCC smoke, all its call objects, scheduler
+accounting, observation summaries and preparation failures. Independent review
+verified the retained calls, reference heads and operational evidence; local
+smoke arrays were not collected, so no independent array recheck is claimed.
+The smoke supplies no performance qualification. Subsequent scheduler diagnosis
+found that the frozen `scc-wp3` assignment is barred by a user restriction;
+its exact enabled rule is retained. Other assigned hosts were occupied.
+Idle public hosts use a different PE with MPI startup/cleanup hooks. Extending
+the frozen observer to accept that allocation requires a prospective execution
+decision; it has not been silently substituted. Completed observations remain
+valid evidence and are not resampled because of the queue delay.
 
 Completed held-out captures and inputs were hash-checked against committed
 records before deletion, along with the completed original-build cache. Current
