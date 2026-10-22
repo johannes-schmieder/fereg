@@ -75,6 +75,19 @@ class InputPreparation(unittest.TestCase):
     def prepare(self):
         return inputs.prepare(self.output, generator=self.generator)
 
+    def test_development_uses_only_its_fixed_seed_and_same_independent_pairing(self):
+        import two_fe_policy_development as development
+        panel = inputs.prepare(self.output, generator=self.generator, development=True)
+        self.assertEqual((panel['input_count'], panel['case_count']), (8, 16))
+        self.assertEqual(panel['seeds'], [2026104201])
+        self.assertEqual([c['id'] for c in panel['cases']], list(development.CASE_IDS))
+        self.assertEqual(len(self.reference_calls), 7)
+        self.assertTrue(all(seed == 2026104201 for _, _, seed in self.generated))
+        for item in panel['cases']:
+            development.validate_case(self.output / item['input'], item)
+        self.assertEqual(inputs.policy.SEEDS, (2026102201, 2026103201))
+        self.assertFalse(any('2026105201' in name for name in panel['files']))
+
     def test_exact_schedule_body_pairing_and_compatible_config_entries(self):
         panel = self.prepare()
         self.assertEqual([item['id'] for item in panel['cases']], list(inputs.policy.CASE_IDS))

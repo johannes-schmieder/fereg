@@ -12298,3 +12298,50 @@ public activation. The selected rule needs no progress banks/scans, but its
 callback and caller costs must still be measured in complete-command tests.
 It is a fitted candidate with known training losses, not a fastest-command or
 qualification result. The separate held-out and 42-cell schedules remain fixed.
+
+## Selected structural gate implementation (2026-10-22)
+
+The [implementation record](../bench/results/two-fe-policy-gates-implementation-20261022.json)
+binds the selected fit, changed source, focused checks, four discriminating
+mutations and independent runtime/tooling reviews. The hidden
+`routing_two_gates_v1` invocation implements the selected first eligible
+initial-epoch step-16 packed/outcome grant, terminal final/unknown deferral and
+correction closure across caller actions. Its two-byte owner state is charged
+to memory admission. It introduces no progress bank, observation scan, price
+forecast or timing-based routing. Public successor activation remains disabled.
+
+Real Fast/Low caller witnesses cover chunks, final residuals, retired RHS lanes,
+analytic OLS/projection science, W1/W4 repeats, direct routing after economic
+closure, consumed/fresh accuracy keys, memory refusal and pending cancellation.
+All four bounded mutations fail assertions: granting before step16, reopening
+after correction, omitting the shell charge and granting on final residuals.
+The source was restored. Independent review found no remaining substantive
+runtime defect; it did not run another native or timing campaign.
+
+The final `scripts/run_tests.sh --source-only` run exits 0: 315 Python tests
+plus seven portable-check Python tests, 87 successful Rust result groups
+(2,000 passes including child processes, not a unique-test count), fresh-process
+allocator audits, formatting, Clippy, fuzz compilation, portable checks,
+complexity and C-bridge/numeric guards. Its log SHA-256 is
+`711d92e38cbc64d528c1e43510d244b4d124672393fcc3721c9cc6f3b6a82e55`.
+The earlier formatting and needless-lifetime failures remain recorded. Standard
+installed-package binding still fails against the development runtime; source
+integration does not qualify the installed distribution, which was not changed.
+
+The fixed development adapter passes 116 affected and legacy Python tests and
+nine focused tests after its action-boundary repair. Scored calls use
+`NATIVE_SECONDS` without diagnostic tracing; warmups carry resource and gate
+evidence. Grants and build outcomes must belong to a completed action, match
+its role and age, and have stable action ordinals across workers. The manifest
+binds the selected fit/wire/specification and the report binds analyzed result
+bytes. A reviewer's separate missing-result allegation was withdrawn after
+confirming that initialization already existed; its regression test passes.
+These runner tests use synthetic native/science substitutes. Actual candidate
+builds, native replay/transactions and held-out measurements remain separate
+required evidence, with no speed or qualification claim at this boundary.
+
+Completed calibration numeric captures (576 files, 2,334,286,464 bytes) were
+removed only after every actual hash matched both its original result and
+committed compact record. Current inputs, artifacts, scalar observations and
+audit sources remain available during the unfinished workstream. This cleanup
+does not erase failed or inconclusive evidence or recreate a numerical oracle.

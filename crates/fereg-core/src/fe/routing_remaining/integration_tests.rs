@@ -2,6 +2,7 @@
 //! known algebraically, independently of every iterative solver under test.
 use super::*;
 use crate::data::DenseMatrix;
+use crate::fe::routing_observer::ObserverRef;
 use crate::fe::session::FeSession;
 use crate::fe::{BorrowedMapWeights, FeSolverKind, LsmrPreconditioner, RoutingPreset, SolveReport};
 use crate::metadata::{
@@ -433,7 +434,10 @@ fn real_session_forced_routes_refusal_direct_and_cancellation_isolated() {
                                 options.absorb,
                                 false,
                                 false,
-                                Some((&mut state, Demand::Packed { regressors: 2 })),
+                                Some((
+                                    ObserverRef::Remaining(&mut state),
+                                    Demand::Packed { regressors: 2 },
+                                )),
                             )
                             .unwrap();
                         fixture.check_projection(fit.residualized());
@@ -529,7 +533,10 @@ fn real_session_forced_routes_refusal_direct_and_cancellation_isolated() {
                 options.absorb,
                 false,
                 false,
-                Some((&mut state, Demand::Packed { regressors: 2 })),
+                Some((
+                    ObserverRef::Remaining(&mut state),
+                    Demand::Packed { regressors: 2 },
+                )),
             )
             .unwrap();
         fixture.check_projection(fit.residualized());
@@ -561,7 +568,10 @@ fn real_session_forced_routes_refusal_direct_and_cancellation_isolated() {
             options.absorb,
             false,
             false,
-            Some((&mut direct_state, Demand::Packed { regressors: 2 })),
+            Some((
+                ObserverRef::Remaining(&mut direct_state),
+                Demand::Packed { regressors: 2 },
+            )),
         )
         .unwrap();
     rectangle.check_projection(fit.residualized());
@@ -594,7 +604,7 @@ fn real_session_forced_routes_refusal_direct_and_cancellation_isolated() {
         false,
         false,
         Some((
-            &mut state,
+            ObserverRef::Remaining(&mut state),
             Demand::Regressors {
                 start: 0,
                 end: 1,
@@ -612,4 +622,317 @@ fn real_session_forced_routes_refusal_direct_and_cancellation_isolated() {
         state.history.is_none(),
         "failed caller action must not become history"
     );
+}
+
+#[test]
+fn gates_shell_preserves_old_parent_boundary() {
+    use crate::fe::routing_gates::GateState;
+    let fixture = PairedCells::new(false);
+    let data = fixture.prepared(2);
+    let design =
+        crate::ols::prepared_fit_view::PreparedOlsFitView::fit_borrowed_intercept_map_design(&data)
+            .unwrap()
+            .unwrap();
+    let base = crate::fe::ReusableCategoricalMapAbsorber::owner_bytes(&design, 3, 1).unwrap();
+    for (preset, extra, admitted) in [
+        (None, 0, true),
+        (
+            Some(RoutingPreset::gates_two()),
+            GateState::shell_bytes() - 1,
+            false,
+        ),
+        (
+            Some(RoutingPreset::gates_two()),
+            GateState::shell_bytes(),
+            true,
+        ),
+    ] {
+        let mut options = config(preset, 1);
+        options.absorb.retain_coefficients = false;
+        options.absorb.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 37,
+            usable_bytes: base + extra + 37,
+        });
+        let session = FeSession::for_ols_rhs(&data, BorrowedMapWeights::Unit, options, 3).unwrap();
+        assert_eq!(session.categorical.is_some(), admitted);
+        assert_eq!(
+            session.gates_state().is_some(),
+            preset.is_some() && admitted
+        );
+        assert!(session.remaining_state().is_none());
+        assert_eq!(
+            session.peak.bytes().unwrap() as u128,
+            if admitted { base + extra } else { 0 }
+        );
+    }
+}
+
+#[test]
+fn gates_real_callers_routes_refusal_direct_and_cancel() {
+    use crate::fe::routing_gates::GateState;
+    const CHILD: &str = "FEREG_GATES_REAL_CALLER_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let path =
+            std::env::temp_dir().join(format!("fereg-gates-caller-{}.log", std::process::id()));
+        let output_path = path.with_extension("output.log");
+        let output = std::fs::File::create(&output_path).unwrap();
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD,"1").env("FEREG_SOLVER_TRACE","1").env("FEREG_PHASE_TIMING","1")
+            .env("FEREG_SOLVER_TRACE_FILE",&path)
+            .args(["fe::routing_remaining::integration_tests::gates_real_callers_routes_refusal_direct_and_cancel","--exact","--test-threads=1","--nocapture"])
+            .stdout(output.try_clone().unwrap()).stderr(output).spawn().unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        let (status, timeout) = loop {
+            if let Some(s) = child.try_wait().unwrap() {
+                break (s, false);
+            }
+            if std::time::Instant::now() >= deadline {
+                child.kill().unwrap();
+                break (child.wait().unwrap(), true);
+            }
+            std::thread::yield_now();
+        };
+        let output = std::fs::read_to_string(&output_path).unwrap();
+        let trace = std::fs::read_to_string(&path).unwrap_or_default();
+        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_file(output_path);
+        assert!(
+            !timeout && status.success(),
+            "timeout={timeout}\n{output}\n{trace}"
+        );
+        return;
+    }
+    let fixture = PairedCells::new(false);
+    let data = fixture.prepared(2);
+    for workers in [1, 4] {
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let mut options = config(Some(RoutingPreset::gates_two()), workers);
+            options.execution.mode = mode;
+            options.execution.poolsize = 1;
+            let mut previous = None;
+            for _ in 0..2 {
+                let before = trace().len();
+                let fit = fit_prepared_model_coefficients(&data, options).unwrap();
+                fixture.check_fit(&fit);
+                if let Some(ref previous) = previous {
+                    assert_fit_exact(&fit, previous);
+                }
+                let observed = trace();
+                let new = &observed[before..];
+                let routes: Vec<_> = new
+                    .lines()
+                    .filter(|s| s.contains("|phase=auto_schur_route|"))
+                    .collect();
+                assert_eq!(routes.len(), 1, "{new}");
+                assert_eq!(field(routes[0], "iterations"), "16");
+                assert_eq!(field(routes[0], "installed"), "1");
+                let gates: Vec<_> = new
+                    .lines()
+                    .filter(|s| s.contains("|phase=two_fe_gates|event=decision|"))
+                    .collect();
+                assert_eq!(gates.len(), 1, "{new}");
+                assert_eq!(field(gates[0], "grant"), "1");
+                assert_eq!(
+                    field(gates[0], "role"),
+                    if mode == PreparedOlsExecutionMode::Fast {
+                        "Packed"
+                    } else {
+                        "Outcome"
+                    }
+                );
+                assert!(!new.contains("FEREG_POLICY_LABEL|"));
+                assert!(!new.contains("|phase=remaining_checkpoint|"));
+                previous = Some(fit);
+            }
+        }
+    }
+    let options = config(Some(RoutingPreset::gates_two()), 1);
+    let mut session = FeSession::for_ols(&data, BorrowedMapWeights::Unit, options).unwrap();
+    let mut state = session.gates_state().unwrap();
+    // A short action cannot own the episode; the next actual packed action can.
+    let short = DenseMatrix::from_columns(&fixture.x).unwrap();
+    let before = trace().len();
+    let fit = session
+        .project_ols_with_remaining(
+            BorrowedMapWeights::Unit,
+            short,
+            options.absorb,
+            false,
+            false,
+            Some((
+                ObserverRef::Gates(&mut state),
+                Demand::Regressors {
+                    start: 0,
+                    end: 2,
+                    total: 2,
+                    block: 2,
+                },
+            )),
+        )
+        .unwrap();
+    assert!(fit.report().certified());
+    assert!(!trace()[before..].contains("|phase=two_fe_gates|"));
+    session.categorical.as_mut().unwrap().request_auto_routing(
+        options.absorb.routing.unwrap(),
+        Some(FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: 48,
+        }),
+        0,
+    );
+    let before = trace().len();
+    for final_phase in [false, true] {
+        let values = if final_phase {
+            DenseMatrix::from_columns(&[fixture.y.clone()]).unwrap()
+        } else {
+            fixture.packed()
+        };
+        let fit = session
+            .project_ols_with_remaining(
+                BorrowedMapWeights::Unit,
+                values,
+                options.absorb,
+                final_phase,
+                false,
+                Some((
+                    ObserverRef::Gates(&mut state),
+                    if final_phase {
+                        Demand::Final
+                    } else {
+                        Demand::Packed { regressors: 2 }
+                    },
+                )),
+            )
+            .unwrap();
+        assert!(fit.report().certified());
+    }
+    let observed = trace();
+    let new = &observed[before..];
+    let routes: Vec<_> = new
+        .lines()
+        .filter(|s| s.contains("|phase=auto_schur_route|"))
+        .collect();
+    assert_eq!(
+        routes.len(),
+        1,
+        "refusal cannot reopen at final accuracy: {new}"
+    );
+    assert_eq!(field(routes[0], "refusal"), "Some(MemoryBudget)");
+    let rectangle = PairedCells::new(true);
+    let direct_data = rectangle.prepared(2);
+    let mut direct = FeSession::for_ols(&direct_data, BorrowedMapWeights::Unit, options).unwrap();
+    let mut terminal = GateState::new();
+    terminal.correction().unwrap();
+    let before = trace().len();
+    let fit = direct
+        .project_ols_with_remaining(
+            BorrowedMapWeights::Unit,
+            rectangle.packed(),
+            options.absorb,
+            false,
+            false,
+            Some((
+                ObserverRef::Gates(&mut terminal),
+                Demand::Packed { regressors: 2 },
+            )),
+        )
+        .unwrap();
+    rectangle.check_projection(fit.residualized());
+    let observed = trace();
+    let new = &observed[before..];
+    assert!(new.contains("|phase=auto_direct_certified|"), "{new}");
+    assert!(!new.contains("|phase=auto_schur_route|"));
+    // Unsupported first roles and a final-first episode never substitute a
+    // later favourable packed action, even with a new accuracy key.
+    for demand in [
+        Demand::OneOff,
+        Demand::Regressors {
+            start: 0,
+            end: 3,
+            total: 3,
+            block: 3,
+        },
+        Demand::Final,
+    ] {
+        let mut session = FeSession::for_ols(&data, BorrowedMapWeights::Unit, options).unwrap();
+        let mut state = session.gates_state().unwrap();
+        let before = trace().len();
+        for first in [true, false] {
+            let final_phase = first && demand == Demand::Final;
+            let input = if final_phase {
+                DenseMatrix::from_columns(&[fixture.y.clone()]).unwrap()
+            } else {
+                fixture.packed()
+            };
+            let fit = session
+                .project_ols_with_remaining(
+                    BorrowedMapWeights::Unit,
+                    input,
+                    options.absorb,
+                    final_phase,
+                    false,
+                    Some((
+                        ObserverRef::Gates(&mut state),
+                        if first {
+                            demand
+                        } else {
+                            Demand::Packed { regressors: 2 }
+                        },
+                    )),
+                )
+                .unwrap();
+            assert!(fit.report().certified());
+        }
+        let observed = trace();
+        let new = &observed[before..];
+        assert!(!new.contains("|phase=auto_schur_route|"), "{new}");
+        let gates: Vec<_> = new
+            .lines()
+            .filter(|s| s.contains("|phase=two_fe_gates|event=decision|"))
+            .collect();
+        assert_eq!(gates.len(), 1, "{new}");
+        assert_eq!(field(gates[0], "grant"), "0");
+    }
+    crate::interrupt::request_cancellation();
+    let failed = direct.project_ols_with_remaining(
+        BorrowedMapWeights::Unit,
+        rectangle.packed(),
+        options.absorb,
+        false,
+        false,
+        Some((
+            ObserverRef::Gates(&mut terminal),
+            Demand::Packed { regressors: 2 },
+        )),
+    );
+    crate::interrupt::reset_cancellation();
+    assert_eq!(
+        failed.unwrap_err().code,
+        crate::error::ErrorCode::Interrupted
+    );
+}
+
+#[test]
+fn gates_unaffected_auto_families_are_exact() {
+    let fixture = PairedCells::new(true);
+    for effects in [1, 2, 3] {
+        let data = fixture.prepared(effects);
+        for preconditioner in [LsmrPreconditioner::Auto, LsmrPreconditioner::Off] {
+            let mut options = config(None, 1);
+            options.absorb.lsmr.preconditioner = preconditioner;
+            if effects == 2 && preconditioner == LsmrPreconditioner::Auto {
+                continue;
+            }
+            let expected = fit_prepared_model_coefficients(&data, options).unwrap();
+            options.absorb.routing = Some(RoutingPreset::gates_two());
+            let session = FeSession::for_ols(&data, BorrowedMapWeights::Unit, options).unwrap();
+            assert!(session.gates_state().is_none());
+            assert!(session.remaining_state().is_none());
+            let actual = fit_prepared_model_coefficients(&data, options).unwrap();
+            assert_fit_exact(&actual, &expected);
+        }
+    }
 }

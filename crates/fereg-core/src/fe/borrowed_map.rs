@@ -13,6 +13,7 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 
 use super::map::ReusableMapCapacities;
 use super::routing::PortfolioChoice;
+use super::routing_observer::ObserverRef;
 use super::routing_remaining::State as RemainingState;
 
 mod categorical_prefix;
@@ -1185,7 +1186,7 @@ impl AutoSchurRoute {
         solve_started: &mut Instant,
     ) -> Result<Option<super::cmg_schur::CmgSchurPreconditioner>> {
         if self.setup.attempted
-            || if self.preset.remaining_mode().is_some() {
+            || if self.preset.requires_economic_grant() {
                 !remaining_granted
             } else {
                 iterations < self.preset.checkpoint()
@@ -1509,6 +1510,12 @@ impl Drop for PcgPilotGroupScratch<'_> {
 }
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
+    pub(crate) fn gates_enabled(&self) -> bool {
+        self.auto_route
+            .as_ref()
+            .is_some_and(|route| route.preset.gates())
+    }
+
     pub(crate) fn remaining_mode(&self) -> Option<super::routing_remaining::Mode> {
         self.auto_route.as_ref()?.preset.remaining_mode()
     }
@@ -2025,7 +2032,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: crate::ols::OlsProjectionInput,
         config: MapConfig,
         final_residual: bool,
-        remaining: Option<&mut RemainingState>,
+        remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
         self.absorb(weights, values, config, !final_residual, remaining)
     }
@@ -2134,7 +2141,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: crate::ols::OlsProjectionInput,
         config: MapConfig,
         refine_ols: bool,
-        mut remaining: Option<&mut RemainingState>,
+        mut remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
         validate_config(config)?;
         let rhs_count = values.ncols();
@@ -2232,7 +2239,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         }
 
         if let (Some(state), Some(route), Some(graph)) = (
-            remaining.as_deref_mut(),
+            remaining.as_mut().and_then(ObserverRef::remaining_mut),
             self.auto_route.as_mut(),
             self.two_fe_pcg.as_ref(),
         ) {
@@ -2657,7 +2664,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         pilot_contraction: f64,
         setup_seconds: f64,
         solve_started: Instant,
-        remaining: Option<&mut RemainingState>,
+        remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
         let graph = self
             .two_fe_pcg
@@ -2736,8 +2743,13 @@ fn absorb_two_fe_pcg_reusing(
     work_limit: SchurWorkLimit,
     retain_coefficients: bool,
     mut auto_route: Option<&mut AutoSchurRoute>,
-    mut remaining: Option<(&mut RemainingState, usize)>,
+    observer: Option<(ObserverRef<'_>, usize)>,
 ) -> Result<SchurAttempt> {
+    let (mut remaining, mut gates) = match observer {
+        Some((ObserverRef::Remaining(state), max_members)) => (Some((state, max_members)), None),
+        Some((ObserverRef::Gates(state), _)) => (None, Some(state)),
+        None => (None, None),
+    };
     let trace = crate::diagnostics::phase_timing_enabled();
     let mut operator_seconds = 0.0;
     let mut recurrence_seconds = 0.0;
@@ -3294,26 +3306,36 @@ fn absorb_two_fe_pcg_reusing(
                 // A ready recurrence leaves this loop for its original-design
                 // certificate before reaching the grant decision.
                 let granted = if !route.setup.attempted {
-                    observe_remaining(
-                        remaining.as_mut(),
-                        iterations - epoch_start,
-                        active_rhs_state,
-                        recurrence_tolerance,
-                        pcg_iteration_limit - iterations,
-                        design,
-                        graph,
-                        certificate_workspace,
-                        stride,
-                        weights.values.is_some(),
-                        scale_components,
-                        &[
-                            values.as_slice(),
-                            residual_square,
-                            next_residual_square,
-                            direction_projection,
-                            ratio,
-                        ],
-                    )?
+                    if let Some(state) = gates.as_deref_mut() {
+                        // Only the selected structural boundary is observed. No
+                        // progress scans, history counters or diagnostic clocks.
+                        if iterations - epoch_start == 16 {
+                            state.checkpoint(16, pcg_iteration_limit - iterations, true)?
+                        } else {
+                            false
+                        }
+                    } else {
+                        observe_remaining(
+                            remaining.as_mut(),
+                            iterations - epoch_start,
+                            active_rhs_state,
+                            recurrence_tolerance,
+                            pcg_iteration_limit - iterations,
+                            design,
+                            graph,
+                            certificate_workspace,
+                            stride,
+                            weights.values.is_some(),
+                            scale_components,
+                            &[
+                                values.as_slice(),
+                                residual_square,
+                                next_residual_square,
+                                direction_projection,
+                                ratio,
+                            ],
+                        )?
+                    }
                 } else {
                     false
                 };
@@ -3476,6 +3498,9 @@ fn absorb_two_fe_pcg_reusing(
                 TWO_FE_CORRECTIONS.set(TWO_FE_CORRECTIONS.get() + 1);
                 recurrence_tolerance = tighter;
                 if let Some((state, _)) = remaining.as_mut() {
+                    state.correction()?;
+                }
+                if let Some(state) = gates.as_deref_mut() {
                     state.correction()?;
                 }
                 // Certification rejected this frozen iterate. Honor the same

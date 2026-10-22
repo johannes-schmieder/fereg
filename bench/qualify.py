@@ -50,7 +50,7 @@ SOURCE_MODULES = ('qualify_scc', 'block_host', 'native', 'native_io', 'routing',
                   'routing_cases', 'routing_oracle', 'routing_science', 'cmgschur',
                   'cmgschur_cases', 'time_exact', 'replay_plugins', 'replay_psd',
                   'replay_bias_reference', 'replay_cmg_polish', 'replay_ols_reference', 'cmg_setup',
-                  'two_fe_policy')
+                  'two_fe_policy', 'two_fe_policy_development')
 
 
 def execution_sources():
@@ -170,7 +170,10 @@ def diagnostic_mode(manifest):
 
 def diagnostic_tool(manifest):
     import two_fe_policy
+    import two_fe_policy_development
     import cmg_setup
+    if manifest.get('diagnostic') == two_fe_policy_development.MODE:
+        return two_fe_policy_development
     return two_fe_policy if manifest.get('diagnostic') == two_fe_policy.MODE else cmg_setup
 
 
@@ -216,6 +219,8 @@ def plan(config_path, output, *, configuration=None):
                 'blocks', 'shards', 'replicas', 'seed', 'timeout_s', 'budget_s', 'coverage'}
     if diagnostic:
         required.add('diagnostic')
+    if value.get('diagnostic') == 'two-fe-gates-development-v1':
+        required.add('policy_binding')
     if 'min_distinct_hosts_per_cell' in value:
         required.add('min_distinct_hosts_per_cell')
     require(set(value) == required, 'configuration needs exactly: ' + ', '.join(sorted(required)))
@@ -247,13 +252,16 @@ def plan(config_path, output, *, configuration=None):
         require(set(artifact) == {'path', 'revision', 'build', 'request', 'families'}, 'invalid artifact ' + role)
         require(isinstance(artifact['revision'], str) and artifact['revision'], 'record artifact revision')
         require(isinstance(artifact['build'], str) and artifact['build'], 'record compiler and build settings')
-        require(artifact['request'] in {'auto', 'preserve', *routing.INCREMENTAL, *routing.REMAINING}, 'unsupported request')
+        require(artifact['request'] in {'auto', 'preserve', *routing.INCREMENTAL, *routing.REMAINING, routing.GATES}, 'unsupported request')
         require(artifact['request'] not in routing.REMAINING[1:] or
                 value.get('diagnostic') == 'two-fe-remaining-calibration-v1',
                 'forced/never controls belong only to the frozen calibration')
         require(isinstance(artifact['families'], list) and set(artifact['families']) <= {'many', 'two'},
                 'invalid artifact numerical families')
         artifact['path'] = bind(artifact['path'])
+    if value.get('diagnostic') == 'two-fe-gates-development-v1':
+        for name in ('fit', 'spec'):
+            value['policy_binding'][name] = bind(value['policy_binding'][name])
     if not diagnostic:
         require(artifacts['original']['families'] == [], 'original baseline must remain original')
         require(all(artifacts[r]['request'] in {'auto', 'preserve'} for r in ('original', 'incumbent')),
@@ -268,6 +276,7 @@ def plan(config_path, output, *, configuration=None):
             allowed_hidden = {'incremental-' + value['scope']}
             if value['scope'] == 'two':
                 allowed_hidden.add(routing.REMAINING[0])
+                allowed_hidden.add(routing.GATES)
             require('hidden' in artifacts and artifacts['hidden']['request'] in allowed_hidden,
                     'public activation requires the selected hidden artifact')
     value['harness'] = bind(value['harness'])
@@ -318,7 +327,7 @@ def plan(config_path, output, *, configuration=None):
                 and sorted(workers) == [1, 4], 'routing qualification requires all 42 workload cells')
         require(value['blocks'] % 2 == 0 and value['blocks'] >= (6 if value['platform'] == 'Darwin' else 2),
                 'qualification requires balanced blocks and enough independent measurements')
-    if value.get('diagnostic') == 'two-fe-remaining-calibration-v1':
+    if value.get('diagnostic') in ('two-fe-remaining-calibration-v1', 'two-fe-gates-development-v1'):
         diagnostic_tool(value).validate_panel(value, output)
     value.update(schema=1, files=files, warmups=1,
                  execution_sources={name: digest(path) for name, path in execution_sources().items()})
@@ -947,9 +956,12 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                                         log.read_text(), role, artifact['revision'], family=family)
                                 else:
                                     request = artifact['request']
-                                    selected = request if request in routing.REMAINING else 'incremental-' + family
+                                    selected = request if request in (*routing.REMAINING, routing.GATES) else 'incremental-' + family
                                     resources_detail = science.resource_diagnostics(log.read_text(), selected,
                                         False, {}, expected_preset=routing.policy(selected)['injection'])
+                                    if selected == routing.GATES:
+                                        import two_fe_policy_development as development
+                                        resources_detail['gate_events'] = development.gate_events(log.read_text())
                                 detail.update(resources_detail)
                         detail.update(execution=role, maxrss_bytes=resources['maxrss_bytes'],
                                       started_monotonic_ns=native_started, finished_monotonic_ns=native_finished)
@@ -977,6 +989,10 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         for role, current in conceptual.items():
                             prior = first_worker[role]
                             cmgschur.scientific_comparison(prior[0], current[0], prior[1], current[1], meta)
+                            if 'gate_events' in current[2]:
+                                import two_fe_policy_development as development
+                                require(development.semantic_signature(current[2]) == development.semantic_signature(prior[2]),
+                                        'cross-worker gate decisions changed')
                     first_worker = first_worker or conceptual
                     cell['worker_signatures'] = signatures[workers]
                     saved = {role: retained_snapshot(work / ('reference-' + role), s[0], s[1], meta)
@@ -1085,7 +1101,7 @@ def report(manifest_path, output, accounting_dir=None):
     recovery = manifest.get('recovery')
     policy = cell_policy(manifest)
     old_cells, old_root, old_events = {}, None, []
-    results, errors, comparisons, workers, snapshots, metadata_cache = [], [], {}, {}, {}, {}
+    results, errors, comparisons, workers, snapshots, metadata_cache, gate_signatures = [], [], {}, {}, {}, {}, {}
     source_stamps = {}
     minimum_hosts = None
     prior_bindings = {}
@@ -1129,7 +1145,7 @@ def report(manifest_path, output, accounting_dir=None):
             try:
                 before = stamp(path)
                 result = read(path)
-                if manifest.get('diagnostic') == 'two-fe-remaining-calibration-v1':
+                if manifest.get('diagnostic') in ('two-fe-remaining-calibration-v1', 'two-fe-gates-development-v1'):
                     calibration_result_sha256 = digest(path)
                     require(stamp(path) == before, 'calibration result changed while hashing')
                     source_stamps[path] = before
@@ -1241,6 +1257,14 @@ def report(manifest_path, output, accounting_dir=None):
                     warmups = {c['execution']: c['fingerprint'] for c in cell['warmups']}
                     require(len(cell['warmups']) == len(set(aliases.values())) and set(warmups) == set(aliases.values()),
                             'missing/duplicate warmup')
+                    for call in cell['warmups']:
+                        if manifest['artifacts'][call['execution']]['request'] == routing.GATES:
+                            import two_fe_policy_development as development
+                            signature = development.semantic_signature(call)
+                            policy_key = (key, call['execution'])
+                            require(policy_key not in gate_signatures or gate_signatures[policy_key] == signature,
+                                    'retained cross-host/worker gate decisions changed')
+                            gate_signatures[policy_key] = signature
                     for call in [*cell['warmups'], *(c for row in cell['blocks'] for c in row['calls'])]:
                         start, finish = call['started_monotonic_ns'], call['finished_monotonic_ns']
                         require(type(start) is type(finish) is int and 0 < start and last_finished <= start <= finish,
@@ -1315,7 +1339,8 @@ def report(manifest_path, output, accounting_dir=None):
     except (OSError, ValueError) as error:
         errors.append(str(error))
     if diagnostic and manifest['platform'] == 'Linux':
-        required_hosts = 1 if manifest['diagnostic'] == 'two-fe-remaining-calibration-v1' else 6
+        required_hosts = 1 if manifest['diagnostic'] in (
+            'two-fe-remaining-calibration-v1', 'two-fe-gates-development-v1') else 6
         if len({r['hostname'].split('.')[0] for r in results}) != required_hosts:
             errors.append(f'diagnostic requires {required_hosts} distinct accounted physical hosts')
     complete = not errors and bool(rows)
@@ -1338,6 +1363,9 @@ def report(manifest_path, output, accounting_dir=None):
             summary.pop('target')
             summary['targets'] = [target for _, target in comparison_pairs(manifest)]
             summary['calibration_result_sha256'] = calibration_result_sha256
+        elif manifest['diagnostic'] == 'two-fe-gates-development-v1':
+            summary['development_result_sha256'] = calibration_result_sha256
+            summary['policy_binding'] = manifest['policy_binding']
     if 'min_distinct_hosts_per_cell' in manifest:
         summary['min_distinct_hosts_per_cell'] = manifest['min_distinct_hosts_per_cell']
     if 'continuation' in manifest:

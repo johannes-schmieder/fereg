@@ -32,6 +32,7 @@ enum PrefixPlan {
     IncrementalMany,
     IncrementalTwo,
     RemainingTwo,
+    GatesTwo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,6 +56,7 @@ impl std::fmt::Display for RoutingPreset {
                 PrefixPlan::PortfolioUnseeded => "routing_portfolio_unseeded",
                 PrefixPlan::IncrementalMany => "routing_incremental_many",
                 PrefixPlan::IncrementalTwo => "routing_incremental_two",
+                PrefixPlan::GatesTwo => "routing_two_gates_v1",
                 PrefixPlan::RemainingTwo => match self.checkpoint {
                     0 => "routing_two_remaining_v1",
                     16 => "routing_two_remaining_force16",
@@ -173,6 +175,22 @@ impl RoutingPreset {
         })
     }
 
+    pub fn gates_two() -> Self {
+        Self {
+            checkpoint: 0,
+            prefix: Some(PrefixPlan::GatesTwo),
+            ..Self::portfolio_unseeded()
+        }
+    }
+
+    pub(crate) fn gates(self) -> bool {
+        self.prefix == Some(PrefixPlan::GatesTwo)
+    }
+
+    pub(crate) fn requires_economic_grant(self) -> bool {
+        self.remaining_mode().is_some() || self.gates()
+    }
+
     pub(crate) fn remaining_mode(self) -> Option<super::routing_remaining::Mode> {
         (self.prefix == Some(PrefixPlan::RemainingTwo)).then_some(match self.checkpoint {
             0 => super::routing_remaining::Mode::Predict,
@@ -192,14 +210,14 @@ impl RoutingPreset {
         let eligible = match self.prefix {
             Some(PrefixPlan::IncrementalMany) => categorical_effects.is_some_and(|n| n >= 3),
             Some(PrefixPlan::IncrementalTwo) => categorical_effects == Some(2),
-            Some(PrefixPlan::RemainingTwo) => categorical_effects == Some(2),
+            Some(PrefixPlan::RemainingTwo | PrefixPlan::GatesTwo) => categorical_effects == Some(2),
             _ => return Some(self),
         };
         (eligible
             && solver == super::FeSolverKind::Auto
             && preconditioner == super::LsmrPreconditioner::Auto)
             .then(|| {
-                if self.remaining_mode().is_some() {
+                if self.requires_economic_grant() {
                     self
                 } else {
                     Self::portfolio_unseeded()
@@ -211,7 +229,10 @@ impl RoutingPreset {
         matches!(
             self.prefix,
             Some(
-                PrefixPlan::PortfolioV1 | PrefixPlan::PortfolioUnseeded | PrefixPlan::RemainingTwo
+                PrefixPlan::PortfolioV1
+                    | PrefixPlan::PortfolioUnseeded
+                    | PrefixPlan::RemainingTwo
+                    | PrefixPlan::GatesTwo
             )
         )
     }
@@ -242,7 +263,8 @@ impl RoutingPreset {
             PrefixPlan::PortfolioUnseeded
             | PrefixPlan::IncrementalMany
             | PrefixPlan::IncrementalTwo
-            | PrefixPlan::RemainingTwo => CategoricalPrefix::None,
+            | PrefixPlan::RemainingTwo
+            | PrefixPlan::GatesTwo => CategoricalPrefix::None,
         })
     }
 
@@ -397,6 +419,7 @@ mod tests {
                 "routing_two_remaining_force32",
                 false,
             ),
+            (RoutingPreset::gates_two(), "routing_two_gates_v1", false),
         ] {
             assert_eq!(preset.to_string(), name);
             for effects in [None, Some(0), Some(1), Some(2), Some(3), Some(7)] {
@@ -421,7 +444,7 @@ mod tests {
                             && effects.is_some_and(|n| if many { n >= 3 } else { n == 2 });
                         assert_eq!(
                             preset.resolve_ols(solver, preconditioner, effects),
-                            eligible.then(|| if preset.remaining_mode().is_some() {
+                            eligible.then(|| if preset.requires_economic_grant() {
                                 preset
                             } else {
                                 RoutingPreset::portfolio_unseeded()

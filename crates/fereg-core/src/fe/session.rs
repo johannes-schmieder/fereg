@@ -3,6 +3,8 @@
 //! Raw weights belong to the current call. A coefficient direction is a
 //! different mathematical product from the canonical within projection, so
 //! the two payloads may coexist without replacing the binding or its authority.
+use super::routing_gates::GateState;
+use super::routing_observer::ObserverRef;
 use super::routing_remaining::{Demand, State as RemainingState};
 use super::{
     BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, MapConfig, MapGeometryGeneration,
@@ -393,6 +395,11 @@ impl<'a> FeSession<'a> {
                 .checked_add(RemainingState::shell_bytes())
                 .ok_or_else(|| allocation("remaining-cost parent admission overflows"))?;
         }
+        if config.absorb.routing.is_some_and(|preset| preset.gates()) {
+            bytes = bytes
+                .checked_add(GateState::shell_bytes())
+                .ok_or_else(|| allocation("gate-state parent admission overflows"))?;
+        }
         if config.absorb.retain_coefficients {
             let levels: Vec<_> = design.effects().iter().map(|e| e.n_levels()).collect();
             let product = crate::memory::estimate_fe_solver_memory(
@@ -769,7 +776,12 @@ impl<'a> FeSession<'a> {
         final_residual: bool,
         raw_final: bool,
     ) -> Result<CertifiedBorrowedMap> {
-        let mut remaining = self.remaining_state();
+        let mut legacy = self.remaining_state();
+        let mut gates = self.gates_state();
+        let remaining = legacy
+            .as_mut()
+            .map(ObserverRef::Remaining)
+            .or_else(|| gates.as_mut().map(ObserverRef::Gates));
         self.project_ols_input(
             weights,
             values.into(),
@@ -777,7 +789,7 @@ impl<'a> FeSession<'a> {
             final_residual,
             raw_final,
             false,
-            remaining.as_mut().map(|state| (state, Demand::OneOff)),
+            remaining.map(|state| (state, Demand::OneOff)),
         )
     }
 
@@ -790,6 +802,13 @@ impl<'a> FeSession<'a> {
             .map(RemainingState::new)
     }
 
+    pub(crate) fn gates_state(&self) -> Option<GateState> {
+        self.categorical
+            .as_ref()?
+            .gates_enabled()
+            .then(GateState::new)
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn project_ols_with_remaining(
         &mut self,
@@ -798,7 +817,7 @@ impl<'a> FeSession<'a> {
         config: super::AbsorbConfig,
         final_residual: bool,
         raw_final: bool,
-        remaining: Option<(&mut RemainingState, Demand)>,
+        remaining: Option<(ObserverRef<'_>, Demand)>,
     ) -> Result<CertifiedBorrowedMap> {
         self.project_ols_input(
             weights,
@@ -825,7 +844,7 @@ impl<'a> FeSession<'a> {
         values: crate::ols::OlsProjectionInput,
         config: super::AbsorbConfig,
         dense_norms: bool,
-        remaining: Option<(&mut RemainingState, Demand)>,
+        remaining: Option<(ObserverRef<'_>, Demand)>,
     ) -> Result<CertifiedBorrowedMap> {
         self.project_ols_input(
             weights,
@@ -847,7 +866,7 @@ impl<'a> FeSession<'a> {
         final_residual: bool,
         raw_final: bool,
         dense_norms: bool,
-        remaining: Option<&mut RemainingState>,
+        remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
         if let Some(p) = self.cmg.as_mut() {
             let values = values.into_values();
@@ -930,7 +949,7 @@ impl<'a> FeSession<'a> {
         final_residual: bool,
         raw_final: bool,
         dense_norms: bool,
-        remaining: Option<(&mut RemainingState, Demand)>,
+        remaining: Option<(ObserverRef<'_>, Demand)>,
     ) -> Result<CertifiedBorrowedMap> {
         config.validate_cmg_schur_options()?;
         let admission = config;
@@ -939,12 +958,13 @@ impl<'a> FeSession<'a> {
             config.routing = stored.routing;
         }
         let mut remaining = remaining
-            .filter(|_| {
-                self.categorical
-                    .as_ref()
-                    .is_some_and(|p| p.remaining_mode().is_some())
+            .filter(|(observer, _)| {
+                self.categorical.as_ref().is_some_and(|p| match observer {
+                    ObserverRef::Remaining(_) => p.remaining_mode().is_some(),
+                    ObserverRef::Gates(_) => p.gates_enabled(),
+                })
             })
-            .map(|(state, demand)| {
+            .map(|(mut state, demand)| {
                 state.begin(
                     demand,
                     values.ncols(),
@@ -954,7 +974,10 @@ impl<'a> FeSession<'a> {
                 );
                 state
             });
-        let _measurement_scope = remaining.as_ref().map(|state| state.measurement_scope());
+        let _measurement_scope = remaining
+            .as_ref()
+            .and_then(ObserverRef::remaining)
+            .map(|state| state.measurement_scope());
         if final_residual {
             self.close_routing_attempt();
         }
@@ -965,7 +988,7 @@ impl<'a> FeSession<'a> {
             final_residual,
             raw_final,
             dense_norms,
-            remaining.as_deref_mut(),
+            remaining.as_mut().map(ObserverRef::reborrow),
         );
         if result.is_err() || final_residual || !self.ols_chunked_norms {
             self.close_routing_attempt();
@@ -1008,11 +1031,13 @@ impl<'a> FeSession<'a> {
         report.setup_seconds += std::mem::take(&mut self.setup_seconds);
         let trace_started = remaining
             .as_ref()
+            .and_then(ObserverRef::remaining)
             .and_then(|state| state.measurement_started());
         if config.routing.is_some()
             && (crate::diagnostics::solver_trace_enabled()
                 || remaining
                     .as_ref()
+                    .and_then(ObserverRef::remaining)
                     .is_some_and(|state| state.trace_enabled()))
         {
             let memory_bytes = (report.solver_workspace_peak.bytes().unwrap_or(0) as u128)
@@ -1030,7 +1055,7 @@ impl<'a> FeSession<'a> {
                 u8::from(report.certified())
             ));
         }
-        if let Some(state) = remaining.as_deref_mut() {
+        if let Some(state) = remaining.as_mut().and_then(ObserverRef::remaining_mut) {
             state.exclude_measurement(trace_started);
         }
         let result = match coefficients {
@@ -1046,7 +1071,7 @@ impl<'a> FeSession<'a> {
         } else {
             result.with_residual_norms(norms)?
         };
-        if let Some(state) = remaining {
+        if let Some(state) = remaining.as_mut().and_then(ObserverRef::remaining_mut) {
             state.complete();
         }
         Ok(result)

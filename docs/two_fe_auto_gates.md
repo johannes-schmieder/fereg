@@ -534,6 +534,10 @@ with Johannes; no automatic retuning or replacement candidate follows.
 
 ## Maintained source references
 
+- [Selected structural gate](../crates/fereg-core/src/fe/routing_gates.rs),
+  [borrowed observer transport](../crates/fereg-core/src/fe/routing_observer.rs),
+  [implementation evidence](../bench/results/two-fe-policy-gates-implementation-20261022.json),
+  and [fixed development adapter](../bench/two_fe_policy_development.py).
 - [Policy state and demand](../crates/fereg-core/src/fe/routing_remaining/mod.rs),
   [progress token](../crates/fereg-core/src/fe/routing_remaining/progress.rs),
   [labels](../crates/fereg-core/src/fe/routing_remaining/diagnostic.rs).

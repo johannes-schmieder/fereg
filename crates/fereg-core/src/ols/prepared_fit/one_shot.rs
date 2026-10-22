@@ -1,6 +1,7 @@
 //! One OLS lifecycle; storage implements projection and physical finite kernels.
 use super::*;
-use crate::fe::routing_remaining::{Demand, State as RemainingState};
+use crate::fe::routing_observer::ObserverRef;
+use crate::fe::routing_remaining::Demand;
 
 struct DenseRaw {
     values: crate::ols::OlsProjectionInput,
@@ -173,7 +174,7 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     loaded_rows: Option<LoadedOlsRows>,
     retained_fe_parent: u128,
     reuse_absorption_norms: bool,
-    remaining: Option<&mut RemainingState>,
+    remaining: Option<ObserverRef<'_>>,
 ) -> Result<OneShotInputs> {
     let weights = frame.weights();
     let mut raw = dense_raw(
@@ -316,7 +317,7 @@ fn project_scratch<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     reservation: &mut R,
     cmg: &mut crate::fe::FeSession<'a>,
     reuse_absorption_norms: bool,
-    mut remaining: Option<&mut RemainingState>,
+    mut remaining: Option<ObserverRef<'_>>,
 ) -> Result<OneShotInputs> {
     let rows = prepared.fit_sample().n_active();
     let generated_columns = prepared.fit_model().columns.len();
@@ -328,7 +329,7 @@ fn project_scratch<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         config.absorb,
         false,
         false,
-        remaining.as_deref_mut().map(|state| {
+        remaining.as_mut().map(ObserverRef::reborrow).map(|state| {
             (
                 state,
                 Demand::Outcome {
@@ -415,7 +416,7 @@ fn project_scratch_columns<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation
     score_norms: &mut [f64],
     absorption_report: &mut SolveReport,
     scratch: &mut PreparedOlsScratch,
-    mut remaining: Option<&mut RemainingState>,
+    mut remaining: Option<ObserverRef<'_>>,
 ) -> Result<Option<(f64, f64)>> {
     let rows = prepared.fit_sample().n_active();
     let generated_columns = prepared.fit_model().columns.len();
@@ -448,7 +449,7 @@ fn project_scratch_columns<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation
             config.absorb,
             false,
             false,
-            remaining.as_deref_mut().map(|state| {
+            remaining.as_mut().map(ObserverRef::reborrow).map(|state| {
                 (
                     state,
                     Demand::Regressors {
@@ -723,7 +724,12 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         0
     };
     let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
-    let mut remaining = cmg.remaining_state();
+    let mut legacy = cmg.remaining_state();
+    let mut gates = cmg.gates_state();
+    let mut remaining = legacy
+        .as_mut()
+        .map(ObserverRef::Remaining)
+        .or_else(|| gates.as_mut().map(ObserverRef::Gates));
     let projection_phase = LinearSessionPhaseAllocationGuard::new(
         phase_probe,
         phase_observation.as_deref_mut(),
@@ -741,7 +747,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             loaded_rows,
             retained_fe_parent,
             reuse_absorption_norms,
-            remaining.as_mut(),
+            remaining.as_mut().map(ObserverRef::reborrow),
         )
     } else {
         project_scratch(
@@ -751,7 +757,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             reservation,
             &mut cmg,
             reuse_absorption_norms,
-            remaining.as_mut(),
+            remaining.as_mut().map(ObserverRef::reborrow),
         )
     };
     cmg.close_routing_attempt();
@@ -815,7 +821,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         config,
         retained_fe_parent,
         perturbations.final_residual_constant,
-        remaining.as_mut(),
+        remaining.as_mut().map(ObserverRef::reborrow),
     )?;
     if !dense {
         drop(cmg);
@@ -865,7 +871,7 @@ fn project_residual(
     config: PreparedOlsFitConfig,
     retained_fe_parent: u128,
     perturb_constant: bool,
-    remaining: Option<&mut RemainingState>,
+    remaining: Option<ObserverRef<'_>>,
 ) -> Result<(DenseMatrix, SolveReport, Option<FeCoefficientBatch>)> {
     let dense = config.execution.mode == PreparedOlsExecutionMode::Fast;
     let matrix = DenseMatrix::from_row_major(rows, 1, seed)?;

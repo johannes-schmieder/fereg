@@ -346,3 +346,15 @@ ordinary COMPLETE receipt; no second substantive call or partial public result
 is permitted. Missing unit IDs do not select rows. The complete statistical,
 normalization, RNG and channel contracts are in
 [ppml_bias_correction.md](ppml_bias_correction.md).
+
+### Hidden two-FE gate qualification selector
+
+`inject=routing_two_gates_v1` selects the frozen structural two-gate OLS
+Auto/Auto candidate on exactly two categorical intercept fixed effects. It
+uses the first eligible initial-recurrence local16 boundary: packed/outcome
+actions request the existing optional CMG build; final and unsupported roles
+close economic proposals without a build. The second gate is constant Defer.
+The owner state survives Low chunks and the final accuracy key; correction
+closes economics. Existing direct selection, resource admission, cancellation,
+certification and rollback remain authoritative. This diagnostic selector does
+not activate public Auto or reinterpret the historical remaining-cost controls.

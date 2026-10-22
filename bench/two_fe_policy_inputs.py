@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare the frozen 16-input/32-case remaining-cost calibration panel.
+"""Prepare either frozen calibration inputs or the held-out development panel.
 
 Uses maintained generators and independent references unchanged. Run from the
 repository root with an explicitly supplied replay_large executable. No builds,
@@ -40,6 +40,7 @@ def source_files():
     """
     relative = [
         'bench/two_fe_policy_inputs.py', 'bench/two_fe_policy.py',
+        'bench/two_fe_policy_development.py',
         'bench/routing_cases.py', 'bench/cmgschur_cases.py', 'bench/native_io.py',
         'bench/routing_oracle.py', 'bench/routing.py', 'bench/qualify.py',
         'scripts/replay_plugins.py', 'scripts/replay_psd.py',
@@ -49,7 +50,7 @@ def source_files():
         'crates/fereg-core/Cargo.toml', 'crates/fereg-oracle/Cargo.toml',
         'crates/fereg-oracle/examples/replay_large.rs',
         'crates/fereg-oracle/examples/replay/wire.rs',
-        'docs/two_fe_auto_policy.md',
+        'docs/two_fe_auto_policy.md', 'docs/two_fe_auto_gates.md',
     ]
     # The serializer consumes core metadata and support adapters. Bind complete
     # local crate source trees instead of guessing a narrower import closure.
@@ -176,13 +177,18 @@ def _references(fast, low, family, body_hash):
             {'kind': 'routing', 'path': low_ref.name}], None
 
 
-def prepare(output, *, generator):
+def prepare(output, *, generator, development=False):
     """Return a panel whose cases are qualify config entries relative to output.
 
     The caller supplies actual artifacts/harness/platform separately. The panel
     itself is preparation evidence, not a qualification configuration or result.
     """
     require(Path.cwd().resolve() == ROOT, 'run input preparation from the repository root')
+    require(type(development) is bool, 'development stage must be explicit')
+    if development:
+        import two_fe_policy_development as stage
+    else:
+        stage = policy
     stages = stream_plan()
     output = routing_cases.scratch(Path(output))
     generator = Path(generator).resolve(strict=True)
@@ -196,8 +202,8 @@ def prepare(output, *, generator):
                 'scipy': importlib.metadata.version('scipy')}
     output.mkdir(parents=True, exist_ok=False)
     cases, bodies = [], set()
-    for seed in policy.SEEDS:
-        for family in policy.FAMILIES:
+    for seed in stage.SEEDS:
+        for family in stage.FAMILIES:
             stem = f's{seed}-{family}'
             fast, low = (output / f'{stem}-{memory}.case' for memory in ('fast', 'low'))
             details = _generate(generator, fast, family, seed)
@@ -217,16 +223,18 @@ def prepare(output, *, generator):
                 _write(path.with_suffix('.json'), metadata)
                 cases.append({'id': f'{stem}-{memory}', 'family': family, 'input': path.name,
                               'oracle': oracle, 'memory_limit_bytes': None})
-    require([case['id'] for case in cases] == list(policy.CASE_IDS) and len(bodies) == 16,
-            'frozen 16-input/32-case coverage changed')
+    input_count = 8 if development else 16
+    require([case['id'] for case in cases] == list(stage.CASE_IDS) and len(bodies) == input_count,
+            'frozen input/case coverage changed')
     # Reuse maintained panel guards with the metadata bindings q.plan will add.
     panel_cases = [{**case, 'metadata': str(Path(case['input']).with_suffix('.json'))} for case in cases]
-    policy.validate_panel({'cases': panel_cases}, output / 'panel.json')
+    stage.validate_panel({'cases': panel_cases}, output / 'panel.json')
     require(digest(generator) == binary_hash and source_hashes() == before,
             'generator or preparation source drifted; retain failure, do not reuse partial output')
-    value = {'schema': 1, 'kind': 'two-fe-remaining-calibration-inputs-v1',
-             'status': 'prepared', 'seeds': list(policy.SEEDS), 'families': list(policy.FAMILIES),
-             'input_count': 16, 'case_count': 32, 'cases': cases, 'random_streams': stages,
+    value = {'schema': 1, 'kind': ('two-fe-gates-development-inputs-v1' if development else
+                                 'two-fe-remaining-calibration-inputs-v1'),
+             'status': 'prepared', 'seeds': list(stage.SEEDS), 'families': list(stage.FAMILIES),
+             'input_count': input_count, 'case_count': 2 * input_count, 'cases': cases, 'random_streams': stages,
              'generator_sha256': binary_hash, 'generator_sources_sha256': source_identity,
              'sources': before, 'versions': versions,
              'files': {path.name: digest(path) for path in sorted(output.iterdir()) if path.is_file()}}
@@ -238,8 +246,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True, help='new directory under target/tmp/TASK')
     parser.add_argument('--generator', type=Path, required=True, help='actual replay_large executable; not built here')
+    parser.add_argument('--development', action='store_true', help='fixed seed 2026104201; final seed remains unavailable')
     args = parser.parse_args()
-    value = prepare(args.output, generator=args.generator)
+    value = prepare(args.output, generator=args.generator, development=args.development)
     print(f"{value['input_count']} frozen inputs / {value['case_count']} Fast/Low cases prepared; no native fits or timings")
 
 

@@ -1,0 +1,1076 @@
+{
+  "base_revision": "ac86971e63915a9c39b6ec62afe4032f9d382c3f",
+  "cleanup": {
+    "action": "Delete completed calibration numeric captures after verifying each actual SHA against its original result and committed compact record; preserve inputs, plugins, scalar results, raw diagnostic logs and independent audit sources.",
+    "bytes": 2334286464,
+    "committed_evidence": {
+      "bench/results/two-fe-policy-calibration-darwin-seed1-20261022.json": "558dbccb44958d2c0840226e5b09cb112e63d7aa822d3e403ea19d4885ed79b1",
+      "bench/results/two-fe-policy-calibration-darwin-seed2-20261022.json": "d257410bcabefee1ec20193bd6185df9e67d2e663f53c759d6eab4e2cfdde0e2",
+      "bench/results/two-fe-policy-calibration-linux-seed1-20261022.json": "b90d0929d18bb5dc466d992b6de8bd68a1c97d3c9a5790717af261e4c5583632",
+      "bench/results/two-fe-policy-calibration-linux-seed2-20261022.json": "7c5adeed69e484714b2cd773a4ba2203cd306c8f66fb39f24cd06d364506bac5"
+    },
+    "files": 576,
+    "inventory_sha256": "51cad560da701fff0e62cad43f326b3b3899a72e48c8569571cbafb74876dbf0",
+    "platforms": {
+      "Darwin": {
+        "bytes": 1167143232,
+        "files": 288
+      },
+      "Linux": {
+        "bytes": 1167143232,
+        "files": 288
+      }
+    },
+    "schema": 1
+  },
+  "command_presentation": "Commands are retained as argument vectors with personal/toolchain/task roots normalized to placeholders; original complete log and check identities remain SHA-256 values. Logs are not embedded.",
+  "failures": [
+    "Focused Rust test compilation initially failed because six existing tests needed the borrowed-observer argument migration; no test body ran.",
+    "First benchmark test command lacked the bench import path; its corrected import run then exposed a test-only ordinal assumption. The witness now selects the actual worker/action identity.",
+    "Full source run first failed Rust module ordering; second failed Clippy needless_lifetimes. Module order and a redundant impl lifetime annotation were corrected without behavioral changes; final whole source run is separately retained.",
+    "Standard installed-package binding remains FAILED against the changed development runtime; no distribution file was updated.",
+    "SCC BatchMode authentication failed. Plain interactive ssh succeeded, hostname was scc1, BatchMode hostname then succeeded and the original inspection passed. No phone action was required."
+  ],
+  "fit": {
+    "path": "bench/results/two-fe-policy-gates-fit-20261022.json",
+    "sha256": "5b42c6e24862e0a4c008aa9a1b7d0256e8d335e2ac82d50d9f530a73b2bff573"
+  },
+  "focused_runtime": {
+    "checks": [
+      {
+        "after_source_vector_sha256": "709f6d9de62f1189b494c073453be63fa353d210ca5c6933560b3c0ec26d932f",
+        "before_source_vector_sha256": "709f6d9de62f1189b494c073453be63fa353d210ca5c6933560b3c0ec26d932f",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "check",
+          "-p",
+          "fereg-core",
+          "--offline"
+        ],
+        "exit": 0,
+        "label": "gates-runtime-check-1",
+        "log_sha256": "0e83aba10df6551c2cc09d6eab2e0332a38e62478ac4b44bfd4580fb639c027a",
+        "test_result_lines": []
+      },
+      {
+        "after_source_vector_sha256": "709f6d9de62f1189b494c073453be63fa353d210ca5c6933560b3c0ec26d932f",
+        "before_source_vector_sha256": "709f6d9de62f1189b494c073453be63fa353d210ca5c6933560b3c0ec26d932f",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-core",
+          "--offline",
+          "routing_gates",
+          "--",
+          "--nocapture"
+        ],
+        "exit": 101,
+        "label": "gates-runtime-tests-1",
+        "log_sha256": "9228cc58d17dcd9b889bdd4387618b9311e5e4c001c046907502467d3edcbafc",
+        "test_result_lines": []
+      },
+      {
+        "after_source_vector_sha256": "164da52c366bc97d0fcf7bbd20b63c40693806231fd5a87d6863a27754829388",
+        "before_source_vector_sha256": "164da52c366bc97d0fcf7bbd20b63c40693806231fd5a87d6863a27754829388",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-core",
+          "--offline",
+          "gates",
+          "--",
+          "--nocapture"
+        ],
+        "exit": 0,
+        "label": "gates-runtime-tests-2",
+        "log_sha256": "fd0b93fb731a067304d9e51e685b0615d15e6db382a1d43e7c078a636768bd4a",
+        "test_result_lines": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1419 filtered out; finished in 0.00s",
+          "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1412 filtered out; finished in 2.49s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s"
+        ]
+      },
+      {
+        "after_source_vector_sha256": "a0cf7592a6778dd4da6cc08aad6ec09098981bc32c2cde7cfc4e3a8b7517055a",
+        "before_source_vector_sha256": "a0cf7592a6778dd4da6cc08aad6ec09098981bc32c2cde7cfc4e3a8b7517055a",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-core",
+          "--lib",
+          "--offline",
+          "gates",
+          "--",
+          "--nocapture"
+        ],
+        "exit": 0,
+        "label": "gates-runtime-tests-3",
+        "log_sha256": "9c82564272ee756e5e136b8dcb01d5dfe8f1a16325150236279582df5ad555d3",
+        "test_result_lines": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.00s",
+          "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 1412 filtered out; finished in 4.50s"
+        ]
+      },
+      {
+        "after_source_vector_sha256": "614dbe84fe5b24e189d7ae5de5b3ee42463b8957a48ba0c8215abb78d8bcb075",
+        "before_source_vector_sha256": "614dbe84fe5b24e189d7ae5de5b3ee42463b8957a48ba0c8215abb78d8bcb075",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-core",
+          "--lib",
+          "--offline",
+          "remaining",
+          "--",
+          "--nocapture"
+        ],
+        "exit": 0,
+        "label": "gates-legacy-observer-tests",
+        "log_sha256": "01ae5432aa9fe6bb154ade92a28340a84c14d068aec43921fa589ef67596e87e",
+        "test_result_lines": [
+          "test result: ok. 42 passed; 0 failed; 0 ignored; 0 measured; 1380 filtered out; finished in 5.43s"
+        ]
+      },
+      {
+        "after_source_vector_sha256": "614dbe84fe5b24e189d7ae5de5b3ee42463b8957a48ba0c8215abb78d8bcb075",
+        "before_source_vector_sha256": "614dbe84fe5b24e189d7ae5de5b3ee42463b8957a48ba0c8215abb78d8bcb075",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-core",
+          "--lib",
+          "--offline",
+          "fe::routing::tests",
+          "--",
+          "--nocapture"
+        ],
+        "exit": 0,
+        "label": "gates-routing-contract-tests",
+        "log_sha256": "3a3f4e001712e09dbecaa5070cf3ac78329b11bb72077215770dbdb2d6dd762a",
+        "test_result_lines": [
+          "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 1416 filtered out; finished in 0.00s"
+        ]
+      },
+      {
+        "after_source_vector_sha256": "5d15da4908d2ac50ec6678c6ea384ee45821b62f91fdd2c1d6a4c0179d0d977e",
+        "before_source_vector_sha256": "5d15da4908d2ac50ec6678c6ea384ee45821b62f91fdd2c1d6a4c0179d0d977e",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-plugin",
+          "--lib",
+          "--offline",
+          "developer_injection::tests",
+          "--",
+          "--nocapture"
+        ],
+        "exit": 0,
+        "label": "gates-plugin-selector-tests",
+        "log_sha256": "a64eab9dea05cae196d6c2fe191f742d16f6e779fc4cc421c226f9774613a513",
+        "test_result_lines": [
+          "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 205 filtered out; finished in 0.00s"
+        ]
+      },
+      {
+        "after_source_vector_sha256": "20a1ea5938a8cad6fde3cdbaee03eaa22dad0c8a9abf54816d7b77094fc38cf0",
+        "before_source_vector_sha256": "20a1ea5938a8cad6fde3cdbaee03eaa22dad0c8a9abf54816d7b77094fc38cf0",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-core",
+          "--lib",
+          "--offline",
+          "fe::routing_remaining::integration_tests::gates_real_callers_routes_refusal_direct_and_cancel",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "exit": 101,
+        "label": "gates-mutant-grant",
+        "log_sha256": "2b30c46879cd7d7d7c20f08a2caf4feb5c371fe47ba376cce1f44e9f357f416d",
+        "test_result_lines": [
+          "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.17s",
+          "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.18s"
+        ]
+      },
+      {
+        "after_source_vector_sha256": "1b8c67c5d05a75f44df24cf725dfb8da2b70ecb4f4511d47d3b3651e12f3f7b0",
+        "before_source_vector_sha256": "1b8c67c5d05a75f44df24cf725dfb8da2b70ecb4f4511d47d3b3651e12f3f7b0",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-core",
+          "--lib",
+          "--offline",
+          "fe::borrowed_map::routing_tests::remaining_tests::gates_correction_closes_before_first_checkpoint_without_observation_scan",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "exit": 101,
+        "label": "gates-mutant-correction",
+        "log_sha256": "0780a239cb4ba6b7c437efdad55fb991c2dddd3cb8be7fa9c6628dde7a374719",
+        "test_result_lines": [
+          "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.14s",
+          "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.15s"
+        ]
+      },
+      {
+        "after_source_vector_sha256": "cb1c667d832a5d27a218b9dee7672a54a7158ade35f00ebb05c2834a377af4f6",
+        "before_source_vector_sha256": "cb1c667d832a5d27a218b9dee7672a54a7158ade35f00ebb05c2834a377af4f6",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-core",
+          "--lib",
+          "--offline",
+          "fe::routing_remaining::integration_tests::gates_shell_preserves_old_parent_boundary",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "exit": 101,
+        "label": "gates-mutant-shell",
+        "log_sha256": "921e859602090927bf534eec3136dd793f00e6aaa6d6634f613c5af20ce9a63c",
+        "test_result_lines": [
+          "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.02s"
+        ]
+      },
+      {
+        "after_source_vector_sha256": "95f759aa55f501aaff58fbf448af81bfb6d9099171ab04a47b6144ff9e405023",
+        "before_source_vector_sha256": "95f759aa55f501aaff58fbf448af81bfb6d9099171ab04a47b6144ff9e405023",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-core",
+          "--lib",
+          "--offline",
+          "fe::routing_remaining::integration_tests::gates_real_callers_routes_refusal_direct_and_cancel",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "exit": 101,
+        "label": "gates-mutant-predicate",
+        "log_sha256": "9abbf97738eef0cdbb51bd90017e0be0b1e3bb0bec400d5474623a867ae44b02",
+        "test_result_lines": [
+          "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 3.85s",
+          "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 3.86s"
+        ]
+      },
+      {
+        "after_source_vector_sha256": "5d15da4908d2ac50ec6678c6ea384ee45821b62f91fdd2c1d6a4c0179d0d977e",
+        "before_source_vector_sha256": "5d15da4908d2ac50ec6678c6ea384ee45821b62f91fdd2c1d6a4c0179d0d977e",
+        "command": [
+          "env",
+          "PATH=<rust-1.85.1-bin>:/usr/bin:/bin",
+          "CARGO_BUILD_JOBS=2",
+          "cargo",
+          "test",
+          "-p",
+          "fereg-core",
+          "--lib",
+          "--offline",
+          "gates",
+          "--",
+          "--nocapture"
+        ],
+        "exit": 0,
+        "label": "gates-runtime-clean-final",
+        "log_sha256": "1ac91a729627bff17a9e1ecf533229902d0e66a2bad87baacea2d12287751010",
+        "test_result_lines": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.01s",
+          "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 1412 filtered out; finished in 4.48s"
+        ]
+      },
+      {
+        "after_source_vector_sha256": "0f19cea5140d0e6192c90ed45d41fe852be62f1e98f44047d5346872bd1f1907",
+        "before_source_vector_sha256": "0f19cea5140d0e6192c90ed45d41fe852be62f1e98f44047d5346872bd1f1907",
+        "command": [
+          "<rust-1.85.1-bin>/rustfmt",
+          "--check",
+          "--edition",
+          "2021",
+          "--config",
+          "skip_children=true",
+          "crates/fereg-core/src/fe/routing_gates.rs",
+          "crates/fereg-core/src/fe/routing_gates/tests.rs",
+          "crates/fereg-core/src/fe/routing_observer.rs",
+          "crates/fereg-core/src/fe/routing.rs",
+          "crates/fereg-core/src/fe/session.rs",
+          "crates/fereg-core/src/fe/borrowed_map.rs",
+          "crates/fereg-core/src/ols/prepared_fit/one_shot.rs",
+          "crates/fereg-core/src/fe/borrowed_map/remaining_tests.rs",
+          "crates/fereg-core/src/fe/routing_remaining/integration_tests.rs",
+          "crates/fereg-plugin/src/developer_injection.rs"
+        ],
+        "exit": 0,
+        "label": "gates-runtime-format-check",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "test_result_lines": []
+      },
+      {
+        "after_source_vector_sha256": "0f19cea5140d0e6192c90ed45d41fe852be62f1e98f44047d5346872bd1f1907",
+        "before_source_vector_sha256": "0f19cea5140d0e6192c90ed45d41fe852be62f1e98f44047d5346872bd1f1907",
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit": 0,
+        "label": "gates-runtime-diff-check",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "test_result_lines": []
+      }
+    ],
+    "files_sha256": {
+      "crates/fereg-core/src/fe/borrowed_map.rs": "67349028058f6933733809a86671cb541c388e3197da9c655b55745ca6cc5b0b",
+      "crates/fereg-core/src/fe/borrowed_map/remaining_tests.rs": "2a3dbbb51c1f1d281ee3474cb627d3d6cb2df94c85531fd4dded5061f7b4afe0",
+      "crates/fereg-core/src/fe/mod.rs": "3306c75a8484e50e7c952a69ddc682b8a2d35031731be20ddf34ceff9c758e5f",
+      "crates/fereg-core/src/fe/routing.rs": "3052f460e3d2f4c0691c6594fb4460384e84b160240edbb1b5d6ce8f51ea2df9",
+      "crates/fereg-core/src/fe/routing_gates.rs": "aa20bfef4ba924f25bf1c9d828be66e433e831b05e1c5502e39fe56f34b7943a",
+      "crates/fereg-core/src/fe/routing_gates/tests.rs": "6eb03d81139c8eafbc3a323feb143513f274a306078d9fb774ce75fe1853a69b",
+      "crates/fereg-core/src/fe/routing_observer.rs": "35bbbb0dfc127d7963f15701720b8b31b039bd13cdfc77e2ea8f883ea38e568b",
+      "crates/fereg-core/src/fe/routing_remaining/integration_tests.rs": "db20e78bb95e22ebef807c92966dc5fdd06e9751ef2c61cec31ffbbf88c33c60",
+      "crates/fereg-core/src/fe/session.rs": "1638e06d5ea297dd492a7dc4919de71c32b4455f5b073906caf50debbb2937fd",
+      "crates/fereg-core/src/ols/prepared_fit/one_shot.rs": "5a8b8bf442cbb23fd87ab43b86c0690416092e9c6562d176e62af7d281ecc974",
+      "crates/fereg-plugin/src/developer_injection.rs": "12b86f3ad07c84e7ab5e69b9a7af5e600174a524e5ddc7c1e4d6038b6dbd5f51",
+      "docs/plugin_protocol.md": "58b425a2d2553ef340b2ce7b85a257cbdd009b514094cfff479885217ce4c4b9"
+    },
+    "fit_sha256": "5b42c6e24862e0a4c008aa9a1b7d0256e8d335e2ac82d50d9f530a73b2bff573",
+    "initial_failure": "gates-runtime-tests-1 failed compilation because six existing tests still passed concrete RemainingState references after the borrowed ObserverRef signature migration; all six migrated without changing their assertions. No test function ran in that attempt.",
+    "limitations": [
+      "No full source suite, complexity ratchet update, native build/replay, heldout/development panel, or timing was run by this subagent.",
+      "Builder inner cancellation/allocation/panic/rollback implementations are unchanged and their existing witnesses remain intact; this patch adds caller-boundary cancellation, typed resource refusal and shell admission witnesses, not a new exhaustive allocator or inner-builder sweep.",
+      "The learned gate is a prospective hidden runtime; no public activation or speed/qualification claim."
+    ],
+    "mutations": {
+      "mutations": [
+        {
+          "exit": 101,
+          "killed_by_test_assertion": true,
+          "log_sha256": "2b30c46879cd7d7d7c20f08a2caf4feb5c371fe47ba376cce1f44e9f357f416d",
+          "name": "grant",
+          "replacement": {
+            "from": "if self.preset.requires_economic_grant() {",
+            "to": "if self.preset.remaining_mode().is_some() {"
+          },
+          "restored_sha256": "67349028058f6933733809a86671cb541c388e3197da9c655b55745ca6cc5b0b",
+          "source": "crates/fereg-core/src/fe/borrowed_map.rs",
+          "test": "fe::routing_remaining::integration_tests::gates_real_callers_routes_refusal_direct_and_cancel"
+        },
+        {
+          "exit": 101,
+          "killed_by_test_assertion": true,
+          "log_sha256": "0780a239cb4ba6b7c437efdad55fb991c2dddd3cb8be7fa9c6628dde7a374719",
+          "name": "correction",
+          "replacement": {
+            "from": "if let Some(state) = gates.as_deref_mut() {\n                    state.correction()?;\n                }",
+            "to": ""
+          },
+          "restored_sha256": "67349028058f6933733809a86671cb541c388e3197da9c655b55745ca6cc5b0b",
+          "source": "crates/fereg-core/src/fe/borrowed_map.rs",
+          "test": "fe::borrowed_map::routing_tests::remaining_tests::gates_correction_closes_before_first_checkpoint_without_observation_scan"
+        },
+        {
+          "exit": 101,
+          "killed_by_test_assertion": true,
+          "log_sha256": "921e859602090927bf534eec3136dd793f00e6aaa6d6634f613c5af20ce9a63c",
+          "name": "shell",
+          "replacement": {
+            "from": ".checked_add(GateState::shell_bytes())",
+            "to": ".checked_add(0)"
+          },
+          "restored_sha256": "1638e06d5ea297dd492a7dc4919de71c32b4455f5b073906caf50debbb2937fd",
+          "source": "crates/fereg-core/src/fe/session.rs",
+          "test": "fe::routing_remaining::integration_tests::gates_shell_preserves_old_parent_boundary"
+        },
+        {
+          "exit": 101,
+          "killed_by_test_assertion": true,
+          "log_sha256": "9abbf97738eef0cdbb51bd90017e0be0b1e3bb0bec400d5474623a867ae44b02",
+          "name": "predicate",
+          "replacement": {
+            "from": "let grant = matches!(self.role, Role::Packed | Role::Outcome);",
+            "to": "let grant = matches!(self.role, Role::Packed | Role::Outcome | Role::Final);"
+          },
+          "restored_sha256": "aa20bfef4ba924f25bf1c9d828be66e433e831b05e1c5502e39fe56f34b7943a",
+          "source": "crates/fereg-core/src/fe/routing_gates.rs",
+          "test": "fe::routing_remaining::integration_tests::gates_real_callers_routes_refusal_direct_and_cancel"
+        }
+      ],
+      "schema": "two-fe-gates-runtime-mutations-v1"
+    },
+    "schema": "two-fe-gates-runtime-focused-checks-v1",
+    "status": "ready_for_independent_architecture_review",
+    "witnesses": [
+      "128-byte archived selected-wire predicate",
+      "real Fast/Low with two Low chunks and final at W1/W4, exact own repeats and independent analytic projection/OLS certificate",
+      "original packed width with initially retired regressor lanes",
+      "short action does not select; unsupported/final first episode closes across later action",
+      "typed memory refusal consumes attempt and economics remains terminal across final key",
+      "preserved direct route runs after terminal economics",
+      "sticky caller cancellation returns Interrupted",
+      "forced rejection at iteration8 closes before first gate and produces zero legacy observer entries",
+      "consumed key does not select, fresh accuracy key builds at16",
+      "exact new shell parent boundary and unchanged old boundary",
+      "outside eligible Auto families exact",
+      "legacy remaining observers and historical selector parsing preserved"
+    ]
+  },
+  "focused_runtime_record_sha256": "032ada31c46c79a10e7d689e462745548bc6888ce944e2c81395688c84e04259",
+  "independent_reviews": {
+    "astra_runtime": {
+      "findings": [
+        "Owner state spans packed, Low chunks and final actions.",
+        "First eligible initial-epoch local16 gate follows readiness, remaining allowance and unconsumed setup key.",
+        "Correction closes before restart; selected gate bypasses historical progress banks, scans and proxy counters.",
+        "Two-byte shell is charged to parent/downstream memory admission; old owned layouts remain unchanged.",
+        "Public defaults remain disabled; explicit solvers and PPML retain their selectors."
+      ],
+      "limits": [
+        "New cancellation witness covers already-pending caller cancellation. Existing inner-builder cancellation, allocator, joins and rollback witnesses are reused; actual native integration is still required."
+      ],
+      "method": "Bounded independent read-only source and mutation-restoration review; no independent test executions.",
+      "status": "no substantive defect found"
+    },
+    "astra_tooling": {
+      "design_review": {
+        "conclusion": "Reuse qualify with one explicit held-out diagnostic adapter and narrow request/resource hooks. Preserve old calibration and final routing qualification validation.",
+        "focused_synthetic_checks": [
+          "Exact request-to-injection and unchanged model body; original/accepted remain uninjected.",
+          "Reject final/calibration seeds, family/size/order/budget drift, duplicate body pairs, wrong baseline revisions, aliased arms, continuation/recovery and missing independent references.",
+          "Selected candidate valid lifecycle/direct/retained/refusal traces; reject unsupported-role or final grant, multiple episodes/grants, correction reopening, stale consumed-key selection, missing hierarchy or cap/certificate violation.",
+          "Retain historical h16/h32 checkpoint rejection and old calibration controls unchanged; verify explicit new Linux host rule does not weaken setup six-host or final per-cell minimum-host gates.",
+          "Warmups traced and scored calls fingerprint/phase-trace free; exact 432 executions; mismatched NATIVE_SECONDS/native_s proves scored field.",
+          "Same-worker fingerprints and cross-worker scientific decisions remain enforced; new semantic lifecycle comparison fails deliberate gate-decision drift."
+        ],
+        "limits": [
+          "No actual new runtime telemetry schema or candidate artifact was reviewed in this tooling pass.",
+          "Legacy original/accepted artifacts may not supply modern resource telemetry; do not invent hierarchy evidence or reuse candidate parser for them. Retain their existing bound legacy witnesses and exact own repeats.",
+          "Development data can assess fixed candidate behavior but cannot identify all missed-upgrade counterfactuals, select another model or satisfy final 42-cell qualification.",
+          "One traced warmup per arm/cell attests lifecycle/resource behavior only there; timed scientific repeats do not by themselves prove repeated identical internal gate traces."
+        ],
+        "minimal_changes": [
+          {
+            "change": "Add a separate two-gates-v1 request mapped exactly to routing_two_gates_v1. Do not append it to REMAINING, whose indexed members define historical force controls. Describe owner-level first eligible initial-epoch 16 and selected gate identities, not a fixed checkpoint on every action. Admit this request in plan and preserve it in ordinary final-qualification resource dispatch; current _run otherwise substitutes incremental-two.",
+            "where": "bench/routing.py:policy; bench/qualify.py:plan and _run resource dispatch"
+          },
+          {
+            "change": "Register one narrowly validated held-out adapter. Freeze the exact three roles, full revisions/builds, distinct actual execution aliases, seed, sixteen ordered Fast/Low cases, workers, blocks, budgets and no continuation/recovery. Bind adapter/spec/selected fit and model identity. Invoke its panel validation. Replace the non-calibration-diagnostic six-host assumption only for this explicit mode; keep setup diagnostics and final per-cell host rules unchanged.",
+            "where": "bench/qualify.py:diagnostic_tool, SOURCE_MODULES, plan validate_panel, report required_hosts"
+          },
+          {
+            "change": "Expose a separately named frozen development stage using only seed2026104201; retain historical prepare default and exact calibration validators. Reuse the existing generators, Fast/Low header-only pairing and independent references unchanged. Bind new stage/spec sources, executable hash, all derived streams and actual body/reference hashes; require eight unique bodies and exact Fast/Low pairs. Do not generate final seed2026105201 or add general seed/size/tolerance overrides.",
+            "where": "bench/two_fe_policy_inputs.py:prepare, source_files, stream_plan, _generate, _pair, _references"
+          },
+          {
+            "change": "Use a narrow policy-route validation seam before the hard-coded checkpoint comparison, retaining the default fixed-policy check. Keep action caps, certification, requested preset and full installed hierarchy validation. A route_validator callback alone is insufficient because the checkpoint comparison precedes it. Match the runtime agent actual minimal lifecycle schema rather than inventing one. Validate supported packed/outcome role, eligible initial epoch at local16, at most one selected owner episode/grant, short-action nonselection, consumed-key nonselection, correction/terminal closure and legitimate direct/retained routes without assuming every action installs at16. Typed resource refusal must retain existing semantics.",
+            "where": "bench/routing_science.py:resource_diagnostics and route_hierarchy; new adapter resource_diagnostics"
+          },
+          {
+            "change": "Reuse generic independent numerical comparison and the declared two-FE portfolio replay scope. Do not reuse old force-control parse_labels or its mandatory per-action checkpoint/fingerprint schema. Do not require cross-arm hierarchy/iteration equality for a policy-changing candidate. Retain exact own fingerprints and existing model/solver cross-worker signatures; explicitly validate stable new lifecycle decisions from warmups because worker_signature does not contain gate/route/hierarchy labels. Compare semantic route decisions separately from legitimate worker-dependent representation/observed memory.",
+            "where": "bench/two_fe_policy.py:compare_science/resource_diagnostics; bench/qualify.py:read_native, worker_signature, _run"
+          },
+          {
+            "change": "Leave the new mode outside the calibration flag: only existing warmups trace; compared calls have neither phase clocks nor diagnostic fingerprints. Clear any newly introduced trace environment variable. Score seconds from unique NATIVE_SECONDS, never native_s. Preserve all failures and observations. Diagnostic completion is execution/science completion, not a performance or activation pass; with one host/block per cell the maintained confidence bounds will be inconclusive.",
+            "where": "bench/qualify.py:_run call tracing and report"
+          }
+        ],
+        "protocol": {
+          "activation_qualified": false,
+          "arms": {
+            "candidate": "frozen full revision and actual plugin, request two-gates-v1",
+            "incumbent": "1cdb225e uninjected public Auto / CMG fd77d98d",
+            "original": "f35f3a4d uninjected public Auto"
+          },
+          "bodies": 8,
+          "budget_s": 14400,
+          "calls_per_platform": 432,
+          "deployment_note": "One replica/one shard is the smallest existing calibration-style deployment. Freeze deployment explicitly; the documented call formula alone does not imply six hosts or the final twelve-host gate.",
+          "input_seed": 2026104201,
+          "memory_modes": [
+            "fast",
+            "low"
+          ],
+          "mirrored_blocks": 1,
+          "order_seed": 2026102205,
+          "recorded_calls_per_arm_cell": 2,
+          "reserved_final_seed": 2026105201,
+          "retry_or_replacement_calls": 0,
+          "threads": [
+            1,
+            4,
+            8
+          ],
+          "timeout_s": 120,
+          "warmups_per_arm_cell": 1
+        },
+        "schema": 1,
+        "scope": "Read-only maintained-tooling review for the frozen held-out development panel; no measurements, input generation, tests, fits, or tracked edits.",
+        "source_sha256": {
+          "bench/qualify.py": "42ce3fcfe7464a4ad952745391ab0e119ce704b6801d1252a977430363f572a9",
+          "bench/routing.py": "5330915ce4e748e99f6c996533a075bedb7336ad536c16aea7bca02725a9b225",
+          "bench/routing_science.py": "fc2814457ff529ff5822ee111cf7793b75a004c9f4e2a300ae4cf11b0484459a",
+          "bench/tests/test_qualify.py": "b308858234978d94cdfd75cce17071f1dc2d9f938ba101d500e63a856c0edf07",
+          "bench/tests/test_routing_science.py": "66953cbd6bfaab181b17f9d9430533ff6c0fe4d38bd914dbffcb42cb2db988d4",
+          "bench/two_fe_policy.py": "0c6a925e1ddb99b82e8b460a2d9bb2a67911b31ba16f9808469d44c9a1fb71d8",
+          "bench/two_fe_policy_inputs.py": "0a390f9af30d6c1f3da4a75582671b5dae3b2aa3234530f5139a5a513e08c90e",
+          "docs/two_fe_auto_gates.md": "0194401f8bcb250c052801ef148020055b321c2f9d64be34981c9a461ae9e5c7"
+        }
+      },
+      "findings": [
+        "Bind selected fit, wire and specification in the manifest.",
+        "Bind exact analyzed result bytes in the report."
+      ],
+      "status": "two initial binding gaps repaired before measurements"
+    },
+    "high_effort_tooling": {
+      "checks": [
+        "432 fixed calls per platform; scored calls use NATIVE_SECONDS and no trace/phase timing.",
+        "Both protected comparisons, independent science, fixed-worker repeats, resource bounds and no-retry behavior are preserved.",
+        "Fit/wire/spec and actual results/artifact hashes are bound; source revision strings alone do not establish compilation provenance.",
+        "One Linux host is development evidence only."
+      ],
+      "findings": [
+        "Originally, a decision grant could pair with a build in a later routing_action. The repaired parser binds role/final/age and grant/build completion to each completed action, rejects trailing events, and includes action ordinal in cross-worker semantic signatures.",
+        "The reviewer initially alleged an uninitialized result digest on missing-result reports. Reinspection confirmed initialization already existed in HEAD; this finding was erroneous and withdrawn. An added regression test passes."
+      ],
+      "method": "Read-only source review.",
+      "status": "action-boundary finding repaired and independently re-reviewed; no remaining actionable finding"
+    }
+  },
+  "limitations": [
+    "Synthetic benchmark runner tests mock native computations and independent science; they validate orchestration, not numerical correctness.",
+    "No complete-command speed, held-out or qualification claim follows. Actual native builds, replay/science/transactions and fixed held-out/final panels remain required.",
+    "All harmful calibration choices and prior failed/inconclusive performance evidence remain unchanged."
+  ],
+  "root_checks": [
+    {
+      "command": [
+        "<task>/python/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "bench/tests",
+        "-p",
+        "test_two_fe_policy_development.py"
+      ],
+      "elapsed_s": 0.09248887514695525,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "gates-development-tooling-first",
+      "log_sha256": "52edda7b89c9d004299c055dc3f8279b94b2ba8e3b9cd4c275ca51834568cf0e",
+      "source_vectors": {
+        "after": "614dbe84fe5b24e189d7ae5de5b3ee42463b8957a48ba0c8215abb78d8bcb075",
+        "before": "614dbe84fe5b24e189d7ae5de5b3ee42463b8957a48ba0c8215abb78d8bcb075"
+      },
+      "test_results": [
+        "Ran 1 test in 0.000s"
+      ]
+    },
+    {
+      "command": [
+        "env",
+        "PYTHONPATH=bench",
+        "<task>/python/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "bench/tests",
+        "-p",
+        "test_two_fe_policy_development.py"
+      ],
+      "elapsed_s": 5.623680167132989,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "gates-development-tooling-import",
+      "log_sha256": "38ab9f1134f00cfff1776113adb6b6da102f3fcea1a87e55ec37d11129537a7e",
+      "source_vectors": {
+        "after": "614dbe84fe5b24e189d7ae5de5b3ee42463b8957a48ba0c8215abb78d8bcb075",
+        "before": "614dbe84fe5b24e189d7ae5de5b3ee42463b8957a48ba0c8215abb78d8bcb075"
+      },
+      "test_results": [
+        "Ran 6 tests in 5.461s"
+      ]
+    },
+    {
+      "command": [
+        "env",
+        "PYTHONPATH=bench",
+        "<task>/python/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "bench/tests",
+        "-p",
+        "test_two_fe_policy_development.py"
+      ],
+      "elapsed_s": 3.449183375108987,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "gates-development-tooling-fixed",
+      "log_sha256": "31914c9ee85a80d591022a30c5318dd74dcc79a35528d4079dde559e0d6f6d96",
+      "source_vectors": {
+        "after": "5d15da4908d2ac50ec6678c6ea384ee45821b62f91fdd2c1d6a4c0179d0d977e",
+        "before": "5d15da4908d2ac50ec6678c6ea384ee45821b62f91fdd2c1d6a4c0179d0d977e"
+      },
+      "test_results": [
+        "Ran 6 tests in 3.338s"
+      ]
+    },
+    {
+      "command": [
+        "env",
+        "PYTHONPATH=bench:bench/tests",
+        "<task>/python/bin/python",
+        "-m",
+        "unittest",
+        "test_two_fe_policy_development",
+        "test_two_fe_policy_inputs",
+        "test_two_fe_policy",
+        "test_two_fe_policy_runner",
+        "test_routing",
+        "test_routing_science",
+        "test_qualify"
+      ],
+      "elapsed_s": 23.128792917123064,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "gates-development-and-legacy-tooling",
+      "log_sha256": "fde1ab3b2d3e084c19af299d504359fe9cf1eb90dcfb13808466700e5c775a8a",
+      "source_vectors": {
+        "after": "0f19cea5140d0e6192c90ed45d41fe852be62f1e98f44047d5346872bd1f1907",
+        "before": "0f19cea5140d0e6192c90ed45d41fe852be62f1e98f44047d5346872bd1f1907"
+      },
+      "test_results": [
+        "Ran 116 tests in 22.980s"
+      ]
+    },
+    {
+      "command": [
+        "env",
+        "PYTHONPATH=bench:bench/tests",
+        "<task>/python/bin/python",
+        "-m",
+        "unittest",
+        "test_two_fe_policy_development"
+      ],
+      "elapsed_s": 2.97088629193604,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "gates-development-action-binding",
+      "log_sha256": "c0ee17f6211a6bc680f073b1351e031579b28f04752b52c2889a0f779485f862",
+      "source_vectors": {
+        "after": "51161202e0e442fcb9e98d4b16f5b8633f656ba99d1920a4b49ac8c3e5b12eee",
+        "before": "51161202e0e442fcb9e98d4b16f5b8633f656ba99d1920a4b49ac8c3e5b12eee"
+      },
+      "test_results": [
+        "Ran 9 tests in 2.857s"
+      ]
+    },
+    {
+      "command": [
+        "<task>/python/bin/python",
+        "scripts/check_complexity.py",
+        "--base",
+        "HEAD"
+      ],
+      "elapsed_s": 3.3659584999550134,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "gates-complexity-ratchet",
+      "log_sha256": "bacb03d91f1a0a37ec3c5e5741945c154d7326797c0c801a1db9cbbd37f48ad5",
+      "source_vectors": {
+        "after": "fb00214ac2dd086536a42b8235d277290cc843e22ef6a12928e0475002c2e308",
+        "before": "fb00214ac2dd086536a42b8235d277290cc843e22ef6a12928e0475002c2e308"
+      },
+      "test_results": [
+        "Complexity ratchet: PASS {\"fereg-core\": {\"chunk_candidates\": 12, \"dispatch_candidates\": 1381, \"files_over_1500\": 15, \"functions_over_150\": 60, \"production_lines\": 106748}, \"fereg-plugin\": {\"chunk_candidates\": 3, \"dispatch_candidates\": 140, \"files_over_1500\": 3, \"functions_over_150\": 12, \"production_lines\": 15272}}"
+      ]
+    },
+    {
+      "command": [
+        "<task>/python/bin/python",
+        "scripts/check_github_install.py"
+      ],
+      "elapsed_s": 3.085692208027467,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "gates-installed-package-binding",
+      "log_sha256": "17a031746836df22d862dbad0d6c164042b8c48eba263b54755a0d6b0036d550",
+      "source_vectors": {
+        "after": "fb00214ac2dd086536a42b8235d277290cc843e22ef6a12928e0475002c2e308",
+        "before": "fb00214ac2dd086536a42b8235d277290cc843e22ef6a12928e0475002c2e308"
+      },
+      "test_results": []
+    },
+    {
+      "command": [
+        "./scripts/run_tests.sh",
+        "--source-only"
+      ],
+      "elapsed_s": 20.753032790962607,
+      "environment": {
+        "CARGO_BUILD_JOBS": "2",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": "ci",
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 1,
+      "label": "gates-source-integration",
+      "log_sha256": "711bb56fde9d972ca8f65c5784a2671a2c52117651532b89ffd90ad7884128c0",
+      "source_vectors": {
+        "after": "fb00214ac2dd086536a42b8235d277290cc843e22ef6a12928e0475002c2e308",
+        "before": "fb00214ac2dd086536a42b8235d277290cc843e22ef6a12928e0475002c2e308"
+      },
+      "test_results": [
+        "Ran 315 tests in 17.545s"
+      ]
+    },
+    {
+      "command": [
+        "./scripts/run_tests.sh",
+        "--source-only"
+      ],
+      "elapsed_s": 40.470587542047724,
+      "environment": {
+        "CARGO_BUILD_JOBS": "2",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": "ci",
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 101,
+      "label": "gates-source-integration-format-repaired",
+      "log_sha256": "92581658aa62baf5d9cc0f0db0698ad6e4989807a0caba5de1ea75e7e472ce54",
+      "source_vectors": {
+        "after": "ae33054c9df489d0556c4aab536500858b901396a2a3512801a87bbdd8f377e0",
+        "before": "ae33054c9df489d0556c4aab536500858b901396a2a3512801a87bbdd8f377e0"
+      },
+      "test_results": [
+        "Ran 315 tests in 18.992s"
+      ]
+    },
+    {
+      "command": [
+        "./scripts/run_tests.sh",
+        "--source-only"
+      ],
+      "elapsed_s": 312.19903991697356,
+      "environment": {
+        "CARGO_BUILD_JOBS": "2",
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": "ci",
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "gates-source-integration-lifetime-repaired",
+      "log_sha256": "711d92e38cbc64d528c1e43510d244b4d124672393fcc3721c9cc6f3b6a82e55",
+      "source_vectors": {
+        "after": "2088f7f61b18137afa1a8d40a6d416c1566e309832c37afa78d8c0d122c3c80d",
+        "before": "2088f7f61b18137afa1a8d40a6d416c1566e309832c37afa78d8c0d122c3c80d"
+      },
+      "test_results": [
+        "Ran 315 tests in 15.227s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.01s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.02s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.03s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.08s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.19s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.01s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.09s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 1.28s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 5.48s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 7.54s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 8.87s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1421 filtered out; finished in 23.23s",
+        "test result: ok. 1419 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 23.40s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.48s",
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s",
+        "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s",
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.12s",
+        "test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.14s",
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s",
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 167 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 167 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 167 filtered out; finished in 0.01s",
+        "test result::tests::covariance_determinant_fails_closed_on_malformed_or_nonfinite_input ... ok",
+        "test result::tests::covariance_determinant_has_exact_small_wire_semantics ... ok",
+        "test result: ok. 168 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.34s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.10s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.01s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.29s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.80s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.06s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.12s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.29s",
+        "test result::tests::covariance_determinant_fails_closed_on_malformed_or_nonfinite_input ... ok",
+        "test result::tests::covariance_determinant_has_exact_small_wire_semantics ... ok",
+        "test result: ok. 198 passed; 0 failed; 10 ignored; 0 measured; 0 filtered out; finished in 17.49s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.19s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.01s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.01s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s",
+        "Ran 7 tests in 0.002s",
+        "Complexity ratchet: PASS {\"fereg-core\": {\"chunk_candidates\": 12, \"dispatch_candidates\": 1381, \"files_over_1500\": 15, \"functions_over_150\": 60, \"production_lines\": 106748}, \"fereg-plugin\": {\"chunk_candidates\": 3, \"dispatch_candidates\": 140, \"files_over_1500\": 3, \"functions_over_150\": 12, \"production_lines\": 15272}}",
+        "SOURCE-ONLY: source integration PASS; installed-package admission NOT PERFORMED; release/promotion blocked."
+      ]
+    },
+    {
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "scc",
+        "hostname; qstat -u johannes; pquota -u welfgr; ls -ld <scc-task> <scc-task>/sources <scc-task>/artifacts/Linux; test ! -e <scc-task>/gates-source.tar; test ! -e <scc-task>/sources/policy-gates; test ! -e <scc-task>/build-gates-linux-cache"
+      ],
+      "elapsed_s": 0.4474149171728641,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 255,
+      "label": "gates-scc-prebuild-inspect",
+      "log_sha256": "f1c01c58cd716cb1a4557af9bdb6839364d0d7f95f7c3f56ce8809f3ddc81ca2",
+      "source_vectors": {
+        "after": "2088f7f61b18137afa1a8d40a6d416c1566e309832c37afa78d8c0d122c3c80d",
+        "before": "2088f7f61b18137afa1a8d40a6d416c1566e309832c37afa78d8c0d122c3c80d"
+      },
+      "test_results": []
+    },
+    {
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "scc",
+        "hostname; qstat -u johannes; pquota -u welfgr; ls -ld <scc-task> <scc-task>/sources <scc-task>/artifacts/Linux; test ! -e <scc-task>/gates-source.tar; test ! -e <scc-task>/sources/policy-gates; test ! -e <scc-task>/build-gates-linux-cache"
+      ],
+      "elapsed_s": 0.8486983331386,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "gates-scc-prebuild-inspect-restored",
+      "log_sha256": "ba1baaf9e471b16474f43b84d34d9b2828721645e5db70438f8764c5fd96de99",
+      "source_vectors": {
+        "after": "2088f7f61b18137afa1a8d40a6d416c1566e309832c37afa78d8c0d122c3c80d",
+        "before": "2088f7f61b18137afa1a8d40a6d416c1566e309832c37afa78d8c0d122c3c80d"
+      },
+      "test_results": []
+    },
+    {
+      "command": [
+        "bash",
+        "-n",
+        "<task>/build-gates-mac.sh",
+        "<task>/build-gates-linux.sh"
+      ],
+      "elapsed_s": 0.0033454170916229486,
+      "environment": {
+        "CARGO_BUILD_JOBS": null,
+        "CARGO_TARGET_DIR": null,
+        "FEREG_TEST_PROFILE": null,
+        "FEREG_TEST_THREADS": null,
+        "RUSTFLAGS": null,
+        "RUSTUP_TOOLCHAIN": null
+      },
+      "exit": 0,
+      "label": "gates-build-wrapper-syntax",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_vectors": {
+        "after": "2088f7f61b18137afa1a8d40a6d416c1566e309832c37afa78d8c0d122c3c80d",
+        "before": "2088f7f61b18137afa1a8d40a6d416c1566e309832c37afa78d8c0d122c3c80d"
+      },
+      "test_results": []
+    }
+  ],
+  "schema": "two-fe-gates-implementation-v1",
+  "scope": "Hidden selected structural policy for exactly-two categorical-intercept OLS Auto/Auto. Public successor default remains disabled. No held-out native calls or timing in this record.",
+  "source_files_sha256": {
+    "bench/qualify.py": "f6102fcdb970027c0342d510f16625b22ebf6f8695ed333cc2155e14de707408",
+    "bench/routing.py": "5330915ce4e748e99f6c996533a075bedb7336ad536c16aea7bca02725a9b225",
+    "bench/tests/test_routing.py": "9a96236af0fe8ee5417b0ffb60335ffc83c3344fe90d4d772cbdb013519d1f30",
+    "bench/tests/test_two_fe_policy_development.py": "ab0063410f23c5158dc9d36bf75e6a6144d2d89560f64c68a48430a1ed4d9ff6",
+    "bench/tests/test_two_fe_policy_inputs.py": "7c33291b646f10cbece5cf926ccb843fa75da7b4618890e8b81fee9b8cfa5c24",
+    "bench/two_fe_policy_development.py": "cc9984d001d6d1f4cc6f6cd7a7766d400ca40d84ff94a267d0db93d3c87ab748",
+    "bench/two_fe_policy_inputs.py": "0a390f9af30d6c1f3da4a75582671b5dae3b2aa3234530f5139a5a513e08c90e",
+    "crates/fereg-core/src/fe/borrowed_map.rs": "67349028058f6933733809a86671cb541c388e3197da9c655b55745ca6cc5b0b",
+    "crates/fereg-core/src/fe/borrowed_map/remaining_tests.rs": "2a3dbbb51c1f1d281ee3474cb627d3d6cb2df94c85531fd4dded5061f7b4afe0",
+    "crates/fereg-core/src/fe/mod.rs": "22af2dc51462fdbd8641df81e8936e0ebb55f014f2e073bf7c88428a53872f5c",
+    "crates/fereg-core/src/fe/routing.rs": "3052f460e3d2f4c0691c6594fb4460384e84b160240edbb1b5d6ce8f51ea2df9",
+    "crates/fereg-core/src/fe/routing_gates.rs": "aa20bfef4ba924f25bf1c9d828be66e433e831b05e1c5502e39fe56f34b7943a",
+    "crates/fereg-core/src/fe/routing_gates/tests.rs": "6eb03d81139c8eafbc3a323feb143513f274a306078d9fb774ce75fe1853a69b",
+    "crates/fereg-core/src/fe/routing_observer.rs": "d8b3509d7d4bcb67b2e52f34291835380698f8918308646f68b122fea368724b",
+    "crates/fereg-core/src/fe/routing_remaining/integration_tests.rs": "db20e78bb95e22ebef807c92966dc5fdd06e9751ef2c61cec31ffbbf88c33c60",
+    "crates/fereg-core/src/fe/session.rs": "1638e06d5ea297dd492a7dc4919de71c32b4455f5b073906caf50debbb2937fd",
+    "crates/fereg-core/src/ols/prepared_fit/one_shot.rs": "5a8b8bf442cbb23fd87ab43b86c0690416092e9c6562d176e62af7d281ecc974",
+    "crates/fereg-plugin/src/developer_injection.rs": "12b86f3ad07c84e7ab5e69b9a7af5e600174a524e5ddc7c1e4d6038b6dbd5f51",
+    "tests/reference/complexity.json": "ce026f7254d9f9dadaf4db740258de8349d307a949b40eec11a54ce67ed7c8c5"
+  }
+}

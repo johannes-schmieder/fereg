@@ -21,6 +21,7 @@ PORTFOLIOS = (PORTFOLIO_V1, PORTFOLIO_UNSEEDED)
 INCREMENTAL = ('incremental-many', 'incremental-two')
 REMAINING = ('two-remaining-v1', 'two-remaining-never',
              'two-remaining-force16', 'two-remaining-force32')
+GATES = 'two-gates-v1'
 COMPACT_IT = 'it-coefficients'
 
 
@@ -56,6 +57,12 @@ def sha(value):
 def policy(arm):
     if arm == 'baseline':
         return None
+    if arm == GATES:
+        base = policy(PORTFOLIO_UNSEEDED)
+        return {**base, 'family': 'two', 'injection': 'routing_two_gates_v1',
+                'decision': 'direct-loss-gates-v1', 'first_decision': 16,
+                'selected_features': ['final'], 'progress_samples': 0,
+                'two_fe': {**base['two_fe'], 'checkpoint': 0}}
     if arm in REMAINING:
         base = policy(PORTFOLIO_UNSEEDED)
         checkpoint = {'two-remaining-v1': 0, 'two-remaining-never': 2**64 - 1,

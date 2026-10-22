@@ -125,7 +125,7 @@ fn remaining_correction_restarts_observations_not_work() {
             witness.input.clone().into(),
             config(),
             false,
-            Some(&mut state),
+            Some(ObserverRef::Remaining(&mut state)),
         )
         .unwrap();
     witness.check(&fit, &[0, 1, 2]);
@@ -192,7 +192,7 @@ fn remaining_restart_keeps_native_iteration_cap() {
         witness.input.clone().into(),
         limited,
         false,
-        Some(&mut state),
+        Some(ObserverRef::Remaining(&mut state)),
     );
     assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 16);
     let graph = owner.two_fe_pcg.as_ref().unwrap();
@@ -277,4 +277,90 @@ fn remaining_observer_scan_honors_sticky_inner_break() {
         &[]
     )
     .unwrap());
+}
+
+#[test]
+fn gates_correction_closes_before_first_checkpoint_without_observation_scan() {
+    if !child("gates_correction_closes_before_first_checkpoint_without_observation_scan") {
+        return;
+    }
+    let witness = PairedGraph::new();
+    let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+    owner.retain_coefficients = true;
+    owner.request_auto_routing(RoutingPreset::gates_two(), None, 0);
+    let mut state = crate::fe::routing_gates::GateState::new();
+    state.begin(Demand::Packed { regressors: 2 }, 3, 3, false);
+    TWO_FE_CERTIFICATE_AT.set(8);
+    TWO_FE_CERTIFICATE_REJECTED_AT.set(0);
+    TWO_FE_CORRECTIONS.set(0);
+    TWO_FE_ROUTING_BUILD_AT.set(0);
+    let scan = ScanGuard::new(1);
+    let fit = owner
+        .absorb_ols_with_remaining(
+            BorrowedMapWeights::Provided(&witness.weights),
+            witness.input.clone().into(),
+            config(),
+            false,
+            Some(ObserverRef::Gates(&mut state)),
+        )
+        .unwrap();
+    witness.check(&fit, &[0, 1, 2]);
+    assert_eq!(TWO_FE_CERTIFICATE_REJECTED_AT.get(), 8);
+    assert_eq!(TWO_FE_CORRECTIONS.get(), 1);
+    assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 0);
+    assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
+    assert_eq!(
+        scan.completed(),
+        0,
+        "selected dependency compiler must not run old progress scans"
+    );
+    let trace =
+        std::fs::read_to_string(std::env::var_os("FEREG_SOLVER_TRACE_FILE").unwrap()).unwrap();
+    assert!(trace.contains("|phase=two_fe_gates|event=correction|"));
+    assert!(!trace.contains("|phase=auto_schur_route|"));
+}
+
+#[test]
+fn gates_consumed_key_does_not_select_and_fresh_key_can_build() {
+    if !child("gates_consumed_key_does_not_select_and_fresh_key_can_build") {
+        return;
+    }
+    let witness = PairedGraph::new();
+    let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
+    owner.retain_coefficients = true;
+    owner.request_auto_routing(RoutingPreset::gates_two(), None, 0);
+    let route = owner.auto_route.as_mut().unwrap();
+    route.begin(config().tolerance, false);
+    route.setup.attempted = true;
+    let mut state = crate::fe::routing_gates::GateState::new();
+    state.begin(Demand::Packed { regressors: 2 }, 3, 3, false);
+    let scan = ScanGuard::new(1);
+    TWO_FE_ROUTING_BUILD_AT.set(0);
+    let fit = owner
+        .absorb_ols_with_remaining(
+            BorrowedMapWeights::Provided(&witness.weights),
+            witness.input.clone().into(),
+            config(),
+            false,
+            Some(ObserverRef::Gates(&mut state)),
+        )
+        .unwrap();
+    witness.check(&fit, &[0, 1, 2]);
+    assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 0);
+    let mut next = config();
+    next.tolerance *= 0.5;
+    state.begin(Demand::Packed { regressors: 2 }, 3, 3, false);
+    let fit = owner
+        .absorb_ols_with_remaining(
+            BorrowedMapWeights::Provided(&witness.weights),
+            witness.input.clone().into(),
+            next,
+            false,
+            Some(ObserverRef::Gates(&mut state)),
+        )
+        .unwrap();
+    witness.check(&fit, &[0, 1, 2]);
+    assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 16);
+    assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_some());
+    assert_eq!(scan.completed(), 0);
 }
