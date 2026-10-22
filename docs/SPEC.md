@@ -204,8 +204,10 @@ replacement is implemented. Preserve cutoff 5, one sampled tree, seed zero,
 eligibility, small-direct selection, certification, memory controls, restart
 and fallback semantics. Public activation still requires the separate fixed
 42-cell Mac/Linux qualification and exact public-versus-hidden equivalence.
-The reviewed successor development formulation and its prospective calibration
-contract are specified in [the remaining-cost policy](two_fe_auto_policy.md).
+The reviewed successor revision and its prospective fitting contract are
+specified in [the direct decision-loss policy](two_fe_auto_gates.md). The
+completed [remaining-cost formulation](two_fe_auto_policy.md) and its calibration
+remain historical evidence.
 Its new hidden invocation has the declared affected numerical scope; historical
 fixed-checkpoint and portfolio injections retain their existing contracts.
 

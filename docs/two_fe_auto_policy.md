@@ -26,8 +26,10 @@ missing labels and failures. Freeze the revised model and fitting procedure
 before evaluation, keep held-out data separate, and do not search until a pass.
 The scope, scientific/resource/transaction safeguards and separate 42-cell
 qualification and exact public-versus-hidden activation gates remain in force.
-The remainder of this document describes the completed first formulation;
-no revised policy or coefficients have yet been selected or installed.
+The revised [joint two-gate formulation](two_fe_auto_gates.md) replaces this
+price model for the next hidden candidate. The remainder of this document
+describes the completed first formulation and its retained evidence. No revised
+runtime policy has yet been installed.
 
 ## Scope and independent witnesses
 

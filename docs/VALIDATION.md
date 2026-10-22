@@ -12201,3 +12201,52 @@ LSMR was corrected to match the existing MAP-owned policy. `run_tests.sh`,
 the 16 focused help checks, unchanged-production identity and local link checks
 pass; the Mac run reports the expected Linux mock-plugin audit skip. No new
 Mac timing, Windows qualification or release-performance claim is made.
+
+
+## Direct decision-loss policy review and pre-fit freeze (2026-10-22)
+
+Independent GPT Pro and Claude Fable 5.1 reviewed the complete current source
+and all retained calibration observations, then each read the other's complete
+proposal. Both recommend Pro's existing joint two-gate formulation; no synthesis
+or third formulation is selected. The [review record](../bench/results/two-fe-policy-revision-review-20261022.json)
+retains their complete substantive reports, original identities, disclosed
+errors and withdrawn proposals. Two reviewer extraction-root strings are
+replaced by an explicit presentation placeholder; their original hashes remain.
+
+The [prospective specification](two_fe_auto_gates.md) declares the affected
+scientific scope and witnesses, 21 features, fixed finite class (at most 8,464
+pairs), exact common-origin loss, narrow pooling predicate, tie order, wire
+encoding, owner-level episode and dependency compilation before the fit. The
+84 no-episode cells remain in the coverage denominator; missing treatment costs
+are unknown. The 36 expired Force32 contexts may pool only after exact scientific
+and trajectory agreement and the source-bound two-byte request-parent comparison,
+with every raw usage checked against its own raw limit. No unpooled replacement
+model may be selected. Pre-16 observation refusal cannot silently move an episode
+or consume a construction attempt; preserved route/ledger eligibility still
+controls which checkpoint can select the episode.
+
+Fable disclosed two exploratory component fits and a margin/horizon grid;
+neither is a prospectively frozen candidate. The record preserves both runs,
+including the future-startup double charge, fractional/integer evaluator
+mismatch, understated weighted errors and conflicting final-credit prose. Its
+proposed held-out model selection and changed budget were withdrawn. Pro's
+literal resource-equality claim was false and has been corrected narrowly.
+No failed evidence was erased and no runtime coefficient was installed.
+
+The lead and bounded Astra independently reviewed the specification and offline
+fitter. Focused synthetic witnesses cover common-origin costs and signed suffix,
+warmup exclusion, joint reachability/body diversity, fixed cuts, exact ties,
+canonical encoding, strict pooling and malformed provenance. No real-data gate
+fit, new native workload, held-out observation or default activation has occurred
+at this freeze. Existing runtime evidence is reused because runtime production
+and artifact inputs are unchanged. Tooling changes receive focused checks.
+
+The loss is observer-excluded projection-suffix time; it does not establish
+complete-command improvement. Fable's pre-fit prediction is a role gate that
+builds non-final first-eligible actions at16 and never builds at32. If selected,
+that rule requires no proxy banks/scans but has no remaining-work or cost
+sensitivity. Intermediate-length solves, fill-heavy factors, different RHS
+schedules and excluded later opportunities remain explicit economic risks.
+The expected role split is a falsifiable prediction, not a target imposed on
+the fit. Development and final qualification budgets and protected incumbents
+remain unchanged; there is no performance-pass or activation claim here.
