@@ -22,6 +22,14 @@ def stable_actions(actions):
     } for action in actions]
 
 
+def stable_resources(resources):
+    # Auto memory admission uses the host's current available-memory census.
+    # Keep that observed limit in every call and validate used <= limit there;
+    # repeatability covers the accounted work and decisions, not that census.
+    return [{key: value for key, value in resource.items() if key != 'memory_bytes_limit'}
+            for resource in resources]
+
+
 def validate_actions(actions, memory, workers):
     require(actions and memory in ('fast', 'low'), 'missing projection schedule')
     ends = [action['end'] for action in actions]
@@ -170,8 +178,11 @@ def paired_cell(cell, *, platform, seed, family, memory, workers):
             require(call['fingerprint'] == reference['fingerprint'], 'calibration science repeat changed')
             require(stable_actions(call['policy_actions']) == stable_actions(reference['policy_actions']),
                     'non-timing policy labels changed within a fixed-worker repeat')
-            for key in ('route_trace', 'route_hierarchy', 'action_resources'):
+            for key in ('route_trace', 'route_hierarchy'):
                 require(call[key] == reference[key], 'calibration route/resource repeat changed')
+            require(stable_resources(call['action_resources'])
+                    == stable_resources(reference['action_resources']),
+                    'calibration route/resource repeat changed')
     context = dict(platform=platform, seed=seed, family=family, memory=memory, workers=workers)
     observations, unavailable = [], []
     for role in ('force16', 'force32'):

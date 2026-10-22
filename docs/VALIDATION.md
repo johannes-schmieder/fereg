@@ -65,9 +65,9 @@ The reviewed complexity increase is 1,398 core production lines and 15 plugin
 lines; no new function/file size violation is introduced. The sidecar and labels
 are scoped to sanctioned successor injections. Actual native builds,
 old/outside-scope replay and Stata transactions are recorded at the stable
-artifact boundary below. The 1,728-call calibration, held-out validation and
-separate fixed 42-cell qualification remain required before public activation
-or a performance claim.
+artifact boundary below. The completed 1,728-call calibration is assessed below.
+Held-out validation and separate fixed 42-cell qualification remain required
+before public activation or a performance claim.
 
 ### Native integration and frozen calibration (2026-10-22)
 
@@ -99,11 +99,74 @@ binary. Limits are 120 seconds per call and 14,400 seconds per platform, with
 no retries or continuation. The Linux plan requires a verified whole physical
 host; ordinary Mac desktop activity remains recorded noise.
 
-This freeze contains no calibration observations and establishes no fitted
+The freeze contains no calibration observations and establishes no fitted
 coefficient, support coverage or forecast accuracy. Predictive calibration is
 still absent and public two-FE Auto is disabled. The installed-package binding
 remains failed; these isolated development artifacts do not update distribution
 packages. Previous timing uncertainties and failures remain unchanged.
+
+### Fixed calibration outcome (2026-10-22)
+
+The [complete outcome](../bench/results/two-fe-policy-calibration-outcome-20261022.json)
+retains all 1,728 parsed native calls in four bounded files, with the frozen
+source/artifact bindings, host observations, accounting, commands and failures.
+Each platform completed 864 calls without a native failure, exclusion or retry.
+Linux job 8244019 reserved all 28 physical cores on `scc-we4` and completed with
+scheduler failed/exit 0/0. Sampled observers found no competing compute; this
+is sampled coverage rather than continuous proof. Ordinary Mac activity remains
+in the observations. All maintained numerical, repeatability, cross-worker,
+resource and route checks pass. An additional comparison of 288 retained
+Mac/Linux warmup outputs passes the maintained scientific tolerances and exact
+discrete gates; their routes, hierarchy and scientific fingerprints also agree.
+Recorded raw logs and numerical arrays were removed after online checks;
+independent raw reparse is limited to retained warmups.
+
+The [single prescribed pooled fit](../bench/results/two-fe-policy-fit-20261022.json)
+uses 180 matched intervention observations from 108 input/mode/worker/platform
+cells and 144 complete suffixes. All 204 unavailable intervention observations
+are explicitly classified as no intervention. Exact rational fitting,
+one-time Q32.32 quantization and every encoded inequality pass. Seven of the
+96 current support keys have the required seed/platform/worker coverage;
+150 matched observations are supported. No completed compatible-history,
+mixed-width-history or correction-epoch support was obtained.
+
+The fitted decision selects **zero builds in those 150 supported observations**.
+This is a completed calibration with no demonstrated useful upgrade decision,
+not a qualification pass or proof that all possible inputs would defer.
+Independent high-effort review verifies each rational LP optimum with exact
+active-constraint dual certificates, as well as every encoded inequality and
+saved price. It also confirms Astra's analytic diagnosis: with this fit and
+support table, every supported forecast of at most 1,007 remaining shared steps
+must defer, even before charging setup and startup. The largest supported
+calibration forecast is 125 steps. Larger admissible horizons are not ruled out
+by this bound. The fitted continuation coefficient is `t_0 = 16.74439684` and
+`t_1 = 0`; no compatible-history credit is supported.
+The pooled incumbent fit is bound by two Mac stagnation observations forecasting
+11,968 remaining steps where the matched Never action executes 20. These rows
+are outside the final support table but remain constraints under the frozen
+global fitting rule. Across supported observations, predicted incumbent cost
+is a median 0.078% of its measured label. Separate expensive Linux observations
+bind setup, startup, reconstruction and continuation; the dimension predictors
+also assign identical setup exposures to some cheap and expensive inputs.
+Actual paired means show positive current-action savings for 107 of 180
+interventions and positive savings including the suffix for 133; these are
+descriptive calibration observations, not confidence bounds or unseen-input
+guarantees. No row, margin or coefficient was changed after this diagnosis.
+The coefficients are retained as evidence and have not been installed in the
+runtime. Held-out and final qualification runs have not started; public two-FE
+Auto remains disabled. A substantive decision on further development is needed
+before changing the formulation or measurement protocol.
+
+Two operational defects are retained. Linux job 8243850 rejected an output
+directory outside the permitted task tree before creating outputs or making a
+native call; correcting only that location enabled job 8244019 with identical
+artifacts, inputs and budgets. The first offline Mac label collection also
+failed because repeat matching required equality of host available-memory
+limits. The narrow repair retains and validates each actual limit while still
+requiring exact accounted memory, iteration work, routes and non-timing policy
+labels. All 66 focused policy-tool tests pass, including an unmocked witness
+that permits valid census variation but rejects changed accounted work and
+over-limit use. The same observations were reused without any native rerun.
 
 ## Measured CMG setup and two-FE upgrade strategy (2026-10-21)
 

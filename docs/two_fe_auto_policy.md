@@ -4,8 +4,11 @@ This successor develops against the accepted ninther setup at native source
 `1cdb225e2460e391ad38f856755ae3ea5efb2e5b` with CMG
 `fd77d98da1f74009b3e5b634e1944433b647a9b1`. Johannes accepted that setup with its
 reported timing uncertainties and authorized policy development on 2026-10-21.
-This document specifies the selected development formulation. It does not
-activate the public default or assert that any coefficient is calibrated.
+This document specifies the selected development formulation. The fixed
+calibration completed on 2026-10-22 and produced a valid encoded fit, but no
+builds among its 150 supported intervention observations. The coefficients
+remain evidence only; the runtime calibration is absent and the public default
+is disabled. See the [calibration assessment](VALIDATION.md#fixed-calibration-outcome-2026-10-22).
 
 ## Scope and independent witnesses
 
@@ -223,6 +226,10 @@ An intervention's suffix starts after that same action and includes every
 remaining scheduled call. Its prediction uses only information available at
 the intervention, never realized future difficulty. Retain missing, censored,
 refused and failed labels with reasons, without replacement observations.
+Within each fixed-worker repeat, accounted memory, iteration work, routes and
+non-timing policy labels stay exact. The effective memory limit from the host's
+available-memory census is an observation: retain it and check each call's
+accounted use against its own limit, without requiring equal census values.
 Suffix cost sums the later complete projection-action intervals; intervening
 QR, regressor generation and other caller work is not credited to either
 projector. The state fingerprint is a source/toolchain-bound 64-bit accidental

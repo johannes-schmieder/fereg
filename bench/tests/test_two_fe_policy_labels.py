@@ -53,6 +53,37 @@ def match(value):
 
 
 class Matching(unittest.TestCase):
+    def test_observed_memory_limits_vary_but_each_actual_bound_still_applies(self):
+        value = cell()
+        for ordinal, call in enumerate([*value['warmups'], *value['blocks'][0]['calls']]):
+            call['action_resources'] = []
+            for action in call['policy_actions']:
+                action['end'].update(installed=0, build_ns=None, restart_ns=None,
+                                     startup_ns=None, continuation_ns=None)
+                for point in action['checkpoints']:
+                    point['build'] = 0
+                call['action_resources'].append(dict(
+                    final=str(action['end']['final']),
+                    preset='routing_two_remaining_' + call['execution'],
+                    iterations_used=40, iterations_limit=100,
+                    memory_bytes_used=100, memory_bytes_limit=1000 + ordinal))
+
+        def actual_pair(candidate):
+            return labels.paired_cell(candidate, platform='Darwin', seed=2026102201,
+                                      family='weak', memory='fast', workers=4)
+
+        usable, unavailable = actual_pair(value)
+        self.assertFalse(usable)
+        self.assertEqual([entry['reason'] for entry in unavailable], ['no_intervention'] * 2)
+        for field in ('memory_bytes_used', 'iterations_used', 'iterations_limit'):
+            changed = copy.deepcopy(value)
+            changed['blocks'][0]['calls'][0]['action_resources'][0][field] += 1
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'repeat changed'):
+                actual_pair(changed)
+        value['blocks'][0]['calls'][0]['action_resources'][0]['memory_bytes_limit'] = 99
+        with self.assertRaisesRegex(ValueError, 'resource bound'):
+            actual_pair(value)
+
     def test_means_use_all_recorded_calls_and_the_complete_later_suffix(self):
         value = cell()
         force = [c for c in value['blocks'][0]['calls'] if c['execution'] == 'force16']
