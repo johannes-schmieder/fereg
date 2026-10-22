@@ -280,13 +280,109 @@
         "real_calibration_or_native_effect": false
       }
     ],
-    "local_references": 187
+    "local_references": 187,
+    "preselection_execution_failure": {
+      "frozen_head": "8ee565b7",
+      "command": "python run-gates-fit.py (source-bound driver; collect then fit)",
+      "exit": 1,
+      "log_sha256": "121df80b1cf7a9345c372941367f5c526f9656c06448c8544e0bcf15bb1f4eec",
+      "phase": "collect, before fit",
+      "reason": "KeyError discarded_attempts: Linux historical records omit Darwin-specific recovery/call-count fields.",
+      "real_selection_runs": 0,
+      "candidate_outputs": 0,
+      "new_native_calls": 0,
+      "retained_measurements_unchanged": true,
+      "driver_source": "\"\"\"One source-bound execution of the prospectively frozen fitter.\"\"\"\nimport hashlib\nimport json\nfrom pathlib import Path\nimport subprocess\nimport sys\n\nroot = Path.cwd()\nsys.path.insert(0, str(root/'bench'))\nimport two_fe_policy_gates as gates\n\nhead = subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip()\nassert head.startswith('8ee565b7'), head\nassert not subprocess.check_output(['git','status','--porcelain=v1'], text=True)\nreview_path = Path('bench/results/two-fe-policy-revision-review-20261022.json')\nreview = json.loads(review_path.read_bytes())\nfor name, expected in review['frozen_sources'].items():\n    assert hashlib.sha256(Path(name).read_bytes()).hexdigest() == expected, name\noutput = Path('bench/results/two-fe-policy-gates-fit-20261022.json')\nassert not output.exists(), 'never overwrite a fitted candidate'\nprint('Frozen source verified; reconstructing all 1728 retained calls.', flush=True)\ndata = gates.collect(root)\nprint('Reconstruction passed: 108 contexts, 72 same-action32, 84 absent cells. Starting the single fit.', flush=True)\nfit = gates.fit(data['contexts'], total_cells=data['total_cells'])\nrecord = dict(schema='two-fe-policy-gates-fit-v1', freeze_head=head,\n    review_record=dict(file=str(review_path), sha256=hashlib.sha256(review_path.read_bytes()).hexdigest()),\n    frozen_sources=review['frozen_sources'],\n    driver_source=Path(__file__).read_text(),\n    driver_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),\n    real_selection_runs=1, new_native_calls=0, held_out_observations=0,\n    historical_calls_validated=data['native_calls'], bindings=data['bindings'],\n    no_episode=data['no_episode'], unavailable_installations=data['unavailable'],\n    limits=data['limits'], result=fit)\nencoded = json.dumps(gates.json_value(record), indent=2, ensure_ascii=False)+'\\n'\nassert len(encoded.encode()) < 1000000\nwith output.open('x') as stream:\n    stream.write(encoded)\nprint(json.dumps(gates.json_value({k: fit[k] for k in ('gates','candidate_gates','pairs_evaluated','costs','coverage','observation_footprint')}), indent=2), flush=True)\nprint(json.dumps(dict(output=str(output), bytes=output.stat().st_size, sha256=hashlib.sha256(output.read_bytes()).hexdigest())), flush=True)\n"
+    },
+    "platform_schema_repair": {
+      "changed_functions": [
+        "collect",
+        "validate_run_part"
+      ],
+      "checks": [
+        {
+          "command": [
+            "python",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "bench/tests",
+            "-p",
+            "test_two_fe_policy_gates.py",
+            "-v"
+          ],
+          "environment": {
+            "PYTHONPATH": "bench"
+          },
+          "exit": 0,
+          "log_sha256": "32ba08444e031ea2397002fd32fbd2bf6d2d4f7e028a7531367fa57e79444e4b"
+        },
+        {
+          "command": [
+            "python",
+            "embedded collection witness"
+          ],
+          "environment": {
+            "PYTHONPATH": "bench"
+          },
+          "exit": 0,
+          "log_sha256": "9c850243dca6da7b205d4bf2c396e0307c96f1cf1804b1a5ae705863403caf21"
+        }
+      ],
+      "tests": 16,
+      "initial_synthetic_failure": {
+        "exit": 1,
+        "tests": 16,
+        "failures": 1,
+        "case": "mutation=12",
+        "reason": "Test changed already-never execution to never, a no-op; corrected index1 from force16 to never."
+      },
+      "reconstruction": {
+        "body_count": 12,
+        "call_parts": [
+          {
+            "path": "bench/results/two-fe-policy-calibration-darwin-seed1-20261022.json",
+            "sha256": "558dbccb44958d2c0840226e5b09cb112e63d7aa822d3e403ea19d4885ed79b1"
+          },
+          {
+            "path": "bench/results/two-fe-policy-calibration-darwin-seed2-20261022.json",
+            "sha256": "d257410bcabefee1ec20193bd6185df9e67d2e663f53c759d6eab4e2cfdde0e2"
+          },
+          {
+            "path": "bench/results/two-fe-policy-calibration-linux-seed1-20261022.json",
+            "sha256": "b90d0929d18bb5dc466d992b6de8bd68a1c97d3c9a5790717af261e4c5583632"
+          },
+          {
+            "path": "bench/results/two-fe-policy-calibration-linux-seed2-20261022.json",
+            "sha256": "7c5adeed69e484714b2cd773a4ba2203cd306c8f66fb39f24cd06d364506bac5"
+          }
+        ],
+        "contexts": 108,
+        "expired_before32": 36,
+        "native_calls": 1728,
+        "no_episode": 84,
+        "outcome_sha256": "fdd330db09e7a6e4eb4b977120abadc0484598c329df3fe625afffa559d73230",
+        "real_candidate_enumerations": 0,
+        "real_fits": 0,
+        "same_action32": 72,
+        "status": "reconstructed",
+        "total_cells": 192,
+        "unavailable": 204
+      },
+      "collection_witness_source": "import json\nfrom unittest.mock import patch\nimport two_fe_policy_gates as g\nwith patch.object(g, 'fit', side_effect=AssertionError('fit forbidden')), \\\n     patch.object(g, 'candidate_gates', side_effect=AssertionError('enumeration forbidden')), \\\n     patch.object(g, 'audit', side_effect=AssertionError('candidate audit forbidden')):\n    evidence = g.collect('.')\nrows = evidence['contexts']\nprint(json.dumps(dict(status='reconstructed', native_calls=evidence['native_calls'],\n    total_cells=evidence['total_cells'], contexts=len(rows),\n    same_action32=sum(r.x32 is not None for r in rows),\n    expired_before32=sum(r.x32 is None for r in rows),\n    no_episode=len(evidence['no_episode']), unavailable=len(evidence['unavailable']),\n    body_count=len({r.body for r in rows}),\n    outcome_sha256=evidence['bindings']['outcome_sha256'],\n    call_parts=evidence['bindings']['calls'], real_fits=0, real_candidate_enumerations=0), sort_keys=True))\n",
+      "collection_witness_sha256": "4db3bab8e9aff62e6f703d0f83def4115b423669c4488a230482169e566429ab",
+      "root_source_review": "Exact platform branches and bound summaries/census; no defaults for missing recovery counters. Source inspection confirms Mac-only recovery and prohibited diagnostic resume.",
+      "native_calls_added": 0,
+      "candidate_evaluations": 0
+    }
   },
   "frozen_sources": {
     "docs/two_fe_auto_gates.md": "a664dee6b7353d5a4809f7e6e9eba84455dac4fe5a82fc194bb765a55e6e5ecc",
-    "bench/two_fe_policy_gates.py": "1fe38a73d4f8be4c55c69927a38345b4a1dcffde006441d72ec9470e99f0d895",
-    "bench/tests/test_two_fe_policy_gates.py": "aede7eefbbf4599ba5ecc4f9ee071e685c443ad54e7e5206bd95b3865bb52961",
+    "bench/two_fe_policy_gates.py": "4863c21eaa0c79e310ee65d04b231a1d2b9b142e17504e3f44562545ed28f018",
+    "bench/tests/test_two_fe_policy_gates.py": "5d4030c604fc83e924fb57e74969f87b0a7b3dcaddf70d42f60bcdf1d559ed95",
     "bench/two_fe_policy.py": "0c6a925e1ddb99b82e8b460a2d9bb2a67911b31ba16f9808469d44c9a1fb71d8",
     "bench/two_fe_policy_labels.py": "3cdcac05318e8f1b713dd0df9b0b777f4a5107d237ea0e08c186b2f95ba05c81"
-  }
+  },
+  "prefit_revision": "8ee565b7 froze loss/class/encoding; subsequent repair changes only historical platform-schema validation before any real fit."
 }

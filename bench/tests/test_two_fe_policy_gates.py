@@ -96,7 +96,64 @@ def frozen_grid_rows():
     return rows
 
 
+def retained_run_part(platform):
+    binding = dict(result_sha256='a'*64, manifest_sha256='b'*64,
+                   execution_sources={'qualify': 'c'*64})
+    summary = dict(platform=platform, status='diagnostic_complete', errors=[], native_calls=864,
+                   calibration_result_sha256=binding['result_sha256'],
+                   manifest_sha256=binding['manifest_sha256'])
+    record = dict(platform=platform, warmups=144, recorded=288, native_calls=432)
+    cell = dict(status='complete', host_attempt=0,
+                warmups=[dict(execution=a) for a in g.ARMS],
+                blocks=[dict(index=0, status='complete',
+                             calls=[dict(execution=a) for a in (*g.ARMS, *reversed(g.ARMS))])])
+    run = dict(platform=platform, status='complete', failures=[], budget_compliant=True,
+               replica=0, shard=0, execution_sources=binding['execution_sources'],
+               manifest_sha256=binding['manifest_sha256'])
+    if platform == 'Darwin':
+        cell['attempt'] = 0
+        run.update(discarded_attempts=[], retry_cells=[], native_calls_started=864)
+    run['cases'] = [copy.deepcopy(cell) for _ in range(48)]
+    return run, record, summary, binding
+
+
 class Gates(unittest.TestCase):
+    def test_explicit_mac_and_linux_retained_schemas(self):
+        for platform in ('Darwin', 'Linux'):
+            g.validate_run_part(*retained_run_part(platform))
+        for key in ('discarded_attempts', 'retry_cells', 'native_calls_started'):
+            mac = retained_run_part('Darwin')
+            del mac[0][key]
+            with self.subTest(platform='Darwin', key=key), self.assertRaises(ValueError):
+                g.validate_run_part(*mac)
+            linux = retained_run_part('Linux')
+            linux[0][key] = 864 if key == 'native_calls_started' else []
+            with self.subTest(platform='Linux', key=key), self.assertRaises(ValueError):
+                g.validate_run_part(*linux)
+
+    def test_retained_schema_rejects_failure_reuse_and_missing_or_extra_calls(self):
+        mutations = (
+            lambda r, p, s, b: r.update(failures=['native failure']),
+            lambda r, p, s, b: r.update(budget_compliant=False),
+            lambda r, p, s, b: s.update(errors=['unverified']),
+            lambda r, p, s, b: s.update(native_calls=863),
+            lambda r, p, s, b: s.update(calibration_result_sha256='d'*64),
+            lambda r, p, s, b: s.update(manifest_sha256='d'*64),
+            lambda r, p, s, b: r.update(execution_sources={'qualify': 'd'*64}),
+            lambda r, p, s, b: r['cases'][0].update(host_attempt=1),
+            lambda r, p, s, b: r['cases'][0].update(reused=False),
+            lambda r, p, s, b: r['cases'][0].update(attempt=0),
+            lambda r, p, s, b: r['cases'][0]['warmups'].pop(),
+            lambda r, p, s, b: r['cases'][0]['blocks'][0]['calls'].append(dict(execution='never')),
+            lambda r, p, s, b: r['cases'][0]['blocks'][0]['calls'][1].update(execution='never'),
+            lambda r, p, s, b: p.update(native_calls=431),
+        )
+        for index, mutation in enumerate(mutations):
+            value = retained_run_part('Linux')
+            mutation(*value)
+            with self.subTest(mutation=index), self.assertRaises(ValueError):
+                g.validate_run_part(*value)
+
     def test_distinct_quartile_cuts_ignore_frequency(self):
         values = [vector(n=n) for n in range(1, 9)]
         gates = g.candidate_gates(values + [values[0]]*50)

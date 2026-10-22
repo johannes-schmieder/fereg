@@ -123,6 +123,14 @@ fallback coefficients. These tools do not edit runtime coefficients or activate
 Auto; held-out development validation and the separate 42-cell qualification
 remain required.
 
+That calibration is complete. The [direct decision-loss revision](../docs/two_fe_auto_gates.md)
+reuses its committed observations with `two_fe_policy_gates.py`; it does not
+rerun this panel. Its exact joint programme loss, fixed cuts and tie rules are
+frozen before a single fit. Generic evaluation and encoding remain offline;
+the runtime implements only the selected dependencies. Full independent
+proposal and cross-critique reports are retained in the
+[review record](results/two-fe-policy-revision-review-20261022.json).
+
 ## Packed SCC comparison
 
 The [retained October 10 results and October 12 optimized rerun](../docs/fixest_benchmarks.md)

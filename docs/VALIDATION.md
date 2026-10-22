@@ -12250,3 +12250,11 @@ schedules and excluded later opportunities remain explicit economic risks.
 The expected role split is a falsifiable prediction, not a target imposed on
 the fit. Development and final qualification budgets and protected incumbents
 remain unchanged; there is no performance-pass or activation claim here.
+
+The first source-bound execution at `8ee565b7` stopped in collection before
+any gate evaluation: the Linux archive lacks the Darwin-only recovery fields.
+The failure and log identity are retained in the review record. The bounded
+collector repair distinguishes the two historical schemas explicitly, checks
+the bound complete/no-error 864-call summaries and exact nine-call cells, and
+rejects recovery markers inconsistent with that platform. It changes no
+observations, feature/cut rules, loss, tie order or fitting budget.

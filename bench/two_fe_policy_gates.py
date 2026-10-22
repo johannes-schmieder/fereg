@@ -450,6 +450,55 @@ def unpack(shapes, node):
     return [unpack(shapes, v) for v in node] if isinstance(node, list) else node
 
 
+def validate_run_part(run, record, summary, binding):
+    """The frozen Mac recovery schema and Linux no-recovery schema differ.
+
+    Linux has no native_calls_started/retry/discard counters. Its bound runner
+    forbids diagnostic resume, has no Linux retry branch, and retains failures.
+    Require that exact schema plus the complete retained call census, rather
+    than manufacturing empty counters for missing fields.
+    """
+    platform = record['platform']
+    require(platform in ('Darwin', 'Linux'), 'unknown run platform')
+    require(summary['platform'] == platform and summary['status'] == 'diagnostic_complete'
+            and summary['errors'] == [] and summary['native_calls'] == 864
+            and summary['calibration_result_sha256'] == binding['result_sha256']
+            and summary['manifest_sha256'] == binding['manifest_sha256'], 'summary incomplete/unbound')
+    require(run['platform'] == platform and run['status'] == 'complete'
+            and run['failures'] == [] and run['budget_compliant'] is True
+            and run['replica'] == 0 and run['shard'] == 0 and len(run['cases']) == 48
+            and run['execution_sources'] == binding['execution_sources']
+            and run['manifest_sha256'] == binding['manifest_sha256'], 'run incomplete/unbound')
+    mac_fields = {'discarded_attempts', 'retry_cells', 'native_calls_started'}
+    if platform == 'Darwin':
+        require(mac_fields <= run.keys() and run['discarded_attempts'] == []
+                and run['retry_cells'] == [] and run['native_calls_started'] == 864,
+                'Mac retry/call counters changed')
+    else:
+        require(mac_fields.isdisjoint(run), 'unexpected Linux retry/call counters')
+    warmups = recorded = 0
+    for cell in run['cases']:
+        require(cell['status'] == 'complete', 'incomplete retained cell')
+        integer(cell['host_attempt'], 'host attempt', maximum=0)
+        require('reused' not in cell, 'unexpected reused calibration cell')
+        if platform == 'Linux':
+            require('attempt' not in cell, 'unexpected Linux recovery attempt')
+        else:
+            integer(cell['attempt'], 'Mac attempt', maximum=0)
+        require(len(cell['warmups']) == 3
+                and {c['execution'] for c in cell['warmups']} == set(ARMS), 'warmup call census')
+        require(len(cell['blocks']) == 1 and cell['blocks'][0]['status'] == 'complete'
+                and cell['blocks'][0]['index'] == 0, 'recorded block census')
+        calls = cell['blocks'][0]['calls']
+        require(len(calls) == 6 and all(sum(c['execution'] == arm for c in calls) == 2
+                                      for arm in ARMS), 'recorded call census')
+        warmups += len(cell['warmups'])
+        recorded += len(calls)
+    require((warmups, recorded, warmups+recorded) ==
+            (record['warmups'], record['recorded'], record['native_calls']) == (144, 288, 432),
+            'retained part call census')
+
+
 def collect(root):
     """Load this completed historical calibration only; never invoke fit()."""
     root = Path(root)
@@ -482,12 +531,7 @@ def collect(root):
                 require(isinstance(fields, list) and all(isinstance(f, str) for f in fields)
                         and len(set(fields)) == len(fields), 'shape fields')
             run = unpack(record['shapes'], record['data'])
-            require(run['platform'] == platform and run['status'] == 'complete'
-                    and not run['failures'] and run['budget_compliant']
-                    and not run['discarded_attempts'] and not run['retry_cells']
-                    and run['native_calls_started'] == 864 and len(run['cases']) == 48
-                    and run['execution_sources'] == binding['execution_sources']
-                    and run['manifest_sha256'] == binding['manifest_sha256'], 'run incomplete/unbound')
+            validate_run_part(run, record, retained['summary'], binding)
             for cell in run['cases']:
                 match = re.fullmatch(r's(\d+)-(.+)-(fast|low)-t(1|4|8)', cell['id'])
                 require(match is not None and cell['status'] == 'complete', 'invalid cell')
