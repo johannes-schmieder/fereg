@@ -176,6 +176,26 @@ def comparison_pairs(manifest):
                  if role in manifest['artifacts'])
 
 
+def minimum_hosts_per_cell(manifest):
+    """Prospective Linux gate; omission preserves historical manifests."""
+    if 'min_distinct_hosts_per_cell' not in manifest:
+        return None
+    minimum = manifest['min_distinct_hosts_per_cell']
+    require(manifest['platform'] == 'Linux', 'min_distinct_hosts_per_cell requires Linux')
+    require(type(minimum) is int and type(manifest['replicas']) is int
+            and 1 <= minimum <= manifest['replicas'] <= 12,
+            'min_distinct_hosts_per_cell must be an integer in 1..replicas (at most 12)')
+    return minimum
+
+
+def physical_host(hostname, normalize=False):
+    host = hostname.split('.')[0]
+    if normalize:
+        require(bool(host) and hostname == hostname.strip(), 'invalid physical hostname')
+        return host.lower()
+    return host
+
+
 def plan(config_path, output, *, configuration=None):
     """Hash each actual input once. No native call, oracle solve, or history walk."""
     config_path, output = Path(config_path).resolve(), Path(output).resolve()
@@ -186,6 +206,8 @@ def plan(config_path, output, *, configuration=None):
                 'blocks', 'shards', 'replicas', 'seed', 'timeout_s', 'budget_s', 'coverage'}
     if diagnostic:
         required.add('diagnostic')
+    if 'min_distinct_hosts_per_cell' in value:
+        required.add('min_distinct_hosts_per_cell')
     require(set(value) == required, 'configuration needs exactly: ' + ', '.join(sorted(required)))
     require(value['scope'] in {'exact', 'many', 'two'}, 'unsupported numerical scope')
     require(value['platform'] in {'Darwin', 'Linux'}, 'platform must be Darwin or Linux')
@@ -193,6 +215,7 @@ def plan(config_path, output, *, configuration=None):
     for field, low, high in [('blocks', 1, 24), ('shards', 1, 42), ('replicas', 1, 12),
                              ('seed', 0, 2**64 - 1), ('timeout_s', 1, 120), ('budget_s', 1, 14400)]:
         require(type(value[field]) is int and low <= value[field] <= high, 'invalid ' + field)
+    minimum_hosts_per_cell(value)
     workers = value['threads']
     require(isinstance(workers, list) and workers and len(set(workers)) == len(workers)
             and all(type(n) is int and 1 <= n <= 1024 for n in workers), 'invalid workers')
@@ -797,6 +820,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
         write(path, result)
 
     try:
+        minimum_hosts_per_cell(manifest)
         bindings = continuation_bindings(manifest, manifest_path)
         identities.update({p: stamp(p) for p in bindings.values()})
         validate_continuation(manifest, manifest_path)
@@ -1016,7 +1040,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
     return result
 
 
-def accounting(text, host):
+def accounting(text, host, *, normalize=False):
     values = {}
     for line in text.splitlines():
         pair = line.split(None, 1)
@@ -1024,7 +1048,7 @@ def accounting(text, host):
             require(pair[0] not in values, 'accounting must contain one task')
             values[pair[0]] = pair[1].strip()
     require(values.get('jobnumber') == str(host['job_id']) and values.get('taskid') == str(host['task_id'])
-            and values.get('hostname', '').split('.')[0] == host['hostname'].split('.')[0]
+            and physical_host(values.get('hostname', ''), normalize) == physical_host(host['hostname'], normalize)
             and values.get('project') == 'welfgr' and values.get('failed', '').split()[0:1] == ['0']
             and values.get('exit_status') == '0' and values.get('end_time'), 'missing/failed SGE accounting')
 
@@ -1037,6 +1061,7 @@ def report(manifest_path, output, accounting_dir=None):
     old_cells, old_root, old_events = {}, None, []
     results, errors, comparisons, workers, snapshots, metadata_cache = [], [], {}, {}, {}, {}
     source_stamps = {}
+    minimum_hosts = None
     prior_bindings = {}
     verified_files = {}
 
@@ -1051,6 +1076,7 @@ def report(manifest_path, output, accounting_dir=None):
             source_stamps[resolved] = before
         require(verified_files[resolved] == expected and stamp(resolved) == source_stamps[resolved], 'report file identity mismatch: '+str(path))
     try:
+        minimum_hosts = minimum_hosts_per_cell(manifest)
         validate_cell_policy(manifest)
         prior_bindings = continuation_bindings(manifest, manifest_path)
         if recovery:
@@ -1139,10 +1165,12 @@ def report(manifest_path, output, accounting_dir=None):
                     require(calls == result['native_calls_started'] <= policy['new_call_cap'], 'recovery call budget changed')
                 if manifest['platform'] == 'Linux':
                     host = result['host']['host']
-                    require(result['hostname'].split('.')[0] == host['hostname'].split('.')[0],
+                    require(physical_host(result['hostname'], minimum_hosts is not None)
+                            == physical_host(host['hostname'], minimum_hosts is not None),
                             'recorded host differs from accounted host')
                     require(accounting_dir is not None, 'SGE accounting is required')
-                    accounting((Path(accounting_dir) / f"{host['job_id']}.{host['task_id']}.txt").read_text(), host)
+                    accounting((Path(accounting_dir) / f"{host['job_id']}.{host['task_id']}.txt").read_text(), host,
+                               normalize=minimum_hosts is not None)
                 expected = {f"{c['id']}-t{t}" for i, c in enumerate(manifest['cases'])
                             if i % manifest['shards'] == shard for t in manifest['threads']}
                 require(len(result['cases']) == len(expected) and {c['id'] for c in result['cases']} == expected,
@@ -1217,10 +1245,19 @@ def report(manifest_path, output, accounting_dir=None):
                                 'timed repeat lost independent scientific agreement')
                         for role, target in comparison_pairs(manifest):
                             value = score(row['calls'], cell['aliases'][role], cell['aliases'][target])
-                            comparisons.setdefault((cell['id'], role), []).append((result['hostname'].split('.')[0], value))
+                            comparisons.setdefault((cell['id'], role), []).append(
+                                (physical_host(result['hostname'], minimum_hosts is not None), value))
                 results.append(result)
             except (OSError, ValueError, KeyError, TypeError) as error:
                 errors.append(f'replica {replica}, shard {shard}: {error}')
+    if minimum_hosts is not None:
+        for item in manifest['cases']:
+            for worker in manifest['threads']:
+                cell = f"{item['id']}-t{worker}"
+                for role, _ in comparison_pairs(manifest):
+                    count = len({host for host, _ in comparisons.get((cell, role), [])})
+                    if count < minimum_hosts:
+                        errors.append(f'{cell}, {role}: {count} distinct physical hosts; requires {minimum_hosts}')
     rows = []
     for (cell, role), values in sorted(comparisons.items()):
         if manifest['platform'] == 'Linux':
@@ -1232,8 +1269,13 @@ def report(manifest_path, output, accounting_dir=None):
         bound = interval(scores)
         state = 'passed' if bound['upper'] is not None and bound['upper'] <= 0 else (
             'regression' if bound['lower'] is not None and bound['lower'] > 0 else 'inconclusive')
-        rows.append({'case': cell, 'reference': role, 'status': state, 'excess_seconds': bound,
-                     'median_ratio': statistics.median(v['ratio'] for _, v in values)})
+        row = {'case': cell, 'reference': role, 'status': state, 'excess_seconds': bound,
+               'median_ratio': statistics.median(v['ratio'] for _, v in values)}
+        if minimum_hosts is not None:
+            row.update(distinct_hosts=hosts, distinct_host_count=len(hosts))
+            if len(hosts) < minimum_hosts:
+                row['status'] = 'insufficient_hosts'
+        rows.append(row)
     try:
         require(all(stamp(path) == saved for path, saved in source_stamps.items()),
                 'execution sources changed during report')
@@ -1258,6 +1300,8 @@ def report(manifest_path, output, accounting_dir=None):
                        diagnostic=manifest['diagnostic'], activation_qualified=False,
                        target=comparison_pairs(manifest)[0][1],
                        next_action='Review this bounded diagnostic; no activation qualification or automatic sampling.')
+    if 'min_distinct_hosts_per_cell' in manifest:
+        summary['min_distinct_hosts_per_cell'] = manifest['min_distinct_hosts_per_cell']
     if 'continuation' in manifest:
         state = manifest['continuation']
         summary['continuation'] = {k: state[k] for k in ('prior_plan', 'prior_result', 'prior_calls', 'prior_elapsed_s',

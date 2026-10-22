@@ -780,7 +780,114 @@ class Qualification(unittest.TestCase):
 
     def test_new_linux_plans_have_no_mac_cell_policy(self):
         self.config['platform'] = 'Linux'
-        self.assertNotIn('mac_cell_policy', self.plan(practical=True))
+        manifest = self.plan(practical=True)
+        self.assertNotIn('mac_cell_policy', manifest)
+        self.assertNotIn('min_distinct_hosts_per_cell', manifest)
+
+    def linux_host_round(self, shard_hosts, minimum):
+        """Actual runner/report with synthetic native output and local accounting."""
+        self.config.update(platform='Linux', replicas=len(shard_hosts[0]), shards=len(shard_hosts),
+                           threads=[1], min_distinct_hosts_per_cell=minimum)
+        if minimum is None:
+            self.config.pop('min_distinct_hosts_per_cell')
+        self.config['cases'] = [{**self.config['cases'][0], 'id': f'fixture-{i}'}
+                                for i in range(len(shard_hosts))]
+        manifest = self.plan()
+        accounting = self.root / 'accounting'
+        accounting.mkdir()
+        for shard, names in enumerate(shard_hosts):
+            self.assertEqual(len(names), manifest['replicas'])
+            for replica, name in enumerate(names):
+                job = str(1000 + shard * manifest['replicas'] + replica)
+                host = {'hostname': name.lower().split('.')[0] + '.bu.edu', 'job_id': job, 'task_id': 'undefined'}
+                with patch.object(qualify.platform, 'system', return_value='Linux'), \
+                        patch.object(qualify.socket, 'gethostname', return_value=name), \
+                        patch('qualify_scc.HostMonitor', Monitor), \
+                        patch.object(Monitor, 'report', return_value={'isolation_ok': True, 'host': host}):
+                    record = qualify.run(self.manifest, self.output, shard=shard, replica=replica, execute=self.execute)
+                self.assertEqual(record['status'], 'complete', record)
+                (accounting / f'{job}.undefined.txt').write_text(
+                    f'jobnumber {job}\ntaskid undefined\nhostname {host["hostname"]}\n'
+                    'project welfgr\nfailed 0\nexit_status 0\nend_time done\n')
+        return qualify.report(self.manifest, self.output, accounting), accounting
+
+    def test_linux_host_minimum_absent_preserves_historical_report(self):
+        summary, _ = self.linux_host_round([['node-0'] * 6], None)
+        self.assertEqual(summary['status'], 'smoke_complete')
+        self.assertEqual(summary['errors'], [])
+        self.assertNotIn('min_distinct_hosts_per_cell', summary)
+        for row in summary['comparisons']:
+            self.assertNotIn('distinct_hosts', row)
+            self.assertNotIn('distinct_host_count', row)
+            self.assertEqual(row['status'], 'inconclusive')
+            self.assertEqual(row['excess_seconds']['n'], 1)
+
+    def test_linux_host_minimum_is_per_cell_not_global_and_preserves_observations(self):
+        # Twelve globally distinct hosts, but only six for each of two shards.
+        hosts = [[f'node-{shard}-{i % 6}' for i in range(12)] for shard in range(2)]
+        summary, _ = self.linux_host_round(hosts, 12)
+        self.assertEqual(summary['status'], 'needs_discussion')
+        self.assertEqual(summary['min_distinct_hosts_per_cell'], 12)
+        self.assertEqual(len(summary['comparisons']), 4)
+        self.assertEqual(len(summary['errors']), 4)
+        self.assertEqual(len({h for row in summary['comparisons'] for h in row['distinct_hosts']}), 12)
+        for row in summary['comparisons']:
+            self.assertEqual(row['status'], 'insufficient_hosts')
+            self.assertEqual(row['distinct_host_count'], 6)
+            self.assertLess(row['excess_seconds']['upper'], 0)  # Timing alone passes.
+            self.assertEqual(row['excess_seconds']['n'], 6)
+        self.assertEqual(summary['native_calls'], len(self.calls))
+        self.assertEqual(len(list(self.output.glob('run-*/results.json'))), 24)
+
+    def test_linux_host_minimum_normalizes_short_fqdn_and_case(self):
+        names = [f'NODE-{i}' for i in range(6)] + [f'node-{i}.bu.edu' for i in range(6)]
+        summary, _ = self.linux_host_round([names], 12)
+        self.assertEqual(summary['status'], 'needs_discussion')
+        self.assertEqual(len(summary['errors']), 2)
+        for row in summary['comparisons']:
+            self.assertEqual(row['distinct_hosts'], [f'node-{i}' for i in range(6)])
+            self.assertEqual(row['excess_seconds']['n'], 6)
+
+    def test_linux_host_minimum_adequate_hosts_pass_each_reference(self):
+        summary, accounting = self.linux_host_round([[f'node-{i}' for i in range(12)]], 12)
+        self.assertEqual(summary['status'], 'smoke_complete')
+        self.assertEqual(summary['errors'], [])
+        self.assertEqual({r['reference'] for r in summary['comparisons']}, {'original', 'incumbent'})
+        self.assertTrue(all(r['status'] == 'passed' and r['distinct_host_count'] == 12
+                            and r['excess_seconds']['n'] == 12 for r in summary['comparisons']))
+        # Missing an entire cell/reference must not escape the prospective gate.
+        for path in self.output.glob('run-*/results.json'):
+            record = qualify.read(path)
+            record['cases'] = []
+            qualify.write(path, record)
+        failed = qualify.report(self.manifest, self.output, accounting)
+        self.assertEqual(failed['status'], 'needs_discussion')
+        self.assertTrue(any('fixture-0-t1, original: 0 distinct' in e for e in failed['errors']))
+        self.assertTrue(any('fixture-0-t1, incumbent: 0 distinct' in e for e in failed['errors']))
+
+    def test_linux_host_minimum_rejects_invalid_configuration(self):
+        self.config.update(platform='Linux', replicas=12)
+        for minimum in (0, -1, 13, True, 1.5, '12', None):
+            with self.subTest(minimum=minimum):
+                self.config['min_distinct_hosts_per_cell'] = minimum
+                with self.assertRaisesRegex(ValueError, 'min_distinct_hosts_per_cell'):
+                    self.plan()
+        self.config.update(min_distinct_hosts_per_cell=12, replicas=6)
+        with self.assertRaisesRegex(ValueError, 'min_distinct_hosts_per_cell'):
+            self.plan()
+        self.config.update(platform='Darwin', min_distinct_hosts_per_cell=1, replicas=1)
+        with self.assertRaisesRegex(ValueError, 'requires Linux'):
+            self.plan()
+
+    def test_linux_host_minimum_invalid_manifest_report_fails_closed(self):
+        summary, accounting = self.linux_host_round([[f'node-{i}' for i in range(6)]], 6)
+        self.assertEqual(summary['errors'], [])
+        manifest = qualify.read(self.manifest)
+        manifest['min_distinct_hosts_per_cell'] = True
+        qualify.write(self.manifest, manifest)
+        failed = qualify.report(self.manifest, self.output, accounting)
+        self.assertEqual(failed['status'], 'needs_discussion')
+        self.assertTrue(any('min_distinct_hosts_per_cell' in e for e in failed['errors']))
 
     def recovery_fixture(self):
         prior = self.run_round()

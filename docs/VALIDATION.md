@@ -939,6 +939,29 @@ inconclusive comparison establish a general speed improvement or authorize
 activation. The source/native repair record is
 [`cmg-pivot-repair-20261021.json`](../bench/results/cmg-pivot-repair-20261021.json).
 
+### Prospective policy qualification: distinct Linux hosts per cell
+
+The new `min_distinct_hosts_per_cell` option in `bench/qualify.py` makes the
+authorized twelve-host requirement explicit in the frozen plan. It checks
+every expected workload/worker/reference combination against normalized,
+accounted hostnames, retaining all observations and grouping repeated
+allocations on the same host into one uncertainty unit. Missing coverage
+cannot pass through favorable timings or host diversity elsewhere in the
+panel. Existing manifests without this option retain their original semantics;
+the prior setup measurements and their two inconclusive bounds are unchanged.
+
+The focused command `python -m unittest discover -s bench/tests -p test_qualify.py`
+passed all 54 tests (exit 0, Python 3.13, numerical-library thread limits set to
+one). Its output SHA256 is
+`71465bdcbcced15cdc1f51e2392ae47f5e908442410fa6197a31b8f8e88741f1`.
+The discriminating fixture supplies twelve hosts globally but six per cell:
+timing bounds pass, while the new coverage gate rejects every reference.
+Adequate coverage, hostname aliases, missing cells, malformed minima and
+historical omission are also covered. Independent source review found no
+blocker. Syntax and whitespace checks pass. This tooling change makes no
+native calls and establishes neither statistical independence nor a policy
+performance result.
+
 ## CMG successor milestone 3d: worker-independent team arithmetic
 
 **Johannes accepted M3d's disclosed final scope on 2026-10-21 after independent

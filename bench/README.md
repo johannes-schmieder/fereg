@@ -515,6 +515,7 @@ The configuration is a JSON object with these fields:
 | `threads` | `[1, 4]` for routing coverage. |
 | `blocks` | Fixed even number of mirrored blocks, at most 24. |
 | `shards`, `replicas` | Linux case partitions and repeated allocations; both are 1 on Mac. |
+| `min_distinct_hosts_per_cell` | Optional Linux-only minimum, an integer from 1 through `replicas` (at most 12). The new two-FE policy round sets 12; every cell/reference must have that many accounted physical hosts. |
 | `seed` | Unsigned 64-bit ordering seed. |
 | `timeout_s`, `budget_s` | Fixed per-call and per-job limits, at most 120 and 14,400 seconds. |
 | `coverage` | `routing` requires all 42 cells; `smoke` only checks tooling and cannot qualify a candidate. |
@@ -615,6 +616,13 @@ candidate's two calls. The tested score is `N - B - max(.05 * B, .001)`. Accepta
 requires its one-sided alpha 0.025 order-statistic upper bound to be nonpositive.
 Linux scores are first aggregated within physical host; many blocks or allocations
 on one host do not create independent hosts. An unattainable bound is inconclusive.
+When `min_distinct_hosts_per_cell` is present, short and fully qualified hostnames
+are normalized without regard to case. Reports retain every observation and the
+host-grouped bounds, list the distinct hosts for each comparison, and fail closed
+if any cell/reference misses the frozen minimum. Twelve hosts across the whole
+panel do not satisfy a twelve-host requirement for each cell. This count does
+not establish statistical independence; the isolation and observation evidence
+remains required. Omitting the field preserves historical report semantics.
 Mac uses serial mirrored blocks with recorded host activity. These bounds assume
 independent unit scores with a common median and make no simultaneous-coverage
 claim. Ratios describe effect size; minima cannot establish acceptance.
