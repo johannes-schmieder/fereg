@@ -78,8 +78,10 @@ max(5%, 1 ms), balanced complete-solve blocks and the existing confidence standa
 The incremental Auto workstream remains on `codex/auto-routing`, protecting the
 original uninjected baseline `f35f3a4d` and the last accepted branch Auto.
 Many-FE passed and was activated in `d5b06cf3`; Johannes then authorized the
-separate two-FE qualification. Its public default remains disabled until that
-qualification passes. Activation is limited to OLS Auto/Auto categorical
+separate two-FE qualification. The selected GATES policy passed Mac/Linux
+qualification and the approved public/hidden comparison; its development-branch
+activation is recorded in [validation](VALIDATION.md#selected-two-fe-gates-branch-activation-2026-10-23).
+Activation is limited to OLS Auto/Auto categorical
 intercept designs; exact hidden/public equivalence, independent numerical
 witnesses and the [declared scientific scope](SPEC.md#incremental-auto-qualification-2026-10-17)
 remain required.

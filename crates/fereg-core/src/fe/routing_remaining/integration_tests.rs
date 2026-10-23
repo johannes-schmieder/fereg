@@ -267,7 +267,14 @@ fn real_fast_and_low_callers_preserve_uncalibrated_arithmetic() {
         PreparedOlsExecutionMode::Fast,
         PreparedOlsExecutionMode::Low,
     ] {
-        let mut options = config(None, 1);
+        // Keep the historical no-upgrade comparator explicit now that public
+        // Auto selects GATES. This arm has no checkpoint or policy observer.
+        let mut options = config(
+            Some(RoutingPreset::prefix(
+                crate::fe::routing::CategoricalPrefix::None,
+            )),
+            1,
+        );
         options.execution.mode = mode;
         options.execution.poolsize = 1; // Real Low outcome, two chunks and final action.
         let expected = fit_prepared_model_coefficients(&data, options).unwrap();
@@ -345,8 +352,11 @@ fn real_session_remaining_shell_has_an_exact_parent_admission_boundary() {
         (true, base + shell, true),
     ] {
         let mut options = ordinary;
-        options.absorb.routing =
-            successor.then(|| RoutingPreset::remaining_two_control(None).unwrap());
+        options.absorb.routing = Some(if successor {
+            RoutingPreset::remaining_two_control(None).unwrap()
+        } else {
+            RoutingPreset::incremental_two()
+        });
         options.absorb.solver_memory_budget = Some(FeSolverMemoryBudget {
             execution_bytes: 37,
             usable_bytes: usable + 37,
@@ -355,6 +365,7 @@ fn real_session_remaining_shell_has_an_exact_parent_admission_boundary() {
         assert_eq!(session.categorical.is_some(), admitted);
         assert_eq!(session.binding.is_some(), !admitted);
         assert_eq!(session.remaining_state().is_some(), successor && admitted);
+        assert!(session.gates_state().is_none());
         assert_eq!(
             session.peak.bytes().unwrap() as u128,
             if admitted {
@@ -635,7 +646,9 @@ fn gates_shell_preserves_old_parent_boundary() {
             .unwrap();
     let base = crate::fe::ReusableCategoricalMapAbsorber::owner_bytes(&design, 3, 1).unwrap();
     for (preset, extra, admitted) in [
-        (None, 0, true),
+        (Some(RoutingPreset::incremental_two()), 0, true),
+        (None, GateState::shell_bytes() - 1, false),
+        (None, GateState::shell_bytes(), true),
         (
             Some(RoutingPreset::gates_two()),
             GateState::shell_bytes() - 1,
@@ -657,7 +670,7 @@ fn gates_shell_preserves_old_parent_boundary() {
         assert_eq!(session.categorical.is_some(), admitted);
         assert_eq!(
             session.gates_state().is_some(),
-            preset.is_some() && admitted
+            preset != Some(RoutingPreset::incremental_two()) && admitted
         );
         assert!(session.remaining_state().is_none());
         assert_eq!(

@@ -16,12 +16,12 @@ still preserves owner-level closure, current-key eligibility, readiness,
 positive remaining allowance and the existing direct-route semantics.
 
 The fixed Mac/Linux qualification subsequently passed all 84 protected bounds
-per platform. Public activation remains disabled: its frozen exact resource
-comparison encountered the real ownership charge of the hidden injection
-argument. The [activation diagnosis and approved clarification](VALIDATION.md#selected-two-fe-gates-activation-resource-mismatch-2026-10-22)
-retain that failed outcome. Johannes approved the narrow transport-accounting
-amendment on 2026-10-23; activation still requires the amended comparison and
-the unchanged scientific, resource and integration gates to pass.
+per platform. The [development-branch activation](VALIDATION.md#selected-two-fe-gates-branch-activation-2026-10-23)
+passes the 42-cell public-versus-hidden comparison on both platforms after
+Johannes's 2026-10-23 transport-accounting amendment. The original failed
+comparison remains recorded; its completed calls were reused, and only the
+untouched calls ran. Scientific, worker, gate and hierarchy checks remain exact,
+and raw memory caps remain enforced. Release packages are unchanged.
 
 The actual frozen grids contain 56 × 52 pairs, of which 1,479 are admissible.
 Two pairs tie on the primary loss; the declared order selects feature 16.

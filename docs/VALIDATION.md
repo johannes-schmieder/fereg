@@ -17,15 +17,52 @@ The development-branch activation and its integration checks are recorded below.
 The earlier two-FE candidate failed Linux qualification on the four-worker
 high-degree weak graph; those comparisons remain failed. The later structural
 GATES candidate passes all 84 protected bounds on each platform. Its public
-activation is blocked by the exact resource-accounting comparison described
-below. Two-FE remains disabled, many-FE remains enabled, and release packages
-are unchanged.
+activation passes the amended exact comparison described below. Two-FE and
+many-FE are enabled on the development branch; release packages are unchanged.
 
 This page keeps accepted evidence, open failures and standing caveats. The full
 narrative ledger, with every run identifier, archive and receipt digest,
 campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
+
+## Selected two-FE gates: branch activation (2026-10-23)
+
+The [completed activation record](../bench/results/two-fe-policy-gates-activation-20261023.json)
+retains all 252 correctness calls losslessly, with 42 cells on each platform.
+The approved continuation reused the original 21 calls per platform and ran
+only the remaining 105, in frozen order on the original Mac and `scc-gr4`.
+The original failed attempts below remain failed and unchanged. Including
+their consumed time, both amended schedules stayed within the original
+1,800-second application budget and 120-second call limits. Linux job
+`8258320` finished with scheduler failed/exit 0/0, four slots and 143 seconds
+of wall time.
+
+The independent zero-native audit reconstructed all 84 public output banks,
+checked all 252 raw heads/logs and independent numerical witnesses, verified
+42 fixed-worker trios per platform and 42 cross-worker comparisons in total,
+and compared all 42 Mac cells with their retained qualification references.
+All scientific fingerprints, solver signatures, gate and hierarchy decisions
+passed. Its 84 request-envelope checks independently derived the sole hidden
+argument difference; all 148 corresponding action comparisons passed after
+separating its 51-byte retained-parent charge. Raw memory totals and each
+invocation's caps remain enforced. The 915-byte transport-construction bound
+is not an aggregate-memory tolerance. This does not establish universal
+equivalence at arbitrarily tight admission boundaries or separately measure
+solver workspace.
+
+Both public-routing edits and their historical explicit test controls match
+the already built and audited source `840f26ae` exactly: the two-FE default is
+enabled and its public fallback selects `gates_two()`. Explicit historical
+injections retain their contracts. Activation is confined to this development
+branch and eligible OLS Auto/Auto categorical-intercept designs. Actual Mac
+and Linux binary audit, ABI/load and panic checks, three mapped Mac Stata
+fixtures and public Auto Break rollback reuse the same unchanged binaries.
+The full source suite passed again on the restored activation source: 2,000
+Rust tests, 315 Python tests and seven portable/tooling tests, plus complexity
+and bridge checks.
+Installed-package binding remains the known failed package-admission check;
+no release package, main merge or GitHub testing is authorized by this result.
 
 ## Selected two-FE gates: activation resource mismatch (2026-10-22)
 
@@ -59,11 +96,11 @@ They can affect admission at a sufficiently tight boundary. The raw memory
 matrix does not separately measure solver workspace; its coverage bitmask
 must not be interpreted as a workspace observation.
 
-The literal frozen criterion therefore remains failed. The provisional wiring
+The literal frozen criterion remains failed. At that stop, the provisional wiring
 and test migrations were reverted to the exact preactivation source; the full
 default-disabled source suite passed again. The passed Mac/Linux performance
-qualification is unchanged, and current inputs, artifacts and partial outputs
-remain retained. No monitor remains active.
+qualification is unchanged. Its then-current inputs, artifacts and partial
+outputs were retained for the approved continuation above.
 
 Johannes approved the clarification on 2026-10-23: separate only the
 source-proven invocation transport ownership when comparing solver resources,
@@ -204,10 +241,10 @@ and task indices. Their recorded 4, 6 and 4 elapsed seconds are deducted from
 both application and scheduler budgets. No timing observation is resampled.
 
 Completed held-out captures and inputs were hash-checked against committed
-records before deletion, along with the completed original-build cache. Current
-qualification inputs and actual artifacts remain available. Both platform
-qualifications pass; public two-FE Auto remains disabled after the activation
-resource mismatch recorded above. Release packages remain unchanged.
+records before deletion, along with the completed original-build cache. Both
+platform qualifications pass. The later approved continuation and public
+branch activation are recorded above; the original resource mismatch remains
+a failed attempt. Release packages remain unchanged.
 
 ## Selected two-FE gates: held-out development (2026-10-22)
 
