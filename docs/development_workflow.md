@@ -518,7 +518,19 @@ W1 and the cache-boundary controls must retain their expected ineligibility.
 Require independent witnesses, exact ownership science/signatures, the declared
 cell scope if selected, exact fixed-worker repeats, cross-worker agreement and
 raw resource caps. These diagnostics attest execution and never replace a
-complete-command timing observation.
+complete-command timing observation. The boundary W4 controls retain positive
+raw-moment construction in both arms with zero omission; their ineligibility
+applies to omission, not construction. Score diagnostics also require actual
+positive copy avoidance below and at the packed-cache limit, and the declared
+fallback above it, at both worker counts. Generated/kept widths, avoided
+elements and the full retained matrix capacity must match the frozen shapes.
+
+The separate diagnostic runner passed 31 focused tests, including nine runner
+tests, with independent high-effort implementation review and bounded Astra
+review. Its log SHA-256 is
+`37d43b7e0e1ae6b872e494cc068578ee24b652e81070b2d89da9c94976f154e3`.
+These checks use synthetic executions; the real 80-call prerequisites remain
+unexecuted until the candidate and final manifest are frozen.
 
 The prospective tooling was checked before generating these inputs: 76 focused
 and historical qualification/input tests passed, including actual request
