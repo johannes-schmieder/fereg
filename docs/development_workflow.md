@@ -532,6 +532,17 @@ review. Its log SHA-256 is
 These checks use synthetic executions; the real 80-call prerequisites remain
 unexecuted until the candidate and final manifest are frozen.
 
+Preparation hit one shared packaging defect: the new original-baseline and
+input-preparation archives omitted pinned vendored Rayon source. Both failed
+before compilation, inputs, references or native estimation. The exact vendor
+files were added from the same respective revisions; existing source bytes
+were unchanged. The repaired protected-original Mac build passed native audit,
+ABI/load and panic containment. The separately prepared SCC input repair
+charges its failed job's eight seconds against setup and scheduler budgets,
+leaving 172 setup seconds, 1,800 input/reference seconds and 2,092 scheduler
+seconds. The [operational record](../bench/results/ownership-qualification-preparation-repair-20261023.json)
+retains both failures, source identities, budgets and successful Mac build.
+
 The prospective tooling was checked before generating these inputs: 76 focused
 and historical qualification/input tests passed, including actual request
 framing, strict per-family shape/seed/weight/reference-budget rejection,
