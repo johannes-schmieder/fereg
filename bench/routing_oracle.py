@@ -10,7 +10,8 @@ certification. Extra aliases or ambiguous spectra are refused, never repaired
 by dropping columns.
 
 Canonical numeric inputs only: positive pw or unit weights, plain continuous X,
-categorical intercept FEs, HC1, pairwise DoF, no clusters/saved effects. Original
+categorical intercept FEs, HC1 or unit-weight IID/one-way CR1, pairwise DoF,
+no cluster-nesting adjustment or saved effects. Original
 rows are preserved, including independently requested singleton pruning. The
 CLI writes separate input-bound JSON/NPZ references.
 """
@@ -60,11 +61,13 @@ def read_case(path):
         _require(arguments[0] == b'estimate-ols' and len(fields) == len(pairs)
                  and 1 <= n <= MAX_ROWS and 1 <= k <= MAX_X and 2 <= q <= MAX_FE
                  and width <= 64 and macros == 0, 'unsupported oracle input dimensions/model')
-        _require(all(fields.get(key) == value for key, value in {
-            'vce': 'robust', 'dof': 'pairwise', 'account_cluster_nesting': '0',
-            'cluster_term_count': '0', 'cluster_component_count': '0',
+        vce = fields.get('vce')
+        cluster_count = '1' if vce == 'cluster' else '0'
+        _require(vce in {'robust', 'iid', 'cluster'} and all(fields.get(key) == value for key, value in {
+            'dof': 'pairwise', 'account_cluster_nesting': '0',
+            'cluster_term_count': cluster_count, 'cluster_component_count': cluster_count,
             'model_major': '2', 'model_minor': '1',
-        }.items()), 'oracle requires canonical unclustered HC1/pairwise OLS')
+        }.items()), 'oracle requires canonical HC1/unit IID/one-way CR1 with no nesting adjustment')
         _require(fields.get('keep_singletons') in {'0', '1'}
                  and fields.get('include_intercept') in {'0', '1'}, 'invalid singleton/intercept request')
         _require(fields.get('output_saved_channels') == '|'.join(['1:0'] * q),
@@ -103,6 +106,8 @@ def read_case(path):
         'binding_matrix': [[1, 1, 0], [2, 2, 0], *[[j + 2, 3, j] for j in range(1, k + q + 1)],
                            *([[inputs, 6, 0]] if inputs == 3 + k + q else [])],
     }
+    if vce == 'cluster':
+        expected.update(cluster_term_matrix=[[1, 1]], cluster_component_matrix=[[1, 1, k+1]])
     _require(all(np.array_equal(tables.get(fields.get(name)), value) for name, value in expected.items()),
              'canonical model/source binding differs from oracle contract')
     _require(all(np.all(np.isfinite(v) & (np.abs(v) < 8e307)) for v in data)
@@ -111,7 +116,9 @@ def read_case(path):
     _require(list(outputs.values()) == list(range(inputs, width)), 'unexpected output registry')
     w = data[-1] if inputs == 3 + k + q else np.ones(n)
     _require(np.all(w > 0), 'oracle requires positive weights')
+    _require(vce == 'robust' or inputs == 2+k+q, 'IID/cluster oracle requires unit weights')
     return dict(y=data[1], x=np.column_stack(data[2:2+k]), factors=data[2+k:2+k+q], weights=w,
+                vce=vce, clusters=data[2+k] if vce == 'cluster' else None,
                 include_intercept=fields['include_intercept'] == '1',
                 keep_singletons=fields['keep_singletons'] == '1', rows=n, columns=width,
                 outputs=outputs, case_sha256=digest(path), body_sha256=body.hexdigest())
@@ -227,8 +234,9 @@ def _projection_errors(e, r, keep, degree, reduced, spectrum, original, projecte
     return errors, float(h_lower)
 
 
-def solve(y, x, factors, weights=None, *, keep_singletons=False, include_intercept=True):
-    """Direct independent FWL projection, normalized-intercept HC1 and rank evidence."""
+def solve(y, x, factors, weights=None, *, keep_singletons=False, include_intercept=True,
+          vce='robust', clusters=None):
+    """Direct FWL projection and independent HC1/unit IID/one-way CR1 evidence."""
     from scipy import sparse
     from scipy.linalg import cho_solve
     from scipy.sparse.csgraph import connected_components
@@ -241,6 +249,12 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
     _require(w.shape == (n,) and np.all(np.isfinite(w)) and np.all(w > 0)
              and np.all(np.isfinite(x)) and np.all(np.isfinite(y))
              and all(np.all(np.isfinite(f)) for f in factors), 'oracle requires finite positive WLS data')
+    _require(vce in {'robust', 'iid', 'cluster'} and (vce == 'robust' or np.all(w == 1)),
+             'unsupported VCE or nonunit IID/cluster weights')
+    _require((vce == 'cluster') == (clusters is not None), 'cluster codes/VCE mismatch')
+    if clusters is not None:
+        clusters = np.asarray(clusters)
+        _require(clusters.shape == (n,) and np.all(np.isfinite(clusters)), 'invalid cluster codes')
     active, codes = _sample(factors, keep_singletons)
     levels = [int(c.max()) + 1 for c in codes]
     eliminated = int(np.argmax(levels))
@@ -327,7 +341,17 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
     df = m - k - policy_rank
     _require(df > 0, 'nonpositive independently derived policy residual degrees of freedom')
     scores = influence * (w * residual)[:, None]
-    covariance = scores.T @ scores * (m / df)
+    if vce == 'robust':
+        covariance = scores.T @ scores * (m / df)
+    elif vce == 'iid':
+        covariance = (influence.T @ influence) * (residual @ residual / df)
+    else:
+        cluster_codes = np.unique(clusters[active], return_inverse=True)[1]
+        groups = int(cluster_codes.max()) + 1
+        _require(groups >= 2, 'cluster inference requires at least two retained groups')
+        sums = np.zeros((groups, scores.shape[1]))
+        np.add.at(sums, cluster_codes, scores)
+        covariance = (sums.T @ sums) * ((m-1)/df * groups/(groups-1))
     _require(np.all(np.isfinite(reported)) and np.all(np.isfinite(covariance)),
              'nonfinite independent coefficients or covariance')
     full_moment = _moments(codes, residual[:, None], w, y[:, None])
@@ -369,6 +393,15 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
             finite_moment=float(finite_moment), backward_error=float(backward), bread_inverse_error=inverse_error,
             modeled_peak_bytes=modeled, schur_product_work=work,
             weight_ratio=float(w.max()/w.min()), normalized_weight_sum=float(w.sum())))
+    if vce != 'robust':
+        # A PSD certificate, not a covariance repair or a rank selection.
+        eigenvalues = np.linalg.eigvalsh((covariance + covariance.T)/2)
+        margin = 256*np.finfo(float).eps*len(eigenvalues)*max(float(np.max(np.abs(eigenvalues))), np.finfo(float).tiny)
+        _require(np.isfinite(margin) and eigenvalues[0] >= -margin, 'independent covariance is not PSD')
+        reference.update(vce=vce, covariance_psd=dict(minimum_eigenvalue=float(eigenvalues[0]), tolerance=margin))
+        if vce == 'cluster':
+            reference['cluster_count'] = groups
+            reference['dof_rows']['9'] = min(df, groups-1)
     return reference, arrays
 
 
@@ -376,7 +409,8 @@ def write_reference(case, output):
     import scipy
     data = read_case(case)
     reference, arrays = solve(data['y'], data['x'], data['factors'], data['weights'],
-                             include_intercept=data['include_intercept'], keep_singletons=data['keep_singletons'])
+                             include_intercept=data['include_intercept'], keep_singletons=data['keep_singletons'],
+                             vce=data['vce'], clusters=data['clusters'])
     output = Path(output)
     npz = output.with_suffix('.npz')
     _require(not output.exists() and not npz.exists(), 'reference output already exists')
@@ -435,6 +469,26 @@ def load_reference(path: Path, case_sha256: str, body_sha256: str):
         _require(sum(info.file_size for info in archive.infolist()) <= reference['rows']*80 + 100_000,
                  'oracle archive exceeds row-array bound')
     reference['_arrays_path'] = npz
+    if reference.get('vce', 'robust') != 'robust':
+        _require(reference['vce'] in {'iid', 'cluster'}, 'invalid reference VCE')
+        psd = reference['covariance_psd']
+        covariance = np.asarray(reference['covariance'], dtype=float)
+        width = reference['regressors']+int(reference['include_intercept'])
+        _require(covariance.shape == (width, width) and np.all(np.isfinite(covariance)),
+                 'invalid reference covariance shape/values')
+        values = np.linalg.eigvalsh((covariance+covariance.T)/2)
+        margin = 256*np.finfo(float).eps*width*max(float(np.max(np.abs(values))), np.finfo(float).tiny)
+        _require(np.isfinite(psd['tolerance']) and psd['tolerance'] > 0
+                 and np.isfinite(psd['minimum_eigenvalue'])
+                 and psd['minimum_eigenvalue'] >= -psd['tolerance']
+                 and values[0] >= -margin
+                 and np.isclose(psd['tolerance'], margin, rtol=1e-12, atol=0)
+                 and abs(psd['minimum_eigenvalue']-values[0]) <= margin,
+                 'invalid covariance PSD certificate')
+        if reference['vce'] == 'cluster':
+            _require(type(reference['cluster_count']) is int and 2 <= reference['cluster_count'] <= reference['retained_rows']
+                     and reference['dof_rows']['9'] == min(reference['dof_rows']['11'], reference['cluster_count']-1),
+                     'invalid cluster count/DoF certificate')
     return reference, {path:digest(path), npz:reference['arrays']['sha256']}
 
 
@@ -448,7 +502,10 @@ def check_reference(reference, raw: dict, columns: Path, meta: dict):
     def close(a, b, label, rtol, atol):
         _require(np.shape(a) == np.shape(b) and np.allclose(a,b,rtol=rtol,atol=atol), 'independent oracle '+label+' mismatch')
     close(table('RB').ravel(), reference['beta'], 'coefficients', 1e-7, 1e-10)
-    close(table('RV'), reference['covariance'], 'HC1 covariance', 1e-6, 1e-10)
+    close(table('RV'), reference['covariance'], reference.get('vce', 'HC1')+' covariance', 1e-6, 1e-10)
+    if reference.get('vce') == 'cluster':
+        close(table('RCLUSTER'), [[1,1,reference['cluster_count'],0]], 'cluster metadata', 0, 0)
+        close(table('RSUBSET'), [[1,1,1,reference['cluster_count']]], 'cluster subset metadata', 0, 0)
     close(table('RFE'), reference['fe_rows'], 'FE metadata/ranks', 0, 0)
     dof = table('RDOF')
     _require(dof.shape == (20,2), 'unsupported native DoF layout')

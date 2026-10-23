@@ -51,6 +51,91 @@ def dense(y, x, factors, w, sample, intercept):
 
 
 class RoutingOracle(unittest.TestCase):
+    def test_unit_iid_and_cr1_match_full_dummy_svd_sandwich(self):
+        for disconnected in [False, True]:
+            for intercept in [False, True]:
+                y, x, factors, w = fixture(disconnected, weighted=False)
+                # Full original design and normalized-constant transformation;
+                # no oracle projection, bread, cluster sums or DoF helpers.
+                dummy = np.column_stack([np.eye(len(np.unique(f)))[np.unique(f, return_inverse=True)[1]] for f in factors])
+                design = np.column_stack([x, dummy])
+                inverse = np.linalg.pinv(design, rcond=1e-13)
+                residual = y-design@(inverse@y)
+                transform = np.zeros((x.shape[1]+int(intercept), design.shape[1]))
+                transform[:x.shape[1], :x.shape[1]] = np.eye(x.shape[1])
+                if intercept:
+                    transform[-1, x.shape[1]:] = dummy.mean(axis=0)
+                influence = transform@inverse
+                df = len(y)-np.linalg.matrix_rank(design)
+                for vce in ['iid', 'cluster']:
+                    groups = np.unique(factors[0])
+                    if vce == 'iid':
+                        covariance = influence@influence.T*(residual@residual/df)
+                    else:
+                        sums = np.stack([influence[:, factors[0] == g]@residual[factors[0] == g] for g in groups])
+                        covariance = sums.T@sums*(len(y)-1)/df*len(groups)/(len(groups)-1)
+                    ref, arrays = oracle.solve(y, x, factors, w, include_intercept=intercept,
+                                               vce=vce, clusters=factors[0] if vce == 'cluster' else None)
+                    np.testing.assert_allclose(ref['beta'], transform@inverse@y, rtol=0, atol=3e-13)
+                    np.testing.assert_allclose(ref['covariance'], covariance, rtol=2e-11, atol=3e-14)
+                    np.testing.assert_allclose(arrays['residual'], residual, rtol=0, atol=3e-13)
+                    self.assertEqual(ref['dof_rows']['11'], df)
+                    self.assertEqual(ref['dof_rows']['9'], min(df, len(groups)-1) if vce == 'cluster' else df)
+                    self.assertGreaterEqual(ref['covariance_psd']['minimum_eigenvalue'], -ref['covariance_psd']['tolerance'])
+                    if vce == 'cluster':
+                        self.assertEqual(ref['cluster_count'], len(groups))
+
+    def test_new_vce_refuses_unsupported_weights_codes_and_degenerate_clusters(self):
+        y, x, f, w = fixture(weighted=False)
+        for vce, weights, clusters in [('iid', w*2, None), ('cluster', w*2, f[0]),
+                                      ('cluster', w, None), ('robust', w, f[0]),
+                                      ('bad', w, None), ('cluster', w, np.zeros(len(y))),
+                                      ('cluster', w, np.full(len(y), np.nan))]:
+            with self.subTest(vce=vce), self.assertRaises(ValueError):
+                oracle.solve(y, x, f, weights, vce=vce, clusters=clusters)
+        old, a = oracle.solve(y, x, f, w)
+        explicit, b = oracle.solve(y, x, f, w, vce='robust')
+        self.assertEqual(old, explicit)
+        for name in a:
+            np.testing.assert_array_equal(a[name], b[name])
+
+    def test_cluster_reference_checks_covariance_metadata_and_reported_dof(self):
+        y, x, factors, w = fixture(weighted=False)
+        ref, arrays = oracle.solve(y,x,factors,w,vce='cluster',clusters=factors[0])
+        def table(value):
+            value = np.atleast_2d(value)
+            return dict(rows=value.shape[0],columns=value.shape[1],
+                        bits=[struct.pack('>d',float(v)).hex() for v in value.ravel()])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); descriptor = root/'oracle.json'; npz = root/'oracle.npz'
+            np.savez_compressed(npz,**arrays)
+            outputs = dict(zip(oracle.OUTPUTS,range(6)))
+            ref.update(case_sha256='a'*64,body_sha256='b'*64,columns=6,outputs=outputs,
+                       arrays=dict(file=npz.name,sha256=digest(npz)))
+            descriptor.write_text(json.dumps(ref))
+            loaded, _ = oracle.load_reference(descriptor,'a'*64,'b'*64)
+            dof = np.zeros((20,2))
+            for key,value in ref['dof_rows'].items():
+                dof[int(key)] = [1,value]
+            status = np.zeros((4,4)); status[:,1] = [1,1,1,5]
+            raw = dict(matrices=dict(RB=table(ref['beta']),RV=table(ref['covariance']),
+                RDOF=table(dof),RFE=table(ref['fe_rows']),RSTATUS=table(status),
+                RCLUSTER=table([[1,1,5,0]]),RSUBSET=table([[1,1,1,5]])))
+            columns = root/'columns'
+            np.asarray([arrays['sample'],arrays['residual'],arrays['drop_reason'],arrays['xb'],arrays['fitted'],arrays['absorbed']],dtype=float).tofile(columns)
+            meta = dict(rows=len(y),columns=6,outputs=outputs)
+            oracle.check_reference(loaded,raw,columns,meta)
+            for name,index in [('RCLUSTER',2),('RSUBSET',3),('RDOF',19),('RV',0)]:
+                changed = copy.deepcopy(raw)
+                changed['matrices'][name]['bits'][index] = struct.pack('>d',123.).hex()
+                with self.subTest(table=name), self.assertRaises(ValueError):
+                    oracle.check_reference(loaded,changed,columns,meta)
+            broken = copy.deepcopy(ref)
+            broken['covariance_psd']['tolerance'] *= 2
+            descriptor.write_text(json.dumps(broken))
+            with self.assertRaisesRegex(ValueError,'PSD'):
+                oracle.load_reference(descriptor,'a'*64,'b'*64)
+
     def test_direct_schur_matches_full_weighted_dummy_svd_and_normalized_constant(self):
         for disconnected in [False,True]:
             for intercept in [False,True]:

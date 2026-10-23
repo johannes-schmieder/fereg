@@ -1135,6 +1135,13 @@ impl LoadedOlsRows {
                 remaining: admitted_bytes,
             },
         ));
+        if crate::diagnostics::phase_timing_enabled()
+            && self.moments.as_ref().is_some_and(|moments| moments.is_ok())
+        {
+            eprintln!(
+                "FEREG_OWNERSHIP|constructed_moment_rows={nrows}|constructed_moment_columns={columns}|moment_workspace_bound_bytes={required}"
+            );
+        }
         self.rows = raw.into_row_major();
         self
     }

@@ -36,6 +36,7 @@ REFERENCE_REVISION = 'c16c0b5555338d8b20b184e6e51ad2acbe6a4e6e'
 ORDER_SEEDS = {1: 2026106303, 2: 2026106304, 3: 2026106305}
 OWNERSHIP = ('none', 'moments', 'scores', 'both')
 KIND = 'ownership-cells-development-v1'
+COVERAGE_KIND = 'ownership-moments-coverage-v1'
 require = q.require
 
 
@@ -73,7 +74,16 @@ def columns(family):
 
 
 def sources():
-    return {**q.execution_sources(), 'ownership_cells': Path(__file__).resolve()}
+    return {**q.execution_sources(), 'ownership_cells': Path(__file__).resolve(),
+            **{name: Path(__file__).with_name(name + '.py')
+               for name in ('ownership_moments', 'ownership_moments_cases')}}
+
+
+def settings(plan):
+    if plan['kind'] == COVERAGE_KIND:
+        return plan['settings']
+    return [dict(cell=f'{family}-t{worker}', family=family, workers=worker)
+            for family in FAMILIES for worker in (1, 4)]
 
 
 def prepare(generator, output):
@@ -143,6 +153,9 @@ def physical_arms(plan):
 
 
 def schedule(plan, diagnostic=False):
+    if plan['kind'] == COVERAGE_KIND:
+        from ownership_moments import schedule as coverage_schedule
+        return coverage_schedule(plan, diagnostic)
     roles = physical_arms(plan)
     cells = [f'{f}-t{w}' for f in FAMILIES for w in (1, 4)]
     if diagnostic:
@@ -183,6 +196,9 @@ def prepare_request(source, destination, mechanism, workers):
 
 
 def validate(plan):
+    if plan['kind'] == COVERAGE_KIND:
+        from ownership_moments import validate as validate_coverage
+        return validate_coverage(plan)
     require(plan['schema'] == 1 and plan['kind'] == KIND and plan['platform'] in ('Linux', 'Darwin'), 'invalid plan')
     expected = {k: list(v) for k, v in mechanisms(plan['panel'], plan['ownership']).items()}
     require(plan['arms'] == expected and plan['aliases'] == aliases(expected), 'arm meaning/alias changed')
@@ -460,10 +476,16 @@ def ownership_diagnostic(log, mechanism):
         require(all(re.fullmatch(r'0|[1-9][0-9]*', p[1]) for p in parts), 'invalid ownership counters')
         events.append({key: int(value) for key, value in parts})
     moments = [event for event in events if set(event) == {'unused_moment_bytes'}]
+    constructed = [event for event in events if set(event) == {
+        'constructed_moment_rows', 'constructed_moment_columns', 'moment_workspace_bound_bytes'}]
     scores = [event for event in events if set(event) == {'score_admitted', 'avoided_packed_elements',
               'avoided_packed_bytes', 'retained_matrix_capacity_bytes', 'generated_columns', 'kept_columns'}]
-    require(len(scores) == 1 and len(moments) <= 1 and len(events) == len(scores) + len(moments),
+    require(len(scores) == 1 and len(moments) <= 1 and len(constructed) <= 1
+            and len(events) == len(scores) + len(moments) + len(constructed),
             'missing/unknown ownership diagnostic')
+    require(all(all(value > 0 for value in event.values()) for event in constructed)
+            and not (constructed and any(event['unused_moment_bytes'] for event in moments)),
+            'constructed and omitted moment work is inconsistent')
     score = scores[0]
     require(score['score_admitted'] in (0, 1) and score['kept_columns'] <= score['generated_columns']
             and score['avoided_packed_bytes'] == 8 * score['avoided_packed_elements'], 'inconsistent ownership counters')
@@ -521,22 +543,25 @@ def cell_diagnostic(log, mechanism):
                 limitation='Binding, admission and reuse state do not prove application or a complete-command speedup.')
 
 
-def run(manifest, output, *, diagnostic=False, scored_result=None, execute=None, monitor_factory=None):
+def run(manifest, output, *, diagnostic=False, scored_result=None, preflight_result=None,
+        execute=None, monitor_factory=None):
     """One attempt only. Persist the started call before entering native code."""
     started = time.monotonic()
     manifest, output = Path(manifest).resolve(), routing_cases.scratch(Path(output))
     require(not output.exists(), 'run output exists; no retries/resume')
     plan = q.read(manifest)
     validate(plan)
+    coverage = plan['kind'] == COVERAGE_KIND
     require(plan['platform'] == platform.system(), 'wrong execution platform')
     output.mkdir(parents=True)
     sequence = plan['diagnostic_schedule'] if diagnostic else plan['schedule']
-    result = dict(schema=1, kind=KIND, platform=plan['platform'], panel=plan['panel'], hostname=socket.gethostname(),
+    result = dict(schema=1, kind=plan['kind'], platform=plan['platform'], panel=plan['panel'], hostname=socket.gethostname(),
                   manifest_sha256=routing.identity(plan), status='running', native_calls_started=0, calls=[], failures=[],
                   cells={}, elapsed_s=0, diagnostic=diagnostic, activation_qualified=False, ownership=plan['ownership'],
                   candidate_sha256=plan['files'][plan['artifacts']['candidate']['path']],
                   inputs_sha256=plan['files'][plan['inputs']],
-                  call_cap=len(sequence), budget_s=600 if diagnostic else 3600, exclusions=[], retries=0)
+                  call_cap=len(sequence), budget_s=plan['diagnostic_budget_s'] if diagnostic else plan['budget_s'],
+                  exclusions=[], retries=0)
     host = None
     path = output / 'results.json'
     def persist():
@@ -547,8 +572,16 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, execute=None,
     try:
         with q.Deadline(result['budget_s'], started) as deadline:
             stamps = verify_files(plan, manifest)
-            scored = None
-            if diagnostic:
+            scored = prerequisite = None
+            if coverage and not diagnostic:
+                from ownership_moments import validate_preflight
+                require(preflight_result is not None, 'coverage timing requires actual preflight evidence')
+                require(Path(preflight_result).resolve() == output.parent / plan['preflight_output'] / 'results.json',
+                        'coverage preflight must be the bound sibling output')
+                prerequisite = validate_preflight(plan, manifest, preflight_result)
+                result['preflight_result_sha256'] = q.digest(preflight_result)
+                stamps[Path(preflight_result)] = q.stamp(preflight_result)
+            elif diagnostic and not coverage:
                 require(scored_result is not None, 'diagnostics require the completed scored result')
                 scored = q.read(scored_result)
                 require(scored['status'] == 'complete' and not scored['diagnostic'] and not scored['failures']
@@ -557,20 +590,21 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, execute=None,
                 stamps[Path(scored_result)] = q.stamp(scored_result)
             from qualify_scc import HostMonitor, MacMonitor
             factory = monitor_factory or (HostMonitor if plan['platform'] == 'Linux' else MacMonitor)
-            host = factory(output / 'host', 4)
+            host = factory(output / 'host', max(plan['threads']))
             meta_by_cell, requests, snapshots, first_worker = {}, {}, {}, {}
             # Prepare all request bytes before native sampling; same plan/file budget.
             for item in plan['cases']:
                 meta = q.metadata(plan, item, manifest)
-                for worker in (1, 4):
-                    cell = f"{item['id']}-t{worker}"
+                for setting in [s for s in settings(plan) if s['family'] == item['id']]:
+                    cell, worker = setting['cell'], setting['workers']
                     directory = output / cell
                     directory.mkdir()
                     meta_by_cell[cell] = meta
                     result['cells'][cell] = dict(family=item['family'], workers=worker, fingerprints={}, worker_signatures={}, references={})
-                    for arm in physical_arms(plan):
+                    for arm in [*physical_arms(plan), *(['reference'] if coverage and diagnostic else [])]:
                         request = directory / (arm.replace('+', '_') + '.case')
-                        prepare_request(q.resolve(manifest, item['input']), request, plan['arms'][arm], worker)
+                        mechanism = ('none', 'none') if arm == 'reference' else plan['arms'][arm]
+                        prepare_request(q.resolve(manifest, item['input']), request, mechanism, worker)
                         requests[cell, arm] = request
                         stamps[request] = q.stamp(request)
             with deadline.observing(host):
@@ -579,6 +613,7 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, execute=None,
                     host.check()
                     require(all(q.stamp(p) == v for p, v in stamps.items()), 'bound source/input changed during run')
                     cell, arm = entry['cell'], entry['arm']
+                    mechanism = ('none', 'none') if arm == 'reference' else plan['arms'][arm]
                     meta = meta_by_cell[cell]
                     target = output / cell / f'call-{index:04d}.json'
                     log = target.with_suffix('.log')
@@ -595,7 +630,7 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, execute=None,
                     persist()
                     begin = time.monotonic_ns()
                     resources = execute([*env, str(q.resolve(manifest, plan['harness'])),
-                                         str(q.resolve(manifest, plan['artifacts']['candidate']['path'])), '--replay',
+                                         str(q.resolve(manifest, plan['artifacts']['reference' if arm == 'reference' else 'candidate']['path'])), '--replay',
                                          str(requests[cell, arm]), str(target)], log, min(120, deadline.check()))
                     finish = time.monotonic_ns()
                     raw, columns, detail = q.read_native(target, log, meta)
@@ -605,16 +640,20 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, execute=None,
                     if traced:
                         evidence = q.science.resource_diagnostics(log.read_text(), None, False, {})
                         detail.update(evidence, solver_trace_lines=[line for line in log.read_text().splitlines() if line.startswith('FEREG_SOLVER_TRACE|')])
-                        detail['cell_diagnostic'] = cell_diagnostic(log.read_text(), plan['arms'][arm])
+                        detail['cell_diagnostic'] = cell_diagnostic(log.read_text(), mechanism)
                     if diagnostic:
-                        detail['ownership_diagnostic'] = ownership_diagnostic(log.read_text(), plan['arms'][arm])
+                        if arm != 'reference':
+                            detail['ownership_diagnostic'] = ownership_diagnostic(log.read_text(), mechanism)
                         detail['phase_lines'] = [line for line in log.read_text().splitlines()
                                                  if line.startswith(('FEREG_PHASE|', 'FEREG_OWNERSHIP|', 'FEREG_CELLS|'))]
                     prior = snapshots.get((cell, arm))
                     if prior:
                         require(prior[2]['fingerprint'] == detail['fingerprint'], 'fixed-worker repeat changed')
-                    elif diagnostic:
+                    elif diagnostic and not coverage:
                         require(detail['fingerprint'] == scored['cells'][cell]['fingerprints'][arm], 'diagnostic changes scored science')
+                    elif prerequisite is not None:
+                        require(detail['fingerprint'] == prerequisite['cells'][cell]['fingerprints'][arm],
+                                'coverage timing changes preflight science')
                     call.update(detail, status='passed', oracle='passed', result_sha256=q.digest(target), log_sha256=q.digest(log),
                                 columns_sha256=q.digest(columns), raw_result=raw, maxrss_bytes=resources['maxrss_bytes'],
                                 started_monotonic_ns=begin, finished_monotonic_ns=finish)
@@ -626,19 +665,21 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, execute=None,
                         base = output / cell / ('reference-' + arm.replace('+', '_'))
                         record['references'][arm] = {'path': str(base.relative_to(output)), **q.retained_snapshot(base, raw, columns, meta)}
                         family = record['family']
-                        if record['workers'] == 1:
+                        if (family, arm) not in first_worker:
                             first_worker[family, arm] = (base, detail)
                         else:
                             before, before_detail = first_worker[family, arm]
                             q.compare_saved(before, base, meta)
                             require(before_detail['worker_signature'] == detail['worker_signature'], 'cross-worker discrete decisions changed')
                         arms = list(physical_arms(plan))
-                        if all((cell, a) in snapshots for a in arms):
+                        if arm != 'reference' and all((cell, a) in snapshots for a in arms):
                             compare_warmups(plan, {a: snapshots[cell, a] for a in arms}, meta)
                     deadline.check()
                     persist()
                     # Warmup columns stay until all scoped cross-arm checks have run.
                     if prior is not None:
+                        columns.unlink()
+                    elif arm == 'reference':
                         columns.unlink()
                     elif all((cell, a) in snapshots for a in physical_arms(plan)):
                         for a in physical_arms(plan):
@@ -648,6 +689,9 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, execute=None,
             require(result['host']['isolation_ok'] and not result['host']['errors'], 'invalid host observation/isolation')
             result['host_observations_sha256'] = q.digest(output / 'host/host-observations.jsonl')
             require(all(q.stamp(p) == v for p, v in stamps.items()), 'final input/source drift')
+            if coverage and diagnostic:
+                from ownership_moments import execution_evidence
+                result['execution_evidence'] = execution_evidence(plan, result)
             deadline.check()
             result['status'] = 'complete'
             persist()
@@ -667,13 +711,13 @@ def summaries(plan, calls):
     require(len(calls) == plan['call_cap'] and all(c['status'] == 'passed' for c in calls), 'incomplete/failed calls')
     require([{k: c[k] for k in ('cell', 'arm', 'phase', 'block', 'mirror')} for c in calls] == plan['schedule'], 'call order changed')
     result = []
-    for cell in [f'{f}-t{w}' for f in FAMILIES for w in (1, 4)]:
+    for cell in [setting['cell'] for setting in settings(plan)]:
         for role in plan['arms']:
             if role == 'B':
                 continue
             alias = plan['aliases'][role]
             pairs = []
-            for block in range(6):
+            for block in range(plan['blocks']):
                 def mean(arm):
                     rows = [c['seconds'] for c in calls if c['cell'] == cell and c['arm'] == arm and c['phase'] == 'scored' and c['block'] == block]
                     require(len(rows) == 2 and all(math.isfinite(v) and v > 0 for v in rows), 'invalid paired complete-call timer')
@@ -698,7 +742,7 @@ def report(manifest, directory, output, *, accounting=None):
     verify_files(plan, manifest)
     require(result['manifest_sha256'] == routing.identity(plan) and result['status'] == 'complete'
             and result['failures'] == [] and not result['diagnostic'] and result['retries'] == 0 and result['exclusions'] == []
-            and result['elapsed_s'] < 3600 and result['native_calls_started'] == plan['call_cap'], 'incomplete/failed panel')
+            and result['elapsed_s'] < plan['budget_s'] and result['native_calls_started'] == plan['call_cap'], 'incomplete/failed panel')
     require(result['host']['isolation_ok'] and not result['host']['errors'], 'host evidence failed')
     require(q.digest(directory / 'host/host-observations.jsonl') == result['host_observations_sha256'], 'host observations changed')
     if plan['platform'] == 'Linux':
@@ -726,18 +770,26 @@ def report(manifest, directory, output, *, accounting=None):
     for item in plan['cases']:
         meta = q.metadata(plan, item, manifest)
         for arm in physical_arms(plan):
-            before = result['cells'][item['id'] + '-t1']
-            after = result['cells'][item['id'] + '-t4']
-            q.compare_saved(directory / before['references'][arm]['path'], directory / after['references'][arm]['path'], meta)
-            require(before['worker_signatures'][arm] == after['worker_signatures'][arm], 'cross-worker decisions changed')
+            matching = [s['cell'] for s in settings(plan) if s['family'] == item['id']]
+            before = result['cells'][matching[0]]
+            for cell in matching[1:]:
+                after = result['cells'][cell]
+                q.compare_saved(directory / before['references'][arm]['path'], directory / after['references'][arm]['path'], meta)
+                require(before['worker_signatures'][arm] == after['worker_signatures'][arm], 'cross-worker decisions changed')
     comparisons, objectives = summaries(plan, result['calls'])
-    value = dict(schema=1, kind=KIND + '-report', status='development_complete', activation_qualified=False,
+    value = dict(schema=1, kind=plan['kind'] + '-report', status='development_complete', activation_qualified=False,
                  panel=plan['panel'], native_calls=plan['call_cap'], result_sha256=q.digest(directory / 'results.json'),
                  manifest_sha256=routing.identity(plan), comparisons=comparisons,
                  equal_weight_mean_difference_s=objectives,
-                 objective='Arithmetic mean of paired complete-command differences vs B; equal weight for all24 family/worker settings.',
+                 objective=f'Arithmetic mean of paired complete-command differences vs B; equal weight for all {len(settings(plan))} family/worker settings.',
                  limitations=['Six paired blocks on one host are not six independent hosts or an activation qualification.',
                               'All adverse observations are retained; this report does not select or launch another panel.'])
+    if plan['kind'] == COVERAGE_KIND:
+        from ownership_moments import uncertainty, validate_preflight
+        preflight = directory.parent / plan['preflight_output'] / 'results.json'
+        require(q.digest(preflight) == result['preflight_result_sha256'], 'preflight binding changed')
+        validate_preflight(plan, manifest, preflight)
+        value.update(uncertainty(plan, comparisons), execution_evidence=q.read(preflight)['execution_evidence'])
     save_new(output, value)
     return value
 

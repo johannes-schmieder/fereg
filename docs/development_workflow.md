@@ -479,7 +479,7 @@ estimates, with exact ownership science/signatures and no scored retries or
 exclusions. Diagnostics verified omitted score copies in 20 of 24 settings,
 but zero omitted moment work: every frozen input had `candidate_all=0`, so
 the loaded RHS/moment bank was unavailable. The combined arm's nominal 0.016 ms
-edge does not demonstrate a moment-omission benefit. Panel 2 awaits Johannes's
+edge does not demonstrate a moment-omission benefit. At that point Panel 2 awaited Johannes's
 interpretation of whether admission requires demonstrated work removal for
 each enabled mechanism. The frozen observations and selection rule remain
 unchanged, and neither new mechanism is publicly enabled.
@@ -493,6 +493,64 @@ retains the Linux calls and final 0/0 accounting and links the retained Mac
 calls. These controls establish unchanged public behavior while the experiment
 is disabled. They do not qualify the injected cell operator or establish a
 performance gain.
+
+Johannes's subsequent 2026-10-23 amendment explicitly selects both moment
+omission and projected-score ownership as configuration O after closing the
+moment-coverage gap. The original panel and its conclusions remain immutable;
+the nominal difference between scores and both is no longer a selection question.
+The separately identified `ownership-moments-coverage-v1` supplement reuses the
+frozen weak, wide and positive-weight data, retaining original and changed
+request hashes. Every supplementary request truthfully sets `candidate_all=1`
+and keeps `input_complete=0`. Seven requests give twelve settings: weak/wide
+crossed with robust/one-way clustered inference at W2/W4, plus weak robust W1,
+weak robust Low W4, weak IID Fast W4 and positively weighted robust Fast W4.
+All other requests use unweighted Fast OLS. Clustering uses the first FE's
+existing numeric source with `account_cluster_nesting=0`; its independent CR1
+covariance, cluster counts and degrees of freedom are bound to the new request.
+
+Before timing, execute one accepted `c16c0b55` reference and two diagnostic
+calls for each of baseline/moments/scores/both in every setting: exactly 108
+calls, 120 seconds per call and 1,200 seconds total. Require exact science and
+solver signatures against the matching uninjected baseline and accepted
+reference, independent numerical witnesses, fixed-worker repeats, cross-worker
+agreement within the same model, and unchanged moment-related admission and
+transaction behavior. Retain and validate raw memory caps; compare moment-pair
+admission after subtracting only the source-defined injected-argument parent
+delta (one 24-byte String descriptor plus the UTF-8 argument bytes on these
+64-bit hosts). Available-memory limits remain observations. Compare routing
+decisions on every diagnostic repeat. Every eligible baseline/scores call must attest a
+successfully constructed speculative cache at the actual construction boundary;
+moments/both must omit the corresponding positive work without construction.
+Counters distinguish workspace bounds from actual retained memory. W1 and
+weighted controls construct/omit no moments; IID retains its needed moments;
+Low preserves its baseline construction state. Low/IID/weighted controls do
+not admit score ownership. Failed preflight blocks all timing.
+
+The supplementary timing schedule has one warmup per arm/setting and six
+randomized mirrored blocks: 624 calls, 120 seconds per call and 2,400 seconds
+total, order seed `2026106307`. One isolated SCC host runs the frozen sequence;
+there are no retries or exclusions. Use all complete-command observations and
+the existing per-setting mean-excess nonregression requirement, max(5%, 1 ms).
+Report descriptive 95% percentile intervals from 4,096 paired-block bootstrap
+draws with seed `2026106308`, resampling all arms/settings jointly by the six
+mirrored blocks. These are conditional single-host intervals, not activation
+qualification. Phase timing and removed-work evidence explain mechanisms;
+neither replaces complete-command measurements. Then run Panel 2 with O=both.
+Final qualification retains the original 42 requests and uses truthful
+`candidate_all=1`, `input_complete=0` on the applicable eight added numeric
+bodies; its frozen manifest and diagnostic schedule must demonstrate positive
+moment omission on eligible multiworker cases before an activation claim.
+Record the exact manifest/budget amendment before collecting that qualification.
+Scientific failure, inability to exercise the optimization, unresolved material
+regression or inconclusive final qualification still requires discussion.
+The supplement implementation passed the full source-only suite (2,029 Rust
+checks and 315 Python tests), 42 focused ownership/oracle runner tests and the
+complexity ratchet. The seven additional production lines only attest successful
+moment construction under phase diagnostics. Independent review checked the
+IID/CR1 mathematics, construction boundary, transport-parent normalization,
+request bindings and repeated route/resource checks. These checks establish
+readiness for the fixed experiment, not a speed or qualification result; the
+installed-package binding remains outside this branch-only source admission.
 
 [SPEC](SPEC.md) defines the scientific contract. [VALIDATION](VALIDATION.md)
 records the accepted scope and caveats. No historical campaign is a substitute
