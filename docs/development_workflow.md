@@ -543,6 +543,17 @@ leaving 172 setup seconds, 1,800 input/reference seconds and 2,092 scheduler
 seconds. The [operational record](../bench/results/ownership-qualification-preparation-repair-20261023.json)
 retains both failures, source identities, budgets and successful Mac build.
 
+The repaired input allocation completed with zero failed/exit status in 196
+scheduler seconds. All eight bodies retain their declared row counts and full
+finite rank; all 30 input, metadata and reference files were collected with
+identical hashes for Mac. The protected-original Linux build completed in 177
+scheduler seconds with actual native audit, ABI/load and panic-containment
+checks. The [completed preparation record](../bench/results/ownership-qualification-preparation-complete-20261023.json)
+retains both accountings, full input metadata and numerical-reference documents,
+source/build identities, and the enlarged Mac/Linux harness bindings. These
+steps performed no qualification timing and do not select or activate a
+candidate. The earlier packaging failures remain unchanged.
+
 The prospective tooling was checked before generating these inputs: 76 focused
 and historical qualification/input tests passed, including actual request
 framing, strict per-family shape/seed/weight/reference-budget rejection,
