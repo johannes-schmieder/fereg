@@ -735,6 +735,51 @@ No warmup or scored observation was retried or excluded. These results admit
 the explicitly selected configuration O=both to Panel 2; they do not activate
 either mechanism or waive the final Mac/Linux qualification.
 
+The [completed Panel 2](../bench/results/ownership-cells-panel2-20261023.json)
+retains all 1,248 timing calls and 96 separate diagnostics. Job 8263668 and
+independent assessment 8264526 both have complete 0/0 accounting. The assessment
+reconstructed 192 full-column reference sets, verified exact ownership and
+scoped cell science, fixed-worker repeats, cross-worker decisions, original
+hierarchies, resources and observed whole-host isolation. No call was retried
+or excluded. O remained both ownership mechanisms and had no adverse mean
+against B. The equal-weight complete-command differences against B were
+−0.604 ms for O, −4.532 ms for eager cells, and −5.080 ms for O+eager.
+
+Eager cells nevertheless fail the workload nonregression requirement. Their
+incremental comparison against O contains these adverse means:
+
+| Setting | O+eager minus O | Excess beyond max(5%, 1 ms) | Positive-excess blocks |
+| --- | ---: | ---: | ---: |
+| Dense W4 | +4.357 ms | +2.023 ms | 4/6 |
+| High-degree weak W4 | +5.613 ms | +2.034 ms | 6/6 |
+| Hubs W1 | +7.890 ms | +1.988 ms | 6/6 |
+| Hubs W4 | +18.638 ms | +14.813 ms | 6/6 |
+
+The incremental equal-weight mean of −4.476 ms cannot offset those regressions.
+The [independent assessment](../bench/results/ownership-cells-panel2-assessment-20261023.json)
+retains all paired blocks; this one-host panel reports their variation, not
+confidence intervals or activation bounds. Both independent reviewers confirmed
+the means directly from the retained calls. Cell construction without CMG
+installation does not prove waste because eager cells may serve the incumbent
+operator. The measured complete-command regressions themselves satisfy the
+predeclared trigger for the single deferred-construction redesign.
+
+Panel 3 therefore keeps O=both and the declared B/O/O+eager/O+deferred schedule,
+order seed `2026106305`, 1,248 timing calls, and one 96-call diagnostic schedule
+within the existing 3,600/600-second application budgets. The new deferred
+artifact must construct only following successful CMG commitment at the existing
+restart, with real coexistence admission and unchanged fallback/cancellation.
+Fresh 48-call uninjected correctness controls per platform have a 600-second
+budget and no retries. Bind the preserved Panel 2 result and independent
+assessment separately from the changed candidate; requiring their binary hashes
+to match would incorrectly forbid the authorized redesign. On the same Linux
+host, the already scheduled Panel 3 warmups must exactly match the prior B, O
+and O+eager science/signatures and resource/gate/hierarchy evidence. These checks
+add no timing calls. Panel 2 remains failed for eager admission; Panel 3's
+reference arms do not replace or improve that conclusion. Only the single new
+deferred configuration is eligible for new cell admission. Final qualification
+and public activation remain pending.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,
