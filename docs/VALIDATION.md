@@ -45,8 +45,30 @@ plan ran with host-observer access and a reduced external deadline of 14,399
 seconds, deducting the failed attempt's 0.719856 seconds from the original
 budget. It completed in 2,447.765 seconds. All 533 observer samples recorded
 no competing compute; ordinary desktop activity remains included. Sampled
-observation is not continuous proof of absence. Linux qualification and exact
-public-versus-hidden equivalence remain required before activation.
+observation is not continuous proof of absence.
+
+The [Linux result](../bench/results/two-fe-policy-gates-qualification-linux-20261022.json)
+also passes all 84 protected bounds across 42 cells, 12 distinct physical hosts
+per cell and 7,560 calls. Its linked call tables retain every complete call
+object losslessly. All 36 successful shard accountings are 0/0. Independent
+verification reconstructed all 1,512 retained full-column fingerprints, checked
+the independent references, cross-arm/worker/host agreement, fixed-worker
+repeats, warmup timers, observers and resource/policy traces, and reproduced all
+84 bounds. The closest upper excess was -0.721883 ms, no-FE W4 against accepted
+Auto. These are per-comparison one-sided 0.025 bounds using 12 physical host
+units; they do not claim simultaneous coverage or independence across platforms.
+
+Two analysis-only verification attempts exhausted their fixed 600-second
+budgets. Both failures, helper sources and accountings remain in the result.
+Moving temporary reconstruction files to job-local scratch did not resolve the
+timeout. The reviewed final repair materializes each bound NPZ archive once,
+retains the comparison baselines and current cell, and preserves raw hashes,
+drift checks, comparison bytecode and all scientific checks. It completed in
+447.177 seconds with 996,667,200 bytes of cached arrays below its 1.2 GB limit;
+job `8253766` has 0/0 accounting. All three analysis attempts made zero native
+calls. The root report and native observations were never rerun or resampled.
+Exact public-versus-hidden equivalence remains required before activation is
+accepted on the development branch.
 
 The [qualification freeze](../bench/results/two-fe-policy-gates-qualification-freeze-20261022.json)
 keeps native candidate `e9be9e64` / CMG `fd77d98d`, the selected structural gates
@@ -126,8 +148,9 @@ both application and scheduler budgets. No timing observation is resampled.
 Completed held-out captures and inputs were hash-checked against committed
 records before deletion, along with the completed original-build cache. Current
 qualification inputs and actual artifacts remain available. Public two-FE Auto
-is still disabled. Qualification results and exact public-versus-hidden
-equivalence are required before its invocation wiring can change.
+is still disabled. Both platform qualifications now pass; the next step is the
+authorized branch-only invocation wiring and exact public-versus-hidden
+integration checks. Release packages remain unchanged.
 
 ## Selected two-FE gates: held-out development (2026-10-22)
 
