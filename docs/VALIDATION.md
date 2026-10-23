@@ -64,6 +64,11 @@ and bridge checks.
 Installed-package binding remains the known failed package-admission check;
 no release package, main merge or GitHub testing is authorized by this result.
 
+After the evidence was committed and pushed in `4bccc402`, completed local
+task outputs (about 5.7 GB) and the SCC task directory (about 23 GB) were
+removed. The current replay baseline and Cargo caches were preserved; local
+`target` is 4.1 GB. No SCC jobs or monitor for this workflow remain active.
+
 ## Selected two-FE gates: activation resource mismatch (2026-10-22)
 
 The [activation freeze](../bench/results/two-fe-policy-gates-activation-freeze-20261022.json)
