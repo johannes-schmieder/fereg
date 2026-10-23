@@ -28,10 +28,25 @@ use super::linear_session::{
 use super::prepared_scratch::PreparedOlsScratch;
 use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData};
 
+/// Internal OLS ownership experiments, independent of FE routing policy.
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PreparedOlsOwnership {
+    pub skip_unused_moments: bool,
+    pub retain_projected_scores: bool,
+}
+
 /// Numerical policy for the guarded prepared-data coefficient checkpoint.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PreparedOlsFitConfig {
     pub absorb: AbsorbConfig,
+    #[doc(hidden)]
+    pub ownership: PreparedOlsOwnership,
+    /// Preauthorized full projected-score capacity, including metadata. The
+    /// caller must cover its lifetime through residual FE and inference inside
+    /// the existing execution frame; this does not subtract any FE parent.
+    #[doc(hidden)]
+    pub retained_score_capacity_limit: Option<u128>,
     /// The one-shot OLS publisher can recover saved effects from the certified
     /// final target when a direct one-FE or accepted Schur solve omits its
     /// initial product.
@@ -122,6 +137,8 @@ impl Default for PreparedOlsFitConfig {
                 },
                 ..AbsorbConfig::default()
             },
+            ownership: PreparedOlsOwnership::default(),
+            retained_score_capacity_limit: None,
             rank_tolerance_multiplier: 128.0,
             final_residual_tolerance: None,
             allow_final_fe_recovery: false,
@@ -2031,6 +2048,38 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         0.0_f64,
         "unable to reserve prepared OLS fast score cache values",
     )?;
+    let means = build_packed_score_means(
+        prepared,
+        within,
+        reference_mean_scales,
+        weights,
+        reservation,
+        &generated_columns,
+        Some(&mut values),
+        bind_numeric_means,
+    )?;
+    let within = DenseMatrix::from_row_major(nrows, generated_columns.len(), values)?;
+    Ok(Some(PreparedOlsFastScoreCache::Packed {
+        generated_columns,
+        within,
+        means,
+    }))
+}
+
+// The owned-score arm shares the packed cache's exact reduction, including its
+// ceil-sized row chunks. Omitting the output only removes the N-by-K copy.
+#[allow(clippy::too_many_arguments)]
+fn build_packed_score_means<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    within: &DenseMatrix,
+    reference_mean_scales: &[f64],
+    weights: NormalizedWeights<'_>,
+    reservation: &mut R,
+    generated_columns: &[usize],
+    values: Option<&mut [f64]>,
+    bind_numeric_means: bool,
+) -> Result<Vec<f64>> {
+    let nrows = within.nrows();
     let mut means = reserved_filled(
         reservation,
         generated_columns.len(),
@@ -2038,12 +2087,7 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         "unable to reserve prepared OLS fast score cache means",
     )?;
     if generated_columns.is_empty() {
-        let within = DenseMatrix::from_row_major(nrows, 0, values)?;
-        return Ok(Some(PreparedOlsFastScoreCache::Packed {
-            generated_columns,
-            within,
-            means,
-        }));
+        return Ok(means);
     }
 
     let numeric = if bind_numeric_means {
@@ -2083,13 +2127,18 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let value_chunk_elements = rows_per_chunk
         .checked_mul(generated_columns.len())
         .ok_or_else(|| allocation("prepared OLS fast score value chunk overflows usize"))?;
-    values
-        .par_chunks_mut(value_chunk_elements)
+    let value_chunks = match values {
+        Some(values) => {
+            rayon::iter::Either::Left(values.par_chunks_mut(value_chunk_elements).map(Some))
+        }
+        None => rayon::iter::Either::Right((0..chunks).into_par_iter().map(|_| None)),
+    };
+    value_chunks
         .zip(partials.par_chunks_mut(partial_stride))
         .enumerate()
-        .try_for_each(|(chunk, (value_chunk, partial))| -> Result<()> {
+        .try_for_each(|(chunk, (mut value_chunk, partial))| -> Result<()> {
             let start = chunk * rows_per_chunk;
-            let chunk_rows = value_chunk.len() / generated_columns.len();
+            let chunk_rows = rows_per_chunk.min(nrows - start);
             for local_row in 0..chunk_rows {
                 let row = start + local_row;
                 let weight = weights.value(row)?;
@@ -2101,7 +2150,9 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                             "prepared OLS fast score cache contains a nonfinite value",
                         ));
                     }
-                    value_chunk[local_row * generated_columns.len() + cached] = value;
+                    if let Some(values) = value_chunk.as_deref_mut() {
+                        values[local_row * generated_columns.len() + cached] = value;
+                    }
                     let scale = reference_mean_scales[generated];
                     if scale > 0.0 {
                         let raw_value = if let Some(columns) = numeric_columns {
@@ -2151,20 +2202,44 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         }
         means[cached] = mean;
     }
-    let within = DenseMatrix::from_row_major(nrows, generated_columns.len(), values)?;
-    Ok(Some(PreparedOlsFastScoreCache::Packed {
-        generated_columns,
-        within,
-        means,
-    }))
+    Ok(means)
+}
+
+enum SelectedScoreMeans<'a> {
+    Strided(&'a [f64]),
+    Packed {
+        weights: NormalizedWeights<'a>,
+        reference_scales: &'a [f64],
+    },
+}
+
+fn projected_score_capacity_bytes(
+    matrix_capacity: usize,
+    identity_capacity: usize,
+    mean_capacity: usize,
+) -> Result<u128> {
+    (matrix_capacity as u128)
+        .checked_mul(std::mem::size_of::<f64>() as u128)
+        .and_then(|bytes| {
+            bytes.checked_add(
+                (identity_capacity as u128).checked_mul(std::mem::size_of::<usize>() as u128)?,
+            )
+        })
+        .and_then(|bytes| {
+            bytes.checked_add(
+                (mean_capacity as u128).checked_mul(std::mem::size_of::<f64>() as u128)?,
+            )
+        })
+        .ok_or_else(|| allocation("owned projected score capacity overflows"))
 }
 
 fn build_selected_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     within: DenseMatrix,
     qr: &FiniteFit,
-    all_means: Option<&[f64]>,
+    mean_source: SelectedScoreMeans<'_>,
     reservation: &mut R,
+    retained_capacity_limit: Option<u128>,
 ) -> Result<PreparedOlsFastScoreCache> {
     let bread = qr
         .bread
@@ -2179,7 +2254,12 @@ fn build_selected_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReserva
         .ok_or_else(|| allocation("prepared OLS strided score column count overflows"))?;
     if within.nrows() != nrows
         || within.ncols() != expected_columns
-        || all_means.is_none_or(|means| means.len() != prepared.fit_model().columns.len())
+        || match mean_source {
+            SelectedScoreMeans::Strided(means) => means.len(),
+            SelectedScoreMeans::Packed {
+                reference_scales, ..
+            } => reference_scales.len(),
+        } != prepared.fit_model().columns.len()
     {
         return Err(invalid_argument(
             "prepared OLS strided score cache dimensions are inconsistent",
@@ -2191,19 +2271,48 @@ fn build_selected_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReserva
         "unable to reserve prepared OLS strided score identities",
     )?;
     generated_columns.extend_from_slice(&bread.generated_columns);
-    let all_means =
-        all_means.ok_or_else(|| invalid_argument("prepared OLS strided score means are absent"))?;
-    let mut means = reserved_filled(
-        reservation,
-        generated_columns.len(),
-        0.0_f64,
-        "unable to reserve prepared OLS strided score means",
-    )?;
-    for (target, generated) in means.iter_mut().zip(generated_columns.iter().copied()) {
-        *target = all_means[generated];
-        if !target.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS strided score mean is not finite",
+    let owned_packed_means = matches!(mean_source, SelectedScoreMeans::Packed { .. });
+    let means = match mean_source {
+        SelectedScoreMeans::Strided(all_means) => {
+            let mut means = reserved_filled(
+                reservation,
+                generated_columns.len(),
+                0.0_f64,
+                "unable to reserve prepared OLS strided score means",
+            )?;
+            for (target, generated) in means.iter_mut().zip(generated_columns.iter().copied()) {
+                *target = all_means[generated];
+                if !target.is_finite() {
+                    return Err(invalid_data(
+                        "prepared OLS strided score mean is not finite",
+                    ));
+                }
+            }
+            means
+        }
+        SelectedScoreMeans::Packed {
+            weights,
+            reference_scales,
+        } => build_packed_score_means(
+            prepared,
+            &within,
+            reference_scales,
+            weights,
+            reservation,
+            &generated_columns,
+            None,
+            true,
+        )?,
+    };
+    if owned_packed_means {
+        let retained = projected_score_capacity_bytes(
+            within.storage_capacity(),
+            generated_columns.capacity(),
+            means.capacity(),
+        )?;
+        if retained_capacity_limit.is_none_or(|limit| retained > limit) {
+            return Err(allocation(
+                "owned projected score capacity exceeds admission",
             ));
         }
     }

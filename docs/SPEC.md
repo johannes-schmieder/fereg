@@ -14,6 +14,42 @@ Native test names below are relative to `crates/fereg-core` or
 
 ## 1. Public syntax and options
 
+### Ownership and cell-operator experiment scope (2026-10-23)
+
+The authorized successor experiment starts from accepted branch `c16c0b55`
+with CMG `fd77d98d`. Public defaults remain unchanged until the separate
+qualification and hidden/public equivalence gates pass. The historical
+compact-cell worktree supplies implementation ideas, not accepted evidence for
+this artifact.
+
+Two independent OLS ownership experiments may omit provably unused speculative
+raw moments and retain the projected matrix for inference scores instead of
+copying selected columns. They preserve scientific bits, solver signatures,
+sample, rank, omissions and all discrete decisions. Retained storage is charged
+at its full width, including outcome and inactive columns. Admission precedes
+omitting the packed copy; uncertain eligibility retains the existing path.
+Preparation and FE admission cannot spend hypothetical ownership savings.
+
+The first-occurrence cell operator experiment is restricted to eligible two-FE
+OLS Auto/Auto categorical-intercept designs. Its continuous outputs and solver
+iteration trajectories may change within the existing scientific tolerances;
+sample, rank, omissions, factor identities and other discrete decisions remain
+unchanged. Fixed-worker repetitions remain exact. Independent dense weighted
+OLS, analytic and Schur witnesses and the original observation-space
+certificates remain authoritative. Ownership alone remains exact even when
+combined with this operator. Reuse is confined to an unchanged design, sample
+and normalized-weight owner. Construction, temporary and retained storage count
+toward real memory admission; refusal retains the observation operator.
+
+CMG commitment at iteration 16, cutoff 5, one sampled tree, seed 0, graph
+construction, small-direct selection, certification, restart and fallback
+semantics remain fixed. The same original graph produces the same hierarchy
+when both arms construct one. The only permitted cell redesign defers
+construction to successful CMG commitment at the existing restart; it adds no
+restart or speculative setup to short solves. Neither historical work caps nor
+elapsed-time routing are reintroduced. See the frozen
+[investigation protocol](development_workflow.md#ownership-and-cell-operator-investigation-2026-10-23).
+
 Both commands accept `depvar [indepvars] [if] [in] [weight], [options]`.
 The dependent variable is plain numeric; the finite list can be empty.
 Stata 18 is the minimum host. The installed diagnostic is

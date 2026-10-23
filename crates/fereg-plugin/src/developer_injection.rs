@@ -7,6 +7,7 @@
 use crate::model_metadata::syntax;
 use fereg_core::error::{ErrorCode, FeregError, Result};
 use fereg_core::fe::{CategoricalPrefix, FeSolverKind, RoutingPreset};
+use fereg_core::ols::PreparedOlsOwnership;
 use std::io::Write;
 
 /// Displayed, then written to the marker file, when PPML is armed for Break.
@@ -16,6 +17,7 @@ pub(crate) const OLS_NATIVE_BREAK_MARKER: &str = "FEREG_NATIVE_BREAK_ARMED\n";
 
 pub(crate) struct OlsInjection {
     pub(crate) routing: Option<RoutingPreset>,
+    pub(crate) ownership: PreparedOlsOwnership,
     pub(crate) it_coefficients: bool,
     pub(crate) native_break_token: Option<String>,
 }
@@ -23,8 +25,13 @@ pub(crate) struct OlsInjection {
 /// Decode the bounded OLS experiment presets without adding public syntax.
 pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Result<OlsInjection> {
     let unknown = || syntax(format!("unknown hidden OLS injection stage {stage:?}"));
+    let ownership = PreparedOlsOwnership {
+        skip_unused_moments: matches!(stage, "ownership_moments" | "ownership_both"),
+        retain_projected_scores: matches!(stage, "ownership_scores" | "ownership_both"),
+    };
     let (routing, break_native) = match stage {
         "" => (None, false),
+        "ownership_moments" | "ownership_scores" | "ownership_both" => (None, false),
         "breaknative" => (None, true),
         "routing_builder_break" => {
             if solver != FeSolverKind::Auto {
@@ -131,6 +138,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
     validate_break_marker_token(break_native, token)?;
     Ok(OlsInjection {
         routing,
+        ownership,
         it_coefficients: stage == "it_coefficients",
         native_break_token: break_native.then(|| token.to_owned()),
     })
@@ -183,6 +191,31 @@ fn internal(message: String) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ownership_experiments_preserve_solver_and_routing_independence() {
+        for solver in [
+            FeSolverKind::Auto,
+            FeSolverKind::Map,
+            FeSolverKind::Lsmr,
+            FeSolverKind::Cmg,
+        ] {
+            for (name, moments, scores) in [
+                ("", false, false),
+                ("ownership_moments", true, false),
+                ("ownership_scores", false, true),
+                ("ownership_both", true, true),
+            ] {
+                let parsed = parse_ols(name, solver, "").unwrap();
+                assert_eq!(parsed.ownership.skip_unused_moments, moments);
+                assert_eq!(parsed.ownership.retain_projected_scores, scores);
+                assert!(parsed.routing.is_none());
+                assert!(!parsed.it_coefficients);
+            }
+        }
+        assert!(parse_ols("ownership_scores_extra", FeSolverKind::Auto, "").is_err());
+        assert!(parse_ols("ownership_both", FeSolverKind::Auto, "a").is_err());
+    }
 
     #[test]
     fn incremental_routing_requires_exact_auto_names_without_break_token() {

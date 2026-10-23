@@ -87,7 +87,8 @@ pub use prepared_fit::{
     PreparedOlsBreadCertificate, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
     PreparedOlsBreadWeightScale, PreparedOlsExecutionConfig, PreparedOlsExecutionMode,
     PreparedOlsExecutionReport, PreparedOlsFitConfig, PreparedOlsFitStatus,
-    PreparedOlsFittedCoefficient, PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
+    PreparedOlsFittedCoefficient, PreparedOlsOwnership, PreparedOlsRankCertificate,
+    PreparedOlsScoreCertificate,
 };
 pub(crate) use prepared_fit::{fit_prepared_weighted_linear_projection_once, LinearSolveFrame};
 pub use prepared_rhs::{

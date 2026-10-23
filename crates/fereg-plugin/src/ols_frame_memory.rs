@@ -11,6 +11,9 @@ use fereg_core::MemoryEstimate;
 pub(crate) struct OlsFrameMemory {
     pub fast_bytes: u128,
     pub low_bytes: u128,
+    /// Prepaid full projected owner plus worst-case score identities/means.
+    /// This is a capacity ceiling, never a credit against the execution frame.
+    pub retained_score_capacity_limit: u128,
     #[cfg(test)]
     pub cluster_reduction_bytes: u128,
 }
@@ -39,6 +42,14 @@ impl OlsFrameMemory {
         // Immutable within/RHS and the optional packed score cache; raw and
         // independent residuals, normalized weights, and certificate vectors.
         let fast_rows = mul(mul(n, add(mul(k, 2)?, 8)?)?, 8)?;
+        // The existing frame retains the full N*(K+1) projection alongside a
+        // packed NK score bank and seven other row vectors. Keeping that same
+        // full projection through inference cannot exceed these simultaneous
+        // banks. K identity/mean pairs fit the existing q*1024 metadata reserve.
+        let retained_score_capacity_limit = add(
+            mul(mul(n, add(k, 1)?)?, 8)?,
+            mul(k, (std::mem::size_of::<usize>() + 8) as u128)?,
+        )?;
         let low_rows = add(
             mul(mul(n, add(poolsize.min(generated) as u128, 8)?)?, 8)?,
             // Conservative block I/O and score-row cache reserve; a single
@@ -100,6 +111,7 @@ impl OlsFrameMemory {
         Ok(Self {
             fast_bytes: add(fast_rows, sequential)?,
             low_bytes: add(low_rows, sequential)?,
+            retained_score_capacity_limit,
             #[cfg(test)]
             cluster_reduction_bytes,
         })
@@ -159,6 +171,11 @@ mod tests {
     fn finite_wide_rank_zero_and_low_frames_are_checked() {
         for (n, k) in [(0, 0), (12, 0), (7680, 2), (65537, 65), (1000, 1000)] {
             let m = OlsFrameMemory::estimate(n, k, k + 1, 0, 10, false).unwrap();
+            assert_eq!(
+                m.retained_score_capacity_limit,
+                n as u128 * (k as u128 + 1) * 8 + k as u128 * 16
+            );
+            assert!(m.retained_score_capacity_limit <= m.fast_bytes);
             let base = MemoryEstimate {
                 fast_bytes: 1,
                 low_bytes: 2,

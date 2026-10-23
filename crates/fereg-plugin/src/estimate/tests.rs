@@ -12,6 +12,112 @@ use fereg_core::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+#[test]
+fn unused_moments_require_conservative_packed_fast_inference_bound() {
+    let columns = 8;
+    let boundary = (32 * 1024 * 1024) / (columns * 8);
+    assert!(unused_packed_moments(
+        MemoryMode::Fast,
+        OlsVceKind::Robust,
+        boundary,
+        columns
+    ));
+    assert!(!unused_packed_moments(
+        MemoryMode::Fast,
+        OlsVceKind::Robust,
+        boundary + 1,
+        columns
+    ));
+    assert!(!unused_packed_moments(
+        MemoryMode::Low,
+        OlsVceKind::Robust,
+        16,
+        columns
+    ));
+    assert!(!unused_packed_moments(
+        MemoryMode::Fast,
+        OlsVceKind::Iid,
+        16,
+        columns
+    ));
+    assert!(!unused_packed_moments(
+        MemoryMode::Fast,
+        OlsVceKind::Robust,
+        usize::MAX,
+        columns
+    ));
+}
+
+#[test]
+fn ownership_preserves_publication_across_inference_factors_and_saved_effects() {
+    let fixtures = [
+        fixture(OlsVceKind::Iid),
+        fixture(OlsVceKind::Robust),
+        fixture(OlsVceKind::Clustered),
+        factor_scatter_fixture(),
+        saved_output_fixture(),
+    ];
+    for (args, spi) in fixtures {
+        for memory in ["fast", "low"] {
+            for workers in [1, 4] {
+                let mut request = args.clone();
+                replace_argument(&mut request, "memory", format!("memory={memory}"));
+                replace_argument(&mut request, "threads", format!("threads={workers}"));
+                let mut reference = spi.clone();
+                estimate_ols(&request, &mut reference).unwrap();
+                for arm in ["ownership_moments", "ownership_scores", "ownership_both"] {
+                    let mut candidate = spi.clone();
+                    let mut selected = request.clone();
+                    selected.push(format!("inject={arm}"));
+                    estimate_ols(&selected, &mut candidate).unwrap();
+                    for matrix in [
+                        "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RFE",
+                        "RCLUSTER", "RSUBSET", "RCERT", "RREC",
+                    ] {
+                        let bits = |rows: &Vec<Vec<f64>>| {
+                            rows.iter()
+                                .flatten()
+                                .map(|v| v.to_bits())
+                                .collect::<Vec<_>>()
+                        };
+                        assert_eq!(
+                            bits(&reference.matrices[matrix]),
+                            bits(&candidate.matrices[matrix]),
+                            "{arm} {matrix} {memory} W{workers}"
+                        );
+                    }
+                    for (before, after) in reference.matrices["RSOLVER"]
+                        .iter()
+                        .zip(&candidate.matrices["RSOLVER"])
+                    {
+                        for column in 0..SOLVER_COLUMNS {
+                            if !matches!(column, 8 | 9) {
+                                assert_eq!(before[column].to_bits(), after[column].to_bits());
+                            }
+                        }
+                    }
+                    let observations = |events: &[StoreEvent]| {
+                        events
+                            .iter()
+                            .filter_map(|event| match event {
+                                StoreEvent::Numeric(variable, row, value) => {
+                                    Some((*variable, *row, value.to_bits()))
+                                }
+                                StoreEvent::Matrix(..) => None,
+                            })
+                            .collect::<Vec<_>>()
+                    };
+                    assert_eq!(
+                        observations(&reference.stores),
+                        observations(&candidate.stores)
+                    );
+                    assert_eq!(candidate.receipt_complete(), 1.0);
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 enum StoreEvent {
     Numeric(u32, usize, f64),

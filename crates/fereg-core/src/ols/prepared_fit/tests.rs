@@ -9710,3 +9710,6 @@ fn incremental_family_fits_match_portfolio_or_incumbent_with_analytic_witnesses(
         }
     }
 }
+
+#[path = "ownership_tests.rs"]
+mod ownership_tests;

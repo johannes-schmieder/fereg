@@ -196,6 +196,7 @@ struct EstimateActionSpec {
     memory: MemoryMode,
     solver: FeSolverKind,
     routing: Option<RoutingPreset>,
+    ownership: fereg_core::ols::PreparedOlsOwnership,
     it_coefficients: bool,
     cmg_schur_degree: usize,
     cmg_schur_samples: u32,
@@ -491,7 +492,13 @@ fn prepare_loaded_ols_with_moments<T: Send>(
                 .map_or(ceiling, |limit| ceiling.min(limit.saturating_sub(external))),
         )
     });
-    let result = if let Some(bytes) = moment_bytes {
+    // A candidate-row/full-generated-width upper bound proves the later packed
+    // cache fits even after singleton/sample compaction. Large-cache, IID, Low
+    // and weighted paths keep their raw moments. Keep the original reservation
+    // in both branches: this optimization cannot buy different FE admission.
+    let skip_moments = action.fit.ownership.skip_unused_moments
+        && unused_packed_moments(action.memory_plan.selected, action.vce, nrows, columns);
+    let result = if let Some(bytes) = moment_bytes.filter(|_| !skip_moments) {
         action.loaded_fit_workspace_bytes += bytes as u128;
         let request = &action.request;
         ThreadTeam::new(action.fit.execution.threads).install(|| {
@@ -506,6 +513,13 @@ fn prepare_loaded_ols_with_moments<T: Send>(
             prepared.map(|prepared| (prepared, rows))
         })?
     } else {
+        action.loaded_fit_workspace_bytes += moment_bytes.unwrap_or(0) as u128;
+        if skip_moments && fereg_core::diagnostics::phase_timing_enabled() {
+            eprintln!(
+                "FEREG_OWNERSHIP|unused_moment_bytes={}",
+                moment_bytes.unwrap_or(0)
+            );
+        }
         let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
             prepare(&action.request, loaded, membership_scratch, release_ceiling)
         })?;
@@ -518,6 +532,15 @@ fn prepare_loaded_ols_with_moments<T: Send>(
         );
     }
     result
+}
+
+fn unused_packed_moments(mode: MemoryMode, vce: OlsVceKind, rows: usize, columns: usize) -> bool {
+    mode == MemoryMode::Fast
+        && vce != OlsVceKind::Iid
+        && rows
+            .checked_mul(columns)
+            .and_then(|elements| elements.checked_mul(std::mem::size_of::<f64>()))
+            .is_some_and(|bytes| bytes <= 32 * 1024 * 1024)
 }
 
 // Loading has finished before this boundary; the closure captures no SPI session.
@@ -768,6 +791,10 @@ impl EstimateAction {
                 execution_bytes,
                 usable_bytes,
             });
+        self.fit.retained_score_capacity_limit = (plan.selected == MemoryMode::Fast
+            && self.vce != OlsVceKind::Iid
+            && self.fit.ownership.retain_projected_scores)
+            .then_some(self.frame_memory.retained_score_capacity_limit);
         self.fit.absorb.retain_coefficients =
             self.outputs.saved_channels.iter().any(Option::is_some)
                 && plan.selected == MemoryMode::Fast;
@@ -985,6 +1012,7 @@ impl EstimateActionSpec {
             memory: MemoryMode::parse(required(&values, "memory")?)?,
             solver,
             routing: injection.routing,
+            ownership: injection.ownership,
             it_coefficients: injection.it_coefficients,
             cmg_schur_degree,
             cmg_schur_samples,
@@ -1163,6 +1191,7 @@ impl EstimateActionSpec {
         let default_fit = PreparedOlsFitConfig::default();
         let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let fit = PreparedOlsFitConfig {
+            ownership: self.ownership,
             allow_final_fe_recovery: true,
             // Residual-derived outputs need pointwise accuracy even when low
             // memory deliberately omits retained FE coefficient products.

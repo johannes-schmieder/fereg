@@ -1,0 +1,141 @@
+{
+  "base_fereg": "c16c0b5555338d8b20b184e6e51ad2acbe6a4e6e",
+  "checks": [
+    {
+      "command": "cargo check --locked -p fereg-plugin --lib --no-default-features",
+      "exit": 0,
+      "log_sha256": "bf6b8fae4fb12d70334ba39ea0c5668a90522b956c89e16f1c810cd00ccb3dba",
+      "result": "production compile"
+    },
+    {
+      "command": "cargo test -p fereg-core ownership_tests",
+      "exit": 101,
+      "log_sha256": "2853cb512a1043ff296b4ed4ef84c5939ed5925cd76a6906528031607eb83cf6",
+      "result": "test helper compilation failed: missing Send bound; zero tests executed"
+    },
+    {
+      "command": "cargo test -p fereg-core ownership_tests",
+      "exit": 0,
+      "log_sha256": "6922ab8e37b810fba6b9e0d5577efcc3c7208e0e70bb3cc02583279d51039b5c",
+      "result": "five focused core tests"
+    },
+    {
+      "command": "cargo test -p fereg-plugin ownership / unused_moments / ols_frame_memory",
+      "exit": 0,
+      "log_sha256": "0fc36ba48e5d5c1d6fec997c13cedf924d3aec1174e8cd5c9f6a57acb60a8fb8",
+      "result": "four focused plugin tests"
+    },
+    {
+      "command": "cargo test -p fereg-plugin ownership_preserves_publication",
+      "exit": 0,
+      "log_sha256": "354a0668472247e5043dcfc2c380a9aa502f5da97dbee3ec3efc8c69e5a24cc9",
+      "result": "exact publication across inference, factors, saved effects, W1/W4 and Fast/Low"
+    },
+    {
+      "command": "scripts/run_tests.sh --source-only",
+      "exit": 1,
+      "log_sha256": "b61656daabfe7a7b1204764df8bdb67611caf4184615b717c7e1bcd97b0e93da",
+      "result": "missing pandas in private environment; initial Python suite failed"
+    },
+    {
+      "command": "scripts/run_tests.sh --source-only",
+      "exit": 0,
+      "log_sha256": "51174a876489d28738d15a95bae39ddaed400e6c45d8d823058a939070445b15",
+      "result": "full source integration passed after installing pandas"
+    },
+    {
+      "command": "cargo build -p fereg-oracle --example replay_large --profile ci",
+      "exit": 0,
+      "log_sha256": "a9ffc32a12a97148a75daf280206996e2955330e108c6da88f21e63b450b983e",
+      "result": "fresh-input generator"
+    }
+  ],
+  "cmg": "fd77d98da1f74009b3e5b634e1944433b647a9b1",
+  "date": "2026-10-23",
+  "environment": {
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "python": "3.13",
+    "rust": "1.85.1",
+    "scipy": "1.18.1"
+  },
+  "independent_review": {
+    "cell_design": "Retain immutable weights owner; separate cell attempts from CMG; account for overlapping retained/construction storage; bound inner RHS cancellation work. No cell implementation yet.",
+    "ownership": "No concrete blocker: packed arithmetic/chunk order, immutable finite input and full retained-capacity admission checked; actual native feature evidence remains required."
+  },
+  "kind": "ownership-cells-development",
+  "native_performance_calls": 0,
+  "performance_claim": false,
+  "phase": "ownership implementation and source validation",
+  "public_behavior": "unchanged; ownership controls default off; existing GATES/many-FE defaults remain enabled",
+  "qualification_passed": false,
+  "schema": 1,
+  "source_suite": {
+    "installed_package_admission": "not performed; existing release-binding failure remains",
+    "linux_native_audit": "not performed by Mac source suite",
+    "python_tests": 315,
+    "rust_passed_summaries": 2011,
+    "tooling_tests": 7
+  },
+  "sources": {
+    "bench/ownership_cells.py": "c0fb269d8d87672be739060b4ea0be0de0cd19b4eae5ab03025c56cfcd706de9",
+    "bench/tests/test_ownership_cells.py": "0ff423940bca90628d93cd68d69cb2037ef8023ca1d5af0a42dabcc3c5e4bb06"
+  },
+  "tooling": {
+    "builds": 0,
+    "checks": [
+      {
+        "check": "tooling-1",
+        "command": "target/tmp/ownership-cells/python/bin/python -m unittest discover -s bench/tests -p test_ownership_cells.py",
+        "exit_code": 1,
+        "log_sha256": "2e30957ea6f0342883251e8acbb5837895abdb2d3c02c04f78a844680922533e"
+      },
+      {
+        "check": "tooling-2",
+        "command": "target/tmp/ownership-cells/python/bin/python -m unittest discover -s bench/tests -p test_ownership_cells.py",
+        "exit_code": 0,
+        "log_sha256": "8217d8d6f0beec612881d8b408f4034f6c8e32511d080fde3c29f2c28034dcca"
+      },
+      {
+        "check": "tooling-3",
+        "command": "target/tmp/ownership-cells/python/bin/python -m unittest discover -s bench/tests -p test_ownership_cells.py",
+        "exit_code": 0,
+        "log_sha256": "e9d1fc4045f7f3ba38b70ba3d9fd0dd4b98d6922a050917bdbdc4ab009e8318b"
+      },
+      {
+        "check": "tooling-4",
+        "command": "target/tmp/ownership-cells/python/bin/python -m unittest discover -s bench/tests -p test_ownership_cells.py",
+        "exit_code": 0,
+        "log_sha256": "4efd456f793ad31ce2cb6f48d6f2c3a7f1746776c09e2c20c2596c8b353238ef"
+      },
+      {
+        "check": "tooling-5",
+        "command": "target/tmp/ownership-cells/python/bin/python -m unittest discover -s bench/tests -p test_ownership_cells.py",
+        "exit_code": 0,
+        "log_sha256": "70443288a0285d9853f5f734d3ccfd8b926b238a07c544f6cfa32e07c054b732"
+      },
+      {
+        "check": "tooling-controls-1",
+        "command": "target/tmp/ownership-cells/python/bin/python -m unittest discover -s bench/tests -p test_ownership_cells.py",
+        "exit_code": 0,
+        "log_sha256": "13b246a4b426098eb397e98d021dc242ac153ef0a71bb519394dacff4d081545"
+      },
+      {
+        "check": "tooling-controls-2",
+        "command": "target/tmp/ownership-cells/python/bin/python -m unittest discover -s bench/tests -p test_ownership_cells.py",
+        "exit_code": 0,
+        "log_sha256": "be26a1059bf020713d5a6c459d996dc15bec4e86e54edea535f770dbd6cbb629"
+      }
+    ],
+    "files": {
+      "bench/ownership_cells.py": "c0fb269d8d87672be739060b4ea0be0de0cd19b4eae5ab03025c56cfcd706de9",
+      "bench/tests/test_ownership_cells.py": "0ff423940bca90628d93cd68d69cb2037ef8023ca1d5af0a42dabcc3c5e4bb06"
+    },
+    "first_failure": "JSON sorted-key serialization changed inferred arm ordering; fixed by deriving order from explicit panel definitions.",
+    "limitations": [
+      "Synthetic execution mocks native output and independent mathematics; it checks actual finite schedule, report, hashes and gates. No actual input generation or plugin execution performed."
+    ],
+    "native_calls": 0,
+    "status": "passed"
+  }
+}

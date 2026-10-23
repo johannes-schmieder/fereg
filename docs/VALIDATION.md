@@ -26,6 +26,27 @@ campaign parameter and failed attempt, is in Git at commit `140dda27c42a`:
 `git show 140dda27c42a:docs/VALIDATION.md`. Ignored raw captures it mentions
 were deleted; hashes and summaries are the remaining record.
 
+## Ownership experiments: source validation (2026-10-23)
+
+The [development record](../bench/results/ownership-cells-development-20261023.json)
+binds the default-off ownership implementation to accepted public `c16c0b55`
+and unchanged CMG `fd77d98d`. Independent source review checked packed mean
+arithmetic and chunk order, immutable projected storage, full retained-capacity
+admission and the unchanged Low/weighted/large-cache consumers. Focused tests
+check exact results and solver signatures, actual avoided allocation, admission
+boundaries, fatal allocation failures, inference publication, factor bases and
+saved effects at W1/W4 in Fast/Low modes. The full source suite passes 2,011
+Rust test summaries, 315 Python tests and seven tooling tests, plus complexity
+and bridge checks. The bounded panel/control tooling passes 16 synthetic tests.
+
+The initial test-helper compilation failure and missing-pandas source-suite
+failure are retained with their repairs. This milestone contains no native
+performance evidence and enables no new public optimization. Actual native
+controls, Linux discovery and final Mac/Linux qualification remain required by
+the [frozen protocol](development_workflow.md#ownership-and-cell-operator-investigation-2026-10-23).
+Installed-package admission remains separate and unperformed by the source-only
+suite; the existing release-binding failure is unchanged.
+
 ## Selected two-FE gates: branch activation (2026-10-23)
 
 The [completed activation record](../bench/results/two-fe-policy-gates-activation-20261023.json)

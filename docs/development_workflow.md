@@ -399,6 +399,75 @@ into `tests/reference/complexity.json`; growth entries record
 
 ## Scientific validation
 
+### Ownership and cell-operator investigation (2026-10-23)
+
+Johannes authorized implementing the recovered ownership and first-occurrence
+cell ideas against `c16c0b55`, with one selected combined finalist and one final
+qualification. The [declared scope](SPEC.md#ownership-and-cell-operator-experiment-scope-2026-10-23)
+precedes implementation. Preserve current public behavior during discovery and
+all historical failures. Internal developer injections independently select
+moment omission, projected-score ownership and eager/deferred cells; there is
+no new user option or solver and no CMG policy retuning.
+
+Discovery regenerates the twelve historical families (weak, high-degree weak,
+dense, repeated, nonmovers, hubs, disconnected, dynamic weights, wide,
+inactive-zero, Low and easy) at W1/W4 with data seed `2026106301`. Each panel
+uses one isolated SCC host, one warmup per arm/cell and six randomized mirrored
+blocks, complete native-command times, 120 seconds per call and 3,600 seconds
+per panel including warmups and correctness checks. Panel 1 compares baseline,
+moment omission, score ownership and both. Panel 2 compares baseline, selected
+ownership O, eager cells S and O+S. Only measured wasted eager construction or
+a complete-command regression permits panel 3: baseline, O, O+eager S and
+O+deferred S. Order seeds are `2026106303`, `2026106304`, `2026106305`.
+Deduplicate identical arms before execution; each four-arm panel has at most
+1,248 calls. Separate diagnostics allow at most three traced calls per arm/cell
+and 600 seconds and never replace scored observations.
+
+Ownership admission requires exact science/signatures, demonstrated eliminated
+work and no material discovery regression beyond max(5%, 1 ms). Savings below
+that allowance can support ownership only when removed work is independently
+verified. Cells additionally require a material complete-command gain over the
+corresponding no-cell arm and no material regression. Among eligible
+configurations, minimize the mean paired complete-command time difference from
+baseline, equally weighting all 24 settings; exact ties prefer fewer changed
+mechanisms. Investigate the retained inactive-zero W4 ownership regression with
+the independent moment/copy arms, copy/allocation counts and downstream access.
+Scientific failures stop dependent work. Unexplained ownership regressions,
+exhaustion of the single cell redesign or inconclusive qualification require
+discussion. No unfavorable observation is removed and no unchanged artifact is
+resampled for a pass. Retain diagnosed operational failures and bounded repairs.
+
+Final qualification uses `bench/qualify.py`, original public `f35f3a4d`, accepted
+public `c16c0b55` and one frozen candidate. The standard 42 cells gain eight
+bodies at W1/W4: nonmovers (20,000 rows/1,000 workers/100 firms), hubs
+(64,000/1,000/100), inactive-zero (20,000/1,000/100), three robust designs
+below/at/above the actual 32 MiB packed-cache boundary, a 600,000-row repeated
+cell design and a 480,000-row weak design. Freeze shapes, witnesses, hashes and
+schedule before candidate execution; an oracle failure stops without resizing
+or substitution. Qualification data/order seeds are `2026106302`/`2026106306`.
+Linux uses twelve distinct physical hosts per cell, two mirrored blocks per
+host, three shards and one warmup per arm/cell/host (at most 10,440 calls).
+Mac uses 24 mirrored blocks and one warmup per arm/cell (at most 8,526 calls).
+The per-call limit is 120 seconds; application budgets are 3,600 seconds per
+Linux shard and 14,400 seconds on Mac. The maintained external-interference
+rules and fixed retry caps apply; failures and slow timings never trigger
+sampling. All protected one-sided alpha .025 order-statistic upper bounds for
+`candidate - baseline - max(.05 * baseline, .001)` must be nonpositive, using
+Linux physical hosts as independent units. Report effect sizes separately.
+
+Before activation, run affected source, native ABI/load/panic, mapped Stata,
+inference, transaction and Auto Break checks; reuse valid unaffected evidence.
+The hidden/public/public-repeat trio covers all 58 cells on each platform
+(174 calls/platform), including exact science/signatures and resource/gate
+evidence. Derive this experiment's actual hidden transport difference; the old
+51-byte amendment is not reusable by assumption. Independent architectural
+review precedes performance measurement. Preserve raw call objects losslessly
+in compact records under 1 MB, with failed attempts, hashes and accounting.
+Only a passing finalist may become public on `codex/auto-routing`; final failure
+or inconclusiveness retains the accepted public behavior and cannot silently
+substitute another component. Commit/push with `[skip ci]`, then remove task
+scratch after retained evidence is verified. Leave no monitor at completion.
+
 [SPEC](SPEC.md) defines the scientific contract. [VALIDATION](VALIDATION.md)
 records the accepted scope and caveats. No historical campaign is a substitute
 for independent scientific witnesses on the responsibilities a change affects.

@@ -248,6 +248,7 @@ fn dense_finite_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     reservation: &mut R,
     retain_fast_score_cache: bool,
     max_fast_score_cache_bytes: usize,
+    config: PreparedOlsFitConfig,
 ) -> Result<()> {
     let ProjectedStorage::Dense(dense) = &mut inputs.storage else {
         return Ok(());
@@ -256,7 +257,25 @@ fn dense_finite_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let reference_mean_scales = &dense.raw.reference_mean_scales;
     let cached_norms = std::mem::take(&mut dense.cached_norms);
     let generated_columns = prepared.fit_model().columns.len();
-    let fast_score_cache = if retain_fast_score_cache {
+    // Decide before finite omission: selected views retain the complete
+    // projected allocation, including outcome, omitted columns and spare capacity.
+    let owned_scores = retain_fast_score_cache
+        && config.ownership.retain_projected_scores
+        && weights.values.is_none()
+        && fast_score_cache_fits(prepared, max_fast_score_cache_bytes)?
+        && config
+            .absorb
+            .solver_memory_budget
+            .is_none_or(|budget| budget.fits(0))
+        && config.retained_score_capacity_limit.is_some_and(|limit| {
+            projected_score_capacity_bytes(
+                within.storage_capacity(),
+                generated_columns,
+                generated_columns,
+            )
+            .is_ok_and(|bytes| bytes <= limit)
+        });
+    let fast_score_cache = if retain_fast_score_cache && !owned_scores {
         build_fast_score_cache(
             prepared,
             within,
@@ -542,12 +561,62 @@ fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                 prepared,
                 dense.within.take().expect("projected dense owner"),
                 &qr,
-                dense.raw.strided_score_means.as_deref(),
+                match dense.raw.strided_score_means.as_deref() {
+                    Some(means) => SelectedScoreMeans::Strided(means),
+                    None => SelectedScoreMeans::Packed {
+                        weights: frame.weights(),
+                        reference_scales: &dense.raw.reference_mean_scales,
+                    },
+                },
                 reservation,
+                config.retained_score_capacity_limit,
             )?);
         }
     }
+    if crate::diagnostics::phase_timing_enabled() {
+        trace_score_ownership(prepared, inputs, &qr);
+    }
     Ok(qr)
+}
+
+fn trace_score_ownership<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    inputs: &OneShotInputs,
+    qr: &FiniteFit,
+) {
+    let admitted = matches!(&inputs.storage, ProjectedStorage::Dense(dense)
+        if dense.raw.strided_score_means.is_none())
+        && matches!(
+            inputs.fast_score_cache,
+            Some(PreparedOlsFastScoreCache::Selected { .. })
+        );
+    let cached_columns = prepared
+        .fit_model()
+        .columns
+        .iter()
+        .filter(|column| {
+            !(prepared.fit_has_absorbed_intercept()
+                && matches!(column.kind, PreparedOlsColumnKind::Intercept))
+        })
+        .count();
+    let avoided_elements = if admitted {
+        prepared.fit_sample().n_active() as u128 * cached_columns as u128
+    } else {
+        0
+    };
+    let retained_matrix_bytes = match &inputs.fast_score_cache {
+        Some(PreparedOlsFastScoreCache::Selected { within, .. }) if admitted => {
+            within.storage_capacity() as u128 * std::mem::size_of::<f64>() as u128
+        }
+        _ => 0,
+    };
+    eprintln!(
+        "FEREG_OWNERSHIP|score_admitted={}|avoided_packed_elements={avoided_elements}|avoided_packed_bytes={}|retained_matrix_capacity_bytes={retained_matrix_bytes}|generated_columns={}|kept_columns={}",
+        u8::from(admitted),
+        avoided_elements * std::mem::size_of::<f64>() as u128,
+        prepared.fit_model().columns.len(),
+        qr.bread.as_ref().map_or(0, |bread| bread.generated_columns.len()),
+    );
 }
 
 fn original_residuals<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
@@ -663,11 +732,13 @@ fn retained_fe_budget<P: PreparedOlsFitView + ?Sized>(
     config: &mut PreparedOlsFitConfig,
     perturbations: FitPerturbations,
 ) -> Result<u128> {
+    if config.execution.mode != PreparedOlsExecutionMode::Fast {
+        return Ok(0);
+    }
     if !perturbations.one_fe_final_recovery_disabled
         && config.allow_final_fe_recovery
         && config.absorb.retain_coefficients
         && config.absorb.solver == FeSolverKind::Auto
-        && config.execution.mode == PreparedOlsExecutionMode::Fast
         && (prepared.fit_has_one_ordinary_intercept_effect() || prepared.fit_has_one_slope_effect())
     {
         // Automatic one-partition absorption already omits coefficient
@@ -718,11 +789,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let weights = frame.weights();
     let reuse_absorption_norms = weights.matches_fe_norm_scale();
     let dense = config.execution.mode == PreparedOlsExecutionMode::Fast;
-    let retained_fe_parent = if dense {
-        retained_fe_budget(prepared, &mut config, perturbations)?
-    } else {
-        0
-    };
+    let retained_fe_parent = retained_fe_budget(prepared, &mut config, perturbations)?;
     let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
     let mut legacy = cmg.remaining_state();
     let mut gates = cmg.gates_state();
@@ -778,6 +845,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         reservation,
         retain_fast_score_cache,
         max_fast_score_cache_bytes,
+        config,
     )?;
     crate::interrupt::checkpoint()?;
     let mut qr = solve_one_shot(
