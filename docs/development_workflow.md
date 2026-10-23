@@ -823,6 +823,19 @@ Strict deferred trace and action checks apply to eligible two-FE cases, against
 the accepted control, while unaffected cases retain exact comparisons. These
 tooling changes do not select a finalist or alter the 58-cell budgets.
 
+The [completed deferred platform checks](../bench/results/ownership-cells-deferred-platform-checks-20261023.json)
+retain 48 fresh uninjected controls on each platform, both actual native
+audit/ABI/load/panic checks, six mapped Mac Stata fixtures and the existing OLS
+and optional-builder Break boundaries. Linux preparation job `8265208` built
+successfully but inherited an ABI-only environment setting into its first
+replay launch. The harness rejected it before loading the plugin. That failed
+launcher and 0/1 accounting remain retained. Repair `8265280` reused the binary,
+unset the setting and completed all 48 previously unexecuted controls with 0/0
+accounting; five seconds were deducted from the original 600-second control
+budget. No successful native observation was repeated. The new cell transport
+fixture does not establish actual deferred construction, and the old Break
+adapters do not establish activated new public mechanism coverage.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,
