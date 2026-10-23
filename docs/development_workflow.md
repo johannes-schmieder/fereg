@@ -595,6 +595,46 @@ and 58 artifact inputs (check log SHA-256
 so the already valid source-suite, native ABI/load/panic and public-control
 evidence applies to the same binaries. No native call was added by these checks.
 
+The final coverage preparation retains the original 42 requests and freezes
+the additional packed-cache boundary triplet at 16 finite regressors and
+262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,
+64-period numeric design; remove its last row for the lower case and append
+one copy of its last row for the upper case. The exact middle body is unchanged.
+The independent reference must verify the actual retained row counts and full
+finite rank, so the packed score sizes are respectively 32 MiB−128 bytes,
+32 MiB and 32 MiB+128 bytes. These are boundary controls: the conservative
+moment-omission eligibility bound includes the outcome and intercept columns,
+and exceeds 32 MiB in all three cases. Positive moment omission must be
+demonstrated on the other eligible added bodies, never inferred from these
+boundary labels. Data seed `2026106302` remains fixed; request hints remain
+truthful `candidate_all=1`, `input_complete=0`.
+
+Before generating these references, declare a separate 2 GiB modeled workspace
+allowance for the independent oracle, within a four-slot, 3 GiB/core analysis
+allocation. Its existing 1 GiB default and historical references remain
+unchanged. The 2 GiB option is explicit in newly generated reference
+certificates and bound by the qualification manifest. The arithmetic,
+certificates, numerical tolerances, dimension/work limits and 120-second
+per-reference limit are unchanged. This is a reference-generation resource
+allowance, not a change to production memory admission or to scientific gates.
+The previous modeled bound alone would reject an actual 32 MiB packed case;
+the allowance is declared prospectively, with no failed generation, resizing,
+reference substitution or additional timing sample used to obtain a pass.
+Independent review found no blocker in the allowance or boundary definition.
+Validation passed all 16 oracle tests, 54 qualification-tool tests and the
+source-only integration suite (2,029 Rust checks, 315 Python tests and the
+portable/static checks). Their log SHA-256 values are respectively
+`f0774b2cbb9563aed9c6a491f5e358dd8197a20ef2133921dedfce286f8c33e4`,
+`4cf7a1b9180cb1dca1503523adcd7296b7524d66fd08f5d1db7392bca0177d89`,
+and `07e73a043dbbce8afa2b0c57130fc7dcf2e07e2adbe214bb873dc22392f480fb`.
+The first source-check invocation passed its 315 Python tests but failed before
+Rust because Cargo was absent from the shell PATH; its failed log is retained
+by SHA-256 `fce20a38c0a4f1c2707aa4d948256e312e50fbb498f81191246ba53aea1686b4`.
+The successful invocation used the pinned Rust 1.85.1 toolchain. All 200 runtime
+modules and 58 artifact inputs remain identical to `3a554699`; existing native
+ABI/load/panic evidence applies. Installed-package admission remains unperformed
+by this source-only check, and this preparation establishes no timing result.
+
 [SPEC](SPEC.md) defines the scientific contract. [VALIDATION](VALIDATION.md)
 records the accepted scope and caveats. No historical campaign is a substitute
 for independent scientific witnesses on the responsibilities a change affects.

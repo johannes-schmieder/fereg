@@ -52,6 +52,20 @@ def dense(y, x, factors, w, sample, intercept):
 
 
 class RoutingOracle(unittest.TestCase):
+    def test_declared_reference_memory_allowance_preserves_all_mathematics(self):
+        y, x, factors, w = fixture()
+        baseline, arrays = oracle.solve(y, x, factors, w)
+        expanded, other = oracle.solve(y, x, factors, w,
+                                      memory_budget_bytes=2 << 30)
+        self.assertNotIn('memory_budget_bytes', baseline['certificate'])
+        self.assertEqual(expanded['certificate'].pop('memory_budget_bytes'), 2 << 30)
+        self.assertEqual(expanded, baseline)
+        for name in arrays:
+            np.testing.assert_array_equal(arrays[name], other[name])
+        for bad in [True, 0, 1 << 29, 3 << 30, float(1 << 30)]:
+            with self.subTest(budget=bad), self.assertRaisesRegex(ValueError, 'memory budget'):
+                oracle.solve(y, x, factors, w, memory_budget_bytes=bad)
+
     def test_first_fe_nesting_matches_full_dummy_cr1_with_distinct_policy_dof(self):
         for disconnected in [False, True]:
             for intercept in [False, True]:
@@ -358,6 +372,26 @@ class RoutingOracle(unittest.TestCase):
             p.write_text(json.dumps(historical))
             old, _ = oracle.load_reference(p, 'a' * 64, 'b' * 64)
             self.assertEqual(old['producer_sha256'], historical['producer_sha256'])
+            expanded = copy.deepcopy(ref)
+            expanded['certificate']['modeled_peak_bytes'] = (1 << 30) + 1
+            p.write_text(json.dumps(expanded))
+            with self.assertRaisesRegex(ValueError, 'resource certificate'):
+                oracle.load_reference(p, 'a' * 64, 'b' * 64)
+            expanded['certificate']['memory_budget_bytes'] = 2 << 30
+            p.write_text(json.dumps(expanded))
+            loaded_expanded, _ = oracle.load_reference(p, 'a' * 64, 'b' * 64)
+            self.assertEqual(loaded_expanded['certificate']['memory_budget_bytes'], 2 << 30)
+            for bad in [True, 0, 3 << 30]:
+                expanded['certificate']['memory_budget_bytes'] = bad
+                p.write_text(json.dumps(expanded))
+                with self.assertRaisesRegex(ValueError, 'memory budget'):
+                    oracle.load_reference(p, 'a' * 64, 'b' * 64)
+            expanded['certificate'].update(memory_budget_bytes=2 << 30,
+                                           modeled_peak_bytes=(2 << 30) + 1)
+            p.write_text(json.dumps(expanded))
+            with self.assertRaisesRegex(ValueError, 'resource certificate'):
+                oracle.load_reference(p, 'a' * 64, 'b' * 64)
+            p.write_text(json.dumps(historical))
             for case_digest, body_digest in [('a' * 64, 'c' * 64), (None, 'b' * 64), ('a' * 64, None)]:
                 with self.subTest(case=case_digest, body=body_digest), self.assertRaisesRegex(ValueError, 'identity'):
                     oracle.load_reference(p, case_digest, body_digest)

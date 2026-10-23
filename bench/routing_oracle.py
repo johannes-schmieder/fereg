@@ -32,6 +32,7 @@ from native_io import bounded_line, case_header, digest, numbers
 KIND = 'routing_categorical_oracle'
 MAX_ROWS, MAX_RETAINED, MAX_X, MAX_FE = 600_000, 2048, 32, 16
 MAX_BYTES, MAX_SCHUR_WORK = 1 << 30, 2_000_000_000
+EXPANDED_MEMORY_BYTES = 2 << 30
 MAX_WEIGHT_RATIO = 1e12
 PARSER_SOURCE = Path(__file__).with_name('native_io.py')
 MOMENT_LIMIT = 1e-10
@@ -41,6 +42,13 @@ OUTPUTS = ('sample', 'residual', 'drop_reason', 'xb', 'xbd', 'absorbed')
 def _require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def memory_budget(value):
+    """Explicit reference-generation allowance; never a numerical tolerance."""
+    _require(type(value) is int and value in {MAX_BYTES, EXPANDED_MEMORY_BYTES},
+             'oracle memory budget must be the default one GiB or declared two GiB')
+    return value
 
 
 def _matrix(stream, count):
@@ -239,11 +247,13 @@ def _projection_errors(e, r, keep, degree, reduced, spectrum, original, projecte
 
 
 def solve(y, x, factors, weights=None, *, keep_singletons=False, include_intercept=True,
-          vce='robust', clusters=None, account_cluster_nesting=False):
+          vce='robust', clusters=None, account_cluster_nesting=False,
+          memory_budget_bytes=MAX_BYTES):
     """Direct FWL projection and independent HC1/unit IID/one-way CR1 evidence."""
     from scipy import sparse
     from scipy.linalg import cho_solve
     from scipy.sparse.csgraph import connected_components
+    memory_budget(memory_budget_bytes)
     y, x = np.asarray(y, dtype=float), np.asarray(x, dtype=float)
     n, k = x.shape
     q = len(factors)
@@ -267,8 +277,8 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
     eliminated = int(np.argmax(levels))
     ne, nr = levels[eliminated], sum(levels) - levels[eliminated]
     modeled = n * (128 + 256*k + 96*q) + 96*nr*nr + 64*ne*(k+q+2)
-    _require(nr <= MAX_RETAINED and sum(levels) <= 50_000 and modeled <= MAX_BYTES,
-             'oracle Schur dimension or modeled one-GiB memory bound exceeded')
+    _require(nr <= MAX_RETAINED and sum(levels) <= 50_000 and modeled <= memory_budget_bytes,
+             'oracle Schur dimension or declared modeled memory bound exceeded')
     y, x, w = y[active], x[active], w[active]
     m = len(y)
     _require(w.max() / w.min() <= MAX_WEIGHT_RATIO, 'oracle weight ratio bound exceeded')
@@ -412,6 +422,8 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
             finite_moment=float(finite_moment), backward_error=float(backward), bread_inverse_error=inverse_error,
             modeled_peak_bytes=modeled, schur_product_work=work,
             weight_ratio=float(w.max()/w.min()), normalized_weight_sum=float(w.sum())))
+    if memory_budget_bytes != MAX_BYTES:
+        reference['certificate']['memory_budget_bytes'] = memory_budget_bytes
     if vce != 'robust':
         # A PSD certificate, not a covariance repair or a rank selection.
         eigenvalues = np.linalg.eigvalsh((covariance + covariance.T)/2)
@@ -426,13 +438,14 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
     return reference, arrays
 
 
-def write_reference(case, output):
+def write_reference(case, output, *, memory_budget_bytes=MAX_BYTES):
     import scipy
     data = read_case(case)
     reference, arrays = solve(data['y'], data['x'], data['factors'], data['weights'],
                              include_intercept=data['include_intercept'], keep_singletons=data['keep_singletons'],
                              vce=data['vce'], clusters=data['clusters'],
-                             account_cluster_nesting=data['account_cluster_nesting'])
+                             account_cluster_nesting=data['account_cluster_nesting'],
+                             memory_budget_bytes=memory_budget_bytes)
     output = Path(output)
     npz = output.with_suffix('.npz')
     _require(not output.exists() and not npz.exists(), 'reference output already exists')
@@ -459,13 +472,14 @@ def load_reference(path: Path, case_sha256: str, body_sha256: str):
     # The qualification manifest binds this descriptor, its arrays and input.
     _require(type(reference.get('rows')) is int and 0 < reference['rows'] <= MAX_ROWS, 'invalid oracle row bound')
     cert = reference['certificate']
+    allowed_bytes = memory_budget(cert.get('memory_budget_bytes', MAX_BYTES))
     levels, q = cert['levels'], len(cert['levels'])
     _require(2 <= q <= MAX_FE and all(type(v) is int and v > 0 for v in levels)
              and cert['known_nullity'] == (q-1)*cert['components']
              and reference['true_fe_rank'] == sum(levels)-cert['known_nullity']
              and 0 < cert['grounded_dimension'] <= cert['retained_dimension'] <= MAX_RETAINED
              and cert['grounded_dimension'] == cert['retained_dimension']-cert['known_nullity']
-             and cert['modeled_peak_bytes'] <= MAX_BYTES and cert['schur_product_work'] <= MAX_SCHUR_WORK
+             and cert['modeled_peak_bytes'] <= allowed_bytes and cert['schur_product_work'] <= MAX_SCHUR_WORK
              and 1 <= cert['weight_ratio'] <= MAX_WEIGHT_RATIO,
              'invalid independent rank/resource certificate')
     for key in ['projection_moment','full_fe_moment','finite_moment','backward_error','bread_inverse_error']:
@@ -577,6 +591,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--case', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--memory-budget-gib', type=int, choices=(1, 2), default=1,
+                        help='prospectively declared reference workspace allowance; default remains 1 GiB')
     args = parser.parse_args()
     from routing_cases import scratch
     _require(os.environ.get('OPENBLAS_NUM_THREADS') == '1' and os.environ.get('VECLIB_MAXIMUM_THREADS') == '1',
@@ -587,7 +603,7 @@ def main():
         raise TimeoutError('independent oracle exceeded its 120-second execution bound')
     signal.signal(signal.SIGALRM, expired)
     signal.alarm(120)
-    reference = write_reference(args.case, output)
+    reference = write_reference(args.case, output, memory_budget_bytes=args.memory_budget_gib << 30)
     signal.alarm(0)
     print(json.dumps({key:reference[key] for key in ['kind','case_sha256','rows','retained_rows','true_fe_rank','pairwise_fe_rank','certificate']}))
 
