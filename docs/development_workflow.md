@@ -595,6 +595,31 @@ and 58 artifact inputs (check log SHA-256
 so the already valid source-suite, native ABI/load/panic and public-control
 evidence applies to the same binaries. No native call was added by these checks.
 
+The [completed supplementary coverage](../bench/results/ownership-moments-supplement-20261023.json)
+closes the actual-moment-work gap. Job 8262137 completed the 63 remaining
+diagnostics and all 624 timing calls, with 0/0 accounting, 884 scheduler
+seconds and reported `maxvmem=915.008M`. The combined preflight has
+108 successful entries, including the 45 reused entries; its original failed
+invocation remains failed. Separate assessment job 8263568 independently
+reconstructed 108 full-column references and all 36 paired comparisons, with
+0/0 accounting and zero native calls. Exact science/signatures, fixed-worker
+repeats, cross-worker agreement, raw resource caps, observed isolation and
+the declared construction/omission controls passed. All eight eligible settings
+show positive baseline moment construction and corresponding omitted work;
+all four boundary/ineligible controls preserve their required behavior.
+
+On this one Linux host, the equally weighted mean complete-command reductions
+over twelve settings were 2.085 ms for moments, 1.200 ms for scores and
+3.424 ms for both. Combined reductions in the eight eligible settings ranged
+from 1.099 to 9.468 ms; the four wide-design settings saved 8.079–9.468 ms
+(about 9.3–11.2% by their mean paired ratios). All 36 comparisons met the
+declared discovery nonregression rule. The retained six-block bootstrap
+intervals describe uncertainty conditional on this host, not a qualified
+platform-wide speedup; controls include small positive timing differences.
+No warmup or scored observation was retried or excluded. These results admit
+the explicitly selected configuration O=both to Panel 2; they do not activate
+either mechanism or waive the final Mac/Linux qualification.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,
