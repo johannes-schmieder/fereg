@@ -947,6 +947,14 @@ input body lacked numeric framing and was corrected before the final focused run
 This tooling validation establishes neither diagnostic completion nor a timing
 or public-activation result.
 
+The [eligibility continuation freeze](../bench/results/ownership-qualification-eligibility-repair-freeze-20261023.json)
+binds the corrected source, both manifests and the remaining 50 calls per
+platform before execution. Linux preparation job `8266244` completed with 0/0
+accounting in 68 scheduler seconds and zero native calls. Its offline prefix
+validation reconstructed all 30 retained calls and 18 reference banks in
+12.245 seconds. Both original failed outcomes remain unchanged; continuation
+uses the original physical hosts and the cumulative budgets stated above.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,
