@@ -84,12 +84,15 @@ def validate(plan):
         'weak-low-t4': 'preserve baseline construction state; no omission or score ownership',
         'weak-iid-t4': 'preserve positive needed construction; no omission or score ownership',
         'weighted-robust-t4': 'no construction, omission or score ownership'}, 'control contract changed')
+    if 'preflight_reuse' in plan:
+        from ownership_moments_repair import validate_amendment
+        validate_amendment(plan)
 
 
 def freeze(config, output):
     config, output = Path(config).resolve(), Path(output).resolve()
     cfg = q.read(config)
-    require(set(cfg) == {'platform', 'inputs', 'harness', 'candidate', 'reference'}, 'invalid coverage configuration')
+    require(set(cfg) - {'preflight_reuse'} == {'platform', 'inputs', 'harness', 'candidate', 'reference'}, 'invalid coverage configuration')
     files = {}
     def bind(path):
         path = (config.parent / path).resolve(strict=True)
@@ -121,6 +124,7 @@ def freeze(config, output):
         require(data['rows'] == shape[0], 'oracle input shape changed')
         expected_vce = 'cluster' if item['id'].endswith('-cluster') else 'iid' if item['id']=='weak-iid' else 'robust'
         require(fields['vce'] == expected_vce and fields['memory'] == ('low' if item['id']=='weak-low' else 'fast')
+                and fields['account_cluster_nesting'] == ('1' if expected_vce=='cluster' else '0')
                 and (item['id']=='weighted-robust' or np.all(data['weights']==1)), 'coverage request contract changed')
         columns = int(fields['term_count']) + int(fields['include_intercept']) + 1
         expected[item['id']] = dict(constructed_moment_rows=shape[0], constructed_moment_columns=columns,
@@ -154,6 +158,9 @@ def freeze(config, output):
             'weighted-robust-t4':'no construction, omission or score ownership'},
         execution_sources={n:q.digest(p) for n,p in oc.sources().items()})
     plan.update(schedule=schedule(plan),diagnostic_schedule=schedule(plan,True),call_cap=624,files=files)
+    if 'preflight_reuse' in cfg:
+        from ownership_moments_repair import freeze_amendment
+        plan['preflight_reuse'] = freeze_amendment(cfg['preflight_reuse'], bind, config)
     validate(plan);oc.save_new(output,plan)
     return plan
 
@@ -232,6 +239,11 @@ def validate_preflight(plan, manifest, path):
             and result['failures']==[] and result['retries']==0 and result['exclusions']==[]
             and result['elapsed_s']<1200 and result['host']['isolation_ok'] and not result['host']['errors'],
             'preflight execution prerequisite failed')
+    if 'preflight_reuse' in plan:
+        from ownership_moments_repair import verify_prefix
+        verify_prefix(plan, manifest, path.parent, result)
+        require(result['host']['host']['hostname'].split('.')[0]==plan['preflight_reuse']['required_host'],
+                'preflight host differs from reused cohort')
     require(result['execution_evidence']==execution_evidence(plan,result), 'preflight work evidence changed')
     require(q.digest(path.parent/'host/host-observations.jsonl')==result['host_observations_sha256'], 'preflight observers changed')
     for call in result['calls']:
@@ -346,6 +358,7 @@ def uncertainty(plan, comparisons):
 def main():
     parser=argparse.ArgumentParser(description=__doc__); sub=parser.add_subparsers(dest='command',required=True)
     p=sub.add_parser('prepare');p.add_argument('original_inputs',type=Path);p.add_argument('output',type=Path)
+    p.add_argument('--prior-inputs',type=Path)
     p=sub.add_parser('plan');p.add_argument('config',type=Path);p.add_argument('output',type=Path)
     for name in ('preflight','run'):
         p=sub.add_parser(name);p.add_argument('plan',type=Path);p.add_argument('output',type=Path)
@@ -354,7 +367,7 @@ def main():
     args=parser.parse_args()
     if args.command=='prepare':
         from ownership_moments_cases import prepare_inputs
-        value=prepare_inputs(args.original_inputs,args.output)
+        value=prepare_inputs(args.original_inputs,args.output,prior_inputs=args.prior_inputs)
     elif args.command=='plan': value=freeze(args.config,args.output)
     elif args.command in ('preflight','run'):
         value=oc.run(args.plan,args.output,diagnostic=args.command=='preflight',preflight_result=getattr(args,'preflight_result',None))

@@ -76,7 +76,11 @@ class MomentCases(unittest.TestCase):
                 self.assertEqual(parsed['vce'], vce)
                 if vce == 'cluster':
                     np.testing.assert_array_equal(parsed['clusters'], parsed['factors'][0])
+                    self.assertTrue(parsed['account_cluster_nesting'])
+                    self.assertEqual(meta['amended_request_fields']['account_cluster_nesting'],
+                                     dict(before='0',after='1'))
                 else:
+                    self.assertFalse(parsed['account_cluster_nesting'])
                     self.assertEqual(meta['body_sha256'], meta['original_body_sha256'])
                 with self.assertRaises(FileExistsError):
                     cases.amend_case(source, target, vce, 'fast')
@@ -135,12 +139,70 @@ class MomentCases(unittest.TestCase):
                     meta = json.loads((root/'out'/item['metadata']).read_text())
                     ref, bindings = oracle.load_reference(root/'out'/item['oracle']['path'], meta['case_sha256'],meta['body_sha256'])
                     self.assertEqual(ref['status'], 'passed')
+                    if item['id'].endswith('-cluster'):
+                        self.assertTrue(ref['account_cluster_nesting'])
+                        self.assertEqual([ref['dof_rows'][str(i)] for i in [7,9,10,11,12]],[3,4,110,114,5])
                     for path, expected in bindings.items():
                         self.assertEqual(result['files'][path.name], expected)
                 # The original manifest binding must reject changed bytes.
                 (original/'weak.case').write_bytes((original/'weak.case').read_bytes()+b'\n')
                 with self.assertRaisesRegex(ValueError, 'binding'):
                     cases.prepare_inputs(original, root/'bad')
+
+    def test_repair_reuses_five_complete_cases_and_only_changes_cluster_nesting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);original=root/'original';original.mkdir()
+            entries=[];files={}
+            for name in ['weak','wide','weight-dynamic']:
+                path=original/(name+'.case');source_case(path,weighted=name=='weight-dynamic')
+                entries.append(dict(id=name,input=path.name));files[path.name]=digest(path)
+            (original/'panel.json').write_text(json.dumps(dict(kind='ownership-cells-development-v1-inputs',
+                seed=cases.SEED,cases=entries,files=files)))
+            current_amend=cases.amend_case
+
+            def old_amend(source,target,vce,memory):
+                value=current_amend(source,target,vce,memory)
+                if vce=='cluster':
+                    target.write_bytes(target.read_bytes().replace(b'account_cluster_nesting=1\n',b'account_cluster_nesting=0\n'))
+                    value['case_sha256']=digest(target)
+                    value['amended_request_fields']['account_cluster_nesting']['after']='0'
+                return value
+
+            with patch.object(cases.routing_cases,'scratch',side_effect=lambda p:p):
+                with patch.object(cases,'amend_case',side_effect=old_amend):
+                    prior=cases.prepare_inputs(original,root/'prior')
+                prior_digest=digest(root/'prior/panel.json')
+                with patch.object(cases.routing_oracle,'write_reference',wraps=oracle.write_reference) as build:
+                    result=cases.prepare_inputs(original,root/'repaired',prior_inputs=root/'prior')
+                self.assertEqual(build.call_count,2)
+                self.assertEqual(result['prior_panel_sha256'],prior_digest)
+                self.assertEqual(len(result['unchanged_prior_files']),20)
+                for name,expected in result['unchanged_prior_files'].items():
+                    self.assertEqual((root/'repaired'/name).read_bytes(),(root/'prior'/name).read_bytes())
+                    self.assertEqual(expected,prior['files'][name])
+                for name in ['weak-cluster','wide-cluster']:
+                    self.assertFalse(oracle.read_case(root/'prior'/(name+'.case'))['account_cluster_nesting'])
+                    self.assertTrue(oracle.read_case(root/'repaired'/(name+'.case'))['account_cluster_nesting'])
+                    self.assertNotEqual(result['files'][name+'.oracle.json'],prior['files'][name+'.oracle.json'])
+                    descriptor=root/'repaired'/(name+'.oracle.json')
+                    ref=json.loads(descriptor.read_text())
+                    for key in ['10','11','12']:
+                        changed=json.loads(descriptor.read_text());changed['dof_rows'][key]+=1
+                        descriptor.write_text(json.dumps(changed))
+                        with self.assertRaisesRegex(ValueError,'nested cluster DoF'):
+                            oracle.load_reference(descriptor,ref['case_sha256'],ref['body_sha256'])
+                        descriptor.write_text(json.dumps(ref))
+                self.assertEqual(digest(root/'prior/panel.json'),prior_digest)
+                # Neither a changed fixed setting nor unbound prior bytes may
+                # be silently regenerated as a fresh reference.
+                changed=json.loads((root/'prior/panel.json').read_text());changed['settings'][0]['workers']=8
+                (root/'prior/panel.json').write_text(json.dumps(changed))
+                with self.assertRaisesRegex(ValueError,'prior supplementary panel contract'):
+                    cases.prepare_inputs(original,root/'bad-settings',prior_inputs=root/'prior')
+                (root/'prior/panel.json').write_text(json.dumps(prior))
+                (root/'prior/weak-low.oracle.npz').write_bytes(b'changed')
+                with self.assertRaisesRegex(ValueError,'prior supplementary file binding'):
+                    cases.prepare_inputs(original,root/'bad-binding',prior_inputs=root/'prior')
 
 
 if __name__ == '__main__':

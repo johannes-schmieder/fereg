@@ -76,7 +76,7 @@ def columns(family):
 def sources():
     return {**q.execution_sources(), 'ownership_cells': Path(__file__).resolve(),
             **{name: Path(__file__).with_name(name + '.py')
-               for name in ('ownership_moments', 'ownership_moments_cases')}}
+               for name in ('ownership_moments', 'ownership_moments_cases', 'ownership_moments_repair')}}
 
 
 def settings(plan):
@@ -552,6 +552,9 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, preflight_res
     plan = q.read(manifest)
     validate(plan)
     coverage = plan['kind'] == COVERAGE_KIND
+    reused = 45 if coverage and diagnostic and 'preflight_reuse' in plan else 0
+    if reused:
+        started -= plan['preflight_reuse']['charged_seconds']
     require(plan['platform'] == platform.system(), 'wrong execution platform')
     output.mkdir(parents=True)
     sequence = plan['diagnostic_schedule'] if diagnostic else plan['schedule']
@@ -566,6 +569,8 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, preflight_res
     path = output / 'results.json'
     def persist():
         result['elapsed_s'] = time.monotonic() - started
+        if reused:
+            result['native_calls_executed_here'] = max(0, result['native_calls_started'] - reused)
         q.write(path, result)
     persist()
     execute = q.run_process if execute is None else execute
@@ -608,7 +613,14 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, preflight_res
                         requests[cell, arm] = request
                         stamps[request] = q.stamp(request)
             with deadline.observing(host):
-                for index, entry in enumerate(sequence):
+                if coverage and 'preflight_reuse' in plan:
+                    require(host.report()['host']['hostname'].split('.')[0]==plan['preflight_reuse']['required_host'],
+                            'amended coverage requires the original physical host')
+                if reused:
+                    from ownership_moments_repair import import_prefix
+                    import_prefix(plan, manifest, output, result, host.report())
+                    persist()
+                for index, entry in enumerate(sequence[reused:], start=reused):
                     deadline.check()
                     host.check()
                     require(all(q.stamp(p) == v for p, v in stamps.items()), 'bound source/input changed during run')
@@ -692,6 +704,8 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, preflight_res
             if coverage and diagnostic:
                 from ownership_moments import execution_evidence
                 result['execution_evidence'] = execution_evidence(plan, result)
+                if reused:
+                    result['native_calls_executed_here'] = result['native_calls_started'] - reused
             deadline.check()
             result['status'] = 'complete'
             persist()

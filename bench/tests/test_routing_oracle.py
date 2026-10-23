@@ -1,5 +1,6 @@
 """Dense original-design witnesses for the independent sparse Schur oracle."""
 import copy
+import csv
 import json
 from pathlib import Path
 import struct
@@ -51,6 +52,83 @@ def dense(y, x, factors, w, sample, intercept):
 
 
 class RoutingOracle(unittest.TestCase):
+    def test_first_fe_nesting_matches_full_dummy_cr1_with_distinct_policy_dof(self):
+        for disconnected in [False, True]:
+            for intercept in [False, True]:
+                y, x, factors, w = fixture(disconnected, weighted=False)
+                factors = factors[:2]
+                dummy = np.column_stack([np.eye(len(np.unique(f)))[np.unique(f, return_inverse=True)[1]] for f in factors])
+                design = np.column_stack([x, dummy])
+                inverse = np.linalg.pinv(design, rcond=1e-13)
+                residual = y-design@(inverse@y)
+                transform = np.zeros((x.shape[1]+int(intercept), design.shape[1]))
+                transform[:x.shape[1], :x.shape[1]] = np.eye(x.shape[1])
+                if intercept:
+                    transform[-1, x.shape[1]:] = dummy.mean(axis=0)
+                influence = transform@inverse
+                groups = np.unique(factors[0])
+                # Policy counts centered contrasts of the nonclustered FE;
+                # the full observation design still includes both FE blocks.
+                charged = len(np.unique(factors[1]))-1
+                base_df = len(y)-x.shape[1]-charged
+                correction_df = base_df-1
+                sums = np.stack([influence[:, factors[0] == g]@residual[factors[0] == g] for g in groups])
+                covariance = sums.T@sums*(len(y)-1)/correction_df*len(groups)/(len(groups)-1)
+                ref, arrays = oracle.solve(y,x,factors,w,include_intercept=intercept,vce='cluster',
+                    clusters=factors[0],account_cluster_nesting=True)
+                np.testing.assert_allclose(ref['beta'],transform@inverse@y,rtol=0,atol=3e-13)
+                np.testing.assert_allclose(ref['covariance'],covariance,rtol=2e-11,atol=3e-14)
+                np.testing.assert_allclose(arrays['residual'],residual,rtol=0,atol=3e-13)
+                self.assertEqual(ref['true_fe_rank'],np.linalg.matrix_rank(design)-x.shape[1])
+                self.assertEqual(ref['pairwise_fe_rank'],charged)
+                self.assertEqual(ref['unclustered_residual_dof'],base_df)
+                for row,value in {'9':len(groups)-1,'10':base_df-len(groups),'11':correction_df,'12':len(groups)}.items():
+                    self.assertEqual(ref['dof_rows'][row],value)
+                self.assertEqual([r[4:] for r in ref['fe_rows']],[[len(groups),0,1,1],[1,charged,1,0]])
+                self.assertEqual(ref['certificate']['components'],1+int(disconnected))
+                # In particular df_fit is NOT blindly N-numerical_rank when
+                # disconnected: the pinned policy's one constant is distinct.
+                self.assertEqual(ref['dof_rows']['10'],len(y)-np.linalg.matrix_rank(design)-int(disconnected))
+                self.assertGreaterEqual(ref['covariance_psd']['minimum_eigenvalue'],-ref['covariance_psd']['tolerance'])
+
+    def test_first_fe_nesting_matches_pinned_one_way_cluster_receipt(self):
+        # Independent frozen receipt also used by prepared_clustered_oracle.rs:
+        # reghdfe 29b2b203f534413369d675d0c0f674d61291f536,
+        # payload 6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002.
+        # Reorder [worker,firm] to [firm,worker] so the same cluster is first.
+        path=Path(__file__).resolve().parents[2]/'tests/fixtures/ols/ols_core.csv'
+        self.assertEqual(digest(path),'cb7d7e7ae21843f7c1dc5f84ac4daffa3954c9bfc54a9a109a3e2f6b50433bca')
+        with path.open() as stream:rows=list(csv.DictReader(stream))
+        column=lambda name:np.array([float(row[name]) for row in rows])
+        y,x=column('y'),column('x1')[:,None]
+        f=[column('firm'),column('worker')]
+        self.assertTrue(np.array_equal(column('cluster_a'),f[0]))
+        ref,_=oracle.solve(y,x,f,vce='cluster',clusters=f[0],account_cluster_nesting=True)
+        hexadecimal=['+1.55d7b24d54e16X-006','-1.8ed0faa7131f0X-008',
+                     '-1.8ed0faa7131f0X-008','+1.d1492463b1f98X-00a']
+        def stata(value):
+            mantissa,exponent=value.split('X')
+            return float.fromhex(mantissa[0]+'0x'+mantissa[1:]+'p'+str(int(exponent,16)))
+        expected=np.array([stata(v) for v in hexadecimal]).reshape(2,2)
+        # Same absolute tolerance as the existing sealed-receipt witness;
+        # original Stata input storage differs from the full-double CSV solve.
+        np.testing.assert_allclose(ref['covariance'],expected,rtol=0,atol=1e-7)
+        self.assertEqual(ref['certificate']['components'],2)
+        self.assertEqual([ref['dof_rows'][str(i)] for i in [7,9,10,11,12]],[11,7,4,11,8])
+
+    def test_nesting_surface_rejects_other_models_and_nonpositive_fit_dof(self):
+        y,x,f,w=fixture(weighted=False)
+        for factors,vce,clusters in [(f,'cluster',f[0]),(f[:2],'iid',None),(f[:2],'robust',None),
+                                     (f[:2],'cluster',f[1])]:
+            with self.subTest(vce=vce),self.assertRaisesRegex(ValueError,'nesting oracle'):
+                oracle.solve(y,x,factors,w,vce=vce,clusters=clusters,account_cluster_nesting=True)
+        # Two disconnected K2,2 components, one observation per pair. The
+        # full design has one residual dimension, but df_fit policy is zero.
+        a=np.array([0,0,1,1,2,2,3,3]);b=np.array([0,1,0,1,2,3,2,3])
+        rng=np.random.default_rng(174); x=rng.normal(size=(8,1)); y=rng.normal(size=8)
+        with self.assertRaisesRegex(ValueError,'nonpositive.*degrees of freedom'):
+            oracle.solve(y,x,[a,b],vce='cluster',clusters=a,account_cluster_nesting=True)
+
     def test_unit_iid_and_cr1_match_full_dummy_svd_sandwich(self):
         for disconnected in [False, True]:
             for intercept in [False, True]:

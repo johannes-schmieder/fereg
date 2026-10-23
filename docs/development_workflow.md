@@ -552,6 +552,49 @@ request bindings and repeated route/resource checks. These checks establish
 readiness for the fixed experiment, not a speed or qualification result; the
 installed-package binding remains outside this branch-only source admission.
 
+The first supplementary preflight, SCC job 8261951, failed on the accepted
+reference's first clustered request after 45 successful robust diagnostic calls.
+The harness incorrectly specified `account_cluster_nesting=0`; the frontend
+and guarded public entrypoint require `1` for clustered OLS. The original
+protocol above, failed invocation and all observations remain retained in the
+[failed preflight record](../bench/results/ownership-moments-preflight-failure-20261023.json).
+No supplementary warmup or scored timing call ran. This is a diagnosed request
+construction error, not evidence of an optimization's scientific failure.
+
+The bounded continuation changes only that flag on the two clustered requests
+and their independent nesting-aware references. Numeric data, model tables,
+native artifacts, launcher, arms, seeds, tolerances and timing schedule stay
+fixed. The five noncluster inputs, metadata and numerical references are reused
+byte-for-byte. The oracle separately checks true projection rank and the existing
+OLS nesting-adjusted DoF policy: with first-FE categories L nested in G=L
+clusters and nonnested second-FE categories R, A=R−1, D=N−K−A, fit DoF=D−L,
+reported DoF=min(D,G−1), and CR1 multiplier=(N−1)/(D−1) × G/(G−1).
+These counts and nesting relations are verified from the retained sample.
+
+Reuse exactly completed schedule entries 0–44, preserving their original
+source/result identities and raw output/log/array hashes. Execute entries
+45–107 once on the same physical host, scc-ua1: 63 new diagnostic calls,
+108 successful entries if complete, **109 total attempted invocations** including
+the retained unsupported request. Deduct 36 seconds (ceiling of 35.772254411)
+from the 1,200-second diagnostic budget, leaving 1,164 seconds; deduct the
+48-second failed allocation from the 4,200-second scheduler budget, leaving
+4,152 seconds. The existing 120-second per-call cap remains. Only after the
+combined preflight passes exact science, independent mathematics, resource,
+repeatability and actual-work checks may the unchanged 624-call timing panel
+run once. Original Panel 1 remains unchanged and configuration O remains both.
+The repair passed 450 benchmark Python tests: 436 in discovery, then the 14
+reporting tests after installing the isolated environment's missing documented
+dependencies. The first discovery log remains failed for two import errors;
+its SHA-256 is `8049b5dee0dc66a7ef6d85aed2d295d43b8c3a2c46b5612fca3fe17b335f0390`.
+The reporting check passed with log SHA-256
+`d53da78472b3878d117c853fb9423f7d879d3a3a4bf61bff0c276e6c10b982a0`.
+These include five continuation/tamper tests and independent dense/pinned
+cluster witnesses. Production identity is unchanged across 200 runtime modules
+and 58 artifact inputs (check log SHA-256
+`357ba8b68526cf9774f7f813c792fbfff997107269de2b6349d9feb25f6418dc`),
+so the already valid source-suite, native ABI/load/panic and public-control
+evidence applies to the same binaries. No native call was added by these checks.
+
 [SPEC](SPEC.md) defines the scientific contract. [VALIDATION](VALIDATION.md)
 records the accepted scope and caveats. No historical campaign is a substitute
 for independent scientific witnesses on the responsibilities a change affects.

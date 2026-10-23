@@ -11,7 +11,7 @@ by dropping columns.
 
 Canonical numeric inputs only: positive pw or unit weights, plain continuous X,
 categorical intercept FEs, HC1 or unit-weight IID/one-way CR1, pairwise DoF,
-no cluster-nesting adjustment or saved effects. Original
+optional first-FE cluster nesting for two FEs, and no saved effects. Original
 rows are preserved, including independently requested singleton pruning. The
 CLI writes separate input-bound JSON/NPZ references.
 """
@@ -64,10 +64,13 @@ def read_case(path):
         vce = fields.get('vce')
         cluster_count = '1' if vce == 'cluster' else '0'
         _require(vce in {'robust', 'iid', 'cluster'} and all(fields.get(key) == value for key, value in {
-            'dof': 'pairwise', 'account_cluster_nesting': '0',
+            'dof': 'pairwise',
             'cluster_term_count': cluster_count, 'cluster_component_count': cluster_count,
             'model_major': '2', 'model_minor': '1',
-        }.items()), 'oracle requires canonical HC1/unit IID/one-way CR1 with no nesting adjustment')
+        }.items()), 'oracle requires canonical HC1/unit IID/one-way CR1')
+        nesting = fields.get('account_cluster_nesting')
+        _require(nesting == '0' or nesting == '1' and vce == 'cluster' and q == 2,
+                 'nesting oracle supports only canonical first-FE two-way clustering')
         _require(fields.get('keep_singletons') in {'0', '1'}
                  and fields.get('include_intercept') in {'0', '1'}, 'invalid singleton/intercept request')
         _require(fields.get('output_saved_channels') == '|'.join(['1:0'] * q),
@@ -119,6 +122,7 @@ def read_case(path):
     _require(vce == 'robust' or inputs == 2+k+q, 'IID/cluster oracle requires unit weights')
     return dict(y=data[1], x=np.column_stack(data[2:2+k]), factors=data[2+k:2+k+q], weights=w,
                 vce=vce, clusters=data[2+k] if vce == 'cluster' else None,
+                account_cluster_nesting=nesting == '1',
                 include_intercept=fields['include_intercept'] == '1',
                 keep_singletons=fields['keep_singletons'] == '1', rows=n, columns=width,
                 outputs=outputs, case_sha256=digest(path), body_sha256=body.hexdigest())
@@ -235,7 +239,7 @@ def _projection_errors(e, r, keep, degree, reduced, spectrum, original, projecte
 
 
 def solve(y, x, factors, weights=None, *, keep_singletons=False, include_intercept=True,
-          vce='robust', clusters=None):
+          vce='robust', clusters=None, account_cluster_nesting=False):
     """Direct FWL projection and independent HC1/unit IID/one-way CR1 evidence."""
     from scipy import sparse
     from scipy.linalg import cho_solve
@@ -255,6 +259,9 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
     if clusters is not None:
         clusters = np.asarray(clusters)
         _require(clusters.shape == (n,) and np.all(np.isfinite(clusters)), 'invalid cluster codes')
+    _require(type(account_cluster_nesting) is bool and (not account_cluster_nesting
+             or vce == 'cluster' and q == 2 and np.array_equal(clusters, factors[0])),
+             'nesting oracle supports only canonical first-FE two-way clustering')
     active, codes = _sample(factors, keep_singletons)
     levels = [int(c.max()) + 1 for c in codes]
     eliminated = int(np.argmax(levels))
@@ -337,9 +344,21 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
         influence = np.column_stack([influence, 1/m - influence @ meanx])
     redundant = _pair_redundancies(codes, levels)
     actual_rank = sum(levels) - len(grounds)
+    nested_categories = 0
+    if account_cluster_nesting:
+        # SPEC 9/pinned policy: clustered FE categories cost no absorbed DoF.
+        # The other FE is represented by L2-1 centered contrasts. This policy
+        # count is deliberately distinct from the numerical full-design rank
+        # on a disconnected graph; estimation above still uses every dummy.
+        # Fully nested second partitions have an empty grounded system and
+        # remain outside this oracle's pre-existing rank-admission surface.
+        redundant = [levels[0], 1]
+        nested_categories = levels[0]
     policy_rank = sum(levels) - sum(redundant)
     df = m - k - policy_rank
-    _require(df > 0, 'nonpositive independently derived policy residual degrees of freedom')
+    fit_df, correction_df = df - nested_categories, df - int(nested_categories > 0)
+    _require(min(df, fit_df, correction_df) > 0,
+             'nonpositive independently derived policy residual degrees of freedom')
     scores = influence * (w * residual)[:, None]
     if vce == 'robust':
         covariance = scores.T @ scores * (m / df)
@@ -351,7 +370,7 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
         _require(groups >= 2, 'cluster inference requires at least two retained groups')
         sums = np.zeros((groups, scores.shape[1]))
         np.add.at(sums, cluster_codes, scores)
-        covariance = (sums.T @ sums) * ((m-1)/df * groups/(groups-1))
+        covariance = (sums.T @ sums) * ((m-1)/correction_df * groups/(groups-1))
     _require(np.all(np.isfinite(reported)) and np.all(np.isfinite(covariance)),
              'nonfinite independent coefficients or covariance')
     full_moment = _moments(codes, residual[:, None], w, y[:, None])
@@ -377,9 +396,9 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
         arrays[name] = np.full(n, np.nan)
         arrays[name][active] = values
     dof = {0:m, 1:m, 2:n, 3:m, 5:k, 6:k, 7:policy_rank, 8:k+policy_rank,
-           9:df, 10:df, 11:df, 12:0, 13:sum(levels), 14:sum(redundant),
+           9:df, 10:fit_df, 11:correction_df, 12:nested_categories, 13:sum(levels), 14:sum(redundant),
            15:n-m, 16:n-m, 18:int(include_intercept), 19:int(q>2)}
-    fe_rows = [[1, j+1, k+j+1, levels[j], redundant[j], levels[j]-redundant[j], int(j<2), 0]
+    fe_rows = [[1, j+1, k+j+1, levels[j], redundant[j], levels[j]-redundant[j], int(j<2), int(account_cluster_nesting and j==0)]
                for j in range(q)]
     reference = dict(schema=1, kind=KIND, status='passed', rows=n, retained_rows=m, regressors=k,
         beta=reported.tolist(), covariance=covariance.tolist(), include_intercept=include_intercept,
@@ -402,6 +421,8 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
         if vce == 'cluster':
             reference['cluster_count'] = groups
             reference['dof_rows']['9'] = min(df, groups-1)
+            if account_cluster_nesting:
+                reference.update(account_cluster_nesting=True, unclustered_residual_dof=df)
     return reference, arrays
 
 
@@ -410,7 +431,8 @@ def write_reference(case, output):
     data = read_case(case)
     reference, arrays = solve(data['y'], data['x'], data['factors'], data['weights'],
                              include_intercept=data['include_intercept'], keep_singletons=data['keep_singletons'],
-                             vce=data['vce'], clusters=data['clusters'])
+                             vce=data['vce'], clusters=data['clusters'],
+                             account_cluster_nesting=data['account_cluster_nesting'])
     output = Path(output)
     npz = output.with_suffix('.npz')
     _require(not output.exists() and not npz.exists(), 'reference output already exists')
@@ -469,6 +491,9 @@ def load_reference(path: Path, case_sha256: str, body_sha256: str):
         _require(sum(info.file_size for info in archive.infolist()) <= reference['rows']*80 + 100_000,
                  'oracle archive exceeds row-array bound')
     reference['_arrays_path'] = npz
+    nesting = reference.get('account_cluster_nesting', False)
+    _require(type(nesting) is bool and (not nesting or reference.get('vce') == 'cluster'),
+             'invalid reference nesting policy')
     if reference.get('vce', 'robust') != 'robust':
         _require(reference['vce'] in {'iid', 'cluster'}, 'invalid reference VCE')
         psd = reference['covariance_psd']
@@ -486,8 +511,25 @@ def load_reference(path: Path, case_sha256: str, body_sha256: str):
                  and abs(psd['minimum_eigenvalue']-values[0]) <= margin,
                  'invalid covariance PSD certificate')
         if reference['vce'] == 'cluster':
+            base_df = reference['dof_rows']['11']
+            if reference.get('account_cluster_nesting', False):
+                k, m = reference['regressors'], reference['retained_rows']
+                base_df = m-k-(levels[1]-1)
+                expected_fe = [[1,1,k+1,levels[0],levels[0],0,1,1],
+                               [1,2,k+2,levels[1],1,levels[1]-1,1,0]]
+                expected_dof = {'7':levels[1]-1, '8':k+levels[1]-1, '10':base_df-levels[0],
+                                '11':base_df-1, '12':levels[0], '13':sum(levels),
+                                '14':levels[0]+1, '19':0}
+                _require(reference['account_cluster_nesting'] is True and q == 2
+                         and reference['cluster_count'] == levels[0]
+                         and reference['unclustered_residual_dof'] == base_df
+                         and reference['pairwise_fe_rank'] == levels[1]-1
+                         and reference['fe_rows'] == expected_fe
+                         and all(reference['dof_rows'][key] == value for key,value in expected_dof.items())
+                         and min(base_df,base_df-levels[0],base_df-1) > 0,
+                         'invalid nested cluster DoF certificate')
             _require(type(reference['cluster_count']) is int and 2 <= reference['cluster_count'] <= reference['retained_rows']
-                     and reference['dof_rows']['9'] == min(reference['dof_rows']['11'], reference['cluster_count']-1),
+                     and reference['dof_rows']['9'] == min(base_df, reference['cluster_count']-1),
                      'invalid cluster count/DoF certificate')
     return reference, {path:digest(path), npz:reference['arrays']['sha256']}
 
