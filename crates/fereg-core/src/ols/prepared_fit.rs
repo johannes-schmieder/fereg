@@ -43,6 +43,7 @@ pub enum PreparedOlsCells {
     #[default]
     Off,
     Eager,
+    Deferred,
 }
 
 /// Numerical policy for the guarded prepared-data coefficient checkpoint.

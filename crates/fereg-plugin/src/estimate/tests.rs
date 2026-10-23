@@ -50,17 +50,19 @@ fn unused_moments_require_conservative_packed_fast_inference_bound() {
 
 #[test]
 fn cell_injection_rejects_explicit_solver_or_preconditioner_before_loading() {
-    for (solver, preconditioner) in [("auto", "off"), ("auto", "diagonal"), ("lsmr", "auto")] {
-        let (mut args, mut spi) = fixture(OlsVceKind::Robust);
-        replace_argument(&mut args, "solver", format!("solver={solver}"));
-        replace_argument(
-            &mut args,
-            "preconditioner",
-            format!("preconditioner={preconditioner}"),
-        );
-        args.push("inject=cells_eager_both".to_owned());
-        assert!(estimate_ols(&args, &mut spi).is_err());
-        assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+    for token in ["cells_eager_both", "cells_deferred_both"] {
+        for (solver, preconditioner) in [("auto", "off"), ("auto", "diagonal"), ("lsmr", "auto")] {
+            let (mut args, mut spi) = fixture(OlsVceKind::Robust);
+            replace_argument(&mut args, "solver", format!("solver={solver}"));
+            replace_argument(
+                &mut args,
+                "preconditioner",
+                format!("preconditioner={preconditioner}"),
+            );
+            args.push(format!("inject={token}"));
+            assert!(estimate_ols(&args, &mut spi).is_err());
+            assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+        }
     }
 }
 
@@ -87,6 +89,8 @@ fn ownership_preserves_publication_across_inference_factors_and_saved_effects() 
                     "ownership_both",
                     "cells_eager",
                     "cells_eager_both",
+                    "cells_deferred",
+                    "cells_deferred_both",
                 ] {
                     let mut candidate = spi.clone();
                     let mut selected = request.clone();

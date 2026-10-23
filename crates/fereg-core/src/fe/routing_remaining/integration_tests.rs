@@ -717,48 +717,70 @@ fn gates_real_callers_routes_refusal_direct_and_cancel() {
     }
     let fixture = PairedCells::new(false);
     let data = fixture.prepared(2);
-    for workers in [1, 4] {
-        for mode in [
-            PreparedOlsExecutionMode::Fast,
-            PreparedOlsExecutionMode::Low,
-        ] {
-            let mut options = config(Some(RoutingPreset::gates_two()), workers);
-            options.execution.mode = mode;
-            options.execution.poolsize = 1;
-            let mut previous = None;
-            for _ in 0..2 {
-                let before = trace().len();
-                let fit = fit_prepared_model_coefficients(&data, options).unwrap();
-                fixture.check_fit(&fit);
-                if let Some(ref previous) = previous {
-                    assert_fit_exact(&fit, previous);
-                }
-                let observed = trace();
-                let new = &observed[before..];
-                let routes: Vec<_> = new
-                    .lines()
-                    .filter(|s| s.contains("|phase=auto_schur_route|"))
-                    .collect();
-                assert_eq!(routes.len(), 1, "{new}");
-                assert_eq!(field(routes[0], "iterations"), "16");
-                assert_eq!(field(routes[0], "installed"), "1");
-                let gates: Vec<_> = new
-                    .lines()
-                    .filter(|s| s.contains("|phase=two_fe_gates|event=decision|"))
-                    .collect();
-                assert_eq!(gates.len(), 1, "{new}");
-                assert_eq!(field(gates[0], "grant"), "1");
-                assert_eq!(
-                    field(gates[0], "role"),
-                    if mode == PreparedOlsExecutionMode::Fast {
-                        "Packed"
-                    } else {
-                        "Outcome"
+    for cell_mode in [
+        crate::ols::PreparedOlsCells::Off,
+        crate::ols::PreparedOlsCells::Deferred,
+    ] {
+        for preset in [None, Some(RoutingPreset::gates_two())] {
+            for workers in [1, 4] {
+                for mode in [
+                    PreparedOlsExecutionMode::Fast,
+                    PreparedOlsExecutionMode::Low,
+                ] {
+                    let mut options = config(preset, workers);
+                    options.cells = cell_mode;
+                    options.execution.mode = mode;
+                    options.execution.poolsize = 1;
+                    let mut previous = None;
+                    for _ in 0..2 {
+                        let before = trace().len();
+                        let fit = fit_prepared_model_coefficients(&data, options).unwrap();
+                        fixture.check_fit(&fit);
+                        if let Some(ref previous) = previous {
+                            assert_fit_exact(&fit, previous);
+                        }
+                        let observed = trace();
+                        let new = &observed[before..];
+                        let routes: Vec<_> = new
+                            .lines()
+                            .filter(|s| s.contains("|phase=auto_schur_route|"))
+                            .collect();
+                        assert_eq!(routes.len(), 1, "{new}");
+                        assert_eq!(field(routes[0], "iterations"), "16");
+                        assert_eq!(field(routes[0], "installed"), "1");
+                        let attempts: Vec<_> = new
+                            .lines()
+                            .filter(|line| line.starts_with("FEREG_CELLS|event=attempt|"))
+                            .collect();
+                        if cell_mode == crate::ols::PreparedOlsCells::Deferred {
+                            assert_eq!(attempts.len(), 1, "{new}");
+                            assert_eq!(field(attempts[0], "admitted"), "1");
+                            assert!(
+                                new.find(routes[0]).unwrap() < new.find(attempts[0]).unwrap(),
+                                "construct only after installed CMG: {new}"
+                            );
+                        } else {
+                            assert!(attempts.is_empty(), "{new}");
+                        }
+                        let gates: Vec<_> = new
+                            .lines()
+                            .filter(|s| s.contains("|phase=two_fe_gates|event=decision|"))
+                            .collect();
+                        assert_eq!(gates.len(), 1, "{new}");
+                        assert_eq!(field(gates[0], "grant"), "1");
+                        assert_eq!(
+                            field(gates[0], "role"),
+                            if mode == PreparedOlsExecutionMode::Fast {
+                                "Packed"
+                            } else {
+                                "Outcome"
+                            }
+                        );
+                        assert!(!new.contains("FEREG_POLICY_LABEL|"));
+                        assert!(!new.contains("|phase=remaining_checkpoint|"));
+                        previous = Some(fit);
                     }
-                );
-                assert!(!new.contains("FEREG_POLICY_LABEL|"));
-                assert!(!new.contains("|phase=remaining_checkpoint|"));
-                previous = Some(fit);
+                }
             }
         }
     }

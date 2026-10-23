@@ -65,7 +65,8 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_direct` | OLS | Tests a bounded componentwise direct Schur factorization on eligible two-FE systems |
 | `inject=it_coefficients` | OLS | Tests compact coefficient-space acceleration on eligible categorical systems; requires `solver=it` |
 | `inject=ownership_{moments\|scores\|both}` | OLS | Independently omits provably unused speculative moments and/or retains eligible projected score storage; preserves solver choice and exact science, including explicit solvers |
-| `inject=cells_eager[_moments\|_scores\|_both]` | OLS | Default-off first-occurrence cells for eligible two-FE Auto/Auto, optionally with ownership controls; unchanged CMG policy. Deferred construction is not admitted. |
+| `inject=cells_eager[_moments\|_scores\|_both]` | OLS | Default-off first-occurrence cells for eligible two-FE Auto/Auto, optionally with ownership controls; unchanged CMG policy. |
+| `inject=cells_deferred[_moments\|_scores\|_both]` | OLS | Default-off cell experiment constructing only after successful CMG commitment at an existing restart, with joint memory admission; optional ownership controls, unchanged routing policy. Qualification remains pending. |
 | `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |
 | `inject=routing_incremental_many` | OLS (replay wire) | Qualifies strict unseeded LSMR with retained preparation for at least three categorical intercept FEs, using the existing unseeded portfolio |
 | `inject=routing_incremental_two` | OLS (replay wire) | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |

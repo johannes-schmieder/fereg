@@ -76,7 +76,8 @@ def columns(family):
 def sources():
     return {**q.execution_sources(), 'ownership_cells': Path(__file__).resolve(),
             **{name: Path(__file__).with_name(name + '.py')
-               for name in ('ownership_moments', 'ownership_moments_cases', 'ownership_moments_repair')}}
+               for name in ('ownership_moments', 'ownership_moments_cases', 'ownership_moments_repair',
+                            'ownership_panel3')}}
 
 
 def settings(plan):
@@ -215,7 +216,9 @@ def validate(plan):
     require(plan['diagnostic_schedule'] == schedule(plan, True), 'diagnostic schedule changed')
     require(plan['platform'] != 'Linux' or plan['observer'] == 'whole-host', 'Linux needs actual whole-host isolation')
     require(plan['platform'] != 'Darwin' or plan['observer'] == 'desktop', 'Mac observer changed')
-    require(plan['panel'] != 3 or plan['conditional_authorization'] is True and plan['panel2_result'] is not None,
+    require(plan['panel'] != 3 or plan['conditional_authorization'] is True
+            and plan['ownership'] == 'both' and isinstance(plan['panel2_result'], dict)
+            and set(plan['panel2_result']) == {'results', 'assessment'},
             'panel3 is not automatically authorized')
 
 
@@ -290,13 +293,13 @@ def freeze(config_path, output):
             and all(call['status'] == 'passed' and call['oracle'] == 'passed' for call in proof['calls'])
             and proof['plan']['execution_sources'] == {name: q.digest(path) for name, path in sources().items()},
             'missing exact uninjected control proof')
-    panel2 = bind(cfg['panel2_result']) if cfg['panel2_result'] is not None else None
+    panel2 = None
     if cfg['panel'] == 3:
-        prior = q.read(q.resolve(output, panel2))
-        require(prior['status'] == 'complete' and prior['panel'] == 2 and prior['failures'] == []
-                and prior['platform'] == cfg['platform'] and prior['ownership'] == cfg['ownership']
-                and prior['candidate_sha256'] == files[artifacts['candidate']['path']]
-                and prior['inputs_sha256'] == files[input_binding], 'panel2 identity/completion changed')
+        require(isinstance(cfg['panel2_result'], dict)
+                and set(cfg['panel2_result']) == {'results', 'assessment'}, 'panel3 evidence bindings missing')
+        panel2 = {name: bind(path) for name, path in cfg['panel2_result'].items()}
+    else:
+        require(cfg['panel2_result'] is None, 'prior panel evidence is only used by panel3')
     arms = {k: list(v) for k, v in mechanisms(cfg['panel'], cfg['ownership']).items()}
     result = dict(schema=1, kind=KIND, platform=cfg['platform'], panel=cfg['panel'], ownership=cfg['ownership'],
                   data_seed=DATA_SEED, order_seed=ORDER_SEEDS[cfg['panel']], threads=[1, 4], blocks=6, warmups=1,
@@ -310,6 +313,9 @@ def freeze(config_path, output):
     result['call_cap'] = len(result['schedule'])
     result['files'] = files
     validate(result)
+    if cfg['panel'] == 3:
+        from ownership_panel3 import prior_result
+        prior_result(result, output)
     save_new(output, result)
     return result
 
@@ -577,6 +583,10 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, preflight_res
     try:
         with q.Deadline(result['budget_s'], started) as deadline:
             stamps = verify_files(plan, manifest)
+            historical = None
+            if plan['panel'] == 3:
+                from ownership_panel3 import prior_result
+                historical = prior_result(plan, manifest)
             scored = prerequisite = None
             if coverage and not diagnostic:
                 from ownership_moments import validate_preflight
@@ -613,6 +623,9 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, preflight_res
                         requests[cell, arm] = request
                         stamps[request] = q.stamp(request)
             with deadline.observing(host):
+                if historical is not None:
+                    from ownership_panel3 import same_host
+                    same_host(historical[0], host.report())
                 if coverage and 'preflight_reuse' in plan:
                     require(host.report()['host']['hostname'].split('.')[0]==plan['preflight_reuse']['required_host'],
                             'amended coverage requires the original physical host')
@@ -653,11 +666,17 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, preflight_res
                         evidence = q.science.resource_diagnostics(log.read_text(), None, False, {})
                         detail.update(evidence, solver_trace_lines=[line for line in log.read_text().splitlines() if line.startswith('FEREG_SOLVER_TRACE|')])
                         detail['cell_diagnostic'] = cell_diagnostic(log.read_text(), mechanism)
+                        if mechanism[1] == 'deferred':
+                            from ownership_panel3 import deferred_commitment
+                            deferred_commitment(log.read_text())
                     if diagnostic:
                         if arm != 'reference':
                             detail['ownership_diagnostic'] = ownership_diagnostic(log.read_text(), mechanism)
                         detail['phase_lines'] = [line for line in log.read_text().splitlines()
                                                  if line.startswith(('FEREG_PHASE|', 'FEREG_OWNERSHIP|', 'FEREG_CELLS|'))]
+                    if historical is not None and entry['phase'] == 'warmup':
+                        from ownership_panel3 import compare_prior
+                        compare_prior(historical[1], cell, arm, detail)
                     prior = snapshots.get((cell, arm))
                     if prior:
                         require(prior[2]['fingerprint'] == detail['fingerprint'], 'fixed-worker repeat changed')
@@ -762,6 +781,11 @@ def report(manifest, directory, output, *, accounting=None):
     if plan['platform'] == 'Linux':
         require(accounting is not None, 'Linux report requires final accounting')
         q.accounting(Path(accounting).read_text(), result['host']['host'], normalize=True)
+    historical = None
+    if plan['panel'] == 3:
+        from ownership_panel3 import prior_result, same_host
+        historical = prior_result(plan, manifest)
+        same_host(historical[0], result['host'])
     for call in result['calls']:
         target, log = directory / call['target'], directory / call['log']
         require(q.digest(target) == call['result_sha256'] and q.digest(log) == call['log_sha256'], 'raw call evidence changed')
@@ -773,10 +797,20 @@ def report(manifest, directory, output, *, accounting=None):
                 and call['worker_signature'] == q.worker_signature(raw)
                 and call['fingerprint'] == result['cells'][call['cell']]['fingerprints'][call['arm']], 'own repeats/signatures differ')
         if call['phase'] == 'warmup':
-            evidence = q.science.resource_diagnostics(log.read_text(), None, False, {})
+            text = log.read_text()
+            require(call['solver_trace_lines'] == [line for line in text.splitlines()
+                                                   if line.startswith('FEREG_SOLVER_TRACE|')],
+                    'warmup solver trace changed')
+            evidence = q.science.resource_diagnostics(text, None, False, {})
             require(all(call[key] == value for key, value in evidence.items()), 'warmup resource/route evidence changed')
-            require(call['cell_diagnostic'] == cell_diagnostic(log.read_text(), plan['arms'][call['arm']]),
+            require(call['cell_diagnostic'] == cell_diagnostic(text, plan['arms'][call['arm']]),
                     'warmup cell evidence changed')
+            if plan['arms'][call['arm']][1] == 'deferred':
+                from ownership_panel3 import deferred_commitment
+                deferred_commitment(text)
+            if historical is not None:
+                from ownership_panel3 import compare_prior
+                compare_prior(historical[1], call['cell'], call['arm'], call)
     for cell in result['cells'].values():
         for ref in cell['references'].values():
             base = directory / ref['path']

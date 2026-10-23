@@ -108,7 +108,7 @@ program define _fereg_estimate_ols, eclass
     local routing_injection = regexm(`"`inject'"', "^routing_(h(4|8|16|32)_k(0|1|2)|builder_break|prefix_(none|map4|it4)|diagonal|cells|direct)$")
     local it_injection = `"`inject'"' == "it_coefficients"
     local ownership_injection = regexm(`"`inject'"', "^ownership_(moments|scores|both)$")
-    local cells_injection = regexm(`"`inject'"', "^cells_eager(_(moments|scores|both))?$")
+    local cells_injection = regexm(`"`inject'"', "^cells_(eager|deferred)(_(moments|scores|both))?$")
     if `"`inject'"' != "" & !`routing_injection' & !`it_injection' & !`ownership_injection' & !`cells_injection' & !inlist(`"`inject'"', ///
         "posthold", "postplugin", "poststripe", "postereturn", ///
         "postscalars", "postdiagnostics", "precommit", ///

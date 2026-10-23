@@ -1605,7 +1605,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
     pub(crate) fn cmg_schur_peak(&self) -> Result<Option<SolverWorkspacePeak>> {
         let cells = self
             .reuse
-            .eager()
+            .cells()
             .map(|state| {
                 state.total_peak(
                     self.auto_route
@@ -1811,7 +1811,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             self.design.effects().len(),
         )?;
         crate::memory::require_admitted_capacity(required, allowance)?;
-        if self.reuse.eager().is_some() {
+        if self.reuse.cells().is_some() {
             return Err(invalid_argument(
                 "PPML topology cannot replace an OLS cell owner",
             ));
@@ -2192,7 +2192,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         let mut values = values.into_values();
         let raw_weights = weights;
         let weights = validate_weights(weights, values.nrows())?;
-        if let Some(cells) = self.reuse.eager_mut() {
+        if let Some(cells) = self.reuse.cells_mut() {
             cells.validate(raw_weights, weights.raw_scale)?;
         }
         self.workspace.set_rhs_count(rhs_count)?;
@@ -2275,12 +2275,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             return Ok(result);
         }
 
-        self.prepare_eager_cells(
-            raw_weights,
-            weights.raw_scale,
-            &mut setup_seconds,
-            &mut solve_started,
-        )?;
+        self.prepare_eager_cells(weights.raw_scale, &mut setup_seconds, &mut solve_started)?;
 
         if let (Some(state), Some(route), Some(graph)) = (
             remaining.as_mut().and_then(ObserverRef::remaining_mut),
@@ -2305,7 +2300,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         if let (Some(route), Some(graph)) = (self.auto_route.as_mut(), self.two_fe_pcg.as_mut()) {
             if !route.setup.attempted
                 && graph.kernel.is_none()
-                && self.reuse.eager().is_none()
+                && self.reuse.cells().is_none()
                 && matches!(
                     route.preset.kernel(),
                     Some(
@@ -2664,6 +2659,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             self.retain_coefficients,
             None,
             None,
+            None,
         )?;
         cost.solve_seconds = solve_started.elapsed().as_secs_f64();
         match attempt {
@@ -2754,6 +2750,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             self.retain_coefficients,
             self.auto_route.as_mut(),
             remaining.map(|state| (state, self.max_level_members)),
+            self.reuse.cells_mut().filter(|state| state.deferred),
         );
         match result? {
             SchurAttempt::Certified(result) => Ok(result),
@@ -2798,6 +2795,7 @@ fn absorb_two_fe_pcg_reusing(
     retain_coefficients: bool,
     mut auto_route: Option<&mut AutoSchurRoute>,
     observer: Option<(ObserverRef<'_>, usize)>,
+    mut deferred_cells: Option<&mut eager_cells::OlsCells<'_>>,
 ) -> Result<SchurAttempt> {
     let (mut remaining, mut gates) = match observer {
         Some((ObserverRef::Remaining(state), max_members)) => (Some((state, max_members)), None),
@@ -3487,6 +3485,20 @@ fn absorb_two_fe_pcg_reusing(
             }
             let reconstruct_seconds = reconstruct_start.elapsed().as_secs_f64();
             if route_restart {
+                // Finish reconstruction with the incumbent operator first.
+                // A successful CMG handoff already owns the single restart;
+                // only its next initialization may switch to the cell operator.
+                if let Some(state) = deferred_cells.as_deref_mut().filter(|s| !s.attempted) {
+                    let route = auto_route.as_ref().expect("CMG handoff has a route");
+                    state.construct(
+                        design,
+                        graph,
+                        route.request.budget,
+                        weights.raw_scale,
+                        &mut setup_seconds,
+                        &mut solve_started,
+                    )?;
+                }
                 // A handoff is not a publication point. Reinitialize from the
                 // reconstructed residual without another intermediate full
                 // certificate; every returned result still passes the unchanged
@@ -3584,6 +3596,20 @@ fn absorb_two_fe_pcg_reusing(
                     )? {
                         graph.cmg_schur = Some(Box::new(preconditioner));
                         cmg_schur = true;
+                        // The rejected iterate has already been reconstructed.
+                        // Explicit checkpoint controls can commit here; GATES
+                        // remains closed by correction() and the false grant.
+                        if let Some(state) = deferred_cells.as_deref_mut().filter(|s| !s.attempted)
+                        {
+                            state.construct(
+                                design,
+                                graph,
+                                route.request.budget,
+                                weights.raw_scale,
+                                &mut setup_seconds,
+                                &mut solve_started,
+                            )?;
+                        }
                     }
                 }
                 continue;

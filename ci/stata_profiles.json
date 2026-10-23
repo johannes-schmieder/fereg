@@ -432,6 +432,7 @@
         "tests/stata/development/ols_categorical_one_fe.do",
         "tests/stata/development/ols_cluster_batch.do",
         "tests/stata/development/ols_cluster_low_memory.do",
+        "tests/stata/development/ols_cell_injection_transport.do",
         "tests/stata/development/ols_cmgschur.do",
         "tests/stata/development/ols_cmgschur_nonconvergence.do",
         "tests/stata/development/ols_cmgschur_sampled.do",

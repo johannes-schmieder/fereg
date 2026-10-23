@@ -36,7 +36,7 @@ def bare_plan(panel=1, ownership='none'):
                 data_seed=o.DATA_SEED, order_seed=o.ORDER_SEEDS[panel], threads=[1, 4], blocks=6, warmups=1,
                 timeout_s=120, budget_s=3600, diagnostic_budget_s=600, diagnostic_repeats=3,
                 observer='desktop', arms=arms, aliases=o.aliases(arms), conditional_authorization=panel==3,
-                panel2_result='previous.json' if panel==3 else None,
+                panel2_result={'results':'previous.json','assessment':'assessment.json'} if panel==3 else None,
                 cases=[dict(id=f, family=f, input=f+'.case', metadata=f+'.json',
                             oracle={'kind':'routing','path':f+'.oracle.json'}, memory_limit_bytes=None) for f in o.FAMILIES])
     plan.update(schedule=o.schedule(plan), diagnostic_schedule=o.schedule(plan, True))
@@ -74,7 +74,7 @@ class Contracts(unittest.TestCase):
         self.assertEqual(o.ownership_diagnostic(refused,('scores','none'))['events'][0]['score_admitted'],0)
 
     def test_fixed_schedules_mirrors_and_prospective_aliases(self):
-        for panel, ownership in [(1,'none'),(2,'both'),(3,'scores')]:
+        for panel, ownership in [(1,'none'),(2,'both'),(3,'both')]:
             plan = bare_plan(panel, ownership)
             o.validate(plan)
             self.assertEqual(plan['call_cap'], 1248)
@@ -313,6 +313,50 @@ class Runner(unittest.TestCase):
         self.assertEqual(len(self.calls),1);self.assertEqual(failed['native_calls_started'],1)
         self.assertEqual(failed['status'],'failed');self.assertEqual(failed['calls'][0]['status'],'started')
         self.assertEqual(failed['retries'],0)
+
+    def test_panel3_report_rechecks_historical_science_resources_and_host(self):
+        import ownership_panel3 as p3
+        completed=o.run(self.manifest,self.output,execute=self.execute,monitor_factory=Monitor)
+        renamed={'B':'B','moments':'O','scores':'O+eager','both':'O+deferred'}
+        for call in completed['calls']:call['arm']=renamed[call['arm']]
+        for cell in completed['cells'].values():
+            for key in ('fingerprints','worker_signatures','references'):
+                cell[key]={renamed[a]:v for a,v in cell[key].items()}
+        for key,value in bare_plan(3,'both').items():self.plan[key]=value
+        order_keys=('cell','arm','phase','block','mirror')
+        calls={tuple(c[k] for k in order_keys):c for c in completed['calls']}
+        completed['calls']=[calls[tuple(entry[k] for k in order_keys)] for entry in self.plan['schedule']]
+        for call in completed['calls']:
+            if call['phase']=='warmup':
+                call['cell_diagnostic']=o.cell_diagnostic(
+                    (self.output/call['log']).read_text(),self.plan['arms'][call['arm']])
+        completed['panel']=3;completed['ownership']='both'
+        completed['manifest_sha256']=o.routing.identity(self.plan)
+        self.real_write(self.manifest,self.plan);self.real_write(self.output/'results.json',completed)
+        old_names={'B':'B','O':'O','O+eager':'O+S'}
+        warm={(c['cell'],old_names[c['arm']]):copy.deepcopy(c) for c in completed['calls']
+              if c['phase']=='warmup' and c['arm'] in old_names}
+        prior={'host':{'host':{'hostname':'synthetic'}}}
+        with patch.object(p3,'prior_result',return_value=(prior,warm)):
+            o.report(self.manifest,self.output,self.root/'panel3-report.json')
+            call=completed['calls'][0];log=self.output/call['log'];original=log.read_text()
+            log.write_text(original+'FEREG_SOLVER_TRACE|phase=two_fe_gates|synthetic=changed\n')
+            call['log_sha256']=q.digest(log);self.real_write(self.output/'results.json',completed)
+            with self.assertRaisesRegex(ValueError,'warmup solver trace'):
+                o.report(self.manifest,self.output,self.root/'gate-report.json')
+            log.write_text(original);call['log_sha256']=q.digest(log)
+            self.real_write(self.output/'results.json',completed)
+            first=warm['weak-t1','B'];first['fingerprint']='changed'
+            with self.assertRaisesRegex(ValueError,'preserved B fingerprint'):
+                o.report(self.manifest,self.output,self.root/'science-report.json')
+            first['fingerprint']=completed['calls'][0]['fingerprint']
+            first['action_resources']=[{'memory_bytes_used':1}]
+            with self.assertRaisesRegex(ValueError,'action resources'):
+                o.report(self.manifest,self.output,self.root/'resource-report.json')
+            prior['host']['host']['hostname']='other-host'
+            with self.assertRaisesRegex(ValueError,'physical host'):
+                o.report(self.manifest,self.output,self.root/'host-report.json')
+        self.assertEqual(len(self.calls),1248)
 
     def test_independent_science_failure_stops_and_cannot_enable_diagnostics(self):
         self.oracle.side_effect=ValueError('independent mathematics mismatch')

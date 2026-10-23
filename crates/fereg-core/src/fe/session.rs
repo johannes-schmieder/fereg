@@ -380,7 +380,7 @@ impl<'a> FeSession<'a> {
         config: crate::ols::PreparedOlsFitConfig,
         cmg_schur: bool,
     ) -> Result<()> {
-        let eager_cells = config.cells == crate::ols::PreparedOlsCells::Eager
+        let ols_cells = config.cells != crate::ols::PreparedOlsCells::Off
             && config.absorb.solver == super::FeSolverKind::Auto
             && config.absorb.lsmr.preconditioner == super::LsmrPreconditioner::Auto;
         // A common structural binding, independent of output, VCE,
@@ -440,7 +440,7 @@ impl<'a> FeSession<'a> {
         p.retain_coefficients = config.absorb.retain_coefficients;
         if cmg_schur {
             self.prepare_cmg_schur(&mut p, bytes, config)?;
-        } else if config.absorb.routing.is_some() || eager_cells {
+        } else if config.absorb.routing.is_some() || ols_cells {
             let parents = bytes
                 .checked_add(p.max_rhs() as u128 * 8)
                 .ok_or_else(|| allocation("routing parent admission overflows"))?;
@@ -460,8 +460,12 @@ impl<'a> FeSession<'a> {
             if let Some(preset) = config.absorb.routing {
                 p.request_auto_routing(preset, budget, parents);
             }
-            if eager_cells {
-                p.request_eager_cells(weights)?;
+            if ols_cells {
+                match config.cells {
+                    crate::ols::PreparedOlsCells::Eager => p.request_eager_cells(weights)?,
+                    crate::ols::PreparedOlsCells::Deferred => p.request_deferred_cells(weights)?,
+                    crate::ols::PreparedOlsCells::Off => unreachable!(),
+                }
             }
         }
         self.categorical = Some(p);

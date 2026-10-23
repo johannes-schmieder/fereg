@@ -23,17 +23,29 @@ pub(crate) struct OlsInjection {
     pub(crate) native_break_token: Option<String>,
 }
 
-/// Decode the bounded OLS experiment presets without adding public syntax.
-pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Result<OlsInjection> {
-    let unknown = || syntax(format!("unknown hidden OLS injection stage {stage:?}"));
+/// Resolve mechanism ownership independently of routing and marker controls.
+fn ols_mechanisms(
+    stage: &str,
+    solver: FeSolverKind,
+) -> Result<(PreparedOlsOwnership, PreparedOlsCells)> {
     let ownership = PreparedOlsOwnership {
         skip_unused_moments: matches!(
             stage,
-            "ownership_moments" | "ownership_both" | "cells_eager_moments" | "cells_eager_both"
+            "ownership_moments"
+                | "ownership_both"
+                | "cells_eager_moments"
+                | "cells_eager_both"
+                | "cells_deferred_moments"
+                | "cells_deferred_both"
         ),
         retain_projected_scores: matches!(
             stage,
-            "ownership_scores" | "ownership_both" | "cells_eager_scores" | "cells_eager_both"
+            "ownership_scores"
+                | "ownership_both"
+                | "cells_eager_scores"
+                | "cells_eager_both"
+                | "cells_deferred_scores"
+                | "cells_deferred_both"
         ),
     };
     let cells = if matches!(
@@ -44,15 +56,38 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             return Err(syntax("hidden cell injection requires solver(auto)"));
         }
         PreparedOlsCells::Eager
+    } else if matches!(
+        stage,
+        "cells_deferred"
+            | "cells_deferred_moments"
+            | "cells_deferred_scores"
+            | "cells_deferred_both"
+    ) {
+        if solver != FeSolverKind::Auto {
+            return Err(syntax("hidden cell injection requires solver(auto)"));
+        }
+        PreparedOlsCells::Deferred
     } else {
         PreparedOlsCells::Off
     };
+    Ok((ownership, cells))
+}
+
+/// Decode the bounded OLS experiment presets without adding public syntax.
+pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Result<OlsInjection> {
+    let unknown = || syntax(format!("unknown hidden OLS injection stage {stage:?}"));
+    let (ownership, cells) = ols_mechanisms(stage, solver)?;
     let (routing, break_native) = match stage {
         "" => (None, false),
         "ownership_moments" | "ownership_scores" | "ownership_both" => (None, false),
-        "cells_eager" | "cells_eager_moments" | "cells_eager_scores" | "cells_eager_both" => {
-            (None, false)
-        }
+        "cells_eager"
+        | "cells_eager_moments"
+        | "cells_eager_scores"
+        | "cells_eager_both"
+        | "cells_deferred"
+        | "cells_deferred_moments"
+        | "cells_deferred_scores"
+        | "cells_deferred_both" => (None, false),
         "breaknative" => (None, true),
         "routing_builder_break" => {
             if solver != FeSolverKind::Auto {
@@ -216,21 +251,40 @@ mod tests {
 
     #[test]
     fn cell_experiments_are_independent_of_routing_and_reject_unimplemented_modes() {
-        for (stage, moments, scores) in [
-            ("cells_eager", false, false),
-            ("cells_eager_moments", true, false),
-            ("cells_eager_scores", false, true),
-            ("cells_eager_both", true, true),
+        for (stage, mode, moments, scores) in [
+            ("cells_eager", PreparedOlsCells::Eager, false, false),
+            ("cells_eager_moments", PreparedOlsCells::Eager, true, false),
+            ("cells_eager_scores", PreparedOlsCells::Eager, false, true),
+            ("cells_eager_both", PreparedOlsCells::Eager, true, true),
+            ("cells_deferred", PreparedOlsCells::Deferred, false, false),
+            (
+                "cells_deferred_moments",
+                PreparedOlsCells::Deferred,
+                true,
+                false,
+            ),
+            (
+                "cells_deferred_scores",
+                PreparedOlsCells::Deferred,
+                false,
+                true,
+            ),
+            (
+                "cells_deferred_both",
+                PreparedOlsCells::Deferred,
+                true,
+                true,
+            ),
         ] {
             let parsed = parse_ols(stage, FeSolverKind::Auto, "").unwrap();
-            assert_eq!(parsed.cells, PreparedOlsCells::Eager);
+            assert_eq!(parsed.cells, mode);
             assert_eq!(parsed.ownership.skip_unused_moments, moments);
             assert_eq!(parsed.ownership.retain_projected_scores, scores);
             assert!(parsed.routing.is_none());
             assert!(parse_ols(stage, FeSolverKind::Lsmr, "").is_err());
             assert!(parse_ols(stage, FeSolverKind::Auto, "a").is_err());
         }
-        for stage in ["cells_deferred", "cells_deferred_both", "cells_eager_extra"] {
+        for stage in ["cells_deferred_extra", "cells_eager_extra"] {
             assert!(parse_ols(stage, FeSolverKind::Auto, "").is_err());
         }
     }

@@ -705,3 +705,23 @@ pub(crate) fn recorded_activity<T>(action: impl FnOnce() -> T) -> (T, usize, usi
     let result = action();
     (result, CELL_BUILD_COUNT.get(), CELL_APPLY_COUNT.get())
 }
+
+/// Drive the existing constructor fault sites through a real caller, not an
+/// estimated polling ordinal. A child-process witness owns sticky cancellation.
+#[cfg(test)]
+pub(crate) fn construction_fault<T>(cancel: bool, action: impl FnOnce() -> T) -> (T, usize) {
+    struct Guard;
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            CELL_CANCEL_PHASE.set(0);
+            CELL_ALLOCATION_FAILURE.set(false);
+            crate::interrupt::reset_cancellation();
+        }
+    }
+    let _guard = Guard;
+    CELL_COMPLETED_WORK.set(0);
+    CELL_CANCEL_PHASE.set(if cancel { 1 } else { 0 });
+    CELL_ALLOCATION_FAILURE.set(!cancel);
+    let result = action();
+    (result, CELL_COMPLETED_WORK.get())
+}

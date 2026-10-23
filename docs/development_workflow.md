@@ -780,6 +780,28 @@ reference arms do not replace or improve that conclusion. Only the single new
 deferred configuration is eligible for new cell admission. Final qualification
 and public activation remain pending.
 
+The [deferred implementation checks](../bench/results/ownership-cells-deferred-development-20261023.json)
+cover the shared constructor at both successful CMG restart boundaries, joint
+CMG/cell admission, immutable weight ownership, exact owner layout, refusal,
+cancellation and independent reconstruction. A forced certificate-correction
+witness distinguishes historical fixed-checkpoint installation from closed
+GATES. Public defaults remain unchanged. The full source suite, 23 benchmark
+tooling tests and six affected Stata profile checks pass. The initial fixture
+and tooling failures remain recorded. The new licensed Stata fixture is still
+pending native builds; its scope is transport, independent dummy OLS and
+publication, not proof of cell construction.
+
+Before timing, build each native artifact once with an 1,800-second build
+limit and run the fresh 48-call correctness controls above. Linux preparation
+uses a separate four-slot, 3 GiB/core allocation with a 2,700-second scheduler
+limit covering the build and 600-second controls. Panel 3 stays on the original
+physical host with the whole 28-core allocation. Each traced deferred warmup
+and diagnostic must pair successful CMG installation with one cell attempt in
+the same action; construction before commitment or in a later action fails.
+The separate four-slot assessment retains its 600-second analysis and
+900-second scheduler limits, with zero native calls. Actual candidate hashes
+and the manifest remain to be frozen before execution.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,
