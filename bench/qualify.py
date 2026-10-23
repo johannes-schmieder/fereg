@@ -51,7 +51,7 @@ SOURCE_MODULES = ('qualify_scc', 'block_host', 'native', 'native_io', 'routing',
                   'routing_cases', 'routing_oracle', 'routing_science', 'cmgschur',
                   'cmgschur_cases', 'time_exact', 'replay_plugins', 'replay_psd',
                   'replay_bias_reference', 'replay_cmg_polish', 'replay_ols_reference', 'cmg_setup',
-                  'two_fe_policy', 'two_fe_policy_development', 'qualify_ownership', 'ownership_qualification_cases')
+                  'two_fe_policy', 'two_fe_policy_development', 'qualify_ownership', 'ownership_qualification_cases', 'ownership_panel3')
 
 
 def execution_sources():

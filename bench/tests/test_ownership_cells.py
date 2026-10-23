@@ -224,7 +224,12 @@ class Runner(unittest.TestCase):
         self.assertLessEqual(timeout,120)
         target=Path(command[-1]);self.real_write(target,{**result(),'columns':[]})
         self.data.tofile(target.with_suffix('.json.columns'))
-        log.write_text('NATIVE_SECONDS=0.010000\n')
+        text='NATIVE_SECONDS=0.010000\n'
+        if 'FEREG_SOLVER_TRACE=1' in command:
+            for final in (0,1):
+                text+=('FEREG_SOLVER_TRACE|phase=routing_action|preset=routing_two_gates_v1|iterations=2'
+                       '|native_limit=16000|memory_bytes=100|memory_limit=1000|final='+str(final)+'|certified=1\n')
+        log.write_text(text)
         return {'maxrss_bytes':1024}
 
     def controls_config(self):
@@ -339,6 +344,18 @@ class Runner(unittest.TestCase):
         prior={'host':{'host':{'hostname':'synthetic'}}}
         with patch.object(p3,'prior_result',return_value=(prior,warm)):
             o.report(self.manifest,self.output,self.root/'panel3-report.json')
+            deferred=next(c for c in completed['calls'] if c['phase']=='warmup' and c['arm']=='O+deferred')
+            path=self.output/deferred['log'];text=path.read_text();saved=copy.deepcopy(deferred)
+            for removed in (1,2):
+                lines=text.splitlines();actions=[l for l in lines if '|phase=routing_action|' in l]
+                path.write_text('\n'.join(l for l in lines if l not in actions[:removed])+'\n')
+                deferred.update(q.science.resource_diagnostics(path.read_text(),None,False,{}))
+                deferred['solver_trace_lines']=[l for l in path.read_text().splitlines() if l.startswith('FEREG_SOLVER_TRACE|')]
+                deferred['log_sha256']=q.digest(path);self.real_write(self.output/'results.json',completed)
+                with self.assertRaisesRegex(ValueError,'deferred action'):
+                    o.report(self.manifest,self.output,self.root/f'deleted-actions-{removed}.json')
+            deferred.clear();deferred.update(saved);path.write_text(text)
+            self.real_write(self.output/'results.json',completed)
             call=completed['calls'][0];log=self.output/call['log'];original=log.read_text()
             log.write_text(original+'FEREG_SOLVER_TRACE|phase=two_fe_gates|synthetic=changed\n')
             call['log_sha256']=q.digest(log);self.real_write(self.output/'results.json',completed)

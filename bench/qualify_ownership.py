@@ -21,7 +21,8 @@ from native_io import case_header, digest, validate_result
 from replay_plugins import allowed_difference, differences, exact_view
 
 MODE = 'ownership-cells-v1'
-REQUESTS = ('ownership_both', 'cells_eager_both')
+CELL_REQUESTS = ('cells_eager_both', 'cells_deferred_both')
+REQUESTS = ('ownership_both', *CELL_REQUESTS)
 ORIGINAL = 'f35f3a4dbb306bd4c4f5f7d46a406be892bd0749'
 INCUMBENT = 'c16c0b5555338d8b20b184e6e51ad2acbe6a4e6e'
 BASELINE_PLAN_SHA256 = {
@@ -318,6 +319,10 @@ def resource_detail(manifest, role, meta, log, argv, source_args, workers):
     detail['solver_trace_lines'] = [line for line in log.splitlines() if line.startswith('FEREG_SOLVER_TRACE|')]
     detail['ownership_transport'] = transport_evidence(argv, source_args, manifest['artifacts'][role]['request'],
                                                        workers, detail['action_resources'])
+    if (manifest['artifacts'][role]['request'] == 'cells_deferred_both'
+            and routing.incremental_eligible(meta, 'two')):
+        from ownership_panel3 import deferred_commitment
+        detail['deferred_commitment'] = deferred_commitment(log)
     return detail
 
 
@@ -329,7 +334,10 @@ def installed_hierarchies(detail):
 def compare_artifacts(manifest, meta, snapshots):
     import qualify as q
     candidate, incumbent, original = (snapshots[r] for r in ('candidate', 'incumbent', 'original'))
-    cells = manifest['artifacts']['candidate']['request'] == 'cells_eager_both' and routing.incremental_eligible(meta, 'two')
+    cells = manifest['artifacts']['candidate']['request'] in CELL_REQUESTS and routing.incremental_eligible(meta, 'two')
+    if cells and manifest['artifacts']['candidate']['request'] == 'cells_deferred_both':
+        from ownership_panel3 import compare_actions
+        compare_actions(candidate[2], incumbent[2])
     if not cells:
         require(candidate[2]['fingerprint'] == incumbent[2]['fingerprint'], 'ownership/unaffected science changed relative to c16')
         for key in ('route_trace', 'route_hierarchy', 'gate_events'):
@@ -388,7 +396,10 @@ def verify_report_cell(manifest, item, manifest_path, directory, cell, verify_fi
             verify_call(manifest, item, manifest_path, directory, call, workers, verify_file, traced=False)
     meta = routing_cases.inspect_case(q.resolve(manifest_path, item['input']), item['family'])
     candidate = warm['candidate']
-    cells = manifest['artifacts']['candidate']['request'] == 'cells_eager_both' and routing.incremental_eligible(meta, 'two')
+    cells = manifest['artifacts']['candidate']['request'] in CELL_REQUESTS and routing.incremental_eligible(meta, 'two')
+    if cells and manifest['artifacts']['candidate']['request'] == 'cells_deferred_both':
+        from ownership_panel3 import compare_actions
+        compare_actions(candidate, warm['incumbent'])
     for role in ('incumbent', 'original'):
         exact = (not cells if role == 'incumbent' else not q.affected(meta, ['many', 'two']))
         if exact:

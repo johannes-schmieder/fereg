@@ -6,22 +6,64 @@ ARMS = {'B': 'B', 'O': 'O', 'O+eager': 'O+S'}
 
 def deferred_commitment(text):
     """Pair construction with a successful commitment inside the same action."""
-    pending, installations, attempts = False, 0, 0
+    pending, unclosed, installations, attempts = False, False, 0, 0
+    actions = []
     for line in text.splitlines():
         if line.startswith('FEREG_SOLVER_TRACE|'):
             fields = dict(part.split('=', 1) for part in line.split('|')[1:] if '=' in part)
             if fields.get('phase') == 'auto_schur_route' and fields.get('installed') == '1':
-                q.require(not pending, 'deferred commitment has no construction')
+                q.require(not pending and not unclosed, 'deferred commitment has no closed action')
                 pending = True
+                unclosed = True
                 installations += 1
             elif fields.get('phase') == 'routing_action':
                 q.require(not pending, 'deferred construction crossed an action boundary')
+                unclosed = False
+                actions.append(line)
         elif line.startswith('FEREG_CELLS|event=attempt|'):
             q.require(pending, 'deferred construction preceded successful CMG commitment')
             pending = False
             attempts += 1
-    q.require(not pending, 'deferred commitment has no construction')
+    q.require(not pending and not unclosed, 'deferred commitment has no closed action')
+    # Validate every raw cap, including the zero-installation path. The generic
+    # legacy parser deliberately permits missing actions; this mechanism cannot.
+    q.require(actions, 'deferred action resource evidence missing')
+    q.science.resource_diagnostics('\n'.join(actions), None, False, {})
     return dict(installations=installations, attempts=attempts)
+
+
+def compare_actions(current, control):
+    """Protect action coverage/classification while allowing scoped cell work."""
+    def shape(detail):
+        actions = detail['action_resources']
+        q.require(actions, 'deferred action resource evidence missing')
+        for row in actions:
+            q.require(row['final'] in ('0', '1') and row['preset'] == 'routing_two_gates_v1',
+                      'deferred action classification/preset changed')
+            for key in ('iterations', 'memory_bytes'):
+                q.require(0 <= row[key + '_used'] <= row[key + '_limit'], 'deferred action raw cap exceeded')
+        return [(row['final'], row['preset'], row['iterations_limit']) for row in actions]
+    q.require(shape(current) == shape(control), 'deferred action sequence differs from control')
+
+
+def control_sources(proof, current, archived=None):
+    """Reuse controls only across verified changes to non-control entrypoints."""
+    expected = proof['plan']['execution_sources']
+    if expected == current:
+        return
+    q.require(archived is not None and set(expected) == set(current)
+              and {name for name in current if current[name] != expected[name]}
+              <= {'ownership_cells', 'ownership_panel3'}, 'control execution source drift')
+    q.require(q.digest(archived) == expected['ownership_cells'], 'archived control source differs')
+    import ast
+    import ownership_cells as oc
+    def control_ast(path):
+        module = ast.parse(path.read_text())
+        module.body = [node for node in module.body if not (isinstance(node, ast.FunctionDef)
+            and node.name in {'freeze', 'run', 'report', 'compare_warmups'})]
+        return ast.dump(module, include_attributes=False)
+    q.require(control_ast(archived) == control_ast(oc.Path(oc.__file__)),
+              'control-reachable source changed')
 
 
 def prior_result(plan, manifest):

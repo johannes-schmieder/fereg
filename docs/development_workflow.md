@@ -802,6 +802,27 @@ The separate four-slot assessment retains its 600-second analysis and
 900-second scheduler limits, with zero native calls. Actual candidate hashes
 and the manifest remain to be frozen before execution.
 
+The subsequent tooling amendment strengthens this prospective panel without
+changing its native candidate or sampling schedule. Deferred traces must contain
+raw-capped action records, close each installation/construction pair before its
+action ends, and match the corresponding ownership control's action count,
+projection/final classification, preset and native iteration limit. Deleting an
+action record or truncating the last action is rejected. Panel 3 uses a separate
+execution archive with only the two panel tooling modules changed; the original
+native archive remains immutable. The completed uninjected controls are reused
+only after their original module hash is bound and AST comparison confirms that
+all control-reachable code is unchanged. Only the four non-control entrypoints
+`freeze`, `run`, `report` and `compare_warmups` may differ, together with the
+Panel 3 module that controls do not execute. No control or timing observation is
+repeated by this amendment.
+
+Prospective final qualification also accepts `cells_deferred_both`, alongside
+the existing ownership and eager requests. Its actual argument framing adds
+50 bytes; raw memory limits are checked before accounting for that difference.
+Strict deferred trace and action checks apply to eligible two-FE cases, against
+the accepted control, while unaffected cases retain exact comparisons. These
+tooling changes do not select a finalist or alter the 58-cell budgets.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,

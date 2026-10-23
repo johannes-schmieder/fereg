@@ -57,7 +57,8 @@ class Contracts(unittest.TestCase):
             with self.assertRaises(ValueError):o.validate(bad)
         bad=manifest('Linux');bad['min_distinct_hosts_per_cell']=11
         with self.assertRaises(ValueError):o.validate(bad)
-        o.validate(manifest(request='cells_eager_both'))
+        for request in o.CELL_REQUESTS:
+            o.validate(manifest(request=request))
 
     def test_tokens_are_not_routing_presets_and_preserve_numeric_frame(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -109,30 +110,41 @@ class Contracts(unittest.TestCase):
         self.assertEqual(q.resource_policy(historical,'incumbent',meta),'incremental-two')
 
     def test_changed_cells_scope_keeps_routes_and_other_discrete_fields_exact(self):
-        value=manifest(request='cells_eager_both')
-        meta=dict(categorical_intercepts=True,absorbed_terms=2)
-        before=result();after=copy.deepcopy(before)
-        after['matrices']['RSOLVER']['bits'][2]=bits(7.)
-        def snapshot(raw, fingerprint, hierarchy=None):
-            return (raw,None,dict(fingerprint=fingerprint,gate_events=[],
-                    route_trace=[] if hierarchy is None else [{'installed':'1'}],
-                    route_hierarchy=[] if hierarchy is None else [hierarchy]))
-        snapshots=dict(original=snapshot(before,'baseline'),incumbent=snapshot(before,'baseline'),
-                       candidate=snapshot(after,'changed'))
-        # Mathematics is checked independently by the maintained native/oracle
-        # harness. Here actual compatibility code tests the declared leaf scope.
-        with patch.object(q.cmgschur,'scientific_comparison'):
-            o.compare_artifacts(value,meta,snapshots)
-            changed=copy.deepcopy(after);changed['matrices']['RSOLVER']['bits'][1]=bits(3.)
-            bad={**snapshots,'candidate':snapshot(changed,'changed')}
-            with self.assertRaises(ValueError):o.compare_artifacts(value,meta,bad)
-            changed=copy.deepcopy(after);changed['matrices']['RFE']['bits'][0]=bits(2.)
-            with self.assertRaises(ValueError):o.compare_artifacts(value,meta,{**snapshots,'candidate':snapshot(changed,'changed')})
-            with self.assertRaises(ValueError):o.compare_artifacts(value,{**meta,'absorbed_terms':1},snapshots)
-            with self.assertRaises(ValueError):o.compare_artifacts(manifest(),meta,snapshots)
-            built={**snapshots,'incumbent':snapshot(before,'baseline',{'levels':2}),
-                   'candidate':snapshot(after,'changed',{'levels':3})}
-            with self.assertRaises(ValueError):o.compare_artifacts(value,meta,built)
+        for request in o.CELL_REQUESTS:
+            value=manifest(request=request)
+            meta=dict(categorical_intercepts=True,absorbed_terms=2)
+            before=result();after=copy.deepcopy(before)
+            after['matrices']['RSOLVER']['bits'][2]=bits(7.)
+            def snapshot(raw, fingerprint, hierarchy=None):
+                return (raw,None,dict(fingerprint=fingerprint,gate_events=[],
+                        action_resources=[dict(final='0',preset='routing_two_gates_v1',iterations_used=15,
+                                               iterations_limit=100,memory_bytes_used=1000,memory_bytes_limit=2000)],
+                        route_trace=[] if hierarchy is None else [{'installed':'1'}],
+                        route_hierarchy=[] if hierarchy is None else [hierarchy]))
+            snapshots=dict(original=snapshot(before,'baseline'),incumbent=snapshot(before,'baseline'),
+                           candidate=snapshot(after,'changed'))
+            # Mathematics is checked independently by the maintained native/oracle
+            # harness. Here actual compatibility code tests the declared leaf scope.
+            with patch.object(q.cmgschur,'scientific_comparison'):
+                o.compare_artifacts(value,meta,snapshots)
+                if request=='cells_deferred_both':
+                    for changed_actions in ([], [{**snapshots['candidate'][2]['action_resources'][0],'final':'1'}],
+                                            [{**snapshots['candidate'][2]['action_resources'][0],'iterations_limit':101}]):
+                        bad=copy.deepcopy(snapshots);bad['candidate'][2]['action_resources']=changed_actions
+                        with self.assertRaises(ValueError):o.compare_artifacts(value,meta,bad)
+                    changed_work=copy.deepcopy(snapshots)
+                    changed_work['candidate'][2]['action_resources'][0].update(iterations_used=16,memory_bytes_used=1500)
+                    o.compare_artifacts(value,meta,changed_work)
+                changed=copy.deepcopy(after);changed['matrices']['RSOLVER']['bits'][1]=bits(3.)
+                bad={**snapshots,'candidate':snapshot(changed,'changed')}
+                with self.assertRaises(ValueError):o.compare_artifacts(value,meta,bad)
+                changed=copy.deepcopy(after);changed['matrices']['RFE']['bits'][0]=bits(2.)
+                with self.assertRaises(ValueError):o.compare_artifacts(value,meta,{**snapshots,'candidate':snapshot(changed,'changed')})
+                with self.assertRaises(ValueError):o.compare_artifacts(value,{**meta,'absorbed_terms':1},snapshots)
+                with self.assertRaises(ValueError):o.compare_artifacts(manifest(),meta,snapshots)
+                built={**snapshots,'incumbent':snapshot(before,'baseline',{'levels':2}),
+                       'candidate':snapshot(after,'changed',{'levels':3})}
+                with self.assertRaises(ValueError):o.compare_artifacts(value,meta,built)
 
     def test_literal_token_attests_gates_and_raw_cap_not_incremental_preset(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -149,6 +161,36 @@ class Contracts(unittest.TestCase):
                       log.replace(f'memory_limit={parent+1000}',f'memory_limit={parent+99}'),
                       log.replace('certified=1','certified=0')):
             with self.assertRaises(ValueError):o.resource_detail(value,'candidate',meta,wrong,argv,source,4)
+
+    def test_deferred_raw_trace_pairs_install_with_attempt_in_same_action(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'source.case';path.write_bytes(case_bytes())
+            with path.open('rb') as stream:_,source=q.case_header(stream)
+        value=manifest(request='cells_deferred_both')
+        argv=o.arguments(source,'cells_deferred_both',4);parent=o.argument_parent(argv)
+        meta=dict(categorical_intercepts=True,absorbed_terms=2)
+        action=('FEREG_SOLVER_TRACE|phase=routing_action|final=0|preset=routing_two_gates_v1|'
+                f'iterations=15|native_limit=100|memory_bytes={parent+100}|memory_limit={parent+1000}|certified=1')
+        detail=o.resource_detail(value,'candidate',meta,action,argv,source,4)
+        self.assertEqual(detail['ownership_transport']['argument_parent_delta_bytes'],50)
+        self.assertEqual(detail['deferred_commitment'],dict(installations=0,attempts=0))
+        for terms in (0,1):
+            unaffected=o.resource_detail(value,'candidate',{**meta,'absorbed_terms':terms},'',argv,source,4)
+            self.assertNotIn('deferred_commitment',unaffected)
+        installed='FEREG_SOLVER_TRACE|phase=auto_schur_route|installed=1|refusal=None'
+        attempt='FEREG_CELLS|event=attempt|attempted=1|admitted=1'
+        # Isolate the commitment validator's wiring from the separate full
+        # hierarchy/GATES schema tests; actual argv and raw caps still execute.
+        with patch.object(o.science,'resource_diagnostics',return_value={
+                'action_resources':detail['action_resources']}), patch('two_fe_policy_development.gate_events',return_value=[]):
+            for event in (attempt,attempt.replace('admitted=1','admitted=0')):
+                got=o.resource_detail(value,'candidate',meta,'\n'.join([installed,event,action]),argv,source,4)
+                self.assertEqual(got['deferred_commitment'],dict(installations=1,attempts=1))
+            for lines in ([attempt,installed,action], [installed,action,attempt],
+                          [installed,action], [installed], [installed,attempt,attempt],
+                          [installed.replace('installed=1','installed=0'),attempt,action]):
+                with self.assertRaises(ValueError):
+                    o.resource_detail(value,'candidate',meta,'\n'.join(lines),argv,source,4)
 
     def test_diagnostic_is_separate_frozen_proposal_not_scheduled_timing(self):
         value=manifest();proposal=o.diagnostic_proposal(value)
@@ -239,6 +281,7 @@ class Contracts(unittest.TestCase):
                 wrong={**ref,'retained_rows':n-1}
                 with self.assertRaises(ValueError):o.validate_added(item,meta,parsed,{'routing_oracle':wrong})
         self.assertIn('ownership_qualification_cases',q.execution_sources())
+        self.assertIn('ownership_panel3',q.execution_sources())
 
     def test_exact_boundary_rows_not_labels(self):
         # Small column count; exact prescribed row lengths. No actual generated

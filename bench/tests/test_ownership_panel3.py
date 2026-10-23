@@ -24,15 +24,46 @@ class Panel3(unittest.TestCase):
         installed='FEREG_SOLVER_TRACE|phase=auto_schur_route|installed=1|refusal=None'
         refused=installed.replace('installed=1','installed=0')
         attempt='FEREG_CELLS|event=attempt|attempted=1|admitted=1'
-        action='FEREG_SOLVER_TRACE|phase=routing_action|action=1'
+        action=('FEREG_SOLVER_TRACE|phase=routing_action|preset=routing_two_gates_v1|iterations=2|native_limit=16000'
+                '|memory_bytes=100|memory_limit=1000|final=1|certified=1')
         for cell in (attempt,attempt.replace('admitted=1','admitted=0')):
             self.assertEqual(p3.deferred_commitment('\n'.join([installed,cell,action])),
                              dict(installations=1,attempts=1))
         self.assertEqual(p3.deferred_commitment(refused+'\n'+action),dict(installations=0,attempts=0))
         for lines in ([attempt,installed,action], [installed,action,attempt],
                       [installed,action], [refused,attempt,action], [installed,installed,attempt],
-                      [installed], [installed,attempt,attempt]):
+                      [installed], [installed,attempt,attempt], [installed,attempt], []):
             with self.assertRaises(ValueError):p3.deferred_commitment('\n'.join(lines))
+        for changed in (action.replace('memory_limit=1000','memory_limit=99'),
+                        action.replace('certified=1','certified=0')):
+            with self.assertRaises(ValueError):p3.deferred_commitment(changed)
+
+    def test_deferred_action_coverage_and_raw_caps(self):
+        rows=[dict(final=str(i),preset='routing_two_gates_v1',iterations_used=2,iterations_limit=16000,
+                   memory_bytes_used=100,memory_bytes_limit=1000) for i in (0,1)]
+        control=dict(action_resources=rows)
+        p3.compare_actions(control,copy.deepcopy(control))
+        for changed in ([],rows[:1],list(reversed(rows))):
+            with self.assertRaises(ValueError):p3.compare_actions(dict(action_resources=changed),control)
+        for key,value in [('preset','other'),('memory_bytes_used',1001),('iterations_used',16001)]:
+            changed=copy.deepcopy(control);changed['action_resources'][0][key]=value
+            with self.assertRaises(ValueError):p3.compare_actions(changed,control)
+
+    def test_control_reuse_checks_unmodified_control_reachable_source(self):
+        current={name:q.digest(path) for name,path in oc.sources().items()}
+        path=self.root/'archived-controls.py'
+        source=Path(oc.__file__).read_text()
+        path.write_text(source.replace('def freeze(config_path, output):',
+                                       'def freeze(config_path, output):\n    "Older non-control entrypoint."'))
+        expected={**current,'ownership_cells':q.digest(path),'ownership_panel3':'old'}
+        proof={'plan':{'execution_sources':expected}}
+        p3.control_sources(proof,current,path)
+        with self.assertRaisesRegex(ValueError,'source drift'):p3.control_sources(proof,current)
+        path.write_text(source.replace('def controls_schedule():','def controls_schedule():\n    "Changed controls."'))
+        expected['ownership_cells']=q.digest(path)
+        with self.assertRaisesRegex(ValueError,'control-reachable'):p3.control_sources(proof,current,path)
+        expected['qualify']='changed'
+        with self.assertRaisesRegex(ValueError,'source drift'):p3.control_sources(proof,current,path)
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

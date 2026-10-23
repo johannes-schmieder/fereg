@@ -278,7 +278,7 @@ def freeze(config_path, output):
     cfg = q.read(config_path)
     required = {'platform', 'panel', 'ownership', 'inputs', 'harness', 'candidate', 'reference', 'control_proof',
                 'diagnostic_repeats', 'conditional_authorization', 'panel2_result'}
-    require(set(cfg) == required, 'configuration fields differ: ' + str(sorted(required)))
+    require(set(cfg) - {'control_execution_source'} == required, 'configuration fields differ: ' + str(sorted(required)))
     files, bind, input_binding, items, artifacts = bind_inputs_artifacts(cfg, config_path, output)
     proof_path = bind(cfg['control_proof'])
     proof = q.read(q.resolve(output, proof_path))
@@ -290,9 +290,15 @@ def freeze(config_path, output):
             and proof['native_calls_started'] == 48 and proof['failures'] == [] and proof['retries'] == 0
             and proof['elapsed_s'] <= 600 and proof['schedule'] == controls_schedule()
             and [{key: call[key] for key in ('family', 'cell', 'workers', 'arm')} for call in proof['calls']] == controls_schedule()
-            and all(call['status'] == 'passed' and call['oracle'] == 'passed' for call in proof['calls'])
-            and proof['plan']['execution_sources'] == {name: q.digest(path) for name, path in sources().items()},
+            and all(call['status'] == 'passed' and call['oracle'] == 'passed' for call in proof['calls']),
             'missing exact uninjected control proof')
+    control_source = None
+    if cfg.get('control_execution_source') is not None:
+        require(cfg['panel'] == 3, 'control source amendment is only for panel3')
+        control_source = bind(cfg['control_execution_source'])
+    from ownership_panel3 import control_sources
+    control_sources(proof, {name: q.digest(path) for name, path in sources().items()},
+                    q.resolve(output, control_source) if control_source else None)
     panel2 = None
     if cfg['panel'] == 3:
         require(isinstance(cfg['panel2_result'], dict)
@@ -308,6 +314,8 @@ def freeze(config_path, output):
                   cases=items, inputs=input_binding, harness=bind(cfg['harness']), artifacts=artifacts,
                   control_proof=proof_path, panel2_result=panel2, conditional_authorization=cfg['conditional_authorization'],
                   execution_sources={n: q.digest(p) for n, p in sources().items()})
+    if control_source:
+        result['control_execution_source'] = control_source
     result['schedule'] = schedule(result)
     result['diagnostic_schedule'] = schedule(result, True)
     result['call_cap'] = len(result['schedule'])
@@ -458,6 +466,9 @@ def hierarchies(detail):
 def compare_warmups(plan, snapshots, meta):
     """Exact ownership; cells have independent mathematics and exact model decisions."""
     logical = {arm: snapshots[alias] for arm, alias in plan['aliases'].items()}
+    if plan['panel'] == 3:
+        from ownership_panel3 import compare_actions
+        compare_actions(logical['O+deferred'][2], logical['O'][2])
     for arm, current in logical.items():
         baseline = logical['B']
         q.cmgschur.scientific_comparison(baseline[0], current[0], baseline[1], current[1], meta)
@@ -815,6 +826,11 @@ def report(manifest, directory, output, *, accounting=None):
         for ref in cell['references'].values():
             base = directory / ref['path']
             require(q.digest(base.with_suffix('.json')) == ref['head'] and q.digest(base.with_suffix('.npz')) == ref['outputs'], 'retained arrays/head changed')
+    if plan['panel'] == 3:
+        from ownership_panel3 import compare_actions
+        warm = {(call['cell'], call['arm']): call for call in result['calls'] if call['phase'] == 'warmup'}
+        for cell in result['cells']:
+            compare_actions(warm[cell, 'O+deferred'], warm[cell, 'O'])
     for item in plan['cases']:
         meta = q.metadata(plan, item, manifest)
         for arm in physical_arms(plan):

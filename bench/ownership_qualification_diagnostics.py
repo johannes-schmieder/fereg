@@ -112,7 +112,9 @@ def arm_manifest(manifest):
 
 
 def mechanism(arm, request):
-    return ('none','none') if arm!='candidate' else ('both','eager' if request=='cells_eager_both' else 'none')
+    require(request in own.REQUESTS, 'unknown finalist mechanism')
+    cells = {'ownership_both':'none', 'cells_eager_both':'eager', 'cells_deferred_both':'deferred'}
+    return ('none','none') if arm!='candidate' else ('both',cells[request])
 
 
 def semantic(call):
@@ -160,8 +162,12 @@ def mechanism_evidence(family, workers, calls, request):
                 'fixed-worker science/decisions/resource work changed')
         for call in (a,b):
             require(bool(call['action_resources']) and bool(call['solver_trace_lines']), 'missing routing/resource evidence')
-            if arm=='candidate' and request=='cells_eager_both':
-                require(call['cell_diagnostic']['bound'], 'requested eligible eager-cell binding trace missing')
+            if arm=='candidate' and request in own.CELL_REQUESTS:
+                require(call['cell_diagnostic']['bound'], 'requested eligible cell binding trace missing')
+            if arm=='candidate' and request=='cells_deferred_both':
+                attempts = sum(e['event']=='attempt' for e in call['cell_diagnostic']['events'])
+                require(call.get('deferred_commitment') == dict(installations=attempts, attempts=attempts),
+                        'missing or inconsistent same-action deferred commitment evidence')
             events=call['ownership_diagnostic']['events']
             scores=[event for event in events if 'score_admitted' in event]
             require(scores==[expected_scores(spec,arm)],
@@ -191,6 +197,9 @@ def compare_cell(manifest, meta, snapshots):
     incumbent, baseline, finalist=(snapshots[a] for a in ('incumbent','uninjected_candidate','candidate'))
     require(incumbent[2]['fingerprint']==baseline[2]['fingerprint']
             and semantic(incumbent[2])==semantic(baseline[2]), 'uninjected candidate changed accepted c16 controls')
+    if manifest['artifacts']['candidate']['request']=='cells_deferred_both':
+        from ownership_panel3 import compare_actions
+        compare_actions(finalist[2], baseline[2])
     if manifest['artifacts']['candidate']['request']=='ownership_both':
         require(finalist[2]['fingerprint']==incumbent[2]['fingerprint']
                 and semantic(finalist[2])==semantic(incumbent[2]), 'ownership exact science/decisions changed')
@@ -420,6 +429,9 @@ def prove(plan_path, result_path, output, *, accounting=None, job_log=None):
         inc,base,final=(first[a] for a in ('incumbent','uninjected_candidate','candidate'))
         require(inc['fingerprint']==base['fingerprint'] and semantic(inc)==semantic(base),
                 'retained uninjected controls differ')
+        if plan['request']=='cells_deferred_both':
+            from ownership_panel3 import compare_actions
+            compare_actions(final, base)
         if plan['request']=='ownership_both':
             require(inc['fingerprint']==final['fingerprint'] and semantic(inc)==semantic(final),
                     'retained ownership exact science/decisions differ')

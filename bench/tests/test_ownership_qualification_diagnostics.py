@@ -92,6 +92,32 @@ class Contract(unittest.TestCase):
         for i in (1,2):calls[i]['ownership_diagnostic']['events']=counters(own.ADDED[0],4,'uninjected_candidate')
         with self.assertRaises(ValueError):d.mechanism_evidence(own.ADDED[0],1,calls,'ownership_both')
 
+    def test_deferred_mechanism_requires_binding_and_paired_commitment_evidence(self):
+        self.assertEqual(d.mechanism('candidate','cells_deferred_both'),('both','deferred'))
+        self.assertEqual(d.mechanism('uninjected_candidate','cells_deferred_both'),('none','none'))
+        with self.assertRaises(ValueError):d.mechanism('candidate','cells_unknown_both')
+        bound=dict(event='bound',attempted=0,admitted=0,refusal='None',cells=0,retained_bytes=0,peak_bytes=0)
+        for outcome in ('none','admitted','refused'):
+            calls=cell_calls(own.ADDED[0],4)
+            events=[bound]
+            if outcome!='none':
+                events.append(dict(event='attempt',attempted=1,admitted=int(outcome=='admitted'),
+                                   refusal='None' if outcome=='admitted' else 'Some(MemoryBudget)',
+                                   cells=10 if outcome=='admitted' else 0,
+                                   retained_bytes=100 if outcome=='admitted' else 0,peak_bytes=200))
+            count=int(outcome!='none')
+            for i in (3,4):
+                calls[i]['cell_diagnostic']=dict(bound=True,events=events)
+                calls[i]['deferred_commitment']=dict(installations=count,attempts=count)
+            d.mechanism_evidence(own.ADDED[0],4,calls,'cells_deferred_both')
+            for change in ('missing','count','binding'):
+                bad=copy.deepcopy(calls)
+                for i in (3,4):
+                    if change=='missing':bad[i].pop('deferred_commitment')
+                    elif change=='count':bad[i]['deferred_commitment']['installations']+=1
+                    else:bad[i]['cell_diagnostic']['bound']=False
+                with self.assertRaises(ValueError):d.mechanism_evidence(own.ADDED[0],4,bad,'cells_deferred_both')
+
     def test_boundary_w4_requires_preserved_construction_in_both_arms(self):
         for family in own.added_cases.BOUNDARY:
             calls=cell_calls(family,4)
@@ -157,15 +183,19 @@ class Contract(unittest.TestCase):
         from test_cmgschur import result,bits
         raw=result();changed=copy.deepcopy(raw);changed['matrices']['RSOLVER']['bits'][2]=bits(7.)
         def snap(value,fingerprint,hierarchy):
-            return value,None,dict(fingerprint=fingerprint,route_trace=[{'installed':'1'}],route_hierarchy=[hierarchy],gate_events=[])
+            return value,None,dict(fingerprint=fingerprint,route_trace=[{'installed':'1'}],route_hierarchy=[hierarchy],gate_events=[],
+                                   action_resources=[dict(final='0',preset='routing_two_gates_v1',iterations_used=15,
+                                                          iterations_limit=100,memory_bytes_used=1000,memory_bytes_limit=2000)])
         snapshots=dict(incumbent=snap(raw,'original',{'level':1}),uninjected_candidate=snap(raw,'original',{'level':1}),
                        candidate=snap(changed,'changed',{'level':1}))
         meta=dict(categorical_intercepts=True,absorbed_terms=2)
         with patch.object(q.cmgschur,'scientific_comparison'):
-            d.compare_cell(qualification_tests.manifest(request='cells_eager_both'),meta,snapshots)
+            for request in own.CELL_REQUESTS:
+                d.compare_cell(qualification_tests.manifest(request=request),meta,snapshots)
             with self.assertRaises(ValueError):d.compare_cell(qualification_tests.manifest(),meta,snapshots)
             snapshots['candidate'][2]['route_hierarchy']=[{'level':2}]
-            with self.assertRaises(ValueError):d.compare_cell(qualification_tests.manifest(request='cells_eager_both'),meta,snapshots)
+            for request in own.CELL_REQUESTS:
+                with self.assertRaises(ValueError):d.compare_cell(qualification_tests.manifest(request=request),meta,snapshots)
 
 
 class Monitor(historical.Monitor):
@@ -200,6 +230,8 @@ class Runner(unittest.TestCase):
         with Path(command[-2]).open('rb') as stream:_,argv=q.case_header(stream)
         parent=own.argument_parent(argv)
         lines=[f'FEREG_SOLVER_TRACE|phase=routing_action|final=0|preset=routing_two_gates_v1|iterations=15|native_limit=100|memory_bytes={parent+100}|memory_limit={parent+1000}|certified=1']
+        if entry['arm']=='candidate' and self.plan['request']=='cells_deferred_both':
+            lines.insert(0,'FEREG_CELLS|event=bound|attempted=0|admitted=0|refusal=None|cells=0|retained_bytes=0|peak_bytes=0')
         if entry['arm']!='incumbent':
             lines += ['FEREG_OWNERSHIP|'+'|'.join(f'{k}={v}' for k,v in event.items())
                       for event in counters(entry['family'],entry['workers'],entry['arm'])]
@@ -233,6 +265,23 @@ class Runner(unittest.TestCase):
         log=self.output/result['calls'][0]['log'];log.write_text(log.read_text()+'tampered\n')
         with self.assertRaises(ValueError):d.prove(self.plan_path,self.output/'results.json',self.output/'tampered-proof.json')
         self.assertFalse((self.output/'tampered-proof.json').exists())
+
+    def test_deferred_eighty_call_runner_reparses_commitment_and_rejects_tamper(self):
+        self.f.meta['absorbed_terms']=2
+        self.plan['request']='cells_deferred_both'
+        self.manifest['artifacts']['candidate']['request']='cells_deferred_both'
+        result=d.run(self.plan_path,self.output,execute=self.execute,monitor_factory=Monitor)
+        self.assertEqual((result['status'],result['native_calls_started']),('complete',80))
+        candidates=[c for c in result['calls'] if c['arm']=='candidate']
+        self.assertEqual(len(candidates),32)
+        self.assertTrue(all(c['cell_diagnostic']['requested_cells']=='deferred'
+                            and c['deferred_commitment']==dict(installations=0,attempts=0) for c in candidates))
+        proof=d.prove(self.plan_path,self.output/'results.json',self.output/'proof.json')
+        self.assertEqual(proof['status'],'passed')
+        candidates[0]['deferred_commitment']['installations']=1
+        q.write(self.output/'results.json',result)
+        with self.assertRaises(ValueError):d.prove(self.plan_path,self.output/'results.json',self.output/'bad-proof.json')
+        self.assertEqual(len(self.f.calls),80)
 
     def test_linux_proof_requires_actual_terminal_accounting_and_unique_marker(self):
         result=d.run(self.plan_path,self.output,execute=self.execute,monitor_factory=Monitor)
