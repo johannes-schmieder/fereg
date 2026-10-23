@@ -48,7 +48,7 @@ fn select_ols_routing(
     config.routing.filter(eligible).or_else(|| {
         match effects {
             Some(3..) if defaults[0] => Some(super::RoutingPreset::incremental_many()),
-            Some(2) if defaults[1] => Some(super::RoutingPreset::incremental_two()),
+            Some(2) if defaults[1] => Some(super::RoutingPreset::gates_two()),
             _ => None,
         }
         .filter(eligible)
@@ -276,7 +276,7 @@ impl<'a> FeSession<'a> {
         // Qualification changes only this invocation wiring. Each family can
         // be activated independently after its frozen confirmation passes.
         const DEFAULT_MANY: bool = true;
-        const DEFAULT_TWO: bool = false;
+        const DEFAULT_TWO: bool = true;
         let effects = borrowed.as_ref().map(|design| design.effects().len());
         let routing = select_ols_routing(config.absorb, effects, [DEFAULT_MANY, DEFAULT_TWO]);
         owner.absorb_config = Some(super::AbsorbConfig {
@@ -1512,9 +1512,17 @@ mod routing_selection_tests {
     use crate::fe::{AbsorbConfig, FeSolverKind, LsmrPreconditioner, RoutingPreset};
 
     #[test]
-    fn incremental_effective_identity_retains_accepted_family_on_fallback() {
+    fn effective_identity_retains_qualified_family_and_historical_injections() {
         let many = RoutingPreset::incremental_many();
-        let two = RoutingPreset::incremental_two();
+        let two = RoutingPreset::gates_two();
+        let two_presets = [
+            two,
+            RoutingPreset::incremental_two(),
+            RoutingPreset::remaining_two(),
+            RoutingPreset::remaining_two_control(None).unwrap(),
+            RoutingPreset::remaining_two_control(Some(16)).unwrap(),
+            RoutingPreset::remaining_two_control(Some(32)).unwrap(),
+        ];
         for defaults in [[false, false], [true, false], [false, true], [true, true]] {
             for effects in [None, Some(0), Some(1), Some(2), Some(3), Some(8)] {
                 let incumbent = match effects {
@@ -1522,13 +1530,18 @@ mod routing_selection_tests {
                     Some(2) if defaults[1] => Some(two),
                     _ => None,
                 };
-                for requested in [None, Some(many), Some(two)] {
+                for requested in [None, Some(many)]
+                    .into_iter()
+                    .chain(two_presets.into_iter().map(Some))
+                {
                     let mut config = AbsorbConfig {
                         routing: requested,
                         ..AbsorbConfig::default()
                     };
                     let selected = match (requested, effects) {
-                        (Some(p), Some(n)) if (p == many && n >= 3) || (p == two && n == 2) => {
+                        (Some(p), Some(n))
+                            if (p == many && n >= 3) || (two_presets.contains(&p) && n == 2) =>
+                        {
                             Some(p)
                         }
                         _ => incumbent,
