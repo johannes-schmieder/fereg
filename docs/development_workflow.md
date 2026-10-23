@@ -836,6 +836,32 @@ budget. No successful native observation was repeated. The new cell transport
 fixture does not establish actual deferred construction, and the old Break
 adapters do not establish activated new public mechanism coverage.
 
+The [completed Panel 3](../bench/results/ownership-cells-panel3-20261023.json)
+retains every 1,248 timing call and 96 diagnostic calls losslessly. Jobs
+`8265412` and `8265799` have complete 0/0 accounting. The independent assessment
+reconstructed all 192 reference sets, verified 72 historical warmups exactly,
+and passed scoped science, repeatability, resources, same-action deferred
+construction and host observation checks. No observation was retried or excluded.
+
+O+deferred has no adverse mean beyond max(5%, 1 ms) in any of the 24 settings,
+against either B or O. Its equally weighted complete-command difference is
+−1.279 ms against B and −0.382 ms against O. Only weak W1 demonstrates the
+required material gain over O: −2.810 ms, exceeding its allowance by 0.0695 ms.
+All six paired blocks are faster, but only four exceed the allowance; this
+narrow one-host discovery result is not a final confidence bound. Eager cells
+retain four adverse settings and remain ineligible. Deferred construction occurs
+in ten settings following ten CMG installations, with six settings reporting
+reuse; those counters do not independently establish causal kernel benefit.
+
+Independent high-effort and bounded Astra reviews support the
+[sole finalist selection](../bench/results/ownership-cells-finalist-20261023.json):
+`cells_deferred_both`, with O still both ownership mechanisms. It satisfies the
+declared discovery rule and has the lowest equal-weight mean among eligible
+configurations. Public behavior remains unchanged. The fixed 58-cell Mac/Linux
+qualification, real 80-call mechanism diagnostics on each platform, and exact
+public integration remain required; the narrow discovery gain neither waives
+those gates nor permits further sampling or another redesign.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,
