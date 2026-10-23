@@ -955,6 +955,51 @@ validation reconstructed all 30 retained calls and 18 reference banks in
 12.245 seconds. Both original failed outcomes remain unchanged; continuation
 uses the original physical hosts and the cumulative budgets stated above.
 
+The [completed mechanism prerequisite](../bench/results/ownership-qualification-diagnostics-20261023.json)
+retains all 160 complete call objects losslessly: 80 per platform, including
+the unchanged 30-call prefixes and 50 new calls each. Both platforms passed
+the independent numerical, exact/scoped science, repeatability, resource and
+host checks. Linux job `8266257` has 0/0 accounting and 419 scheduler seconds;
+the Mac continuation completed in 68.922 outer seconds. At four workers, the
+nonmover, hub, repeated-large and weak-large bodies each demonstrate positive
+moment omission against actual baseline construction. Their avoided packed
+score copies range from 320,000 to 9,600,000 bytes. The packed-cache boundary
+controls preserve moment construction and admit score ownership below and at
+32 MiB, rejecting it above the boundary. The no-intercept inactive control
+correctly constructs no speculative moments. These counters establish removed
+work and boundary behavior; they are not complete-command speed estimates.
+
+The first Linux offline proof, job `8266274`, remains a 0/1 failure after
+15 scheduler seconds: a reservation comparison retained padding from `qacct`.
+The maintained parser now strips field values. Twelve focused tests cover
+padded accounting and the existing invalid-accounting cases. A separately
+reviewed proof adapter verifies that this single statement is the only change,
+then runs the corrected proof with the frozen module's remaining functions.
+Job `8266318` passed with 0/0 accounting in 100 scheduler seconds and zero native
+calls. Exact accounting, all observations, archived source and native binaries
+remain unchanged; both the failed proof and the repair are retained.
+
+The [final launch freeze](../bench/results/ownership-qualification-final-launch-20261023.json)
+binds both passed proofs and the exact seven launch/assessment helpers before
+timing. Linux runs first on the twelve declared physical hosts: three shards
+per host, 10,440 calls total, 3,600 application seconds per shard and 4,200
+scheduler seconds. The Mac schedule remains fixed at 8,526 calls and 14,400
+application seconds. There are no timing retries or replacement samples.
+Each platform must pass all 116 protected bounds before public activation can
+advance. Five launch-boundary tests and six verifier tests passed; actual
+inactive, boundary and repeated-large reference-bank reconstruction checks
+also passed without native execution. The first verifier-test fixture failure
+is retained. Production identity remains equal to `c78f5c9c` across all 200
+runtime modules and 58 artifact inputs.
+
+The separate final verifier reconstructs retained full-column fingerprints,
+checks raw observations and repeats, and independently recomputes all 116
+performance bounds. It uses one maintained independent-oracle check per
+body/worker/arm, then compares additional Linux host banks numerically with
+the actual retained baseline; it does not rerun an oracle for every host bank.
+Neither successful analysis execution nor these prerequisite results establish
+final timing qualification or public-versus-hidden activation equivalence.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,

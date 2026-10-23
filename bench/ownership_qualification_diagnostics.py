@@ -542,7 +542,8 @@ def prove(plan_path, result_path, output, *, accounting=None, job_log=None):
         account=Path(accounting);log=Path(job_log)
         stamps.update({p:q.stamp(p) for p in (account,log)})
         q.accounting(account.read_text(),host['host'],normalize=True)
-        fields=dict(line.split(None,1) for line in account.read_text().splitlines() if len(line.split(None,1))==2)
+        fields={key:value.strip() for key,value in
+                (line.split(None,1) for line in account.read_text().splitlines() if len(line.split(None,1))==2)}
         require(fields.get('slots')==str(host['host']['slots'])
                 and fields.get('granted_pe')==host['host']['pe'],'accounted reservation differs')
         require(log.read_text().splitlines().count(MARKER)==1,'Linux completion marker missing/duplicated')

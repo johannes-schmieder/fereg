@@ -304,13 +304,16 @@ class Runner(unittest.TestCase):
         with self.assertRaises(ValueError):d.prove(self.plan_path,self.output/'results.json',self.output/'bad-proof.json')
         self.assertEqual(len(self.f.calls),80)
 
-    def test_linux_proof_requires_actual_terminal_accounting_and_unique_marker(self):
+    def test_linux_proof_accepts_padded_qacct_but_requires_exact_reservation_and_marker(self):
         result=d.run(self.plan_path,self.output,execute=self.execute,monitor_factory=Monitor)
         self.plan['platform']='Linux';result['platform']='Linux'
         result['host']['host'].update(hostname='scc-ua1',job_id='123',task_id='0',slots=28,pe='omp28')
         q.write(self.output/'results.json',result)
         account=self.output/'accounting.txt';job=self.output/'job.log'
         valid='jobnumber 123\ntaskid undefined\nhostname scc-ua1.scc.bu.edu\nproject welfgr\nfailed 0\nexit_status 0\nend_time now\nslots 28\ngranted_pe omp28\n'
+        # qacct aligns values with trailing spaces (including slots); retain
+        # that real framing through every positive and negative proof check.
+        valid=''.join(line+'                  \n' for line in valid.splitlines())
         account.write_text(valid);job.write_text(d.MARKER+'\n')
         # Reservation/census validators have their own maintained raw witnesses.
         # This fixture specifically executes real q.accounting and marker gates.
