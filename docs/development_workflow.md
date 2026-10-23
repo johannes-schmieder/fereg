@@ -468,6 +468,22 @@ or inconclusiveness retains the accepted public behavior and cannot silently
 substitute another component. Commit/push with `[skip ci]`, then remove task
 scratch after retained evidence is verified. Leave no monitor at completion.
 
+The [completed ownership discovery panel](../bench/results/ownership-cells-panel1-20261023.json)
+retains all 1,248 calls, 96 separate diagnostic calls, controls, operational
+failures, accounting and independent assessment. On one isolated Linux host,
+score ownership reduced complete-command time by a mean 0.406 ms, equally
+weighting the 24 settings; the combined arm reduced it by 0.421 ms. These are
+discovery point estimates, not qualified platform speedups. All 72 paired
+comparisons stayed within the material-regression allowance at their point
+estimates, with exact ownership science/signatures and no scored retries or
+exclusions. Diagnostics verified omitted score copies in 20 of 24 settings,
+but zero omitted moment work: every frozen input had `candidate_all=0`, so
+the loaded RHS/moment bank was unavailable. The combined arm's nominal 0.016 ms
+edge does not demonstrate a moment-omission benefit. Panel 2 awaits Johannes's
+interpretation of whether admission requires demonstrated work removal for
+each enabled mechanism. The frozen observations and selection rule remain
+unchanged, and neither new mechanism is publicly enabled.
+
 [SPEC](SPEC.md) defines the scientific contract. [VALIDATION](VALIDATION.md)
 records the accepted scope and caveats. No historical campaign is a substitute
 for independent scientific witnesses on the responsibilities a change affects.
