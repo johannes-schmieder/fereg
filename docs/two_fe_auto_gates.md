@@ -18,8 +18,10 @@ positive remaining allowance and the existing direct-route semantics.
 The fixed Mac/Linux qualification subsequently passed all 84 protected bounds
 per platform. Public activation remains disabled: its frozen exact resource
 comparison encountered the real ownership charge of the hidden injection
-argument. The [activation diagnosis and proposed clarification](VALIDATION.md#selected-two-fe-gates-activation-resource-mismatch-2026-10-22)
-retain that failed outcome and require Johannes's decision before continuation.
+argument. The [activation diagnosis and approved clarification](VALIDATION.md#selected-two-fe-gates-activation-resource-mismatch-2026-10-22)
+retain that failed outcome. Johannes approved the narrow transport-accounting
+amendment on 2026-10-23; activation still requires the amended comparison and
+the unchanged scientific, resource and integration gates to pass.
 
 The actual frozen grids contain 56 × 52 pairs, of which 1,479 are admissible.
 Two pairs tie on the primary loss; the declared order selects feature 16.

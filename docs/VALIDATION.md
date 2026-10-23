@@ -63,18 +63,26 @@ The literal frozen criterion therefore remains failed. The provisional wiring
 and test migrations were reverted to the exact preactivation source; the full
 default-disabled source suite passed again. The passed Mac/Linux performance
 qualification is unchanged, and current inputs, artifacts and partial outputs
-are retained for a decision. No monitor remains active.
+remain retained. No monitor remains active.
 
-The proposed clarification needs Johannes's decision: separate only the
+Johannes approved the clarification on 2026-10-23: separate only the
 source-proven invocation transport ownership when comparing solver resources,
 retain raw totals and every memory cap, and reject any unexplained difference
 in accounting or admission, workers, science, signatures, gates or hierarchy.
-If approved, independently recheck the existing seven trios without native
+Independently recheck the existing seven trios without native
 execution, then run only the untouched 35 cells / 105 calls per platform on
 the original hosts. Prior active elapsed time remains charged to each original
-1,800-second budget; the 120-second call limit remains. This is a proposed
+1,800-second budget; the 120-second call limit remains. This is a narrow
 comparator amendment, not permission to normalize arbitrary memory differences,
 retry scientific failures or obtain new performance samples.
+
+The [approved continuation freeze](../bench/results/two-fe-policy-gates-activation-continuation-freeze-20261023.json)
+binds the comparator, independent verifier, original failed prefix, exact host
+and remaining budgets before execution. The zero-native preflight rechecked
+all 14 retained trios and rejected 38 altered-request, cap, accounting,
+decision, schedule and host witnesses. The independent verifier's 24 focused
+checks passed; two synthetic-fixture setup failures remain recorded. This
+freeze authorizes no additional timing sample or automatic activation.
 
 ## Selected two-FE gates: fixed qualification (2026-10-22)
 
