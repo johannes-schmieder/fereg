@@ -28,8 +28,9 @@ The scope, scientific/resource/transaction safeguards and separate 42-cell
 qualification and exact public-versus-hidden activation gates remain in force.
 The revised [joint two-gate formulation](two_fe_auto_gates.md) replaces this
 price model for the next hidden candidate. The remainder of this document
-describes the completed first formulation and its retained evidence. No revised
-runtime policy has yet been installed.
+describes the completed first formulation and its retained evidence. At that
+milestone no revised runtime policy had been installed. The selected successor
+and current qualification/activation status are recorded in the gates document.
 
 ## Scope and independent witnesses
 

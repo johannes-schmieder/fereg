@@ -27,11 +27,9 @@ fn config(mode: PreparedOlsExecutionMode, workers: usize) -> PreparedOlsFitConfi
     config
 }
 
-fn assert_no_upgrade_requires_iterations(design: &fereg_oracle::designs::Design, workers: usize) {
+fn assert_unrouted_requires_iterations(design: &fereg_oracle::designs::Design, workers: usize) {
     let mut baseline = config(PreparedOlsExecutionMode::Fast, workers);
-    baseline.absorb.routing = Some(RoutingPreset::prefix(
-        fereg_core::fe::CategoricalPrefix::None,
-    ));
+    baseline.absorb.routing = None;
     let (fit, rows) = support::native_fit(design, baseline, false).unwrap();
     assert_eq!(rows, (0..128).collect::<Vec<_>>());
     assert!(fit.absorption_report().certified());
@@ -82,9 +80,9 @@ fn direct_full_rhs_admission_and_low_chunks_match_dense_qr_with_saved_gauge() {
                 assert!(fit.absorption_report().certified());
                 assert!(fit.residual_absorption_report().certified());
                 if mode == PreparedOlsExecutionMode::Fast {
-                    // The explicit no-upgrade arm requires a retained-firm solve;
+                    // The identical incumbent requires a retained-firm solve;
                     // only the admitted direct route finishes in zero iterations.
-                    assert_no_upgrade_requires_iterations(&design, workers);
+                    assert_unrouted_requires_iterations(&design, workers);
                     assert_eq!(fit.absorption_report().iterations, 0);
                 }
                 assert_eq!(fit.finite_rank(), 63);

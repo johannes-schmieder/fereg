@@ -15,6 +15,12 @@ banks, proxy scans, historical action counters or economic clocks. Its runtime
 still preserves owner-level closure, current-key eligibility, readiness,
 positive remaining allowance and the existing direct-route semantics.
 
+The fixed Mac/Linux qualification subsequently passed all 84 protected bounds
+per platform. Public activation remains disabled: its frozen exact resource
+comparison encountered the real ownership charge of the hidden injection
+argument. The [activation diagnosis and proposed clarification](VALIDATION.md#selected-two-fe-gates-activation-resource-mismatch-2026-10-22)
+retain that failed outcome and require Johannes's decision before continuation.
+
 The actual frozen grids contain 56 × 52 pairs, of which 1,479 are admissible.
 Two pairs tie on the primary loss; the declared order selects feature 16.
 The resulting 72 builds and 36 deferrals include three harmful training builds.
