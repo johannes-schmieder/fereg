@@ -935,6 +935,17 @@ construction and omission are eligible, preserved construction at the cache
 boundaries, and all science, repeatability, resource and observer checks.
 Freeze a separately identified source and budget amendment before continuation.
 No final qualification timing has run at this failure milestone.
+The corrected tooling passed 28 focused tests, including prefix tampering,
+wrong-host, charge, source and failed-accounting rejection. Offline Mac prefix
+validation reconstructed all 30 calls and 18 reference banks in 2.373 seconds
+without native execution. The full source-only suite passed in 98.741 seconds
+with log SHA-256
+`4ee2b39b5e9ee456194d6b25678e877bf84449115c888ed208e8a4736c1c1a2e`.
+All 200 runtime modules and 58 artifact inputs remain identical to `c78f5c9c`.
+The initial synthetic continuation test failure remains recorded: its placeholder
+input body lacked numeric framing and was corrected before the final focused run.
+This tooling validation establishes neither diagnostic completion nor a timing
+or public-activation result.
 
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and

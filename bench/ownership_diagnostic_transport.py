@@ -125,6 +125,7 @@ def validate(plan, manifest, plan_path):
     require(old_sources.pop('ownership_qualification_diagnostics')==OLD_DIAGNOSTIC_SHA,
             'not the diagnosed diagnostic source')
     new_sources.pop('ownership_qualification_diagnostics');new_sources.pop('ownership_diagnostic_transport')
+    new_sources.pop('ownership_diagnostic_eligibility',None)
     require(old_sources==new_sources and normalized_manifest(before)==normalized_manifest(manifest),
             'continuation changes more than the harness/repair tooling')
     require(old['status']=='failed' and old['native_calls_started']==len(old['calls'])==1

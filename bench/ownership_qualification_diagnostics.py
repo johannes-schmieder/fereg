@@ -31,7 +31,8 @@ require = q.require
 def sources():
     return {**q.execution_sources(), 'ownership_cells': Path(oc.__file__).resolve(),
             'ownership_qualification_diagnostics': Path(__file__).resolve(),
-            'ownership_diagnostic_transport': Path(__file__).with_name('ownership_diagnostic_transport.py')}
+            'ownership_diagnostic_transport': Path(__file__).with_name('ownership_diagnostic_transport.py'),
+            'ownership_diagnostic_eligibility': Path(__file__).with_name('ownership_diagnostic_eligibility.py')}
 
 
 def save_new(path, value):
@@ -59,7 +60,7 @@ def verify_bound(manifest, path):
     return stamps
 
 
-def freeze(qualification, output, *, repair=None):
+def freeze(qualification, output, *, repair=None, eligibility=None):
     qualification, output = Path(qualification).resolve(), Path(output).resolve()
     require(not output.exists(), 'diagnostic plan already exists')
     manifest = q.read(qualification)
@@ -78,6 +79,11 @@ def freeze(qualification, output, *, repair=None):
         import ownership_diagnostic_transport as transport
         plan['transport_repair']=repair
         _,_,prior_stamps=transport.validate(plan,manifest,output)
+        stamps.update(prior_stamps)
+    if eligibility is not None:
+        import ownership_diagnostic_eligibility as amendment
+        plan['eligibility_amendment']=eligibility
+        _,_,prior_stamps=amendment.validate(plan,manifest,output)
         stamps.update(prior_stamps)
     require(all(q.stamp(p)==v for p,v in stamps.items()), 'freeze input/source drift')
     save_new(output, plan)
@@ -110,6 +116,10 @@ def load(plan_path):
     if 'transport_repair' in plan:
         import ownership_diagnostic_transport as transport
         _,_,prior_stamps=transport.validate(plan,manifest,plan_path)
+        stamps.update(prior_stamps)
+    if 'eligibility_amendment' in plan:
+        import ownership_diagnostic_eligibility as amendment
+        _,_,prior_stamps=amendment.validate(plan,manifest,plan_path)
         stamps.update(prior_stamps)
     stamps.update({plan_path:q.stamp(plan_path), qualification:q.stamp(qualification)})
     return plan, manifest, qualification, stamps
@@ -161,7 +171,11 @@ def mechanism_evidence(family, workers, calls, request):
     n, width=spec['rows'],spec['regressors']+int(spec['include_intercept'])+1
     expected=dict(constructed_moment_rows=n,constructed_moment_columns=width,
                   moment_workspace_bound_bytes=width*3*(min(64,max(1,(n+16383)//16384))+1)*8)
-    eligible=workers==4 and family not in own.added_cases.BOUNDARY
+    # These frozen inputs have two categorical FEs and continuous columns.
+    # estimate.rs materializes loaded RHS only with an appended intercept
+    # (the separate single-FE slope alternative is outside this panel).
+    construction=workers==4 and spec['include_intercept']
+    eligible=construction and family not in own.added_cases.BOUNDARY
     for arm in ('uninjected_candidate','candidate'):
         a,b=[c for c in calls if c['arm']==arm]
         require(a['fingerprint']==b['fingerprint'] and a['worker_signature']==b['worker_signature']
@@ -188,15 +202,15 @@ def mechanism_evidence(family, workers, calls, request):
                 require((built==[expected] and omitted==0) if arm=='uninjected_candidate'
                         else (not built and omitted==expected['moment_workspace_bound_bytes']>0),
                         'positive actual baseline construction/finalist omission missing')
-            elif workers==4:
+            elif construction:
                 # Cache-boundary controls cannot omit raw moments: the K+2
                 # bound exceeds 32MiB, but unit-weight parallel construction
                 # remains admitted in both uninjected and ownership branches.
                 require(built==[expected] and omitted==0, 'boundary raw moment construction was not preserved')
             else:
-                require(not built and omitted==0, 'W1 moment construction/omission control changed')
+                require(not built and omitted==0, 'loaded-RHS-ineligible construction/omission control changed')
     return dict(family=family,workers=workers,moment_omission_eligible=eligible,
-                baseline_construction_required=workers==4,expected_moments=expected,
+                baseline_construction_required=construction,expected_moments=expected,
                 request=request,positive_omission_demonstrated=eligible,
                 packed_cache_bytes=spec['rows']*spec['regressors']*8,
                 score_cache_ownership_eligible=spec['rows']*spec['regressors']*8<=32*1024*1024,
@@ -240,15 +254,23 @@ def run(plan_path, output, *, execute=None, monitor_factory=None):
             plan,manifest,qualification,stamps=load(plan_path)
             require(platform.system()==plan['platform'],'wrong diagnostic platform')
             repair=plan.get('transport_repair')
+            eligibility=plan.get('eligibility_amendment')
             if repair is not None:
                 import ownership_diagnostic_transport as transport
-                charge=repair['charged_seconds']
+                charge=repair['charged_seconds']+(eligibility['charged_seconds'] if eligibility else 0)
                 deadline.seconds=2400-charge
                 deadline.arm()
-                result.update(native_calls_reused=1,native_calls_executed_here=0,
+                result.update(native_calls_reused=30 if eligibility else 1,native_calls_executed_here=0,
                               charged_prior_seconds=charge,transport_repair=repair)
                 _,old,_=transport.validate(plan,manifest,plan_path)
-                recovered=transport.recovered(plan,manifest,qualification,plan_path,output/plan['schedule'][0]['cell'])
+                if eligibility is not None:
+                    import ownership_diagnostic_eligibility as amendment
+                    checked,old,prior_stamps=amendment.recover(plan,manifest,qualification,plan_path,output,copy_files=True)
+                    stamps.update(prior_stamps)
+                    result.update(eligibility_amendment=eligibility,calls=checked['calls'],
+                                  cells=checked['cells'],native_calls_started=30)
+                else:
+                    recovered=transport.recovered(plan,manifest,qualification,plan_path,output/plan['schedule'][0]['cell'])
             result.update(plan_sha256=q.digest(plan_path),qualification_sha256=plan['qualification_sha256'],
                           candidate_sha256=plan['candidate_sha256'],incumbent_sha256=plan['incumbent_sha256'],
                           schedule=plan['schedule'],platform=plan['platform'])
@@ -262,6 +284,7 @@ def run(plan_path, output, *, execute=None, monitor_factory=None):
             with deadline.observing(host):
                 if repair is not None:transport.same_host(host.report(),old)
                 for offset in range(0,80,5):
+                    if eligibility is not None and offset<30:continue
                     entries=plan['schedule'][offset:offset+5]
                     entry=entries[0]; family,workers,cell=entry['family'],entry['workers'],entry['cell']
                     item=families[family];meta=q.metadata(manifest,item,qualification)
@@ -381,49 +404,14 @@ def verify_host(result, directory, platform_name):
     return host
 
 
-def prove(plan_path, result_path, output, *, accounting=None, job_log=None):
-    """Wrapper prerequisite: immutable bindings, retained evidence and terminal host evidence."""
-    output=Path(output).resolve();require(not output.exists(),'proof already exists')
-    plan,manifest,qualification,stamps=load(plan_path)
-    result_path=Path(result_path).resolve();directory=result_path.parent
-    stamps[result_path]=q.stamp(result_path);result=q.read(result_path)
-    require(result['platform']==plan['platform'] and result['status']=='complete' and result['failures']==[] and result['retries']==0 and result['exclusions']==[]
-            and result['native_calls_started']==len(result['calls'])==80 and len(result['cells'])==16
-            and 0<result['elapsed_s']<=2400 and result['plan_sha256']==q.digest(plan_path)
-            and result['qualification_sha256']==plan['qualification_sha256']
-            and result['candidate_sha256']==plan['candidate_sha256'] and result['incumbent_sha256']==plan['incumbent_sha256']
-            and result['schedule']==plan['schedule']
-            and [{k:c[k] for k in ('cell','family','workers','arm','repeat')} for c in result['calls']]==plan['schedule'],
-            'incomplete/stale/failed diagnostic result')
-    stamps[directory/'host/host-observations.jsonl']=q.stamp(directory/'host/host-observations.jsonl')
-    host_result=result
-    if 'transport_repair' in plan:
-        import ownership_diagnostic_transport as transport
-        _,old,_=transport.validate(plan,manifest,plan_path)
-        require(result.get('transport_repair')==plan['transport_repair']
-                and result.get('native_calls_reused')==1 and result.get('native_calls_executed_here')==79
-                and result.get('charged_prior_seconds')==plan['transport_repair']['charged_seconds']
-                and 0<result['continuation_elapsed_s']<=2400-result['charged_prior_seconds']
-                and result['elapsed_s']==result['charged_prior_seconds']+result['continuation_elapsed_s'],
-                'continuation call/budget accounting differs')
-        transport.same_host(result['host'],old)
-        transport.verify_recovered(plan,manifest,qualification,plan_path,directory,result['calls'][0])
-        host_result={**result,'calls':result['calls'][1:]}
-    host=verify_host(host_result,directory,plan['platform'])
-    accounts={}
-    if plan['platform']=='Linux':
-        require(accounting is not None and job_log is not None,'Linux proof requires terminal accounting and completion marker')
-        account=Path(accounting);log=Path(job_log)
-        stamps.update({p:q.stamp(p) for p in (account,log)})
-        q.accounting(account.read_text(),host['host'],normalize=True)
-        fields=dict(line.split(None,1) for line in account.read_text().splitlines() if len(line.split(None,1))==2)
-        require(fields.get('slots')==str(host['host']['slots'])
-                and fields.get('granted_pe')==host['host']['pe'],'accounted reservation differs')
-        require(log.read_text().splitlines().count(MARKER)==1,'Linux completion marker missing/duplicated')
-        accounts=dict(accounting_sha256=q.digest(account),job_log_sha256=q.digest(log))
+def verify_calls(plan, manifest, qualification, directory, result):
+    """Shared raw/reference/scope checks for the fixed complete or diagnosed prefix."""
+    import ownership_diagnostic_transport as transport
+    require(len(result['calls']) in (30,80), 'unsupported diagnostic validation cohort')
+    stamps={}
     diagnostic=arm_manifest(manifest);families={c['family']:c for c in manifest['cases']}
     first_worker={};requests_checked={}
-    for offset in range(0,80,5):
+    for offset in range(0,len(result['calls']),5):
         calls=result['calls'][offset:offset+5];family=calls[0]['family'];workers=calls[0]['workers']
         require(result['cells'][calls[0]['cell']]==mechanism_evidence(family,workers,calls,plan['request']),
                 'mechanism evidence changed')
@@ -506,6 +494,60 @@ def prove(plan_path, result_path, output, *, accounting=None, job_log=None):
                 require(earlier['worker_signature']==call['worker_signature']
                         and gates.semantic_signature(earlier)==gates.semantic_signature(call),'retained cross-worker decisions differ')
             else:first_worker[family,arm]=(path,call)
+    return stamps
+
+
+def prove(plan_path, result_path, output, *, accounting=None, job_log=None):
+    """Wrapper prerequisite: immutable bindings, retained evidence and terminal host evidence."""
+    output=Path(output).resolve();require(not output.exists(),'proof already exists')
+    plan,manifest,qualification,stamps=load(plan_path)
+    result_path=Path(result_path).resolve();directory=result_path.parent
+    stamps[result_path]=q.stamp(result_path);result=q.read(result_path)
+    require(result['platform']==plan['platform'] and result['status']=='complete' and result['failures']==[] and result['retries']==0 and result['exclusions']==[]
+            and result['native_calls_started']==len(result['calls'])==80 and len(result['cells'])==16
+            and 0<result['elapsed_s']<=2400 and result['plan_sha256']==q.digest(plan_path)
+            and result['qualification_sha256']==plan['qualification_sha256']
+            and result['candidate_sha256']==plan['candidate_sha256'] and result['incumbent_sha256']==plan['incumbent_sha256']
+            and result['schedule']==plan['schedule']
+            and [{k:c[k] for k in ('cell','family','workers','arm','repeat')} for c in result['calls']]==plan['schedule'],
+            'incomplete/stale/failed diagnostic result')
+    stamps[directory/'host/host-observations.jsonl']=q.stamp(directory/'host/host-observations.jsonl')
+    host_result=result
+    if 'transport_repair' in plan:
+        import ownership_diagnostic_transport as transport
+        _,old,_=transport.validate(plan,manifest,plan_path)
+        eligibility=plan.get('eligibility_amendment')
+        reused=30 if eligibility else 1
+        charge=plan['transport_repair']['charged_seconds']+(eligibility['charged_seconds'] if eligibility else 0)
+        require(result.get('transport_repair')==plan['transport_repair']
+                and result.get('native_calls_reused')==reused and result.get('native_calls_executed_here')==80-reused
+                and result.get('charged_prior_seconds')==charge
+                and 0<result['continuation_elapsed_s']<=2400-result['charged_prior_seconds']
+                and result['elapsed_s']==result['charged_prior_seconds']+result['continuation_elapsed_s'],
+                'continuation call/budget accounting differs')
+        transport.same_host(result['host'],old)
+        if eligibility is not None:
+            import ownership_diagnostic_eligibility as amendment
+            checked,_,prior_stamps=amendment.recover(plan,manifest,qualification,plan_path,directory,copy_files=False)
+            stamps.update(prior_stamps)
+            require(result.get('eligibility_amendment')==eligibility and result['calls'][:30]==checked['calls'],
+                    'imported 30-call cohort changed')
+        else:
+            transport.verify_recovered(plan,manifest,qualification,plan_path,directory,result['calls'][0])
+        host_result={**result,'calls':result['calls'][reused:]}
+    host=verify_host(host_result,directory,plan['platform'])
+    accounts={}
+    if plan['platform']=='Linux':
+        require(accounting is not None and job_log is not None,'Linux proof requires terminal accounting and completion marker')
+        account=Path(accounting);log=Path(job_log)
+        stamps.update({p:q.stamp(p) for p in (account,log)})
+        q.accounting(account.read_text(),host['host'],normalize=True)
+        fields=dict(line.split(None,1) for line in account.read_text().splitlines() if len(line.split(None,1))==2)
+        require(fields.get('slots')==str(host['host']['slots'])
+                and fields.get('granted_pe')==host['host']['pe'],'accounted reservation differs')
+        require(log.read_text().splitlines().count(MARKER)==1,'Linux completion marker missing/duplicated')
+        accounts=dict(accounting_sha256=q.digest(account),job_log_sha256=q.digest(log))
+    stamps.update(verify_calls(plan,manifest,qualification,directory,result))
     require(all(q.stamp(p)==v for p,v in stamps.items()),'proof source/input drift')
     proof=dict(schema=1,kind=KIND,status='passed',qualification_sha256=plan['qualification_sha256'],
                qualification_identity=plan['qualification_identity'],plan_sha256=q.digest(plan_path),
@@ -516,9 +558,10 @@ def prove(plan_path, result_path, output, *, accounting=None, job_log=None):
                performance_claim=False,activation_qualified=False,
                limits=['Diagnostic correctness/mechanism prerequisite only; all fixed qualification timing and hidden/public activation gates remain.'])
     if 'transport_repair' in plan:
-        proof.update(transport_repair=plan['transport_repair'],native_calls_reused=1,native_calls_executed_here=79,
+        proof.update(transport_repair=plan['transport_repair'],native_calls_reused=reused,native_calls_executed_here=80-reused,
                      original_failed_status_preserved=True,
                      imported_timer='observed_process_span_upper_bound',imported_maxrss='unavailable')
+    if 'eligibility_amendment' in plan:proof['eligibility_amendment']=plan['eligibility_amendment']
     save_new(output,proof);return proof
 
 
@@ -530,6 +573,11 @@ def main():
         repair.add_argument('--'+name,type=Path,required=True)
     repair.add_argument('--attempt-seconds',type=float,required=True)
     repair.add_argument('--accounting',type=Path);repair.add_argument('--job-log',type=Path)
+    eligibility=sub.add_parser('freeze-eligibility')
+    for name in ('qualification','previous-plan','previous-results','output'):
+        eligibility.add_argument('--'+name,type=Path,required=True)
+    eligibility.add_argument('--attempt-seconds',type=float,required=True)
+    eligibility.add_argument('--accounting',type=Path);eligibility.add_argument('--job-log',type=Path)
     r=sub.add_parser('run');r.add_argument('--plan',type=Path,required=True);r.add_argument('--output',type=Path,required=True)
     p=sub.add_parser('prove');p.add_argument('--plan',type=Path,required=True);p.add_argument('--results',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True);p.add_argument('--accounting',type=Path);p.add_argument('--job-log',type=Path)
@@ -539,6 +587,10 @@ def main():
         import ownership_diagnostic_transport as transport
         transport.freeze(args.qualification,args.previous_plan,args.previous_results,args.old_harness_build,
                          args.new_harness_build,args.attempt_seconds,args.output,
+                         accounting=args.accounting,job_log=args.job_log)
+    elif args.command=='freeze-eligibility':
+        import ownership_diagnostic_eligibility as amendment
+        amendment.freeze(args.qualification,args.previous_plan,args.previous_results,args.attempt_seconds,args.output,
                          accounting=args.accounting,job_log=args.job_log)
     elif args.command=='run':run(args.plan,args.output);print(MARKER)
     else:prove(args.plan,args.results,args.output,accounting=args.accounting,job_log=args.job_log)

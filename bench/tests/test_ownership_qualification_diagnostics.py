@@ -18,9 +18,10 @@ def counters(family, workers, arm):
     spec=own.added_cases.specification(family)
     n,k=spec['rows'],spec['regressors']+int(spec['include_intercept'])+1
     bound=k*3*(min(64,max(1,(n+16383)//16384))+1)*8
-    positive=workers==4 and family not in own.added_cases.BOUNDARY
+    construction=workers==4 and spec['include_intercept']
+    positive=construction and family not in own.added_cases.BOUNDARY
     result=[]
-    if workers==4:
+    if construction:
         result=[dict(constructed_moment_rows=n,constructed_moment_columns=k,moment_workspace_bound_bytes=bound)
                 if arm=='uninjected_candidate' or not positive else dict(unused_moment_bytes=bound)]
     # Synthetic event generation is deliberately independent of the runner's
@@ -72,7 +73,8 @@ class Contract(unittest.TestCase):
             for workers in (1,4):
                 calls=cell_calls(family,workers)
                 evidence=d.mechanism_evidence(family,workers,calls,'ownership_both')
-                self.assertEqual(evidence['moment_omission_eligible'],workers==4 and family not in own.added_cases.BOUNDARY)
+                self.assertEqual(evidence['moment_omission_eligible'],workers==4
+                                 and family not in (*own.added_cases.BOUNDARY,'ownership-inactive-zero'))
                 for armindex in (1,2,3,4):
                     bad=copy.deepcopy(calls);bad[armindex]['solver_trace_lines']=[]
                     with self.assertRaises(ValueError):d.mechanism_evidence(family,workers,bad,'ownership_both')
@@ -117,6 +119,25 @@ class Contract(unittest.TestCase):
                     elif change=='count':bad[i]['deferred_commitment']['installations']+=1
                     else:bad[i]['cell_diagnostic']['bound']=False
                 with self.assertRaises(ValueError):d.mechanism_evidence(own.ADDED[0],4,bad,'cells_deferred_both')
+
+    def test_no_intercept_two_fe_loaded_rhs_control_requires_no_moments(self):
+        family='ownership-inactive-zero'
+        for workers in (1,4):
+            calls=cell_calls(family,workers)
+            for i in (3,4):calls[i]['ownership_diagnostic']['events'].insert(0,dict(unused_moment_bytes=0))
+            evidence=d.mechanism_evidence(family,workers,calls,'ownership_both')
+            self.assertFalse(evidence['baseline_construction_required'])
+            self.assertFalse(evidence['moment_omission_eligible'])
+            self.assertEqual(evidence['expected_finalist_scores']['avoided_packed_elements'],80000)
+            for indices in ((1,2),(3,4)):
+                bad=copy.deepcopy(calls)
+                for i in indices:
+                    bad[i]['ownership_diagnostic']['events'].insert(0,dict(constructed_moment_rows=20000,
+                        constructed_moment_columns=5,moment_workspace_bound_bytes=360))
+                with self.assertRaises(ValueError):d.mechanism_evidence(family,workers,bad,'ownership_both')
+            bad=copy.deepcopy(calls)
+            for i in (3,4):bad[i]['ownership_diagnostic']['events'][0]['unused_moment_bytes']=360
+            with self.assertRaises(ValueError):d.mechanism_evidence(family,workers,bad,'ownership_both')
 
     def test_boundary_w4_requires_preserved_construction_in_both_arms(self):
         for family in own.added_cases.BOUNDARY:
