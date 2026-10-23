@@ -486,6 +486,20 @@ The previous qualification's committed input/reference hashes remain the
 binding for the original 42 cells; missing historical scratch is not permission
 to substitute a different request or witness.
 
+The predecessor's scratch was removed after its completed activation. Recovery
+of its original 42-cell inputs is therefore a separate byte-restoration step,
+not a new reference-selection exercise: use the retained `88ab8fb5` Python
+generation/oracle source, NumPy 2.2.6 and SciPy 1.16.3, seed `2026105201`, and
+the original four replay imports. Record the actual serializer binaries used
+for recovery. Accept a recovered request, metadata document or reference only
+if its complete SHA-256 equals the prior committed freeze; no approximate
+comparison or replacement witness is admitted. Metadata can be restored from
+the retained document content, preserving its historical provenance. The step
+has a 2,400-second total budget, at most 300 seconds for input reconstruction,
+120 seconds per numerical reference, one attempt per file and zero native
+plugin calls. Preserve a mismatch or failure and stop the affected final
+qualification work rather than trying alternate seeds, inputs or references.
+
 Before final timing, freeze a separate 80-call diagnostic schedule on each
 platform: the eight added bodies at W1/W4, with accepted `c16c0b55` once,
 uninjected candidate twice, and the selected hidden finalist twice. Its budget
