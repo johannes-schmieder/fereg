@@ -862,6 +862,17 @@ qualification, real 80-call mechanism diagnostics on each platform, and exact
 public integration remain required; the narrow discovery gain neither waives
 those gates nor permits further sampling or another redesign.
 
+The [final qualification freeze](../bench/results/ownership-cells-qualification-freeze-20261023.json)
+binds that sole candidate to both 58-cell manifests and both separate 80-call
+diagnostic schedules before native execution. The original 42 inputs and
+references remain byte-exact; all eight additions passed full input validation.
+The Linux manifest preparation job `8265884` completed with 0/0 accounting and
+zero native calls. The record preserves the two pre-native local preparation
+defects and their narrow repairs, actual source/build bindings, budgets and
+wrappers. Timing requires a successful proof from the exact platform diagnostic
+schedule, including terminal Linux accounting. No qualification result or public
+activation is established by this freeze.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,
