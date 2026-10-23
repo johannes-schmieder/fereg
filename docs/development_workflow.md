@@ -873,6 +873,35 @@ wrappers. Timing requires a successful proof from the exact platform diagnostic
 schedule, including terminal Linux accounting. No qualification result or public
 activation is established by this freeze.
 
+The [diagnostic transport failures](../bench/results/ownership-qualification-diagnostic-transport-failure-20261023.json)
+preserve the first final-diagnostic attempt on each platform. The enlarged
+harness was compiled without `REPLAY_TIMING`: each first accepted-reference
+invocation returned zero, but its inline hexadecimal columns were rejected by
+the binary-column reader before scientific validation. Linux job `8265946`
+ended with 0/1 accounting on `scc-uf3`. Neither platform reached the candidate
+or any qualification timing call. These attempts remain failed.
+
+Independent high-effort and bounded Astra reviews support a narrow transport
+repair under the existing diagnosed-repair authority. Before continuation,
+freeze the corrected harness with the same one-million-row and ten-million-cell
+limits and validate the retained first result against its independent reference.
+Recover column bits directly from the hexadecimal words, with an exact roundtrip;
+do not repeat the native invocation. Only that first diagnostic call may use its
+recorded complete-process duration as an upper bound, clearly distinguished from
+a native timer and excluded from performance claims. Its unrecorded per-call
+RSS remains unavailable. Run only the remaining 79 calls on the original physical
+host, requiring normal native timers and separate validation of both observer
+cohorts. Deduct two Mac and twenty Linux application seconds from the original
+2,400-second budgets, and deduct all 34 failed Linux scheduler seconds from the
+2,700-second reservation. No scientific tolerance, request, input, reference,
+candidate artifact, call count or qualification timing budget changes.
+The continuation tooling passed 21 focused tests, including malformed imported
+bits, failed independent witnesses, wrong-host rejection and mixed-timer proof
+checks. The full source-only suite passed in 87.843 seconds with log SHA-256
+`6d14878a41328b37b6b36f6bb3e1eea9b38fd130236d78d3d233218b79b8a9c7`.
+All 200 runtime modules and 58 artifact inputs still match native source
+`c78f5c9c`; installed-package admission is not established by these checks.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,

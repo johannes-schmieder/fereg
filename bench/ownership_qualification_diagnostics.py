@@ -30,7 +30,8 @@ require = q.require
 
 def sources():
     return {**q.execution_sources(), 'ownership_cells': Path(oc.__file__).resolve(),
-            'ownership_qualification_diagnostics': Path(__file__).resolve()}
+            'ownership_qualification_diagnostics': Path(__file__).resolve(),
+            'ownership_diagnostic_transport': Path(__file__).with_name('ownership_diagnostic_transport.py')}
 
 
 def save_new(path, value):
@@ -58,7 +59,7 @@ def verify_bound(manifest, path):
     return stamps
 
 
-def freeze(qualification, output):
+def freeze(qualification, output, *, repair=None):
     qualification, output = Path(qualification).resolve(), Path(output).resolve()
     require(not output.exists(), 'diagnostic plan already exists')
     manifest = q.read(qualification)
@@ -73,6 +74,11 @@ def freeze(qualification, output):
                 native_calls=80, timeout_s=120, budget_s=2400, retries=0,
                 observer='whole-host' if manifest['platform']=='Linux' else 'desktop',
                 execution_sources={k:q.digest(p) for k,p in sources().items()})
+    if repair is not None:
+        import ownership_diagnostic_transport as transport
+        plan['transport_repair']=repair
+        _,_,prior_stamps=transport.validate(plan,manifest,output)
+        stamps.update(prior_stamps)
     require(all(q.stamp(p)==v for p,v in stamps.items()), 'freeze input/source drift')
     save_new(output, plan)
     return plan
@@ -101,6 +107,10 @@ def load(plan_path):
         require(q.digest(source)==plan['execution_sources'][key] and q.stamp(source)==before,
                 'diagnostic source changed: '+key)
         stamps[source]=before
+    if 'transport_repair' in plan:
+        import ownership_diagnostic_transport as transport
+        _,_,prior_stamps=transport.validate(plan,manifest,plan_path)
+        stamps.update(prior_stamps)
     stamps.update({plan_path:q.stamp(plan_path), qualification:q.stamp(qualification)})
     return plan, manifest, qualification, stamps
 
@@ -218,8 +228,10 @@ def run(plan_path, output, *, execute=None, monitor_factory=None):
     result=dict(schema=1,kind=KIND,status='running',calls=[],cells={},failures=[],native_calls_started=0,
                 retries=0,exclusions=[],elapsed_s=0,performance_claim=False,activation_qualified=False)
     host=None
+    charge=0
     def persist():
-        result['elapsed_s']=time.monotonic()-started
+        result['continuation_elapsed_s']=time.monotonic()-started
+        result['elapsed_s']=charge+result['continuation_elapsed_s']
         q.write(output/'results.json',result)
     persist()
     execute=q.run_process if execute is None else execute
@@ -227,6 +239,16 @@ def run(plan_path, output, *, execute=None, monitor_factory=None):
         with q.Deadline(2400,started) as deadline:
             plan,manifest,qualification,stamps=load(plan_path)
             require(platform.system()==plan['platform'],'wrong diagnostic platform')
+            repair=plan.get('transport_repair')
+            if repair is not None:
+                import ownership_diagnostic_transport as transport
+                charge=repair['charged_seconds']
+                deadline.seconds=2400-charge
+                deadline.arm()
+                result.update(native_calls_reused=1,native_calls_executed_here=0,
+                              charged_prior_seconds=charge,transport_repair=repair)
+                _,old,_=transport.validate(plan,manifest,plan_path)
+                recovered=transport.recovered(plan,manifest,qualification,plan_path,output/plan['schedule'][0]['cell'])
             result.update(plan_sha256=q.digest(plan_path),qualification_sha256=plan['qualification_sha256'],
                           candidate_sha256=plan['candidate_sha256'],incumbent_sha256=plan['incumbent_sha256'],
                           schedule=plan['schedule'],platform=plan['platform'])
@@ -238,26 +260,38 @@ def run(plan_path, output, *, execute=None, monitor_factory=None):
             families={c['family']:c for c in manifest['cases']}
             first_worker={}
             with deadline.observing(host):
+                if repair is not None:transport.same_host(host.report(),old)
                 for offset in range(0,80,5):
                     entries=plan['schedule'][offset:offset+5]
                     entry=entries[0]; family,workers,cell=entry['family'],entry['workers'],entry['cell']
                     item=families[family];meta=q.metadata(manifest,item,qualification)
                     source=q.resolve(qualification,item['input'])
                     with source.open('rb') as stream: _,source_args=q.case_header(stream)
-                    folder=output/cell;folder.mkdir()
+                    folder=output/cell;folder.mkdir(exist_ok=repair is not None and offset==0)
                     snapshots={};cell_calls=[];requests={}
                     for arm in ('incumbent','uninjected_candidate','candidate'):
                         request=folder/(arm+'.case')
                         args=own.prepare(source,request,diagnostic['artifacts'][arm]['request'],workers)
                         requests[arm]=(request,args);stamps[request]=q.stamp(request)
+                    if repair is not None and offset==0:
+                        raw,columns,call=recovered
+                        base=folder/'reference-incumbent'
+                        call['reference']={'path':str(base.relative_to(output)),**q.retained_snapshot(base,raw,columns,meta)}
+                        snapshots['incumbent']=(raw,columns,call)
+                        first_worker[family,'incumbent']=(base,call)
+                        result['calls'].append(call);cell_calls.append(call)
+                        result['native_calls_started']=1;persist()
                     for index,entry in enumerate(entries,offset):
+                        if repair is not None and index==0:continue
                         deadline.check();host.check()
                         require(all(q.stamp(p)==v for p,v in stamps.items()),'source/input/request drift')
                         arm=entry['arm'];request,args=requests[arm]
                         target=folder/f'call-{index:02d}.json';log=target.with_suffix('.log')
                         call={**entry,'status':'started','target':str(target.relative_to(output)),
                               'log':str(log.relative_to(output)),'request_sha256':q.digest(request)}
-                        result['calls'].append(call);result['native_calls_started']+=1;persist()
+                        result['calls'].append(call);result['native_calls_started']+=1
+                        if repair is not None:result['native_calls_executed_here']+=1
+                        persist()
                         env=['env',*[v for key in q.ENVIRONMENT for v in ('-u',key)],
                              *[key+'=1' for key in q.THREAD_ENV], 'FEREG_SOLVER_TRACE=1','FEREG_PHASE_TIMING=1']
                         artifact=diagnostic['artifacts'][arm]
@@ -362,7 +396,20 @@ def prove(plan_path, result_path, output, *, accounting=None, job_log=None):
             and [{k:c[k] for k in ('cell','family','workers','arm','repeat')} for c in result['calls']]==plan['schedule'],
             'incomplete/stale/failed diagnostic result')
     stamps[directory/'host/host-observations.jsonl']=q.stamp(directory/'host/host-observations.jsonl')
-    host=verify_host(result,directory,plan['platform'])
+    host_result=result
+    if 'transport_repair' in plan:
+        import ownership_diagnostic_transport as transport
+        _,old,_=transport.validate(plan,manifest,plan_path)
+        require(result.get('transport_repair')==plan['transport_repair']
+                and result.get('native_calls_reused')==1 and result.get('native_calls_executed_here')==79
+                and result.get('charged_prior_seconds')==plan['transport_repair']['charged_seconds']
+                and 0<result['continuation_elapsed_s']<=2400-result['charged_prior_seconds']
+                and result['elapsed_s']==result['charged_prior_seconds']+result['continuation_elapsed_s'],
+                'continuation call/budget accounting differs')
+        transport.same_host(result['host'],old)
+        transport.verify_recovered(plan,manifest,qualification,plan_path,directory,result['calls'][0])
+        host_result={**result,'calls':result['calls'][1:]}
+    host=verify_host(host_result,directory,plan['platform'])
     accounts={}
     if plan['platform']=='Linux':
         require(accounting is not None and job_log is not None,'Linux proof requires terminal accounting and completion marker')
@@ -390,8 +437,14 @@ def prove(plan_path, result_path, output, *, accounting=None, job_log=None):
             raw=q.read(target);require(raw.pop('columns')==[] and raw==call['raw_result'],'raw diagnostic head differs')
             q.validate_result(raw)
             timers=re.findall(r'^NATIVE_SECONDS=([0-9.]+)$',log.read_text(),re.M)
-            require(len(timers)==1 and 0<float(timers[0])==call['seconds']<=120
-                    and call['timing_field']=='NATIVE_SECONDS','complete-call diagnostic timer differs')
+            imported='transport_repair' in plan and call is result['calls'][0]
+            if imported:
+                require(not timers and call['timing_field']==transport.TIMER
+                        and call['seconds']==transport.timing(call) and call['maxrss_bytes'] is None,
+                        'imported upper bound/RSS claim differs')
+            else:
+                require(len(timers)==1 and 0<float(timers[0])==call['seconds']<=120
+                        and call['timing_field']=='NATIVE_SECONDS','complete-call diagnostic timer differs')
             require(call['fingerprint']==routing.identity({**q.exact_view(raw,False),'columns_sha256':call['columns_sha256']})
                     and call['worker_signature']==q.worker_signature(raw),'raw diagnostic signature differs')
             argv=own.arguments(source_args,diagnostic['artifacts'][call['arm']]['request'],workers)
@@ -462,17 +515,31 @@ def prove(plan_path, result_path, output, *, accounting=None, job_log=None):
                execution_sources=plan['execution_sources'],mechanism_evidence=result['cells'],
                performance_claim=False,activation_qualified=False,
                limits=['Diagnostic correctness/mechanism prerequisite only; all fixed qualification timing and hidden/public activation gates remain.'])
+    if 'transport_repair' in plan:
+        proof.update(transport_repair=plan['transport_repair'],native_calls_reused=1,native_calls_executed_here=79,
+                     original_failed_status_preserved=True,
+                     imported_timer='observed_process_span_upper_bound',imported_maxrss='unavailable')
     save_new(output,proof);return proof
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);sub=parser.add_subparsers(dest='command',required=True)
     f=sub.add_parser('freeze');f.add_argument('--qualification',type=Path,required=True);f.add_argument('--output',type=Path,required=True)
+    repair=sub.add_parser('freeze-repair')
+    for name in ('qualification','previous-plan','previous-results','old-harness-build','new-harness-build','output'):
+        repair.add_argument('--'+name,type=Path,required=True)
+    repair.add_argument('--attempt-seconds',type=float,required=True)
+    repair.add_argument('--accounting',type=Path);repair.add_argument('--job-log',type=Path)
     r=sub.add_parser('run');r.add_argument('--plan',type=Path,required=True);r.add_argument('--output',type=Path,required=True)
     p=sub.add_parser('prove');p.add_argument('--plan',type=Path,required=True);p.add_argument('--results',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True);p.add_argument('--accounting',type=Path);p.add_argument('--job-log',type=Path)
     args=parser.parse_args()
     if args.command=='freeze':freeze(args.qualification,args.output)
+    elif args.command=='freeze-repair':
+        import ownership_diagnostic_transport as transport
+        transport.freeze(args.qualification,args.previous_plan,args.previous_results,args.old_harness_build,
+                         args.new_harness_build,args.attempt_seconds,args.output,
+                         accounting=args.accounting,job_log=args.job_log)
     elif args.command=='run':run(args.plan,args.output);print(MARKER)
     else:prove(args.plan,args.results,args.output,accounting=args.accounting,job_log=args.job_log)
 
