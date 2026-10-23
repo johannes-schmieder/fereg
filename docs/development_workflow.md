@@ -910,6 +910,32 @@ independent witness and resource checks without invoking native code. The repair
 freeze itself does not establish completion of either diagnostic schedule or
 passage of qualification.
 
+The [subsequent eligibility failures](../bench/results/ownership-qualification-diagnostic-eligibility-failure-20261023.json)
+preserve all 30 completed diagnostic observations per platform, including the
+single reused transport-failure observation. Every call passed its independent
+numerical check. The runner then incorrectly required positive moment omission
+for the inactive control, whose frozen two-categorical-FE request has no
+intercept. Both accepted and candidate loaders require an appended intercept
+or the separate single-absorbed-slope case to materialize the loaded RHS bank.
+This control therefore constructs no speculative moments. Its zero omission is
+expected; score ownership still avoids 640,000 packed bytes. Eligible nonmovers
+and hubs W4 each demonstrate actual construction and omission on both repeats,
+respectively 288 and 480 bytes.
+
+Both independent reviews support correcting this diagnostic eligibility rule
+without changing inputs, runtime, scientific tolerances or the selected candidate.
+The failed results remain failed. Linux job `8266048` had started before the
+requested hold took effect and ended with 0/1 accounting; it executed 29 new
+calls, not zero. A bounded continuation must revalidate all 30 retained entries
+and execute only the untouched 50 on each original physical host. Charge eight
+Mac and 57 Linux application seconds cumulatively, leaving 2,392 and 2,343 of
+the original 2,400 seconds. Charge the two Linux failures' 34 and 46 scheduler
+seconds, leaving 2,620 of 2,700. Preserve positive omission requirements wherever
+construction and omission are eligible, preserved construction at the cache
+boundaries, and all science, repeatability, resource and observer checks.
+Freeze a separately identified source and budget amendment before continuation.
+No final qualification timing has run at this failure milestone.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,
