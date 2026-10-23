@@ -484,6 +484,16 @@ interpretation of whether admission requires demonstrated work removal for
 each enabled mechanism. The frozen observations and selection rule remain
 unchanged, and neither new mechanism is publicly enabled.
 
+The optional eager-cell implementation at `40d7e1ae` also passed the affected
+full source suite, actual Mac/Linux native ABI/load/panic checks and 48
+uninjected correctness controls per platform against `c16c0b55`; all 24 pairs
+per platform matched exactly and passed independent numerical witnesses.
+The [platform check record](../bench/results/ownership-cells-eager-platform-checks-20261023.json)
+retains the Linux calls and final 0/0 accounting and links the retained Mac
+calls. These controls establish unchanged public behavior while the experiment
+is disabled. They do not qualify the injected cell operator or establish a
+performance gain.
+
 [SPEC](SPEC.md) defines the scientific contract. [VALIDATION](VALIDATION.md)
 records the accepted scope and caveats. No historical campaign is a substitute
 for independent scientific witnesses on the responsibilities a change affects.
