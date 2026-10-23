@@ -9,6 +9,27 @@ use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
 
 use super::{BorrowedInterceptFeDesign, BorrowedMapWeights};
 
+mod occurrence;
+pub(crate) use occurrence::build_occurrence;
+
+crate::fault::fault_plan! {
+    static CELL_ALLOCATION_FAILURE: bool = false;
+    static CELL_CANCEL_PHASE: u8 = 0;
+    static CELL_COMPLETED_WORK: usize = 0;
+    static CELL_RECORD_ACTIVITY: bool = false;
+    static CELL_BUILD_COUNT: usize = 0;
+    static CELL_APPLY_COUNT: usize = 0;
+}
+
+// Test-only sticky cancellation is triggered after real constructor rows or
+// operator lanes, never by an estimated poll ordinal. Plans compile away.
+fn completed_work(phase: u8, units: usize) {
+    if CELL_CANCEL_PHASE.get() == phase {
+        CELL_COMPLETED_WORK.set(CELL_COMPLETED_WORK.get() + units);
+        crate::interrupt::request_cancellation();
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct KernelLimits {
     pub retained_live_bytes: u128,
@@ -47,6 +68,10 @@ impl CellSchur {
     /// for preconditioning. This is never a numerical-rank classification.
     pub fn diagonal(&self) -> &[f64] {
         &self.diagonal
+    }
+
+    pub(crate) fn cell_count(&self) -> usize {
+        self.cells.len()
     }
 
     pub fn retained_bytes(&self) -> u128 {
@@ -91,43 +116,85 @@ impl CellSchur {
         for (worker, &total) in self.worker_weights.iter().enumerate() {
             crate::interrupt::checkpoint()?;
             let work = &mut left_scratch[worker * stride..worker * stride + rhs_count];
-            work.fill(0.0);
+            for (tile, chunk) in work.chunks_mut(256).enumerate() {
+                if tile != 0 {
+                    crate::interrupt::checkpoint()?;
+                }
+                chunk.fill(0.0);
+                completed_work(2, chunk.len());
+            }
             for cell in &self.cells[self.offsets[worker]..self.offsets[worker + 1]] {
                 crate::interrupt::checkpoint()?;
                 let source =
                     &input[cell.firm as usize * stride..cell.firm as usize * stride + rhs_count];
-                for (sum, &value) in work.iter_mut().zip(source) {
-                    *sum += cell.weight * value;
+                for (tile, (target, source)) in
+                    work.chunks_mut(256).zip(source.chunks(256)).enumerate()
+                {
+                    if tile != 0 {
+                        crate::interrupt::checkpoint()?;
+                    }
+                    for (sum, &value) in target.iter_mut().zip(source) {
+                        *sum += cell.weight * value;
+                    }
+                    completed_work(3, 2 * source.len());
+                    if CELL_RECORD_ACTIVITY.get() {
+                        CELL_APPLY_COUNT.set(CELL_APPLY_COUNT.get() + 1);
+                    }
                 }
             }
             if total > 0.0 {
-                for value in work {
-                    *value /= total;
+                for chunk in work.chunks_mut(256) {
+                    crate::interrupt::checkpoint()?;
+                    for value in chunk.iter_mut() {
+                        *value /= total;
+                    }
+                    completed_work(2, chunk.len());
                 }
             }
         }
         for (firm, &total) in self.firm_weights.iter().enumerate() {
             crate::interrupt::checkpoint()?;
-            for rhs in 0..rhs_count {
-                output[firm * stride + rhs] = total * input[firm * stride + rhs];
+            for start in (0..rhs_count).step_by(256) {
+                if start != 0 {
+                    crate::interrupt::checkpoint()?;
+                }
+                let end = (start + 256).min(rhs_count);
+                for rhs in start..end {
+                    output[firm * stride + rhs] = total * input[firm * stride + rhs];
+                }
+                completed_work(2, 2 * (end - start));
             }
         }
         for cell in &self.cells {
             crate::interrupt::checkpoint()?;
-            for rhs in 0..rhs_count {
-                output[cell.firm as usize * stride + rhs] -=
-                    cell.weight * left_scratch[cell.worker as usize * stride + rhs];
+            for start in (0..rhs_count).step_by(256) {
+                if start != 0 {
+                    crate::interrupt::checkpoint()?;
+                }
+                let end = (start + 256).min(rhs_count);
+                for rhs in start..end {
+                    output[cell.firm as usize * stride + rhs] -=
+                        cell.weight * left_scratch[cell.worker as usize * stride + rhs];
+                }
+                completed_work(2, 2 * (end - start));
             }
         }
         for firm in 0..self.firm_weights.len() {
             crate::interrupt::checkpoint()?;
-            for rhs in 0..rhs_count {
-                if !output[firm * stride + rhs].is_finite() {
-                    return Err(invalid_data("cell Schur product is nonfinite"));
+            for start in (0..rhs_count).step_by(256) {
+                if start != 0 {
+                    crate::interrupt::checkpoint()?;
                 }
+                let end = (start + 256).min(rhs_count);
+                for rhs in start..end {
+                    if !output[firm * stride + rhs].is_finite() {
+                        return Err(invalid_data("cell Schur product is nonfinite"));
+                    }
+                }
+                completed_work(2, end - start);
             }
         }
-        Ok(())
+        crate::interrupt::checkpoint()
     }
 }
 
@@ -155,10 +222,16 @@ impl Work {
     }
     fn capacity<T>(&mut self, count: usize) -> Attempt<Vec<T>> {
         self.charge(16)?;
+        if CELL_ALLOCATION_FAILURE.replace(false) {
+            return Err(allocation("injected cell kernel allocation failure").into());
+        }
         let mut result = Vec::new();
         result
             .try_reserve_exact(count)
             .map_err(|_| allocation("cell kernel allocation failed"))?;
+        if result.capacity() > count {
+            return Err(allocation("cell kernel capacity exceeds admission").into());
+        }
         Ok(result)
     }
     fn filled<T: Copy>(&mut self, count: usize, value: T) -> Attempt<Vec<T>> {
@@ -307,6 +380,11 @@ fn build_inner(
         write += 1;
     }
     cells.truncate(write);
+    finish(cells, p, q, work)
+}
+
+// The caller's cell order is numerical authority; do not sort here.
+fn finish(cells: Vec<Cell>, p: usize, q: usize, work: &mut Work) -> Attempt<CellSchur> {
     let mut offsets = work.filled(
         p.checked_add(1)
             .ok_or_else(|| allocation("cell offsets overflow"))?,
@@ -606,4 +684,24 @@ mod tests {
             assert_eq!(right, [0, 1, 0, 1]);
         });
     }
+}
+
+#[cfg(test)]
+#[path = "routing_kernel/occurrence_tests.rs"]
+mod occurrence_tests;
+
+#[cfg(test)]
+pub(crate) fn recorded_activity<T>(action: impl FnOnce() -> T) -> (T, usize, usize) {
+    struct Guard;
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            CELL_RECORD_ACTIVITY.set(false);
+        }
+    }
+    assert!(!CELL_RECORD_ACTIVITY.replace(true));
+    let _guard = Guard;
+    CELL_BUILD_COUNT.set(0);
+    CELL_APPLY_COUNT.set(0);
+    let result = action();
+    (result, CELL_BUILD_COUNT.get(), CELL_APPLY_COUNT.get())
 }

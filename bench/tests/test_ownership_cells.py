@@ -45,6 +45,23 @@ def bare_plan(panel=1, ownership='none'):
 
 
 class Contracts(unittest.TestCase):
+    def test_cell_evidence_retains_skip_refusal_and_single_reused_build(self):
+        bound = 'FEREG_CELLS|event=bound|attempted=0|admitted=0|refusal=None|cells=0|retained_bytes=0|peak_bytes=0'
+        built = 'FEREG_CELLS|event=attempt|attempted=1|admitted=1|refusal=None|cells=5|retained_bytes=160|peak_bytes=500'
+        log = '\n'.join([bound, built, built.replace('event=attempt', 'event=reuse')])
+        self.assertTrue(o.cell_diagnostic(log, ('both', 'eager'))['constructed'])
+        self.assertFalse(o.cell_diagnostic(bound, ('none', 'eager'))['constructed'])
+        self.assertFalse(o.cell_diagnostic('', ('none', 'none'))['bound'])
+        refused = built.replace('admitted=1', 'admitted=0').replace('refusal=None', 'refusal=Some(MemoryBudget)').replace('cells=5', 'cells=0').replace('retained_bytes=160', 'retained_bytes=0')
+        self.assertFalse(o.cell_diagnostic(bound+'\n'+refused, ('none', 'eager'))['constructed'])
+        self.assertFalse(o.cell_diagnostic(bound+'\n'+refused+'\n'+refused.replace('event=attempt', 'event=reuse'), ('none', 'eager'))['constructed'])
+        for bad, mechanism in [(log, ('none', 'none')), (built, ('none', 'eager')),
+                               (log+'\n'+built, ('none', 'eager')),
+                               (bound+'\n'+refused.replace('Some(MemoryBudget)', 'None'), ('none', 'eager')),
+                               (log.replace('peak_bytes=500', 'peak_bytes=159'), ('none', 'eager')),
+                               (log.replace('cells=5', 'cells=-1'), ('none', 'eager'))]:
+            with self.assertRaises(ValueError): o.cell_diagnostic(bad, mechanism)
+
     def test_actual_ownership_phase_counters_fail_closed(self):
         score='FEREG_OWNERSHIP|score_admitted=1|avoided_packed_elements=100|avoided_packed_bytes=800|retained_matrix_capacity_bytes=1600|generated_columns=3|kept_columns=2'
         log='FEREG_OWNERSHIP|unused_moment_bytes=64\n'+score

@@ -327,7 +327,7 @@ impl<'a> FeSession<'a> {
                 super::FeSolverKind::Auto | super::FeSolverKind::CmgSchur
                     if design.effects().len() == 2 =>
                 {
-                    owner.prepare_categorical(design, rhs, config, cmg_schur)?;
+                    owner.prepare_categorical(design, weights, rhs, config, cmg_schur)?;
                 }
                 _ => {
                     if config.absorb.solver == super::FeSolverKind::Auto
@@ -375,10 +375,14 @@ impl<'a> FeSession<'a> {
     fn prepare_categorical(
         &mut self,
         design: super::BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'a>,
         rhs: usize,
         config: crate::ols::PreparedOlsFitConfig,
         cmg_schur: bool,
     ) -> Result<()> {
+        let eager_cells = config.cells == crate::ols::PreparedOlsCells::Eager
+            && config.absorb.solver == super::FeSolverKind::Auto
+            && config.absorb.lsmr.preconditioner == super::LsmrPreconditioner::Auto;
         // A common structural binding, independent of output, VCE,
         // worker budget or public storage choice.
         let mut bytes = super::ReusableCategoricalMapAbsorber::owner_bytes(
@@ -436,7 +440,7 @@ impl<'a> FeSession<'a> {
         p.retain_coefficients = config.absorb.retain_coefficients;
         if cmg_schur {
             self.prepare_cmg_schur(&mut p, bytes, config)?;
-        } else if let Some(preset) = config.absorb.routing {
+        } else if config.absorb.routing.is_some() || eager_cells {
             let parents = bytes
                 .checked_add(p.max_rhs() as u128 * 8)
                 .ok_or_else(|| allocation("routing parent admission overflows"))?;
@@ -453,7 +457,12 @@ impl<'a> FeSession<'a> {
                     })
                 })
                 .transpose()?;
-            p.request_auto_routing(preset, budget, parents);
+            if let Some(preset) = config.absorb.routing {
+                p.request_auto_routing(preset, budget, parents);
+            }
+            if eager_cells {
+                p.request_eager_cells(weights)?;
+            }
         }
         self.categorical = Some(p);
         Ok(())
@@ -1571,4 +1580,45 @@ mod routing_selection_tests {
             }
         }
     }
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+pub(crate) struct LegacyFeSession<'a> {
+    pub(crate) general: Option<ReusableMapAbsorber>,
+    pub(crate) categorical: Option<super::borrowed_map::LegacyCategoricalOwner<'a>>,
+    pub(crate) coefficients: bool,
+    pub(crate) binding: Option<super::BorrowedInterceptFeDesign<'a>>,
+    pub(crate) cmg: Option<super::CmgAbsorber<'a>>,
+    pub(crate) lsmr: Option<super::BorrowedLsmrAbsorber<'a>>,
+    pub(crate) owned: Option<FeDesign>,
+    pub(crate) normalized: Vec<f64>,
+    pub(crate) peak: crate::memory::SolverWorkspacePeak,
+    pub(crate) setup_seconds: f64,
+    pub(crate) resident_bytes: u128,
+    norm_handoff_peak: Option<u128>,
+    ols_chunked_norms: bool,
+    three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
+    general_routing: Option<super::borrowed_map::routing_lsmr::GeneralRoutingState<'a>>,
+    pub(crate) structural_constant: bool,
+    pub(crate) absorb_config: Option<super::AbsorbConfig>,
+}
+#[cfg(test)]
+#[test]
+fn eager_cells_preserve_legacy_owner_and_session_layout() {
+    use std::mem::{align_of, size_of};
+    type Old = super::borrowed_map::LegacyCategoricalOwner<'static>;
+    type New = ReusableCategoricalMapAbsorber<'static>;
+    assert_eq!(size_of::<Old>(), size_of::<New>());
+    assert_eq!(align_of::<Old>(), align_of::<New>());
+    assert_eq!(size_of::<Option<Old>>(), size_of::<Option<New>>());
+    assert_eq!(align_of::<Option<Old>>(), align_of::<Option<New>>());
+    assert_eq!(
+        size_of::<LegacyFeSession<'static>>(),
+        size_of::<FeSession<'static>>()
+    );
+    assert_eq!(
+        align_of::<LegacyFeSession<'static>>(),
+        align_of::<FeSession<'static>>()
+    );
 }

@@ -108,7 +108,8 @@ program define _fereg_estimate_ols, eclass
     local routing_injection = regexm(`"`inject'"', "^routing_(h(4|8|16|32)_k(0|1|2)|builder_break|prefix_(none|map4|it4)|diagonal|cells|direct)$")
     local it_injection = `"`inject'"' == "it_coefficients"
     local ownership_injection = regexm(`"`inject'"', "^ownership_(moments|scores|both)$")
-    if `"`inject'"' != "" & !`routing_injection' & !`it_injection' & !`ownership_injection' & !inlist(`"`inject'"', ///
+    local cells_injection = regexm(`"`inject'"', "^cells_eager(_(moments|scores|both))?$")
+    if `"`inject'"' != "" & !`routing_injection' & !`it_injection' & !`ownership_injection' & !`cells_injection' & !inlist(`"`inject'"', ///
         "posthold", "postplugin", "poststripe", "postereturn", ///
         "postscalars", "postdiagnostics", "precommit", ///
         "breakpostplugin", "breaknative") {
@@ -121,6 +122,10 @@ program define _fereg_estimate_ols, eclass
     }
     if `it_injection' & `"`solver_mode'"' != "it" {
         di as error "hidden coefficient IT injection requires solver(it)"
+        exit 198
+    }
+    if `cells_injection' & (`"`solver_mode'"' != "auto" | `"`preconditioner_mode'"' != "auto") {
+        di as error "hidden cell injection requires solver(auto) preconditioner(auto)"
         exit 198
     }
 
@@ -573,7 +578,7 @@ program define _fereg_estimate_ols, eclass
         local request_arguments ///
             `"`request_arguments'inject=`inject';break_marker_token=`break_marker_token';"'
     }
-    else if `routing_injection' | `it_injection' | `ownership_injection' {
+    else if `routing_injection' | `it_injection' | `ownership_injection' | `cells_injection' {
         local request_arguments `"`request_arguments'inject=`inject';"'
     }
     // Frame bounded parser metadata in one vectorized pass. No observations or

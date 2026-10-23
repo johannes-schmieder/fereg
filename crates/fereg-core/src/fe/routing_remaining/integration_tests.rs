@@ -949,3 +949,65 @@ fn gates_unaffected_auto_families_are_exact() {
         }
     }
 }
+
+#[test]
+fn real_ols_eager_cells_preserve_analytic_fit_and_fixed_worker_repeats() {
+    let fixture = PairedCells::new(false);
+    let data = fixture.prepared(2);
+    for workers in [1, 4] {
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let mut options = config(None, workers);
+            options.execution.mode = mode;
+            options.execution.poolsize = 1;
+            options.cells = crate::ols::PreparedOlsCells::Eager;
+            let (fit, builds, applies) = ThreadTeam::new(options.execution.threads)
+                .install(|| {
+                    crate::fe::routing_kernel::recorded_activity(|| {
+                        fit_prepared_model_coefficients(&data, options).unwrap()
+                    })
+                })
+                .unwrap();
+            assert_eq!(
+                builds, 1,
+                "one actual OLS occurrence construction across all actions"
+            );
+            assert!(
+                applies > 0,
+                "the real caller must apply the occurrence operator"
+            );
+            fixture.check_fit(&fit);
+            let repeated = fit_prepared_model_coefficients(&data, options).unwrap();
+            assert_fit_exact(&fit, &repeated);
+        }
+    }
+    // The weak two-FE fixture above is not a convergence reference for other
+    // FE families. Reuse the rectangle already validated by
+    // gates_unaffected_auto_families_are_exact, preserving all success and
+    // exact-science assertions without changing iteration/tolerance policy.
+    let fixture = PairedCells::new(true);
+    let data = fixture.prepared(2);
+    // Ineligible dimensions/explicit solver requests keep their original path.
+    for effects in [1, 3] {
+        let data = fixture.prepared(effects);
+        let mut options = config(None, 1);
+        let expected = fit_prepared_model_coefficients(&data, options).unwrap();
+        options.cells = crate::ols::PreparedOlsCells::Eager;
+        assert_fit_exact(
+            &expected,
+            &fit_prepared_model_coefficients(&data, options).unwrap(),
+        );
+    }
+    for solver in [FeSolverKind::Map, FeSolverKind::Lsmr] {
+        let mut options = config(None, 1);
+        options.absorb.solver = solver;
+        let expected = fit_prepared_model_coefficients(&data, options).unwrap();
+        options.cells = crate::ols::PreparedOlsCells::Eager;
+        assert_fit_exact(
+            &expected,
+            &fit_prepared_model_coefficients(&data, options).unwrap(),
+        );
+    }
+}

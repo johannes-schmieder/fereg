@@ -49,6 +49,22 @@ fn unused_moments_require_conservative_packed_fast_inference_bound() {
 }
 
 #[test]
+fn cell_injection_rejects_explicit_solver_or_preconditioner_before_loading() {
+    for (solver, preconditioner) in [("auto", "off"), ("auto", "diagonal"), ("lsmr", "auto")] {
+        let (mut args, mut spi) = fixture(OlsVceKind::Robust);
+        replace_argument(&mut args, "solver", format!("solver={solver}"));
+        replace_argument(
+            &mut args,
+            "preconditioner",
+            format!("preconditioner={preconditioner}"),
+        );
+        args.push("inject=cells_eager_both".to_owned());
+        assert!(estimate_ols(&args, &mut spi).is_err());
+        assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+    }
+}
+
+#[test]
 fn ownership_preserves_publication_across_inference_factors_and_saved_effects() {
     let fixtures = [
         fixture(OlsVceKind::Iid),
@@ -65,7 +81,13 @@ fn ownership_preserves_publication_across_inference_factors_and_saved_effects() 
                 replace_argument(&mut request, "threads", format!("threads={workers}"));
                 let mut reference = spi.clone();
                 estimate_ols(&request, &mut reference).unwrap();
-                for arm in ["ownership_moments", "ownership_scores", "ownership_both"] {
+                for arm in [
+                    "ownership_moments",
+                    "ownership_scores",
+                    "ownership_both",
+                    "cells_eager",
+                    "cells_eager_both",
+                ] {
                     let mut candidate = spi.clone();
                     let mut selected = request.clone();
                     selected.push(format!("inject={arm}"));

@@ -197,6 +197,7 @@ struct EstimateActionSpec {
     solver: FeSolverKind,
     routing: Option<RoutingPreset>,
     ownership: fereg_core::ols::PreparedOlsOwnership,
+    cells: fereg_core::ols::PreparedOlsCells,
     it_coefficients: bool,
     cmg_schur_degree: usize,
     cmg_schur_samples: u32,
@@ -1013,6 +1014,7 @@ impl EstimateActionSpec {
             solver,
             routing: injection.routing,
             ownership: injection.ownership,
+            cells: injection.cells,
             it_coefficients: injection.it_coefficients,
             cmg_schur_degree,
             cmg_schur_samples,
@@ -1055,6 +1057,13 @@ impl EstimateActionSpec {
             native_break_token: injection.native_break_token,
         };
         reject_unknown_fields(ACTION_ESTIMATE_OLS, &values, OLS_FIELDS)?;
+        if specification.cells != fereg_core::ols::PreparedOlsCells::Off
+            && specification.preconditioner != LsmrPreconditioner::Auto
+        {
+            return Err(syntax(
+                "hidden cell injection requires preconditioner(auto)",
+            ));
+        }
         Ok(specification)
     }
 
@@ -1192,6 +1201,7 @@ impl EstimateActionSpec {
         let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let fit = PreparedOlsFitConfig {
             ownership: self.ownership,
+            cells: self.cells,
             allow_final_fe_recovery: true,
             // Residual-derived outputs need pointwise accuracy even when low
             // memory deliberately omits retained FE coefficient products.

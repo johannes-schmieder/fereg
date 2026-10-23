@@ -722,6 +722,7 @@ fn finite_and_portfolio_checkpoints_install_the_same_bounded_hierarchy() {
                 16,
                 config().max_iterations,
                 false,
+                0,
                 None,
                 &mut setup_seconds,
                 &mut solve_started,
@@ -1949,3 +1950,6 @@ fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_attempt
         hierarchy,
     );
 }
+
+#[path = "eager_cell_tests.rs"]
+mod eager_cell_tests;

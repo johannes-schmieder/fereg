@@ -7,7 +7,7 @@
 use crate::model_metadata::syntax;
 use fereg_core::error::{ErrorCode, FeregError, Result};
 use fereg_core::fe::{CategoricalPrefix, FeSolverKind, RoutingPreset};
-use fereg_core::ols::PreparedOlsOwnership;
+use fereg_core::ols::{PreparedOlsCells, PreparedOlsOwnership};
 use std::io::Write;
 
 /// Displayed, then written to the marker file, when PPML is armed for Break.
@@ -18,6 +18,7 @@ pub(crate) const OLS_NATIVE_BREAK_MARKER: &str = "FEREG_NATIVE_BREAK_ARMED\n";
 pub(crate) struct OlsInjection {
     pub(crate) routing: Option<RoutingPreset>,
     pub(crate) ownership: PreparedOlsOwnership,
+    pub(crate) cells: PreparedOlsCells,
     pub(crate) it_coefficients: bool,
     pub(crate) native_break_token: Option<String>,
 }
@@ -26,12 +27,32 @@ pub(crate) struct OlsInjection {
 pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Result<OlsInjection> {
     let unknown = || syntax(format!("unknown hidden OLS injection stage {stage:?}"));
     let ownership = PreparedOlsOwnership {
-        skip_unused_moments: matches!(stage, "ownership_moments" | "ownership_both"),
-        retain_projected_scores: matches!(stage, "ownership_scores" | "ownership_both"),
+        skip_unused_moments: matches!(
+            stage,
+            "ownership_moments" | "ownership_both" | "cells_eager_moments" | "cells_eager_both"
+        ),
+        retain_projected_scores: matches!(
+            stage,
+            "ownership_scores" | "ownership_both" | "cells_eager_scores" | "cells_eager_both"
+        ),
+    };
+    let cells = if matches!(
+        stage,
+        "cells_eager" | "cells_eager_moments" | "cells_eager_scores" | "cells_eager_both"
+    ) {
+        if solver != FeSolverKind::Auto {
+            return Err(syntax("hidden cell injection requires solver(auto)"));
+        }
+        PreparedOlsCells::Eager
+    } else {
+        PreparedOlsCells::Off
     };
     let (routing, break_native) = match stage {
         "" => (None, false),
         "ownership_moments" | "ownership_scores" | "ownership_both" => (None, false),
+        "cells_eager" | "cells_eager_moments" | "cells_eager_scores" | "cells_eager_both" => {
+            (None, false)
+        }
         "breaknative" => (None, true),
         "routing_builder_break" => {
             if solver != FeSolverKind::Auto {
@@ -139,6 +160,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
     Ok(OlsInjection {
         routing,
         ownership,
+        cells,
         it_coefficients: stage == "it_coefficients",
         native_break_token: break_native.then(|| token.to_owned()),
     })
@@ -193,6 +215,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn cell_experiments_are_independent_of_routing_and_reject_unimplemented_modes() {
+        for (stage, moments, scores) in [
+            ("cells_eager", false, false),
+            ("cells_eager_moments", true, false),
+            ("cells_eager_scores", false, true),
+            ("cells_eager_both", true, true),
+        ] {
+            let parsed = parse_ols(stage, FeSolverKind::Auto, "").unwrap();
+            assert_eq!(parsed.cells, PreparedOlsCells::Eager);
+            assert_eq!(parsed.ownership.skip_unused_moments, moments);
+            assert_eq!(parsed.ownership.retain_projected_scores, scores);
+            assert!(parsed.routing.is_none());
+            assert!(parse_ols(stage, FeSolverKind::Lsmr, "").is_err());
+            assert!(parse_ols(stage, FeSolverKind::Auto, "a").is_err());
+        }
+        for stage in ["cells_deferred", "cells_deferred_both", "cells_eager_extra"] {
+            assert!(parse_ols(stage, FeSolverKind::Auto, "").is_err());
+        }
+    }
+
+    #[test]
     fn ownership_experiments_preserve_solver_and_routing_independence() {
         for solver in [
             FeSolverKind::Auto,
@@ -210,6 +253,7 @@ mod tests {
                 assert_eq!(parsed.ownership.skip_unused_moments, moments);
                 assert_eq!(parsed.ownership.retain_projected_scores, scores);
                 assert!(parsed.routing.is_none());
+                assert_eq!(parsed.cells, PreparedOlsCells::Off);
                 assert!(!parsed.it_coefficients);
             }
         }

@@ -478,6 +478,49 @@ def ownership_diagnostic(log, mechanism):
                 limitation='Requested ownership may be ineligible; counters attest actual admission, not speed.')
 
 
+def cell_diagnostic(log, mechanism):
+    """Retain construction state, including skipped, refused or reused setup."""
+    events = []
+    fields = {'event', 'attempted', 'admitted', 'refusal', 'cells', 'retained_bytes', 'peak_bytes'}
+    for line in log.splitlines():
+        if not line.startswith('FEREG_CELLS|'):
+            continue
+        parts = [part.split('=', 1) for part in line.split('|')[1:]]
+        require(all(len(part) == 2 for part in parts) and len(parts) == len(fields)
+                and {p[0] for p in parts} == fields, 'malformed cell diagnostic')
+        event = dict(parts)
+        require(event['event'] in ('bound', 'attempt', 'reuse')
+                and event['refusal'] in ('None', 'Some(MemoryBudget)', 'Some(Numerical)'),
+                'unknown cell event/refusal')
+        for key in fields - {'event', 'refusal'}:
+            require(re.fullmatch(r'0|[1-9][0-9]*', event[key]), 'invalid cell counter')
+            event[key] = int(event[key])
+        require(event['attempted'] in (0, 1) and event['admitted'] in (0, 1)
+                and event['peak_bytes'] >= event['retained_bytes'], 'inconsistent cell counters')
+        if event['admitted']:
+            require(event['attempted'] == 1 and event['refusal'] == 'None'
+                    and event['cells'] > 0 and event['retained_bytes'] > 0, 'invalid cell admission')
+        else:
+            require(event['cells'] == event['retained_bytes'] == 0, 'nonadmitted cells claim storage')
+        events.append(event)
+    require(not events or mechanism[1] != 'none', 'unrequested cell construction')
+    if events:
+        bound = events[0]
+        require(bound == dict(event='bound', attempted=0, admitted=0, refusal='None',
+                              cells=0, retained_bytes=0, peak_bytes=0), 'missing clean cell binding')
+        if len(events) > 1:
+            attempt = events[1]
+            require(attempt['event'] == 'attempt' and attempt['attempted'] == 1,
+                    'missing single cell attempt')
+            require(attempt['admitted'] == 1 or attempt['refusal'] != 'None',
+                    'nonadmitted cell attempt lacks refusal')
+            require(all(event == {**attempt, 'event': 'reuse'} for event in events[2:]),
+                    'cell state changed or constructed twice')
+    return dict(requested_cells=mechanism[1], events=events, bound=bool(events),
+                constructed=any(event['admitted'] for event in events),
+                limitation='Binding, admission and reuse state do not prove application or a complete-command speedup.')
+
+
 def run(manifest, output, *, diagnostic=False, scored_result=None, execute=None, monitor_factory=None):
     """One attempt only. Persist the started call before entering native code."""
     started = time.monotonic()
@@ -562,10 +605,11 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, execute=None,
                     if traced:
                         evidence = q.science.resource_diagnostics(log.read_text(), None, False, {})
                         detail.update(evidence, solver_trace_lines=[line for line in log.read_text().splitlines() if line.startswith('FEREG_SOLVER_TRACE|')])
+                        detail['cell_diagnostic'] = cell_diagnostic(log.read_text(), plan['arms'][arm])
                     if diagnostic:
                         detail['ownership_diagnostic'] = ownership_diagnostic(log.read_text(), plan['arms'][arm])
                         detail['phase_lines'] = [line for line in log.read_text().splitlines()
-                                                 if line.startswith(('FEREG_PHASE|', 'FEREG_OWNERSHIP|'))]
+                                                 if line.startswith(('FEREG_PHASE|', 'FEREG_OWNERSHIP|', 'FEREG_CELLS|'))]
                     prior = snapshots.get((cell, arm))
                     if prior:
                         require(prior[2]['fingerprint'] == detail['fingerprint'], 'fixed-worker repeat changed')
@@ -673,6 +717,8 @@ def report(manifest, directory, output, *, accounting=None):
         if call['phase'] == 'warmup':
             evidence = q.science.resource_diagnostics(log.read_text(), None, False, {})
             require(all(call[key] == value for key, value in evidence.items()), 'warmup resource/route evidence changed')
+            require(call['cell_diagnostic'] == cell_diagnostic(log.read_text(), plan['arms'][call['arm']]),
+                    'warmup cell evidence changed')
     for cell in result['cells'].values():
         for ref in cell['references'].values():
             base = directory / ref['path']

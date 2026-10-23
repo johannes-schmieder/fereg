@@ -159,7 +159,7 @@ fn ppml_topology_keeps_weighted_projections_and_signatures_exact() {
                                         (new.residualized()[(row, 0)] - expected).abs() < 1e-10
                                     );
                                 }
-                                let cached = shared.ppml_topology.as_ref().unwrap();
+                                let cached = shared.reuse.ppml().unwrap();
                                 assert_eq!(
                                     cached.state(),
                                     if frame == 0 && width == 1 {
@@ -169,10 +169,7 @@ fn ppml_topology_keeps_weighted_projections_and_signatures_exact() {
                                     }
                                 );
                                 shared.accept_ppml_topology(key);
-                                assert_eq!(
-                                    shared.ppml_topology.as_ref().unwrap().state(),
-                                    (true, false)
-                                );
+                                assert_eq!(shared.reuse.ppml().unwrap().state(), (true, false));
                             }
                         }
                         shared.begin_ppml_frame(generation(4)).unwrap();
@@ -184,20 +181,14 @@ fn ppml_topology_keeps_weighted_projections_and_signatures_exact() {
                                 MapConfig::default()
                             )
                             .is_err());
-                        assert_eq!(
-                            shared.ppml_topology.as_ref().unwrap().state(),
-                            (true, false)
-                        );
+                        assert_eq!(shared.reuse.ppml().unwrap().state(), (true, false));
                         assert!(shared
                             .begin_ppml_frame(MapGeometryGeneration {
                                 sample: 8,
                                 ..generation(5)
                             })
                             .is_err());
-                        assert_eq!(
-                            shared.ppml_topology.as_ref().unwrap().state(),
-                            (false, false)
-                        );
+                        assert_eq!(shared.reuse.ppml().unwrap().state(), (false, false));
                     });
                 });
         }
@@ -221,7 +212,7 @@ fn ppml_topology_rejects_pending_generations_and_admits_retention_exactly() {
             ErrorCode::Allocation
         );
         owner.enable_ppml_topology(generation(1), bytes).unwrap();
-        let topology = owner.ppml_topology.as_mut().unwrap();
+        let topology = owner.reuse.ppml_mut().unwrap();
         topology.prepare(&design).unwrap();
         assert_eq!(topology.bytes(), bytes);
         assert_eq!(topology.state(), (false, true));

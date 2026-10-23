@@ -85,10 +85,10 @@ pub use prepared_dof::{
 pub use prepared_fit::{
     fit_prepared_model_coefficients, CertifiedPreparedOlsFit, LoadedOlsRows, PreparedOlsBread,
     PreparedOlsBreadCertificate, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
-    PreparedOlsBreadWeightScale, PreparedOlsExecutionConfig, PreparedOlsExecutionMode,
-    PreparedOlsExecutionReport, PreparedOlsFitConfig, PreparedOlsFitStatus,
-    PreparedOlsFittedCoefficient, PreparedOlsOwnership, PreparedOlsRankCertificate,
-    PreparedOlsScoreCertificate,
+    PreparedOlsBreadWeightScale, PreparedOlsCells, PreparedOlsExecutionConfig,
+    PreparedOlsExecutionMode, PreparedOlsExecutionReport, PreparedOlsFitConfig,
+    PreparedOlsFitStatus, PreparedOlsFittedCoefficient, PreparedOlsOwnership,
+    PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
 };
 pub(crate) use prepared_fit::{fit_prepared_weighted_linear_projection_once, LinearSolveFrame};
 pub use prepared_rhs::{

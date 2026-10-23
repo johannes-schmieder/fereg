@@ -17,6 +17,8 @@ use super::routing_observer::ObserverRef;
 use super::routing_remaining::State as RemainingState;
 
 mod categorical_prefix;
+mod eager_cells;
+use eager_cells::ReuseState;
 mod irons_tuck;
 mod lsmr_norms;
 pub(crate) use irons_tuck::absorb_borrowed_intercept_irons_tuck_certified;
@@ -1071,7 +1073,7 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     two_fe_pcg: Option<TwoFePcgWorkspace>,
     cmg_schur_request: Option<CmgSchurRequest>,
     auto_route: Option<AutoSchurRoute>,
-    ppml_topology: Option<super::ppml_topology::PpmlTopology>,
+    reuse: ReuseState<'a>,
     cg_residual_square: Vec<f64>,
     cg_initial_residual_square: Vec<f64>,
     cg_next_residual_square: Vec<f64>,
@@ -1158,7 +1160,10 @@ impl AutoSchurRoute {
             component_census_work: 0,
             certificate_work,
             certificate_bytes: 0,
-            retained_live_bytes: 0,
+            retained_live_bytes: graph
+                .kernel
+                .as_ref()
+                .map_or(0, |kernel| kernel.retained_bytes()),
             memory: self.request.budget,
         };
         if portfolio {
@@ -1181,6 +1186,7 @@ impl AutoSchurRoute {
         iterations: usize,
         iteration_limit: usize,
         remaining_granted: bool,
+        cell_retained: u128,
         remaining: Option<&mut RemainingState>,
         setup_seconds: &mut f64,
         solve_started: &mut Instant,
@@ -1214,10 +1220,10 @@ impl AutoSchurRoute {
             self.request.degree,
             self.request.sampling,
             stride,
-            self.request.budget,
+            eager_cells::with_retained(self.request.budget, cell_retained)?,
             self.preset.breaks_builder(),
         )?;
-        self.peak = self.peak.max(built.peak);
+        self.peak = self.peak.max(built.peak.with_retained(cell_retained)?);
         let elapsed = started.elapsed();
         let mut remaining = remaining;
         if let Some(state) = remaining.as_deref_mut() {
@@ -1597,10 +1603,24 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
     }
 
     pub(crate) fn cmg_schur_peak(&self) -> Result<Option<SolverWorkspacePeak>> {
+        let cells = self
+            .reuse
+            .eager()
+            .map(|state| {
+                state.total_peak(
+                    self.auto_route
+                        .as_ref()
+                        .expect("bound eager OLS route")
+                        .request
+                        .parents,
+                )
+            })
+            .transpose()?;
         if let Some(route) = &self.auto_route {
-            return route.peak.with_retained(route.request.parents).map(Some);
+            let peak = route.peak.with_retained(route.request.parents)?;
+            return Ok(Some(cells.map_or(peak, |cells| peak.max(cells))));
         }
-        match (
+        let prior = match (
             &self.cmg_schur_request,
             self.two_fe_pcg.as_ref().and_then(|g| g.cmg_schur.as_ref()),
         ) {
@@ -1609,7 +1629,11 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 .with_retained(request.parents)
                 .map(Some),
             _ => Ok(None),
-        }
+        }?;
+        Ok(match (prior, cells) {
+            (Some(a), Some(b)) => Some(a.max(b)),
+            (a, b) => a.or(b),
+        })
     }
 
     pub(crate) fn cmg_schur_bytes(&self) -> Result<u128> {
@@ -1725,7 +1749,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             two_fe_pcg,
             cmg_schur_request: None,
             auto_route: None,
-            ppml_topology: None,
+            reuse: ReuseState::Off,
             cg_residual_square: reserved_zeros(
                 cg_scalar_rhs,
                 &mut reservation,
@@ -1787,7 +1811,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             self.design.effects().len(),
         )?;
         crate::memory::require_admitted_capacity(required, allowance)?;
-        self.ppml_topology = Some(super::ppml_topology::PpmlTopology::new(
+        if self.reuse.eager().is_some() {
+            return Err(invalid_argument(
+                "PPML topology cannot replace an OLS cell owner",
+            ));
+        }
+        self.reuse = ReuseState::Ppml(super::ppml_topology::PpmlTopology::new(
             generation, allowance,
         ));
         Ok(())
@@ -1797,27 +1826,27 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         &mut self,
         generation: super::MapGeometryGeneration,
     ) -> Result<()> {
-        if let Some(topology) = &mut self.ppml_topology {
+        if let Some(topology) = self.reuse.ppml_mut() {
             topology.begin(generation)?;
         }
         Ok(())
     }
 
     pub(crate) fn accept_ppml_topology(&mut self, generation: super::MapGeometryGeneration) {
-        if let Some(topology) = &mut self.ppml_topology {
+        if let Some(topology) = self.reuse.ppml_mut() {
             topology.accept(generation);
         }
     }
 
     pub(crate) fn reject_ppml_topology(&mut self) {
-        if let Some(topology) = &mut self.ppml_topology {
+        if let Some(topology) = self.reuse.ppml_mut() {
             topology.reject();
         }
     }
 
     #[cfg(test)]
     pub(crate) fn ppml_topology_state(&self) -> Option<(bool, bool)> {
-        self.ppml_topology.as_ref().map(|topology| topology.state())
+        self.reuse.ppml().map(|topology| topology.state())
     }
 
     #[cfg(test)]
@@ -1893,7 +1922,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             .and_then(|n| n.checked_add(std::mem::size_of::<Self>() as u128))
             .and_then(|n| n.checked_add(self.design.descriptor_bytes()))
             .and_then(|n| n.checked_add(cmg_bytes))
-            .and_then(|n| n.checked_add(self.ppml_topology.as_ref().map_or(0, |p| p.bytes())))
+            .and_then(|n| n.checked_add(self.reuse.ppml().map_or(0, |p| p.bytes())))
             .ok_or_else(|| allocation("FE actual owner footprint overflows"))
     }
     pub(crate) fn capacities(&self) -> ReusableMapCapacities {
@@ -1930,7 +1959,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             topology_slope_values: 0,
             topology_level_offsets: 0,
             topology_level_observations: 0,
-            topology_resident_bytes: self.ppml_topology.as_ref().map_or(0, |p| p.bytes()),
+            topology_resident_bytes: self.reuse.ppml().map_or(0, |p| p.bytes()),
         }
     }
 
@@ -2068,9 +2097,14 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 values,
                 limits,
             )?;
-            route.peak = route
-                .peak
-                .max(SolverWorkspacePeak::from_bytes(attempt.peak_bytes)?);
+            route.peak = route.peak.max(
+                SolverWorkspacePeak::from_bytes(attempt.peak_bytes)?.with_retained(
+                    graph
+                        .kernel
+                        .as_ref()
+                        .map_or(0, |kernel| kernel.retained_bytes()),
+                )?,
+            );
             if crate::diagnostics::solver_trace_enabled() {
                 crate::diagnostics::emit_solver_trace(&format!(
                     "FEREG_SOLVER_TRACE|phase=auto_direct_route|work={}|decline={:?}|profiles={:?}|orientation={:?}",
@@ -2158,6 +2192,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         let mut values = values.into_values();
         let raw_weights = weights;
         let weights = validate_weights(weights, values.nrows())?;
+        if let Some(cells) = self.reuse.eager_mut() {
+            cells.validate(raw_weights, weights.raw_scale)?;
+        }
         self.workspace.set_rhs_count(rhs_count)?;
 
         let setup_started = Instant::now();
@@ -2181,8 +2218,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             && matches!(self.design.effects().len(), 2 | 3)
         {
             let prepared = self
-                .ppml_topology
-                .as_mut()
+                .reuse
+                .ppml_mut()
                 .map(|topology| topology.prepare(&self.design))
                 .transpose()?;
             component_scaled_checkpoint_weights(&self.design, weights, prepared)?
@@ -2238,20 +2275,37 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             return Ok(result);
         }
 
+        self.prepare_eager_cells(
+            raw_weights,
+            weights.raw_scale,
+            &mut setup_seconds,
+            &mut solve_started,
+        )?;
+
         if let (Some(state), Some(route), Some(graph)) = (
             remaining.as_mut().and_then(ObserverRef::remaining_mut),
             self.auto_route.as_mut(),
             self.two_fe_pcg.as_ref(),
         ) {
             if !route.setup.attempted && graph.cmg_schur.is_none() {
-                let bytes = state.prepare_observations(route.request.budget)?;
-                route.peak = route.peak.max(SolverWorkspacePeak::from_bytes(bytes)?);
+                let retained = graph
+                    .kernel
+                    .as_ref()
+                    .map_or(0, |kernel| kernel.retained_bytes());
+                let bytes = state.prepare_observations(eager_cells::with_retained(
+                    route.request.budget,
+                    retained,
+                )?)?;
+                route.peak = route
+                    .peak
+                    .max(SolverWorkspacePeak::from_bytes(bytes)?.with_retained(retained)?);
             }
         }
 
         if let (Some(route), Some(graph)) = (self.auto_route.as_mut(), self.two_fe_pcg.as_mut()) {
             if !route.setup.attempted
                 && graph.kernel.is_none()
+                && self.reuse.eager().is_none()
                 && matches!(
                     route.preset.kernel(),
                     Some(
@@ -3347,6 +3401,10 @@ fn absorb_two_fe_pcg_reusing(
                     iterations,
                     pcg_iteration_limit,
                     granted,
+                    graph
+                        .kernel
+                        .as_ref()
+                        .map_or(0, |kernel| kernel.retained_bytes()),
                     remaining.as_mut().map(|(state, _)| &mut **state),
                     &mut setup_seconds,
                     &mut solve_started,
@@ -3516,6 +3574,10 @@ fn absorb_two_fe_pcg_reusing(
                         iterations,
                         pcg_iteration_limit,
                         false,
+                        graph
+                            .kernel
+                            .as_ref()
+                            .map_or(0, |kernel| kernel.retained_bytes()),
                         None,
                         &mut setup_seconds,
                         &mut solve_started,
@@ -9066,3 +9128,34 @@ mod ppml_topology_tests;
 mod routing_tests;
 #[cfg(test)]
 mod tests;
+
+// Exact pre-cell owner field layout; scientific tests also pin tight admission.
+#[cfg(test)]
+#[allow(dead_code)]
+pub(crate) struct LegacyCategoricalOwner<'a> {
+    design: BorrowedInterceptFeDesign<'a>,
+    workspace: BorrowedMapWorkspace,
+    two_fe_pcg: Option<TwoFePcgWorkspace>,
+    cmg_schur_request: Option<CmgSchurRequest>,
+    auto_route: Option<AutoSchurRoute>,
+    ppml_topology: Option<super::ppml_topology::PpmlTopology>,
+    cg_residual_square: Vec<f64>,
+    cg_initial_residual_square: Vec<f64>,
+    cg_next_residual_square: Vec<f64>,
+    cg_direction_projection: Vec<f64>,
+    cg_ratio: Vec<f64>,
+    max_rhs: usize,
+    max_level_members: usize,
+    pub(crate) retain_coefficients: bool,
+    checkpoint_lsmr_enabled: bool,
+    checkpoint_deterministic: bool,
+    checkpoint_component_scaling: bool,
+    // Developer fault plan. Shipped code runs the same checks with every
+    // entry unset; only the test setters below write them. Each entry is
+    // consumed once.
+    checkpoint_lsmr_certificate_failure: bool,
+    checkpoint_lsmr_fatal_failure: u8,
+    checkpoint_lsmr_retry_error: Option<ErrorCode>,
+    checkpoint_schur_iteration_cap: Option<usize>,
+    checkpoint_schur_certificate_failure: bool,
+}

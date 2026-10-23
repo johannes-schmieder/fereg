@@ -36,12 +36,23 @@ pub struct PreparedOlsOwnership {
     pub retain_projected_scores: bool,
 }
 
+/// Internal first-occurrence cell experiment; independent of routing presets.
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PreparedOlsCells {
+    #[default]
+    Off,
+    Eager,
+}
+
 /// Numerical policy for the guarded prepared-data coefficient checkpoint.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PreparedOlsFitConfig {
     pub absorb: AbsorbConfig,
     #[doc(hidden)]
     pub ownership: PreparedOlsOwnership,
+    #[doc(hidden)]
+    pub cells: PreparedOlsCells,
     /// Preauthorized full projected-score capacity, including metadata. The
     /// caller must cover its lifetime through residual FE and inference inside
     /// the existing execution frame; this does not subtract any FE parent.
@@ -138,6 +149,7 @@ impl Default for PreparedOlsFitConfig {
                 ..AbsorbConfig::default()
             },
             ownership: PreparedOlsOwnership::default(),
+            cells: PreparedOlsCells::Off,
             retained_score_capacity_limit: None,
             rank_tolerance_multiplier: 128.0,
             final_residual_tolerance: None,
