@@ -500,6 +500,12 @@ has a 2,400-second total budget, at most 300 seconds for input reconstruction,
 plugin calls. Preserve a mismatch or failure and stop the affected final
 qualification work rather than trying alternate seeds, inputs or references.
 
+The bounded recovery completed in 26.789 seconds with zero native plugin calls.
+All 78 request, metadata and reference files matched the previous freeze
+byte for byte. The [restoration record](../bench/results/ownership-original42-restoration-20261023.json)
+retains each hash, the actual serializers, pinned numerical environment, source
+manifest, helper, commands and budget use. No witness was substituted.
+
 Before final timing, freeze a separate 80-call diagnostic schedule on each
 platform: the eight added bodies at W1/W4, with accepted `c16c0b55` once,
 uninjected candidate twice, and the selected hidden finalist twice. Its budget

@@ -1,0 +1,696 @@
+{
+  "budgets": {
+    "attempts_per_request": 1,
+    "input_seconds": 300,
+    "per_reference_seconds": 120,
+    "total_seconds": 2400
+  },
+  "commands": [
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "-c",
+        "import json,numpy,scipy,platform;print(json.dumps(dict(python=platform.python_version(),numpy=numpy.__version__,scipy=scipy.__version__)))"
+      ],
+      "elapsed_s": 0.6889168329071254,
+      "exit": 0,
+      "label": "historical-environment-check",
+      "timeout_s": 30
+    },
+    {
+      "argv": [
+        "<repo>/target/ci/examples/replay",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/replay-inputs"
+      ],
+      "elapsed_s": 0.32292012497782707,
+      "exit": 0,
+      "label": "independent-replay-import-recovery",
+      "timeout_s": 300
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_cases.py",
+        "--seed",
+        "2026105201",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/generated-inputs",
+        "--generator",
+        "<repo>/target/ci/examples/replay_large",
+        "--source",
+        "no-fe=<task>/sources/original42-restoration/target/tmp/cmg-upgrade/replay-inputs/ols-00.case",
+        "--source",
+        "one-fe=<task>/sources/original42-restoration/target/tmp/cmg-upgrade/replay-inputs/ols-06.case",
+        "--source",
+        "slopes=<task>/sources/original42-restoration/target/tmp/cmg-upgrade/replay-inputs/ols-22.case",
+        "--low-saved",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/replay-inputs/ols-24.case"
+      ],
+      "elapsed_s": 9.967027625069022,
+      "exit": 0,
+      "label": "frozen-42-input-recovery",
+      "timeout_s": 298.97696724999696
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/dense.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/dense.reference.json"
+      ],
+      "elapsed_s": 4.9715975830331445,
+      "exit": 0,
+      "label": "historical-reference-dense",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/small-retained.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/small-retained.reference.json"
+      ],
+      "elapsed_s": 0.3874732500407845,
+      "exit": 0,
+      "label": "historical-reference-small-retained",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/small-third.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/small-third.reference.json"
+      ],
+      "elapsed_s": 0.5632347918581218,
+      "exit": 0,
+      "label": "historical-reference-small-third",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/four-fe.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/four-fe.reference.json"
+      ],
+      "elapsed_s": 0.5532879170496017,
+      "exit": 0,
+      "label": "historical-reference-four-fe",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/eight-fe.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/eight-fe.reference.json"
+      ],
+      "elapsed_s": 0.7506867081392556,
+      "exit": 0,
+      "label": "historical-reference-eight-fe",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/weighted.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/weighted.reference.json"
+      ],
+      "elapsed_s": 0.5105348329525441,
+      "exit": 0,
+      "label": "historical-reference-weighted",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/weak.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/weak.reference.json"
+      ],
+      "elapsed_s": 0.39046783302910626,
+      "exit": 0,
+      "label": "historical-reference-weak",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/repeated-cells.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/repeated-cells.reference.json"
+      ],
+      "elapsed_s": 0.3850837079808116,
+      "exit": 0,
+      "label": "historical-reference-repeated-cells",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/wide-rhs.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/wide-rhs.reference.json"
+      ],
+      "elapsed_s": 0.5104164159856737,
+      "exit": 0,
+      "label": "historical-reference-wide-rhs",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/high-degree-mixed.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/high-degree-mixed.reference.json"
+      ],
+      "elapsed_s": 1.2778352911118418,
+      "exit": 0,
+      "label": "historical-reference-high-degree-mixed",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/high-degree-weak.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/high-degree-weak.reference.json"
+      ],
+      "elapsed_s": 1.2009706671815366,
+      "exit": 0,
+      "label": "historical-reference-high-degree-weak",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/high-degree-stress.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/high-degree-stress.reference.json"
+      ],
+      "elapsed_s": 1.2839948749169707,
+      "exit": 0,
+      "label": "historical-reference-high-degree-stress",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/sixteen-fe.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/sixteen-fe.reference.json"
+      ],
+      "elapsed_s": 1.105696499813348,
+      "exit": 0,
+      "label": "historical-reference-sixteen-fe",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/disconnected.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/disconnected.reference.json"
+      ],
+      "elapsed_s": 0.3763463331852108,
+      "exit": 0,
+      "label": "historical-reference-disconnected",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/near-confounded-third.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/near-confounded-third.reference.json"
+      ],
+      "elapsed_s": 0.3889302921015769,
+      "exit": 0,
+      "label": "historical-reference-near-confounded-third",
+      "timeout_s": 120
+    },
+    {
+      "argv": [
+        "<task>/python-original42/bin/python",
+        "<task>/sources/original42-restoration/bench/routing_oracle.py",
+        "--case",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/weight-dynamic.case",
+        "--output",
+        "<task>/sources/original42-restoration/target/tmp/cmg-upgrade/qualification-inputs/weight-dynamic.reference.json"
+      ],
+      "elapsed_s": 0.39049187512136996,
+      "exit": 0,
+      "label": "historical-reference-weight-dynamic",
+      "timeout_s": 120
+    }
+  ],
+  "elapsed_s": 26.789000417105854,
+  "environment": {
+    "numpy": "2.2.6",
+    "python": "3.13.0",
+    "scipy": "1.16.3"
+  },
+  "helper": {
+    "sha256": "e288ff7005f1afccecbcabeed00d11d7eb03f80deb8842c68df66dfed1004749",
+    "source": "\"\"\"One bounded attempt to recover only the predecessor's exact frozen bytes.\"\"\"\nfrom pathlib import Path\nimport hashlib\nimport json\nimport os\nimport signal\nimport subprocess\nimport sys\nimport time\n\nTASK = Path(__file__).resolve().parent\nREPO = TASK.parents[2]\nSOURCE = TASK / 'sources/original42-restoration'\nWORK = SOURCE / 'target/tmp/cmg-upgrade'\nGENERATED = WORK / 'generated-inputs'\nOUT = WORK / 'qualification-inputs'\nPYTHON = TASK / 'python-original42/bin/python'\nREPLAY = REPO / 'target/ci/examples/replay'\nGENERATOR = REPO / 'target/ci/examples/replay_large'\nFREEZE = REPO / 'bench/results/two-fe-policy-gates-qualification-freeze-20261022.json'\nRESULT = TASK / 'original42-restoration.json'\nLOG = TASK / 'original42-restoration.log'\n\n\ndef sha(path):\n    value = hashlib.sha256()\n    with Path(path).open('rb') as stream:\n        for block in iter(lambda: stream.read(1 << 20), b''):\n            value.update(block)\n    return value.hexdigest()\n\n\ndef read(path):\n    return json.loads(Path(path).read_text())\n\n\ndef require(value, message):\n    if not value:\n        raise ValueError(message)\n\n\ndef main():\n    require(not WORK.exists() and not RESULT.exists() and not LOG.exists(), 'restoration already attempted')\n    start = time.monotonic()\n    result = dict(schema=1, status='failed', purpose='Exact original42 byte restoration only',\n                  native_plugin_calls=0,\n                  budgets=dict(total_seconds=2400, input_seconds=300, per_reference_seconds=120,\n                               attempts_per_request=1), commands=[], restored_files={})\n    env = {**os.environ, **{k: '1' for k in ('OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS',\n                                           'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS', 'VECLIB_MAXIMUM_THREADS')},\n           'PYTHONDONTWRITEBYTECODE': '1', 'LC_ALL': 'C'}\n    with LOG.open('xb') as log:\n        def run(command, limit, label, capture=False):\n            remaining = min(limit, 2400 - (time.monotonic() - start))\n            require(remaining > 0, 'total restoration deadline exhausted')\n            before = time.monotonic()\n            entry = dict(label=label, timeout_s=remaining,\n                         argv=[str(a).replace(str(TASK), '<task>').replace(str(REPO), '<repo>') for a in command])\n            result['commands'].append(entry)\n            process = subprocess.Popen(list(map(str, command)), cwd=SOURCE, env=env,\n                                       stdout=subprocess.PIPE if capture else log,\n                                       stderr=log if capture else subprocess.STDOUT, start_new_session=True)\n            try:\n                captured, _ = process.communicate(timeout=remaining)\n                entry['exit'] = process.returncode\n            except subprocess.TimeoutExpired:\n                os.killpg(process.pid, signal.SIGKILL)\n                entry['exit'] = process.wait()\n                entry['timed_out'] = True\n                raise\n            finally:\n                entry['elapsed_s'] = time.monotonic() - before\n            require(entry['exit'] == 0, label + ' failed')\n            if capture:\n                log.write(captured)\n                return captured\n\n        def admit(path, target=None):\n            target = OUT / path.name if target is None else target\n            actual = sha(path)\n            require(actual == expected[path.name], 'historical hash mismatch: ' + path.name)\n            if path != target:\n                require(not target.exists(), 'refuse overwrite: ' + target.name)\n                os.link(path, target)\n            result['restored_files'][path.name] = dict(sha256=actual, bytes=path.stat().st_size)\n\n        try:\n            source = read(TASK / 'original42-restoration-source.json')\n            freeze = read(FREEZE)\n            plan = freeze['plans']['Darwin']['content']\n            pairs = [(Path(name).name, value) for name, value in plan['files'].items()\n                     if name.startswith('qualification-inputs/')]\n            require(len(pairs) == len({name for name, _ in pairs}), 'duplicate expected filenames')\n            expected = dict(pairs)\n            result.update(source_revision=source['source_revision'], source_manifest=source,\n                          prior_freeze_sha256=sha(FREEZE))\n            versions = json.loads(run([PYTHON, '-c',\n                'import json,numpy,scipy,platform;print(json.dumps(dict(python=platform.python_version(),numpy=numpy.__version__,scipy=scipy.__version__)))'],\n                30, 'historical-environment-check', capture=True))\n            result['environment'] = versions\n            require(versions['numpy'] == '2.2.6' and versions['scipy'] == '1.16.3', 'historical environment differs')\n            for name, value in source['files'].items():\n                require(sha(SOURCE / name) == value, 'restoration source differs: ' + name)\n            binaries = {name: sha(path) for name, path in [('replay', REPLAY), ('replay_large', GENERATOR)]}\n            result['serializer_sha256'] = binaries\n            WORK.mkdir(parents=True)\n            OUT.mkdir()\n            imports = WORK / 'replay-inputs'\n            run([REPLAY, imports], 300, 'independent-replay-import-recovery')\n            command = [PYTHON, SOURCE / 'bench/routing_cases.py', '--seed', '2026105201',\n                       '--output', GENERATED, '--generator', GENERATOR]\n            for family, name in [('no-fe', 'ols-00'), ('one-fe', 'ols-06'), ('slopes', 'ols-22')]:\n                command += ['--source', family + '=' + str(imports / (name + '.case'))]\n            command += ['--low-saved', imports / 'ols-24.case']\n            run(command, 300 - (time.monotonic() - start), 'frozen-42-input-recovery')\n            for item in plan['cases']:\n                family = item['family']\n                admit(GENERATED / (family + '.case'))\n                meta = read(GENERATED / (family + '.json'))\n                retained = freeze['input_metadata'][family]['content']\n                # Restore the historical metadata document, not a new provenance claim.\n                if 'generator_sha256' in meta:\n                    meta['generator_sha256'] = retained['generator_sha256']\n                require(meta == retained, 'reconstructed metadata content differs: ' + family)\n                target = OUT / (family + '.json')\n                raw = (json.dumps(meta, indent=2) + '\\n').encode()\n                require(hashlib.sha256(raw).hexdigest() == expected[target.name],\n                        'historical metadata serialization differs: ' + family)\n                with target.open('xb') as stream:\n                    stream.write(raw)\n                admit(target)\n                if item['oracle']['kind'] == 'replay':\n                    admit(GENERATED / Path(item['oracle']['path']).name)\n            for item in plan['cases']:\n                if item['oracle']['kind'] != 'routing':\n                    continue\n                case = OUT / Path(item['input']).name\n                reference = OUT / Path(item['oracle']['path']).name\n                run([PYTHON, SOURCE / 'bench/routing_oracle.py', '--case', case,\n                     '--output', reference], 120, 'historical-reference-' + item['family'])\n                admit(reference)\n                admit(reference.with_suffix('.npz'))\n            require(set(result['restored_files']) == set(expected), 'restored file coverage differs')\n            for name, value in expected.items():\n                require(sha(OUT / name) == value, 'restored file drift: ' + name)\n            for name, value in source['files'].items():\n                require(sha(SOURCE / name) == value, 'restoration source drift: ' + name)\n            require(binaries == {name: sha(path) for name, path in [('replay', REPLAY), ('replay_large', GENERATOR)]},\n                    'serializer drift')\n            require(time.monotonic() - start <= 2400, 'restoration exceeded declared budget')\n            result['status'] = 'byte_exact_restoration_verified'\n        except BaseException as error:\n            result.update(error_type=type(error).__name__, error=str(error).replace(str(TASK), '<task>'))\n            raise\n        finally:\n            result['elapsed_s'] = time.monotonic() - start\n            log.flush()\n            result['log_sha256'] = sha(LOG)\n            with RESULT.open('x') as stream:\n                json.dump(result, stream, sort_keys=True, indent=2, allow_nan=False)\n                stream.write('\\n')\n    print('ORIGINAL42_EXACT_RESTORATION_COMPLETE', len(result['restored_files']), result['elapsed_s'])\n\n\nif __name__ == '__main__':\n    main()\n"
+  },
+  "log_sha256": "8fa928becf84035b8c99207fd6c9dc9b40ec6b1253ca9df3dbb267941bf88be6",
+  "native_plugin_calls": 0,
+  "prior_freeze_record": "two-fe-policy-gates-qualification-freeze-20261022.json",
+  "prior_freeze_sha256": "9d87448deeabda0bc479729a760b663953f7e2829b12d12307a3047ebab4e51b",
+  "purpose": "Exact original42 byte restoration only",
+  "restored_files": {
+    "dense.case": {
+      "bytes": 25511634,
+      "sha256": "e188f340d1a1f36d033ec8dc2b1e119beac190d8ab0607a94f79e4eb0ecb4c61"
+    },
+    "dense.json": {
+      "bytes": 800,
+      "sha256": "797fd82b14603f5dec7c57e3987b5527fbdb150ea623c4f4330326b3ac7d9dee"
+    },
+    "dense.reference.json": {
+      "bytes": 4220,
+      "sha256": "ecd265f17e2c702c1415affa180f6b230eb58f076c57323934cfec0e627bf943"
+    },
+    "dense.reference.npz": {
+      "bytes": 3030844,
+      "sha256": "b1bf6c06de3ac82e464005218cb44b2960a1bc8c92646b8528d98766d22534b5"
+    },
+    "disconnected.case": {
+      "bytes": 20409018,
+      "sha256": "ac701722ddeafaa8c50d8b3ff53e0277428f41921939c15cd4b59c504885025c"
+    },
+    "disconnected.json": {
+      "bytes": 768,
+      "sha256": "17f9529ffa6a5db81be4e7a36511d0c374736a1f28478548cc768f3f4bac2872"
+    },
+    "disconnected.reference.json": {
+      "bytes": 3227,
+      "sha256": "a92c64a198d79c8bb4202c3217075da57246bedf84c00c2e0bec96a6bfc5b89c"
+    },
+    "disconnected.reference.npz": {
+      "bytes": 2516969,
+      "sha256": "5250d813558391a1deac206a0454b87049218cdeb8000aa49931bd207e0bc15d"
+    },
+    "eight-fe.case": {
+      "bytes": 35713897,
+      "sha256": "f38ac2b2db69cd0ba25b4417c12591f22692dbc460e0f2dc0b71922132481991"
+    },
+    "eight-fe.json": {
+      "bytes": 827,
+      "sha256": "9de8a8f1b515f6cce6667d58033d68d189144bb2b5c3e2d284500544de46dd92"
+    },
+    "eight-fe.reference.json": {
+      "bytes": 4821,
+      "sha256": "a3a10761172c801679691692bffea7ca1cd3eb4a6cfcb3555f969e2bcd18defc"
+    },
+    "eight-fe.reference.npz": {
+      "bytes": 3062487,
+      "sha256": "450f7d91ec3c26e16d06b7acc53e0c5a044d3a2c3db2e05a1007de124c32d955"
+    },
+    "four-fe.case": {
+      "bytes": 28912388,
+      "sha256": "7530badd25482a83c4fc634bac58b25b16dccb42ac9612c16886dcf3a00b2c43"
+    },
+    "four-fe.json": {
+      "bytes": 813,
+      "sha256": "5f3e595f89e6e40281ddee52b5010f0c3e6017a673b7e537c76bdbb4b965e8d1"
+    },
+    "four-fe.reference.json": {
+      "bytes": 4423,
+      "sha256": "bb45a32c237c1179135825d05618c5f8cfc0f846f8c3cbbf7cafd3f85c52ba3f"
+    },
+    "four-fe.reference.npz": {
+      "bytes": 3061528,
+      "sha256": "82eed9fb9cfac764c78224daf1607d45277e20e9bf4b9d8abfc6e187cecae32a"
+    },
+    "high-degree-mixed.case": {
+      "bytes": 122409018,
+      "sha256": "103e34dd6556a63dc87adce6bd07a067e83f88f5c200c03987cbd1bdbf2ccca4"
+    },
+    "high-degree-mixed.json": {
+      "bytes": 887,
+      "sha256": "5243ad916ad1481d61df79b45f831781342399227e1019141bdf2f923330f3f6"
+    },
+    "high-degree-mixed.reference.json": {
+      "bytes": 3246,
+      "sha256": "51f3b068c43ba00cc06349b9b6a514650e7670034b77864b239ed4e691a13cb7"
+    },
+    "high-degree-mixed.reference.npz": {
+      "bytes": 15376203,
+      "sha256": "77f3c00f2453e30090787e866e6fffd4ad3765c39a64cefca16afe8d6e19c92a"
+    },
+    "high-degree-stress.case": {
+      "bytes": 122409018,
+      "sha256": "d141164205650d9c5b4fe0c1f2f5cae94a8c46a4aa3a0b386f0919b8544f1e72"
+    },
+    "high-degree-stress.json": {
+      "bytes": 828,
+      "sha256": "042c58217d102fbd92b9d13b203a15c2f67dc9b3911de9185e11281afec1d8e6"
+    },
+    "high-degree-stress.reference.json": {
+      "bytes": 3243,
+      "sha256": "28e5af9bfdb6a591de1d171015fd69501d4cf2191beeb25adec942516e00f945"
+    },
+    "high-degree-stress.reference.npz": {
+      "bytes": 16220681,
+      "sha256": "b72226b5bb5502be87da227c09c79ee6d51e8f5c8d4f7f8eddb000e58819a1ad"
+    },
+    "high-degree-weak.case": {
+      "bytes": 122409018,
+      "sha256": "cff2a6823d2e0cf3ae03a12590e08a7d2f4e2ead1819c1007be85f14024ae4a4"
+    },
+    "high-degree-weak.json": {
+      "bytes": 885,
+      "sha256": "959358d43a9ba95a514c109a167fbe32a278cd242baa0081e79bb8eae4f8cd3a"
+    },
+    "high-degree-weak.reference.json": {
+      "bytes": 3243,
+      "sha256": "a76d2ba53e9c2b863142155f5614e41686586ff49871a3ee7f226cad7dbba342"
+    },
+    "high-degree-weak.reference.npz": {
+      "bytes": 15390928,
+      "sha256": "1eae62c901553e10e2f5179dd8e60f648868b178f09e4cefc6ea8d7d533d3b4a"
+    },
+    "inactive-columns.case": {
+      "bytes": 23810286,
+      "sha256": "d2c765af2b7f9f3023293c1c40eab722cd26909e49592c076c4cf621dfbdb91f"
+    },
+    "inactive-columns.json": {
+      "bytes": 779,
+      "sha256": "1e9e87feff2ac51b71de506fce0f418c9e7b5337e50ada775da3a32812036d9c"
+    },
+    "low-saved.case": {
+      "bytes": 44723,
+      "sha256": "1e9b4c7b5b2810f92016471ebc25a19df3823629f195e371594cf63141d45701"
+    },
+    "low-saved.json": {
+      "bytes": 827,
+      "sha256": "dd8cd33da109794a67a538cbbb8e748e2677dfe0e979f310e9c0bfee4bf5e039"
+    },
+    "low-saved.reference.json": {
+      "bytes": 7769,
+      "sha256": "10da99300d8995de2bc444cffa1d684cee228dbf02270ff40a4c476e212fd121"
+    },
+    "near-confounded-third.case": {
+      "bytes": 22109395,
+      "sha256": "b1f0eaa38c6998de838605e578627a46e8c9a15f3d206bcca4627bfdb0441078"
+    },
+    "near-confounded-third.json": {
+      "bytes": 787,
+      "sha256": "fa6fe57bbcb7300e3214e865c17092ca3d2a2a7449b2de6cb84733c2b868fa1e"
+    },
+    "near-confounded-third.reference.json": {
+      "bytes": 3323,
+      "sha256": "a21a8884c60e55b4c5e247b743c27b8543d5c5e6417d5895e8734c31371bf79a"
+    },
+    "near-confounded-third.reference.npz": {
+      "bytes": 2521313,
+      "sha256": "0c20e48f2e355fdc66c494fed97e3bae224f2b35b58f07a5664117309c4982da"
+    },
+    "no-fe.case": {
+      "bytes": 34030,
+      "sha256": "f803d679133f8f73ea2bc5fda261df0884cd1828a6c45939f60b0d27fd218f21"
+    },
+    "no-fe.json": {
+      "bytes": 795,
+      "sha256": "c0873e7df7ec9d3e1d3ea1647c62fab400708b9ac6c97afc33db8b6687d8d6d0"
+    },
+    "no-fe.reference.json": {
+      "bytes": 7669,
+      "sha256": "ce445d3881fea9d2c2e10d6a065ca29af1d3374b7099cd84d07c6122dd2c5e2b"
+    },
+    "one-fe.case": {
+      "bytes": 39283,
+      "sha256": "52d35d65837dab26d5f15b1c4d8756d048da5ba04795dea693d43a06847dfae7"
+    },
+    "one-fe.json": {
+      "bytes": 800,
+      "sha256": "5f60f249769f6605da953d8eee82d3de24e982ff3c83df8abc18407211a67bd8"
+    },
+    "one-fe.reference.json": {
+      "bytes": 7831,
+      "sha256": "cb4a539cb1db2ccf14b69fb2373975895bf0b7d2d7244a69a6bc10b2c03faa52"
+    },
+    "repeated-cells.case": {
+      "bytes": 20409018,
+      "sha256": "15f260e8b821b522154da249540f8cb0ab3da7da9700cc78664ff88ad5c29ac8"
+    },
+    "repeated-cells.json": {
+      "bytes": 927,
+      "sha256": "821ed08522de3d7b7e60a11a82563727741727fb989dbf9d37fe8b4851a29509"
+    },
+    "repeated-cells.reference.json": {
+      "bytes": 3231,
+      "sha256": "118fa21af342a3a8d6b3643038eba7f6aaaaa4d066b54cca3e967908e2832ef6"
+    },
+    "repeated-cells.reference.npz": {
+      "bytes": 2515955,
+      "sha256": "46b5f065ab3eccbaaeab7cb406f062657dfb7815a723a6dc14df82aaba8bc221"
+    },
+    "sixteen-fe.case": {
+      "bytes": 49316926,
+      "sha256": "0c907a7d537d0661a684822ce4e886ab883d25f7efab877c4e8a32482777344e"
+    },
+    "sixteen-fe.json": {
+      "bytes": 848,
+      "sha256": "e5a88afa541da80ae6728eabed6177cad24ab78a62dec9724dc2811ebd40b7f6"
+    },
+    "sixteen-fe.reference.json": {
+      "bytes": 5578,
+      "sha256": "5c758de5e769ace82e3e0af7de7bfc0bc155e44bd5695270636317d341a47809"
+    },
+    "sixteen-fe.reference.npz": {
+      "bytes": 3065775,
+      "sha256": "c455f6adf921e41388d8489e2807ee597fa6985f75d44e695f86d1a59bb27d3b"
+    },
+    "slopes.case": {
+      "bytes": 42133,
+      "sha256": "e946b05091ede95f792d614d1825aa02157b5d28563afa51a41f4492c996c1ac"
+    },
+    "slopes.json": {
+      "bytes": 802,
+      "sha256": "c393fa1e761fef59e4f6266fd8be332273bbcbbc96d7413f974bb140a3d3c997"
+    },
+    "slopes.reference.json": {
+      "bytes": 7812,
+      "sha256": "ec53362a9025cfa27750004ef2d628cd9aa14d9411b24ae38af86a846b5faf8e"
+    },
+    "small-retained.case": {
+      "bytes": 15311633,
+      "sha256": "f1128d629f75f9309c73774fc8e45a542f5aeed688b8a54f9236753dfb9d58d2"
+    },
+    "small-retained.json": {
+      "bytes": 816,
+      "sha256": "e76beb22009eac8e4655ebe72e8e6fa0010b87e2c7d51a5b1b4bc7995a0f75ce"
+    },
+    "small-retained.reference.json": {
+      "bytes": 4222,
+      "sha256": "877ad72ffa9b08939212872a7cd7596805d20f4642522ef5939f37ab60846adc"
+    },
+    "small-retained.reference.npz": {
+      "bytes": 1822049,
+      "sha256": "7ab28d1f4707eb33108ed829bf473f50f5818f5801db3437e00e57b44a92dfa4"
+    },
+    "small-third.case": {
+      "bytes": 27212012,
+      "sha256": "ba49c81473bf947ae501e4fe0e819e0a1328267bf63a37313b16a11f088d46bc"
+    },
+    "small-third.json": {
+      "bytes": 819,
+      "sha256": "076ea813a8d24973f81210239639d85924b40e26d3062e5c7e463d83d068f14b"
+    },
+    "small-third.reference.json": {
+      "bytes": 4332,
+      "sha256": "415ef29e21ad0cd582d022e802c50f372d34f90381e3399434f51bbe694170e3"
+    },
+    "small-third.reference.npz": {
+      "bytes": 3061557,
+      "sha256": "799f10e3fa3e05104457f9ec9ea5d00c644f938d7475cfaa8665ffd5c10cbcd9"
+    },
+    "weak.case": {
+      "bytes": 20409018,
+      "sha256": "42f63a038b73cba9c43dcb535751ad82f524012f030d3287b76c6346f6c2aa94"
+    },
+    "weak.json": {
+      "bytes": 907,
+      "sha256": "9cc09d2146480af4978d433b2688cedbe4514f187a82401e0fa0a0a9c69d5adb"
+    },
+    "weak.reference.json": {
+      "bytes": 3216,
+      "sha256": "e78297e35fe5387709f7652cfe3a12969fd5ef009adb2f5420c175ea61226dd3"
+    },
+    "weak.reference.npz": {
+      "bytes": 2519432,
+      "sha256": "0e98941193856f5689def23a5a4035ea1c4087d961fb36d9dc901b8de85fcdf5"
+    },
+    "weight-dynamic.case": {
+      "bytes": 22109072,
+      "sha256": "eca5707187821aad171cb8189d229ad6c79a11c9e8cbda4d728d78e6b291594f"
+    },
+    "weight-dynamic.json": {
+      "bytes": 771,
+      "sha256": "3ec1d87a80f315bb521f43ffc9df64f3d70e069dd669af29c0bc93600ff63636"
+    },
+    "weight-dynamic.reference.json": {
+      "bytes": 3249,
+      "sha256": "c7614042890dca3c63acb8e18254144e986b121e7cabb7a0011a958ddf401557"
+    },
+    "weight-dynamic.reference.npz": {
+      "bytes": 2527384,
+      "sha256": "b97be882cf868ae5dadd23ca829a4e4a252abd60b405c738d43e824e71f452e7"
+    },
+    "weighted.case": {
+      "bytes": 27211689,
+      "sha256": "e2356ed3b03b2452f130d2a7f236d229e56e924b46bc7a11aba4ca8220bd5f04"
+    },
+    "weighted.json": {
+      "bytes": 808,
+      "sha256": "0dd921478d84c8ed76d4442138a6a7a0e302d4cc90a609e082ee63ee4d79e90d"
+    },
+    "weighted.reference.json": {
+      "bytes": 4254,
+      "sha256": "39979fc595ee652b94a0af8131dc9590262f0bc5c7f983630f61fff200cb3194"
+    },
+    "weighted.reference.npz": {
+      "bytes": 3061379,
+      "sha256": "1d0ff0335c6484edbea5da8013d7a32d8dd235b88f9ff705db53c6821e5b2196"
+    },
+    "wide-rhs.case": {
+      "bytes": 44226482,
+      "sha256": "857178ef80e11ce4f73f1a7fd24bfe5c943cef3500bb06cb56eec9980505dacc"
+    },
+    "wide-rhs.json": {
+      "bytes": 919,
+      "sha256": "6df3571eb435224f6f472ac69b56b281efb78b5751072690071ecb0d7e4c29c5"
+    },
+    "wide-rhs.reference.json": {
+      "bytes": 12505,
+      "sha256": "4c989c9c2e7a6ae1b24f5ad4a5ccb1ae74306493094203f904bc6b5b82b384d9"
+    },
+    "wide-rhs.reference.npz": {
+      "bytes": 2549687,
+      "sha256": "533462387414b66e316c05ce57f44d9d74274a2c396198c617271ac45bb941cf"
+    }
+  },
+  "retention_note": "Exact restored file identities are retained here; ignored reconstructed data are working inputs, not retained proof.",
+  "schema": 1,
+  "serializer_sha256": {
+    "replay": "94a9e723727826c0a4f8523316667cd5cec4cedfee619687acb73f967b76ab87",
+    "replay_large": "2aec94230e4f3148f8fcfcc554355a67c7a928b8b1d20766c074709e50d4ff4b"
+  },
+  "source_manifest": {
+    "expected_record": "two-fe-policy-gates-qualification-freeze-20261022.json",
+    "files": {
+      "bench/block_host.py": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+      "bench/build_clock.py": "5478ed4c48e38246d65bae698ffe8fbd6ffa225794d6b7c48736842373af8fcc",
+      "bench/campaign.py": "b9a92c1a17ab2e8f4df1b3aca9375642f20c43ccdfca339290f80064877c3816",
+      "bench/campaign_collect.py": "fb1cf7abe6bdae6d7977e58525685f9a9ab7a17cffc26027624f8a57164f077d",
+      "bench/campaign_oracle.py": "b73a9dcd4025c54935ec7ffd9f6a607a19d520a0abfab3016e2798a56f191c2f",
+      "bench/campaign_report.py": "4a0281374dbecd7dfe4e54ba6df581588c27b5aa78de610446f5e88fff8a6215",
+      "bench/cmg_setup.py": "b7477ec64d6c926bd67b503f7a3cfc11f3ffa71055adaf89b9ae954be3f4547c",
+      "bench/cmg_setup_attribution.py": "9735c70b42d8fa13905e5c4c68a4c4cd23bb85a75c90ad69d79d83ac26b122e7",
+      "bench/cmg_setup_profile.py": "4712a74e79b0d5a17b04dbf314860e83934ba71cff8a3fc640a813fe29597241",
+      "bench/cmgschur.py": "c69ef5e0cb2c5694f1e7b975c24f098a9a363d84d1ded7d4821a9aa5f46ff026",
+      "bench/cmgschur_cases.py": "2b866b8b5f66ffd88b0e298e94ccdf7ea86c5b39e5e33d89f5f97df2f656c842",
+      "bench/compare.py": "6a3c83c2f0940dd8d1db8bb6c171d3766b741aa1469c458bcf1b711412e29cc0",
+      "bench/generate.py": "d344f5a7093a2f91067b09a737d006d3c0a572cdaf26e0fd5dbdec13410937aa",
+      "bench/make_standard_cases.py": "b139c6ef9822d68377d1aa65e1dc09d031bf2ecc1c63bc631c103c6ea0d79e4a",
+      "bench/native.py": "b3b80bd029f1b5566bef8ec325c5a9ae587b7ae1eabed21fa3ee0ab809f04233",
+      "bench/native_io.py": "5a3ac828c7f0c7c3cd5af963e7192f5b598c2ca817767a1ef1b49d05196f3a03",
+      "bench/placement.py": "5ec503a0a541f053dbc37fed51b4fbb740b15d989c9bf5b34bdd445da8d13200",
+      "bench/qualify.py": "6244c06e198c139f185612225f6fad9b8b036323d70906d5ddcc24ea9d2d7ae4",
+      "bench/qualify_scc.py": "7e869cfc2235567d28806d20c2879bb45a5c788d5591a984ffce19ce669bad7d",
+      "bench/routing.py": "5330915ce4e748e99f6c996533a075bedb7336ad536c16aea7bca02725a9b225",
+      "bench/routing_cases.py": "ef96114acf7f8d6912a09bc9248045d4b8dc4b5a03209392493a6f6b19e83ab0",
+      "bench/routing_oracle.py": "f12b01e117b4c510b467f9b0bce077ad5d476023f0ae1a04fbddc0f8f96131cf",
+      "bench/routing_science.py": "fc2814457ff529ff5822ee111cf7793b75a004c9f4e2a300ae4cf11b0484459a",
+      "bench/run.py": "6a9bed6eeb095b5bae71a38013be43599c60787662d9bb648f974eeab325d993",
+      "bench/time_exact.py": "f686e037d3a65c2d9ba6cb79e9cb3ad07316768bc9d5b44d928d98c6dbf6caba",
+      "bench/two_fe_policy.py": "0c6a925e1ddb99b82e8b460a2d9bb2a67911b31ba16f9808469d44c9a1fb71d8",
+      "bench/two_fe_policy_calibrate.py": "51ca7ccee1ffff2a79c77672e3310843400c67466e61c5f06ee9d891e098ba36",
+      "bench/two_fe_policy_development.py": "cc9984d001d6d1f4cc6f6cd7a7766d400ca40d84ff94a267d0db93d3c87ab748",
+      "bench/two_fe_policy_fit.py": "724e88535130d9281e97f86152e66d3c58a783380c9f09ccb36a6d2306f8ce0a",
+      "bench/two_fe_policy_gates.py": "4863c21eaa0c79e310ee65d04b231a1d2b9b142e17504e3f44562545ed28f018",
+      "bench/two_fe_policy_inputs.py": "0a390f9af30d6c1f3da4a75582671b5dae3b2aa3234530f5139a5a513e08c90e",
+      "bench/two_fe_policy_labels.py": "3cdcac05318e8f1b713dd0df9b0b777f4a5107d237ea0e08c186b2f95ba05c81",
+      "crates/fereg-oracle/python/reduction_ols_reference.py": "950be8486a11b9e792548997918e1bf11dacc7d35b1ca7bf0cca82cbebd5e152",
+      "crates/fereg-oracle/python/replay_cmg_reference.py": "ec10f06bf342f40db86ffb9d85cf079fe00af1e18f3636b89f8a06e2257b76e6",
+      "crates/fereg-oracle/python/replay_ols_reference.py": "9f543e9558e3f2198b7f2995eb93b5b4fcebb3d24f08bd1f61c3eb6f80927fd0",
+      "scripts/audit_binary.py": "93d98b0c280f080350ba6d6f34bbaacaac4bd464a967a7b55e6539663c5fcf92",
+      "scripts/build_ppml_mata.py": "779948e60b9ca36e2bb5ec952210692f64b0def4bf5f85ecfaa32f72b2fc9b1d",
+      "scripts/check_complexity.py": "31e85d3332c0e987349348a16188aabbbcc945d070436bbf163d4d7084fd2eda",
+      "scripts/check_fe_boundary_response_oracle.py": "cf9f6d716435cc0cb36e345716add8d17d0497f20c43271b6172ecb5522f189e",
+      "scripts/check_fe_cancellation_oracle.py": "10cf42bc5a5e87e4a77d8ab28a0a00c5bfe9b4154e93f9d66ee810536d278643",
+      "scripts/check_fma_rounding_vectors.py": "5568780d06a099f2d5f4576355cdb18ef1010907783b367c44a3f5335572ca19",
+      "scripts/check_github_install.py": "665a615950db55c178352fe818bdf39f525965434673825da54348b87d418706",
+      "scripts/feppml_explicit_dummy_oracle.py": "79380529293ae2d16d4f899c615c49108af5cfb4d566ab70e6e237909ca544af",
+      "scripts/feppml_help_contract.py": "95cf094148b6eb0cb9dfeb98f7f8a9e218e19cc2a3293635e6a2c3c4ad6e2d82",
+      "scripts/generate_feppml_oracle_fixtures.py": "6609869a422fae2fdad6298c993e75993040ab31b6d3573d11475cbdc10f9f34",
+      "scripts/materialize_bundled_reference_root.py": "d36d694794f49287a042c91faaeeb47e1c92bfc19b1665422edf783c0a0c5642",
+      "scripts/package_release.py": "8ef43728935b803679adad4669b551a9a7c92bf8902e22016920d423e3fb0d33",
+      "scripts/ppml_auto_science.py": "aede679a1e3e8306ed90d02b05ee92054e9456096ea77d1b914ef54ac092863b",
+      "scripts/ppml_bias_oracle.py": "fd469b678b25c6152315ab8e79cfd7e394554f4c48686c40987dc66d557a2f01",
+      "scripts/ppml_bias_reconstruction.py": "ce09edf1b233176aaf6c56f0583c5c56aa4098cbb5331891c4a862a9feb58e85",
+      "scripts/ppml_bias_retained.py": "c69c2a73794e396aa5d508635b029c4b0ddf03c11fdc43ec0a97f78f07dd98a2",
+      "scripts/ppml_bias_validate.py": "1ef0bb32f946dd93217b31823711cc31931ffc18ca99237aaf26b784db7686e4",
+      "scripts/ppml_coefficient_accuracy.py": "03d8b22c4e7e820461e970b6c52a94bc1f20879ab790208e40e3e5c5c5626f63",
+      "scripts/ppml_covariance_accuracy.py": "366cd49cd16d1137c6541a813632a4adbecc00fa01146f7bf5fe1275ad78913e",
+      "scripts/reference_identity.py": "5047316a35ae1ae6fe8b699d61c42c35ca1ff461a5a4d9e48917ee0628c05949",
+      "scripts/replay_bias_reference.py": "32f31f26512c350980bc6c76dbf4ea2a56818b03fa0af39d9b5165d9e50d57ff",
+      "scripts/replay_cmg_polish.py": "fea5b0bc6a32199dad2baecd5d9f262410400b6c01e0c4fa0e5923fdcb2bc501",
+      "scripts/replay_plugins.py": "d9ad2e3e6e4f83d3992ac757fc2cf432b7ec9c5bf9a0130b7bcc3b99bcd38fa8",
+      "scripts/replay_psd.py": "6eec58705ef0ffa50d177b7ae51f126e5954827a39f67b4578d018119339bef8",
+      "scripts/replay_solver_routing.py": "0073eb798127b510b25bb719761d011994ddaf1dcc409d01f2a3420d70638e5d",
+      "scripts/resolve_reference_root.py": "c4030b3035d37ae8703e109807798a499f7b45d0df62d93501c79e8a331fd36b",
+      "scripts/run_dependency_audit.py": "7e736743abadbaa4b5cb70df0322fa0c3e7f11d27d13b2f04f5a0db6b993c5b8",
+      "scripts/run_staged_stata_tests.py": "bf155326cc396fa6d2f82e04a038bdbc9f942b3fffe17e6b4f4ceb2928644c8d",
+      "scripts/run_stata_break_test.py": "cb36f384880e627037599515f814056d53b13488664e026748caff1319a818bc",
+      "scripts/run_stata_tests.py": "4a6aadb6cbc6aca378c67d64a2b2f2c6fe088aaa2227697a3a99009305f468a3",
+      "scripts/rust_source.py": "62015547538e103cad09c6b71f9151eb078638db24f9af9c5404bbbc2071907e",
+      "scripts/stage_local_install.py": "43085547635fcd98cc0c3114a9564e5630ab21e6d04b784307858239abc557f0",
+      "scripts/stage_release.py": "065d2d5876259029c47675b974390a54b58e9892e610230547c38e00a95f627b",
+      "scripts/two_fe_span_audit.py": "465e776fdc8c18ddce915ea02d8d1c5432b780a2d19670bf3a7c1006900fcef0",
+      "scripts/weak_graph_decimal_oracle.py": "ca3199c19dbcd70ae5b3a85b26705ed7c68851888fde7850c153a0364505831b",
+      "scripts/windows_ci_diagnostics.py": "37095cbf9ecbc91e796e3ff0e24a0d0ca7db96e3ae7e9af238f98d390a77ac3d"
+    },
+    "native_calls": 0,
+    "purpose": "Exact historical byte recovery only; no new science or timing observations",
+    "schema": 1,
+    "source_revision": "88ab8fb5b2126e37d65b84ff677a92fcf71cdfeb"
+  },
+  "source_revision": "88ab8fb5b2126e37d65b84ff677a92fcf71cdfeb",
+  "status": "byte_exact_restoration_verified"
+}
