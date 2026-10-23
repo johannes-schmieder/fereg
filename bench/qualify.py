@@ -33,6 +33,7 @@ import routing
 import routing_cases
 import routing_oracle
 import routing_science as science
+import qualify_ownership as ownership
 from native import run_process
 from native_io import ROOT, case_header, diagnostics, digest, numbers, prepare_case, validate_result
 from replay_plugins import exact_view
@@ -50,7 +51,7 @@ SOURCE_MODULES = ('qualify_scc', 'block_host', 'native', 'native_io', 'routing',
                   'routing_cases', 'routing_oracle', 'routing_science', 'cmgschur',
                   'cmgschur_cases', 'time_exact', 'replay_plugins', 'replay_psd',
                   'replay_bias_reference', 'replay_cmg_polish', 'replay_ols_reference', 'cmg_setup',
-                  'two_fe_policy', 'two_fe_policy_development')
+                  'two_fe_policy', 'two_fe_policy_development', 'qualify_ownership', 'ownership_qualification_cases')
 
 
 def execution_sources():
@@ -215,8 +216,13 @@ def plan(config_path, output, *, configuration=None):
     require(not output.exists(), 'plan already exists')
     value = read(config_path) if configuration is None else copy.deepcopy(configuration)
     diagnostic = diagnostic_mode(value)
+    ownership_mode = ownership.enabled(value)
+    if ownership_mode:
+        ownership.validate(value)
     required = {'scope', 'platform', 'artifacts', 'harness', 'cases', 'threads',
                 'blocks', 'shards', 'replicas', 'seed', 'timeout_s', 'budget_s', 'coverage'}
+    if ownership_mode:
+        required.update(('qualification', 'ownership_binding'))
     if diagnostic:
         required.add('diagnostic')
     if value.get('diagnostic') == 'two-fe-gates-development-v1':
@@ -226,7 +232,7 @@ def plan(config_path, output, *, configuration=None):
     require(set(value) == required, 'configuration needs exactly: ' + ', '.join(sorted(required)))
     require(value['scope'] in {'exact', 'many', 'two'}, 'unsupported numerical scope')
     require(value['platform'] in {'Darwin', 'Linux'}, 'platform must be Darwin or Linux')
-    require(value['coverage'] in {'routing', 'smoke'}, 'coverage must be routing or smoke')
+    require(value['coverage'] in ({'ownership'} if ownership_mode else {'routing', 'smoke'}), 'unsupported coverage')
     for field, low, high in [('blocks', 1, 24), ('shards', 1, 42), ('replicas', 1, 12),
                              ('seed', 0, 2**64 - 1), ('timeout_s', 1, 120), ('budget_s', 1, 14400)]:
         require(type(value[field]) is int and low <= value[field] <= high, 'invalid ' + field)
@@ -252,7 +258,8 @@ def plan(config_path, output, *, configuration=None):
         require(set(artifact) == {'path', 'revision', 'build', 'request', 'families'}, 'invalid artifact ' + role)
         require(isinstance(artifact['revision'], str) and artifact['revision'], 'record artifact revision')
         require(isinstance(artifact['build'], str) and artifact['build'], 'record compiler and build settings')
-        require(artifact['request'] in {'auto', 'preserve', *routing.INCREMENTAL, *routing.REMAINING, routing.GATES}, 'unsupported request')
+        require(artifact['request'] in ({'auto', *ownership.REQUESTS} if ownership_mode else
+                {'auto', 'preserve', *routing.INCREMENTAL, *routing.REMAINING, routing.GATES}), 'unsupported request')
         require(artifact['request'] not in routing.REMAINING[1:] or
                 value.get('diagnostic') == 'two-fe-remaining-calibration-v1',
                 'forced/never controls belong only to the frozen calibration')
@@ -262,7 +269,9 @@ def plan(config_path, output, *, configuration=None):
     if value.get('diagnostic') == 'two-fe-gates-development-v1':
         for name in ('fit', 'spec'):
             value['policy_binding'][name] = bind(value['policy_binding'][name])
-    if not diagnostic:
+    if ownership_mode:
+        value['ownership_binding'] = {k: bind(v) for k, v in value['ownership_binding'].items()}
+    if not diagnostic and not ownership_mode:
         require(artifacts['original']['families'] == [], 'original baseline must remain original')
         require(all(artifacts[r]['request'] in {'auto', 'preserve'} for r in ('original', 'incumbent')),
                 'protected references must use their public requests')
@@ -333,6 +342,8 @@ def plan(config_path, output, *, configuration=None):
                  execution_sources={name: digest(path) for name, path in execution_sources().items()})
     if diagnostic:
         diagnostic_mode(value)
+    if ownership_mode:
+        ownership.validate_inputs(value, output)
     if value['platform'] == 'Darwin':
         value['mac_cell_policy'] = fresh_mac_policy(value)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -351,7 +362,8 @@ def metadata(manifest, item, manifest_path):
     elif oracle['kind'] == 'replay':
         meta['replay_reference'] = read(resolve(manifest_path, oracle['path']))
     elif oracle['kind'] == 'inactive':
-        require(item['family'] == 'inactive-columns', 'inactive oracle has wrong family')
+        require(item['family'] == 'inactive-columns' or ownership.enabled(manifest)
+                and item['family'] == 'ownership-inactive-zero', 'inactive oracle has wrong family')
         meta['oracle'] = routing_cases.inactive_case_oracle(source)
     require(any(key in meta for key in ('routing_oracle', 'oracle', 'replay_reference')), 'missing independent truth')
     return meta
@@ -432,6 +444,7 @@ def continuation_plan(old_path, result_path, output, publish=True):
     old_path, result_path, output = map(lambda p: Path(p).resolve(), (old_path, result_path, output))
     require(not publish or not output.exists(), 'continuation plan already exists')
     old, previous = read(old_path), read(result_path)
+    require(not ownership.enabled(old), 'ownership qualification cannot add a continuation budget')
     state = continuation_accounting(old, previous)
     # Keep unchanged relative bindings; relocation is unnecessary for one local round.
     require(output.parent == old_path.parent, 'continuation plan must share the original plan directory')
@@ -485,7 +498,7 @@ def fresh_mac_policy(manifest):
     per_cell = len(set(artifact_aliases(manifest).values()))*(1+2*manifest['blocks'])
     process = copy.deepcopy(MAC_RECOVERY_POLICY)
     process['executables'] += ['actual_plugin_loader_test', 'actual_plugin_l']
-    retries = 0 if diagnostic_mode(manifest) else 4
+    retries = 0 if diagnostic_mode(manifest) or ownership.enabled(manifest) else 4
     return {'fresh_cells': cells, 'max_cell_retries': int(bool(retries)), 'max_retry_cells': retries,
             'quiet_timeout_s': 120, 'calls_per_cell': per_cell,
             'baseline_calls': len(cells)*per_cell,
@@ -553,6 +566,7 @@ def span_evidence(events, start, end):
 
 
 def recovery_definition(old, previous, events, paths, output):
+    require(not ownership.enabled(old), 'ownership qualification cannot add recovery calls')
     require(not any(k in old for k in ('recovery', 'mac_cell_policy')) and old['platform'] == previous['platform'] == 'Darwin'
             and old['shards'] == old['replicas'] == 1 and previous['shard'] == previous['replica'] == 0,
             'recovery requires a serial Mac round')
@@ -686,6 +700,8 @@ def affected(meta, families):
 
 def resource_policy(manifest, role, meta):
     """Resolve the executed family, including a public candidate's hidden binding."""
+    if ownership.enabled(manifest):
+        return ownership.resource_policy(manifest, role, meta)
     artifact = manifest['artifacts'][role]
     family = next((f for f in artifact['families'] if affected(meta, [f])), None)
     if family is None:
@@ -707,6 +723,8 @@ def artifact_aliases(manifest):
 
 
 def compare_artifacts(manifest, meta, snapshots):
+    if ownership.enabled(manifest):
+        return ownership.compare_artifacts(manifest, meta, snapshots)
     if diagnostic_mode(manifest):
         return diagnostic_tool(manifest).compare_science(manifest, meta, snapshots)
     candidate = snapshots['candidate']
@@ -818,6 +836,9 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
     output.mkdir(parents=True, exist_ok=True)
     directory = output / f'run-{replica}-{shard}'
     path = directory / 'results.json'
+    if ownership.enabled(manifest):
+        ownership.validate(manifest)
+        require(not resume, 'ownership qualification has no unbudgeted resume')
     identity = routing.identity(manifest)
     result = {'schema': 1, 'manifest_sha256': identity, 'shard': shard, 'replica': replica,
               'platform': platform.system(), 'hostname': socket.gethostname(), 'status': 'running',
@@ -873,6 +894,8 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
             before = stamp(filename)
             require(digest(filename) == expected and stamp(filename) == before, 'input identity mismatch: ' + str(filename))
             identities[filename] = before
+        if ownership.enabled(manifest):
+            ownership.validate_bindings(manifest, manifest_path)
         result['verified_input_files'] = len(files)
         prior_cells, prior_root = {}, None
         if recovery:
@@ -908,14 +931,16 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                             cell['quiet_wait'] = quiet_wait
                     work = directory / (f"{cell_id}-attempt-{len(result['failures'])}" + (f'-{attempt}' if policy else ''))
                     work.mkdir(exist_ok=False)
-                    aliases, prepared, snapshots, requests = {}, {}, {}, {}
+                    aliases, prepared, snapshots, requests, request_arguments = {}, {}, {}, {}, {}
                     aliases = artifact_aliases(manifest)
                     for role, artifact in manifest['artifacts'].items():
                         if aliases[role] != role:
                             continue
                         request = work / (role + '.case')
                         source = resolve(manifest_path, item['input'])
-                        if artifact['request'] == 'preserve':
+                        if ownership.enabled(manifest):
+                            ownership.prepare(source, request, artifact['request'], workers)
+                        elif artifact['request'] == 'preserve':
                             prepare_case(source, request, workers)
                         else:
                             routing.prepare(source, request, 'baseline' if artifact['request'] == 'auto' else artifact['request'], workers)
@@ -923,6 +948,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         with request.open('rb') as stream:
                             _, arguments = case_header(stream)
                         requests[role] = dict(a.decode().split('=', 1) for a in arguments[1:])
+                        request_arguments[role] = arguments
                         identities[request] = stamp(request)
                     cell['aliases'] = aliases
                     persist()
@@ -962,7 +988,12 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         require(detail['solver_rows'][0][0] == expected, 'requested solver identity mismatch')
                         if role in snapshots:
                             require(detail['fingerprint'] == snapshots[role][2]['fingerprint'], 'fixed-worker repeat changed')
-                        if traced and artifact['families']:
+                        if traced and ownership.enabled(manifest):
+                            with source.open('rb') as stream:
+                                _, source_args = case_header(stream)
+                            detail.update(ownership.resource_detail(manifest, role, meta, log.read_text(),
+                                          request_arguments[role], source_args, workers))
+                        elif traced and artifact['families']:
                             eligible = affected(meta, artifact['families'])
                             if eligible:
                                 family = next(f for f in artifact['families'] if affected(meta, [f]))
@@ -977,6 +1008,10 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                                         import two_fe_policy_development as development
                                         resources_detail['gate_events'] = development.gate_events(log.read_text())
                                 detail.update(resources_detail)
+                        if ownership.enabled(manifest):
+                            detail.update(raw_result=raw, result_sha256=digest(target), log_sha256=digest(log),
+                                          columns_sha256=digest(columns), target=str(target.relative_to(directory)),
+                                          log=str(log.relative_to(directory)))
                         detail.update(execution=role, maxrss_bytes=resources['maxrss_bytes'],
                                       started_monotonic_ns=native_started, finished_monotonic_ns=native_finished)
                         phase = 'setup'
@@ -1033,8 +1068,9 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                             raw, columns, detail = call(role, f'block-{block}-{number}', False)
                             row['calls'].append(detail)
                             columns.unlink()
-                            columns.with_suffix('').unlink()
-                            (work / f'block-{block}-{number}.log').unlink()
+                            if not ownership.enabled(manifest):
+                                columns.with_suffix('').unlink()
+                                (work / f'block-{block}-{number}.log').unlink()
                         row['comparisons'] = {comparison_key(manifest, role, target): score(row['calls'], aliases[role], aliases[target])
                                               for role, target in comparison_pairs(manifest)}
                         row['status'] = 'complete'
@@ -1251,9 +1287,11 @@ def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=N
         source_stamps.update(verify_sources(manifest['execution_sources']))
         if allocation_amendment is not None:
             allocation = validate_allocation_amendment(allocation_amendment, manifest_path, output, verify_file)
-        if policy:
+        if policy or ownership.enabled(manifest):
             for name, expected_hash in manifest['files'].items():
                 verify_file(Path(manifest_path).parent / name, expected_hash)
+        if ownership.enabled(manifest):
+            ownership.validate_bindings(manifest, manifest_path)
     except (OSError, ValueError, KeyError, TypeError) as error:
         errors.append('execution sources: ' + str(error))
     aliases = artifact_aliases(manifest)
@@ -1394,6 +1432,8 @@ def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=N
                     if key not in metadata_cache:
                         metadata_cache[key] = routing_cases.inspect_case(resolve(manifest_path, item['input']), item['family'])
                     policy_meta = metadata_cache[key]
+                    if ownership.enabled(manifest):
+                        ownership.verify_report_cell(manifest, item, manifest_path, reference_root, cell, verify_file)
                     for call in cell['warmups']:
                         if resource_policy(manifest, call['execution'], policy_meta) == routing.GATES:
                             import two_fe_policy_development as development
@@ -1491,6 +1531,13 @@ def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=N
                'coverage': 'One-sided .025 bounds conditional on independent unit scores with a common median; no simultaneous interval claim.',
                'next_action': 'Review platform-specific evidence; no automatic activation or successor.' if passed else
                               'Discuss failed, missing or inconclusive evidence with Johannes; keep candidate and defaults.'}
+    if ownership.enabled(manifest):
+        summary['qualification'] = ownership.MODE
+        summary['ownership_binding'] = manifest['ownership_binding']
+        summary['activation_qualified'] = False
+        summary['interpretation'] = 'Performance qualification only; selected hidden/public equality and native feature/transaction gates remain separate.'
+        if manifest['platform'] == 'Darwin':
+            summary['recovery_limit'] = '8526 total calls funds the fixed 58-cell schedule only; external interference is retained, with no additional native-call allowance.'
     if diagnostic:
         summary.update(status='diagnostic_complete' if complete else 'needs_discussion',
                        diagnostic=manifest['diagnostic'], activation_qualified=False,

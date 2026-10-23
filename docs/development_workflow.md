@@ -450,10 +450,71 @@ host, three shards and one warmup per arm/cell/host (at most 10,440 calls).
 Mac uses 24 mirrored blocks and one warmup per arm/cell (at most 8,526 calls).
 The per-call limit is 120 seconds; application budgets are 3,600 seconds per
 Linux shard and 14,400 seconds on Mac. The maintained external-interference
-rules and fixed retry caps apply; failures and slow timings never trigger
-sampling. All protected one-sided alpha .025 order-statistic upper bounds for
+rules apply. The 58-cell Mac schedule already consumes all 8,526 authorized
+calls, so this prospective round has zero replacement-call allowance; the
+historical 42-cell recovery contract is unchanged. Retain externally invalidated
+blocks and discuss any resulting inconclusiveness without adding observations.
+Failures and slow timings never trigger sampling. All protected one-sided alpha .025 order-statistic upper bounds for
 `candidate - baseline - max(.05 * baseline, .001)` must be nonpositive, using
 Linux physical hosts as independent units. Report effect sizes separately.
+
+The eight added bodies use data seed `2026106302`, with the family index added
+to the seed in the order listed above. The three cache-boundary bodies share
+one K16 draw at seed `2026106305`: 4,096 workers, 100 firms and 64 periods.
+Their 262,143/262,144/262,145 rows remove the final row, retain the draw, or
+append its exact final row. Their packed regressor banks are 32 MiB minus
+128 bytes, exactly 32 MiB, and 32 MiB plus 128 bytes. All three are
+moment-ineligible under the conservative K+2 construction bound; they test the
+boundary without being counted as positive moment-omission coverage. The
+nonmover body retains the first 100 workers' mobility and fixes each remaining
+worker to its worker-index-modulo-100 firm. Hubs use the maintained d60 design;
+inactive-zero uses four paired orthogonal regressors without a structural
+constant. The large repeated body repeats each row of a 5,000-worker,
+100-firm, 30-period long panel four times. The large weak body has 6,000
+workers, 100 firms and 80 periods. All eight use unweighted robust OLS, Fast
+memory, truthful `candidate_all=1` and frontend-consistent `input_complete=0`.
+
+Preparation of these additions has one separate four-slot SCC allocation at
+3 GB per core, a 1,800-second application budget and a 2,100-second scheduler
+budget. It performs no native estimation. Each independent reference has a
+120-second limit; only the boundary triplet uses the declared 2 GiB oracle
+allowance. The other numerical references retain the default 1 GiB allowance,
+and inactive-zero uses the maintained analytic witness. Verify actual retained
+row counts and full finite rank, with no resizing, tolerance change or
+substitution after failure. Existing input/reference files are not rewritten.
+The previous qualification's committed input/reference hashes remain the
+binding for the original 42 cells; missing historical scratch is not permission
+to substitute a different request or witness.
+
+Before final timing, freeze a separate 80-call diagnostic schedule on each
+platform: the eight added bodies at W1/W4, with accepted `c16c0b55` once,
+uninjected candidate twice, and the selected hidden finalist twice. Its budget
+is 2,400 seconds per platform, 120 seconds per call, with zero retries or
+replacement calls. It is separate from the three-arm timing caps and the
+174-call activation checks. The uninjected candidate must show positive actual
+moment construction on eligible W4 bodies and the selected finalist must omit
+that work; the old accepted binary need not emit a newly added diagnostic.
+W1 and the cache-boundary controls must retain their expected ineligibility.
+Require independent witnesses, exact ownership science/signatures, the declared
+cell scope if selected, exact fixed-worker repeats, cross-worker agreement and
+raw resource caps. These diagnostics attest execution and never replace a
+complete-command timing observation.
+
+The prospective tooling was checked before generating these inputs: 76 focused
+and historical qualification/input tests passed, including actual request
+framing, strict per-family shape/seed/weight/reference-budget rejection,
+scoped-science failures, three-role source/build binding and unchanged old
+qualification contracts. Independent high-effort and bounded Astra reviews
+completed; the latter identified the per-family validation gap, which was
+repaired and rechecked. The source-only suite passed 2,029 Rust checks,
+315 Python tests and the portable checks. Its log SHA-256 is
+`80cc4b94f9be14e989a9d4ca74b6468c91f753f43c1fb4a47597a370654dc5e7`;
+the final focused-check log SHA-256 is
+`2f67c19af712a4a3a668939b165e6b1bf2ef02da047836593d1da7705395724a`.
+This validates preparation tooling only. Actual final inputs, diagnostic proof,
+candidate selection, measured qualification and public integration are separate
+remaining gates. The source-only run does not establish installed-package
+admission, which remains the recorded failed prerequisite for release work.
 
 Before activation, run affected source, native ABI/load/panic, mapped Stata,
 inference, transaction and Auto Break checks; reuse valid unaffected evidence.
