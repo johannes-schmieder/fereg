@@ -901,6 +901,14 @@ checks. The full source-only suite passed in 87.843 seconds with log SHA-256
 `6d14878a41328b37b6b36f6bb3e1eea9b38fd130236d78d3d233218b79b8a9c7`.
 All 200 runtime modules and 58 artifact inputs still match native source
 `c78f5c9c`; installed-package admission is not established by these checks.
+The [transport repair freeze](../bench/results/ownership-qualification-transport-repair-freeze-20261023.json)
+retains both amended manifests, corrected harness builds, all failed attempts,
+the unchanged native bindings and the exact continuation wrappers. Linux harness
+build `8265980` and manifest preparation `8266037` completed with 0/0 accounting
+and zero native calls. Offline recovery of the saved Mac first call passed its
+independent witness and resource checks without invoking native code. The repair
+freeze itself does not establish completion of either diagnostic schedule or
+passage of qualification.
 
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
