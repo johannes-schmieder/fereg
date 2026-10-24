@@ -77,5 +77,21 @@ the corresponding-source archive SHA-256 is
 [Beta.3](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.3)
 is published with 46 assets. A fresh installation from its public versioned URL
 passed selftest and the three independent OLS/PPML fixtures; all 30 installed
-package files matched the published package. GitHub installation from main is
-checked immediately after the fast-forward.
+package files matched the published package. After the fast-forward, a fresh `github install johannes-schmieder/fereg` also
+passed selftest and all three numerical fixtures, and all 31 installed root-package
+files matched. Both installation routes used isolated user ado directories.
+GitHub Actions remain disabled.
+
+## Completed cleanup
+
+The completed programme is merged into main and beta.3 is published. Two clean
+prototype worktrees were removed after their unmerged tips were preserved under
+remote `archive/compact-cell-prototype-20261024` and
+`archive/staged-cmg-prototype-20261024` tags. Their branches and the merged
+Auto-routing branch were deleted locally/remotely; 17 merged local branches were
+pruned in total, in addition to the two archived prototypes. Three unrelated
+unmerged local branches remain preserved.
+
+Task outputs, expendable Cargo/fuzz caches, mock build files and Python caches
+were removed. `target` retains only the current replay baseline (about 16 MB).
+Git history remains intact. No monitor is left for this completed workstream.
