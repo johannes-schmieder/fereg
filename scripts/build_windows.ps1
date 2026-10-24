@@ -135,9 +135,10 @@ try {
     $KernelOutput = & cargo test --manifest-path "$Root\Cargo.toml" --locked `
         --profile ci -p fereg-plugin --target $Target --lib `
         fused_kernels::x86_64::tests -- --show-output
+    # Accept added tests without weakening failure, zero-test or hardware-skip checks.
     $KernelText = $KernelOutput -join "`n"
     if ($LASTEXITCODE -ne 0 -or
-        -not ($KernelText -match 'test result: ok\. 3 passed; 0 failed;')) {
+        -not ($KernelText -match '(?m)^test result: ok\. [1-9][0-9]* passed; 0 failed; 0 ignored;')) {
         $KernelOutput | ForEach-Object { Write-Host $_ }
         throw "Windows fused-kernel checks failed or did not run"
     }

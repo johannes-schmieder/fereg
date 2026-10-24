@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import tempfile
 import time
@@ -45,6 +46,17 @@ class WindowsDiagnosticsTests(unittest.TestCase):
     def validate(self, receipt):
         diag.validate_receipt(receipt, 'win-20261009T000000Z-12345678', 'commit-' + 'a' * 40,
                               'b' * 64, 'c' * 64, 'd' * 64)
+
+    def test_windows_kernel_summary_accepts_growing_suite_but_not_skips(self):
+        script = (ROOT / "scripts/build_windows.ps1").read_text()
+        pattern = re.search(r"\$KernelText -match '([^']+)'", script).group(1)
+        for count in (3, 8, 12):
+            self.assertRegex(f"test result: ok. {count} passed; 0 failed; 0 ignored;", pattern)
+        for summary in ("test result: ok. 0 passed; 0 failed; 0 ignored;",
+                        "test result: FAILED. 7 passed; 1 failed; 0 ignored;",
+                        "test result: ok. 7 passed; 0 failed; 1 ignored;"):
+            self.assertNotRegex(summary, pattern)
+        self.assertIn("skipped: this processor has no FMA/AVX hardware path", script)
 
     def test_native_failure_survives_stata_missing_file(self):
         self.write()
