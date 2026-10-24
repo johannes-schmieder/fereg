@@ -70,6 +70,11 @@ Windows machine stopped.
 
 The assembled three-platform main package passed a fresh local Mac installation,
 selftest and four OLS/PPML fixtures; all 35 installed files matched exactly.
+After publication, actual `net install` from beta.5 and `github install
+johannes-schmieder/fereg` passed in fresh Stata 19/MP sessions. All 34 versioned
+package files and 35 main-package files matched, including Linux and Windows
+binaries; selftest and the four OLS/PPML fixtures passed in both installations.
+All 50 GitHub release assets matched their local SHA-256 checksums and sizes.
 
 ## Limits
 
