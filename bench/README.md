@@ -28,6 +28,46 @@ bounded protocol under `docs/development_workflow.md`.
 Generated captures belong under `target/tmp/` and are deleted after inspection.
 Historical campaigns and the legacy comparator are available only in Git history.
 
+## SCC package comparison
+
+`campaign.json` freezes the descriptive OLS/PPML comparison against pinned fixest
+0.14.2, reghdfe and ppmlhdfe: 56 configurations, 36 synthetic datasets, three
+repetitions and 579 planned fits, including separate default and strict fixest
+profiles. Four workers are primary; selected configurations use 1/8/16 workers.
+Inputs have 100,000, one million or four million rows and 16 controls, with AKM,
+one-FE and dense/sparse two-/three-FE designs. Covariance and saved-FE variants
+remain part of the baseline panel.
+
+`scc/setup.sh` builds a frozen source archive, checks native ABI/numerics and
+benchmark tooling, and copies the pinned comparator environment from
+`REFERENCE_ROOT`. Supply `RUN_ROOT/input/frozen-inputs.json` with `remote_root`
+and `datasets` from the retained campaign input record. Production copies those
+datasets, verifies file and decoded column hashes, and preserves their metadata;
+small smoke and warm-up inputs are generated separately.
+
+Submit setup, smoke and the four production bundles with SGE dependencies and
+`-P welfgr`. `scc/job.sh` takes `RUN_ROOT`, `MODE` (`smoke` or `run`) and
+`UPSTREAM_JOB`, requiring successful upstream accounting and application checks.
+The jobs reserve one complete 28-core node through `mpi_28_tasks_per_node_u`;
+no MPI ranks are launched. The existing qualification host observer verifies
+the scheduler reservation, all-queue census, affinity and absence of known
+competing compute throughout smoke and production. Both packages receive the
+same socket-ordered CPU prefix and NUMA memory binding. There are no automatic
+timing retries or interference exclusions.
+
+Timing includes estimation, inference and requested FE recovery, including
+fixest's lazy extraction and row materialization. Import, generation and disk
+export are excluded. Scientific gates and per-fit limits remain in `campaign.json`;
+failed or unavailable observations stay visible. This descriptive comparison
+does not qualify a runtime change or establish a universal speed advantage.
+
+`campaign_collect.py CONTEXT --output DIRECTORY` collects terminal accounting,
+application results and frozen identities. Set `host_observation_required: true`
+in the context for observed runs. `campaign_report.py DIRECTORY --output REPORT`
+produces the full PDF and CSVs, enforcing complete coverage, scientific eligibility,
+fixed-worker exact repeatability and cross-worker agreement. Historical results
+are summarized in [the fixest report](../docs/fixest_benchmarks.md).
+
 ## Fixed-candidate qualification
 
 [`qualify.py`](qualify.py) implements one bounded regression round for a candidate

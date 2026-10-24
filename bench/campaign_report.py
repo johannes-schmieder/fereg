@@ -54,6 +54,23 @@ def planned_arms(cell):
     return selected
 
 
+def check_host_observations(root, context, manifest, accounting):
+    if not context.get('host_observation_required'):
+        return
+    for label,job,task in [('smoke',str(context['smoke_job']),'0')]+[
+            (f'task-{i}',str(context['production_job']),str(i))
+            for i in range(1,manifest['policy']['bundles']+1)]:
+        observed=json.loads((root/f'host-{label}/host.json').read_text())
+        host=observed['host']
+        if (not observed.get('isolation_ok') or observed.get('errors')
+                or host.get('job_id')!=job or host.get('task_id')!=task):
+            raise ValueError('whole-node host observation failed: '+label)
+        matching=[r for r in accounting['jobs'] if str(r['jobnumber'])==job
+                  and (str(r.get('taskid'))==task or task=='0')]
+        if len(matching)!=1 or matching[0]['hostname'].split('.')[0]!=host['hostname'].split('.')[0]:
+            raise ValueError('host observation/accounting mismatch: '+label)
+
+
 def load_campaign(root):
     for name, expected in json.loads((root/'collection-sha256.json').read_text()).items():
         path = Path(name)
@@ -80,6 +97,7 @@ def load_campaign(root):
             raise ValueError('job exceeded the campaign walltime bound')
     if actual_jobs != expected_jobs or not accounting.get('sentinels_pass'):
         raise ValueError('terminal job accounting or application sentinels are incomplete')
+    check_host_observations(root,context,manifest,accounting)
     records, comparisons, datasets, tasks = [], [], {}, []
     for i in range(1, manifest['policy']['bundles']+1):
         taskroot = root/f'task-{i}'

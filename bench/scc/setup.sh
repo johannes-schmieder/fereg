@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #$ -P welfgr
 #$ -N fereg_bench_setup
-#$ -pe omp 28
+#$ -pe mpi_28_tasks_per_node_u 28
 #$ -l num_proc=28
 #$ -l mem_per_core=3G
 #$ -l h_rt=01:00:00
@@ -37,6 +37,7 @@ export RUSTUP_TOOLCHAIN=1.85.1-x86_64-unknown-linux-gnu
 export CARGO_NET_OFFLINE=false CARGO_BUILD_JOBS=8
 export PATH="$CARGO_HOME/bin:$PATH"
 export OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 OMP_NUM_THREADS=1
+export PYTHONDONTWRITEBYTECODE=1
 export R_LIBS_USER="$RUN_ROOT/environment/r-library"
 export FEREG_GIT_COMMIT
 FEREG_GIT_COMMIT=$(python3 -c 'import json;print(json.load(open("input/source.json"))["commit"])')
@@ -68,7 +69,7 @@ for ref in lock['reference']:
 paths=[r/'source/dist/fereg_linux.plugin',r/'environment/command-clock.plugin',
        *sorted((r/'source/stata').glob('*')),
        *sorted(refs.rglob('*')),*sorted((r/'environment/r-library').rglob('*')),
-       *sorted((r/'source/bench').rglob('*')),r/'manifest.json']
+       *sorted((r/'source/bench').rglob('*')),r/'manifest.json',r/'input/frozen-inputs.json']
 for folder in json.loads((r/'environment/r-package-paths.json').read_text()).values():
     paths.extend(sorted(pathlib.Path(folder).rglob('*')))
 paths.extend(pathlib.Path(shutil.which(name)).resolve() for name in ['stata-mp','Rscript'])

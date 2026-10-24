@@ -1,13 +1,15 @@
 """Final summaries must not promote partial comparisons or worker drift."""
 import copy
+import json
 import sys
 from pathlib import Path
 import unittest
+import tempfile
 
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from campaign import POLICY
-from campaign_report import summarize, planned_arms, comparison_cell, completed_seconds
+from campaign_report import summarize, planned_arms, comparison_cell, completed_seconds, check_host_observations
 from campaign_collect import accounting_records
 
 
@@ -106,6 +108,29 @@ class CampaignReportTests(unittest.TestCase):
     def test_incomplete_scheduler_record_is_rejected(self):
         with self.assertRaises(ValueError):
             accounting_records('jobnumber 3\nfailed 0\nexit_status 0\n')
+
+    def test_observed_campaign_requires_matching_successful_host_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            context=dict(host_observation_required=True,smoke_job='10',production_job='11')
+            manifest=dict(policy=dict(bundles=1))
+            accounting=dict(jobs=[dict(jobnumber='10',taskid='undefined',hostname='scc-a.example'),
+                                  dict(jobnumber='11',taskid='1',hostname='scc-b.example')])
+            for label,job,task,host in [('smoke','10','0','scc-a'),('task-1','11','1','scc-b')]:
+                path=root/f'host-{label}'
+                path.mkdir()
+                (path/'host.json').write_text(json.dumps(dict(isolation_ok=True,errors=[],
+                    host=dict(job_id=job,task_id=task,hostname=host))))
+            check_host_observations(root,context,manifest,accounting)
+            path=root/'host-task-1/host.json'
+            original=json.loads(path.read_text())
+            for update in [dict(isolation_ok=False),dict(errors=['competing compute']),
+                           dict(host=dict(original['host'],job_id='12')),
+                           dict(host=dict(original['host'],task_id='2')),
+                           dict(host=dict(original['host'],hostname='scc-c'))]:
+                path.write_text(json.dumps(dict(original,**update)))
+                with self.assertRaises(ValueError):
+                    check_host_observations(root,context,manifest,accounting)
 
 
 if __name__ == '__main__':

@@ -67,6 +67,9 @@ def collect(context_path, output):
              'logs/build.log', 'logs/dependency-fetch.log', 'logs/clock-build.log', 'logs/harness-tests.log',
              'logs/reference-prepare.log']
     files += [f'task-{i}/{name}' for i in range(1, 5) for name in ['results.json', 'COMPLETE']]
+    if context.get('host_observation_required'):
+        files += [f'host-{label}/{name}' for label in ['smoke', 'task-1', 'task-2', 'task-3', 'task-4']
+                  for name in ['host.json', 'host-observations.jsonl']]
     files += [name for name in context.get('launcher_sha256', {}) if name not in files]
     if context.get('reused_build_job'):
         files.append('logs/abi-retest.log')

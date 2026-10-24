@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import socket
 import subprocess
 import time
@@ -162,6 +163,29 @@ def physical_cpus():
     cpus=socket_ordered_cpus(Path('/proc/cpuinfo').read_text(),allowed)
     if len(cpus)<28: raise RuntimeError('whole-node physical-core allocation is smaller than 28')
     return cpus
+
+
+def frozen_dataset(cell, destination, inventory):
+    """Copy retained inputs and verify both file bytes and decoded columns."""
+    key = dataset_key(cell)
+    expected = inventory['datasets'][key]
+    matches = list(Path(inventory['remote_root']).glob('task-*/data/' + key + '.dta'))
+    if len(matches) != 1:
+        raise RuntimeError('missing or ambiguous frozen dataset: ' + key)
+    source = matches[0]
+    metadata = json.loads(source.with_suffix('.json').read_text())
+    if metadata != expected or sha256(source) != expected['sha256']:
+        raise RuntimeError('frozen input identity mismatch: ' + key)
+    for suffix in ['.dta', '.json', '.components.npz']:
+        original, copied = source.with_suffix(suffix), destination.with_suffix(suffix)
+        shutil.copyfile(original, copied)
+        if sha256(original) != sha256(copied):
+            raise RuntimeError('frozen copy mismatch: ' + key + suffix)
+    frame = pd.read_stata(destination, convert_categoricals=False)
+    hashes = {c: hashlib.sha256(frame[c].to_numpy(dtype='<f8').tobytes()).hexdigest() for c in frame}
+    if hashes != expected['column_sha256'] or len(frame) != expected['rows']:
+        raise RuntimeError('decoded frozen input mismatch: ' + key)
+    return frame, metadata
 
 
 def execute(command, directory, cpus, timeout):
@@ -365,7 +389,7 @@ def compare_records(a,b,cell):
     return dict(eligible=not reasons,reasons=reasons)
 
 
-def run_bundle(root, task, smoke=False):
+def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
     verify_runtime(root)
     manifest=json.loads((root/'manifest.json').read_text())
     cells=configurations(True) if smoke else manifest['bundles'][task-1]
@@ -379,10 +403,14 @@ def run_bundle(root, task, smoke=False):
     warmcell=dict(cells[0],model='ppml',design='one-fe',effects=1,rows=512)
     make_dataset(warmcell,taskroot/'data/warm.dta')
     for cell in cells:
+        if monitor:monitor.check()
         if time.monotonic()-started>POLICY['job_cleanup_seconds']:break
         key=dataset_key(cell)
         path=taskroot/'data'/(key+'.dta')
-        if not path.exists(): frame,metadata=make_dataset(cell,path);datasets[key]=metadata
+        if not path.exists():
+            frame,metadata=(frozen_dataset(cell,path,frozen_inputs) if frozen_inputs and not smoke
+                            else make_dataset(cell,path))
+            datasets[key]=metadata
         else:frame=pd.read_stata(path,convert_categoricals=False)
         selected=arms(cell);failed=set()
         for repetition in range(1,(1 if smoke else POLICY['repetitions'])+1):
@@ -394,6 +422,7 @@ def run_bundle(root, task, smoke=False):
                     continue
                 if time.monotonic()-started+POLICY['process_timeout_seconds']>POLICY['job_cleanup_seconds']:break
                 record=fit(taskroot,cell,arm,repetition,frame,cpus)
+                if monitor:monitor.check()
                 records.append(record);current[arm]=record
                 if record['status']!='ok':failed.add(arm)
                 write_json(taskroot/'results.json',dict(cells=cells,records=records,datasets=datasets,comparisons=comparisons,complete=False))
@@ -433,6 +462,15 @@ if __name__=='__main__':
     parser.add_argument('mode',choices=['prepare','run','smoke'])
     parser.add_argument('root',type=Path)
     parser.add_argument('--task',type=int,default=1)
+    parser.add_argument('--frozen-inputs',type=Path)
+    parser.add_argument('--observe-host',action='store_true')
     args=parser.parse_args()
     if args.mode=='prepare':prepare(args.root)
-    else:run_bundle(args.root,args.task,args.mode=='smoke')
+    else:
+        frozen=json.loads(args.frozen_inputs.read_text()) if args.frozen_inputs else None
+        if args.observe_host:
+            from qualify_scc import HostMonitor
+            label='smoke' if args.mode=='smoke' else f'task-{args.task}'
+            with HostMonitor(args.root/('host-'+label),max(POLICY['threads'])) as monitor:
+                run_bundle(args.root,args.task,args.mode=='smoke',frozen,monitor)
+        else:run_bundle(args.root,args.task,args.mode=='smoke',frozen)

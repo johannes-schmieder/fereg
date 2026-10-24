@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from campaign import configurations, arms, make_dataset, compare_records, prepare, absorbed_rank
+from campaign import configurations, arms, make_dataset, compare_records, prepare, absorbed_rank, frozen_dataset
 from campaign_oracle import oracle
 
 
@@ -82,6 +82,37 @@ class CampaignTests(unittest.TestCase):
                 self.assertLess(expected['residual_score'],1e-9)
                 self.assertTrue(np.isfinite(expected['covariance']).all())
                 self.assertGreater(meta['topology']['first_pair_rank'],0)
+
+    def test_frozen_inputs_preserve_bytes_and_reject_changed_evidence(self):
+        import copy
+        import json
+        from campaign import dataset_key, sha256
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            source=root/'previous/task-1/data'
+            source.mkdir(parents=True)
+            destination=root/'current'
+            destination.mkdir()
+            cell=configurations(True)[0]
+            name=dataset_key(cell)+'.dta'
+            frame,metadata=make_dataset(cell,source/name)
+            inventory=dict(remote_root=str(root/'previous'),datasets={dataset_key(cell):metadata})
+            copied,actual=frozen_dataset(cell,destination/name,inventory)
+            self.assertEqual(actual,metadata)
+            self.assertTrue(np.array_equal(frame.to_numpy(),copied.to_numpy()))
+            for suffix in ['.dta','.json','.components.npz']:
+                self.assertEqual(sha256((source/name).with_suffix(suffix)),
+                                 sha256((destination/name).with_suffix(suffix)))
+            changed=copy.deepcopy(inventory)
+            changed['datasets'][dataset_key(cell)]['rows']+=1
+            with self.assertRaisesRegex(RuntimeError,'identity mismatch'):
+                frozen_dataset(cell,destination/name,changed)
+            changed=copy.deepcopy(metadata)
+            changed['column_sha256']['y']='0'*64
+            (source/name).with_suffix('.json').write_text(json.dumps(changed))
+            inventory['datasets'][dataset_key(cell)]=changed
+            with self.assertRaisesRegex(RuntimeError,'decoded frozen input mismatch'):
+                frozen_dataset(cell,destination/name,inventory)
 
     def test_ppml_count_conventions_match_independent_fe_rank(self):
         with tempfile.TemporaryDirectory() as d:
