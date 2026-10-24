@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "version": "0.5.0",
-  "source_sha": "e370f3d84f1d3d9dea461f50132750b22410a83f",
-  "runtime_sha256": "2cb5f40b095bd1f15eb9dd66f2ae2057f3aa5b5b9d7714d8387e74dfd55b93c3",
+  "source_sha": "1ac7125bc637e99c4655c065828559dac593ab01",
+  "runtime_sha256": "5b264edcfcbd7c6be2ecaad5e11f6a9def3e906ae0891bf69212c7b278c23f92",
   "plugins": [
     {
       "path": "fereg_macos.plugin",
-      "sha256": "b9c5ff17712e11f897f1536c8c92d92ea84160f3271b34ccad785a37b482f807",
+      "sha256": "480553bcc294ede70d6318e615af8573659e1919ab3c8a9037366e36e701f031",
       "bytes": 19150656
     }
   ],
@@ -18,5 +18,5 @@
     "Licensed installation testing is on Apple Silicon macOS; this does not establish native Intel-host Stata, Linux or Windows distribution qualification.",
     "Qualified many-FE and two-FE OLS Auto policies are enabled; ownership and deferred cells require Auto/Auto, a global intercept and exactly two categorical-intercept FE terms."
   ],
-  "corresponding_source_sha256": "55383fbf48b9496e1845a61688dc87a16bead4d43af025506a42ff9ff40825b8"
+  "corresponding_source_sha256": "aef44910affa648799c949ec7cb8fba4f7258d3fefc0df5c21d6508b7f62ac02"
 }

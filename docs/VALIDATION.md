@@ -22,10 +22,27 @@ cell constructor. Scientific behavior is specified in [SPEC](SPEC.md).
 
 ## Package checks
 
-The matching Mac package is being checked against the full source suite and
-licensed Stata scientific, reporting, installation and rollback fixtures.
-[Package metadata](../dist/fereg-native.json) records the exact binary and source
-identities. The final package verdict is recorded here after these checks finish.
+Beta.4 contains the method-reporting correction and current help files. Its
+universal Mac plugin was built offline from clean source `1ac7125b` and the
+vendored dependency closure with Rust 1.85.1. The dependency audit reported zero
+advisories. Binary privacy/export/dependency checks and actual ABI, load and
+panic-containment checks passed. [Package metadata](../dist/fereg-native.json)
+records the exact binary and corresponding-source identities.
+
+The default `./scripts/run_tests.sh` passed: 316 Python tests, Rust unit and
+independent numerical integration tests, Clippy, FFI allocation audits, portable
+checks, mock SPI transactions and the complexity ratchet. The final artifact
+also passes installed-package admission. No new speed claim or timing campaign
+is attached to this reporting-only change.
+
+All 12 mapped Stata 19/MP fixtures passed on Apple Silicon. They cover the
+public CG/CMG method names in Fast/Low modes at one/four workers, zero-step
+certificates, mixed-block MAP fallback, weighted and wide OLS against independent
+dummy-variable fits, explicit CMG-Schur and PPML against full-dummy Poisson.
+Actual public OLS Break/rollback passed at the pre-preparation checkpoint.
+A fresh local `net install` passed selftest and four reporting/numerical fixtures;
+all 31 installed files matched the package. The documentation's 104 local links
+also resolve.
 
 ## Limits
 
