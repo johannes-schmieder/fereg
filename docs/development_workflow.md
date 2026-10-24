@@ -1048,6 +1048,17 @@ selection, as does every explicit developer injection. Marker-only Break uses
 the public selection and tests cancellation before numerical preparation;
 it does not claim interruption inside cell construction.
 
+[Public activation validation](../bench/results/ownership-public-activation-20261024.json)
+passed 174 actual hidden/public/public-repeat calls on each platform, including
+all 58 settings, exact science and solver decisions, resource/gate/hierarchy
+agreement and cross-worker checks. Both native builds passed binary audit and
+actual ABI/load/panic checks. The full source suite, six affected licensed Stata
+fixtures and actual public OLS Break/rollback passed. Linux integration job
+8268217 completed with zero scheduler and application errors. The default is
+accepted on `codex/auto-routing`; installed-package binding remains unqualified.
+Compact results replace the temporary capture trees, with no remaining workflow
+monitor or further performance campaign.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,

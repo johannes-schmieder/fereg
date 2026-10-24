@@ -49,6 +49,10 @@ class StataBreakOptionsTests(unittest.TestCase):
         fixture = Path("tests/licensed_stata/estimate_ols_public_break.do")
         self.assertEqual(fixture_command(fixture, args), f"do {stata_quote(fixture)}")
         source = Path("stata/_fereg_estimate_ols.ado")
+        # Stata's uppercase prefix declares the option spelling/abbreviation;
+        # an internal uppercase T after lowercase text rejected the full name.
+        self.assertIn("BREAKMARKERTOKEN(string)", source.read_text())
+        self.assertNotIn("BREAKMarkerToken(string)", source.read_text())
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "adapter.do"
             self.assertEqual(runner.public_ols_adapter(source, target), runner.sha256_file(source))

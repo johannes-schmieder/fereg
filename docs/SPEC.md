@@ -16,11 +16,16 @@ Native test names below are relative to `crates/fereg-core` or
 
 ### Ownership and cell-operator experiment scope (2026-10-23)
 
-The authorized successor experiment starts from accepted branch `c16c0b55`
-with CMG `fd77d98d`. Public defaults remain unchanged until the separate
-qualification and hidden/public equivalence gates pass. The historical
-compact-cell worktree supplies implementation ideas, not accepted evidence for
-this artifact.
+The ownership/cell workstream starts from accepted branch `c16c0b55` with
+CMG `fd77d98d`. On the development branch, qualified OLS `solver(auto)` with
+`preconditioner(auto)`, a global intercept and exactly two categorical-intercept
+FE terms selects both ownership mechanisms and deferred cell construction.
+Explicit developer injections retain their historical selection. Core defaults
+and requests outside this scope remain unchanged. The
+[acceptance record](../bench/results/ownership-qualification-final-linux-20261024.json)
+and [practical Mac check](../bench/results/ownership-qualification-practical-macos-20261024.json)
+record the performance decision; public/hidden integration checks preserve the
+selected invocation's science, solver decisions and resource semantics.
 
 Two independent OLS ownership experiments may omit provably unused speculative
 raw moments and retain the projected matrix for inference scores instead of

@@ -18,7 +18,7 @@ program define _fereg_estimate_ols, eclass
          CMGSAMples(string) CMGSEed(string) PREConditioner(string) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC ///
-         INJECT(string) BREAKMarkerToken(string) PUBLICWEXP(string)]
+         INJECT(string) BREAKMARKERTOKEN(string) PUBLICWEXP(string)]
 
     local memory_mode = lower(strtrim(`"`memory'"'))
     if `"`memory_mode'"' == "" local memory_mode "fast"

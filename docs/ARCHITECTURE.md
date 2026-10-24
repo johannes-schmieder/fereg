@@ -58,6 +58,13 @@ immutable projected rows. `ols/prepared_fit/one_shot.rs` owns the Fast/Low fit
 lifecycle. OLS has a temporary finite workspace; PPML lends retained banks.
 OLS does not create a PPML session.
 
+The plugin selects the qualified ownership/deferred-cell policy after decoding
+an ordinary two-FE categorical-intercept OLS Auto/Auto request with a global
+intercept. Both omitted-moment and projected-score ownership controls are set
+there; core defaults stay off. Explicit injection fields bypass this public
+selection even through the framed or local-bundle transport. Marker-only Break
+observes the public request without selecting an experimental preset.
+
 `ols/prepared_products.rs` owns accepted fit statistics, canonical absorbed DoF
 and distinct covariance/certificate payloads. Robust/clustered inference consumes
 fit-stage projected score products without rebuilding an FE solver or reabsorbing
