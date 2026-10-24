@@ -10,7 +10,18 @@ import routing
 import two_fe_policy_development as development
 import test_qualify
 from test_cmgschur import case_bytes
-from test_two_fe_policy_outcomes import route
+
+
+def route(*, installed=True, iterations=16):
+    result = dict(phase='auto_schur_route', checkpoint='16', samples='1',
+                  iterations=str(iterations), installed=str(int(installed)),
+                  refusal='None' if installed else 'Some(MemoryBudget)')
+    if installed:
+        result.update(terminal='Direct', levels='1', hierarchy_vertices='4',
+                      hierarchy_nonzeros='10', repeats='1', terminal_factor='1',
+                      terminal_factor_dimension='4', terminal_factor_nonzeros='10',
+                      application='scalar', parallel_operators='0', batch_columns='1')
+    return result
 
 
 def decision(role='Packed', grant=1):

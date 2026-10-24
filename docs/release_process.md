@@ -67,10 +67,9 @@ Extract its `THIRD_PARTY_LICENSES.txt` and pass that file to native staging with
 `--third-party-licenses`; the installed package carries the combined notices,
 GPLv3 text and corresponding-source URL. Test a build from the source archive
 with Cargo offline before publishing it alongside the exact binary package.
-For beta.2 Mac builds, publish the matching [explicit build instructions](macos_source_build.md)
-as a companion asset and link them prominently from the release. They supplement
-the frozen archive's abbreviated command with the actually checked Rust path remaps;
-keep the archive and supplied bundle unchanged.
+Use the [Mac build instructions](macos_source_build.md) included in the source
+archive. The offline archive build can supply the actual release plugin, avoiding
+a redundant second build. Publish the instructions as a companion asset too.
 
 For each versioned beta, upload the binary/source ZIPs and checksums, plus
 every flat file from the binary package as individual GitHub release assets.

@@ -1,12 +1,22 @@
 # Changelog
 
-## 0.5.0 beta — unreleased
+## 0.5.0 beta.3 — 2026-10-24
 
-0.5.0 is the first beta with public estimators. It is an internally qualified
-development package: native release assets are not published, and native
-distribution still awaits the [licensing decision](docs/licensing.md).
-Qualification scope and open caveats are in
-[`docs/VALIDATION.md`](docs/VALIDATION.md).
+This beta publishes the accepted Auto-routing, CMG host-team and ownership/cell
+improvements. It includes a universal Mac plugin, tested with licensed Stata on
+Apple Silicon. Linux and Windows binaries are not distributed. See
+[validation](docs/VALIDATION.md) for evidence and platform limitations.
+
+- Eligible many-FE OLS Auto uses retained preparation and strict unseeded LSMR.
+- Eligible two-FE OLS Auto uses the selected structural CMG gates. With Auto
+  preconditioning, a global intercept and two categorical-intercept FE terms,
+  it omits provably unused moments, retains projected scores and constructs cells
+  only after successful CMG commitment.
+- Explicit solver requests, memory controls, numerical certificates and atomic
+  publication/rollback remain supported. Historical developer injections retain
+  their comparison behavior.
+- The repository keeps current tools and concise acceptance records; completed
+  experimental programmes remain recoverable from Git history.
 
 ### Commands
 
@@ -45,13 +55,10 @@ Qualification scope and open caveats are in
 ### Solvers and execution
 
 - `solver(auto|map|it|squarem|lsmr|cmg)` and
-  `preconditioner(auto|off|diagonal|schwarz)`. The automatic policy demeans
-  one FE directly, otherwise runs up to four MAP pilot sweeps, finishes with
-  MAP when the pilot certifies, and continues with certified conjugate
-  gradients, Schwarz-preconditioned LSMR in a frozen slow-mixing region, or
-  CMG for conservative two-way AKM graphs. Automatic LSMR has at most one
-  visible fallback to certified CG; CMG setup or solve failures fall back
-  visibly.
+  `preconditioner(auto|off|diagonal|schwarz)` preserve explicit choices. Auto
+  selects the qualified categorical many-FE and two-FE policies above; zero/one
+  FE, slopes and PPML retain their existing paths. Certification and visible
+  fallback semantics remain unchanged.
 - Results are published only after the fixed-effect, score and covariance
   certificates pass, with receipt-last atomic publication and rollback on
   error, panic, store failure or Break.

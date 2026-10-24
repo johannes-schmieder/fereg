@@ -50,7 +50,7 @@ def source_files():
         'crates/fereg-core/Cargo.toml', 'crates/fereg-oracle/Cargo.toml',
         'crates/fereg-oracle/examples/replay_large.rs',
         'crates/fereg-oracle/examples/replay/wire.rs',
-        'docs/two_fe_auto_policy.md', 'docs/two_fe_auto_gates.md',
+        'docs/two_fe_auto_gates.md',
     ]
     # The serializer consumes core metadata and support adapters. Bind complete
     # local crate source trees instead of guessing a narrower import closure.

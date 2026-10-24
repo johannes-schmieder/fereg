@@ -245,8 +245,11 @@ class CoverageRunner(unittest.TestCase):
                     stream.write('FEREG_OWNERSHIP|'+ '|'.join(f'{k}={v}' for k,v in event.items())+'\n')
         if 'FEREG_SOLVER_TRACE=1' in command:
             used = 100 + transport_bytes(self.plan, arm)
-            with log.open('a') as stream:
-                stream.write(f'FEREG_SOLVER_TRACE|phase=routing_action|preset=GATES|final=1|iterations=0|native_limit=100|memory_bytes={used}|memory_limit=1000|certified=1\n')
+            # The shared fake executor already emits both action records.
+            # Charge the argument in each record instead of appending a third
+            # action while leaving the inherited records uncharged.
+            log.write_text(log.read_text().replace('|memory_bytes=100|',
+                                                   f'|memory_bytes={used}|'))
         return result
 
     def test_missing_and_failed_preflight_prevent_any_executor_call(self):

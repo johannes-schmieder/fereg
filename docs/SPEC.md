@@ -14,10 +14,9 @@ Native test names below are relative to `crates/fereg-core` or
 
 ## 1. Public syntax and options
 
-### Ownership and cell-operator experiment scope (2026-10-23)
+### Ownership and deferred-cell scope
 
-The ownership/cell workstream starts from accepted branch `c16c0b55` with
-CMG `fd77d98d`. On the development branch, qualified OLS `solver(auto)` with
+The accepted ownership/cell implementation uses CMG `fd77d98d`. Qualified OLS `solver(auto)` with
 `preconditioner(auto)`, a global intercept and exactly two categorical-intercept
 FE terms selects both ownership mechanisms and deferred cell construction.
 Explicit developer injections retain their historical selection. Core defaults
@@ -52,8 +51,7 @@ semantics remain fixed. The same original graph produces the same hierarchy
 when both arms construct one. The only permitted cell redesign defers
 construction to successful CMG commitment at the existing restart; it adds no
 restart or speculative setup to short solves. Neither historical work caps nor
-elapsed-time routing are reintroduced. See the frozen
-[investigation protocol](development_workflow.md#ownership-and-cell-operator-investigation-2026-10-23).
+elapsed-time routing are reintroduced. See the [development protocol](development_workflow.md#compact-candidate-qualification).
 
 Both commands accept `depvar [indepvars] [if] [in] [weight], [options]`.
 The dependent variable is plain numeric; the finite list can be empty.
@@ -228,112 +226,23 @@ individual performance cells.
 Preserve requested/used solver, work accounting and existing reason diagnostics;
 unsupported explicit requests must not silently become auto.
 
-### Incremental Auto qualification (2026-10-17)
+### Qualified Auto routing and developer comparisons
 
-**Successor policy development, authorized 2026-10-21.** Johannes accepted the
-ninther setup implementation for development of a deterministic two-FE OLS
-Auto upgrade policy, with the disclosed setup timing limits retained in
-[validation](VALIDATION.md#ninther-pivot-repair-accepted-for-policy-development-timing-limits-retained).
-For this successor only, the fixed iteration-16 checkpoint and the prohibition
-on predictive payback below are superseded: the decision may use actual active
-and genuinely reusable RHS work, admitted workers, cheap graph structure and
-solver progress. It must include future setup, restart and application costs,
-exclude sunk work and hypothetical reuse across changing weights, and use no
-elapsed-time routing or construction-work cap. The existing h16 implementation
-and historical injection contracts remain the reference until a reviewed
-replacement is implemented. Preserve cutoff 5, one sampled tree, seed zero,
-eligibility, small-direct selection, certification, memory controls, restart
-and fallback semantics. Public activation still requires the separate fixed
-42-cell Mac/Linux qualification and exact public-versus-hidden equivalence.
-The reviewed successor revision and its prospective fitting contract are
-specified in [the direct decision-loss policy](two_fe_auto_gates.md). The
-completed [remaining-cost formulation](two_fe_auto_policy.md) and its calibration
-remain historical evidence.
-Its new hidden invocation has the declared affected numerical scope; historical
-fixed-checkpoint and portfolio injections retain their existing contracts.
+Public OLS Auto/Auto uses strict unseeded LSMR with retained preparation for
+eligible designs with at least three categorical-intercept FEs. Eligible two-FE
+designs use the [qualified structural CMG gates](two_fe_auto_gates.md), with
+ownership and deferred cells in the narrower global-intercept scope above.
+Zero/one FE, slopes, explicit choices and PPML retain their specified behavior.
+Public activation and performance evidence are complete; see [VALIDATION](VALIDATION.md).
 
-The `codex/auto-routing` workstream qualifies two independent OLS candidates:
-at least three categorical intercept FEs use strict unseeded LSMR with retained
-preparation; exactly two categorical intercept FEs use the existing portfolio's
-direct-or-h16/k1 synchronous CMG policy. Finite controls do not add FE dimensions.
-Both new family selectors require Auto solver and Auto preconditioning. Zero/one
-FE, slopes, explicit solver or preconditioner choices and PPML retain their
-existing behavior. Hidden family selectors outside their eligible family retain
-the currently accepted Auto path. Existing hidden experiments keep their contracts.
+The CMG builder borrows the host team, polls cancellation at fixed logical chunks
+and admits construction against real memory. The former construction-work cap
+and budget-dependent factor screen are retired. Preserve cutoff 5, one sampled
+tree, seed zero, eligibility, small-direct selection, certification, restart and
+fallback semantics. See the [execution contract](ARCHITECTURE.md#cmg-host-team-and-stage-admission).
 
-The bounded CMG builder borrows the host team and polls cancellation at fixed
-logical chunks; construction is admitted against memory only. Johannes's
-2026-10-19 decision removed the optional construction-work cap, its accounting
-and the budget-dependent factor screen; no work cap, dimension-only work bound,
-time cap or predictive payback rule replaces them. Arithmetic kernels,
-certificates, sample/rank/omission semantics, cutoffs, seeds and tolerance
-rules are unchanged. See the
-[execution contract](ARCHITECTURE.md#cmg-host-team-and-stage-admission).
-This does not activate two-FE or establish new performance evidence.
-
-Declared scientific scope is confined to the selected eligible OLS family:
-coefficients, covariance, fit statistics, residuals, FE coordinates and numerical
-solver signatures may change within section 20 tolerances. Sample, rank,
-omissions, original factor slots/base flags and other discrete model decisions
-remain unchanged. The selected family's existing kernels, strict certificates,
-iteration/setup caps, memory admission, cancellation and fallbacks are unchanged.
-Independent dense-QR and analytic projection witnesses, scoped native replay,
-exact fixed-worker repeats, cross-worker science and transaction checks precede
-performance interpretation. Outside-family scientific results/signatures remain
-exact; within-family selectors must reproduce the existing hidden portfolio,
-apart from declared routing identity labels.
-
-Johannes's 2026-10-18 validation decision replaces mandatory A/B/C routing
-stages and recursive history validation with one fixed-candidate qualification
-round. Preserve historical outcomes without making them executable prerequisites.
-The round retains all 21 routing families at one and four workers, with bounded
-parallel SCC work and focused Mac timing/integration. Independent numerical
-witnesses, exact/scoped comparisons, fixed-worker repeats, cross-worker agreement,
-resource admission and transaction checks remain mandatory. Explicit solver
-availability and timings describe opportunities; their scientific feature tests
-remain required, but a full explicit-solver timing frontier is optional.
-
-Only protected Auto comparisons govern performance acceptance: original
-uninjected `f35f3a4d` and the last accepted branch Auto each retain max(5%, 1 ms)
-protection on every workload. A public-default candidate additionally reproduces
-the selected hidden invocation's scientific bits and numerical signatures and
-protects it against activation overhead. Identify actual artifacts, build settings,
-fixtures and references once in the plan, verify them once per job, and detect
-file drift during execution. Do not recursively replay old admission decisions,
-rebuild old generators or hash unrelated dependency histories.
-
-All comparison arms run within the same isolated SCC allocation. Balanced
-complete-solve blocks, fixed warmups and budgets, per-call scientific checks and
-the one-sided alpha 1/40 order-statistic bound preserve the existing timing
-standard. Linux replication is aggregated by physical host; repeated blocks on
-one node do not constitute independent nodes. Mac behavior and performance still
-require applicable Mac checks. See the [development protocol](development_workflow.md#controlled-timing-protocol-approved-2026-10-14)
-and [runner](../bench/README.md#fixed-candidate-qualification).
-
-Johannes's later 2026-10-18 clarification makes Linux the primary performance
-evidence and permits bounded Mac retries of individual tests affected by recorded
-interference. A completely quiet desktop is unnecessary. Preserve valid completed
-cells and keep all rejected attempts visible; freeze activity-based eligibility,
-per-cell and total retry limits before execution. Neither scientific/native
-failure nor unfavorable timing may trigger these retries. Scientific tolerances,
-protected timing allowances and the conditional uncertainty statement remain
-unchanged; a Linux pass does not become a Mac-specific speed claim.
-
-Qualify many-FE before two-FE. Both public defaults remain disabled until valid
-qualification passes. Public activation changes only the selected family's
-invocation wiring on the development branch. The first many-FE witness attempt
-failed before native science; the later repaired attempt passed native science
-but failed during timing setup before timed calls. Those outcomes remain visible.
-Valid completed science and unchanged current inputs may be reused after an
-operational repair without generating another holdout or replaying A/B.
-
-A harness failure calls for diagnosis and bounded repair. If it remains unresolved,
-or science fails or timing is inconclusive, retain the incumbent and discuss the
-evidence with Johannes before abandoning the candidate, changing the protocol or
-advancing to the next step. No alternate winner, retuning, unfavorable-observation
-deletion or sampling until success is allowed. The tool emits one report and
-never starts another campaign or activates a default. No merge to main, release
-packaging, predictive payback rule or speculative-budget increase follows.
+Historical developer selectors below are supported comparison contracts, not
+public defaults or authorization to restart their completed campaigns.
 
 Hidden OLS `inject=routing_h{4|8|16|32}_k{0|1|2}` selects a fixed iteration
 checkpoint and high-degree CMG sample count. Eligible two-FE problems start the

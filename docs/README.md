@@ -11,7 +11,6 @@
 - [Release process](release_process.md) and [licensing](licensing.md): packaging and distribution limits.
 - [Local benchmark](../bench/README.md): small, maintained development measurements.
 - [SCC results against fixest](fixest_benchmarks.md): retained timings, phase diagnostics and optimization priorities.
-- [Performance plan](fable_performance.md): ordered workstreams, measurement protocol and decisions for closing the remaining gaps.
 
 Completed plans, ADR history and old campaign receipts remain in Git history.
 They are not active instructions or required local artifacts.

@@ -111,7 +111,7 @@ The command stopwatch includes estimation, inference and requested individual
 FE recovery, including fixest's lazy extraction and observation-level
 materialization. Input generation/import, small initialization and disk export
 are excluded. PPML covariance conventions are aligned inside timing as described
-in the [benchmark protocol](../bench/README.md#packed-scc-comparison). Each
+in the [benchmark protocol](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/bench/README.md#packed-scc-comparison). Each
 production task reserved all 28 physical cores of a 28-core node, ran fits
 sequentially and bound their affinity. Reported workers are native/fixest worker
 budgets; licensed Stata itself was capped at four processors.
@@ -145,7 +145,7 @@ every reference has passed every independent oracle.
 The later holdout `8022206` and CPU probe `8022215` are now complete. Their
 generalization evidence and limits are described below; the original campaign
 and phase-probe files above remain unchanged.
-The existing [validation report](VALIDATION.md#packed-scc-campaign-after-the-ols-repair)
+The existing [validation report](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#packed-scc-campaign-after-the-ols-repair)
 records the preceding repair and cross-campaign input audit.
 
 ## October 10: where fixest remained faster
@@ -248,7 +248,7 @@ seven pairs after one warmup and no continuation. The accepted default
 projection witness changes from 5e-9 to 1e-8; strict-request checks and the
 requested FE certificate are unchanged, and historical strong-F failures remain
 visible. This establishes no new fixest ratio, Linux speed claim or retrospective
-pass for the whole-H boundary below. See [validation](VALIDATION.md#adaptive-two-fe-ols-accepted-tradeoff-and-mac-qualification-2026-10-13)
+pass for the whole-H boundary below. See [validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#adaptive-two-fe-ols-accepted-tradeoff-and-mac-qualification-2026-10-13)
 and [compact observations](../bench/results/h8-adaptive-20261012.json).
 
 Final H boundary result: the single declared quiet Mac panel completed
@@ -265,7 +265,7 @@ settled before launch. Both plugins repeat scientific results and
 clock-stripped solver signatures exactly on every timing workload.
 The separate 73-case H8-scoped replay passes all 292 worker checks; all
 unaffected fields and discrete decisions remain exact. See
-[validation](VALIDATION.md#h-complete-workstream-mac-boundary-2026-10-12) and
+[validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h-complete-workstream-mac-boundary-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-boundary.json).
 
 | Frozen workload | Baseline ms | Final H ms | Paired ratio [95% interval] | Result |
@@ -298,7 +298,7 @@ scientific, repeat or discrete differences. Twenty frozen timing inputs and
 the reviewed launch/collection tools were preserved on SCC while host
 coordination was pending. That historical prerequisite record remains intact;
 the completed panel is reported in the final boundary result. See
-[validation](VALIDATION.md#h-final-mac-boundary-prerequisites-2026-10-12) and
+[validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h-final-mac-boundary-prerequisites-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-boundary-prerequisites.json).
 
 H7 compared the final H6 plugin against the retained October 10 plugin on
@@ -322,7 +322,7 @@ and four independent smoke witnesses pass. Phase timings and solver iteration
 differences are retained. This comparison cannot isolate every intervening
 change or prove the historical host-noise explanation. There was no tuning,
 retry or continuation. See
-[validation](VALIDATION.md#h7-small-input-fixed-cost-check-2026-10-12) and
+[validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h7-small-input-fixed-cost-check-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h7.json).
 
 FE numeric-column release result: owned OLS preparation can now drop
@@ -345,7 +345,7 @@ did not validate the isolated candidate and are excluded from passing evidence.
 Core adds 371 production lines and three dispatch sites; plugin adds 27
 lines, with no new size violations. The whole-H quiet Mac panel remains pending.
 
-See [validation](VALIDATION.md#h6-finalized-fe-numeric-column-release-2026-10-12)
+See [validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h6-finalized-fe-numeric-column-release-2026-10-12)
 and [compact evidence](../bench/results/h-20261013-h6-fe-columns.json).
 
 H6 item 7 fuses the LSMR certificate and Fast OLS norm data read while
@@ -366,7 +366,7 @@ quantify observed variability only; they do not establish a release-performance
 claim. Sharing a read changes the distribution of parallel work, and both arithmetic states still require their original
 updates. Whole-fit nonregression remains the complete H boundary.
 
-See [validation](VALIDATION.md#h6-dual-order-lsmr-norm-handoff-2026-10-12) and
+See [validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h6-dual-order-lsmr-norm-handoff-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-norms.json).
 
 H6 item 6b removes the all-candidate input's N-byte marker allocation/fill and
@@ -376,7 +376,7 @@ remains conservative. All 73 replay cases are exact, 292 worker checks and
 seventeen licensed fixtures pass, with unchanged scientific decisions and
 solver signatures. Core adds 71 production lines and plugin 23. No timing gain
 is claimed before the H boundary. See
-[validation](VALIDATION.md#h6-uniform-candidate-markers-2026-10-12) and
+[validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h6-uniform-candidate-markers-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-candidate-mask.json).
 
 H6 item 5b removes the complete OLS sample's N-byte drop-reason bank with
@@ -386,7 +386,7 @@ ownership. All 73 plugin cases are exact, 292 worker checks and seventeen
 licensed fixtures pass, and scientific decisions and solver signatures remain
 unchanged. Core adds 82 production lines and one logical-equality condition.
 No timing gain is claimed before the H boundary. See
-[validation](VALIDATION.md#h6-uniform-drop-reasons-2026-10-12) and
+[validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h6-uniform-drop-reasons-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-drop-mask.json).
 
 H6 item 5a removes the complete OLS sample's 8N-byte identity map and the
@@ -396,7 +396,7 @@ row ownership. All 73 exact plugin cases, 292 worker checks and seventeen
 licensed fixtures pass with unchanged science and solver signatures; raw
 sample validation and transaction checks remain. Core grows 36 production
 lines and plugin shrinks 27. No timing gain is asserted before the H boundary.
-See [validation](VALIDATION.md#h6-identity-row-axis-2026-10-12) and
+See [validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h6-identity-row-axis-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-axis.json).
 
 H6 item 6a parallelizes membership-bank initialization with the existing
@@ -405,7 +405,7 @@ installed-team policy and reserved storage. All 73 exact replay cases,
 solver signatures remain exact. The zero and scatter writes still total 16N
 bytes on a 64-bit host, with no additional observation bank. Four production
 lines are added, and no timing gain is claimed before the H boundary. See
-[validation](VALIDATION.md#h6-membership-initialization-2026-10-12) and
+[validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h6-membership-initialization-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-initialization.json).
 
 H6 item 1 avoids same-call hint rescans by keeping early OLS FE columns owned
@@ -416,7 +416,7 @@ The owner costs 56 descriptor bytes per early source on the Mac, with no raw
 buffer copy and unchanged moment-cache admission; 275 production lines and
 five dispatch candidates are added. The initial weighted-refactorization cost
 was caught and removed before integration. Its timing effect remains unmeasured
-until the H boundary. See [validation](VALIDATION.md#h6-owned-load-hints-2026-10-12)
+until the H boundary. See [validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h6-owned-load-hints-2026-10-12)
 and [compact evidence](../bench/results/h-20261013-h6-load-hint.json).
 
 H6 item 4 removes a repeated initial-OLS finite scan by preserving the exact
@@ -426,7 +426,7 @@ pass with unchanged science and solver signatures; focused witnesses also
 compare checked/raw projection and diagnostic ordering. The change adds 52
 production lines but no allocation. Its effect on the fixest gap is unmeasured
 until the full H Mac panel. See
-[validation](VALIDATION.md#h6-checked-initial-rhs-2026-10-12) and
+[validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h6-checked-initial-rhs-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-finite-inputs.json).
 
 H6 item 3 removes repeated membership validation after checked single-source
@@ -435,7 +435,7 @@ checks and foreign-owner rejection; rebuilt interaction validation keeps its
 original scratch lifetime. All 73 exact plugin cases, 292 worker checks and
 seventeen licensed fixtures pass. An early scratch-lifetime regression was
 caught in review and repaired; no timing claim precedes the full H Mac panel.
-See [validation](VALIDATION.md#h6-membership-validation-reuse-2026-10-12) and
+See [validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h6-membership-validation-reuse-2026-10-12) and
 [compact evidence](../bench/results/h-20261013-h6-membership.json).
 
 H6 item 2 removes the serial complete-sample validation bottleneck using the
@@ -444,7 +444,7 @@ models. All 73 exact plugin cases, 292 worker checks and ten licensed fixtures
 pass with unchanged solver signatures. Malformed inputs retain the old error
 order after an additional shortcut probe. Timing remains pending the whole-H
 Mac boundary, so this is not yet a measured reduction in the fixest gap. See
-[validation](VALIDATION.md#h6-sample-scans-2026-10-12) and the
+[validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h6-sample-scans-2026-10-12) and the
 [compact record](../bench/results/h-20261013-h6-sample-scans.json).
 
 H5's socket/NUMA-controlled AKM 1M panel uses the same mask and memory nodes
@@ -457,7 +457,7 @@ cross-worker checks pass without retries. The tooling now groups allowed
 physical cores by socket and binds memory explicitly; estimator inputs,
 tolerances and production artifacts are unchanged. These are descriptive
 same-node speedups, not a controlled old/new placement comparison. See
-[all command times and checks](VALIDATION.md#h5-socket-and-numa-placement-2026-10-12)
+[all command times and checks](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h5-socket-and-numa-placement-2026-10-12)
 and [compact evidence](../bench/results/h-20261013-h5.json).
 
 H4's bounded overlap check does not reproduce load inflation: in all five
@@ -470,7 +470,7 @@ visible. All fifteen comparisons and six fixed-worker repeat groups retain
 exact captured science and solver signatures. The declared inflation rule
 fails; the earlier C1 clock pattern is attributed to host variability for
 this check, and production is unchanged. See the
-[RRUNTIME table](VALIDATION.md#h4-overlap-check-no-load-inflation-2026-10-12)
+[RRUNTIME table](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h4-overlap-check-no-load-inflation-2026-10-12)
 and [all thirty observations](../bench/results/h-20261013-h4.json).
 
 The original H2 dense three-FE MAP prototype passed its independent science,
@@ -485,7 +485,7 @@ unchanged solver signatures. At 4M/four workers command time is 8.684 → 7.244 
 leaving 3.020 s relative to fixest's retained 4.224 s (different host/source).
 Two pairs per cell are descriptive rather than a release performance claim.
 The geometry cost, candidate-copy/workspace cost, small-input result and failed
-gate are retained in [validation](VALIDATION.md#h2-dense-three-fe-prototype-sparse-cost-gate-failed-2026-10-12),
+gate are retained in [validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h2-dense-three-fe-prototype-sparse-cost-gate-failed-2026-10-12),
 [all observations](../bench/results/h-20261013-h2.json) and the
 [prototype source](../bench/results/h-20261013-h2.patch).
 
@@ -500,7 +500,7 @@ pass. Candidate 1's one-million-row regression and wide-case uncertainty remain
 retained failures, and the adopted candidate's short SCC panel retains a 15.08%
 sparse cost at sixteen workers. This supports the measured Mac gain, not a
 Linux performance claim, a new fixest ratio or a retrospective pass for H-wide.
-See [qualification and limitations](VALIDATION.md#h2-follow-up-certified-dense-three-fe-gains-2026-10-12)
+See [qualification and limitations](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h2-follow-up-certified-dense-three-fe-gains-2026-10-12)
 and [all observations](../bench/results/h2-followup-20261012-second.json).
 
 The original H8 implementation made ordinary two-FE OLS aim at the shared hundredth-request
@@ -515,7 +515,7 @@ The over-ten-percent sparse costs were reported before integration, and the
 rule was retained until the October 13 adaptive decision above. Retained F1 QR checks pass, while the unchanged
 strong-F witness still fails (barbell 2.480x, weak 1.076x the bound); the weak
 F error improves from 1.440e-5 to -2.603e-8. H8 does not answer the stronger
-certificate question. See [validation](VALIDATION.md#h8-recurrence-consistency-with-measured-sparse-cost-2026-10-12)
+certificate question. See [validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h8-recurrence-consistency-with-measured-sparse-cost-2026-10-12)
 and [all bounded observations](../bench/results/h-20261013-h8.json).
 
 Workstream H3's preserving row-owned assembly reduces dense two-FE PPML
@@ -530,7 +530,7 @@ geometries and the hash-identical 1M/4M inputs preceded timing. The older A3
 current/implicit sixteen-worker observations were 3.806/2.721 seconds at 1M
 and 18.427/10.896 at 4M. Those use a different host/source/harness and are not
 pooled with this panel; implicit routing and its cost-model calibration remain
-unchanged. The [validation record](VALIDATION.md#h3-ordered-parallel-assembly-2026-10-12)
+unchanged. The [validation record](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h3-ordered-parallel-assembly-2026-10-12)
 and [compact evidence](../bench/results/h-20261013-h3.json) retain all costs,
 checks and attempts. Standard Mac timing is still due at the H boundary.
 
@@ -545,7 +545,7 @@ workers. Two Solvers are constructed per fit. Frame gathers and permutations
 are measurable, but eliminating them in the sorted arms does not produce the
 predicted projection gain. H1 stops without a runtime or dependency change;
 H3 follows. All ten fits completed on `scc-zj4` (job `8034071`, failed=0/exit=0).
-See [validation](VALIDATION.md#h1-locality-sort-confirmation-hypothesis-refuted-2026-10-12)
+See [validation](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h1-locality-sort-confirmation-hypothesis-refuted-2026-10-12)
 and the [compact record](../bench/results/h-20261013-h1.json). These are single
 diagnostic fits on the current runtime with trace-only instrumentation; they
 do not revise the historical fixest ratios below or establish a release claim.
@@ -735,7 +735,7 @@ ratio requires three scientifically eligible pairs. Blank ratios and memory
 remain unavailable, never zero. `wall_seconds` in observations includes process
 overhead and differs from the timed estimation command.
 
-The maintained [collector and report](../bench/README.md#packed-scc-comparison)
+The maintained [collector and report](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/bench/README.md#packed-scc-comparison)
 can recollect the remote run using its `collected/context.json`. Run the report's
 `load_campaign` and `summarize` to reproduce the summary, and verify the committed
 CSV hashes against `artifacts` in the inputs JSON. Dataset generation uses

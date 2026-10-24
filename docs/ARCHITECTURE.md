@@ -125,7 +125,7 @@ initial, configured-cadence and fourth-sweep checks remain. Failed attempts
 drop their candidate/norm/coefficient storage before LSMR starts on untouched
 inputs, debiting actual work and preserving memory admission. Explicit solvers,
 weighted requests, PPML and final residual projection retain their routes.
-See the [independent checks and performance limits](VALIDATION.md#h2-follow-up-certified-dense-three-fe-gains-2026-10-12).
+See the [independent checks and performance limits](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h2-follow-up-certified-dense-three-fe-gains-2026-10-12).
 
 Thread counts are worker budgets. Shared planned lanes retain deterministic
 arithmetic leaves and ordered merges. One-FE, two-FE and general-FE algorithms

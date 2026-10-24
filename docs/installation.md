@@ -41,7 +41,7 @@ feppml price mpg, absorb(rep78) vce(robust)
 ```
 
 For an offline installation, download `fereg-0.5.0.zip` from the
-[beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.2),
+[beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.3),
 extract it, and use the absolute path of the extracted directory containing
 `fereg.pkg`:
 
